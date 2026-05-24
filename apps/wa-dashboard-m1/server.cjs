@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = parseInt(process.env.PORT || "7790", 10);
-const HOST = process.env.HOST || "127.0.0.1";
+const HOST = process.env.HOST || "0.0.0.0"; // bind also Tailnet (parity with wa-viewer:7777)
 
 const DATABASE_URL =
   process.env.WA_DASHBOARD_DATABASE_URL ||
@@ -17,6 +17,8 @@ const DATABASE_URL =
 const ACCOUNTS_JSON =
   process.env.WA_MIRROR_ACCOUNTS_JSON ||
   path.join(process.env.HOME || "/", ".wa-mirror.accounts.json");
+
+const MEDIA_ROOT = process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
 
 const TEAM = (() => {
   try {
@@ -32,7 +34,26 @@ for (const m of TEAM) {
   if (m.e164) TEAM_PHONES.add(m.e164);
 }
 
-const pool = new Pool({ connectionString: DATABASE_URL, max: 4, idleTimeoutMillis: 30000 });
+const INTERNAL_NAME_PATTERNS = [
+  /^bali\s*zero/i,
+  /^bz\s*halo/i,
+  /^halo\s*bz/i,
+  /^bali\s*zero\s*halo/i,
+  /^bz\b/i,
+  /^zantara/i,
+];
+function isInternalName(name) {
+  if (!name) return false;
+  return INTERNAL_NAME_PATTERNS.some((re) => re.test(String(name).trim()));
+}
+function cleanName(name) {
+  if (!name) return null;
+  const s = String(name).trim();
+  if (!s) return null;
+  return s.replace(/\s+/g, " ");
+}
+
+const pool = new Pool({ connectionString: DATABASE_URL, max: 6, idleTimeoutMillis: 30000 });
 pool.on("error", (err) => console.error("[pg-pool-error]", err.message));
 
 const CACHE = { teams: { at: 0, payload: null } };
@@ -42,9 +63,10 @@ function aliasesForTeamMember(member) {
   const aliases = new Set();
   if (member.e164) {
     aliases.add(member.e164);
+    // Bali Zero halo team phones (+62821345472X) had double-7 form pre-normalization
     if (member.e164.startsWith("+62821345472")) {
       const suffix = member.e164.slice("+62821345472".length);
-      aliases.add(`+628213454772${suffix}`);
+      aliases.add(`+62821345477${suffix}`);
       aliases.add(`+6282134547${suffix}`);
     }
   }
@@ -55,6 +77,61 @@ function isTeamPhone(phone) {
   return !!phone && TEAM_PHONES.has(phone);
 }
 
+// === Bridge health introspection (Feature #2: Bridge health pill) ===
+function bridgeHealthFor(memberName) {
+  const lower = memberName.toLowerCase();
+  const pidFile = `/tmp/wa-mirror-pids/${lower}.pid`;
+  const logFile = `/tmp/wa-mirror-logs/${lower}.log`;
+  let pid = null;
+  let alive = false;
+  let needsQr = false;
+  let logTail = null;
+  try {
+    if (fs.existsSync(pidFile)) {
+      pid = parseInt(fs.readFileSync(pidFile, "utf8").trim(), 10);
+      if (pid) {
+        try {
+          process.kill(pid, 0);
+          alive = true;
+        } catch {
+          alive = false;
+        }
+      }
+    }
+    if (fs.existsSync(logFile)) {
+      const data = fs.readFileSync(logFile, "utf8");
+      const lines = data.trim().split("\n");
+      logTail = lines.slice(-3).join(" | ").slice(-400);
+      if (/QR salvato|QR code|please scan|needs.*qr/i.test(data.slice(-4000))) {
+        needsQr = true;
+      }
+    }
+  } catch {}
+  let runtime;
+  if (alive) runtime = "running";
+  else if (needsQr) runtime = "needs_qr";
+  else runtime = "stopped";
+  return { pid, runtime_status: runtime, log_tail: logTail };
+}
+
+async function teamSessionFor(member) {
+  const aliases = aliasesForTeamMember(member);
+  const r = await pool.query(
+    `
+    SELECT status, connected_at, last_seen_at, disconnected_at, disconnect_reason,
+           messages_logged, messages_filtered
+    FROM whatsapp_team_sessions
+    WHERE team_member_phone = ANY($1::text[])
+       OR phone_normalized = ANY($2::text[])
+    ORDER BY (status = 'connected') DESC, updated_at DESC NULLS LAST
+    LIMIT 1
+    `,
+    [aliases, aliases.map((a) => a.replace(/\D/g, ""))],
+  );
+  return r.rows[0] || null;
+}
+
+// === MAIN overview query ===
 async function fetchOverview() {
   if (CACHE.teams.payload && Date.now() - CACHE.teams.at < CACHE_MS) {
     return CACHE.teams.payload;
@@ -73,14 +150,15 @@ async function fetchOverview() {
     const aliases = member.aliases;
     const since = "30 days";
 
-    // Direct conversations
-    const directRows = await pool.query(
-      `
+    const [directRows, groupRows, sessionInfo] = await Promise.all([
+      pool.query(
+        `
       WITH base AS (
         SELECT
           NULLIF(counterpart_phone, '') AS direct_phone,
           NULLIF(counterpart_lid, '') AS lid,
-          body, media_type, message_date, raw_baileys_event, direction, client_id
+          body, media_type, message_date, raw_baileys_event, direction, client_id,
+          attention_priority, attention_resolved_at
         FROM whatsapp_message_context
         WHERE team_member_phone = ANY($1::text[])
           AND chat_type = 'direct'
@@ -102,7 +180,9 @@ async function fetchOverview() {
       grouped AS (
         SELECT conv_key,
                MAX(direct_phone) AS direct_phone,
+               MAX(lid) AS lid,
                MAX(client_id) AS client_id,
+               MAX(attention_priority) FILTER (WHERE attention_resolved_at IS NULL) AS attention_priority,
                COUNT(*) AS n,
                MAX(message_date) AS last_at
         FROM keyed
@@ -120,13 +200,19 @@ async function fetchOverview() {
         WHERE direction = 'inbound' AND raw_baileys_event->>'pushName' IS NOT NULL
         ORDER BY conv_key, message_date DESC NULLS LAST
       )
-      SELECT g.conv_key, g.direct_phone, g.client_id, g.n, g.last_at,
+      SELECT g.conv_key, g.direct_phone, g.lid, g.client_id, g.n, g.last_at,
+             g.attention_priority,
              lm.last_body, lm.last_media, lp.pushname,
              COALESCE(cli_id.full_name, cli_phone.full_name) AS client_name,
              COALESCE(cli_id.company_name, cli_phone.company_name) AS company_name,
              COALESCE(cli_id.status, cli_phone.status) AS client_status,
              COALESCE(cli_id.id, cli_phone.id) AS resolved_client_id,
-             COALESCE(cli_id.assigned_to, cli_phone.assigned_to) AS assigned_to
+             COALESCE(cli_id.assigned_to, cli_phone.assigned_to) AS assigned_to,
+             COALESCE(cli_id.tax_consultant, cli_phone.tax_consultant) AS tax_consultant,
+             COALESCE(cli_id.strategic_recap, cli_phone.strategic_recap) AS strategic_recap,
+             COALESCE(cli_id.strategic_recap_source, cli_phone.strategic_recap_source) AS strategic_recap_source,
+             wc.name AS wa_contact_name,
+             wc.business_name AS wa_business_name
       FROM grouped g
       LEFT JOIN last_msg lm USING (conv_key)
       LEFT JOIN last_push lp USING (conv_key)
@@ -140,20 +226,22 @@ async function fetchOverview() {
          OR cli_phone.phone = g.direct_phone
          OR cli_phone.whatsapp = g.direct_phone
        )
+      LEFT JOIN whatsapp_contacts wc
+        ON g.direct_phone IS NOT NULL
+       AND wc.phone_normalized = regexp_replace(g.direct_phone, '\\D', '', 'g')
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
-      [aliases],
-    );
-
-    // Group conversations
-    const groupRows = await pool.query(
-      `
+        [aliases],
+      ),
+      pool.query(
+        `
       WITH grouped AS (
         SELECT group_jid,
                COALESCE(NULLIF(group_subject_snapshot, ''), group_jid) AS group_label,
                COUNT(*) AS n,
-               MAX(message_date) AS last_at
+               MAX(message_date) AS last_at,
+               MAX(attention_priority) FILTER (WHERE attention_resolved_at IS NULL) AS attention_priority
         FROM whatsapp_message_context
         WHERE team_member_phone = ANY($1::text[])
           AND chat_type = 'group'
@@ -163,17 +251,20 @@ async function fetchOverview() {
       ),
       last_msg AS (
         SELECT DISTINCT ON (group_jid)
-               group_jid, body AS last_body, media_type AS last_media, sender_phone
+               group_jid, body AS last_body, media_type AS last_media, sender_phone,
+               raw_baileys_event->>'pushName' AS sender_pushname
         FROM whatsapp_message_context
         WHERE team_member_phone = ANY($1::text[])
           AND chat_type = 'group'
           AND group_jid IS NOT NULL
         ORDER BY group_jid, message_date DESC NULLS LAST
       )
-      SELECT g.group_jid, g.group_label, g.n, g.last_at,
-             lm.last_body, lm.last_media, lm.sender_phone,
+      SELECT g.group_jid, g.group_label, g.n, g.last_at, g.attention_priority,
+             lm.last_body, lm.last_media, lm.sender_phone, lm.sender_pushname,
              cli.full_name AS sender_crm_name,
-             cli.company_name AS sender_company
+             cli.company_name AS sender_company,
+             cli.strategic_recap AS sender_strategic_recap,
+             wc.name AS sender_wa_contact_name
       FROM grouped g
       LEFT JOIN last_msg lm USING (group_jid)
       LEFT JOIN clients cli
@@ -184,18 +275,49 @@ async function fetchOverview() {
          OR cli.phone = lm.sender_phone
          OR cli.whatsapp = lm.sender_phone
        )
+      LEFT JOIN whatsapp_contacts wc
+        ON lm.sender_phone IS NOT NULL
+       AND wc.phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
-      [aliases],
-    );
+        [aliases],
+      ),
+      teamSessionFor(member),
+    ]);
 
+    const bridge = bridgeHealthFor(member.name);
+
+    // === Build convs array ===
     const convs = [];
+    let attentionHigh = 0;
+    let attentionMedium = 0;
+    let crmMatched = 0;
+    let unresolvedLids = 0;
+    let internalCount = 0;
+
     for (const r of directRows.rows) {
-      const crmName = r.client_name;
-      const display = crmName
-        ? (r.company_name ? `${crmName} · ${r.company_name}` : crmName)
-        : (r.pushname || r.direct_phone || r.conv_key);
+      // Display name with priority: CRM > WA business > WA contact > pushName > phone
+      const crmName = cleanName(r.client_name);
+      const businessName = cleanName(r.wa_business_name);
+      const waName = cleanName(r.wa_contact_name);
+      const push = cleanName(r.pushname);
+
+      let display = crmName;
+      if (display && r.company_name) display = `${crmName} · ${r.company_name}`;
+      if (!display) display = businessName || waName || push || r.direct_phone || r.conv_key;
+      const isInternal = isTeamPhone(r.direct_phone);
+      const isLid = !r.direct_phone && r.lid;
+      let tag;
+      if (isInternal) { tag = "internal"; internalCount++; }
+      else if (crmName) { tag = "crm"; crmMatched++; }
+      else if (push || waName || businessName) tag = "prospect";
+      else if (isLid) { tag = "lid"; unresolvedLids++; }
+      else tag = "unknown";
+
+      if (r.attention_priority === "HIGH") attentionHigh++;
+      else if (r.attention_priority === "MEDIUM") attentionMedium++;
+
       convs.push({
         kind: "direct",
         counterpart: r.direct_phone || r.conv_key,
@@ -204,43 +326,66 @@ async function fetchOverview() {
         client_id: r.resolved_client_id || r.client_id,
         client_status: r.client_status,
         assigned_to: r.assigned_to,
+        tax_consultant: r.tax_consultant,
+        strategic_recap: r.strategic_recap,
+        strategic_recap_source: r.strategic_recap_source,
         company_name: r.company_name,
+        wa_contact_name: waName,
+        wa_business_name: businessName,
+        pushname: push,
+        attention_priority: r.attention_priority,
         n: parseInt(r.n, 10),
         last_at: r.last_at,
         last_body: r.last_body,
         last_media: r.last_media,
-        is_internal: isTeamPhone(r.direct_phone),
+        is_internal: isInternal,
+        is_legacy_lid: !!isLid,
+        tag,
       });
     }
     for (const r of groupRows.rows) {
+      const senderName = cleanName(r.sender_crm_name) || cleanName(r.sender_wa_contact_name) || cleanName(r.sender_pushname);
       const groupLabel = r.group_label && !r.group_label.endsWith("@g.us")
         ? r.group_label
-        : (r.sender_crm_name
-            ? `Gruppo ${r.sender_crm_name}${r.sender_company ? " (" + r.sender_company + ")" : ""}`
+        : (senderName
+            ? `Gruppo ${senderName}${r.sender_company ? " (" + r.sender_company + ")" : ""}`
             : r.group_label);
+      if (r.attention_priority === "HIGH") attentionHigh++;
+      else if (r.attention_priority === "MEDIUM") attentionMedium++;
       convs.push({
         kind: "group",
         counterpart: `group:${r.group_jid}`,
         display_name: groupLabel,
         group_jid: r.group_jid,
         sender_phone: r.sender_phone,
-        sender_crm_name: r.sender_crm_name,
+        sender_crm_name: cleanName(r.sender_crm_name),
+        sender_wa_contact_name: cleanName(r.sender_wa_contact_name),
         sender_company: r.sender_company,
+        sender_strategic_recap: r.sender_strategic_recap,
         crm_match: !!r.sender_crm_name,
+        attention_priority: r.attention_priority,
         n: parseInt(r.n, 10),
         last_at: r.last_at,
         last_body: r.last_body,
         last_media: r.last_media,
         is_internal: false,
+        tag: "group",
       });
     }
     convs.sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
 
+    const totalMsgs = convs.reduce((acc, c) => acc + c.n, 0);
     result.by_phone[member.phone] = {
       team: member,
-      total: convs.reduce((acc, c) => acc + c.n, 0),
+      bridge,                    // Feature #2 (health pill)
+      session: sessionInfo,      // messages_logged / messages_filtered / connected_at
+      total: totalMsgs,
       direct_count: convs.filter((c) => c.kind === "direct").length,
       group_count: convs.filter((c) => c.kind === "group").length,
+      crm_count: crmMatched,
+      internal_count: internalCount,
+      unresolved_lids: unresolvedLids,
+      attention: { high: attentionHigh, medium: attentionMedium }, // Feature #7
       convs,
     };
   }
@@ -249,6 +394,7 @@ async function fetchOverview() {
   return result;
 }
 
+// === Thread query (Feature #4 wa_contact_name fallback in messages) ===
 async function fetchThread(memberPhone, convKey) {
   const member = TEAM.find((m) => m.e164 === memberPhone);
   if (!member) throw new Error(`team member not found: ${memberPhone}`);
@@ -257,26 +403,34 @@ async function fetchThread(memberPhone, convKey) {
   let where = "";
   let params = [aliases];
   if (convKey.startsWith("group:")) {
-    where = `AND chat_type = 'group' AND group_jid = $2`;
+    where = `AND m.chat_type = 'group' AND m.group_jid = $2`;
     params.push(convKey.slice("group:".length));
   } else if (convKey.startsWith("lid:")) {
-    where = `AND counterpart_lid = $2`;
+    where = `AND m.counterpart_lid = $2`;
     params.push(convKey.slice("lid:".length));
   } else {
-    where = `AND counterpart_phone = $2`;
+    where = `AND m.counterpart_phone = $2`;
     params.push(convKey);
   }
 
   const rows = await pool.query(
     `
-    SELECT m.id, m.direction, m.body, m.media_type, m.media_mime, m.message_date,
+    SELECT m.id, m.direction, m.body, m.media_type, m.media_mime, m.media_url,
+           m.media_stored_path, m.message_date,
            m.sender_phone, m.sender_push_name_snapshot, m.group_jid,
-           m.counterpart_phone,
+           m.counterpart_phone, m.counterpart_lid,
+           m.attention_priority, m.attention_reason, m.attention_resolved_at,
            m.raw_baileys_event->>'pushName' AS pushname,
+           cli_s.id AS sender_client_id,
            cli_s.full_name AS sender_crm_name,
            cli_s.company_name AS sender_company,
+           cli_c.id AS counterpart_client_id,
            cli_c.full_name AS counterpart_crm_name,
-           cli_c.company_name AS counterpart_company
+           cli_c.company_name AS counterpart_company,
+           wc_s.name AS sender_wa_contact_name,
+           wc_s.business_name AS sender_wa_business_name,
+           wc_c.name AS counterpart_wa_contact_name,
+           wc_c.business_name AS counterpart_wa_business_name
     FROM whatsapp_message_context m
     LEFT JOIN clients cli_s
       ON cli_s.deleted_at IS NULL
@@ -294,6 +448,12 @@ async function fetchThread(memberPhone, convKey) {
        OR cli_c.phone = m.counterpart_phone
        OR cli_c.whatsapp = m.counterpart_phone
      )
+    LEFT JOIN whatsapp_contacts wc_s
+      ON m.sender_phone IS NOT NULL
+     AND wc_s.phone_normalized = regexp_replace(m.sender_phone, '\\D', '', 'g')
+    LEFT JOIN whatsapp_contacts wc_c
+      ON m.counterpart_phone IS NOT NULL
+     AND wc_c.phone_normalized = regexp_replace(m.counterpart_phone, '\\D', '', 'g')
     WHERE m.team_member_phone = ANY($1::text[])
       ${where}
       AND m.message_date >= NOW() - INTERVAL '30 days'
@@ -306,9 +466,35 @@ async function fetchThread(memberPhone, convKey) {
     `,
     params,
   );
-  return rows.rows;
+  return rows.rows.map((r) => ({
+    ...r,
+    sender_display:
+      cleanName(r.sender_crm_name) ||
+      cleanName(r.sender_wa_business_name) ||
+      cleanName(r.sender_wa_contact_name) ||
+      cleanName(r.pushname) ||
+      r.sender_phone,
+  }));
 }
 
+// === Client lookup with smart-recap (Feature #11) ===
+async function fetchClientCard(clientId) {
+  const r = await pool.query(
+    `
+    SELECT id, full_name, company_name, phone, whatsapp, status, assigned_to,
+           tax_consultant, strategic_recap, strategic_recap_source,
+           strategic_recap_updated_at, ai_summary, nationality, lead_source,
+           service_interest, custom_fields, created_at, last_interaction_date,
+           google_drive_folder_id
+    FROM clients
+    WHERE id = $1 AND deleted_at IS NULL
+    `,
+    [clientId],
+  );
+  return r.rows[0] || null;
+}
+
+// === Express app ===
 const app = express();
 app.disable("x-powered-by");
 
@@ -320,7 +506,12 @@ app.use((req, res, next) => {
 app.get("/health.json", async (_req, res) => {
   try {
     const r = await pool.query("SELECT 1 AS ok, NOW() AS now");
-    res.json({ ok: true, db_now: r.rows[0].now, team_size: TEAM.length, db_url_host: new URL(DATABASE_URL.replace(/^postgres/, "http")).host });
+    res.json({
+      ok: true,
+      db_now: r.rows[0].now,
+      team_size: TEAM.length,
+      db_url_host: new URL(DATABASE_URL.replace(/^postgres/, "http")).host,
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -351,6 +542,45 @@ app.get("/thread.json", async (req, res) => {
   }
 });
 
+app.get("/client.json", async (req, res) => {
+  const cid = parseInt(req.query.id, 10);
+  if (!cid) return res.status(400).json({ error: "missing id" });
+  try {
+    const row = await fetchClientCard(cid);
+    if (!row) return res.status(404).json({ error: "not found" });
+    res.json(row);
+  } catch (err) {
+    console.error("[client.json]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// === Media inline (Feature #9) ===
+const MIME_BY_EXT = {
+  ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+  ".gif": "image/gif", ".webp": "image/webp", ".pdf": "application/pdf",
+  ".mp4": "video/mp4", ".webm": "video/webm", ".m4a": "audio/mp4",
+  ".ogg": "audio/ogg", ".mp3": "audio/mpeg", ".opus": "audio/opus",
+};
+app.get("/media", (req, res) => {
+  const p = req.query.path;
+  if (!p || typeof p !== "string") return res.status(400).send("missing path");
+  const resolved = path.resolve(p);
+  if (!resolved.startsWith(MEDIA_ROOT + "/")) return res.status(403).send("forbidden");
+  if (!fs.existsSync(resolved)) return res.status(404).send("not found");
+  const ext = path.extname(resolved).toLowerCase();
+  const mime = MIME_BY_EXT[ext] || "application/octet-stream";
+  res.setHeader("Content-Type", mime);
+  res.setHeader("Cache-Control", "private, max-age=300");
+  res.setHeader(
+    "Content-Disposition",
+    mime === "application/pdf" || mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
+      ? "inline"
+      : `inline; filename="${path.basename(resolved)}"`,
+  );
+  fs.createReadStream(resolved).pipe(res);
+});
+
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "viewer.html"));
 });
@@ -358,5 +588,5 @@ app.get("/", (_req, res) => {
 app.listen(PORT, HOST, () => {
   console.log(`[wa-dashboard-m1] listening on http://${HOST}:${PORT}`);
   console.log(`[wa-dashboard-m1] DB: ${DATABASE_URL.replace(/:[^@]+@/, ":***@")}`);
-  console.log(`[wa-dashboard-m1] Team size: ${TEAM.length}`);
+  console.log(`[wa-dashboard-m1] Team size: ${TEAM.length} | Media root: ${MEDIA_ROOT}`);
 });
