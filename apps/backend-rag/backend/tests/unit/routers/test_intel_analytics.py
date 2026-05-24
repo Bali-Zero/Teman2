@@ -364,11 +364,11 @@ class TestGetCriticalItems:
             patch("backend.app.routers.intel_analytics.QdrantClient"),
             patch("backend.app.routers.intel_analytics.httpx.AsyncClient") as mock_http,
         ):
-            mock_resp = AsyncMock()
+            mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_resp.raise_for_status = MagicMock()
             mock_resp.json.return_value = {"result": {"points": []}}
-            mock_ctx = AsyncMock()
+            mock_ctx = MagicMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
             mock_ctx.post = AsyncMock(return_value=mock_resp)
@@ -389,8 +389,8 @@ class TestGetCriticalItems:
     async def test_critical_items_with_category(self, _patch_imports):
         with patch("backend.app.routers.intel_analytics.QdrantClient") as mock_qd_cls:
             # Make scroll fail so it falls back to peek
-            mock_client = AsyncMock()
-            mock_client.peek.return_value = {"metadatas": []}
+            mock_client = MagicMock()
+            mock_client.peek = AsyncMock(return_value={"metadatas": []})
             mock_qd_cls.return_value = mock_client
 
             with (

@@ -76,8 +76,6 @@ class TestSaveConversation:
         # Mock DB insert returning conversation ID
         conn = mock_db_pool._mock_conn
         conn.fetchrow.return_value = {"id": 42}
-        conn.transaction.return_value.__aenter__ = AsyncMock()
-        conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
 
         response = client.post(
             "/api/bali-zero/conversations/save",

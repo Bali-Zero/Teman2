@@ -8,11 +8,38 @@ from backend.services.olympus.guardian import OlympusGuardian
 from backend.services.olympus.models import PulseAction
 
 
+class _AsyncContext:
+    def __init__(self, value):
+        self.value = value
+
+    async def __aenter__(self):
+        return self.value
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+
+def _mock_pool() -> MagicMock:
+    pool = MagicMock()
+    conn = MagicMock()
+
+    async def fetchval(*args, **kwargs):
+        return 0
+
+    async def execute(*args, **kwargs):
+        return None
+
+    conn.fetchval = MagicMock(side_effect=fetchval)
+    conn.execute = MagicMock(side_effect=execute)
+    pool.acquire = MagicMock(return_value=_AsyncContext(conn))
+    return pool
+
+
 class TestGuardianFeedbackLoop:
     @pytest.mark.asyncio
     async def test_pulse_records_applied_rules(self):
         """record_applied is called for every action with a rule_applied."""
-        pool = AsyncMock()
+        pool = _mock_pool()
         guardian = OlympusGuardian(db_pool=pool, alert_service=None)
         guardian.rules_engine = MagicMock()
         guardian.rules_engine.record_applied = AsyncMock()
@@ -53,7 +80,7 @@ class TestGuardianFeedbackLoop:
     @pytest.mark.asyncio
     async def test_pulse_lowers_confidence_on_failure(self):
         """MISS-2 fix: lower_confidence called when action fails."""
-        pool = AsyncMock()
+        pool = _mock_pool()
         guardian = OlympusGuardian(db_pool=pool, alert_service=None)
         guardian.rules_engine = MagicMock()
         guardian.rules_engine.record_applied = AsyncMock()
@@ -79,7 +106,7 @@ class TestGuardianFeedbackLoop:
 
     @pytest.mark.asyncio
     async def test_pulse_no_lower_confidence_on_success(self):
-        pool = AsyncMock()
+        pool = _mock_pool()
         guardian = OlympusGuardian(db_pool=pool, alert_service=None)
         guardian.rules_engine = MagicMock()
         guardian.rules_engine.record_applied = AsyncMock()
@@ -106,7 +133,7 @@ class TestGuardianFeedbackLoop:
     @pytest.mark.asyncio
     async def test_pulse_summary_counts_failures_correctly(self):
         """BUG-4 fix: count 'failure' not 'error'."""
-        pool = AsyncMock()
+        pool = _mock_pool()
         guardian = OlympusGuardian(db_pool=pool, alert_service=None)
         guardian.rules_engine = MagicMock()
         guardian.rules_engine.record_applied = AsyncMock()
@@ -132,7 +159,7 @@ class TestGuardianV3Insights:
     @pytest.mark.asyncio
     async def test_pulse_runs_insights(self):
         """v3: pulse runs InsightsCollector and persists actions."""
-        pool = AsyncMock()
+        pool = _mock_pool()
         guardian = OlympusGuardian(db_pool=pool, alert_service=None)
         guardian.rules_engine = MagicMock()
         guardian.rules_engine.record_applied = AsyncMock()

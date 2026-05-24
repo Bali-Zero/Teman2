@@ -40,18 +40,37 @@ class MockTool(BaseTool):
         return "Mock result"
 
 
+class _AsyncContext:
+    def __init__(self, value):
+        self.value = value
+
+    async def __aenter__(self):
+        return self.value
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+
 @pytest.fixture
 def mock_db_pool():
     """Mock database pool that supports async context manager (acquire())"""
     pool = MagicMock()
-    mock_conn = AsyncMock()
+
+    async def async_none(*args, **kwargs):
+        return None
+
+    async def async_list(*args, **kwargs):
+        return []
+
+    mock_conn = MagicMock()
+    mock_conn.fetchrow = MagicMock(side_effect=async_none)
+    mock_conn.fetchval = MagicMock(side_effect=async_none)
+    mock_conn.fetch = MagicMock(side_effect=async_list)
+    mock_conn.execute = MagicMock(side_effect=async_none)
+    mock_conn.transaction = MagicMock(return_value=_AsyncContext(mock_conn))
+
     # acquire() must be a context manager: async with pool.acquire() as conn
-    pool.acquire = MagicMock(
-        return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock(return_value=None),
-        ),
-    )
+    pool.acquire = MagicMock(return_value=_AsyncContext(mock_conn))
     return pool
 
 

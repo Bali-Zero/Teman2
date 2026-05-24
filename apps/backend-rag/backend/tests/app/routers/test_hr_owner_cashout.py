@@ -1,6 +1,6 @@
 """Integration tests for owner cashout router with auth gating."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -11,6 +11,17 @@ from backend.app.deps.database import get_database_pool
 from backend.app.routers.hr_owner_cashout import router
 
 
+class _AsyncContext:
+    def __init__(self, value):
+        self.value = value
+
+    async def __aenter__(self):
+        return self.value
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+
 def make_app(user_email: str) -> FastAPI:
     app = FastAPI()
     app.include_router(router)
@@ -19,7 +30,15 @@ def make_app(user_email: str) -> FastAPI:
         return {"email": user_email, "role": "admin"}
 
     async def fake_pool():
-        return AsyncMock()
+        pool = MagicMock()
+        conn = MagicMock()
+
+        async def fetchval(*args, **kwargs):
+            return None
+
+        conn.fetchval = MagicMock(side_effect=fetchval)
+        pool.acquire = MagicMock(return_value=_AsyncContext(conn))
+        return pool
 
     app.dependency_overrides[get_current_user] = fake_user
     app.dependency_overrides[get_database_pool] = fake_pool
