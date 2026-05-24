@@ -250,15 +250,18 @@ async function fetchOverview() {
       SELECT g.conv_key, g.direct_phone, g.lid, g.client_id, g.n, g.last_at,
              g.attention_priority, g.unread_count,
              lm.last_body, lm.last_media, lp.pushname,
-             COALESCE(cli_id.full_name, cli_phone.full_name) AS client_name,
-             COALESCE(cli_id.company_name, cli_phone.company_name) AS company_name,
-             COALESCE(cli_id.status, cli_phone.status) AS client_status,
-             COALESCE(cli_id.id, cli_phone.id) AS resolved_client_id,
-             COALESCE(cli_id.assigned_to, cli_phone.assigned_to) AS assigned_to,
-             COALESCE(cli_id.tax_consultant, cli_phone.tax_consultant) AS tax_consultant,
-             COALESCE(cli_id.strategic_recap, cli_phone.strategic_recap) AS strategic_recap,
-             COALESCE(cli_id.strategic_recap_source, cli_phone.strategic_recap_source) AS strategic_recap_source,
-             COALESCE(cli_id.avatar_url, cli_phone.avatar_url) AS avatar_url,
+             COALESCE(cli_id.full_name, cli_phone.full_name, cli_archived.full_name) AS client_name,
+             COALESCE(cli_id.company_name, cli_phone.company_name, cli_archived.company_name) AS company_name,
+             COALESCE(cli_id.status, cli_phone.status, cli_archived.status) AS client_status,
+             COALESCE(cli_id.id, cli_phone.id, cli_archived.id) AS resolved_client_id,
+             COALESCE(cli_id.assigned_to, cli_phone.assigned_to, cli_archived.assigned_to) AS assigned_to,
+             COALESCE(cli_id.tax_consultant, cli_phone.tax_consultant, cli_archived.tax_consultant) AS tax_consultant,
+             COALESCE(cli_id.strategic_recap, cli_phone.strategic_recap, cli_archived.strategic_recap) AS strategic_recap,
+             COALESCE(cli_id.strategic_recap_source, cli_phone.strategic_recap_source, cli_archived.strategic_recap_source) AS strategic_recap_source,
+             COALESCE(cli_id.avatar_url, cli_phone.avatar_url, cli_archived.avatar_url) AS avatar_url,
+             -- crm_archived = true se match SOLO via cli_archived (alive lookup failed)
+             (cli_id.id IS NULL AND cli_phone.id IS NULL AND cli_archived.id IS NOT NULL) AS crm_archived,
+             cli_archived.deleted_at AS archived_at,
              wc.name AS wa_contact_name,
              wc.business_name AS wa_business_name
       FROM grouped g
@@ -274,6 +277,21 @@ async function fetchOverview() {
          OR cli_phone.phone = COALESCE(g.effective_phone, g.direct_phone)
          OR cli_phone.whatsapp = COALESCE(g.effective_phone, g.direct_phone)
        )
+      -- Fallback: soft-deleted clients still talking on WA (cicatrix marzo-2026 7733-purge ghosts)
+      LEFT JOIN LATERAL (
+        SELECT id, full_name, company_name, status, assigned_to, tax_consultant,
+               strategic_recap, strategic_recap_source, avatar_url, deleted_at
+        FROM clients
+        WHERE deleted_at IS NOT NULL
+          AND COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
+          AND (
+            phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+            OR phone = COALESCE(g.effective_phone, g.direct_phone)
+            OR whatsapp = COALESCE(g.effective_phone, g.direct_phone)
+          )
+        ORDER BY deleted_at DESC
+        LIMIT 1
+      ) cli_archived ON cli_id.id IS NULL AND cli_phone.id IS NULL
       LEFT JOIN whatsapp_contacts wc
         ON COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
        AND wc.phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
@@ -374,9 +392,11 @@ async function fetchOverview() {
       if (!display) display = businessName || waName || push || r.direct_phone || r.conv_key;
       const isInternal = isTeamPhone(r.direct_phone);
       const isLid = !r.direct_phone && r.lid;
+      const isCrmArchived = !!r.crm_archived;
       let tag;
       if (isInternal) { tag = "internal"; internalCount++; }
-      else if (crmName) { tag = "crm"; crmMatched++; }
+      else if (crmName && !isCrmArchived) { tag = "crm"; crmMatched++; }
+      else if (crmName && isCrmArchived) { tag = "crm-archived"; }
       else if (push || waName || businessName) tag = "prospect";
       else if (isLid) { tag = "lid"; unresolvedLids++; }
       else tag = "unknown";
@@ -389,6 +409,8 @@ async function fetchOverview() {
         counterpart: r.direct_phone || r.conv_key,
         display_name: display,
         crm_match: !!crmName,
+        crm_archived: isCrmArchived,
+        archived_at: r.archived_at,
         client_id: r.resolved_client_id || r.client_id,
         client_status: r.client_status,
         assigned_to: r.assigned_to,
@@ -463,6 +485,7 @@ async function fetchOverview() {
 
     const unreadTotal = convs.reduce((sum, c) => sum + (c.unread_count || 0), 0);
     const unreadConvs = convs.filter((c) => (c.unread_count || 0) > 0).length;
+    const archivedCount = convs.filter((c) => c.crm_archived).length;
 
     result.by_phone[member.phone] = {
       team: member,
@@ -480,6 +503,8 @@ async function fetchOverview() {
       unresolved_lids: unresolvedLids,
       unread_total: unreadTotal,         // Feature: unread badge (col 1 team pill)
       unread_convs: unreadConvs,
+      archived_count: archivedCount,     // Feature: ghost CRM clients still talking on WA
+
       attention: { high: attentionHigh, medium: attentionMedium }, // Feature #7
       convs,
     };
