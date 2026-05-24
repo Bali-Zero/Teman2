@@ -684,8 +684,8 @@ async def resolve_batch(
     pool: asyncpg.Pool,
     *,
     batch_size: int,
-    since: str | None,
-    until: str | None,
+    since: Any | None,
+    until: Any | None,
     force: bool,
     dry_run: bool,
     max_batches: int | None = None,
@@ -819,11 +819,20 @@ async def cli_main(argv: list[str] | None = None) -> int:
         command_timeout=60,
     )
     try:
+        import datetime as _dt
+
+        def _parse_dt(s: str | None) -> _dt.datetime | None:
+            if not s:
+                return None
+            return _dt.datetime.fromisoformat(s) if "T" in s else _dt.datetime.combine(
+                _dt.date.fromisoformat(s), _dt.time(0, 0)
+            ).replace(tzinfo=_dt.timezone.utc)
+
         metrics = await resolve_batch(
             pool,
             batch_size=args.batch_size,
-            since=args.since,
-            until=args.until,
+            since=_parse_dt(args.since),
+            until=_parse_dt(args.until),
             force=args.force,
             dry_run=args.dry_run,
             max_batches=args.max_batches,
