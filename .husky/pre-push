@@ -18,8 +18,10 @@ echo "🐍 Running Python tests..."
 
 # Check for task-marker comments in new code.
 echo "📋 Checking for task-marker comments..."
-MARKER_PATTERN='TO''DO\|FIX''ME\|HA''CK\|BU''G'
-if git diff --name-only origin/HEAD...HEAD | xargs grep -l "$MARKER_PATTERN" 2>/dev/null; then
+MARKER_PATTERN='TO''DO|FIX''ME|HA''CK|BU''G'
+if git diff --no-ext-diff --unified=0 origin/HEAD...HEAD 2>/dev/null \
+    | grep -E '^\+[^+]' \
+    | grep -E "$MARKER_PATTERN" >/dev/null 2>&1; then
     echo "⚠️  WARNING: Found task-marker comments in new code."
     echo "   Please consider creating GitHub issues for these items."
     echo "   Use issue links for intentionally retained markers."

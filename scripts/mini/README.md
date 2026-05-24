@@ -6,6 +6,16 @@ decommissioned).
 
 Repo-tracked so any change ships to Mini via the next git-pull tick.
 
+## Canonical Pro/Mini policy
+
+- Both machines work on `main` only.
+- Pro is the only machine that pushes to GitHub `origin/main`.
+- Mini pulls from Pro first and from GitHub only as fallback.
+- Mini may push only to the Pro remote named `pro`; it must never push to
+  `origin`.
+- Healthcheck: `scripts/pro-mini-healthcheck.sh`
+- Read-only integration test: `scripts/test-pro-mini-sync.sh`
+
 ## mini-git-pull.sh
 
 Periodic (5 min) fast-forward sync for `~/Desktop/nuzantara`
