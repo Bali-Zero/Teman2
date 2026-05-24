@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { BookOpen, ChevronDown, FileText } from "lucide-react";
+import { useChatLocale } from "@/hooks/useChatLocale";
 
 interface NLMCitation {
   source_file: string;
@@ -17,12 +18,23 @@ interface NLMCitationPanelProps {
   onToggle: () => void;
 }
 
+const LABELS: Record<string, string> = {
+  en: "Official Sources",
+  it: "Fonti ufficiali",
+  id: "Sumber Resmi",
+  fr: "Sources officielles",
+  ru: "Официальные источники",
+};
+
 export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
   citations,
   domainLabel,
   expanded,
   onToggle,
 }) => {
+  const locale = useChatLocale();
+  const labelPrefix = LABELS[locale] || LABELS.en;
+
   return (
     <div className="mt-3 rounded-lg border-l-2 border-amber-600 overflow-hidden">
       {/* Header — always visible, toggles expand */}
@@ -33,11 +45,17 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
         className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900/50 hover:bg-zinc-900/70 transition-colors text-left focus-ring"
       >
         <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
-          <BookOpen size={14} />
-          <span>Fonti ufficiali — {domainLabel}</span>
+          <BookOpen size={14} aria-hidden="true" />
+          <span>
+            {labelPrefix} — {domainLabel}
+          </span>
         </div>
         <div className="text-zinc-400">
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          <ChevronDown
+            size={14}
+            className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
         </div>
       </button>
 
@@ -53,7 +71,7 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
           {citations.map((citation, idx) => (
             <div key={idx} className="flex gap-2.5">
               <div className="flex-shrink-0 mt-0.5 text-amber-600/60">
-                <FileText size={12} />
+                <FileText size={12} aria-hidden="true" />
               </div>
               <div className="min-w-0 space-y-0.5">
                 <p className="text-xs font-medium text-zinc-300 truncate">
