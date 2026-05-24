@@ -28,6 +28,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.background import get_bg_pool_semaphore
 
 if TYPE_CHECKING:
     import asyncpg
@@ -365,19 +366,23 @@ class AttendanceMonitor:
         while self._running:
             iteration += 1
             try:
-                # PANOPTICON: Clock-in reminder at 09:15 WITA
-                now_bali = datetime.now(BALI_TZ)
-                if (
-                    now_bali.hour == CLOCKIN_REMINDER_HOUR
-                    and now_bali.minute >= CLOCKIN_REMINDER_MINUTE
-                    and now_bali.minute < CLOCKIN_REMINDER_MINUTE + 15
-                    and now_bali.weekday() < 5  # Mon-Fri only
-                ):
-                    if not getattr(self, "_reminder_sent_date", None) == now_bali.date():
-                        await self.send_clockin_reminder()
-                        self._reminder_sent_date = now_bali.date()
+                # Bound concurrent background-loop pool access (see
+                # backend.services.common.background — god-test S12 / FIX-1
+                # cicatrix 2026-05-24).
+                async with get_bg_pool_semaphore():
+                    # PANOPTICON: Clock-in reminder at 09:15 WITA
+                    now_bali = datetime.now(BALI_TZ)
+                    if (
+                        now_bali.hour == CLOCKIN_REMINDER_HOUR
+                        and now_bali.minute >= CLOCKIN_REMINDER_MINUTE
+                        and now_bali.minute < CLOCKIN_REMINDER_MINUTE + 15
+                        and now_bali.weekday() < 5  # Mon-Fri only
+                    ):
+                        if not getattr(self, "_reminder_sent_date", None) == now_bali.date():
+                            await self.send_clockin_reminder()
+                            self._reminder_sent_date = now_bali.date()
 
-                counters = await self.run_escalation_scan()
+                    counters = await self.run_escalation_scan()
                 logger.info(
                     "AttendanceMonitor._escalation_loop: heartbeat iter=%d pid=%d counters=%s",
                     iteration,
