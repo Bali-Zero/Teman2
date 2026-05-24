@@ -13,6 +13,13 @@ import backend.app.routers.crm_clients as crm_clients_module
 from backend.app.dependencies import get_current_user, get_database_pool
 
 
+def _async_return(value: object):
+    async def _inner(*args: object, **kwargs: object) -> object:
+        return value
+
+    return _inner
+
+
 def _ts() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -194,23 +201,23 @@ class TestCreateClient:
         app.dependency_overrides[crm_clients_module.get_client_service] = lambda: client_service
 
         drive_service = MagicMock()
-        drive_service.create_client_folder = AsyncMock()
+        drive_service.create_client_folder = AsyncMock(return_value={"success": True})
         portal_profile_service = MagicMock()
-        portal_profile_service.ensure_portal_profile = AsyncMock()
+        portal_profile_service.ensure_portal_profile = AsyncMock(return_value=None)
 
         with (
-            patch("backend.app.routers.crm_clients.invalidate_cache", AsyncMock()),
+            patch("backend.app.routers.crm_clients.invalidate_cache", AsyncMock(return_value=None)),
             patch(
                 "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
                 return_value=drive_service,
             ),
             patch(
                 "backend.services.crm.welcome.welcome_whatsapp_service.send_client_welcome",
-                AsyncMock(),
+                AsyncMock(return_value=None),
             ),
             patch(
                 "backend.services.crm.welcome.welcome_email_service.schedule_client_welcome_email",
-                AsyncMock(),
+                AsyncMock(return_value=None),
             ),
             patch(
                 "backend.services.portal.portal_profile_service.PortalProfileService",
@@ -307,7 +314,7 @@ class TestUpdateClient:
         conn.execute = AsyncMock(return_value="OK")
 
         notification_service = MagicMock()
-        notification_service.notify_profile_updated = AsyncMock()
+        notification_service.notify_profile_updated = MagicMock(return_value=None)
 
         with (
             patch("backend.app.routers.crm_clients.verify_client_access", AsyncMock()),
@@ -328,6 +335,9 @@ class TestUpdateClient:
         _pool, conn = mock_db_pool
         conn.fetchrow = AsyncMock(return_value=_client_row())
 
-        with patch("backend.app.routers.crm_clients.verify_client_access", AsyncMock()):
+        with patch(
+            "backend.app.routers.crm_clients.verify_client_access",
+            MagicMock(side_effect=_async_return(None)),
+        ):
             response = client.patch("/api/crm/clients/1", json={})
         assert response.status_code == 400

@@ -108,13 +108,24 @@ def mock_client_user() -> dict:
 def mock_db_pool() -> MagicMock:
     """Mock asyncpg connection pool with async context manager support."""
     pool = MagicMock()
-    conn = AsyncMock()
+    conn = MagicMock()
+
+    class _AsyncContext:
+        async def __aenter__(self):
+            return conn
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.fetchval = AsyncMock(return_value=None)
+    conn.fetch = AsyncMock(return_value=[])
+    conn.execute = AsyncMock(return_value=None)
+    conn.transaction = MagicMock(return_value=_AsyncContext())
 
     # Make pool.acquire() work as async context manager:
     # pool.acquire() must return an object that supports __aenter__/__aexit__
-    acquire_cm = MagicMock()
-    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
-    acquire_cm.__aexit__ = AsyncMock(return_value=False)
+    acquire_cm = _AsyncContext()
     pool.acquire = MagicMock(return_value=acquire_cm)
 
     # Store conn reference for easy access in tests

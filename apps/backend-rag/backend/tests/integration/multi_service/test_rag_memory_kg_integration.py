@@ -23,6 +23,17 @@ if str(backend_path) not in sys.path:
 from backend.services.rag.agentic import create_agentic_rag
 
 
+class _AsyncContext:
+    def __init__(self, value):
+        self.value = value
+
+    async def __aenter__(self):
+        return self.value
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+
 @pytest.fixture
 def mock_search_service():
     """Mock SearchService"""
@@ -46,13 +57,21 @@ def mock_search_service():
 @pytest.fixture
 def mock_db_pool():
     """Mock PostgreSQL connection pool"""
-    pool = AsyncMock()
-    conn = AsyncMock()
+    pool = MagicMock()
+    conn = MagicMock()
 
-    async def acquire():
-        return conn
+    async def async_none(*args, **kwargs):
+        return None
 
-    pool.acquire = acquire
+    async def async_list(*args, **kwargs):
+        return []
+
+    conn.fetchrow = MagicMock(side_effect=async_none)
+    conn.fetchval = MagicMock(side_effect=async_none)
+    conn.fetch = MagicMock(side_effect=async_list)
+    conn.execute = MagicMock(side_effect=async_none)
+    conn.transaction = MagicMock(return_value=_AsyncContext(conn))
+    pool.acquire = MagicMock(return_value=_AsyncContext(conn))
     return pool
 
 

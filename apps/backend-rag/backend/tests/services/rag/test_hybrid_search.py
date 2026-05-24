@@ -54,7 +54,7 @@ def mock_bm25_vectorizer():
 def mock_collection_manager():
     """Mock collection manager for testing."""
     manager = MagicMock()
-    mock_client = AsyncMock()
+    mock_client = MagicMock()
     mock_client.hybrid_search = AsyncMock(
         return_value={
             "ids": ["doc1", "doc2", "doc3"],
@@ -384,7 +384,7 @@ class TestHybridSearchIntegration:
         mock_collection_manager.get_collection.return_value = None
 
         with patch("backend.services.rag.hybrid_search.QdrantClient") as mock_qdrant:
-            mock_client = AsyncMock()
+            mock_client = MagicMock()
             mock_client.hybrid_search = AsyncMock(
                 return_value={
                     "ids": [],

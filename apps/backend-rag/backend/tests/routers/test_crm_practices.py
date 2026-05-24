@@ -212,7 +212,7 @@ class TestUpdatePractice:
         conn.execute = AsyncMock(return_value="OK")
 
         notification_service = MagicMock()
-        notification_service.notify_practice_status_changed = AsyncMock()
+        notification_service.notify_practice_status_changed = MagicMock(return_value=None)
 
         with (
             patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
