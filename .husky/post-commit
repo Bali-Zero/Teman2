@@ -1,18 +1,18 @@
 #!/bin/sh
 python3 scripts/docs_sync.py --quiet 2>/dev/null &
 
-# Bidirectional git sync between Pro and Air
+# Bidirectional git sync between Pro and Mini
 # This file is git-tracked and identical on both machines.
-# The $(whoami) check determines which direction to sync.
+# The hostname check determines which direction to sync.
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 if [ "$BRANCH" = "main" ]; then
-    if [ "$(whoami)" = "nuzantara" ]; then
-        # Pro → Air: tell Air to pull from Pro
-        (ssh -o ConnectTimeout=5 -o BatchMode=yes air \
-          "cd ~/Projects/nuzantara && git stash -q 2>/dev/null; git pull pro main --ff-only 2>&1; git stash pop -q 2>/dev/null || true" \
+    if [ "$(hostname)" = "Nuzantara" ]; then
+        # Pro → Mini: tell Mini to pull from Pro
+        (ssh -o ConnectTimeout=5 -o BatchMode=yes mini \
+          "cd ~/Desktop/nuzantara && git stash -q 2>/dev/null; git pull pro main --ff-only 2>&1; git stash pop -q 2>/dev/null || true" \
           >> ~/.openclaw/logs/git-sync.log 2>&1) &
-    elif [ "$(whoami)" = "antonellosiano" ]; then
-        # Air → Pro: push directly to Pro
+    elif [ "$(hostname)" = "Mini-Pro2" ]; then
+        # Mini → Pro: push directly to Pro
         (git push pro main >> ~/.openclaw/logs/git-sync.log 2>&1) &
     fi
 fi

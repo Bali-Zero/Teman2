@@ -139,7 +139,7 @@ if [ -n "$PY_BACKEND_CHANGED" ]; then
     PYTHONPATH=apps/backend-rag $VENV_PYTHON -c \
         "from backend.app.dependencies import get_current_user; print('✅ import chain OK')" \
         2>&1 || {
-        # Check if failure is due to missing deps (Air machine) vs actual break
+        # Check if failure is due to missing deps on this machine vs actual break
         IMPORT_ERR=$(PYTHONPATH=apps/backend-rag $VENV_PYTHON -c "from backend.app.dependencies import get_current_user" 2>&1 || true)
         if echo "$IMPORT_ERR" | grep -q "ModuleNotFoundError"; then
             echo "⚠️  Skipping import chain check (missing Python deps on this machine)"
