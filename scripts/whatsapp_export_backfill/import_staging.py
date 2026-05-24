@@ -126,7 +126,11 @@ async def import_jsonl_to_staging(
                             (batch_id, source_relpath, message_index, message_date, sender_display_name, body, body_excerpt,
                              has_attachments, attachment_relpaths, review_status)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, 'pending')
-                        ON CONFLICT (batch_id, source_relpath, message_index) DO NOTHING
+                        ON CONFLICT (batch_id, source_relpath, message_index) DO UPDATE
+                            SET has_attachments = EXCLUDED.has_attachments,
+                                attachment_relpaths = EXCLUDED.attachment_relpaths,
+                                body = EXCLUDED.body,
+                                body_excerpt = EXCLUDED.body_excerpt
                         """,
                         batch_id,
                         chat_path,
