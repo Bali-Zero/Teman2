@@ -34,7 +34,23 @@ Snapshot post-audit 4-lane (LLM external + Ollama + MCP + NotebookLM + Subagent 
 alias claude-acct2='CLAUDE_CONFIG_DIR=$HOME/.claude-acct2 claude'
 ```
 
-**Hard rule**: mai SDK Python `anthropic.Anthropic(...)`, mai `ANTHROPIC_API_KEY`. Solo CLI con `CLAUDE_CODE_OAUTH_TOKEN`. Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
+**Hard rule (PRECISED 2026-05-25 post empirical verify)**:
+
+- ❌ MAI `ANTHROPIC_API_KEY` (paid pay-as-you-go console key) — duplicherebbe MAX subscription.
+- ❌ MAI `anthropic.Anthropic(api_key=...)` — è il path paid.
+- ✅ **OK `anthropic.Anthropic(auth_token=...)` o env `ANTHROPIC_AUTH_TOKEN`** — SDK 0.83+ supporta OAuth Bearer token (HTTP header `Authorization: Bearer <token>`), distinto da `X-Api-Key`. Permette uso SDK con MAX-plan quota se token derivato da `claude setup-token`.
+- ✅ **OK CLI `claude` con `CLAUDE_CODE_OAUTH_TOKEN`** — path attualmente usato in Nuzantara prod (`apps/backend-rag/backend/llm/claude_oauth_client.py`). Subprocess wrapper minimale.
+
+**Reference SDK auth_token**: `/opt/homebrew/lib/python3.14/site-packages/anthropic/_client.py:169-172`
+
+```python
+auth_token = self.auth_token
+if auth_token is None:
+    return {}
+return {"Authorization": f"Bearer {auth_token}"}
+```
+
+**Pattern attuale Nuzantara**: subprocess via CLI (`claude_oauth_client.py`) — semplicità + zero rischio confusion api_key/auth_token. SDK direct con auth_token è opzione legittima per nuovi use case che richiedono features SDK (tool_use, streaming, structured output) non disponibili via CLI subprocess.
 
 **Health-check**: `bash -lc 'unset ANTHROPIC_API_KEY; claude auth status'`.
 
@@ -381,26 +397,51 @@ PATH=/usr/bin:/bin:/usr/sbin:/sbin:~/.local/bin
 
 ## 7. Cost constraint — HARD RULE (Anthropic-specific ban)
 
-### 7.1 Banned (Anthropic only)
+### 7.1 Banned (Anthropic paid endpoint only)
 
 Mai in nessun env (local, Fly secrets, CI, cron wrapper, Docker):
 
-- `ANTHROPIC_API_KEY` (pay-as-you-go)
-- `from anthropic import Anthropic` (SDK Python — no OAuth mode)
-- `AWS_BEDROCK_*` / `VERTEX_AI_*` targeting Anthropic models
-- `langchain-anthropic`, `litellm` con `anthropic/...` paid endpoint
+- `ANTHROPIC_API_KEY` (pay-as-you-go console key — duplica MAX subscription)
+- `anthropic.Anthropic(api_key=...)` (instanziato con api_key = paid path)
+- `AWS_BEDROCK_*` / `VERTEX_AI_*` targeting Anthropic models (paid)
+- `langchain-anthropic`, `litellm` con `anthropic/...` configured against paid endpoint
 
-**Sole sanctioned path**: shell out a `claude` CLI con `CLAUDE_CODE_OAUTH_TOKEN` (consuma MAX-plan quota). Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py` (strippa `ANTHROPIC_API_KEY` da `os.environ` come defense-in-depth).
+### 7.2 OK paths (MAX-plan quota consumption)
 
-### 7.2 NON banned (other paid APIs OK)
+**Path 1 — CLI subprocess (current Nuzantara prod)**:
 
-La regola applica **solo** ad Anthropic perché Antonello ha 2 Claude MAX x20 = pagare per token duplicherebbe una flat subscription.
+- `claude` CLI con `CLAUDE_CODE_OAUTH_TOKEN` env (derivato da `claude setup-token`)
+- Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py` (strippa `ANTHROPIC_API_KEY` da `os.environ` come defense-in-depth)
+- Pro: zero rischio confusion, simple wrapper, hardened pattern
+- Con: no streaming, no tool_use, one-shot prompt → one-shot text
+
+**Path 2 — SDK Python con auth_token (sanctioned, NEW 2026-05-25)**:
+
+- `anthropic.Anthropic(auth_token=<oauth_token>)` o env `ANTHROPIC_AUTH_TOKEN`
+- SDK 0.83+ supporta OAuth Bearer token (HTTP `Authorization: Bearer <token>`)
+- Reference: `/opt/homebrew/lib/python3.14/site-packages/anthropic/_client.py:169-172`
+- Pro: full SDK features (streaming, tool_use, structured output, citations, batch)
+- Con: necessita awareness della distinzione `auth_token` vs `api_key` (entrambi accettati dal costruttore — error-prone)
+
+**Decision matrix CLI vs SDK**:
+| Use case | Path consigliato |
+|---|---|
+| One-shot prompt → text (article_composer, coreference) | CLI subprocess (path 1) |
+| Streaming UI | SDK auth_token (path 2) |
+| Tool use multi-turn | SDK auth_token (path 2) |
+| Batch processing | SDK auth_token (path 2) |
+| Cron/automation backend | CLI subprocess (path 1) |
+| Defense-in-depth required | CLI subprocess (path 1) |
+
+### 7.3 NON banned (other paid APIs OK)
+
+La regola applica **solo** ad Anthropic paid endpoint perché Antonello ha 2 Claude MAX x20 = pagare per token duplicherebbe una flat subscription.
 
 - **DeepSeek V4 Pro API** (~$0.01/query) → article_composer + tri-LLM panel gate-6
 - **ChatGPT Pro $200/mo** → Codex CLI illimitato + `$imagegen`
 - **Google AI Ultra** → agy CLI + NotebookLM free + Vertex Gemini OAuth free
 
-### 7.3 Email sending rule (hardcoded)
+### 7.4 Email sending rule (hardcoded)
 
 **ALWAYS** `from=zantara@balizero.com` / `name=Zantara` (alias di `zero@balizero.com`) via Brevo endpoint `/api/notifications/send-email` + `X-API-Key: zantara-secret-2024`. Mai `notifications@`, `subhi@`, personal addresses.
 
