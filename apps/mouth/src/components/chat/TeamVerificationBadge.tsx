@@ -1,5 +1,5 @@
 import React from "react";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, ChevronDown } from "lucide-react";
 import { useChatLocale } from "@/hooks/useChatLocale";
 
 export type VerificationStatus = "verified" | "consulting" | "not_needed";
@@ -8,6 +8,7 @@ interface TeamVerificationBadgeProps {
   status?: VerificationStatus;
   domainLabel?: string;
   onToggleCitations?: () => void;
+  isExpanded?: boolean;
 }
 
 const LABELS: Record<string, (domain: string) => string> = {
@@ -30,6 +31,7 @@ export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
   status = "verified",
   domainLabel = "Legal",
   onToggleCitations,
+  isExpanded = false,
 }) => {
   const locale = useChatLocale();
 
@@ -50,11 +52,17 @@ export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
       <button
         type="button"
         onClick={onToggleCitations}
-        className={`${baseClassName} hover:text-accent transition-colors cursor-pointer`}
+        className={`${baseClassName} hover:text-accent transition-colors cursor-pointer focus-ring rounded px-1 -mx-1`}
         aria-label={label}
+        aria-expanded={isExpanded}
       >
         <BadgeCheck size={12} className="shrink-0" aria-hidden="true" />
         <span>{label}</span>
+        <ChevronDown
+          size={10}
+          className={`shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        />
       </button>
     );
   }
