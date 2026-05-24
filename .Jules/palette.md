@@ -32,3 +32,8 @@
 
 **Learning:** Collapsible panels and toggle buttons should provide clear visual feedback for their state. Using a rotating chevron icon synchronized with the 'aria-expanded' attribute ensures both visual and assistive technology users understand the component's state. Additionally, hardcoded strings in a multi-language app should always be refactored to use the shared localization hooks.
 **Action:** Always include a rotating chevron for toggles. Synchronize 'aria-expanded' with the UI state. Use 'useChatLocale' for all UI text in the chat interface.
+
+## 2026-05-18 - [Loading States and Interaction Feedback in Portal]
+
+**Learning:** Asynchronous actions in the client portal (like marking notifications as read) lacked visual feedback, leading to a "dead" feel during network latency. Providing immediate feedback via spinning icons and disabling buttons during mutations significantly improves the perceived responsiveness and prevents duplicate requests.
+**Action:** Always expose and utilize mutation pending states from hooks to provide visual feedback and disable interactive elements during async operations.
