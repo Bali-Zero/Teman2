@@ -5,173 +5,345 @@
 <title>BZ WhatsApp Dashboard — M1</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
+  /* WhatsApp Web Dark palette (2026) */
   :root {
-    --bz-base: #0c0c0e;
-    --bz-panel: #14141a;
-    --bz-panel-soft: #1c1c24;
-    --bz-border: #2a2a36;
-    --bz-text: #e9e9f0;
-    --bz-text-dim: #8c8ca0;
-    --bz-text-faint: #5a5a6a;
-    --bz-accent: #d4845a;
-    --bz-accent-soft: rgba(212,132,90,0.18);
-    --bz-accent-glow: rgba(212,132,90,0.28);
-    --bz-success: #5ad48a;
-    --bz-warning: #d4b65a;
-    --bz-error: #d45a5a;
-    --bz-info: #5aa4d4;
+    --wa-bg:           #0b141a;   /* main background */
+    --wa-panel:        #111b21;   /* sidebar */
+    --wa-panel-2:      #1f2c33;   /* hover/active */
+    --wa-panel-3:      #2a3942;   /* secondary surfaces (incoming msg, search) */
+    --wa-divider:      #222d34;
+    --wa-border:       #2a3942;
+    --wa-text:         #e9edef;
+    --wa-text-2:       #aebac1;   /* secondary text */
+    --wa-text-3:       #8696a0;   /* tertiary / timestamps */
+    --wa-accent:       #00a884;   /* WA primary green */
+    --wa-accent-soft:  #008069;
+    --wa-msg-out:      #005c4b;   /* sent message bubble */
+    --wa-msg-out-tip:  #005c4b;
+    --wa-msg-in:       #202c33;   /* received message bubble */
+    --wa-link:         #53bdeb;
+    --wa-unread:       #25d366;   /* unread badge */
+    --wa-warning:      #ffcc00;
+    --wa-error:        #f15c6d;
+    --wa-tick:         #53bdeb;   /* read tick */
+    --wa-header-bg:    #202c33;
+    --wa-search-bg:    #2a3942;
+    /* legacy aliases */
+    --bz-base: var(--wa-bg);
+    --bz-panel: var(--wa-panel);
+    --bz-panel-soft: var(--wa-panel-2);
+    --bz-border: var(--wa-border);
+    --bz-text: var(--wa-text);
+    --bz-text-dim: var(--wa-text-2);
+    --bz-text-faint: var(--wa-text-3);
+    --bz-accent: var(--wa-accent);
+    --bz-accent-soft: rgba(0,168,132,0.15);
+    --bz-accent-glow: rgba(0,168,132,0.35);
+    --bz-success: var(--wa-unread);
+    --bz-warning: var(--wa-warning);
+    --bz-error: var(--wa-error);
+    --bz-info: var(--wa-link);
     --bz-violet: #b85ad4;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
-    background: var(--bz-base);
-    color: var(--bz-text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-    font-size: 13px;
+    background: var(--wa-bg);
+    color: var(--wa-text);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+    font-size: 14px;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
   }
+  /* WhatsApp Web header strip */
   header {
-    height: 42px;
-    padding: 0 14px;
+    height: 60px;
+    padding: 0 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid var(--bz-border);
-    background: var(--bz-panel);
+    background: var(--wa-header-bg);
+    border-bottom: 1px solid var(--wa-divider);
   }
   header .brand {
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    color: var(--bz-accent);
-    font-size: 13px;
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 500; font-size: 16px; color: var(--wa-text);
   }
-  header .meta { color: var(--bz-text-dim); font-size: 11px; display: flex; gap: 10px; align-items: center; }
+  header .brand-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--wa-accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+  }
+  header .meta { color: var(--wa-text-3); font-size: 12px; display: flex; gap: 12px; align-items: center; }
   header .badge {
-    background: var(--bz-accent-soft); color: var(--bz-accent);
-    padding: 2px 7px; border-radius: 4px; font-size: 10px;
-    text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--wa-accent-soft); color: white;
+    padding: 3px 8px; border-radius: 12px; font-size: 11px;
+    text-transform: none; letter-spacing: 0;
   }
   main {
-    height: calc(100vh - 42px);
+    height: calc(100vh - 60px);
     display: grid;
-    grid-template-columns: 240px 380px 1fr;
+    grid-template-columns: 260px 400px 1fr;
+    background: var(--wa-bg);
   }
-  .col { overflow-y: auto; border-right: 1px solid var(--bz-border); background: var(--bz-panel); }
-  .col:last-child { border-right: none; background: var(--bz-base); }
+  .col { overflow-y: auto; background: var(--wa-panel); }
+  .col + .col { border-left: 1px solid var(--wa-divider); }
+  .col:last-child {
+    background: var(--wa-bg);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><g fill='%23182229' fill-opacity='0.5'><circle cx='30' cy='40' r='1.2'/><circle cx='80' cy='110' r='1'/><circle cx='150' cy='60' r='1.4'/><circle cx='180' cy='160' r='1'/><circle cx='110' cy='180' r='1.2'/><circle cx='50' cy='150' r='1'/></g></svg>");
+  }
   .col-header {
-    position: sticky; top: 0; background: var(--bz-panel-soft);
-    padding: 9px 12px; font-size: 10px; text-transform: uppercase;
-    letter-spacing: 0.8px; color: var(--bz-text-dim);
-    border-bottom: 1px solid var(--bz-border); z-index: 10;
+    position: sticky; top: 0;
+    background: var(--wa-header-bg);
+    padding: 12px 16px; font-size: 13px; font-weight: 500;
+    color: var(--wa-text-2);
+    border-bottom: 1px solid var(--wa-divider);
+    text-transform: none; letter-spacing: 0;
+    z-index: 10;
+    height: 50px;
+    display: flex; align-items: center;
   }
-  /* COL 1 — Team */
-  .team-item { padding: 11px 12px; cursor: pointer; border-bottom: 1px solid var(--bz-border); transition: background 0.1s; }
-  .team-item:hover { background: var(--bz-panel-soft); }
-  .team-item.selected { background: var(--bz-accent-soft); border-left: 3px solid var(--bz-accent); padding-left: 9px; }
+  /* WA-style scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #374248; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4a5760; }
+  /* COL 1 — Team (WhatsApp-style avatar rows) */
+  .team-item {
+    padding: 13px 16px; cursor: pointer;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--wa-divider);
+  }
+  .team-item:hover { background: var(--wa-panel-2); }
+  .team-item.selected { background: var(--wa-panel-2); }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: var(--wa-accent-soft); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 16px; text-transform: uppercase;
+    position: relative;
+  }
+  .avatar.dot-running::after,
+  .avatar.dot-needs_qr::after,
+  .avatar.dot-stopped::after {
+    content: ""; position: absolute; bottom: 0; right: 0;
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid var(--wa-panel);
+  }
+  .avatar.dot-running::after { background: var(--wa-unread); }
+  .avatar.dot-needs_qr::after { background: var(--wa-warning); }
+  .avatar.dot-stopped::after { background: var(--wa-error); }
+  .team-body { flex: 1; min-width: 0; }
   .team-row { display: flex; justify-content: space-between; align-items: baseline; }
-  .team-name { font-weight: 600; font-size: 13px; }
-  .team-phone { font-size: 10px; color: var(--bz-text-dim); margin-top: 2px; font-family: ui-monospace, monospace; }
-  /* Bridge health pill (Feature #2) */
+  .team-name { font-weight: 400; font-size: 16px; color: var(--wa-text); }
+  .team-phone {
+    font-size: 12px; color: var(--wa-text-3); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .team-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
   .pill {
-    font-size: 9px; padding: 1px 5px; border-radius: 3px;
-    text-transform: uppercase; letter-spacing: 0.4px;
-    background: rgba(140,140,160,0.16); color: var(--bz-text-dim);
-    font-family: ui-monospace, monospace;
+    font-size: 11px; padding: 1px 8px; border-radius: 10px;
+    background: var(--wa-panel-3); color: var(--wa-text-2);
+    font-weight: 400;
   }
-  .pill.running { background: rgba(90,212,138,0.18); color: var(--bz-success); }
-  .pill.needs_qr { background: rgba(212,182,90,0.18); color: var(--bz-warning); }
-  .pill.stopped { background: rgba(212,90,90,0.18); color: var(--bz-error); }
-  .pill.attention { background: rgba(212,90,90,0.18); color: var(--bz-error); font-weight: 700; }
-  .pill.attention-med { background: rgba(212,182,90,0.18); color: var(--bz-warning); }
-  .pill.crm { background: rgba(90,212,138,0.18); color: var(--bz-success); }
-  .pill.lid { background: rgba(135,147,168,0.18); color: var(--bz-info); }
-  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
-  .dot.running { background: var(--bz-success); }
-  .dot.needs_qr { background: var(--bz-warning); }
-  .dot.stopped { background: var(--bz-error); }
+  .pill.unread {
+    background: var(--wa-unread); color: var(--wa-panel);
+    font-weight: 600; min-width: 20px; text-align: center;
+  }
+  .pill.running { color: var(--wa-unread); }
+  .pill.needs_qr { color: var(--wa-warning); }
+  .pill.stopped { color: var(--wa-error); }
+  .pill.attention { background: var(--wa-error); color: white; font-weight: 600; }
+  .pill.attention-med { background: var(--wa-warning); color: var(--wa-panel); font-weight: 600; }
+  .pill.crm { background: var(--wa-accent-soft); color: white; }
+  .pill.lid { background: var(--wa-panel-3); color: var(--wa-link); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .dot.running { background: var(--wa-unread); }
+  .dot.needs_qr { background: var(--wa-warning); }
+  .dot.stopped { background: var(--wa-error); }
 
-  /* COL 2 — Conversations */
-  .conv-item { padding: 11px 12px; cursor: pointer; border-bottom: 1px solid var(--bz-border); }
-  .conv-item:hover { background: var(--bz-panel-soft); }
-  .conv-item.selected { background: var(--bz-accent-soft); border-left: 3px solid var(--bz-accent); padding-left: 9px; }
+  /* COL 2 — Conversations (WA chat-list style) */
+  .conv-item {
+    padding: 12px 16px; cursor: pointer;
+    display: flex; gap: 12px; align-items: flex-start;
+    border-bottom: 1px solid var(--wa-divider);
+  }
+  .conv-item:hover { background: var(--wa-panel-2); }
+  .conv-item.selected { background: var(--wa-panel-2); }
+  .conv-avatar {
+    width: 49px; height: 49px; border-radius: 50%; flex-shrink: 0;
+    background: var(--wa-panel-3); color: var(--wa-text-2);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 500; font-size: 18px; text-transform: uppercase;
+  }
+  .conv-avatar.group  { background: #6b7c85; color: white; }
+  .conv-avatar.crm    { background: var(--wa-accent-soft); color: white; }
+  .conv-avatar.prospect { background: #b48a3c; color: white; }
+  .conv-avatar.internal { background: #426e64; color: white; }
+  .conv-body { flex: 1; min-width: 0; padding-top: 3px; }
   .conv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .conv-name { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-  .conv-name.has-attention::before { content: "⚠ "; color: var(--bz-error); }
-  .conv-time { font-size: 10px; color: var(--bz-text-dim); white-space: nowrap; font-family: ui-monospace, monospace; }
-  .conv-company { font-size: 11px; color: var(--bz-text-dim); margin-top: 2px; font-style: italic; }
+  .conv-name {
+    font-weight: 400; flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 16px; color: var(--wa-text);
+  }
+  .conv-name.has-attention { color: var(--wa-error); font-weight: 500; }
+  .conv-time {
+    font-size: 12px; color: var(--wa-text-3); white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .conv-time.has-unread { color: var(--wa-unread); font-weight: 500; }
+  .conv-company { font-size: 13px; color: var(--wa-text-3); margin-top: 2px; }
+  .conv-preview-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 4px; gap: 8px;
+  }
   .conv-preview {
-    font-size: 11px; color: var(--bz-text-dim); margin-top: 5px;
+    font-size: 14px; color: var(--wa-text-3);
     overflow: hidden; text-overflow: ellipsis;
     display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    flex: 1;
   }
   .conv-tag {
-    display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px;
-    text-transform: uppercase; letter-spacing: 0.4px; margin-right: 4px; font-weight: 600;
+    display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px;
+    margin-right: 4px; font-weight: 500;
   }
-  .conv-tag.group    { background: rgba(123,108,88,0.20); color: #c0a888; }
-  .conv-tag.direct   { background: rgba(212,132,90,0.18); color: var(--bz-accent); }
-  .conv-tag.crm      { background: rgba(107,142,94,0.25); color: #8ec476; }
-  .conv-tag.prospect { background: rgba(196,169,116,0.22); color: #d4be7e; }
-  .conv-tag.internal { background: rgba(95,111,82,0.25); color: #9bb088; }
-  .conv-tag.lid      { background: rgba(135,147,168,0.25); color: #a8b4c8; }
-  .conv-tag.unknown  { background: rgba(184,179,160,0.20); color: #b8b3a0; }
+  .conv-tag.group    { background: var(--wa-panel-3); color: var(--wa-text-2); }
+  .conv-tag.direct   { background: var(--wa-panel-3); color: var(--wa-text-2); }
+  .conv-tag.crm      { background: var(--wa-accent-soft); color: white; }
+  .conv-tag.prospect { background: rgba(255,204,0,0.18); color: var(--wa-warning); }
+  .conv-tag.internal { background: rgba(0,168,132,0.15); color: var(--wa-accent); }
+  .conv-tag.lid      { background: rgba(83,189,235,0.15); color: var(--wa-link); }
+  .conv-tag.unknown  { background: var(--wa-panel-3); color: var(--wa-text-3); }
 
-  .conv-extra { font-size: 10px; color: var(--bz-text-faint); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
-  .conv-extra .meta-pill { background: rgba(140,140,160,0.12); padding: 1px 5px; border-radius: 3px; }
+  .conv-extra { font-size: 11px; color: var(--wa-text-3); margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .conv-extra .meta-pill { background: var(--wa-panel-3); padding: 1px 7px; border-radius: 10px; color: var(--wa-text-2); }
+  .conv-extra a.meta-pill { color: var(--wa-link); text-decoration: none; }
+  .conv-extra a.meta-pill:hover { text-decoration: underline; }
 
-  /* COL 3 — Thread */
+  /* COL 3 — Thread (WA chat-pane style) */
   .thread-header {
-    position: sticky; top: 0; background: var(--bz-panel-soft);
-    padding: 12px 16px; border-bottom: 1px solid var(--bz-border); z-index: 10;
+    position: sticky; top: 0;
+    background: var(--wa-header-bg);
+    padding: 10px 16px; height: 60px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--wa-divider);
+    z-index: 10;
   }
-  .thread-header .name { font-weight: 600; font-size: 15px; }
-  .thread-header .sub { font-size: 11px; color: var(--bz-text-dim); margin-top: 2px; }
-  .thread-header .sub a { color: var(--bz-accent); text-decoration: none; }
+  .thread-header .avatar { width: 40px; height: 40px; }
+  .thread-header .info { flex: 1; min-width: 0; }
+  .thread-header .name { font-weight: 500; font-size: 16px; color: var(--wa-text); }
+  .thread-header .sub { font-size: 13px; color: var(--wa-text-3); margin-top: 2px; }
+  .thread-header .sub a { color: var(--wa-link); text-decoration: none; }
   .thread-header .sub a:hover { text-decoration: underline; }
 
-  /* Strategic recap card (Feature #11 — kita pattern) */
+  /* Strategic recap card — WA-styled "pinned info" */
   .recap-card {
-    margin: 12px 16px 0;
-    padding: 12px 14px;
+    margin: 12px 8% 0;
+    padding: 10px 14px;
     border-radius: 8px;
-    background: linear-gradient(135deg, rgba(212,132,90,0.13), rgba(212,132,90,0.03));
-    border: 1px solid var(--bz-accent-glow);
+    background: var(--wa-msg-in);
+    border-left: 4px solid var(--wa-accent);
+    box-shadow: 0 1px 0.5px rgba(11,20,26,0.13);
   }
   .recap-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-  .recap-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--bz-accent); font-weight: 600; }
-  .recap-source { font-size: 9px; text-transform: uppercase; color: var(--bz-text-faint); font-family: ui-monospace, monospace; }
-  .recap-body { font-size: 13px; line-height: 1.5; white-space: pre-line; font-weight: 500; }
+  .recap-label { font-size: 12px; color: var(--wa-accent); font-weight: 500; }
+  .recap-source { font-size: 11px; color: var(--wa-text-3); }
+  .recap-body { font-size: 14px; line-height: 1.45; white-space: pre-line; color: var(--wa-text); }
 
-  .thread-body { padding: 14px 16px; }
-  .msg { margin-bottom: 10px; padding: 9px 13px; border-radius: 8px; max-width: 72%; word-wrap: break-word; }
-  .msg.inbound  { background: var(--bz-panel); border: 1px solid var(--bz-border); margin-right: auto; }
-  .msg.outbound { background: var(--bz-accent-soft); border: 1px solid var(--bz-accent); margin-left: auto; }
-  .msg.attention-high { border-left: 3px solid var(--bz-error); }
-  .msg.attention-medium { border-left: 3px solid var(--bz-warning); }
-  .msg .body { white-space: pre-wrap; line-height: 1.45; font-size: 13px; }
-  .msg .meta { font-size: 10px; color: var(--bz-text-dim); margin-top: 5px; font-family: ui-monospace, monospace; }
-  .msg .sender { font-size: 11px; color: var(--bz-accent); font-weight: 600; margin-bottom: 4px; }
-  .msg .sender .role { font-size: 9px; color: var(--bz-text-dim); text-transform: uppercase; margin-left: 4px; }
-  .msg .att-reason { font-size: 10px; color: var(--bz-error); margin-top: 4px; font-style: italic; }
-  .media-tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px; background: var(--bz-panel-soft); color: var(--bz-text-dim); margin-right: 4px; text-transform: uppercase; }
-  .media-thumb img, .media-thumb video { max-width: 240px; max-height: 240px; border-radius: 6px; margin-top: 6px; cursor: pointer; }
-  .media-thumb audio { margin-top: 6px; }
-  .media-thumb a { color: var(--bz-accent); font-size: 12px; }
+  .thread-body { padding: 14px 8%; min-height: calc(100vh - 60px - 60px); }
+  .msg {
+    margin-bottom: 4px; padding: 6px 10px 8px;
+    border-radius: 8px; max-width: 65%; word-wrap: break-word;
+    position: relative;
+    box-shadow: 0 1px 0.5px rgba(11,20,26,0.13);
+  }
+  .msg.inbound  { background: var(--wa-msg-in); margin-right: auto; border-top-left-radius: 0; }
+  .msg.outbound { background: var(--wa-msg-out); margin-left: auto; border-top-right-radius: 0; }
+  /* Tail (small triangle like WA) */
+  .msg.inbound::before, .msg.outbound::before {
+    content: ""; position: absolute; top: 0; width: 8px; height: 13px;
+  }
+  .msg.inbound::before {
+    left: -8px;
+    background: var(--wa-msg-in);
+    clip-path: polygon(100% 0, 0 0, 100% 100%);
+  }
+  .msg.outbound::before {
+    right: -8px;
+    background: var(--wa-msg-out);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+  }
+  .msg.attention-high { box-shadow: 0 0 0 1.5px var(--wa-error); }
+  .msg.attention-medium { box-shadow: 0 0 0 1.5px var(--wa-warning); }
+  .msg .body { white-space: pre-wrap; line-height: 1.4; font-size: 14.2px; color: var(--wa-text); }
+  .msg .meta {
+    font-size: 11px; color: rgba(255,255,255,0.45);
+    margin-top: 2px; text-align: right;
+    display: flex; justify-content: flex-end; align-items: center; gap: 4px;
+  }
+  .msg .meta .tick { color: var(--wa-tick); }
+  .msg .sender {
+    font-size: 13px; font-weight: 500; margin-bottom: 4px;
+    color: #53bdeb;
+  }
+  .msg .sender .role {
+    font-size: 11px; color: var(--wa-text-3); margin-left: 4px;
+    text-transform: none; font-weight: 400;
+  }
+  .msg .att-reason {
+    font-size: 12px; color: var(--wa-error); margin-top: 4px; font-style: italic;
+  }
+  .media-tag {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-size: 11px; background: rgba(0,0,0,0.2); color: var(--wa-text-2);
+    margin-right: 4px;
+  }
+  .media-thumb img, .media-thumb video {
+    max-width: 280px; max-height: 320px; border-radius: 6px;
+    margin: 4px 0; cursor: pointer; display: block;
+  }
+  .media-thumb audio { margin: 4px 0; width: 100%; max-width: 320px; }
+  .media-thumb a { color: var(--wa-link); font-size: 14px; }
 
-  .empty { padding: 40px 20px; text-align: center; color: var(--bz-text-dim); font-size: 13px; }
-  .loader { padding: 16px; color: var(--bz-text-dim); font-size: 12px; }
-  .day-divider { text-align: center; color: var(--bz-text-dim); font-size: 10px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .empty {
+    padding: 80px 20px; text-align: center;
+    color: var(--wa-text-3); font-size: 14px;
+  }
+  .empty-wa {
+    height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--wa-text-3);
+  }
+  .empty-wa .icon {
+    width: 200px; height: 200px; border-radius: 50%;
+    background: var(--wa-panel-2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 100px; color: var(--wa-text-3); margin-bottom: 24px;
+  }
+  .empty-wa .text { font-size: 32px; font-weight: 300; color: var(--wa-text-2); }
+  .empty-wa .sub  { font-size: 14px; margin-top: 12px; }
+  .loader { padding: 16px; color: var(--wa-text-3); font-size: 13px; }
+  .day-divider {
+    text-align: center; margin: 16px auto 8px; width: fit-content;
+    background: var(--wa-panel-2); color: var(--wa-text-2);
+    font-size: 12.5px; padding: 5px 12px; border-radius: 8px;
+    box-shadow: 0 1px 0.5px rgba(11,20,26,0.13);
+  }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">BZ • WhatsApp Dashboard</div>
+  <div class="brand">
+    <div class="brand-icon">BZ</div>
+    <span>WhatsApp Dashboard</span>
+  </div>
   <div class="meta">
-    <span id="health-pill" class="badge">READ-ONLY</span>
+    <span id="health-pill" class="badge">read-only</span>
     <span id="db-host">DB: …</span>
-    <span id="last-refresh">refresh: …</span>
+    <span id="last-refresh">aggiornato: …</span>
   </div>
 </header>
 <main>
@@ -184,8 +356,11 @@
     <div class="empty">Seleziona un team member</div>
   </div>
   <div class="col" id="col-thread">
-    <div class="col-header">Messaggi</div>
-    <div class="empty">Seleziona una conversazione</div>
+    <div class="empty-wa">
+      <div class="icon">💬</div>
+      <div class="text">BZ WhatsApp Dashboard</div>
+      <div class="sub">Seleziona una conversazione per leggere i messaggi.</div>
+    </div>
   </div>
 </main>
 <script>
@@ -218,9 +393,16 @@ function fmtPreview(c) {
   return "(vuoto)";
 }
 
+function initials(name) {
+  if (!name) return "?";
+  const parts = String(name).trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function renderTeams() {
   if (!DATA) return;
-  let html = `<div class="col-header">Team (${DATA.team.length})</div>`;
+  let html = `<div class="col-header">Team · ${DATA.team.length}</div>`;
   for (const m of DATA.team) {
     const pd = DATA.by_phone[m.phone] || { total:0, direct_count:0, group_count:0, crm_count:0, attention:{high:0,medium:0} };
     const selected = SELECTED_TEAM === m.phone ? " selected" : "";
@@ -229,26 +411,20 @@ function renderTeams() {
     const status = bridge.runtime_status || "stopped";
     html += `
       <div class="team-item${selected}" data-phone="${m.phone}">
-        <div class="team-row">
-          <div class="team-name">${escapeHtml(m.name)}</div>
-          <span class="pill ${status}"><span class="dot ${status}"></span>${status}</span>
+        <div class="avatar dot-${status}">${initials(m.name)}</div>
+        <div class="team-body">
+          <div class="team-row">
+            <div class="team-name">${escapeHtml(m.name)}</div>
+            ${(pd.attention.high || pd.attention.medium) ? `<span class="pill unread">${pd.attention.high + pd.attention.medium}</span>` : ""}
+          </div>
+          <div class="team-phone">${escapeHtml(m.phone)}</div>
+          <div class="team-pills">
+            <span class="pill">${pd.total} msg</span>
+            ${pd.crm_count ? `<span class="pill crm">CRM ${pd.crm_count}</span>` : ""}
+            ${pd.attention.high   ? `<span class="pill attention">${pd.attention.high} HIGH</span>` : ""}
+            ${pd.attention.medium ? `<span class="pill attention-med">${pd.attention.medium} MED</span>` : ""}
+          </div>
         </div>
-        <div class="team-phone">${escapeHtml(m.phone)}${bridge.pid ? ' · pid '+bridge.pid : ''}</div>
-        <div class="team-pills">
-          <span class="pill">${pd.total} msg</span>
-          <span class="pill">d ${pd.direct_count}</span>
-          <span class="pill">g ${pd.group_count}</span>
-          ${pd.crm_count ? `<span class="pill crm">CRM ${pd.crm_count}</span>` : ""}
-          ${pd.unresolved_lids ? `<span class="pill lid">lid ${pd.unresolved_lids}</span>` : ""}
-          ${pd.attention.high   ? `<span class="pill attention">${pd.attention.high} HIGH</span>` : ""}
-          ${pd.attention.medium ? `<span class="pill attention-med">${pd.attention.medium} MED</span>` : ""}
-        </div>
-        ${sess.messages_logged != null ? `
-          <div class="conv-extra" style="margin-top:4px">
-            <span class="meta-pill">DB ${sess.messages_logged}</span>
-            ${sess.messages_filtered ? `<span class="meta-pill">filter ${sess.messages_filtered}</span>` : ""}
-            ${sess.connected_at ? `<span class="meta-pill">conn ${new Date(sess.connected_at).toLocaleDateString("it-IT",{day:"2-digit",month:"2-digit"})}</span>` : ""}
-          </div>` : ""}
       </div>`;
   }
   colTeams.innerHTML = html;
@@ -270,7 +446,10 @@ function renderConvs() {
     if (pa !== pb) return pb - pa;
     return new Date(b.last_at) - new Date(a.last_at);
   });
-  let html = `<div class="col-header">${convs.length} conversazioni · ${pd.attention.high} HIGH · ${pd.attention.medium} MED</div>`;
+  const headerExtra = pd.attention.high || pd.attention.medium
+    ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} HIGH</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} MED</span>` : ""}`
+    : "";
+  let html = `<div class="col-header">${convs.length} conversazioni${headerExtra}</div>`;
   if (!convs.length) {
     html += `<div class="empty">Nessuna conversazione</div>`;
   } else {
@@ -278,26 +457,34 @@ function renderConvs() {
       const isSel = SELECTED_CONV === c.counterpart ? " selected" : "";
       const tag = c.tag || (c.kind === "group" ? "group" : "direct");
       const tagLabel = tag === "crm" ? "CRM" : tag;
+      const avatarClass = tag === "group" ? "group" : tag === "crm" ? "crm" : tag === "prospect" ? "prospect" : tag === "internal" ? "internal" : "";
       const company = c.company_name && c.crm_match ? `<div class="conv-company">${escapeHtml(c.company_name)}</div>` : "";
       const attClass = c.attention_priority ? " has-attention" : "";
+      const attTimeClass = c.attention_priority ? " has-unread" : "";
       const attBadge = c.attention_priority
-        ? `<span class="conv-tag ${c.attention_priority === 'HIGH' ? 'crm' : 'prospect'}" style="background:rgba(212,90,90,${c.attention_priority==='HIGH'?'0.28':'0.14'});color:${c.attention_priority==='HIGH'?'#ff8080':'#d4b65a'}">${c.attention_priority}</span>`
+        ? `<span class="conv-tag" style="background:var(--wa-${c.attention_priority==='HIGH'?'error':'warning'});color:${c.attention_priority==='HIGH'?'white':'var(--wa-panel)'}">${c.attention_priority}</span>`
         : "";
       const extra = [];
-      if (c.client_id) extra.push(`<a href="${KITA_BASE}/clients/${c.client_id}" target="_blank" class="meta-pill" style="color:var(--bz-accent);text-decoration:none">CRM #${c.client_id} ↗</a>`);
-      if (c.assigned_to) extra.push(`<span class="meta-pill">→ ${escapeHtml(c.assigned_to)}</span>`);
+      if (c.client_id) extra.push(`<a href="${KITA_BASE}/clients/${c.client_id}" target="_blank" class="meta-pill">CRM #${c.client_id} ↗</a>`);
+      if (c.assigned_to) extra.push(`<span class="meta-pill">→ ${escapeHtml(c.assigned_to.replace('@balizero.com',''))}</span>`);
       if (c.tax_consultant) extra.push(`<span class="meta-pill">tax: ${escapeHtml(c.tax_consultant)}</span>`);
       html += `
         <div class="conv-item${isSel}" data-conv="${encodeURIComponent(c.counterpart)}">
-          <div class="conv-row">
-            <span class="conv-name${attClass}">${escapeHtml(c.display_name)}</span>
-            <span class="conv-time">${fmtTime(c.last_at)}</span>
+          <div class="conv-avatar ${avatarClass}">${tag === "group" ? "👥" : initials(c.display_name)}</div>
+          <div class="conv-body">
+            <div class="conv-row">
+              <span class="conv-name${attClass}">${escapeHtml(c.display_name)}</span>
+              <span class="conv-time${attTimeClass}">${fmtTime(c.last_at)}</span>
+            </div>
+            ${company}
+            <div class="conv-preview-row">
+              <span class="conv-preview">
+                <span class="conv-tag ${tag}">${tagLabel}</span>${attBadge}${escapeHtml(fmtPreview(c))}
+              </span>
+              ${c.n ? `<span class="pill unread">${c.n}</span>` : ""}
+            </div>
+            ${extra.length ? `<div class="conv-extra">${extra.join("")}</div>` : ""}
           </div>
-          ${company}
-          <div class="conv-preview">
-            <span class="conv-tag ${tag}">${tagLabel}</span>${attBadge}${escapeHtml(fmtPreview(c))} · ${c.n}
-          </div>
-          ${extra.length ? `<div class="conv-extra">${extra.join("")}</div>` : ""}
         </div>`;
     }
   }
@@ -361,10 +548,15 @@ async function renderThread() {
     ? ` · <a href="${KITA_BASE}/clients/${conv.client_id}" target="_blank">apri in kita.balizero.com ↗</a>`
     : "";
 
+  const convDisplay = conv ? conv.display_name : SELECTED_CONV;
+  const headerAvatarClass = conv?.kind === "group" ? "group" : conv?.tag === "crm" ? "crm" : conv?.tag === "prospect" ? "prospect" : "";
   let html = `
     <div class="thread-header">
-      <div class="name">${escapeHtml(conv ? conv.display_name : SELECTED_CONV)}</div>
-      <div class="sub">${payload.count} messaggi · team ${escapeHtml(SELECTED_TEAM)}${clientLink}</div>
+      <div class="avatar ${headerAvatarClass}">${conv?.kind === "group" ? "👥" : initials(convDisplay)}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(convDisplay)}</div>
+        <div class="sub">${payload.count} messaggi${clientLink}</div>
+      </div>
     </div>
     ${recapHtml}
     <div class="thread-body">`;
@@ -385,6 +577,8 @@ async function renderThread() {
     const attReason = m.attention_reason && m.attention_reason.length && !m.attention_resolved_at
       ? `<div class="att-reason">⚠ ${escapeHtml(m.attention_reason.join(", "))}</div>`
       : "";
+    const time = d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+    const tick = dir === "outbound" ? `<span class="tick">✓✓</span>` : "";
     html += `
       <div class="msg ${dir}${attClass}">
         ${senderLine}
@@ -392,7 +586,7 @@ async function renderThread() {
         ${m.body ? `<div class="body">${escapeHtml(m.body)}</div>` : ""}
         ${renderMedia(m)}
         ${attReason}
-        <div class="meta">${fmtTime(m.message_date)}${m.media_mime ? " · " + escapeHtml(m.media_mime) : ""}</div>
+        <div class="meta">${time}${tick}</div>
       </div>`;
   }
   html += `</div>`;
