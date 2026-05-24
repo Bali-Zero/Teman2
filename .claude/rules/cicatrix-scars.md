@@ -1693,17 +1693,30 @@ Incident #2 key sequence: Session-A wrote 4 untracked `.py` + 18/18 tests passin
 
 ---
 
-### ⚠️ STRUCTURAL: Backend `/health` masks `app.state.startup_failed` (2026-04-29)
+### ✅ RESOLVED: Backend `/health` masks `app.state.startup_failed` (2026-04-29 → resolved 2026-04-29)
 
-_Discovered: 2026-04-29 audit zero-crash · Severity: P0 · Workaround: TBD (P0-0 in `docs/audits/2026-04-29-zero-crash-audit/11_brainstorms/P0-0_health_endpoint_classify.md`)_
+_Discovered: 2026-04-29 audit zero-crash · Resolved: 2026-04-29 commit `2a3256758` PR #337 · Severity: P0 (defanged)_
 
-**TRAUMA:** `app_factory.py:114-118` catches RuntimeError from critical service init, sets `app.state.startup_failed=True`, returns. `health.py:48-55` defines `_check_startup_failed()` helper but `health_check()` at lines 147-266 NEVER CALLS IT. A broken backend returns HTTP 200 from `/health` forever — Fly auto-restart only fires on non-2xx. The 2026-04-29 03:11Z incident (login broken, machine in restart loop) is exactly this pattern.
+**RESOLUTION (2026-04-29):** Commit `2a3256758` (`fix(p0-0): /health 503 on startup_failed + Cell pulse semantic classify (#337)`) ships the proposed antibody verbatim. `apps/backend-rag/backend/app/routers/health.py:249` now calls `_check_startup_failed(request.app)` at the TOP of `health_check()` (before any other branch) and returns HTTP 503 with `status="unhealthy"` when `app.state.startup_failed=True`. A second guard at `health.py:270` (`_check_warmup_timeout`) flips to 503 when startup is still incomplete past `STARTUP_WARMUP_DEADLINE_S` (default 180s, env-overridable). Fly.io auto-restart fires correctly on the non-2xx response. Pulse classification (`apps/cell/cell/core/pulse.py`) updated in same commit to classify on body `status` field (`unhealthy/startup_failed/failed/down` → red; `degraded/initializing/warming` → yellow), closing BS-0b.
 
-**Compounding (BS-0b):** `apps/cell/cell/core/pulse.py` classifies green on `status_code == 200` — same blind spot.
+**ANTIBODY (shipped, code excerpt `health.py:242-249`):**
 
-**ANTIBODY (proposed):** Call `_check_startup_failed(request.app)` at top of `health_check()`, return 503; track `startup_started_at` with 180s warmup deadline; `pulse.py` classify on body status field (`unhealthy/startup_failed/failed/down` → red; `degraded/initializing/warming` → yellow).
+```python
+# P0-0: surface app.state.startup_failed as HTTP 503 BEFORE any other branch.
+# _check_startup_failed already exists (lines 48-55); the bug fixed here
+# is that health_check never called it, so a deterministically-broken
+# backend reported HTTP 200 + status='healthy' indefinitely. Fly.io
+# auto-restart only fires on non-2xx, so without 503 the machine never
+# recycles. See cicatrix STRUCTURAL 2026-04-29 'Backend /health masks
+# app.state.startup_failed'.
+startup_err = _check_startup_failed(request.app)
+```
 
-**GOTCHA:** Do NOT `raise` in `_init_critical_services` (graceful degradation per Symbiosis Law 4) — without it uvicorn won't bind 8080. Warmup 180s assumes RAG cold-start ≤90-120s.
+**TRAUMA (historical):** `app_factory.py:114-118` catches RuntimeError from critical service init, sets `app.state.startup_failed=True`, returns. `health.py:48-55` defined `_check_startup_failed()` helper but `health_check()` at lines 147-266 NEVER CALLED IT. A broken backend returned HTTP 200 from `/health` forever — Fly auto-restart only fires on non-2xx. The 2026-04-29 03:11Z incident (login broken, machine in restart loop) was exactly this pattern.
+
+**Compounding (BS-0b, also resolved):** `apps/cell/cell/core/pulse.py` classified green on `status_code == 200` — same blind spot, addressed in same PR.
+
+**GOTCHA:** Do NOT `raise` in `_init_critical_services` (graceful degradation per Symbiosis Law 4) — without it uvicorn won't bind 8080. Warmup 180s assumes RAG cold-start ≤90-120s; tune via `STARTUP_WARMUP_DEADLINE_S` env if Qdrant retry loop or embedding load runs longer. Fly.io health-check `grace_period` is capped at 60s — this deadline is the app-level guard after boot starts.
 
 ---
 
