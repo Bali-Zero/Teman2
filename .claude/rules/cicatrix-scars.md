@@ -5,6 +5,87 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: CRM-Guardian L1 worker passed metadata only, Gemini hallucinated identity from filename tokens (2026-05-17 → resolved 2026-05-18)
+
+_Discovered: 2026-05-17 evening after Phase 1 production-flip pilot · Resolved: 2026-05-18 02:46 WITA via PR #718 (Phase 1.5 OCR layer) · Severity: P0_
+
+**TRAUMA:** The CRM-Guardian L1 worker (`scripts/crm_guardian_gemini_cli_worker.py` Phase 1) sent only Drive file *metadata* (filename, mime, modifiedTime) to `gemini -p`. The L1 v2 schema (`apps/backend-rag/backend/services/crm_guardian/schemas.py`) had ~30 fields expecting *document content* (passport_number, paid_up_capital_idr, nib, npwp_corporate, akta_number, shareholders[].percentage, tax_records[], lkpm_history[], visa.valid_until, etc.). Without content, Gemini did one of two things:
+
+1. **Returned `null`** for content-only fields — honest but useless (6/6 audit clients had `tax_records=lkpm_history=0`, compliance fields all null, frontend `passport_days_until_expiry` badge broken).
+2. **Hallucinated `identity.full_name` from the most-frequent name across filenames** — silently corrupting the cliente↔summary link. Verified cases:
+
+| client_id | CRM full_name | Phase 1 identity.full_name |
+|---|---|---|
+| 70 | Oleksandr Ozolin | "Snizhana Yaroshenko" (most-frequent in akta filenames) |
+| 83 | Sofia Mueller | "Andrey Pozdnyakov" (most-frequent in evisa filenames) |
+
+Both clients' Drive folders contained documents primarily naming a *business partner* (Snizhana Yaroshenko for Ozolin's PT Trading House, Andrey Pozdnyakov for Sofia's PT Milkup). Gemini, with no document content and no identity-anchor instruction, defaulted to the filename frequency mode. The bug was silent: the ai_summary JSON validated against the v2 schema (passport+identity were optional), the AiSummaryCard frontend rendered "Andrey Pozdnyakov" for Sofia's profile without warning.
+
+Discovered via smartness audit on 6 production-flip outputs (clients 70, 83, 266, 278, 283, 350) that Antonello requested before scaling bulk enqueue. The audit ranked outputs on identity fidelity, content-grounded fields populated, and confidence calibration — Phase 1 scored 0/3 on identity-bearing fields for 2/6 clients despite the model self-reporting confidence 0.4–0.7.
+
+12 `clients.ai_summary` rows were purged 2026-05-18 01:57 WITA (`~/backups/crm_guardian_purge_20260518/pre-purge-ai-summaries.json` for audit) before re-running with Phase 1.5.
+
+**ANTIBODY (Phase 1.5 OCR layer, PR #718):**
+
+Five interlocking changes ship the fix:
+
+1. **Migration 181** (`apps/backend-rag/backend/db/migrations_v2/181_crm_guardian_file_content_cache.sql`) — `crm_guardian_file_content_cache` table with soft-delete (`deleted_at TIMESTAMPTZ`), unique-alive index on `file_id`, constraints on `extractor IN ('pdfminer','tesseract','qwen25vl','mixed','skipped')` and `confidence ∈ [0,1]`. Caches OCR output keyed by `(file_id, modified_time_ms)` so bulk re-runs hit cache instead of re-OCR.
+
+2. **`apps/backend-rag/backend/services/crm_guardian/ocr.py`** (720 lines) — cascade:
+   - `pdfminer.six` for PDFs with text layer (cheap, no OCR cost)
+   - `pypdfium2` rasterize @ 200 DPI + `tesseract` subprocess `-l ind+eng --psm 6` for scanned PDFs and images
+   - `qwen2.5vl:7b` via local Ollama (`http://localhost:11434/api/generate`, `think: false`) as vision fallback when tesseract avg confidence < 0.40
+   - Health probe cached at module import; missing-component graceful degradation per Symbiosis Law 4
+   - `PRIORITY_DOC_TYPES = {passport, evisa, visa, kitas, kitap, nib, npwp, akta, sk, lkpm, spt, bukti_potong, tax_record}` — non-priority files (random photos, drafts) skip OCR entirely
+
+3. **Prompt `L1_extraction_v3.md`** with 4 load-bearing Articles:
+   - **Article 1 (identity guardrail)**: `identity.full_name` MUST equal `client_full_name` from `<CROSS_FOLDER_CONTEXT>`. Substitution from filename tokens FORBIDDEN. If CRM name not present in any document, return CRM value + add explicit note "CRM full_name '<X>' not present in any document".
+   - **Article 2 (content-over-filename)**: every field with an OCR snippet MUST be sourced from snippet text, not filename inference.
+   - **Article 3 (date provenance)**: `timeline[].event_date` from document content only, never Drive `modifiedTime` (which is upload timestamp).
+   - **Article 4 (recalibrated confidence)**: ≥0.6 reserved for content-grounded extractions only. Phase 1 averaged 0.6 with all compliance fields null — that was over-calibrated.
+
+4. **Worker refactor** (`scripts/crm_guardian_gemini_cli_worker.py`):
+   - Imports `ocr.py` cascade + cache helpers
+   - `infer_doc_type_from_filename()` maps filename tokens to PRIORITY_DOC_TYPES
+   - `download_drive_file_bytes()` via `MediaIoBaseDownload`, 20MB cap
+   - `enrich_files_with_ocr()` cache-first, fresh-OCR budgeted at 30 files/client
+   - New `<FILE_CONTENT_SNIPPETS>` prompt section with extractor metadata header per file
+   - `build_cross_folder_context_block` now passes `client_full_name` (Article 1 requirement)
+   - `PROMPT_VERSION_V3 = "L1_extraction_v3"`, schemas.py `SCHEMA_VERSION = "v3.0"`
+
+5. **16 unit tests** (`backend/tests/unit/services/crm_guardian/test_ocr.py`) covering priority gating, truncation, content_hash invariants, all cascade paths (pdfminer-only, tesseract-fallback, vision-fallback, image direct, no-stack skip).
+
+**Pilot verification 2026-05-18 (4/6 clients re-processed with Phase 1.5):**
+
+| client_id | Conf 1→1.5 | Identity 1→1.5 | Corporate fields content-grounded |
+|---|---|---|---|
+| 70 Ozolin | 0.40→0.55 | Snizhana → **Ozolin ✓** | nib + npwp + akta# + capital + address |
+| 83 Sofia | 0.40→0.85 | Andrey → **Sofia ✓** + honest mismatch note | nib + npwp + akta# + capital + address |
+| 266 Romain | 0.65→0.95 | OK | nib + npwp + akta# + capital + address + passport_# + nationality FR |
+| 278 Declan | 0.65→0.85 | OK | nib + npwp + akta# + capital + address + passport_# + nationality IRISH |
+
+Article 1 worked exactly as intended for Sofia (case 83): the model kept `"Sofia Mueller"` despite "Sofiia Lerer" dominating filenames and added the honest extraction_notes entry *"CRM full_name 'Sofia Mueller' not present in any document — All documents refer to Sofiia Lerer instead"*. That's the right behavior — surface the data mismatch to the human operator, don't silently overwrite.
+
+**GOTCHA:**
+
+- **OCR budget is hard-capped at 30 fresh extractions per client run** (`OCR_MAX_FILES_PER_CLIENT` in worker). Clients with >30 priority docs (Pukhov 197 files, Armando 683 files) lose the tail. Cache hits don't count against budget — subsequent re-enqueues bring the rest in.
+- **Phase 1.5 throughput ≈ 19 clients/hour** at 5min/5jobs LaunchAgent cadence (vs Phase 1's 60/h). 154s per cliente avg (Drive download + ~9 priority files OCR in 53s + Gemini call 93s) means each 5min tick covers 2-3 clients, not 5 like Phase 1 metadata-only. Adjust LaunchAgent `StartInterval` if quota allows higher cadence.
+- **Article 1 requires `client_full_name` in the context block** — worker passes it from `clients.full_name`. If a future migration nulls that column, the guardrail silently disappears. Defensive: schema test `test_l1_client_summary_requires_identity_anchor` would fail (TODO).
+- **Workspace AI add-on OAuth refresh** still fails (`invalid_grant`) on the user OAuth path — worker falls back to service account silently. This is a pre-existing P1 unrelated to Phase 1.5 (see `~/.gemini/google_accounts.json` rotation).
+- **The 12 Phase 1 corrupted summaries were purged 2026-05-18 01:57 WITA** (raw_dumps preserved on disk + JSON backup at `~/backups/crm_guardian_purge_20260518/`). If a future Claude finds `ai_summary IS NULL` on those clients, that's expected — re-run Phase 1.5 to regenerate.
+
+**Meta-process lesson (work-loss recovery during Phase 1.5 implementation):** the Phase 1.5 work was ~75% complete on `feat/crm-guardian-phase1.5-ocr-layer` when a concurrent autopilot (another Claude session in parallel) wiped the workdir twice — files Phase 1.5 untracked (migration 181, ocr.py, test_ocr.py, prompt v3, pilot script) were *not* in any commit, and a `git stash push -u` from the autopilot moved them to stash. Recovery via `git stash show stash@{2}^3` (the untracked-files tree commit in a `--include-untracked` stash) + `git show stash@{2}:<file>` for tracked modifications. Lesson: **after recovering from stash, commit IMMEDIATELY** before any operation that could trigger branch swap. The autopilot's stash-and-checkout pattern is invisible to the active session — only `git stash list` + `git reflog` reveal it post-hoc.
+
+References:
+- PR [#718](https://github.com/Balizero1987/Teman2/pull/718) — Phase 1.5 OCR layer (merge commit `67e3c2a41`)
+- Plan: `research/crm-guardian/2026-05-18-phase-1.5-ocr-layer-plan.md`
+- Phase 1 plan (now superseded): `docs/superpowers/plans/2026-05-16-crm-guardian-activation-phase1.md`
+- Migration 181: `apps/backend-rag/backend/db/migrations_v2/181_crm_guardian_file_content_cache.sql`
+- Memory: `decision: CRM-Guardian Phase 1.5 OCR layer SHIPPED 2026-05-18` (importance 10)
+
+---
+
+
 ### ✅ RESOLVED: W55 — `sentinel_lib/alerter.py` single-attempt Telegram send (149 lifetime drops on network flap) (2026-05-23)
 
 _Discovered: 2026-05-23 20:45 WITA during W55 loop iteration — `[ALERT-FAILED]` patterns surfaced from W54 work · Severity: P2 (operator missed escalations silently during NordVPN/WiFi flap) · Status: **FIXED** commit `e0525e228` — 3-attempt retry with backoff + transient/permanent discrimination_
