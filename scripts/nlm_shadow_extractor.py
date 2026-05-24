@@ -141,10 +141,10 @@ def _parse_json_list(text: str) -> list[dict]:
 
 
 def _validate_with_deepseek(claim: str, api_key: str, timeout: int = 60) -> dict:
-    """Call DeepSeek Reasoner to validate a single claim."""
+    """Call DeepSeek V4 Pro to validate a single claim (was 'deepseek-reasoner' alias — silently routed to V4-Flash, cicatrix 2026-05-24)."""
     import urllib.request
     body = {
-        "model": "deepseek-reasoner",
+        "model": "deepseek-v4-pro",
         "messages": [
             {"role": "system", "content": "You validate atomic claims and reply only with strict JSON."},
             {"role": "user", "content": DEEPSEEK_VALIDATE_PROMPT.format(claim=claim)},
