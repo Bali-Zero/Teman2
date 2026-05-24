@@ -17,6 +17,30 @@ log() {
   printf '[%s] [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$(hostname)" "$*" >> "$LOG_FILE"
 }
 
+run_with_timeout() {
+  timeout_seconds="$1"
+  shift
+
+  "$@" &
+  command_pid=$!
+
+  (
+    sleep "$timeout_seconds"
+    if kill -0 "$command_pid" 2>/dev/null; then
+      kill "$command_pid" 2>/dev/null || true
+      sleep 2
+      kill -0 "$command_pid" 2>/dev/null && kill -9 "$command_pid" 2>/dev/null || true
+    fi
+  ) &
+  watchdog_pid=$!
+
+  wait "$command_pid"
+  status=$?
+  kill "$watchdog_pid" 2>/dev/null || true
+  wait "$watchdog_pid" 2>/dev/null || true
+  return "$status"
+}
+
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 if [ "$BRANCH" != "main" ]; then
   log "skip: branch=$BRANCH"
@@ -29,10 +53,12 @@ HOST=$(hostname)
 case "$HOST" in
   Nuzantara)
     log "pro->mini start local=$LOCAL_HEAD"
-    if ssh -o ConnectTimeout=8 -o BatchMode=yes mini \
+    if run_with_timeout 180 ssh -o ConnectTimeout=8 -o BatchMode=yes \
+      -o ServerAliveInterval=10 -o ServerAliveCountMax=2 mini \
       'cd ~/Desktop/nuzantara && /bin/bash ~/scripts/mini-git-pull.sh' \
       >> "$LOG_FILE" 2>&1; then
-      REMOTE_HEAD=$(ssh -o ConnectTimeout=8 -o BatchMode=yes mini \
+      REMOTE_HEAD=$(run_with_timeout 30 ssh -o ConnectTimeout=8 -o BatchMode=yes \
+        -o ServerAliveInterval=10 -o ServerAliveCountMax=2 mini \
         'cd ~/Desktop/nuzantara && git rev-parse --short HEAD' 2>/dev/null || echo "unknown")
       if [ "$REMOTE_HEAD" = "$LOCAL_HEAD" ]; then
         log "pro->mini OK head=$LOCAL_HEAD"
@@ -46,8 +72,9 @@ case "$HOST" in
 
   Mini-Pro2|mini-pro2)
     log "mini->pro start local=$LOCAL_HEAD"
-    if git push pro main >> "$LOG_FILE" 2>&1; then
-      REMOTE_HEAD=$(ssh -o ConnectTimeout=8 -o BatchMode=yes pro \
+    if run_with_timeout 180 git push pro main >> "$LOG_FILE" 2>&1; then
+      REMOTE_HEAD=$(run_with_timeout 30 ssh -o ConnectTimeout=8 -o BatchMode=yes \
+        -o ServerAliveInterval=10 -o ServerAliveCountMax=2 pro \
         'cd ~/Desktop/nuzantara && git rev-parse --short HEAD' 2>/dev/null || echo "unknown")
       if [ "$REMOTE_HEAD" = "$LOCAL_HEAD" ]; then
         log "mini->pro OK head=$LOCAL_HEAD"

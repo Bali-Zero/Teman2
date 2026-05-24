@@ -15,8 +15,19 @@ BEGIN;
 -- A. team_member_id type fix (migration 200 bug — VARCHAR(36) source)
 -- whatsapp_message_context.team_member_id is empty post-200 (no writes
 -- yet), so type change is safe even with running cron.
-ALTER TABLE whatsapp_message_context
-    ALTER COLUMN team_member_id TYPE TEXT USING team_member_id::TEXT;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'whatsapp_message_context'
+          AND column_name = 'team_member_id'
+    ) THEN
+        ALTER TABLE whatsapp_message_context
+            ALTER COLUMN team_member_id TYPE TEXT USING team_member_id::TEXT;
+    END IF;
+END $$;
 
 -- B. LID↔phone bridge map (initially empty; populated by signal #1
 -- successes that also have counterpart_lid, plus human review)
@@ -78,7 +89,18 @@ COMMIT;
 -- DROP INDEX IF EXISTS idx_wa_lid_client;
 -- DROP INDEX IF EXISTS idx_wa_lid_phone;
 -- DROP TABLE IF EXISTS wa_lid_phone_map;
--- ALTER TABLE whatsapp_message_context
---     ALTER COLUMN team_member_id TYPE BIGINT USING NULLIF(team_member_id, '')::BIGINT;
+-- DO $$
+-- BEGIN
+--     IF EXISTS (
+--         SELECT 1
+--         FROM information_schema.columns
+--         WHERE table_schema = 'public'
+--           AND table_name = 'whatsapp_message_context'
+--           AND column_name = 'team_member_id'
+--     ) THEN
+--         ALTER TABLE whatsapp_message_context
+--             ALTER COLUMN team_member_id TYPE BIGINT USING NULLIF(team_member_id, '')::BIGINT;
+--     END IF;
+-- END $$;
 --
 -- COMMIT;
