@@ -542,6 +542,7 @@ function MessageBubbleComponent({
                 <TeamVerificationBadge
                   status={message.metadata.nlm_status}
                   domainLabel={message.metadata.nlm_domain_label}
+                  isExpanded={showCitations}
                   onToggleCitations={() => setShowCitations((prev) => !prev)}
                 />
               )}

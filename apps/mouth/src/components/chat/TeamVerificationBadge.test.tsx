@@ -36,4 +36,27 @@ describe("TeamVerificationBadge", () => {
     render(<TeamVerificationBadge status="verified" domainLabel="Imigrasi" />);
     expect(screen.getByText(/Diverifikasi oleh tim Imigrasi/i)).toBeDefined();
   });
+
+  it("applies aria-expanded based on isExpanded prop", () => {
+    const { rerender } = render(
+      <TeamVerificationBadge
+        status="verified"
+        domainLabel="Legal"
+        onToggleCitations={() => {}}
+        isExpanded={false}
+      />
+    );
+    const button = screen.getByRole("button");
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+
+    rerender(
+      <TeamVerificationBadge
+        status="verified"
+        domainLabel="Legal"
+        onToggleCitations={() => {}}
+        isExpanded={true}
+      />
+    );
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+  });
 });

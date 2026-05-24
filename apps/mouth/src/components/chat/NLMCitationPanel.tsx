@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { BookOpen, ChevronDown, FileText } from "lucide-react";
+import { useChatLocale } from "@/hooks/useChatLocale";
 
 interface NLMCitation {
   source_file: string;
@@ -17,12 +18,23 @@ interface NLMCitationPanelProps {
   onToggle: () => void;
 }
 
+const LABELS: Record<string, string> = {
+  en: "Official Sources",
+  it: "Fonti ufficiali",
+  id: "Sumber Resmi",
+  fr: "Sources officielles",
+  ru: "Официальные источники",
+};
+
 export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
   citations,
   domainLabel,
   expanded,
   onToggle,
 }) => {
+  const locale = useChatLocale();
+  const title = LABELS[locale] || LABELS.en;
+
   return (
     <div className="mt-3 rounded-lg border-l-2 border-amber-600 overflow-hidden">
       {/* Header — always visible, toggles expand */}
@@ -34,10 +46,15 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
       >
         <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
           <BookOpen size={14} />
-          <span>Fonti ufficiali — {domainLabel}</span>
+          <span>
+            {title} — {domainLabel}
+          </span>
         </div>
         <div className="text-zinc-400">
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          <ChevronDown
+            size={14}
+            className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          />
         </div>
       </button>
 

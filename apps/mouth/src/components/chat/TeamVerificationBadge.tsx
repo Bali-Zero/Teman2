@@ -1,5 +1,5 @@
 import React from "react";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, ChevronDown } from "lucide-react";
 import { useChatLocale } from "@/hooks/useChatLocale";
 
 export type VerificationStatus = "verified" | "consulting" | "not_needed";
@@ -7,15 +7,16 @@ export type VerificationStatus = "verified" | "consulting" | "not_needed";
 interface TeamVerificationBadgeProps {
   status?: VerificationStatus;
   domainLabel?: string;
+  isExpanded?: boolean;
   onToggleCitations?: () => void;
 }
 
 const LABELS: Record<string, (domain: string) => string> = {
   en: (d) => `Our ${d} specialists are verifying`,
-  it: (d) => `Verificato dal team ${d}`,
-  id: (d) => `Diverifikasi oleh tim ${d}`,
-  fr: (d) => `Vérifié par l'équipe ${d}`,
-  ru: (d) => `Подтверждено командой ${d}`,
+  it: (d) => `I nostri specialisti ${d} stanno verificando`,
+  id: (d) => `Spesialis ${d} kami sedang memverifikasi`,
+  fr: (d) => `Nos spécialistes ${d} vérifient`,
+  ru: (d) => `Наши специалисты по ${d} проверяют`,
 };
 
 const VERIFIED_LABELS: Record<string, (domain: string) => string> = {
@@ -29,6 +30,7 @@ const VERIFIED_LABELS: Record<string, (domain: string) => string> = {
 export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
   status = "verified",
   domainLabel = "Legal",
+  isExpanded = false,
   onToggleCitations,
 }) => {
   const locale = useChatLocale();
@@ -50,11 +52,16 @@ export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
       <button
         type="button"
         onClick={onToggleCitations}
-        className={`${baseClassName} hover:text-accent transition-colors cursor-pointer`}
-        aria-label={label}
+        className={`${baseClassName} hover:text-accent transition-colors cursor-pointer focus-ring rounded px-1 -ml-1`}
+        aria-expanded={isExpanded}
       >
         <BadgeCheck size={12} className="shrink-0" aria-hidden="true" />
         <span>{label}</span>
+        <ChevronDown
+          size={10}
+          className={`shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        />
       </button>
     );
   }
@@ -62,7 +69,7 @@ export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
   return (
     <div className={baseClassName}>
       <BadgeCheck size={12} className="shrink-0" aria-hidden="true" />
-      <span aria-label={label}>{label}</span>
+      <span>{label}</span>
     </div>
   );
 };

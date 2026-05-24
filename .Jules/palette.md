@@ -21,3 +21,7 @@
 ## 2026-04-30 - [Shared Locale Hook for Chat Micro-frontend]
 **Learning:** In applications where certain routes (like `/chat`) are architecturally isolated from the main `I18nProvider`, duplicating locale-detection logic across components leads to inconsistencies and maintenance overhead. Consolidating this into a shared `useChatLocale` hook that synchronizes with `localStorage` ensures a unified language experience across all chat-specific components.
 **Action:** Use a shared `useChatLocale` hook for any components in the chat interface that require multi-language support (Tool Indicators, Badges, Panels).
+
+## 2026-05-02 - [Interactive Citation and Verification States]
+**Learning:** For components that toggle supplemental information (like citations or verification details), synchronizing the visual state (rotating chevrons) with accessibility attributes (`aria-expanded`) and providing clear localized context is essential. Using a container-level focus indicator (`.focus-ring`) on the trigger button improves navigation for keyboard users without adding visual clutter.
+**Action:** Always pair `aria-expanded` with CSS transitions for height/opacity on collapsible panels. Ensure localized labels are consistent across related components (e.g., Badge vs Panel).
