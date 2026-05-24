@@ -613,7 +613,7 @@ prompt = '''$PROMPT'''
 r = httpx.post('https://api.deepseek.com/chat/completions',
     headers={'Authorization': f'Bearer {os.environ[\"DEEPSEEK_API_KEY\"]}', 'Content-Type': 'application/json'},
     json={
-        'model': 'deepseek-reasoner',
+        'model': 'deepseek-v4-pro',  # was 'deepseek-reasoner' — legacy alias silently routes to V4-Flash (cicatrix 2026-05-24)
         'messages': [
             {'role': 'system', 'content': ctx} if ctx else None,
             {'role': 'user', 'content': prompt}

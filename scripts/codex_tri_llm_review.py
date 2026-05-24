@@ -440,7 +440,7 @@ async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
             "https://api.deepseek.com/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": "deepseek-reasoner",
+                "model": "deepseek-v4-pro",  # was 'deepseek-reasoner' — legacy alias silently routes to V4-Flash (cicatrix 2026-05-24)
                 "messages": [
                     {
                         "role": "system",
