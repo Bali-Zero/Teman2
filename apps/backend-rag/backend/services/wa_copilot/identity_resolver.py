@@ -38,7 +38,7 @@ from backend.services.crm.client_core import normalize_phone_e164
 
 logger = logging.getLogger(__name__)
 
-RESOLVER_VERSION = "v1.0-2026-05-25"
+RESOLVER_VERSION = "v1.1-2026-05-25"
 MIN_APPLY_CONFIDENCE = 0.70
 REVIEW_BAND_LOW = 0.40
 REVIEW_BAND_HIGH = 0.70
@@ -50,7 +50,9 @@ CONF_PHONE_E164 = 0.95
 CONF_PHONE_E164_PARTIAL = 0.85  # last-9-digit match
 CONF_LID_MAP = 0.90
 CONF_TEAM_EMAIL = 1.00
+CONF_TEAM_NAME = 0.85  # sender_push_name fuzzy → team_members.full_name
 CONF_DRIVE_FOLDER_THRESHOLD = 0.70
+SENDER_NAME_APPLY_THRESHOLD = 0.70  # sim >= this → apply, else needs_review band
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +209,80 @@ async def resolve_team_email(
     return None
 
 
+# Label format A (legacy, ~3 batches):  "WhatsApp Chat - <name>"
+# Label format B (slug w/ marker, ~189): "[<prefix>-]?whatsapp-chat-<name>-2026-MM-DD-<suffix>"
+#                                         <prefix>=operator slug or date prefix (22-mei-2026)
+#                                         <suffix> ∈ {pilot, mass}
+# Label format C (slug no marker, ~2):    "<operator>-<name>-2026-MM-DD-<suffix>"
 _CHAT_TITLE_RE = re.compile(r"^WhatsApp Chat - (.+?)$", re.IGNORECASE)
+# Format B regex — prefer "whatsapp-chat-" marker as anchor when present (greedy
+# left-anchor → capture everything between marker and trailing date)
+_SLUG_W_MARKER_RE = re.compile(
+    r"^.*?whatsapp-chat-"
+    r"(?P<name>.+?)"
+    r"-2\d{3}-\d{1,2}(?:-\d{1,2})?(?:-[a-z0-9]+)?$",
+    re.IGNORECASE,
+)
+# Format C regex — fallback when no marker present (op-name-date-suffix)
+_SLUG_NO_MARKER_RE = re.compile(
+    r"^(?:[a-z0-9]+-)?"
+    r"(?P<name>.+?)"
+    r"-2\d{3}-\d{1,2}(?:-\d{1,2})?(?:-[a-z0-9]+)?$",
+    re.IGNORECASE,
+)
+# Operator slugs to strip from start: known team-member first names (best-effort)
+_OPERATOR_PREFIXES = (
+    "ari", "krisna", "sahira", "amanda", "antonello", "adit", "aditya",
+    "vero", "surya", "suryadi", "asya", "vino", "damar", "zainal",
+    "michele", "subhi", "ruslana", "anton",
+)
+
+
+def _parse_label_name(source_label: str) -> str | None:
+    """Extract candidate client name from any of the 3 label formats.
+
+    Returns the human-readable name (spaces, original casing where possible) or None.
+    """
+    label = source_label.strip()
+    if not label:
+        return None
+
+    # Format A: legacy "WhatsApp Chat - <name>"
+    m = _CHAT_TITLE_RE.match(label)
+    if m:
+        return m.group(1).strip()
+
+    # Format B: slug with "whatsapp-chat-" marker (preferred — unambiguous)
+    name_slug: str | None = None
+    m = _SLUG_W_MARKER_RE.match(label)
+    if m:
+        name_slug = m.group("name").strip("-")
+    else:
+        # Format C: slug without marker (operator-name-date)
+        m = _SLUG_NO_MARKER_RE.match(label)
+        if m:
+            name_slug = m.group("name").strip("-")
+
+    if not name_slug:
+        return None
+
+    parts = name_slug.split("-")
+    # For Format C only: strip leading operator prefix if present
+    # (Format B already strips operator via the .*? prefix in regex)
+    if not m or "whatsapp-chat" not in label.lower():
+        if len(parts) > 1 and parts[0].lower() in _OPERATOR_PREFIXES:
+            parts = parts[1:]
+    # Defensive: strip stray duplicate-batch markers / numeric tail tokens
+    while parts and (parts[-1].isdigit() or parts[-1].lower() in ("new", "old")):
+        parts = parts[:-1]
+    if not parts:
+        return None
+
+    # slug-to-name: replace hyphens with spaces; preserve trgm fuzzy alignment
+    name = " ".join(parts)
+    if len(name) < 3:
+        return None
+    return name
 
 
 async def resolve_drive_folder(
@@ -222,24 +297,28 @@ async def resolve_drive_folder(
     if not source_label:
         return None
 
-    m = _CHAT_TITLE_RE.match(source_label.strip())
-    if not m:
-        return None
-    candidate_name = m.group(1).strip()
-    if len(candidate_name) < 3:
+    candidate_name = _parse_label_name(source_label)
+    if not candidate_name or len(candidate_name) < 3:
         return None
 
-    # Trigram similarity — only top 1 with margin guard via top 2
-    rows = await conn.fetch(
-        """
-        SELECT id, full_name, similarity(full_name, $1) AS sim
-        FROM clients
-        WHERE full_name % $1
-        ORDER BY sim DESC
-        LIMIT 2
-        """,
-        candidate_name,
-    )
+    # Trigram similarity — only top 1 with margin guard via top 2 (per-batch cached)
+    cache = msg.get("_cache_drive_folder")
+    cache_key = candidate_name
+    if cache is not None and cache_key in cache:
+        rows = cache[cache_key]
+    else:
+        rows = await conn.fetch(
+            """
+            SELECT id, full_name, similarity(full_name, $1) AS sim
+            FROM clients
+            WHERE full_name % $1
+            ORDER BY sim DESC
+            LIMIT 2
+            """,
+            candidate_name,
+        )
+        if cache is not None:
+            cache[cache_key] = rows
     if not rows:
         return None
 
@@ -292,24 +371,130 @@ async def resolve_drive_folder(
     )
 
 
-async def resolve_sender_name(
+# Team markers to strip from sender_push_name before trgm match
+_TEAM_NAME_NORMALIZER_RE = re.compile(
+    r"\s*[\(~\-]?\s*"
+    r"(?:bz|bali\s*zero|"
+    r"visa\s*&\s*immigration\s*service|"
+    r"kitas\s*freelance"
+    r")"
+    r"\s*\)?\s*",
+    re.IGNORECASE,
+)
+
+
+def _normalize_sender_for_team_match(sender: str) -> str:
+    """Strip BZ / Bali Zero / role markers to leave the bare name for trgm match."""
+    cleaned = _TEAM_NAME_NORMALIZER_RE.sub(" ", sender)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ~-()")
+    return cleaned
+
+
+async def resolve_team_name(
     conn: asyncpg.Connection, msg: dict[str, Any]
 ) -> ResolveResult | None:
-    """Signal #5 (last resort): sender_name pg_trgm fuzzy match."""
+    """Signal #3b: sender_push_name → fuzzy team_members.full_name.
+
+    Catches "Sahira BZ" / "Ari Bali Zero" / "Krisna - BZ" style push names that
+    don't have team_member_email populated. Strips BZ/Bali Zero markers first
+    to maximise trigram alignment with bare team member full_names.
+
+    Caches lookup result per normalized name in msg["_cache_team_name"] (set by
+    process_message) to avoid re-querying for repeated senders within the same batch.
+    """
     sender = msg.get("sender_name") or msg.get("sender")
     if not sender or len(str(sender)) < 3:
         return None
 
-    rows = await conn.fetch(
-        """
-        SELECT id, full_name, similarity(full_name, $1) AS sim
-        FROM clients
-        WHERE full_name % $1
-        ORDER BY sim DESC
-        LIMIT 2
-        """,
-        str(sender),
-    )
+    normalized = _normalize_sender_for_team_match(str(sender))
+    if not normalized or len(normalized) < 3:
+        return None
+
+    cache = msg.get("_cache_team_name")
+    if cache is not None and normalized in cache:
+        rows = cache[normalized]
+    else:
+        rows = await conn.fetch(
+            """
+            SELECT id::TEXT AS tm_id, full_name, similarity(full_name, $1) AS sim
+            FROM team_members
+            WHERE active = true
+              AND full_name IS NOT NULL
+              AND full_name % $1
+            ORDER BY sim DESC
+            LIMIT 2
+            """,
+            normalized,
+        )
+        if cache is not None:
+            cache[normalized] = rows
+    if not rows:
+        return None
+
+    top = rows[0]
+    sim_top = float(top["sim"])
+
+    # Strong-match threshold (>= 0.5) → apply as team
+    if sim_top >= 0.5:
+        # Ambiguity guard if second candidate is close
+        if len(rows) > 1:
+            sim_second = float(rows[1]["sim"])
+            if sim_top - sim_second < SENDER_NAME_AMBIGUITY_MARGIN:
+                return ResolveResult(
+                    method="team_name",
+                    client_id=None,
+                    confidence=sim_top,
+                    sender_role="team",
+                    signal_payload={
+                        "sender": str(sender),
+                        "normalized": normalized,
+                        "top_name": top["full_name"],
+                        "top_sim": sim_top,
+                        "second_sim": sim_second,
+                        "ambiguous": True,
+                    },
+                )
+        return ResolveResult(
+            method="team_name",
+            client_id=None,
+            confidence=CONF_TEAM_NAME if sim_top >= 0.7 else sim_top,
+            team_member_id=top["tm_id"],
+            sender_role="team",
+            signal_payload={
+                "sender": str(sender),
+                "normalized": normalized,
+                "matched_name": top["full_name"],
+                "trgm_sim": sim_top,
+            },
+        )
+    return None
+
+
+async def resolve_sender_name(
+    conn: asyncpg.Connection, msg: dict[str, Any]
+) -> ResolveResult | None:
+    """Signal #5 (last resort): sender_name pg_trgm fuzzy match against clients (per-batch cached)."""
+    sender = msg.get("sender_name") or msg.get("sender")
+    if not sender or len(str(sender)) < 3:
+        return None
+
+    sender_str = str(sender)
+    cache = msg.get("_cache_sender_name")
+    if cache is not None and sender_str in cache:
+        rows = cache[sender_str]
+    else:
+        rows = await conn.fetch(
+            """
+            SELECT id, full_name, similarity(full_name, $1) AS sim
+            FROM clients
+            WHERE full_name % $1
+            ORDER BY sim DESC
+            LIMIT 2
+            """,
+            sender_str,
+        )
+        if cache is not None:
+            cache[sender_str] = rows
     if not rows:
         return None
 
@@ -318,30 +503,41 @@ async def resolve_sender_name(
     if sim_top < REVIEW_BAND_LOW:
         return None
 
+    # Ambiguity check — if top and second are within margin, do NOT apply
+    ambiguous = False
+    sim_second = 0.0
     if len(rows) > 1:
         sim_second = float(rows[1]["sim"])
         if sim_top - sim_second < SENDER_NAME_AMBIGUITY_MARGIN:
-            # Ambiguous — needs review
-            return ResolveResult(
-                method="sender_name",
-                client_id=None,
-                confidence=sim_top,
-                sender_role="client",
-                signal_payload={
-                    "sender": str(sender),
-                    "top_name": top["full_name"],
-                    "top_sim": sim_top,
-                    "second_sim": sim_second,
-                    "ambiguous": True,
-                },
-            )
+            ambiguous = True
 
-    # Confidence capped at 0.65 even for high sim (last-resort, noisy signal)
-    capped = min(sim_top, 0.65)
+    if ambiguous:
+        return ResolveResult(
+            method="sender_name",
+            client_id=None,
+            confidence=sim_top,
+            sender_role="client",
+            signal_payload={
+                "sender": str(sender),
+                "top_name": top["full_name"],
+                "top_sim": sim_top,
+                "second_sim": sim_second,
+                "ambiguous": True,
+            },
+        )
+
+    # FIX (v1.1): trust pg_trgm sim DIRECTLY (no artificial 0.65 cap).
+    # Previous v1.0 capped at 0.65 then required >= 0.70 to apply, which
+    # mathematically made it impossible to apply via sender_name. Exact and
+    # near-exact matches (sim >= 0.70) deserve to be applied.
+    apply_client_id: int | None = None
+    if sim_top >= SENDER_NAME_APPLY_THRESHOLD:
+        apply_client_id = top["id"]
+
     return ResolveResult(
         method="sender_name",
-        client_id=top["id"] if capped >= MIN_APPLY_CONFIDENCE else None,
-        confidence=capped,
+        client_id=apply_client_id,
+        confidence=sim_top,
         sender_role="client",
         signal_payload={
             "sender": str(sender),
@@ -355,6 +551,7 @@ CASCADE: tuple[Callable[[asyncpg.Connection, dict[str, Any]], Awaitable[ResolveR
     resolve_phone_e164,
     resolve_lid_map,
     resolve_team_email,
+    resolve_team_name,       # v1.1: NEW — sender_push_name → team_members fuzzy
     resolve_drive_folder,
     resolve_sender_name,
 )
@@ -530,17 +727,29 @@ async def resolve_batch(
                 if not rows:
                     break
 
+                # Per-batch caches (avoid re-running identical trgm lookups
+                # for repeated batch_id / sender_push_name / candidate_name).
+                cache_drive_folder: dict[str, list] = {}
+                cache_team_name: dict[str, list] = {}
+                cache_sender_name: dict[str, list] = {}
                 for r in rows:
                     msg = dict(r)
                     if msg.get("identity_method") and msg.get("identity_confidence", 0) >= MIN_APPLY_CONFIDENCE and not force:
                         metrics.already_resolved_skipped += 1
                         continue
                     metrics.total_scanned += 1
+                    msg["_cache_drive_folder"] = cache_drive_folder
+                    msg["_cache_team_name"] = cache_team_name
+                    msg["_cache_sender_name"] = cache_sender_name
                     await process_message(conn, msg, dry_run=dry_run, metrics=metrics)
 
         batch_idx += 1
         offset += batch_size
-        logger.info("batch %d done, scanned=%d so far", batch_idx, metrics.total_scanned)
+        logger.info(
+            "batch %d done, scanned=%d so far, cache: drive=%d team=%d sender=%d",
+            batch_idx, metrics.total_scanned,
+            len(cache_drive_folder), len(cache_team_name), len(cache_sender_name),
+        )
 
     # Post %
     async with pool.acquire() as conn:
