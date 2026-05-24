@@ -14,7 +14,7 @@ mcp>=1.25.0
 anyio>=4.13.0
 
 # Vector Database
-qdrant-client>=1.18.0
+qdrant-client>=1.13.3,<1.14.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
 
 # AI API Clients (optimized for resolution speed)
 openai>=2.14.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
