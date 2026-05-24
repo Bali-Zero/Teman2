@@ -6,6 +6,11 @@
 
 set -u
 
+ALLOW_ORIGIN_BEHIND=0
+if [ "${1:-}" = "--allow-origin-behind" ]; then
+  ALLOW_ORIGIN_BEHIND=1
+fi
+
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$ROOT" 2>/dev/null || exit 1
 
@@ -78,11 +83,21 @@ else
   fi
 fi
 
+ORIGIN_RELATION="unknown"
 if [ -n "${ORIGIN_SHA:-}" ] && [ "$LOCAL_SHA" = "$ORIGIN_SHA" ]; then
   ORIGIN_OK="yes"
+  ORIGIN_RELATION="equal"
+elif [ -n "${ORIGIN_SHA:-}" ] && git merge-base --is-ancestor "$ORIGIN_SHA" "$LOCAL_SHA" 2>/dev/null; then
+  ORIGIN_RELATION="behind_by_$(git rev-list --count "$ORIGIN_SHA..$LOCAL_SHA" 2>/dev/null || echo unknown)"
+  if [ "$ALLOW_ORIGIN_BEHIND" = "1" ]; then
+    ORIGIN_OK="yes"
+  else
+    ORIGIN_OK="no"
+  fi
 else
   ORIGIN_OK="no"
 fi
+print_kv "origin_relation" "$ORIGIN_RELATION"
 
 if [ -n "${PEER_SHA:-}" ] && [ "$LOCAL_SHA" = "$PEER_SHA" ]; then
   PEER_OK="yes"

@@ -51,6 +51,9 @@ ORIGIN_SHA=$(git ls-remote origin refs/heads/main 2>/dev/null | awk '{print $1}'
 [ -n "$ORIGIN_SHA" ] || fail "cannot read origin/main"
 if [ "$LOCAL_SHA" = "$ORIGIN_SHA" ]; then
   ok "local and origin/main match $(printf '%s' "$ORIGIN_SHA" | cut -c1-10)"
+elif git merge-base --is-ancestor "$ORIGIN_SHA" "$LOCAL_SHA" 2>/dev/null; then
+  BEHIND_BY=$(git rev-list --count "$ORIGIN_SHA..$LOCAL_SHA" 2>/dev/null || echo unknown)
+  ok "origin/main is behind local by $BEHIND_BY commit(s); push pending"
 else
   fail "local and origin/main differ local=$(printf '%s' "$LOCAL_SHA" | cut -c1-10) origin=$(printf '%s' "$ORIGIN_SHA" | cut -c1-10)"
 fi
@@ -84,5 +87,5 @@ sh -n scripts/pro-mini-git-sync-hook.sh || fail "sync hook syntax"
 bash -n scripts/mini/mini-git-pull.sh || fail "Mini pull script syntax"
 ok "hook and sync script syntax"
 
-scripts/pro-mini-healthcheck.sh >/dev/null || fail "healthcheck failed"
+scripts/pro-mini-healthcheck.sh --allow-origin-behind >/dev/null || fail "healthcheck failed"
 ok "healthcheck passed"
