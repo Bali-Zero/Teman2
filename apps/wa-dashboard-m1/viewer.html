@@ -125,6 +125,8 @@
   .conv-tag.direct { background: rgba(212,132,90,0.18); color: var(--bz-accent); }
   .conv-tag.internal { background: rgba(140,140,160,0.18); color: var(--bz-text-dim); }
   .conv-tag.client { background: rgba(90,212,138,0.18); color: var(--bz-success); }
+  .conv-tag.crm { background: rgba(90,212,138,0.28); color: var(--bz-success); }
+  .conv-company { font-size: 11px; color: var(--bz-text-dim); margin-top: 2px; font-style: italic; }
   /* col-3 messages */
   .thread-header {
     position: sticky;
@@ -247,15 +249,20 @@ function renderConvs() {
   } else {
     for (const c of pd.convs) {
       const isSel = SELECTED_CONV === c.counterpart ? " selected" : "";
-      const tag = c.kind === "group" ? "group" : c.is_internal ? "internal" : c.client_id ? "client" : "direct";
+      const tag = c.kind === "group" ? "group" : c.is_internal ? "internal" : c.crm_match ? "crm" : "direct";
+      const tagLabel = tag === "crm" ? "CRM" : tag;
+      const companyLine = c.company_name && c.crm_match
+        ? `<div class="conv-company">${escapeHtml(c.company_name)}</div>`
+        : "";
       html += `
         <div class="conv-item${isSel}" data-conv="${encodeURIComponent(c.counterpart)}">
           <div class="conv-row">
             <span class="conv-name">${escapeHtml(c.display_name)}</span>
             <span class="conv-time">${fmtTime(c.last_at)}</span>
           </div>
+          ${companyLine}
           <div class="conv-preview">
-            <span class="conv-tag ${tag}">${tag}</span>${escapeHtml(fmtPreview(c))} · ${c.n}
+            <span class="conv-tag ${tag}">${tagLabel}</span>${escapeHtml(fmtPreview(c))} · ${c.n}
           </div>
         </div>`;
     }
@@ -300,10 +307,15 @@ async function renderThread() {
       lastDay = dayKey;
     }
     const dir = m.direction === "outbound" ? "outbound" : "inbound";
-    const sender = m.sender_phone || m.pushname || "";
+    // CRM-first naming: prefer official client name, fallback to push/phone
+    const senderName = m.sender_crm_name || m.pushname || m.sender_phone || "";
+    const senderCompany = m.sender_company ? ` · ${m.sender_company}` : "";
+    const senderLine = senderName && conv && conv.kind === "group"
+      ? `<div class="sender">${escapeHtml(senderName)}${escapeHtml(senderCompany)}</div>`
+      : "";
     html += `
       <div class="msg ${dir}">
-        ${sender && conv && conv.kind === "group" ? `<div class="sender">${escapeHtml(sender)}</div>` : ""}
+        ${senderLine}
         ${m.media_type ? `<span class="media-tag">${m.media_type}</span>` : ""}
         <div class="body">${escapeHtml(m.body || (m.media_type ? "[media]" : ""))}</div>
         <div class="meta">${fmtTime(m.message_date)}${m.media_mime ? " · " + escapeHtml(m.media_mime) : ""}</div>

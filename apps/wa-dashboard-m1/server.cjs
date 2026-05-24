@@ -122,11 +122,24 @@ async function fetchOverview() {
       )
       SELECT g.conv_key, g.direct_phone, g.client_id, g.n, g.last_at,
              lm.last_body, lm.last_media, lp.pushname,
-             cli.full_name AS client_name, cli.company_name, cli.status AS client_status
+             COALESCE(cli_id.full_name, cli_phone.full_name) AS client_name,
+             COALESCE(cli_id.company_name, cli_phone.company_name) AS company_name,
+             COALESCE(cli_id.status, cli_phone.status) AS client_status,
+             COALESCE(cli_id.id, cli_phone.id) AS resolved_client_id,
+             COALESCE(cli_id.assigned_to, cli_phone.assigned_to) AS assigned_to
       FROM grouped g
       LEFT JOIN last_msg lm USING (conv_key)
       LEFT JOIN last_push lp USING (conv_key)
-      LEFT JOIN clients cli ON cli.id = g.client_id
+      LEFT JOIN clients cli_id
+        ON cli_id.id = g.client_id AND cli_id.deleted_at IS NULL
+      LEFT JOIN clients cli_phone
+        ON cli_phone.deleted_at IS NULL
+       AND g.direct_phone IS NOT NULL
+       AND (
+         cli_phone.phone_normalized = regexp_replace(g.direct_phone, '\\D', '', 'g')
+         OR cli_phone.phone = g.direct_phone
+         OR cli_phone.whatsapp = g.direct_phone
+       )
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
@@ -158,9 +171,19 @@ async function fetchOverview() {
         ORDER BY group_jid, message_date DESC NULLS LAST
       )
       SELECT g.group_jid, g.group_label, g.n, g.last_at,
-             lm.last_body, lm.last_media, lm.sender_phone
+             lm.last_body, lm.last_media, lm.sender_phone,
+             cli.full_name AS sender_crm_name,
+             cli.company_name AS sender_company
       FROM grouped g
       LEFT JOIN last_msg lm USING (group_jid)
+      LEFT JOIN clients cli
+        ON cli.deleted_at IS NULL
+       AND lm.sender_phone IS NOT NULL
+       AND (
+         cli.phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
+         OR cli.phone = lm.sender_phone
+         OR cli.whatsapp = lm.sender_phone
+       )
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
@@ -169,12 +192,18 @@ async function fetchOverview() {
 
     const convs = [];
     for (const r of directRows.rows) {
+      const crmName = r.client_name;
+      const display = crmName
+        ? (r.company_name ? `${crmName} · ${r.company_name}` : crmName)
+        : (r.pushname || r.direct_phone || r.conv_key);
       convs.push({
         kind: "direct",
         counterpart: r.direct_phone || r.conv_key,
-        display_name: r.client_name || r.pushname || r.direct_phone || r.conv_key,
-        client_id: r.client_id,
+        display_name: display,
+        crm_match: !!crmName,
+        client_id: r.resolved_client_id || r.client_id,
         client_status: r.client_status,
+        assigned_to: r.assigned_to,
         company_name: r.company_name,
         n: parseInt(r.n, 10),
         last_at: r.last_at,
@@ -184,12 +213,20 @@ async function fetchOverview() {
       });
     }
     for (const r of groupRows.rows) {
+      const groupLabel = r.group_label && !r.group_label.endsWith("@g.us")
+        ? r.group_label
+        : (r.sender_crm_name
+            ? `Gruppo ${r.sender_crm_name}${r.sender_company ? " (" + r.sender_company + ")" : ""}`
+            : r.group_label);
       convs.push({
         kind: "group",
         counterpart: `group:${r.group_jid}`,
-        display_name: r.group_label,
+        display_name: groupLabel,
         group_jid: r.group_jid,
         sender_phone: r.sender_phone,
+        sender_crm_name: r.sender_crm_name,
+        sender_company: r.sender_company,
+        crm_match: !!r.sender_crm_name,
         n: parseInt(r.n, 10),
         last_at: r.last_at,
         last_body: r.last_body,
@@ -232,18 +269,39 @@ async function fetchThread(memberPhone, convKey) {
 
   const rows = await pool.query(
     `
-    SELECT id, direction, body, media_type, media_mime, message_date,
-           sender_phone, sender_push_name_snapshot, group_jid,
-           raw_baileys_event->>'pushName' AS pushname
-    FROM whatsapp_message_context
-    WHERE team_member_phone = ANY($1::text[])
+    SELECT m.id, m.direction, m.body, m.media_type, m.media_mime, m.message_date,
+           m.sender_phone, m.sender_push_name_snapshot, m.group_jid,
+           m.counterpart_phone,
+           m.raw_baileys_event->>'pushName' AS pushname,
+           cli_s.full_name AS sender_crm_name,
+           cli_s.company_name AS sender_company,
+           cli_c.full_name AS counterpart_crm_name,
+           cli_c.company_name AS counterpart_company
+    FROM whatsapp_message_context m
+    LEFT JOIN clients cli_s
+      ON cli_s.deleted_at IS NULL
+     AND m.sender_phone IS NOT NULL
+     AND (
+       cli_s.phone_normalized = regexp_replace(m.sender_phone, '\\D', '', 'g')
+       OR cli_s.phone = m.sender_phone
+       OR cli_s.whatsapp = m.sender_phone
+     )
+    LEFT JOIN clients cli_c
+      ON cli_c.deleted_at IS NULL
+     AND m.counterpart_phone IS NOT NULL
+     AND (
+       cli_c.phone_normalized = regexp_replace(m.counterpart_phone, '\\D', '', 'g')
+       OR cli_c.phone = m.counterpart_phone
+       OR cli_c.whatsapp = m.counterpart_phone
+     )
+    WHERE m.team_member_phone = ANY($1::text[])
       ${where}
-      AND message_date >= NOW() - INTERVAL '30 days'
+      AND m.message_date >= NOW() - INTERVAL '30 days'
       AND (
-        COALESCE(length(body),0) > 0
-        OR media_type IN ('image','document','video','audio','sticker')
+        COALESCE(length(m.body),0) > 0
+        OR m.media_type IN ('image','document','video','audio','sticker')
       )
-    ORDER BY message_date ASC, id ASC
+    ORDER BY m.message_date ASC, m.id ASC
     LIMIT 500;
     `,
     params,
