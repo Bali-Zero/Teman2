@@ -543,6 +543,7 @@ function MessageBubbleComponent({
                   status={message.metadata.nlm_status}
                   domainLabel={message.metadata.nlm_domain_label}
                   onToggleCitations={() => setShowCitations((prev) => !prev)}
+                  isExpanded={showCitations}
                 />
               )}
 
