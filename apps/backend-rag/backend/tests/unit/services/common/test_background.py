@@ -146,3 +146,67 @@ async def test_inflight_cleared_after_all_done():
     await asyncio.gather(*tasks)
     await asyncio.sleep(0)
     assert len(background._inflight) == 0
+
+
+# ---------------------------------------------------------------------------
+# Background-loop pool concurrency guard (god-test S12 / FIX-1 2026-05-24)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _reset_bg_semaphore():
+    """Reset the module-level lazy semaphore between tests so each test
+    binds its own loop instance."""
+    background._bg_pool_semaphore = None
+    yield
+    background._bg_pool_semaphore = None
+
+
+@pytest.mark.asyncio
+async def test_get_bg_pool_semaphore_returns_singleton(_reset_bg_semaphore):
+    sem1 = background.get_bg_pool_semaphore()
+    sem2 = background.get_bg_pool_semaphore()
+    assert sem1 is sem2
+    assert isinstance(sem1, asyncio.Semaphore)
+
+
+@pytest.mark.asyncio
+async def test_bg_pool_semaphore_bounds_concurrency_to_two(_reset_bg_semaphore):
+    """Three concurrent loops must serialize so at most 2 hold the semaphore
+    at any instant — this is the actual guarantee that prevents pool exhaust."""
+    sem = background.get_bg_pool_semaphore()
+    in_flight = 0
+    peak = 0
+    lock = asyncio.Lock()
+    release = asyncio.Event()
+    entered = [asyncio.Event() for _ in range(3)]
+
+    async def loop_body(idx: int):
+        nonlocal in_flight, peak
+        async with sem:
+            async with lock:
+                in_flight += 1
+                peak = max(peak, in_flight)
+            entered[idx].set()
+            await release.wait()
+            async with lock:
+                in_flight -= 1
+
+    tasks = [asyncio.create_task(loop_body(i)) for i in range(3)]
+    # Wait until exactly 2 have entered
+    await asyncio.wait_for(
+        asyncio.gather(entered[0].wait(), entered[1].wait()), timeout=1.0,
+    )
+    # Third must still be blocked on the semaphore
+    assert not entered[2].is_set()
+    assert peak == 2
+    release.set()
+    await asyncio.gather(*tasks)
+    assert peak == 2
+
+
+def test_bg_loop_pool_concurrency_constant_is_two():
+    """Hardcoded contract: 2 background loops max, leaving ≥8 of 10 pool
+    slots for request handlers. Changing this constant changes safety
+    margins — keep the test as a tripwire."""
+    assert background.BG_LOOP_POOL_CONCURRENCY == 2

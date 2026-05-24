@@ -63,4 +63,37 @@ def _on_done(task: asyncio.Task[Any]) -> None:
         )
 
 
-__all__ = ["spawn"]
+# ---------------------------------------------------------------------------
+# Background-loop pool concurrency guard
+# ---------------------------------------------------------------------------
+#
+# Shared semaphore that bounds concurrent PG-pool acquisitions performed by
+# long-running background loops (NOT request handlers). The default DB pool
+# has ``max_size=10`` (see ``backend.app.setup.service_initializer``); three
+# unsynchronised loops (olympus heartbeat, team-timesheet auto-logout,
+# attendance escalation) can otherwise align with a request burst and
+# exhaust the pool, deadlocking the FastAPI event loop (god-test S12, FIX-1
+# cicatrix 2026-05-24).
+#
+# Limit of 2 concurrent loops leaves at least 8 pool slots for request
+# handlers under worst-case alignment.
+
+BG_LOOP_POOL_CONCURRENCY: int = 2
+
+_bg_pool_semaphore: asyncio.Semaphore | None = None
+
+
+def get_bg_pool_semaphore() -> asyncio.Semaphore:
+    """Return the process-wide semaphore bounding background-loop pool access.
+
+    Lazily constructed on first call so it binds to the running event loop
+    rather than to import-time (which would raise on Python 3.10+ if no
+    loop is yet running).
+    """
+    global _bg_pool_semaphore
+    if _bg_pool_semaphore is None:
+        _bg_pool_semaphore = asyncio.Semaphore(BG_LOOP_POOL_CONCURRENCY)
+    return _bg_pool_semaphore
+
+
+__all__ = ["BG_LOOP_POOL_CONCURRENCY", "get_bg_pool_semaphore", "spawn"]
