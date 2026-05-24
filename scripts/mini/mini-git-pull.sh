@@ -195,6 +195,10 @@ fi
 
 # Refuse if HEAD has diverged from target ref (not ff-able).
 if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
+  if git merge-base --is-ancestor "$TARGET_REF" HEAD 2>/dev/null; then
+    log "Local main is ahead of $TARGET_REF; skip pull"
+    exit 0
+  fi
   log "WARN: HEAD diverged from $TARGET_REF (not ff-able)."
   log "  local=$LOCAL  remote=$REMOTE"
   telegram_alert "diverged" \
