@@ -400,12 +400,32 @@ async function fetchOverview() {
     }
     convs.sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
 
-    const totalMsgs = convs.reduce((acc, c) => acc + c.n, 0);
+    // True raw count from DB (not conv-aggregated, single source of truth)
+    const rawCountRow = await pool.query(
+      `
+      SELECT
+        COUNT(*) AS msgs_total,
+        COUNT(*) FILTER (WHERE chat_type='direct') AS msgs_direct,
+        COUNT(*) FILTER (WHERE chat_type='group')  AS msgs_group,
+        COUNT(*) FILTER (WHERE chat_type='direct' AND counterpart_phone IS NULL AND counterpart_lid IS NOT NULL) AS msgs_lid_only,
+        COUNT(*) FILTER (WHERE media_type IN ('image','document','video','audio','sticker')) AS msgs_media
+      FROM whatsapp_message_context
+      WHERE team_member_phone = ANY($1::text[])
+        AND message_date >= NOW() - INTERVAL '${since}'
+      `,
+      [aliases],
+    );
+    const counts = rawCountRow.rows[0] || {};
+
     result.by_phone[member.phone] = {
       team: member,
       bridge,                    // Feature #2 (health pill)
       session: sessionInfo,      // messages_logged / messages_filtered / connected_at
-      total: totalMsgs,
+      total: parseInt(counts.msgs_total || 0, 10),
+      msgs_direct: parseInt(counts.msgs_direct || 0, 10),
+      msgs_group: parseInt(counts.msgs_group || 0, 10),
+      msgs_lid_only: parseInt(counts.msgs_lid_only || 0, 10),
+      msgs_media: parseInt(counts.msgs_media || 0, 10),
       direct_count: convs.filter((c) => c.kind === "direct").length,
       group_count: convs.filter((c) => c.kind === "group").length,
       crm_count: crmMatched,

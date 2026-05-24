@@ -429,7 +429,9 @@ function renderTeams() {
           </div>
           <div class="team-phone">${escapeHtml(m.phone)}</div>
           <div class="team-pills">
-            <span class="pill">${pd.total} msg</span>
+            <span class="pill" title="msg totali nel DB (last 30d, all chat types)">${pd.total} msg</span>
+            ${pd.msgs_media ? `<span class="pill" title="media (img+doc+video+audio+sticker)">📎 ${pd.msgs_media}</span>` : ""}
+            ${pd.msgs_lid_only ? `<span class="pill lid" title="msg con counterpart_lid only (no phone resolved)">lid ${pd.msgs_lid_only}</span>` : ""}
             ${pd.crm_count ? `<span class="pill crm">CRM ${pd.crm_count}</span>` : ""}
             ${pd.attention.high   ? `<span class="pill attention">${pd.attention.high} HIGH</span>` : ""}
             ${pd.attention.medium ? `<span class="pill attention-med">${pd.attention.medium} MED</span>` : ""}
