@@ -108,8 +108,11 @@ class TestWhatsAppNotificationService:
         mock_client.messages.create = MagicMock()
 
         with patch("twilio.rest.Client", return_value=mock_client):
-            # Mock wait_for to raise TimeoutError
-            with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
+            async def raise_timeout(awaitable, timeout=None):
+                awaitable.close()
+                raise asyncio.TimeoutError()
+
+            with patch("asyncio.wait_for", side_effect=raise_timeout):
                 result = await whatsapp_service.send_message(
                     "+1234567890",
                     "Test message",

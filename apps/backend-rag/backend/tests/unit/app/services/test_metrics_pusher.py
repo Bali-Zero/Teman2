@@ -78,7 +78,12 @@ class TestMetricsPusher:
         """Test starting metrics pusher"""
         with patch("backend.app.services.metrics_pusher.asyncio.create_task") as mock_task:
             mock_task_instance = MagicMock()
-            mock_task.return_value = mock_task_instance
+
+            def close_created_coro(coro):
+                coro.close()
+                return mock_task_instance
+
+            mock_task.side_effect = close_created_coro
             metrics_pusher.start()
             assert metrics_pusher._running is True
             assert metrics_pusher._task == mock_task_instance

@@ -345,10 +345,11 @@ class TestDatasetBuilding:
         assert user_count <= 6  # 20% of 30, may be 5 due to integer rounding
         assert synthetic_count in [15, 16]  # 50% of 30, rounding may vary
 
-    def test_build_dataset_invalid_ratios(self, dataset_builder):
+    @pytest.mark.asyncio
+    async def test_build_dataset_invalid_ratios(self, dataset_builder):
         """Test that invalid ratios are handled gracefully."""
         try:
-            result = dataset_builder.build_dataset(
+            result = await dataset_builder.build_dataset(
                 target_size=20,
                 expert_ratio=0.5,
                 user_ratio=0.5,

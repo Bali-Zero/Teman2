@@ -440,7 +440,13 @@ class TestStartDigestLoop:
     def test_creates_task(self):
         svc = _make_service()
         with patch("asyncio.create_task") as mock_ct:
-            mock_ct.return_value = MagicMock(done=MagicMock(return_value=False))
+            mock_task = MagicMock(done=MagicMock(return_value=False))
+
+            def close_created_coro(coro):
+                coro.close()
+                return mock_task
+
+            mock_ct.side_effect = close_created_coro
             svc.start_digest_loop()
             mock_ct.assert_called_once()
 
