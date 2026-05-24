@@ -148,9 +148,14 @@ _client_singleton: httpx.AsyncClient | None = None
 
 
 def _get_client() -> httpx.AsyncClient:
-    """Return shared async HTTP client (lazy-init, golden rule #10)."""
+    """Return shared async HTTP client (lazy-init, golden rule #10).
+
+    Mirrors ``backend/services/notifications/email_http.py`` pattern:
+    module-level singleton with ``is_closed`` guard so a closed client is
+    re-instantiated automatically (e.g. after FastAPI dev autoreload).
+    """
     global _client_singleton
-    if _client_singleton is None:
+    if _client_singleton is None or _client_singleton.is_closed:
         _client_singleton = httpx.AsyncClient(
             timeout=httpx.Timeout(OLLAMA_TIMEOUT_S),
             limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
