@@ -1,5 +1,48 @@
 echo "🔍 Running pre-commit hooks..."
 
+# ── Redis Lease Registry hot-zone check (SOTA wave 2026-05-24) ──────────────
+# Closes cicatrix family W40/W50/W51/W52 (concurrent agent sessions mutating
+# shared hot-zone paths: LaunchAgent wrappers, migrations_v2/*.sql, sentinel
+# scripts, auth/billing/pricing services, .github/workflows/*).
+#
+# Behavior:
+#   - For each staged file matching a HOT_ZONE_REGEX, calls
+#     `python3 scripts/agent_lease.py check <path>`.
+#   - If that file is leased by ANOTHER task (per Redis registry) → exit 1
+#     with holder details (task_id, host, pid, ttl).
+#   - If owned by us ($TASK_ID env) OR free → continue.
+#   - Redis down / lib missing → script logs WARN, exits 0 → commit passes.
+#   - Kill switch:  AGENT_LEASE_ENFORCEMENT=false  → all checks skipped.
+#
+# Latency: <500ms target (local Redis <5ms per call, regex pass through small
+# staged sets is negligible).
+
+if [ "${AGENT_LEASE_ENFORCEMENT:-true}" != "false" ]; then
+    HOT_ZONE_REGEX='^(infra/launchagents/.*\.sh|apps/backend-rag/backend/db/migrations_v2/.*\.sql|shared/escalations.*\.jsonl|scripts/(nuzantara-sentinel|dlq_autopilot|pg-to-organism-bridge)\.py|\.github/workflows/.*|apps/backend-rag/backend/services/(auth|billing|pricing)/.*)$'
+    HOT_STAGED=$(git diff --cached --name-only --diff-filter=d | grep -E "$HOT_ZONE_REGEX" || true)
+    if [ -n "$HOT_STAGED" ]; then
+        echo "🔒 [lease-check] hot-zone files staged — checking Redis lease registry..."
+        LEASE_BLOCK=0
+        while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            if ! python3 scripts/agent_lease.py check "$path"; then
+                LEASE_BLOCK=1
+            fi
+        done <<EOF
+$HOT_STAGED
+EOF
+        if [ "$LEASE_BLOCK" -ne 0 ]; then
+            echo ""
+            echo "❌ ERROR: one or more staged hot-zone paths are leased by another agent task."
+            echo "   See docs/runbooks/redis-lease-registry.md for usage."
+            echo "   Override (emergency only): AGENT_LEASE_ENFORCEMENT=false git commit ..."
+            echo "   If this lease is yours, set TASK_ID=<your-id> in env."
+            exit 1
+        fi
+        echo "✅ [lease-check] no blocking leases on staged hot-zone paths."
+    fi
+fi
+
 # W41 (2026-05-23): migration-number uniqueness lint when staged files
 # touch migrations_v2/. Closes the W40 direct-push bypass — the CI
 # workflow lint-migration-numbers.yml only fires on pull_request, so L2
