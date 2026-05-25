@@ -24,6 +24,12 @@ export type CapturedMessageRecord = {
   direction: Direction;
   teamMemberPhone: string;
   counterpartPhone: string;
+  // CICATRIX 2026-05-25: direct messages on WA Multi-Device arrive as `@lid`
+  // (Linked Identity) without a phone yet. Pre-fix the bridge silently dropped
+  // 100% of LID-only direct chats (group cipher = SenderKey still worked, only
+  // direct Signal pairwise sessions surfaced as @lid). Async resolver maps
+  // counterpart_lid → phone later via wa_lid_phone_resolution materialized view.
+  counterpartLid: string | null;
   body: string;
   timestamp: Date;
   mediaType: MediaType;
@@ -121,12 +127,14 @@ export class PgMessageContextStore implements MessageContextStore {
           media_type, media_mime, media_url, raw_baileys_event,
           baileys_message_id, team_member_email, source,
           chat_type, group_jid, group_subject_snapshot,
-          sender_phone, sender_lid, sender_jid, sender_push_name_snapshot)
+          sender_phone, sender_lid, sender_jid, sender_push_name_snapshot,
+          counterpart_lid)
        VALUES
          ($1, $2, $3, $4, $5, $6, $6, $14, $7, $8, $9, $10,
           $11::jsonb, $12, $4, 'wa_mirror',
           $13, $15, $16,
-          $17, $18, $19, $20)
+          $17, $18, $19, $20,
+          $21)
        ON CONFLICT (baileys_message_id) WHERE baileys_message_id IS NOT NULL
        DO UPDATE SET
          client_id = EXCLUDED.client_id,
@@ -134,6 +142,7 @@ export class PgMessageContextStore implements MessageContextStore {
          direction = EXCLUDED.direction,
          team_member_phone = EXCLUDED.team_member_phone,
          counterpart_phone = EXCLUDED.counterpart_phone,
+         counterpart_lid = COALESCE(EXCLUDED.counterpart_lid, whatsapp_message_context.counterpart_lid),
          body = EXCLUDED.body,
          message_text = EXCLUDED.message_text,
          phone_number = EXCLUDED.phone_number,
@@ -172,6 +181,7 @@ export class PgMessageContextStore implements MessageContextStore {
         row.senderLid,
         row.senderJid,
         row.senderPushName,
+        row.counterpartLid,
       ],
     );
     const id = result.rows[0].id;
@@ -297,6 +307,7 @@ export function extractMessageRecord(
       direction,
       teamMemberPhone,
       counterpartPhone: "",
+      counterpartLid: null,
       body,
       timestamp,
       mediaType: media.mediaType,
@@ -313,23 +324,40 @@ export function extractMessageRecord(
     };
   }
 
-  const counterpartPhone = normalizePhone(jidToPhone(remoteJid));
-  if (!counterpartPhone) return null;
-  if (counterpartPhone === teamMemberPhone) return null;
+  // === CICATRIX 2026-05-25 — DIRECT branch w/ @lid fallback ===
+  // Pre-fix: `if (!counterpartPhone) return null` dropped 100% of WA Multi-Device
+  // direct messages because remoteJid è `<digits>@lid` (Linked Identity), non
+  // `<digits>@s.whatsapp.net`. Sintomo: dashboard mostrava last direct fermo al
+  // 21-mag-2026 mentre i group continuavano a fluire (group cipher = SenderKey,
+  // direct cipher = Signal pairwise via LID — bridge non gestiva lid-direct).
+  // Fix: accept kind === "lid" → store counterpart_lid, attribuzione async via
+  // wa_lid_phone_resolution materialized view (cf. /lid-refresh endpoint).
+  const isPhone = parsed.kind === "phone";
+  const isLid = parsed.kind === "lid";
+  if (!isPhone && !isLid) return null;
+
+  const counterpartPhone = isPhone ? normalizePhone(parsed.phone) : "";
+  const counterpartLid = isLid ? parsed.lid : null;
+  if (isPhone && !counterpartPhone) return null;
+  if (counterpartPhone && counterpartPhone === teamMemberPhone) return null;
 
   const media = extractMedia(message);
   const body = extractBody(message, media.mediaType);
   const timestamp = parseTimestamp(raw.messageTimestamp);
   const direction: Direction = raw.key?.fromMe ? "outbound" : "inbound";
+  // Stable conv key for messageId fallback (prefer phone, else lid)
+  const convKey =
+    counterpartPhone || (counterpartLid ? `lid:${counterpartLid}` : "unknown");
   const messageId =
     raw.key?.id ??
-    `${teamMemberPhone}:${counterpartPhone}:${timestamp.getTime()}:${direction}`;
+    `${teamMemberPhone}:${convKey}:${timestamp.getTime()}:${direction}`;
 
   return {
     baileysMessageId: messageId,
     direction,
     teamMemberPhone,
     counterpartPhone,
+    counterpartLid,
     body,
     timestamp,
     mediaType: media.mediaType,
