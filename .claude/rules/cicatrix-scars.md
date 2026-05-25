@@ -1469,160 +1469,6 @@ Opzione C (status quo, scelta 2026-05-21): solo scar + report, no action immedia
 
 ---
 
-### ⚠️ STRUCTURAL: GDRIVE_COMPANIES_FOLDER_ID phantom + wa-mirror bypasses POST /api/clients (2026-05-21)
-
-_Discovered: 2026-05-21 02:50 WITA during user request "ogni nuovo cliente kita.balizero deve avere folder Drive auto" · Severity: P1 · Fix shipped on branch `fix/drive-folder-auto-create-hardening-2026-05-21` (commit `1a3824b39`): secret rotated + 14 orphans backfilled + startup validation + Sentry capture + new `POST /api/crm/clients/{id}/ensure-drive-folder` endpoint for wa-mirror service-to-service calls · Reconciliation cron deferred_
-
-**TRAUMA:** Two compounding bugs left ~30+ clients without Drive folder despite the auto-creation feature being live since 2026-02:
-
-1. **`GDRIVE_COMPANIES_FOLDER_ID` pointed to a ghost folder.** The Fly secret had value `1PGRBCSzXc8T3LYqEB1-hucBaH2YW77Av` — folder never existed (or was deleted long ago). Every `client_type='company'` creation triggered `ServiceAccountDriveService.create_client_folder` → `files.create(parents=[ghost_id])` → `404 File not found` → exception swallowed by `BackgroundTask` try/except → API returned 201 to the client, silently no folder. No alert, no Sentry (or PII-redacted), no metric. ~30 company clients orfani in DB.
-2. **`wa-mirror-auto-promote-leads.py` and `wa-mirror-dash` bypass the API router.** Both do `INSERT INTO clients (...) created_by='wa-mirror-auto-promote'` directly via asyncpg, never call `POST /api/clients`, so `create_client_folder` BackgroundTask is never scheduled. 5/7 recent orphans were wa-mirror leads.
-
-Empirical scope last-60d (2026-05-21 audit):
-| created_by | drive/total |
-|---|---|
-| `wa-mirror-*` | 0/5 (100% miss) |
-| UI (`zero@`, `adit@`, `krisna@`, `ari.firda@`) on `company` | 0/7 (100% miss — phantom secret) |
-| UI on `individual` | OK (parent `Individual_CRM` valid) |
-| `system-import` (legacy) | 0/16 — fuori scope |
-
-**ANTIBODY (shipped 2026-05-21 — commit `1a3824b39`):**
-
-1. **Secret rotation** — `fly secrets set GDRIVE_COMPANIES_FOLDER_ID=1rLlr2G7TdNUmmvQ_xN9pZQLbPrDFjUsW -a nuzantara-rag` → punta ora a `BALI ZERO/CRM/Company_CRM`, deployed + machine restart verified.
-2. **Backfill** — `/tmp/backfill_drive_folders_v2.py` (run inside Fly api machine `7847d95ce257d8`): re-runs `ServiceAccountDriveService.create_client_folder` for clients with `google_drive_folder_id IS NULL`. 14 clients backfillati (7 individual + 7 company post-rotation). Tutti hanno 6 sottocartelle top-level in `client_drive_subfolders` table.
-3. **Startup validation** — `ServiceAccountDriveService.__init__` ora chiama `_validate_configured_folders()` che fa un `files.get()` su ciascuno dei 3 parent ID (`GOOGLE_DRIVE_ROOT_FOLDER_ID`, `GDRIVE_INDIVIDUALS_FOLDER_ID`, `GDRIVE_COMPANIES_FOLDER_ID`). Log ERROR a boot se 404/trashed/inaccessibile — visibilità immediata di future rotation a ID malformati.
-4. **Sentry capture** — `BackgroundTask` Drive ora avvolto in `_create_drive_folder_with_observability` (crm_clients.py): `sentry_sdk.capture_exception` con tag `subsystem=drive_folder_create` e `client_type`. PII già redacted via `sentry_config.py:_before_send` (scar 2026-04-21). Silent failure → P2 ticket.
-5. **Service-to-service endpoint** — `POST /api/crm/clients/{id}/ensure-drive-folder` (idempotente: returns `{"created": false}` se già esiste). Auth via JWT user OR `X-Internal-Key` header (settings `wa_mirror_internal_key`). `~/scripts/wa-mirror-auto-promote-leads.py` aggiornato per chiamare l'endpoint dopo INSERT con key letta da `~/.wa-mirror.env`. 6 unit test coprono route registration, idempotency, create-when-missing, 404 on missing client.
-
-**ANTIBODY (deferred):**
-
-- **Periodic reconciliation cron.** Daily job: `SELECT count(*) FROM clients WHERE google_drive_folder_id IS NULL AND deleted_at IS NULL AND created_at > NOW() - INTERVAL '7 days'` → if > 0 → Telegram alert. Catches future regressions in <24h instead of being discovered only when user asks "perché manca?". Non shipped — opzione (b) outbox event-driven preferita ma scope creep.
-- **25 storici orfani** (16 `system-import` + 9 `created_by IS NULL`) deliberatamente fuori scope. Da fare con script targeted se/quando emergono in workflow.
-
-**GOTCHA:**
-
-- Per la rotation: `fly secrets set` mette in `staged`, MUST poi `fly secrets deploy` per applicare alle machines. `fly secrets set --stage` lascia esplicito che è staged; senza `--stage` Fly fa restart automatico (anche più veloce).
-- L'errore 404 di Drive sembra "permanent" ma in realtà se la cartella esiste ma il service account non è stato condiviso, l'errore è IDENTICO (`File not found`). Modo per distinguere: prova `files.get(supportsAllDrives=true)` impersonando user con accesso (es. `zero@balizero.com`) vs senza DWD.
-- `ServiceAccountDriveService` su Fly usa `Domain-wide delegation` impersonando `zero@balizero.com` (vedi log `"✅ Using Domain-wide delegation, impersonating: zero@balizero.com"`). Quindi le folder devono essere accessibili a `zero@balizero.com` (non al SA email diretto). La nuova `Company_CRM` lo è perché è dentro `BALI ZERO/CRM` di proprietà di Zero.
-- `Individual_CRM` esiste sotto `BALI ZERO/CRM` parent `1je2YOEzBf2APKDbAdaXo2MGIu4N5nAEl` ed è correttamente referenziato dal secret. La gerarchia attesa è `BALI ZERO/CRM/{Individual_CRM,Company_CRM,Archive_CRM}` — verificato listing 2026-05-21.
-- Esistono 39 active orphans totali (14 backfillati + 16 `system-import` + 9 `created_by IS NULL`). I 25 storici NON sono nello scope di questo fix.
-
----
-
-### ⚠️ STRUCTURAL: Intel Lake routing prefix-blind for subdomains (2026-05-20)
-
-_Discovered: 2026-05-20 03:00 WITA durante Phase A audit · Patched PR-B1a `feat/intel-lake-2stage-routing-2026-05-20` · Severity: P1_
-
-**TRAUMA:** Phase A audit ha trovato che **90% intel_items finivano in `needs_review`** invece di essere classificati. Producer scraper inviava `source_domain="kompas.com"` o `tempo.co` ma le rules in `intel_lake_router.py` matchavano solo TLD diretto, non sotto-dominii (es. `nasional.kompas.com` → unmatched). Effetto: la coda `needs_review` cresceva quotidianamente di ~50 items/day, router silently skipping. Compounding: SSOT JSON (`~/scripts/intel-lake-routing-rules.json`) deviava dal Python backend (`_RULES` in `intel_lake_router.py`) — Pro-local router cron usava JSON, Fly backend usava Python. 4-LLM panel verdict (Gemini + Codex 3/3 convergent): rules troppo restrittive, non un bug pipeline.
-
-**ANTIBODY (shipped feat/intel-lake-2stage-routing-2026-05-20):**
-
-1. **2-stage routing**: domain match (con `_SUBDOMAIN_PREFIX = r"(?:[a-z0-9-]+\.)*"` regex tollerante) → keyword content match → classifica. `_PRESS_GENERAL_RE` apre la lista press, ma deve poi ottenere un match in `_PRESS_REGULATORY_KEYWORDS` (visa/kitas/pajak/pmk/kbli/...) per andare a `nb-intel/press`. Gov rules restano STRICT (security: non vuoi `nasional.kompas-fake.com` che si dichiari `kemenkumham.go.id`).
-2. **Shadow mode**: env `INTEL_LAKE_ROUTING_SHADOW=1` → calcola classifica ma non muta DB. Permette A/B test live.
-3. **SSOT reconciliation**: `~/scripts/intel-lake-routing-rules.json` _meta.version bumped to 2, `synced_from_backend_at = 2026-05-20`. Nota corretta: in-process router IS attivo, `DISABLE_BACKGROUND_WORKERS` NON è settato in prod.
-4. **`backfill_needs_review(dry_run=True)`** helper: ri-classifica retroattivamente la coda `needs_review` con le nuove rules. Default dry_run per safety. 49/49 unit test pass.
-
-**GOTCHA:**
-
-- `_PRESS_GENERAL_RE` deve mai includere `.go.id` o `kemenkumham/*` — quelli sono gov authoritative, lì TLD strict. Mix-up = fake gov authority bypass.
-- `_SUBDOMAIN_PREFIX` regex usa `(?:...)` non-capturing — non rompere `re.match(_PRESS_GENERAL_RE, domain).group(0)` (non c'è group, usa `.group(0)`).
-- Backfill cron NON è attivo automaticamente — solo invocato manualmente da Antonello via `python -m backend.services.intel.intel_lake_router --backfill`.
-
----
-
-### ✅ RESOLVED: outbox-drain stderr noise (2026-05-20)
-
-_Discovered: 2026-05-13 audit `~/logs/intel-lake-outbox-drain.err` 841KB · **RESOLVED** PR-B2 2026-05-20 `chore/outbox-drain-log-routing-2026-05-20`_
-
-**TRAUMA:** `/Users/nuzantara/scripts/intel-lake-outbox-drain.py` usava `logging.basicConfig` default che routa ogni livello a stderr. `.err` log cresceva indefinitamente (~841KB in 7 giorni) con INFO routinari "idle (pending=N delivered=M)" che Pro launchd cattura come "stderr → errore". Effetto: false-alarm fatigue, vero WARN/ERROR sepolti.
-
-**ANTIBODY (shipped):**
-
-Split-stream handlers: `_stdout_handler` filtra `< WARNING` (INFO/DEBUG → stdout `.log`), `_stderr_handler` filtra `>= WARNING` (WARN/ERROR → stderr `.err`). Stesso formatter, root logger ha entrambi handlers.
-
-```python
-_stdout_handler = logging.StreamHandler(sys.stdout)
-_stdout_handler.setLevel(logging.DEBUG)
-_stdout_handler.addFilter(lambda r: r.levelno < logging.WARNING)
-_stderr_handler = logging.StreamHandler(sys.stderr)
-_stderr_handler.setLevel(logging.WARNING)
-```
-
-**GOTCHA:** se aggiungi un nuovo handler (es: Sentry), va aggiunto a `logging.root.handlers = [...]` esplicito, non basta `addHandler`. Il root logger `.handlers = []` riscrive l'intera lista.
-
----
-
-### ⚠️ STRUCTURAL: WR2 master template requires verified richtext slot count (2026-05-10 → architecturally bypassed 2026-05-13)
-
-_Discovered: 2026-05-10 02:53 WITA · Patched via `chore/wr2-pipeline-hardening-2026-05-10` · **Architecturally bypassed 2026-05-13 via `feat/wr2-canva-pdf-render-2026-05-13`** (ReportLab→Tigris→Canva import, no master template required) · Severity: P0 (defanged)_
-
-**RESOLUTION (2026-05-13):** New rendering pipeline: PDF generated server-side via ReportLab (`wr2_canva_pdf_render.py`, 12 layout families), uploaded to Tigris S3, imported into Canva via `import-design-from-url` MCP → no richtext slots needed.
-
-| Design ID     | Status                    | Reason                               |
-| ------------- | ------------------------- | ------------------------------------ |
-| `DAHE6lx1lf8` | DECOMMISSIONED 2026-05-08 | Original master, obsolete            |
-| `DAHJLYRn_3E` | KEPT AS FAILURE EXAMPLE   | Only 2 usable pages (PR #565 failed) |
-| `DAHJEkWpkzY` | UNUSED IN NEW FLOW        | Was the 2026-05-10 "fix" master      |
-
-**Production cron disabled 2026-05-13**: kill switch `system_settings.wr2_canva_renderer_enabled='false'` + `launchctl bootout gui/$(id -u)/com.balizero.wr2.canva-renderer`. Plist preserved on disk for reload after orchestrator refactor. Queue: 0 pending, 20 rendered + 15 rejected.
-
-**Plist resurrection 2026-05-15 → PURGED 2026-05-19 (4-LLM panel decision)**: someone (sibling agent / re-bootstrap) re-loaded `com.balizero.wr2.canva-renderer.plist` despite the 2026-05-13 bootout. From 2026-05-15 20:07 to 2026-05-19 10:04: 1122 traceback in `wr2_canva_apply.error.log` (4.1 MB), every 5min `socket.gaierror: [Errno 8] nodename nor servname provided` on `DATABASE_URL=postgres://...flycast` (Fly internal hostname, irrisolvibile da Pro). The DB kill-switch was correctly OFF the whole time but the script crashed on `asyncpg.connect()` BEFORE reading it (gaierror happens in `_connect_addr` socket.getaddrinfo call, never reaches the kill-switch SELECT). Panel synthesis 2026-05-19 (Gemini + DeepSeek + Codex 3/3 convergent, doc: `research/operations/2026-05-19-wr2-intel-lake-fixes-panel.md`): purge plist + archive script + add `launchd_cicatrix_lint.sh` pre-push hook (Wave 2 Codex unique). The "preserved for reload" stance was wrong — preserving on disk under `~/Library/LaunchAgents/` IS the attack surface for sibling-agent resurrection. Correct posture: physical move to `.disabled-YYYY-MM-DD/` directory + script archival under `scripts/.disabled-YYYY-MM-DD/`.
-
-New `canva_renderer_v2` package (~1000 LOC, 9 modules). T1-T13 commits on `feat/wr2-canva-pdf-render-2026-05-13`, 47/47 unit tests passing. Key modules: migration 170 lease columns, `_telegram.py`, `_schema_adapter.py`, `_pdf_pipeline.py`, `_tigris.py`, `_token_storage.py` (HMAC+flock), `_canva_mcp.py` (mcp SDK 1.27.0), `_pg.py` asyncpg, `_telemetry.py`, orchestrator, entrypoint, bootstrap+watchdogs, 3 launchd plists. Deploy via `docs/runbooks/wr2-orchestrator-pdf-render-runbook.md`.
-
-**TRAUMA:** PR #565 promoted `DAHJLYRn_3E` as new master without verifying its shape. Design only had richtext slots on pages 2-3; renderer emits ops for pages 1+4-11. Phase A live-mapping detected 19/22 ops (86%) would drop → `template_mismatch`. Phase 0 had already wiped 3 elements. CI checks (E2E+MCP) were green — they tested python code, NOT the live template shape.
-
-**ANTIBODY (shipped `chore/wr2-pipeline-hardening-2026-05-10`):**
-
-1. **Pre-flight validator** `scripts/wr2_validate_master.py` — exits non-zero if design missing, <11 usable pages, or <18 richtext elements (filter: `width >= 30`). Run before any commit bumping `TEMPLATE_DESIGN_ID`.
-2. **Unit-test contract** `test_template_design_id_format` asserts constant matches `^DAH[A-Za-z0-9_-]{8}$`.
-3. **Docstring header** on `TEMPLATE_DESIGN_ID` lists verification checklist.
-
-**GOTCHA:**
-
-- Phase 0 wipes master BEFORE Phase A detects mismatch — a wrong design ID means someone else's design gets blanked. Validator catches this pre-wipe; run it before every `TEMPLATE_DESIGN_ID` change.
-- `start-editing-transaction` returns ALL richtext elements; renderer + validator both filter `width >= 30`. Change threshold in one → must change both (no programmatic link).
-- `DAHJLYRn_3E` is kept in Canva (not trashed) as canonical failure example.
-- Future template promotions: prefer designs that are verified clones of a working master.
-
----
-
-### ⚠️ STRUCTURAL: WR2 canva-apply path coupling between deploy worktree and main repo (2026-05-10)
-
-_Discovered: 2026-05-10 03:50 WITA · Severity: P0 · Workaround SHIPPED in `chore/wr2-pipeline-hardening-2026-05-10`: skill reads `WR2_OUTPUT_ROOT` env var; production plist exports canonical path so deploy worktree and main repo align._
-
-**TRAUMA:** Production cron runs `wr2_canva_desktop_apply.py` from deploy worktree `/Users/nuzantara/Desktop/nuzantara-deploy`; writes `canva_pending.json` there. The `/canva-apply` skill was hardcoded to read from the main repo path. Result: skill read a stale/absent file and silently timed out polling.
-
-Temporary fix was a runtime symlink (fragile: destroyed by `git worktree remove`; invisible without `ls -la`).
-
-**ANTIBODY (shipped):**
-
-1. Skill reads `WR2_OUTPUT_ROOT` env var (fallback: legacy main-repo path). Plist exports `WR2_OUTPUT_ROOT` matching the writer side. Symlink no longer needed.
-2. Snapshot copy at `infra/claude-skills/canva-apply.md` with CI drift check.
-3. **Long-term TODO**: move output dir to `~/var/wr2/output/canva/` (out of git tree entirely).
-
-**GOTCHA:**
-
-- `WR2_OUTPUT_ROOT` must NOT have trailing slash. Plist value is normalized (skill strips on read).
-- `wr2_canva_desktop_apply.py` reads `WR2_REPO_ROOT` (different var — repo root for venv+imports vs output dir). Don't conflate.
-- Local skill at `~/.claude/skills/canva-apply.md` is NOT in git by default; iterate locally → commit to `infra/claude-skills/`.
-
----
-
-### ✅ RESOLVED: LegalIngestionService bypasses OpenAI 300k token batch limit (2026-05-10 → resolved post-2026-05-10)
-
-_Discovered: 2026-05-10 ~15:00 WITA · **RESOLVED** (verified 2026-05-17 by reading `backend/core/embeddings.py`) · Move to archive at next cleanup._
-
-**RESOLUTION:** `EmbeddingsGenerator.generate_embeddings_batch()` now implements two-level batching (lines 409-509 of `embeddings.py`):
-
-- Level 1: item batches of max 50 texts
-- Level 2: `_split_by_token_budget()` splits each item batch into sub-batches ≤200k tokens
-- `_embed_batch()` propagates exceptions instead of swallowing (cicatrix comment at line 374-382)
-- `_truncate_oversized_input()` handles single inputs >8192 tokens
-
-3 affected documents (Permenkumham 22/2023, 11/2024, Permen ATR/BPN 18/2021) need re-ingest against `legal_unified_hybrid_hybrid` — they were 0 chunks before the fix shipped.
-
----
 
 ### ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)
 
@@ -1654,31 +1500,6 @@ Blast radius: `regulation-alert.30min` sends duplicate Telegram alerts; `kg-link
 
 ---
 
-### ⚠️ STRUCTURAL: NLM feeder split-brain — base_worker redis-cli has no host arg, prod has two local Redis instances (2026-05-06)
-
-_Discovered: 2026-05-06 22:00 WITA · Patched same day, branch `fix/nlm-feeder-resurrect-2026-05-06` · Severity: P0_
-
-**TRAUMA:** `apps/mata-garuda/mata_garuda/workers/base_worker.py` called `redis-cli` with no `-h`/`-p` flags → always hit `127.0.0.1`. After 2026-05-02 Modo B reorg, sentinel moved to Mini but feeder stayed on Pro. Pro Redis `garuda:alerts`: 258 entries, frozen since 2026-05-05. Mini Redis: fresh. Feeder consumed Pro's stale stream for ~36h; logs showed `processed=0, fed=0` — misread as "no new items". Compounding: 2 `sqlite3.OperationalError: disk I/O error` per 106 runs (WAL not enabled on `KnowledgeBase.__init__`).
-
-Before fix (22:30 WITA): NB-INTEL-Immigration 61 sources, last updated 2026-05-04. After fix (23:00 WITA): +61 total sources across all 5 NB-INTEL notebooks.
-
-**ANTIBODY (shipped):**
-
-1. `base_worker.redis_cmd` reads `GARUDA_REDIS_HOST` + `GARUDA_REDIS_PORT` env vars; prepends `-h $host` to every redis-cli call. Unset → localhost (backward compat).
-2. `KnowledgeBase.__init__` enables WAL + `synchronous=NORMAL` — lock contention waits on busy_timeout instead of crashing.
-3. 9 new tests (`test_redis_host_override.py` + `test_knowledge_resilience.py`).
-4. Mini Redis: `bind 127.0.0.1 ::1 100.93.236.6`, `protected-mode no`. Backup at `/opt/homebrew/etc/redis.conf.pre-tailscale-bind-2026-05-06`.
-5. Pro plist gains `GARUDA_REDIS_HOST=100.93.236.6` in `EnvironmentVariables`. Reloaded via `launchctl bootout + bootstrap`.
-
-**GOTCHA:**
-
-- `redis-cli` does NOT honor `GARUDA_REDIS_HOST` — env var is ONLY for the Python wrapper. Debug: use `redis-cli -h $host` explicitly; verify via `INFO server | grep run_id` (Pro and Mini each have unique `run_id`).
-- Env-var override only takes effect after `fix/nlm-feeder-resurrect-2026-05-06` merges to main; until then, hourly cron still reads Pro localhost.
-- Future cross-host consumers MUST set `GARUDA_REDIS_HOST=100.93.236.6` — no auto-discovery.
-- 753 nlm_fed dedup entries from pre-patch Pro era remain in `data/knowledge.db`. Overlapping URLs skipped on first cycle (visible as `skipped=N`) — correct, not a bug.
-- `getcwd: cannot access parent directories` errors in launchd logs are RED HERRING from zsh `-l` startup; feeder works fine. Out of scope.
-
----
 
 ### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
 
@@ -1739,33 +1560,6 @@ Incident #2 key sequence: Session-A wrote 4 untracked `.py` + 18/18 tests passin
 - Files written via `Write` tool but never `git add`-ed have NO blob in `.git/objects` → unrecoverable via fsck. Only `git add`-ed content is recoverable.
 - `/tmp/innervation-recovery-*` dirs are volatile (cleared on macOS reboot) — commit within minutes.
 - `nuz-sync` is incident #1 suspect (fired at 21:42 inside 5-min cron tick) but NOT incident #2 (watchdog log shows it ran at 22:32:31, AFTER the hijack).
-
----
-
-### ✅ RESOLVED: Backend `/health` masks `app.state.startup_failed` (2026-04-29 → resolved 2026-04-29)
-
-_Discovered: 2026-04-29 audit zero-crash · Resolved: 2026-04-29 commit `2a3256758` PR #337 · Severity: P0 (defanged)_
-
-**RESOLUTION (2026-04-29):** Commit `2a3256758` (`fix(p0-0): /health 503 on startup_failed + Cell pulse semantic classify (#337)`) ships the proposed antibody verbatim. `apps/backend-rag/backend/app/routers/health.py:249` now calls `_check_startup_failed(request.app)` at the TOP of `health_check()` (before any other branch) and returns HTTP 503 with `status="unhealthy"` when `app.state.startup_failed=True`. A second guard at `health.py:270` (`_check_warmup_timeout`) flips to 503 when startup is still incomplete past `STARTUP_WARMUP_DEADLINE_S` (default 180s, env-overridable). Fly.io auto-restart fires correctly on the non-2xx response. Pulse classification (`apps/cell/cell/core/pulse.py`) updated in same commit to classify on body `status` field (`unhealthy/startup_failed/failed/down` → red; `degraded/initializing/warming` → yellow), closing BS-0b.
-
-**ANTIBODY (shipped, code excerpt `health.py:242-249`):**
-
-```python
-# P0-0: surface app.state.startup_failed as HTTP 503 BEFORE any other branch.
-# _check_startup_failed already exists (lines 48-55); the bug fixed here
-# is that health_check never called it, so a deterministically-broken
-# backend reported HTTP 200 + status='healthy' indefinitely. Fly.io
-# auto-restart only fires on non-2xx, so without 503 the machine never
-# recycles. See cicatrix STRUCTURAL 2026-04-29 'Backend /health masks
-# app.state.startup_failed'.
-startup_err = _check_startup_failed(request.app)
-```
-
-**TRAUMA (historical):** `app_factory.py:114-118` catches RuntimeError from critical service init, sets `app.state.startup_failed=True`, returns. `health.py:48-55` defined `_check_startup_failed()` helper but `health_check()` at lines 147-266 NEVER CALLED IT. A broken backend returned HTTP 200 from `/health` forever — Fly auto-restart only fires on non-2xx. The 2026-04-29 03:11Z incident (login broken, machine in restart loop) was exactly this pattern.
-
-**Compounding (BS-0b, also resolved):** `apps/cell/cell/core/pulse.py` classified green on `status_code == 200` — same blind spot, addressed in same PR.
-
-**GOTCHA:** Do NOT `raise` in `_init_critical_services` (graceful degradation per Symbiosis Law 4) — without it uvicorn won't bind 8080. Warmup 180s assumes RAG cold-start ≤90-120s; tune via `STARTUP_WARMUP_DEADLINE_S` env if Qdrant retry loop or embedding load runs longer. Fly.io health-check `grace_period` is capped at 60s — this deadline is the app-level guard after boot starts.
 
 ---
 
@@ -1878,6 +1672,19 @@ done
 ## Archived
 
 Resolved scars moved to [`cicatrix-scars-archive.md`](./cicatrix-scars-archive.md) (not auto-loaded per session). Currently archived:
+
+**Archived 2026-05-25 sweep (8 scars, RESOLVED/INFO < 2026-05-18):**
+
+- ⚠️ STRUCTURAL: GDRIVE_COMPANIES_FOLDER_ID phantom + wa-mirror bypasses POST /api/clients (2026-05-21) — fix shipped commit `1a3824b39`
+- ⚠️ STRUCTURAL: Intel Lake routing prefix-blind for subdomains (2026-05-20) — patched PR-B1a
+- ✅ RESOLVED: outbox-drain stderr noise (2026-05-20) — PR-B2
+- ⚠️ STRUCTURAL: WR2 master template requires verified richtext slot count (2026-05-10 → bypassed 2026-05-13)
+- ⚠️ STRUCTURAL: WR2 canva-apply path coupling (2026-05-10) — workaround shipped
+- ✅ RESOLVED: LegalIngestionService bypasses OpenAI 300k token batch limit (2026-05-10)
+- ⚠️ STRUCTURAL: NLM feeder split-brain — base_worker redis-cli no host arg (2026-05-06) — patched same day
+- ✅ RESOLVED: Backend `/health` masks `app.state.startup_failed` (2026-04-29) — PR #337
+
+**Historical archives (pre-2026-05-25 cleanup):**
 
 - ✅ RESOLVED: OpenClaw MCP child apparent mortality = test artifact (2026-05-02)
 - ✅ RESOLVED: Backend prod down — drive_poll_service called missing method on ServiceAccountDriveService (2026-04-29)
