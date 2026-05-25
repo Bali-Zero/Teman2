@@ -55,7 +55,9 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
         return  # pytest.skip raises, but help static analyzers see it
 
     table = "mig_strip_rollback_probe"
-    sql_file = tmp_path / "200_strip_rollback_probe.sql"
+    # Use migration_number=9999 to avoid uq_schema_migrations_migration_number
+    # collision with real migrations applied by the seed/setup (e.g. 200_wa_copilot_*).
+    sql_file = tmp_path / "9999_strip_rollback_probe.sql"
     sql_file.write_text(
         f"CREATE TABLE {table} (id INT);\n-- === ROLLBACK ===\nDROP TABLE {table};\n",
         encoding="utf-8",
@@ -65,7 +67,7 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
         # Pre-clean any leftover state from a previous run (other test, crash).
         await probe.execute(f"DROP TABLE IF EXISTS {table}")
         # Ensure schema_migrations exists so apply() can record itself,
-        # then clear any prior row for migration 200.
+        # then clear any prior row for migration 9999.
         await probe.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations ("
             "  id SERIAL PRIMARY KEY, migration_name VARCHAR(255) UNIQUE NOT NULL,"
@@ -74,11 +76,11 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
             "  execution_time_ms INTEGER, rollback_sql TEXT)"
         )
         await probe.execute(
-            "DELETE FROM schema_migrations WHERE migration_name = '200_strip_rollback_probe'"
+            "DELETE FROM schema_migrations WHERE migration_number = 9999 OR migration_name = '9999_strip_rollback_probe'"
         )
 
         migration = BaseMigration(
-            migration_number=200,
+            migration_number=9999,
             sql_file=sql_file.name,
             description="regression test: rollback section must not run on apply",
             rollback_sql=f"DROP TABLE {table};",
@@ -107,6 +109,6 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
     finally:
         await probe.execute(f"DROP TABLE IF EXISTS {table}")
         await probe.execute(
-            "DELETE FROM schema_migrations WHERE migration_name = '200_strip_rollback_probe'"
+            "DELETE FROM schema_migrations WHERE migration_number = 9999 OR migration_name = '9999_strip_rollback_probe'"
         )
         await probe.close()
