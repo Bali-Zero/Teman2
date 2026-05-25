@@ -22,7 +22,7 @@ primary_region = 'sin'
   # --timeout-worker-healthcheck 600: presidio/torch/transformers import chain
   # takes ~7min on shared-cpu-1x (1 vCPU); default 5s was killing workers during
   # import (2026-04-12 incident). Also see grace_period below.
-  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2 --timeout-worker-healthcheck 600"
+  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 1 --timeout-worker-healthcheck 600"
   # RAG is reached over Fly 6PN via rag.process.nuzantara-rag.internal, so it
   # must bind IPv6. It intentionally has no [[services]] Fly Proxy block.
   rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1 --timeout-worker-healthcheck 600"
@@ -67,18 +67,22 @@ primary_region = 'sin'
   [[http_service.checks]]
     interval = '30s'
     timeout = '10s'
-    # Fly now caps health-check grace periods at 60s. RAG cold-start tolerance is
-    # handled by --timeout-worker-healthcheck and the /health warmup logic.
-    grace_period = '60s'
+    # EMERGENCY 2026-05-25: boot ~5min37s on api process (cold import chain).
+    # Old 60s grace caused infinite restart loop — Fly killed uvicorn before
+    # port bind. 300s gives headroom for worst-case cold start.
+    grace_period = '300s'
     method = 'GET'
     path = '/health/ready'
 
 [[vm]]
-  # 2026-05-09: api OOM-killed a worker at 1GB with --workers 2 during
-  # production traffic/cold-start imports. Keep api at 2GB like rag.
-  memory = '2gb'
+  # EMERGENCY 2026-05-25: workers reduced 2→1 (single-worker mode) +
+  # cpus 1→2 + memory 2gb→3gb. Prior config OOM-killed workers under
+  # production traffic — second-time outage in 90min. Restart loop
+  # observed: worker crash → parent re-import 5min → HC exhaust → kill.
+  # 2026-05-09 comment kept for history: api OOM-killed at 1GB with --workers 2.
+  memory = '3gb'
   cpu_kind = 'shared'
-  cpus = 1
+  cpus = 2
   processes = ['api']
 
 [[vm]]
