@@ -22,7 +22,10 @@ primary_region = 'sin'
   # --timeout-worker-healthcheck 600: presidio/torch/transformers import chain
   # takes ~7min on shared-cpu-1x (1 vCPU); default 5s was killing workers during
   # import (2026-04-12 incident). Also see grace_period below.
-  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2 --timeout-worker-healthcheck 600"
+  # 2026-05-25: api is a 1-vCPU machine; 2 workers duplicate scheduler/background
+  # loops and DB pools, which caused intermittent /health/ready timeouts after
+  # the CRM Guardian bulk load. Keep api single-worker unless the VM gets more CPU.
+  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 1 --timeout-worker-healthcheck 600"
   # RAG is reached over Fly 6PN via rag.process.nuzantara-rag.internal, so it
   # must bind IPv6. It intentionally has no [[services]] Fly Proxy block.
   rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1 --timeout-worker-healthcheck 600"
@@ -74,8 +77,8 @@ primary_region = 'sin'
     path = '/health/ready'
 
 [[vm]]
-  # 2026-05-09: api OOM-killed a worker at 1GB with --workers 2 during
-  # production traffic/cold-start imports. Keep api at 2GB like rag.
+  # 2026-05-09: api OOM-killed a worker at 1GB during production
+  # traffic/cold-start imports. Keep api at 2GB like rag.
   memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
