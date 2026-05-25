@@ -320,6 +320,11 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="websocket", process_groups=_API, tags=("channels",)),
     # ── WhatsApp ──
     RouterEntry(
+        name="wa_actions",
+        process_groups=_API,
+        tags=("channels", "crm", "wa-copilot"),
+    ),
+    RouterEntry(
         name="wa_dashboard_stream",
         process_groups=_API,
         tags=("channels", "crm", "wa-dashboard", "sse"),
