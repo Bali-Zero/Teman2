@@ -13,13 +13,26 @@ Position Bali Zero as trusted explainer, not fear-based publisher.
 
 Most goods and services in Indonesia are NOT effectively taxed at full 12%.
 
-For most transactions, effective VAT burden remains around 11% because of:
+For standard BKP/JKP transactions, effective VAT burden is 11% because of:
 
-- DPP Nilai Lain mechanism
-- 11/12 calculation basis
-- PMK 131/2024 implementation
+- DPP Nilai Lain mechanism (Pasal 3 PMK 131/2024)
+- 11/12 calculation basis: 12% × (11/12 × harga jual) = 11% effective
+- Applies to: standard goods, standard services, imports, intangible JKP
+  from outside Customs Area (relevant for PT PMA receiving parent company
+  services — consulting, licensing, royalty IP — self-assessed PPN = 11%)
 
-The 12% full rate mainly affects luxury goods categories.
+EXCEPTION — Sektor Pasal 4 PMK 131/2024 punya effective rate LEBIH RENDAH:
+- Jasa pengiriman paket: 1.1%
+- Agen perjalanan: 1.1%
+- Freight forwarding: 1.1%
+- Agen & broker asuransi: 1.1%–2.2%
+- Konstruksi sendiri (KMS): 2.2%
+- Produk pertanian: 1.1%
+- Kendaraan bermotor bekas: 1.1%
+Framing wajib: "BKP/JKP standar effective 11% — sektor Pasal 4 punya
+effective rate tersendiri, tidak boleh digeneralisir."
+
+The 12% full rate applies ONLY to Barang Mewah PPnBM (see Slide 4).
 
 ## Angle
 
@@ -49,7 +62,15 @@ Correct framing:
    Explain DPP Nilai Lain simplification visually.
 
 4. Who Actually Pays 12%
-   Luxury goods categories.
+   Barang Mewah PPnBM — 12% penuh berlaku mulai 1 Feb 2025:
+   - Hunian mewah (rumah, apartemen, town house) nilai jual ≥ Rp 30 miliar
+   - Kendaraan bermotor mewah (PMK 141/PMK.010/2021)
+   - Helikopter dan jet privat
+   - Kapal pesiar dan yacht privat
+   - Senjata api privat dan amunisinya
+   - Balon udara dan glider
+   Note: 1–31 Jan 2025 = masa transisi, barang mewah masih effective 11%.
+   Mulai 1 Feb 2025 = 12% penuh atas harga jual (Pasal 5 PMK 131/2024).
 
 5. Why It Matters
    Impact on business pricing and compliance.
@@ -62,7 +83,13 @@ Correct framing:
 - Avoid absolute claims.
 - Avoid political framing.
 - Use “effective burden” wording carefully.
-- NB-4 verification still required for final figures and examples.
+- NB-4 verified: effective rate 11% confirmed per PMK 131/2024 Pasal 3.
+- CRITICAL — Hotel, restoran, katering, parkir di Bali BUKAN objek PPN.
+  Mereka dikenakan PBJT (Pajak Barang/Jasa Tertentu) regional max 10%,
+  diatur oleh Perda kabupaten/kota. Angle untuk audience Bali operator:
+  "PPN 12% tidak menyentuh kalian sama sekali — kalian kena PBJT daerah."
+- Pajak Masukan dari transaksi DPP Nilai Lain tetap dapat dikreditkan penuh
+  (Pasal 3 ayat 4 PMK 131/2024). Jangan tulis seolah kreditasi terbatas.
 
 ## SEO / Trust Positioning
 
@@ -89,3 +116,16 @@ Wrong framing (“12% untuk semua”) damages credibility and creates misinforma
 ### Strategic Position
 
 Bali Zero should own the “clarity layer” for Indonesian compliance topics.
+
+---
+
+## Citations (Mandatory — include in all published versions)
+
+- PMK 131/2024 Pasal 2–5 (DPP Nilai Lain, tarif, transisi)
+- PMK 131/2024 Pasal 3 ayat 4 (kreditasi Pajak Masukan)
+- UU 7/2021 tentang Harmonisasi Peraturan Perpajakan (HPP)
+- UU 8/1983 jo UU 6/2023 (UU PPN)
+- PMK 141/PMK.010/2021 jo PMK 42/PMK.010/2022 (kendaraan mewah)
+- PMK 81/2024 (CoreTax/PSIAP — e-Faktur classification)
+
+_NB-4 verified by Antonello · 25 Mei 2026 · PR #858_
