@@ -28,6 +28,12 @@ function formatShort(v: number): string {
   return String(v);
 }
 
+function formatTooltipIDR(v: unknown): string {
+  const amount =
+    typeof v === "number" ? v : Number.parseFloat(String(v ?? "0"));
+  return formatIDR(Number.isFinite(amount) ? amount : 0);
+}
+
 interface TrendPoint {
   week_start: string;
   margin_bz: number;
@@ -43,7 +49,7 @@ export function MarginTrendChart({ data }: { data: TrendPoint[] }) {
         <YAxis stroke="#71717a" fontSize={11} tickFormatter={formatShort} />
         <Tooltip
           contentStyle={{ background: "#18181b", border: "1px solid #27272a" }}
-          formatter={(v: number) => formatIDR(v)}
+          formatter={formatTooltipIDR}
         />
         <Legend />
         <Line
@@ -90,7 +96,7 @@ export function TopVisaChart({ data }: { data: VisaPoint[] }) {
         />
         <Tooltip
           contentStyle={{ background: "#18181b", border: "1px solid #27272a" }}
-          formatter={(v: number) => formatIDR(v)}
+          formatter={formatTooltipIDR}
         />
         <Bar dataKey="margin_bz_total_idr" fill="#34d399" name="MBZ" />
       </BarChart>

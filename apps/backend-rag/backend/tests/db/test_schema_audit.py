@@ -459,3 +459,62 @@ def test_report_ok_when_only_warnings() -> None:
         findings=[Finding(code="x", severity="warning", message="heads-up")],
     )
     assert report.ok is True
+
+
+@pytest.mark.asyncio
+async def test_cli_prints_human_report_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def _fake_run_audit(*, database_url: str | None = None) -> AuditReport:
+        assert database_url == "postgres://fake"
+        return AuditReport(
+            checks_run=["pending_migrations"],
+            findings=[
+                Finding(
+                    code="pending_migrations",
+                    severity="error",
+                    message="1 pending",
+                    details={"pending": [202]},
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(schema_audit, "run_audit", _fake_run_audit)
+
+    code = await schema_audit._amain(["--database-url", "postgres://fake"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "SCHEMA AUDIT" in captured.out
+    assert "[ERROR] pending_migrations" in captured.out
+    assert '"pending": [202]' in captured.out
+
+
+@pytest.mark.asyncio
+async def test_cli_prints_json_report_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def _fake_run_audit(*, database_url: str | None = None) -> AuditReport:
+        assert database_url == "postgres://fake"
+        return AuditReport(
+            checks_run=["tracking_divergence"],
+            findings=[
+                Finding(
+                    code="migration_tracking_missing_in_canonical",
+                    severity="error",
+                    message="tracking mismatch",
+                    details={"missing_in_canonical": [201]},
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(schema_audit, "run_audit", _fake_run_audit)
+
+    code = await schema_audit._amain(["--database-url", "postgres://fake", "--json"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert '"ok": false' in captured.out
+    assert '"missing_in_canonical": [201]' in captured.out
