@@ -307,6 +307,35 @@ async function handleConnectionUpdate(
     }
     logger.info({ sessionId: ctx.sessionId }, "wa-mirror session connected");
     await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger);
+
+    // CICATRIX 2026-05-25: refresh pre-keys on every connect.
+    // Pre-fix: bridge initial pairing seeded ~30 prekeys, all consumed over time.
+    // Peers then tried to negotiate using preKey IDs the bridge had discarded →
+    // PreKeyError: Invalid PreKey ID on every direct-LID message (sintomo:
+    // dashboard direct chats frozen 4+ days while groups kept flowing because
+    // group cipher = SenderKey, no per-message prekey rotation needed).
+    // Baileys auto-uploads on initial pairing only; refresh on each reconnect.
+    try {
+      const refresher = sock as unknown as {
+        uploadPreKeysToServerIfRequired?: () => Promise<void>;
+        uploadPreKeys?: () => Promise<void>;
+      };
+      if (typeof refresher.uploadPreKeysToServerIfRequired === "function") {
+        await refresher.uploadPreKeysToServerIfRequired();
+      } else if (typeof refresher.uploadPreKeys === "function") {
+        await refresher.uploadPreKeys();
+      }
+      logger.info(
+        { sessionId: ctx.sessionId },
+        "wa-mirror prekey refresh attempted",
+      );
+    } catch (err) {
+      logger.warn(
+        { sessionId: ctx.sessionId, err: (err as Error).message },
+        "wa-mirror prekey refresh failed (non-fatal)",
+      );
+    }
+
     if (ctx.resolveOnFirstOpen) {
       // onboard.ts: auth state is persisted, our job is done.
       deps.settleResolve();
