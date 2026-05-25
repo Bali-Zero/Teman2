@@ -195,10 +195,39 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         printQRInTerminal: false,
         browser: [ctx.sessionLabel, "Chrome", "1.0.0"],
         logger: logger.child({ component: "baileys" }),
-        markOnlineOnConnect: false,
-        syncFullHistory: false,
-        shouldSyncHistoryMessage: () => false,
+        // CICATRIX 2026-05-25: markOnlineOnConnect changed false→true.
+        // Baileys issue #2491 (Jhey02 empirical) — markOnline=false combined
+        // with the messageMutex hold in messages-recv.ts:1153 causes
+        // executeInitQueries → fetchProps to hit Timed Out, then ACK never
+        // fires and messages.upsert is permanently blocked while connection
+        // stays "open" (sintomo: 9/9 bridges connected, 0 upserts in DB).
+        markOnlineOnConnect: true,
+        // CICATRIX 2026-05-25 (afternoon): re-enable history sync.
+        // Baileys 7.0.0-rc13 emits literal DANGER warning:
+        // "DISABLING ALL SYNC BY shouldSyncHistoryMsg PREVENTS BAILEYS FROM
+        //  ACCESSING INITIAL LID MAPPINGS, LEADING TO INSTABILITY AND
+        //  SESSION ERRORS". Without LID→PN mapping the socket cannot
+        // resolve incoming direct messages (LID JIDs from non-WA-Business
+        // contacts), so messages.upsert NEVER fires for direct chats while
+        // groups (SenderKey, stateless) keep working. Empirical 9/9 bridges
+        // dead on direct ingest from 10:17 WITA today — this was the cause.
+        // Previous false-positives diagnosed: deaf-session #2491, registered:false,
+        // version override, all were noise — the smoking gun was Baileys'
+        // own DANGER log buried in the noise.
+        syncFullHistory: true,
+        // shouldSyncHistoryMessage removed — defaults to syncing initial,
+        // then the bridge ignores subsequent history events (we don't store
+        // history, only live messages.upsert anyway).
         generateHighQualityLinkPreview: false,
+        // CICATRIX 2026-05-25: explicit timeouts per Baileys issue #2064/#2491.
+        // Default defaultQueryTimeoutMs=undefined → promiseTimeout skips the
+        // enforce path (generics.ts:154) → init queries hang forever instead
+        // of failing fast and triggering reconnect. 60s gives WA time to ACK
+        // on slow networks but still fails-fast vs infinite hang.
+        defaultQueryTimeoutMs: 60_000,
+        // Default keepAlive ~45s; WA terminates ~50s. 25s window avoids the
+        // race where WA cuts the socket between two pings.
+        keepAliveIntervalMs: 25_000,
       });
 
       sock.ev.on("creds.update", saveCreds);
