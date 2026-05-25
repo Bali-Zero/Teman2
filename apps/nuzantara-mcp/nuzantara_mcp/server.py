@@ -128,6 +128,7 @@ async def _call_safe(
 # --- Register all tool modules ---
 # --- Core domain tools ---
 from nuzantara_mcp.tools.crm import register as register_crm
+from nuzantara_mcp.tools.crm_guardian_drive import register as register_crm_guardian_drive
 from nuzantara_mcp.tools.portal import register as register_portal
 from nuzantara_mcp.tools.intel import register as register_intel
 from nuzantara_mcp.tools.content import register as register_content
@@ -176,6 +177,7 @@ from nuzantara_mcp.workflows.chains import register as register_chains
 
 # Core domain
 register_crm(mcp, _call, _call_safe)
+register_crm_guardian_drive(mcp, _call, _call_safe)
 register_portal(mcp, _call, _call_safe)
 register_intel(mcp, _call, _call_safe)
 register_content(mcp, _call, _call_safe)

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -242,6 +243,11 @@ def test_check_ignores_mtime_days_drift(aged_fixture):
                     line = "|".join(parts)
                 except ValueError:
                     pass
+        line = re.sub(
+            r"mtime=(\d+)d",
+            lambda match: f"mtime={int(match.group(1)) + 1}d",
+            line,
+        )
         bumped.append(line)
     inventory.write_text("\n".join(bumped) + "\n")
 
