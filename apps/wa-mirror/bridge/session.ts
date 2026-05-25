@@ -219,6 +219,54 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
       sock.ev.on("creds.update", saveCreds);
       registerMessageHandler(sock, ctx);
 
+      // CICATRIX 2026-05-25: Baileys issue #2491 "deaf session" mitigation.
+      // Symptom: WebSocket alive, keepAlive pings OK, but messages.upsert
+      // silently stops firing for incoming DIRECT messages after WA's
+      // server-side flow control gives up (delayed ACKs from messageMutex
+      // contention). Groups keep working because SenderKey is stateless.
+      // Mitigation: track last messages.upsert/messages.update timestamp,
+      // force ws.close() if silent for DEAF_SESSION_TIMEOUT_MS while
+      // connection.update last reported "open". Triggers reconnect loop.
+      const DEAF_SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — issue #2491 recommended default
+      const DEAF_SESSION_CHECK_MS = 60 * 1000; // poll every 60s
+      let lastUpsertAt = Date.now();
+      let connectionOpen = false;
+      const bumpUpsertTs = () => {
+        lastUpsertAt = Date.now();
+      };
+      sock.ev.on("messages.upsert", bumpUpsertTs);
+      sock.ev.on("messages.update", bumpUpsertTs);
+      sock.ev.on("connection.update", (u) => {
+        if (u.connection === "open") {
+          connectionOpen = true;
+          lastUpsertAt = Date.now(); // reset timer on fresh open
+        } else if (u.connection === "close") {
+          connectionOpen = false;
+        }
+      });
+      const deafTimer = setInterval(() => {
+        if (!connectionOpen) return;
+        const silentMs = Date.now() - lastUpsertAt;
+        if (silentMs >= DEAF_SESSION_TIMEOUT_MS) {
+          logger.warn(
+            { sessionId: ctx.sessionId, silentMs },
+            "wa-mirror deaf-session detected — forcing reconnect (issue #2491)",
+          );
+          clearInterval(deafTimer);
+          try {
+            sock.end(new Error("deaf-session"));
+          } catch {
+            // socket may already be tearing down
+          }
+        }
+      }, DEAF_SESSION_CHECK_MS);
+      // Ensure timer is cleaned up when this socket closes for any reason.
+      sock.ev.on("connection.update", (u) => {
+        if (u.connection === "close") {
+          clearInterval(deafTimer);
+        }
+      });
+
       sock.ev.on("connection.update", (update) => {
         // Fire-and-forget — connection.update handlers must not throw.
         void handleConnectionUpdate(update, sock, ctx, {
