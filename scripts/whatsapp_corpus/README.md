@@ -190,6 +190,51 @@ Outputs:
 Rows left blank, held, denied, duplicated, or marked `no_action` do not become
 actions.
 
+## Full Cleartext Local Corpus
+
+When the owner explicitly authorizes full local processing, parse every readable
+TXT chat into an ignored cleartext SQLite database:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.parse_full_corpus
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/full/full_messages.local.sqlite`
+- `research/personal/wa-corpus/full/full_corpus_parse_summary.md`
+
+The SQLite database contains raw message text and is ignored by git. It also
+contains an FTS5 index for local cleartext search.
+
+Set aside only explicit spicy/intimate conversation candidates:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.quarantine_spicy_conversations
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/full/spicy_quarantine.local.sqlite`
+- `research/personal/wa-corpus/full/spicy_quarantine.local.tsv`
+- `research/personal/wa-corpus/full/usable_after_spicy_quarantine.local.tsv`
+- `research/personal/wa-corpus/full/spicy_quarantine_summary.md`
+
+Mine business and memory value signals only from the usable file list:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.mine_full_gold_signals
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/full/full_gold_signals.local.sqlite`
+- `research/personal/wa-corpus/full/full_gold_signals_summary.md`
+- `research/personal/wa-corpus/full/full_corpus_gold_research.md`
+
 ## Analyze Allowed Temporal Metrics
 
 Build aggregate temporal metrics from the ignored parsed-message DB:
