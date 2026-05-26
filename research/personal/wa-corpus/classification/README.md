@@ -46,6 +46,22 @@ PYTHONPATH=. python -m scripts.whatsapp_corpus.resolve_refs \
 The resolver prints raw local paths to the terminal. Do not redirect that output
 into tracked files.
 
+## Next Step
+
+After classification, generate a private owner-review manifest:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_review_manifest \
+  --root "$HOME/Desktop/wa-chats-MASTER-2026-05-26" \
+  --classification-db research/personal/wa-corpus/classification/chat_classification.sqlite \
+  --output-dir research/personal/wa-corpus/review \
+  --limit 80
+```
+
+The manifest file ending in `.local.tsv` contains raw local paths and must stay
+on the Pro.
+
 ## Meaning
 
 This is not content analysis. It is a conservative gate before content analysis:

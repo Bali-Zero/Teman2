@@ -84,3 +84,30 @@ PYTHONPATH=. python -m scripts.whatsapp_corpus.resolve_refs \
 
 This command prints raw local paths, so do not redirect its output into tracked
 repo files.
+
+## Build Owner Review Manifest
+
+Generate a private manifest for owner decisions before any content mining:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_review_manifest \
+  --root "$HOME/Desktop/wa-chats-MASTER-2026-05-26" \
+  --classification-db research/personal/wa-corpus/classification/chat_classification.sqlite \
+  --output-dir research/personal/wa-corpus/review \
+  --limit 80
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/review/review_manifest.local.tsv`
+- `research/personal/wa-corpus/review/review_manifest_summary.md`
+
+The `.local.tsv` file contains raw local paths and is ignored by git. Use its
+blank `owner_decision` column to create the next allowlist/denylist:
+
+- `allow_team_local`
+- `allow_business_local`
+- `deny_personal`
+- `deny_sensitive`
+- `unknown_hold`
