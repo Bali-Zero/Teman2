@@ -30,3 +30,22 @@ Outputs:
 
 Only the summary is tracked. The local SQLite stores raw parsed message text and
 raw sender labels, so it must stay on the Pro.
+
+## Analyze Aggregate Signals
+
+Run deterministic signal analysis over the ignored parsed-message SQLite:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_allowed_signals \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --output-dir research/personal/wa-corpus/analysis
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_signal_hits.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_signal_summary.md`
+
+The signal SQLite stores no raw body text, but it is still ignored by git. Treat
+signal codes as routing hints, not legal or client-level conclusions.

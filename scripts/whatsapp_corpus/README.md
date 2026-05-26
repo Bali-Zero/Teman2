@@ -153,3 +153,22 @@ Outputs:
 
 The SQLite file stores raw parsed message text and raw sender labels. It is
 ignored by git and must stay on the Pro.
+
+## Analyze Allowed Signals
+
+Run deterministic aggregate signal analysis over the ignored parsed-message DB:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_allowed_signals \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --output-dir research/personal/wa-corpus/analysis
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_signal_hits.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_signal_summary.md`
+
+The signal report is aggregate-only. Signal codes are routing hints for the
+next local extractor, not legal or client-level conclusions.
