@@ -49,6 +49,11 @@
 # ---------------------------------------------------------------------------
 /apps/backend-rag/backend/app/auth/                  @Balizero1987
 /apps/backend-rag/backend/app/core/config.py         @Balizero1987
+# Forward-decl (L5.2 Phase 3 2026-05-26): services/auth/ never materialized in
+# git history. Current auth lives in app/auth/ (middleware + validation).
+# Keep the entry to inherit @Balizero1987 review if a future refactor spins
+# provider-integration code out of app/auth into services/auth. CODEOWNERS
+# silently ignores non-existent paths — zero runtime cost.
 /apps/backend-rag/backend/services/auth/             @Balizero1987
 
 # ---------------------------------------------------------------------------
@@ -56,6 +61,10 @@
 # ---------------------------------------------------------------------------
 /apps/backend-rag/backend/services/invoicing/        @Balizero1987
 /apps/backend-rag/backend/services/pricing/          @Balizero1987
+# Forward-decl (L5.2 Phase 3 2026-05-26): services/billing/ never materialized
+# in git history. Reserved for a future consolidation dir aggregating
+# invoicing/ + pricing/ (+ subscription handling). Keep the entry so it
+# auto-inherits @Balizero1987 review the moment the dir is created.
 /apps/backend-rag/backend/services/billing/          @Balizero1987
 
 # ---------------------------------------------------------------------------
