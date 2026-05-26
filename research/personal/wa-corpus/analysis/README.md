@@ -49,3 +49,23 @@ Outputs:
 
 The signal SQLite stores no raw body text, but it is still ignored by git. Treat
 signal codes as routing hints, not legal or client-level conclusions.
+
+## Extract Structured Candidates
+
+Run hashed candidate extraction over the ignored parsed-message SQLite:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.extract_allowed_candidates \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --output-dir research/personal/wa-corpus/analysis
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_candidates.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_candidates_summary.md`
+
+The candidate SQLite stores only category codes, evidence codes, body hashes,
+and extracted value hashes. Do not treat hashed candidates as client-level facts
+until a local owner review resolves them.

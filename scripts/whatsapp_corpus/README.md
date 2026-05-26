@@ -172,3 +172,22 @@ Outputs:
 
 The signal report is aggregate-only. Signal codes are routing hints for the
 next local extractor, not legal or client-level conclusions.
+
+## Extract Allowed Candidates
+
+Extract hashed structured candidates from the ignored parsed-message DB:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.extract_allowed_candidates \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --output-dir research/personal/wa-corpus/analysis
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_candidates.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_candidates_summary.md`
+
+The candidate SQLite stores hashed body/value references only. It is still
+ignored by git because hashes are local review aids, not publishable evidence.
