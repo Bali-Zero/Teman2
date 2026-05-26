@@ -2,7 +2,7 @@ import type pino from "pino";
 
 export async function sendTelegramAlert(
   text: string,
-  logger?: pino.Logger
+  logger?: pino.Logger,
 ): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_OWNER_CHAT_ID;
@@ -19,15 +19,18 @@ export async function sendTelegramAlert(
           text,
           disable_web_page_preview: true,
         }),
-      }
+      },
     );
     if (!response.ok) {
       logger?.warn(
         { status: response.status },
-        "wa-mirror Telegram alert failed"
+        "wa-mirror Telegram alert failed",
       );
     }
-  } catch {
-    logger?.warn("wa-mirror Telegram alert threw");
+  } catch (err) {
+    logger?.warn(
+      { err: (err as Error).message },
+      "wa-mirror Telegram alert threw",
+    );
   }
 }

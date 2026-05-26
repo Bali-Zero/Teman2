@@ -17,12 +17,26 @@ export type MediaType =
 export type WaMirrorAccount = {
   phone: string;
   name: string;
+  /**
+   * FIX 4 (2026-05-26): team_member_email separated from team_member_phone.
+   * Pre-fix: SQL `team_member_email = $4` reused the phone param, so CRM
+   * joins on @balizero.com email broke. Empty string means "unknown email"
+   * — caller may default to "" when manifest does not provide it.
+   */
+  email?: string;
 };
 
 export type CapturedMessageRecord = {
   baileysMessageId: string;
   direction: Direction;
   teamMemberPhone: string;
+  /**
+   * FIX 4 (2026-05-26): explicit email, distinct from phone. Default "" when
+   * manifest does not declare it (CRM join handles "" as "unmapped team
+   * member"). Pre-fix SQL reused $4 (phone) for team_member_email which
+   * broke joins on @balizero.com.
+   */
+  teamMemberEmail: string;
   counterpartPhone: string;
   // CICATRIX 2026-05-25: direct messages on WA Multi-Device arrive as `@lid`
   // (Linked Identity) without a phone yet. Pre-fix the bridge silently dropped
@@ -120,6 +134,11 @@ export class PgMessageContextStore implements MessageContextStore {
       row.counterpartPhone === "" ? null : row.counterpartPhone;
     const phoneNumberOrNull = counterpartPhoneOrNull;
 
+    // FIX 4 (2026-05-26): team_member_email moved off $4 (phone). Now a
+    // dedicated $21 param sourced from row.teamMemberEmail. Default "" is
+    // accepted by the column.
+    // MERGE 2026-05-26: keep counterpart_lid from main (932573ae7) as $22
+    // (was $21 in main pre-merge; renumbered because $21 is now email).
     const result = await query<{ id: number }>(
       `INSERT INTO whatsapp_message_context
          (client_id, practice_id, direction, team_member_phone,
@@ -131,10 +150,10 @@ export class PgMessageContextStore implements MessageContextStore {
           counterpart_lid)
        VALUES
          ($1, $2, $3, $4, $5, $6, $6, $14, $7, $8, $9, $10,
-          $11::jsonb, $12, $4, 'wa_mirror',
+          $11::jsonb, $12, $21, 'wa_mirror',
           $13, $15, $16,
           $17, $18, $19, $20,
-          $21)
+          $22)
        ON CONFLICT (baileys_message_id) WHERE baileys_message_id IS NOT NULL
        DO UPDATE SET
          client_id = EXCLUDED.client_id,
@@ -181,7 +200,8 @@ export class PgMessageContextStore implements MessageContextStore {
         row.senderLid,
         row.senderJid,
         row.senderPushName,
-        row.counterpartLid,
+        row.teamMemberEmail ?? "", // $21
+        row.counterpartLid, // $22
       ],
     );
     const id = result.rows[0].id;
@@ -254,7 +274,14 @@ export async function persistCapturedMessage(
   message: CapturedMessageRecord,
   deps: PersistDeps,
 ): Promise<{ id: number; row: PersistedMessageContext }> {
-  const clientId = await deps.resolveClientId(message.counterpartPhone);
+  // FIX 3 (2026-05-26): on group messages counterpartPhone is always "" (the
+  // chat is identified by groupJid, not by a single phone). The CRM lookup
+  // must use the SENDER phone to attribute the message to a client.
+  const lookupPhone =
+    message.chatType === "group"
+      ? (message.senderPhone ?? "")
+      : message.counterpartPhone;
+  const clientId = lookupPhone ? await deps.resolveClientId(lookupPhone) : null;
   const practiceId =
     clientId === null ? null : await deps.resolvePracticeId(clientId);
 
@@ -271,6 +298,22 @@ export function extractMessageRecord(
 ): CapturedMessageRecord | null {
   const message = raw.message;
   if (!message) return null;
+
+  // FIX 2 (2026-05-26): skip protocol/reaction/poll-update envelopes that
+  // carry no user-facing body. Persisting them produced row-noise downstream
+  // (empty body, NULL media, no clientId match attempt makes sense).
+  const ctrlMsg = message as {
+    protocolMessage?: unknown;
+    reactionMessage?: unknown;
+    pollUpdateMessage?: unknown;
+  };
+  if (
+    ctrlMsg.protocolMessage ||
+    ctrlMsg.reactionMessage ||
+    ctrlMsg.pollUpdateMessage
+  ) {
+    return null;
+  }
 
   const teamMemberPhone = normalizePhone(account.phone);
   if (!teamMemberPhone) return null;
@@ -306,6 +349,7 @@ export function extractMessageRecord(
       baileysMessageId: messageId,
       direction,
       teamMemberPhone,
+      teamMemberEmail: account.email ?? "",
       counterpartPhone: "",
       counterpartLid: null,
       body,
@@ -324,14 +368,13 @@ export function extractMessageRecord(
     };
   }
 
-  // === CICATRIX 2026-05-25 — DIRECT branch w/ @lid fallback ===
-  // Pre-fix: `if (!counterpartPhone) return null` dropped 100% of WA Multi-Device
-  // direct messages because remoteJid è `<digits>@lid` (Linked Identity), non
-  // `<digits>@s.whatsapp.net`. Sintomo: dashboard mostrava last direct fermo al
-  // 21-mag-2026 mentre i group continuavano a fluire (group cipher = SenderKey,
-  // direct cipher = Signal pairwise via LID — bridge non gestiva lid-direct).
-  // Fix: accept kind === "lid" → store counterpart_lid, attribuzione async via
-  // wa_lid_phone_resolution materialized view (cf. /lid-refresh endpoint).
+  // === CICATRIX 2026-05-25 + FIX 1 2026-05-26 — DIRECT branch w/ @lid fallback ===
+  // 932573ae7 (main): accept kind === "lid" → store counterpart_lid; async
+  //   attribution via wa_lid_phone_resolution materialized view.
+  // 4c071cf48 (this PR): preserve self-note outbound (counterpartPhone ===
+  //   teamMemberPhone && raw.key.fromMe === true) as legitimate, only drop
+  //   when fromMe=false (echo).
+  // Merge: main's counterpartLid + self-note nuance from 4c071cf48.
   const isPhone = parsed.kind === "phone";
   const isLid = parsed.kind === "lid";
   if (!isPhone && !isLid) return null;
@@ -339,7 +382,17 @@ export function extractMessageRecord(
   const counterpartPhone = isPhone ? normalizePhone(parsed.phone) : "";
   const counterpartLid = isLid ? parsed.lid : null;
   if (isPhone && !counterpartPhone) return null;
-  if (counterpartPhone && counterpartPhone === teamMemberPhone) return null;
+  // FIX 1 (2026-05-26): self-note outbound (fromMe=true on own JID) is legit.
+  if (
+    counterpartPhone &&
+    counterpartPhone === teamMemberPhone &&
+    raw.key?.fromMe === false
+  ) {
+    return null;
+  }
+  // directSenderLid kept as alias for senderLid persistence below (parity
+  // with main's senderJid=remoteJid binding when chat is LID-direct).
+  const directSenderLid: string | null = counterpartLid;
 
   const media = extractMedia(message);
   const body = extractBody(message, media.mediaType);
@@ -356,6 +409,7 @@ export function extractMessageRecord(
     baileysMessageId: messageId,
     direction,
     teamMemberPhone,
+    teamMemberEmail: account.email ?? "",
     counterpartPhone,
     counterpartLid,
     body,
@@ -368,8 +422,8 @@ export function extractMessageRecord(
     groupJid: null,
     groupSubject: null,
     senderPhone: null,
-    senderLid: null,
-    senderJid: null,
+    senderLid: directSenderLid,
+    senderJid: remoteJid,
     senderPushName: raw.pushName ?? null,
   };
 }
@@ -421,7 +475,14 @@ function mediaMeta(
 
 function parseTimestamp(value: BaileysMessageLike["messageTimestamp"]): Date {
   if (typeof value === "number") return new Date(value * 1000);
-  if (typeof value === "string") return new Date(Number(value) * 1000);
+  // FIX 12 (2026-05-26): fallback to now() when the string is not numeric.
+  // Pre-fix `Number(value)` could return NaN → `new Date(NaN)` produces
+  // an Invalid Date that crashes ISO serialization downstream.
+  if (typeof value === "string") {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return new Date();
+    return new Date(n * 1000);
+  }
   if (value && typeof value.toNumber === "function") {
     return new Date(value.toNumber() * 1000);
   }

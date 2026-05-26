@@ -5,38 +5,52 @@
 
 import pg from "pg";
 import type { PoolConfig, QueryResult } from "pg";
+import pino from "pino";
 
 import { normalizePhone, phoneSearchVariants } from "./phone.js";
+
+const logger = pino({
+  level: process.env.WA_MIRROR_LOG_LEVEL ?? "info",
+  base: { component: "pg" },
+});
 
 let _pool: pg.Pool | null = null;
 
 export function getPool(): pg.Pool {
   if (_pool !== null) return _pool;
-  const connectionString = process.env.WA_MIRROR_DATABASE_URL ?? process.env.DATABASE_URL;
+  const connectionString =
+    process.env.WA_MIRROR_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
-      "wa-mirror: WA_MIRROR_DATABASE_URL or DATABASE_URL must be set."
+      "wa-mirror: WA_MIRROR_DATABASE_URL or DATABASE_URL must be set.",
     );
   }
+  // FIX 11 (2026-05-26): guard against NaN / 0 / negative. A misconfigured
+  // env var pre-fix returned NaN → pg.Pool initializes with NaN max and
+  // refuses connections silently. Default to 5 on any non-finite or <=0
+  // value.
+  const _maxRaw = Number(process.env.WA_MIRROR_PG_MAX_CONN);
   const config: PoolConfig = {
     connectionString,
-    max: Number(process.env.WA_MIRROR_PG_MAX_CONN ?? 5),
+    max: Number.isFinite(_maxRaw) && _maxRaw > 0 ? _maxRaw : 5,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
     application_name: "wa-mirror",
   };
   _pool = new pg.Pool(config);
-  _pool.on("error", () => {
+  _pool.on("error", (err) => {
     // node-postgres emits idle client errors; never crash the daemon.
-    // eslint-disable-next-line no-console
-    console.error("[wa-mirror.pg] idle client error");
+    logger.error(
+      { err: (err as Error).message },
+      "[wa-mirror.pg] idle client error",
+    );
   });
   return _pool;
 }
 
 export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
   sql: string,
-  params: unknown[] = []
+  params: unknown[] = [],
 ): Promise<QueryResult<T>> {
   const pool = getPool();
   return pool.query<T>(sql, params);
@@ -59,7 +73,7 @@ export async function closePool(): Promise<void> {
  * comparisons strip non-digits before matching.
  */
 export async function findClientByPhone(
-  phoneRaw: string
+  phoneRaw: string,
 ): Promise<number | null> {
   const variants = phoneSearchVariants(phoneRaw);
   if (variants.length === 0) return null;
@@ -85,7 +99,7 @@ export async function findClientByPhone(
 }
 
 export async function findOpenPracticeForClient(
-  clientId: number
+  clientId: number,
 ): Promise<number | null> {
   const res = await query<{ id: number }>(
     `SELECT id
@@ -96,7 +110,7 @@ export async function findOpenPracticeForClient(
         )
       ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, id DESC
       LIMIT 1`,
-    [clientId]
+    [clientId],
   );
   return res.rowCount && res.rowCount > 0 ? res.rows[0].id : null;
 }
@@ -116,6 +130,6 @@ export async function touchWhatsAppContact(opts: {
            last_message_at = NOW(),
            total_messages = whatsapp_contacts.total_messages + 1,
            updated_at = NOW()`,
-    [canonical, canonical.replace(/[^\d]/g, ""), opts.name.slice(0, 255)]
+    [canonical, canonical.replace(/[^\d]/g, ""), opts.name.slice(0, 255)],
   );
 }
