@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.repomap.15min</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/build_repomap.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>REPOMAP_ENABLED</key>
+        <string>true</string>
+        <key>REPOMAP_MAX_TOKENS</key>
+        <string>1024</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/repomap.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/repomap.error.log</string>
+</dict>
+</plist>

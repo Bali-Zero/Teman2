@@ -494,7 +494,17 @@ class BaseMigration:
 
                 # Check if already applied
                 if await self._is_applied(conn):
-                    logger.info(f"Migration {self.migration_name} already applied, skipping")
+                    execution_time_ms = int((time.time() - start_time) * 1000)
+                    await self._log_migration(
+                        conn,
+                        sql,
+                        execution_time_ms,
+                        self.rollback_sql,
+                    )
+                    logger.info(
+                        "Migration %s already applied; migration ledgers reconciled",
+                        self.migration_name,
+                    )
                     return True
 
                 # Execute SQL (forward portion only; rollback portion is

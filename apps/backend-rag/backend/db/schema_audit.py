@@ -423,9 +423,11 @@ async def _amain(argv: list[str] | None = None) -> int:
         return 2
 
     if args.json:
-        pass
+        sys.stdout.write(json.dumps(report.to_dict(), sort_keys=True))
+        sys.stdout.write("\n")
     else:
-        pass
+        sys.stdout.write(_format_human(report))
+        sys.stdout.write("\n")
 
     return 0 if report.ok else 1
 

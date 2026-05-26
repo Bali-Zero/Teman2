@@ -1,0 +1,87 @@
+# CODEOWNERS — Bali Zero Nuzantara
+#
+# Empirically validated 2026-05-24 against repo tree + collaborators API.
+# Owner login: @Balizero1987 (admin). Subhi: @SubBZ2026 (write, lane = mouth/*).
+#
+# Reference:
+#   - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#   - SOTA brief: research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md
+#
+# Path-restriction semantic: require @Balizero1987 review for any change touching
+# critical infra / migrations / auth / billing / pricing / launchd / CI workflows.
+# Agentic workflow injection (arXiv 2605.07135) is the primary threat — block any
+# agent (including future Claude/Codex/etc) from silencing CI checks by modifying
+# .github/workflows/ without human owner review.
+#
+# Pattern: last-matching rule wins (GitHub CODEOWNERS spec). Specific paths after
+# broad ones. Wildcards `*` match within a directory; `**` matches recursively.
+
+# ---------------------------------------------------------------------------
+# Default: no required owner (open lane for routine work)
+# ---------------------------------------------------------------------------
+*
+
+# ---------------------------------------------------------------------------
+# CI / workflows / GitHub config — TIER 1 (anti-injection)
+# ---------------------------------------------------------------------------
+/.github/workflows/                                  @Balizero1987
+/.github/dependabot.yml                              @Balizero1987
+/.github/CODEOWNERS                                  @Balizero1987
+/.github/actions/                                    @Balizero1987
+
+# ---------------------------------------------------------------------------
+# Deploy / infra config — TIER 1
+# ---------------------------------------------------------------------------
+/fly.toml                                            @Balizero1987
+/apps/backend-rag/fly.toml                           @Balizero1987
+/apps/backend-rag/Dockerfile                         @Balizero1987
+/infra/launchagents/                                 @Balizero1987
+/docs/infra/launchagents/                            @Balizero1987
+
+# ---------------------------------------------------------------------------
+# Database migrations — TIER 1 (irreversible blast radius)
+# ---------------------------------------------------------------------------
+/apps/backend-rag/backend/db/migrations_v2/          @Balizero1987
+/apps/backend-rag/backend/db/migration_manager.py    @Balizero1987
+
+# ---------------------------------------------------------------------------
+# Auth / security-critical — TIER 1
+# ---------------------------------------------------------------------------
+/apps/backend-rag/backend/app/auth/                  @Balizero1987
+/apps/backend-rag/backend/app/core/config.py         @Balizero1987
+/apps/backend-rag/backend/services/auth/             @Balizero1987
+
+# ---------------------------------------------------------------------------
+# Billing / invoicing / pricing — TIER 1 (financial correctness)
+# ---------------------------------------------------------------------------
+/apps/backend-rag/backend/services/invoicing/        @Balizero1987
+/apps/backend-rag/backend/services/pricing/          @Balizero1987
+/apps/backend-rag/backend/services/billing/          @Balizero1987
+
+# ---------------------------------------------------------------------------
+# Subhi lane (write access, owner co-review per SYMBIOSIS protocol)
+# Perimeter ref: CLAUDE.md §13 + memory reference_bali_zero_team.md
+# ---------------------------------------------------------------------------
+/apps/mouth/src/app/(blog)/                          @SubBZ2026 @Balizero1987
+/apps/mouth/src/app/(marketing)/                     @SubBZ2026 @Balizero1987
+/apps/mouth/src/app/(tax-calendar)/                  @SubBZ2026 @Balizero1987
+/apps/mouth/src/app/property/                        @SubBZ2026 @Balizero1987
+/apps/mouth/src/app/visa/                            @SubBZ2026 @Balizero1987
+/apps/mouth/src/app/kbli/                            @SubBZ2026 @Balizero1987
+/apps/mouth/src/content/visa/                        @SubBZ2026 @Balizero1987
+/apps/mouth/src/components/visa/                     @SubBZ2026 @Balizero1987
+/apps/mouth/src/components/blog/                     @SubBZ2026 @Balizero1987
+/apps/mouth/src/components/kbli/                     @SubBZ2026 @Balizero1987
+/apps/mouth/src/lib/blog/                            @SubBZ2026 @Balizero1987
+/apps/mouth/src/lib/visa-oracle/                     @SubBZ2026 @Balizero1987
+/apps/mouth/public/static/blog/                      @SubBZ2026 @Balizero1987
+/apps/mouth/public/assets/blog/                      @SubBZ2026 @Balizero1987
+/apps/mouth/public/files/visa/                       @SubBZ2026 @Balizero1987
+
+# ---------------------------------------------------------------------------
+# Top-level project meta — owner final review
+# ---------------------------------------------------------------------------
+/CLAUDE.md                                           @Balizero1987
+/SYMBIOSIS.md                                        @Balizero1987
+/VADEMECUM.md                                        @Balizero1987
+/AUTONOMOUS_OPS.md                                   @Balizero1987
