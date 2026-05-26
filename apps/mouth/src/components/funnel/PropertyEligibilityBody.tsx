@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { trackPropertyAnalyzeCTA, trackPropertyWACTA } from "@/lib/analytics";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { parseCoordinates } from "./parse-coordinates";
 
 // Semantic color tokens for the verdict label — fallback hex ensures
@@ -359,7 +360,7 @@ export function PropertyEligibilityBody() {
               }}
             >
               <a
-                href="https://wa.me/628213107363?text=Property%20analysis%20Bali%20Zero"
+                href={buildWhatsAppLink("property")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary"
