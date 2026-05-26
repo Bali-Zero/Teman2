@@ -154,6 +154,26 @@ Outputs:
 The SQLite file stores raw parsed message text and raw sender labels. It is
 ignored by git and must stay on the Pro.
 
+## Analyze Allowed Temporal Metrics
+
+Build aggregate temporal metrics from the ignored parsed-message DB:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_allowed_temporal \
+  --input-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_temporal.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_temporal_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_temporal.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_temporal_summary.md`
+
+The temporal analyzer reads only aggregate-safe columns and denies accidental
+reads from `body_text`, `sender_raw`, and `local_path`.
+
 ## Analyze Allowed Signals
 
 Run deterministic aggregate signal analysis over the ignored parsed-message DB:
@@ -191,3 +211,34 @@ Outputs:
 
 The candidate SQLite stores hashed body/value references only. It is still
 ignored by git because hashes are local review aids, not publishable evidence.
+
+## Analyze Signal Matrix
+
+Build aggregate matrices from signal hits:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_allowed_signal_matrix \
+  --input research/personal/wa-corpus/analysis/allowed_signal_hits.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_signal_matrix.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_signal_matrix_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_signal_matrix.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_signal_matrix_summary.md`
+
+The matrix reads only `signal_hits` fields, never raw message text.
+
+## Privacy Audit
+
+Run the report privacy audit before committing generated WhatsApp reports:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.audit_privacy_outputs
+```
+
+The audit scans tracked files under `research/personal/wa-corpus/`, skips local
+and database artifacts, and prints only `repo/path<TAB>pattern_label` findings.

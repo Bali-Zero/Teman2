@@ -31,6 +31,26 @@ Outputs:
 Only the summary is tracked. The local SQLite stores raw parsed message text and
 raw sender labels, so it must stay on the Pro.
 
+## Analyze Temporal Metrics
+
+Build aggregate temporal metrics from the ignored parsed-message SQLite:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_allowed_temporal \
+  --input-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_temporal.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_temporal_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_temporal.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_temporal_summary.md`
+
+The temporal analyzer reads only safe aggregate columns and blocks accidental
+reads from raw body, sender, and local path columns.
+
 ## Analyze Aggregate Signals
 
 Run deterministic signal analysis over the ignored parsed-message SQLite:
@@ -69,3 +89,23 @@ Outputs:
 The candidate SQLite stores only category codes, evidence codes, body hashes,
 and extracted value hashes. Do not treat hashed candidates as client-level facts
 until a local owner review resolves them.
+
+## Analyze Signal Matrix
+
+Build aggregate signal matrices from the ignored signal-hit SQLite:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_allowed_signal_matrix \
+  --input research/personal/wa-corpus/analysis/allowed_signal_hits.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_signal_matrix.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_signal_matrix_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_signal_matrix.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_signal_matrix_summary.md`
+
+The matrix uses only `file_id`, hashed `source_tag`, `message_index`,
+`timestamp`, and `signal_code`.
