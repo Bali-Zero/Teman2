@@ -11,8 +11,11 @@ const HOST = process.env.HOST || "0.0.0.0"; // bind also Tailnet (parity with wa
 
 const DATABASE_URL =
   process.env.WA_DASHBOARD_DATABASE_URL ||
-  process.env.DATABASE_URL ||
-  "postgres://backend_rag_v2:1w32Hrm33npis9rncTVjye3hPEwaVta@127.0.0.1:15432/nuzantara_rag?sslmode=disable";
+  process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error("FATAL: WA_DASHBOARD_DATABASE_URL or DATABASE_URL must be set");
+  process.exit(74);
+}
 
 const ACCOUNTS_JSON =
   process.env.WA_MIRROR_ACCOUNTS_JSON ||
