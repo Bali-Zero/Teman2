@@ -31,12 +31,20 @@ const logger = pino({
 type AccountConfig = {
   phone: string;
   name: string;
+  /**
+   * FIX 4 (2026-05-26): optional team member email, sourced from
+   * WA_MIRROR_ACCOUNT_EMAILS JSON map keyed by phone. Defaults to "" when
+   * the manifest does not declare it — downstream CRM join handles "" as
+   * "unmapped team member".
+   */
+  email: string;
 };
 
 function parseAccounts(): AccountConfig[] {
   const raw =
     process.env.WA_MIRROR_ACCOUNTS ?? process.env.WA_MIRROR_TEAM_MEMBERS ?? "";
   const names = parseAccountNames();
+  const emails = parseAccountEmails();
   return raw
     .split(",")
     .map((s) => normalizePhone(s.trim()))
@@ -44,6 +52,7 @@ function parseAccounts(): AccountConfig[] {
     .map((phone) => ({
       phone,
       name: names.get(phone) ?? phone,
+      email: emails.get(phone) ?? "",
     }));
 }
 
@@ -63,12 +72,34 @@ function parseAccountNames(): Map<string, string> {
   return names;
 }
 
+/**
+ * FIX 4 (2026-05-26): parse WA_MIRROR_ACCOUNT_EMAILS as a JSON map
+ *   {"<phone>": "<email>"}. Missing/invalid → empty map, accounts default
+ *   to email="". Never crashes the daemon on malformed JSON.
+ */
+function parseAccountEmails(): Map<string, string> {
+  const emails = new Map<string, string>();
+  const raw = process.env.WA_MIRROR_ACCOUNT_EMAILS;
+  if (!raw) return emails;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    for (const [phone, email] of Object.entries(parsed)) {
+      const normalized = normalizePhone(phone);
+      const trimmed = (email ?? "").trim().toLowerCase();
+      if (normalized && trimmed) emails.set(normalized, trimmed);
+    }
+  } catch {
+    logger.warn("WA_MIRROR_ACCOUNT_EMAILS is not valid JSON");
+  }
+  return emails;
+}
+
 async function main(): Promise<void> {
   const accounts = parseAccounts();
   if (accounts.length === 0) {
     logger.error(
       "WA_MIRROR_ACCOUNTS is empty. Set it to comma-separated E.164 phones " +
-        "before starting the daemon."
+        "before starting the daemon.",
     );
     process.exit(2);
   }
@@ -85,7 +116,7 @@ async function main(): Promise<void> {
 
   logger.info(
     { count: accounts.length },
-    "wa-mirror all sessions launched; reconnect loops own their lifecycle"
+    "wa-mirror all sessions launched; reconnect loops own their lifecycle",
   );
 
   // Keep the process up forever — Baileys event handlers and the reconnect
@@ -101,23 +132,24 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
       await startSession({
         accountPhone: account.phone,
         teamMemberName: account.name,
+        teamMemberEmail: account.email,
         sessionLabel: process.env.WA_MIRROR_SESSION_LABEL,
         sessionsRoot: process.env.WA_MIRROR_SESSIONS_ROOT,
         resolveOnFirstOpen: false,
       });
       logger.warn(
-        "wa-mirror session promise resolved unexpectedly (daemon mode)"
+        "wa-mirror session promise resolved unexpectedly (daemon mode)",
       );
       attempt = 0;
     } catch {
       const delayMs = Math.min(2_000 * 2 ** Math.min(attempt - 1, 5), 60_000);
       logger.error(
         { attempt, delayMs },
-        "wa-mirror session crashed; restarting with backoff"
+        "wa-mirror session crashed; restarting with backoff",
       );
       await sendTelegramAlert(
         `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}`,
-        logger
+        logger,
       );
       await sleep(delayMs);
     }
@@ -140,11 +172,15 @@ async function shutdown(signal: string): Promise<void> {
 
 process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
-process.on("uncaughtException", () => {
-  logger.error("uncaughtException");
+// FIX 10 (2026-05-26): include err message + stack so diagnostics are
+// possible. Pre-fix log line had no payload, so a post-mortem from launchd
+// stderr was effectively impossible.
+process.on("uncaughtException", (err: unknown) => {
+  const e = err as { message?: string; stack?: string } | null;
+  logger.error({ err: e?.message, stack: e?.stack }, "uncaughtException");
 });
-process.on("unhandledRejection", () => {
-  logger.error("unhandledRejection");
+process.on("unhandledRejection", (reason: unknown) => {
+  logger.error({ reason: String(reason) }, "unhandledRejection");
 });
 
 main().catch(() => {
