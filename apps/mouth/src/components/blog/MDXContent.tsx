@@ -19,6 +19,7 @@ import {
 } from "@/components/blog/interactive";
 import { ArticleToolEmbed } from "@/components/blog/ArticleToolEmbed";
 import { ArticleClusterCTA } from "@/components/blog/ArticleClusterCTA";
+import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
 
 // Generate a URL-friendly ID from heading text (must match TableOfContents.tsx logic)
 function headingId(children: React.ReactNode): string {
@@ -51,6 +52,7 @@ const mdxComponents = {
   KeyTakeaway,
   ArticleToolEmbed,
   ArticleClusterCTA,
+  HeaderWhatsAppCTA,
 
   // Override default HTML elements with styled versions (30% larger text)
   // Headings get auto-generated IDs matching TOC extraction logic
