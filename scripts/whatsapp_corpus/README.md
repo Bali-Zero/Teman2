@@ -231,6 +231,25 @@ Outputs:
 
 The matrix reads only `signal_hits` fields, never raw message text.
 
+## Build Analysis Inventory
+
+Build a run checklist of local analysis artifacts:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_analysis_inventory \
+  --analysis-dir research/personal/wa-corpus/analysis \
+  --summary research/personal/wa-corpus/analysis/analysis_inventory_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/analysis_inventory_summary.md`
+
+The inventory inspects only local SQLite table names, table row counts, summary
+titles, and line counts. It does not select raw message text, sender labels, or
+local paths.
+
 ## Privacy Audit
 
 Run the report privacy audit before committing generated WhatsApp reports:
