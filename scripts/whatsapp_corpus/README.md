@@ -306,6 +306,30 @@ Outputs:
 The queue is heuristic and local-only. Use it as an anonymous review queue, not
 as a client-facing or legal conclusion.
 
+## Build Domain Event Index
+
+Normalize the derived domain extractor outputs into one ignored local event
+table:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_domain_event_index \
+  --document-db research/personal/wa-corpus/analysis/allowed_document_requirements.local.sqlite \
+  --lifecycle-db research/personal/wa-corpus/analysis/allowed_immigration_lifecycle.local.sqlite \
+  --tax-db research/personal/wa-corpus/analysis/allowed_tax_payment.local.sqlite \
+  --followup-db research/personal/wa-corpus/analysis/allowed_followup_risk.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_domain_events.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_domain_events_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_domain_events.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_domain_events_summary.md`
+
+The event index reads only derived extractor DBs. It does not read the raw
+parsed-message DB and its tracked summary contains only aggregate event counts.
+
 ## Analyze Signal Matrix
 
 Build aggregate matrices from signal hits:
