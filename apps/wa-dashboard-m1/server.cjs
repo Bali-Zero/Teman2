@@ -240,10 +240,16 @@ async function fetchOverview() {
           NULLIF(m.counterpart_phone, '') AS direct_phone,
           NULLIF(m.counterpart_lid, '') AS lid,
           lpr.resolved_phone AS lid_resolved_phone,
+          -- 2026-05-26 fix #2: extract pushname from whatsapp_lid_phone_map for this team member's view
+          -- (lid map is per-team-member; same lid can have different pushname across team members per cicatrix LID collision)
+          lpm.pushname AS lid_pushname,
           m.body, m.media_type, m.message_date, m.raw_baileys_event, m.direction, m.client_id,
           m.attention_priority, m.attention_resolved_at
         FROM whatsapp_message_context m
         LEFT JOIN wa_lid_phone_resolution lpr ON lpr.counterpart_lid = m.counterpart_lid
+        LEFT JOIN whatsapp_lid_phone_map lpm
+          ON lpm.lid = m.counterpart_lid
+         AND lpm.team_member_phone = m.team_member_phone
         WHERE m.team_member_phone = ANY($1::text[])
           AND m.chat_type = 'direct'
           AND m.message_date >= NOW() - INTERVAL '${since}'
@@ -274,6 +280,7 @@ async function fetchOverview() {
         SELECT k.conv_key,
                MAX(COALESCE(k.direct_phone, k.effective_phone)) AS direct_phone,
                MAX(k.lid) AS lid,
+               MAX(k.lid_pushname) AS lid_pushname,
                MAX(k.effective_phone) AS effective_phone,
                MAX(k.client_id) AS client_id,
                MAX(k.attention_priority) FILTER (WHERE k.attention_resolved_at IS NULL) AS attention_priority,
@@ -299,7 +306,7 @@ async function fetchOverview() {
         WHERE direction = 'inbound' AND raw_baileys_event->>'pushName' IS NOT NULL
         ORDER BY conv_key, message_date DESC NULLS LAST
       )
-      SELECT g.conv_key, g.direct_phone, g.lid, g.client_id, g.n, g.last_at,
+      SELECT g.conv_key, g.direct_phone, g.lid, g.lid_pushname, g.client_id, g.n, g.last_at,
              g.attention_priority, g.unread_count,
              lm.last_body, lm.last_media, lp.pushname,
              COALESCE(cli_id.full_name, cli_phone.full_name, cli_archived.full_name) AS client_name,
@@ -433,11 +440,13 @@ async function fetchOverview() {
     let internalCount = 0;
 
     for (const r of directRows.rows) {
-      // Display name with priority: CRM > WA business > WA contact > pushName > phone
+      // Display name with priority: CRM > TEAM > WA business > WA contact > raw-message pushName > lid_phone_map pushname > phone
       const crmName = cleanName(r.client_name);
       const businessName = cleanName(r.wa_business_name);
       const waName = cleanName(r.wa_contact_name);
       const push = cleanName(r.pushname);
+      // 2026-05-26 fix #2: pushname from whatsapp_lid_phone_map (for LID-only conv where Baileys raw event has no pushName)
+      const lidPush = cleanName(r.lid_pushname);
 
       // 2026-05-26 lookup TEAM roster FIRST so internal counterpart resolves to display name
       const teamMatch = r.direct_phone ? TEAM_BY_PHONE.get(r.direct_phone) : null;
@@ -445,7 +454,7 @@ async function fetchOverview() {
 
       let display = crmName || teamName;
       if (display && crmName && r.company_name) display = `${crmName} · ${r.company_name}`;
-      if (!display) display = businessName || waName || push || r.direct_phone || r.conv_key;
+      if (!display) display = businessName || waName || push || lidPush || r.direct_phone || r.conv_key;
       const isInternal = isTeamPhone(r.direct_phone);
       const isLid = !r.direct_phone && r.lid;
       const isCrmArchived = !!r.crm_archived;
@@ -453,7 +462,7 @@ async function fetchOverview() {
       if (isInternal) { tag = "internal"; internalCount++; }
       else if (crmName && !isCrmArchived) { tag = "crm"; crmMatched++; }
       else if (crmName && isCrmArchived) { tag = "crm-archived"; }
-      else if (push || waName || businessName) tag = "prospect";
+      else if (push || waName || businessName || lidPush) tag = "prospect";
       else if (isLid) { tag = "lid"; unresolvedLids++; }
       else tag = "unknown";
 
