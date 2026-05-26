@@ -224,7 +224,11 @@ async function fetchOverview() {
     };
   });
 
-  for (const member of result.team) {
+  // P1 fix 2026-05-26: serial for-loop → Promise.all(.map()) parallelize cross-member.
+  // Each member's payload is keyed by member.phone in result.by_phone (no shared state,
+  // safe to parallelize). Reduces refresh latency from N×roundtrip to 1×roundtrip
+  // for the slowest member.
+  await Promise.all(result.team.map(async (member) => {
     const aliases = member.aliases;
     const since = "30 days";
 
@@ -435,8 +439,12 @@ async function fetchOverview() {
       const waName = cleanName(r.wa_contact_name);
       const push = cleanName(r.pushname);
 
-      let display = crmName;
-      if (display && r.company_name) display = `${crmName} · ${r.company_name}`;
+      // 2026-05-26 lookup TEAM roster FIRST so internal counterpart resolves to display name
+      const teamMatch = r.direct_phone ? TEAM_BY_PHONE.get(r.direct_phone) : null;
+      const teamName = teamMatch ? (teamMatch.full_name || teamMatch.name) : null;
+
+      let display = crmName || teamName;
+      if (display && crmName && r.company_name) display = `${crmName} · ${r.company_name}`;
       if (!display) display = businessName || waName || push || r.direct_phone || r.conv_key;
       const isInternal = isTeamPhone(r.direct_phone);
       const isLid = !r.direct_phone && r.lid;
@@ -451,7 +459,6 @@ async function fetchOverview() {
 
       // 2026-05-26 naming + color coding: contactKindColor over counterpart
       // Hierarchy: ZERO > TEAM·BZ > TEAM·BS > CLIENT > PROSPECT
-      const teamMatch = r.direct_phone ? TEAM_BY_PHONE.get(r.direct_phone) : null;
       const isInClients = !!crmName; // active or archived CRM match counts
       const kindInfo = contactKindColor(teamMatch, isInClients);
 
@@ -580,7 +587,7 @@ async function fetchOverview() {
       attention: { high: attentionHigh, medium: attentionMedium }, // Feature #7
       convs,
     };
-  }
+  }));
 
   CACHE.teams = { at: Date.now(), payload: result };
   return result;
