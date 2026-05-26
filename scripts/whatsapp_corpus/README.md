@@ -330,6 +330,28 @@ Outputs:
 The event index reads only derived extractor DBs. It does not read the raw
 parsed-message DB and its tracked summary contains only aggregate event counts.
 
+## Analyze Document/Lifecycle Gaps
+
+Build aggregate coverage matrices between immigration lifecycle stages and
+document requirement events:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_document_lifecycle_gaps \
+  --events-db research/personal/wa-corpus/analysis/allowed_domain_events.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_document_lifecycle_gaps.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_document_lifecycle_gaps_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_document_lifecycle_gaps.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_document_lifecycle_gaps_summary.md`
+
+This analyzer reads only the derived domain event index and reports aggregate
+coverage/gap counts. A gap means no same-message document event was detected; it
+does not prove a missing client document.
+
 ## Analyze Signal Matrix
 
 Build aggregate matrices from signal hits:
