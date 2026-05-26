@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<title>BZ WhatsApp Dashboard — M1</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  /* WhatsApp Web Light "Day" palette (2026) */
+  :root {
+    --wa-bg:           #efeae2;   /* chat pane background (warm beige) */
+    --wa-panel:        #ffffff;   /* sidebar white */
+    --wa-panel-2:      #f0f2f5;   /* hover/active */
+    --wa-panel-3:      #f0f2f5;   /* search bg, secondary */
+    --wa-divider:      #e9edef;
+    --wa-border:       #d1d7db;
+    --wa-text:         #111b21;   /* primary text */
+    --wa-text-2:       #667781;   /* secondary text */
+    --wa-text-3:       #8696a0;   /* tertiary / timestamps */
+    --wa-accent:       #00a884;   /* WA primary green */
+    --wa-accent-soft:  #008069;
+    --wa-msg-out:      #d9fdd3;   /* sent message bubble (mint) */
+    --wa-msg-in:       #ffffff;   /* received message bubble */
+    --wa-link:         #027eb5;
+    --wa-unread:       #25d366;   /* unread badge */
+    --wa-warning:      #f0aa00;
+    --wa-error:        #e23744;
+    --wa-tick:         #53bdeb;   /* read tick */
+    --wa-header-bg:    #f0f2f5;   /* light grey */
+    --wa-search-bg:    #f0f2f5;
+    /* legacy aliases */
+    --bz-base: var(--wa-bg);
+    --bz-panel: var(--wa-panel);
+    --bz-panel-soft: var(--wa-panel-2);
+    --bz-border: var(--wa-border);
+    --bz-text: var(--wa-text);
+    --bz-text-dim: var(--wa-text-2);
+    --bz-text-faint: var(--wa-text-3);
+    --bz-accent: var(--wa-accent);
+    --bz-accent-soft: rgba(0,168,132,0.15);
+    --bz-accent-glow: rgba(0,168,132,0.35);
+    --bz-success: var(--wa-unread);
+    --bz-warning: var(--wa-warning);
+    --bz-error: var(--wa-error);
+    --bz-info: var(--wa-link);
+    --bz-violet: #b85ad4;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--wa-bg);
+    color: var(--wa-text);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* WhatsApp Web header strip */
+  header {
+    height: 60px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--wa-header-bg);
+    border-bottom: 1px solid var(--wa-divider);
+  }
+  header .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 500; font-size: 16px; color: var(--wa-text);
+  }
+  header .brand-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--wa-accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+    overflow: hidden;
+  }
+  header .brand-icon img { width: 100%; height: 100%; object-fit: cover; }
+  header .meta { color: var(--wa-text-3); font-size: 12px; display: flex; gap: 12px; align-items: center; }
+  header .badge {
+    background: var(--wa-accent-soft); color: white;
+    padding: 3px 8px; border-radius: 12px; font-size: 11px;
+    text-transform: none; letter-spacing: 0;
+  }
+  main {
+    height: calc(100vh - 60px);
+    display: grid;
+    grid-template-columns: 260px 400px 1fr;
+    background: var(--wa-bg);
+  }
+  .col { overflow-y: auto; background: var(--wa-panel); }
+  .col + .col { border-left: 1px solid var(--wa-divider); }
+  .col:last-child {
+    background: var(--wa-bg);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><g fill='%23d4cfc4' fill-opacity='0.55'><circle cx='30' cy='40' r='1.2'/><circle cx='80' cy='110' r='1'/><circle cx='150' cy='60' r='1.4'/><circle cx='180' cy='160' r='1'/><circle cx='110' cy='180' r='1.2'/><circle cx='50' cy='150' r='1'/></g></svg>");
+  }
+  .col-header {
+    position: sticky; top: 0;
+    background: var(--wa-header-bg);
+    padding: 12px 16px; font-size: 13px; font-weight: 500;
+    color: var(--wa-text-2);
+    border-bottom: 1px solid var(--wa-divider);
+    text-transform: none; letter-spacing: 0;
+    z-index: 10;
+    height: 50px;
+    display: flex; align-items: center;
+  }
+  /* WA-style scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c4c8cc; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #8696a0; }
+  /* COL 1 — Team (WhatsApp-style avatar rows) */
+  .team-item {
+    padding: 13px 16px; cursor: pointer;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--wa-divider);
+  }
+  .team-item:hover { background: var(--wa-panel-2); }
+  .team-item.selected { background: var(--wa-panel-2); }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: var(--wa-accent-soft); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 16px; text-transform: uppercase;
+    position: relative;
+  }
+  .avatar.dot-running::after,
+  .avatar.dot-needs_qr::after,
+  .avatar.dot-stopped::after {
+    content: ""; position: absolute; bottom: 0; right: 0;
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid var(--wa-panel);
+    box-shadow: 0 0 1px rgba(0,0,0,0.15);
+  }
+  .avatar img, .conv-avatar img {
+    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  }
+  .avatar.dot-running::after { background: var(--wa-unread); }
+  .avatar.dot-needs_qr::after { background: var(--wa-warning); }
+  .avatar.dot-stopped::after { background: var(--wa-error); }
+  .team-body { flex: 1; min-width: 0; }
+  .team-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .team-name { font-weight: 400; font-size: 16px; color: var(--wa-text); }
+  .team-phone {
+    font-size: 12px; color: var(--wa-text-3); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .team-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .pill {
+    font-size: 11px; padding: 1px 8px; border-radius: 10px;
+    background: var(--wa-panel-3); color: var(--wa-text-2);
+    font-weight: 400;
+  }
+  .pill.unread {
+    background: var(--wa-unread); color: var(--wa-panel);
+    font-weight: 600; min-width: 20px; text-align: center;
+  }
+  .pill.running { color: var(--wa-unread); }
+  .pill.needs_qr { color: var(--wa-warning); }
+  .pill.stopped { color: var(--wa-error); }
+  .pill.attention { background: var(--wa-error); color: white; font-weight: 600; }
+  .pill.attention-med { background: var(--wa-warning); color: var(--wa-panel); font-weight: 600; }
+  .pill.crm { background: var(--wa-accent-soft); color: white; }
+  .pill.lid { background: var(--wa-panel-3); color: var(--wa-link); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .dot.running { background: var(--wa-unread); }
+  .dot.needs_qr { background: var(--wa-warning); }
+  .dot.stopped { background: var(--wa-error); }
+
+  /* COL 2 — Conversations (WA chat-list style) */
+  .conv-item {
+    padding: 12px 16px; cursor: pointer;
+    display: flex; gap: 12px; align-items: flex-start;
+    border-bottom: 1px solid var(--wa-divider);
+  }
+  .conv-item:hover { background: var(--wa-panel-2); }
+  .conv-item.selected { background: var(--wa-panel-2); }
+  .conv-avatar {
+    width: 49px; height: 49px; border-radius: 50%; flex-shrink: 0;
+    background: var(--wa-panel-3); color: var(--wa-text-2);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 500; font-size: 18px; text-transform: uppercase;
+  }
+  .conv-avatar.group  { background: #6b7c85; color: white; }
+  .conv-avatar.crm    { background: var(--wa-accent-soft); color: white; }
+  .conv-avatar.prospect { background: #b48a3c; color: white; }
+  .conv-avatar.internal { background: #426e64; color: white; }
+  .conv-body { flex: 1; min-width: 0; padding-top: 3px; }
+  .conv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .conv-name {
+    font-weight: 400; flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 16px; color: var(--wa-text);
+  }
+  .conv-name.has-attention { color: var(--wa-error); font-weight: 500; }
+  .conv-time {
+    font-size: 12px; color: var(--wa-text-3); white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .conv-time.has-unread { color: var(--wa-unread); font-weight: 500; }
+  .conv-company { font-size: 13px; color: var(--wa-text-3); margin-top: 2px; }
+  .conv-preview-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 4px; gap: 8px;
+  }
+  .conv-preview {
+    font-size: 14px; color: var(--wa-text-3);
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    flex: 1;
+  }
+  .conv-tag {
+    display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px;
+    margin-right: 4px; font-weight: 500;
+  }
+  .conv-tag.group    { background: var(--wa-panel-3); color: var(--wa-text-2); }
+  .conv-tag.direct   { background: var(--wa-panel-3); color: var(--wa-text-2); }
+  .conv-tag.crm      { background: var(--wa-accent-soft); color: white; }
+  .conv-tag.crm-archived { background: #ff9500; color: white; }
+  .conv-tag.prospect { background: rgba(255,204,0,0.18); color: var(--wa-warning); }
+  .conv-tag.internal { background: rgba(0,168,132,0.15); color: var(--wa-accent); }
+  .conv-tag.lid      { background: rgba(83,189,235,0.15); color: var(--wa-link); }
+  .conv-tag.unknown  { background: var(--wa-panel-3); color: var(--wa-text-3); }
+
+  /* 2026-05-26 naming + color coding — 5 contact kinds */
+  /* Light-mode WCAG: text on white must be >=4.5:1; we use dark text on tinted backgrounds */
+  .kind-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.3px; margin-right: 4px;
+    text-transform: uppercase; vertical-align: middle;
+  }
+  .kind-badge.zero          { background: #fbbf24; color: #1f2937; }   /* gold bg + slate text 12.4:1 */
+  .kind-badge.team_balizero { background: #06b6d4; color: #ffffff; }   /* cyan bg + white text 4.6:1 */
+  .kind-badge.team_bayu     { background: #3b82f6; color: #ffffff; }   /* blue bg + white text 4.6:1 */
+  .kind-badge.client        { background: #10b981; color: #ffffff; }   /* green bg + white text 4.5:1 */
+  .kind-badge.prospect      { background: #a855f7; color: #ffffff; }   /* purple bg + white text 4.5:1 */
+  /* Secondary tag — company / department text */
+  .company-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px;
+    background: var(--wa-panel-3); color: var(--wa-text-2); font-weight: 500;
+    margin-left: 4px; vertical-align: middle;
+  }
+  .company-badge.bz { background: rgba(6,182,212,0.15); color: #0e7490; }
+  .company-badge.bs { background: rgba(59,130,246,0.15); color: #1d4ed8; }
+  .company-badge.zero { background: rgba(251,191,36,0.20); color: #92400e; }
+  /* Colored left-border accent on conv-item via inline style override */
+  .conv-item.kind-zero          { box-shadow: inset 3px 0 0 #fbbf24; }
+  .conv-item.kind-team_balizero { box-shadow: inset 3px 0 0 #06b6d4; }
+  .conv-item.kind-team_bayu     { box-shadow: inset 3px 0 0 #3b82f6; }
+  .conv-item.kind-client        { box-shadow: inset 3px 0 0 #10b981; }
+  .conv-item.kind-prospect      { box-shadow: inset 3px 0 0 #a855f7; }
+  /* Team-item left-border for company differentiation */
+  .team-item.kind-zero          { box-shadow: inset 3px 0 0 #fbbf24; }
+  .team-item.kind-team_bayu     { box-shadow: inset 3px 0 0 #3b82f6; }
+  /* Bali Zero teams keep default (no border) to stay visually quiet */
+
+  .conv-extra { font-size: 11px; color: var(--wa-text-3); margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .conv-extra .meta-pill { background: var(--wa-panel-3); padding: 1px 7px; border-radius: 10px; color: var(--wa-text-2); }
+  .conv-extra a.meta-pill { color: var(--wa-link); text-decoration: none; }
+  .conv-extra a.meta-pill:hover { text-decoration: underline; }
+
+  /* COL 3 — Thread (WA chat-pane style) */
+  .thread-header {
+    position: sticky; top: 0;
+    background: var(--wa-header-bg);
+    padding: 10px 16px; height: 60px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--wa-divider);
+    z-index: 10;
+  }
+  .thread-header .avatar { width: 40px; height: 40px; }
+  .thread-header .info { flex: 1; min-width: 0; }
+  .thread-header .name { font-weight: 500; font-size: 16px; color: var(--wa-text); }
+  .thread-header .sub { font-size: 13px; color: var(--wa-text-3); margin-top: 2px; }
+  .thread-header .sub a { color: var(--wa-link); text-decoration: none; }
+  .thread-header .sub a:hover { text-decoration: underline; }
+
+  /* Strategic recap card — WA-styled "pinned info" */
+  .recap-card {
+    margin: 12px 8% 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--wa-msg-in);
+    border-left: 4px solid var(--wa-accent);
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+  }
+  .recap-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .recap-label { font-size: 12px; color: var(--wa-accent); font-weight: 500; }
+  .recap-source { font-size: 11px; color: var(--wa-text-3); }
+  .recap-body { font-size: 14px; line-height: 1.45; white-space: pre-line; color: var(--wa-text); }
+
+  .thread-body { padding: 14px 8%; min-height: calc(100vh - 60px - 60px); }
+  .msg {
+    margin-bottom: 4px; padding: 6px 10px 8px;
+    border-radius: 8px; max-width: 65%; word-wrap: break-word;
+    position: relative;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+  }
+  .msg.inbound  { background: var(--wa-msg-in); margin-right: auto; border-top-left-radius: 0; }
+  .msg.outbound { background: var(--wa-msg-out); margin-left: auto; border-top-right-radius: 0; }
+  /* Tail (small triangle like WA) */
+  .msg.inbound::before, .msg.outbound::before {
+    content: ""; position: absolute; top: 0; width: 8px; height: 13px;
+  }
+  .msg.inbound::before {
+    left: -8px;
+    background: var(--wa-msg-in);
+    clip-path: polygon(100% 0, 0 0, 100% 100%);
+  }
+  .msg.outbound::before {
+    right: -8px;
+    background: var(--wa-msg-out);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+  }
+  .msg.attention-high { box-shadow: 0 0 0 1.5px var(--wa-error); }
+  .msg.attention-medium { box-shadow: 0 0 0 1.5px var(--wa-warning); }
+  .msg .body { white-space: pre-wrap; line-height: 1.4; font-size: 14.2px; color: var(--wa-text); }
+  .msg .meta {
+    font-size: 11px; color: var(--wa-text-3);
+    margin-top: 2px; text-align: right;
+    display: flex; justify-content: flex-end; align-items: center; gap: 4px;
+  }
+  .msg .meta .tick { color: var(--wa-tick); }
+  .msg .sender {
+    font-size: 13px; font-weight: 600; margin-bottom: 4px;
+    color: #06cf9c;
+  }
+  .msg .sender .role {
+    font-size: 11px; color: var(--wa-text-3); margin-left: 4px;
+    text-transform: none; font-weight: 400;
+  }
+  .msg .att-reason {
+    font-size: 12px; color: var(--wa-error); margin-top: 4px; font-style: italic;
+  }
+  .media-tag {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-size: 11px; background: rgba(0,0,0,0.06); color: var(--wa-text-2);
+    margin-right: 4px;
+  }
+  .media-thumb img, .media-thumb video {
+    max-width: 280px; max-height: 320px; border-radius: 6px;
+    margin: 4px 0; cursor: pointer; display: block;
+  }
+  .media-thumb audio { margin: 4px 0; width: 100%; max-width: 320px; }
+  .media-thumb a { color: var(--wa-link); font-size: 14px; }
+
+  .empty {
+    padding: 80px 20px; text-align: center;
+    color: var(--wa-text-3); font-size: 14px;
+  }
+  .empty-wa {
+    height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--wa-text-3);
+  }
+  .empty-wa .icon {
+    width: 200px; height: 200px; border-radius: 50%;
+    background: var(--wa-panel-2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 100px; color: var(--wa-text-3); margin-bottom: 24px;
+  }
+  .empty-wa .text { font-size: 32px; font-weight: 300; color: var(--wa-text-2); }
+  .empty-wa .sub  { font-size: 14px; margin-top: 12px; }
+  .loader { padding: 16px; color: var(--wa-text-3); font-size: 13px; }
+  .day-divider {
+    text-align: center; margin: 16px auto 8px; width: fit-content;
+    background: var(--wa-panel-2); color: var(--wa-text-2);
+    font-size: 12.5px; padding: 5px 12px; border-radius: 8px;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-icon">BZ</div>
+    <span>WhatsApp Dashboard</span>
+  </div>
+  <div class="meta">
+    <span id="health-pill" class="badge">read-only</span>
+    <span id="db-host">DB: …</span>
+    <span id="last-refresh">aggiornato: …</span>
+  </div>
+</header>
+<main>
+  <div class="col" id="col-teams">
+    <div class="col-header">Team</div>
+    <div class="loader">Caricamento team…</div>
+  </div>
+  <div class="col" id="col-convs">
+    <div class="col-header">Conversazioni</div>
+    <div class="empty">Seleziona un team member</div>
+  </div>
+  <div class="col" id="col-thread">
+    <div class="empty-wa">
+      <div class="icon">💬</div>
+      <div class="text">BZ WhatsApp Dashboard</div>
+      <div class="sub">Seleziona una conversazione per leggere i messaggi.</div>
+    </div>
+  </div>
+</main>
+<script>
+let DATA = null;
+let SELECTED_TEAM = null;
+let SELECTED_CONV = null;
+let THREAD_SEARCH = "";
+let THREAD_CACHE = null;
+let THREAD_CACHE_KEY = null;
+const KITA_BASE = "https://kita.balizero.com";
+
+const colTeams = document.getElementById("col-teams");
+const colConvs = document.getElementById("col-convs");
+const colThread = document.getElementById("col-thread");
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso); const now = new Date();
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+  const y = new Date(now); y.setDate(y.getDate()-1);
+  if (d.toDateString() === y.toDateString()) return "ieri " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+  return d.toLocaleDateString("it-IT", { day:"2-digit", month:"2-digit" }) + " " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+}
+
+function fmtPreview(c) {
+  if (c.last_body && c.last_body.trim()) return c.last_body;
+  // 2026-05-26 fix: skip 'text' last_media (DB stores it for pure text msgs, not a media kind)
+  if (c.last_media && c.last_media !== "text") return "📎 " + c.last_media;
+  return "(vuoto)";
+}
+
+function initials(name) {
+  if (!name) return "?";
+  const parts = String(name).trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function avatarInner(name, photoUrl) {
+  if (photoUrl) return `<img src="${escapeHtml(photoUrl)}" alt="" onerror="this.replaceWith(document.createTextNode('${escapeHtml(initials(name))}'))"/>`;
+  return initials(name);
+}
+
+function companyBadgeClass(m) {
+  if (m.contact_kind === "zero") return "zero";
+  if (m.contact_kind === "team_bayu") return "bs";
+  return "bz";
+}
+
+function companyBadgeLabel(m) {
+  if (m.contact_kind === "zero") return "ZERO";
+  if (m.contact_kind === "team_bayu") return "BS";
+  return "BZ";
+}
+
+function renderTeams() {
+  if (!DATA) return;
+  // 2026-05-26 sort: ZERO first, then Bali Zero, then Bayu Santera (company hierarchy)
+  const teamOrder = [...DATA.team].sort((a, b) => {
+    const rank = (m) => m.contact_kind === "zero" ? 0 : m.contact_kind === "team_bayu" ? 2 : 1;
+    return rank(a) - rank(b);
+  });
+  let html = `<div class="col-header">Team · ${DATA.team.length}</div>`;
+  for (const m of teamOrder) {
+    const pd = DATA.by_phone[m.phone] || { total:0, direct_count:0, group_count:0, crm_count:0, attention:{high:0,medium:0} };
+    const selected = SELECTED_TEAM === m.phone ? " selected" : "";
+    const bridge = pd.bridge || {};
+    const sess = pd.session || {};
+    const status = bridge.runtime_status || "stopped";
+    const kindClass = m.contact_kind ? ` kind-${m.contact_kind}` : "";
+    const companyClass = companyBadgeClass(m);
+    const companyLabel = companyBadgeLabel(m);
+    const deptLabel = m.department && m.department !== "setup" ? m.department : null;
+    html += `
+      <div class="team-item${selected}${kindClass}" data-phone="${m.phone}">
+        <div class="avatar dot-${status}">${avatarInner(m.name, m.avatar_url)}</div>
+        <div class="team-body">
+          <div class="team-row">
+            <div class="team-name">${escapeHtml(m.name)}<span class="company-badge ${companyClass}" title="${escapeHtml(m.company || '')}">${companyLabel}</span>${deptLabel ? `<span class="company-badge" title="department">${escapeHtml(deptLabel)}</span>` : ""}</div>
+            ${pd.unread_total ? `<span class="pill unread" title="${pd.unread_total} msg da rispondere in ${pd.unread_convs} conv">${pd.unread_total}</span>` : ""}
+            ${(pd.attention.high || pd.attention.medium) ? `<span class="pill attention" title="HIGH+MED priority" style="background:var(--wa-error);color:white;margin-left:4px">⚠ ${pd.attention.high + pd.attention.medium}</span>` : ""}
+          </div>
+          <div class="team-phone">${escapeHtml(m.phone)}</div>
+          <div class="team-pills">
+            <span class="pill" title="msg totali nel DB (last 30d, all chat types)">${pd.total} msg</span>
+            ${pd.msgs_media ? `<span class="pill" title="media (img+doc+video+audio+sticker)">📎 ${pd.msgs_media}</span>` : ""}
+            ${pd.msgs_lid_only ? `<span class="pill lid" title="msg con counterpart_lid only (no phone resolved)">lid ${pd.msgs_lid_only}</span>` : ""}
+            ${pd.crm_count ? `<span class="pill crm">CRM ${pd.crm_count}</span>` : ""}
+            ${pd.archived_count ? `<span class="pill" title="clienti CRM soft-deleted ma ancora attivi su WA (cicatrix marzo-2026 purge)" style="background:#ff9500;color:white">👻 ${pd.archived_count}</span>` : ""}
+            ${pd.attention.high   ? `<span class="pill attention">${pd.attention.high} HIGH</span>` : ""}
+            ${pd.attention.medium ? `<span class="pill attention-med">${pd.attention.medium} MED</span>` : ""}
+          </div>
+        </div>
+      </div>`;
+  }
+  colTeams.innerHTML = html;
+  for (const el of colTeams.querySelectorAll(".team-item")) {
+    el.addEventListener("click", () => selectTeam(el.dataset.phone));
+  }
+}
+
+function renderConvs() {
+  const pd = SELECTED_TEAM ? DATA.by_phone[SELECTED_TEAM] : null;
+  if (!pd) {
+    colConvs.innerHTML = `<div class="col-header">Conversazioni</div><div class="empty">Seleziona un team member</div>`;
+    return;
+  }
+  // Sort: HIGH always first, then strictly by last_at DESC (most recent wins, regardless of MEDIUM tag)
+  // Rationale: a group msg of 5 min ago is more relevant than a 3-day-old MEDIUM-flagged direct.
+  const convs = [...pd.convs].sort((a,b) => {
+    const aHigh = a.attention_priority === "HIGH" ? 1 : 0;
+    const bHigh = b.attention_priority === "HIGH" ? 1 : 0;
+    if (aHigh !== bHigh) return bHigh - aHigh;
+    return new Date(b.last_at) - new Date(a.last_at);
+  });
+  const headerExtra = pd.attention.high || pd.attention.medium
+    ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} HIGH</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} MED</span>` : ""}`
+    : "";
+  let html = `<div class="col-header">${convs.length} conversazioni${headerExtra}</div>`;
+  if (!convs.length) {
+    html += `<div class="empty">Nessuna conversazione</div>`;
+  } else {
+    for (const c of convs) {
+      const isSel = SELECTED_CONV === c.counterpart ? " selected" : "";
+      const tag = c.tag || (c.kind === "group" ? "group" : "direct");
+      const tagLabel = tag === "crm" ? "CRM" : tag === "crm-archived" ? "👻 CRM-archived" : tag;
+      const avatarClass = tag === "group" ? "group" : tag === "crm" ? "crm" : tag === "prospect" ? "prospect" : tag === "internal" ? "internal" : "";
+      const company = c.company_name && c.crm_match ? `<div class="conv-company">${escapeHtml(c.company_name)}</div>` : "";
+      const attClass = c.attention_priority ? " has-attention" : "";
+      const attTimeClass = c.attention_priority ? " has-unread" : "";
+      const attBadge = c.attention_priority
+        ? `<span class="conv-tag" style="background:var(--wa-${c.attention_priority==='HIGH'?'error':'warning'});color:${c.attention_priority==='HIGH'?'white':'var(--wa-panel)'}">${c.attention_priority}</span>`
+        : "";
+      // 2026-05-26 naming + color coding: kind badge + colored left-border
+      const kindClass = c.contact_kind ? ` kind-${c.contact_kind}` : "";
+      const kindBadge = c.contact_label
+        ? `<span class="kind-badge ${c.contact_kind}" title="${escapeHtml(c.contact_company || '')}${c.contact_department ? ' · ' + escapeHtml(c.contact_department) : ''}">${escapeHtml(c.contact_label)}</span>`
+        : "";
+      const extra = [];
+      if (c.client_id) extra.push(`<a href="${KITA_BASE}/clients/${c.client_id}" target="_blank" class="meta-pill">CRM #${c.client_id} ↗</a>`);
+      if (c.assigned_to) extra.push(`<span class="meta-pill">→ ${escapeHtml(c.assigned_to.replace('@balizero.com',''))}</span>`);
+      if (c.tax_consultant) extra.push(`<span class="meta-pill">tax: ${escapeHtml(c.tax_consultant)}</span>`);
+      html += `
+        <div class="conv-item${isSel}${kindClass}" data-conv="${encodeURIComponent(c.counterpart)}">
+          <div class="conv-avatar ${avatarClass}">${tag === "group" ? "👥" : (c.client_id ? avatarInner(c.display_name, `/client-avatar/${c.client_id}`) : initials(c.display_name))}</div>
+          <div class="conv-body">
+            <div class="conv-row">
+              <span class="conv-name${attClass}">${kindBadge}${escapeHtml(c.display_name)}</span>
+              <span class="conv-time${attTimeClass}">${fmtTime(c.last_at)}</span>
+            </div>
+            ${company}
+            <div class="conv-preview-row">
+              <span class="conv-preview">
+                <span class="conv-tag ${tag}">${tagLabel}</span>${attBadge}${escapeHtml(fmtPreview(c))}
+              </span>
+              ${c.unread_count ? `<span class="pill unread" title="${c.unread_count} non risposti su ${c.n} tot">${c.unread_count}</span>` : (c.n ? `<span class="pill" title="msg totali conv">${c.n}</span>` : "")}
+            </div>
+            ${extra.length ? `<div class="conv-extra">${extra.join("")}</div>` : ""}
+          </div>
+        </div>`;
+    }
+  }
+  colConvs.innerHTML = html;
+  for (const el of colConvs.querySelectorAll(".conv-item")) {
+    el.addEventListener("click", (e) => {
+      if (e.target.tagName === "A") return;
+      selectConv(decodeURIComponent(el.dataset.conv));
+    });
+  }
+}
+
+// 2026-05-26 fix: media_type='text' is the DB value for pure text msgs (not NULL).
+// Only treat these as actual media types — else short-circuit to empty render.
+const MEDIA_TYPES = new Set(["image", "video", "audio", "sticker", "document"]);
+
+function renderMedia(m) {
+  if (!m.media_type || !MEDIA_TYPES.has(m.media_type)) return "";
+  const path = m.media_stored_path;
+  if (!path) {
+    return `<div class="media-thumb media-missing" title="Bridge download fallito. Media presente su WhatsApp ma non scaricato in locale."><span class="media-tag">${escapeHtml(m.media_type)}</span> <span style="color:#f15c6d">❌</span> <em>media non scaricato (bridge fail)</em></div>`;
+  }
+  const url = `/media?path=${encodeURIComponent(path)}`;
+  switch (m.media_type) {
+    case "image":   return `<div class="media-thumb"><a href="${url}" target="_blank"><img src="${url}" alt="image"/></a></div>`;
+    case "video":   return `<div class="media-thumb"><video controls src="${url}"></video></div>`;
+    case "audio":   return `<div class="media-thumb"><audio controls src="${url}"></audio></div>`;
+    case "sticker": return `<div class="media-thumb"><img src="${url}" alt="sticker" style="max-width:100px"/></div>`;
+    case "document":
+      return `<div class="media-thumb"><a href="${url}" target="_blank">📄 ${escapeHtml(m.media_mime || "document")} ↗</a></div>`;
+    default: return `<div class="media-thumb"><span class="media-tag">${m.media_type}</span></div>`;
+  }
+}
+
+function highlightMatch(text, query) {
+  if (!query) return escapeHtml(text);
+  const q = query.toLowerCase();
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx < 0) return escapeHtml(text);
+  return escapeHtml(text.slice(0, idx))
+    + `<mark style="background:#ffe900;color:#111b21;padding:0 2px;border-radius:2px">${escapeHtml(text.slice(idx, idx + query.length))}</mark>`
+    + escapeHtml(text.slice(idx + query.length));
+}
+
+async function renderThread() {
+  if (!SELECTED_TEAM || !SELECTED_CONV) {
+    colThread.innerHTML = `<div class="col-header">Messaggi</div><div class="empty">Seleziona una conversazione</div>`;
+    THREAD_CACHE = null; THREAD_CACHE_KEY = null;
+    return;
+  }
+  const cacheKey = `${SELECTED_TEAM}|${SELECTED_CONV}`;
+  let payload;
+  if (THREAD_CACHE_KEY === cacheKey && THREAD_CACHE) {
+    payload = THREAD_CACHE;
+  } else {
+    colThread.innerHTML = `<div class="col-header">Caricamento…</div>`;
+    try {
+      const r = await fetch(`/thread.json?member=${encodeURIComponent(SELECTED_TEAM)}&conv=${encodeURIComponent(SELECTED_CONV)}`);
+      payload = await r.json();
+    } catch (err) {
+      colThread.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
+      return;
+    }
+    THREAD_CACHE = payload;
+    THREAD_CACHE_KEY = cacheKey;
+  }
+  const pd = DATA.by_phone[SELECTED_TEAM];
+  const conv = pd.convs.find((c) => c.counterpart === SELECTED_CONV);
+
+  // Strategic recap (Feature #11)
+  const recap = conv && (conv.strategic_recap || conv.sender_strategic_recap);
+  const recapSrc = conv && (conv.strategic_recap_source || (conv.sender_strategic_recap ? "wa_thread" : null));
+  const recapHtml = recap ? `
+    <div class="recap-card">
+      <div class="recap-header">
+        <span class="recap-label">◆ Strategic recap</span>
+        ${recapSrc ? `<span class="recap-source">${escapeHtml(recapSrc.replace(/_/g, " "))}</span>` : ""}
+      </div>
+      <div class="recap-body">${escapeHtml(recap)}</div>
+    </div>` : "";
+
+  const clientLink = conv && conv.client_id
+    ? ` · <a href="${KITA_BASE}/clients/${conv.client_id}" target="_blank">apri in kita.balizero.com ↗</a>`
+    : "";
+
+  const convDisplay = conv ? conv.display_name : SELECTED_CONV;
+  const headerAvatarClass = conv?.kind === "group" ? "group" : conv?.tag === "crm" ? "crm" : conv?.tag === "prospect" ? "prospect" : "";
+
+  // Filter messages by search query (case-insensitive, matches body + sender)
+  const q = THREAD_SEARCH.trim().toLowerCase();
+  const messages = q
+    ? payload.messages.filter((m) => {
+        const body = (m.body || "").toLowerCase();
+        const sender = (m.sender_display || m.sender_phone || "").toLowerCase();
+        return body.includes(q) || sender.includes(q);
+      })
+    : payload.messages;
+  const matchInfo = q
+    ? ` <span style="color:var(--wa-link)">· ${messages.length} match su ${payload.count}</span>`
+    : "";
+
+  let html = `
+    <div class="thread-header">
+      <div class="avatar ${headerAvatarClass}">${conv?.kind === "group" ? "👥" : (conv?.client_id ? avatarInner(convDisplay, `/client-avatar/${conv.client_id}`) : initials(convDisplay))}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(convDisplay)}</div>
+        <div class="sub">${payload.count} messaggi${matchInfo}${clientLink}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <input id="thread-search" type="search" placeholder="🔍 cerca…" value="${escapeHtml(THREAD_SEARCH)}"
+          style="background:var(--wa-search-bg);border:none;border-radius:8px;padding:6px 10px;font-size:13px;color:var(--wa-text);width:200px;outline:none" />
+        ${q ? `<button id="thread-search-clear" title="Esc per pulire" style="background:transparent;border:none;color:var(--wa-text-3);cursor:pointer;font-size:14px">✕</button>` : ""}
+      </div>
+    </div>
+    ${recapHtml}
+    <div class="thread-body">`;
+  let lastDay = "";
+  if (!messages.length) html += `<div class="empty">${q ? `Nessun match per "${escapeHtml(THREAD_SEARCH)}"` : "Nessun messaggio"}</div>`;
+  for (const m of messages) {
+    const d = new Date(m.message_date);
+    const dayKey = d.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long" });
+    if (dayKey !== lastDay) { html += `<div class="day-divider">${dayKey}</div>`; lastDay = dayKey; }
+    const dir = m.direction === "outbound" ? "outbound" : "inbound";
+    const attClass = m.attention_priority && !m.attention_resolved_at
+      ? ` attention-${m.attention_priority.toLowerCase()}` : "";
+    const senderName = m.sender_display || m.sender_phone || "";
+    const senderRole = m.sender_client_id ? "CRM" : (m.sender_crm_name ? "CRM" : "");
+    const senderLine = senderName && conv && conv.kind === "group"
+      ? `<div class="sender">${highlightMatch(senderName, q)}${m.sender_company ? " · "+escapeHtml(m.sender_company) : ""}${senderRole ? `<span class="role">${senderRole}</span>` : ""}</div>`
+      : "";
+    const attReason = m.attention_reason && m.attention_reason.length && !m.attention_resolved_at
+      ? `<div class="att-reason">⚠ ${escapeHtml(m.attention_reason.join(", "))}</div>`
+      : "";
+    const time = d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+    const tick = dir === "outbound" ? `<span class="tick">✓✓</span>` : "";
+    html += `
+      <div class="msg ${dir}${attClass}">
+        ${senderLine}
+        ${m.media_type && MEDIA_TYPES.has(m.media_type) ? `<span class="media-tag">${escapeHtml(m.media_type)}</span>` : ""}
+        ${m.body ? `<div class="body">${highlightMatch(m.body, q)}</div>` : ""}
+        ${renderMedia(m)}
+        ${attReason}
+        <div class="meta">${time}${tick}</div>
+      </div>`;
+  }
+  html += `</div>`;
+  colThread.innerHTML = html;
+
+  // Wire search input
+  const searchEl = document.getElementById("thread-search");
+  if (searchEl) {
+    searchEl.addEventListener("input", (e) => {
+      THREAD_SEARCH = e.target.value;
+      renderThread();
+      // re-focus + restore cursor
+      requestAnimationFrame(() => {
+        const el = document.getElementById("thread-search");
+        if (el) { el.focus(); el.setSelectionRange(THREAD_SEARCH.length, THREAD_SEARCH.length); }
+      });
+    });
+    searchEl.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { THREAD_SEARCH = ""; renderThread(); }
+    });
+  }
+  const clearBtn = document.getElementById("thread-search-clear");
+  if (clearBtn) clearBtn.addEventListener("click", () => { THREAD_SEARCH = ""; renderThread(); });
+}
+
+function selectTeam(phone) {
+  if (SELECTED_TEAM === phone) return;
+  SELECTED_TEAM = phone;
+  SELECTED_CONV = null;
+  THREAD_SEARCH = "";
+  THREAD_CACHE = null; THREAD_CACHE_KEY = null;
+  renderTeams(); renderConvs(); renderThread();
+}
+function selectConv(conv) {
+  SELECTED_CONV = conv;
+  THREAD_SEARCH = "";
+  renderConvs(); renderThread();
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/data.json");
+    DATA = await r.json();
+    document.getElementById("last-refresh").textContent = "refresh: " + new Date(DATA.generated_at).toLocaleTimeString("it-IT");
+    if (!SELECTED_TEAM && DATA.team.length) SELECTED_TEAM = DATA.team[0].phone;
+    renderTeams(); renderConvs(); renderThread();
+  } catch (err) {
+    colTeams.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function checkHealth() {
+  try {
+    const r = await fetch("/health.json");
+    const h = await r.json();
+    if (h.ok) {
+      document.getElementById("db-host").textContent = "DB: " + h.db_url_host;
+      document.getElementById("health-pill").style.background = "rgba(90,212,138,0.18)";
+      document.getElementById("health-pill").style.color = "var(--bz-success)";
+    }
+  } catch {}
+}
+
+checkHealth();
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>
