@@ -1,0 +1,296 @@
+# L5.2 Phase 2a — Server-side hot-zone PR gate (monitor-mode)
+#
+# Replicates client-side husky pre-commit lease-check + lint replay on the
+# GitHub Actions side, closing the HUSKY=0 bypass documented in cicatrix W34.
+#
+# Phase 2a posture (this file):
+#   - `continue-on-error: true` on every check step → never blocks merges
+#   - Output goes to job logs + workflow summary for 1-week observation
+#   - NOT yet in required_status_checks.contexts (added in Phase 2b after data)
+#
+# Phase 2b plan (separate PR, after monitor-mode data):
+#   - Flip continue-on-error: false on the lease + replay steps
+#   - Add `hot-zone-enforcement` to required_status_checks via gh api PUT
+#
+# References:
+#   - research/operations/L5.2-phase2-3-4-prompts.md § "PROMPT PHASE 2"
+#   - docs/runbooks/redis-lease-registry.md (lease schema + CI caveat)
+#   - cicatrix W34 (HUSKY=0 bypass), W40/W50/W51/W52 (multi-agent race family)
+#   - Phase 1 PR #882 (branch protection foundation)
+#
+# Critical contracts (panel iter-1):
+#   - C1: gira anche su PR che modifica `.github/workflows/` (no paths: filter)
+#   - C2: required check con expected source app (Phase 2b, not here)
+#   - C3: NO `paths:` filter — workflow decide internamente cosa controllare
+#   - C5: per merge queue, ricalcola su latest base SHA
+#
+# Kill switch: vars.L5_2_SERVER_ENFORCEMENT_ENABLED=false → job exits neutral.
+
+name: hot-zone-enforcement
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+
+# Concurrency: cancel stale runs on the same PR ref so latest commit wins
+concurrency:
+  group: hot-zone-pr-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  hot-zone-gate:
+    name: Hot-zone enforcement (monitor-mode)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      # ---------------------------------------------------------------------
+      # Step 0 — Kill switch check (vars-based, not secrets)
+      # ---------------------------------------------------------------------
+      - name: Kill switch
+        id: kill_switch
+        run: |
+          if [[ "${{ vars.L5_2_SERVER_ENFORCEMENT_ENABLED }}" == "false" ]]; then
+            echo "::notice::L5_2_SERVER_ENFORCEMENT_ENABLED=false → exiting neutral"
+            echo "disabled=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "disabled=false" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------------
+      # Step 1 — Checkout base SHA (NOT branch HEAD; anti pull_request_target trap)
+      # Fetch enough history for `git diff base...head` to enumerate changed files.
+      # ---------------------------------------------------------------------
+      - name: Checkout base ref
+        if: steps.kill_switch.outputs.disabled != 'true'
+        uses: actions/checkout@v6
+        with:
+          # For merge_group: github.event.merge_group.base_sha (latest base)
+          # For pull_request: github.event.pull_request.base.sha
+          ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      # ---------------------------------------------------------------------
+      # Step 2 — Enumerate changed files (PR diff)
+      # ---------------------------------------------------------------------
+      - name: Enumerate changed files
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+        run: |
+          set -u
+          echo "Base SHA: $BASE_SHA"
+          echo "Head SHA: $HEAD_SHA"
+
+          git fetch --no-tags --depth=200 origin "$HEAD_SHA" 2>&1 | tail -5 || true
+
+          if ! git cat-file -e "$HEAD_SHA" 2>/dev/null; then
+            echo "::warning::HEAD SHA $HEAD_SHA not in fetched history — using merge-base fallback"
+            CHANGED=""
+          else
+            CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" 2>&1 || true)
+          fi
+
+          echo "--- Changed files ---"
+          echo "$CHANGED"
+          echo "---------------------"
+
+          # Stash for later steps via GITHUB_OUTPUT (multi-line)
+          {
+            echo "changed_files<<HOTZONE_EOF"
+            echo "$CHANGED"
+            echo "HOTZONE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          # Pre-compute hot-zone match for cheap conditional checks downstream
+          HOTZONE_MATCH="false"
+          while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+            case "$f" in
+              apps/backend-rag/backend/db/migrations_v2/*|\
+              apps/backend-rag/backend/app/auth/*|\
+              apps/backend-rag/backend/app/core/config.py|\
+              apps/backend-rag/backend/services/invoicing/*|\
+              apps/backend-rag/backend/services/pricing/*|\
+              scripts/nuzantara-sentinel.py|\
+              scripts/dlq_autopilot.py|\
+              scripts/lint_launchagents.sh|\
+              scripts/lint_migration_numbers.py|\
+              infra/launchagents/*|\
+              docs/infra/launchagents/*|\
+              .github/workflows/*|\
+              .github/CODEOWNERS|\
+              fly.toml|\
+              apps/backend-rag/fly.toml)
+                HOTZONE_MATCH="true"
+                echo "HOT-ZONE HIT: $f"
+                ;;
+            esac
+          done <<< "$CHANGED"
+          echo "hotzone_match=$HOTZONE_MATCH" >> "$GITHUB_OUTPUT"
+
+          # Pre-compute CODEOWNERS self-mod (Componente 2.5)
+          if echo "$CHANGED" | grep -qx ".github/CODEOWNERS"; then
+            echo "codeowners_touched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "codeowners_touched=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------------------------------------------------------------------
+      # Step 3 — Componente 2.5: CODEOWNERS self-modification protection
+      #
+      # Block + Telegram alert if non-Balizero1987 modifies .github/CODEOWNERS.
+      # In Phase 2a this is monitor-mode: log + alert, no block.
+      # ---------------------------------------------------------------------
+      - name: CODEOWNERS self-mod check
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.diff.outputs.codeowners_touched == 'true'
+        continue-on-error: true
+        env:
+          ACTOR: ${{ github.actor }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+        run: |
+          set -u
+          echo "::warning::CODEOWNERS modified by $ACTOR in PR #$PR_NUMBER"
+
+          if [[ "$ACTOR" != "Balizero1987" ]]; then
+            echo "::error::Non-owner actor $ACTOR modified .github/CODEOWNERS"
+
+            if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]]; then
+              MSG="🚨 L5.2 alert: CODEOWNERS modified by ${ACTOR} in PR #${PR_NUMBER}%0A${PR_URL}"
+              curl -sS --max-time 10 -X POST \
+                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
+                -d "text=${MSG}" \
+                > /tmp/tg-response.json || echo "::warning::Telegram send failed"
+              cat /tmp/tg-response.json | head -3
+            else
+              echo "::warning::Telegram secrets missing — skipping alert"
+            fi
+
+            # Phase 2a monitor-mode: log + alert but DO NOT fail
+            # Phase 2b: remove `exit 0` to enforce block
+            echo "Phase 2a monitor-mode: would block in Phase 2b"
+            exit 0
+          else
+            echo "OK: CODEOWNERS modified by owner (Balizero1987)"
+          fi
+
+      # ---------------------------------------------------------------------
+      # Step 4 — Redis lease registry check (best-effort, CI may not reach Pro)
+      #
+      # Per docs/runbooks/redis-lease-registry.md: "CI environments should set
+      # AGENT_LEASE_ENFORCEMENT=false since they don't participate in
+      # multi-agent coordination — they run on ephemeral hosts with no Redis
+      # access." We still try-connect because the brief states secrets.REDIS_URL
+      # may have been configured for cross-host visibility. Treat as monitor-only.
+      # ---------------------------------------------------------------------
+      - name: Redis lease check (best-effort)
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.diff.outputs.hotzone_match == 'true'
+        continue-on-error: true
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          CHANGED_FILES: ${{ steps.diff.outputs.changed_files }}
+        run: |
+          set -u
+
+          if [[ -z "${REDIS_URL:-}" ]]; then
+            echo "::notice::REDIS_URL secret unset — lease check skipped (cold)"
+            exit 0
+          fi
+
+          python3 -m pip install --quiet 'redis>=5.0' || {
+            echo "::warning::redis pip install failed — lease check skipped"
+            exit 0
+          }
+          python3 scripts/ci/redis_lease_check.py
+
+      # ---------------------------------------------------------------------
+      # Step 5 — Replay lint_migration_numbers.py if migrations touched
+      #
+      # NOTE: lint-migration-numbers.yml already runs this on pull_request +
+      # push:main. We re-execute here to ensure Phase 2a observability covers
+      # the same surface even when that workflow's `paths:` filter were to
+      # bypass (cicatrix W40 root pattern). Cheap duplicate.
+      # ---------------------------------------------------------------------
+      - name: Replay lint_migration_numbers.py
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          contains(steps.diff.outputs.changed_files, 'apps/backend-rag/backend/db/migrations_v2/')
+        continue-on-error: true
+        run: |
+          set -u
+          if [[ ! -f scripts/lint_migration_numbers.py ]]; then
+            echo "::warning::scripts/lint_migration_numbers.py not in repo at base SHA — skipped"
+            exit 0
+          fi
+          python3 scripts/lint_migration_numbers.py
+          echo "lint_migration_numbers exit: $?"
+
+      # ---------------------------------------------------------------------
+      # Step 6 — lint_launchagents.sh CI guard
+      #
+      # The Bash lint script reads ~/Library/LaunchAgents/ (macOS local FS) so
+      # it CANNOT execute on Linux runner. Log informational notice and surface
+      # the touched paths for manual operator review. Phase 2b candidate:
+      # replicate VADEMECUM §11 rules as a CI-safe Python rewrite reading
+      # infra/launchagents/*.plist (repo-tracked plist mirror).
+      # ---------------------------------------------------------------------
+      - name: LaunchAgent touched (operator notice)
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          (contains(steps.diff.outputs.changed_files, 'infra/launchagents/') ||
+           contains(steps.diff.outputs.changed_files, 'docs/infra/launchagents/') ||
+           contains(steps.diff.outputs.changed_files, 'scripts/lint_launchagents.sh'))
+        continue-on-error: true
+        env:
+          CHANGED_FILES: ${{ steps.diff.outputs.changed_files }}
+        run: |
+          echo "::notice::LaunchAgent-class files modified in this PR:"
+          echo "$CHANGED_FILES" | grep -E '(infra/launchagents/|docs/infra/launchagents/|scripts/lint_launchagents\.sh)' || true
+          echo "::notice::scripts/lint_launchagents.sh requires macOS ~/Library/LaunchAgents/ access (operator-side only)"
+          echo "Phase 2b candidate: port VADEMECUM §11 rules to CI-safe Python lint reading repo-tracked plist mirror"
+
+      # ---------------------------------------------------------------------
+      # Step 7 — Summary
+      # ---------------------------------------------------------------------
+      - name: Job summary
+        if: always() && steps.kill_switch.outputs.disabled != 'true'
+        env:
+          HOTZONE_MATCH: ${{ steps.diff.outputs.hotzone_match }}
+          CODEOWNERS_TOUCHED: ${{ steps.diff.outputs.codeowners_touched }}
+          CHANGED_FILES: ${{ steps.diff.outputs.changed_files }}
+        run: |
+          {
+            echo "## L5.2 Phase 2a — hot-zone enforcement (monitor-mode)"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Hot-zone touched | \`${HOTZONE_MATCH}\` |"
+            echo "| CODEOWNERS touched | \`${CODEOWNERS_TOUCHED}\` |"
+            echo "| Actor | \`${{ github.actor }}\` |"
+            echo "| Event | \`${{ github.event_name }}\` |"
+            echo ""
+            echo "### Changed files"
+            echo "\`\`\`"
+            echo "${CHANGED_FILES}"
+            echo "\`\`\`"
+            echo ""
+            echo "**Mode**: monitor-only. All checks \`continue-on-error: true\`."
+            echo "**Phase 2b** will flip enforce + add this job to required_status_checks."
+            echo ""
+            echo "Reference: research/operations/L5.2-phase2-3-4-prompts.md"
+          } >> "$GITHUB_STEP_SUMMARY"
