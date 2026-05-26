@@ -111,6 +111,15 @@ _INFRA = (
         "WA Dashboard SSE stream health probe — public for dashboard reachability",
         match="exact",
     ),
+    # P1.2 asset upload proxy (2026-05-26): /api/assets/upload is auth-protected
+    # via X-Asset-Upload-Token header (env ASSET_UPLOAD_TOKEN); only /health is
+    # public for liveness probe of the asset upload service (Tigris config check).
+    PublicEndpoint(
+        "/api/assets/health",
+        Category.INFRA,
+        "Asset upload service health probe (Tigris config check, no creds exposed)",
+        match="exact",
+    ),
     # Intel Lake Wave 1 (2026-05-12, mig 168): unified intel pipeline ingest
     # endpoint. Public to bypass HybridAuthMiddleware — but enforces its own
     # X-Producer-Token header auth in the router (env INTEL_LAKE_PRODUCER_TOKEN).
