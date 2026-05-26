@@ -737,8 +737,8 @@ app.get("/data.json", async (_req, res) => {
 });
 
 app.get("/thread.json", async (req, res) => {
-  const memberPhone = req.query.member;
-  const convKey = req.query.conv;
+  const memberPhone = typeof req.query.member === "string" ? req.query.member : "";
+  const convKey = typeof req.query.conv === "string" ? req.query.conv : "";
   if (!memberPhone || !convKey) {
     return res.status(400).json({ error: "missing member or conv" });
   }
@@ -746,8 +746,8 @@ app.get("/thread.json", async (req, res) => {
     const rows = await fetchThread(memberPhone, convKey);
     res.json({ member: memberPhone, conv: convKey, count: rows.length, messages: rows });
   } catch (err) {
-    console.error("[thread.json]", err);
-    res.status(500).json({ error: err.message });
+    console.error("[thread.json] error", { code: err.code, name: err.name });
+    res.status(500).json({ error: "thread query failed" });
   }
 });
 
@@ -819,8 +819,10 @@ app.get("/client-avatar/:id", async (req, res) => {
       return res.end(Buffer.from(m[2], "base64"));
     }
     // Google Drive view URLs → not directly streamable, fallback redirect
-    if (a.includes("drive.google.com")) {
-      const idMatch = a.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    let parsedUrl = null;
+    try { parsedUrl = new URL(a); } catch { /* not a URL */ }
+    if (parsedUrl && parsedUrl.hostname === "drive.google.com") {
+      const idMatch = parsedUrl.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/);
       if (idMatch) {
         // Use thumbnail endpoint (works for public files)
         return res.redirect(`https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w200`);
