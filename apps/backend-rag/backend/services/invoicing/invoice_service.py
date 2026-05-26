@@ -23,6 +23,7 @@ from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
 from backend.services.notifications.email_audit import (
+    format_send_error,
     log_email_attempt,
     notify_email_failure_critical,
     record_email_result,
@@ -174,9 +175,7 @@ class InvoiceAutomationService:
                     )
                     logger.info(f"Invoice email sent to client {client_data['email']}")
                 except Exception as email_error:
-                    err_msg = str(email_error)
-                    if isinstance(email_error, httpx.HTTPStatusError):
-                        err_msg = f"status={email_error.response.status_code} {err_msg}"
+                    err_msg = format_send_error(email_error)
                     logger.warning(
                         f"Failed to send invoice email to {client_data['email']}: {err_msg}",
                     )
