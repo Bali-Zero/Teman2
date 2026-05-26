@@ -59,3 +59,58 @@ PYTHONPATH=. python -m scripts.whatsapp_corpus.compile_review_decisions \
 
 With safe defaults, only team-gated rows are allowed. Private-drive rows are
 denied, and all remaining blank manual-review rows stay on hold.
+
+## Case Window Manual Review
+
+The case-window queue is a second-stage review over already allowlisted local
+messages. It is for operational triage only: dense windows may become local
+CRM/ops actions after owner approval.
+
+Generate the editable workbook and redacted local context:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_case_window_manual_review
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/review/case_window_review_workbook.local.tsv`
+- `research/personal/wa-corpus/review/case_window_context.local.tsv`
+- `research/personal/wa-corpus/review/case_window_manual_review_summary.md`
+
+The workbook is private and ignored by git. Fill `owner_decision` only after
+checking the local context. Supported values:
+
+- `approve`
+- `hold`
+- `deny`
+- `duplicate`
+- `no_action`
+
+When `owner_decision=approve`, set `action_type` if the inferred default is not
+good enough:
+
+- `crm_followup`
+- `document_chase`
+- `deadline_check`
+- `immigration_status_check`
+- `payment_reconcile`
+- `case_note`
+- `kb_extract`
+- `team_escalation`
+
+Compile only approved rows into the local ops queue:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.compile_case_window_actions
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/actions/case_window_actions.local.tsv`
+- `research/personal/wa-corpus/actions/case_window_actions_summary.md`
+
+The action queue is still local-only. Validate each row before copying anything
+into CRM or team workflows.

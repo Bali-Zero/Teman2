@@ -154,6 +154,42 @@ Outputs:
 The SQLite file stores raw parsed message text and raw sender labels. It is
 ignored by git and must stay on the Pro.
 
+## Review Case Windows and Compile Local Actions
+
+After domain events and case windows exist, build the owner review workbook for
+the top operational windows:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_case_window_manual_review
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/review/case_window_review_workbook.local.tsv`
+- `research/personal/wa-corpus/review/case_window_context.local.tsv`
+- `research/personal/wa-corpus/review/case_window_manual_review_summary.md`
+
+The workbook and context TSV are local-only and ignored by git. The context TSV
+contains redacted previews for owner review; the tracked summary contains only
+aggregate counts.
+
+After setting `owner_decision=approve` on selected workbook rows, compile only
+approved rows into a local CRM/ops queue:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.compile_case_window_actions
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/actions/case_window_actions.local.tsv`
+- `research/personal/wa-corpus/actions/case_window_actions_summary.md`
+
+Rows left blank, held, denied, duplicated, or marked `no_action` do not become
+actions.
+
 ## Analyze Allowed Temporal Metrics
 
 Build aggregate temporal metrics from the ignored parsed-message DB:

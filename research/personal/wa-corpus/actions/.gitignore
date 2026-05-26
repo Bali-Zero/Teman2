@@ -1,0 +1,6 @@
+*.local.tsv
+*.local.csv
+*.local.jsonl
+*.local.sqlite
+*.local.db
+*.private.*
