@@ -4,7 +4,7 @@
 # Previous: HTTPX 0.28+ MIGRATION (2025-12-29)
 
 # Core Framework
-fastapi>=0.135.2  # Upgraded for starlette 0.50+ compatibility
+fastapi>=0.135.2,!=0.136.3  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
 starlette>=1.0.1,<1.1.0  # Security fix: PYSEC-2026-161 / GHSA-86qp-5c8j-p5mr; keep dev lock on the suite-tested 1.0.x line.
 uvicorn[standard]>=0.40.0  # Upgraded for async improvements
 sentry-sdk[fastapi]>=2.59.0  # Error monitoring
