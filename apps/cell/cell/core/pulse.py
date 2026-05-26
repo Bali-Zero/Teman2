@@ -161,6 +161,7 @@ class PulseEngine:
         ai_intel_sensor: Any = None,
         nlm_effector: Any = None,
         outbox_sensor: Any = None,
+        wa_mirror_enrichment_sensor: Any = None,
         metrics: PulseMetrics | None = None,
     ) -> None:
         self._dna = dna_loader
@@ -195,6 +196,13 @@ class PulseEngine:
         self._ai_intel_sensor = ai_intel_sensor
         self._nlm_effector = nlm_effector
         self._outbox_sensor = outbox_sensor
+        # W57 (2026-05-26): wa-mirror enrichment Layer B-3 sensor (optional).
+        # When provided, sensor probes 3 LaunchAgents every pulse; pulse.py
+        # tracks a SEPARATE streak counter (vs W27 main red-streak) and
+        # emits cell_pulse_sustained_red with cell_id="wa-mirror-enrichment"
+        # + FLAT payload {error_class, missing_module, python_path} when
+        # streak >= SUSTAINED_RED_THRESHOLD AND error_class == ModuleNotFoundError.
+        self._wa_mirror_enrichment_sensor = wa_mirror_enrichment_sensor
         self._metrics = metrics
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
@@ -205,6 +213,11 @@ class PulseEngine:
         # ONCE per sustained window — resets on first non-red pulse.
         self._red_streak: int = 0
         self._sustained_red_emitted: bool = False
+        # W57 (2026-05-26): separate streak + idempotency for wa-mirror
+        # enrichment dispatch (NOT the same as main red-streak — wa-mirror
+        # may be red while main Cell is green; they are independent organs).
+        self._wa_mirror_enrichment_red_streak: int = 0
+        self._wa_mirror_enrichment_emitted: bool = False
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
         from cell.metabolism.attention_allocator import AttentionCost
@@ -899,6 +912,97 @@ class PulseEngine:
                 )
             self._red_streak = 0
             self._sustained_red_emitted = False
+
+        # W57 (2026-05-26): Self-healing wa-mirror enrichment Layer C dispatch.
+        # Independent from W27 main red-streak: wa-mirror enrichment can be
+        # red (ModuleNotFoundError on LaunchAgents) while the main Cell is
+        # green (backend reachable). Same threshold (3 consecutive) + idempotency
+        # pattern + W33 kill switch. Only ModuleNotFoundError class triggers
+        # dispatch — other error classes (InvalidPasswordError, ConnectionRefused)
+        # are logged-yellow but require operator intervention.
+        if self._wa_mirror_enrichment_sensor is not None:
+            try:
+                wa_reading = self._wa_mirror_enrichment_sensor.read()
+            except Exception as _wa_exc:
+                logger.warning(
+                    f"W57 wa-mirror sensor read failed (non-blocking): {_wa_exc}"
+                )
+                wa_reading = None
+
+            if wa_reading is not None:
+                # Code-reviewer finding #1 (fix): advance streak counter on
+                # ANY yellow/red — not only repairable. This handles the
+                # error-class transition case (e.g. InvalidPasswordError →
+                # ModuleNotFoundError on same label): without this fix, the
+                # streak would reset to 0 every time error_class changes
+                # and the repair would never fire.
+                if wa_reading.status in ("yellow", "red"):
+                    self._wa_mirror_enrichment_red_streak += 1
+                    missing_module = (
+                        wa_reading.metadata.get("repair_missing_module") or ""
+                    )
+                    python_path = (
+                        wa_reading.metadata.get("repair_python_path") or ""
+                    )
+                    # Emit ONLY when repairable + threshold met + idempotent.
+                    # spalla suggestion: skip emit if missing_module/python_path
+                    # empty (would waste an emit cycle hitting ValueError
+                    # downstream in actuator).
+                    if (wa_reading.repairable
+                            and missing_module
+                            and python_path
+                            and self._wa_mirror_enrichment_red_streak >= SUSTAINED_RED_THRESHOLD
+                            and not self._wa_mirror_enrichment_emitted):
+                        if not _autoremediation_enabled():
+                            logger.warning(
+                                "W57 kill switch active "
+                                "(CELL_AUTOREMEDIATION_ENABLED=false): "
+                                f"would emit enrichment_repair_request "
+                                f"(streak={self._wa_mirror_enrichment_red_streak}, "
+                                f"missing_module={missing_module}) "
+                                "but suppressed by operator override"
+                            )
+                            # spalla blocker #1: mirrors W33 GOTCHA — flag set
+                            # under kill switch is intentional (suppress repeat
+                            # spam during same red window). Clears on next
+                            # non-red status in the else-branch below.
+                            self._wa_mirror_enrichment_emitted = True
+                        else:
+                            try:
+                                from cell_core import observatory as _obs
+                                if _obs.is_enabled():
+                                    import asyncio as _a
+                                    _a.create_task(_obs.emit_enrichment_repair_request(
+                                        cell_id="wa-mirror-enrichment",
+                                        pulse_id=f"wa-enrich-repair-{pulse_number}",
+                                        pulse_timestamp_ms=int(now.timestamp() * 1000),
+                                        consecutive=self._wa_mirror_enrichment_red_streak,
+                                        error_class="ModuleNotFoundError",
+                                        missing_module=missing_module,
+                                        python_path=python_path,
+                                        target_app="wa-mirror-enrichment",
+                                        target_process_group="enrichment",
+                                        metadata={
+                                            "pulse_number": pulse_number,
+                                            "label_count": wa_reading.metadata.get("label_count"),
+                                            "repair_target": wa_reading.metadata.get("repairable_target"),
+                                        },
+                                    ))
+                                    self._wa_mirror_enrichment_emitted = True
+                            except Exception as _exc:
+                                logger.warning(
+                                    f"W57 enrichment_repair_request emit failed (non-blocking): {_exc}"
+                                )
+                else:
+                    if (self._wa_mirror_enrichment_red_streak > 0
+                            or self._wa_mirror_enrichment_emitted):
+                        logger.info(
+                            f"W57: wa-mirror enrichment streak reset "
+                            f"(was {self._wa_mirror_enrichment_red_streak}, "
+                            f"status={wa_reading.status}, repairable={wa_reading.repairable})"
+                        )
+                    self._wa_mirror_enrichment_red_streak = 0
+                    self._wa_mirror_enrichment_emitted = False
 
         # Cell Pulse Observatory hook (Track A activation 2026-05-02).
         # Fire-and-forget — pulse loop must NEVER block on observatory.

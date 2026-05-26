@@ -228,3 +228,94 @@ async def emit_sustained_red(
             "cell_observatory sustained_red emit failed (non-blocking): cell=%s pulse=%s err=%s",
             cell_id, pulse_id, exc,
         )
+
+
+# W57 (2026-05-26): Self-healing wa-mirror enrichment Layer C emitter.
+# Emits `cell_pulse_sustained_red` with FLAT top-level error_class,
+# missing_module, python_path fields (yaml_rules.py matcher is flat —
+# no dotted nested lookup). The Organism YAML rule
+# `enrichment_dep_missing_repair` reads these to dispatch python_env_repair.
+async def emit_enrichment_repair_request(
+    cell_id: str,
+    pulse_id: str,
+    pulse_timestamp_ms: int,
+    consecutive: int,
+    error_class: str,
+    missing_module: str,
+    python_path: str,
+    target_app: str = "wa-mirror-enrichment",
+    target_process_group: str = "enrichment",
+    metadata: Optional[dict[str, Any]] = None,
+) -> None:
+    """Emit a cell_pulse_sustained_red event with W57 self-healing payload.
+
+    Payload schema (FLAT — required by yaml_rules.py FLAT matcher):
+      - cell_id: str (e.g. "wa-mirror-enrichment")
+      - pulse_id: str
+      - pulse_timestamp: int (ms)
+      - consecutive: int (red-streak count)
+      - classifier_self: "red"
+      - app: str (matches yaml rule's payload.app)
+      - process_group: str
+      - error_class: str (matches yaml rule's payload.error_class)
+      - missing_module: str (substituted into {payload.missing_module} param)
+      - python_path: str (substituted into {payload.python_path} param)
+      - metadata: dict (free-form, NOT matchable)
+
+    No-op when CELL_OBSERVATORY_EMIT != 'true' or EVENTBUS_DATABASE_URL is unset.
+    Errors are swallowed (WARN log) — caller MUST NOT block on this.
+    """
+    if not is_enabled():
+        return
+
+    try:
+        pool = await _get_or_create_pool()
+        if pool is None:
+            return
+
+        payload: dict[str, Any] = {
+            "event_version": "v1",
+            "cell_id": cell_id,
+            "pulse_id": pulse_id,
+            "pulse_timestamp": pulse_timestamp_ms,
+            "consecutive": consecutive,
+            "classifier_self": "red",
+            "app": target_app,
+            "process_group": target_process_group,
+            "error_class": error_class,
+            "missing_module": missing_module,
+            "python_path": python_path,
+            "metadata": metadata or {},
+        }
+
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    _INSERT_SQL, "cell_pulse_sustained_red", json.dumps(payload),
+                )
+                outbox_id = int(row["id"])
+                notify_stub = {
+                    "_outbox_id": outbox_id,
+                    "cell_id": cell_id,
+                    "pulse_id": pulse_id,
+                    "consecutive": consecutive,
+                    "classifier_self": "red",
+                    "app": target_app,
+                    "process_group": target_process_group,
+                    "error_class": error_class,
+                    "missing_module": missing_module,
+                }
+                await conn.execute(
+                    _NOTIFY_SQL, "cell_pulse_sustained_red", json.dumps(notify_stub),
+                )
+                logger.warning(
+                    "W57: cell_pulse_sustained_red (enrichment_repair) emitted "
+                    "(cell=%s error_class=%s missing_module=%s consecutive=%d outbox_id=%d)",
+                    cell_id, error_class, missing_module, consecutive, outbox_id,
+                )
+    except Exception as exc:
+        logger.warning(
+            "cell_observatory enrichment_repair_request emit failed (non-blocking): "
+            "cell=%s pulse=%s err=%s",
+            cell_id, pulse_id, exc,
+        )
