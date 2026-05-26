@@ -75,6 +75,13 @@ const logger = pino({
 export type StartSessionOptions = {
   accountPhone: string;
   teamMemberName?: string;
+  /**
+   * FIX 4 (2026-05-26): explicit email override, distinct from phone.
+   * Manifest loader passes the @balizero.com email when known; the CRM
+   * downstream joins on this column. Default "" leaves the row attributable
+   * by team_member_phone only (legacy behaviour).
+   */
+  teamMemberEmail?: string;
   /** Bali Zero-side number once the team member scans the QR. Falls back to
    *  the JID Baileys reports on `open`. Used only as fallback when the
    *  operator did not pre-populate the row. */
@@ -142,6 +149,7 @@ export async function startSession(opts: StartSessionOptions): Promise<number> {
     account: {
       phone: accountPhone,
       name: teamMemberName,
+      email: opts.teamMemberEmail ?? "",
     },
     authDir,
     sessionLabel,
@@ -168,7 +176,13 @@ type ConnectContext = {
 function connectWithRetry(ctx: ConnectContext): Promise<number> {
   return new Promise<number>((resolve, reject) => {
     let settled = false;
-    let attempt = 0;
+    // FIX 5 (2026-05-26): attempt counter promoted to a shared context object
+    // so connectOnce / scheduleReconnect / handleConnectionUpdate all read
+    // the SAME value. Pre-fix the closure variable was fine, but the API
+    // was ambiguous: callers could re-increment in scheduleReconnect by
+    // accident. Context object enforces that connectOnce is the sole
+    // incrementer.
+    const retryCtx = { attempt: 0 };
 
     const settleResolve = (): void => {
       if (settled) return;
@@ -182,7 +196,7 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
     };
 
     const connectOnce = async (): Promise<void> => {
-      attempt += 1;
+      retryCtx.attempt += 1;
       const { state, saveCreds } = await useMultiFileAuthState(ctx.authDir);
       const { version } = await fetchLatestBaileysVersion();
 
@@ -195,19 +209,122 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         printQRInTerminal: false,
         browser: [ctx.sessionLabel, "Chrome", "1.0.0"],
         logger: logger.child({ component: "baileys" }),
-        markOnlineOnConnect: false,
+        // CICATRIX 2026-05-25: markOnlineOnConnect changed false→true.
+        // Baileys issue #2491 (Jhey02 empirical) — markOnline=false combined
+        // with the messageMutex hold in messages-recv.ts:1153 causes
+        // executeInitQueries → fetchProps to hit Timed Out, then ACK never
+        // fires and messages.upsert is permanently blocked while connection
+        // stays "open" (sintomo: 9/9 bridges connected, 0 upserts in DB).
+        markOnlineOnConnect: true,
         syncFullHistory: false,
         shouldSyncHistoryMessage: () => false,
         generateHighQualityLinkPreview: false,
+        // CICATRIX 2026-05-25: explicit timeouts per Baileys issue #2064/#2491.
+        // Default defaultQueryTimeoutMs=undefined → promiseTimeout skips the
+        // enforce path (generics.ts:154) → init queries hang forever instead
+        // of failing fast and triggering reconnect. 60s gives WA time to ACK
+        // on slow networks but still fails-fast vs infinite hang.
+        defaultQueryTimeoutMs: 60_000,
+        // Default keepAlive ~45s; WA terminates ~50s. 25s window avoids the
+        // race where WA cuts the socket between two pings.
+        keepAliveIntervalMs: 25_000,
       });
 
-      sock.ev.on("creds.update", saveCreds);
+      // FIX 7 (2026-05-26): per-socket disposers Set. Every listener / timer
+      // registered against THIS sock instance also goes here. On
+      // connection=close we run them in `finally` so a stale socket cannot
+      // leak callbacks (memory leak) or zombie intervals (deaf-watchdog
+      // ticking against a torn-down sock after N reconnects).
+      const disposers = new Set<() => void>();
+      const onSock = <K extends Parameters<typeof sock.ev.on>[0]>(
+        evt: K,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        fn: (...args: any[]) => void,
+      ): void => {
+        sock.ev.on(evt, fn);
+        disposers.add(() => {
+          try {
+            sock.ev.off(evt, fn);
+          } catch (err) {
+            logger.warn(
+              { err: (err as Error).message, evt },
+              "wa-mirror dispose listener failed",
+            );
+          }
+        });
+      };
+
+      onSock("creds.update", saveCreds);
       registerMessageHandler(sock, ctx);
 
-      sock.ev.on("connection.update", (update) => {
+      // CICATRIX 2026-05-25: Baileys issue #2491 "deaf session" mitigation.
+      // Symptom: WebSocket alive, keepAlive pings OK, but messages.upsert
+      // silently stops firing for incoming DIRECT messages after WA's
+      // server-side flow control gives up (delayed ACKs from messageMutex
+      // contention). Groups keep working because SenderKey is stateless.
+      // Mitigation: track last messages.upsert/messages.update timestamp,
+      // force ws.close() if silent for DEAF_SESSION_TIMEOUT_MS while
+      // connection.update last reported "open". Triggers reconnect loop.
+      const DEAF_SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — issue #2491 recommended default
+      const DEAF_SESSION_CHECK_MS = 60 * 1000; // poll every 60s
+      let lastUpsertAt = Date.now();
+      let connectionOpen = false;
+      const bumpUpsertTs = () => {
+        lastUpsertAt = Date.now();
+      };
+      // FIX 6 (2026-05-26): only bump deaf-watchdog on real `notify` events
+      // carrying at least one decrypted message. Pre-fix history-sync chunks
+      // (type="append", or notify with empty `message`) bumped the timer
+      // and masked the deaf-session state we are trying to detect. Also
+      // removed messages.update bump — updates (read receipts, reactions)
+      // are unrelated to "is the socket still receiving NEW direct chats?".
+      onSock("messages.upsert", (event) => {
+        if (
+          event.type === "notify" &&
+          Array.isArray(event.messages) &&
+          event.messages.some((m: { message?: unknown }) => m.message != null)
+        ) {
+          bumpUpsertTs();
+        }
+      });
+      onSock("connection.update", (u) => {
+        if (u.connection === "open") {
+          connectionOpen = true;
+          lastUpsertAt = Date.now(); // reset timer on fresh open
+        } else if (u.connection === "close") {
+          connectionOpen = false;
+        }
+      });
+      const deafTimer = setInterval(() => {
+        if (!connectionOpen) return;
+        const silentMs = Date.now() - lastUpsertAt;
+        if (silentMs >= DEAF_SESSION_TIMEOUT_MS) {
+          logger.warn(
+            { sessionId: ctx.sessionId, silentMs },
+            "wa-mirror deaf-session detected — forcing reconnect (issue #2491)",
+          );
+          clearInterval(deafTimer);
+          try {
+            sock.end(new Error("deaf-session"));
+          } catch (err) {
+            // socket may already be tearing down
+            logger.warn(
+              { err: (err as Error).message },
+              "wa-mirror sock.end during deaf-session forced reconnect failed",
+            );
+          }
+        }
+      }, DEAF_SESSION_CHECK_MS);
+      // FIX 7 (2026-05-26): register the timer with disposers so it is also
+      // cleared on any close path (not only the explicit deaf-session arm).
+      disposers.add(() => clearInterval(deafTimer));
+
+      onSock("connection.update", (update) => {
         // Fire-and-forget — connection.update handlers must not throw.
         void handleConnectionUpdate(update, sock, ctx, {
-          attempt,
+          // FIX 5 (2026-05-26): pass the live attempt counter, NOT a stale
+          // capture from connectOnce's first tick.
+          attempt: retryCtx.attempt,
           settleResolve,
           settleReject,
           scheduleReconnect,
@@ -215,21 +332,41 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
             // onboard mode: close the socket cleanly after first open.
             try {
               sock.end(undefined);
-            } catch {
-              // ignore — socket may already be torn down
+            } catch (err) {
+              logger.warn(
+                { err: (err as Error).message },
+                "wa-mirror sock.end during onboard stop failed",
+              );
             }
           },
         });
       });
+
+      // FIX 7 (2026-05-26): run all disposers on close (transient or
+      // terminal). Sock.end() is still owned by handleConnectionUpdate /
+      // the deaf-watchdog — we only release listeners + timers here.
+      onSock("connection.update", (u) => {
+        if (u.connection === "close") {
+          try {
+            for (const d of disposers) {
+              d();
+            }
+          } finally {
+            disposers.clear();
+          }
+        }
+      });
     };
 
     const scheduleReconnect = (): void => {
+      // FIX 5 (2026-05-26): read attempt from retryCtx — connectOnce is the
+      // sole writer; scheduleReconnect only reads.
       const delay = Math.min(
-        RECONNECT_BASE_MS * 2 ** Math.min(attempt - 1, 5),
+        RECONNECT_BASE_MS * 2 ** Math.min(retryCtx.attempt - 1, 5),
         RECONNECT_MAX_MS,
       );
       logger.info(
-        { sessionId: ctx.sessionId, attempt, delayMs: delay },
+        { sessionId: ctx.sessionId, attempt: retryCtx.attempt, delayMs: delay },
         "wa-mirror scheduling reconnect",
       );
       setTimeout(() => {
@@ -299,14 +436,43 @@ async function handleConnectionUpdate(
         [phoneDigits(ownPhone), ownPhone, ctx.sessionId],
       );
       await markConnected(ctx.sessionId);
-    } catch {
+    } catch (err) {
       logger.warn(
-        { sessionId: ctx.sessionId },
+        { sessionId: ctx.sessionId, err: (err as Error).message },
         "wa-mirror markConnected failed (non-fatal)",
       );
     }
     logger.info({ sessionId: ctx.sessionId }, "wa-mirror session connected");
     await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger);
+
+    // CICATRIX 2026-05-25: refresh pre-keys on every connect.
+    // Pre-fix: bridge initial pairing seeded ~30 prekeys, all consumed over time.
+    // Peers then tried to negotiate using preKey IDs the bridge had discarded →
+    // PreKeyError: Invalid PreKey ID on every direct-LID message (sintomo:
+    // dashboard direct chats frozen 4+ days while groups kept flowing because
+    // group cipher = SenderKey, no per-message prekey rotation needed).
+    // Baileys auto-uploads on initial pairing only; refresh on each reconnect.
+    try {
+      const refresher = sock as unknown as {
+        uploadPreKeysToServerIfRequired?: () => Promise<void>;
+        uploadPreKeys?: () => Promise<void>;
+      };
+      if (typeof refresher.uploadPreKeysToServerIfRequired === "function") {
+        await refresher.uploadPreKeysToServerIfRequired();
+      } else if (typeof refresher.uploadPreKeys === "function") {
+        await refresher.uploadPreKeys();
+      }
+      logger.info(
+        { sessionId: ctx.sessionId },
+        "wa-mirror prekey refresh attempted",
+      );
+    } catch (err) {
+      logger.warn(
+        { sessionId: ctx.sessionId, err: (err as Error).message },
+        "wa-mirror prekey refresh failed (non-fatal)",
+      );
+    }
+
     if (ctx.resolveOnFirstOpen) {
       // onboard.ts: auth state is persisted, our job is done.
       deps.settleResolve();
@@ -328,13 +494,13 @@ async function handleConnectionUpdate(
         reason,
         terminal ? "revoked" : "disconnected",
       );
-    } catch {
+    } catch (err) {
       // The pre-2026-05-14 UNIQUE(team_member_email, status) constraint made
       // this throw on a duplicate `disconnected` row. Migration 175 replaces
       // it with a partial unique index on active states only, but we still
       // swallow errors here so a bookkeeping failure never kills the loop.
       logger.warn(
-        { sessionId: ctx.sessionId },
+        { sessionId: ctx.sessionId, err: (err as Error).message },
         "wa-mirror markDisconnected failed (non-fatal)",
       );
     }
@@ -378,6 +544,56 @@ async function handleConnectionUpdate(
 function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
   let consecutiveDbErrors = 0;
 
+  // FIX 3 (2026-05-26): Baileys signalRepository.lidMapping.getPNForLID
+  // resolver. Translates a raw LID (15-digit privacy-shielded identifier)
+  // into the underlying phone via the per-session signal store, then
+  // write-back caches the mapping to `wa_lid_phone_map` so downstream
+  // consumers (CRM identity_resolver, analytics) can JOIN without
+  // re-querying Baileys. Returns null on any failure path so callers can
+  // fall back to the existing async-resolver behaviour.
+  const resolveLidToPhone = async (lid: string): Promise<string | null> => {
+    try {
+      const sockAny = sock as unknown as {
+        signalRepository?: {
+          lidMapping?: {
+            getPNForLID?: (lid: string) => Promise<string | null>;
+          };
+        };
+      };
+      const result = await sockAny.signalRepository?.lidMapping?.getPNForLID?.(
+        lid.includes("@") ? lid : `${lid}@lid`,
+      );
+      if (!result) return null;
+      const phoneDigits =
+        result.split("@")[0]?.split(":")[0]?.replace(/\D/g, "") ?? "";
+      const e164 = normalizePhone(`+${phoneDigits}`);
+      if (!e164) return null;
+      // Write-back to wa_lid_phone_map (fire-and-forget). Schema lives in
+      // migration 201: lid PK, phone_e164, client_id (filled later by
+      // identity_resolver), confidence, source enum.
+      void query(
+        `INSERT INTO wa_lid_phone_map (lid, phone_e164, source, confidence)
+         VALUES ($1, $2, 'baileys_metadata', 0.95)
+         ON CONFLICT (lid) DO UPDATE SET
+           phone_e164 = EXCLUDED.phone_e164,
+           last_confirmed_at = now()`,
+        [lid, e164],
+      ).catch((err) => {
+        logger.warn(
+          { err: (err as Error).message, lid },
+          "wa-mirror wa_lid_phone_map upsert failed (non-fatal)",
+        );
+      });
+      return e164;
+    } catch (err) {
+      logger.warn(
+        { err: (err as Error).message, lid },
+        "wa-mirror lid resolve failed (non-fatal)",
+      );
+      return null;
+    }
+  };
+
   sock.ev.on("messages.upsert", async (event) => {
     if (event.type !== "notify" && event.type !== "append") return;
     for (const m of event.messages) {
@@ -388,15 +604,23 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           continue;
         }
 
-        if (record.chatType === "direct" && record.counterpartPhone) {
+        // FIX 9 (2026-05-26): only touch the contact table on INBOUND
+        // direct messages. Pre-fix: outbound also fired touchWhatsAppContact
+        // → contact name overwritten with the team member's own pushName
+        // (e.g. "Adit" stomped the real counterpart name "Mr. Wijaya").
+        if (
+          record.chatType === "direct" &&
+          record.counterpartPhone &&
+          record.direction === "inbound"
+        ) {
           try {
             await touchWhatsAppContact({
               phone: record.counterpartPhone,
               name: m.pushName ?? `wa:${record.counterpartPhone}`,
             });
-          } catch {
+          } catch (err) {
             logger.warn(
-              { sessionId: ctx.sessionId },
+              { sessionId: ctx.sessionId, err: (err as Error).message },
               "wa-mirror contact touch failed (message capture continues)",
             );
           }
@@ -406,6 +630,8 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           store: ctx.store,
           resolveClientId: findClientByPhone,
           resolvePracticeId: findOpenPracticeForClient,
+          // FIX 3 (2026-05-26): inline LID→phone resolver, see helper above.
+          resolveLidToPhone,
         });
         consecutiveDbErrors = 0;
 
@@ -414,7 +640,9 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
         await emitMessageReceived({
           message_context_id: persisted.id,
           bridge_session_id: ctx.sessionId,
-          team_member_email: ctx.account.phone,
+          // FIX 4 (2026-05-26): emit the real email (or "" when unknown).
+          // Pre-fix forced phone here, which broke CRM joins downstream.
+          team_member_email: ctx.account.email ?? "",
           client_id: persisted.row.clientId,
           direction: record.direction,
           message_date: record.timestamp.toISOString(),
@@ -429,12 +657,13 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           store: ctx.store,
           logger,
         });
-      } catch {
+      } catch (err) {
         consecutiveDbErrors += 1;
         logger.warn(
           {
             sessionId: ctx.sessionId,
             consecutiveDbErrors,
+            err: (err as Error).message,
           },
           "wa-mirror message persist failed",
         );

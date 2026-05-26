@@ -3,7 +3,7 @@
 # Last updated: 2026-01-18 - Security updates: python-jose, fastapi, openai, requests
 
 # Core Framework
-fastapi>=0.135.2  # Upgraded for starlette 0.50+ compatibility and security fixes
+fastapi>=0.135.2,!=0.136.3  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
 uvicorn[standard]>=0.40.0  # Upgraded for async improvements
 pydantic>=2.12.5
 pydantic-settings>=2.5.2
@@ -14,7 +14,7 @@ mcp>=1.25.0
 anyio>=4.13.0
 
 # Vector Database
-qdrant-client>=1.18.0
+qdrant-client>=1.13.3,<1.14.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
 
 # AI API Clients (optimized for resolution speed)
 openai>=2.14.0  # Upgraded for httpx 0.28+ (proxies parameter removed)

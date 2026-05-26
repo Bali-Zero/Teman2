@@ -353,6 +353,9 @@ class TestChatStreamPost:
         mock_request.app.state.intelligent_router = mock_router
         mock_request.state.user = {"email": "t@t.com", "role": "member"}
         mock_request.app.state.conversation_service = AsyncMock()
+        mock_request.app.state.conversation_service.get_history = AsyncMock(
+            return_value={"messages": []},
+        )
         mock_request.app.state.conversation_service.save_conversation = AsyncMock()
 
         body = ChatStreamRequest(
@@ -390,6 +393,9 @@ class TestChatStreamPost:
         mock_request.app.state.intelligent_router = mock_router
         mock_request.state.user = {"email": "t@t.com", "role": "member"}
         mock_request.app.state.conversation_service = AsyncMock()
+        mock_request.app.state.conversation_service.get_history = AsyncMock(
+            return_value={"messages": []},
+        )
 
         body = ChatStreamRequest(
             message="test",

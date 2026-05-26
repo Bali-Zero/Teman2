@@ -23,7 +23,12 @@ BALI_TZ = ZoneInfo("Asia/Makassar")
 @pytest.fixture
 def mock_db_pool():
     """Mock database pool"""
-    pool = AsyncMock()
+    pool = MagicMock()
+    conn = AsyncMock()
+    conn.fetch = AsyncMock(return_value=[])
+    conn.__aenter__ = AsyncMock(return_value=conn)
+    conn.__aexit__ = AsyncMock(return_value=False)
+    pool.acquire = MagicMock(return_value=conn)
     return pool
 
 
@@ -112,6 +117,7 @@ class TestTeamTimesheetService:
         await timesheet_service.start_auto_logout_monitor()
         assert timesheet_service.running is True
         assert timesheet_service.auto_logout_task is not None
+        await timesheet_service.stop_auto_logout_monitor()
 
     @pytest.mark.asyncio
     async def test_stop_auto_logout_monitor(self, timesheet_service):

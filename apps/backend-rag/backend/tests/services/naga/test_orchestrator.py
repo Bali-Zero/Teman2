@@ -30,6 +30,7 @@ from backend.services.naga.search_agents.base import AgentResponse, SearchResult
 def _make_deps(**overrides) -> MagicMock:
     """Create a mock deps object with all required callables."""
     deps = MagicMock()
+    deps.db_pool = overrides.get("db_pool", None)
     deps.exa_search = overrides.get("exa_search", AsyncMock())
     deps.brave_search = overrides.get("brave_search", AsyncMock())
     deps.fetch = overrides.get("fetch", AsyncMock(return_value="page body"))

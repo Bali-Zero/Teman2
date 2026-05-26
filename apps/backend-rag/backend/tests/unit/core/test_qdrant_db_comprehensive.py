@@ -258,7 +258,7 @@ class TestQdrantClient:
         """Test search with filter"""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = AsyncMock(return_value={"result": []})
+        mock_response.json = MagicMock(return_value={"result": []})
         mock_response.raise_for_status = MagicMock()
 
         mock_client = AsyncMock()
@@ -406,7 +406,7 @@ class TestQdrantClient:
         """Test get with include parameter"""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = AsyncMock(return_value={"result": []})
+        mock_response.json = MagicMock(return_value={"result": []})
         mock_response.raise_for_status = MagicMock()
 
         mock_client = AsyncMock()
@@ -462,7 +462,7 @@ class TestQdrantClient:
         """Test peek operation"""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = AsyncMock(
+        mock_response.json = MagicMock(
             return_value={"result": {"points": [{"id": "1", "payload": {"text": "test"}}]}},
         )
         mock_response.raise_for_status = MagicMock()

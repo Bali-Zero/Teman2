@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from backend.services.analytics.attendance_monitor import AttendanceMonitor
 
-from backend.services.common.background import spawn
+from backend.services.common.background import get_bg_pool_semaphore, spawn
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,11 @@ class TeamTimesheetService:
         """Background loop checking for expired sessions every 5 minutes"""
         while self.running:
             try:
-                await self._process_auto_logout()
+                # Bound concurrent background-loop pool access (see
+                # backend.services.common.background — god-test S12 / FIX-1
+                # cicatrix 2026-05-24).
+                async with get_bg_pool_semaphore():
+                    await self._process_auto_logout()
             except Exception as e:
                 logger.error("❌ Auto-logout check failed: %s", e)
 

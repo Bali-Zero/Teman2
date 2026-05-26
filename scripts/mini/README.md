@@ -6,10 +6,26 @@ decommissioned).
 
 Repo-tracked so any change ships to Mini via the next git-pull tick.
 
+## Canonical Pro/Mini policy
+
+- Both machines work on `main` only.
+- Pro is the only machine that pushes to GitHub `origin/main`.
+- Mini pulls from Pro first and from GitHub only as fallback.
+- Mini may push only to the Pro remote named `pro`; it must never push to
+  `origin`.
+- Healthcheck: `scripts/pro-mini-healthcheck.sh`
+- Read-only integration test: `scripts/test-pro-mini-sync.sh`
+
 ## mini-git-pull.sh
 
-Periodic (5 min) `git pull --ff-only origin main` for `~/Desktop/nuzantara`
+Periodic (5 min) fast-forward sync for `~/Desktop/nuzantara`
 on Mini.
+
+The source-of-truth order is:
+
+1. `pro/main` via SSH alias `pro` — catches Pro commits before they are pushed
+   to GitHub.
+2. `origin/main` — fallback when Pro is unreachable.
 
 ### Hardening (2026-05-06 incident)
 
@@ -31,10 +47,10 @@ refuses with a Telegram alert, requiring human triage (typically
 |---|---|
 | Branch not `main` | Skip silently |
 | Up-to-date | Skip silently (no log spam) |
-| HEAD diverged from `origin/main` | Telegram alert + exit 1 |
+| HEAD diverged from selected target (`pro/main` or `origin/main`) | Telegram alert + exit 1 |
 | Tracked symlink ↔ local dir/file mismatch | Telegram alert + exit 1 |
 | Stash list > 5 entries (sign of repeated pop conflict) | Telegram alert (warning, continue) |
-| Tracked dirty files only | Stash → pull → pop |
+| Tracked dirty files only | Stash → fast-forward merge → pop |
 | Untracked files | Left alone (ff-only doesn't touch them) |
 | Stash pop conflict after pull | Telegram alert, stash retained, exit 0 (pull succeeded) |
 

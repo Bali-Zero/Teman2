@@ -35,6 +35,7 @@ def _build_deps(**overrides: object) -> MagicMock:
     convergence, source scorer, report writer) run for real.
     """
     deps = MagicMock()
+    deps.db_pool = overrides.get("db_pool", None)
 
     # Exa neural search
     deps.exa_search = overrides.get(

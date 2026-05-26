@@ -97,6 +97,7 @@ def test_get_file_metadata_is_present_on_service_account_drive_service() -> None
         "get_start_page_token",
         "list_changes_since",
         "get_file_metadata",
+        "get_file_metadata_detailed",
     ],
 )
 def test_drive_client_contract(method_name: str) -> None:

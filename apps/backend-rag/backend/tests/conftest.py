@@ -53,7 +53,7 @@ def mock_db_pool():
     Usage: pool, conn = mock_db_pool
     """
     pool = MagicMock()
-    conn = AsyncMock()
+    conn = MagicMock()
 
     class _AsyncCtx:
         async def __aenter__(self):
@@ -69,6 +69,10 @@ def mock_db_pool():
         async def __aexit__(self, *args):
             return None
 
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.fetchval = AsyncMock(return_value=None)
+    conn.fetch = AsyncMock(return_value=[])
+    conn.execute = AsyncMock(return_value=None)
     pool.acquire = MagicMock(return_value=_AsyncCtx())
     # conn.transaction() must return an async context manager, not a coroutine.
     # AsyncMock would make it a coroutine; use MagicMock returning _TransactionCtx.

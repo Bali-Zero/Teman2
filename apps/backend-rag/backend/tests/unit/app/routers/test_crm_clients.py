@@ -293,6 +293,9 @@ class TestUpdateClient:
     def test_update_client_no_fields(self, client, mock_db_pool):
         """Test updating client with no fields"""
         pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(
+            return_value=TestCreateClient._create_mock_row({"assigned_to": "team@example.com"})
+        )
 
         response = client.patch(
             "/api/crm/clients/1?updated_by=test@example.com",

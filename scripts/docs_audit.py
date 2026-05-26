@@ -450,6 +450,7 @@ def main() -> int:
         for line in s.splitlines():
             if "Last run:" in line:
                 continue
+            line = re.sub(r"mtime=\d+d", "mtime=<mtime>d", line)
             # File table rows look like:
             #   | path | STATUS | <int> | <int> | <int> | yes/no | cluster | action |
             # mtime_days is column 3 (1-indexed) — replace with placeholder

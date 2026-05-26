@@ -192,7 +192,7 @@ class TestCollectiveMemory:
     @pytest.mark.asyncio
     async def test_set_pool(self, collective_memory_service, mock_db_pool):
         """Test setting pool"""
-        collective_memory_service.set_pool(mock_db_pool)
+        await collective_memory_service.set_pool(mock_db_pool)
         assert collective_memory_service.pool == mock_db_pool
 
     @pytest.mark.skip(reason="_get_embedder removed from CollectiveMemoryService")
