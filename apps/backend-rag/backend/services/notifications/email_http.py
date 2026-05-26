@@ -27,7 +27,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-_EMAIL_HTTPX_TIMEOUT = 30.0
+_EMAIL_HTTPX_TIMEOUT = 60.0
 
 # Module-level singleton. Reset if the app process is reloaded (e.g.
 # FastAPI dev autoreload) since the client is bound to a now-dead loop.

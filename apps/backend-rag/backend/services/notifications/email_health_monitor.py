@@ -170,7 +170,8 @@ class EmailHealthMonitor:
             )
             resp.raise_for_status()
         except Exception as e:
-            err_msg = str(e)
+            from backend.services.notifications.email_audit import format_send_error
+            err_msg = format_send_error(e)
 
         async with self.db_pool.acquire() as conn:
             if err_msg is None:
