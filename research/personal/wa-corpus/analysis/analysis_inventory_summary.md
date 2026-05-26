@@ -1,6 +1,6 @@
 # WhatsApp Analysis Inventory Summary
 
-Generated UTC: `2026-05-26T15:35:30+00:00`
+Generated UTC: `2026-05-26T16:54:00+00:00`
 Analysis directory label: `analysis`
 
 ## Privacy Mode
@@ -14,14 +14,15 @@ Analysis directory label: `analysis`
 
 | Artifact type              | Count |
 | -------------------------- | ----: |
-| Local SQLite artifacts     |    11 |
-| Tracked markdown summaries |    13 |
+| Local SQLite artifacts     |    12 |
+| Tracked markdown summaries |    14 |
 
 ## Local SQLite Artifacts
 
 | Artifact                                     | Status | Tables | Total rows |
 | -------------------------------------------- | ------ | -----: | ---------: |
 | allowed_candidates.local.sqlite              | ok     |      2 |      18926 |
+| allowed_case_windows.local.sqlite            | ok     |      4 |       5996 |
 | allowed_document_lifecycle_gaps.local.sqlite | ok     |      5 |        292 |
 | allowed_document_requirements.local.sqlite   | ok     |      6 |      14720 |
 | allowed_domain_events.local.sqlite           | ok     |      7 |      53908 |
@@ -45,7 +46,10 @@ Analysis directory label: `analysis`
 | allowed_signal_hits.local.sqlite             | signal_hits               | 12249 |
 | allowed_followup_risk.local.sqlite           | queue_items               |  8948 |
 | allowed_immigration_lifecycle.local.sqlite   | message_stage_summary     |  7335 |
+| allowed_case_windows.local.sqlite            | case_window_event_codes   |  3086 |
 | allowed_tax_payment.local.sqlite             | tax_payment_hits          |  2416 |
+| allowed_case_windows.local.sqlite            | case_window_domains       |  2253 |
+| allowed_case_windows.local.sqlite            | case_windows              |   656 |
 | allowed_signal_matrix.local.sqlite           | signal_month_matrix       |   302 |
 | allowed_document_lifecycle_gaps.local.sqlite | month_stage_gap_matrix    |   211 |
 | allowed_immigration_lifecycle.local.sqlite   | stage_month_matrix        |   211 |
@@ -54,15 +58,13 @@ Analysis directory label: `analysis`
 | allowed_domain_events.local.sqlite           | month_domain_totals       |   115 |
 | allowed_document_lifecycle_gaps.local.sqlite | stage_document_matrix     |    64 |
 | allowed_immigration_lifecycle.local.sqlite   | primary_stage_transitions |    64 |
-| allowed_signal_matrix.local.sqlite           | signal_cooccurrence       |    63 |
-| allowed_signal_matrix.local.sqlite           | signal_source_matrix      |    36 |
-| allowed_followup_risk.local.sqlite           | file_counts               |    31 |
 
 ## Tracked Summaries
 
 | Summary                                    | Title                                           | Lines |
 | ------------------------------------------ | ----------------------------------------------- | ----: |
 | allowed_candidates_summary.md              | WhatsApp Allowlist Candidate Extraction Summary |    95 |
+| allowed_case_window_review_summary.md      | WhatsApp Case Window Review Queue Summary       |    58 |
 | allowed_case_windows_summary.md            | WhatsApp Anonymous Case Window Summary          |    96 |
 | allowed_document_lifecycle_gaps_summary.md | WhatsApp Document Lifecycle Gap Summary         |   113 |
 | allowed_document_requirements_summary.md   | WhatsApp Allowlist Document Requirement Summary |   135 |
@@ -74,7 +76,7 @@ Analysis directory label: `analysis`
 | allowed_signal_summary.md                  | WhatsApp Allowlist Signal Summary               |   110 |
 | allowed_tax_payment_summary.md             | Allowed Tax/Payment Aggregate Summary           |   128 |
 | allowed_temporal_summary.md                | WhatsApp Allowed Temporal Summary               |   173 |
-| analysis_inventory_summary.md              | WhatsApp Analysis Inventory Summary             |    80 |
+| analysis_inventory_summary.md              | WhatsApp Analysis Inventory Summary             |    81 |
 
 ## Next Safe Step
 

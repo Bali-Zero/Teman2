@@ -1,4 +1,6 @@
 *.local.sqlite
 *.local.db
+*.local.tsv
+*.local.csv
 *.local.jsonl
 *.private.*

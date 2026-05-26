@@ -372,6 +372,26 @@ Outputs:
 The case windows are anonymous local review units. They are built from the
 derived domain event index, not from the raw parsed-message DB.
 
+## Build Case Window Review Queue
+
+Build an anonymous local review queue from dense or high-risk case windows:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_case_window_review_queue \
+  --input-db research/personal/wa-corpus/analysis/allowed_case_windows.local.sqlite \
+  --output-tsv research/personal/wa-corpus/analysis/allowed_case_window_review.local.tsv \
+  --summary research/personal/wa-corpus/analysis/allowed_case_window_review_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_case_window_review.local.tsv`
+- `research/personal/wa-corpus/analysis/allowed_case_window_review_summary.md`
+
+The TSV stays local-only and ignored by git. The tracked summary keeps only
+aggregate counts and queue reason frequencies.
+
 ## Analyze Signal Matrix
 
 Build aggregate matrices from signal hits:
