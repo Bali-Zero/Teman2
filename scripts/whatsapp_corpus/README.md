@@ -39,3 +39,48 @@ The registry keeps two export counts:
   rule.
 - `normalized_message_start_count`: diagnostic count that also accepts invisible
   Unicode-prefixed WhatsApp timestamp lines.
+
+## Classify Chats
+
+Run the privacy gate classifier after the registry exists:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.classify_chats \
+  --registry-db research/personal/wa-corpus/registry/registry.sqlite \
+  --output-dir research/personal/wa-corpus/classification
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/classification/chat_classification.sqlite`
+- `research/personal/wa-corpus/classification/classification_summary.md`
+
+The classifier is deterministic and metadata-only. It does not inspect message
+bodies. It uses source buckets, hashed ZIP source tags, message counts, parser
+warnings, and normalized count deltas to assign each file to a conservative
+processing gate:
+
+- `deny_content_mining_until_owner_allowlist`
+- `local_only_team_analysis_after_owner_approval`
+- `manual_review_before_content_mining`
+- `manual_review_before_any_use`
+
+All categories are pre-flight safety labels. They are not semantic claims about
+the conversation contents.
+
+## Resolve Review References Locally
+
+Shareable reports intentionally expose only `file_id`, `path_hash`, and hashed
+`source_tag`. To review a file on the Pro, resolve a specific reference in the
+terminal:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.resolve_refs \
+  --root "$HOME/Desktop/wa-chats-MASTER-2026-05-26" \
+  --file-id wa-file-0421
+```
+
+This command prints raw local paths, so do not redirect its output into tracked
+repo files.
