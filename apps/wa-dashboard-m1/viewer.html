@@ -430,7 +430,8 @@ function fmtTime(iso) {
 
 function fmtPreview(c) {
   if (c.last_body && c.last_body.trim()) return c.last_body;
-  if (c.last_media) return "📎 " + c.last_media;
+  // 2026-05-26 fix: skip 'text' last_media (DB stores it for pure text msgs, not a media kind)
+  if (c.last_media && c.last_media !== "text") return "📎 " + c.last_media;
   return "(vuoto)";
 }
 
@@ -574,11 +575,15 @@ function renderConvs() {
   }
 }
 
+// 2026-05-26 fix: media_type='text' is the DB value for pure text msgs (not NULL).
+// Only treat these as actual media types — else short-circuit to empty render.
+const MEDIA_TYPES = new Set(["image", "video", "audio", "sticker", "document"]);
+
 function renderMedia(m) {
-  if (!m.media_type) return "";
+  if (!m.media_type || !MEDIA_TYPES.has(m.media_type)) return "";
   const path = m.media_stored_path;
   if (!path) {
-    return `<div class="media-thumb media-missing" title="Bridge download fallito. Media presente su WhatsApp ma non scaricato in locale."><span class="media-tag">${m.media_type}</span> <span style="color:#f15c6d">❌</span> <em>media non scaricato (bridge fail)</em></div>`;
+    return `<div class="media-thumb media-missing" title="Bridge download fallito. Media presente su WhatsApp ma non scaricato in locale."><span class="media-tag">${escapeHtml(m.media_type)}</span> <span style="color:#f15c6d">❌</span> <em>media non scaricato (bridge fail)</em></div>`;
   }
   const url = `/media?path=${encodeURIComponent(path)}`;
   switch (m.media_type) {
@@ -696,7 +701,7 @@ async function renderThread() {
     html += `
       <div class="msg ${dir}${attClass}">
         ${senderLine}
-        ${m.media_type ? `<span class="media-tag">${m.media_type}</span>` : ""}
+        ${m.media_type && MEDIA_TYPES.has(m.media_type) ? `<span class="media-tag">${escapeHtml(m.media_type)}</span>` : ""}
         ${m.body ? `<div class="body">${highlightMatch(m.body, q)}</div>` : ""}
         ${renderMedia(m)}
         ${attReason}
