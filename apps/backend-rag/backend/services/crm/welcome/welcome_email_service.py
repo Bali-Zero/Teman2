@@ -31,6 +31,7 @@ from backend.app.core.config import settings
 from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import WELCOME_EMAIL_SUBJECT
 from backend.services.notifications.email_audit import (
+    format_send_error,
     log_email_attempt,
     notify_email_failure_critical,
     record_email_result,
@@ -276,7 +277,7 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
         if status_code != 200:
             send_error = f"status={status_code} body={resp.text[:200]}"
     except Exception as e:
-        send_error = f"exception: {e}"
+        send_error = f"exception: {format_send_error(e)}"
 
     if send_error is None:
         async with db_pool.acquire() as conn:
