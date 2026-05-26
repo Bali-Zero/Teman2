@@ -212,6 +212,100 @@ Outputs:
 The candidate SQLite stores hashed body/value references only. It is still
 ignored by git because hashes are local review aids, not publishable evidence.
 
+## Extract Document Requirements
+
+Extract aggregate document-requirement signals from the ignored parsed-message
+DB and the ignored hashed-candidate DB:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.extract_document_requirements \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --candidates-db research/personal/wa-corpus/analysis/allowed_candidates.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_document_requirements.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_document_requirements_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_document_requirements.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_document_requirements_summary.md`
+
+The tracked summary is aggregate-only. The ignored SQLite stores hashes,
+message indexes, timestamps, category codes, evidence codes, and counters; it
+does not store raw message text or raw extracted document values.
+
+## Analyze Immigration Lifecycle
+
+Build aggregate immigration lifecycle stages from the ignored local message,
+candidate, and signal databases:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.analyze_immigration_lifecycle \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --candidates-db research/personal/wa-corpus/analysis/allowed_candidates.local.sqlite \
+  --signal-db research/personal/wa-corpus/analysis/allowed_signal_hits.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_immigration_lifecycle.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_immigration_lifecycle_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_immigration_lifecycle.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_immigration_lifecycle_summary.md`
+
+The lifecycle analyzer classifies aggregate message-level stages such as
+`lead_intake`, `identity_passport`, `sponsor_company`,
+`application_submission`, `appointment_biometric`, `approval_issuance`,
+`extension_renewal_expiry`, and `problem_escalation`. The tracked summary
+contains aggregate counts only.
+
+## Extract Tax/Payment Signals
+
+Extract aggregate tax, invoice, reporting, payment, and amount-reference
+signals from ignored local databases:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.extract_tax_payment_signals \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --candidates-db research/personal/wa-corpus/analysis/allowed_candidates.local.sqlite \
+  --signals-db research/personal/wa-corpus/analysis/allowed_signal_hits.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_tax_payment.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_tax_payment_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_tax_payment.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_tax_payment_summary.md`
+
+The ignored SQLite stores only local identifiers, hashes, category codes,
+timestamps, and counters. The tracked summary contains aggregate counts only.
+
+## Build Follow-Up Risk Queue
+
+Build aggregate local follow-up/risk queue signals:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_followup_risk_queue \
+  --messages-db research/personal/wa-corpus/analysis/allowed_messages.local.sqlite \
+  --signal-db research/personal/wa-corpus/analysis/allowed_signal_hits.local.sqlite \
+  --temporal-db research/personal/wa-corpus/analysis/allowed_temporal.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_followup_risk.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_followup_risk_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_followup_risk.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_followup_risk_summary.md`
+
+The queue is heuristic and local-only. Use it as an anonymous review queue, not
+as a client-facing or legal conclusion.
+
 ## Analyze Signal Matrix
 
 Build aggregate matrices from signal hits:
