@@ -23,12 +23,46 @@ const TEAM_AVATAR_DIR = process.env.WA_TEAM_AVATAR_DIR || "/Users/nuzantara/Desk
 
 const TEAM = (() => {
   try {
-    return JSON.parse(fs.readFileSync(ACCOUNTS_JSON, "utf8")).accounts || [];
+    const raw = JSON.parse(fs.readFileSync(ACCOUNTS_JSON, "utf8")).accounts || [];
+    // Drop entries with empty e164 — they are placeholders (e.g. Subhi pre-onboarding)
+    return raw.filter((m) => m && typeof m.e164 === "string" && m.e164.length > 0);
   } catch (err) {
     console.error(`[wa-dashboard-m1] cannot read ${ACCOUNTS_JSON}: ${err.message}`);
     return [];
   }
 })();
+
+// Map phone → TEAM entry, used by contactKindColor lookup
+const TEAM_BY_PHONE = new Map();
+for (const m of TEAM) {
+  if (m.e164) TEAM_BY_PHONE.set(m.e164, m);
+}
+
+// === Contact kind/color taxonomy (2026-05-26 naming + color coding) ===
+// 5 categories with WCAG AA+ contrast on both light (#ffffff/#efeae2) and dark backgrounds.
+const KIND_COLORS = {
+  zero:           "#fbbf24",   // gold        — Antonello (board)
+  team_balizero:  "#06b6d4",   // cyan        — Bali Zero staff
+  team_bayu:      "#3b82f6",   // vivid blue  — Bayu Santera partner staff
+  client:         "#10b981",   // green       — in CRM clients table
+  prospect:       "#a855f7",   // purple      — phone seen, no CRM match
+};
+
+function contactKindColor(account, isInClients) {
+  if (account?.kind === "zero") {
+    return { kind: "zero", color: KIND_COLORS.zero, label: "ZERO" };
+  }
+  if (account?.kind === "team") {
+    if (account.company === "Bayu Santera") {
+      return { kind: "team_bayu", color: KIND_COLORS.team_bayu, label: "TEAM·BS" };
+    }
+    return { kind: "team_balizero", color: KIND_COLORS.team_balizero, label: "TEAM·BZ" };
+  }
+  if (isInClients) {
+    return { kind: "client", color: KIND_COLORS.client, label: "CLIENT" };
+  }
+  return { kind: "prospect", color: KIND_COLORS.prospect, label: "PROSPECT" };
+}
 
 // Build team→avatar map from disk
 const TEAM_AVATAR_FILES = {};
@@ -167,14 +201,25 @@ async function fetchOverview() {
   }
 
   const result = { generated_at: new Date().toISOString(), team: [], by_phone: {} };
-  result.team = TEAM.map((m) => ({
-    name: m.name,
-    phone: m.e164,
-    label: m.label || "BZ",
-    role: m.role || "team",
-    aliases: aliasesForTeamMember(m),
-    avatar_url: TEAM_AVATAR_FILES[m.e164] ? `/team-avatar/${encodeURIComponent(m.name.toLowerCase())}` : null,
-  }));
+  result.team = TEAM.map((m) => {
+    const kindInfo = contactKindColor(m, false);
+    return {
+      name: m.name,
+      full_name: m.full_name || m.name,
+      phone: m.e164,
+      label: m.label || "BZ",
+      role: m.role || "team",
+      // 2026-05-26 naming + color coding
+      company: m.company || "Bali Zero",
+      department: m.department || "setup",
+      kind: m.kind || "team",
+      contact_kind: kindInfo.kind,
+      contact_color: kindInfo.color,
+      contact_label: kindInfo.label,
+      aliases: aliasesForTeamMember(m),
+      avatar_url: TEAM_AVATAR_FILES[m.e164] ? `/team-avatar/${encodeURIComponent(m.name.toLowerCase())}` : null,
+    };
+  });
 
   for (const member of result.team) {
     const aliases = member.aliases;
@@ -401,6 +446,12 @@ async function fetchOverview() {
       else if (isLid) { tag = "lid"; unresolvedLids++; }
       else tag = "unknown";
 
+      // 2026-05-26 naming + color coding: contactKindColor over counterpart
+      // Hierarchy: ZERO > TEAM·BZ > TEAM·BS > CLIENT > PROSPECT
+      const teamMatch = r.direct_phone ? TEAM_BY_PHONE.get(r.direct_phone) : null;
+      const isInClients = !!crmName; // active or archived CRM match counts
+      const kindInfo = contactKindColor(teamMatch, isInClients);
+
       if (r.attention_priority === "HIGH") attentionHigh++;
       else if (r.attention_priority === "MEDIUM") attentionMedium++;
 
@@ -431,6 +482,12 @@ async function fetchOverview() {
         is_internal: isInternal,
         is_legacy_lid: !!isLid,
         tag,
+        // 2026-05-26 naming + color coding
+        contact_kind: kindInfo.kind,
+        contact_color: kindInfo.color,
+        contact_label: kindInfo.label,
+        contact_company: teamMatch?.company || null,
+        contact_department: teamMatch?.department || null,
       });
     }
     for (const r of groupRows.rows) {
@@ -442,6 +499,12 @@ async function fetchOverview() {
             : r.group_label);
       if (r.attention_priority === "HIGH") attentionHigh++;
       else if (r.attention_priority === "MEDIUM") attentionMedium++;
+
+      // 2026-05-26 group kind/color reflects LAST sender (most informative for triage)
+      const groupTeamMatch = r.sender_phone ? TEAM_BY_PHONE.get(r.sender_phone) : null;
+      const groupIsInClients = !!r.sender_crm_name;
+      const groupKindInfo = contactKindColor(groupTeamMatch, groupIsInClients);
+
       convs.push({
         kind: "group",
         counterpart: `group:${r.group_jid}`,
@@ -462,6 +525,12 @@ async function fetchOverview() {
         last_media: r.last_media,
         is_internal: false,
         tag: "group",
+        // 2026-05-26 naming + color coding
+        contact_kind: groupKindInfo.kind,
+        contact_color: groupKindInfo.color,
+        contact_label: groupKindInfo.label,
+        contact_company: groupTeamMatch?.company || null,
+        contact_department: groupTeamMatch?.department || null,
       });
     }
     convs.sort((a, b) => new Date(b.last_at) - new Date(a.last_at));

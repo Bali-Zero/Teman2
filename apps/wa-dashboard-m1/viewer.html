@@ -224,6 +224,38 @@
   .conv-tag.lid      { background: rgba(83,189,235,0.15); color: var(--wa-link); }
   .conv-tag.unknown  { background: var(--wa-panel-3); color: var(--wa-text-3); }
 
+  /* 2026-05-26 naming + color coding — 5 contact kinds */
+  /* Light-mode WCAG: text on white must be >=4.5:1; we use dark text on tinted backgrounds */
+  .kind-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.3px; margin-right: 4px;
+    text-transform: uppercase; vertical-align: middle;
+  }
+  .kind-badge.zero          { background: #fbbf24; color: #1f2937; }   /* gold bg + slate text 12.4:1 */
+  .kind-badge.team_balizero { background: #06b6d4; color: #ffffff; }   /* cyan bg + white text 4.6:1 */
+  .kind-badge.team_bayu     { background: #3b82f6; color: #ffffff; }   /* blue bg + white text 4.6:1 */
+  .kind-badge.client        { background: #10b981; color: #ffffff; }   /* green bg + white text 4.5:1 */
+  .kind-badge.prospect      { background: #a855f7; color: #ffffff; }   /* purple bg + white text 4.5:1 */
+  /* Secondary tag — company / department text */
+  .company-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px;
+    background: var(--wa-panel-3); color: var(--wa-text-2); font-weight: 500;
+    margin-left: 4px; vertical-align: middle;
+  }
+  .company-badge.bz { background: rgba(6,182,212,0.15); color: #0e7490; }
+  .company-badge.bs { background: rgba(59,130,246,0.15); color: #1d4ed8; }
+  .company-badge.zero { background: rgba(251,191,36,0.20); color: #92400e; }
+  /* Colored left-border accent on conv-item via inline style override */
+  .conv-item.kind-zero          { box-shadow: inset 3px 0 0 #fbbf24; }
+  .conv-item.kind-team_balizero { box-shadow: inset 3px 0 0 #06b6d4; }
+  .conv-item.kind-team_bayu     { box-shadow: inset 3px 0 0 #3b82f6; }
+  .conv-item.kind-client        { box-shadow: inset 3px 0 0 #10b981; }
+  .conv-item.kind-prospect      { box-shadow: inset 3px 0 0 #a855f7; }
+  /* Team-item left-border for company differentiation */
+  .team-item.kind-zero          { box-shadow: inset 3px 0 0 #fbbf24; }
+  .team-item.kind-team_bayu     { box-shadow: inset 3px 0 0 #3b82f6; }
+  /* Bali Zero teams keep default (no border) to stay visually quiet */
+
   .conv-extra { font-size: 11px; color: var(--wa-text-3); margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; }
   .conv-extra .meta-pill { background: var(--wa-panel-3); padding: 1px 7px; border-radius: 10px; color: var(--wa-text-2); }
   .conv-extra a.meta-pill { color: var(--wa-link); text-decoration: none; }
@@ -414,21 +446,42 @@ function avatarInner(name, photoUrl) {
   return initials(name);
 }
 
+function companyBadgeClass(m) {
+  if (m.contact_kind === "zero") return "zero";
+  if (m.contact_kind === "team_bayu") return "bs";
+  return "bz";
+}
+
+function companyBadgeLabel(m) {
+  if (m.contact_kind === "zero") return "ZERO";
+  if (m.contact_kind === "team_bayu") return "BS";
+  return "BZ";
+}
+
 function renderTeams() {
   if (!DATA) return;
+  // 2026-05-26 sort: ZERO first, then Bali Zero, then Bayu Santera (company hierarchy)
+  const teamOrder = [...DATA.team].sort((a, b) => {
+    const rank = (m) => m.contact_kind === "zero" ? 0 : m.contact_kind === "team_bayu" ? 2 : 1;
+    return rank(a) - rank(b);
+  });
   let html = `<div class="col-header">Team · ${DATA.team.length}</div>`;
-  for (const m of DATA.team) {
+  for (const m of teamOrder) {
     const pd = DATA.by_phone[m.phone] || { total:0, direct_count:0, group_count:0, crm_count:0, attention:{high:0,medium:0} };
     const selected = SELECTED_TEAM === m.phone ? " selected" : "";
     const bridge = pd.bridge || {};
     const sess = pd.session || {};
     const status = bridge.runtime_status || "stopped";
+    const kindClass = m.contact_kind ? ` kind-${m.contact_kind}` : "";
+    const companyClass = companyBadgeClass(m);
+    const companyLabel = companyBadgeLabel(m);
+    const deptLabel = m.department && m.department !== "setup" ? m.department : null;
     html += `
-      <div class="team-item${selected}" data-phone="${m.phone}">
+      <div class="team-item${selected}${kindClass}" data-phone="${m.phone}">
         <div class="avatar dot-${status}">${avatarInner(m.name, m.avatar_url)}</div>
         <div class="team-body">
           <div class="team-row">
-            <div class="team-name">${escapeHtml(m.name)}</div>
+            <div class="team-name">${escapeHtml(m.name)}<span class="company-badge ${companyClass}" title="${escapeHtml(m.company || '')}">${companyLabel}</span>${deptLabel ? `<span class="company-badge" title="department">${escapeHtml(deptLabel)}</span>` : ""}</div>
             ${pd.unread_total ? `<span class="pill unread" title="${pd.unread_total} msg da rispondere in ${pd.unread_convs} conv">${pd.unread_total}</span>` : ""}
             ${(pd.attention.high || pd.attention.medium) ? `<span class="pill attention" title="HIGH+MED priority" style="background:var(--wa-error);color:white;margin-left:4px">⚠ ${pd.attention.high + pd.attention.medium}</span>` : ""}
           </div>
@@ -483,16 +536,21 @@ function renderConvs() {
       const attBadge = c.attention_priority
         ? `<span class="conv-tag" style="background:var(--wa-${c.attention_priority==='HIGH'?'error':'warning'});color:${c.attention_priority==='HIGH'?'white':'var(--wa-panel)'}">${c.attention_priority}</span>`
         : "";
+      // 2026-05-26 naming + color coding: kind badge + colored left-border
+      const kindClass = c.contact_kind ? ` kind-${c.contact_kind}` : "";
+      const kindBadge = c.contact_label
+        ? `<span class="kind-badge ${c.contact_kind}" title="${escapeHtml(c.contact_company || '')}${c.contact_department ? ' · ' + escapeHtml(c.contact_department) : ''}">${escapeHtml(c.contact_label)}</span>`
+        : "";
       const extra = [];
       if (c.client_id) extra.push(`<a href="${KITA_BASE}/clients/${c.client_id}" target="_blank" class="meta-pill">CRM #${c.client_id} ↗</a>`);
       if (c.assigned_to) extra.push(`<span class="meta-pill">→ ${escapeHtml(c.assigned_to.replace('@balizero.com',''))}</span>`);
       if (c.tax_consultant) extra.push(`<span class="meta-pill">tax: ${escapeHtml(c.tax_consultant)}</span>`);
       html += `
-        <div class="conv-item${isSel}" data-conv="${encodeURIComponent(c.counterpart)}">
+        <div class="conv-item${isSel}${kindClass}" data-conv="${encodeURIComponent(c.counterpart)}">
           <div class="conv-avatar ${avatarClass}">${tag === "group" ? "👥" : (c.client_id ? avatarInner(c.display_name, `/client-avatar/${c.client_id}`) : initials(c.display_name))}</div>
           <div class="conv-body">
             <div class="conv-row">
-              <span class="conv-name${attClass}">${escapeHtml(c.display_name)}</span>
+              <span class="conv-name${attClass}">${kindBadge}${escapeHtml(c.display_name)}</span>
               <span class="conv-time${attTimeClass}">${fmtTime(c.last_at)}</span>
             </div>
             ${company}
