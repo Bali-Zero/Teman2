@@ -34,6 +34,15 @@ _patches = {
 }
 
 
+def _close_created_coro(coro: object) -> MagicMock:
+    close = getattr(coro, "close", None)
+    if callable(close):
+        close()
+    task = MagicMock()
+    task.done.return_value = True
+    return task
+
+
 # ---------------------------------------------------------------------------
 # Tests: _safe_stop
 # ---------------------------------------------------------------------------
@@ -125,10 +134,10 @@ class TestLifespan:
         mock_app = MagicMock()
         mock_app.state = app_state
 
-        mock_task = MagicMock()
-        mock_task.done.return_value = True
-
-        with patch("backend.app.setup.app_factory.asyncio.create_task", return_value=mock_task):
+        with patch(
+            "backend.app.setup.app_factory.asyncio.create_task",
+            side_effect=_close_created_coro,
+        ):
             async with lifespan(mock_app):
                 assert app_state.process_mode == "rag"
 
@@ -147,7 +156,16 @@ class TestLifespan:
         loop = asyncio.get_event_loop()
         real_future = loop.create_future()
 
-        with patch("backend.app.setup.app_factory.asyncio.create_task", return_value=real_future):
+        def capture_pending_init(coro: object) -> asyncio.Future[object]:
+            close = getattr(coro, "close", None)
+            if callable(close):
+                close()
+            return real_future
+
+        with patch(
+            "backend.app.setup.app_factory.asyncio.create_task",
+            side_effect=capture_pending_init,
+        ):
             async with lifespan(mock_app):
                 pass
 

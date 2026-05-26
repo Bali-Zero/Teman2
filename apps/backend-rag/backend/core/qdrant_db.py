@@ -79,6 +79,17 @@ MAX_RETRIES = 3
 RETRY_BASE_DELAY = 0.2  # seconds
 
 
+def _valid_optional_str(value: Any) -> str | None:
+    """Return string settings only; tests may inject MagicMock placeholders."""
+    return value if isinstance(value, str) and value else None
+
+
+def _valid_timeout(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value)
+
+
 class QdrantErrorType(Enum):
     """Qdrant error types."""
 
@@ -265,12 +276,12 @@ class QdrantClient:
         self.collection_name = collection_name or "knowledge_base"
 
         # Get API key from settings or parameter
-        self.api_key = api_key or (settings.qdrant_api_key if settings else None)
+        settings_api_key = getattr(settings, "qdrant_api_key", None) if settings else None
+        self.api_key = _valid_optional_str(api_key) or _valid_optional_str(settings_api_key)
 
         # Get timeout from settings or parameter (default 30s)
-        self.timeout = (
-            timeout or (getattr(settings, "qdrant_timeout", None) if settings else None) or 30.0
-        )
+        settings_timeout = getattr(settings, "qdrant_timeout", None) if settings else None
+        self.timeout = _valid_timeout(timeout) or _valid_timeout(settings_timeout) or 30.0
 
         # Remove trailing slash
         self.qdrant_url = self.qdrant_url.rstrip("/")

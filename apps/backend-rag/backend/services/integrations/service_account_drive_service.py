@@ -170,6 +170,21 @@ class ServiceAccountDriveService:
         )
         return await asyncio.to_thread(request.execute)
 
+    async def get_file_metadata_detailed(self, file_id: str) -> dict[str, Any]:
+        """Fetch read-only metadata needed by CRM Guardian evidence scans."""
+        fields = (
+            "id, name, mimeType, owners(emailAddress,displayName), parents, driveId, "
+            "ownedByMe, shared, trashed, createdTime, modifiedTime, webViewLink, "
+            "shortcutDetails, capabilities(canCopy,canDownload,canEdit,"
+            "canMoveItemIntoTeamDrive,canMoveItemOutOfDrive,canMoveItemWithinDrive)"
+        )
+        request = self.service.files().get(
+            fileId=file_id,
+            fields=fields,
+            supportsAllDrives=True,
+        )
+        return await asyncio.to_thread(request.execute)
+
     async def get_folder_structure(
         self,
         root_folder_id: str,

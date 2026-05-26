@@ -2,7 +2,7 @@
 # Mini-side periodic git pull for ~/Desktop/nuzantara on main.
 #
 # Runs ON Mini via com.nuzantara.git-pull-main.5min LaunchAgent.
-# Pattern: detect-mismatch → stash → pull --ff-only → stash pop.
+# Pattern: detect-mismatch → stash → fetch Pro → merge --ff-only → stash pop.
 #
 # Hardened against the 2026-05-06 incident where a tracked symlink in
 # main collided with a 762 MB local directory (.venv) on Mini, causing
@@ -19,6 +19,10 @@
 #      (sign that pop has been failing).
 #   4. Telegram alert on every non-trivial WARN/ERROR via the same
 #      bot used by login-healthcheck (TELEGRAM_BOT_TOKEN secret on Mini).
+#
+# Source-of-truth order:
+#   1. Pro remote (`pro/main`) — catches Pro commits even before GitHub push.
+#   2. GitHub origin (`origin/main`) — fallback when Pro is unreachable.
 #
 # Cron: StartInterval=300 on Mini.
 # Log:  ~/logs/mini-git-pull.log
@@ -72,10 +76,13 @@ telegram_alert() {
   echo "$now" > "$state_file"
 }
 
+TARGET_REF="origin/main"
+TARGET_REMOTE="origin"
+
 # Detect tracked-symlink vs local-dir (or vice versa) mismatches.
 # Returns 0 if clean, 1 if mismatch found (caller skips).
 #
-# Walks the FULL origin/main tree of symlinks (tree mode 120000) and the
+# Walks the FULL target tree of symlinks (tree mode 120000) and the
 # subset of "tree" entries (mode 040000). For each, compares the local
 # filesystem reality against origin's expectation. The 2026-05-06
 # incident path (.venv: tracked symlink, local 762 MB dir) is the
@@ -104,7 +111,7 @@ check_type_mismatch() {
       mismatch_count=$((mismatch_count + 1))
       [ -z "$mismatch_first" ] && mismatch_first="$path (origin=symlink, local=$fs_kind)"
     fi
-  done < <(git ls-tree -r origin/main 2>/dev/null | awk -F'\t' '$1 ~ /^120000/ {print $2}')
+  done < <(git ls-tree -r "$TARGET_REF" 2>/dev/null | awk -F'\t' '$1 ~ /^120000/ {print $2}')
 
   # Pass 2: every regular file declared in origin/main must NOT be a
   # local dir or symlink. (Files are 100644/100755.) Dirs in git are
@@ -122,7 +129,7 @@ check_type_mismatch() {
       mismatch_count=$((mismatch_count + 1))
       [ -z "$mismatch_first" ] && mismatch_first="$path (origin=file, local=$fs_kind)"
     fi
-  done < <(git ls-tree -r origin/main 2>/dev/null | awk -F'\t' '$1 ~ /^10064[45]|^10075[5]/ {print $2}')
+  done < <(git ls-tree -r "$TARGET_REF" 2>/dev/null | awk -F'\t' '$1 ~ /^10064[45]|^10075[5]/ {print $2}')
 
   if [ "$mismatch_count" -gt 0 ]; then
     log "ERROR: $mismatch_count type-mismatch path(s) detected, refusing pull."
@@ -161,26 +168,41 @@ if [ "$BRANCH" != "main" ]; then
   exit 0
 fi
 
-# Fetch quietly. Network failures are non-fatal.
-if ! git fetch --quiet origin main 2>>"$LOG_FILE"; then
-  log "git fetch failed (network?), skip"
-  exit 0
+# Fetch Pro first. GitHub origin is only fallback because Pro may have commits
+# not pushed to GitHub yet (policy: GitHub is updated by Pro only).
+PRO_SSH="ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i $HOME/.ssh/id_ed25519"
+if GIT_SSH_COMMAND="$PRO_SSH" git fetch --quiet pro main 2>>"$LOG_FILE"; then
+  TARGET_REF="pro/main"
+  TARGET_REMOTE="pro"
+else
+  log "WARN: git fetch pro failed; falling back to origin/main"
+  if ! git fetch --quiet origin main 2>>"$LOG_FILE"; then
+    log "git fetch origin failed too (network?), skip"
+    telegram_alert "fetch-failed" "Mini could not fetch pro/main or origin/main. Sync skipped."
+    exit 0
+  fi
+  TARGET_REF="origin/main"
+  TARGET_REMOTE="origin"
 fi
 
 LOCAL=$(git rev-parse HEAD 2>/dev/null)
-REMOTE=$(git rev-parse origin/main 2>/dev/null)
+REMOTE=$(git rev-parse "$TARGET_REF" 2>/dev/null)
 
 # Already up to date — silent (avoid log noise on every 5-min tick).
 if [ "$LOCAL" = "$REMOTE" ]; then
   exit 0
 fi
 
-# Refuse if HEAD has diverged from origin/main (not ff-able).
-if ! git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
-  log "WARN: HEAD diverged from origin/main (not ff-able)."
+# Refuse if HEAD has diverged from target ref (not ff-able).
+if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
+  if git merge-base --is-ancestor "$TARGET_REF" HEAD 2>/dev/null; then
+    log "Local main is ahead of $TARGET_REF; skip pull"
+    exit 0
+  fi
+  log "WARN: HEAD diverged from $TARGET_REF (not ff-able)."
   log "  local=$LOCAL  remote=$REMOTE"
   telegram_alert "diverged" \
-    "Mini main HEAD diverged from origin (local=${LOCAL:0:9} vs remote=${REMOTE:0:9}). Manual rebase needed."
+    "Mini main HEAD diverged from ${TARGET_REF} (local=${LOCAL:0:9} vs remote=${REMOTE:0:9}). Manual rebase needed."
   exit 1
 fi
 
@@ -215,7 +237,7 @@ if [ "$STASH_COUNT" -gt "$STASH_RETENTION_THRESHOLD" ]; then
     "Mini has ${STASH_COUNT} stashes accumulated. Likely repeated pop conflicts. \`git stash list\` on Mini."
 fi
 
-COMMITS_BEHIND=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo "?")
+COMMITS_BEHIND=$(git rev-list --count HEAD.."$TARGET_REF" 2>/dev/null || echo "?")
 
 # Stash only tracked dirty files. Untracked survive ff-only pulls
 # untouched anyway, no need to stash them (and they may be huge — like
@@ -229,20 +251,20 @@ if [ -n "$DIRTY_TRACKED" ] || [ -n "$DIRTY_STAGED" ]; then
   # changes. This is what we want.
   if git stash push --quiet -m "$STASH_MSG" 2>>"$LOG_FILE"; then
     STASHED=1
-    log "Stashed tracked changes ('$STASH_MSG'), pulling $COMMITS_BEHIND commits..."
+    log "Stashed tracked changes ('$STASH_MSG'), pulling $COMMITS_BEHIND commits from $TARGET_REF..."
   else
     log "ERROR: git stash failed, skip"
     telegram_alert "stash-failed" "git stash failed on Mini. Manual triage."
     exit 1
   fi
 else
-  log "Clean tracked tree, pulling $COMMITS_BEHIND commits..."
+  log "Clean tracked tree, pulling $COMMITS_BEHIND commits from $TARGET_REF..."
 fi
 
 # Pull ff-only.
-if ! git pull --ff-only --quiet origin main 2>>"$LOG_FILE"; then
-  log "ERROR: git pull --ff-only failed"
-  telegram_alert "pull-failed" "git pull --ff-only failed on Mini. Probably new mismatch type appeared."
+if ! git merge --ff-only --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
+  log "ERROR: git merge --ff-only $TARGET_REF failed"
+  telegram_alert "pull-failed" "git merge --ff-only ${TARGET_REF} failed on Mini. Probably new mismatch type appeared."
   if [ "$STASHED" = "1" ]; then
     log "  attempting to restore stash..."
     git stash pop --quiet 2>>"$LOG_FILE" || \
@@ -252,14 +274,26 @@ if ! git pull --ff-only --quiet origin main 2>>"$LOG_FILE"; then
 fi
 
 NEW_HEAD=$(git rev-parse --short HEAD)
-log "OK pulled to $NEW_HEAD ($COMMITS_BEHIND commits)"
+log "OK pulled to $NEW_HEAD ($COMMITS_BEHIND commits from $TARGET_REMOTE)"
+
+# Keep the launchd-safe deployed script in sync with the repo source. The
+# LaunchAgent executes ~/scripts/mini-git-pull.sh because macOS TCC can block
+# direct execution from ~/Desktop.
+mkdir -p "$HOME/scripts" 2>/dev/null
+if [ -f "$REPO/scripts/mini/mini-git-pull.sh" ]; then
+  if ! cmp -s "$REPO/scripts/mini/mini-git-pull.sh" "$HOME/scripts/mini-git-pull.sh" 2>/dev/null; then
+    cp "$REPO/scripts/mini/mini-git-pull.sh" "$HOME/scripts/mini-git-pull.sh" 2>>"$LOG_FILE" && \
+      chmod 755 "$HOME/scripts/mini-git-pull.sh" 2>/dev/null && \
+      log "  updated ~/scripts/mini-git-pull.sh from repo source"
+  fi
+fi
 
 # 2026-05-11 TCC-safe sync via git checkout (cp falliva su TCC, ma
 # git binary ha FDA implicito quindi git --git-dir + --work-tree va).
 # git esce 0 anche per "no change", quindi check exit + verifica file.
 mkdir -p "$HOME/agent-config" 2>/dev/null
 if git --git-dir="$REPO/.git" --work-tree="$HOME/agent-config" \
-       checkout origin/main -- config/job-ownership.yaml 2>>"$LOG_FILE"; then
+       checkout "$TARGET_REF" -- config/job-ownership.yaml 2>>"$LOG_FILE"; then
   if [ -f "$HOME/agent-config/config/job-ownership.yaml" ]; then
     # Move into root for backwards compat ($HOME/agent-config/job-ownership.yaml)
     mv "$HOME/agent-config/config/job-ownership.yaml" \

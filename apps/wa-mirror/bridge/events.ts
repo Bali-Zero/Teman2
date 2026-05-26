@@ -11,9 +11,16 @@
 // listener (backend.services.events.handlers) routes by `kind` and updates
 // the practice timeline.
 
+import pino from "pino";
+
 import { query } from "./pg.js";
 
 const CHANNEL = "whatsapp_message_received";
+
+const logger = pino({
+  level: process.env.WA_MIRROR_LOG_LEVEL ?? "info",
+  base: { component: "events" },
+});
 
 export type WhatsAppMessagePayload = {
   message_context_id: number;
@@ -33,7 +40,7 @@ export type WhatsAppMessagePayload = {
  * a downstream broadcast, not the source of truth.
  */
 export async function emitMessageReceived(
-  payload: WhatsAppMessagePayload
+  payload: WhatsAppMessagePayload,
 ): Promise<void> {
   try {
     // Idempotency: each message_context_id can be emitted only once.
@@ -45,17 +52,25 @@ export async function emitMessageReceived(
       VALUES ($1, $2::jsonb)
       RETURNING id
     `;
-    const res = await query<{ id: string }>(sql, [CHANNEL, JSON.stringify(payload)]);
+    const res = await query<{ id: string }>(sql, [
+      CHANNEL,
+      JSON.stringify(payload),
+    ]);
     if (res.rowCount && res.rowCount > 0) {
       // Mirror the PG NOTIFY that the Python EventBus listener expects.
       // The events_outbox row alone would not fire pg_notify; the listener
       // only wakes on NOTIFY. Send one with the outbox_id appended.
       const outboxId = res.rows[0].id;
-      const notifyPayload = JSON.stringify({ ...payload, _outbox_id: outboxId });
+      const notifyPayload = JSON.stringify({
+        ...payload,
+        _outbox_id: outboxId,
+      });
       await query(`SELECT pg_notify($1, $2)`, [CHANNEL, notifyPayload]);
     }
-  } catch {
-    // eslint-disable-next-line no-console
-    console.warn("[wa-mirror.events] emit failed");
+  } catch (err) {
+    logger.warn(
+      { err: (err as Error).message },
+      "[wa-mirror.events] emit failed",
+    );
   }
 }

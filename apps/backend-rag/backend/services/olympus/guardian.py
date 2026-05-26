@@ -14,6 +14,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.common.background import get_bg_pool_semaphore
 from backend.services.olympus.alerts import OlympusAlerts
 from backend.services.olympus.heartbeat import Heartbeat
 from backend.services.olympus.insights import InsightsCollector
@@ -97,7 +98,11 @@ class OlympusGuardian:
     async def _heartbeat_loop(self) -> None:
         while self._running:
             try:
-                await self.run_heartbeat_once()
+                # Bound concurrent background-loop pool access (see
+                # backend.services.common.background — god-test S12 / FIX-1
+                # cicatrix 2026-05-24).
+                async with get_bg_pool_semaphore():
+                    await self.run_heartbeat_once()
             except Exception:
                 logger.exception("Heartbeat cycle failed")
             await asyncio.sleep(self._get_heartbeat_interval())

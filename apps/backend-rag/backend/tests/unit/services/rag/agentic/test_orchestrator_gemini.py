@@ -32,23 +32,30 @@ class MockTool(BaseTool):
 
 @pytest.fixture
 def mock_llm_gateway():
-    gateway = AsyncMock()
+    gateway = MagicMock()
     # Mock create_chat_with_history to return a dummy object
     gateway.create_chat_with_history.return_value = MagicMock()
     # Mock send_message to return a tuple expected by orchestrator/reasoning
     # (text_response, model_name, response_obj, token_usage)
-    gateway.send_message.return_value = ("Response", "gemini-pro", MagicMock(), TokenUsage())
+    async def send_message(*args, **kwargs):
+        return "Response", "gemini-pro", MagicMock(), TokenUsage()
+
+    gateway.send_message = MagicMock(side_effect=send_message)
     gateway.set_gemini_tools = MagicMock()
     return gateway
 
 
 @pytest.fixture
 def mock_reasoning_engine():
-    engine = AsyncMock()
+    engine = MagicMock()
     # Mock execute_react_loop
     # Returns: (state, model_name, messages, token_usage)
     state = AgentState(query="test", final_answer="Final Answer")
-    engine.execute_react_loop.return_value = (state, "gemini-pro", [], TokenUsage())
+
+    async def execute_react_loop(*args, **kwargs):
+        return state, "gemini-pro", [], TokenUsage()
+
+    engine.execute_react_loop = MagicMock(side_effect=execute_react_loop)
 
     # Mock execute_react_loop_stream
     async def mock_stream_gen(*args, **kwargs):
@@ -91,12 +98,18 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
     ):
         # Setup specific mocks
         mock_intent_classifier = MockIntentClassifier.return_value
-        mock_intent_classifier.classify_intent = AsyncMock(
-            return_value={"category": "business_complex", "suggested_ai": "pro"},
-        )
+
+        async def classify_intent(*args, **kwargs):
+            return {"category": "business_complex", "suggested_ai": "pro"}
+
+        mock_intent_classifier.classify_intent = MagicMock(side_effect=classify_intent)
 
         mock_entity_extractor = MockEntityExtractor.return_value
-        mock_entity_extractor.extract_entities = AsyncMock(return_value={})
+
+        async def extract_entities(*args, **kwargs):
+            return {}
+
+        mock_entity_extractor.extract_entities = MagicMock(side_effect=extract_entities)
 
         # Mock get_user_context to return empty context without DB call
         mock_get_user_context.return_value = {
@@ -150,16 +163,26 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
         orch.context_window_manager.trim_conversation_history.side_effect = mock_trim
 
         # Mock context loading to avoid DB calls in process_query_core and stream_query
-        orch.core.context_manager.get_full_context = AsyncMock(
-            return_value=({"profile": None, "facts": [], "history": []}, []),
+        async def get_full_context(*args, **kwargs):
+            return {"profile": None, "facts": [], "history": []}, []
+
+        async def get_basic_context(*args, **kwargs):
+            return {"profile": None, "facts": []}, []
+
+        async def extract_entities_and_kg_context(*args, **kwargs):
+            return {}, "", None
+
+        async def get_followups(*args, **kwargs):
+            return []
+
+        orch.core.context_manager.get_full_context = MagicMock(side_effect=get_full_context)
+        orch.core.context_manager.get_basic_context = MagicMock(side_effect=get_basic_context)
+        orch.core.extract_entities_and_kg_context = MagicMock(
+            side_effect=extract_entities_and_kg_context,
         )
-        orch.core.context_manager.get_basic_context = AsyncMock(
-            return_value=({"profile": None, "facts": []}, []),
-        )
-        orch.core.extract_entities_and_kg_context = AsyncMock(return_value=({}, "", None))
 
         # Mock followup_service.get_followups (async) for stream_query
-        orch.followup_service.get_followups = AsyncMock(return_value=[])
+        orch.followup_service.get_followups = MagicMock(side_effect=get_followups)
 
         yield orch
 

@@ -573,9 +573,15 @@ async def test_init_database_success(mock_app):
         patch(
             "backend.services.analytics.weekly_email_reporter.init_weekly_reporter",
         ) as mock_weekly,
-        patch("backend.app.setup.service_initializer.asyncio.create_task"),
+        patch("backend.app.setup.service_initializer.asyncio.create_task") as mock_create_task,
         patch("backend.services.misc.graph_service.GraphService"),
     ):
+        def close_created_coro(coro, *args, **kwargs):
+            coro.close()
+            return MagicMock()
+
+        mock_create_task.side_effect = close_created_coro
+
         mock_settings.database_url = "postgresql://test:test@localhost:5432/test?sslmode=disable"
         mock_settings.db_pool_min_size = 2
         mock_settings.db_pool_max_size = 10

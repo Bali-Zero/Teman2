@@ -36,7 +36,7 @@ from backend.services.rag.evaluation.metrics_tracker import MetricsTracker, Quer
 @pytest.fixture
 def mock_db_pool():
     """Create a mock asyncpg pool."""
-    pool = AsyncMock()
+    pool = MagicMock()
     conn = AsyncMock()
 
     # Properly configure async context manager
@@ -46,8 +46,10 @@ def mock_db_pool():
     async def mock_aexit(*args):
         return False
 
-    pool.acquire.return_value.__aenter__ = mock_aenter
-    pool.acquire.return_value.__aexit__ = mock_aexit
+    acquire_cm = MagicMock()
+    acquire_cm.__aenter__ = mock_aenter
+    acquire_cm.__aexit__ = mock_aexit
+    pool.acquire = MagicMock(return_value=acquire_cm)
 
     return pool, conn
 
