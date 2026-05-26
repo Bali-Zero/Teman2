@@ -134,3 +134,22 @@ Outputs:
 
 Only `content_allowlist.local.jsonl` may feed the next local parser/indexer.
 Never parse files from the denylist or holdlist.
+
+## Parse Allowed Messages
+
+Parse only the allowlist into an ignored local SQLite database:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.parse_allowed_messages \
+  --allowlist research/personal/wa-corpus/decisions/content_allowlist.local.jsonl \
+  --output-dir research/personal/wa-corpus/analysis
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_messages.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_messages_summary.md`
+
+The SQLite file stores raw parsed message text and raw sender labels. It is
+ignored by git and must stay on the Pro.
