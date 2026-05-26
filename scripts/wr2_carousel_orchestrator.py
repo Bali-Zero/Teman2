@@ -40,7 +40,6 @@ import subprocess
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -455,6 +454,94 @@ async def run_pipeline(
     logger.info(f"carousel {carousel_id} awaiting_approval — Telegram gate next")
 
     return artifacts
+
+
+async def publish_after_approval(
+    conn: asyncpg.Connection,
+    carousel_id: str,
+    slides_dir: Path,
+    caption: str,
+) -> dict[str, Any]:
+    """Spec §8 — post-approval publish call.
+
+    Codex amendment: write `wr2_publish_attempts` BEFORE Meta call,
+    update post-response. Idempotency key prevents double-publish via
+    UNIQUE constraint (mig 198). Reconciliation by idempotency_key on
+    retry / orchestrator restart.
+
+    Returns dict {status, ig_media_id?, permalink?, error?}.
+    """
+    from backend.services.publisher.ig_publisher import IGPublisher
+    from backend.services.publisher.types import DraftPayload, SlidePayload
+
+    # idempotency: sha256(carousel_id || rendered_paths). Stable across retries.
+    slide_files = sorted(slides_dir.glob("slide_*.png"))
+    rendered_concat = "|".join(p.name for p in slide_files)
+    idempotency_key = hashlib.sha256(
+        f"{carousel_id}|{rendered_concat}".encode()
+    ).hexdigest()
+
+    # PRE-INSERT publish_attempts (status=pending). UNIQUE(idempotency_key) catches double-call.
+    try:
+        attempt_id = await conn.fetchval(
+            """
+            INSERT INTO wr2_publish_attempts (
+                carousel_id, idempotency_key, status, attempted_at
+            ) VALUES ($1, $2, 'pending', NOW())
+            ON CONFLICT (idempotency_key) DO UPDATE SET attempted_at = NOW()
+            RETURNING id
+            """,
+            carousel_id, idempotency_key,
+        )
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
+        logger.error(f"publish_attempts insert failed: {exc}")
+        return {"status": "db_error", "error": str(exc)}
+
+    # Call Meta Graph
+    items = [
+        SlidePayload(
+            image_url=None,  # publisher must upload local files (TODO Phase 4)
+            caption=caption if i == 0 else "",
+            local_path=str(p),
+        )
+        for i, p in enumerate(slide_files)
+    ]
+    draft = DraftPayload(carousel_id=carousel_id, slides=items, caption=caption)
+
+    publisher = IGPublisher()
+    try:
+        result = await publisher.publish(draft)
+    except Exception as exc:
+        logger.exception(f"IG publish exception: {exc}")
+        await conn.execute(
+            """UPDATE wr2_publish_attempts
+               SET status='failed', error_message=$2, completed_at=NOW()
+               WHERE id=$1""",
+            attempt_id, str(exc),
+        )
+        return {"status": "exception", "error": str(exc)}
+
+    # Update post-response
+    if result.success:
+        await conn.execute(
+            """UPDATE wr2_publish_attempts
+               SET status='ok', ig_media_id=$2, permalink=$3, completed_at=NOW()
+               WHERE id=$1""",
+            attempt_id, result.external_id, result.permalink,
+        )
+        await transition_state(conn, carousel_id, "published")
+        return {
+            "status": "ok",
+            "ig_media_id": result.external_id,
+            "permalink": result.permalink,
+        }
+    await conn.execute(
+        """UPDATE wr2_publish_attempts
+           SET status='failed', error_message=$2, completed_at=NOW()
+           WHERE id=$1""",
+        attempt_id, result.error or "unknown",
+    )
+    return {"status": "failed", "error": result.error}
 
 
 async def main(argv: list[str] | None = None) -> int:
