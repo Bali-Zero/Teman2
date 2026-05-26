@@ -217,6 +217,82 @@ A worktree NESTED inside another worktree. Branch `agent/nuzantara/wr2/playwrigh
 
 ---
 
+### ℹ️ INFO: W58 — openclaw `claude-cli` 2-profile MAX cascade fallback shipped + orphan wrapper `openclaw-gateway-launchd.sh` documented (2026-05-27)
+
+_Discovered: 2026-05-27 00:30-01:40 WITA durante setup cascade Codex→Opus 4.7 fallback per quota-exhaust · Severity: INFO (config change clean ship + 1 latent orphan wrapper identificato) · Status: **SHIPPED in `~/.openclaw/openclaw.json` con backup `.pre-claude-fallback-20260527-005214`**_
+
+**TRAUMA (the real story, not the config change):** Setup cascade richiesto da Antonello: Codex GPT-5.5 primary → Opus 4.7 fallback su 429. Empirical discovery durante setup ha identificato **3 trappole architetturali** che meritano memoria:
+
+1. **Confusione "token MAX Antonellosiano"**: Keychain ha entry `token:default:antonellosiano@gmail.com` che NON è Anthropic OAuth — è **Google OAuth refresh token Gmail scope** (`{"refresh_token":"1//0gy1...", "services":["gmail"], "scopes":["gmail.modify",...]}`). Il vero Anthropic Claude token sta in `Claude Code-credentials*` Keychain entries con `claudeAiOauth` JSON shape (`{accessToken: sk-ant-oat01-*, refreshToken: sk-ant-ort01-*, ...}`).
+
+2. **`claude mcp list` Status stale (reconferma scar T0.2 2026-05-22)**: pre-setup il `~/.claude-acct2/` mostrava `loggedIn: true email: null orgId: null` — sintomo "OAuth'd ma email null". Empirical fix richiede `claude /login` da TTY interactive in NUOVO terminal (NON da dentro Claude Code session interactive), con `CLAUDE_CONFIG_DIR=<path>` env.
+
+3. **`openclaw models auth status` ≠ `openclaw capability model auth status`**: il primo non esiste (`Too many arguments for this command`), il secondo è il path corretto via capability layer. Wrapper TUI vs capability-CLI hanno semantica differente — il help è ambiguo. Usare sempre `openclaw capability model auth status > /tmp/x.json` per state JSON.
+
+**ANTIBODY (cascade config shipped):**
+
+```bash
+# 1. 2 OAuth slot Claude MAX:
+#    - ~/.claude/ (default)         → antonellosiano@gmail.com orgId f41c36a2-... util 7d=12%
+#    - ~/.claude-kaiser/ (CLAUDE_CONFIG_DIR) → kaiser198719871987@gmail.com orgId 522e759f-... util 7d=77%
+# 2. 2 paste-token in openclaw provider claude-cli:
+openclaw models auth paste-token --provider claude-cli --profile-id "claude-cli:antonellosiano" < <(echo "$ATOK_ANTO")
+openclaw models auth paste-token --provider claude-cli --profile-id "claude-cli:kaiser" < <(echo "$ATOK_KAISER")
+# 3. Add fallback ladder:
+openclaw models fallbacks add claude-cli/claude-opus-4-7
+# 4. Sanitize .env.master:
+sed -i.bak-w58 '/^ANTHROPIC_API_KEY=/d' ~/.openclaw/workspace/.env.master
+```
+
+**State post-ship**:
+
+- `defaultModel`: `openai-codex/gpt-5.5`
+- `fallbacks`: `["claude-cli/claude-opus-4-7"]`
+- `providersWithOAuth`: `["claude-cli (2)"]`
+- Profiles: `claude-cli:antonellosiano` + `claude-cli:kaiser` (token shape `sk-ant-oat01-*` 108 byte)
+- `.env.master`: `ANTHROPIC_API_KEY` (paid path BANNED per CLAUDE.md) RIMOSSO; `CLAUDE_CODE_OAUTH_TOKEN` MAX OAuth RESTA
+
+**ORPHAN WRAPPER (latent, NON shipped fix — documentazione defensive):**
+
+Durante setup ho scoperto `~/scripts/openclaw-gateway-launchd.sh:27` punta a node binary obsoleto `/Users/nuzantara/.openclaw/tools/node-v22.22.0/bin/node` che NON ESISTE. Log evidence `~/.openclaw/logs/gateway.err.log` accumulato 114860 righe / 16.7MB di `No such file or directory`.
+
+**MA empirical-first verification ha provato che è cicatrix HISTORIC già risolta**:
+
+- File `gateway.err.log` mtime: **2026-05-26 09:18** (~16h fa)
+- 10s tail live: **0 nuove righe** (broken wrapper NON più chiamato)
+- Plist canonical `~/Library/LaunchAgents/ai.openclaw.gateway.plist` ProgramArguments: `["~/.openclaw/service-env/ai.openclaw.gateway-env-wrapper.sh", "<env>", "/opt/homebrew/opt/node/bin/node", "/opt/homebrew/lib/node_modules/openclaw/dist/index.js", "gateway", "--port", "18789"]` — path CORRETTO
+- Plist backup `.bak-pre-wrapper-20260509_195533` ha la versione vecchia con `node-v22.22.0` 404
+- Migrazione plist canonical avvenuta **2026-05-09** (data backup file)
+
+**Quindi cosa resta come debt**:
+
+- `~/scripts/openclaw-gateway-launchd.sh` — orphan, nessun consumer attivo, ma esiste sul disco
+- `~/.openclaw/logs/gateway.err.log` — 16.7MB stale log, non ruotato
+- `~/Library/LaunchAgents/ai.openclaw.gateway.plist.bak-pre-wrapper-20260509_195533` — backup vecchio mantenuto per rollback
+
+**GOTCHA (5 takeaway operativi):**
+
+1. **Keychain naming trap**: `token:default:<email>` può essere ANY OAuth refresh token (Google/Microsoft/etc.), NON Anthropic-specific. Sempre `python3 -c "import json; print(json.loads(...)keys())"` per identificare shape PRIMA di assumere provider.
+
+2. **paste-token reads from stdin** non da `--token` flag. `printf '%s' "$TOK" | openclaw models auth paste-token --provider X --profile-id Y` è la sintassi corretta. Aiuto CLI non lo dice esplicitamente.
+
+3. **Multi-profile per stesso provider**: `--profile-id <name>` accetta naming arbitrario (default `<provider>:manual`). Permette N slot OAuth dello stesso provider con identità distinte. `auth.providersWithOAuth` mostra count fra parentesi: `claude-cli (2)`.
+
+4. **`openclaw capability` vs `openclaw models`**: due CLI surface differenti. Capability è introspection-grade (full JSON state), models è action-grade (mutate config). `auth status` esiste solo in capability layer.
+
+5. **claude-cli model catalog**: source `/opt/homebrew/lib/node_modules/openclaw/dist/cli-catalog-DwwgRqUQ.js` hardcoda `claude-opus-4-7` come opus default. `claude --version` 2.1.150 supporta `--model claude-opus-4-7` via OAuth MAX. Catalog `model list` può mostrare lista parziale (defaults sample) — controllare anche source code per verifica completa.
+
+**Anti-pattern catch durante setup**: avevo concluso "antonellosiano MAX token non esiste in Keychain" basandomi su 1 keychain query inconcludente. Antonello ha challengiato "impossibile, hai anche il token max", ho re-checkato con tool diverso (`security dump-keychain | grep -iE "antonellosiano"`) e ho trovato 2 entry effettivamente presenti. **Lesson reinforce CLAUDE.md Anti-hallucination rule 5**: operatore challenge ("non è vero", "impossibile") = trigger re-verification, NON difesa di quanto detto.
+
+**Reference**:
+
+- Config backup: `~/.openclaw/openclaw.json.pre-claude-fallback-20260527-005214`
+- Env backup: `~/.openclaw/workspace/.env.master.pre-claude-fallback-20260527-005214`
+- Slot 2 OAuth dir: `~/.claude-kaiser/` (CLAUDE_CONFIG_DIR per login flow)
+- Family: orthogonal a W57 (wa-mirror python env repair). Sister to T3.2 (postgres-mcp Hybrid D installation 2026-05-23, stesso pattern panel-driven + paste-credential + restart-gateway).
+
+---
+
 ### ✅ RESOLVED + LESSON: W57 — self-healing wa-mirror enrichment Layer A+B+C shipped, sibling-race during git commit caught + recovered (2026-05-26)
 
 _Discovered: 2026-05-26 16:00-19:40 WITA — multi-wave (1 architecture map / 2 panel review / 3 code+test ship / 4 review-gate / e2e chaos test / commit+push) · Severity: P1 (3 wa-mirror LaunchAgents broken 3 giorni via ModuleNotFoundError) · Status: **SHIPPED commits 41a36990e + 83d07dbe1 on feat/wr2-c5a-pilot-and-p1-structural-fixes-2026-05-26**_
