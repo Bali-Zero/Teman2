@@ -3,13 +3,20 @@ import type { WASocket } from "@whiskeysockets/baileys";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
-import type pino from "pino";
+import pino from "pino";
 
 import type {
   CapturedMessageRecord,
   MessageContextStore,
 } from "./message_capture.js";
 import { phonePathSegment } from "./phone.js";
+
+// Module-level logger for helpers that do not receive a pino.Logger from
+// the caller (e.g. scanRoutersForOcrEndpoint). Inherits log level from env.
+const mlogger = pino({
+  level: process.env.WA_MIRROR_LOG_LEVEL ?? "info",
+  base: { component: "media" },
+});
 
 const DEFAULT_MEDIA_ROOT = path.join(homedir(), "wa-mirror-media");
 let ocrEndpointExists: Promise<boolean> | null = null;
@@ -104,7 +111,24 @@ export function extensionForMime(
     case "image/webp":
       return "webp";
     default:
-      return mediaType === "document" ? "bin" : mediaType;
+      // FIX 8 (2026-05-26): explicit extension defaults per mediaType so
+      // unknown/missing MIME does not write `audio` / `sticker` / `video`
+      // as the extension on disk (which broke any downstream tool that
+      // routes by file extension).
+      switch (mediaType) {
+        case "audio":
+          return "ogg";
+        case "sticker":
+          return "webp";
+        case "video":
+          return "mp4";
+        case "image":
+          return "jpg";
+        case "document":
+          return "bin";
+        default:
+          return "bin";
+      }
   }
 }
 
@@ -137,8 +161,8 @@ async function maybeRunOcr(
       return null;
     }
     return response.json();
-  } catch {
-    logger.warn("wa-mirror OCR request threw");
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, "wa-mirror OCR request threw");
     return null;
   }
 }
@@ -168,7 +192,11 @@ async function scanRoutersForOcrEndpoint(): Promise<boolean> {
         return true;
       }
     }
-  } catch {
+  } catch (err) {
+    mlogger.warn(
+      { err: (err as Error).message, routersDir },
+      "wa-mirror scanRoutersForOcrEndpoint failed",
+    );
     return false;
   }
   return false;
