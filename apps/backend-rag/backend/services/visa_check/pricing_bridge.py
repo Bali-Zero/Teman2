@@ -36,6 +36,7 @@ KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset(
 # backend/data/bali_zero_official_prices_2026.json). Offshore
 # variants are preferred (standard fresh-applicant path).
 _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
+    VisaType.B1: ("B1 Visa on Arrival (VOA)", "Visa on Arrival"),
     VisaType.C1: ("C1 Tourism",),
     VisaType.C2: ("C2 Business",),
     VisaType.C6: ("C6", "Social"),  # known None

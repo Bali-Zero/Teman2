@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
 
 class VisaType(str, Enum):
+    # ── Visa on Arrival (B-series) ───────────────────────────
+    B1 = "B1"  # Visa on Arrival (VOA) — 30d + 30d extension
     # ── Visit Visa (single entry, C-series) ──────────────────
     C1 = "C1"  # Tourism
     C2 = "C2"  # Business
@@ -92,6 +94,21 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
     NB2 = "NB-2 NotebookLM immigration notebook"
 
     return {
+        # ── B-series (Visa on Arrival) ───────────────────────
+        VisaType.B1: VisaMeta(
+            name_en="Visa on Arrival",
+            name_id="Visa Kedatangan",
+            category="Visa on Arrival",
+            purposes=frozenset({Purpose.LONG_TOURISM}),
+            duration_days=30,
+            extensions=(1, 30),  # 30 + 1×30 = 60 max
+            min_budget_idr=None,
+            notes="Airport pickup. Tourism / family / short business only — no work. "
+            "Extendable once ×30d = 60d max.",
+            seed_source=SEED,
+            duration_source=C_RULES,
+            fit_tags=frozenset({FitTag.SHORT_TERM, FitTag.NO_BUDGET_GATE}),
+        ),
         # ── C-series (Visit Visa, single entry) ──────────────
         VisaType.C1: VisaMeta(
             name_en="Visit Visa Tourism",
