@@ -44,3 +44,18 @@ Use these values in the private manifest `owner_decision` column:
 - `deny_personal`
 - `deny_sensitive`
 - `unknown_hold`
+
+## Compile Decisions
+
+After review, compile decisions into allow/deny/hold lists:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.compile_review_decisions \
+  --review-manifest research/personal/wa-corpus/review/review_manifest.local.tsv \
+  --output-dir research/personal/wa-corpus/decisions \
+  --apply-safe-defaults
+```
+
+With safe defaults, only team-gated rows are allowed. Private-drive rows are
+denied, and all remaining blank manual-review rows stay on hold.

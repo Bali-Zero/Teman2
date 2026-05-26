@@ -111,3 +111,26 @@ blank `owner_decision` column to create the next allowlist/denylist:
 - `deny_personal`
 - `deny_sensitive`
 - `unknown_hold`
+
+## Compile Allow/Deny/Hold Decisions
+
+Compile the private review manifest into local-only lists:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.compile_review_decisions \
+  --review-manifest research/personal/wa-corpus/review/review_manifest.local.tsv \
+  --output-dir research/personal/wa-corpus/decisions \
+  --apply-safe-defaults
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/decisions/review_decisions.local.tsv`
+- `research/personal/wa-corpus/decisions/content_allowlist.local.jsonl`
+- `research/personal/wa-corpus/decisions/content_denylist.local.jsonl`
+- `research/personal/wa-corpus/decisions/content_holdlist.local.jsonl`
+- `research/personal/wa-corpus/decisions/review_decisions_summary.md`
+
+Only `content_allowlist.local.jsonl` may feed the next local parser/indexer.
+Never parse files from the denylist or holdlist.
