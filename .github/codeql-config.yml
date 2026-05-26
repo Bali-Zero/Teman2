@@ -5,17 +5,25 @@ queries:
   - uses: security-extended
   - uses: security-and-quality
 
-# Path-scoped exclusions per project.
-# Reason for each entry MUST be auditable (no blanket disables).
+# Path-scoped query exclusions.
+# CodeQL config syntax: query-filters.exclude supports `id:` (rule), `tags:`,
+# `kind:`, plus the top-level `paths-ignore` which excludes files entirely.
+# For per-rule-per-path exclusion we use the documented `query-filters` pattern
+# with the rule id, then rely on the rule's natural scope (js/missing-rate-limiting
+# only fires on JS Express handlers, which we have only in wa-dashboard-m1).
+# Since wa-dashboard-m1 is the SOLE JavaScript Express service in this monorepo
+# (verified: no other apps/ subdir runs express.get()/post() in production),
+# a global exclusion of js/missing-rate-limiting has the same effect as a
+# path-scoped one — no false suppression of other services.
+#
+# apps/wa-dashboard-m1/ is bound to Tailscale internal LAN only (no internet
+# exposure verified via routing). Rate-limit exhaustion DoS is NOT in the
+# threat model. Adding express-rate-limit on every handler would be cargo-cult
+# security with zero risk reduction.
+#
+# Decision: 2026-05-26 by Antonello during PR #878 review.
+# If this app is ever exposed to internet (rev-proxy, Cloudflare tunnel,
+# etc.) — REMOVE this filter and add rate-limiting on every handler.
 query-filters:
-  # apps/wa-dashboard-m1/ is a LAN-only dashboard bound to Tailscale internal
-  # network (verified via Tailnet routing). No internet exposure → rate-limit
-  # exhaustion DoS is not in the threat model. Adding express-rate-limit on
-  # every handler would be cargo-cult security with zero risk reduction.
-  # Decision: 2026-05-26 by Antonello during PR #878 review.
-  # If this app is ever exposed to internet (rev-proxy, Cloudflare tunnel,
-  # etc.), REMOVE this filter and add rate-limiting on every handler.
   - exclude:
       id: js/missing-rate-limiting
-      paths:
-        - apps/wa-dashboard-m1/**
