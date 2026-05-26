@@ -217,6 +217,66 @@ A worktree NESTED inside another worktree. Branch `agent/nuzantara/wr2/playwrigh
 
 ---
 
+### ✅ RESOLVED + LESSON: W57 — self-healing wa-mirror enrichment Layer A+B+C shipped, sibling-race during git commit caught + recovered (2026-05-26)
+
+_Discovered: 2026-05-26 16:00-19:40 WITA — multi-wave (1 architecture map / 2 panel review / 3 code+test ship / 4 review-gate / e2e chaos test / commit+push) · Severity: P1 (3 wa-mirror LaunchAgents broken 3 giorni via ModuleNotFoundError) · Status: **SHIPPED commits 41a36990e + 83d07dbe1 on feat/wr2-c5a-pilot-and-p1-structural-fixes-2026-05-26**_
+
+**TRAUMA:** 3 wa-mirror LaunchAgent (`com.balizero.wa-mirror-attention-{classifier,realtime,digest}`) crash-looping da 3 giorni per `ModuleNotFoundError: asyncpg`. Cause: plist exec'd a Homebrew externally-managed Python 3.14 (PEP 668 blocks pip install), NON pyenv 3.11.11 con asyncpg+httpx già installati. Antonello vuole zero Telegram, sistema auto-fixa.
+
+**ANTIBODY (3-layer self-healing stack shipped):**
+
+- **Layer A (Step 1, pre-existing 2026-05-26 19:07)**: `~/scripts/wa-mirror-enrichment-wrapper.sh` (6404B mode 755) preventive routing wa-mirror→pyenv 3.11.11 con `--index-url` pinning + `env -i` sanitize. 3 plist patched (ProgramArguments).
+- **Layer B-1 (Step 2, pre-existing)**: `~/.agent/decisions/job_registry.json` 3 entries con `fix_pattern` Tier 2 regex `ModuleNotFoundError: No module named '(?P<module>[a-z_][a-z0-9_]*)'` confidence 0.95.
+- **Layer B-2 (commit 41a36990e)**: NEW Organism actuator `python_env_repair` (apps/organism/organism/actuators/python_env_repair.py 427 LOC + 38 unit tests). 10 panel-amended must-fix A1-A10:
+  - A1 `--index-url=https://pypi.org/simple/` + `--no-input` (supply-chain pinning)
+  - A2 regex `fullmatch()` + control-char block (no `\n\r\t\0\x0b\x0c`)
+  - A3 explicit `_DEP_ALLOWLIST = {"asyncpg": {...}, "httpx": {...}}` (NO arbitrary PyPI install)
+  - A4 orphan `started` TTL 600s separate from 24h normal TTL
+  - A5 atomic `fcntl.flock` on attempts JSONL file
+  - A6 Python path regex lockdown `\A.+/\.pyenv/versions/\d+\.\d+\.\d+/bin/python(\d+(\.\d+)?)?\Z`
+  - A7 fail-closed on corrupt attempts file (return -1 → quarantine)
+  - A8 sanitized subprocess env (excludes `PIP_*`, proxy, cert vars)
+  - A9 `await proc.wait()` post-kill on timeout (zombie prevention)
+  - A10 YAML cooldown_minutes=10 consistent with pip timeout 120s
+- **Layer B-3 (commit 83d07dbe1)**: NEW Cell sensor `WaMirrorEnrichmentSensor` (apps/cell/cell/sensors/wa_mirror_enrichment_sensor.py 312 LOC + 20 unit tests) + emit helper `emit_enrichment_repair_request()` in observatory.py. Sensor probes 3 LaunchAgent via `launchctl print`, parses stderr log tail (8KB) per Python exception class. `ModuleNotFoundError` → actionable+repairable; `InvalidPasswordError`/`ConnectionRefusedError` → yellow-but-operator-action-only. Streak counter separato da W27 main red-streak. Empirical evidence Pro 2026-05-26 19:21 WITA: sensor correctly discriminates 3 labels (classifier=InvalidPasswordError NOT repairable, realtime=ModuleNotFoundError asyncpg REPAIRABLE, digest=not running no signal).
+
+**4-LLM panel pre-implementation (16:30-17:00 WITA, Wave 2)**: spec iter-1 → Gemini agy 3.1 Pro APPROVE_WITH_AMENDMENTS (3 must-fix) + Codex GPT-5.5 xhigh REJECT (8 bugs + 5 security vulns) + DeepSeek V4 Pro synthesis = 10 universal must-fix A1-A10. Spec iter-2 written incorporating all 10, ALL applied in code.
+
+**Wave 4 review gate (post-impl, 19:30 WITA)**: 2 parallel review agents:
+
+- code-reviewer found 3 HIGH-confidence: (#1 streak only advances on repairable→logic bug, #2 missing_module taint travels before A3 gate→defense-in-depth, #3 cell_sustained_red_restart catches W57 events too→collateral fly_machines_restart). All 3 patched in-band.
+- spalla-review: 2 blockers + 3 suggestions; 1 patch (skip emit on empty fields) + 1 inline W33 GOTCHA reference comment.
+
+**Test count**: 38/38 organism actuator + 20/20 cell sensor + 67/67 broader sensor regression = **125/125 PASS**.
+
+**LESSON / GOTCHA — sibling race during `git commit`:**
+
+Multi-step sequence `git add <my files> && git restore --staged <sibling staged> && git commit` ran into a sibling-session race: between my `restore --staged` (un-staging whatsapp_corpus sibling files) and my `git commit`, an external process (another Claude or hook) re-staged the same sibling files. Resulting commit had MY commit message but THEIR files (whatsapp_corpus/), NONE of my W57 files included.
+
+Recovery: `git reset --soft HEAD~1` → `git restore --staged .` (clean slate) → atomic single `&&`-chained Bash `git add <exact paths> && git commit` (no intermediate step where sibling can interject). Defeated the race on retry.
+
+**5 regole anti-sibling-race for atomic commits:**
+
+1. Single `&&`-chained Bash for `git add` + `git commit`. NO separate tool calls between stage and commit on contested branches.
+2. Verify `git diff --stat --cached` BEFORE committing — confirm exactly what's about to be committed.
+3. Watch for sibling adding files between your tool calls — `git status -s` shows it post-restore.
+4. `git reset --soft HEAD~1` recovers commit-with-wrong-files safely (preserves staged state).
+5. Use `HUSKY=0` env to skip Husky shim install hook (still runs pre-commit hook); never `--no-verify`.
+
+**Empirical-first verification chain that caught the InvalidPasswordError discovery (CRITICAL)**: `tail` on actual stderr log at 19:18 WITA showed current breakage was NOT ModuleNotFoundError anymore (Layer A wrapper resolved that). Current breakage was `asyncpg.exceptions.InvalidPasswordError: password authentication failed for user "nuzantara"`. This live empirical data shaped Step 4 sensor architecture: discrimination via error-class parsing, NOT just exit code. Spec iter-2 documents this in CRITICAL section.
+
+**Reference**:
+
+- Commits: `41a36990e` (Layer B-2 organism) + `83d07dbe1` (Layer B-3 cell)
+- Spec: `research/operations/2026-05-26-step3-spec-iter2.md`
+- Panel artifacts: `/tmp/wave2-panel/{gemini,codex2,deepseek-raw2}.md`
+- Wrapper Layer A: `~/scripts/wa-mirror-enrichment-wrapper.sh` (HOME, gitignored)
+- Layer B-1 registry: `~/.agent/decisions/job_registry.json`
+- Live empirical: `~/logs/wa-mirror-attention-classifier.err.log` (29MB+)
+- Family: sister of W31 (fly_machines_restart actuator, validated 2026-05-23) + W27 (sustained_red emit pattern reuse) + W37 (incident_ledger auto-wire)
+
+---
+
 ### ⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25)
 
 _Discovered: 2026-05-25 ~03:40 WITA via GEN-5 disambiguation test "sto avendo problemi con il deploy" · Resolved 2026-05-25 04:13 WITA via stash + checkout deploy/main + pull origin/main (50 commits) · Severity: P0 (cron 32h broken) · Status: **RECOVERED** — root design issue worktree-sharing pending operator decision_
