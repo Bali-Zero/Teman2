@@ -194,3 +194,168 @@ class CanvaMcpClient:
             )
         except Exception as e:
             logger.warning("move-item-to-folder failed (non-fatal): %s", e)
+
+    # ── P1.3 (2026-05-26) Edit-transaction API ────────────────────────────
+    #
+    # Added to replace the legacy PDF→import flow with copy-first edit-transaction.
+    # Driven by `CANVA_APPLY_MODE=edit_transaction` env flag in orchestrator.py.
+    # Spec: docs/wr2/operator-driven-mode-spec-2026-05-26.md
+    # Panel: research/operations/2026-05-26-wr2-canva-ig-4llm-panel-synthesis.md
+
+    async def copy_design(
+        self,
+        source_design_id: str,
+        *,
+        page_numbers: list[int] | None = None,
+    ) -> str:
+        """Copy a Canva design (optionally restricted to specific pages).
+
+        Returns the new design_id. Master `source_design_id` is NEVER mutated.
+        """
+        if self._session is None:
+            raise RuntimeError("CanvaMcpClient not entered — use async with")
+        args: dict[str, Any] = {
+            "design_id": source_design_id,
+            "user_intent": "Copy WR2 template before edit-transaction apply (master immutability)",
+        }
+        if page_numbers:
+            args["page_numbers"] = page_numbers
+        result = await self._session.call_tool("copy-design", arguments=args)
+        # Reuse the existing parse_design_id helper — copy-design response
+        # shape mirrors import-design-from-url for the design_id payload.
+        result_data: Any = (
+            {"content": result.content} if hasattr(result, "__dict__") and not isinstance(result, dict) else result
+        )
+        return parse_design_id(result_data)
+
+    async def upload_asset_from_url(self, url: str, *, name: str) -> str:
+        """Upload an asset (image/video) to Canva from an HTTPS URL.
+
+        Returns the asset_id (used in subsequent update_fill / insert_fill ops).
+        URL must be public HTTPS — Canva fetches it server-side.
+        For Bali Zero workflows, the URL should come from the
+        /api/assets/upload Tigris proxy (P1.2), NOT cloudflared tunnels.
+        """
+        if self._session is None:
+            raise RuntimeError("CanvaMcpClient not entered — use async with")
+        result = await self._session.call_tool(
+            "upload-asset-from-url",
+            arguments={
+                "url": url,
+                "name": name,
+                "user_intent": "Upload WR2 hero photo to Canva asset library for edit-transaction",
+            },
+        )
+        # Canva returns an asset object with an id field; tolerate both
+        # CallToolResult (mcp SDK 1.12.4+) and dict shapes.
+        result_data: Any = (
+            {"content": result.content} if hasattr(result, "__dict__") and not isinstance(result, dict) else result
+        )
+        # Best-effort id extraction — Canva asset payload shape:
+        #   {"asset": {"id": "<asset_id>", ...}}
+        content = result_data.get("content") if isinstance(result_data, dict) else None
+        if isinstance(content, list) and content:
+            for entry in content:
+                # entry can be a TextContent or dict; pull asset.id
+                text = getattr(entry, "text", entry) if not isinstance(entry, dict) else entry.get("text")
+                if isinstance(text, str):
+                    import json as _json
+                    try:
+                        parsed = _json.loads(text)
+                    except Exception:
+                        continue
+                    asset = parsed.get("asset") if isinstance(parsed, dict) else None
+                    if isinstance(asset, dict) and "id" in asset:
+                        return asset["id"]
+        raise CanvaImportError(f"upload-asset-from-url returned no asset.id: {result_data!r}")
+
+    async def start_editing_transaction(self, design_id: str) -> dict[str, Any]:
+        """Open an edit transaction on a Canva design.
+
+        Returns the full response dict containing transaction_id + pages structure
+        (page_id, is_responsive, element_ids per page). The orchestrator uses the
+        pages info to map slide_spec roles to concrete element_ids before issuing
+        perform-editing-operations.
+
+        Transaction MUST be closed via commit_editing_transaction (save) OR
+        cancel_editing_transaction (discard). Open transactions are draft-only.
+        """
+        if self._session is None:
+            raise RuntimeError("CanvaMcpClient not entered — use async with")
+        result = await self._session.call_tool(
+            "start-editing-transaction",
+            arguments={
+                "design_id": design_id,
+                "user_intent": "Open edit transaction for WR2 carousel content + hero apply (P1.3 copy-first flow)",
+            },
+        )
+        # CallToolResult → normalize
+        if hasattr(result, "__dict__") and not isinstance(result, dict):
+            return {"content": result.content}
+        return result  # type: ignore[return-value]
+
+    async def perform_editing_operations(
+        self,
+        *,
+        transaction_id: str,
+        operations: list[dict[str, Any]],
+        page_index: int,
+        pages: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Execute a batch of editing operations within an open transaction.
+
+        `operations` is a list of MCP-shape op dicts (replace_text, update_fill,
+        insert_fill, format_text, etc.). Pass `pages` from start_editing_transaction
+        response on first call; reuse the returned pages array for subsequent calls
+        if the orchestrator splits the batch across multiple calls.
+
+        Changes remain in DRAFT until commit_editing_transaction is called.
+        """
+        if self._session is None:
+            raise RuntimeError("CanvaMcpClient not entered — use async with")
+        args: dict[str, Any] = {
+            "transaction_id": transaction_id,
+            "operations": operations,
+            "page_index": page_index,
+            "user_intent": "Apply WR2 replace_text + update_fill bulk ops within open transaction",
+        }
+        if pages is not None:
+            args["pages"] = pages
+        result = await self._session.call_tool("perform-editing-operations", arguments=args)
+        if hasattr(result, "__dict__") and not isinstance(result, dict):
+            return {"content": result.content}
+        return result  # type: ignore[return-value]
+
+    async def commit_editing_transaction(self, transaction_id: str) -> dict[str, Any]:
+        """Save all edits in a transaction. After commit the transaction_id is invalid.
+
+        IMPORTANT: orchestrator MUST verify visual gate (thumbnails) BEFORE commit.
+        Reference: docs/wr2/operator-driven-mode-spec-2026-05-26.md apply_workflow step 6.
+        """
+        if self._session is None:
+            raise RuntimeError("CanvaMcpClient not entered — use async with")
+        result = await self._session.call_tool(
+            "commit-editing-transaction",
+            arguments={
+                "transaction_id": transaction_id,
+                "user_intent": "Commit WR2 carousel edits after human/QA gate approval",
+            },
+        )
+        if hasattr(result, "__dict__") and not isinstance(result, dict):
+            return {"content": result.content}
+        return result  # type: ignore[return-value]
+
+    async def cancel_editing_transaction(self, transaction_id: str) -> None:
+        """Discard all edits in a transaction. Used by orchestrator on validation failure."""
+        if self._session is None:
+            raise RuntimeError("CanvaMcpClient not entered — use async with")
+        try:
+            await self._session.call_tool(
+                "cancel-editing-transaction",
+                arguments={
+                    "transaction_id": transaction_id,
+                    "user_intent": "Cancel WR2 transaction on validation/pre-flight failure",
+                },
+            )
+        except Exception as e:
+            logger.warning("cancel-editing-transaction failed (non-fatal): %s", e)
