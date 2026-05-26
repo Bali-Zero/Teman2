@@ -1,6 +1,6 @@
 # WhatsApp Analysis Inventory Summary
 
-Generated UTC: `2026-05-26T14:18:08+00:00`
+Generated UTC: `2026-05-26T15:35:30+00:00`
 Analysis directory label: `analysis`
 
 ## Privacy Mode
@@ -15,7 +15,7 @@ Analysis directory label: `analysis`
 | Artifact type              | Count |
 | -------------------------- | ----: |
 | Local SQLite artifacts     |    11 |
-| Tracked markdown summaries |    12 |
+| Tracked markdown summaries |    13 |
 
 ## Local SQLite Artifacts
 
@@ -63,6 +63,7 @@ Analysis directory label: `analysis`
 | Summary                                    | Title                                           | Lines |
 | ------------------------------------------ | ----------------------------------------------- | ----: |
 | allowed_candidates_summary.md              | WhatsApp Allowlist Candidate Extraction Summary |    95 |
+| allowed_case_windows_summary.md            | WhatsApp Anonymous Case Window Summary          |    96 |
 | allowed_document_lifecycle_gaps_summary.md | WhatsApp Document Lifecycle Gap Summary         |   113 |
 | allowed_document_requirements_summary.md   | WhatsApp Allowlist Document Requirement Summary |   135 |
 | allowed_domain_events_summary.md           | WhatsApp Domain Event Index Summary             |   115 |
@@ -73,7 +74,7 @@ Analysis directory label: `analysis`
 | allowed_signal_summary.md                  | WhatsApp Allowlist Signal Summary               |   110 |
 | allowed_tax_payment_summary.md             | Allowed Tax/Payment Aggregate Summary           |   128 |
 | allowed_temporal_summary.md                | WhatsApp Allowed Temporal Summary               |   173 |
-| analysis_inventory_summary.md              | WhatsApp Analysis Inventory Summary             |    78 |
+| analysis_inventory_summary.md              | WhatsApp Analysis Inventory Summary             |    80 |
 
 ## Next Safe Step
 

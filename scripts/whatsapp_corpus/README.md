@@ -352,6 +352,26 @@ This analyzer reads only the derived domain event index and reports aggregate
 coverage/gap counts. A gap means no same-message document event was detected; it
 does not prove a missing client document.
 
+## Build Case Windows
+
+Group the derived domain events into anonymous local case windows:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.build_case_windows \
+  --events-db research/personal/wa-corpus/analysis/allowed_domain_events.local.sqlite \
+  --output-db research/personal/wa-corpus/analysis/allowed_case_windows.local.sqlite \
+  --summary research/personal/wa-corpus/analysis/allowed_case_windows_summary.md
+```
+
+Outputs:
+
+- `research/personal/wa-corpus/analysis/allowed_case_windows.local.sqlite`
+- `research/personal/wa-corpus/analysis/allowed_case_windows_summary.md`
+
+The case windows are anonymous local review units. They are built from the
+derived domain event index, not from the raw parsed-message DB.
+
 ## Analyze Signal Matrix
 
 Build aggregate matrices from signal hits:
@@ -401,3 +421,11 @@ PYTHONPATH=. python -m scripts.whatsapp_corpus.audit_privacy_outputs
 
 The audit scans tracked files under `research/personal/wa-corpus/`, skips local
 and database artifacts, and prints only `repo/path<TAB>pattern_label` findings.
+
+Use `--include-untracked` when you want to scan local scratch reports before
+sharing them:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=. python -m scripts.whatsapp_corpus.audit_privacy_outputs --include-untracked
+```
