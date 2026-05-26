@@ -130,6 +130,104 @@ def test_critic_verdict_non_dict_defaults_to_fail():
 
 
 # ===========================================================================
+# 4b. critic_verdict — Claude SDK envelope shape (pilot-3 regression fix)
+# ===========================================================================
+def test_critic_verdict_claude_sdk_envelope_hard_fail():
+    """Pilot-3 2026-05-27 02:33 critic.json — nested overall_verdict=hard_fail."""
+    payload = {
+        "type": "result",
+        "is_error": False,
+        "result": (
+            "Confirmed: no PDF, no rendered PNGs. Structural verdict only.\n\n"
+            "```json\n"
+            "{\n"
+            '  "overall_verdict": "hard_fail",\n'
+            '  "binary_carousel_verdict": "FAIL",\n'
+            '  "binary_carousel_reason": "Carousel incomplete: hero JPGs missing"\n'
+            "}\n"
+            "```\n\nTrailing prose."
+        ),
+    }
+    assert orch.critic_verdict(payload) == "FAIL"
+
+
+def test_critic_verdict_claude_sdk_envelope_pass():
+    payload = {
+        "type": "result",
+        "result": (
+            "All checks green.\n\n"
+            "```json\n"
+            '{"overall_verdict": "pass", "binary_carousel_verdict": "PASS"}\n'
+            "```"
+        ),
+    }
+    assert orch.critic_verdict(payload) == "PASS"
+
+
+def test_critic_verdict_claude_sdk_envelope_soft_fail():
+    """soft_fail (retryable) maps to RETRYABLE_FAIL."""
+    payload = {
+        "result": (
+            "```json\n"
+            '{"overall_verdict": "soft_fail", "binary_carousel_verdict": "FAIL"}\n'
+            "```"
+        ),
+    }
+    assert orch.critic_verdict(payload) == "RETRYABLE_FAIL"
+
+
+def test_critic_verdict_bare_structured_dict():
+    """Bare verdict dict (no envelope) — overall_verdict at top level."""
+    payload = {"overall_verdict": "hard_fail", "binary_carousel_verdict": "FAIL"}
+    assert orch.critic_verdict(payload) == "FAIL"
+    payload = {"overall_verdict": "pass"}
+    assert orch.critic_verdict(payload) == "PASS"
+    payload = {"binary_carousel_verdict": "PASS"}
+    assert orch.critic_verdict(payload) == "PASS"
+
+
+def test_critic_verdict_envelope_no_fence_returns_fail():
+    """Envelope with `result` text but no JSON fence — unknown verdict, default FAIL."""
+    payload = {"type": "result", "result": "Just prose, no JSON code block."}
+    assert orch.critic_verdict(payload) == "FAIL"
+
+
+def test_critic_verdict_envelope_malformed_fence():
+    """Envelope with malformed JSON inside fence — fall through to FAIL."""
+    payload = {
+        "result": "```json\n{ not valid json at all\n```",
+    }
+    assert orch.critic_verdict(payload) == "FAIL"
+
+
+def test_critic_verdict_legacy_field_inside_envelope():
+    """Backward compat: bare `verdict` field inside fenced JSON still respected."""
+    payload = {
+        "result": (
+            "```json\n"
+            '{"verdict": "RETRYABLE_FAIL"}\n'
+            "```"
+        ),
+    }
+    assert orch.critic_verdict(payload) == "RETRYABLE_FAIL"
+
+
+def test_extract_critic_verdict_dict_helper():
+    """Helper extracts the structured dict for downstream reason mining."""
+    payload = {
+        "result": (
+            "preamble\n\n"
+            "```json\n"
+            '{"overall_verdict": "hard_fail", "binary_carousel_reason": "X"}\n'
+            "```\n\nepilogue"
+        ),
+    }
+    extracted = orch._extract_critic_verdict_dict(payload)
+    assert extracted["overall_verdict"] == "hard_fail"
+    assert extracted["binary_carousel_reason"] == "X"
+
+
+# ===========================================================================
 # 5. write_artifact — fsync + JSON / str handling
 # ===========================================================================
 def test_write_artifact_dict_serialised_json(tmp_path):
