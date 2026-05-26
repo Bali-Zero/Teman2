@@ -67,6 +67,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)scripts/damar-node/.*\.(json|js|ts|md)$"),
         "scripts/damar-node/: marketing automation, credentials are placeholders",
     ),
+    # infra/launchagents/*.plist.example — LaunchAgent plist templates with
+    # literal PASSWORD/HOST placeholders for DATABASE_URL etc. Operator copies
+    # + fills in before `launchctl load`. Real plist files under
+    # ~/Library/LaunchAgents/ are gitignored.
+    (
+        re.compile(r"(^|/)infra/launchagents/.*\.plist\.example$"),
+        "infra/launchagents/*.plist.example: LaunchAgent template, real plists gitignored",
+    ),
     (
         re.compile(r"(^|/)\.env\.sample$"),
         ".env.sample: documented placeholder, never a real secret",
