@@ -453,11 +453,11 @@ class StalePracticeNotifier:
 
     async def _send_zero_summary(self, stale: list[dict[str, Any]]) -> None:
         today: str = datetime.now(tz=timezone.utc).date().isoformat()
-        subject = f"[RITARDI] ⏰ {len(stale)} pratiche ferme da {STALE_DAYS}+ giorni — {today}"
+        subject = f"[STALE] ⏰ {len(stale)} practices stalled for {STALE_DAYS}+ days — {today}"
 
         by_leader: dict[str, list[dict[str, Any]]] = {}
         for p in stale:
-            leader: str = p.get("assigned_to") or "Non assegnata"
+            leader: str = p.get("assigned_to") or "Unassigned"
             by_leader.setdefault(leader, []).append(p)
 
         rows_html = ""
@@ -477,7 +477,7 @@ class StalePracticeNotifier:
                     f'<td style="{_TD}">{_esc(p["practice_type_name"])}</td>'
                     f'<td style="{_TD}">{_esc(p["status"])}</td>'
                     f'<td style="{_TD}">{updated_str}</td>'
-                    f'<td style="{_TD};color:#f87171;font-weight:600;">{p["days_stale"]} giorni</td>'
+                    f'<td style="{_TD};color:#f87171;font-weight:600;">{p["days_stale"]} days</td>'
                     f"</tr>\n"
                 )
 
@@ -486,24 +486,24 @@ class StalePracticeNotifier:
         <body style="font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;">
           <div style="max-width:820px;margin:0 auto;">
             <h2 style="color:#f1f5f9;margin-bottom:4px;">
-              \u23f0 Pratiche ferme da {STALE_DAYS}+ giorni
+              \u23f0 Practices stalled for {STALE_DAYS}+ days
             </h2>
             <p style="color:#94a3b8;margin-top:0;">
-              Report generato il {today} &mdash; {len(stale)} pratiche totali
+              Report generated on {today} &mdash; {len(stale)} total practices
             </p>
             <table style="width:100%;border-collapse:collapse;margin-top:16px;">
               <thead>
                 <tr style="background:#1e3a5f;">
-                  <th style="{_TH}">ID</th><th style="{_TH}">Cliente</th>
-                  <th style="{_TH}">Tipo pratica</th><th style="{_TH}">Status</th>
-                  <th style="{_TH}">Ultimo aggiorn.</th><th style="{_TH}">Giorni ferma</th>
+                  <th style="{_TH}">ID</th><th style="{_TH}">Client</th>
+                  <th style="{_TH}">Practice type</th><th style="{_TH}">Status</th>
+                  <th style="{_TH}">Last update</th><th style="{_TH}">Days stale</th>
                 </tr>
               </thead>
               <tbody>{rows_html}</tbody>
             </table>
             <p style="margin-top:24px;font-size:13px;color:#64748b;">
-              Inviato automaticamente da Zantara CRM &mdash;
-              <a href="https://kita.balizero.com" style="color:#60a5fa;">Apri CRM</a>
+              Sent automatically by Zantara CRM &mdash;
+              <a href="https://kita.balizero.com" style="color:#60a5fa;">Open CRM</a>
             </p>
           </div>
         </body>

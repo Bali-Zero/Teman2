@@ -204,19 +204,19 @@ class DailyCheckinNotifier:
                 </div>
                 <div class="content">
                     <div class="summary">
-                        <h3 style="margin: 0 0 10px 0;">Riepilogo alle {now.strftime("%H:%M")}</h3>
+                        <h3 style="margin: 0 0 10px 0;">Summary at {now.strftime("%H:%M")}</h3>
                         <p style="margin: 0; font-size: 24px;">
-                            <strong>{online_count}</strong> / {total_count} membri online
+                            <strong>{online_count}</strong> / {total_count} members online
                         </p>
                     </div>
 
-                    <h3>👥 Stato Team</h3>
+                    <h3>👥 Team Status</h3>
                     <table>
                         <thead>
                             <tr>
-                                <th>Membro</th>
-                                <th>Stato</th>
-                                <th>Ultima azione</th>
+                                <th>Member</th>
+                                <th>Status</th>
+                                <th>Last action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,13 +224,13 @@ class DailyCheckinNotifier:
                         </tbody>
                     </table>
 
-                    <h3 style="margin-top: 30px;">📋 Attività Oggi</h3>
+                    <h3 style="margin-top: 30px;">📋 Today's Activity</h3>
                     <table>
                         <thead>
                             <tr>
-                                <th>Ora</th>
-                                <th>Membro</th>
-                                <th>Azione</th>
+                                <th>Time</th>
+                                <th>Member</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
