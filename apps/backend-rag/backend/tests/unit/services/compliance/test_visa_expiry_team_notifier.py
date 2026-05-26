@@ -279,7 +279,7 @@ class TestSendTeamLeaderAlert:
             1
         ].get("json")
         assert "leader@bz.com" in payload["to"]
-        assert "SCADENZE" in payload["subject"]
+        assert "EXPIRY" in payload["subject"]
 
 
 # ---------------------------------------------------------------------------
@@ -336,7 +336,7 @@ class TestSendZeroSummary:
 
     @pytest.mark.asyncio
     async def test_singular_document(self) -> None:
-        """Subject uses 'documento' (singular) when n==1."""
+        """Subject uses 'document' (singular) when n==1."""
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.status_code = 200
@@ -364,7 +364,8 @@ class TestSendZeroSummary:
         payload = mock_client.post.call_args.kwargs.get("json") or mock_client.post.call_args[
             1
         ].get("json")
-        assert "documento" in payload["subject"]
+        # ENGLISH-ONLY enforcement 2026-05-26: subject = "[EXPIRY] ⚠️ 1 document expiring — team summary"
+        assert "1 document expiring" in payload["subject"]
 
 
 # ---------------------------------------------------------------------------

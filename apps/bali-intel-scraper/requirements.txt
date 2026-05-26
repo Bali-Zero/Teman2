@@ -1,6 +1,6 @@
 # Core dependencies
-# Security: fastapi>=0.115.0 → starlette>=0.40.0 (CVE-2024-47874, GHSA-93gm-qmq6-w238)
-fastapi>=0.115.0
+# Security: fastapi>=0.115.0,!=0.136.3  # exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep) → starlette>=0.40.0 (CVE-2024-47874, GHSA-93gm-qmq6-w238)
+fastapi>=0.115.0,!=0.136.3  # exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
 uvicorn[standard]>=0.30.0
 # Security: pydantic>=2.6.0 fixes CVE-2024-3772 (ReDoS)
 pydantic>=2.6.0

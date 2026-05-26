@@ -16,6 +16,11 @@
 
 set -uo pipefail
 
+# Prepend homebrew bin so command -v ctags resolves to universal-ctags, not BSD /usr/bin/ctags
+# (launchd default env passes PATH=/usr/bin:/bin:/usr/sbin:/sbin even when plist sets PATH —
+#  see W50/W51/W52 cicatrix family deploy-path coordination)
+export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-/usr/bin:/bin}"
+
 # === Kill-switch ===
 if [[ "${REPOMAP_ENABLED:-true}" == "false" ]]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] repomap disabled via REPOMAP_ENABLED=false" >&2
@@ -90,14 +95,24 @@ build_with_aider() {
 
 build_with_ctags() {
     local ctags_bin
-    ctags_bin="$(command -v ctags 2>/dev/null || true)"
+    # Try homebrew path first explicitly (launchd PATH override unreliable)
+    if [[ -x /opt/homebrew/bin/ctags ]]; then
+        ctags_bin=/opt/homebrew/bin/ctags
+    else
+        ctags_bin="$(command -v ctags 2>/dev/null || true)"
+    fi
     if [[ -z "$ctags_bin" ]]; then
         return 1
     fi
-    # Verify universal-ctags (json support)
-    if ! "$ctags_bin" --help 2>&1 | grep -q "json"; then
-        echo "$LOG_PREFIX WARN: ctags lacks json support (need universal-ctags)" >&2
-        return 1
+    # Under launchd, ctags --help/--version output can be truncated by stderr buffering.
+    # Trust that the binary path is universal-ctags if it exists at /opt/homebrew/bin/ctags
+    # (homebrew formula 'universal-ctags' is the only ctags published there).
+    # For non-homebrew paths, fall back to --output-format=json probe which has predictable output.
+    if [[ "$ctags_bin" != "/opt/homebrew/bin/ctags" ]]; then
+        if ! "$ctags_bin" --output-format=json /dev/null >/dev/null 2>&1; then
+            echo "$LOG_PREFIX WARN: ctags lacks json support (need universal-ctags)" >&2
+            return 1
+        fi
     fi
     echo "$LOG_PREFIX strategy=ctags ($ctags_bin) — fallback"
 

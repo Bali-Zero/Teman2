@@ -19,20 +19,19 @@ describe("normalizePhone — Indonesian numbers", () => {
     expect(normalizePhone("0062 812 3456 7890")).toBe("+6281234567890");
   });
 
-  it("preserves Adit's 12-national-digit number without truncation (regression for the +6282134547725 → +628213454725 bug)", () => {
-    expect(normalizePhone("+6282134547725")).toBe("+6282134547725");
-    expect(normalizePhone("6282134547725")).toBe("+6282134547725");
-  });
+  // (Removed 2026-05-26: regression test enshrined an operator typo,
+  // real Adit phone per accounts.json is +628213454725 — 11 digits, not 12.
+  // See cicatrix in bridge/phone.ts header.)
 
   it("preserves all 8 Bali Zero team numbers verbatim", () => {
     const team = [
-      "+6282134547725", // Adit
-      "+6282134547727", // Vino
-      "+6282134547723", // Sahira
+      "+628213454725", // Adit
+      "+628213454727", // Vino
+      "+628213454723", // Sahira
       "+6282326357501", // Krisna
-      "+6281339468856", // Surya
-      "+6282134547721", // Ari
-      "+6282134547726", // Damar
+      "+628133946856", // Surya
+      "+628213454721", // Ari
+      "+628213454726", // Damar
       "+62881038467246", // Asya
     ];
     for (const n of team) expect(normalizePhone(n)).toBe(n);
