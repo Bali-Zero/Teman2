@@ -332,7 +332,7 @@ WR2 fleet health 2026-05-27 08:00 WITA
 
 ### 5.2 Metrics persistence
 
-- Per-step: latency_ms, tokens_in/out, cost_usd, retry_count → `wr2_orchestrator_metrics` (NEW migration 200) OR extend existing `observability.*` if presente
+- Per-step: latency_ms, tokens_in/out, cost_usd, retry_count → `wr2_orchestrator_metrics` (NEW migration 203) OR extend existing `observability.*` if presente
 - Aggregation: daily rollup view `mv_wr2_daily_stats` (refresh 07:55 WITA)
 - Alert thresholds:
   - cost/run > $0.50 → WARNING
@@ -661,7 +661,7 @@ WR2_AUTO_PUBLISH_ENABLED="false"  # path auto codato ma disabled
 - [ ] Migration 197: `wr2_carousel_runs` table
 - [ ] Migration 198: `wr2_publish_attempts` table
 - [ ] Migration 199: `wr2_carousel_events_outbox` table
-- [ ] Migration 200: `wr2_orchestrator_metrics` table
+- [ ] Migration 203: `wr2_orchestrator_metrics` table
 - [ ] IG startup validation function + canonicalization shim
 - [ ] Token rotation watchdog plist + script
 
