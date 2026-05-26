@@ -30,7 +30,6 @@ import asyncpg
 import httpx
 
 from backend.app.core.config import settings
-from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import (
     ADVISOR_FALLBACK,
     PRACTICE_DOCUMENT_CHECKLISTS,
@@ -116,8 +115,9 @@ async def _send_practice_kickoff_impl(
             return
 
     # Shared variable resolution
-    nationality = client["nationality"] or ""
-    lang = NATIONALITY_LANGUAGE_MAP.get(nationality, "en")
+    # Language ENFORCED ENGLISH-ONLY 2026-05-26 per operator decree
+    # (was NATIONALITY_LANGUAGE_MAP.get(nationality, "en"))
+    lang = "en"
     first_name = (client["full_name"] or "").split()[0] if client["full_name"] else ""
     assigned_to = client["assigned_to"] or ""
     advisor_name = (

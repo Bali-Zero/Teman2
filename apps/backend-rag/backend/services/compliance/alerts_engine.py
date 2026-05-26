@@ -167,9 +167,10 @@ class AlertsEngine:
 
         # Build new alert
         alert_id = f"alert_{category}_{fc.client_id}_{uuid.uuid4().hex[:8]}"
-        lang: str = (
-            await client_lang_resolver(fc.client_id) if client_lang_resolver is not None else "it"
-        )
+        # Language ENFORCED ENGLISH-ONLY 2026-05-26 per operator decree (was IT default).
+        # client_lang_resolver kept for backward compat but ignored for email dispatch.
+        lang: str = "en"
+        _ = client_lang_resolver  # silence unused warning
 
         # Render messages in all three langs (column-per-lang snapshot).
         render_kwargs: dict[str, Any] = {

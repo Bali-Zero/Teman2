@@ -209,7 +209,9 @@ class BirthdayNotifierService:
 
     async def send_birthday_email(self, client: dict) -> bool:
         try:
-            language = self.get_language_for_nationality(client.get("nationality"))
+            # Language ENFORCED ENGLISH-ONLY 2026-05-26 per operator decree
+            # (was self.get_language_for_nationality(client.get("nationality")))
+            language = "en"
             subject, html_content = self.build_email_content(client, language)
             sent_via_brevo = False
             try:

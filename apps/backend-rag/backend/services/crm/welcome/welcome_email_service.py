@@ -28,7 +28,6 @@ from typing import TYPE_CHECKING
 import httpx
 
 from backend.app.core.config import settings
-from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import WELCOME_EMAIL_SUBJECT
 from backend.services.notifications.email_audit import (
     format_send_error,
@@ -181,9 +180,9 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
             logger.info("WelcomeEmail: already sent for client %d, skipping", client_id)
             return
 
-    # Language resolution
-    nationality = client["nationality"] or ""
-    lang = NATIONALITY_LANGUAGE_MAP.get(nationality, "en")
+    # Language resolution — ENFORCED ENGLISH-ONLY 2026-05-26 per operator decree
+    # (was NATIONALITY_LANGUAGE_MAP.get(client["nationality"] or "", "en"))
+    lang = "en"
 
     # Variable resolution
     first_name = (client["full_name"] or "").split()[0] if client["full_name"] else ""
