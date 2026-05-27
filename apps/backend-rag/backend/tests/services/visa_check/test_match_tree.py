@@ -87,14 +87,17 @@ class TestOther:
 
 
 class TestLongTourism:
-    def test_short_trip_is_C1(self):
+    def test_short_trip_is_B1_voa(self):
+        # 1 month tourism: B1 VOA (30+30=60d) right-sized, beats C1 (60+120=180d
+        # which triggers overshoot penalty 4× requested stay).
         r = _call(purpose=Purpose.LONG_TOURISM, duration_months=1)
-        assert r.recommended_visa is VisaType.C1
+        assert r.recommended_visa is VisaType.B1
         assert r.referral_mode is False
 
     def test_medium_trip_stays_within_tourism_set(self):
         r = _call(purpose=Purpose.LONG_TOURISM, duration_months=5)
         # Must pick a C-series or referral — never B211A (it's gone).
+        # B1 VOA caps at 60d total so it can't cover 5 months.
         allowed = {VisaType.C1, VisaType.C2, VisaType.C6, None}
         assert r.recommended_visa in allowed
 
