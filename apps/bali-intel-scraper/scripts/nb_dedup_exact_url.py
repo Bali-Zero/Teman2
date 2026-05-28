@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 """Deterministic exact-URL dedup for the 5 NB-INTEL notebooks.
 
-No LLM. Pure rule: two sources are duplicates iff their canonical URL is
-byte-identical after normalization (lowercase scheme+host, strip query string,
-fragment, trailing slash). The OLDEST source (first in listing order) is kept;
-the rest are deleted via `nlm source delete <ids> --confirm`.
+No LLM. Two sources are duplicates iff their canonical URL is identical after
+normalization:
+  L1 — lowercase scheme+host, drop fragment, strip trailing slash.
+  L4 — drop only tracking query params (utm_*, fbclid, gclid, ...); SIGNIFICANT
+       query params (e.g. ?page=2, ?id=...) are KEPT so distinct pages stay distinct.
+The OLDEST source (first in listing order) is kept; the rest are deleted via
+`nlm source delete <ids> --confirm`.
+
+Title-based dedup (L2/L3) is deliberately NOT done here: empirically the scraper
+captures anti-bot placeholder titles ("just a moment", "security checkpoint",
+site name) on DISTINCT articles, so identical titles are false positives. Title
+and fuzzy dedup are left to the LLM Mode C propose-only pass.
 
 Safety:
-  - Only exact-canonical-URL matches. NEVER title/Levenshtein/fuzzy.
+  - Only canonical-URL matches (L1+L4). NEVER title/Levenshtein/fuzzy.
   - Per-run delete cap (default 20): abort the whole run if exceeded — a large
     batch signals a matching bug, not real dedup.
   - --apply gates real deletion; default is dry-run.
@@ -25,7 +33,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("nb-dedup")
@@ -35,6 +43,13 @@ AUDIT_LOG = Path.home() / "logs" / "nb-dedup-deleted.jsonl"
 DELETE_CAP_PER_RUN = 20
 DELETE_CHUNK = 10  # nlm source delete fails on very large argv; chunk the bulk delete
 NLM_TIMEOUT = 90
+
+# L4: query params that never change page content — safe to strip before comparison.
+TRACKING_PARAMS = frozenset({
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "fbclid", "gclid", "gbraid", "wbraid", "msclkid", "mc_cid", "mc_eid",
+    "ref", "ref_src", "igshid", "_hsenc", "_hsmi", "yclid", "dclid",
+})
 
 # NB-INTEL live UUIDs (post 2026-05-18 switch). Source of truth: `nlm list notebooks`.
 NB_INTEL: dict[str, str] = {
@@ -49,7 +64,9 @@ NB_INTEL: dict[str, str] = {
 def canonical_url(raw: str) -> str:
     """Normalize a URL for exact-dup comparison.
 
-    lowercase scheme+host, drop query+fragment, strip trailing slash.
+    L1: lowercase scheme+host, drop fragment, strip trailing slash.
+    L4: drop tracking query params only; keep significant ones (sorted for
+        order-independence) so ?page=2 stays distinct from ?page=3.
     """
     try:
         s = urlsplit(raw.strip())
@@ -58,7 +75,12 @@ def canonical_url(raw: str) -> str:
     scheme = (s.scheme or "https").lower()
     netloc = s.netloc.lower()
     path = s.path.rstrip("/") or "/"
-    return urlunsplit((scheme, netloc, path, "", ""))
+    kept_query = sorted(
+        (k, v) for k, v in parse_qsl(s.query, keep_blank_values=True)
+        if k.lower() not in TRACKING_PARAMS
+    )
+    query = urlencode(kept_query)
+    return urlunsplit((scheme, netloc, path, query, ""))
 
 
 def list_sources(notebook_id: str) -> list[dict]:
