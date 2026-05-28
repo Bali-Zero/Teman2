@@ -53,6 +53,13 @@ SAFE_ACTUATORS = frozenset({
     # outage class observed during W27 production test (machine STARTED, 0/1
     # critical checks). Idempotent on healthy machines via fly CLI semantics.
     "fly_machines_restart",
+    # W57 (2026-05-26): Self-healing wa-mirror enrichment Layer B-2.
+    # Auto-installs missing Python deps (asyncpg/httpx) via pip when Cell
+    # observes ModuleNotFoundError class on wa-mirror-enrichment organ.
+    # Allowlist-gated (NOT arbitrary PyPI install), per-dep mutex via
+    # _target_key (asyncpg install doesn't block httpx install), panel-amended
+    # iter-2 with 10 must-fix items A1-A10. Kill-switch CELL_AUTOREMEDIATION_ENABLED.
+    "python_env_repair",
 })
 
 HUMAN_ONLY_ACTUATORS = frozenset({

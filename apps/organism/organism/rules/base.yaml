@@ -81,8 +81,16 @@ rules:
   # W31 (2026-05-23): action changed fly_machines_start → fly_machines_restart
   # because live production test showed fly_machines_start is no-op on
   # already-running machines (STARTED but UNHEALTHY outage class).
+  # W57 (2026-05-26) defense-in-depth: bind explicitly to Fly api app so the
+  # rule does NOT catch W57 wa-mirror-enrichment events (different app field).
+  # Without this guard, the W57 emit on cell_pulse_sustained_red with
+  # app="wa-mirror-enrichment" would trigger fly_machines_restart on a
+  # non-existent Fly app — collateral damage (code-reviewer finding #3).
   - id: cell_sustained_red_restart
-    match: { kind: cell_pulse_sustained_red, payload.consecutive_gte: 3 }
+    match:
+      kind: cell_pulse_sustained_red
+      payload.consecutive_gte: 3
+      payload.app: "nuzantara-rag"
     action: { actuator: fly_machines_restart, params: { app: "{payload.app}" } }
     confidence: 0.90
 
@@ -100,3 +108,27 @@ rules:
     match: { kind: outbox_backlog, payload.unconsumed_gte: 200 }
     action: { actuator: propose_yaml_rule, params: { topic: "outbox_backlog" } }
     confidence: 0.70
+
+  # W57 (2026-05-26): self-healing wa-mirror enrichment Layer C.
+  # Cell sustained_red on wa-mirror-enrichment + error_class=ModuleNotFoundError
+  # → Organism dispatches python_env_repair actuator (allowlist-gated pip install).
+  # Cooldown 10min consistent with pip timeout 120s + verify 15s + backoff buffer
+  # (Codex bug #8 panel-amended). Per-dep mutex via target_key prevents
+  # asyncpg-install blocking httpx-install.
+  #
+  # NOTE: yaml_rules.py matcher is FLAT (no dotted nested lookup), so the
+  # Cell sensor MUST emit payload fields {error_class, missing_module,
+  # python_path} at TOP LEVEL of payload (not under .metadata.). Step 4
+  # sensor enforces this contract.
+  - id: enrichment_dep_missing_repair
+    match:
+      kind: cell_pulse_sustained_red
+      payload.app: "wa-mirror-enrichment"
+      payload.error_class: "ModuleNotFoundError"
+    action:
+      actuator: python_env_repair
+      params:
+        dep: "{payload.missing_module}"
+        python_path: "{payload.python_path}"
+    confidence: 0.92
+    cooldown_minutes: 10

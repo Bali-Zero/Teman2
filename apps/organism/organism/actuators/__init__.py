@@ -17,6 +17,7 @@ from organism.actuators.cleanup_zombie_plist import CleanupZombiePlist
 from organism.actuators.propose_yaml_rule import ProposeYamlRule
 from organism.actuators.fly_machines_start import FlyMachinesStart
 from organism.actuators.fly_machines_restart import FlyMachinesRestart
+from organism.actuators.python_env_repair import PythonEnvRepair
 
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "ProposeYamlRule",
     "FlyMachinesStart",
     "FlyMachinesRestart",
+    "PythonEnvRepair",
     "build_actuator_registry",
 ]
 
@@ -58,4 +60,9 @@ def build_actuator_registry(*, redis) -> dict[str, ActuatorBase]:
         ProposeYamlRule.name: ProposeYamlRule(),
         FlyMachinesStart.name: FlyMachinesStart(),
         FlyMachinesRestart.name: FlyMachinesRestart(),
+        # W57 (2026-05-26): Self-healing wa-mirror enrichment Layer B-2.
+        # Auto-installs missing Python deps (asyncpg/httpx) on
+        # ModuleNotFoundError from cell_pulse_sustained_red. Allowlist-gated
+        # (only asyncpg + httpx today), kill-switch via CELL_AUTOREMEDIATION_ENABLED.
+        PythonEnvRepair.name: PythonEnvRepair(),
     }

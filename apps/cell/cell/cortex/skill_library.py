@@ -55,9 +55,18 @@ def compute_embedding(text: str) -> bytes:
 
 
 def cosine_similarity(a: bytes, b: bytes) -> float:
-    """Cosine similarity between two byte-packed float32 vectors."""
+    """Cosine similarity between two byte-packed float32 vectors.
+
+    Returns 0.0 when either operand is empty or has a non-matching dimension
+    (e.g. scar rows persist `embedding = b""` by design — see critic.py).
+    Defense-in-depth: prevents `np.dot` ValueError 'shapes not aligned' from
+    poisoning Cortex.before_reasoning, which silently disables skill recall
+    for the rest of the pulse.
+    """
     va = np.frombuffer(a, dtype=np.float32)
     vb = np.frombuffer(b, dtype=np.float32)
+    if va.shape != vb.shape or va.size == 0:
+        return 0.0
     dot = float(np.dot(va, vb))
     na = float(np.linalg.norm(va))
     nb = float(np.linalg.norm(vb))
@@ -229,6 +238,9 @@ class SkillLibrary:
         sit_emb = compute_embedding(sit_text)
 
         async with self._pool.acquire() as conn:
+            # kind='skill' filter excludes scar rows (migration 172_cell_skills_scar_support)
+            # which persist embedding=b"" by design and are matched via precondition JSONB
+            # in the thinker (LEVA 4), not via semantic similarity.
             rows = await conn.fetch(
                 """
                 SELECT id, name, trigger_nl, action_sequence, rationale_nl,
@@ -237,6 +249,7 @@ class SkillLibrary:
                        created_at, last_used_at, last_decay_check
                 FROM cell_skills
                 WHERE status = 'active'
+                  AND kind = 'skill'
                 ORDER BY fitness DESC
                 LIMIT 50
                 """
