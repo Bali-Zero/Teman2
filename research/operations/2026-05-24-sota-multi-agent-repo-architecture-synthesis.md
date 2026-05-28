@@ -34,10 +34,12 @@ panel:
   - deepseek-v4-pro (reasoning + formal guarantees, 2.169 parole, reasoning_effort=high)
   - claude-opus-4-7 (synthesis + Nuzantara-specific grounding, 1.060 parole)
 implementation_status:
-  - L1 worktree broker — PR #852 (draft, 4 file +1209)
-  - L2 Redis lease registry — PR #853 (draft, 5 file +1163)
-  - L3 GitHub merge queue + rulesets — PR #851 (draft, 6 file +761)
-  - L4 Repomap cron + branch cleanup — PR #854 (draft, 7 file +915)
+  - L1 worktree broker — PR #852 MERGED 2026-05-25 (scripts/agent_start.py on main)
+  - L2 Redis lease registry — PR #853 MERGED 2026-05-25 (docs/runbooks/redis-lease-registry.md on main)
+  - L3 GitHub merge queue + rulesets — PR #851 MERGED 2026-05-25 (scripts/setup_merge_queue_rulesets.sh on main)
+  - L4 Repomap cron + branch cleanup — PR #854 MERGED 2026-05-25 (scripts/build_repomap.sh on main)
+update:
+  - 2026-05-28 postscript appended — companion deep-research 2026-05-28-sota-multi-agent-repo-arch-update.md
 ---
 
 # SOTA Architettura Repo + Workflow AI-Dev (Nuzantara) — Sintesi 4-LLM Panel
@@ -282,3 +284,43 @@ Tutti gli output dei 4 panelisti sono salvati su disco per audit:
 - `/tmp/sota-research-2026-05-24/brief.md` (629 parole, brief comune)
 
 Convergenza 4/4 sui top-3 + Codex unique contribution su PR risk score + arXiv 2605.07135 (agentic workflow injection) + Renovate automerge discipline. DeepSeek unique su formal invariant worktree isolation. Gemini unique su Redis mutex implementation pattern. Claude unique su Nuzantara survey empirical + ship-in-1-week cap discipline.
+
+---
+
+## Postscript — 2026-05-28 (status reale + delta SOTA + validazione cicatrix)
+
+> Companion deep-research: [`2026-05-28-sota-multi-agent-repo-arch-update.md`](2026-05-28-sota-multi-agent-repo-arch-update.md) (Claude Opus + Gemini agy + DeepSeek v4-pro, 6 fonti fresche). Questo postscript chiude il loop: cosa è stato shipped, cosa l'evidenza nuova dice, e quali cicatrix degli ultimi 4 giorni hanno **validato in produzione** le previsioni del panel.
+
+### Implementation: tutte e 4 le lane SHIPPED (verificato empirico 2026-05-28)
+
+| Lane                        | PR   | Merged           | Artifact su main                                                 |
+| --------------------------- | ---- | ---------------- | ---------------------------------------------------------------- |
+| L1 worktree broker          | #852 | 2026-05-25 01:59 | `scripts/agent_start.py`                                         |
+| L4 repomap + branch cleanup | #854 | 2026-05-25 01:58 | `scripts/build_repomap.sh` (cron 15min)                          |
+| L2 Redis lease registry     | #853 | 2026-05-25 02:20 | `docs/runbooks/redis-lease-registry.md` + pre-commit lease-check |
+| L3 merge queue + rulesets   | #851 | 2026-05-25 02:02 | `scripts/setup_merge_queue_rulesets.sh` + CODEOWNERS             |
+
+Tutte e 4 sono ora citate come SSOT nel `CLAUDE.md` di progetto (§Agent Worktree Discipline, §7 Hooks, §7bis Repomap).
+
+### Validazione in produzione — cicatrix W58→W63 (gli ultimi 4 giorni)
+
+Il panel prevedeva che il worktree-broker chiudesse la classe sibling-collision. Evidenza empirica post-merge:
+
+- **W62 (2026-05-28)**: broker TTL=60min violato 34× da 6 worktree ops abbandonati. **Non refuta L1 — lo restringe**: il broker isola correttamente, ma manca un _cleanup enforcement_ (cron `--cleanup` opt-in, nessun consumer legge il TTL). Conferma la previsione del panel che il broker serviva, ed espone il next-gap (auto-cleanup).
+- **W63 (2026-05-28)**: worktree nested (`.worktrees/X/.worktrees/Y`) da `agent_start.py` invocato con CWD dentro un worktree. Gap di guardia: il broker dovrebbe `assert REPO_ROOT not in any worktree`. Micro-failure dell'L1, non strutturale.
+- **W59 (2026-05-27)**: sibling-race branch hijack durante git ops sequenziali — esattamente la classe che L1+L2 indirizzano. La hot-zone resta `~/Library/LaunchAgents/` come previsto.
+
+Lettura: i 3 incident sono **micro-gap dell'implementazione L1**, non refutazioni del pattern. Il panel aveva ragione sulla diagnosi; l'enforcement va completato (cleanup cron + nested-guard).
+
+### Delta SOTA (2026-04/05, dalla companion deep-research)
+
+1. **L1 vindicated a livello vendor**: Cursor 3.5 ha reso il worktree-per-agent un primitivo nativo (`/worktree`, `/best-of-n`). Azionabile NUOVO: regola **anti-symlink deps** (Cursor avverte che symlinkare `.venv`/`node_modules` nel worktree corrompe il main) — verificare se `agent_start.py` symlinka.
+2. **L3 da hardening (incident PRIMARIO)**: GitHub merge-queue incident 2026-04-23 (community #193645, 230 repo / 2092 PR, **solo squash su gruppi >1 PR** → revert silenzioso, scoperto da customer report dopo 3.5h, NON dal monitoring). Mitigazione derivata (DeepSeek formale): `max_group_size=1` **oppure** no-squash → porta la failure mode a **probabilità zero**. + auto-merge HTTP 422 (#190610): non si pre-arma più prima dei check verdi → impatta `auto-merge-whitelist.yml`.
+3. **L5 (repomap) declassato a FLOOR**: il dump statico tree-sitter resta accettabile su monorepo 82k file ma non è più la frontiera — SOTA = MCP code-knowledge-graph + LSP symbolic nav (il modello _tira_ il contesto invece di farselo _spingere_ 5k token a ogni prompt). Da valutare solo se il MCP gira 100% locale (Law 6).
+4. **Auto-merge discipline rinforzata**: DORA `[second-hand]` +154% PR size / +91% review time sotto AI → "mai auto-merge bugfix/auth/migration" ulteriormente sostanziato.
+
+### Next-step a valore più alto (post-6-pattern)
+
+**Post-merge HEAD-integrity check + `max_group_size=1` su L3** — ancorato all'incident primario 2026-04-23, elimina la classe di data-loss da squash-corruption a probabilità zero, costo CI minimo. Scelto su "repomap→MCP" (vendor trend `[second-hand]`) per la regola incident-sourced > trend. Secondo: **PR-size guard** (CI flag su PR >400 righe). Terzo: broker **auto-cleanup cron** (chiude W62).
+
+> Disaccordo onesto lasciato aperto nella companion: Gemini (repomap→MCP) vs DeepSeek (post-merge guard) sul #1. Risolto a favore del post-merge guard (incident sourced).
