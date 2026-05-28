@@ -181,6 +181,8 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
+    # ── Guardian ──
+    RouterEntry(name="guardian", process_groups=_API, tags=("guardian", "monitoring")),
     # ── Core infra ──
     RouterEntry(name="handlers", process_groups=_BOTH, tags=("core",)),
     RouterEntry(name="health", process_groups=_BOTH, tags=("core",)),
@@ -383,7 +385,6 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
 #   "Twitter / X" section with ack-first persistence (P0-6 audit).
 # team_members — duplicates team.py /members endpoint (audit 2026-04-03)
 # whatsapp_chat.alias_router — legacy alias causes duplicate responses
-# guardian — not live yet
 # audio — included separately in app_factory.py
 
 
