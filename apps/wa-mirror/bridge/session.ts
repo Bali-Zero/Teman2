@@ -216,8 +216,22 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         // fires and messages.upsert is permanently blocked while connection
         // stays "open" (sintomo: 9/9 bridges connected, 0 upserts in DB).
         markOnlineOnConnect: true,
-        syncFullHistory: false,
-        shouldSyncHistoryMessage: () => false,
+        // CICATRIX 2026-05-25 (afternoon): re-enable history sync.
+        // Baileys 7.0.0-rc13 emits literal DANGER warning:
+        // "DISABLING ALL SYNC BY shouldSyncHistoryMsg PREVENTS BAILEYS FROM
+        //  ACCESSING INITIAL LID MAPPINGS, LEADING TO INSTABILITY AND
+        //  SESSION ERRORS". Without LID→PN mapping the socket cannot
+        // resolve incoming direct messages (LID JIDs from non-WA-Business
+        // contacts), so messages.upsert NEVER fires for direct chats while
+        // groups (SenderKey, stateless) keep working. Empirical 9/9 bridges
+        // dead on direct ingest from 10:17 WITA today — this was the cause.
+        // Previous false-positives diagnosed: deaf-session #2491, registered:false,
+        // version override, all were noise — the smoking gun was Baileys'
+        // own DANGER log buried in the noise.
+        syncFullHistory: true,
+        // shouldSyncHistoryMessage removed — defaults to syncing initial,
+        // then the bridge ignores subsequent history events (we don't store
+        // history, only live messages.upsert anyway).
         generateHighQualityLinkPreview: false,
         // CICATRIX 2026-05-25: explicit timeouts per Baileys issue #2064/#2491.
         // Default defaultQueryTimeoutMs=undefined → promiseTimeout skips the
