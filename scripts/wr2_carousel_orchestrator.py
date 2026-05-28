@@ -46,6 +46,10 @@ from typing import Any
 
 import asyncpg
 
+# Local regex for layout-composer JSON fence extraction (mirrors parser-fix
+# branch _CRITIC_JSON_FENCE_RE). Promote to shared util when both branches merge.
+_CRITIC_JSON_FENCE_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
+
 logger = logging.getLogger("wr2.orchestrator")
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -341,37 +345,171 @@ async def run_pipeline_step(
     return payload
 
 
+def _resolve_slide_html_paths(layout_payload: dict[str, Any], output_dir: Path) -> list[Path]:
+    """Extract HTML slide paths from layout-composer Claude SDK envelope.
+
+    Envelope shape (per `~/.claude/carousels/manual-1779819591/layout_composer.json`):
+        {"type": "result", "result": "<prose>\n\n```json\n{\"slides_written\":
+         [\"/path/<NN>.html\", ...]}\n```\n<more>"}
+
+    Falls back to scanning `output_dir/slides/*.html` if envelope parsing yields nothing.
+    """
+    if not isinstance(layout_payload, dict):
+        return []
+    # 1. Bare top-level (test fixtures, future direct schema)
+    direct = layout_payload.get("slides_written")
+    if isinstance(direct, list) and direct:
+        return [Path(p) for p in direct if isinstance(p, str)]
+    # 2. Claude SDK envelope nested in result text
+    result_text = layout_payload.get("result")
+    if isinstance(result_text, str):
+        match = _CRITIC_JSON_FENCE_RE.search(result_text)
+        if match:
+            try:
+                parsed = json.loads(match.group(1))
+                paths = parsed.get("slides_written") if isinstance(parsed, dict) else None
+                if isinstance(paths, list) and paths:
+                    return [Path(p) for p in paths if isinstance(p, str)]
+            except json.JSONDecodeError:
+                pass
+    # 3. Fallback: filesystem scan
+    slides_dir = output_dir / "slides"
+    if slides_dir.is_dir():
+        return sorted(slides_dir.glob("[0-9]*.html"))
+    return []
+
+
+async def _render_html_to_png(
+    html_path: Path,
+    png_path: Path,
+    *,
+    timeout_ms: int = 30000,
+) -> None:
+    """Render a single HTML slide to 1080x1350 PNG via Playwright Chromium.
+
+    Pattern from `~/.claude/skills/bali-zero-brand/_render_smoke_test.py`:
+      - viewport 1080x1350, device_scale_factor=1
+      - wait `document.fonts.ready` for Montserrat/IBM Plex Mono
+      - screenshot full_page=False, omit_background=False
+    """
+    from playwright.async_api import async_playwright  # lazy import
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        try:
+            context = await browser.new_context(
+                viewport={"width": 1080, "height": 1350},
+                device_scale_factor=1,
+            )
+            page = await context.new_page()
+            page.set_default_timeout(timeout_ms)
+            await page.goto(html_path.resolve().as_uri(), wait_until="networkidle")
+            try:
+                await page.evaluate("() => document.fonts.ready")
+            except Exception as exc:
+                logger.warning(f"font wait failed for {html_path.name}: {exc}")
+            await page.screenshot(
+                path=str(png_path),
+                full_page=False,
+                omit_background=False,
+            )
+        finally:
+            await browser.close()
+
+
+def _compose_pdf(png_paths: list[Path], pdf_path: Path) -> None:
+    """Combine PNG slides into a multipage PDF via PIL.
+
+    PIL `save(save_all=True, append_images=[...])` writes one PDF page per image,
+    preserving 1080x1350 dimensions. Order preserved from input list.
+    """
+    from PIL import Image  # lazy import
+
+    if not png_paths:
+        raise ValueError("cannot compose PDF from empty PNG list")
+    images: list[Image.Image] = []
+    for p in png_paths:
+        img = Image.open(p)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        images.append(img)
+    first, *rest = images
+    first.save(
+        str(pdf_path),
+        save_all=True,
+        append_images=rest,
+        format="PDF",
+        resolution=72.0,
+    )
+    for img in images:
+        img.close()
+
+
 async def render_playwright(
     output_dir: Path,
     layout_payload: dict[str, Any],
     *,
     timeout_sec: int = DEFAULT_RENDER_TIMEOUT_SEC,
 ) -> list[Path]:
-    """Spec §1 step 6 — Playwright render PNG 1080x1350 IG 4:5.
+    """Spec §1 step 6 — Playwright render PNG 1080x1350 IG 4:5 + carousel.pdf.
 
-    Stub: orchestrator delegates to existing scripts/wr2_canva_pdf_render.py
-    or future scripts/wr2_playwright_carousel_render.py. For Phase 2.1
-    ship-able skeleton, we emit a placeholder marker and let Phase 3 wire
-    the real render path.
+    Resolves HTML slide paths from the layout-composer envelope, renders each
+    to PNG via headless Chromium (viewport 1080x1350), then composes
+    `carousel.pdf` via PIL. PNG paths are returned (PDF path side-effect on
+    disk — critic + Pre-Rubric vision sweep reads it from output_dir).
+
+    Per-slide timeout 30s default; total wall ~30-60s for 7-slide carousel.
+    Non-fatal per-slide failure is logged but does not abort — partial render
+    surfaces in critic verdict instead of FatalOrchestratorError.
     """
-    slides = layout_payload.get("slides", []) if isinstance(layout_payload, dict) else []
     slides_dir = output_dir / "slides"
     slides_dir.mkdir(parents=True, exist_ok=True)
 
-    rendered: list[Path] = []
-    for i, slide in enumerate(slides):
-        marker = slides_dir / f"slide_{i:02d}.placeholder.json"
-        with open(marker, "w", encoding="utf-8") as f:
-            json.dump(slide, f, indent=2, ensure_ascii=False)
-            f.flush()
-            os.fsync(f.fileno())
-        rendered.append(marker)
+    html_paths = _resolve_slide_html_paths(layout_payload, output_dir)
+    if not html_paths:
+        logger.warning(
+            "render_playwright: no HTML slide paths resolved from layout_payload "
+            "(neither slides_written nor envelope nor filesystem scan). "
+            "Writing empty placeholder marker."
+        )
+        marker = slides_dir / "no_slides_resolved.placeholder.json"
+        marker.write_text(json.dumps({"reason": "no html paths"}, indent=2))
+        return [marker]
 
-    logger.warning(
-        f"Playwright render stub — {len(rendered)} slide markers written. "
-        "Phase 3 will wire real render path."
+    logger.info(f"render_playwright: rendering {len(html_paths)} slides")
+    per_slide_timeout_ms = max(5000, (timeout_sec * 1000) // max(len(html_paths), 1))
+
+    png_paths: list[Path] = []
+    for i, html_path in enumerate(html_paths):
+        if not html_path.exists():
+            logger.warning(f"slide {i:02d}: HTML missing at {html_path}, skipping")
+            continue
+        png_path = slides_dir / f"{i:02d}-rendered.png"
+        try:
+            await _render_html_to_png(html_path, png_path, timeout_ms=per_slide_timeout_ms)
+            png_paths.append(png_path)
+            logger.info(f"slide {i:02d}: rendered → {png_path.name}")
+        except Exception as exc:
+            logger.warning(f"slide {i:02d}: render failed ({exc!s}), continuing")
+
+    if not png_paths:
+        logger.warning("render_playwright: zero PNGs rendered, skipping PDF composition")
+        return png_paths
+
+    # Compose PDF (Pre-Rubric vision sweep + IG carousel deliverable)
+    pdf_path = output_dir / "carousel.pdf"
+    try:
+        _compose_pdf(png_paths, pdf_path)
+        logger.info(f"carousel.pdf composed: {pdf_path} ({len(png_paths)} pages)")
+    except Exception as exc:
+        logger.warning(f"PDF composition failed: {exc!s}")
+
+    write_artifact(
+        output_dir,
+        "rendered.json",
+        {"slides": [str(p) for p in png_paths], "pdf": str(pdf_path) if pdf_path.exists() else None},
     )
-    return rendered
+    return png_paths
 
 
 _CRITIC_JSON_FENCE_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
@@ -518,7 +656,7 @@ async def run_pipeline(
     # Step 6 — Playwright render
     rendered = await render_playwright(output_dir, artifacts.get("layout_composer", {}))
     artifacts["rendered_paths"] = [str(p) for p in rendered]
-    write_artifact(output_dir, "rendered.json", {"slides": artifacts["rendered_paths"]})
+    # render_playwright writes rendered.json with PDF path internally; no double-write here.
     await transition_state(conn, carousel_id, "rendered")
 
     # Step 7 — awaiting approval (Telegram gate consumer takes over)
