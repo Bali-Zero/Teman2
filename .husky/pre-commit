@@ -153,6 +153,35 @@ if [ -n "$PY_FILES" ]; then
     cd ../..
 fi
 
+# ── W59 SIBLING-RACE BRANCH-TARGETING GUARD (cicatrix 2026-05-27) ────────────
+# Prevents the W59 branch-hijack class where a sibling Claude/Codex session
+# changes HEAD between `git add` and `git commit`, causing the commit to land
+# on the wrong branch silently. ANTIBODY (W59 cicatrix section 4).
+#
+# Usage (opt-in, in atomic git sequences):
+#   BRANCH_EXPECTED=feat/foo git add X && git commit -m "..."
+#
+# Behavior:
+#   - If BRANCH_EXPECTED unset → skip (backward-compat, no-op for legacy callers)
+#   - If BRANCH_EXPECTED set + HEAD branch mismatches → exit 2 with diagnostic
+#   - Kill switch: BRANCH_EXPECTED_ENFORCEMENT=false bypasses check
+#
+# Latency: <5ms (1 git symbolic-ref call). Zero impact when env unset.
+
+if [ -n "${BRANCH_EXPECTED:-}" ] && [ "${BRANCH_EXPECTED_ENFORCEMENT:-true}" != "false" ]; then
+    CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "DETACHED")
+    if [ "$CURRENT_BRANCH" != "$BRANCH_EXPECTED" ]; then
+        echo "❌ [W59-guard] BRANCH MISMATCH:"
+        echo "    expected: $BRANCH_EXPECTED"
+        echo "    current:  $CURRENT_BRANCH"
+        echo "    Sibling session may have moved HEAD. Investigate via:"
+        echo "      ps aux | grep -E 'claude|codex' | wc -l"
+        echo "      git reflog -5"
+        echo "    Override (skip guard): BRANCH_EXPECTED_ENFORCEMENT=false"
+        exit 2
+    fi
+fi
+
 # ── ANTI-ROGUE-AI GATES ───────────────────────────────────────────────────────
 # Prevents Gemini/Windsurf/Cursor from silently breaking the import chain
 # or modifying OFF-LIMITS files. History: 5+ production crashes (feb-mar 2026).
