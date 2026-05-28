@@ -206,6 +206,22 @@ const nextConfig: NextConfig = {
     return [
       // Category renames (2026-03-23) — keep for 12+ months
       { source: "/immigration", destination: "/visas", permanent: true },
+      // SEO redirect: freelancer tax guide (2026-05-28)
+      {
+        source: "/tax-for-freelancers-indonesia-2026",
+        destination: "/freelancer-tax-guide",
+        permanent: true,
+      },
+      {
+        source: "/id/tax-for-freelancers-indonesia-2026",
+        destination: "/id/freelancer-tax-guide",
+        permanent: true,
+      },
+      {
+        source: "/it/tax-for-freelancers-indonesia-2026",
+        destination: "/it/freelancer-tax-guide",
+        permanent: true,
+      },
       {
         source: "/immigration/:slug*",
         destination: "/visas/:slug*",
