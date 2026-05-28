@@ -480,6 +480,44 @@ class TestDLQTerminalState:
         matches = [e for e in data["queue"] if e["job"] == "job_z"]
         assert len(matches) == 1  # second call replaces first
 
+    def test_w61_preserves_autopilot_attempts_on_re_add(self, tmp_agent_dir):
+        """W61: re-add must preserve autopilot_attempts to allow TERMINAL cap (max_attempts=10)."""
+        from sentinel_lib.repairer import _load_dlq, _save_dlq, add_to_dlq
+        # Initial add
+        add_to_dlq("job_storm", "first error", {"type": "TRANSIENT"}, "log", [])
+        # Simulate dlq_autopilot processing → increment attempts to 7
+        data = _load_dlq()
+        entry = next(e for e in data["queue"] if e["job"] == "job_storm")
+        entry["autopilot_attempts"] = 7
+        entry["status"] = "skipped_preflight"
+        _save_dlq(data)
+        # Sentinel re-detects same failure, re-adds
+        add_to_dlq("job_storm", "second error", {"type": "TRANSIENT"}, "log", [])
+        # Verify attempts preserved (NOT reset to 0)
+        data = _load_dlq()
+        entry = next(e for e in data["queue"] if e["job"] == "job_storm")
+        assert entry["autopilot_attempts"] == 7, "W61: attempts must be preserved across re-add"
+        assert entry["status"] == "skipped_preflight", "W61: status must be preserved"
+
+    def test_w61_preserves_terminal_status_on_re_add(self, tmp_agent_dir):
+        """W61: TERMINAL status must never be overwritten by sentinel re-add (no storm regression)."""
+        from sentinel_lib.repairer import _load_dlq, _save_dlq, add_to_dlq
+        add_to_dlq("job_dead", "err", {"type": "TRANSIENT"}, "log", [])
+        # Mark TERMINAL
+        data = _load_dlq()
+        entry = next(e for e in data["queue"] if e["job"] == "job_dead")
+        entry["status"] = "TERMINAL"
+        entry["autopilot_attempts"] = 10
+        entry["first_abandoned_at"] = "2026-05-28T01:00:00Z"
+        _save_dlq(data)
+        # Sentinel re-adds (would have caused storm pre-W61)
+        add_to_dlq("job_dead", "still failing", {"type": "TRANSIENT"}, "log", [])
+        data = _load_dlq()
+        entry = next(e for e in data["queue"] if e["job"] == "job_dead")
+        assert entry["status"] == "TERMINAL", "W61: TERMINAL must persist across re-add"
+        assert entry["autopilot_attempts"] == 10, "W61: max attempts must persist"
+        assert entry["first_abandoned_at"] == "2026-05-28T01:00:00Z", "W61: abandoned ts must persist"
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 1 — Classifier
