@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CommandPalette, type CommandAction } from "@balizero/core";
 import { useTranslation } from "@/i18n";
+import { api } from "@/lib/api";
+
+// /inbox is owner-only (Zero) — keep its palette shortcut off everyone else.
+const INBOX_OWNER_EMAIL = "zero@balizero.com";
 
 /**
  * Workspace-wide Cmd+K command palette for /kita.
@@ -27,14 +31,21 @@ export function KitaCommandPalette() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const isInboxOwner =
+    (api.getUserProfile()?.email || "").toLowerCase() === INBOX_OWNER_EMAIL;
+
   const actions: CommandAction[] = useMemo(
     () => [
-      {
-        id: "go-inbox",
-        label: t("commandPalette.actions.goInbox"),
-        group: t("commandPalette.groups.navigation"),
-        run: () => router.push("/inbox"),
-      },
+      ...(isInboxOwner
+        ? [
+            {
+              id: "go-inbox",
+              label: t("commandPalette.actions.goInbox"),
+              group: t("commandPalette.groups.navigation"),
+              run: () => router.push("/inbox"),
+            },
+          ]
+        : []),
       {
         id: "go-clients",
         label: t("commandPalette.actions.goClients"),
@@ -79,7 +90,7 @@ export function KitaCommandPalette() {
         run: () => router.push("/analytics/funnel"),
       },
     ],
-    [router, t],
+    [router, t, isInboxOwner],
   );
 
   return (

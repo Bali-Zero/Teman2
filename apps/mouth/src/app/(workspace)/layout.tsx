@@ -117,6 +117,18 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             router.push("/portal");
             return;
           }
+
+          // /inbox is owner-only (Zero). Non-owners hitting it via direct URL
+          // get bounced to /dashboard — the backend 403s them regardless, this
+          // just avoids rendering a broken page. Keep in sync with
+          // workspace_inbox.INBOX_OWNER_EMAILS (backend SSOT).
+          if (
+            pathname === "/inbox" &&
+            (profile?.email || "").toLowerCase() !== "zero@balizero.com"
+          ) {
+            router.push("/dashboard");
+            return;
+          }
         } catch (error) {
           const currentUrl =
             typeof window !== "undefined" ? window.location.href : "";
