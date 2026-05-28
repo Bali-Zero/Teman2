@@ -984,6 +984,32 @@ async def _init_background_services(
         service_registry.register("websocket", ServiceStatus.DEGRADED, error=str(e), critical=False)
         logger.error("❌ Failed to start WebSocket Redis Listener: %s", e)
 
+    # WR2 IG Publisher Credentials Validation (Phase 3, spec §8.1)
+    # Non-blocking — service is lazy via env vars. Validation logs only;
+    # registers DEGRADED on mismatch/invalid_token. Real publish path goes
+    # through wr2_carousel_orchestrator.py after Telegram approval.
+    try:
+        from backend.services.publisher.ig_publisher import validate_ig_credentials_at_startup
+
+        ig_status = await validate_ig_credentials_at_startup(raise_on_failure=False)
+        if ig_status.get("status") == "ok":
+            service_registry.register("ig_publisher", ServiceStatus.HEALTHY, critical=False)
+            logger.info(
+                "✅ IG Publisher credentials validated (account_id=%s username=%s)",
+                ig_status.get("account_id"), ig_status.get("username"),
+            )
+        else:
+            service_registry.register(
+                "ig_publisher", ServiceStatus.DEGRADED,
+                error=f"ig_status={ig_status.get('status')}", critical=False,
+            )
+            logger.warning("⚠️ IG Publisher credentials degraded: %s", ig_status.get("status"))
+    except Exception as e:
+        service_registry.register(
+            "ig_publisher", ServiceStatus.DEGRADED, error=str(e), critical=False,
+        )
+        logger.warning("⚠️ IG Publisher validation skipped: %s", e)
+
     # Proactive Compliance Monitor (Business Value)
     try:
         logger.info("⚖️ Initializing Proactive Compliance Monitor...")

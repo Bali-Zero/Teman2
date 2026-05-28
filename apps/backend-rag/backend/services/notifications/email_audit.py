@@ -240,3 +240,33 @@ def notify_email_failure_critical(
 def is_critical(email_type: str) -> bool:
     """Return True iff a failure of ``email_type`` should page immediately."""
     return email_type in CRITICAL_EMAIL_TYPES
+
+
+def format_send_error(exc: BaseException) -> str:
+    """Return a non-empty diagnostic string for ``exc``.
+
+    Some httpx low-level exceptions (``RemoteProtocolError``,
+    ``ConnectError`` with no message, transient SSL drops) carry
+    ``str(exc) == ''``. Persisting an empty ``error_message`` in
+    ``email_send_log`` makes the failure undiagnosable from the
+    dashboard. This helper falls back through ``str`` →
+    HTTPStatusError-aware status+text → ``repr`` → class name so
+    the field always holds at least the exception type.
+    """
+    msg = str(exc).strip()
+    try:
+        import httpx  # local import — keep email_audit dep-light
+        if isinstance(exc, httpx.HTTPStatusError):
+            resp = exc.response
+            body = (resp.text or "").strip()[:500]
+            status_line = f"HTTP {resp.status_code} from {resp.request.url}"
+            return f"{status_line}: {body}" if body else status_line
+    except Exception:
+        # diagnostic helper must never raise
+        pass
+    if msg:
+        return msg
+    r = repr(exc).strip()
+    if r and r != "Exception()":
+        return r
+    return type(exc).__name__ or "UnknownError"

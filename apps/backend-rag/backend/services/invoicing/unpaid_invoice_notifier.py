@@ -149,7 +149,7 @@ class UnpaidInvoiceNotifier:
         """
         n = len(invoices)
         today_str = datetime.now(tz=timezone.utc).date().strftime("%d %B %Y")
-        subject = f"[RITARDI] \U0001f4b0 {n} fatture in attesa di pagamento \u2014 {today_str}"
+        subject = f"[OVERDUE] \U0001f4b0 {n} invoices awaiting payment \u2014 {today_str}"
 
         # Build HTML table rows
         table_rows: list[str] = []
@@ -183,25 +183,25 @@ class UnpaidInvoiceNotifier:
         html_body = f"""
 <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;color:#333;">
 
-  <h2 style="color:#d4845a;">💰 Fatture in attesa di pagamento</h2>
+  <h2 style="color:#d4845a;">💰 Invoices awaiting payment</h2>
 
-  <p>Ciao Asya! ☺️</p>
+  <p>Hi Asya! ☺️</p>
 
   <p>
-    Spero tu stia passando una bella giornata!
-    Ti scrivo perché ci sono <strong>{n} fattura/e</strong> inviate più di
-    {OVERDUE_DAYS} giorni fa che risultano ancora senza pagamento ricevuto.
+    Hope you are having a great day!
+    There are <strong>{n} invoice(s)</strong> sent more than
+    {OVERDUE_DAYS} days ago that still have no payment received.
   </p>
 
   <table style="width:100%;border-collapse:collapse;margin-top:16px;margin-bottom:24px;
                 font-size:14px;">
     <thead>
       <tr style="background:#0c0c0e;color:#fff;">
-        <th style="padding:10px 12px;text-align:left;">Fattura #</th>
-        <th style="padding:10px 12px;text-align:left;">Cliente</th>
-        <th style="padding:10px 12px;text-align:left;">Telefono</th>
-        <th style="padding:10px 12px;text-align:right;">Importo (IDR)</th>
-        <th style="padding:10px 12px;text-align:center;">Giorni in attesa</th>
+        <th style="padding:10px 12px;text-align:left;">Invoice #</th>
+        <th style="padding:10px 12px;text-align:left;">Client</th>
+        <th style="padding:10px 12px;text-align:left;">Phone</th>
+        <th style="padding:10px 12px;text-align:right;">Amount (IDR)</th>
+        <th style="padding:10px 12px;text-align:center;">Days waiting</th>
       </tr>
     </thead>
     <tbody>
@@ -209,18 +209,18 @@ class UnpaidInvoiceNotifier:
     </tbody>
   </table>
 
-  <p><strong>✨ Per ciascun cliente, ti chiediamo di:</strong></p>
+  <p><strong>✨ For each client, please:</strong></p>
   <ol style="line-height:1.9;">
-    <li>Contattarli via WhatsApp e ricordare gentilmente il pagamento</li>
-    <li>Verificare se il pagamento è già arrivato in banca</li>
-    <li>Se pagato, aggiornare lo status su <strong>ON PROCESS</strong> nel CRM</li>
+    <li>Contact them via WhatsApp and gently remind them of the payment</li>
+    <li>Verify whether the payment has already arrived in the bank</li>
+    <li>If paid, update the status to <strong>ON PROCESS</strong> in the CRM</li>
   </ol>
 
   <p style="color:#888;font-size:13px;margin-top:32px;">
-    Come sempre, sei la migliore — grazie per tenere tutto sotto controllo! 🙏<br><br>
-    Con affetto,<br>
+    As always, you are the best — thanks for keeping everything under control! 🙏<br><br>
+    With appreciation,<br>
     <em>Zantara CRM Assistant 🤖</em><br><br>
-    <em>P.S. Questo è un promemoria automatico, ma il grazie è assolutamente sincero! 😊</em>
+    <em>P.S. This is an automated reminder, but the thanks is absolutely sincere! 😊</em>
   </p>
 
 </div>

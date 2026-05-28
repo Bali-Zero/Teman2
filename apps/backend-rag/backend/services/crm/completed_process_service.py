@@ -17,6 +17,7 @@ from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.drive_folder_service import DriveFolderService
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.notifications.email_audit import (
+    format_send_error,
     log_email_attempt,
     notify_email_failure_critical,
     record_email_result,
@@ -415,7 +416,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             return
         except Exception as brevo_error:
             logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
-            brevo_err_msg = str(brevo_error)
+            brevo_err_msg = format_send_error(brevo_error)
 
         # 2) Zoho fallback
         try:
@@ -434,7 +435,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             )
             return
         except Exception as zoho_error:
-            combined_err = f"brevo: {brevo_err_msg} | zoho: {zoho_error}"
+            combined_err = f"brevo: {brevo_err_msg} | zoho: {format_send_error(zoho_error)}"
             logger.error(
                 "Both Brevo and Zoho failed for %s: %s",
                 to_email,

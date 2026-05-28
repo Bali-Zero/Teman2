@@ -176,11 +176,13 @@ class AlertDispatcher:
             )
         elif channel == "email_client":
             subject = f"[Bali Zero] {alert.category.replace('_', ' ').title()}"
+            # ENFORCED ENGLISH-ONLY 2026-05-26 per operator decree
+            # (was: alert.message_en or alert.message_it or "")
             await self._email.send(
                 from_="zantara@balizero.com",
                 to=await self._lookup_client_email(alert.client_id),
                 subject=subject,
-                body=alert.message_en or alert.message_it or "",
+                body=alert.message_en or "",
             )
         elif channel == "wa_client":
             await self._wa.send(

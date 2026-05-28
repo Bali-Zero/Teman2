@@ -182,7 +182,7 @@ class VisaExpiryTeamNotifier:
         """
         n = len(clients)
         subject = (
-            f"[SCADENZE] ⚠️ Documenti in scadenza — {n} client{'i' if n != 1 else 'e'} da contattare"
+            f"[EXPIRY] ⚠️ Documents expiring — {n} client{'s' if n != 1 else ''} to contact"
         )
 
         rows_html = "\n".join(_build_client_row(c) for c in clients)
@@ -191,21 +191,21 @@ class VisaExpiryTeamNotifier:
 <html>
 <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.5;">
 
-<h2 style="color: #c62828;">⚠️ Documenti in scadenza — azione richiesta</h2>
+<h2 style="color: #c62828;">⚠️ Documents expiring — action required</h2>
 
-<p>Ciao,<br>
-I seguenti tuoi clienti hanno documenti in scadenza nei prossimi 60 giorni.
-Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo con Bali Zero.</p>
+<p>Hello,<br>
+The following clients of yours have documents expiring in the next 60 days.
+Please contact them as soon as possible to start the renewal process with Bali Zero.</p>
 
 <table border="1" cellpadding="8" cellspacing="0"
        style="border-collapse:collapse; width:100%; font-size:14px;">
   <thead style="background:#1a237e; color:#fff;">
     <tr>
-      <th>Cliente</th>
-      <th>Documento</th>
-      <th>Scadenza</th>
-      <th>Giorni rimasti</th>
-      <th>Telefono</th>
+      <th>Client</th>
+      <th>Document</th>
+      <th>Expiry</th>
+      <th>Days left</th>
+      <th>Phone</th>
     </tr>
   </thead>
   <tbody>
@@ -215,23 +215,23 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
 
 <br>
 <p style="font-size:13px; color:#555;">
-  <strong>Legenda colori:</strong>
+  <strong>Colour legend:</strong>
   <span style="background:{_ROW_COLOURS[7]}; padding:2px 8px; border-radius:4px;">
-    ≤ 7 giorni
+    ≤ 7 days
   </span>
   &nbsp;
   <span style="background:{_ROW_COLOURS[30]}; padding:2px 8px; border-radius:4px;">
-    ≤ 30 giorni
+    ≤ 30 days
   </span>
   &nbsp;
   <span style="background:{_ROW_COLOURS[60]}; padding:2px 8px; border-radius:4px;">
-    ≤ 60 giorni
+    ≤ 60 days
   </span>
 </p>
 
 <p style="font-size:13px; color:#555;">
-  Per avviare il rinnovo, contatta il cliente direttamente o apri una nuova pratica
-  su <a href="https://kita.balizero.com">kita.balizero.com</a>.
+  To start the renewal, contact the client directly or open a new practice
+  at <a href="https://kita.balizero.com">kita.balizero.com</a>.
 </p>
 
 <p>— Zantara · Bali Zero</p>
@@ -248,7 +248,7 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
         Subject: "⚠️ {n} documenti in scadenza — riepilogo team"
         """
         n = len(all_clients)
-        subject = f"[SCADENZE] ⚠️ {n} document{'i' if n != 1 else 'o'} in scadenza — riepilogo team"
+        subject = f"[EXPIRY] ⚠️ {n} document{'s' if n != 1 else ''} expiring — team summary"
 
         # Group by leader for the summary table
         by_leader: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -260,17 +260,17 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
             rows_html = "\n".join(_build_client_row(c) for c in clients)
             section = f"""
 <h3 style="color:#1a237e; margin-top:24px;">
-  👤 {leader_email} — {len(clients)} client{"i" if len(clients) != 1 else "e"}
+  👤 {leader_email} — {len(clients)} client{"s" if len(clients) != 1 else ""}
 </h3>
 <table border="1" cellpadding="7" cellspacing="0"
        style="border-collapse:collapse; width:100%; font-size:13px;">
   <thead style="background:#37474f; color:#fff;">
     <tr>
-      <th>Cliente</th>
-      <th>Documento</th>
-      <th>Scadenza</th>
-      <th>Giorni rimasti</th>
-      <th>Telefono</th>
+      <th>Client</th>
+      <th>Document</th>
+      <th>Expiry</th>
+      <th>Days left</th>
+      <th>Phone</th>
     </tr>
   </thead>
   <tbody>
@@ -284,16 +284,16 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
 <html>
 <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.5;">
 
-<h2 style="color: #c62828;">⚠️ Riepilogo documenti in scadenza — {n} totale</h2>
+<h2 style="color: #c62828;">⚠️ Expiring documents summary — {n} total</h2>
 
-<p>Questo riepilogo viene inviato automaticamente da Zantara.<br>
-Ogni team leader ha già ricevuto la propria notifica individuale.</p>
+<p>This summary is sent automatically by Zantara.<br>
+Each team leader has already received their individual notification.</p>
 
 {"".join(sections)}
 
 <br>
 <p style="font-size:12px; color:#888;">
-  Generato automaticamente da Zantara · Bali Zero —
+  Generated automatically by Zantara · Bali Zero —
   <a href="https://kita.balizero.com">kita.balizero.com</a>
 </p>
 </body>
