@@ -233,7 +233,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
               {/* WhatsApp CTA */}
               <Link
-                href={`https://wa.me/628213107363?text=${encodeURIComponent(`Hi, I'm interested in ${selectedPackage.name}. Can you help me?`)}`}
+                href={`https://wa.me/6282264599868?text=${encodeURIComponent(`Hi, I'm interested in ${selectedPackage.name}. Can you help me?`)}`}
                 target="_blank"
                 className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#20BD5A] transition-colors mb-3"
               >

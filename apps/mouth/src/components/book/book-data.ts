@@ -255,8 +255,8 @@ export const STATS = {
 
 // Source: verified from codebase / WhatsApp
 export const CONTACTS = {
-  whatsapp: "+62 821 3107 363",
-  whatsappUrl: "https://wa.me/628213107363",
+  whatsapp: "+62 822 6459 9868",
+  whatsappUrl: "https://wa.me/6282264599868",
   email: "info@balizero.com",
   web: "balizero.com",
 };

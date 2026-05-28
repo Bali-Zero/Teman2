@@ -386,7 +386,7 @@ Zantara — Bali Zero Team
 P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 
 ---
-💬 Questions? Reply to this email or WhatsApp us at +62 821 3107 363
+💬 Questions? Reply to this email or WhatsApp us at +62 822 6459 9868
 🌐 Visit us at www.balizero.com
 """
 
@@ -687,7 +687,7 @@ Zantara — Bali Zero Team
 P.S. Save our contact info for future needs—we're always here to help! 😊
 
 ---
-📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 821 3107 363
+📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 822 6459 9868
 """
 
         await _send_with_brevo_fallback(self.zoho_email_service, client_email, subject, body)

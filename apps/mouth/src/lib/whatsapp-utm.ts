@@ -9,7 +9,7 @@
  * Plan: docs/superpowers/plans/2026-04-19-seo-cell-A-prenatal-foundation.md Task 5
  */
 
-const WA_NUMBER = "628213107363";
+const WA_NUMBER = "6282264599868";
 
 export type Funnel = "home" | "visa" | "kbli" | "tax" | "property";
 

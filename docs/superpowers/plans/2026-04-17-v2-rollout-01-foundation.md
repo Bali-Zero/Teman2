@@ -449,13 +449,13 @@ import { describe, it, expect } from "vitest";
 import { buildWaDeeplink, WA_CANONICAL } from "./wa-deeplink";
 
 describe("buildWaDeeplink", () => {
-  it("uses canonical number +62 821 3107 363", () => {
-    expect(WA_CANONICAL).toBe("628213107363");
+  it("uses canonical number +62 822 6459 9868", () => {
+    expect(WA_CANONICAL).toBe("6282264599868");
   });
   it("url-encodes the context text", () => {
     const url = buildWaDeeplink({ text: "Ciao! sessione abc" });
     expect(url).toBe(
-      "https://wa.me/628213107363?text=Ciao%21%20sessione%20abc",
+      "https://wa.me/6282264599868?text=Ciao%21%20sessione%20abc",
     );
   });
   it("composes from source + session + payload", () => {
@@ -464,7 +464,7 @@ describe("buildWaDeeplink", () => {
       sessionId: "abc-123",
       payload: { visa: "E23" },
     });
-    expect(url).toMatch(/wa\.me\/628213107363\?text=/);
+    expect(url).toMatch(/wa\.me\/6282264599868\?text=/);
     expect(decodeURIComponent(url)).toContain("visa-oracle");
     expect(decodeURIComponent(url)).toContain("abc-123");
     expect(decodeURIComponent(url)).toContain("E23");
@@ -478,7 +478,7 @@ describe("buildWaDeeplink", () => {
 
 ```ts
 // packages/core/utils/wa-deeplink.ts
-export const WA_CANONICAL = "628213107363";
+export const WA_CANONICAL = "6282264599868";
 
 export interface WaDeeplinkArgs {
   text?: string;
@@ -511,7 +511,7 @@ export * from "./wa-deeplink";
 
 ```bash
 git add packages/core/utils/wa-deeplink.ts packages/core/utils/wa-deeplink.test.ts packages/core/utils/index.ts
-git commit -m "feat(core): wa-deeplink utility with canonical +628213107363"
+git commit -m "feat(core): wa-deeplink utility with canonical +6282264599868"
 ```
 
 ---
@@ -647,7 +647,7 @@ describe("CTAHandoff", () => {
     );
     const links = getAllByRole("link");
     expect(links[0].getAttribute("href")).toBe("/api/report.pdf");
-    expect(links[1].getAttribute("href")).toMatch(/wa\.me\/628213107363/);
+    expect(links[1].getAttribute("href")).toMatch(/wa\.me\/6282264599868/);
   });
 
   it("falls back to WA-only when pdf/Zantara missing", () => {

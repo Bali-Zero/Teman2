@@ -14,7 +14,7 @@ describe("CTAHandoff", () => {
     );
     const links = getAllByRole("link");
     expect(links[0].getAttribute("href")).toBe("/api/report.pdf");
-    expect(links[1].getAttribute("href")).toMatch(/wa\.me\/628213107363/);
+    expect(links[1].getAttribute("href")).toMatch(/wa\.me\/6282264599868/);
   });
 
   it("falls back to WA-only when pdf/Zantara missing", () => {

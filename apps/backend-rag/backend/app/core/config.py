@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     COMPANY_LOCATION: str = "Jalan Semer, Kerobokan, Bali"
     COMPANY_SERVICE_DOMAIN: str = "Visas, Business Setup, Tax, Legal matters in Indonesia"
     SUPPORT_EMAIL: str = "info@balizero.com"
-    SUPPORT_WHATSAPP: str = "+62 821 3107 363"
+    SUPPORT_WHATSAPP: str = "+62 822 6459 9868"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 
@@ -598,7 +598,7 @@ class Settings(BaseSettings):
             "Comma-separated whitelist of phone numbers allowed to interact with WhatsApp bot (no + prefix). "
             "If set, messages from numbers NOT in this list are silently ignored (no response sent). "
             "Set via WHATSAPP_ALLOWED_NUMBERS env var. "
-            "Example: '628213107363' — leave empty to allow everyone."
+            "Example: '6282264599868' — leave empty to allow everyone."
         ),
     )
 

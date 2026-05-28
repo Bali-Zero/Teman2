@@ -19,7 +19,7 @@ import { WhatsAppCTA } from "./WhatsAppCTA";
 import { trackVisaChatQuestion, trackVisaWhatsAppCTA } from "@/lib/analytics";
 
 const FALLBACK_WA_URL =
-  "https://wa.me/628213107363?text=Hi%2C%20I%20used%20Visa%20Oracle.";
+  "https://wa.me/6282264599868?text=Hi%2C%20I%20used%20Visa%20Oracle.";
 
 const INITIAL_SYSTEM_MESSAGE: ChatMessage = {
   role: "system",
