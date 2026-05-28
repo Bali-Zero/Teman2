@@ -10,12 +10,14 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/crm-guardian/drive", tags=["crm-guardian", "drive"])
+admin_security = HTTPBearer(auto_error=False)
 
 
 class DriveCountRow(BaseModel):
@@ -73,11 +75,33 @@ class ShortcutEdgeItem(BaseModel):
 
 def _require_admin(current_user: dict[str, Any]) -> None:
     email = (current_user.get("email") or "").lower()
-    if email not in settings.admin_emails_set:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
+    if current_user.get("role") == "admin" or email in settings.admin_emails_set:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Admin access required",
+    )
+
+
+def _get_admin_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(admin_security),
+) -> dict[str, Any]:
+    """Accept normal admin JWT/cookie auth or the internal admin API key."""
+    admin_api_key = getattr(settings, "admin_api_key", None)
+    debug_key = request.headers.get("X-Debug-Key")
+    bearer_token = credentials.credentials if credentials else None
+    if admin_api_key and (debug_key == admin_api_key or bearer_token == admin_api_key):
+        return {
+            "email": "admin-api-key@internal",
+            "user_id": "admin-api-key",
+            "role": "admin",
+            "permissions": ["admin"],
+        }
+
+    current_user = get_current_user(request, credentials)
+    _require_admin(current_user)
+    return current_user
 
 
 async def _get_pool(request: Request) -> Any:
@@ -109,7 +133,7 @@ def _count_rows(rows: list[Any], key_name: str) -> list[DriveCountRow]:
 @router.get("/validation-summary", response_model=DriveValidationSummary)
 async def get_drive_validation_summary(
     request: Request,
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> DriveValidationSummary:
     """Return aggregate state of the read-only Drive metadata snapshot."""
     _require_admin(current_user)
@@ -169,7 +193,7 @@ async def get_drive_validation_summary(
 async def list_external_owner_risks(
     request: Request,
     limit: int = Query(default=50, ge=1, le=500),
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> list[DriveBacklogItem]:
     """List open external-owner Drive migration risks."""
     _require_admin(current_user)
@@ -195,7 +219,7 @@ async def list_external_owner_risks(
 async def list_stale_link_candidates(
     request: Request,
     limit: int = Query(default=50, ge=1, le=500),
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> list[DriveMetadataItem]:
     """List Drive IDs that failed direct metadata validation."""
     _require_admin(current_user)
@@ -220,7 +244,7 @@ async def list_stale_link_candidates(
 async def list_unlinked_items(
     request: Request,
     limit: int = Query(default=50, ge=1, le=500),
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> list[DriveBacklogItem]:
     """List visible CRM-relevant Drive items that need entity matching."""
     _require_admin(current_user)
@@ -247,7 +271,7 @@ async def list_shortcut_edges(
     request: Request,
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=500),
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> list[ShortcutEdgeItem]:
     """List shortcut target edges for Canonical migration planning."""
     _require_admin(current_user)
