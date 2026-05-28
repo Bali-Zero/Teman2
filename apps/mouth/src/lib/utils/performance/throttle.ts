@@ -4,7 +4,7 @@
  * Limit function execution to once per wait period
  */
 
-export function throttle<T extends (...args: unknown[]) => unknown>(
+export function throttle<T extends (...args: never[]) => unknown>(
   func: T,
   limit: number,
 ): (...args: Parameters<T>) => void {
@@ -24,7 +24,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 /**
  * Throttle with trailing execution
  */
-export function throttleWithTrailing<T extends (...args: unknown[]) => unknown>(
+export function throttleWithTrailing<T extends (...args: never[]) => unknown>(
   func: T,
   limit: number,
 ): (...args: Parameters<T>) => void {

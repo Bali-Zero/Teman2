@@ -4,7 +4,7 @@
  * Delay function execution until after wait milliseconds have elapsed
  */
 
-export function debounce<T extends (...args: unknown[]) => unknown>(
+export function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {
@@ -24,7 +24,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 /**
  * Debounce with leading execution
  */
-export function debounceLeading<T extends (...args: unknown[]) => unknown>(
+export function debounceLeading<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {
