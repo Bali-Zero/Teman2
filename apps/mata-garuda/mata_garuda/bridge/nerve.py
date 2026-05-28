@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import pathlib
 import subprocess
 from typing import Any, Callable
 
@@ -34,6 +35,139 @@ from mata_garuda.config import (
 )
 
 logger = logging.getLogger("mata_garuda.bridge.nerve")
+
+
+# ── Heartbeat (W1 cicatrix 2026-05-22) ─────────────────────────────────
+# When the backlog is empty AND there are no errors, pull_once returns
+# silently — launchd shows the cron is `active` with `last exit 0`, but
+# operators cannot distinguish "idle + healthy" from "cron silently dead"
+# without correlating against backend state. Emit a periodic heartbeat
+# every N consecutive idle ticks so the log line "still alive, idle" is
+# observable. Counter persists across ticks via a sidecar file next to
+# the cursor; resets on any non-idle tick.
+
+_HEARTBEAT_IDLE_TICKS = int(os.getenv("BRIDGE_HEARTBEAT_IDLE_TICKS", "10"))
+_ERROR_STREAK_ALERT = int(os.getenv("BRIDGE_ERROR_STREAK_ALERT", "5"))
+_PUSH_HEARTBEAT_IDLE_TICKS = int(os.getenv("BRIDGE_PUSH_HEARTBEAT_IDLE_TICKS", "10"))
+
+
+def _heartbeat_path(cursor: "BridgeCursor") -> "pathlib.Path":
+    return cursor.path.parent / (cursor.path.stem + "-idle-ticks.json")
+
+
+def _push_idle_path() -> "pathlib.Path":
+    """Sidecar for push-side idle counter — uses BRIDGE_CURSOR_PATH dir as anchor."""
+    base = pathlib.Path(BRIDGE_CURSOR_PATH)
+    return base.parent / "bridge-push-idle-ticks.json"
+
+
+def _track_push_idle_tick(stats: dict[str, int]) -> None:
+    """W3 cicatrix 2026-05-22 — push_once mirrors pull_once silent-idle gap.
+
+    Idle on push side = no messages dequeued from STREAM_BRIDGE_OUTBOUND
+    AND no errors. Without a heartbeat, push_once returns silently for
+    however long the Redis stream stays empty, leaving operators unable
+    to distinguish a healthy quiet cron from a dead one.
+
+    Counter persists in BRIDGE_CURSOR_PATH.parent / bridge-push-idle-ticks.json
+    (separate from the pull-side sidecar to avoid scope confusion).
+    Failure to read/write the sidecar is non-fatal.
+    """
+    path = _push_idle_path()
+    try:
+        if stats["sent"] == 0 and stats["errors"] == 0:
+            count = 0
+            if path.exists():
+                try:
+                    count = int(json.loads(path.read_text()).get("count", 0))
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    count = 0
+            count += 1
+            if count >= _PUSH_HEARTBEAT_IDLE_TICKS:
+                logger.info(
+                    "Bridge heartbeat: push idle for %d consecutive ticks",
+                    count,
+                )
+                count = 0
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(json.dumps({"count": count}))
+            os.replace(tmp, path)
+        else:
+            if path.exists():
+                path.unlink(missing_ok=True)
+    except Exception as e:
+        logger.debug("Push-idle tracker error (non-fatal): %s", e)
+
+
+def _error_streak_path(cursor: "BridgeCursor") -> "pathlib.Path":
+    return cursor.path.parent / (cursor.path.stem + "-error-streak.json")
+
+
+def _track_error_streak(cursor: "BridgeCursor", stats: dict[str, int]) -> int:
+    """Increment consecutive-error counter; return current streak.
+
+    Streak < _ERROR_STREAK_ALERT  → noise (every Fly restart transients).
+    Streak >= _ERROR_STREAK_ALERT → escalate caller to logger.error.
+
+    Reset on any successful tick (errors==0 AND fetched>=0 reaching the
+    bottom of pull_once). File read/write failures are non-fatal.
+    """
+    path = _error_streak_path(cursor)
+    try:
+        if stats["errors"] > 0:
+            count = 0
+            if path.exists():
+                try:
+                    count = int(json.loads(path.read_text()).get("count", 0))
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    count = 0
+            count += 1
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(json.dumps({"count": count}))
+            os.replace(tmp, path)
+            return count
+        else:
+            if path.exists():
+                path.unlink(missing_ok=True)
+            return 0
+    except Exception as e:
+        logger.debug("Error-streak tracker error (non-fatal): %s", e)
+        return 0
+
+
+def _track_idle_tick(cursor: "BridgeCursor", stats: dict[str, int]) -> None:
+    """Increment idle counter on truly-idle ticks; emit heartbeat every N.
+
+    Idle = fetched == 0 AND errors == 0. Any other state resets the counter.
+    Failure to read/write the sidecar file is non-fatal (logged at debug).
+    """
+    path = _heartbeat_path(cursor)
+    try:
+        if stats["fetched"] == 0 and stats["errors"] == 0:
+            count = 0
+            if path.exists():
+                try:
+                    count = int(json.loads(path.read_text()).get("count", 0))
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    count = 0
+            count += 1
+            if count >= _HEARTBEAT_IDLE_TICKS:
+                logger.info(
+                    "Bridge heartbeat: pull idle for %d consecutive ticks (cursor=%d)",
+                    count, cursor.read(),
+                )
+                count = 0
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(json.dumps({"count": count}))
+            os.replace(tmp, path)
+        else:
+            if path.exists():
+                path.unlink(missing_ok=True)
+    except Exception as e:
+        logger.debug("Heartbeat tracker error (non-fatal): %s", e)
 
 
 # ── Default I/O implementations (replaceable for tests) ────────────────
@@ -127,24 +261,40 @@ def pull_once(
     try:
         resp = http_get(url, headers=headers, timeout=timeout)
     except Exception as e:
-        logger.warning("Bridge pull HTTP error: %s — cursor unchanged", e)
         stats["errors"] = 1
+        streak = _track_error_streak(cursor, stats)
+        if streak >= _ERROR_STREAK_ALERT:
+            logger.error(
+                "Bridge pull HTTP error (streak=%d ≥ %d): %s — backend likely DOWN, cursor unchanged",
+                streak, _ERROR_STREAK_ALERT, e,
+            )
+        else:
+            logger.warning("Bridge pull HTTP error: %s — cursor unchanged", e)
         return stats
 
     status = resp.get("status_code")
     if status != 200:
-        logger.warning(
-            "Bridge pull non-200: status=%s body=%s",
-            status,
-            (resp.get("text") or "")[:200],
-        )
         stats["errors"] = 1
+        streak = _track_error_streak(cursor, stats)
+        if streak >= _ERROR_STREAK_ALERT:
+            logger.error(
+                "Bridge pull non-200 (streak=%d ≥ %d): status=%s body=%s",
+                streak, _ERROR_STREAK_ALERT, status,
+                (resp.get("text") or "")[:200],
+            )
+        else:
+            logger.warning(
+                "Bridge pull non-200: status=%s body=%s",
+                status,
+                (resp.get("text") or "")[:200],
+            )
         return stats
 
     body = resp.get("json")
     if not isinstance(body, dict):
-        logger.error("Bridge pull JSON parse error or empty body")
         stats["errors"] = 1
+        _track_error_streak(cursor, stats)
+        logger.error("Bridge pull JSON parse error or empty body")
         return stats
 
     events = body.get("events", [])
@@ -152,6 +302,8 @@ def pull_once(
     stats["fetched"] = len(events)
 
     if not events:
+        _track_error_streak(cursor, stats)
+        _track_idle_tick(cursor, stats)
         return stats
 
     # Publish each event. If ANY fails, do NOT advance cursor.
@@ -201,6 +353,7 @@ def pull_once(
             stats["errors"] += 1
 
     # Advance cursor ONLY if zero errors during publish (all-or-nothing semantics)
+    _track_error_streak(cursor, stats)
     if stats["errors"] == 0:
         cursor.write(last_id)
         logger.info(
@@ -213,6 +366,7 @@ def pull_once(
             stats["fetched"], stats["published"], stats["errors"],
         )
 
+    _track_idle_tick(cursor, stats)
     return stats
 
 
@@ -382,6 +536,7 @@ def push_once(
     )
 
     if not items:
+        _track_push_idle_tick(stats)
         return stats
 
     headers = {"X-Bridge-Auth": api_key, "Content-Type": "application/json"}
@@ -425,6 +580,7 @@ def push_once(
             stats["sent"], stats["acked"], stats["errors"],
         )
 
+    _track_push_idle_tick(stats)
     return stats
 
 
