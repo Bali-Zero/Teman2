@@ -10,8 +10,8 @@ from typing import Any
 
 CANONICAL_CONTACT = {
     "email": "zero@balizero.com",
-    "whatsapp": "+62 821 31 07 363",
-    "wa_link": "https://wa.me/628213107363",
+    "whatsapp": "+62 822 6459 9868",
+    "wa_link": "https://wa.me/6282264599868",
     "location": "Kerobokan, Bali, Indonesia",
     "website": "balizero.com",
 }

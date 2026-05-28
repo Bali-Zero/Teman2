@@ -58,7 +58,7 @@ def test_generate_html_smoke(fixture_data, stub_assets, tmp_path):
     assert "2.000.000 IDR" in html
     # Contact rendered
     assert "zero@balizero.com" in html
-    assert "+62 821 31 07 363" in html
+    assert "+62 822 6459 9868" in html
     # Logo embedded as base64 data URI
     assert 'src="data:image/png;base64,' in html
 
@@ -74,7 +74,7 @@ def test_generate_markdown_smoke(fixture_data, tmp_path):
     assert "# Bali Zero — Price List 2026" in md
     assert "C1 Tourism" in md
     assert "1.800.000 IDR – 2.000.000 IDR" in md
-    assert "wa.me/628213107363" in md
+    assert "wa.me/6282264599868" in md
 
 
 def test_generate_rejects_invalid_json(stub_assets, tmp_path):

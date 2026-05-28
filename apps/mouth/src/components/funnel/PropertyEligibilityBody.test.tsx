@@ -132,7 +132,7 @@ describe("PropertyEligibilityBody", () => {
     const waLink = (await screen.findByRole("link", {
       name: /Talk to Bali Zero/i,
     })) as HTMLAnchorElement;
-    expect(waLink.href).toContain("wa.me/628213107363");
+    expect(waLink.href).toContain("wa.me/6282264599868");
   });
 
   it("dedupes duplicate opportunities from backend", async () => {
