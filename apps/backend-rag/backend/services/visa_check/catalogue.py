@@ -96,9 +96,9 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
     return {
         # ── B-series (Visa on Arrival) ───────────────────────
         VisaType.B1: VisaMeta(
-            name_en="Visa on Arrival",
-            name_id="Visa Kedatangan",
-            category="Visa on Arrival",
+            name_en="Visit Visa Tourism",
+            name_id="Visa Kunjungan Wisata",
+            category="VOA",
             purposes=frozenset({Purpose.LONG_TOURISM}),
             duration_days=30,
             extensions=(1, 30),  # 30 + 1×30 = 60 max
