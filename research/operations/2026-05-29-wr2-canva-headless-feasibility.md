@@ -90,11 +90,39 @@ polling dentro `wr2_canva_desktop_apply.py` viene sostituito da una subprocess `
 --dangerously-skip-permissions --output-format stream-json` con timeout ≥900s, preceduta da
 acquisizione lease. Lo skill va patchato con step-0 ToolSearch idempotente + rinforzo no-AskUserQuestion.
 
+## A4 probe result (2026-05-29) — dangling-transaction behaviour → **FRESH OK**
+
+Verdetto del gate bloccante Task 0: **Canva NON blocca `start-editing-transaction` dopo
+un kill mid-transaction.** Procedura: copia throwaway → `claude -p` apre la transazione e
+inizia a editare → kill esterno del processo appena `transaction_id` compare nello stream
+(transazione dangling per kill esterno, non per istruzione) → subito dopo un nuovo `claude -p`
+apre una transazione fresca sullo stesso design. Esito: `CONFIRMED: transaction was open when
+process was killed` poi `FRESH OK 6424889517177594611 CANCELLED`. Una transazione orfana viene
+superseded da una fresca; nessun avvelenamento del design, nessun transaction-quarantine
+necessario. L'attuatore headless è viabile come specificato; lo skill idempotente (Phase -1
+validate read-only + transazione fresca sul working copy) copre il caso.
+
+### Debugging del probe (4 fix, root cause finale non-tecnico)
+
+Il probe ha dato `INVALID` per 4 run prima del verdetto. Lezione: il root cause NON era
+nessuno dei sospetti tecnici (sleep timing / pipe-buffer / regex escaping — tutti reali ma
+secondari). Il vero root cause: **il modello headless RIFIUTA un prompt che chiede di aprire
+una transazione e lasciarla dangling** ("Non eseguo questa sequenza così com'è — abbandonare
+una transazione mid-flight è azione difficile da reversare su stato condiviso"). Fix: dare un
+task LEGITTIMO (open + edit reale + commit) e creare il dangling col **kill esterno** del
+processo, non con un'istruzione al modello. Fix tecnici secondari applicati lungo la strada:
+(a) stream-json bufferizza su pipe → redirigere su FILE e pollare (no `subprocess.PIPE`+thread
+deadlock); (b) `transaction_id` nello stream è ESCAPED (`\"transaction_id\":\"...\"`) dentro un
+tool_result serializzato → regex tollerante ai backslash; (c) kill on-transaction-open, non a
+tempo fisso.
+
 ## Cavie throwaway create (cestinare a mano — Canva MCP non ha delete-design)
 
 `DAHK9luj4-A` `DAHK9p-P0v8` `DAHK97ryHHg` `DAHK9xRiTZw` `DAHK98r-2Y0` `DAHK91MYSzE` `DAHK9z9Nomg`
 `DAHK90FE9w4` `DAHK91laEUQ` `DAHK90bdQRU` `DAHK92qeIIQ` `DAHK92ORK9Q` `DAHK96s1EGY` `DAHK94b76GA`
 `DAHK9-hjkMM` (master D4 CLOBBERATO) `DAHK9yIGWQM` `DAHK95Q7v1Q`
+A4 probe cavie (2026-05-29): `DAHK-O9EwAs` `DAHK-MattYA` `DAHK-JKzDJ4` `DAHK-ZNiVBc` `DAHK-dgrCIs`
+`DAHK-Tj6iLA` `DAHK-DIBVKA`
 
 ## Scar candidate (per .claude/rules/cicatrix-scars.md — da inserire dopo spec+impl)
 
