@@ -30,15 +30,17 @@ logger = logging.getLogger(__name__)
 NLM_CLI = "nlm"
 
 # Mapping: scraper category → NotebookLM notebook UUID
+# UUIDs refreshed 2026-05-28 after the 2026-05-18 NB UUID-switch (stale UUIDs
+# raised PERMISSION_DENIED, code 7). Source of truth: `nlm list notebooks`.
 CATEGORY_NB_MAP: dict[str, str] = {
-    "immigration": "271c7159-0c32-49a1-bda8-803c8e0993a6",       # NB-2
-    "business": "045f3cdb-ef62-488c-90ba-82594928b671",           # NB-3
+    "immigration": "cff93ab0-813a-42f2-a8de-36987e724271",       # NB-2
+    "business": "933509f9-1561-403d-bd44-4a7a67a36df2",           # NB-3
     "tax": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",               # NB-4
     "tax-legal": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",         # NB-4
-    "property": "93314ad3-177e-4d2f-956b-fe4be3e47697",           # NB-5
-    "business_regulations": "7fbf37ed-e290-491a-98f5-677d6371ad62",  # NB-6
-    "legal": "7fbf37ed-e290-491a-98f5-677d6371ad62",              # NB-6
-    "compliance": "7fbf37ed-e290-491a-98f5-677d6371ad62",         # NB-6
+    "property": "d9438180-5e63-4e2a-a473-6061101f6a8d",           # NB-5
+    "business_regulations": "85207af3-352f-4554-8d2a-18f42cc541ba",  # NB-6
+    "legal": "85207af3-352f-4554-8d2a-18f42cc541ba",              # NB-6
+    "compliance": "85207af3-352f-4554-8d2a-18f42cc541ba",         # NB-6
 }
 
 # Categories that qualify for NLM legal context
