@@ -61,11 +61,13 @@ def _sanitize_slide_text(text: str) -> str:
 # (404 / "Design not found" from start-editing-transaction). Tried
 # DAHJLYRn_3E first — see structural-mismatch note above.
 #
-# Master ID: DAHJEkWpkzY · 12 pages · gray Bali-Zero brand background.
-# The renderer still clamps to MAX_SLIDES_TEMPLATE (11), so page 12 is
-# left untouched on every run — that is by design, Instagram auto-crops
-# trailing blank pages.
-TEMPLATE_DESIGN_ID = "DAHJEkWpkzY"
+# Master ID: DAHJSqJOIO8 · 11 pages · gray Bali-Zero brand background.
+# 2026-05-29: the old master DAHJEkWpkzY no longer resolves as a design (it was
+# recreated/renamed — the live master DAHJSqJOIO8 carries "DAHJEkWpkzY" as its
+# *title*, verified via get-design: 11 pages). Surfaced by the headless-actuator
+# shadow validation (the skill auto-reconciled but warned the default was stale).
+# The renderer clamps to MAX_SLIDES_TEMPLATE (11).
+TEMPLATE_DESIGN_ID = "DAHJSqJOIO8"
 CAROUSEL_FOLDER_ID = "FAHEwkTYduI"
 
 # Legibility Armor gradient overlay — 4:5 PNG with strong dark at top (heading
