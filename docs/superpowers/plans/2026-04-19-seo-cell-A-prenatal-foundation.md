@@ -725,7 +725,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 - Create: `apps/mouth/src/lib/whatsapp-utm.ts`
 - Test: `apps/mouth/src/lib/whatsapp-utm.test.ts`
 
-**Why:** Oggi i link WhatsApp sono hardcoded `https://wa.me/628213107363?text=Hi%20Bali%20Zero...` ovunque. Senza UTM, ogni lead WhatsApp arriva senza context "da quale pagina veniva". Helper centralizza + aggiunge UTM.
+**Why:** Oggi i link WhatsApp sono hardcoded `https://wa.me/6282264599868?text=Hi%20Bali%20Zero...` ovunque. Senza UTM, ogni lead WhatsApp arriva senza context "da quale pagina veniva". Helper centralizza + aggiunge UTM.
 
 - [x] **Step 1: Write the failing test**
 
@@ -738,7 +738,7 @@ import { buildWhatsAppLink } from "./whatsapp-utm";
 describe("buildWhatsAppLink", () => {
   it("builds link with default greeting and UTM", () => {
     const link = buildWhatsAppLink("home");
-    expect(link).toContain("https://wa.me/628213107363");
+    expect(link).toContain("https://wa.me/6282264599868");
     expect(link).toContain("utm_source=balizero_web");
     expect(link).toContain("utm_medium=whatsapp_cta");
     expect(link).toContain("utm_campaign=home");
@@ -794,7 +794,7 @@ Create `apps/mouth/src/lib/whatsapp-utm.ts`:
  * Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2
  */
 
-const WA_NUMBER = "628213107363";
+const WA_NUMBER = "6282264599868";
 
 type Funnel = "home" | "visa" | "kbli" | "tax" | "property";
 
@@ -861,7 +861,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 - Modify: `apps/mouth/src/app/v2/_components/FunnelFeature.tsx` (4 funnel CTAs use this for fallback contact)
 - Modify: `apps/mouth/src/app/(marketing)/page.tsx` (header WA "Get Started" CTA)
 - Modify: `apps/mouth/src/app/v2/_components/ZantaraFAB.tsx` (FAB if it links to WA)
-- Modify: any other file with `wa.me/628213107363` hardcoded
+- Modify: any other file with `wa.me/6282264599868` hardcoded
 
 **Why:** Senza questa modifica, l'helper esiste ma non è chiamato — UTM non vengono mai sparate.
 
@@ -871,7 +871,7 @@ Run:
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara/apps/mouth
-grep -rn "wa.me/628213107363" src/ 2>/dev/null
+grep -rn "wa.me/6282264599868" src/ 2>/dev/null
 ```
 
 Expected: 5-10 occurrences across components. Note them down.
@@ -883,7 +883,7 @@ For each file found, replace pattern:
 **Before:**
 
 ```tsx
-<a href="https://wa.me/628213107363?text=Hi%20Bali%20Zero%2C%20I%20would%20like%20to%20get%20started.">
+<a href="https://wa.me/6282264599868?text=Hi%20Bali%20Zero%2C%20I%20would%20like%20to%20get%20started.">
 ```
 
 **After (e.g., for HeroBlueprint.tsx — top-level home page):**
@@ -915,7 +915,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 Run:
 
 ```bash
-grep -rn "wa.me/628213107363" src/ 2>/dev/null
+grep -rn "wa.me/6282264599868" src/ 2>/dev/null
 ```
 
 Expected: empty output (all replaced) OR only test files / docs.
@@ -939,7 +939,7 @@ Run:
 pnpm dev
 ```
 
-Open `http://localhost:3000` in browser. Hover the "Get Started" header button → check status bar shows `wa.me/628213107363?text=...&utm_source=balizero_web&utm_medium=whatsapp_cta&utm_campaign=home`.
+Open `http://localhost:3000` in browser. Hover the "Get Started" header button → check status bar shows `wa.me/6282264599868?text=...&utm_source=balizero_web&utm_medium=whatsapp_cta&utm_campaign=home`.
 
 Click hero CTA → same check.
 

@@ -75,7 +75,7 @@ Estensione richiesta:
 | `auth/session-bridge.ts`            | nuovo                  | lead `bz_session` cookie ↔ SSO `nz_access_token` dopo login                                 |
 | `analytics/funnel-view.ts`          | nuovo                  | GA4 + Postgres dual-track, attribution lead→client                                          |
 | `utils/ical.ts`                     | nuovo                  | export iCal per Tax Calendar + portal deadlines                                             |
-| `utils/wa-deeplink.ts`              | nuovo                  | costruttore deeplink `wa.me/628213107363?text=...` context-aware                            |
+| `utils/wa-deeplink.ts`              | nuovo                  | costruttore deeplink `wa.me/6282264599868?text=...` context-aware                            |
 
 **Import discipline:** tutti i 10 target (fuori kita tab-interne) importano `NavShell` con `persona` prop; eliminare le 5 nav hand-rolled esistenti (`(marketing)`, `(blog)`, `(workspace)`, `portal`, `(visa-oracle)`).
 
@@ -97,7 +97,7 @@ Applicato a visa / kbli / tax / property:
 - Header minimal: `BZLogo` + "Bali Zero" + persona lang switcher (9 lingue già supportate)
 - Step bar (`Step X / Y` + progress bar)
 - Main (tool content, sostituibile per funnel)
-- Sticky bottom `CTAHandoff` — 3 livelli: `Scarica report PDF` (lead magnet gratis) → `Chatta con Zantara` (self-service) → `Parla su WhatsApp` (vero conversion CTA, deeplink canonico `+628213107363` con context pre-riempito)
+- Sticky bottom `CTAHandoff` — 3 livelli: `Scarica report PDF` (lead magnet gratis) → `Chatta con Zantara` (self-service) → `Parla su WhatsApp` (vero conversion CTA, deeplink canonico `+6282264599868` con context pre-riempito)
 - Footer `TrustBand` (5000+ clienti, review, tempo risposta)
 
 ### 3.3 I 4 funnel

@@ -192,7 +192,7 @@ Zantara — Bali Zero Team
 P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 
 ---
-💬 Questions? Reply to this email or WhatsApp us at +62 821 3107 363
+💬 Questions? Reply to this email or WhatsApp us at +62 822 6459 9868
 🌐 Visit us at www.balizero.com
 """
 

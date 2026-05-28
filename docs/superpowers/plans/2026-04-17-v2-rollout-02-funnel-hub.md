@@ -5,7 +5,7 @@
 
 **Goal:** Portare i 4 funnel su `FunnelFrame`, unificare le loro nav via `NavShell` persona=editorial, creare 2 nuovi tool (Tax Calendar, Property), collegare homepage ai tool reali, usare cookie `bz_session` + session-bridge per cross-funnel memory.
 
-**Architecture:** Ogni funnel diventa `<FunnelFrame funnel="…" sessionId={…}><ToolBody /></FunnelFrame>`. Il session_id generato da `getOrCreateSessionId()` (lato client) e `attachToServerSession({funnel})` chiamato al mount. CTAHandoff preconfigurato con canonical WA `+628213107363`.
+**Architecture:** Ogni funnel diventa `<FunnelFrame funnel="…" sessionId={…}><ToolBody /></FunnelFrame>`. Il session_id generato da `getOrCreateSessionId()` (lato client) e `attachToServerSession({funnel})` chiamato al mount. CTAHandoff preconfigurato con canonical WA `+6282264599868`.
 
 **Tech Stack:** Next.js 16 route groups, middleware rewrite pattern visa-oracle, Vercel domain per `tax.balizero.com`, `@balizero/core`.
 
@@ -89,7 +89,7 @@ export default function VisaOracleLayout({
           { label: "Tax", href: "https://tax.balizero.com/" },
         ]}
         actions={
-          <a href="https://wa.me/628213107363" className="btn btn-primary">
+          <a href="https://wa.me/6282264599868" className="btn btn-primary">
             WhatsApp
           </a>
         }
@@ -241,7 +241,7 @@ export default function TaxCalendarLayout({
           { label: "KBLI", href: "/kbli" },
         ]}
         actions={
-          <a href="https://wa.me/628213107363" className="btn btn-primary">
+          <a href="https://wa.me/6282264599868" className="btn btn-primary">
             WhatsApp
           </a>
         }
@@ -375,7 +375,7 @@ export function TaxCalendarBody({
               <p>{d.description}</p>
             </div>
             <a
-              href="https://wa.me/628213107363?text=Delega%20Bali%20Zero%20SPT"
+              href="https://wa.me/6282264599868?text=Delega%20Bali%20Zero%20SPT"
               className="btn btn-primary"
             >
               Delega a noi
