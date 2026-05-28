@@ -209,17 +209,17 @@ const nextConfig: NextConfig = {
       // SEO redirect: freelancer tax guide (2026-05-28)
       {
         source: "/tax-for-freelancers-indonesia-2026",
-        destination: "/freelancer-tax-guide",
+        destination: "/taxes/freelancer-tax-guide",
         permanent: true,
       },
       {
         source: "/id/tax-for-freelancers-indonesia-2026",
-        destination: "/id/freelancer-tax-guide",
+        destination: "/id/taxes/freelancer-tax-guide",
         permanent: true,
       },
       {
         source: "/it/tax-for-freelancers-indonesia-2026",
-        destination: "/it/freelancer-tax-guide",
+        destination: "/it/taxes/freelancer-tax-guide",
         permanent: true,
       },
       {
