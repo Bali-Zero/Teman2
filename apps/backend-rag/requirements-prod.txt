@@ -54,7 +54,7 @@ python-magic>=0.4.27  # MIME type detection from file content
 # OCR (Gemini Vision based - same as passport box)
 # Uses google-genai already included above
 pdfplumber>=0.11.0
-pdfminer.six>=20251107
+pdfminer.six>=20260107
 ebooklib>=0.20
 python-docx>=1.1.0
 
