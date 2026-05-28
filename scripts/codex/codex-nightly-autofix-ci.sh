@@ -28,10 +28,10 @@ STATE_DIR="${CODEX_AUTOFIX_STATE_DIR:-${HOME}/.agent/decisions/state}"
 STATE_FILE="${STATE_DIR}/codex_autofix_ci.state"
 LOG_DIR="${CODEX_AUTOFIX_LOG_DIR:-${HOME}/logs/codex-autofix-ci}"
 TELEGRAM_NOTIFY="${HOME}/.claude/scripts/hotfix-notify.sh"
-CODEX_AUTOMATION_LIB="${CODEX_AUTOMATION_LIB:-${HOME}/scripts/codex-automation-lib.sh}"
+CODEX_AUTOMATION_LIB="${CODEX_AUTOMATION_LIB:-${HOME}/scripts/codex/automation-lib.sh}"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR"
-# shellcheck source=/Users/nuzantara/scripts/codex-automation-lib.sh
+# shellcheck source=/Users/nuzantara/scripts/codex/automation-lib.sh
 [ -f "$CODEX_AUTOMATION_LIB" ] && source "$CODEX_AUTOMATION_LIB"
 
 # Cap: max 3 autofix attempts per rolling 24h
@@ -49,7 +49,9 @@ COOLDOWN_PER_RUN=86400  # 24h
 # ───────────────────────────────────────────────────────────────
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 notify() {
-    if [ -x "$TELEGRAM_NOTIFY" ]; then
+    if command -v codex_auto_notify >/dev/null 2>&1; then
+        codex_auto_notify "$1"
+    elif [ -x "$TELEGRAM_NOTIFY" ]; then
         "$TELEGRAM_NOTIFY" "$@" || true
     fi
 }
@@ -97,6 +99,16 @@ if [ "$ATTEMPTS_TODAY" -ge "$DAILY_CAP" ]; then
     log "Daily cap $DAILY_CAP reached ($ATTEMPTS_TODAY attempts today). Skipping."
     codex_state skipped daily_cap "Daily cap reached ($ATTEMPTS_TODAY/$DAILY_CAP)" "" "$REPO_ROOT"
     exit 0
+fi
+
+PRIMARY_REPO_ROOT="${CODEX_AUTOFIX_PRIMARY_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
+if command -v codex_auto_ensure_runtime_worktree >/dev/null 2>&1; then
+    codex_auto_ensure_runtime_worktree "$PRIMARY_REPO_ROOT" "$REPO_ROOT" "origin/main" || {
+        log "Runtime worktree unavailable: $REPO_ROOT"
+        codex_state blocked missing_worktree "Runtime worktree unavailable" "" "$REPO_ROOT"
+        notify "🔴 Codex autofix-ci: runtime worktree unavailable at $REPO_ROOT"
+        exit 1
+    }
 fi
 
 # ───────────────────────────────────────────────────────────────
@@ -214,12 +226,6 @@ gh run view "$RUN_ID" --repo "$REPO_SLUG" --log-failed > "$RUN_LOG_FILE" 2>&1 ||
     exit 1
 }
 
-# Mark this run as attempted only after a real fix attempt can start. Log-fetch
-# failures are blocked observations, not daily-cap-consuming fix attempts.
-echo "${RUN_ID} ${NOW_EPOCH} ${BRANCH} ${WORKFLOW_NAME}" >> "$STATE_FILE"
-echo $((ATTEMPTS_TODAY + 1)) > "$COUNT_FILE"
-codex_state action attempt_started "Fetched logs for run $RUN_ID; launching Codex" "$FIX_BRANCH" "$REPO_ROOT"
-
 # Truncate logs to last 8000 chars (focus on actual failure)
 TAIL_LOGS=$(tail -c 8000 "$RUN_LOG_FILE")
 
@@ -245,8 +251,8 @@ fi
 
 restore_stash() {
     if [ "$HAD_STASH" -eq 1 ]; then
-        # Switch back to main before popping (popping on a feature branch contaminates it)
-        git checkout main 2>/dev/null || true
+        # Switch away from the fix branch before popping.
+        git checkout --detach "${SHA:-HEAD}" 2>/dev/null || true
         STASH_REF=$(git stash list 2>/dev/null | grep "$STASH_TAG" | head -1 | cut -d: -f1 || echo "")
         if [ -n "$STASH_REF" ]; then
             git stash pop "$STASH_REF" 2>&1 | head -5 || log "stash pop $STASH_REF failed (manual: git stash list / git stash apply)"
@@ -259,15 +265,39 @@ restore_stash() {
 # Combined with mkdir-mutex trap above
 trap 'restore_stash; rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
-git fetch origin "$BRANCH" 2>&1 | head -5
-git checkout "$BRANCH" 2>&1 | head -3 || {
+if ! FETCH_OUTPUT=$(git fetch origin "$BRANCH" 2>&1); then
+    printf '%s\n' "$FETCH_OUTPUT" | head -5
+    log "Cannot fetch $BRANCH (likely deleted). Skipping without consuming daily cap."
+    codex_state skipped branch_not_fetchable "Branch $BRANCH not fetchable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
+    notify "⚠️ Codex autofix: branch $BRANCH not fetchable"
+    restore_stash
+    exit 0
+fi
+printf '%s\n' "$FETCH_OUTPUT" | head -5
+
+git checkout --detach FETCH_HEAD 2>&1 | head -3 || {
     log "Cannot checkout $BRANCH (likely deleted). Skipping."
+    codex_state skipped branch_not_checkoutable "Branch $BRANCH not checkoutable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
     notify "⚠️ Codex autofix: branch $BRANCH not checkoutable"
-    git checkout main 2>&1 | head -2 || true
     restore_stash
     exit 0
 }
-git reset --hard "$SHA" 2>&1 | head -3
+if ! RESET_OUTPUT=$(git reset --hard "$SHA" 2>&1); then
+    printf '%s\n' "$RESET_OUTPUT" | head -5
+    log "Cannot reset to $SHA. Skipping without consuming daily cap."
+    codex_state skipped sha_not_resettable "SHA $SHA not resettable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
+    notify "⚠️ Codex autofix: SHA ${SHA:0:7} not resettable"
+    restore_stash
+    exit 0
+fi
+printf '%s\n' "$RESET_OUTPUT" | head -3
+
+# Mark this run as attempted only after a real fix attempt can start. Log-fetch
+# failures and missing branches are blocked/skipped observations, not
+# daily-cap-consuming fix attempts.
+echo "${RUN_ID} ${NOW_EPOCH} ${BRANCH} ${WORKFLOW_NAME}" >> "$STATE_FILE"
+echo $((ATTEMPTS_TODAY + 1)) > "$COUNT_FILE"
+codex_state action attempt_started "Fetched logs and checked out run $RUN_ID; launching Codex" "$FIX_BRANCH" "$REPO_ROOT"
 
 # ───────────────────────────────────────────────────────────────
 # Run Codex autofix
@@ -308,14 +338,15 @@ EOF
 
 log "Launching Codex (timeout ${CODEX_TIMEOUT}s, profile=xhigh)..."
 
-if timeout "$CODEX_TIMEOUT" codex --profile xhigh exec "$CODEX_PROMPT" > "${LOG_DIR}/codex-output-${RUN_ID}.log" 2>&1; then
+if timeout "$CODEX_TIMEOUT" env -u OPENAI_API_KEY -u OPENAI_BASE_URL -u OPENAI_ORG_ID -u OPENAI_PROJECT \
+    codex --profile xhigh exec "$CODEX_PROMPT" > "${LOG_DIR}/codex-output-${RUN_ID}.log" 2>&1; then
     log "Codex completed"
 else
     rc=$?
     log "Codex failed/timeout (exit $rc)"
     codex_state blocked codex_failed "Codex exit $rc on run $RUN_ID" "$FIX_BRANCH" "$REPO_ROOT"
     notify "🔴 Codex autofix: timed out or failed on run $RUN_ID workflow $WORKFLOW_NAME"
-    git checkout "$BRANCH" 2>&1 | head -2 || true
+    git checkout --detach "$SHA" 2>&1 | head -2 || true
     git branch -D "$FIX_BRANCH" 2>&1 | head -2 || true
     exit 0
 fi
@@ -323,7 +354,7 @@ fi
 # ───────────────────────────────────────────────────────────────
 # Check if Codex committed something
 # ───────────────────────────────────────────────────────────────
-COMMITS_AHEAD=$(git rev-list --count "${BRANCH}..${FIX_BRANCH}" 2>/dev/null || echo 0)
+COMMITS_AHEAD=$(git rev-list --count "${SHA}..${FIX_BRANCH}" 2>/dev/null || echo 0)
 
 if [ "$COMMITS_AHEAD" -eq 0 ]; then
     log "Codex made no commit. Likely could not fix cleanly."
@@ -334,7 +365,7 @@ if [ "$COMMITS_AHEAD" -eq 0 ]; then
     else
         notify "⚠️ Codex autofix: no commit on run $RUN_ID workflow $WORKFLOW_NAME (no FAIL_REASON either)"
     fi
-    git checkout "$BRANCH" 2>&1 | head -2 || true
+    git checkout --detach "$SHA" 2>&1 | head -2 || true
     git branch -D "$FIX_BRANCH" 2>&1 | head -2 || true
     exit 0
 fi
@@ -392,8 +423,9 @@ else
     notify "⚠️ Codex autofix: PR creation failed for run $RUN_ID (check if duplicate)"
 fi
 
-# Return to main + restore stashed work
-git checkout main 2>&1 | head -2 || true
+# Return to a neutral detached base + restore stashed work
+git fetch origin main 2>&1 | head -3 || true
+git checkout --detach origin/main 2>&1 | head -2 || true
 restore_stash
 
 log "Done. Daily counter: $((ATTEMPTS_TODAY + 1))/$DAILY_CAP"
