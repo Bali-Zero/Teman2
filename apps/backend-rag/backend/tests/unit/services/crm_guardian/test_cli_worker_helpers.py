@@ -158,14 +158,14 @@ class TestCallGeminiCli:
     def test_basic_invocation(self, worker) -> None:
         """Mock subprocess.run, verify command shape."""
         mock_result = subprocess.CompletedProcess(
-            args=["gemini", "-p", "test"],
+            args=["agy", "-p", "test"],
             returncode=0,
             stdout='```json\n{"ok": true}\n```\n',
             stderr="",
         )
         with (
             patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
-            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+            patch.object(worker.Path, "exists", return_value=True),
         ):
             out = worker.call_gemini_cli("hello prompt")
             assert "```json" in out
@@ -175,27 +175,26 @@ class TestCallGeminiCli:
             assert args[1] == "-p"
             assert args[2] == "hello prompt"
 
-    def test_model_override(self, worker) -> None:
+    def test_model_arg_ignored_on_agy(self, worker) -> None:
+        """agy does not support `-m`; the model arg is accepted but never passed."""
         mock_result = subprocess.CompletedProcess(args=[], returncode=0, stdout="x", stderr="")
         with (
             patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
-            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+            patch.object(worker.Path, "exists", return_value=True),
         ):
             worker.call_gemini_cli("p", model="gemini-2.5-pro")
             args = mock_run.call_args[0][0]
-            assert "-m" in args
-            assert "gemini-2.5-pro" in args
-            # Order: -p value -m value (positional)
-            assert args.index("-m") > args.index("-p")
+            assert "-m" not in args
+            assert "gemini-2.5-pro" not in args
 
     def test_timeout_propagates(self, worker) -> None:
         with (
             patch.object(
                 worker.subprocess,
                 "run",
-                side_effect=subprocess.TimeoutExpired(cmd=["gemini"], timeout=240),
+                side_effect=subprocess.TimeoutExpired(cmd=["agy"], timeout=240),
             ),
-            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+            patch.object(worker.Path, "exists", return_value=True),
         ):
             with pytest.raises(subprocess.TimeoutExpired):
                 worker.call_gemini_cli("p", timeout_seconds=240)
@@ -209,14 +208,14 @@ class TestCallGeminiCli:
         )
         with (
             patch.object(worker.subprocess, "run", return_value=mock_result),
-            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+            patch.object(worker.Path, "exists", return_value=True),
         ):
             with pytest.raises(RuntimeError, match="gemini CLI returncode=1"):
                 worker.call_gemini_cli("p")
 
     def test_missing_cli_binary_raises(self, worker) -> None:
-        with patch.object(worker.shutil, "which", return_value=None):
-            with pytest.raises(RuntimeError, match="gemini CLI not found"):
+        with patch.object(worker.Path, "exists", return_value=False):
+            with pytest.raises(RuntimeError, match="agy CLI not found"):
                 worker.call_gemini_cli("p")
 
 
