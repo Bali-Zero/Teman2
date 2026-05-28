@@ -390,7 +390,16 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     if actuator == "headless":
         from wr2_canva_headless_apply import apply_headless
 
-        template_design_id = pending["template_design_id"]
+        template_design_id = pending.get("template_design_id")
+        if not template_design_id:
+            # Stale/malformed pending (e.g. written by an older build_canva_pending
+            # before the key existed) — fail loud with Telegram, do NOT KeyError.
+            logger.error("Draft %s pending missing template_design_id", draft_id)
+            _send_telegram(
+                "WR2 headless apply aborted — pending missing template_design_id\n"
+                f"Draft: {draft_id}"
+            )
+            return False
         _send_telegram(
             "WR2 Canva apply starting (headless)\n"
             f"Topic: {topic[:100]}\n"
