@@ -85,6 +85,16 @@ export type PersistDeps = {
   store: MessageContextStore;
   resolveClientId: (phone: string) => Promise<number | null>;
   resolvePracticeId: (clientId: number) => Promise<number | null>;
+  /**
+   * FIX 3 (2026-05-26): optional Baileys `signalRepository.lidMapping.getPNForLID`
+   * reverse-lookup. When `counterpartPhone` is empty but `counterpartLid` is set
+   * (direct-LID messages from privacy-shielded contacts), this resolver fills
+   * the phone synchronously inline so the CRM `findClientByPhone` join can run
+   * on the same persist. Returns null when the LID has never been observed
+   * (Baileys mapping cache miss) — caller falls back to the existing
+   * `counterpartPhone === ""` behaviour and the async resolver picks up later.
+   */
+  resolveLidToPhone?: (lid: string) => Promise<string | null>;
 };
 
 type BaileysMessageLike = {
@@ -274,6 +284,29 @@ export async function persistCapturedMessage(
   message: CapturedMessageRecord,
   deps: PersistDeps,
 ): Promise<{ id: number; row: PersistedMessageContext }> {
+  // FIX 3 (2026-05-26): LID→phone reverse-lookup via Baileys lidMapping.
+  // Resolves CRM client_id for direct-LID messages (privacy-shielded
+  // contacts). When the resolver returns a phone, mutate the message in
+  // place so the persisted row carries the resolved counterpartPhone /
+  // senderPhone — otherwise the row only ever holds the LID and the JOIN
+  // to clients (which is keyed on phone) keeps missing.
+  if (deps.resolveLidToPhone) {
+    if (!message.counterpartPhone && message.counterpartLid) {
+      const resolvedPhone = await deps.resolveLidToPhone(
+        message.counterpartLid,
+      );
+      if (resolvedPhone) {
+        message.counterpartPhone = resolvedPhone;
+      }
+    }
+    if (!message.senderPhone && message.senderLid) {
+      const resolvedSender = await deps.resolveLidToPhone(message.senderLid);
+      if (resolvedSender) {
+        message.senderPhone = resolvedSender;
+      }
+    }
+  }
+
   // FIX 3 (2026-05-26): on group messages counterpartPhone is always "" (the
   // chat is identified by groupJid, not by a single phone). The CRM lookup
   // must use the SENDER phone to attribute the message to a client.

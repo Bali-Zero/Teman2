@@ -544,6 +544,56 @@ async function handleConnectionUpdate(
 function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
   let consecutiveDbErrors = 0;
 
+  // FIX 3 (2026-05-26): Baileys signalRepository.lidMapping.getPNForLID
+  // resolver. Translates a raw LID (15-digit privacy-shielded identifier)
+  // into the underlying phone via the per-session signal store, then
+  // write-back caches the mapping to `wa_lid_phone_map` so downstream
+  // consumers (CRM identity_resolver, analytics) can JOIN without
+  // re-querying Baileys. Returns null on any failure path so callers can
+  // fall back to the existing async-resolver behaviour.
+  const resolveLidToPhone = async (lid: string): Promise<string | null> => {
+    try {
+      const sockAny = sock as unknown as {
+        signalRepository?: {
+          lidMapping?: {
+            getPNForLID?: (lid: string) => Promise<string | null>;
+          };
+        };
+      };
+      const result = await sockAny.signalRepository?.lidMapping?.getPNForLID?.(
+        lid.includes("@") ? lid : `${lid}@lid`,
+      );
+      if (!result) return null;
+      const phoneDigits =
+        result.split("@")[0]?.split(":")[0]?.replace(/\D/g, "") ?? "";
+      const e164 = normalizePhone(`+${phoneDigits}`);
+      if (!e164) return null;
+      // Write-back to wa_lid_phone_map (fire-and-forget). Schema lives in
+      // migration 201: lid PK, phone_e164, client_id (filled later by
+      // identity_resolver), confidence, source enum.
+      void query(
+        `INSERT INTO wa_lid_phone_map (lid, phone_e164, source, confidence)
+         VALUES ($1, $2, 'baileys_metadata', 0.95)
+         ON CONFLICT (lid) DO UPDATE SET
+           phone_e164 = EXCLUDED.phone_e164,
+           last_confirmed_at = now()`,
+        [lid, e164],
+      ).catch((err) => {
+        logger.warn(
+          { err: (err as Error).message, lid },
+          "wa-mirror wa_lid_phone_map upsert failed (non-fatal)",
+        );
+      });
+      return e164;
+    } catch (err) {
+      logger.warn(
+        { err: (err as Error).message, lid },
+        "wa-mirror lid resolve failed (non-fatal)",
+      );
+      return null;
+    }
+  };
+
   sock.ev.on("messages.upsert", async (event) => {
     if (event.type !== "notify" && event.type !== "append") return;
     for (const m of event.messages) {
@@ -580,6 +630,8 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           store: ctx.store,
           resolveClientId: findClientByPhone,
           resolvePracticeId: findOpenPracticeForClient,
+          // FIX 3 (2026-05-26): inline LID→phone resolver, see helper above.
+          resolveLidToPhone,
         });
         consecutiveDbErrors = 0;
 

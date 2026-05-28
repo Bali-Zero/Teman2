@@ -15,6 +15,7 @@ import pytest
 
 from backend.services.notifications.email_audit import (
     CRITICAL_EMAIL_TYPES,
+    format_send_error,
     is_critical,
     log_email_attempt,
     notify_email_failure_critical,
@@ -282,3 +283,76 @@ def test_is_critical_membership():
     assert is_critical("cron_visa") is False
     assert is_critical("") is False
     assert is_critical("random_string") is False
+
+
+# ---------------------------------------------------------------------------
+# format_send_error — anti-empty-error_message guard (W57 2026-05-26)
+# ---------------------------------------------------------------------------
+
+
+def test_format_send_error_plain_exception_with_message():
+    assert format_send_error(ValueError("boom")) == "boom"
+
+
+def test_format_send_error_empty_str_falls_back_to_repr():
+    class Silent(Exception):
+        def __str__(self):  # noqa: D401 — fixture
+            return ""
+
+    out = format_send_error(Silent())
+    assert "Silent" in out  # repr() is "Silent()", class name preserved
+
+
+def test_format_send_error_empty_str_and_empty_repr_falls_back_to_classname():
+    class Whisper(Exception):
+        def __str__(self):
+            return ""
+
+        def __repr__(self):
+            return ""
+
+    assert format_send_error(Whisper()) == "Whisper"
+
+
+def test_format_send_error_httpx_status_error_includes_status_and_body():
+    import httpx
+
+    req = httpx.Request("POST", "https://brevo.example/send")
+    resp = httpx.Response(400, request=req, content=b'{"error":"invalid recipient"}')
+    try:
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        out = format_send_error(e)
+    assert "HTTP 400" in out
+    assert "brevo.example" in out
+    assert "invalid recipient" in out
+
+
+def test_format_send_error_httpx_status_error_empty_body():
+    import httpx
+
+    req = httpx.Request("POST", "https://brevo.example/send")
+    resp = httpx.Response(503, request=req, content=b"")
+    try:
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        out = format_send_error(e)
+    assert "HTTP 503" in out
+    assert "brevo.example" in out
+
+
+def test_format_send_error_never_returns_empty_string():
+    """Anti-regression guard: caller writes result to email_send_log,
+    empty-string error_message is undiagnosable from the dashboard."""
+
+    class Bare(Exception):
+        def __str__(self):
+            return ""
+
+    for exc in [
+        ValueError("x"),
+        Bare(),
+        ConnectionResetError(),
+        TimeoutError(),
+    ]:
+        assert format_send_error(exc) != ""

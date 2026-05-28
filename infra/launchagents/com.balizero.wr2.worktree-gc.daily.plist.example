@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+WR2 worktree garbage collector — daily 08:00 WITA
+Spec: research/wr2/2026-05-27-wr2-autonomous-workflow-spec.md §10
+
+Install (Pro):
+    cp infra/launchagents/com.balizero.wr2.worktree-gc.daily.plist.example \
+       ~/Library/LaunchAgents/com.balizero.wr2.worktree-gc.daily.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wr2.worktree-gc.daily.plist
+
+Kill switch (without removing plist):
+    launchctl setenv WR2_WORKTREE_GC_ENABLED false
+    OR remove --apply from ProgramArguments (dry-run forever)
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.worktree-gc.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2_worktree_gc.py</string>
+        <string>--apply</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <!-- 00:00 UTC = 08:00 WITA -->
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>WR2_WORKTREE_GC_ENABLED</key>
+        <string>true</string>
+        <key>WR2_WORKTREE_GC_MAX_AGE_HOURS</key>
+        <string>24</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2-worktree-gc.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2-worktree-gc.error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

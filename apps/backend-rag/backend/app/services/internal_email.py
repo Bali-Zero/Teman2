@@ -39,6 +39,7 @@ import os
 from typing import TYPE_CHECKING
 
 from backend.services.notifications.email_audit import (
+    format_send_error,
     is_critical,
     log_email_attempt,
     notify_email_failure_critical,
@@ -143,10 +144,11 @@ async def send_internal_email(
                 provider="brevo",
             )
     except Exception as e:
+        err_msg = format_send_error(e)
         logger.warning(
             "Internal email failed (context=%s): %s",
             log_context or "",
-            e,
+            err_msg,
         )
         if audit_enabled:
             await record_email_result(
@@ -154,7 +156,7 @@ async def send_internal_email(
                 row_id,
                 status="failed",
                 provider="brevo",
-                error_message=str(e),
+                error_message=err_msg,
             )
             if is_critical(email_type):  # type: ignore[arg-type]
                 notify_email_failure_critical(
@@ -162,7 +164,7 @@ async def send_internal_email(
                     to_email=to,
                     subject=subject,
                     practice_id=practice_id,
-                    error=str(e),
+                    error=err_msg,
                 )
         if raise_on_failure:
             raise
