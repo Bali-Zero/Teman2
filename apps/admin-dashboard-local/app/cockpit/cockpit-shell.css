@@ -1,0 +1,99 @@
+:root[data-cockpit="true"] {
+  --bg-deep: #0a0e0a;
+  --bg-panel: #0f1411;
+  --fg-primary: #00ff41;
+  --fg-active: #39ff14;
+  --fg-dim: #4a7a4a;
+  --fg-amber: #ffb000;
+  --fg-red: #ff3838;
+  --border: #1f2a1f;
+  --border-active: #00ff41;
+}
+
+[data-cockpit="true"] body {
+  background: var(--bg-deep);
+  color: var(--fg-primary);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+[data-cockpit="true"] .cockpit-widget {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  min-height: 200px;
+  font-feature-settings: "tnum" 1;
+}
+
+[data-cockpit="true"] .cockpit-widget-title {
+  color: var(--fg-active);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+[data-cockpit="true"] .cockpit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 8px;
+}
+
+[data-cockpit="true"] .status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+[data-cockpit="true"] .status-dot.green {
+  background: var(--fg-primary);
+  box-shadow: 0 0 4px var(--fg-primary);
+  animation: pulse 2s infinite;
+}
+
+[data-cockpit="true"] .status-dot.amber {
+  background: var(--fg-amber);
+  box-shadow: 0 0 4px var(--fg-amber);
+}
+
+[data-cockpit="true"] .status-dot.red {
+  background: var(--fg-red);
+  box-shadow: 0 0 4px var(--fg-red);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+[data-cockpit="true"] .cockpit-action-button {
+  background: var(--bg-deep);
+  color: var(--fg-active);
+  border: 1px solid var(--border-active);
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+[data-cockpit="true"] .cockpit-action-button:hover {
+  background: var(--border);
+}
+
+[data-cockpit="true"] .cockpit-action-button.danger {
+  border-color: var(--fg-red);
+  color: var(--fg-red);
+}
