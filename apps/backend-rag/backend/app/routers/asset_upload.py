@@ -11,7 +11,7 @@ Use cases:
 - Any local Pro/Mini script needing public HTTPS URL for Tigris-hosted media
 
 Authentication: shared-secret bearer token (X-Asset-Upload-Token header).
-Secret: `ASSET_UPLOAD_TOKEN` env var (Fly secret, rotated quarterly).
+Auth header reads env `ASSET_UPLOAD_TOKEN` env var (Fly secret, rotated quarterly).
 
 Spec reference: docs/wr2/operator-driven-mode-spec-2026-05-26.md (P1.2)
 Panel reference: research/operations/2026-05-26-wr2-canva-ig-4llm-panel-synthesis.md
