@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  L5.2 Phase 2b trigger — one-shot LaunchAgent.
+
+  Fires daily at 09:00 WITA. Wrapper script gates on TARGET_DATE=2026-06-02
+  and exits silently before. On/after target date:
+    - Runs scripts/ci/l5_2_phase2b_auto_analyzer.py
+    - Self-unloads via launchctl bootout
+    - Touches sentinel ~/.agent/l5-2-phase2b-fired.sentinel
+
+  Install:
+    cp infra/launchagents/com.balizero.l5-2-phase2b-trigger.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.l5-2-phase2b-trigger.plist
+
+  Verify next-fire:
+    launchctl print gui/$(id -u)/com.balizero.l5-2-phase2b-trigger | grep -A2 "calendar"
+
+  Manual fire (testing):
+    launchctl kickstart -k gui/$(id -u)/com.balizero.l5-2-phase2b-trigger
+
+  Uninstall (if needed before fire):
+    launchctl bootout gui/$(id -u)/com.balizero.l5-2-phase2b-trigger
+    rm ~/Library/LaunchAgents/com.balizero.l5-2-phase2b-trigger.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.balizero.l5-2-phase2b-trigger</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/nuzantara/Desktop/nuzantara/scripts/ci/l5_2_phase2b_trigger_wrapper.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key>
+    <string>/Users/nuzantara</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/l5-2-phase2b-trigger.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/l5-2-phase2b-trigger.error.log</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+  <key>ThrottleInterval</key>
+  <integer>3600</integer>
+</dict>
+</plist>

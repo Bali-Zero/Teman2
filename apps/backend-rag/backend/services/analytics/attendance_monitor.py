@@ -1552,7 +1552,7 @@ class AttendanceMonitor:
         Body: HTML table listing absent members with days absent and last-seen date.
         """
         today_str: str = datetime.now(BALI_TZ).strftime("%d/%m/%Y")
-        subject: str = f"⚠️ Assenze team — {today_str}"
+        subject: str = f"⚠️ Team absences — {today_str}"
 
         # Build table rows
         table_rows: str = ""
@@ -1658,20 +1658,20 @@ class AttendanceMonitor:
 <body>
     <div class="container">
         <div class="header">
-            <h1>⚠️ Assenze team</h1>
-            <p>Report giornaliero — {today_str} · 10:00 WITA</p>
+            <h1>⚠️ Team absences</h1>
+            <p>Daily report — {today_str} · 10:00 WITA</p>
         </div>
         <div class="content">
             <div class="summary-badge">
-                {len(absent_members)} membro/i assente/i ≥ {ABSENT_THRESHOLD_DAYS} giorni lavorativi
+                {len(absent_members)} member(s) absent ≥ {ABSENT_THRESHOLD_DAYS} working days
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Nome</th>
+                        <th>Name</th>
                         <th>Email</th>
-                        <th>Assenza</th>
-                        <th>Ultimo check-in</th>
+                        <th>Absence</th>
+                        <th>Last check-in</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1679,8 +1679,8 @@ class AttendanceMonitor:
                 </tbody>
             </table>
             <p style="margin-top:24px; font-size:13px; color:#777;">
-                Questo report viene generato automaticamente ogni mattina alle 10:00 WITA
-                per i membri con {ABSENT_THRESHOLD_DAYS}+ giorni lavorativi senza check-in.
+                This report is generated automatically every morning at 10:00 WITA
+                for members with {ABSENT_THRESHOLD_DAYS}+ working days without check-in.
             </p>
         </div>
         <div class="footer">

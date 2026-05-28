@@ -73,7 +73,7 @@ async def feed(
                m.content,
                m.created_at,
                m.client_id,
-               cl.name AS client_name,
+               cl.full_name AS client_name,
                cl.email AS client_email
         FROM conversation_messages m
         LEFT JOIN clients cl ON cl.id = m.client_id
