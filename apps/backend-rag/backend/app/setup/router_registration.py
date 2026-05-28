@@ -73,6 +73,7 @@ def include_routers(api: FastAPI) -> None:
         funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
         funnel_email,  # [4APPS] Drip email scheduler + unsubscribe (homepage apps)
         google_drive,
+        guardian,
         handlers,
         health,
         hr,  # [NEW] HR/Payroll module
@@ -405,8 +406,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(bridge.router)
 
     # Guardian V4 decision audit + risk scores
-    # from backend.app.routers import guardian
-    # api.include_router(guardian.router)
+    api.include_router(guardian.router)
 
     # Visa Oracle — public product (no auth required)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
@@ -462,6 +462,7 @@ def include_light_routers(api: FastAPI) -> None:
         funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
         funnel_email,  # [4APPS] Drip email scheduler + unsubscribe (homepage apps)
         google_drive,
+        guardian,
         handlers,
         health,
         hr,
@@ -696,6 +697,9 @@ def include_light_routers(api: FastAPI) -> None:
     # Bridge — Pro<->Fly bidirectional event bridge (Phase 1 Sinapsi)
     # Light path: only DB + custom X-Bridge-Auth, no RAG dependencies
     api.include_router(bridge.router)
+
+    # Guardian V4 decision audit + risk scores
+    api.include_router(guardian.router)
 
     # Knowledge Activity Tracking
     api.include_router(knowledge_activity.router)
