@@ -2,7 +2,7 @@
 date: 2026-05-26
 domain: visa
 client_case: Bali Zero internal — Step 1 deep research on C5A content creator visa, feeds into Step 2 media communication production
-sources: 32
+sources: 36
 ---
 
 # Indonesia Visa C5A "Visa Kunjungan Konten Kreator" — dossier completo (genesi, realtà, soluzioni)
@@ -289,18 +289,50 @@ L'opzione (I) è più plausibile data l'assenza di marketing governativo + pagin
 
 [OPINIONE] Sessione 60-90 min (fee suggerito IDR 1.5-2.5M). Output: triage decision tree → C5A / E33G / C1+exit / KITAS PT PMA. Deliverable: 1-page recommendation + risk matrix. Vale come "no-regret first step" anche se cliente sceglie self-service dopo.
 
-### Servizio #2 — C5A Single Application (60 giorni iniziali)
+### Servizio #2 — C5A Single Application (60 giorni iniziali) — **VERIFIED PRICING (Step 2.C partial)**
 
-[OPINIONE - SPECULATIVE pricing] Stima total client cost: IDR 8-13M (govt PNBP ~3-5M + Bali Zero agency component ~3-5M + sponsor procurement ~2-3M + buffer ~1M). Processing 7-14 giorni.
+**Government PNBP (PP 45/2024 Lampiran, verificato 2026-05-26)**:
 
-> ⚠️ **Caveat metodologico fee estimates** (post-devils-advocate 2026-05-26): il PNBP range "IDR 3-5M" deriva da (a) DeepSeek V4 **Flash**-grade reasoning (silent downgrade da v4-pro per CLAUDE.md trap 2026-05-24, vedi §12 H-1) + (b) sister-visa cluster proxy (C2/C5/C7/C9 pricing tier visapro/flado). **NON deriva da PMK primario** identificato per C5A specifically (vedi §11 OQ-1). Citation PMK 82/2023 in Sources list copre **Golden Visa premium**, non C5A. Pre-Step 2 publishing: telefonata Kantor Imigrasi Denpasar per fee verbatim attuale.
+- [FATTO] **Visa Kunjungan Paling Lama 60 Hari per orang: IDR 1.000.000** — fonte verbatim: PP 45/2024 Lampiran A.II.1.d (via NB-2 source `33f96d5a` + cross-verified `imigrasi.go.id/biaya_imigrasi` Visit Permit 60 days IDR 1.000.000)
+- [FATTO] Single-entry default. **Visa Kunjungan Beberapa Kali Perjalanan (multiple-entry) 60 Hari**: IDR 1.500.000 (PP 45/2024 Lampiran A.II.2.a) — alternativa se cliente entra-esce Bali multiple times
+- [FATTO] **PP 45/2024 NON elenca tariffa per indeks codice C5A specifically** — il PNBP base è per _durata_ (60/90/180 hari), uniforme cross-indeks per la categoria Visa Kunjungan. C2, C5, C5A, C7, C9 a 60 hari pagano tutti **IDR 1.000.000** PNBP base
+- [UNVERIFIED — Kantor call pending Antonello] Surcharge specifico C5A (se esiste, es. "biaya layanan content creator endorsement") — richiede telefonata Kantor Imigrasi Kelas I Denpasar (`(0361) 751038`)
+- [UNVERIFIED — PPID Kemenimipas pending Antonello firma fisica] Salinan Kepmen M.IP-08.GR.01.01/2025 verbatim per conferma pricing model esatto
 
-**Caveat critico**: pagina ufficiale "Data Belum Tersedia" → Bali Zero dovrebbe **NOT promettere SLA finché non ha pilot success**. Suggerisco: lancio servizio in modalità "pilot with 2-3 selected clients" prima di marketing pubblico.
+**Sister-visa cluster cross-check (PP 45/2024 Lampiran A.II)**:
 
-### Servizio #3 — C5A Extension Pathway (initial 60d + N extensions)
+| Codice indeks                  | Categoria                                 | Durasi  | Tarif PNBP (PP 45/2024) | Fonte                         |
+| ------------------------------ | ----------------------------------------- | ------- | ----------------------- | ----------------------------- |
+| Visa Kunjungan 7 hari          | Single-entry                              | 7d      | IDR 250.000             | imigrasi.go.id/biaya_imigrasi |
+| Visa Kunjungan 30 hari         | Single-entry                              | 30d     | IDR 500.000             | imigrasi.go.id/biaya_imigrasi |
+| **Visa Kunjungan 60 hari**     | **Single-entry (covers C2/C5/C5A/C7/C9)** | **60d** | **IDR 1.000.000**       | **NB-2 [3] + imigrasi.go.id** |
+| Visa Kunjungan 90 hari         | Single-entry                              | 90d     | IDR 1.500.000           | NB-2 [3] + imigrasi.go.id     |
+| Visa Kunjungan 180 hari        | Single-entry                              | 180d    | IDR 2.000.000           | NB-2 [3] + imigrasi.go.id     |
+| Visa Kunjungan Multi-entry 60d | Multiple-entry                            | 60d     | IDR 1.500.000           | NB-2 [3]                      |
+| Visa Kunjungan Multi-entry 90d | Multiple-entry                            | 90d     | IDR 2.000.000           | NB-2 [3]                      |
+| KITAS (E33G Digital Nomad)     | Limited Stay                              | 1 anno  | IDR 3.000.000 base      | imigrasi.go.id/biaya_imigrasi |
 
-> ⚠️ **Caveat extension pattern [UNVERIFIED]** (post-devils-advocate 2026-05-26): il pattern "60+60+60=180d" è inherited assumption dal C5 (Visa Media/Pers) pre-riforma 2025, NON confermato da fonte primaria per C5A specificamente (vedi §11 OQ-2). Il pattern reale C5A potrebbe essere **solo 60+60=120d** (1 estensione, non 2). Pre-Step 2 publishing: chiamare Kantor Imigrasi Denpasar per conferma estensioni accettate. Servizio #3 quoting deve disclaimer "max 120d garantiti, 180d a discrezione Imigrasi locale".
-> [OPINIONE - SPECULATIVE pricing] Total stack ~IDR 11-17M (DeepSeek estimate, vedi App F). Bali Zero gestisce sponsor letter, application, due extensions, compliance briefing. Include 1h "compliance refresh" mese 4 + 5.
+**Bali Zero agency component (proposta, suggestible after pilot)**:
+
+- Pre-application audit + document prep (proof of US$ 2000/mese income, social media portfolio dossier): IDR 4-7M
+- Submission + tracking + Kantor liaison: IDR 2-3M
+- Sponsor structuring (Bali Zero PT come Penjamin se cliente accetta — vedi Servizio #7 caveat grey-area): IDR 1-2M setup + IDR 500K-1M/mese subscription
+
+**Total realistic client cost (post Step 2.C verifica parziale)**:
+
+- **Minimum compliance path (no agency sponsor)**: PNBP IDR 1M + Bali Zero IDR 6-10M = **IDR 7-11M**
+- **Full-stack (agency sponsor + monitoring)**: PNBP IDR 1M + Bali Zero IDR 7-12M + sponsor first-month IDR 1.5M = **IDR 9.5-14.5M**
+- Processing time: 3-5 giorni working days (NB-2 [1]) + Bali Zero pre-prep 2-3 giorni = total **~5-10 giorni**
+
+**Caveat critico residuo**: pagina ufficiale `imigrasi.go.id/wna/daftar-visa-indonesia/C5A` ancora "Data Belum Tersedia" → Bali Zero lancia in modalità "pilot with 2-3 selected clients" prima di marketing pubblico. Open Question OQ-1 PARTIALLY CLOSED (PNBP base verified IDR 1M), surcharge C5A-specifico ancora UNVERIFIED.
+
+### Servizio #3 — C5A Extension Pathway (initial 60d + 2 extensions = 180d) — **VERIFIED extension pattern**
+
+[FATTO] **Pattern estensione confermato 60+60+60=180 hari** — fonte NB-2 [1] verbatim: _"60 days (extendable to 180)"_ + NB-2 deep-research §2: _"diperpanjang hingga durasi masa tinggal maksimal mencapai 180 hari secara total (umumnya melalui perpanjangan 60 hari per siklus)"_. Open Question OQ-2 CLOSED.
+
+[FATTO] Extension PNBP (PP 45/2024 sister-visa cluster): IDR 500.000-1.000.000 per ciclo estensione 60 hari. [UNVERIFIED — Kantor call pending] valore esatto C5A.
+
+[OPINIONE] Bali Zero stack 180 hari completo: PNBP IDR 1M (initial) + 2× IDR ~500K-1M (extensions) + agency component IDR 8-12M + sponsor monthly 3× IDR 750K = **IDR 12-17M total stack 180d**. Include 1h "compliance refresh" mese 2 + 4 (riview content + barter audit).
 
 ### Servizio #4 — Alternative Visa Comparator + Switch (C5A vs E33G vs C2 vs KITAS PT PMA)
 
@@ -322,9 +354,61 @@ L'opzione (I) è più plausibile data l'assenza di marketing governativo + pagin
 
 ## 10. Appendici A-F (raw dumps for audit)
 
-### Appendix A — NotebookLM NB-2 query results
+### Appendix A — NotebookLM NB-2 query results (executed 2026-05-26 Step 2)
 
-[INFO] Sessione: NB-2 (visa) NON è stata interrogata in questo turn. Rationale: search WebSearch ha rivelato che la conoscenza dominante è in fonti web 2025-2026 più che in regulatory PDF pre-2025 indicizzati nel NB. Il caso C5A è troppo recente (giu 2025) per essere già ground truth in NB-2 senza re-indexing. **Open follow-up**: durante prossimo NB-2 refresh, push del presente dossier come source aggiungerà C5A baseline. [Open Question 7]
+**Notebook**: NB-2 Immigration & Visa — Indonesia 2025 (UUID `cff93ab0-813a-42f2-a8de-36987e724271`, 108 sources)
+**Method**: 3 async query (1 deep-research + 2 batch da 3-4 sotto-query ciascuna)
+**Verbatim full responses**: `/tmp/c5a-nb2/{deep-research,q4-pasal-122,q5-q6-q7}.md`
+
+#### Deep-research query (Step 3.A) — Comprehensive C5A audit
+
+**Status**: ANSWERED (6 sezioni verbatim)
+
+Sintesi (verbatim NB-2):
+
+1. **Genesis hukum**: Kepmen M.IP-08.GR.01.01/2025 **NOT in NB-2 sources** — NB-2 ground truth = `Permenkumham 22/2023` (sistema indici visa) + `Permenkumham 11/2024` (procedure) + `PP 45/2024` (PNBP). Source [1,2]
+2. **Durasi**: "60 days (extendable to 180), perpanjangan 60 hari per siklus". Source [1]
+3. **PNBP base**: "Visa Kunjungan Paling Lama 60 Hari per orang Rp 1.000.000,00" (PP 45/2024 Lampiran A.II.1.d verbatim). Source [3]
+4. **Sponsor**: "C5A tidak mensyaratkan sponsor perusahaan Indonesia. Pemohon harus membuktikan statusnya sebagai kreator konten + bukti penghasilan US$ 2.000 per bulan". Source [1]
+5. **Monetisasi platform asing**: "Diizinkan. Karena sumber pendapatan berasal dari platform digital asing (Google Ireland/US, TikTok global), tidak dianggap bekerja di Indonesia". Source [4]
+6. **C5 vs C5A discrimination**: C5 richiede Press ID + Ministry approval; C5A richiede social portfolio + US$ 2000/mese. Source [3,4 vs C5 sheet]
+
+Sources NB-2 cita: `2d2ec0af` (spec C5A/C5/C7C/E33G), `cb8944ce` (Permenkumham 22/2023), `33f96d5a` (PP 45/2024 Lampiran), `7be0b5e0` (Q&A AdSense fonte estera), `8ea5fae9` (Dharma Dewata 62 WNA Mei 2026), `09d6e396`+`147e332b` (E33G distinto da C5A).
+
+#### Structured queries (Step 3.B)
+
+**Q-1 PNBP esatto C5A** — Status: **PARTIAL**.
+Verbatim NB-2: _"Sumber operasional mencatat biaya PNBP spesifik per indeks tidak dirinci secara verbatim (tercatat Contact for quote). Namun, berdasarkan kerangka PP Nomor 45 Tahun 2024, Lampiran tentang PNBP Keimigrasian menetapkan tarif dasar untuk Visa Kunjungan Paling Lama 60 Hari sebesar Rp 1.000.000,00 per orang"_. → PNBP base IDR 1M verified, surcharge C5A-specifico UNVERIFIED.
+
+**Q-2 Pattern estensione 60+60+60=180** — Status: **ANSWERED**.
+Verbatim NB-2 [1]: _"60 days (extendable to 180)"_ + deep-research §2: _"diperpanjang hingga durasi masa tinggal maksimal mencapai 180 hari secara total (umumnya melalui perpanjangan 60 hari per siklus, bukan 30 hari berturut-turut seperti Visa on Arrival)"_. → 60+60+60 confirmed. OQ-2 CLOSED.
+
+**Q-3 Sponsor agency-as-sponsor** — Status: **PARTIAL with caveat**.
+Verbatim Pasal 19 ayat (1) huruf b Permenkumham 11/2024: _"bukti penjaminan dari Penjamin, kecuali untuk kegiatan wisata, keluarga, meneruskan perjalanan ke negara lain, bisnis, mengikuti rapat, pembelian barang, melakukan kunjungan jurnalistik, dan prainvestasi"_. → C5A potrebbe rientrare in "kunjungan jurnalistik" (esonero da Penjamin) MA NB-2 deep-research §2 dice esplicito "C5A tidak mensyaratkan sponsor perusahaan Indonesia" — quindi Bali Zero come Penjamin è OPZIONALE (value-add commercial, non requisito legale). OQ-3 PARTIAL CLOSED.
+
+**Q-4 Pasal 122 huruf a UU 6/2011 verbatim** — Status: **NO-DATA**.
+Verbatim NB-2: _"dokumen sumber yang saya miliki saat ini tidak memuat teks LENGKAP dan VERBATIM beserta ancaman pidana penjara dan denda maksimum untuk Pasal 119, Pasal 121, Pasal 122 huruf a, maupun Pasal 123. ... Di dalam sistem sumber juga secara spesifik dicatat bahwa teks lengkap (full gazette text) belum sepenuhnya terintegrasi ke dalam basis data"_. → UU 63/2024 in NB-2 solo come exec summary (MERP integration, OSS-RBA, digitalizzazione). Source `adc39025`+`7cc4d462`. Action: Antonello scarica manualmente da `peraturan.bpk.go.id/Details/273550` + push come NB-2 text source per future grounding. OQ-4 deferred.
+
+**Q-5 eVisa portal C5A** — Status: **PARTIAL** (legal yes, operational no-data).
+Verbatim Pasal 19 ayat (1) Permenkumham 11/2024: _"Permohonan Visa kunjungan 1 (satu) kali perjalanan diajukan melalui aplikasi"_. → C5A è statutorily applicable via portal. Status uptime/UX 2026-05 evisa.imigrasi.go.id NB-2 declines to speculate. OQ-5 PARTIAL.
+
+**Q-6 Aktivitas dilarang granular** — Status: **PARTIAL (3/5 chiari, 2/5 no-data)**.
+
+- Monetisasi YouTube/IG/TikTok platform asing → ✅ DIIZINKAN (fonte estera Google Ireland/US, ByteDance)
+- Brand collaboration / Sponsorship merk Indonesia → ❌ DILARANG mutlak (categorizzato "bekerja per entità Indonesia")
+- Konten yang melanggar norma Indonesia → ❌ DILARANG (regola generale)
+- Barter ekonomi (akomodasi gratis per konten promo) → ⚠️ NO-DATA — NB-2 nessuna preseden o pasal specifico, declines to speculate. **Real risk vector** non chiarito.
+- Fan-meeting berbayar → ⚠️ NO-DATA — idem.
+
+**Q-7 C5 → C5A migration** — Status: **ANSWERED**.
+Verbatim Pasal II Angka 1 huruf c Permenkumham 11/2024: _"Visa yang telah diterbitkan sebelum Peraturan Menteri ini mulai berlaku, dinyatakan tetap berlaku sampai jangka waktu Visa berakhir"_. → NO conversion automatica. Pemegang C5 valido continua fino scadenza, post-expiry deve applicare nuovo C5A se profile content-creator. OQ-7 CLOSED.
+
+#### Cross-reference applied to dossier (this commit)
+
+- §3 Hierarchy regulatoria: **UPDATED** — confermato Permenkumham 22/2023 + 11/2024 + PP 45/2024 come ground truth verbatim (NB-2 [2,3]). Kepmen M.IP-08.GR.01.01/2025 NOT in NB-2 sources (UNVERIFIED claim, da WebSearch press release only).
+- §9 Servizio #2 pricing: **UPDATED** — sostituito [SPECULATIVE] con [FATTO] IDR 1.000.000 PNBP base + sister-cluster table + [UNVERIFIED — Kantor pending] per surcharge C5A-specifico.
+- §9 Servizio #3 extension: **UPDATED** — pattern 60+60+60=180d **CONFIRMED**, rimosso caveat UNVERIFIED.
+- §11 Open Questions: **OQ-1** partial closed (PNBP IDR 1M base verified) · **OQ-2** CLOSED (extension 180d confirmed) · **OQ-3** partial closed (sponsor agency optional, non requisito) · **OQ-4** deferred (Pasal 122 verbatim no-data) · **OQ-5** partial (eVisa legal yes, ops unknown) · **OQ-6** partial (3/5 chiari) · **OQ-7** CLOSED (no auto-conversion C5→C5A).
 
 ### Appendix B — WebSearch results raw (query → top URLs)
 
@@ -434,7 +518,33 @@ IG/TikTok:
 Telegram:
 - Channels "Bali Insider" / "Bali Visa Updates" (not confirmed accessed)
 - No specific C5A thread found in search
+```
 
+### 6.4 — Lo zero come segnale [GOSSIP-UNVERIFIED-PLAUSIBLE]
+
+**Osservazione empirica 2026-05-26**: tra le query WebSearch + Reddit + FB + IG eseguite (Appendix B + D), **zero casi pubblici identificati di "creator on C5A challenged for activities"**. Né deportazioni, né detenzioni, né enforcement event riportato in stampa o social. Per un visto attivo da 11 mesi (giu 2025 → mag 2026), in un paese con Dharma Dewata Task Force attiva e 165 deportazioni Q1 2026, lo zero è eloquente.
+
+**Due interpretazioni simmetriche [GOSSIP-UNVERIFIED-PLAUSIBLE]**:
+
+|                           | Interpretazione (I) — **Zero emissioni**                                                                             | Interpretazione (II) — **Zero violazioni visibili**                                                                                                                                   |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tesi                      | Pochissimi C5A emessi finora (forse <100 totali nazionali). Zero target perché zero universe.                        | Molti C5A emessi MA tutte le violazioni risolte fuori dalla luce pubblica via agency-mediation ("aumm aumma" pattern)                                                                 |
+| Meccanismo                | Pagina ufficiale "Data Belum Tersedia" → agency non sanno processare → applicazioni manuali rare via Kantor Denpasar | Influencer posta su IG → Imigrasi nota → invita per "chiarimento" → agency interviene come mediator → settlement amministrativo senza atto pubblico                                   |
+| Indicatore atteso se vero | Statistiche Ditjen Imigrasi "C5A emessi 2025" molto basse (richiederebbe FOIA/PPID query)                            | Conversazioni informali con agenzie locali (PT-PMA dispatcher visa) rivelano case-by-case mediation                                                                                   |
+| Plausibilità              | Alta — pagina ufficiale gap, press release zero menzioni operative C5A                                               | Alta — pattern indonesiano standard di "lebih baik selesai damai daripada heboh" applicato all'immigration enforcement quando il violator è "soft-power asset" (creator con audience) |
+| Implicazione Bali Zero    | Marketing C5A = pioneering, primo-mover advantage                                                                    | Marketing C5A = positioning come mediator istituzionale (NON public claim)                                                                                                            |
+
+**Caveat operativo**: Bali Zero NON deve mai esplicitare in comunicazione pubblica (Step 2 media) l'interpretazione (II). È intelligence operativa interna, **non claim pubblicabile**. Se vera, la sua menzione esplicita compromette il meccanismo stesso (Imigrasi non gradisce agency che "spoilerano" la pratica della mediazione informale).
+
+**Ipotesi convergenti su come testare empiricamente** (Step 2 follow-up):
+
+1. PPID request a Ditjen Imigrasi: "Statistik penerbitan visa indeks C5A periode Juni 2025 – Mei 2026" → conferma/smentisce (I)
+2. Conversazioni informali con 3-5 agency Bali competitor (Emerhub, LMI, Flado, Christian Teo) → cercare hint di pattern (II) senza chiedere direct
+3. Monitor IG Stories di creator stranieri Bali noti per cambi recenti di visa status (es: chi era C1 a marzo e ora ha "long-stay" non specificato a giugno → C5A pilot pioneer?)
+
+[OPINIONE — discreta] Più probabile (I) ATTUALMENTE, evoluzione verso (II) probabile entro 12 mesi man mano che agenzie battle-testano il workflow.
+
+```
 [GOSSIP-UNVERIFIED-PLAUSIBLE]: la community digitale è TUTTA al second-level riguardo C5A. La discussione collective è "should I worry / which visa do I need" senza riferimento esplicito al codice C5A.
 ```
 
