@@ -31,6 +31,8 @@ Kill-switch env: AGENT_LEASE_ENFORCEMENT=false → check always exits 0.
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
 import json
 import logging
 import os
@@ -70,6 +72,15 @@ AUDIT_PATH = Path(os.path.expanduser("~/.agent/leases.jsonl"))
 KEY_PREFIX = "agent_lock:"
 DEFAULT_TTL_S = 300
 DEFAULT_LANE = "default"
+
+# Option B (2026-05-29): when Redis is unreachable, `check` falls back to a
+# local flock advisory lock so a same-machine race on the SAME path inside the
+# same commit window produces a visible WARN. The flock is held ONLY for the
+# lifetime of the short check subprocess, so it can never deadlock a commit.
+# This is observability defense-in-depth, NOT a hard serializer (cross-node
+# Pro/Mini races are not covered). HARD constraint preserved: this path always
+# returns exit 0 (never blocks on Redis outage).
+FALLBACK_LOCK_DIR = Path(os.path.expanduser("~/.agent/lease-fallback"))
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -150,6 +161,65 @@ def build_key(resource: str) -> str:
     if resource.startswith(KEY_PREFIX):
         return resource
     return f"{KEY_PREFIX}{resource}"
+
+
+def _fallback_lock_path(path: str) -> Path:
+    """Map a resource path to its flock file under FALLBACK_LOCK_DIR.
+
+    The resource path contains '/', so we hash it for a flat lock filename.
+    """
+    digest = hashlib.sha256(path.encode("utf-8")).hexdigest()[:32]
+    return FALLBACK_LOCK_DIR / f"{digest}.lock"
+
+
+def flock_fallback_check(path: str, *, task_id: Optional[str] = None) -> bool:
+    """Option B: best-effort same-machine advisory lock used when Redis is down.
+
+    Tries a NON-blocking exclusive flock on a per-path lock file. Returns:
+      - True  → lock acquired cleanly (no same-machine contention seen).
+      - False → another local process holds it RIGHT NOW (visible WARN logged).
+
+    The HARD constraint is preserved by the CALLER, which always returns exit 0
+    regardless of this result — this is an observability signal, not a gate.
+    The flock is released as soon as the fd is closed (i.e. when the short
+    `check` subprocess exits), so it can never deadlock a commit. We also fold
+    in a `degraded=true` audit record so a daily report can surface how often
+    the Redis-down fallback path was taken.
+    """
+    _audit("check-degraded", path=path, task_id=task_id, degraded=True,
+           backend="flock-fallback")
+    try:
+        FALLBACK_LOCK_DIR.mkdir(parents=True, exist_ok=True)
+        lock_path = _fallback_lock_path(path)
+        # Open (create) the lock file; keep the fd open for the subprocess life.
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
+    except OSError as e:  # pragma: no cover — fs error, never block
+        LOG.warning("flock fallback unavailable (%s) — passing through", e)
+        return True
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # Acquired. Stamp the holder for human debugging. Intentionally do NOT
+        # close fd here so the lock survives until process exit.
+        try:
+            os.ftruncate(fd, 0)
+            os.write(fd, json.dumps({
+                "task_id": task_id or "",
+                "pid": os.getpid(),
+                "host": socket.gethostname(),
+                "ts": time.time(),
+            }, separators=(",", ":")).encode("utf-8"))
+        except OSError:
+            pass
+        return True
+    except (OSError, BlockingIOError):
+        # Held by another local process right now — coarse same-machine race.
+        os.close(fd)
+        LOG.warning(
+            "LEASE FALLBACK CONTENTION: another local process is checking the "
+            "same path '%s' while Redis is down (this is an observability "
+            "WARN, the commit is NOT blocked)", path,
+        )
+        return False
 
 
 def _audit(event: str, **fields) -> None:
@@ -484,7 +554,13 @@ def _cmd_check(args) -> int:
     try:
         lease = AgentLease()
     except RedisUnavailable as e:
-        LOG.warning("Redis unavailable — passing through (no enforcement): %s", e)
+        # Option B (2026-05-29): Redis down → flock fallback (same-machine
+        # observability) + degraded audit line. HARD constraint preserved:
+        # we ALWAYS return 0 here — flock contention only emits a WARN, it
+        # never blocks the commit (the flock itself is non-blocking and is
+        # released at subprocess exit).
+        LOG.warning("Redis unavailable — flock fallback (no hard enforcement): %s", e)
+        flock_fallback_check(args.path, task_id=our_task_id)
         return 0
     try:
         blocking, holder = lease.check_path(args.path, our_task_id=our_task_id)
