@@ -39,7 +39,7 @@ class TestHmacVerify:
     def test_sign_and_verify_roundtrip(self) -> None:
         from hmac_verify import sign_request, verify_signature
 
-        secret = "test-secret-123"
+        secret = "test-secret-123"  # pragma: allowlist secret
         payload = '{"notebook_id": "nb-1", "question": "hello"}'
         sig = sign_request(payload, secret)
 
@@ -50,7 +50,7 @@ class TestHmacVerify:
     def test_verify_rejects_tampered_payload(self) -> None:
         from hmac_verify import sign_request, verify_signature
 
-        secret = "test-secret-123"
+        secret = "test-secret-123"  # pragma: allowlist secret
         payload = '{"notebook_id": "nb-1", "question": "hello"}'
         sig = sign_request(payload, secret)
 
