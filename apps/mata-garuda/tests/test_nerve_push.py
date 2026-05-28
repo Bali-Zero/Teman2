@@ -1,6 +1,8 @@
 """Tests for bridge nerve — push side (Pro→Fly)."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from mata_garuda.bridge.envelope import Envelope
@@ -212,3 +214,97 @@ def test_push_once_accepts_202():
 
     assert stats == {"sent": 1, "acked": 1, "errors": 0}
     fake_xack.assert_called_once()
+
+
+# ── W3 cicatrix 2026-05-22 push-side silent-idle heartbeat ─────────────
+
+
+def test_push_once_idle_increments_heartbeat_counter(tmp_path: Path, monkeypatch):
+    """W3 cicatrix 2026-05-22 — push_once must emit a heartbeat every N
+    consecutive empty-stream ticks, mirroring pull-side W1. Without it the
+    push cron is indistinguishable from a dead cron during quiet periods."""
+    # Redirect BRIDGE_CURSOR_PATH to tmp so the sidecar lands in test scope.
+    monkeypatch.setenv("BRIDGE_PUSH_HEARTBEAT_IDLE_TICKS", "3")
+    monkeypatch.setattr(
+        "mata_garuda.bridge.nerve.BRIDGE_CURSOR_PATH",
+        tmp_path / "bridge_cursor.json",
+    )
+    import importlib
+    import mata_garuda.bridge.nerve as nerve_mod
+    importlib.reload(nerve_mod)
+    # Re-apply monkeypatch after reload (module reload reset the patched attr).
+    monkeypatch.setattr(
+        "mata_garuda.bridge.nerve.BRIDGE_CURSOR_PATH",
+        tmp_path / "bridge_cursor.json",
+    )
+
+    sidecar = tmp_path / "bridge-push-idle-ticks.json"
+    empty_read = MagicMock(return_value=[])
+
+    # Ticks 1+2: counter accumulates.
+    for expected in (1, 2):
+        nerve_mod.push_once(
+            backend_url="https://x", api_key="k",
+            http_post=MagicMock(),
+            redis_xreadgroup=empty_read,
+            redis_xack=MagicMock(),
+        )
+        assert sidecar.exists()
+        assert json.loads(sidecar.read_text())["count"] == expected
+
+    # Tick 3: threshold hit → heartbeat fires, counter resets.
+    nerve_mod.push_once(
+        backend_url="https://x", api_key="k",
+        http_post=MagicMock(),
+        redis_xreadgroup=empty_read,
+        redis_xack=MagicMock(),
+    )
+    assert json.loads(sidecar.read_text())["count"] == 0
+
+
+def test_push_once_non_idle_resets_heartbeat_counter(tmp_path: Path, monkeypatch):
+    """A tick that sends >0 messages OR errors out must clear the sidecar
+    — heartbeat is only for genuine quiet periods."""
+    monkeypatch.setenv("BRIDGE_PUSH_HEARTBEAT_IDLE_TICKS", "5")
+    monkeypatch.setattr(
+        "mata_garuda.bridge.nerve.BRIDGE_CURSOR_PATH",
+        tmp_path / "bridge_cursor.json",
+    )
+    import importlib
+    import mata_garuda.bridge.nerve as nerve_mod
+    importlib.reload(nerve_mod)
+    monkeypatch.setattr(
+        "mata_garuda.bridge.nerve.BRIDGE_CURSOR_PATH",
+        tmp_path / "bridge_cursor.json",
+    )
+
+    sidecar = tmp_path / "bridge-push-idle-ticks.json"
+    empty_read = MagicMock(return_value=[])
+
+    # Prime with 2 idle ticks.
+    for _ in range(2):
+        nerve_mod.push_once(
+            backend_url="https://x", api_key="k",
+            http_post=MagicMock(),
+            redis_xreadgroup=empty_read,
+            redis_xack=MagicMock(),
+        )
+    assert json.loads(sidecar.read_text())["count"] == 2
+
+    # Non-idle tick: 1 message sent successfully.
+    env = Envelope(type="crm.x", source="pro", priority=3, payload={"a": 1})
+    items_read = MagicMock(return_value=[{"id": "1-0", "envelope": env}])
+    # Route crm.x to a valid endpoint — patch PUSH_ROUTING.
+    monkeypatch.setattr(
+        "mata_garuda.bridge.nerve.PUSH_ROUTING",
+        {"crm.x": "/api/test/x"},
+    )
+    good_post = MagicMock(return_value={"status_code": 200, "json": {}, "text": ""})
+
+    nerve_mod.push_once(
+        backend_url="https://x", api_key="k",
+        http_post=good_post,
+        redis_xreadgroup=items_read,
+        redis_xack=MagicMock(),
+    )
+    assert not sidecar.exists()
