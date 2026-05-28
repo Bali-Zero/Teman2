@@ -79,9 +79,9 @@ primary_region = 'sin'
 [[vm]]
   # 2026-05-09: api OOM-killed a worker at 1GB during production
   # traffic/cold-start imports. Keep api at 2GB like rag.
-  memory = '2gb'
+  memory = '3gb'  # 2026-05-28 EMERGENCY upgrade 2gb→3gb (api machine restart loop, cicatrix W60)
   cpu_kind = 'shared'
-  cpus = 1
+  cpus = 2  # 2026-05-28 EMERGENCY upgrade 1→2 (cold-start import 7min on 1 vCPU)
   processes = ['api']
 
 [[vm]]
