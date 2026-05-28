@@ -2,7 +2,7 @@
 
 This directory is for local-only generated registry artifacts for:
 
-`~/Desktop/wa-chats-MASTER-2026-05-26/`
+the local WhatsApp export root used to build the registry
 
 Expected generated files:
 

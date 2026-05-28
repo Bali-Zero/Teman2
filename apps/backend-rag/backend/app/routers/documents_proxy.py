@@ -5,6 +5,7 @@ Serves Google Drive documents/images through backend proxy to avoid Google brand
 Used for passport and document previews in CRM.
 """
 
+import asyncio
 import logging
 import re
 from typing import Any
@@ -12,13 +13,42 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
+from google.auth.transport import requests as google_auth_requests
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.services.integrations.google_drive_service import GoogleDriveService
+from backend.services.integrations.service_account_drive_service import (
+    ServiceAccountDriveService,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/documents", tags=["Documents Proxy"])
+
+
+async def _get_drive_access_token() -> str:
+    """Return a fresh Bearer token from the Service Account credentials.
+
+    Replaces the legacy `GoogleDriveService.get_valid_token(SYSTEM_USER_ID)`
+    path: that path was permanently disabled (logs `OAuth SYSTEM disabled —
+    Drive operations use ServiceAccountDriveService`) and returned None,
+    so every thumbnail / proxy call 503'd with 'Google Drive not connected'.
+    Service Account + Domain-wide Delegation is the canonical drive auth
+    for the backend — same pattern as crm_enhanced.py:46-48.
+    """
+    drive_service = ServiceAccountDriveService()
+    # google-auth's `credentials.refresh()` is sync — offload to a thread
+    # so we don't block the event loop on the TLS handshake to oauth2.googleapis.com.
+    if not drive_service.credentials.token:
+        await asyncio.to_thread(
+            drive_service.credentials.refresh, google_auth_requests.Request()
+        )
+    token = drive_service.credentials.token
+    if not token:
+        raise HTTPException(
+            status_code=503,
+            detail="Google Drive Service Account token refresh failed",
+        )
+    return token
 
 
 @router.get("/proxy/{file_id}")
@@ -37,15 +67,7 @@ async def proxy_drive_file(
     Returns:
         Binary file content with appropriate mime type
     """
-    drive_service = GoogleDriveService(db_pool)
-
-    # Use SYSTEM token (team-wide OAuth)
-    access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
-    if not access_token:
-        raise HTTPException(
-            status_code=503,
-            detail="Google Drive not connected. Please connect via Settings → Integrations.",
-        )
+    access_token = await _get_drive_access_token()
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -114,14 +136,7 @@ async def get_drive_thumbnail(
     Returns:
         JPEG thumbnail image
     """
-    drive_service = GoogleDriveService(db_pool)
-    access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
-
-    if not access_token:
-        raise HTTPException(
-            status_code=503,
-            detail="Google Drive not connected",
-        )
+    access_token = await _get_drive_access_token()
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:

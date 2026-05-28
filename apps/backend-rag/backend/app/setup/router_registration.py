@@ -32,6 +32,7 @@ def include_routers(api: FastAPI) -> None:
         agents,
         analytics,
         article_composer,
+        asset_upload,  # [P1.2 2026-05-26] Tigris upload proxy for WR2/WR3 asset hosting
         auth,
         autonomous_agents,
         autonomous_execution,
@@ -327,6 +328,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(newsletter.router)
     api.include_router(blog_ask.router)  # AskZantara widget on public blog articles
     api.include_router(article_composer.router)  # Manual article creation with enrichment
+    api.include_router(asset_upload.router)  # [P1.2 2026-05-26] /api/assets/upload Tigris proxy
 
     # News/Intel Feed routers
     api.include_router(news.router)
@@ -433,6 +435,7 @@ def include_light_routers(api: FastAPI) -> None:
         admin_zoho_auth,
         analytics,
         article_composer,
+        asset_upload,  # [P1.2 2026-05-26] Tigris upload proxy (light variant)
         auth,
         bridge,  # [BRIDGE] Pro<->Fly bidirectional bridge (Phase 1 Sinapsi)
         cell_status,
@@ -639,6 +642,7 @@ def include_light_routers(api: FastAPI) -> None:
     # Blog routers (light)
     api.include_router(newsletter.router)
     api.include_router(article_composer.router)
+    api.include_router(asset_upload.router)  # [P1.2 2026-05-26] /api/assets/upload Tigris proxy (light variant)
 
     # Performance router
     api.include_router(performance.router)

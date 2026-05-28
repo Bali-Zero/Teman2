@@ -27,6 +27,14 @@ logger = logging.getLogger(__name__)
 SERVICES = [
     # === single_entry_visas ===
     {
+        "code": "visa_voa",
+        "name": "B1 Visa on Arrival (VOA)",
+        "category": "single_entry_visa",
+        "base_price": 750000,
+        "duration": 30,
+        "notes": "Visa on Arrival, 30 days, extendable once",
+    },
+    {
         "code": "visa_c1_tourism",
         "name": "C1 Tourism Visa",
         "category": "single_entry_visa",
@@ -75,6 +83,14 @@ SERVICES = [
         "notes": "",
     },
     # === visa_extensions ===
+    {
+        "code": "voa_extension",
+        "name": "B1 Visa on Arrival Extension",
+        "category": "visa_extension",
+        "base_price": 850000,
+        "duration": 30,
+        "notes": "+30 days",
+    },
     {
         "code": "ext_c1_tourism",
         "name": "C1 Tourism Extension",

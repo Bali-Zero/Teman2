@@ -206,6 +206,21 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         notes="KITAP requires 5+ years continuous KITAS. Police clearance 3-month validity.",
     ),
     # ── Tourist / Short Stay ─────────────────────────────────────────────────
+    "visa_voa_extension": RenewalRule(
+        rule_id="visa_voa_extension",
+        document_types=("visa",),
+        visa_type_patterns=("b1", "voa", "visa on arrival", "arrival"),
+        processing_days=5,
+        lead_time_days=10,
+        recommended_start_days=14,
+        renewal_pricing_key="B1 Visa on Arrival Extension",
+        required_docs=(
+            "valid_passport",
+            "current_visa_stamp",
+        ),
+        complexity=1.0,
+        notes="VOA extension adds +30 days. Only 1 extension allowed per VOA entry.",
+    ),
     "visa_tourist_extension": RenewalRule(
         rule_id="visa_tourist_extension",
         document_types=("visa",),

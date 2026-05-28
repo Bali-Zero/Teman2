@@ -10,6 +10,7 @@ import {
 } from "@balizero/core";
 
 const VISA_OPTIONS = [
+  { code: "B1", label: "B1 Visa on Arrival (VOA)" },
   { code: "B211A", label: "B211A Tourism" },
   { code: "C1", label: "C1 Tourism" },
   { code: "C2", label: "C2 Business" },
