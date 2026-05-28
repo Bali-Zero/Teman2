@@ -5,6 +5,218 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED + LESSON: W61 — `add_to_dlq` stripped autopilot_attempts on re-add → 4-job storm loop 7 days, 4676 escalations (2026-05-28)
+
+_Discovered: 2026-05-28 08:00-09:30 WITA durante orchestrator session zero-baseline cleanup · Root cause traced by deep-researcher subagent · Severity: P1 (4 cron in retry storm 7gg, 4676 escalations accumulated, sentinel noise structural) · Status: **FIXED commit on feat/fix-dlq-w61-preserve-attempts-2026-05-28**_
+
+**TRAUMA:** `shared/escalations_pro.jsonl` accumulated **4676 entries** between 2026-05-21 and 2026-05-28, 99% from 4 cron jobs in infinite retry loop emitting `dlq_autopilot_escalation` every ~30sec (prime_tunnel, post_publish_webhook, post_publish_poller, zombie_hunter). All entries had `error_summary=""` (empty) priority=NORMAL status=pending. Telegram alerts blackened by W57 suppression cooldown (correctly working).
+
+**Root cause traced by deep-researcher 2026-05-28 09:00 WITA** (file: `research/operations/2026-05-28-dlq-autopilot-retry-storm.md`):
+
+Two compounding bugs:
+
+1. **`launchagent-state-bridge` died 2026-05-26 13:28** (no KeepAlive in plist) → state files in `~/.agent/decisions/state/*.last.json` froze → sentinel parser sees stale "last_ts" → marks job as failing → calls `add_to_dlq()`.
+
+2. **`add_to_dlq` (scripts/sentinel_lib/repairer.py:120)** strips `autopilot_attempts` on re-add via list-rebuild pattern:
+   ```python
+   data["queue"] = [e for e in data["queue"] if e.get("job") != job]  # removes existing
+   data["queue"].append({..., "status": "needs_aider"})  # fresh entry, attempts=0
+   ```
+   Combined with `dlq_autopilot.py:485-489` which fires `escalating directly` for `len(error) < MIN_ERROR_LEN` (empty error_summary triggers it) → infinite loop: sentinel re-adds → attempts reset to 0 → dlq_autopilot escalates directly without incrementing past max_attempts(10) → never transitions to TERMINAL.
+
+**ANTIBODY (shipped 2026-05-28):**
+
+1. **W61 patch `add_to_dlq`**: preserve `autopilot_attempts`, `status`, `first_abandoned_at`, `manual_terminal_reason` from existing entry across re-add. Overlay-pattern: `new_entry.update(preserved)` after rebuild. Preserved fields win over defaults — TERMINAL stays TERMINAL even if sentinel re-detects same failure.
+
+   ```python
+   existing = next((e for e in data["queue"] if e.get("job") == job), None)
+   preserved = {}
+   if existing:
+       for key in ("autopilot_attempts", "status", "first_abandoned_at", "manual_terminal_reason"):
+           if key in existing:
+               preserved[key] = existing[key]
+   # ... rebuild queue + append new_entry ...
+   new_entry.update(preserved)
+   ```
+
+2. **Test coverage**: 2 nuovi unit test in `scripts/tests/test_sentinel_v33.py::TestDLQTerminalState`:
+   - `test_w61_preserves_autopilot_attempts_on_re_add` — verifica `attempts=7` persiste
+   - `test_w61_preserves_terminal_status_on_re_add` — verifica TERMINAL non viene overwritten
+
+3. **Tactical mitigation** (parallel a W61 fix): 4 storm jobs manualmente forced TERMINAL in `~/.agent/decisions/dlq.json` con `manual_terminal_reason="orchestrator 2026-05-28: storm loop"`. Backup `/tmp/dlq-backup-pre-storm-cleanup-2026-05-28.json`.
+
+4. **launchagent-state-bridge KeepAlive fix**: plist patched `<key>KeepAlive</key><true/>` (era solo RunAtLoad=true → muore dopo exit). Backup `~/Library/LaunchAgents/com.nuzantara.launchagent-state-bridge.plist.bak-pre-keepalive-2026-05-28`. Reload OK, log mostra "Written 4/4 state files" attivo.
+
+**EMPIRICAL EVIDENCE storm STOPPED**: escalations rate 4684→4684 ZERO new in 10min observation post-fix. Pre-fix era ~50/h (constante 7gg).
+
+**GOTCHA:**
+
+- L'incremento `autopilot_attempts += 1` (dlq_autopilot.py:634) accade nel `else` branch dopo skipped_preflight. Quindi tecnicamente DOVREBBE incrementare. MA viene immediatamente strippato dalla prossima chiamata sentinel `add_to_dlq()` che ricostruisce la queue. È il combo a creare il loop, non un singolo bug.
+- `add_to_dlq()` ha docstring "Idempotent — won't add duplicate entries". È idempotente sulla key (un job = una entry) MA NON è idempotente sui campi computed (attempts, status). Il termine "idempotent" è fuorviante in questo contesto.
+- L'altro caller `add_to_dlq(job, aider_attempts=N>0)` produce `status="needs_claude_code"` come default — il W61 fix preserve overlay manterrà quella semantica solo per entry esistenti TERMINAL/in-progress. Aider attempts counter è altro field separato, non impattato.
+- Telegram suppression W57 funzionante correttamente è la ragione per cui operator NON ha visto 4676 escalation in 7 giorni — è feature, non bug. Future enhancement (proposta): weekly digest "alert suppressed by cooldown last 7 days".
+- `prime_tunnel` non era falso positivo: cloudflared `config-prime.yml` deleted ad un certo punto → daemon non parte → status=failed legit. Separate fix needed (out of scope W61).
+
+**Reference**:
+
+- Patch: `scripts/sentinel_lib/repairer.py:120-160` (commit pending PR feat/fix-dlq-w61-preserve-attempts-2026-05-28)
+- Tests: `scripts/tests/test_sentinel_v33.py:475-516` (5/5 PASS)
+- Investigation: `research/operations/2026-05-28-dlq-autopilot-retry-storm.md`
+- Tactical mitigation: dlq.json patched 09:18 WITA, escalations stopped 09:18-09:28 monitored
+- launchagent fix: `~/Library/LaunchAgents/com.nuzantara.launchagent-state-bridge.plist`
+- Family: sister of W53 (TERMINAL gate enforcement), W54 (state file ts must be float), W57 (Telegram suppression). Cross-link: orchestrator zero-baseline cleanup session `research/operations/2026-05-28-zero-point-recovery.md`.
+
+---
+
+### ✅ RESOLVED + LESSON: W60 — Fly api machine flapping 3.5h post wa-mirror-12bug-batch deploy tail effect (2026-05-28)
+
+_Discovered: 2026-05-28 08:45 WITA via backend-verifier subagent during orchestrator zero-baseline audit · Self-recovered ~01:00 UTC same day · Mitigation PR #903 shipped (memory 2gb→3gb + cpus 1→2) per future-proofing · Severity: P0 → P2 downgrade after self-recovery · Status: **AUTO-RECOVERED + future-proofing in flight**_
+
+**TRAUMA:** api machine `7847d95ce257d8` (Fly nuzantara-rag, process group `api`, shared-cpu-1x:2048MB) reported `1 total, 1 critical` health check status from 2026-05-27T21:05:07Z for ~3.5 hours. Fly proxy logs at 00:45:35Z: `"could not find a good candidate within 40 attempts at load balancing. last error: [PR01] no known healthy instances found for route tcp/443"`. External curl `--max-time 15 https://nuzantara-rag.fly.dev/health` → http=000 timeout (2× consecutive from Pro to Fly Sin).
+
+Compounding internal log evidence:
+
+- `00:44:43Z health[...] Health check 'servicecheck-00-http-8080' on port 8080 has failed`
+- `00:44:59Z app[...] ERROR olympus.guardian Heartbeat cycle failed: asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation`
+- `00:48:54Z app[...] team_timesheet_service._auto_logout_loop` same asyncpg drop
+
+The 1-vCPU + 2GB api machine couldn't handle the post-deploy load surge after PR #870 (wa-mirror-12bug-batch) shipped at 2026-05-26 01:40Z. Cold-start uvicorn+presidio+torch+transformers import chain takes ~7min on shared-cpu-1x; combined with CRM Guardian bulk load + olympus heartbeat + asyncpg pool churn, exceeded available CPU/RAM during respawn.
+
+**Detection mechanism (notable)**: discovered via orchestrator session 2026-05-28 mcp-health agent dispatch reporting `nuzantara-rag.fly.dev` HTTP 000 timeout — NOT via Telegram alert (alerts ciechi per W61 storm + W57 cooldown). Without this synchronous audit, the flap would have persisted invisible.
+
+**ANTIBODY (multi-layer):**
+
+1. **Self-recovery**: by 2026-05-28T01:01:24Z, machine state returned to `1 total, 1 passing` autonomously. Fly's restart logic recovered the worker. Latency post-recovery 130-300ms steady 3/3 curl test.
+
+2. **Future-proofing PR #903** (orchestrator session 2026-05-28 09:00 WITA, surgical 2-line fly.toml patch):
+
+   ```diff
+   - memory = '2gb'
+   + memory = '3gb'  # 2026-05-28 EMERGENCY upgrade
+   - cpus = 1
+   + cpus = 2       # 2026-05-28 EMERGENCY upgrade
+   ```
+
+   Why subset of PR #859 (open since 2026-05-25): #859 had 40+ conflict files from 3-day drift on CODEOWNERS/workflows/migrations, rebase = hours of work, api needed fix NOW. Only 2 valid deltas brought over (grace_period 60s→300s from #859 was obsolete — Fly capped grace_period upstream to 60s, no longer settable).
+
+3. **PR #859 closed** as superseded (`gh pr close 859 --comment "Superseded by #903"`).
+
+4. **W41 W42 W59 hooks active** prevent future migration/branch hijack regressions but DON'T cover Fly machine sizing. Future enhancement: emit Telegram alert when `1 total, 1 critical` persists >5min (NOT just on health pass/fail oscillation).
+
+**GOTCHA:**
+
+- `fly.toml` is in CLAUDE.md off-limits hook guard list. The hook **itself** says: _"Se la modifica è intenzionale, fai unstage e commetti con --no-verify + spiegazione."_ W60 fix used `--no-verify` with spiegazione in commit message. This IS the spiegazione, not a bypass.
+- `grace_period = '300s'` was historical (PR #859 spec) but Fly platform has since enforced 60s cap upstream. Setting 300s gets silently ignored. The fly.toml comment line 245 already says: _"Fly now caps health-check grace periods at 60s"_.
+- mcp-health agent successfully discriminated stdio JSON-RPC layer ("nuzantara-mcp child alive") from upstream HTTP target ("nuzantara-rag.fly.dev unreachable") — this is a good MCP-design pattern: a degraded MCP is not the same as a down MCP, and the diagnostic must distinguish.
+- post-recovery there were still `ConnectionDoesNotExistError` periodic — points to a Postgres pool config issue (likely pool_recycle / connect_timeout). Out of scope for W60 fix, separate investigation needed.
+- The 2GB memory was set 2026-05-09 specifically for OOM (`memory = '2gb'  # 2026-05-09: api OOM-killed at 1GB`). 3GB is double-margin protective.
+
+**Reference**:
+
+- Commit: `99166dce9` on `feat/fly-api-emergency-2026-05-28`
+- PR: #903 (auto-merge enabled, awaiting CI green)
+- Closed: PR #859 (superseded)
+- Live empirical: `fly logs -a nuzantara-rag` 2026-05-28T00:42-01:00Z window
+- Detection: backend-verifier + mcp-health agents dispatched by orchestrator
+- Family: sister of W57 (wa-mirror self-healing W31 fly_machines_restart actuator), cousin of W31 (fly_machines_restart Cell actuator validated 2026-05-23)
+
+---
+
+### ⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28)
+
+_Discovered: 2026-05-28 09:00 WITA by general-purpose subagent during orchestrator wave-c-ops-triage · Severity: P2 (storage waste, sibling-race surface area increase) · Status: **REPORTED, no enforcement fix yet (broker has no auto-cleanup)**_
+
+**TRAUMA:** 6 worktrees under `.worktrees/ops-*` created during a parallel fan-out wave at 2026-05-26 14:00-14:23 UTC (PIDs 30081/34063/37516/41062/41637/63354 different agents). Each was supposed to TTL out at 60min per `scripts/agent_start.py` broker default. By the time orchestrator audit ran 2026-05-28 (34+ hours later), all 6 were still on disk:
+
+- `ops-wa-doc-req-worker-e2`
+- `ops-whatsapp-privacy-audit-worker-i`
+- `ops-worker-f-immigration-lifecycle`
+- `ops-worker-g-tax-payment-signals-wa`
+- `ops-worker-h-followup-risk`
+- `ops-worker-j-case-windows`
+
+Each had 3-5 "dirty" files (verified by triage agent: all were pure formatting noise — Black/Prettier reformat + timestamp `Generated UTC:` lines in summary md). ZERO unique commits vs `origin/feat/wr2-c5a-pilot-and-p1-structural-fixes-2026-05-26` (PR #891). The fan-out was 100% subsumed by PR #891 (34 commit ahead of main).
+
+**Why TTL was violated**:
+
+- `scripts/agent_start.py --cleanup` is **opt-in** — must be invoked manually. There's no cron LaunchAgent that runs `--cleanup` periodically.
+- Spawning agent didn't call `--release <task-id>` at exit (subagents don't have the broker concept exposed in their context).
+- The 6 worktrees had `.agent-task.json` metadata with `created_at` timestamps but no enforcement consumer reads them.
+
+**ANTIBODY (proposed, NOT yet shipped):**
+
+1. **Add LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily`** (or hourly): invokes `python scripts/agent_start.py --cleanup` automatically. Skip worktrees with dirty files > some threshold OR with very recent mtime (<10min, active session).
+
+2. **Add hook in `scripts/agent_start.py` to detect orphan**: at every `--list` invocation, surface worktrees older than 2× TTL as WARN. Operator sees warning in interactive session.
+
+3. **Broker-aware spawn convention**: subagent SDK should provide a `register_worktree_for_cleanup()` callback. Or simpler: orchestrator (when dispatching subagent) registers task-id in broker, broker auto-cleans at agent exit notification.
+
+4. **CI test**: `tests/integration/test_no_stale_worktrees.py` — fails CI if `.worktrees/` has entries with mtime > 24h. Forces hygiene at PR time.
+
+**TACTICAL MITIGATION applied 2026-05-28 09:15 WITA** (no fix shipped):
+
+- All 6 worktrees + branches manually droppato by orchestrator (verified non-blocking — content was in PR #891).
+- 1 nested worktree bug (W63) discovered concurrently and fixed.
+
+**GOTCHA:**
+
+- The `--cleanup` flag in `agent_start.py` is WIP-safe: it does NOT remove worktrees with uncommitted changes. So even if cron ran, the 6 ops worktrees would have stayed (each had pseudo-dirty formatting noise). The fix needs to be smarter than "TTL expired = drop".
+- Subagents spawned via the Agent tool create worktrees under `.claude/worktrees/agent-<id>/` (different path) and are auto-cleaned by the harness. The broker TTL violation specifically applies to the user-facing `.worktrees/` path used for manual or scripted lane spawns.
+- Sibling-race surface area grows with stale worktrees: each adds a checkout that another session may accidentally `cd` into and commit on. W59 ANTIBODY (BRANCH_EXPECTED hook) covers commit-time but not directory-context confusion.
+- The 6 stale worktrees contributed to the W59 incident family (sibling automation operating on shared trees). Cleanup is part of W59 long-term ANTIBODY.
+
+**Reference**:
+
+- Investigation: `/tmp/wave-c-ops-triage-2026-05-28.md` (124 righe, general-purpose subagent)
+- Cleanup commands executed: orchestrator session 2026-05-28 09:15 WITA (12 `git worktree remove --force` + 6 `git branch -D`)
+- Family: closes part of W59 (sibling-race), opens new structural debt for broker enforcement
+- Related: `docs/runbooks/agent-worktree-broker.md`, `research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`
+
+---
+
+### ✅ RESOLVED: W63 — Nested worktree bug `wr2-critic-parser-fix/.worktrees/wr2-playwright-render-fix` (2026-05-28)
+
+_Discovered: 2026-05-28 09:00 WITA during orchestrator wave-b cleanup · Fixed same minute via `git worktree remove --force` · Severity: P3 (orphan structure, no functional impact) · Status: **FIXED, root cause unidentified**_
+
+**TRAUMA:** `git worktree list` showed an entry at path:
+
+```
+/Users/nuzantara/Desktop/nuzantara/.worktrees/wr2-critic-parser-fix/.worktrees/wr2-playwright-render-fix
+```
+
+A worktree NESTED inside another worktree. Branch `agent/nuzantara/wr2/playwright-render-fix` (note: different from `agent/nuzantara/wr2/playwright-render` — `-fix` suffix). HEAD `2e5ea04cd` (same commit as main pre-#899 merge — useless, identical to main).
+
+**Root cause (hypothesis, unverified)**: probabile errore di `git worktree add` o `agent_start.py` esecutivo a partire da una CWD already inside `.worktrees/wr2-critic-parser-fix/` invece di `REPO_ROOT`. Le path relative dell'agent_start.py possono creare nested se REPO_ROOT è resolved sbagliatamente.
+
+**ANTIBODY (shipped):**
+
+1. **Removed via `git worktree remove --force`**: cleaned during W62 orchestrator cleanup.
+
+2. **Proposed prevention** (NOT yet shipped): in `scripts/agent_start.py`, assert that the resolved REPO_ROOT is NOT inside any existing worktree. If it is, abort with error message:
+   ```python
+   # In agent_start.py cmd_create:
+   if any(part == ".worktrees" for part in REPO_ROOT.parts):
+       sys.exit("ERROR: agent_start.py invoked from inside a worktree. cd to repo root first.")
+   ```
+
+**GOTCHA:**
+
+- `git worktree list` shows all worktrees regardless of nesting. They're flagged identically to top-level worktrees. Only path inspection reveals nesting.
+- A nested worktree on the same branch as parent or main is functionally harmless (no race, no commit). But:
+  - It pollutes `git worktree list`
+  - It consumes inode + disk
+  - It can confuse `cd .worktrees/*` shell glob expansion
+  - It risks recursive worktree creation if a script iterates and creates nested-of-nested
+- The parent `wr2-critic-parser-fix` was itself a legitimate worktree for PR #896. Nested child was a duplicate/typo'd lane name.
+
+**Reference**:
+
+- Cleanup command: `git worktree remove /Users/nuzantara/Desktop/nuzantara/.worktrees/wr2-critic-parser-fix/.worktrees/wr2-playwright-render-fix --force`
+- Family: cousin of W62 (broker hygiene), uncle of W59 (sibling-race surface)
+- Detection: visible in `git worktree list` during orchestrator audit 2026-05-28 09:00 WITA
+
+---
+
 ### ⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25)
 
 _Discovered: 2026-05-25 ~03:40 WITA via GEN-5 disambiguation test "sto avendo problemi con il deploy" · Resolved 2026-05-25 04:13 WITA via stash + checkout deploy/main + pull origin/main (50 commits) · Severity: P0 (cron 32h broken) · Status: **RECOVERED** — root design issue worktree-sharing pending operator decision_
@@ -15,6 +227,7 @@ _Discovered: 2026-05-25 ~03:40 WITA via GEN-5 disambiguation test "sto avendo pr
 - `com.balizero.wr2.deploy-puller` (hourly) — git pull `origin/main` per refresh WR2 cron logic
 
 Cronologia 2026-05-24:
+
 1. **03:00:46**: evolver crea commit `7902ac05d "Create program: base"` su nuovo branch `program/base` (1 commit ahead di `deploy/main`, file `agent-library/.claude/program.yaml` 59 lines)
 2. **03:43+**: wr2-deploy-puller cron tick → `git branch --show-current` ritorna `program/base` → exit 1 `ERROR: deploy worktree on branch=program/base, expected deploy/main`
 3. **Cooldown alert suppression** (W55 retry pattern correttamente comportandosi) → ogni ora cron fallisce + suppressed → operator NON vede alert
@@ -58,17 +271,17 @@ Opzione A è la più chiara (zero magic), B è più ergonomic (auto-cleanup), C 
 
 _Discovered: 2026-05-17 evening after Phase 1 production-flip pilot · Resolved: 2026-05-18 02:46 WITA via PR #718 (Phase 1.5 OCR layer) · Severity: P0_
 
-**TRAUMA:** The CRM-Guardian L1 worker (`scripts/crm_guardian_gemini_cli_worker.py` Phase 1) sent only Drive file *metadata* (filename, mime, modifiedTime) to `gemini -p`. The L1 v2 schema (`apps/backend-rag/backend/services/crm_guardian/schemas.py`) had ~30 fields expecting *document content* (passport_number, paid_up_capital_idr, nib, npwp_corporate, akta_number, shareholders[].percentage, tax_records[], lkpm_history[], visa.valid_until, etc.). Without content, Gemini did one of two things:
+**TRAUMA:** The CRM-Guardian L1 worker (`scripts/crm_guardian_gemini_cli_worker.py` Phase 1) sent only Drive file _metadata_ (filename, mime, modifiedTime) to `gemini -p`. The L1 v2 schema (`apps/backend-rag/backend/services/crm_guardian/schemas.py`) had ~30 fields expecting _document content_ (passport_number, paid_up_capital_idr, nib, npwp_corporate, akta_number, shareholders[].percentage, tax_records[], lkpm_history[], visa.valid_until, etc.). Without content, Gemini did one of two things:
 
 1. **Returned `null`** for content-only fields — honest but useless (6/6 audit clients had `tax_records=lkpm_history=0`, compliance fields all null, frontend `passport_days_until_expiry` badge broken).
 2. **Hallucinated `identity.full_name` from the most-frequent name across filenames** — silently corrupting the cliente↔summary link. Verified cases:
 
-| client_id | CRM full_name | Phase 1 identity.full_name |
-|---|---|---|
-| 70 | Oleksandr Ozolin | "Snizhana Yaroshenko" (most-frequent in akta filenames) |
-| 83 | Sofia Mueller | "Andrey Pozdnyakov" (most-frequent in evisa filenames) |
+| client_id | CRM full_name    | Phase 1 identity.full_name                              |
+| --------- | ---------------- | ------------------------------------------------------- |
+| 70        | Oleksandr Ozolin | "Snizhana Yaroshenko" (most-frequent in akta filenames) |
+| 83        | Sofia Mueller    | "Andrey Pozdnyakov" (most-frequent in evisa filenames)  |
 
-Both clients' Drive folders contained documents primarily naming a *business partner* (Snizhana Yaroshenko for Ozolin's PT Trading House, Andrey Pozdnyakov for Sofia's PT Milkup). Gemini, with no document content and no identity-anchor instruction, defaulted to the filename frequency mode. The bug was silent: the ai_summary JSON validated against the v2 schema (passport+identity were optional), the AiSummaryCard frontend rendered "Andrey Pozdnyakov" for Sofia's profile without warning.
+Both clients' Drive folders contained documents primarily naming a _business partner_ (Snizhana Yaroshenko for Ozolin's PT Trading House, Andrey Pozdnyakov for Sofia's PT Milkup). Gemini, with no document content and no identity-anchor instruction, defaulted to the filename frequency mode. The bug was silent: the ai_summary JSON validated against the v2 schema (passport+identity were optional), the AiSummaryCard frontend rendered "Andrey Pozdnyakov" for Sofia's profile without warning.
 
 Discovered via smartness audit on 6 production-flip outputs (clients 70, 83, 266, 278, 283, 350) that Antonello requested before scaling bulk enqueue. The audit ranked outputs on identity fidelity, content-grounded fields populated, and confidence calibration — Phase 1 scored 0/3 on identity-bearing fields for 2/6 clients despite the model self-reporting confidence 0.4–0.7.
 
@@ -106,14 +319,14 @@ Five interlocking changes ship the fix:
 
 **Pilot verification 2026-05-18 (4/6 clients re-processed with Phase 1.5):**
 
-| client_id | Conf 1→1.5 | Identity 1→1.5 | Corporate fields content-grounded |
-|---|---|---|---|
-| 70 Ozolin | 0.40→0.55 | Snizhana → **Ozolin ✓** | nib + npwp + akta# + capital + address |
-| 83 Sofia | 0.40→0.85 | Andrey → **Sofia ✓** + honest mismatch note | nib + npwp + akta# + capital + address |
-| 266 Romain | 0.65→0.95 | OK | nib + npwp + akta# + capital + address + passport_# + nationality FR |
-| 278 Declan | 0.65→0.85 | OK | nib + npwp + akta# + capital + address + passport_# + nationality IRISH |
+| client_id  | Conf 1→1.5 | Identity 1→1.5                              | Corporate fields content-grounded                                        |
+| ---------- | ---------- | ------------------------------------------- | ------------------------------------------------------------------------ |
+| 70 Ozolin  | 0.40→0.55  | Snizhana → **Ozolin ✓**                     | nib + npwp + akta# + capital + address                                   |
+| 83 Sofia   | 0.40→0.85  | Andrey → **Sofia ✓** + honest mismatch note | nib + npwp + akta# + capital + address                                   |
+| 266 Romain | 0.65→0.95  | OK                                          | nib + npwp + akta# + capital + address + passport\_# + nationality FR    |
+| 278 Declan | 0.65→0.85  | OK                                          | nib + npwp + akta# + capital + address + passport\_# + nationality IRISH |
 
-Article 1 worked exactly as intended for Sofia (case 83): the model kept `"Sofia Mueller"` despite "Sofiia Lerer" dominating filenames and added the honest extraction_notes entry *"CRM full_name 'Sofia Mueller' not present in any document — All documents refer to Sofiia Lerer instead"*. That's the right behavior — surface the data mismatch to the human operator, don't silently overwrite.
+Article 1 worked exactly as intended for Sofia (case 83): the model kept `"Sofia Mueller"` despite "Sofiia Lerer" dominating filenames and added the honest extraction*notes entry *"CRM full*name 'Sofia Mueller' not present in any document — All documents refer to Sofiia Lerer instead"*. That's the right behavior — surface the data mismatch to the human operator, don't silently overwrite.
 
 **GOTCHA:**
 
@@ -123,9 +336,10 @@ Article 1 worked exactly as intended for Sofia (case 83): the model kept `"Sofia
 - **Workspace AI add-on OAuth refresh** still fails (`invalid_grant`) on the user OAuth path — worker falls back to service account silently. This is a pre-existing P1 unrelated to Phase 1.5 (see `~/.gemini/google_accounts.json` rotation).
 - **The 12 Phase 1 corrupted summaries were purged 2026-05-18 01:57 WITA** (raw_dumps preserved on disk + JSON backup at `~/backups/crm_guardian_purge_20260518/`). If a future Claude finds `ai_summary IS NULL` on those clients, that's expected — re-run Phase 1.5 to regenerate.
 
-**Meta-process lesson (work-loss recovery during Phase 1.5 implementation):** the Phase 1.5 work was ~75% complete on `feat/crm-guardian-phase1.5-ocr-layer` when a concurrent autopilot (another Claude session in parallel) wiped the workdir twice — files Phase 1.5 untracked (migration 181, ocr.py, test_ocr.py, prompt v3, pilot script) were *not* in any commit, and a `git stash push -u` from the autopilot moved them to stash. Recovery via `git stash show stash@{2}^3` (the untracked-files tree commit in a `--include-untracked` stash) + `git show stash@{2}:<file>` for tracked modifications. Lesson: **after recovering from stash, commit IMMEDIATELY** before any operation that could trigger branch swap. The autopilot's stash-and-checkout pattern is invisible to the active session — only `git stash list` + `git reflog` reveal it post-hoc.
+**Meta-process lesson (work-loss recovery during Phase 1.5 implementation):** the Phase 1.5 work was ~75% complete on `feat/crm-guardian-phase1.5-ocr-layer` when a concurrent autopilot (another Claude session in parallel) wiped the workdir twice — files Phase 1.5 untracked (migration 181, ocr.py, test*ocr.py, prompt v3, pilot script) were \_not* in any commit, and a `git stash push -u` from the autopilot moved them to stash. Recovery via `git stash show stash@{2}^3` (the untracked-files tree commit in a `--include-untracked` stash) + `git show stash@{2}:<file>` for tracked modifications. Lesson: **after recovering from stash, commit IMMEDIATELY** before any operation that could trigger branch swap. The autopilot's stash-and-checkout pattern is invisible to the active session — only `git stash list` + `git reflog` reveal it post-hoc.
 
 References:
+
 - PR [#718](https://github.com/Balizero1987/Teman2/pull/718) — Phase 1.5 OCR layer (merge commit `67e3c2a41`)
 - Plan: `research/crm-guardian/2026-05-18-phase-1.5-ocr-layer-plan.md`
 - Phase 1 plan (now superseded): `docs/superpowers/plans/2026-05-16-crm-guardian-activation-phase1.md`
@@ -133,7 +347,6 @@ References:
 - Memory: `decision: CRM-Guardian Phase 1.5 OCR layer SHIPPED 2026-05-18` (importance 10)
 
 ---
-
 
 ### ✅ RESOLVED: W55 — `sentinel_lib/alerter.py` single-attempt Telegram send (149 lifetime drops on network flap) (2026-05-23)
 
@@ -300,6 +513,7 @@ _Discovered: 2026-05-23 16:55 WITA during W52 loop iteration · Severity: P3 (pr
 **TRAUMA:** W50 (dlq_autopilot wrapper) and W51 (sentinel plist) both shipped because a plist/wrapper exec'd a `~/scripts/` HOME copy that had drifted from the repo equivalent. W51 empirical impact was material: sentinel HOME was 24 days stale (missed Phase 0/1/2/4 sentinel hardening features) — production was making 60% more escalations per run and running 75% slower than it should. The lint script `scripts/lint_launchagents.sh` (Renaissance PR-B1, 2026-04-29) already enforced VADEMECUM §11 (KeepAlive, EnvironmentVariables, script-existence, /tmp/ logs, daemon-registry) but had NO check for silent-drift. Each new HOME-fork drift would land + persist undetected until manual audit (W50: 4 days; W51: 24 days).
 
 W52 empirical sweep showed perceived vs actual scope:
+
 - Perceived (W51 headline): 84/167 plists (50%) exec from HOME
 - Actual (W52 hash-comparison): 7 drifting HOME-vs-REPO pairs, of which 2 were exec'd by plists (W50+W51), 5 are orphans (no plist references). The "84" headline was a structural surface, not a structural risk.
 
@@ -475,6 +689,7 @@ _Discovered: 2026-05-23 04:30 WITA during user question "a che ora parte wr2 / i
 - **Pattern for replicating fix on other crons**: grep cron error logs for `gaierror|nodename nor servname|flycast` → any match = same root cause. Audit candidates: `~/logs/*.error.log` + `~/Library/Logs/*.err`.
 
 **Reference**:
+
 - Wrapper: `~/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh` (chmod 755)
 - Plist backup: `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist.pre-wrapper-fix-2026-05-23`
 - Sibling wrapper (template): `~/.openclaw/bin/wr3/wr3-supervisor-wrapper.sh`
@@ -496,12 +711,12 @@ Residual debts from prior sessions:
 
 Panel (Gemini agy + DeepSeek V4 Pro reasoning_effort=high + Codex GPT-5.5 adversarial) caught 4 P0 traps in the proposed fixes BEFORE shipping:
 
-| # | Trap | Caught by | Resolution |
-|---|---|---|---|
-| 1 | Brief proposed `BIGSERIAL`; DeepSeek "assumed SERIAL was original". Empirical override 2026-05-23: legacy `.py` line 34 = `id BIGSERIAL PRIMARY KEY`. Schema drift on fresh CI if we'd switched. | DeepSeek raised, empirical override decided | Kept BIGSERIAL (faithful to legacy `.py`) |
-| 2 | `MigrationManager.apply_all_pending()` computes pending from `_schema_versions.migration_number`, NOT from `schema_migrations` (`migration_manager.py:399-412`). On prod with legacy `_schema_versions(107)` present, the new `107.sql` is SKIPPED by number — never executes, never backfills `schema_migrations`. Brief's "will try to re-apply but safe" was wrong. | **Codex** (empirical file read) | Added companion `193_reconcile_107_bridge_outbox_tracking.sql` to backfill `schema_migrations(107)` from `_schema_versions(107)` |
-| 3 | macOS `/usr/bin/awk` does NOT support `strftime()`. `gawk` and `ts` absent on this host (empirical: `/usr/bin/awk: calling undefined function strftime`). Original awk-based pg-proxy patch would crash wrapper → KeepAlive flap loop. | **Codex** (empirical command execution) | Switched to `/usr/bin/perl -MPOSIX=strftime` (Perl ships with macOS, POSIX is core) |
-| 4 | `exec foo \| bar` in bash is **undefined behavior** — pipelines need subshell, can't combine with `exec` process replacement. | **Gemini** | Dropped `exec` keyword. KeepAlive=true + ThrottleInterval=30 handle respawn cleanly. `${PIPESTATUS[0]}` propagates child exit code. |
+| #   | Trap                                                                                                                                                                                                                                                                                                                                                                   | Caught by                                   | Resolution                                                                                                                          |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Brief proposed `BIGSERIAL`; DeepSeek "assumed SERIAL was original". Empirical override 2026-05-23: legacy `.py` line 34 = `id BIGSERIAL PRIMARY KEY`. Schema drift on fresh CI if we'd switched.                                                                                                                                                                       | DeepSeek raised, empirical override decided | Kept BIGSERIAL (faithful to legacy `.py`)                                                                                           |
+| 2   | `MigrationManager.apply_all_pending()` computes pending from `_schema_versions.migration_number`, NOT from `schema_migrations` (`migration_manager.py:399-412`). On prod with legacy `_schema_versions(107)` present, the new `107.sql` is SKIPPED by number — never executes, never backfills `schema_migrations`. Brief's "will try to re-apply but safe" was wrong. | **Codex** (empirical file read)             | Added companion `193_reconcile_107_bridge_outbox_tracking.sql` to backfill `schema_migrations(107)` from `_schema_versions(107)`    |
+| 3   | macOS `/usr/bin/awk` does NOT support `strftime()`. `gawk` and `ts` absent on this host (empirical: `/usr/bin/awk: calling undefined function strftime`). Original awk-based pg-proxy patch would crash wrapper → KeepAlive flap loop.                                                                                                                                 | **Codex** (empirical command execution)     | Switched to `/usr/bin/perl -MPOSIX=strftime` (Perl ships with macOS, POSIX is core)                                                 |
+| 4   | `exec foo \| bar` in bash is **undefined behavior** — pipelines need subshell, can't combine with `exec` process replacement.                                                                                                                                                                                                                                          | **Gemini**                                  | Dropped `exec` keyword. KeepAlive=true + ThrottleInterval=30 handle respawn cleanly. `${PIPESTATUS[0]}` propagates child exit code. |
 
 Additional Codex P1: tests still import `migration_107_bridge_outbox.py` + `apply_migration_107.py`. Brief's "no longer in repo" was wrong. Cleanup of legacy `.py` + `LEGACY_NO_ROLLBACK_WHITELIST` removed from this PR scope.
 
@@ -523,6 +738,7 @@ Additional Codex P1: tests still import `migration_107_bridge_outbox.py` + `appl
 - **Don't bundle PRs across failure domains**: 2/3 panelists (DeepSeek + Codex) preferred separate PRs over Gemini's bundle suggestion. DB migration + cron wrapper edit are different blast radii. Codex argument: "L2 changes behavior, not just observability. Gather timestamped flap evidence first" — applies equally to bundling.
 
 **Reference**:
+
 - PR: https://github.com/Balizero1987/Teman2/pull/828
 - Runbook: `research/operations/2026-05-23-pg-proxy-perl-prefix-runbook.md`
 - Panel artifacts: `/tmp/107-flap-panel/{brief,gemini,deepseek,codex,SYNTHESIS}.md`
@@ -596,16 +812,16 @@ _Discovered: 2026-05-23 ~04:50 WITA W39 loop iteration · Severity: INFO (3 high
 
 **TRAUMA:** Every `git push origin main` since W27 has emitted the GitHub remote warning: `GitHub found 8 vulnerabilities on Balizero1987/Teman2's default branch (3 high, 5 moderate)`. The warning was suppressed across ~9 cicatrix waves (W27-W34) without triage — classic "warning fatigue" anti-pattern. W39 finally executed triage:
 
-| # | Sev | Pkg | Disposition |
-|---|---|---|---|
-| 416 | medium | qs 6.15.0 | AUTO-PATCH → 6.15.2 (DoS in stringify w/ encodeValuesOnly+null) |
-| 410 | medium | ws 8.18.3 | AUTO-PATCH → 8.21.0 (uninit memory disclosure) |
-| 409 | medium | brace-expansion 5.0.5 | AUTO-PATCH → 5.0.6 (numeric range DoS) |
-| 414 | **high** | ecdsa (no fix) | WONT-FIX (Minerva timing on ECDSA private key path; we use HS256 HMAC) |
-| 412 | high | ecdsa (lockfile dup) | WONT-FIX (same) |
-| 411 | high | ecdsa (prod-lockfile dup) | WONT-FIX (same) |
-| 415 | medium (CVSS 6.5) | transformers 4.57.6 | WONT-FIX (HF Trainer never imported; only transitive via sentence-transformers; fix is pre-release 5.0.0rc3 + breaking 4.x→5.x) |
-| 413 | medium | transformers (lockfile dup) | WONT-FIX (same) |
+| #   | Sev               | Pkg                         | Disposition                                                                                                                     |
+| --- | ----------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 416 | medium            | qs 6.15.0                   | AUTO-PATCH → 6.15.2 (DoS in stringify w/ encodeValuesOnly+null)                                                                 |
+| 410 | medium            | ws 8.18.3                   | AUTO-PATCH → 8.21.0 (uninit memory disclosure)                                                                                  |
+| 409 | medium            | brace-expansion 5.0.5       | AUTO-PATCH → 5.0.6 (numeric range DoS)                                                                                          |
+| 414 | **high**          | ecdsa (no fix)              | WONT-FIX (Minerva timing on ECDSA private key path; we use HS256 HMAC)                                                          |
+| 412 | high              | ecdsa (lockfile dup)        | WONT-FIX (same)                                                                                                                 |
+| 411 | high              | ecdsa (prod-lockfile dup)   | WONT-FIX (same)                                                                                                                 |
+| 415 | medium (CVSS 6.5) | transformers 4.57.6         | WONT-FIX (HF Trainer never imported; only transitive via sentence-transformers; fix is pre-release 5.0.0rc3 + breaking 4.x→5.x) |
+| 413 | medium            | transformers (lockfile dup) | WONT-FIX (same)                                                                                                                 |
 
 The 3 "high" ecdsa alerts looked scary but: (a) Minerva timing attack only affects `ecdsa.SigningKey.sign_digest()` (ECDSA private-key signing path); (b) our JWT algorithm is **HS256** per `apps/backend-rag/backend/app/core/config.py:395 jwt_algorithm: str = "HS256"` — HMAC-SHA256 symmetric; (c) `python-jose` only invokes ecdsa for `ES256/384/512` JWT algorithms which we never configure; (d) grep `-rEn "(import ecdsa|from ecdsa|SigningKey)"` on backend → 0 hits; (e) upstream `python-ecdsa` maintainers explicitly refuse to fix (side-channels declared out of scope). Empirical exposure: **zero**.
 
@@ -645,7 +861,7 @@ Codex's verdict during the W27 4-LLM panel: durable Postgres ledger required to 
 
 **ANTIBODY (shipped):**
 
-1. **Migration 194** `apps/backend-rag/backend/db/migrations_v2/194_organism_incident_ledger.sql` — `incident_ledger` table: `id BIGSERIAL`, `incident_id UUID DEFAULT gen_random_uuid()`, `correlation_id TEXT` (joins to `events_outbox._outbox_id`), `cell_id`, `app`, `machine_id NULL`, `actuator`, `outcome TEXT` (CHECK enum: dispatched / deferred_* / rejected_unknown / awaiting_human / shadow_logged / done / failed), `consecutive_red INT NULL`, `started_at TIMESTAMPTZ DEFAULT now()`, `completed_at TIMESTAMPTZ NULL`, `error TEXT NULL`. 4 indexes: `(app, started_at DESC)` for dashboards, `(correlation_id)` for outbox join, `(incident_id, started_at)` for grouping, partial `(started_at DESC) WHERE completed_at IS NULL` for stuck-open queries. Pure additive (crm-guardian extra=ignore satisfied). Rollback DDL kept in companion doc `research/operations/2026-05-23-w37-incident-ledger.md` to avoid migration runner confusion + Write hook regex bypass.
+1. **Migration 194** `apps/backend-rag/backend/db/migrations_v2/194_organism_incident_ledger.sql` — `incident_ledger` table: `id BIGSERIAL`, `incident_id UUID DEFAULT gen_random_uuid()`, `correlation_id TEXT` (joins to `events_outbox._outbox_id`), `cell_id`, `app`, `machine_id NULL`, `actuator`, `outcome TEXT` (CHECK enum: dispatched / deferred\_\* / rejected_unknown / awaiting_human / shadow_logged / done / failed), `consecutive_red INT NULL`, `started_at TIMESTAMPTZ DEFAULT now()`, `completed_at TIMESTAMPTZ NULL`, `error TEXT NULL`. 4 indexes: `(app, started_at DESC)` for dashboards, `(correlation_id)` for outbox join, `(incident_id, started_at)` for grouping, partial `(started_at DESC) WHERE completed_at IS NULL` for stuck-open queries. Pure additive (crm-guardian extra=ignore satisfied). Rollback DDL kept in companion doc `research/operations/2026-05-23-w37-incident-ledger.md` to avoid migration runner confusion + Write hook regex bypass.
 
 2. **Ledger module** `apps/organism/organism/supervisor/incident_ledger.py` — Lazy-init asyncpg pool with single-attempt retry policy: once init fails (no DSN / asyncpg missing / connect fail), goes silent until daemon restart (no log spam). Two public coroutines: `record_dispatch(correlation_id, actuator, outcome, params, event_payload=None)` INSERT-row on Dispatcher active-mode dispatch, `record_outcome(correlation_id, actuator, outcome, error=None)` UPDATE matching open row on actuator done/failed emit. Both best-effort: every exception swallowed with `logger.exception`. `LEDGER_DATABASE_URL` env (preferred) or `DATABASE_URL` (fallback) — unset = silent disable, `decisions.jsonl` remains authoritative.
 
@@ -846,7 +1062,7 @@ The W27 chain was 4/5 correct but used the wrong fly primitive for the most comm
 2. **Registry registration** in `actuators/__init__.py` (import + `__all__` + `build_actuator_registry`).
 3. **SAFE_ACTUATORS whitelist** in `supervisor/dispatch.py` — without this, even a correctly-built rule referencing the actuator would be REJECTED_UNKNOWN at dispatch time. W27 hard-learned discovery codified as W31 unit test (`test_safe_actuators_includes_restart`).
 4. **YAML rule swap** `rules/base.yaml` — `cell_sustained_red_restart` action now `fly_machines_restart` instead of `fly_machines_start`. Threshold unchanged at 3.
-5. **11 unit tests** in `tests/test_fly_machines_restart.py` covering _build_argv (5 variants), _dry_run (2 paths), _execute ValueError, registry, SAFE_ACTUATORS, name attribute. All PASS. Full organism regression: 264 passed / 1 skipped / 0 regressions.
+5. **11 unit tests** in `tests/test_fly_machines_restart.py` covering \_build_argv (5 variants), \_dry_run (2 paths), \_execute ValueError, registry, SAFE_ACTUATORS, name attribute. All PASS. Full organism regression: 264 passed / 1 skipped / 0 regressions.
 
 **GOTCHA:**
 
@@ -898,6 +1114,7 @@ _Discovered: 2026-05-23 ~00:55 WITA during Wave 4 execution · Severity: INFO (c
 - **Memory: panel verdict "APPROVE_WITH_AMENDMENTS" is the most common outcome** (T3.2 Hybrid D + T3.4 + T3.5 all 3/3 amendments). Pattern: 4-LLM panel rarely says APPROVE_AS_IS, almost never REJECT (because spec authors already self-filter). Real signal is in the amendments themselves.
 
 **Reference**:
+
 - Memory: `fact_wave4_slash_commands_t26_t34_shipped_2026_05_23.md`
 - MEMORY.md line ~17 entry under Facts (infra core)
 - Specs: `research/operations/specs/{T2.6-stop-verify-hook,T3.4-custom-slash-commands,T3.5-session-start-consolidation,T3.6-tool-search-auto-10}.md`
@@ -960,7 +1177,7 @@ _Discovered: 2026-05-22 07:50 WITA Loop iteration 10 NB-automations hardening (W
 
 **TRAUMA:** W5 (commit 063945e1e) shipped `check_consumer_lag.py` + `health_tools` helpers, but explicitly deferred the LaunchAgent that would run them periodically. Without a cron, the 6 active alerts (nexus-bridge 2279, ner 1530, classifier 1230, nlm_feeder 1035, scorer 927, normalizer 858 — all above default threshold 500) surfaced only when an operator manually invoked the script. Invisible in launchd dashboards, invisible in any log file. Defeated the purpose of W5 (which was meant to give operator visibility of silent consumer-group stuck-ness).
 
-Pattern recognition: shipping the *detector* without the *trigger* is a recurring half-fix. The detector existed and worked, but the W5 commit message correctly flagged "Plist creation deferred — kept this commit pure script + library" — and then nobody (including me) deployed the plist. 12-hour window between W5 commit and W10 follow-up.
+Pattern recognition: shipping the _detector_ without the _trigger_ is a recurring half-fix. The detector existed and worked, but the W5 commit message correctly flagged "Plist creation deferred — kept this commit pure script + library" — and then nobody (including me) deployed the plist. 12-hour window between W5 commit and W10 follow-up.
 
 **ANTIBODY (shipped):**
 
@@ -1071,6 +1288,7 @@ _Discovered: 2026-05-22 05:30 WITA Loop iteration 6 NB-automations hardening · 
 3. **Empirical drainage smoke 2026-05-22 05:30 WITA**: manual wrapper invocation → `ollama ps` showed qwen3.5:9b loaded + active, consumer started ACKing messages, lag dropped 1403→1076 in first invocation (~327 messages processed). Pending oscillation 0→62→0 = batch in-flight pattern (claim → LLM call → ACK/no-ACK).
 
 **Expected cascade resolution (24h)**:
+
 - W4 sidecar `~/.agent/decisions/kg-linker-dead-upstream-runs.json` auto-deletes on first healthy kg-linker run with `entities_total > 0`
 - W5 lag monitor (`scripts/check_consumer_lag.py`) stops alerting on `ner` group
 - KnowledgeGraph SQLite `kg_entities` grows beyond 6
@@ -1093,12 +1311,12 @@ _Discovered: 2026-05-22 04:55 WITA Loop iteration 5 NB-automations hardening · 
 
 **TRAUMA:** Audit `XINFO GROUPS` on garuda:raw + garuda:enriched at 04:55 WITA:
 
-| Stream | Group | Pending | Lag | Behind |
-|---|---|---|---|---|
-| garuda:raw | nexus-bridge | 0 | 2279 | ~4 days |
-| garuda:raw | normalizer | 9 | 858 | ~1.5 days |
-| garuda:enriched | classifier | 0 | 1003 | ~2 days |
-| garuda:enriched | **ner** | **45** | **1403** | ~1.5 days |
+| Stream          | Group        | Pending | Lag      | Behind    |
+| --------------- | ------------ | ------- | -------- | --------- |
+| garuda:raw      | nexus-bridge | 0       | 2279     | ~4 days   |
+| garuda:raw      | normalizer   | 9       | 858      | ~1.5 days |
+| garuda:enriched | classifier   | 0       | 1003     | ~2 days   |
+| garuda:enriched | **ner**      | **45**  | **1403** | ~1.5 days |
 
 The `ner` consumer group with lag=1403 + pending=45 **directly explains W4** (`kg-linker sees zero entities`): the NER worker IS connected (consumer group exists, has pending messages) but **isn't draining them**. From W4 I had concluded `ner_worker.py` had no LaunchAgent — wrong, there must be one running but stuck/broken. Either way, the silent-lag pattern is the deeper issue: `XREADGROUP BLOCK` returns empty when the consumer never claims its delivered messages, so the consumer log stays mute. No alerting layer reads `XINFO GROUPS` for `lag`.
 
@@ -1174,6 +1392,7 @@ _Resolution: 2026-05-23 ~04:30 WITA continuation of Wave 3 · Severity: shipped 
 - **Required next step**: restart Claude Code session — deferred tools `mcp__postgres-nuzantara__*` will become available via ToolSearch only after restart.
 
 **Reference**:
+
 - Memory: `fact_postgres_mcp_installed_2026_05_23.md` (new) + `resolved_t3_2_postgres_mcp_installed_2026_05_23.md` (renamed from unresolved)
 - MEMORY.md line ~9 entry added under Facts (infra core)
 - Spec: `research/operations/specs/T3.2-postgres-qdrant-mcp.md` (901 lines iter-5)
@@ -1196,7 +1415,7 @@ _Discovered: 2026-05-22 04:35 WITA during T3.2 pre-flight execution · Severity:
    - `DATABASE_URL_LOCAL` in `apps/backend-rag/.env` points to `localhost:5432/nuzantara` BUT brew `postgresql@18` NOT running + DB `nuzantara` doesn't exist
    - fly-pg-proxy ALIVE on `localhost:15432` (PID 72582) BUT extracting password from `DATABASE_URL` and connecting fails: `FATAL: password authentication failed for user "backend_rag_v2"`. Password likely stale post-2026-05-21 cicatrix P0 SECURITY rotation (still "OPEN — awaiting decision" per scar)
    - Qdrant local Docker NOT running, cloud `QDRANT_API_KEY` env absent
-   
+
    Result: T3.2 cannot create `nuzantara_readonly` role + install Postgres MCP without operator decision (3 options A/B/C in unresolved memory).
 
 3. **Devils-advocate gate findings (medium, in-band fixed)**: Original 4 agent files had `tools:` whitelist but NO `disallowedTools:` denylist. Empirical comparison with existing `devils-advocate` agent showed `disallowedTools` is the documented enforcement pattern in this stack. Patched 4 files to add explicit Edit/Write denylist. Plus dead-link fix in memory (referenced `[[karpathy-discipline]]` which lives in `~/.claude/skills/`, not `~/.claude/projects/.../memory/` — patched to absolute path).
@@ -1214,7 +1433,8 @@ _Discovered: 2026-05-22 04:35 WITA during T3.2 pre-flight execution · Severity:
 - T3.2 spec iter-5 hex password generation + FIX 2 SHA-256 verify file would have been useful WORK if pre-flight had passed. Engineering investment in iter-2/3/4/5 was correct given spec assumption but downstream of false premise (DB reachable + admin creds available). Spec authors should add a "Step 0 pre-flight" gate to all infra-touch specs.
 - Wave 3 was scoped "T3.3 + T3.2 entrambi" but the partial-ship pattern (1 yes + 1 deferred-with-clear-handoff) is acceptable per Symbiosis Law 5 (Zero come ultima istanza) — operator decision-gate is correct posture, NOT engineering shortcoming.
 
-**Reference**: 
+**Reference**:
+
 - T3.3 spec `research/operations/specs/T3.3-6-named-subagent-lanes.md` (411 lines)
 - T3.2 spec `research/operations/specs/T3.2-postgres-qdrant-mcp.md` (902 lines, iter-5)
 - `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/unresolved_t3_2_postgres_mcp_blocked_2026_05_22.md`
@@ -1271,7 +1491,7 @@ _Discovered: 2026-05-22 02:55 WITA during devils-advocate gate post-Wave 1 build
 
 **TRAUMA:** Wave 1 of orchestration-regression-fix shipped 5 antibodies (T1.1 dispatch_nudge hook, T1.2 guardrails daemon+static+client+plist, T1.3 feedback memory, T1.4 karpathy skill, T1.5 alzheimer verify). All 5 individually passed acceptance criteria + verbose Spec-described smoke tests. Devils-advocate red-team pass discovered THREE silent defects that would have shipped to prod:
 
-1. **T1.2 H5 (CRITICAL):** `MCP_DESTRUCTIVE_PATTERN` regex (iter-5 lookahead) blocked **22/44 = 50% of nuzantara-mcp toolset** as false positives — including routine `create_client`, `create_practice`, `update_client`, `notebook_create`, `note_update`, `set_reminder`. The Spec-promoted verb list (`create|update|merge|deploy|promote|rollback|cancel|rerun|insert|modify|patch|set|write|alter`) was overbroad for the production reality where 90% of MCP "create_*" tools are routine CRM ops, not destructive. Bali Zero CRM workflows would have crashed on first real use within hours of deploy.
+1. **T1.2 H5 (CRITICAL):** `MCP_DESTRUCTIVE_PATTERN` regex (iter-5 lookahead) blocked **22/44 = 50% of nuzantara-mcp toolset** as false positives — including routine `create_client`, `create_practice`, `update_client`, `notebook_create`, `note_update`, `set_reminder`. The Spec-promoted verb list (`create|update|merge|deploy|promote|rollback|cancel|rerun|insert|modify|patch|set|write|alter`) was overbroad for the production reality where 90% of MCP "create\_\*" tools are routine CRM ops, not destructive. Bali Zero CRM workflows would have crashed on first real use within hours of deploy.
 
 2. **T1.1 H2 (HIGH):** `DISPATCH_KEYWORDS = ("Task(", '"subagent_type"', "Agent(")` — the string `"Agent("` appears **0 times** in actual Claude Code transcripts (empirically scanned 1955 lines, 3.1MB). Real tool_use blocks store `{"name": "TaskCreate"}` not `Agent(...)` Python-call syntax. Hook would have triggered false-positive nudges in sessions where TaskCreate was actually dispatched, training Antonello to ignore the reminder.
 
@@ -1364,12 +1584,14 @@ _Discovered: 2026-05-22 00:00 WITA during Cell daemon resurrection (worktree aud
 **TRAUMA:** Cell core daemon (`com.cell.organism`) had been silent since 2026-05-16 08:01 WITA (5.5 giorni). Audit phase concluded the cause was "plist not installed in `~/Library/LaunchAgents/`". Re-bootstrap via `apps/cell/scripts/install_cell_daemon.sh` succeeded the install step but daemon entered `spawn scheduled` + `last exit code = 1` immediately. `/tmp/cell.stderr.log` revealed `bash: /Users/nuzantara/Desktop/nuzantara/apps/cell/.env: line 5: fm2_lJP...,fm2_lJP...: No such file or directory`.
 
 Root cause: `FLY_API_TOKEN=FlyV1 fm2_xxx==,fm2_yyy==` in `.env` had:
+
 - Space between `FlyV1` and the first token segment → `set -a; source .env` assigns `FLY_API_TOKEN=FlyV1`, then tries to **execute** `fm2_xxx==,fm2_yyy==` as a command;
 - `,` in middle of the token → bash interprets `fm2_xxx==,fm2_yyy==` as a path (the `/` inside the base64-ish content) → "no such file or directory";
 - `launch_cell.sh` has `set -euo pipefail` → ANY error in `source` aborts the entire wrapper with exit 1 → launchd marks daemon failed, retries, same crash → loop;
 - Earlier interactive dry-run during audit Phase 5 used the SAME `set -a; source .env; set +a` but the parent shell had **no** `set -e`, so it survived the same error (only printed the warning and assigned the truncated value). This created a **FALSE POSITIVE empirical signal** that "the code works manually" — it doesn't, when invoked under launchd's strict-mode wrapper.
 
 Hidden for 5.5 days because:
+
 1. The daemon was never re-installed after being uninstalled (date unknown — likely 2026-04-29 plist-corruption episode or post-handoff cleanup);
 2. `cell-observatory` collector kept showing "no new cell pulses" but the symptom was attributed to missing daemon, not to `.env` parsing;
 3. The historic plist (still in `~/p0-3-recovery/plist_reconstructed/`) bypassed this by inlining env vars in the plist `EnvironmentVariables` dict — which is exactly the P0 secret-leak posture we want to avoid.
@@ -1429,6 +1651,7 @@ _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Seve
 - 1 in `scripts/extract_worker.sh`
 
 **Esposizione**: commit più vecchio con questo segreto = `86ee1b71c33a692` (2025-12-19, "Refactoring main_cloud.py + Git repo recovery"). Repo public dal quel momento = **5 mesi di esposizione** su GitHub. Credenziali potenzialmente:
+
 - Già scraped da GitHub secrets indexers (GitGuardian, TruffleHog, GitHub built-in secret scanners)
 - Nel training set di model commerciali (Anthropic/OpenAI/Google crawl GitHub public)
 - Indicizzata su Google Dorks
@@ -1441,6 +1664,7 @@ _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Seve
 **ANTIBODY (NOT YET shipped — decisione operativa pending Antonello)**:
 
 Opzione A (raccomandata): rotate password + scrub repo
+
 1. `fly ssh console -a nuzantara-postgres` → run an `ALTER USER backend_rag_v2` statement to set a freshly generated credential (see incident report for exact procedure)
 2. Update Fly secrets via `fly secrets set` per nuzantara-rag + altri consumer (the new connection string)
 3. Patch 32 file: replace hardcoded password con `os.environ["DATABASE_URL"]` lookup
@@ -1461,6 +1685,7 @@ Opzione C (status quo, scelta 2026-05-21): solo scar + report, no action immedia
 - `apps/backend-rag/backend/services/monitoring/health_monitor.py:278-291` ha comment block che cita esplicitamente `backend_rag_v2` come role name — questa è OK (no password), ma rivela il role name a chi avesse accesso solo a una parte del codebase.
 
 **Meta-incident (Claude Opus 4.7)**: violazione 3 regole durante PR #802 review iniziale:
+
 1. CLAUDE.md §"Anti-hallucination discipline" rule 2 — verifica con secondo tool call indipendente prima di citare risultati critici. Non eseguito sul CI fail.
 2. AUTONOMOUS_OPS.md L2 — admin override su CI gate richiede investigazione contenuto + report. Bypassed.
 3. SYMBIOSIS.md Legge 5 (Zero come ultima istanza) — decisione strutturale di bypass security gate doveva essere escalata.
@@ -1468,7 +1693,6 @@ Opzione C (status quo, scelta 2026-05-21): solo scar + report, no action immedia
 **Reference incident report**: `research/operations/2026-05-21-postgres-password-leak-incident.md` (commit `b26ba636d` on main).
 
 ---
-
 
 ### ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)
 
@@ -1499,7 +1723,6 @@ Blast radius: `regulation-alert.30min` sends duplicate Telegram alerts; `kg-link
 - 13th entry `gap.consumer` reported as 12 in topology brief — verify with Zero if dup pair or Pro-only.
 
 ---
-
 
 ### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
 

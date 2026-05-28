@@ -120,11 +120,29 @@ def _save_dlq(data: dict) -> None:
 def add_to_dlq(job: str, error_summary: str, classification: dict, log_tail: str,
                files_implicated: list, aider_attempts: int = 0,
                aider_failure_reason: Optional[str] = None) -> None:
-    """Add job to DLQ. Idempotent — won't add duplicate entries."""
+    """Add job to DLQ. Idempotent — won't add duplicate entries.
+
+    W61 (2026-05-28): preserve autopilot_attempts / status / first_abandoned_at
+    from existing entry on re-add. Prior code stripped these via list-rebuild,
+    causing infinite retry loop on jobs with empty error_summary (which trigger
+    'escalating directly' in dlq_autopilot.py line 487 before attempts can reach
+    max_attempts=10 → TERMINAL). 4 jobs were in storm loop for 7 days
+    (prime_tunnel, post_publish_poller, post_publish_webhook, zombie_hunter)
+    until tactically forced TERMINAL in dlq.json 2026-05-28.
+
+    Reference: research/operations/2026-05-28-dlq-autopilot-retry-storm.md Option B.
+    """
     data = _load_dlq()
-    # Remove existing entry for this job (will re-add with fresh info)
+    # W61: extract preserved fields from existing entry (if any) before rebuild
+    existing = next((e for e in data["queue"] if e.get("job") == job), None)
+    preserved = {}
+    if existing:
+        for key in ("autopilot_attempts", "status", "first_abandoned_at", "manual_terminal_reason"):
+            if key in existing:
+                preserved[key] = existing[key]
+    # Remove existing entry for this job (will re-add with fresh info + preserved attempts)
     data["queue"] = [e for e in data["queue"] if e.get("job") != job]
-    data["queue"].append({
+    new_entry = {
         "job": job,
         "added_ts": time.time(),
         "error_summary": error_summary,
@@ -134,7 +152,10 @@ def add_to_dlq(job: str, error_summary: str, classification: dict, log_tail: str
         "aider_attempts": aider_attempts,
         "aider_failure_reason": aider_failure_reason,
         "status": "needs_claude_code" if aider_attempts > 0 else "needs_aider",
-    })
+    }
+    # W61: overlay preserved fields (preserved status wins over default — TERMINAL stays TERMINAL)
+    new_entry.update(preserved)
+    data["queue"].append(new_entry)
     _save_dlq(data)
 
 
