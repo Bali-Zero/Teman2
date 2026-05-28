@@ -15,7 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "6.7.21",
+    "@whiskeysockets/baileys": "7.0.0-rc13",
     "dotenv": "^16.4.5",
     "libphonenumber-js": "^1.13.2",
     "pg": "^8.13.0",
@@ -33,8 +33,9 @@
     "vitest": "^2.1.8"
   },
   "overrides": {
-    "@whiskeysockets/baileys": "6.7.21"
+    "@whiskeysockets/baileys": "7.0.0-rc13"
   },
+  "_comment_baileys_upgrade": "CICATRIX 2026-05-25: upgraded 6.7.21 → 7.0.0-rc13. Baileys issue #2491/#2064 (init queries Timed Out) reproducibly blocked all direct messages on 6.7.21; empirical probe confirmed rc13 receives messages.upsert while 6.7.21 hangs. Do NOT downgrade without testing direct ingest.",
   "engines": {
     "node": ">=22.0.0"
   }
