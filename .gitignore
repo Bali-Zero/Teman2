@@ -6,6 +6,12 @@
 .cursor/
 .idea/
 
+# Research render artifacts (HTML/PDF generated, not source)
+research/legal/*/render/*.html
+research/legal/*/render/*.pdf
+research/visa/c5a-render-*/*.html
+research/visa/c5a-render-*/*.pdf
+
 # Lighthouse CI local reports
 .lighthouseci/
 
