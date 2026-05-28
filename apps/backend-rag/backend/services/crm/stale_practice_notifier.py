@@ -175,7 +175,7 @@ class StalePracticeNotifier:
         import httpx
 
         today: str = datetime.now(tz=timezone.utc).date().isoformat()
-        subject = f"[RITARDI] ⏰ {len(stale)} pratiche ferme da {STALE_DAYS}+ giorni — {today}"
+        subject = f"[STALE] ⏰ {len(stale)} practices stalled for {STALE_DAYS}+ days — {today}"
 
         # Group by leader for the table
         by_leader: dict[str, list[dict[str, Any]]] = {}
@@ -203,7 +203,7 @@ class StalePracticeNotifier:
                     f'<td style="{_TD}">{_esc(p["status"])}</td>'
                     f'<td style="{_TD}">{updated_str}</td>'
                     f'<td style="{_TD};color:#f87171;font-weight:600;">'
-                    f"{p['days_stale']} giorni</td>"
+                    f"{p['days_stale']} days</td>"
                     f"</tr>\n"
                 )
 
@@ -212,20 +212,20 @@ class StalePracticeNotifier:
         <body style="font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;">
           <div style="max-width:820px;margin:0 auto;">
             <h2 style="color:#f1f5f9;margin-bottom:4px;">
-              \u23f0 Pratiche ferme da {STALE_DAYS}+ giorni
+              \u23f0 Practices stalled for {STALE_DAYS}+ days
             </h2>
             <p style="color:#94a3b8;margin-top:0;">
-              Report generato il {today} &mdash; {len(stale)} pratiche totali
+              Report generated on {today} &mdash; {len(stale)} total practices
             </p>
             <table style="width:100%;border-collapse:collapse;margin-top:16px;">
               <thead>
                 <tr style="background:#1e3a5f;">
                   <th style="{_TH}">ID</th>
-                  <th style="{_TH}">Cliente</th>
-                  <th style="{_TH}">Tipo pratica</th>
+                  <th style="{_TH}">Client</th>
+                  <th style="{_TH}">Practice type</th>
                   <th style="{_TH}">Status</th>
-                  <th style="{_TH}">Ultimo aggiorn.</th>
-                  <th style="{_TH}">Giorni ferma</th>
+                  <th style="{_TH}">Last update</th>
+                  <th style="{_TH}">Days stale</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,9 +233,9 @@ class StalePracticeNotifier:
               </tbody>
             </table>
             <p style="margin-top:24px;font-size:13px;color:#64748b;">
-              Inviato automaticamente da Zantara CRM &mdash;
+              Sent automatically by Zantara CRM &mdash;
               <a href="https://kita.balizero.com" style="color:#60a5fa;">
-                Apri CRM
+                Open CRM
               </a>
             </p>
           </div>
@@ -263,11 +263,11 @@ class StalePracticeNotifier:
     ) -> None:
         """
         Send a friendly, actionable email to a team leader listing their stale practices.
-        Subject: ⏰ Pratiche in attesa — aggiornamento richiesto
+        Subject: ⏰ Practices waiting — update needed
         """
         import httpx
 
-        subject = "[TEAM] ⏰ Pratiche in attesa — aggiornamento richiesto"
+        subject = "[TEAM] ⏰ Practices waiting — update needed"
 
         rows_html = ""
         for p in practices:
@@ -281,7 +281,7 @@ class StalePracticeNotifier:
                 f'<td style="{_TD}">{_esc(p["practice_type_name"])}</td>'
                 f'<td style="{_TD}">{_esc(p["status"])}</td>'
                 f'<td style="{_TD};color:#f87171;font-weight:600;">'
-                f"{p['days_stale']} giorni</td>"
+                f"{p['days_stale']} days</td>"
                 f"</tr>\n"
             )
 
@@ -290,21 +290,21 @@ class StalePracticeNotifier:
         <body style="font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;">
           <div style="max-width:700px;margin:0 auto;">
             <h2 style="color:#f1f5f9;margin-bottom:4px;">
-              Ciao! 👋 Alcune pratiche hanno bisogno della tua attenzione.
+              Hi! 👋 Some practices need your attention.
             </h2>
             <p style="color:#cbd5e1;line-height:1.6;">
-              Alcune tue pratiche non hanno aggiornamenti da <strong>{STALE_DAYS}+ giorni</strong>.
-              Puoi controllare lo stato e aggiungere una nota nel CRM?
-              Basta un veloce aggiornamento per tenere tutto in ordine. 🙏
+              Some of your practices have had no updates for <strong>{STALE_DAYS}+ days</strong>.
+              Could you check the status and add a note in the CRM?
+              A quick update is all it takes to keep things tidy. 🙏
             </p>
             <table style="width:100%;border-collapse:collapse;margin-top:16px;">
               <thead>
                 <tr style="background:#1e3a5f;">
                   <th style="{_TH}">ID</th>
-                  <th style="{_TH}">Cliente</th>
-                  <th style="{_TH}">Tipo pratica</th>
+                  <th style="{_TH}">Client</th>
+                  <th style="{_TH}">Practice type</th>
                   <th style="{_TH}">Status</th>
-                  <th style="{_TH}">Giorni senza agg.</th>
+                  <th style="{_TH}">Days without update</th>
                 </tr>
               </thead>
               <tbody>
@@ -312,10 +312,10 @@ class StalePracticeNotifier:
               </tbody>
             </table>
             <p style="margin-top:20px;color:#94a3b8;font-size:13px;">
-              Clicca sull&rsquo;ID pratica per aprirla direttamente nel CRM.
+              Click on the practice ID to open it directly in the CRM.
             </p>
             <p style="margin-top:24px;font-size:13px;color:#64748b;">
-              Grazie mille! \u2014 Zantara CRM
+              Thank you! \u2014 Zantara CRM
             </p>
           </div>
         </body>

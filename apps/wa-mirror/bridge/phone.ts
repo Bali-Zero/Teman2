@@ -1,19 +1,32 @@
 // phone.ts — strict E.164 normalisation via libphonenumber-js.
 //
-// Replaces the regex-based heuristic (pre-2026-05-19) which had two
-// production bugs verified empirically against `whatsapp_message_context`
+// Replaces the regex-based heuristic (pre-2026-05-19) which had a real
+// production bug verified empirically against `whatsapp_message_context`
 // (15,209 rows, 0% client match):
 //
-// 1. Truncation: leading-zero strip ate an internal digit on rare carrier
-//    formats — `+6282134547725` (12 nat'l digits) became `+628213454725`
-//    (11 nat'l digits) in `whatsapp_team_sessions`, breaking team-side
-//    matching for Adit / Vino / Damar.
-//
-// 2. False country-code injection on WhatsApp `@lid` (Linked Identity
+// 1. False country-code injection on WhatsApp `@lid` (Linked Identity
 //    Device) identifiers. A LID like `224112131756075` is not a phone
 //    number; the old code blindly prepended `62` and produced fake
 //    E.164 strings (`+62224112131756075`, 17-18 digits) for 70% of
 //    inbound messages, making client-side matching impossible.
+//
+// HISTORICAL NOTE (eviction 2026-05-26): an earlier version of this
+// comment claimed a "leading-zero truncation" bug that turned
+// `+6282134547725` (12 digits) into `+628213454725` (11 digits) for
+// Adit/Vino/Sahira. That was wrong on both counts:
+// - libphonenumber-js NEVER truncated those numbers — see
+//   tests/phone.test.ts coverage for the real 11-digit Indonesian
+//   national format `+62812…`.
+// - The 12-digit strings in `~/.wa-mirror.env` were operator-side
+//   typos (likely a double-tap on the `4` while typing the Adit/Vino
+//   numbers in batch). Real phones per `~/.wa-mirror.accounts.json`
+//   are 11-digit national: `+628213454725` (Adit), `+628213454727`
+//   (Vino), `+628213454723` (Sahira).
+// The launcher (`~/scripts/wa-mirror-launcher/start-one.sh`) overrides
+// `WA_MIRROR_ACCOUNTS` from accounts.json at spawn time, so runtime
+// was correct; only `npm start` (which reads the env directly) saw
+// the typo, plus this comment + tests/phone.test.ts cementing a
+// "regression test" that guarded a bug that never existed.
 //
 // Contract for v2:
 // - normalizePhone() ALWAYS returns a valid E.164 string (with `+`) or

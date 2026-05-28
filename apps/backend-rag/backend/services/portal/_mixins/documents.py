@@ -944,29 +944,29 @@ class PortalDocumentsMixin:
                 # Build email content
                 doc_type_display = document_type.replace("_", " ").title()
 
-                subject = f"📄 Nuovo Documento Caricato - {client['full_name']}"
+                subject = f"📄 New Document Uploaded - {client['full_name']}"
 
                 # Build extra info section
                 extra_info = ""
                 if expiry_date:
-                    extra_info += f"• Data Scadenza Rilevata: {expiry_date}\n"
+                    extra_info += f"• Detected Expiry Date: {expiry_date}\n"
                 if drive_url:
-                    extra_info += f"• Link Drive: {drive_url}\n"
+                    extra_info += f"• Drive Link: {drive_url}\n"
 
-                body = f"""Ciao,
+                body = f"""Hello,
 
-Il cliente {client["full_name"]} ha caricato un nuovo documento nel portale.
+Client {client["full_name"]} has uploaded a new document to the portal.
 
-Dettagli:
+Details:
 • File: {document_name}
-• Tipo: {doc_type_display}
-• Cliente: {client["full_name"]}
+• Type: {doc_type_display}
+• Client: {client["full_name"]}
 {extra_info}
-Accedi al workspace per visualizzare e verificare il documento:
+Open the workspace to review and verify the document:
 https://kita.balizero.com/clients/{client_id}
 
 ---
-Questa è una notifica automatica da Bali Zero CRM.
+This is an automated notification from Bali Zero CRM.
 """
 
                 # Primary: Brevo
