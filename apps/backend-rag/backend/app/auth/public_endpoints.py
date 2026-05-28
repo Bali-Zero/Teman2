@@ -154,11 +154,10 @@ _AUTH = (
         Category.AUTH,
         "CSRF token generation — must be public for CSRF protection flow",
     ),
-    PublicEndpoint(
-        "/api/workflow/",
-        Category.AUTH,
-        "Legacy workflow entrypoint — kept public pending audit of downstream guards",
-    ),
+    # 2026-05-28: removed "/api/workflow/" prefix entry. All workflow_queue routes
+    # (/enqueue, /status/{job_id}, /chains) require Depends(get_current_user), so the
+    # public declaration was dead+contradictory (middleware bypassed auth, route 401'd).
+    # The "downstream guards audit" the old comment awaited is now done — guards exist.
 )
 
 _WEBHOOKS = (

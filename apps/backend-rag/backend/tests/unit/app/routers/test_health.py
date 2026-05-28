@@ -15,7 +15,19 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+import backend.app.routers.health as health_mod
 from backend.app.routers.health import get_qdrant_stats, router
+
+
+@pytest.fixture(autouse=True)
+def _reset_qdrant_client():
+    # health.py caches a module-level persistent _qdrant_client. An earlier test
+    # (e.g. the reachability integration test hitting /health) leaves a real
+    # client cached, which _get_qdrant_client() returns ahead of any
+    # patch("...health.httpx.AsyncClient") here → mock bypassed. Reset per-test.
+    health_mod._qdrant_client = None
+    yield
+    health_mod._qdrant_client = None
 
 
 @pytest.fixture
