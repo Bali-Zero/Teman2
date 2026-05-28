@@ -87,9 +87,9 @@ class TestOther:
 
 
 class TestLongTourism:
-    def test_short_trip_is_C1(self):
+    def test_short_trip_is_B1(self):
         r = _call(purpose=Purpose.LONG_TOURISM, duration_months=1)
-        assert r.recommended_visa is VisaType.C1
+        assert r.recommended_visa is VisaType.B1
         assert r.referral_mode is False
 
     def test_medium_trip_stays_within_tourism_set(self):
