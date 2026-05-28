@@ -135,18 +135,126 @@ class TestRunner:
         m_run.assert_not_called()
         kb.close()
 
-    def test_never_creates_notebooks(self, tmp_path):
-        """L2 hard boundary: no nlm CLI subprocess calls happen."""
+    def test_no_auto_create_below_high_threshold(self, tmp_path):
+        """Below AUTO_CREATE_THRESHOLD the agent only proposes — no NB created."""
         kb = KnowledgeBase(db_path=tmp_path / "db.db")
         kb.store("nlm_feeder", "nlm_fed", "nlm_fed https://x", "https://x", 1.0)
-        items = [_item("bignew") for _ in range(120)]
+        # 60 items: over proposal (50), under auto-create (100)
+        items = [_item("midvol") for _ in range(60)]
         with patch.object(nea, "_xrevrange", return_value=items), \
              patch.object(nea, "_send_telegram", return_value=True), \
              patch("subprocess.run") as m_run:
-            nea.run_nlm_expander(kb=kb, now=NOW, proposal_threshold=50)
-        # No subprocess run at all from within the agent (TG mocked)
+            stats = nea.run_nlm_expander(kb=kb, now=NOW, proposal_threshold=50)
+        assert stats["auto_created"] == []
         for call in m_run.call_args_list:
             args = call.args[0] if call.args else []
             assert "nlm" not in args[:1], \
-                f"L2 violation: NLM CLI invoked with {args}"
+                f"unexpected NLM CLI invoke under threshold: {args}"
         kb.close()
+
+
+class TestAutoCreate:
+    def _run(self, kb, items, m_run, *, dry_run=False):
+        m_run.return_value.returncode = 0
+        m_run.return_value.stdout = (
+            "Created notebook 12345678-1234-1234-1234-123456789abc"
+        )
+        m_run.return_value.stderr = ""
+        with patch.object(nea, "_xrevrange", return_value=items), \
+             patch.object(nea, "_send_telegram", return_value=True):
+            return nea.run_nlm_expander(
+                kb=kb, now=NOW, proposal_threshold=50, dry_run=dry_run,
+            )
+
+    def test_auto_creates_empty_nb_above_high_threshold(self, tmp_path):
+        kb = KnowledgeBase(db_path=tmp_path / "db.db")
+        kb.store("nlm_feeder", "nlm_fed", "nlm_fed https://x", "https://x", 1.0)
+        items = [_item("bignew") for _ in range(120)]
+        with patch("subprocess.run") as m_run:
+            stats = self._run(kb, items, m_run)
+        assert len(stats["auto_created"]) == 1
+        assert stats["auto_created"][0]["domain"] == "bignew"
+        assert stats["auto_created"][0]["uuid"] == \
+            "12345678-1234-1234-1234-123456789abc"
+        # Exactly one nlm CLI call, and it is `notebook create` — NEVER a feed.
+        nlm_calls = [
+            c.args[0] for c in m_run.call_args_list
+            if c.args and c.args[0][:1] == ["nlm"]
+        ]
+        assert len(nlm_calls) == 1
+        assert nlm_calls[0][:3] == ["nlm", "notebook", "create"]
+        kb.close()
+
+    def test_no_auto_feed_or_merge_or_delete(self, tmp_path):
+        """Law 2: only `notebook create` allowed — no source add / merge / delete."""
+        kb = KnowledgeBase(db_path=tmp_path / "db.db")
+        kb.store("nlm_feeder", "nlm_fed", "nlm_fed https://x", "https://x", 1.0)
+        items = [_item("bignew") for _ in range(120)]
+        with patch("subprocess.run") as m_run:
+            self._run(kb, items, m_run)
+        forbidden = {"source", "merge", "delete", "rm"}
+        for c in m_run.call_args_list:
+            args = c.args[0] if c.args else []
+            if args[:1] == ["nlm"]:
+                assert not (set(args) & forbidden), \
+                    f"L2 violation: forbidden NLM op {args}"
+        kb.close()
+
+    def test_cooldown_prevents_double_create(self, tmp_path):
+        kb = KnowledgeBase(db_path=tmp_path / "db.db")
+        kb.store("nlm_feeder", "nlm_fed", "nlm_fed https://x", "https://x", 1.0)
+        items = [_item("bignew") for _ in range(120)]
+        with patch("subprocess.run") as m_run:
+            first = self._run(kb, items, m_run)
+            second = self._run(kb, items, m_run)
+        assert len(first["auto_created"]) == 1
+        # Cooldown marker stored by first run blocks the second.
+        assert second["auto_created"] == []
+        kb.close()
+
+    def test_dry_run_does_not_create(self, tmp_path):
+        kb = KnowledgeBase(db_path=tmp_path / "db.db")
+        kb.store("nlm_feeder", "nlm_fed", "nlm_fed https://x", "https://x", 1.0)
+        items = [_item("bignew") for _ in range(120)]
+        with patch("subprocess.run") as m_run:
+            stats = self._run(kb, items, m_run, dry_run=True)
+        # dry_run still reports the would-create entry...
+        assert len(stats["auto_created"]) == 1
+        assert stats["auto_created"][0]["uuid"] == "(dry-run)"
+        # ...but NO real subprocess invocation happened.
+        m_run.assert_not_called()
+        kb.close()
+
+
+class TestTopPublicItems:
+    def test_only_title_and_url_no_body(self):
+        items = [{
+            "id": "20260414090000-0",
+            "data": {
+                "domain": "newdom",
+                "title": "Public Headline",
+                "url": "https://example.com/a",
+                "content": "SECRET OSINT BODY",
+                "normalized_at": (NOW - timedelta(days=2)).isoformat(),
+            },
+        }]
+        out = nea.top_public_items_for_domain(items, "newdom", now=NOW)
+        assert out == [("Public Headline", "https://example.com/a")]
+
+    def test_proposal_message_includes_public_url_not_body(self):
+        items = [{
+            "id": "20260414090000-0",
+            "data": {
+                "domain": "newdom",
+                "title": "Public Headline",
+                "url": "https://example.com/a",
+                "content": "SECRET OSINT BODY",
+                "normalized_at": (NOW - timedelta(days=2)).isoformat(),
+            },
+        }]
+        msg = nea.build_proposal_message(
+            [("newdom", 120)], [], now=NOW, items=items,
+        )
+        assert "https://example.com/a" in msg
+        assert "Public Headline" in msg
+        assert "SECRET OSINT BODY" not in msg
