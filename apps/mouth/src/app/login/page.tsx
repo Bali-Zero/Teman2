@@ -75,14 +75,19 @@ export default function LoginPage() {
         },
       );
 
-      // Get redirect path: honour ?redirect= param (SSO subdomains), else role-based
+      // Get redirect path: honour ?redirect= param (SSO subdomains), else role-based.
+      // /inbox is owner-only (Zero) — non-owner staff land on /dashboard instead.
       const urlParams = new URLSearchParams(globalThis.location.search);
       const redirectParam = urlParams.get("redirect");
+      const userEmail = (loginResponse.user?.email || "").toLowerCase();
+      const isInboxOwner = userEmail === "zero@balizero.com";
       const redirectTo = redirectParam
         ? redirectParam
         : loginResponse.user?.role === "client"
           ? "/portal"
-          : "/inbox";
+          : isInboxOwner
+            ? "/inbox"
+            : "/dashboard";
       logger.info("Redirect path determined", {
         component: "LoginPage",
         action: "handleLogin",

@@ -1,26 +1,42 @@
 """Omnichannel unified feed for team workspace (/kita/inbox).
 
 Queries `conversation_messages` joined with `clients` for the operator's
-timeline. RBAC: admins see all, team users see only messages linked to
-clients they are assigned to.
+timeline.
+
+OWNER-ONLY (2026-05-28): the inbox is private to Zero. Every other user —
+including the other CRM admins (asya@, antonellosiano@) and all team members —
+receives HTTP 403. The gate is intentionally decoupled from the shared
+`settings.admin_emails_set` so restricting inbox visibility never widens or
+narrows admin RBAC elsewhere in the CRM.
 """
 
 from __future__ import annotations
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 
 router = APIRouter(prefix="/api/workspace/inbox", tags=["workspace"])
 
+# Inbox-only allowlist — NOT settings.admin_emails_set (see module docstring).
+# Deliberately narrower than deps.owner.OWNER_EMAILS (which also includes
+# antonellosiano@): Zero asked for the inbox to be visible to zero@ ONLY
+# (2026-05-28). Do NOT swap this for require_owner — it would widen access.
+INBOX_OWNER_EMAILS: frozenset[str] = frozenset({"zero@balizero.com"})
 
-def _is_admin(user: dict) -> bool:
-    if user.get("role") == "admin":
-        return True
-    email = (user.get("email") or "").lower()
-    return email in settings.admin_emails_set
+
+def _is_inbox_owner(user: dict) -> bool:
+    """True only for the inbox owner (Zero). Independent of CRM admin RBAC."""
+    return (user.get("email") or "").lower() in INBOX_OWNER_EMAILS
+
+
+def _require_inbox_owner(user: dict) -> None:
+    if not _is_inbox_owner(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inbox is restricted to the workspace owner.",
+        )
 
 
 @router.get("")
@@ -34,6 +50,8 @@ async def feed(
     direction: str | None = Query(None, description="inbound|outbound"),
     limit: int = Query(50, le=200, ge=1),
 ) -> dict:
+    _require_inbox_owner(user)
+
     filters: list[str] = []
     params: list = []
 
@@ -46,11 +64,6 @@ async def feed(
     if direction in {"inbound", "outbound"}:
         params.append(direction)
         filters.append(f"m.direction = ${len(params)}")
-
-    # RBAC: non-admin users see only messages for clients they own
-    if not _is_admin(user):
-        params.append(user.get("email"))
-        filters.append(f"cl.assigned_to = ${len(params)}")
 
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
     sql = f"""
@@ -93,22 +106,17 @@ async def stats(
     user: dict = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
-    """Aggregated counts by channel for the last 24h (RBAC-filtered)."""
-    params: list = []
-    filter_sql = ""
-    if not _is_admin(user):
-        params.append(user.get("email"))
-        filter_sql = f"AND cl.assigned_to = ${len(params)}"
+    """Aggregated counts by channel for the last 24h (owner-only)."""
+    _require_inbox_owner(user)
 
-    sql = f"""
+    sql = """
         SELECT m.channel, COUNT(*) AS n
         FROM conversation_messages m
         LEFT JOIN clients cl ON cl.id = m.client_id
         WHERE m.created_at > NOW() - INTERVAL '24 hours'
-          {filter_sql}
         GROUP BY m.channel
         ORDER BY n DESC
     """
     async with pool.acquire() as conn:
-        rows = await conn.fetch(sql, *params)
+        rows = await conn.fetch(sql)
     return {"by_channel": [{"channel": r["channel"], "count": r["n"]} for r in rows]}
