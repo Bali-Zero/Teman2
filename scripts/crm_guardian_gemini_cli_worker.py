@@ -7,7 +7,7 @@ anti-automation policy on Chrome-for-Testing (verified 2026-05-17 with
 "Impossibile eseguire l'accesso" → invalid_grant on gemini.google.com).
 
 Architecture:
-  - Use `gemini` CLI (v0.41.2, /opt/homebrew/bin/gemini) via subprocess
+  - Use `agy` CLI (v1.0.0 Antigravity, /Users/nuzantara/.local/bin/agy) via subprocess
   - OAuth-only (zero paid API), Workspace AI add-on Workflow free tier
   - List Drive files via service account / OAuth user (no Drive @mention
     available outside the Web App — we inline file metadata + small text
@@ -54,7 +54,6 @@ import io
 import json
 import logging
 import re
-import shutil
 import subprocess
 import sys
 import uuid
@@ -95,9 +94,9 @@ PROMPT_VERSION_V4 = "L1_extraction_v4"  # 2026-05-23: anti-chat-mode header
 RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
-GEMINI_CLI = "/opt/homebrew/bin/gemini"
+GEMINI_CLI = "/Users/nuzantara/.local/bin/agy"  # agy CLI v1.0.0 (Antigravity), Gemini 3.1 Pro default via Google AI Ultra OAuth — replaces /opt/homebrew/bin/gemini (deprecated 2026-05-21, 256-color exit-1 regression under launchd)
 GEMINI_TIMEOUT_SECONDS = 360  # 2026-05-23: empirical p99=103s on 130KB prompts, +250% safety margin (was 240s, caused 91 timeout errors in 14h)
-GEMINI_DEFAULT_MODEL: str | None = None  # let CLI pick its default (Gemini 2.5 Pro free OAuth)
+GEMINI_DEFAULT_MODEL: str | None = None  # agy uses CLI default model — does NOT support `-m` flag (prints help instead)
 
 # Phase 1.5 OCR budget per client. Tesseract is fast but akta scans can spike
 # latency; we cap how many priority files we OCR in a single client run.
@@ -761,19 +760,20 @@ def call_gemini_cli(
     `--prompt` as the primary non-interactive trigger. Long prompts (50+
     files) tested up to ~120KB without issue.
     """
-    if not shutil.which("gemini"):
+    if not Path(GEMINI_CLI).exists():
         raise RuntimeError(
-            f"gemini CLI not found at expected path {GEMINI_CLI}. "
-            "Install via: npm install -g @google/gemini-cli"
+            f"agy CLI not found at {GEMINI_CLI}. "
+            "Install via Antigravity onboarding (Google AI Ultra subscription)."
         )
 
+    # agy does NOT support `-m model` (prints help instead). Model is fixed to
+    # CLI default (Gemini 3.1 Pro under Google AI Ultra OAuth). The legacy
+    # `model` argument is accepted for back-compat but ignored when CLI=agy.
     cmd = [GEMINI_CLI, "-p", prompt]
-    if model:
-        cmd.extend(["-m", model])
 
     LOG.info(
-        "Calling gemini CLI (model=%s prompt_len=%d timeout=%ds)",
-        model or "default", len(prompt), timeout_seconds,
+        "Calling agy CLI (model=%s[ignored-on-agy] prompt_len=%d timeout=%ds)",
+        model or "agy-default", len(prompt), timeout_seconds,
     )
     proc = subprocess.run(
         cmd,
