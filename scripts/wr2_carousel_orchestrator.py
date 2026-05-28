@@ -57,7 +57,7 @@ _SUBAGENTS_DIR = Path.home() / ".claude" / "agents"
 _OUTPUT_BASE = Path.home() / ".claude" / "carousels"
 
 CLAUDE_BIN = shutil.which("claude") or "/Users/nuzantara/.npm-global/bin/claude"
-DEFAULT_STEP_TIMEOUT_SEC = 120
+DEFAULT_STEP_TIMEOUT_SEC = 300
 DEFAULT_RENDER_TIMEOUT_SEC = 60
 MAX_CLAUDE_INVOCATIONS_PER_DRAFT = 8
 CRITIC_RETRY_MAX = 2
@@ -204,7 +204,7 @@ async def call_subagent(
     model: str,
     user_prompt: str,
     *,
-    budget_usd: float = 0.50,
+    budget_usd: float = 1.50,
     timeout_sec: int = DEFAULT_STEP_TIMEOUT_SEC,
 ) -> dict[str, Any]:
     """Spec §2.3 — claude --print --agent subprocess wrapper."""
@@ -443,6 +443,139 @@ def _compose_pdf(png_paths: list[Path], pdf_path: Path) -> None:
     )
     for img in images:
         img.close()
+async def generate_hero_images(
+    output_dir: Path,
+    image_prompt_payload: dict[str, Any],
+    storyboard_payload: dict[str, Any],
+    *,
+    timeout_sec: int = 240,
+) -> list[Path]:
+    """Spec §1 step 3.5 — Codex $imagegen hero JPG generation per hero-flagged slide.
+
+    Reads image-prompt-author output (slide-indexed prompts) + storyboarder
+    output (hero flag per slide). For each slide with hero=true, dispatch
+    `codex exec --sandbox workspace-write "$imagegen <prompt>"` and move the
+    generated image to `slides/<idx>-hero.jpg`.
+
+    Codex $imagegen quirk (lessons learned 2026-05-06): ignores output path
+    in prompt, writes to ~/.codex/generated_images/<uuid>/. Workflow:
+    1. exec codex
+    2. find latest file in ~/.codex/generated_images/ (mtime within last 30s)
+    3. mv to slides/<NN>-hero.jpg
+
+    Returns list of generated paths. Empty list if no hero slides.
+    """
+    slides_dir = output_dir / "slides"
+    slides_dir.mkdir(parents=True, exist_ok=True)
+    codex_bin = shutil.which("codex") or "/opt/homebrew/bin/codex"
+
+    if not Path(codex_bin).is_file():
+        logger.warning(f"codex CLI not found at {codex_bin} — skipping hero generation")
+        return []
+
+    # Extract storyboarder slide specs (parse JSON from .result blob)
+    raw_story = storyboard_payload.get("result", "") if isinstance(storyboard_payload, dict) else ""
+    raw_prompts = image_prompt_payload.get("result", "") if isinstance(image_prompt_payload, dict) else ""
+    if not raw_story or not raw_prompts:
+        logger.warning("missing storyboarder/image_prompt payloads — skipping hero generation")
+        return []
+
+    # Best-effort JSON extraction (subagents emit JSON inside ```json fences)
+    def _extract_json(blob: str) -> dict[str, Any]:
+        import re as _re
+        m = _re.search(r"```json\s*(\{.*?\})\s*```", blob, _re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(1))
+            except json.JSONDecodeError:
+                pass
+        # Try whole blob
+        try:
+            return json.loads(blob)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
+    story = _extract_json(raw_story)
+    prompts = _extract_json(raw_prompts)
+    slides = story.get("slides", []) if isinstance(story, dict) else []
+    prompt_list = prompts.get("prompts", []) if isinstance(prompts, dict) else []
+
+    if not slides or not prompt_list:
+        logger.warning(
+            f"unable to extract slides/prompts (slides={len(slides)} prompts={len(prompt_list)}) — skip hero generation"
+        )
+        return []
+
+    generated: list[Path] = []
+    codex_image_dir = Path.home() / ".codex" / "generated_images"
+
+    for idx, slide in enumerate(slides):
+        if not slide.get("hero"):
+            continue
+        # Match prompt by slide index or position
+        prompt_text = None
+        for p in prompt_list:
+            if isinstance(p, dict) and (p.get("slide_index") == idx or p.get("index") == idx):
+                prompt_text = p.get("prompt") or p.get("text")
+                break
+        if not prompt_text and idx < len(prompt_list):
+            entry = prompt_list[idx]
+            prompt_text = entry.get("prompt") if isinstance(entry, dict) else str(entry)
+
+        if not prompt_text:
+            logger.warning(f"slide {idx} hero=true but no prompt found")
+            continue
+
+        target_path = slides_dir / f"{idx:02d}-hero.jpg"
+        codex_prompt = f"$imagegen {prompt_text}"
+        t0 = time.monotonic()
+
+        try:
+            r = await asyncio.create_subprocess_exec(
+                codex_bin, "exec", "--sandbox", "workspace-write",
+                "--skip-git-repo-check", codex_prompt,
+                cwd="/tmp",
+                env={**os.environ, "PATH": os.environ.get("PATH", "/usr/bin:/bin")},
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(r.communicate(), timeout=timeout_sec)
+        except asyncio.TimeoutError:
+            logger.warning(f"codex $imagegen slide {idx} timeout {timeout_sec}s")
+            continue
+        except (FileNotFoundError, OSError) as exc:
+            logger.warning(f"codex spawn failed slide {idx}: {exc}")
+            continue
+
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        if r.returncode != 0:
+            err = (stderr.decode("utf-8", errors="replace") or "")[:300]
+            logger.warning(f"codex $imagegen slide {idx} exit {r.returncode}: {err}")
+            continue
+
+        # Find most recent file in ~/.codex/generated_images/ (Codex CLI quirk)
+        if not codex_image_dir.is_dir():
+            logger.warning(f"codex image dir {codex_image_dir} not found post-exec")
+            continue
+        candidates = sorted(
+            codex_image_dir.rglob("*.[jp][pn]g"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        recent = [p for p in candidates if time.time() - p.stat().st_mtime < 60]
+        if not recent:
+            logger.warning(f"no recent codex output for slide {idx} (looked in {codex_image_dir})")
+            continue
+
+        try:
+            shutil.copy2(recent[0], target_path)
+            generated.append(target_path)
+            logger.info(f"hero slide {idx} → {target_path.name} ({elapsed_ms}ms)")
+        except OSError as exc:
+            logger.warning(f"copy hero {idx} failed: {exc}")
+
+    logger.info(f"generated {len(generated)} hero images")
+    return generated
 
 
 async def render_playwright(
@@ -616,6 +749,22 @@ async def run_pipeline(
         if next_state and next_state != run["state"]:
             await transition_state(conn, carousel_id, next_state)
             run["state"] = next_state
+
+        # Spec §1 step 3.5 — hero JPG generation via Codex $imagegen.
+        # Run after image_prompt_author + before layout_composer so the
+        # layout step finds slides/<NN>-hero.jpg files on disk (Article 5.10
+        # no-silent-placeholder-reuse enforcement).
+        if step["name"] == "image_prompt_author":
+            try:
+                hero_paths = await generate_hero_images(
+                    output_dir,
+                    artifacts.get("image_prompt_author", {}),
+                    artifacts.get("storyboarder", {}),
+                )
+                artifacts["hero_images"] = [str(p) for p in hero_paths]
+            except Exception as exc:
+                logger.warning(f"hero image generation failed (non-fatal): {exc}")
+                artifacts["hero_images"] = []
 
     # Step 5 — critic gate with retry max 2
     critic_step = PIPELINE_STEPS[4]
