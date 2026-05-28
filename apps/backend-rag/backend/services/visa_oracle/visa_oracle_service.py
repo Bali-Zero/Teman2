@@ -22,7 +22,10 @@ logger = logging.getLogger(__name__)
 # Map user-declared purpose to the pricing categories that are relevant.
 # Order within the list represents preference priority.
 PURPOSE_CATEGORY_MAP: dict[str, list[str]] = {
-    "visit": ["visa_on_arrival", "single_entry_visas", "multiple_entry_visas"],
+    # 2026-05-27: VOA moved into `single_entry_visas` in the pricing JSON (no
+    # longer a standalone category). PURPOSE_KEYWORDS still scores "voa" for
+    # purpose=visit so the B1 row ranks above C1 Tourism when relevant.
+    "visit": ["single_entry_visas", "multiple_entry_visas"],
     "work": ["kitas_permits", "single_entry_visas"],
     "invest": ["kitas_permits", "multiple_entry_visas"],
     "retire": ["kitas_permits"],
@@ -55,6 +58,7 @@ DURATION_THRESHOLDS: dict[str, tuple[int, int]] = {
 VISA_METADATA: dict[str, dict[str, str]] = {
     # Visa on Arrival
     "B1 Visa on Arrival (VOA)": {"duration": "30 days", "validity": "Extendable once (+30 days)"},
+    "B1 Visa on Arrival Extension": {"duration": "30 days", "validity": "Extension only"},
     # Single-entry visas
     "C1 Tourism": {"duration": "30 days", "validity": "Single entry"},
     "C2 Business": {"duration": "60 days", "validity": "Single entry"},
@@ -122,8 +126,8 @@ SCORE_KEYWORD_MATCH = 2.0
 SCORE_DURATION_FIT = 1.5
 SCORE_FAMILY_MATCH = 1.0
 
-WHATSAPP_NUMBER = "+62 821 3107 363"
-WHATSAPP_BASE_URL = "https://wa.me/628213107363"
+WHATSAPP_NUMBER = "+62 822 6459 9868"
+WHATSAPP_BASE_URL = "https://wa.me/6282264599868"
 
 
 # ---------------------------------------------------------------------------
@@ -141,15 +145,9 @@ class VisaOracleService:
     # Public API
     # ------------------------------------------------------------------
 
-    # B1 VOA injected directly (not in PricingService JSON)
-    _VOA_DATA: dict[str, dict[str, Any]] = {
-        "visa_on_arrival": {
-            "B1 Visa on Arrival (VOA)": {
-                "price": "680.000 IDR",
-                "notes": "Available at airport on arrival. Extendable once for additional 30 days.",
-            },
-        },
-    }
+    # B1 VOA + Extension now live in the pricing JSON (single_entry_visas).
+    # Empty dict kept for backward compat with merge calls below.
+    _VOA_DATA: dict[str, dict[str, Any]] = {}
 
     def recommend_visas(
         self,

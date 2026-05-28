@@ -210,6 +210,21 @@ class IGPublisher(Publisher):
         caption = draft.main_caption or ""
         if len(caption) > 2200:
             issues.append(f"caption exceeds 2200 chars ({len(caption)})")
+        # P1.4 (2026-05-26): IG first comment max 2200 chars
+        if draft.first_comment and len(draft.first_comment) > 2200:
+            issues.append(
+                f"first_comment exceeds 2200 chars ({len(draft.first_comment)})"
+            )
+        # P1.4: alt_text per slide max 1000 chars (IG image_alt_text limit)
+        for s in draft.slides:
+            if s.alt_text and len(s.alt_text) > 1000:
+                issues.append(
+                    f"slide {s.slide_number} alt_text exceeds 1000 chars ({len(s.alt_text)})"
+                )
+        if draft.cover_alt_text and len(draft.cover_alt_text) > 1000:
+            issues.append(
+                f"cover_alt_text exceeds 1000 chars ({len(draft.cover_alt_text)})"
+            )
         return ValidationResult(
             ok=not issues,
             platform=Platform.INSTAGRAM,
@@ -217,6 +232,22 @@ class IGPublisher(Publisher):
         )
 
     async def publish(self, draft: DraftPayload) -> PublishResult:
+        # P1.4 (2026-05-26): Regulatory editorial NEVER auto-publishes.
+        # Convergence 4/4 panel 2026-05-26. publish() refuses to dispatch
+        # unless draft.approval_state == "approved". Operator must flip the
+        # state explicitly via approval workflow (Telegram bot / dashboard UI).
+        if draft.approval_state != "approved":
+            return PublishResult(
+                ok=False,
+                platform=Platform.INSTAGRAM,
+                draft_id=draft.draft_id,
+                error=(
+                    f"approval_state={draft.approval_state!r} (required: 'approved'). "
+                    "Regulatory editorial NEVER auto-publishes — flip approval_state "
+                    "via human approval workflow first."
+                ),
+            )
+
         validation = await self.validate(draft)
         if not validation.ok:
             return PublishResult(

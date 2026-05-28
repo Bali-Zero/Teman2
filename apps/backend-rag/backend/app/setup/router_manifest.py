@@ -102,6 +102,8 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="admin_zoho_auth", process_groups=_API, tags=("admin", "integrations")),
     # ── Agent / AI ──
     RouterEntry(name="agent", process_groups=_RAG, tags=("agent",)),
+    # ── Assets (Tigris upload proxy) ──
+    RouterEntry(name="asset_upload", process_groups=_API, tags=("assets", "tigris", "wr2", "wr3")),
     RouterEntry(name="agents", process_groups=_RAG, tags=("agent",)),
     RouterEntry(name="agentic_rag", process_groups=_RAG, tags=("agent", "rag")),
     RouterEntry(name="autonomous_agents", process_groups=_RAG, tags=("agent",)),

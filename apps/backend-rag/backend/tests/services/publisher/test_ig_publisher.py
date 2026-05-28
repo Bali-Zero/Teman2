@@ -17,7 +17,7 @@ from backend.services.publisher.ig_publisher import IGPublisher
 from backend.services.war_room.models import Platform
 
 
-def _draft(slides: int = 5) -> DraftPayload:
+def _draft(slides: int = 5, approval_state: str = "approved") -> DraftPayload:
     return DraftPayload(
         draft_id=uuid4(),
         topic="B211A extension",
@@ -31,6 +31,7 @@ def _draft(slides: int = 5) -> DraftPayload:
             )
             for i in range(slides)
         ],
+        approval_state=approval_state,
     )
 
 
