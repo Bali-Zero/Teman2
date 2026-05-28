@@ -17,6 +17,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
@@ -25,6 +26,7 @@ from backend.app.dependencies import get_current_user
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/guardian", tags=["guardian", "monitoring"])
+admin_security = HTTPBearer(auto_error=False)
 
 
 # ============================================================================
@@ -82,11 +84,33 @@ class RiskScoreHistoryResponse(BaseModel):
 
 def _require_admin(current_user: dict) -> None:
     email = (current_user.get("email") or "").lower()
-    if email not in settings.admin_emails_set:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
+    if current_user.get("role") == "admin" or email in settings.admin_emails_set:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Admin access required",
+    )
+
+
+def _get_admin_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(admin_security),
+) -> dict[str, Any]:
+    """Accept normal admin JWT/cookie auth or the internal admin API key."""
+    admin_api_key = getattr(settings, "admin_api_key", None)
+    debug_key = request.headers.get("X-Debug-Key")
+    bearer_token = credentials.credentials if credentials else None
+    if admin_api_key and (debug_key == admin_api_key or bearer_token == admin_api_key):
+        return {
+            "email": "admin-api-key@internal",
+            "user_id": "admin-api-key",
+            "role": "admin",
+            "permissions": ["admin"],
+        }
+
+    current_user = get_current_user(request, credentials)
+    _require_admin(current_user)
+    return current_user
 
 
 async def _get_pool(request: Request):
@@ -111,7 +135,7 @@ async def get_decisions(
     component: str | None = Query(default=None, description="Filter by component"),
     severity: str | None = Query(default=None, description="Filter by severity"),
     limit: int = Query(default=100, ge=1, le=500),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> DecisionsResponse:
     """Get recent guardian decisions with optional filters."""
     _require_admin(current_user)
@@ -159,7 +183,7 @@ async def get_decisions(
 @router.get("/risk-score", response_model=RiskScoreResponse)
 async def get_risk_score(
     request: Request,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> RiskScoreResponse:
     """Get latest risk score and 7-day trend."""
     _require_admin(current_user)
@@ -215,7 +239,7 @@ async def get_risk_score(
 async def get_risk_score_history(
     request: Request,
     days: int = Query(default=30, ge=1, le=90),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(_get_admin_user),
 ) -> RiskScoreHistoryResponse:
     """Get full risk score history."""
     _require_admin(current_user)

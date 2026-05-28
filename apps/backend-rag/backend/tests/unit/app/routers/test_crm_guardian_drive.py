@@ -60,7 +60,7 @@ def admin_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         crm_guardian_drive,
         "settings",
-        SimpleNamespace(admin_emails_set={"admin@example.com"}),
+        SimpleNamespace(admin_emails_set={"admin@example.com"}, admin_api_key="admin-secret"),
     )
 
 
@@ -69,6 +69,19 @@ def test_require_admin_rejects_non_admin() -> None:
         crm_guardian_drive._require_admin({"email": "operator@example.com"})
 
     assert exc.value.status_code == 403
+
+
+def test_require_admin_accepts_admin_role() -> None:
+    crm_guardian_drive._require_admin({"email": "admin@internal", "role": "admin"})
+
+
+def test_get_admin_user_accepts_admin_api_key() -> None:
+    request = SimpleNamespace(headers={"X-Debug-Key": "admin-secret"})
+
+    user = crm_guardian_drive._get_admin_user(request, None)
+
+    assert user["role"] == "admin"
+    assert user["user_id"] == "admin-api-key"
 
 
 @pytest.mark.asyncio
