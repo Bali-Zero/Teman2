@@ -96,7 +96,7 @@ describe("TaxCalendarBody", () => {
     render(<TaxCalendarBody deadlines={DEADLINES} regencies={REGENCIES} />);
     const links = screen.getAllByRole("link", { name: /Delegate to us/i });
     expect(links.length).toBeGreaterThanOrEqual(4);
-    expect(links[0].getAttribute("href")).toContain("wa.me/628213107363");
+    expect(links[0].getAttribute("href")).toContain("wa.me/6282264599868");
     expect(links[0].getAttribute("href")).toContain(
       "Delega%20Bali%20Zero%20SPT",
     );

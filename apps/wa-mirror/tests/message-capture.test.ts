@@ -7,7 +7,7 @@ import {
 } from "../bridge/message_capture.js";
 
 const account = {
-  phone: "+628213107363",
+  phone: "+6282264599868",
   name: "Adit",
 };
 
@@ -103,7 +103,7 @@ describe("extractMessageRecord", () => {
     expect(record).toMatchObject({
       baileysMessageId: "image-1",
       direction: "inbound",
-      teamMemberPhone: "+628213107363",
+      teamMemberPhone: "+6282264599868",
       counterpartPhone: "+6281234567890",
       body: "",
       mediaType: "image",

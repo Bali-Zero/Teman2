@@ -122,7 +122,7 @@ def team_email_html(
                        color:{COLOR_MUTED};">
           <strong style="color:{COLOR_TEXT};">{signature}</strong><br>
           Billing: asya@balizero.com · +62 881 0384 67246<br>
-          General: WhatsApp +62 821 3107 363 · balizero.com
+          General: WhatsApp +62 822 6459 9868 · balizero.com
         </td></tr>
       </table>
     </td></tr>

@@ -310,7 +310,7 @@ export function ZantaraWidget() {
           {messages.filter((m) => m.role === "user").length >= 3 && (
             <div className="px-4 pb-2">
               <a
-                href="https://wa.me/628213107363?text=Hi%20Bali%20Zero%2C%20I%20was%20chatting%20with%20Zantara%20on%20your%20website..."
+                href="https://wa.me/6282264599868?text=Hi%20Bali%20Zero%2C%20I%20was%20chatting%20with%20Zantara%20on%20your%20website..."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-[#25D366]/15 text-[#25D366] text-xs font-medium hover:bg-[#25D366]/25 transition-colors"

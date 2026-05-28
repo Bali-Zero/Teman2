@@ -33,7 +33,7 @@ _DEFAULT_PUBLIC_HOST = "https://balizero.com"
 
 # Bali Zero main business WhatsApp number. Digits-only (no +, no spaces)
 # so `wa.me/<digits>` produces a clickable link on every WhatsApp client.
-_DEFAULT_WA_NUMBER = "628213107363"
+_DEFAULT_WA_NUMBER = "6282264599868"
 
 
 def _clean_wa_number(raw: str | None) -> str:

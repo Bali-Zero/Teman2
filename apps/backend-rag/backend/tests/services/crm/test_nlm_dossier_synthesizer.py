@@ -54,9 +54,9 @@ class TestPIIStripping:
         assert "[EMAIL-MASKED]" in out
 
     def test_full_phone_masked(self):
-        text = "Call +62 821 31 07 363 for confirmation"
+        text = "Call +62 822 6459 9868 for confirmation"
         out = strip_pii(text)
-        assert "+62 821 31 07 363" not in out
+        assert "+62 822 6459 9868" not in out
         assert "[PHONE-MASKED]" in out
 
     def test_efin_masked(self):

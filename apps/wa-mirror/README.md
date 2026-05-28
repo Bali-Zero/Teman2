@@ -16,7 +16,7 @@ After this bridge: each team member's WhatsApp is registered as a **WhatsApp Web
 ## What is NOT this bridge
 
 - **NOT** a reply bot. Team members keep using WhatsApp normally. v1 captures the one-to-one message stream for audit/continuity and does not send messages.
-- **NOT** a replacement for the Meta Cloud API at `backend/channels/whatsapp/` — that handles the official Bali Zero number `+62 821 31 07 363`. wa-mirror handles the **personal numbers** of the team in parallel.
+- **NOT** a replacement for the Meta Cloud API at `backend/channels/whatsapp/` — that handles the official Bali Zero number `+62 822 6459 9868`. wa-mirror handles the **personal numbers** of the team in parallel.
 - **NOT** a Meta API integration. Uses Baileys (reverse-engineered WhatsApp Web protocol). Operates within the standard "Linked Devices" surface — see "Risks" below.
 
 ## Architecture
