@@ -16,7 +16,33 @@ archived canva_pending.json remains replayable.
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+# A2 re-scope: the slide text is the only prompt-injection surface in the headless
+# Canva path (the skill body is fixed/hashed). Strip shell/command-injection +
+# tool-directive markers. Defense-in-depth, NOT a sandbox — see scar for residual risk.
+_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"```.*?```", re.DOTALL),                       # fenced code blocks
+    re.compile(r"\$\([^)]*\)"),                                # $(...) command substitution
+    re.compile(r"`[^`]*`"),                                    # backtick command substitution
+    re.compile(r"\bfile://\S*"),                               # file:// URIs
+    re.compile(r"\brm\s+-[rf]+\b", re.IGNORECASE),             # rm -rf
+    re.compile(r"\b(curl|wget)\s+\S+\s*\|\s*(sh|bash)\b", re.IGNORECASE),  # curl|sh
+    re.compile(r"\bignore (all |the )?previous instructions\b", re.IGNORECASE),
+)
+
+
+def _sanitize_slide_text(text: str) -> str:
+    """Remove command-injection / prompt-injection markers from editorial slide text
+    before it enters canva_pending.json (A2 re-scope). Idempotent; preserves normal
+    multilingual editorial prose."""
+    if not text:
+        return text
+    out = text
+    for pat in _INJECTION_PATTERNS:
+        out = pat.sub(" ", out)
+    return re.sub(r"[ \t]{2,}", " ", out).strip()
 
 # Master carousel template. See runbooks/APPLICA_WAR_ROOM.md.
 #
@@ -159,7 +185,7 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 {
                     "type": "replace_text",
                     "element_id": heading_eid,
-                    "text": headline,
+                    "text": _sanitize_slide_text(headline),
                     "page_index": page_index,
                 }
             )
@@ -181,7 +207,7 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 {
                     "type": "replace_text",
                     "element_id": body_eid,
-                    "text": body,
+                    "text": _sanitize_slide_text(body),
                     "page_index": page_index,
                 }
             )
