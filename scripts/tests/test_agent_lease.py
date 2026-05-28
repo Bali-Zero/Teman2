@@ -218,9 +218,11 @@ def test_cli_check_kill_switch_disables_enforcement(monkeypatch, mod, capsys):
     assert rc == 0
 
 
-def test_cli_check_redis_down_passes_through(monkeypatch, mod):
+def test_cli_check_redis_down_passes_through(monkeypatch, mod, tmp_path):
     """Force AgentLease() to raise RedisUnavailable → check exits 0 (degraded)."""
     monkeypatch.setenv("AGENT_LEASE_ENFORCEMENT", "true")
+    monkeypatch.setattr(mod, "FALLBACK_LOCK_DIR", tmp_path / "lease-fallback")
+    monkeypatch.setattr(mod, "AUDIT_PATH", tmp_path / "leases.jsonl")
 
     class _Boom:
         def __init__(self, *a, **k):
@@ -229,6 +231,71 @@ def test_cli_check_redis_down_passes_through(monkeypatch, mod):
     monkeypatch.setattr(mod, "AgentLease", _Boom)
     rc = mod.main(["check", "apps/anything.py"])
     assert rc == 0
+
+
+# ── Option B: flock fallback when Redis is down ───────────────────────────────
+
+def test_flock_fallback_acquires_when_free(monkeypatch, mod, tmp_path):
+    """First caller on a free path gets the flock cleanly (returns True)."""
+    monkeypatch.setattr(mod, "FALLBACK_LOCK_DIR", tmp_path / "lease-fallback")
+    monkeypatch.setattr(mod, "AUDIT_PATH", tmp_path / "leases.jsonl")
+    assert mod.flock_fallback_check("apps/foo.py", task_id="task-A") is True
+    # A lock file must now exist under the fallback dir.
+    locks = list((tmp_path / "lease-fallback").glob("*.lock"))
+    assert len(locks) == 1
+
+
+def test_flock_fallback_detects_contention(monkeypatch, mod, tmp_path):
+    """A second process holding the SAME path's flock → returns False (WARN)."""
+    monkeypatch.setattr(mod, "FALLBACK_LOCK_DIR", tmp_path / "lease-fallback")
+    monkeypatch.setattr(mod, "AUDIT_PATH", tmp_path / "leases.jsonl")
+    path = "infra/launchagents/foo.sh"
+    lock_file = mod._fallback_lock_path(path)
+    lock_file.parent.mkdir(parents=True, exist_ok=True)
+    # Simulate another local process holding the lock.
+    import fcntl as _fcntl
+    fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o600)
+    _fcntl.flock(fd, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+    try:
+        assert mod.flock_fallback_check(path, task_id="task-B") is False
+    finally:
+        _fcntl.flock(fd, _fcntl.LOCK_UN)
+        os.close(fd)
+
+
+def test_flock_fallback_writes_degraded_audit(monkeypatch, mod, tmp_path):
+    """The fallback path must emit a degraded=true audit record (Option C fold-in)."""
+    monkeypatch.setattr(mod, "FALLBACK_LOCK_DIR", tmp_path / "lease-fallback")
+    audit = tmp_path / "leases.jsonl"
+    monkeypatch.setattr(mod, "AUDIT_PATH", audit)
+    mod.flock_fallback_check("apps/bar.py", task_id="task-C")
+    lines = audit.read_text().splitlines()
+    degraded = [json.loads(l) for l in lines if json.loads(l).get("degraded")]
+    assert any(
+        r["event"] == "check-degraded" and r["backend"] == "flock-fallback"
+        for r in degraded
+    )
+
+
+def test_cli_check_redis_down_takes_flock_fallback(monkeypatch, mod, tmp_path):
+    """Redis down → _cmd_check exits 0 AND a degraded audit line is written."""
+    monkeypatch.setenv("AGENT_LEASE_ENFORCEMENT", "true")
+    monkeypatch.setattr(mod, "FALLBACK_LOCK_DIR", tmp_path / "lease-fallback")
+    audit = tmp_path / "leases.jsonl"
+    monkeypatch.setattr(mod, "AUDIT_PATH", audit)
+
+    class _Boom:
+        def __init__(self, *a, **k):
+            raise mod.RedisUnavailable("simulated outage")
+
+    monkeypatch.setattr(mod, "AgentLease", _Boom)
+    rc = mod.main(["check", "infra/launchagents/x.sh"])
+    assert rc == 0  # HARD constraint: never block on Redis outage
+    assert audit.exists()
+    assert any(
+        json.loads(l).get("event") == "check-degraded"
+        for l in audit.read_text().splitlines()
+    )
 
 
 def _patch_agent_lease_ctor(monkeypatch, mod, fake_client):
