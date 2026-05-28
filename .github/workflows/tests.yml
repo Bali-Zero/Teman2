@@ -245,7 +245,16 @@ jobs:
 
     strategy:
       matrix:
-        app: [mouth]
+        # `mouth` runs with a coverage gate (test:coverage:check). `admin-dashboard`
+        # is in the matrix WITHOUT a coverage gate: it ships Vitest + RBAC/middleware
+        # regression tests that were previously only run locally (Sprint 1.B scar
+        # antibody), but its coverage target isn't established yet. `web` is
+        # intentionally NOT in the matrix.
+        include:
+          - app: mouth
+            coverage: true
+          - app: admin-dashboard
+            coverage: false
 
     steps:
       - name: Checkout code
@@ -271,17 +280,26 @@ jobs:
         run: npm audit --audit-level=high
         continue-on-error: false
 
-      - name: Run tests
+      - name: Run tests (with coverage)
+        if: matrix.coverage
         run: |
           cd apps/${{ matrix.app }}
           npx vitest --run --coverage
 
+      - name: Run tests (no coverage gate)
+        if: ${{ !matrix.coverage }}
+        run: |
+          cd apps/${{ matrix.app }}
+          npx vitest --run
+
       - name: Check coverage threshold
+        if: matrix.coverage
         run: |
           cd apps/${{ matrix.app }}
           npm run test:coverage:check
 
       - name: Upload coverage
+        if: matrix.coverage
         uses: codecov/codecov-action@v6
         with:
           files: apps/${{ matrix.app }}/coverage/lcov.info
