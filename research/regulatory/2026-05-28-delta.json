@@ -1,0 +1,74 @@
+{
+  "run_at": "2026-05-28T07:00:00+08:00",
+  "today": "2026-05-28",
+  "yesterday_seen_count": 1,
+  "new_today_count": 3,
+  "partial": true,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403)",
+    "https://ortax.org/news (empty — articolo non trovato)",
+    "https://muc.co.id/article (403)",
+    "https://ikpi.or.id/news/ (404)",
+    "https://peraturan.go.id (socket closed)",
+    "https://peraturan.bpk.go.id/Search (403)",
+    "https://news.ddtc.co.id/pajak-nasional (404)",
+    "https://news.ddtc.co.id/pajak-internasional (404)",
+    "https://news.ddtc.co.id/pajak-daerah (404)"
+  ],
+  "nb_query_errors": [
+    "NB-INTEL-Regulation (a17f134e): sources_used=[] — NB degraded post UUID-switch, no verifiable citations",
+    "NB-INTEL-Press (9d262101): sources_used=[] — NB degraded post UUID-switch, no verifiable citations",
+    "NB-INTEL-Immigration (1ed02e54): sources_used=[] — NB degraded post UUID-switch, no verifiable citations",
+    "NB-INTEL-Tax (7fb12c9c): sources_used=[] — NB degraded post UUID-switch, no verifiable citations"
+  ],
+  "nb_query_notes": {
+    "NB-INTEL-Regulation": "sources_used=[]. No verifiable citations returned.",
+    "NB-INTEL-Press": "sources_used=[]. No verifiable citations returned.",
+    "NB-INTEL-Immigration": "sources_used=[]. No verifiable citations returned.",
+    "NB-INTEL-Tax": "sources_used=[]. No verifiable citations returned.",
+    "note": "All 4 NB-INTEL returned sources_used=[] — recurring degradation since UUID-switch 2026-05-18. Web fetch was PRIMARY source this run."
+  },
+  "deltas": [
+    {
+      "citation": "UU 2/2026",
+      "title_id": "Undang-Undang Nomor 2 Tahun 2026 tentang Pelindungan Pekerja Rumah Tangga",
+      "title_en": "Law No. 2 of 2026 on Domestic Worker Protection (PPRT)",
+      "service_line": ["regulatory", "hr"],
+      "summary": "New Indonesian law enacted 30 April 2026 establishing legal protections for domestic workers (Pekerja Rumah Tangga). Affects employers of household staff including expatriate households — introduces formal employment obligations, rights, and protections for domestic workers. Status: Berlaku (in force). 723 downloads from JDIH Kemnaker.",
+      "source": "JDIH Kemnaker — https://jdih.kemnaker.go.id/peraturan",
+      "verbatim_excerpt": "Undang-Undang Nomor 2 Tahun 2026 — Pelindungan Pekerja Rumah Tangga — Berlaku — 30 April 2026",
+      "confidence": "high",
+      "first_seen_at": "2026-05-28T07:00:00+08:00",
+      "note": "Previously a dropped_candidate in 2026-05-22 run (NB-INTEL-Press mentioned but sources_used=[]). Now confirmed HIGH-CONFIDENCE via JDIH Kemnaker government portal with verbatim citation + enactment date + active status."
+    },
+    {
+      "citation": "KEP-71/PJ/2026",
+      "title_id": "Kebijakan Perpajakan Sehubungan Dengan Implementasi Sistem Inti Administrasi Perpajakan Dalam Rangka Penyampaian Surat Pemberitahuan Tahunan Pajak Penghasilan Wajib Pajak Badan Tahun Pajak 2025",
+      "title_en": "Tax Policy on Core Tax Administration System Implementation for Corporate Annual Income Tax Return Filing for Tax Year 2025",
+      "service_line": ["tax"],
+      "summary": "DJP decision (KEP) issued 30 April 2026 setting tax policy for corporate taxpayers filing annual SPT (Surat Pemberitahuan Tahunan) under the Coretax (Sistem Inti Administrasi Perpajakan) system for tax year 2025. Relevant for PT PMA clients with Coretax compliance obligations.",
+      "source": "DJP pajak.go.id — https://www.pajak.go.id/peraturan",
+      "verbatim_excerpt": "KEP-71/PJ/2026 — KEBIJAKAN PERPAJAKAN SEHUBUNGAN DENGAN IMPLEMENTASI SISTEM INTI ADMINISTRASI PERPAJAKAN DALAM RANGKA PENYAMPAIAN SURAT PEMBERITAHUAN TAHUNAN PAJAK PENGHASILAN WAJIB PAJAK BADAN TAHUN PAJAK 2025 — 2026-04-30",
+      "confidence": "medium",
+      "first_seen_at": "2026-05-28T07:00:00+08:00"
+    },
+    {
+      "citation": "019/MK/EF.2/2026",
+      "title_id": "Penetapan Tingkat Bunga Sanksi Administrasi dan Bunga Pengganti Periode Mei 2026",
+      "title_en": "Determination of Administrative Sanction Interest Rate and Compensation Interest Rate for May 2026 Period",
+      "service_line": ["tax"],
+      "summary": "KMK (Keputusan Menteri Keuangan) issued 30 April 2026 setting the administrative sanction interest rate and compensation interest rate applicable 1-31 May 2026. Relevant for clients with outstanding tax obligations or disputes during this period.",
+      "source": "DJP pajak.go.id — https://www.pajak.go.id/peraturan",
+      "verbatim_excerpt": "019/MK/EF.2/2026 — 2026-04-30 — interest rate determination for administrative sanctions and interest compensation (May 1-31, 2026 period)",
+      "confidence": "medium",
+      "first_seen_at": "2026-05-28T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026"
+  ],
+  "note": "Gap coverage: this run covers 2026-05-23 to 2026-05-28 (no intermediate delta files). All 4 NB-INTEL returned sources_used=[] (persistent degradation since 2026-05-18 UUID-switch). Primary web sources partially blocked (403/404). Three deltas found via JDIH Kemnaker + DJP pajak.go.id. UU 2/2026 PPRT was a dropped_candidate in 2026-05-22 run, now confirmed with HIGH-CONFIDENCE. partial=true due to NB-INTEL unavailability and multiple web 403s."
+}
