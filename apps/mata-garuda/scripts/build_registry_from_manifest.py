@@ -23,8 +23,11 @@ TODAY = "2026-05-07"
 
 
 # 6 active seed — never regenerated from the manifest, lives only here.
+# NB-INTEL UUIDs refreshed 2026-05-28 after the 2026-05-18 NB UUID-switch
+# (stale UUIDs raised PERMISSION_DENIED). Source of truth: `nlm list notebooks`.
+# self_evolving (305f5f2e) was already correct (NOT switched).
 ACTIVE_SEED: Final[dict[str, dict]] = {
-    "d48c4933-4d93-4d1e-8753-23b88145ba78": {
+    "dc5d01cd-e99f-4c8f-aae4-75060b43d0de": {
         "name": "NB-INTEL-AIResearch", "family": "NB-INTEL", "legacy_key": "ai_research",
         "status": "ACTIVE", "cluster": None, "created_at": None,
         "last_audited": TODAY, "action_pending": None, "peer_uuids": [],
@@ -34,22 +37,22 @@ ACTIVE_SEED: Final[dict[str, dict]] = {
         "status": "ACTIVE", "cluster": None, "created_at": None,
         "last_audited": TODAY, "action_pending": None, "peer_uuids": [],
     },
-    "80821295-703f-40ab-a32a-f0307e43ae2a": {
+    "a17f134e-b9ab-42d9-bfc2-5bbc45165c76": {
         "name": "NB-INTEL-Regulation", "family": "NB-INTEL", "legacy_key": "regulation",
         "status": "ACTIVE", "cluster": None, "created_at": None,
         "last_audited": TODAY, "action_pending": None, "peer_uuids": [],
     },
-    "78b45ad8-ddce-4bd8-bdf0-3b45800897da": {
+    "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f": {
         "name": "NB-INTEL-Tax", "family": "NB-INTEL", "legacy_key": "tax",
         "status": "ACTIVE", "cluster": None, "created_at": None,
         "last_audited": TODAY, "action_pending": None, "peer_uuids": [],
     },
-    "78573978-4564-4bdc-b082-fbd625c2d33d": {
+    "1ed02e54-542f-426a-94f8-53c5ffde4b7d": {
         "name": "NB-INTEL-Immigration", "family": "NB-INTEL", "legacy_key": "immigration",
         "status": "ACTIVE", "cluster": None, "created_at": None,
         "last_audited": TODAY, "action_pending": None, "peer_uuids": [],
     },
-    "caec5b82-287c-464f-844f-02e2c8f04c21": {
+    "9d262101-abeb-4e15-af9c-c38e028c62fe": {
         "name": "NB-INTEL-Press", "family": "NB-INTEL", "legacy_key": "press",
         "status": "ACTIVE", "cluster": None, "created_at": None,
         "last_audited": TODAY, "action_pending": None, "peer_uuids": [],
