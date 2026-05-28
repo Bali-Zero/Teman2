@@ -35,6 +35,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -373,18 +374,82 @@ async def render_playwright(
     return rendered
 
 
+_CRITIC_JSON_FENCE_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
+
+
+def _extract_critic_verdict_dict(critic_payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract structured verdict dict from Claude SDK critic envelope.
+
+    Claude SDK result-envelope shape (empirically verified on pilot-3 critic.json
+    2026-05-27 02:33 carousel 1596d8fd-c2a5-4182-b27f-2266977c99fc):
+
+        {"type": "result", "is_error": false, "result": "<prose with embedded
+         ```json {...} ``` code fence>", ...}
+
+    The structured verdict (overall_verdict, binary_carousel_verdict, slides[],
+    hard_failures[]) lives inside the fenced JSON inside the `result` text field,
+    NOT at top level. Pre-fix orchestrator looked for top-level `verdict` key and
+    always saw empty string → FatalOrchestratorError → state failed_cascade.
+
+    Resolution order:
+    1. If payload already has `binary_carousel_verdict` or `overall_verdict` at
+       top level (bare JSON shape), return payload directly.
+    2. If payload has `result` text field, extract first ```json ... ``` fence
+       and parse it.
+    3. Otherwise return empty dict.
+    """
+    if not isinstance(critic_payload, dict):
+        return {}
+    if "binary_carousel_verdict" in critic_payload or "overall_verdict" in critic_payload:
+        return critic_payload
+    result_text = critic_payload.get("result")
+    if not isinstance(result_text, str):
+        return {}
+    match = _CRITIC_JSON_FENCE_RE.search(result_text)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    # Last resort: try whole text as JSON
+    try:
+        return json.loads(result_text)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
 def critic_verdict(critic_payload: dict[str, Any]) -> str:
     """Spec §6 — parse critic output into PASS / RETRYABLE_FAIL / FAIL.
 
     Codex amendment: critic_verdict enum, NOT boolean. Strict parse.
+
+    Reads structured verdict from Claude SDK envelope via `_extract_critic_verdict_dict`.
+    Maps semantic critic taxonomy → orchestrator enum:
+      - overall_verdict=pass OR binary_carousel_verdict=PASS → PASS
+      - overall_verdict=soft_fail                             → RETRYABLE_FAIL
+      - overall_verdict=hard_fail OR binary_carousel_verdict=FAIL → FAIL
+      - bare `verdict` key (legacy): trusted as-is if PASS/FAIL/RETRYABLE_FAIL
     """
     if not isinstance(critic_payload, dict):
         return "FAIL"
-    verdict = (critic_payload.get("verdict") or "").upper().strip()
-    if verdict not in ("PASS", "FAIL", "RETRYABLE_FAIL"):
-        logger.warning(f"critic returned unknown verdict={verdict!r}, defaulting to FAIL")
+    verdict_dict = _extract_critic_verdict_dict(critic_payload)
+    # Bare legacy verdict (backward compat)
+    legacy = (verdict_dict.get("verdict") or critic_payload.get("verdict") or "").upper().strip()
+    if legacy in ("PASS", "FAIL", "RETRYABLE_FAIL"):
+        return legacy
+    overall = (verdict_dict.get("overall_verdict") or "").lower().strip()
+    binary = (verdict_dict.get("binary_carousel_verdict") or "").upper().strip()
+    if overall == "pass" or binary == "PASS":
+        return "PASS"
+    if overall == "soft_fail":
+        return "RETRYABLE_FAIL"
+    if overall == "hard_fail" or binary == "FAIL":
         return "FAIL"
-    return verdict
+    logger.warning(
+        f"critic returned unknown verdict overall={overall!r} binary={binary!r} "
+        f"legacy={legacy!r}, defaulting to FAIL"
+    )
+    return "FAIL"
 
 
 async def run_pipeline(
@@ -429,9 +494,16 @@ async def run_pipeline(
                 await transition_state(conn, carousel_id, "critic_pass")
                 break
             if verdict == "FAIL":
+                # Extract structured reason from nested verdict dict (Claude SDK envelope)
+                verdict_dict = _extract_critic_verdict_dict(critic_payload)
+                reason = (
+                    verdict_dict.get("binary_carousel_reason")
+                    or critic_payload.get("reason")
+                    or verdict_dict.get("reason")
+                    or "no reason given"
+                )
                 raise FatalOrchestratorError(
-                    f"critic FAIL (attempt {attempt + 1}): "
-                    f"{critic_payload.get('reason', 'no reason given')}"
+                    f"critic FAIL (attempt {attempt + 1}): {reason}"
                 )
             # RETRYABLE_FAIL → loop
             logger.warning(f"critic RETRYABLE_FAIL attempt {attempt + 1}/{CRITIC_RETRY_MAX + 1}")
