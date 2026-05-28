@@ -67,6 +67,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)scripts/damar-node/.*\.(json|js|ts|md)$"),
         "scripts/damar-node/: marketing automation, credentials are placeholders",
     ),
+    # infra/launchagents/*.plist.example — LaunchAgent plist templates with
+    # literal PASSWORD/HOST placeholders for DATABASE_URL etc. Operator copies
+    # + fills in before `launchctl load`. Real plist files under
+    # ~/Library/LaunchAgents/ are gitignored.
+    (
+        re.compile(r"(^|/)infra/launchagents/.*\.plist\.example$"),
+        "infra/launchagents/*.plist.example: LaunchAgent template, real plists gitignored",
+    ),
     (
         re.compile(r"(^|/)\.env\.sample$"),
         ".env.sample: documented placeholder, never a real secret",
@@ -132,6 +140,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
             r"^research/operations/2026-05-20-crm-workspace-ai-snapshots-fake-gemini-backup\.csv$"
         ),
         "fake-Gemini cleanup audit backup CSV: serialized audit snapshots, not credentials",
+    ),
+    # Orchestrator zero-baseline JSON snapshots: diagnostic state captures
+    # (git commit SHAs, counts) written by orchestrator cleanup sessions. The
+    # high-entropy hits are 40-char git object SHAs, not credentials.
+    (
+        re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*baseline.*\.json$"),
+        "orchestrator baseline JSON snapshot: git SHAs + counts, not credentials",
     ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),

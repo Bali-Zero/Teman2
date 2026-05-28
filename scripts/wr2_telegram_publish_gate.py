@@ -388,7 +388,7 @@ async def archive_stale(conn: asyncpg.Connection) -> int:
            AND state_updated_at < now() - $1::interval
          RETURNING carousel_id
         """,
-        f"{STALE_THRESHOLD_DAYS} days",
+        timedelta(days=STALE_THRESHOLD_DAYS),
     )
     if rows:
         logger.info(f"archived {len(rows)} stale_abandoned carousels")

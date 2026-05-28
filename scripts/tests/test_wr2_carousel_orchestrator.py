@@ -130,6 +130,104 @@ def test_critic_verdict_non_dict_defaults_to_fail():
 
 
 # ===========================================================================
+# 4b. critic_verdict — Claude SDK envelope shape (pilot-3 regression fix)
+# ===========================================================================
+def test_critic_verdict_claude_sdk_envelope_hard_fail():
+    """Pilot-3 2026-05-27 02:33 critic.json — nested overall_verdict=hard_fail."""
+    payload = {
+        "type": "result",
+        "is_error": False,
+        "result": (
+            "Confirmed: no PDF, no rendered PNGs. Structural verdict only.\n\n"
+            "```json\n"
+            "{\n"
+            '  "overall_verdict": "hard_fail",\n'
+            '  "binary_carousel_verdict": "FAIL",\n'
+            '  "binary_carousel_reason": "Carousel incomplete: hero JPGs missing"\n'
+            "}\n"
+            "```\n\nTrailing prose."
+        ),
+    }
+    assert orch.critic_verdict(payload) == "FAIL"
+
+
+def test_critic_verdict_claude_sdk_envelope_pass():
+    payload = {
+        "type": "result",
+        "result": (
+            "All checks green.\n\n"
+            "```json\n"
+            '{"overall_verdict": "pass", "binary_carousel_verdict": "PASS"}\n'
+            "```"
+        ),
+    }
+    assert orch.critic_verdict(payload) == "PASS"
+
+
+def test_critic_verdict_claude_sdk_envelope_soft_fail():
+    """soft_fail (retryable) maps to RETRYABLE_FAIL."""
+    payload = {
+        "result": (
+            "```json\n"
+            '{"overall_verdict": "soft_fail", "binary_carousel_verdict": "FAIL"}\n'
+            "```"
+        ),
+    }
+    assert orch.critic_verdict(payload) == "RETRYABLE_FAIL"
+
+
+def test_critic_verdict_bare_structured_dict():
+    """Bare verdict dict (no envelope) — overall_verdict at top level."""
+    payload = {"overall_verdict": "hard_fail", "binary_carousel_verdict": "FAIL"}
+    assert orch.critic_verdict(payload) == "FAIL"
+    payload = {"overall_verdict": "pass"}
+    assert orch.critic_verdict(payload) == "PASS"
+    payload = {"binary_carousel_verdict": "PASS"}
+    assert orch.critic_verdict(payload) == "PASS"
+
+
+def test_critic_verdict_envelope_no_fence_returns_fail():
+    """Envelope with `result` text but no JSON fence — unknown verdict, default FAIL."""
+    payload = {"type": "result", "result": "Just prose, no JSON code block."}
+    assert orch.critic_verdict(payload) == "FAIL"
+
+
+def test_critic_verdict_envelope_malformed_fence():
+    """Envelope with malformed JSON inside fence — fall through to FAIL."""
+    payload = {
+        "result": "```json\n{ not valid json at all\n```",
+    }
+    assert orch.critic_verdict(payload) == "FAIL"
+
+
+def test_critic_verdict_legacy_field_inside_envelope():
+    """Backward compat: bare `verdict` field inside fenced JSON still respected."""
+    payload = {
+        "result": (
+            "```json\n"
+            '{"verdict": "RETRYABLE_FAIL"}\n'
+            "```"
+        ),
+    }
+    assert orch.critic_verdict(payload) == "RETRYABLE_FAIL"
+
+
+def test_extract_critic_verdict_dict_helper():
+    """Helper extracts the structured dict for downstream reason mining."""
+    payload = {
+        "result": (
+            "preamble\n\n"
+            "```json\n"
+            '{"overall_verdict": "hard_fail", "binary_carousel_reason": "X"}\n'
+            "```\n\nepilogue"
+        ),
+    }
+    extracted = orch._extract_critic_verdict_dict(payload)
+    assert extracted["overall_verdict"] == "hard_fail"
+    assert extracted["binary_carousel_reason"] == "X"
+
+
+# ===========================================================================
 # 5. write_artifact — fsync + JSON / str handling
 # ===========================================================================
 def test_write_artifact_dict_serialised_json(tmp_path):
@@ -421,3 +519,143 @@ async def test_call_subagent_missing_subagent_raises_fatal(tmp_path, monkeypatch
         )
 
     create_mock.assert_not_awaited()
+
+
+# ===========================================================================
+# 11. render_playwright — HTML→PNG→PDF pipeline (Playwright + PIL)
+# ===========================================================================
+def test_resolve_slide_html_paths_bare_top_level(tmp_path):
+    payload = {"slides_written": ["/tmp/a/01.html", "/tmp/a/02.html"]}
+    paths = orch._resolve_slide_html_paths(payload, tmp_path)
+    assert [str(p) for p in paths] == ["/tmp/a/01.html", "/tmp/a/02.html"]
+
+
+def test_resolve_slide_html_paths_claude_sdk_envelope(tmp_path):
+    payload = {
+        "type": "result",
+        "result": (
+            "Layout composer success.\n\n"
+            "```json\n"
+            '{"slides_written": ["/tmp/b/01.html", "/tmp/b/02.html", "/tmp/b/03.html"]}\n'
+            "```\nEpilogue."
+        ),
+    }
+    paths = orch._resolve_slide_html_paths(payload, tmp_path)
+    assert len(paths) == 3
+    assert paths[0].name == "01.html"
+
+
+def test_resolve_slide_html_paths_filesystem_fallback(tmp_path):
+    slides_dir = tmp_path / "slides"
+    slides_dir.mkdir()
+    (slides_dir / "01.html").write_text("<html/>")
+    (slides_dir / "02.html").write_text("<html/>")
+    (slides_dir / "notes.txt").write_text("ignore me")
+    paths = orch._resolve_slide_html_paths({}, tmp_path)
+    assert len(paths) == 2
+    assert all(p.suffix == ".html" for p in paths)
+
+
+def test_resolve_slide_html_paths_empty_payload(tmp_path):
+    assert orch._resolve_slide_html_paths({}, tmp_path) == []
+    assert orch._resolve_slide_html_paths("not a dict", tmp_path) == []
+    assert orch._resolve_slide_html_paths({"result": "no json fence here"}, tmp_path) == []
+
+
+def test_resolve_slide_html_paths_malformed_envelope_fence(tmp_path):
+    payload = {"result": "```json\n{ broken json\n```"}
+    assert orch._resolve_slide_html_paths(payload, tmp_path) == []
+
+
+def test_compose_pdf_writes_multipage_file(tmp_path):
+    """PIL composition smoke — real PNGs in, single PDF out."""
+    from PIL import Image as _Image
+    pngs = []
+    for i in range(3):
+        png_path = tmp_path / f"{i:02d}.png"
+        img = _Image.new("RGB", (1080, 1350), color=(245, 196, 48))
+        img.save(png_path)
+        pngs.append(png_path)
+    pdf_path = tmp_path / "carousel.pdf"
+    orch._compose_pdf(pngs, pdf_path)
+    assert pdf_path.exists()
+    assert pdf_path.stat().st_size > 1000  # >1KB sanity
+
+
+def test_compose_pdf_empty_raises():
+    with pytest.raises(ValueError, match="empty PNG list"):
+        orch._compose_pdf([], Path("/tmp/never.pdf"))
+
+
+@pytest.mark.asyncio
+async def test_render_playwright_no_html_writes_placeholder(tmp_path):
+    """When no HTML paths resolve, a placeholder marker is written, no Chromium boot."""
+    out = await orch.render_playwright(tmp_path, {"slides_written": []})
+    assert len(out) == 1
+    assert out[0].suffix == ".json"
+    assert "no_slides_resolved" in out[0].name
+
+
+@pytest.mark.asyncio
+async def test_render_playwright_calls_mock_renderer(tmp_path, monkeypatch):
+    """Wire-level: render_playwright invokes _render_html_to_png + _compose_pdf."""
+    slides_dir = tmp_path / "slides"
+    slides_dir.mkdir()
+    html_paths = []
+    for i in range(2):
+        h = slides_dir / f"{i:02d}.html"
+        h.write_text("<html><body><h1>Slide</h1></body></html>")
+        html_paths.append(h)
+
+    render_calls = []
+
+    async def fake_render(html_path, png_path, *, timeout_ms=30000):
+        render_calls.append((html_path, png_path))
+        # Touch a fake PNG so caller sees it on disk
+        from PIL import Image as _Image
+        _Image.new("RGB", (1080, 1350), color=(0, 0, 0)).save(png_path)
+
+    monkeypatch.setattr(orch, "_render_html_to_png", fake_render)
+
+    payload = {"slides_written": [str(p) for p in html_paths]}
+    result = await orch.render_playwright(tmp_path, payload)
+
+    assert len(render_calls) == 2
+    assert len(result) == 2
+    assert all(p.suffix == ".png" for p in result)
+    # PDF composed
+    pdf = tmp_path / "carousel.pdf"
+    assert pdf.exists()
+    # rendered.json written
+    rendered_json = tmp_path / "rendered.json"
+    assert rendered_json.exists()
+    rendered_data = json.loads(rendered_json.read_text())
+    assert "slides" in rendered_data
+    assert "pdf" in rendered_data
+
+
+@pytest.mark.asyncio
+async def test_render_playwright_per_slide_failure_non_fatal(tmp_path, monkeypatch):
+    """One slide render failing does not abort the whole pipeline."""
+    slides_dir = tmp_path / "slides"
+    slides_dir.mkdir()
+    paths = []
+    for i in range(3):
+        h = slides_dir / f"{i:02d}.html"
+        h.write_text("<html/>")
+        paths.append(h)
+
+    call_idx = [0]
+
+    async def flaky_render(html_path, png_path, *, timeout_ms=30000):
+        if call_idx[0] == 1:  # second slide fails
+            call_idx[0] += 1
+            raise RuntimeError("simulated render crash")
+        call_idx[0] += 1
+        from PIL import Image as _Image
+        _Image.new("RGB", (1080, 1350), color=(245, 196, 48)).save(png_path)
+
+    monkeypatch.setattr(orch, "_render_html_to_png", flaky_render)
+
+    result = await orch.render_playwright(tmp_path, {"slides_written": [str(p) for p in paths]})
+    assert len(result) == 2  # 2 of 3 succeeded

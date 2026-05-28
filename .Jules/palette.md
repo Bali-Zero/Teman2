@@ -37,3 +37,8 @@
 
 **Learning:** Asynchronous actions in the client portal (like marking notifications as read) lacked visual feedback, leading to a "dead" feel during network latency. Providing immediate feedback via spinning icons and disabling buttons during mutations significantly improves the perceived responsiveness and prevents duplicate requests.
 **Action:** Always expose and utilize mutation pending states from hooks to provide visual feedback and disable interactive elements during async operations.
+
+## 2026-05-19 - [Fluid Inputs in Utility Widgets]
+
+**Learning:** Small utility widgets that contain text inputs (like FeedbackWidget) often feel "heavy" when they use standard textareas with fixed heights and internal scrollbars. Utilizing the project's standard AutoResizeTextarea component ensures a fluid, consistent input experience across all interface layers. Additionally, secondary widgets must strictly adhere to semantic labeling (htmlFor/id) and ARIA dialog roles to ensure they are not overlooked by screen reader users.
+**Action:** Consistently use AutoResizeTextarea for multi-line inputs in all UI layers. Always associate labels with inputs using semantic IDs and apply aria-labelledby to dialog containers.

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-05-28T00:29:09Z",
+  "current_branch": "feat/wr2-c5a-pilot-and-p1-structural-fixes-2026-05-26",
+  "current_head": "c7c07b65089084f4c1f9a3e5fde4563151917f2f",
+  "current_dirty_files": 5,
+  "main_head": "07c7b3d4b7272615966e654eb8bb50d50fb9963b",
+  "worktree_count": 24,
+  "branch_count_local": 79,
+  "branch_count_remote": 154,
+  "stash_count": 59,
+  "pr_open": 22,
+  "pr_merged_36h": 19,
+  "escalations_lines_pro": 4676,
+  "claude_tasks_pending": 375
+}

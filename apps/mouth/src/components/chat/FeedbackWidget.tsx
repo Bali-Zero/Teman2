@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { logger } from "@/lib/logger";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 
 interface FeedbackData {
   type: "positive" | "negative" | "issue";
@@ -151,6 +152,7 @@ export function FeedbackWidget({
         transition={{ duration: 0.3 }}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="feedback-title"
         className="fixed bottom-24 right-4 md:max-w-sm w-[calc(100%-2rem)] md:w-80 bg-[var(--background-elevated)] border border-[var(--border)] rounded-xl p-4 shadow-xl z-50"
       >
         {submitSuccess ? (
@@ -176,7 +178,10 @@ export function FeedbackWidget({
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
+                <h3
+                  id="feedback-title"
+                  className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2"
+                >
                   <MessageSquare className="w-4 h-4 text-[var(--accent)]" />
                   How is your experience?
                 </h3>
@@ -185,8 +190,9 @@ export function FeedbackWidget({
                 </p>
               </div>
               <button
+                type="button"
                 onClick={handleDismiss}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 -mr-1 -mt-1"
+                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 -mr-1 -mt-1 focus-ring rounded"
                 aria-label="Dismiss feedback"
               >
                 <X className="w-4 h-4" />
@@ -199,7 +205,7 @@ export function FeedbackWidget({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full justify-start gap-2 hover:bg-[var(--success)]/10 hover:border-[var(--success)]/30 hover:text-[var(--success)]"
+                  className="w-full justify-start gap-2 hover:bg-[var(--success)]/10 hover:border-[var(--success)]/30 hover:text-[var(--success)] focus-ring"
                   onClick={() => setFeedbackType("positive")}
                 >
                   <ThumbsUp className="w-4 h-4" />
@@ -208,7 +214,7 @@ export function FeedbackWidget({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full justify-start gap-2 hover:bg-yellow-500/10 hover:border-yellow-500/30 hover:text-yellow-500"
+                  className="w-full justify-start gap-2 hover:bg-yellow-500/10 hover:border-yellow-500/30 hover:text-yellow-500 focus-ring"
                   onClick={() => setFeedbackType("negative")}
                 >
                   <ThumbsDown className="w-4 h-4" />I had some issues
@@ -216,7 +222,7 @@ export function FeedbackWidget({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full justify-start gap-2 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500"
+                  className="w-full justify-start gap-2 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 focus-ring"
                   onClick={() => setFeedbackType("issue")}
                 >
                   <AlertCircle className="w-4 h-4" />I found a bug
@@ -230,18 +236,22 @@ export function FeedbackWidget({
                 className="space-y-3"
               >
                 <div>
-                  <label className="text-xs text-[var(--foreground-muted)] block mb-1.5">
+                  <label
+                    htmlFor="feedback-message"
+                    className="text-xs text-[var(--foreground-muted)] block mb-1.5"
+                  >
                     {feedbackType === "positive" &&
                       "What did you like? (optional)"}
                     {feedbackType === "negative" &&
                       "What went wrong? (optional)"}
                     {feedbackType === "issue" && "Describe the bug: (optional)"}
                   </label>
-                  <textarea
+                  <AutoResizeTextarea
+                    id="feedback-message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Tell us more..."
-                    className="w-full p-2.5 text-sm bg-[var(--background)] border border-[var(--border)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]"
+                    className="w-full p-2.5 text-sm bg-[var(--background)] border border-[var(--border)] rounded-lg focus-ring"
                     rows={3}
                   />
                 </div>
@@ -254,14 +264,18 @@ export function FeedbackWidget({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <label className="text-xs text-[var(--foreground-muted)] block mb-1.5">
+                    <label
+                      htmlFor="feedback-correction"
+                      className="text-xs text-[var(--foreground-muted)] block mb-1.5"
+                    >
                       Help us learn: What was the correct answer?
                     </label>
-                    <textarea
+                    <AutoResizeTextarea
+                      id="feedback-correction"
                       value={correctionText}
                       onChange={(e) => setCorrectionText(e.target.value)}
                       placeholder="If the AI gave an incorrect answer, please provide the correct information here..."
-                      className="w-full p-2.5 text-sm bg-[var(--background)] border border-[var(--border)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]"
+                      className="w-full p-2.5 text-sm bg-[var(--background)] border border-[var(--border)] rounded-lg focus-ring"
                       rows={3}
                     />
                   </motion.div>
@@ -276,7 +290,7 @@ export function FeedbackWidget({
                       setCorrectionText("");
                     }}
                     disabled={isSubmitting}
-                    className="text-[var(--foreground-muted)]"
+                    className="text-[var(--foreground-muted)] focus-ring"
                   >
                     Back
                   </Button>
@@ -284,7 +298,7 @@ export function FeedbackWidget({
                     size="sm"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="flex-1 gap-2"
+                    className="flex-1 gap-2 focus-ring"
                   >
                     {isSubmitting ? (
                       <>
