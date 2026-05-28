@@ -1,7 +1,15 @@
 # OPENCLAW_SYSTEM.md — Guida Orchestrazione Multi-AI
 
-> Per: OpenClaw (che usa Claude/Kimi come modelli)
-> Aggiornato: 2026-02-16
+> Per: OpenClaw multi-agent locale
+> Aggiornato: 2026-05-29
+
+> Nota live 2026-05-29: la configurazione operativa corrente è
+> `~/.openclaw/openclaw.json`, non gli esempi TOML legacy sotto. Il profilo
+> principale usa OpenClaw `2026.5.27` con default `openai/gpt-5.5`, gateway
+> locale su porta `18789`, segreti in `~/.openclaw/secrets`, dashboard
+> raggiungibile solo da loopback. Verificare stato e sicurezza con
+> `openclaw status --deep`, `openclaw doctor --no-workspace-suggestions` e
+> `openclaw security audit --deep`.
 
 ---
 
@@ -27,7 +35,7 @@ OpenClaw orchestra più AI su Nuzantara. Questo documento definisce **quale AI u
 ### `nuzantara-rag` — Dominio
 
 ```
-Binary: /Users/nuzantara/.local/bin/nuzantara-mcp
+Binary: /Users/nuzantara/.openclaw/bin/nuzantara-mcp-openclaw-fixes
 Env: NUZANTARA_BACKEND_URL=https://nuzantara-rag.fly.dev
 ```
 
@@ -40,6 +48,10 @@ Env: NUZANTARA_BACKEND_URL=https://nuzantara-rag.fly.dev
 | `check_health()`                           | Health backend            |
 | `check_health_detailed()`                  | Health per-servizio       |
 | `get_qdrant_metrics()`                     | Metriche vector DB        |
+| `guardian_risk_score()`                    | Risk score Guardian       |
+| `guardian_recent_decisions()`              | Decisioni Guardian        |
+| `guardian_risk_score_history()`            | Storico risk score        |
+| `crm_guardian_drive_validation_summary()`  | Snapshot Drive CRM        |
 
 ### `nuzantara-ops` — Operativo
 
