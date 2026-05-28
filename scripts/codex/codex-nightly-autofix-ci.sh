@@ -214,12 +214,6 @@ gh run view "$RUN_ID" --repo "$REPO_SLUG" --log-failed > "$RUN_LOG_FILE" 2>&1 ||
     exit 1
 }
 
-# Mark this run as attempted only after a real fix attempt can start. Log-fetch
-# failures are blocked observations, not daily-cap-consuming fix attempts.
-echo "${RUN_ID} ${NOW_EPOCH} ${BRANCH} ${WORKFLOW_NAME}" >> "$STATE_FILE"
-echo $((ATTEMPTS_TODAY + 1)) > "$COUNT_FILE"
-codex_state action attempt_started "Fetched logs for run $RUN_ID; launching Codex" "$FIX_BRANCH" "$REPO_ROOT"
-
 # Truncate logs to last 8000 chars (focus on actual failure)
 TAIL_LOGS=$(tail -c 8000 "$RUN_LOG_FILE")
 
@@ -259,15 +253,32 @@ restore_stash() {
 # Combined with mkdir-mutex trap above
 trap 'restore_stash; rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
-git fetch origin "$BRANCH" 2>&1 | head -5
+if ! git fetch origin "$BRANCH" 2>&1 | head -5; then
+    log "Cannot fetch $BRANCH (likely deleted). Skipping without consuming daily cap."
+    echo "${RUN_ID} ${NOW_EPOCH} ${BRANCH} ${WORKFLOW_NAME}" >> "$STATE_FILE"
+    codex_state skipped stale_branch "Branch $BRANCH not fetchable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
+    notify "⚠️ Codex autofix: branch $BRANCH not fetchable"
+    git checkout main 2>&1 | head -2 || true
+    restore_stash
+    exit 0
+fi
 git checkout "$BRANCH" 2>&1 | head -3 || {
-    log "Cannot checkout $BRANCH (likely deleted). Skipping."
+    log "Cannot checkout $BRANCH (likely deleted). Skipping without consuming daily cap."
+    echo "${RUN_ID} ${NOW_EPOCH} ${BRANCH} ${WORKFLOW_NAME}" >> "$STATE_FILE"
+    codex_state skipped stale_branch "Branch $BRANCH not checkoutable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
     notify "⚠️ Codex autofix: branch $BRANCH not checkoutable"
     git checkout main 2>&1 | head -2 || true
     restore_stash
     exit 0
 }
 git reset --hard "$SHA" 2>&1 | head -3
+
+# Mark this run as attempted only after checkout/reset succeeds and a real
+# Codex fix attempt can start. Log-fetch and stale-branch failures are blocked
+# observations, not daily-cap-consuming fix attempts.
+echo "${RUN_ID} ${NOW_EPOCH} ${BRANCH} ${WORKFLOW_NAME}" >> "$STATE_FILE"
+echo $((ATTEMPTS_TODAY + 1)) > "$COUNT_FILE"
+codex_state action attempt_started "Fetched logs and checked out run $RUN_ID; launching Codex" "$FIX_BRANCH" "$REPO_ROOT"
 
 # ───────────────────────────────────────────────────────────────
 # Run Codex autofix
