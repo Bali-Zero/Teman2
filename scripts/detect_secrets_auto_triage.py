@@ -133,6 +133,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         ),
         "fake-Gemini cleanup audit backup CSV: serialized audit snapshots, not credentials",
     ),
+    # Orchestrator zero-baseline JSON snapshots: diagnostic state captures
+    # (git commit SHAs, counts) written by orchestrator cleanup sessions. The
+    # high-entropy hits are 40-char git object SHAs, not credentials.
+    (
+        re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*baseline.*\.json$"),
+        "orchestrator baseline JSON snapshot: git SHAs + counts, not credentials",
+    ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),
         "README: documentation",
