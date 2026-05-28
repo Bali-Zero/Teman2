@@ -6,7 +6,8 @@
   "workspaces": [
     "apps/backend-rag",
     "apps/mouth",
-    "apps/admin-dashboard"
+    "apps/admin-dashboard",
+    "apps/admin-dashboard-local"
   ],
   "scripts": {
     "prepare": "husky",
