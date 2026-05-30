@@ -13,7 +13,7 @@
   "git_state": {
     "worktree_path": "/Users/nuzantara/Desktop/nuzantara",
     "current_branch": "chore/recover-codex-launchd-fixes-2026-05-31",
-    "head_sha": "7bd5b9aa555c59169c5a6d95b9b091da8d36e080",
+    "head_sha_short": "7bd5b9aa5 (origin/main tip at audit start; redis bump #967)",
     "head_subject": "chore(deps): bump redis from 7.4.0 to 8.0.0 in /apps/backend-rag (#967)",
     "staged_at_session_start": [
       "M apps/backend-rag/backend/llm/claude_oauth_client.py (no real content diff vs HEAD — index-dirty artifact)",
@@ -57,7 +57,7 @@
   "prod_backend_fly": {
     "app": "nuzantara-rag",
     "release_version": 3414,
-    "deployed_image_gh_sha": "be06d86ba53fc74ab2f3ba8681e6daad812c7815 (#969 villa-kbli guard)",
+    "deployed_image_gh_sha_short": "be06d86ba (#969 villa-kbli guard)",
     "machines": [
       {"id": "7847d95ce257d8", "process_group": "api", "state": "started", "guest": "shared cpus=2 memory_mb=3072", "host_status": "ok", "servicecheck": "passing", "note": "W60 future-proofing PR #903 LIVE — was 1cpu/2gb, now 2cpu/3gb"},
       {"id": "1781e5eda03438", "process_group": "rag", "state": "started", "guest": "shared cpus=2 memory_mb=2048", "host_status": "ok"}
