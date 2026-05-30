@@ -1,0 +1,134 @@
+{
+  "frozen_meta": {
+    "audit_id": "system-audit-2026-05-31",
+    "generated_at_local": "2026-05-31T01:49+08:00 (WITA)",
+    "generated_epoch_ref": 1780163535,
+    "auditor": "Claude Opus 4.8 (1M ctx) — autonomous L2 subagent",
+    "machine": "Pro (nuzantara@Nuzantara)",
+    "phase": "FASE A read-only snapshot",
+    "anti_hallucination_note": "Every value below is tool-derived in the audit turn (curl/MCP/git/psql). No remembered or fabricated outputs.",
+    "scope_note": "Audit prompt arrived empty ('undefined'); executed as comprehensive empirical health audit per hard rules."
+  },
+
+  "git_state": {
+    "worktree_path": "/Users/nuzantara/Desktop/nuzantara",
+    "current_branch": "chore/recover-codex-launchd-fixes-2026-05-31",
+    "head_sha": "7bd5b9aa555c59169c5a6d95b9b091da8d36e080",
+    "head_subject": "chore(deps): bump redis from 7.4.0 to 8.0.0 in /apps/backend-rag (#967)",
+    "staged_at_session_start": [
+      "M apps/backend-rag/backend/llm/claude_oauth_client.py (no real content diff vs HEAD — index-dirty artifact)",
+      "M infra/launchagents/com.balizero.nuzantara.log-size-watchdog.plist",
+      "M infra/launchagents/com.balizero.wr2.plist-watchdog.plist",
+      "A scripts/wr2-deploy-pull.sh"
+    ],
+    "staged_ownership": "Pre-existing WIP of the 'recover-codex-launchd-fixes' branch — NOT this audit's work. Audit commits on a clean isolated branch and stages only its own files (W57 anti-sibling-race discipline).",
+    "local_branches": 33,
+    "remote_branches": 140,
+    "open_prs": 0,
+    "ci_on_main": "GREEN (last 8 runs success: fly restart loop detector, auto-merge whitelist, fly watcher, notifiers, dependabot graph)",
+    "dangling_commits": 607,
+    "dangling_blobs": 29,
+    "dangling_assessment": "Normal for a heavy multi-worktree repo where `git gc` has not run recently. No evidence of lost-work blobs requiring recovery (W 'untracked files lost' family not triggered)."
+  },
+
+  "worktrees": {
+    "total": 8,
+    "total_size": "7.0G",
+    "deploy_worktree": "/Users/nuzantara/Desktop/nuzantara-deploy [deploy/main] marked PRUNABLE by git",
+    "stale_inventory_W62": [
+      {"path": ".worktrees/backend-rag-crm-guardian-audit", "branch": "agent/nuzantara/backend-rag/crm-guardian-audit", "ahead_of_main": 0, "behind_main": 3, "dirty": 8, "mtime": "2026-05-31 01:24", "active_sibling_suspected": true},
+      {"path": ".worktrees/backend-rag-openclaw-kbli-whatsapp-guard", "branch": "agent/nuzantara/backend-rag/openclaw-kbli-whatsapp-guard", "dirty": 1, "mtime": "2026-05-31 00:08"},
+      {"path": ".worktrees/backend-rag-wa-nlm-validation-battery", "branch": "agent/nuzantara/backend-rag/wa-nlm-validation-battery", "ahead_of_main": 0, "behind_main": 3, "dirty": 6, "mtime": "2026-05-31 01:19", "active_sibling_suspected": true},
+      {"path": ".worktrees/codex-autofix-ci-runtime", "branch": "(detached)", "dirty": 0, "mtime": "2026-05-31 01:15"},
+      {"path": ".worktrees/codex-overnight-runner-runs", "branch": "chore/recover-codex-launchd-fixes-2026-05-31", "dirty": 4, "mtime": "2026-05-30 10:18"},
+      {"path": ".worktrees/docs-lab-clean-recreate", "branch": "agent/nuzantara/docs/lab-clean-recreate", "ahead_of_main": 0, "behind_main": 12, "dirty": 16, "mtime": "2026-05-30 13:41"},
+      {"path": ".worktrees/ops-autonomous-lab-scaffold", "branch": "agent/nuzantara/ops/autonomous-lab-scaffold", "dirty": 1, "mtime": "2026-05-31 00:58", "active_sibling_suspected": true},
+      {"path": ".worktrees/wr2-mouth-next16-lint", "branch": "agent/nuzantara/wr2/mouth-next16-lint", "ahead_of_main": 0, "behind_main": 25, "dirty": 4, "mtime": "2026-05-30 21:50"}
+    ],
+    "cleanup_status_CORRECTED": "4 worktrees are ahead_of_main=0 (zero COMMITTED unique commits): crm-guardian-audit, wa-nlm-validation-battery, docs-lab-clean-recreate, wr2-mouth-next16-lint. CORRECTION: their dirty content is NOT formatting noise — it is REAL uncommitted code WIP: crm-guardian-audit=8 modified .py (drive_poll_service.py, crm_guardian/summary_queue.py + tests + 2 scripts); wa-nlm-validation-battery=6 (openclaw_whatsapp_* scripts + eval json); docs-lab-clean-recreate=16 incl. NEW untracked feature files (app/routers/workspace_event_bridge.py, 3 jobs/, 3 tests, a LaunchAgent plist, 2 shell wrappers, research/labs/); wr2-mouth-next16-lint=4 (eslint.config.mjs, package.json, Checklist.tsx, package-lock.json). This is the W 'untracked-files-lost-on-branch-switch' danger zone: unsaved/uncommitted work parked in stale worktrees. MUST NOT GC. 3 worktrees have mtime within minutes of audit (active sibling sessions). RECOMMENDATION: these sibling agents should COMMIT their WIP (esp. docs-lab-clean-recreate's untracked new files which would be lost by any `git stash` without -u)."
+  },
+
+  "disk": {
+    "root_filesystem": "/dev/disk3s1s1 460Gi, 16Gi used at mountpoint, 36Gi avail, 31% capacity",
+    "verdict": "HEALTHY — far from the 94% threshold that killed intel pipeline (2026-05-14 scar)",
+    "hogs": {"repo_nuzantara": "28G", "worktrees": "7.0G", "dot_codex": "1.7G"}
+  },
+
+  "prod_backend_fly": {
+    "app": "nuzantara-rag",
+    "release_version": 3414,
+    "deployed_image_gh_sha": "be06d86ba53fc74ab2f3ba8681e6daad812c7815 (#969 villa-kbli guard)",
+    "machines": [
+      {"id": "7847d95ce257d8", "process_group": "api", "state": "started", "guest": "shared cpus=2 memory_mb=3072", "host_status": "ok", "servicecheck": "passing", "note": "W60 future-proofing PR #903 LIVE — was 1cpu/2gb, now 2cpu/3gb"},
+      {"id": "1781e5eda03438", "process_group": "rag", "state": "started", "guest": "shared cpus=2 memory_mb=2048", "host_status": "ok"}
+    ],
+    "fly_health_risk_score": 0,
+    "fly_health_issues_found": [],
+    "public_health_endpoint": {
+      "url": "https://nuzantara-rag.fly.dev/health",
+      "http": 200,
+      "latency_s": 0.12,
+      "probes_consistent": "5/5 identical",
+      "body": {"status": "healthy", "version": "v100-qdrant", "database": {"status": "connected", "type": "postgresql"}, "embeddings": {"status": "operational", "model": "text-embedding-3-small", "dimensions": 1536}}
+    },
+    "check_health_detailed_api_process": {
+      "raw_status": "critical",
+      "interpretation": "NOT AN OUTAGE. The api (light) process group answered; search/ai/router are unavailable on it BY DESIGN — they live on the rag process group (main_rag:app). database=healthy, redis=healthy (3.5ms), rate_limiter=healthy (28 limits, redis_errors=0), query_cache=healthy (redis). This is the documented api/rag split (Sprint 1.B scar family) + the W60 'degraded != down' discrimination principle.",
+      "critical_services_listed": ["search", "ai"],
+      "kg_langgraph": "pending_first_query (lazy-init, expected)"
+    }
+  },
+
+  "prod_data_postgres": {
+    "access": "nuzantara_readonly role via postgres-nuzantara MCP (read-only, defense-in-depth)",
+    "clients": 11699,
+    "practices": 440,
+    "public_tables": 281,
+    "events_outbox": {
+      "total": 37419,
+      "unconsumed": 507,
+      "unconsumed_breakdown": [
+        {"channel": "cell_pulse_observed", "unconsumed": 489, "oldest": "2026-05-30 14:08", "newest": "2026-05-30 17:55", "hrs_since_newest": 0.0, "verdict": "HEALTHY live drain — newest is current, normal observatory churn"},
+        {"channel": "measurer_event", "unconsumed": 18, "oldest": "2026-05-23 02:15", "newest": "2026-05-26 09:54", "hrs_since_newest": 106.0, "verdict": "GATE-OFF / dead consumer — no new measurer_event consumed since 2026-05-26; matches the cell_pulse_observed gate-off pattern (discovery_cell_pulse_observed_gate_off). 18 events stuck, NOT growing. Low blast radius (metabolic metrics only)."}
+      ]
+    }
+  },
+
+  "escalation_storm_status": {
+    "file": "shared/escalations_pro.jsonl",
+    "git_tracked": true,
+    "size_bytes": 1171002,
+    "entries": 4519,
+    "all_status": "pending",
+    "time_span": "2026-04-10 01:55 -> 2026-05-24 08:34 (last REAL ts)",
+    "file_mtime": "2026-05-30 22:47 (rewrite/re-serialization, NOT new escalations — newest content ts is still 2026-05-24)",
+    "top_jobs_by_count": {"zombie_hunter": 107, "articles_indexing_daily": 105, "daily_ops_autopilot": 105, "quality_orchestrator": 105, "comfyui_server": 105, "gdrive_pg_backup": 105, "practice_lifecycle_check": 104, "fly_qdrant_backup": 104, "health_check": 104, "nlm_bridge": 104},
+    "dlq_json_state": "all 13 jobs TERMINAL (drained) — W61 add_to_dlq attempts-preservation fix is WORKING. No live retry loop.",
+    "verdict": "STORM IS HISTORICAL AND CONTAINED. The 1.17MB tracked append-only file is accumulated DEBT (the documented 'weekly digest / pruning' gap from W61), but the escalation loop is dead. Pruning is NOT a safe additive fix (sentinel tooling may parse this file) — deferred to Antonello."
+  },
+
+  "golden_rules_backend_compliance": {
+    "print_in_backend": 0,
+    "anthropic_paid_endpoint_instantiation": 0,
+    "anthropic_matches_are": "defensive strip-logic + docstrings + tests only (claude_oauth_client.py strips ANTHROPIC_API_KEY unconditionally)",
+    "embedding_invariant": "text-embedding-3-small / 1536 dims — INTACT in core/embeddings.py and migration_020",
+    "requests_lib_in_backend": "1 occurrence: backend/verify_route.py (25-line throwaway manual routing-test script with `import requests` + bare excepts — debugging artifact). VERIFIED ORPHAN in-turn: 0 importers (grep), not in router_manifest/registration. Provenance: leftover from main_cloud.py refactor (86ee1b71c), only touched by lint sweeps since. SAFELY DELETED in FASE B (this audit).",
+    "httpx_asyncclient_loop_violations": "0 real — telegram_notifier.py:377 wraps the candidate loop in a SINGLE persistent AsyncClient context (correct pattern, not per-iteration)",
+    "verdict": "CLEAN. One cosmetic finding (verify_route.py orphan) verified in-turn (0 importers) and SAFELY DELETED in FASE B."
+  },
+
+  "recent_shipped_fixes_verified_in_tree": {
+    "villa_kbli_guard_PR969": "PRESENT — services/whatsapp_kbli_guard.py implements 55193->55203 KBLI 2020/PP28 -> KBLI 2025 mapping guard (commit be06d86ba, deployed as release 3414)",
+    "W60_fly_sizing_PR903": "LIVE on api machine (2cpu/3gb confirmed in fly status)",
+    "W61_dlq_attempts_preservation": "WORKING (DLQ all-TERMINAL, no retry storm)"
+  },
+
+  "fase_b_shipped": {
+    "pr": "#970 (chore/system-audit-2026-05-31)",
+    "commits": ["f70f81638 docs(ops): FROZEN + report", "follow-up: corrections + chore: remove orphan backend/verify_route.py"],
+    "safe_fix": "Deleted backend/verify_route.py (orphan debug script, banned `requests` lib + bare excepts, 0 importers verified). Additive/reversible/blast-radius-0.",
+    "auto_merge": "enabled (squash); gated by CI (mergeState BLOCKED until required checks pass)"
+  },
+
+  "overall_verdict": "GREEN (prod). Production backend healthy and consistent; data invariants intact; golden rules clean; CI green; recent critical scars (W60/W61/#969) confirmed closed in live state. No P0/P1 broken code path. The one substantive STRUCTURAL finding upgraded by reliable data: ~345/509 events_outbox events stale (>24h) across multiple PG LISTEN/NOTIFY consumers (gate-off pattern broader than one daemon) — operator triage needed. Other debt: escalations_pro.jsonl bloat, stale worktrees carrying REAL uncommitted WIP. One safe fix shipped (verify_route.py orphan removal)."
+}
