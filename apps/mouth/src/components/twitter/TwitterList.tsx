@@ -6,7 +6,7 @@ import {
   Search,
   Filter,
   Check,
-  Twitter,
+  X as Twitter,
   User,
 } from "lucide-react";
 import { toast } from "sonner";
