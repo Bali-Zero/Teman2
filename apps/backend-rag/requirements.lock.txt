@@ -3068,9 +3068,9 @@ prometheus-client==0.25.0 \
     --hash=sha256:5e373b75c31afb3c86f1a52fa1ad470c9aace18082d39ec0d2f918d11cc9ba28 \
     --hash=sha256:d5aec89e349a6ec230805d0df882f3807f74fd6c1a2fa86864e3c2279059fed1
     # via prometheus-fastapi-instrumentator
-prometheus-fastapi-instrumentator==6.1.0 \
-    --hash=sha256:1820d7a90389ce100f7d1285495ead388818ae0882e761c1f3e6e62a410bdf13 \
-    --hash=sha256:2279ac1cf5b9566a4c3a07f78c9c5ee19648ed90976ab87d73d672abc1bfa017
+prometheus-fastapi-instrumentator==8.0.0 \
+    --hash=sha256:c31ed192db077e75467b28b2fe5055362517f53369b798cb8dac9ff85f3f1c38 \
+    --hash=sha256:e3c967c402124dfe81cf5aad35208d9f96db5452c6cb752350d9358ca0a96198
     # via -r requirements.txt
 propcache==0.5.2 \
     --hash=sha256:01c4fc7480cd0598bb4b57022df55b9ca296da7fc5a8760bd8451a7e63a7d427 \
