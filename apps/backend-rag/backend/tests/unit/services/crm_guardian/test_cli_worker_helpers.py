@@ -129,6 +129,66 @@ class TestFileInventoryBlock:
         block = worker.build_file_inventory_block([], {})
         assert "source_folder | file_id | name | mimeType | size_bytes | modifiedTime" in block
 
+    def test_inventory_prompt_budget_prioritizes_ocr_and_doc_type(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = [
+            {
+                "id": "old_plain",
+                "name": "meeting-notes-2020.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2020-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+            {
+                "id": "new_plain",
+                "name": "meeting-notes-2026.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2026-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+            {
+                "id": "priority_doc",
+                "name": "passport.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2021-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+            {
+                "id": "ocr_doc",
+                "name": "random-scan.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2019-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+        ]
+        ocr_results = {
+            "ocr_doc": worker.ExtractionResult(
+                text="ocr text",
+                extractor="pdfminer",
+                confidence=0.9,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            )
+        }
+
+        monkeypatch.setattr(worker, "INVENTORY_MAX_FILES", 3)
+
+        block = worker.build_file_inventory_block(files, {"f": "Folder"}, ocr_results)
+
+        assert "ocr_doc" in block
+        assert "priority_doc" in block
+        assert "new_plain" in block
+        assert "old_plain" not in block
+        assert block.index("ocr_doc") < block.index("priority_doc") < block.index("new_plain")
+        assert "priority_doc | passport.pdf | application/pdf |  | 2021-01-01T00:00:00Z | passport" in block
+        assert "# Total files: 4" in block
+        assert "# Files rendered: 3" in block
+        assert "# Files skipped_by_prompt_budget: 1" in block
+
 
 # ---------------------------------------------------------------------------
 # build_file_content_snippets_block

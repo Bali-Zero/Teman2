@@ -106,12 +106,12 @@ STALE_RUNNING_SECONDS = int(os.getenv("CRM_GUARDIAN_STALE_RUNNING_SECONDS", "900
 # Excess files fall through as metadata-only (extractor='skipped').
 OCR_MAX_FILES_PER_CLIENT = 30
 
-# Prompt budget guard for cached OCR content. Fresh extraction is capped above,
-# but cache hits can otherwise render every historical priority document into
-# one prompt. Keep the LLM input bounded while preserving full file inventory.
-CONTENT_SNIPPET_MAX_FILES = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_FILES", "20"))
-CONTENT_SNIPPET_MAX_CHARS_PER_FILE = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_PER_FILE", "4000"))
-CONTENT_SNIPPET_MAX_CHARS_TOTAL = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_TOTAL", "60000"))
+# Prompt budget guards. Fresh extraction is capped above, but cache hits and
+# very large Drive folders can otherwise render unbounded prompt sections.
+INVENTORY_MAX_FILES = int(os.getenv("CRM_GUARDIAN_INVENTORY_MAX_FILES", "120"))
+CONTENT_SNIPPET_MAX_FILES = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_FILES", "12"))
+CONTENT_SNIPPET_MAX_CHARS_PER_FILE = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_PER_FILE", "2500"))
+CONTENT_SNIPPET_MAX_CHARS_TOTAL = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_TOTAL", "30000"))
 
 
 def _terminate_gemini_process(proc: subprocess.Popen[str]) -> None:
@@ -632,26 +632,71 @@ def build_cross_folder_context_block(
 def build_file_inventory_block(
     flat_files: list[dict[str, Any]],
     folder_id_to_name: dict[str, str],
-    _ocr_results: dict[str, ExtractionResult] | None = None,
+    ocr_results: dict[str, ExtractionResult] | None = None,
 ) -> str:
     """Render <FILE_INVENTORY> block exposing file metadata to Gemini.
 
     Each row also tags the inferred doc_type (passport/akta/nib/...) so the
     model can prioritise the right files when extracting compliance fields.
+    The rendered table is budgeted because some Drive roots contain thousands
+    of historical files; fingerprinting still uses the complete file list.
     """
+    ocr_results = ocr_results or {}
+
+    def _doc_type(file_row: dict[str, Any]) -> str:
+        return (
+            file_row.get("inferred_doc_type")
+            or infer_doc_type_from_filename(file_row.get("name"))
+            or "-"
+        )
+
+    def _ranked_file(item: tuple[int, dict[str, Any]]) -> tuple[int, int, str, str, int]:
+        index, file_row = item
+        fid = str(file_row.get("id", ""))
+        doc_type = _doc_type(file_row)
+        if fid in ocr_results:
+            rank = 0
+        elif doc_type in PRIORITY_DOC_TYPES:
+            rank = 1
+        elif doc_type != "-":
+            rank = 2
+        else:
+            rank = 3
+        return (
+            rank,
+            -_drive_modified_time_ms(file_row.get("modifiedTime")),
+            str(file_row.get("source_folder_id", "")),
+            fid,
+            index,
+        )
+
+    ranked_files = [
+        file_row
+        for _, file_row in sorted(enumerate(flat_files), key=_ranked_file)
+    ]
+    rendered_files = ranked_files[:INVENTORY_MAX_FILES]
+    skipped_by_budget = max(0, len(flat_files) - len(rendered_files))
+
     lines = ["<FILE_INVENTORY>"]
     lines.append(
         "# Format: source_folder | file_id | name | mimeType | size_bytes | modifiedTime | inferred_doc_type"
     )
-    for f in flat_files:
+    if skipped_by_budget:
+        lines.append(
+            "# Inventory is priority-sorted: OCR-backed docs, inferred compliance docs, "
+            "then newest remaining files."
+        )
+    for f in rendered_files:
         src = folder_id_to_name.get(f.get("source_folder_id", ""), "?")
         size = f.get("size", "")
-        doc_type = f.get("inferred_doc_type") or "-"
+        doc_type = _doc_type(f)
         lines.append(
             f"{src} | {f['id']} | {f.get('name', '?')} | "
             f"{f.get('mimeType', '?')} | {size} | {f.get('modifiedTime', '?')} | {doc_type}"
         )
     lines.append(f"# Total files: {len(flat_files)}")
+    lines.append(f"# Files rendered: {len(rendered_files)}")
+    lines.append(f"# Files skipped_by_prompt_budget: {skipped_by_budget}")
     lines.append("</FILE_INVENTORY>")
     return "\n".join(lines)
 
