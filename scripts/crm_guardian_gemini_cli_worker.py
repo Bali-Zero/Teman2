@@ -53,7 +53,9 @@ import hashlib
 import io
 import json
 import logging
+import os
 import re
+import signal
 import subprocess
 import sys
 import uuid
@@ -65,18 +67,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_RAG = REPO_ROOT / "apps" / "backend-rag"
 sys.path.insert(0, str(BACKEND_RAG))
 
-from backend.services.crm_guardian.schemas import (  # noqa: E402
-    L1ClientSummary,
-    SCHEMA_VERSION,
-)
 from backend.services.crm_guardian.ocr import (  # noqa: E402
+    PRIORITY_DOC_TYPES,
     ExtractionResult,
     OcrHealth,
-    PRIORITY_DOC_TYPES,
-    check_health as ocr_check_health,
+    check_health,
     extract_file_content,
     get_cached_content,
     upsert_cache_row,
+)
+from backend.services.crm_guardian.schemas import (  # noqa: E402
+    SCHEMA_VERSION,
+    L1ClientSummary,
 )
 
 LOG = logging.getLogger("crm_guardian.cli_worker")
@@ -95,13 +97,50 @@ RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
 GEMINI_CLI = "/Users/nuzantara/.local/bin/agy"  # agy CLI v1.0.0 (Antigravity), Gemini 3.1 Pro default via Google AI Ultra OAuth — replaces /opt/homebrew/bin/gemini (deprecated 2026-05-21, 256-color exit-1 regression under launchd)
-GEMINI_TIMEOUT_SECONDS = 360  # 2026-05-23: empirical p99=103s on 130KB prompts, +250% safety margin (was 240s, caused 91 timeout errors in 14h)
+GEMINI_TIMEOUT_SECONDS = int(os.getenv("CRM_GUARDIAN_GEMINI_TIMEOUT_SECONDS", "900"))
 GEMINI_DEFAULT_MODEL: str | None = None  # agy uses CLI default model — does NOT support `-m` flag (prints help instead)
+STALE_RUNNING_SECONDS = int(os.getenv("CRM_GUARDIAN_STALE_RUNNING_SECONDS", "900"))
 
 # Phase 1.5 OCR budget per client. Tesseract is fast but akta scans can spike
 # latency; we cap how many priority files we OCR in a single client run.
 # Excess files fall through as metadata-only (extractor='skipped').
 OCR_MAX_FILES_PER_CLIENT = 30
+
+
+def _terminate_gemini_process(proc: subprocess.Popen[str]) -> None:
+    """Terminate the agy process group created for a single CLI call."""
+    if proc.poll() is not None:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    except Exception as exc:
+        LOG.warning("failed to SIGTERM agy process group pid=%s: %s", proc.pid, exc)
+    try:
+        proc.wait(timeout=5)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    except Exception as exc:
+        LOG.warning("failed to SIGKILL agy process group pid=%s: %s", proc.pid, exc)
+        return
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        LOG.warning("agy process group pid=%s survived SIGKILL timeout", proc.pid)
+
+
+def _tail_text(path: Path, *, limit: int = 500) -> str:
+    """Read a small diagnostic tail without loading large CLI output into logs."""
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")[-limit:]
+    except FileNotFoundError:
+        return ""
 
 
 # ---------------------------------------------------------------------------
@@ -586,7 +625,7 @@ def build_cross_folder_context_block(
 def build_file_inventory_block(
     flat_files: list[dict[str, Any]],
     folder_id_to_name: dict[str, str],
-    ocr_results: dict[str, "ExtractionResult"] | None = None,
+    _ocr_results: dict[str, ExtractionResult] | None = None,
 ) -> str:
     """Render <FILE_INVENTORY> block exposing file metadata to Gemini.
 
@@ -612,7 +651,7 @@ def build_file_inventory_block(
 
 def build_file_content_snippets_block(
     flat_files: list[dict[str, Any]],
-    ocr_results: dict[str, "ExtractionResult"],
+    ocr_results: dict[str, ExtractionResult],
 ) -> str:
     """Render <FILE_CONTENT_SNIPPETS> with OCR-extracted text per priority file.
 
@@ -693,6 +732,33 @@ async def queue_mark_running(conn, client_id: int, run_id: str) -> int | None:
     return row["id"] if row else None
 
 
+async def reset_stale_running_jobs(
+    conn,
+    *,
+    stale_after_seconds: int = STALE_RUNNING_SECONDS,
+) -> int:
+    """Return abandoned running queue rows to pending before claiming work."""
+    result = await conn.execute(
+        """
+        UPDATE crm_guardian_summary_queue
+        SET status = 'pending',
+            started_at = NULL,
+            last_error = $2,
+            completed_at = NULL
+        WHERE status = 'running'
+          AND started_at IS NOT NULL
+          AND started_at < NOW() - ($1 * INTERVAL '1 second')
+        """,
+        stale_after_seconds,
+        f"reset stale running job after {stale_after_seconds}s",
+    )
+    try:
+        return int(result.rsplit(" ", 1)[1])
+    except (IndexError, ValueError):
+        LOG.warning("unexpected reset_stale_running_jobs result: %s", result)
+        return 0
+
+
 async def queue_mark_terminal(
     conn,
     queue_id: int | None,
@@ -756,9 +822,9 @@ def call_gemini_cli(
     Raises subprocess.TimeoutExpired on timeout, CalledProcessError on
     non-zero exit. Caller is responsible for retry/backoff logic.
 
-    The prompt is passed via `-p` arg, NOT stdin, because the CLI uses
-    `--prompt` as the primary non-interactive trigger. Long prompts (50+
-    files) tested up to ~120KB without issue.
+    The prompt is passed via stdin while `-p/--print` selects non-interactive
+    mode. This mirrors the stable local agent pattern and avoids argv limits
+    on large CRM inventories.
     """
     if not Path(GEMINI_CLI).exists():
         raise RuntimeError(
@@ -769,28 +835,83 @@ def call_gemini_cli(
     # agy does NOT support `-m model` (prints help instead). Model is fixed to
     # CLI default (Gemini 3.1 Pro under Google AI Ultra OAuth). The legacy
     # `model` argument is accepted for back-compat but ignored when CLI=agy.
-    cmd = [GEMINI_CLI, "-p", prompt]
+    cmd = [GEMINI_CLI, "-p", "--print-timeout", f"{timeout_seconds}s"]
 
     LOG.info(
         "Calling agy CLI (model=%s[ignored-on-agy] prompt_len=%d timeout=%ds)",
         model or "agy-default", len(prompt), timeout_seconds,
     )
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=timeout_seconds,
-        check=False,
-    )
-    if proc.returncode != 0:
+
+    # Do not use subprocess.run(..., capture_output=True) here. The agy CLI can
+    # delegate to a long-lived process that keeps inherited stdout/stderr pipes
+    # open after the direct child is gone; communicate() then waits forever and
+    # the CRM queue remains stuck in "running". Redirecting to files lets us
+    # wait on the direct process only and still retain diagnostics on failure.
+    capture_id = uuid.uuid4().hex
+    prompt_path = RAW_DUMP_DIR / f"agy_prompt_{capture_id}.txt"
+    stdout_path = RAW_DUMP_DIR / f"agy_stdout_{capture_id}.txt"
+    stderr_path = RAW_DUMP_DIR / f"agy_stderr_{capture_id}.txt"
+    prompt_path.write_text(prompt, encoding="utf-8")
+    proc: subprocess.Popen[str] | None = None
+    try:
+        with (
+            prompt_path.open("r", encoding="utf-8") as stdin_fh,
+            stdout_path.open("w+", encoding="utf-8") as stdout_fh,
+            stderr_path.open("w+", encoding="utf-8") as stderr_fh,
+        ):
+            proc = subprocess.Popen(
+                cmd,
+                stdin=stdin_fh,
+                stdout=stdout_fh,
+                stderr=stderr_fh,
+                text=True,
+                start_new_session=True,
+            )
+            try:
+                returncode = proc.wait(timeout=timeout_seconds)
+            except subprocess.TimeoutExpired as exc:
+                _terminate_gemini_process(proc)
+                stdout_fh.flush()
+                stderr_fh.flush()
+                LOG.error(
+                    "gemini CLI timeout > %ds. stdout_path=%s stderr_path=%s stderr_tail=%s",
+                    timeout_seconds,
+                    stdout_path,
+                    stderr_path,
+                    _tail_text(stderr_path),
+                )
+                raise subprocess.TimeoutExpired(
+                    cmd=cmd,
+                    timeout=timeout_seconds,
+                    output=_tail_text(stdout_path, limit=1000),
+                    stderr=_tail_text(stderr_path, limit=1000),
+                ) from exc
+            stdout_fh.flush()
+            stderr_fh.flush()
+
+        stdout_text = stdout_path.read_text(encoding="utf-8", errors="replace")
+        stderr_text = stderr_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        if proc is not None:
+            _terminate_gemini_process(proc)
+        raise
+
+    if returncode != 0:
         LOG.error(
-            "gemini CLI exited %d. stderr (last 500): %s",
-            proc.returncode, proc.stderr[-500:],
+            "gemini CLI exited %d. stdout_path=%s stderr_path=%s stderr_tail=%s",
+            returncode,
+            stdout_path,
+            stderr_path,
+            stderr_text[-500:],
         )
         raise RuntimeError(
-            f"gemini CLI returncode={proc.returncode}: {proc.stderr[:300]}",
+            f"gemini CLI returncode={returncode}: {stderr_text[:300]}",
         )
-    return proc.stdout
+
+    prompt_path.unlink(missing_ok=True)
+    stdout_path.unlink(missing_ok=True)
+    stderr_path.unlink(missing_ok=True)
+    return stdout_text
 
 
 # ---------------------------------------------------------------------------
@@ -931,7 +1052,7 @@ async def run_one_client(
     # OCR_MAX_FILES_PER_CLIENT to bound latency.
     ocr_results: dict[str, ExtractionResult] = {}
     try:
-        ocr_health = await ocr_check_health()
+        ocr_health = await check_health()
         ocr_results = await enrich_files_with_ocr(
             conn, drive_service, flat_files, ocr_health,
         )
@@ -1096,7 +1217,11 @@ async def main() -> int:
     prompt_template = args.prompt_file.read_text()
 
     import asyncpg
-    from backend.services.crm_guardian.base import build_drive_service
+
+    from backend.services.crm_guardian.base import (
+        build_drive_service,
+        bump_circuit_breaker,
+    )
 
     db_url = _resolve_db_url()
     conn = await asyncpg.connect(db_url)
@@ -1104,6 +1229,9 @@ async def main() -> int:
     if args.client_id:
         targets = [args.client_id]
     else:
+        stale_reset_count = await reset_stale_running_jobs(conn)
+        if stale_reset_count:
+            LOG.warning("Reset %d stale running CRM Guardian queue row(s)", stale_reset_count)
         rows = await conn.fetch(
             """
             SELECT client_id FROM crm_guardian_summary_queue
@@ -1115,13 +1243,25 @@ async def main() -> int:
         targets = [r["client_id"] for r in rows]
         if not targets:
             LOG.info("No pending clients in queue.")
+            await bump_circuit_breaker(conn, "I10b_summary_queue", True)
             await conn.close()
             return 0
 
     LOG.info("Targets: %s dry_run=%s model=%s",
                 targets, args.dry_run, args.model or "default")
 
-    drive_service = build_drive_service(prefer_user_oauth=True)
+    try:
+        drive_service = build_drive_service(prefer_user_oauth=True)
+    except Exception as e:
+        await bump_circuit_breaker(
+            conn,
+            "I10b_summary_queue",
+            False,
+            f"build_drive_service: {e}",
+        )
+        await conn.close()
+        raise
+
     run_id = str(uuid.uuid4())
     results: list[dict[str, Any]] = []
 
@@ -1137,11 +1277,29 @@ async def main() -> int:
         results.append(r)
         LOG.info("Result: %s", r)
 
-    await conn.close()
-    print(json.dumps({"run_id": run_id, "results": results}, indent=2, default=str))
-    return 0 if all(
+    succeeded = all(
         r.get("status") in ("success", "dry_run", "skipped") for r in results
-    ) else 1
+    )
+    first_error = next(
+        (str(r.get("error")) for r in results if r.get("status") == "error"),
+        None,
+    )
+    await bump_circuit_breaker(
+        conn,
+        "I10b_summary_queue",
+        succeeded,
+        first_error,
+    )
+    await bump_circuit_breaker(
+        conn,
+        "I10_summary_l1",
+        succeeded,
+        first_error,
+    )
+    await conn.close()
+    sys.stdout.write(json.dumps({"run_id": run_id, "results": results}, indent=2, default=str))
+    sys.stdout.write("\n")
+    return 0 if succeeded else 1
 
 
 if __name__ == "__main__":
