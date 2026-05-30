@@ -410,17 +410,27 @@ async def _download_video_media(
             )
         except asyncio.TimeoutError:
             payload = {}
-        # Two known non-ready shapes:
-        # (a) 404 NOT_FOUND envelope (Veo upstream still rendering)
-        # (b) ok response but encodedVideo empty (rare transitional)
+        # Known non-ready shapes (sleep & retry, NOT fatal):
+        # (a) 404 NOT_FOUND envelope (Veo upstream not yet registered)
+        # (b) 500 INTERNAL / 503 UNAVAILABLE while the media is materializing —
+        #     empirically observed 2026-05-30 under PAYGATE_TIER_TIER1P5: Google
+        #     returns 500 for the first ~40s after generate-video, then the MP4.
+        #     Treating these as fatal killed all 18 C5a shots at poll #0.
+        # (c) ok response but encodedVideo empty (rare transitional)
         if "detail" in payload and "error" in (payload.get("detail") or {}):
             err = payload["detail"]["error"]
             code = err.get("code")
-            if code in (404, "404", "NOT_FOUND"):
-                # Still pending — sleep and retry.
+            status = str(err.get("status", "")).upper()
+            transient = (
+                code in (404, "404", 500, "500", 503, "503")
+                or status in ("NOT_FOUND", "INTERNAL", "UNAVAILABLE")
+            )
+            if transient:
+                # Still pending / transient backend hiccup — sleep and retry
+                # (bounded by the outer deadline; persistent error → timeout).
                 await asyncio.sleep(poll_interval_s)
                 continue
-            # Other error → fail loud
+            # Genuine terminal error (e.g. 400 INVALID_ARGUMENT) → fail loud.
             raise FlowkitError(f"media {media_id[:8]} download error: {err}")
         video = payload.get("video") or {}
         encoded = video.get("encodedVideo")
