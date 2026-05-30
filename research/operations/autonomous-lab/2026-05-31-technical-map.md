@@ -139,19 +139,30 @@ For v0 the scaffold emits the simulation plan. Later phases can execute it.
 Integration starts in backend service code because it is easiest to test and
 least coupled to a specific scheduler.
 
-Current v0 files:
+Current v0.1 files:
 
 - `apps/backend-rag/backend/services/autonomous_lab/planner.py`
 - `apps/backend-rag/backend/tests/unit/services/autonomous_lab/test_planner.py`
+- `apps/backend-rag/backend/tests/unit/services/autonomous_lab/test_draft_cli.py`
+- `scripts/autonomous_lab_draft.py`
+- `research/operations/autonomous-lab/examples/bootstrap-input.json`
 - `research/operations/autonomous-lab/receipts/2026-05-31-bootstrap.json`
+- `research/operations/autonomous-lab/receipts/autonomous-lab-bootstrap-example.json`
 
 Next integration points:
 
-- CLI wrapper under `scripts/autonomous_lab_draft.py`.
 - Optional router under `backend/app/routers/autonomous_lab.py`, disabled by
   default and API-key gated.
 - Postgres state machine only after local receipts prove stable.
 - Outbox consumers only after ack-after-success behavior is implemented.
+
+CLI usage:
+
+```bash
+source apps/backend-rag/.venv/bin/activate
+python scripts/autonomous_lab_draft.py \
+  research/operations/autonomous-lab/examples/bootstrap-input.json
+```
 
 ## 8. Decision Metric
 

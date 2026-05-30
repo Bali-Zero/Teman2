@@ -1,0 +1,165 @@
+{
+  "blocked": false,
+  "created_at": "2026-05-31T01:20:00+08:00",
+  "decision_grade_outputs": [
+    "technical proposal",
+    "patch diff",
+    "test report",
+    "metric delta",
+    "failure analysis",
+    "manual promotion recommendation"
+  ],
+  "hypotheses": [
+    "Use repo, research, safety evidence to test whether 'riprendere il laboratorio autonomo di Nuzantara' can produce a decision-grade Nuzantara change.",
+    "Prefer a reversible worktree experiment with explicit tests before any promotion."
+  ],
+  "materials": [
+    {
+      "captured_at": "2026-05-31T01:20:00+08:00",
+      "checksum_sha256": "cba7fc5e41b0f78c94cf105845dd0446b53ead40e3bd8bf6688941632950616b",
+      "claims": [
+        "claim_fingerprint:cba7fc5e41b0f78c"
+      ],
+      "material_id": "wr2-wr3-inventory",
+      "risk_flags": [],
+      "source_type": "repo",
+      "source_uri": "repo://research/wr2+research/wr3",
+      "summary": "Derived non-verbatim summary: 31 words, 1 non-empty lines, 2 sentence-like segments.",
+      "tags": [
+        "repo",
+        "safety"
+      ],
+      "title": "WR2 and WR3 grounding"
+    },
+    {
+      "captured_at": "2026-05-31T01:20:00+08:00",
+      "checksum_sha256": "3460ffb7791b04c96d3ad092d441eed72b0c867446e3897f5929169676cc8539",
+      "claims": [
+        "claim_fingerprint:3460ffb7791b04c9"
+      ],
+      "material_id": "backend-research-services",
+      "risk_flags": [],
+      "source_type": "repo",
+      "source_uri": "repo://apps/backend-rag/backend/services/research",
+      "summary": "Derived non-verbatim summary: 30 words, 1 non-empty lines, 2 sentence-like segments.",
+      "tags": [
+        "research"
+      ],
+      "title": "Existing backend research layer"
+    }
+  ],
+  "objective": "riprendere il laboratorio autonomo di Nuzantara",
+  "pipeline": [
+    {
+      "component": "source_adapters",
+      "gate": "provenance",
+      "order": 1,
+      "output": "ResearchMaterial[]",
+      "stage": "intake"
+    },
+    {
+      "component": "normalizer",
+      "gate": "no_raw_receipt",
+      "order": 2,
+      "output": "NormalizedMaterial[]",
+      "stage": "normalize"
+    },
+    {
+      "component": "composer",
+      "gate": "evidence_quorum",
+      "order": 3,
+      "output": "hypotheses_and_spec",
+      "stage": "compose"
+    },
+    {
+      "component": "context_builder",
+      "gate": "no_secrets",
+      "order": 4,
+      "output": "SimulationPlan",
+      "stage": "reconstruct"
+    },
+    {
+      "component": "worktree_runner",
+      "gate": "worktree",
+      "order": 5,
+      "output": "patch_and_artifacts",
+      "stage": "experiment"
+    },
+    {
+      "component": "verification_runner",
+      "gate": "empirical",
+      "order": 6,
+      "output": "test_metrics_failure_report",
+      "stage": "verify"
+    },
+    {
+      "component": "decision_gate",
+      "gate": "manual_only",
+      "order": 7,
+      "output": "operator_proposal",
+      "stage": "promote"
+    }
+  ],
+  "pipeline_version": "autonomous-lab-v0",
+  "promotion_policy": "manual_operator_decision_only",
+  "run_id": "autonomous-lab-bootstrap-example",
+  "safety_gates": [
+    {
+      "detail": "at least one research material is required",
+      "name": "materials_present",
+      "passed": true,
+      "severity": "blocker"
+    },
+    {
+      "detail": "receipts store checksum and derived fields only",
+      "name": "raw_material_not_persisted",
+      "passed": true,
+      "severity": "blocker"
+    },
+    {
+      "detail": "python scripts/agent_start.py --lane ops --task-id autonomous-lab-bootstrap-example",
+      "name": "worktree_isolation",
+      "passed": true,
+      "severity": "blocker"
+    },
+    {
+      "detail": "workspace write flow requires explicit operator request",
+      "name": "google_workspace_write_block",
+      "passed": true,
+      "severity": "blocker"
+    },
+    {
+      "detail": "lab drafts never emit deploy or origin-main promotion commands",
+      "name": "production_deploy_block",
+      "passed": true,
+      "severity": "blocker"
+    },
+    {
+      "detail": "operator must approve any promotion after verification",
+      "name": "manual_promotion_only",
+      "passed": true,
+      "severity": "blocker"
+    }
+  ],
+  "simulation_plan": {
+    "context_reconstruction": [
+      "git head and dirty-state snapshot",
+      "target service import graph",
+      "environment key allowlist without secret values",
+      "fixture or sanitized data shape matching production contracts",
+      "exact runtime command path used by production or cron"
+    ],
+    "failure_analysis_required": true,
+    "target_paths": [
+      "apps/backend-rag/backend/services/autonomous_lab",
+      "research/operations/autonomous-lab",
+      "scripts/autonomous_lab_draft.py"
+    ],
+    "verification_commands": [
+      "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q",
+      "git diff --check -- research/operations/autonomous-lab"
+    ],
+    "worktree_command": "python scripts/agent_start.py --lane ops --task-id autonomous-lab-bootstrap-example",
+    "worktree_lane": "ops"
+  }
+}
