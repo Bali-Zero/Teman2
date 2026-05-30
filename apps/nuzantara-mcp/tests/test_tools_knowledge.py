@@ -37,6 +37,17 @@ async def test_search_kbli_default(mock_mcp, mock_call, mock_call_safe) -> None:
 
 
 @pytest.mark.asyncio
+async def test_search_kbli_wraps_list_response(mock_mcp, mock_call, mock_call_safe) -> None:
+    """search_kbli should always return FastMCP-compatible structured content."""
+    tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
+    mock_call.return_value = [{"kode_kbli": "56303", "judul": "Bar"}]
+
+    result = await tools["search_kbli"](query="bar business")
+
+    assert result == {"results": [{"kode_kbli": "56303", "judul": "Bar"}]}
+
+
+@pytest.mark.asyncio
 async def test_search_kbli_limit_capped_at_20(mock_mcp, mock_call, mock_call_safe) -> None:
     """search_kbli should cap limit at 20."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
@@ -95,17 +106,18 @@ async def test_chat_kbli(mock_mcp, mock_call, mock_call_safe) -> None:
 async def test_ask_legal_minimal(mock_mcp, mock_call, mock_call_safe) -> None:
     """ask_legal with default user_id and no session_id."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {
+    mock_call_safe.return_value = {
         "answer": "For KITAS investor...",
         "sources": ["PP 28/2025"],
     }
 
     result = await tools["ask_legal"](question="How to get KITAS investor?")
     assert "sources" in result
-    mock_call.assert_called_once_with(
+    mock_call_safe.assert_called_once_with(
         "/api/agentic-rag/query",
         method="POST",
         json={"query": "How to get KITAS investor?", "user_id": "mcp-agent"},
+        timeout=60,
     )
 
 
@@ -113,12 +125,12 @@ async def test_ask_legal_minimal(mock_mcp, mock_call, mock_call_safe) -> None:
 async def test_ask_legal_with_session(mock_mcp, mock_call, mock_call_safe) -> None:
     """ask_legal with custom user_id and session_id."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {"answer": "..."}
+    mock_call_safe.return_value = {"answer": "..."}
 
     await tools["ask_legal"](
         question="Follow up", user_id="user-123", session_id="sess-abc"
     )
-    call_json = mock_call.call_args[1]["json"]
+    call_json = mock_call_safe.call_args[1]["json"]
     assert call_json["user_id"] == "user-123"
     assert call_json["session_id"] == "sess-abc"
 
@@ -127,10 +139,10 @@ async def test_ask_legal_with_session(mock_mcp, mock_call, mock_call_safe) -> No
 async def test_ask_legal_no_session_omits(mock_mcp, mock_call, mock_call_safe) -> None:
     """ask_legal without session_id should not include it."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {"answer": "..."}
+    mock_call_safe.return_value = {"answer": "..."}
 
     await tools["ask_legal"](question="test")
-    call_json = mock_call.call_args[1]["json"]
+    call_json = mock_call_safe.call_args[1]["json"]
     assert "session_id" not in call_json
 
 
@@ -138,20 +150,35 @@ async def test_ask_legal_no_session_omits(mock_mcp, mock_call, mock_call_safe) -
 async def test_list_visa_types(mock_mcp, mock_call, mock_call_safe) -> None:
     """list_visa_types should call the correct endpoint."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {
+    mock_call_safe.return_value = {
         "visa_types": [{"code": "kitas_investor", "name": "KITAS Investor"}]
     }
 
     result = await tools["list_visa_types"]()
     assert result["visa_types"][0]["code"] == "kitas_investor"
-    mock_call.assert_called_once_with("/api/knowledge/visa-types")
+    mock_call_safe.assert_called_once_with("/api/knowledge/visa/")
+
+
+@pytest.mark.asyncio
+async def test_company_setup_can_use_visa_tools(
+    mock_mcp, mock_call, mock_call_safe, monkeypatch
+) -> None:
+    """WhatsApp company setup flows may need visa context for mixed client questions."""
+    monkeypatch.setenv("AGENT_ROLE", "company_setup")
+    tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
+    mock_call_safe.return_value = {"visa_types": []}
+
+    assert await tools["list_visa_types"]() == {"visa_types": []}
+
+    mock_call_safe.return_value = {"code": "b211a"}
+    assert await tools["get_visa_details"](visa_code="b211a") == {"code": "b211a"}
 
 
 @pytest.mark.asyncio
 async def test_get_visa_details(mock_mcp, mock_call, mock_call_safe) -> None:
     """get_visa_details should pass visa_code in URL."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {
+    mock_call_safe.return_value = {
         "code": "b211a",
         "name": "Business Visa",
         "requirements": ["Sponsor letter"],
@@ -159,7 +186,7 @@ async def test_get_visa_details(mock_mcp, mock_call, mock_call_safe) -> None:
 
     result = await tools["get_visa_details"](visa_code="b211a")
     assert result["code"] == "b211a"
-    mock_call.assert_called_once_with("/api/knowledge/visa-types/b211a")
+    mock_call_safe.assert_called_once_with("/api/knowledge/visa/code/b211a")
 
 
 @pytest.mark.asyncio

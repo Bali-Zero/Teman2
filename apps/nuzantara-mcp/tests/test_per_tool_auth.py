@@ -228,6 +228,10 @@ def test_role_taxonomy_loaded_from_yaml() -> None:
     assert "get_visa_details" in taxonomy["visa_specialist"]
     assert "ask_legal" in taxonomy["tax_consultant"]
     assert "search_kbli" in taxonomy["company_setup"]
+    assert "list_visa_types" in taxonomy["company_setup"]
+    assert "search_intel" in taxonomy["company_setup"]
+    assert "search_service_pricing" in taxonomy["company_setup"]
+    assert "get_all_prices" in taxonomy["company_setup"]
 
 
 def test_roles_for_helper() -> None:
