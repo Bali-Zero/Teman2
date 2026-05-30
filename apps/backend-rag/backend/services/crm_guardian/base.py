@@ -395,6 +395,8 @@ async def bump_circuit_breaker(
             SET last_run_at = NOW(),
                 last_success_at = NOW(),
                 consecutive_errors = 0,
+                circuit_breaker_tripped = false,
+                last_error_message = NULL,
                 updated_at = NOW()
             WHERE invariant_id = $1
             """,
