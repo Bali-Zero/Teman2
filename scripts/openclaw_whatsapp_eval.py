@@ -275,7 +275,13 @@ def _score_tool_trace(case: EvalCase, trace: dict[str, Any]) -> list[str]:
 
     raw_errors = trace.get("errors") or []
     ignored_errors = _ignored_tool_errors(case, trace, raw_errors)
-    effective_error_count = max(0, len(raw_errors) - len(ignored_errors))
+    # Fall back to the scalar error_count when no structured errors list is
+    # present (traces built without per-error detail still report a count).
+    if raw_errors:
+        base_error_count = len(raw_errors)
+    else:
+        base_error_count = int(trace.get("error_count") or 0)
+    effective_error_count = max(0, base_error_count - len(ignored_errors))
     trace["ignored_error_count"] = len(ignored_errors)
     trace["effective_error_count"] = effective_error_count
 
