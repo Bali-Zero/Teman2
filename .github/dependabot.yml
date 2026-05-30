@@ -17,7 +17,25 @@ updates:
       - dependency-name: "sentence-transformers"
         update-types: ["version-update:semver-major"]
     groups:
+      # OpenAI-stack packages isolated into their own group so a breaking bump
+      # (openai/langchain-openai sit near the frozen embedding path:
+      # text-embedding-3-small / 1536-dim / 93,283 vectors, CLAUDE.md sec.9)
+      # only fails a small, individually-mergeable PR instead of the whole
+      # batch. Both groups still receive minor+patch — nothing is ignored.
+      # (see closed PR #935: 60-pkg group failed 4 required checks as a unit)
+      openai-stack:
+        patterns:
+          - "openai"
+          - "langchain*"
+          - "tiktoken"
+        update-types:
+          - "minor"
+          - "patch"
       minor-and-patch:
+        exclude-patterns:
+          - "openai"
+          - "langchain*"
+          - "tiktoken"
         update-types:
           - "minor"
           - "patch"
