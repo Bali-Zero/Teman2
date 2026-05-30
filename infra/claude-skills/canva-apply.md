@@ -1,170 +1,221 @@
 ---
 name: canva-apply
-description: Apply pending Canva operations from the War Room. Reads canva_pending.json; if status is "pending", FIRST validates the master template is structurally compatible (Phase -1), THEN resets the master back to blank (Phase 0), THEN edits the master with the new carousel content, duplicates it into the Carousel folder, writes the new design URL to carousel_canva.json, and marks the pending as applied.
+description: Apply pending Canva operations from the War Room. Reads canva_pending.json (status=pending), validates input, DUPLICATES the master template (master stays strictly read-only), applies texts with editorial intelligence (3-level headline/subhead/body, broken headlines, bold + keyword color) ON THE WORKING COPY, inserts images, moves the copy into the Carousel folder, verifies thumbnails, and marks the pending as applied. Daily-neutral v4 prompt (duplica-poi-edita) — headless-safe, reads fresh data each run.
 ---
 
-# Canva Apply — validate → pre-reset → edit → duplicate cycle
+# War Room — Carousel Apply Prompt (v4 — duplica-poi-edita, headless-safe)
 
-## Path resolution
+> Questo prompt è neutro e riutilizzabile ogni giorno. Legge sempre i dati freschi dal file di output del giorno.
+> v4 (2026-05-29): il MASTER non viene MAI aperto in editing transaction. Si valida read-only, si duplica, e si edita SOLO il duplicato (working copy). Un crash lascia il master intatto — solo un duplicato orfano da garbage-collect. Neutralizza in un colpo: corruzione master, dangling-transaction sul master, e la sibling-race (ogni run edita il proprio duplicato).
 
-Resolve the output dir from `WR2_OUTPUT_ROOT` env var. If unset, fall back to `/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva` (legacy). Strip any trailing slash. Use the resolved path for all subsequent file I/O. The plist `com.balizero.wr2.canva-apply.plist` exports `WR2_OUTPUT_ROOT` to match the writer side (`scripts/wr2_canva_desktop_apply.py`).
+---
 
-Read the file `${WR2_OUTPUT_ROOT}/canva_pending.json`. If it does not exist, print `✅ No pending Canva` and stop. If its `status` field is already `applied`, print `✅ Already applied` and stop.
+STEP -2 — Carica i tool Canva MCP (headless-safe, idempotente)
+Se NON vedi i tool Canva MCP (prefisso `mcp__claude_ai_Canva__`) tra quelli disponibili, caricali via ToolSearch con questa query esatta (i nomi sono in un code-block per preservare i doppi underscore):
 
-If `status` is `pending`, execute this exact sequence via the MCP Canva tools (all prefixed `mcp__claude_ai_Canva__*`). Do NOT pause for confirmation between steps — the existence of `canva_pending.json` with `status=pending` is the explicit consent for the whole flow. Do not open TodoWrite.
+```
+ToolSearch select:mcp__claude_ai_Canva__start-editing-transaction,mcp__claude_ai_Canva__perform-editing-operations,mcp__claude_ai_Canva__commit-editing-transaction,mcp__claude_ai_Canva__cancel-editing-transaction,mcp__claude_ai_Canva__get-design,mcp__claude_ai_Canva__get-design-content,mcp__claude_ai_Canva__upload-asset-from-url,mcp__claude_ai_Canva__resize-design,mcp__claude_ai_Canva__move-item-to-folder,mcp__claude_ai_Canva__get-design-thumbnail
+```
 
-## Phase -1 — PRE-VALIDATE master template (NEW 2026-05-10)
+In sessione interattiva (o Claude Desktop) dove i tool Canva sono già caricati e/o ToolSearch non esiste, questo è un no-op: la condizione "se NON vedi i tool" è falsa, salti a STEP 0. NON forzare ToolSearch incondizionatamente — il path desktop usa lo STESSO file skill: un ToolSearch obbligatorio fallirebbe lì se Desktop ha i tool ma non ToolSearch. La frase è condizionale per design.
 
-Before touching anything, sanity-check that the master at `template_design_id` is structurally compatible with the renderer's assumptions. This catches the failure mode from PR #565 (DAHJLYRn_3E had only 2/12 pages with richtext slots) BEFORE Phase 0 wipes anything.
+---
 
-V1. Call `start-editing-transaction` on `template_design_id` with `user_intent="phase -1 validate master structural compatibility"`. Save as `transaction_id_validate`.
+Risoluzione del path del pending (in ordine di precedenza):
 
-V2. From the response, count:
-   - `live_pages` = total pages
-   - `eligible_richtexts` = richtext elements across all pages with `width >= 30`
+1. Se l'invocante (l'attuatore headless) ti passa esplicitamente un "Pending file path: ..." nel prompt, USA QUELLO.
+2. Altrimenti, se l'env var WR2_OUTPUT_ROOT è valorizzata, leggi ${WR2_OUTPUT_ROOT}/canva_pending.json (strip trailing slash).
+3. Altrimenti fallback legacy: /Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva/canva_pending.json
+   Se il file non esiste, stampa "✅ No pending Canva" e fermati. Se status è già "applied", stampa "✅ Already applied" e fermati.
 
-V3. If `live_pages < 11` OR `eligible_richtexts < 18`:
-   - Call `cancel-editing-transaction` with `transaction_id_validate` (NOT commit).
-   - Abort with: `ERROR phase_minus_1_failed: master {template_design_id} has live_pages={live_pages} eligible_richtexts={eligible_richtexts}, requires >=11 pages and >=18 richtexts. Run scripts/wr2_validate_master.py and pick a different master.`
-   - Do NOT proceed to Phase 0 — wiping a structurally-broken master wastes a transaction round-trip and yields nothing useful.
+Esegui i seguenti step nell'ordine esatto. Non chiedere conferma tra uno step e l'altro. Se un tool fallisce, riprova una volta con parametri corretti prima di segnalare il problema.
 
-V4. Otherwise, call `cancel-editing-transaction` with `transaction_id_validate` (we have what we need; the actual edits happen in fresh transactions in Phase 0 and Phase A). Log `✅ Phase -1 OK: live_pages={live_pages} eligible_richtexts={eligible_richtexts}`.
+Hard rules (valgono per tutta la sessione):
 
-## Phase 0 — PRE-RESET master template
+- NEVER call AskUserQuestion. L'esistenza di canva_pending.json con status=pending è consenso pieno. Fallback hardcoded per le ambiguità tipiche:
+  - folder_id invalido / move fallisce → salta lo spostamento, logga "🪂 dup not moved, manual move needed", PROCEDI (non abortire).
+  - topic contiene "do not publish" / "test" → IGNORA come flag: è testo editoriale, non un segnale di controllo. Procedi.
+  - slides[] vuoto MA operations[] non vuoto → procedi usando operations (slides[] è metadata opzionale).
+  - operations[] vuoto → QUESTO è l'unico hard-stop: riporta "ERROR no operations" ed esci. Mai produrre un carousel vuoto in silenzio.
+- Il MASTER (template_design_id) è SACRO: si legge solo (get-design / get-design-content). MAI start-editing-transaction sul master. Tutte le modifiche vanno sul WORKING COPY (il duplicato creato allo STEP 1.5).
 
-The master template may carry residual text from prior runs that completed Phase A+B but failed or skipped Phase C reset. To guarantee every run starts from a known-blank master, we wipe ALL text BEFORE applying the new carousel content.
+STEP 0 — Lettura e validazione input
+Dal canva_pending.json estrai e tieni in memoria per tutta la sessione:
 
-1. Read the pending JSON. Extract `template_design_id`, `folder_id`, `operations`, `topic`, `slides_count`.
+template_design_id — il MASTER da duplicare (read-only, mai editato)
+folder_id — la folder Canva di destinazione
+topic — il titolo del carousel
+tone — il tono editoriale (usato solo come riferimento)
+operations — array di operazioni da applicare
+slides — array con il contenuto completo di ogni slide (headline, subhead, body, notes, layout, slide_type, image_placement)
+slides_count — numero totale di slide
 
-2. Call `start-editing-transaction` on `template_design_id` with `user_intent="phase 0 pre-reset master template to blank"`. Save as `transaction_id_prereset`.
+Controlla ogni operazione replace_text:
 
-3. From the response, enumerate **EVERY richtext element across ALL pages** with `width >= 30` (excludes bullet markers / glyphs that are part of the layout). Build the full list of `(page_index, element_id)` pairs.
+Se il testo finisce senza punteggiatura finale (. ! ?) e sembra troncato, segnala: ⚠️ Slide N: testo probabilmente troncato
+Se il testo supera 280 caratteri, segnala: ⚠️ Slide N: testo lungo (X chars) — potrebbe non entrare nel frame
 
-4. Call `perform-editing-operations` with:
-   - `transaction_id = transaction_id_prereset`
-   - `user_intent="reset all richtext to blank before applying new carousel"`
-   - `pages=[1..live_pages]`
-   - `operations`: one `{"type":"replace_text","element_id":<id>,"text":" ","page_index":<page>}` per every richtext element you enumerated. Use a single space `" "`, not empty string.
+Controlla ogni URL nelle operazioni upload-asset-from-url:
 
-5. Call `commit-editing-transaction` with `transaction_id_prereset`. Master template is now blank-text. Save `prereset_count` = number of elements wiped.
+Deve essere nel formato https://nuzantara-warroom-images.fly.storage.tigris.dev/warroom/...
+Se è in formato path-style (fly.storage.tigris.dev/nuzantara-warroom-images/...) convertila al formato subdomain prima di procedere.
+Le URL devono essere DIRETTE (no shortener/redirect 302): upload-asset-from-url NON segue i redirect.
 
-## Phase A — Edit the master template with the new carousel
+Warning non bloccanti: elencali e vai avanti. Hard-stop solo se operations[] è vuoto (vedi Hard rules).
 
-6. Call `start-editing-transaction` on `template_design_id` AGAIN with `user_intent="apply carousel text and image replacements"`. Save the returned `transaction_id`.
+STEP 1 — VALIDA il master in READ-ONLY (mai editing)
+Usa get-design sul template_design_id per contare le pagine vive (live_pages).
+Usa get-design-content con content_types ['richtexts'] sul template_design_id per elencare ogni elemento richtext (con element_id e page_index) e contare i richtext eleggibili (width >= 30).
 
-   **From the response, build a LIVE TEMPLATE MAP:**
-   - `live_pages` = total pages in the response
-   - For each page, sort richtext elements with `width >= 30` by **`top` position ASCENDING** (topmost = heading, next = body, then decorative). The `top` coordinate is the visual hierarchy: heading is always at the top of the page, body below it. Then assign:
-     - `role_index = 0` for the TOP-MOST richtext (the heading slot)
-     - `role_index = 1` for the second-from-top (body / subhead slot)
-     - `role_index = 2..N` for remaining richtexts in top-asc order (decorative / source / footer / bullets-text)
-   - Each entry: `(element_id, role_index, type, top, height, width)`
-     - `type` is `richtext` or `image_frame`
-   - Save this map.
+⚠️ NON usare start-editing-transaction sul master. NON usare create-design-from-candidate (richiede un job_id da generate-design, non duplica template esistenti).
 
-   **CRITICAL — top-position role**: do NOT use height-descending (the body box can be taller than the heading because it accommodates more lines, breaking heading/body assignment). Use `top` ascending so the visually topmost element is always heading.
+Validazione: se live_pages < 11 OPPURE eligible_richtexts < 18 → riporta "ERROR master template degraded" e abortisci (nessuna mutazione Canva è avvenuta — il master è intatto).
 
-   **NOTE on body box height (2026-05-10 audit):** the master template `DAHJEkWpkzY` has body containers sized 33-58px on pages 2-10. Body text >2 lines may visually overflow into the heading region of the page below in the rendered PDF (bug visible in DAHJNOjr5MM). This is a master-design issue, NOT a skill issue. Do not try to compensate with text truncation in Phase A — preserve the Council's editorial output verbatim. The fix lives in Canva UI (resize body containers to ~200-250px height) or in the Council prompt (cap body length).
+Tieni la mappa richtexts del master solo come RIFERIMENTO di struttura. Gli element_id reali su cui editare li ri-leggerai dal WORKING COPY allo STEP 2 (gli ID cambiano nella copia).
 
-   **Adaptive page clamping:** drop ops with `page_index > live_pages` and log `🪂 dropped op: page {N} > live_pages {live_pages}`.
+STEP 1.5 — DUPLICA il master → crea il WORKING COPY
+Usa resize-design con:
 
-7. For each op in `operations` where `type == "upload-asset-from-url"` OR `type == "insert-overlay-from-url"` (and op survives clamping), call `upload-asset-from-url`. Upload each unique URL only ONCE and reuse the `asset_id`.
+design_id: il template_design_id (il master)
+width: 1080
+height: 1350
+title: il topic dal JSON
 
-8. **Adaptive element_id remap.** For each `replace_text` op:
-   - Look up `op.element_id` in the live template map for `op.page_index`. If found exact: use as-is.
-   - If NOT found: pick the richtext on `page_index` with the same role_index as the original op had in the pending — first replace_text on a page targets `role_index=0` (heading), second targets `role_index=1` (body). Use the matched live `element_id`. Log `🔄 remap page {N}: {old_id[:12]}... → {new_id[:12]}... (role={role_index})`.
-   - If page has no matching role: drop the op with `🪂 dropped op: no role match on page {N}`.
+Salva il new_design_id restituito → questo è il WORKING COPY. Da qui in poi TUTTE le operazioni vanno sul WORKING COPY, MAI sul master.
 
-   For each image op (`update_fill` / `insert_fill` / former `upload-asset-from-url`):
-   - If `element_id` exists in live map → use as-is.
-   - If `element_id == null` → use the page's first `image_frame` element on that `page_index`.
-   - If page has NO `image_frame` → fallback: `insert_fill` at full-bleed (left=0, top=0, width=page_width, height=page_height) with the asset_id from step 7. Log `🆕 insert_fill page {N}: full-bleed`.
+Subito sposta il WORKING COPY nella folder (così resta in ordine anche se un crash interrompe l'edit):
+Usa move-item-to-folder con item_id: new_design_id, folder_id: folder_id dal JSON.
+Se la move fallisce → logga "🪂 dup not moved, manual move needed" e PROCEDI (non abortire).
 
-9. Call `perform-editing-operations` with:
-   - `transaction_id` from step 6
-   - `user_intent="apply carousel replacements"`
-   - `pages=[1..live_pages]`
-   - `operations` = the remapped+clamped array from step 8, transformed:
-     - `{"type":"upload-asset-from-url",...}` → `{"type":"update_fill","element_id":<remapped>,"asset_type":"image","asset_id":<from step 7>,"alt_text":"carousel hero image"}`
-     - `{"type":"insert-overlay-from-url",...}` → `{"type":"insert_fill","page_id":<page id>,"asset_type":"image","asset_id":<legibility-armor asset_id>,"alt_text":"legibility armor gradient","left":0,"top":0,"width":<page_width>,"height":<page_height>,"opacity":1.0}`
-     - `{"type":"replace_text",...}` → forwarded with remapped element_id.
+STEP 2 — Apri il WORKING COPY in editing + normalizza + remap element ID
+Usa start-editing-transaction sul WORKING COPY (new_design_id), NON sul master.
 
-   No pre-wipe needed in this phase: Phase 0 already cleared the canvas.
+Dalla risposta della transaction estrai:
+La lista di tutti gli elementi richtexts del working copy (con element_id e page_index)
+La lista di tutti i frame/immagini del working copy (con element_id e page_index)
 
-10. Call `commit-editing-transaction` with the `transaction_id` from step 6.
+NORMALIZZA (wipe): prima di scrivere i testi nuovi, azzera OGNI richtext del working copy (width >= 30) sostituendolo con " " (uno spazio). Questo elimina qualunque residuo che il master potesse portarsi dietro, così nessun "buggy old text" del master finisce nell'output.
 
-At this point the master template contains the NEW carousel content (heading + body in correct slots, hero images on hero pages, all decorative residue from prior runs already wiped by Phase 0).
+Poi, per ogni operazione replace_text nel JSON:
+Se element_id è valorizzato → cercalo nella lista richtexts del working copy. Se esiste → usa direttamente. Se NON esiste → cerca nella stessa pagina un elemento con ruolo analogo (prima occorrenza = headline, seconda = body) e usa quell'ID. Logga: 🔄 Remap slide N: [vecchio_id] → [nuovo_id]
 
-## Phase B — Duplicate the edited master into the Carousel folder
+ℹ️ Le slide con layout heading-only (slide 9, 11) non hanno slot body — il builder le salta. Se vedi element_id: null è solo per le immagini (STEP 4).
 
-11. Call `resize-design` on `template_design_id` (same dimensions) to duplicate. Save the NEW `design_id` — this is the carousel we deliver.
+Per ogni operazione upload-asset-from-url:
+Se element_id è valorizzato → usalo direttamente. Se element_id è null → cerca nella lista frame/immagini del working copy un elemento con il page_index corrispondente e usalo. Logga: 🖼️ Frame slide N: [element_id]
+Se per una pagina non trovi nessun elemento adatto, segnala e salta quella slide.
 
-12. Call `move-item-to-folder` with `item_id=<new design_id>`, `folder_id` from the pending JSON, `user_intent="move carousel to Carousel folder"`. If 404, retry once; if still fails, log and proceed.
+STEP 3 — Applica i testi con intelligenza editoriale (sul WORKING COPY)
+Non eseguire un ciclo robotico di replace_text. Lavora da senior editorial designer: per ogni slide, prendi decisioni creative su gerarchia, spezzatura del testo ed enfasi visiva. Usa slides[] dal JSON — non solo operations[].
 
-## Phase C — Reset master template AGAIN (defense-in-depth)
+Struttura a 3 livelli
+Il template ha 3 text element per pagina (non 1 combinato):
 
-Phase 0 cleared at the start; Phase A re-edited; the duplicate has the carousel content. Now wipe the master AGAIN so it ends each run blank. This protects against the next run's Phase 0 finding non-blank state if this run's Phase 0 → C cycle is somehow interrupted.
+| Livello  | Colore                | Contenuto                  |
+| -------- | --------------------- | -------------------------- |
+| Headline | Bianco, bold, grande  | Prima riga del titolo      |
+| Subhead  | Giallo #f9ca55, medio | Sottotitolo / seconda riga |
+| Body     | Bianco, regular       | Bullets o prosa            |
 
-13. Call `start-editing-transaction` on `template_design_id`. Save as `transaction_id_postreset`.
+Non concatenare headline + subhead in un unico elemento. Mappare sempre il contenuto sui 3 element_id separati per ogni pagina.
 
-14. Enumerate richtext with `width >= 30` across all pages.
+Headlines spezzate
+Ogni headline va su 2 righe con \n, spezzando dove c'è tensione narrativa o il titolo supera ~4 parole. Esempi:
 
-15. Call `perform-editing-operations`: replace all enumerated richtexts with `" "`. Save `postreset_count`.
+"ITALY'S GRIP: HOW IT WORKS" → "ITALY'S GRIP:\nHOW IT WORKS"
+"THE TIE-BREAKER NOBODY READS" → "THE TIE-BREAKER\nNOBODY READS"
+"WHAT 'DECOUPLING' ACTUALLY MEANS" → "WHAT 'DECOUPLING'\nACTUALLY MEANS"
+"AIRE IS NOT ENOUGH" → lasciare su una riga se già corta e incisiva
 
-16. Call `commit-editing-transaction` with `transaction_id_postreset`.
+Salient moment slides
+Se slide_type: "D" o notes contiene "SALIENT MOMENT":
+Body svuotato ("") — nessun testo nel body element
+Solo headline + subhead: tutta la forza va sulla frase + immagine
+Non aggiungere bullets o testo aggiuntivo
 
-## Phase D — Persist outputs
+Body text
+Usare \n\n tra ogni bullet per respirabilità
+Se il contenuto ha 3 bullets e c'è logica narrativa, valutare un quarto che completi l'arco informativo
+Massimo ~40 parole per bullet, nessun muro di testo
 
-17. Write `${WR2_OUTPUT_ROOT}/carousel_canva.json` with:
-   ```json
-   {
-     "design_id": "<new design_id from step 11>",
-     "design_url": "https://www.canva.com/design/<new design_id>/edit",
-     "view_url": "https://www.canva.com/design/<new design_id>/view",
-     "topic": "<topic from pending>",
-     "slides_count": <slides_count from pending>,
-     "live_pages": <live_pages observed in step 6>,
-     "content_tier": "<content_tier from pending>",
-     "hero_slide_indices": <hero_slide_indices array from pending>,
-     "transaction_id": "<from step 6>",
-     "prereset_transaction_id": "<from step 2>",
-     "prereset_count": <n elements wiped in Phase 0>,
-     "postreset_transaction_id": "<from step 13>",
-     "postreset_count": <n elements wiped in Phase C>,
-     "remaps_applied": <count of remap log lines>,
-     "ops_dropped": <count of dropped ops>,
-     "applied_at": "<ISO-8601 timestamp now>",
-     "status": "applied"
-   }
-   ```
+Aggiorna il titolo del design con il topic dal JSON.
+Applica tutte le operazioni in bulk con perform-editing-operations (slide 1-6 in un blocco, slide 7-11 in un secondo blocco).
 
-18. Update the pending JSON: set `status` → `"applied"`, add `applied_at` and `transaction_id`, write back.
+STEP 3.5 — Formatting editoriale (bold + keyword color)
+Dopo i replace_text, esegui un secondo pass di formattazione. Non saltare questo step — è ciò che trasforma il carousel da flat a curato.
 
-Respond with: `APPLIED <new_design_id> | PRERESET <p> | REMAPS <r> | DROPPED <d> | POSTRESET <q>`. On failure: `ERROR <short reason>`.
+Bold selettivo sul body
+Per ogni elemento body: applica format_text con font_weight: bold sull'intero elemento. Poi usa find_and_replace_text per "marcare" visivamente i termini chiave (il testo rimane identico, il bold globale li valorizza già).
 
-## Hard rules
+Termini da enfatizzare (bold o colore giallo #f9ca55)
+Scegliere 2-3 per slide, non di più:
+Acronimi legali IT: AIRE, IRPEF, DTT, TUIR, UUPA
+Acronimi legali ID: KITAS, KITAP, E33G, NPWP, PT PMA, IMTA, BPN, PPAT, BPHTB, PPh, PNBP, PBB, OSS, LKPM, NIB, ITAS, ITAP
+Concetti chiave: center of vital interests, Hak Pakai, tie-breaker, fiscal domicile, nominee agreement, Hak Milik, leasehold
+Numeri shock: percentuali (35%, 43%), cifre IDR/USD, anni (30 years, 80 years)
 
-- **Phase -1 (validate) is MANDATORY**. If validate fails, abort BEFORE Phase 0. Wiping a structurally-broken master is wasted work.
-- **Phase 0 is MANDATORY**. Always pre-reset before applying. If Phase 0 commit fails, abort the whole flow with `ERROR phase0_failed: <reason>` — do NOT attempt Phase A on a dirty master.
-- The master `template_design_id` must end each run **blank** (only images, no text). Phase C is mandatory. If Phase B succeeds but Phase C fails, surface the error but don't retry Phase A/B.
-- Keep the English text from `operations` verbatim. Do not translate.
-- Do not pop up TodoWrite — single deterministic flow.
-- **Auto-approval**: never pause for confirmation before any MCP tool call.
-- **No follow-up questions**: on ambiguity, make the safe default and log it. Never end the run with an open question.
-- **Adaptive flow**: NEVER abort because of page-count mismatch or stale element_ids. Always remap and clamp dynamically. Cancel only on:
-  - `commit-editing-transaction` error
-  - `resize-design` error (Phase B)
-  - More than 50% of operations dropped (template completely wrong)
+STEP 4 — Inserisci le immagini (sul WORKING COPY)
+Per ogni operazione upload-asset-from-url:
+Chiama upload-asset-from-url con l'URL DIRETTA dell'immagine (no redirect 302)
+Ottieni l'asset_id restituito
+Usa perform-editing-operations per posizionare l'asset nel frame del page_index corrispondente (trovato allo STEP 2)
 
-## WR2 multi-tier carousel support
+Decisioni di posizionamento per tipo di layout:
+layout: "full_bleed" → update_fill sul frame full-background
+layout: "split" → immagine nella metà inferiore o destra (coordinate: left=540, top=0, width=540, height=1350)
+element_id: null → usare insert_fill con coordinate calcolate in base al campo placement nel JSON
+Cover: sempre full-bleed, testo overlay
 
-Carousels vary by tier:
-- **breaking** (≤7 slides) — short, urgent
-- **explainer** (8-10 slides) — analytical
-- **deep** (11+ slides clamped to template max) — dossier
+Al termine usa commit-editing-transaction (sul WORKING COPY).
 
-`slides_count` ranges 5..template-max. Live page count drives ops applied. Slides beyond `live_pages` are silently dropped.
+STEP 5 — (ELIMINATO in v4) Niente duplicazione finale
+Il working copy È GIÀ il design finale: è stato creato allo STEP 1.5 duplicando il master, poi editato. Il master non è stato toccato. Non c'è nessuna ulteriore resize/duplicate da fare. (Lo STEP 6 vecchio — move-item-to-folder — è già stato fatto allo STEP 1.5.)
 
-## Idempotency
+STEP 7 — Verifica visiva (sul WORKING COPY)
+Usa get-design-thumbnail per le pagine 1, centrale e ultima del working copy (new_design_id).
+Checklist:
+Cover (pagina 1): immagine posizionata, headline leggibile
+Slide centrale: testo non troncato, body visibile, bold sui termini chiave
+Ultima slide (CTA): headline + subhead presenti, logo Bali Zero visibile
+Nessuna pagina vuota o con testo placeholder del template
 
-If `status="applied"` in pending JSON, do nothing. If Phase -1, 0, or A fails mid-way, the transaction auto-aborts and the template stays in whatever state it was — the next run starts with Phase -1 again, which forces a clean slate regardless. This is the design intent of the validate-first sequence.
+Se trovi problemi (testo mancante, immagine non posizionata), rientra in editing sul working copy (NON sul master) e correggi. Se tutto OK, procedi.
+
+STEP 8 — Aggiorna il file e riporta
+Aggiorna canva_pending.json aggiungendo/sovrascrivendo (design_id = il WORKING COPY, MAI il master):
+
+```json
+{
+  "design_id": "<new_design_id>",
+  "design_url": "https://www.canva.com/design/<new_design_id>/edit",
+  "status": "applied",
+  "applied_at": "<ISO timestamp>"
+}
+```
+
+Output finale da mostrare:
+
+```
+✅ Carousel applicato
+Topic: <topic>
+Design: https://www.canva.com/design/<new_design_id>/edit
+Folder: <folder_id>
+Testi applicati: X / Y
+Immagini inserite: X / Y
+Remap effettuati: X
+⚠️ Warning: <lista o "nessuno">
+```
+
+Note tecniche ricorrenti (da non dimenticare ogni sessione):
+
+Il MASTER non viene MAI editato — si valida read-only (STEP 1), si duplica (STEP 1.5), si edita il duplicato. Un crash lascia il master pristino: solo un duplicato orfano da GC.
+resize-design restituisce un nuovo design ID — salvarlo subito (è il working copy)
+Gli element ID cambiano nella copia rispetto al master — leggerli SEMPRE dalla transaction del working copy (STEP 2), mai assumere quelli del master
+Le URL Tigris devono essere in formato subdomain, non path-style; e DIRETTE (no redirect — upload-asset-from-url non segue 302)
+La folder destinazione è il folder_id dal JSON (Carousel folder di Bali Zero)
+Slide 9 e 11: layout heading-only — NON hanno slot body. Il builder non emette operazioni body per queste. Normale.
+3 text element per pagina (headline/subhead/body) — MAI concatenarli in un unico replace_text
+Salient moment slides (slide_type: "D"): body element vuoto, solo headline + subhead
+STEP 3.5 obbligatorio: bold + keyword color — non saltarlo, è il passo che differenzia il ciclo robotico dal design curato
+Se element_id: null in un'operazione immagine → usare insert_fill con coordinate esplicite
+NEVER AskUserQuestion: usa i fallback hardcoded nelle Hard rules
