@@ -106,6 +106,13 @@ STALE_RUNNING_SECONDS = int(os.getenv("CRM_GUARDIAN_STALE_RUNNING_SECONDS", "900
 # Excess files fall through as metadata-only (extractor='skipped').
 OCR_MAX_FILES_PER_CLIENT = 30
 
+# Prompt budget guard for cached OCR content. Fresh extraction is capped above,
+# but cache hits can otherwise render every historical priority document into
+# one prompt. Keep the LLM input bounded while preserving full file inventory.
+CONTENT_SNIPPET_MAX_FILES = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_FILES", "20"))
+CONTENT_SNIPPET_MAX_CHARS_PER_FILE = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_PER_FILE", "4000"))
+CONTENT_SNIPPET_MAX_CHARS_TOTAL = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_TOTAL", "60000"))
+
 
 def _terminate_gemini_process(proc: subprocess.Popen[str]) -> None:
     """Terminate the agy process group created for a single CLI call."""
@@ -657,9 +664,8 @@ def build_file_content_snippets_block(
 
     Phase 1.5: the model gets to see actual document content (passport MRZ,
     akta capital section, NPWP number, etc.) instead of inferring from
-    filenames. Snippets are truncated at MAX_TEXT_CHARS_PER_FILE in ocr.py
-    so prompt size stays bounded (≈12k chars × up to 30 priority files ≈
-    360k chars at worst-case — well under Gemini 2.5 Pro 1M context).
+    filenames. The OCR cache may contain many priority docs, so this renderer
+    applies a second prompt budget independent from extraction budget.
     """
     if not ocr_results:
         return "<FILE_CONTENT_SNIPPETS>\n# No OCR content extracted (no priority files, or OCR disabled).\n</FILE_CONTENT_SNIPPETS>"
@@ -674,12 +680,25 @@ def build_file_content_snippets_block(
         "# Use THIS for identity / compliance fields. Use filename inventory only as fallback."
     )
     rendered = 0
+    skipped_by_budget = 0
+    text_chars_rendered = 0
     for f in flat_files:
         fid = f["id"]
         result = ocr_results.get(fid)
         if result is None or not result.text:
             continue
+
+        remaining_total = CONTENT_SNIPPET_MAX_CHARS_TOTAL - text_chars_rendered
+        if rendered >= CONTENT_SNIPPET_MAX_FILES or remaining_total <= 0:
+            skipped_by_budget += 1
+            continue
+
+        render_limit = min(CONTENT_SNIPPET_MAX_CHARS_PER_FILE, remaining_total)
+        text = result.text[:render_limit]
+        prompt_truncated = len(result.text) > len(text)
+
         rendered += 1
+        text_chars_rendered += len(text)
         conf_str = f"{result.confidence:.2f}" if result.confidence is not None else "n/a"
         lines.append("")
         lines.append(f"--- file_id: {fid} ---")
@@ -687,11 +706,21 @@ def build_file_content_snippets_block(
             f"# extractor={result.extractor} confidence={conf_str} "
             f"pages={result.page_count or '?'} truncated={result.truncated}"
         )
+        if prompt_truncated:
+            lines.append(
+                "# prompt_truncated=true "
+                f"original_chars={len(result.text)} rendered_chars={len(text)}"
+            )
         lines.append(f"# filename: {f.get('name', '?')}")
-        lines.append(result.text)
+        lines.append(text)
 
     lines.append("")
     lines.append(f"# Snippets rendered: {rendered}")
+    lines.append(f"# Snippets skipped_by_prompt_budget: {skipped_by_budget}")
+    lines.append(
+        "# Snippet text chars rendered: "
+        f"{text_chars_rendered}/{CONTENT_SNIPPET_MAX_CHARS_TOTAL}"
+    )
     lines.append("</FILE_CONTENT_SNIPPETS>")
     return "\n".join(lines)
 
@@ -1070,6 +1099,15 @@ async def run_one_client(
     content_block = build_file_content_snippets_block(flat_files, ocr_results)
     full_prompt = assemble_full_prompt(
         prompt_template, context_block, inventory_block, content_block,
+    )
+    LOG.info(
+        "[client=%d] prompt assembly: files_total=%d inventory_chars=%d "
+        "content_chars=%d prompt_chars=%d",
+        client_id,
+        len(flat_files),
+        len(inventory_block),
+        len(content_block),
+        len(full_prompt),
     )
 
     # Save the prompt for audit + debugging on parse failures
