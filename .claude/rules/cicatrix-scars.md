@@ -5,87 +5,48 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
-### â ï¸ STRUCTURAL: cron LaunchAgent PATHs omit `~/.local/bin` â Tier-2 `agy` (Gemini 3.1) + Tier-1 `claude` unreachable under bare plist PATH â multi-LLM cascade silently shallower than 4-deep (2026-05-31)
+### ⚠️ STRUCTURAL: `com.balizero.wr2.canva-renderer` exit-78 = plist points to a MISSING wrapper script; plus cron plist PATHs omit `~/.local/bin` so Tier-2 `agy`/Tier-1 `claude` are unreachable (2026-05-31)
 
-_Discovered: 2026-05-31 ~02:00 WITA during a read-only empirical system audit on [Pro] Â· Severity: P2 (cron LLM cascade degraded; surfaced as `com.balizero.wr2.canva-renderer` last_exit=78) Â· Status: **ROOT CAUSE for the PATH gap CONFIRMED empirically; fix DEFERRED to operator** â operator was mid-recovery on the exact adjacent surface the same night (branch `chore/recover-codex-launchd-fixes-2026-05-31` + staged `claude_oauth_client.py` `_resolve_claude_cli()`), and 34 live `claude` procs made editing live plists a sibling-race + plist-overwrite hazard._
+_Discovered: 2026-05-31 ~02:00 WITA during a read-only empirical system audit on [Pro] · Severity: P2 (one cron dead since the wrapper went missing; LLM-cascade PATH gap latent on all crons) · Status: **ROOT CAUSE CONFIRMED empirically; fix DEFERRED to operator** — operator was mid-recovery on the adjacent launchd surface the same night (PR #970 / branch `chore/recover-codex-launchd-fixes-2026-05-31`, staged `claude_oauth_client.py` `_resolve_claude_cli()`), with ~34 live `claude` procs, so editing live plists/wrappers would race in-flight work + hit the plist-overwrite + sibling-race scar class._
 
-**TRAUMA:** `launchctl list` on [Pro] showed exactly one failing cron â `com.balizero.wr2.canva-renderer` with `last_exit=78` (all of `regulatory-watcher.daily`, `regulatory-watcher.fix-b-verify`, `intel.nightly`, `matagaruda.kg-linker`, `launchagent-state-bridge` were `exit=0`). The canva-renderer plist sets `PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin` and leaves `WR2_CANVA_ACTUATOR` unset (â defaults to the chronically-fragile desktop AppleScript actuator, cf. the 2026-05-29 headless-actuator scar "si rompe sempre").
+**TRAUMA (two distinct findings):**
 
-The generalizable, empirically-verified finding is the **PATH gap**. Under the exact bare plist PATH:
+**(A) The only failing cron — a missing wrapper.** `launchctl list` on [Pro] showed exactly one failing job: `com.balizero.wr2.canva-renderer`, `last_exit=78` (everything else — `regulatory-watcher.daily`, `regulatory-watcher.fix-b-verify`, `intel.nightly`, `matagaruda.kg-linker`, `launchagent-state-bridge` — was `exit=0`). The plist (`~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist`, `RunAtLoad=true`, `StartInterval=300`, no `KeepAlive`) has:
+
+```
+ProgramArguments = [ /Users/nuzantara/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh ]
+```
+
+But that file **does not exist**. The directory `~/.openclaw/bin/wr2/` contains only `wr2-cron-wrapper.sh` and `wr2-script-wrapper.sh` (both mtime 2026-05-29 05:31) — there is **no** `wr2-canva-renderer-wrapper.sh`. So every 300 s launchd tries to exec a missing binary and the loaded job reports `exit=78`. Most likely the wrapper was renamed/consolidated into `wr2-script-wrapper.sh` during the 2026-05-29 WR2 work and the plist `ProgramArguments` was never repointed. (`PlistBuddy` also confirms the plist sets **no** `EnvironmentVariables:PATH` and **no** `WR2_CANVA_ACTUATOR`.)
+
+**(B) The LLM cascade is silently shallower than 4-deep from cron.** Under the bare PATH that launchd hands a plist:
 
 ```
 env -i PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash -c 'for b in claude agy gemini codex ollama; do command -v $b || echo NOT_FOUND; done'
-claude -> NOT_FOUND        # Tier-1 â NOT on plist PATH (homebrew shim present but resolution failed in this minimal env)
-agy    -> NOT_FOUND        # Tier-2 Gemini 3.1 Pro â lives in ~/.local/bin, OMITTED from every cron plist PATH
-gemini -> /opt/homebrew/bin/gemini   # DEPRECATED legacy CLI (quota-dead per CLAUDE.md global), the ONLY "Gemini" reachable
+claude -> NOT_FOUND        # Tier-1
+agy    -> NOT_FOUND        # Tier-2 Gemini 3.1 Pro — lives in ~/.local/bin, OMITTED from cron plist PATHs
+gemini -> /opt/homebrew/bin/gemini   # DEPRECATED legacy CLI (quota-dead per CLAUDE.md global) — the only "Gemini" reachable
 codex  -> /opt/homebrew/bin/codex    # Tier-3 OK
 ollama -> /opt/homebrew/bin/ollama   # Tier-4 OK
 ```
 
-So any cron wrapper that does `GEMINI_BIN="$(command -v agy || command -v gemini)"` silently substitutes the **deprecated, quota-dead** `gemini` for the intended `agy`, and any wrapper relying on bare `command -v claude` (without a hardcoded fallback) loses Tier-1 entirely. The 4-tier cascade (Claude â Gemini â Codex â Ollama) is therefore effectively **â¤ 3-deep from cron**. This is a direct recurrence of the CLAUDE.md-global note _"Audit 2026-05-24 trovÃ² Tier 3 + Tier 4 entrambi disarmed silently â cascade effettivo era 2-deep, not 4-deep"_ â same class, new surface (PATH omission rather than auth revocation). The canva-renderer wrapper happens to survive the claude gap via a hardcoded `|| echo /opt/homebrew/bin/claude`, but its exit-78 still indicates a renderer cascade/actuator failure on top of the agy gap.
+Any cron wrapper doing `GEMINI_BIN="$(command -v agy || command -v gemini)"` silently substitutes the **deprecated, quota-dead** `gemini`, and any wrapper relying on a bare `command -v claude` (without a hardcoded fallback) loses Tier-1. This recurs the CLAUDE.md-global note _"Audit 2026-05-24 trovò Tier 3 + Tier 4 entrambi disarmed silently — cascade effettivo era 2-deep, not 4-deep"_ — same class, new surface (PATH omission, not auth revocation).
 
-**ANTIBODY (documented, NOT yet shipped â operator-gated):**
+**ANTIBODY (documented, NOT yet shipped — operator-gated):**
 
-1. **One-line plist fix (idempotent, additive, reversible, blast-radius = 1 cron each):** put `~/.local/bin` near the front of the `PATH` under `<key>EnvironmentVariables</key>` for every cron plist that drives the LLM cascade, e.g.:
-   ```xml
-   <key>PATH</key>
-   <string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
-   ```
-   Putting `~/.local/bin` before `/opt/homebrew/bin` also makes `agy` win over the deprecated `gemini`.
-2. **Better â pin absolute binaries in the wrappers (PATH-independent):** `AGY_BIN="${AGY_BIN:-/Users/nuzantara/.local/bin/agy}"` and prefer it over `command -v gemini`; `CLAUDE_BIN="$(command -v claude || echo /opt/homebrew/bin/claude)"` (the canva-renderer already does this for claude â replicate for agy).
-3. **Per-tier health-ping** (CLAUDE.md-global already recommends): weekly 1-token ping per tier with Telegram alert, so a silently-disarmed tier surfaces before a quota day exposes it.
-4. **For canva-renderer specifically:** set `WR2_CANVA_ACTUATOR=headless` (per the 2026-05-29 headless-actuator scar) so it stops depending on the fragile desktop AppleScript path.
+1. **(A) Repoint or restore the canva-renderer wrapper:** either fix the plist `ProgramArguments` to the wrapper that actually exists (likely `wr2-script-wrapper.sh` with the canva-renderer arg) or restore `wr2-canva-renderer-wrapper.sh`, then `launchctl bootout`/`bootstrap`. Verify exit 0 + a real render. Coupled to PR #970, so operator-gated.
+2. **(B) One-line plist PATH fix (idempotent, additive, reversible, blast-radius = 1 cron each):** put `~/.local/bin` near the front of `EnvironmentVariables:PATH` for every cron plist that drives the cascade, e.g. `/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin` (also makes `agy` win over the deprecated `gemini`).
+3. **(B) Better — pin absolute binaries in the wrappers (PATH-independent):** `AGY_BIN="${AGY_BIN:-/Users/nuzantara/.local/bin/agy}"` preferred over `command -v gemini`; `CLAUDE_BIN="$(command -v claude || echo /opt/homebrew/bin/claude)"`.
+4. **Per-tier health-ping** (CLAUDE.md-global already recommends): weekly 1-token ping per tier with Telegram alert, so a silently-disarmed tier surfaces before a quota day exposes it.
 
 **GOTCHA:**
 
-- `last_exit=78` in `launchctl list` is wrapper-specific (`exit 78` on cascade/actuator exhaustion), NOT generic launchd EX_CONFIG â decode it from the wrapper, not by guessing.
+- `last_exit=78` in `launchctl list` for a job whose `ProgramArguments[0]` is missing is just "couldn't exec the program" — always check that `ProgramArguments[0]` exists on disk before theorizing about cascade/quota.
 - The `|| command -v gemini` fallback is the trap: a **missing** Tier is louder (skips with a log line) than a **wrong-binary** Tier (runs the deprecated `gemini`, fails on quota, *looks* like "Gemini just failed"). Prefer absolute-path pinning over `||`-fallback chains.
-- The operator's staged `_resolve_claude_cli()` in `apps/backend-rag/backend/llm/claude_oauth_client.py` fixes the **backend RAG python client** under launchd â a DIFFERENT surface from these HOME-level bash cron wrappers. Same root *theme* (launchd minimal PATH), two distinct code paths. Don't conflate.
-- Why NOT auto-fixed in the audit: 34 live `claude` procs + operator actively on the adjacent `recover-codex-launchd` branch the same night. Editing live plists/wrappers = sibling-race + plist-overwrite scar surface. Deferred per AUTONOMOUS_OPS hard rule (contested/strategic â surface to operator, don't force).
+- The operator's staged `_resolve_claude_cli()` in `apps/backend-rag/backend/llm/claude_oauth_client.py` fixes the **backend RAG python client** under launchd — a DIFFERENT surface from these HOME-level bash cron wrappers. Same root *theme* (launchd minimal PATH), two distinct code paths. Don't conflate.
+- Why NOT auto-fixed in the audit: ~34 live `claude` procs + a competing parallel audit session actively rewriting the same artifacts (the MAIN checkout flipped branch to `chore/system-audit-2026-05-31` and dropped `research/operations/audits/FROZEN-2026-05-31.json` mid-audit). Editing live plists/wrappers in that contested state = sibling-race + plist-overwrite scar surface. Deferred per AUTONOMOUS_OPS hard rule (contested/strategic → surface to operator, don't force).
 
-**Reference:** audit report `research/operations/2026-05-31-empirical-system-audit.md`; frozen snapshot `~/logs/2026-05-31-empirical-audit-FROZEN.json`; wrapper `~/scripts/wr2-canva-renderer-run.sh`; plist `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist`. Family: cousin of W58 (openclaw cascade CodexâOpus, token-revoked trap), the CLAUDE.md-global 2026-05-24 "cascade silently 2-deep" audit, and the 2026-05-29 wr2-canva headless-actuator scar. Sister surface to the operator's `recover-codex-launchd` branch.
-
----
-
-### â ï¸ STRUCTURAL: cron LaunchAgent PATHs omit `~/.local/bin` â Tier-2 `agy` (Gemini 3.1) + Tier-1 `claude` unreachable under bare plist PATH â multi-LLM cascade silently shallower than 4-deep (2026-05-31)
-
-_Discovered: 2026-05-31 ~02:00 WITA during a read-only empirical system audit on [Pro] Â· Severity: P2 (cron LLM cascade degraded; surfaced as `com.balizero.wr2.canva-renderer` last_exit=78) Â· Status: **ROOT CAUSE for the PATH gap CONFIRMED empirically; fix DEFERRED to operator** â operator was mid-recovery on the exact adjacent surface the same night (branch `chore/recover-codex-launchd-fixes-2026-05-31` + staged `claude_oauth_client.py` `_resolve_claude_cli()`), and 34 live `claude` procs made editing live plists a sibling-race + plist-overwrite hazard._
-
-**TRAUMA:** `launchctl list` on [Pro] showed exactly one failing cron â `com.balizero.wr2.canva-renderer` with `last_exit=78` (all of `regulatory-watcher.daily`, `regulatory-watcher.fix-b-verify`, `intel.nightly`, `matagaruda.kg-linker`, `launchagent-state-bridge` were `exit=0`). The canva-renderer plist sets `PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin` and leaves `WR2_CANVA_ACTUATOR` unset (â defaults to the chronically-fragile desktop AppleScript actuator, cf. the 2026-05-29 headless-actuator scar "si rompe sempre").
-
-The generalizable, empirically-verified finding is the **PATH gap**. Under the exact bare plist PATH:
-
-```
-env -i PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash -c 'for b in claude agy gemini codex ollama; do command -v $b || echo NOT_FOUND; done'
-claude -> NOT_FOUND        # Tier-1 â NOT on plist PATH (homebrew shim present but resolution failed in this minimal env)
-agy    -> NOT_FOUND        # Tier-2 Gemini 3.1 Pro â lives in ~/.local/bin, OMITTED from every cron plist PATH
-gemini -> /opt/homebrew/bin/gemini   # DEPRECATED legacy CLI (quota-dead per CLAUDE.md global), the ONLY "Gemini" reachable
-codex  -> /opt/homebrew/bin/codex    # Tier-3 OK
-ollama -> /opt/homebrew/bin/ollama   # Tier-4 OK
-```
-
-So any cron wrapper that does `GEMINI_BIN="$(command -v agy || command -v gemini)"` silently substitutes the **deprecated, quota-dead** `gemini` for the intended `agy`, and any wrapper relying on bare `command -v claude` (without a hardcoded fallback) loses Tier-1 entirely. The 4-tier cascade (Claude â Gemini â Codex â Ollama) is therefore effectively **â¤ 3-deep from cron**. This is a direct recurrence of the CLAUDE.md-global note _"Audit 2026-05-24 trovÃ² Tier 3 + Tier 4 entrambi disarmed silently â cascade effettivo era 2-deep, not 4-deep"_ â same class, new surface (PATH omission rather than auth revocation). The canva-renderer wrapper happens to survive the claude gap via a hardcoded `|| echo /opt/homebrew/bin/claude`, but its exit-78 still indicates a renderer cascade/actuator failure on top of the agy gap.
-
-**ANTIBODY (documented, NOT yet shipped â operator-gated):**
-
-1. **One-line plist fix (idempotent, additive, reversible, blast-radius = 1 cron each):** put `~/.local/bin` near the front of the `PATH` under `<key>EnvironmentVariables</key>` for every cron plist that drives the LLM cascade, e.g.:
-   ```xml
-   <key>PATH</key>
-   <string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
-   ```
-   Putting `~/.local/bin` before `/opt/homebrew/bin` also makes `agy` win over the deprecated `gemini`.
-2. **Better â pin absolute binaries in the wrappers (PATH-independent):** `AGY_BIN="${AGY_BIN:-/Users/nuzantara/.local/bin/agy}"` and prefer it over `command -v gemini`; `CLAUDE_BIN="$(command -v claude || echo /opt/homebrew/bin/claude)"` (the canva-renderer already does this for claude â replicate for agy).
-3. **Per-tier health-ping** (CLAUDE.md-global already recommends): weekly 1-token ping per tier with Telegram alert, so a silently-disarmed tier surfaces before a quota day exposes it.
-4. **For canva-renderer specifically:** set `WR2_CANVA_ACTUATOR=headless` (per the 2026-05-29 headless-actuator scar) so it stops depending on the fragile desktop AppleScript path.
-
-**GOTCHA:**
-
-- `last_exit=78` in `launchctl list` is wrapper-specific (`exit 78` on cascade/actuator exhaustion), NOT generic launchd EX_CONFIG â decode it from the wrapper, not by guessing.
-- The `|| command -v gemini` fallback is the trap: a **missing** Tier is louder (skips with a log line) than a **wrong-binary** Tier (runs the deprecated `gemini`, fails on quota, *looks* like "Gemini just failed"). Prefer absolute-path pinning over `||`-fallback chains.
-- The operator's staged `_resolve_claude_cli()` in `apps/backend-rag/backend/llm/claude_oauth_client.py` fixes the **backend RAG python client** under launchd â a DIFFERENT surface from these HOME-level bash cron wrappers. Same root *theme* (launchd minimal PATH), two distinct code paths. Don't conflate.
-- Why NOT auto-fixed in the audit: 34 live `claude` procs + operator actively on the adjacent `recover-codex-launchd` branch the same night. Editing live plists/wrappers = sibling-race + plist-overwrite scar surface. Deferred per AUTONOMOUS_OPS hard rule (contested/strategic â surface to operator, don't force).
-
-**Reference:** audit report `research/operations/2026-05-31-empirical-system-audit.md`; frozen snapshot `~/logs/2026-05-31-empirical-audit-FROZEN.json`; wrapper `~/scripts/wr2-canva-renderer-run.sh`; plist `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist`. Family: cousin of W58 (openclaw cascade CodexâOpus, token-revoked trap), the CLAUDE.md-global 2026-05-24 "cascade silently 2-deep" audit, and the 2026-05-29 wr2-canva headless-actuator scar. Sister surface to the operator's `recover-codex-launchd` branch.
+**Reference:** audit report `research/operations/2026-05-31-empirical-system-audit.md`; frozen snapshot `~/logs/2026-05-31-empirical-audit-FROZEN.json`; plist `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist`; wrapper dir `~/.openclaw/bin/wr2/`. Family: cousin of W58 (openclaw cascade Codex→Opus, token-revoked trap), the CLAUDE.md-global 2026-05-24 "cascade silently 2-deep" audit, and the 2026-05-29 wr2-canva headless-actuator scar. Sister surface to PR #970 (`recover-codex-launchd`).
 
 ---
 
