@@ -49,6 +49,12 @@ _telegram() {
         >/dev/null 2>&1 || true
 }
 
+_plist_label() {
+    local plist="$1"
+    plutil -extract Label raw -o - "${plist}" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Print :Label" "${plist}" 2>/dev/null
+}
+
 if [[ ! -d "${SOURCE_DIR}" ]]; then
     echo "[wr2-plist-watchdog] source dir missing: ${SOURCE_DIR}" >&2
     exit 0
@@ -59,16 +65,21 @@ fi
 # write their own watchdog if they need one.
 shopt -s nullglob
 for source_plist in "${SOURCE_DIR}"/com.balizero.wr2.*.plist; do
-    label="$(basename "${source_plist}" .plist)"
-    target_plist="${TARGET_DIR}/${label}.plist"
+    plist_name="$(basename "${source_plist}" .plist)"
+    target_plist="${TARGET_DIR}/${plist_name}.plist"
+    label="$(_plist_label "${source_plist}")"
+    if [[ -z "${label}" ]]; then
+        ERRORS+=("${plist_name} (source plist missing Label)")
+        continue
+    fi
 
     if [[ ! -f "${target_plist}" ]]; then
-        echo "[wr2-plist-watchdog] ${label}: missing on disk, restoring..."
+        echo "[wr2-plist-watchdog] ${label}: missing on disk, restoring ${plist_name}.plist..."
         if cp "${source_plist}" "${target_plist}" 2>/dev/null && chmod 0444 "${target_plist}" 2>/dev/null; then
             if launchctl bootstrap "${DOMAIN}" "${target_plist}" 2>/dev/null; then
-                RECOVERIES+=("${label} (restored from git + bootstrapped)")
+                RECOVERIES+=("${label} (${plist_name}.plist restored from git + bootstrapped)")
             else
-                ERRORS+=("${label} (file restored, bootstrap failed)")
+                ERRORS+=("${label} (${plist_name}.plist restored, bootstrap failed)")
             fi
         else
             ERRORS+=("${label} (could not write to ${target_plist})")
@@ -80,9 +91,9 @@ for source_plist in "${SOURCE_DIR}"/com.balizero.wr2.*.plist; do
     if ! launchctl print "${DOMAIN}/${label}" >/dev/null 2>&1; then
         echo "[wr2-plist-watchdog] ${label}: file present but not loaded, bootstrapping..."
         if launchctl bootstrap "${DOMAIN}" "${target_plist}" 2>/dev/null; then
-            RECOVERIES+=("${label} (bootstrapped, file was already present)")
+            RECOVERIES+=("${label} (${plist_name}.plist bootstrapped, file was already present)")
         else
-            ERRORS+=("${label} (bootstrap failed; file present, launchctl unloaded)")
+            ERRORS+=("${label} (${plist_name}.plist bootstrap failed; file present, launchctl unloaded)")
         fi
     fi
 done

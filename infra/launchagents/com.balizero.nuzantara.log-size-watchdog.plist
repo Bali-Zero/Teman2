@@ -34,16 +34,15 @@
     <string>com.balizero.nuzantara.log-size-watchdog</string>
 
     <!--
-      Script path: nuzantara-deploy worktree (pinned to origin/main via
-      wr2-deploy-pull cron). Same pattern as wr2-script-wrapper.sh —
-      prevents branch-hijack from breaking the watchdog. After this PR
-      merges to main, the next wr2-deploy-pull (~1h) will publish the
-      script to the deploy worktree automatically.
+      Prefer the nuzantara-deploy worktree when present, but fall back to
+      the main repo path. This watchdog should not crash-loop with exit 127
+      when the deploy worktree itself is missing.
     -->
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/log_size_watchdog.sh</string>
+      <string>-lc</string>
+      <string>if [[ -x /Users/nuzantara/Desktop/nuzantara-deploy/scripts/log_size_watchdog.sh ]]; then exec /Users/nuzantara/Desktop/nuzantara-deploy/scripts/log_size_watchdog.sh; fi; exec /Users/nuzantara/Desktop/nuzantara/scripts/log_size_watchdog.sh</string>
     </array>
 
     <key>StartInterval</key>
