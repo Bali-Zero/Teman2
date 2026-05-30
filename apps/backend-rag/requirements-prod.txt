@@ -89,7 +89,7 @@ structlog>=25.5.0  # Security and feature updates
 slowapi>=0.1.9  # Rate limiting for FastAPI
 
 # Observability
-prometheus-fastapi-instrumentator>=6.1.0
+prometheus-fastapi-instrumentator>=8.0.0
 sentry-sdk[fastapi]>=2.59.0  # Error monitoring
 
 # XML/HTML Processing
