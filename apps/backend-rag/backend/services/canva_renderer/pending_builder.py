@@ -27,9 +27,31 @@ _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\$\([^)]*\)"),                                # $(...) command substitution
     re.compile(r"`[^`]*`"),                                    # backtick command substitution
     re.compile(r"\bfile://\S*"),                               # file:// URIs
-    re.compile(r"\brm\s+-[rf]+\b", re.IGNORECASE),             # rm -rf
-    re.compile(r"\b(curl|wget)\s+\S+\s*\|\s*(sh|bash)\b", re.IGNORECASE),  # curl|sh
-    re.compile(r"\bignore (all |the )?previous instructions\b", re.IGNORECASE),
+    # rm with destructive flags: short -r/-f/-rf/-fr (one or more, possibly
+    # space-separated) AND long --recursive/--force/--no-preserve-root (any
+    # order/repetition), plus any trailing path args. Covers `rm -rf /x`,
+    # `rm -r -f /x`, `rm --recursive --force /x`, `rm --force /x`.
+    re.compile(
+        r"\brm\b(?:\s+(?:-[rf]+|--recursive|--force|--no-preserve-root))+"
+        r"(?:\s+\S+)*",
+        re.IGNORECASE,
+    ),
+    # curl|sh / wget|bash, tolerating no space before the pipe AND an optional
+    # privilege-escalation wrapper (sudo / doas) between the pipe and the shell.
+    re.compile(
+        r"\b(?:curl|wget)\s+\S+\s*\|\s*(?:sudo\s+|doas\s+)?(?:sh|bash|zsh)\b",
+        re.IGNORECASE,
+    ),
+    # Prompt-override directives: ignore/disregard/forget ... [previous]
+    # instructions. DOTALL + flexible whitespace so a newline between the
+    # words (e.g. "ignore previous\ninstructions") still matches.
+    re.compile(
+        r"\b(?:ignore|disregard|forget)\b\s+"
+        r"(?:(?:all|the|any|your)\s+)*"
+        r"(?:(?:previous|prior|above|earlier)\s+)?"
+        r"(?:system\s+)?instructions?\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
 )
 
 
