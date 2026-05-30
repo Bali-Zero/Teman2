@@ -328,7 +328,18 @@ def _is_transient_tool_transport_failure(result: dict[str, Any]) -> bool:
 
     trace = result.get("tool_trace") or {}
     errors = trace.get("errors") or []
-    return any("Transport closed" in str(error.get("message", "")) for error in errors)
+    transient_markers = (
+        "transport closed",
+        "timeout",
+        "timed out",
+        "readtimeout",
+        "connecttimeout",
+        "deadline exceeded",
+    )
+    return any(
+        any(marker in str(error.get("message", "")).lower() for marker in transient_markers)
+        for error in errors
+    )
 
 
 def _payload_for_case(case: EvalCase, args: argparse.Namespace) -> dict[str, Any]:
