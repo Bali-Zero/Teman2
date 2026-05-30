@@ -23,9 +23,11 @@ import contextlib
 import logging
 import os
 import re
+import shutil
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Final
 
 logger = logging.getLogger(__name__)
@@ -71,6 +73,12 @@ DEFAULT_TIMEOUT_S: Final[int] = 120
 RATE_LIMIT_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"rate.limit|too many requests|429|exhausted|quota|hit your limit|capacity|overloaded",
     re.IGNORECASE,
+)
+CLAUDE_CLI_CANDIDATES: Final[tuple[Path, ...]] = (
+    Path("/opt/homebrew/bin/claude"),
+    Path.home() / ".local/bin" / "claude",
+    Path.home() / ".npm-global/bin" / "claude",
+    Path("/usr/local/bin/claude"),
 )
 
 
@@ -132,6 +140,25 @@ def _build_env(token: str) -> dict[str, str]:
     else:
         env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     return env
+
+
+def _resolve_claude_cli() -> str:
+    """Return an executable `claude` path for launchd-safe subprocess calls.
+
+    LaunchAgents often run with a minimal PATH. Resolve the binary once from
+    the current PATH, then fall back to the install locations used on Pro/Mini.
+    Returning the bare command keeps the old FileNotFoundError behavior when
+    the CLI is genuinely absent.
+    """
+    resolved = shutil.which("claude")
+    if resolved:
+        return resolved
+
+    for candidate in CLAUDE_CLI_CANDIDATES:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+
+    return "claude"
 
 
 async def complete_async(
@@ -198,10 +225,11 @@ async def complete_async(
     _otel_span_ctx = _start_claude_cli_span(_recorder_model, _recorder_input_tokens)
     _span = _otel_span_ctx.__enter__()
     _span_set: Any = _span if hasattr(_span, "set_attribute") else None
+    claude_cli = _resolve_claude_cli()
 
     for attempt, (token, label) in enumerate(tokens, start=1):
         cmd: list[str] = [
-            "claude",
+            claude_cli,
             "-p",
             "--permission-mode",
             "bypassPermissions",
