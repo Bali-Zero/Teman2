@@ -125,6 +125,37 @@ def degraded_safe(service_name: str) -> Callable[..., Any]:
     return decorator
 
 
+def _initialize_redis_manager(app: FastAPI, init_mode: str) -> Any | None:
+    """Initialize RedisManager and refresh import-time Redis consumers."""
+    try:
+        from backend.core.redis_manager import RedisManager
+
+        redis_manager = RedisManager.get_instance()
+        redis_manager.initialize()
+        app.state.redis_manager = redis_manager
+        logger.info(
+            "RedisManager initialized (%s, available=%s)",
+            init_mode,
+            redis_manager.available,
+        )
+
+        try:
+            from backend.middleware.rate_limiter import rate_limiter
+
+            rate_limiter.refresh_from_manager()
+        except Exception as refresh_error:
+            logger.warning(
+                "Rate limiter Redis refresh failed after %s Redis init: %s",
+                init_mode,
+                refresh_error,
+            )
+
+        return redis_manager
+    except Exception as e:
+        logger.warning("RedisManager initialization failed: %s — Redis features disabled", e)
+        return None
+
+
 @degraded_safe("search")
 async def _init_search_service(app: FastAPI) -> Any:
     """Initialize SearchService and verify Qdrant reachability.
@@ -1244,15 +1275,7 @@ async def initialize_services(app: FastAPI) -> None:
     logger.info("🚀 Initializing ZANTARA RAG services...")
 
     # 0. RedisManager (must be first — all Redis consumers depend on it)
-    try:
-        from backend.core.redis_manager import RedisManager
-
-        redis_manager = RedisManager.get_instance()
-        redis_manager.initialize()
-        app.state.redis_manager = redis_manager
-        logger.info(f"RedisManager initialized (available={redis_manager.available})")
-    except Exception as e:
-        logger.warning("RedisManager initialization failed: %s — Redis features disabled", e)
+    _initialize_redis_manager(app, "full")
 
     # 0.1 KG cache proactive invalidation listener (HIGH-13).
     # Subscribes to `zantara:kg:invalidate` and wipes local KG cache entries
@@ -1504,6 +1527,9 @@ async def initialize_services_light(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     logger.info("🚀 [API PROCESS] Light init: DB + Redis only (skipping RAG services)")
+
+    # 0. RedisManager (must be first — import-time consumers may need refresh)
+    _initialize_redis_manager(app, "light")
 
     # 1. Database pool (CRITICAL)
     try:

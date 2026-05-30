@@ -60,17 +60,8 @@ export function Checklist({
   allowPrint = true,
   className,
 }: ChecklistProps) {
-  // Defensive check for required props
-  if (!items || !Array.isArray(items)) {
-    return (
-      <div className="p-6 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400">
-        <p className="font-medium">Checklist</p>
-        <p className="text-sm text-blue-400/70 mt-1">
-          Configuration required: items array
-        </p>
-      </div>
-    );
-  }
+  const hasValidItems = Array.isArray(items);
+  const checklistItems = hasValidItems ? items : [];
 
   const storageKey = `checklist-${id}`;
 
@@ -91,6 +82,18 @@ export function Checklist({
     if (!persist || typeof window === "undefined") return;
     localStorage.setItem(storageKey, JSON.stringify(Array.from(checked)));
   }, [checked, persist, storageKey]);
+
+  // Defensive check for required props
+  if (!hasValidItems) {
+    return (
+      <div className="p-6 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400">
+        <p className="font-medium">Checklist</p>
+        <p className="text-sm text-blue-400/70 mt-1">
+          Configuration required: items array
+        </p>
+      </div>
+    );
+  }
 
   // Toggle item
   const toggle = (itemId: string) => {
@@ -114,17 +117,19 @@ export function Checklist({
   };
 
   // Calculate progress
-  const progress = (checked.size / items.length) * 100;
-  const requiredItems = items.filter((i) => i.required);
+  const progress = (checked.size / checklistItems.length) * 100;
+  const requiredItems = checklistItems.filter((i) => i.required);
   const requiredComplete = requiredItems.filter((i) =>
     checked.has(i.id),
   ).length;
 
   // Group items by group
-  const groups = Array.from(new Set(items.map((i) => i.group || "Items")));
+  const groups = Array.from(
+    new Set(checklistItems.map((i) => i.group || "Items")),
+  );
   const itemsByGroup = groups.reduce(
     (acc, group) => {
-      acc[group] = items.filter((i) => (i.group || "Items") === group);
+      acc[group] = checklistItems.filter((i) => (i.group || "Items") === group);
       return acc;
     },
     {} as Record<string, ChecklistItem[]>,

@@ -87,6 +87,21 @@ class RateLimiter:
                 "Rate limiter using in-memory storage — no Redis available, rate limits not shared across workers"
             )
 
+    def refresh_from_manager(self) -> bool:
+        """Deterministically refresh the backend from RedisManager.
+
+        Service initialization can create RedisManager after this module-level
+        singleton was imported. This method lets startup code rebind the sync
+        Redis client immediately instead of waiting for the request-time
+        recovery cooldown.
+        """
+        was_available = self.redis_available
+        self._connect_from_manager()
+        if not was_available and self.redis_available:
+            self.metrics["recovery_successes"] += 1
+            self._last_error = None
+        return self.redis_available
+
     def _try_recover(self) -> None:
         """Attempt to reconnect to Redis if we've been in fallback mode."""
         now = time.time()
