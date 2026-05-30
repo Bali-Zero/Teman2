@@ -100,6 +100,49 @@ def test_build_prompt_marks_kbli_followup_from_recent_context() -> None:
     assert any("nuzantara-mcp.search_kbli" in rule for rule in prompt["tool_mandates"])
 
 
+def test_build_prompt_includes_villa_55193_to_55203_mapping_rule() -> None:
+    body = bridge.BridgeRequest(
+        phone="+62 812-345",
+        sender_name="Client",
+        message_id="wamid.villa",
+        text="ma per ville Airbnb e' 55193 o 55203?",
+        context={"detected_language": "it"},
+    )
+
+    prompt = json.loads(bridge._build_prompt(body))
+    contract = "\n".join(prompt["knowledge_tool_contract"])
+
+    assert "55193" in contract
+    assert "55203" in contract
+    assert "KBLI 2020/PP28" in contract
+    assert "KBLI 2025" in contract
+    assert "55901" in contract
+    assert "55400" in contract
+    assert "AC/ventilation" in contract
+
+
+def test_bridge_guard_corrects_bad_villa_55193_reply() -> None:
+    guarded = bridge._guard_villa_kbli_reply(
+        "ma per ville Airbnb e' 55193 o 55203?",
+        "55193 - Aktivitas Vila: usa questo codice per Airbnb.",
+        "it",
+    )
+
+    assert "55203" in guarded
+    assert "55193" in guarded
+    assert "KBLI 2020/PP28" in guarded
+    assert "usa questo codice" not in guarded
+
+
+def test_bridge_guard_keeps_grounded_villa_mapping_reply() -> None:
+    reply = (
+        "55193 era il codice KBLI 2020/PP28 sorgente; nel mapping KBLI 2025 "
+        "mappa a 55203 - AKTIVITAS VILA."
+    )
+
+    assert bridge._guard_villa_kbli_reply("Differenza 55193 vs 55203", reply, "it") == reply
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(

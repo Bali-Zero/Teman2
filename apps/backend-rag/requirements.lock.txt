@@ -1884,9 +1884,9 @@ jsonschema-specifications==2025.9.1 \
     --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe \
     --hash=sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d
     # via jsonschema
-langchain-anthropic==1.4.3 \
-    --hash=sha256:65466e0f2f95909a009708f2958e917dfdbfab79c612b4484a30866a85e1f291 \
-    --hash=sha256:f8a2442463c0629b1b3110eaeaa56fdbdc87df2a802f8c7f5ecf611eb4874ec8
+langchain-anthropic==1.4.4 \
+    --hash=sha256:10a5d2915e8d4fd8a9f169774e760b089c7f14de044e13259db5f1c2d3d59d9b \
+    --hash=sha256:9ea39ed345f8b13f13bb37549130eedcec2d032eb08b4942642e758c5ba3ece5
     # via -r requirements.txt
 langchain-core==1.4.0 \
     --hash=sha256:1dc341eed802ed9c117c0df3923c991e5e9e226571e5725c194eeb5bd93d1a7f \
@@ -1898,13 +1898,13 @@ langchain-core==1.4.0 \
     #   langgraph
     #   langgraph-checkpoint
     #   langgraph-prebuilt
-langchain-openai==1.2.1 \
-    --hash=sha256:a80732185030d4f453dda6c25feef46f645f665423fdffe38ae3edf1ac3c6c4d \
-    --hash=sha256:ee4480b787706361b7125fad46930589a624df87aa158c6986ef1fad10d10675
+langchain-openai==1.2.2 \
+    --hash=sha256:7da39a3c70cbafa93853456199e39a264dc70651be79b12ac49b4f6a448bce2d \
+    --hash=sha256:8698ffcee9a086e91ab6d207f0026181a03effcbf86bf9aee1808ee35af69dcc
     # via -r requirements.txt
-langchain-protocol==0.0.15 \
-    --hash=sha256:461eb794358f83d5e42635a5797799ffec7b4702314e34edf73ac21e75d3ef79 \
-    --hash=sha256:9ab2d11ee73944754f10e037e717098d3a6796f0e58afa9cadda6154e7655ade
+langchain-protocol==0.0.16 \
+    --hash=sha256:3658c142c5d0fb3a023a4be442ce4c15c6d626aab6135eb79a76dc64ad19c3c3 \
+    --hash=sha256:806c7cdd951b1c4f692fa40fce60821ff0f221d4360e27673ddf2c2b99c2b7ff
     # via langchain-core
 langfuse==3.14.6 \
     --hash=sha256:058f7b7caa9284b964feaee81c223542d78e9fb4daabf312269b9f903471b9c4 \
@@ -2522,9 +2522,9 @@ oauthlib==3.3.1 \
     --hash=sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9 \
     --hash=sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1
     # via requests-oauthlib
-openai==2.37.0 \
-    --hash=sha256:814633888b8f3b1ffd6615697c6e4ef93632d08b7c2e28c8c5ef3556e5a10107 \
-    --hash=sha256:f4bc562cc5f3a43d40d678105572d9d44765f6e0f50c125f63055419b72f4bd9
+openai==2.38.0 \
+    --hash=sha256:798694c6cf74145541fda94325b6f8f72d8e1fd0262cc137c8d728177a6a4ce3 \
+    --hash=sha256:ec6661c57b2dcc47414a767e6e3335c7ed3d19c9696999283a3c82e95c756a3c
     # via
     #   -r requirements.txt
     #   langchain-openai

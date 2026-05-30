@@ -33,6 +33,7 @@ from backend.services.integrations.whatsapp_triage_service import (
     TriageDecision,
     whatsapp_triage_service,
 )
+from backend.services.whatsapp_kbli_guard import sanitize_whatsapp_kbli_reply
 from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
 
 logger = logging.getLogger(__name__)
@@ -366,6 +367,21 @@ async def process_whatsapp_message(
             )
 
             if openclaw_response:
+                guarded_openclaw_response = sanitize_whatsapp_kbli_reply(
+                    message_text=message_text,
+                    reply=openclaw_response,
+                    detected_language=ctx.get("detected_language"),
+                )
+                if guarded_openclaw_response.corrected:
+                    logger.warning(
+                        "WhatsApp KBLI guard corrected OpenClaw reply "
+                        "(phone=%s message_id=%s reason=%s)",
+                        phone,
+                        message_id,
+                        guarded_openclaw_response.reason,
+                    )
+                openclaw_response = guarded_openclaw_response.reply
+
                 chunks = whatsapp_service.chunk_message(openclaw_response, max_length=4000)
 
                 for i, chunk in enumerate(chunks):
@@ -478,6 +494,21 @@ async def process_whatsapp_message(
             if needs_escalation:
                 # Remove the marker before sending to client
                 response_text = response_text.replace("[ESCALATE]", "").strip()
+
+            guarded_response = sanitize_whatsapp_kbli_reply(
+                message_text=message_text,
+                reply=response_text,
+                detected_language=ctx.get("detected_language"),
+            )
+            if guarded_response.corrected:
+                logger.warning(
+                    "WhatsApp KBLI guard corrected fallback RAG reply "
+                    "(phone=%s message_id=%s reason=%s)",
+                    phone,
+                    message_id,
+                    guarded_response.reason,
+                )
+            response_text = guarded_response.reply
 
             # Split into chunks if too long for WhatsApp
             chunks = whatsapp_service.chunk_message(response_text, max_length=4000)
@@ -606,6 +637,31 @@ def _get_db_pool(request: Request) -> Any:
         return None
 
 
+def _conversation_jsonb_text(value: Any) -> str:
+    """Encode a Python value for explicit text-to-jsonb casting."""
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _decode_conversation_messages(raw_messages: Any) -> list[dict[str, Any]]:
+    """Return a normalized conversation message list from old or current JSONB shapes."""
+    if not raw_messages:
+        return []
+
+    decoded = raw_messages
+    for _ in range(2):
+        if not isinstance(decoded, str):
+            break
+        try:
+            decoded = json.loads(decoded)
+        except (TypeError, json.JSONDecodeError):
+            return []
+
+    if not isinstance(decoded, list):
+        return []
+
+    return [item for item in decoded if isinstance(item, dict)]
+
+
 async def _save_conversation(
     db_pool,
     wa_user_id: str,
@@ -636,27 +692,25 @@ async def _save_conversation(
                 )
                 old_msgs = []
                 if existing and existing["messages"]:
-                    old_msgs = existing["messages"]
-                    if isinstance(old_msgs, str):
-                        old_msgs = json.loads(old_msgs)
+                    old_msgs = _decode_conversation_messages(existing["messages"])
 
                 all_msgs = (old_msgs or []) + conversation_msgs
                 all_msgs = all_msgs[-MAX_HISTORY_MESSAGES:]
 
                 await conn.execute(
-                    "UPDATE conversations SET messages = $1::jsonb, metadata = $2::jsonb WHERE id = $3",
-                    json.dumps(all_msgs),
-                    json.dumps(client_profile),
+                    "UPDATE conversations SET messages = $1::text::jsonb, metadata = $2::text::jsonb WHERE id = $3",
+                    _conversation_jsonb_text(all_msgs),
+                    _conversation_jsonb_text(client_profile),
                     existing_row_id,
                 )
             else:
                 # Create new conversation row
                 await conn.execute(
-                    "INSERT INTO conversations (user_id, session_id, messages, metadata, created_at) VALUES ($1, $2, $3::jsonb, $4::jsonb, NOW())",
+                    "INSERT INTO conversations (user_id, session_id, messages, metadata, created_at) VALUES ($1, $2, $3::text::jsonb, $4::text::jsonb, NOW())",
                     wa_user_id,
                     session_id,
-                    json.dumps(conversation_msgs),
-                    json.dumps(client_profile),
+                    _conversation_jsonb_text(conversation_msgs),
+                    _conversation_jsonb_text(client_profile),
                 )
 
         logger.info("💾 Conversation saved for %s (session: %s)", phone, session_id)

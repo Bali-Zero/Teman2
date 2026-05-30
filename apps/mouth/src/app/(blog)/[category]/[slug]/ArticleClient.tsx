@@ -16,8 +16,7 @@ import {
   Clock,
   Eye,
   Calendar,
-  Twitter,
-  Linkedin,
+  X,
   Link2,
   ChevronLeft,
   Sparkles,
@@ -35,6 +34,9 @@ import {
 // JSON-LD schemas are now injected in <head> by root layout for better SEO
 import { cn } from "@/lib/utils";
 import type { Article, ArticleListItem } from "@/lib/blog/types";
+
+const Twitter = X;
+const Linkedin = Link2;
 
 // Extended article type with serialized MDX
 interface ArticleWithMDX extends Article {
