@@ -389,3 +389,16 @@ class TestEnqueueClientsForCompanyFolder:
         conn.fetch = mock_fetch
         await enqueue_clients_for_company_folder(conn, "f")
         assert any("ccl.status = 'active'" in s for s in captured)
+
+    @pytest.mark.asyncio
+    async def test_folder_lookup_accepts_tax_department_folder(self) -> None:
+        captured: list[str] = []
+
+        async def mock_fetchrow(sql: str, *args) -> dict | None:
+            captured.append(sql)
+            return None
+
+        conn = MagicMock()
+        conn.fetchrow = mock_fetchrow
+        await enqueue_clients_for_company_folder(conn, "tax-folder")
+        assert any("tax_dept_folder_id = $1" in s for s in captured)

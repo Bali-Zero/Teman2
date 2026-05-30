@@ -202,7 +202,8 @@ async def enqueue_clients_for_company_folder(
     document state.
 
     Returns list of per-client enqueue results (see enqueue_client docstring).
-    Empty list if drive_folder_id is not a known company folder.
+    Empty list if drive_folder_id is not a known company or tax department
+    folder.
 
     Performance note: clients linked to a popular shared company (e.g. a
     holding entity with 10+ shareholders) get N enqueues per file change.
@@ -214,6 +215,7 @@ async def enqueue_clients_for_company_folder(
         """
         SELECT id, company_name FROM companies
         WHERE google_drive_folder_id = $1
+           OR tax_dept_folder_id = $1
         """,
         drive_folder_id,
     )
