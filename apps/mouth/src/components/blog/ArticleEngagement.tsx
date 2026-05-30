@@ -6,9 +6,6 @@ import {
   Heart,
   MessageCircle,
   Share2,
-  Twitter,
-  Linkedin,
-  Facebook,
   Link2,
   Send,
   X,
@@ -19,6 +16,10 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { logger } from "@/lib/logger";
+
+const Twitter = X;
+const Linkedin = Link2;
+const Facebook = Share2;
 
 // Types
 interface Comment {
