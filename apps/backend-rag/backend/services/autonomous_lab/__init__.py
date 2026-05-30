@@ -2,8 +2,10 @@
 
 from backend.services.autonomous_lab.planner import (
     AutonomousLabPlanner,
+    GateSeverity,
     LabRun,
     LabSafetyGate,
+    MaterialSourceType,
     NormalizedMaterial,
     ResearchMaterial,
     SimulationPlan,
@@ -12,8 +14,10 @@ from backend.services.autonomous_lab.planner import (
 
 __all__ = [
     "AutonomousLabPlanner",
+    "GateSeverity",
     "LabRun",
     "LabSafetyGate",
+    "MaterialSourceType",
     "NormalizedMaterial",
     "ResearchMaterial",
     "SimulationPlan",

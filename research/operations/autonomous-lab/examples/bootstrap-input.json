@@ -1,0 +1,35 @@
+{
+  "created_at": "2026-05-31T01:20:00+08:00",
+  "materials": [
+    {
+      "captured_at": "2026-05-31T01:20:00+08:00",
+      "material_id": "wr2-wr3-inventory",
+      "metadata": {
+        "scope": "repo inventory"
+      },
+      "source_type": "repo",
+      "source_uri": "repo://research/wr2+research/wr3",
+      "text": "WR2 and WR3 specs already establish worktree isolation, state machines, receipts, manual promotion gates, and empirical verification. The autonomous lab should reuse those patterns instead of creating another scheduler-first system.",
+      "title": "WR2 and WR3 grounding"
+    },
+    {
+      "captured_at": "2026-05-31T01:20:00+08:00",
+      "material_id": "backend-research-services",
+      "metadata": {
+        "scope": "backend services"
+      },
+      "source_type": "repo",
+      "source_uri": "repo://apps/backend-rag/backend/services/research",
+      "text": "Backend research services already include literature synthesis, consensus orchestration, baselines, format matrices, and empirical analyzers. The missing layer is a source-agnostic run contract that can feed experiments and receipts.",
+      "title": "Existing backend research layer"
+    }
+  ],
+  "objective": "riprendere il laboratorio autonomo di Nuzantara",
+  "target_paths": [
+    "apps/backend-rag/backend/services/autonomous_lab",
+    "research/operations/autonomous-lab",
+    "scripts/autonomous_lab_draft.py"
+  ],
+  "task_id": "autonomous-lab-bootstrap-example",
+  "worktree_lane": "ops"
+}
