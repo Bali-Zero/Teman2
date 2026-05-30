@@ -84,14 +84,15 @@ from backend.services.crm_guardian.schemas import (  # noqa: E402
 LOG = logging.getLogger("crm_guardian.cli_worker")
 
 # Phase 1.5 prompt is the new default (Phase 1 v2 is metadata-only; v3 adds
-# the OCR-content blocks + identity-guardrail). The legacy v2 file is kept
-# on disk for rollback drills.
-DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v4.md"
+# OCR-content blocks + identity guardrails; v5 is the lean agy print-mode
+# contract). Legacy prompts stay on disk for rollback drills.
+DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v5.md"
 LEGACY_V3_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v3.md"
 LEGACY_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v2.md"
 PROMPT_VERSION_V2 = "L1_extraction_v2"  # legacy, kept for old queue rows
 PROMPT_VERSION_V3 = "L1_extraction_v3"
 PROMPT_VERSION_V4 = "L1_extraction_v4"  # 2026-05-23: anti-chat-mode header
+PROMPT_VERSION_V5 = "L1_extraction_v5"  # 2026-05-31: anti-agentic-wait contract
 
 RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -108,10 +109,27 @@ OCR_MAX_FILES_PER_CLIENT = 30
 
 # Prompt budget guards. Fresh extraction is capped above, but cache hits and
 # very large Drive folders can otherwise render unbounded prompt sections.
-INVENTORY_MAX_FILES = int(os.getenv("CRM_GUARDIAN_INVENTORY_MAX_FILES", "120"))
-CONTENT_SNIPPET_MAX_FILES = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_FILES", "12"))
-CONTENT_SNIPPET_MAX_CHARS_PER_FILE = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_PER_FILE", "2500"))
-CONTENT_SNIPPET_MAX_CHARS_TOTAL = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_TOTAL", "30000"))
+INVENTORY_MAX_FILES = int(os.getenv("CRM_GUARDIAN_INVENTORY_MAX_FILES", "80"))
+CONTENT_SNIPPET_MAX_FILES = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_FILES", "8"))
+CONTENT_SNIPPET_MAX_CHARS_PER_FILE = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_PER_FILE", "2000"))
+CONTENT_SNIPPET_MAX_CHARS_TOTAL = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_TOTAL", "16000"))
+
+AGY_PRINT_MODE_CONTRACT = """<AGY_PRINT_MODE_CONTRACT>
+You are running in non-interactive print mode. Do not use tools. Do not wait
+for background tasks. Do not create, follow, resume, or monitor OCR tasks.
+All Drive listing, OCR extraction, and cache lookup work has already completed
+before this prompt was assembled. Treat every OCR/cache/truncated/skipped
+marker as static input metadata, not as an action request.
+
+Your only valid action is to read the static blocks and emit one fenced JSON
+object. If evidence is missing or incomplete, use nulls/empty lists and add an
+extraction_notes item. Never output "I will wait" or any prose.
+</AGY_PRINT_MODE_CONTRACT>"""
+
+AGY_FINAL_OUTPUT_CONTRACT = """<FINAL_OUTPUT_CONTRACT>
+Stop. Emit only one ```json fenced object now. No prose. No waiting. No task
+status. No markdown outside the JSON fence.
+</FINAL_OUTPUT_CONTRACT>"""
 
 
 def _terminate_gemini_process(proc: subprocess.Popen[str]) -> None:
@@ -776,12 +794,22 @@ def assemble_full_prompt(
     inventory_block: str,
     content_block: str | None = None,
 ) -> str:
-    """Assemble the final prompt: template + context + inventory + content snippets."""
+    """Assemble the final prompt with hard print-mode contracts.
+
+    The agy CLI is agentic even in `--print` mode. Keep the execution contract
+    both before and after the evidence blocks so OCR/cache markers are treated
+    as static input, not as subtasks to monitor.
+    """
+    parts = [
+        AGY_PRINT_MODE_CONTRACT,
+        prompt_template,
+        context_block,
+        inventory_block,
+    ]
     if content_block:
-        return (
-            f"{context_block}\n\n{inventory_block}\n\n{content_block}\n\n{prompt_template}"
-        )
-    return f"{context_block}\n\n{inventory_block}\n\n{prompt_template}"
+        parts.append(content_block)
+    parts.append(AGY_FINAL_OUTPUT_CONTRACT)
+    return "\n\n".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -1001,6 +1029,14 @@ _CHAT_MODE_PREFIXES = (
     "i have received", "ho ricevuto", "got it",
 )
 
+_AGENTIC_WAIT_MARKERS = (
+    "i will wait",
+    "wait for the background",
+    "background ocr task",
+    "older passport ocr task",
+    "timed out waiting for response",
+)
+
 
 def _looks_like_chat_response(text: str) -> bool:
     """2026-05-23: Gemini in OAuth personal sometimes ignores prompt and chats.
@@ -1012,6 +1048,18 @@ def _looks_like_chat_response(text: str) -> bool:
     if not any(head.startswith(p) for p in _CHAT_MODE_PREFIXES):
         return False
     return "```json" not in text and "{" not in text
+
+
+def _looks_like_agentic_wait_response(text: str) -> bool:
+    """Detect agy print-mode responses that wait for imagined subtasks.
+
+    This is distinct from ordinary parse failure: the model/agent has accepted
+    the prompt as an operational task and stalled instead of producing JSON.
+    """
+    if "```json" in text or "{" in text:
+        return False
+    lowered = text.lower()
+    return any(marker in lowered for marker in _AGENTIC_WAIT_MARKERS)
 
 
 def extract_json_block(text: str) -> dict[str, Any] | None:
@@ -1183,7 +1231,13 @@ async def run_one_client(
     if payload is None:
         # 2026-05-23: distinguish chat-mode (short greeting) from genuine parse fail
         is_chat = _looks_like_chat_response(response_text)
-        err_msg = "chat_mode_response (Gemini ignored JSON-only instruction)" if is_chat else "no JSON block in response"
+        is_wait = _looks_like_agentic_wait_response(response_text)
+        if is_chat:
+            err_msg = "chat_mode_response (Gemini ignored JSON-only instruction)"
+        elif is_wait:
+            err_msg = "agentic_wait_response (agy waited instead of JSON)"
+        else:
+            err_msg = "no JSON block in response"
         await queue_mark_terminal(conn, queue_id, "error",
                                     last_error=err_msg,
                                     raw_response_path=str(response_dump))
@@ -1194,7 +1248,7 @@ async def run_one_client(
 
     # Enrich with server-known metadata
     payload.setdefault("schema_version", SCHEMA_VERSION)
-    payload.setdefault("prompt_version", PROMPT_VERSION_V3)
+    payload.setdefault("prompt_version", PROMPT_VERSION_V5)
     payload["client_id"] = client_id
     payload["generated_at"] = datetime.now(timezone.utc).isoformat()
     payload["source_folder_id"] = folder_id
