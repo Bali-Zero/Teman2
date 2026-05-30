@@ -92,6 +92,14 @@ class EpisodeContext:
     endpoint: str
     paygate: str
     scene_ids: dict[int, str] = field(default_factory=dict)  # shot_index → scene_id
+    # Local path to the identity anchor PNG (e.g. zantara-face-anchor-v1.png).
+    # When set, every shot without an explicit start_image_media_id uses the
+    # uploaded anchor as the i2v start image so the rendered clip preserves the
+    # A007 identity (verified cosine 0.91 vs 0.12 text-prompt). Persisted.
+    anchor_image_path: str | None = None
+    # Runtime cache of the uploaded anchor media_id — NOT persisted (media_ids
+    # are project-scoped; re-uploaded per run, 0cr).
+    anchor_media_id: str | None = field(default=None, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -101,6 +109,7 @@ class EpisodeContext:
             "endpoint": self.endpoint,
             "paygate": self.paygate,
             "scene_ids": {str(k): v for k, v in self.scene_ids.items()},
+            "anchor_image_path": self.anchor_image_path,
         }
 
     @classmethod
@@ -112,6 +121,7 @@ class EpisodeContext:
             endpoint=data.get("endpoint", DEFAULT_ENDPOINT),
             paygate=data.get("paygate", DEFAULT_PAYGATE),
             scene_ids={int(k): v for k, v in (data.get("scene_ids") or {}).items()},
+            anchor_image_path=data.get("anchor_image_path"),
         )
 
 
@@ -337,6 +347,40 @@ async def _generate_start_image(
     return media[0]["name"]
 
 
+async def _upload_image_asset(
+    ctx: EpisodeContext,
+    *,
+    image_path: Path,
+    timeout_s: int = 60,
+) -> str:
+    """POST /api/flow/upload-image — upload a LOCAL image, return its media_id.
+
+    Used to inject the Zantara identity anchor as the i2v start image so the
+    rendered clip preserves the A007 face. Empirically verified 2026-05-30:
+    anchor start image → ArcFace cosine 0.91 (PASS) vs 0.12 for a text prompt.
+    """
+    url = urljoin(ctx.endpoint + "/", "api/flow/upload-image")
+    body = {
+        "file_path": str(image_path),
+        "project_id": ctx.project_id,
+        "file_name": image_path.name,
+    }
+    try:
+        resp = await asyncio.wait_for(
+            _http_post_json(url, body, timeout_s=timeout_s),
+            timeout=timeout_s,
+        )
+    except asyncio.TimeoutError as e:
+        raise FlowkitTimeoutError("upload-image timeout") from e
+
+    _check_quota(resp, where="upload-image")
+
+    media_id = resp.get("media_id")
+    if not media_id:
+        raise FlowkitError(f"upload-image returned no media_id: {str(resp)[:200]}")
+    return media_id
+
+
 async def _generate_video(
     ctx: EpisodeContext,
     *,
@@ -516,9 +560,18 @@ async def submit_clip(
         timeout_s=30,
     )
 
-    # 2b. Start image — either pre-supplied or generated from image_prompt
+    # 2b. Start image — precedence: explicit per-shot > episode anchor > text prompt.
     if request.start_image_media_id:
         start_image_id = request.start_image_media_id
+    elif episode_context.anchor_image_path:
+        # Upload the identity anchor once per episode, cache the media_id on ctx,
+        # and reuse it as the i2v start image for every shot (preserves A007 face).
+        if not episode_context.anchor_media_id:
+            episode_context.anchor_media_id = await _upload_image_asset(
+                episode_context,
+                image_path=Path(episode_context.anchor_image_path),
+            )
+        start_image_id = episode_context.anchor_media_id
     else:
         img_prompt = request.image_prompt or request.positive_prompt
         start_image_id = await _generate_start_image(
@@ -590,6 +643,13 @@ async def render_shot_pack(
         ctx_path = episode_dir / "_flowkit_context.json"
         ctx_path.parent.mkdir(parents=True, exist_ok=True)
         ctx_path.write_text(json.dumps(episode_context.to_dict(), indent=2))
+
+    # Identity anchor (root-level shot-pack field) → drives i2v start image so
+    # every shot preserves the A007 face. Only set if not already on the context.
+    if episode_context.anchor_image_path is None:
+        anchor_path = shot_pack.get("anchor_image_path")
+        if anchor_path:
+            episode_context.anchor_image_path = anchor_path
 
     for shot in shots:
         request = ClipRequest(
