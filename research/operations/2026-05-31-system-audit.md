@@ -73,17 +73,34 @@ Via `postgres-nuzantara` read-only MCP:
   `/health` and in `core/embeddings.py` + `migration_020` (the 93,283-vector
   freeze invariant is respected).
 
-### events_outbox drain — one healthy, one gate-off
+### events_outbox drain — broad multi-consumer gate-off (upgraded finding)
 
 Per the mandatory "query MAX(created_at) age before interpreting drain" rule
-(`discovery_cell_pulse_observed_gate_off`):
+(`discovery_cell_pulse_observed_gate_off`). Aggregate: **509 unconsumed, 345
+stale (>24h), 8 distinct channels** (confirmed across 3 identical queries).
+Per-channel:
 
-- `cell_pulse_observed`: 489 unconsumed, **newest 0.0h ago** → **healthy live
-  drain** (normal observatory churn).
-- `measurer_event`: 18 unconsumed, **newest 106h ago (2026-05-26 09:54)** →
-  **GATE-OFF**: the measurer consumer has produced no consumed event since
-  2026-05-26. Count is stuck, not growing. Low blast radius (metabolic metrics
-  only). **See finding F-2.**
+| channel | unconsumed | newest age | verdict |
+|---|---|---|---|
+| `inbound_webhook_queued` | 164 | 1.8h | **healthy** live drain (long tail to 05-13 = slow) |
+| `client_changed` | 178 | 215.7h | **gate-off** since 2026-05-21 |
+| `practice_changed` | 78 | 38.4h | partial gate-off |
+| `cell_pulse_sustained_red` | 50 | 64.0h | gate-off since 2026-05-28 |
+| `intel_lake_event` | 24 | 377.9h | gate-off since 2026-05-14 |
+| `whatsapp_message_received` | 8 | 151.9h | gate-off since 2026-05-24 — **expected** (wa-mirror local-only cutover) |
+| `war_room_event` | 5 | 377.7h | gate-off since 2026-05-15 |
+
+> **Correction (anti-hallucination):** an earlier transient query in this audit
+> returned a different split (`cell_pulse_observed` 489 + `measurer_event` 18)
+> that was not reproducible. The table above is the repeated, reliable result.
+> The first FROZEN write captured the transient split; it has been corrected in
+> the committed FROZEN.
+
+This is a **broader event-consumer gate-off than a single dead daemon** —
+several PG LISTEN/NOTIFY consumers stopped advancing in mid-May.
+`inbound_webhook_queued` is the only clearly-healthy live drainer;
+`whatsapp_message_received` gate-off is expected
+(`decision_wa_mirror_local_only_cutover_2026_05_24`). **See finding F-2.**
 
 ---
 
@@ -123,9 +140,17 @@ never rotated — the documented "weekly digest / pruning" gap. **See finding F-
   remote branches (graveyard — remote branches show 0 merged because they were
   squash-merged; this is expected, not lost work).
 - **8 worktrees, 7.0 G.** `nuzantara-deploy` marked `prunable`. Four agent
-  worktrees are `ahead_of_main=0` (fully squash-merged, dirty = README/*.md/
-  `__pycache__` noise only): `crm-guardian-audit`, `wa-nlm-validation-battery`,
-  `docs-lab-clean-recreate`, `wr2-mouth-next16-lint`. **See finding F-4.**
+  worktrees are `ahead_of_main=0` (zero *committed* unique commits) BUT — **correction
+  vs my first pass** — they carry **real uncommitted code WIP**, not formatting
+  noise: `crm-guardian-audit` (8 modified .py incl. `drive_poll_service.py` +
+  tests), `wa-nlm-validation-battery` (6 `openclaw_whatsapp_*` scripts),
+  `docs-lab-clean-recreate` (16, **incl. NEW untracked feature files**:
+  `routers/workspace_event_bridge.py`, 3 jobs, 3 tests, a LaunchAgent plist,
+  `research/labs/`), `wr2-mouth-next16-lint` (4: eslint/package/Checklist/lock).
+  This is the **"untracked-files-lost-on-branch-switch" danger zone** — unsaved
+  work parked in stale worktrees, especially `docs-lab-clean-recreate`'s
+  untracked new files (a `git stash` without `-u` would lose them). **See
+  finding F-4 (upgraded).**
 - `git fsck`: 607 dangling commits / 29 dangling blobs — normal for a heavy
   multi-worktree repo with no recent `gc`; no lost-work signature.
 - Disk **31% used, 36 Gi free** — healthy, nowhere near the 94% intel-pipeline
@@ -155,30 +180,43 @@ Per the hard rules they belong to "Fix che aspettano Antonello".
   the long-proposed "weekly digest of cooldown-suppressed alerts" (W55/W61
   gotcha). NOT auto-pruned: sentinel/dlq tooling may parse this file — needs a
   read of the sentinel parser first.
-- **F-2 — `measurer_event` consumer gate-off (18 stuck, 106h).** The measurer
-  events_outbox consumer has not advanced since 2026-05-26. Recommend: verify the
-  measurer daemon / LaunchAgent is alive and re-arm it (cf. the cell_pulse
-  gate-off remediation). Prod-state mutation → operator-gated.
-- **F-3 — `backend/verify_route.py` orphan.** A throwaway debug script using the
-  banned `requests` lib + bare excepts, sitting in the production package root.
-  Almost certainly deletable, but its orphan status could not be cleanly
-  re-verified this turn (transcript glitch), so it was NOT removed (no shipping
-  an unverified deletion). Trivial follow-up: confirm 0 importers, then delete.
-- **F-4 — Worktree GC (W62).** Four fully-merged agent worktrees (7.0 G total
-  across all 8) are safe to remove *in principle*, but three have mtimes within
-  minutes of the audit (active sibling sessions) → W62 gotcha forbids GC of
-  recently-touched worktrees. Recommend the proposed
-  `com.nuzantara.agent-worktree-cleanup` daily LaunchAgent that skips
-  recently-touched / dirty trees.
+- **F-2 (UPGRADED) — broad events_outbox consumer gate-off.** ~345/509
+  unconsumed events are stale (>24h) across `client_changed` (215h),
+  `practice_changed` (38h), `cell_pulse_sustained_red` (64h), `intel_lake_event`
+  (378h), `war_room_event` (378h). Multiple PG LISTEN/NOTIFY consumers stopped
+  advancing in mid-May. Recommend: operator triage of which consumers/daemons are
+  intentionally off (e.g. wa-mirror cutover explains `whatsapp_message_received`)
+  vs genuinely broken, then re-arm the broken ones. Prod-state mutation →
+  operator-gated. NOTE: `events_outbox` is unbounded until the phase-3 pruning
+  cron lands (per SYMBIOSIS Law 3 known limit) — the stale tail will keep
+  accumulating.
+- **F-3 (SHIPPED) — `backend/verify_route.py` orphan removed.** Re-verified
+  in-turn: 0 importers, not in router_manifest/registration, provenance =
+  leftover from the `main_cloud.py` refactor (`86ee1b71c`) only touched by lint
+  sweeps since. Deleted in this audit's PR (additive/reversible/blast-radius-0).
+- **F-4 (UPGRADED) — stale worktrees hold uncommitted WIP, not noise.** The four
+  `ahead_of_main=0` worktrees each carry real uncommitted code (see §5), so they
+  are **NOT** GC-safe and, more urgently, the work is at risk of loss on any
+  sibling `git stash`/branch-switch (especially `docs-lab-clean-recreate`'s
+  untracked new feature files). Three have mtimes within minutes of the audit
+  (active sibling sessions). Recommend: (a) sibling agents **commit their WIP
+  now**; (b) the long-proposed `com.nuzantara.agent-worktree-cleanup` daily
+  LaunchAgent that skips recently-touched/dirty trees.
 
 ---
 
 ## 8. FASE B outcome
 
-No P0/P1 broken code path was found, so there was **no safe code fix to ship**:
-the system is healthy, golden rules are clean, and the four findings above are all
-either prod-state mutations (F-2), shared-state mutations with unverified blast
-radius (F-1), unverifiable-in-turn deletions (F-3), or blocked by active sibling
-sessions (F-4). The shipped artifact of this audit is **this report + the
-FROZEN.json**, committed on an isolated branch with a PR (operator-visible,
-auditable, per Symbiosis "numbers first / code-as-truth").
+No P0/P1 broken code path was found. One genuinely-safe fix shipped:
+
+- **Removed `backend/verify_route.py`** — orphan debug script (banned `requests`
+  lib + bare excepts, 0 importers verified in-turn). Additive, reversible,
+  blast-radius 0.
+
+The other findings were deliberately **not** auto-shipped: prod-state mutations
+(F-2), shared-state mutation with unverified blast radius (F-1), or blocked by
+active sibling sessions holding uncommitted WIP (F-4). All shipped via the
+isolated branch `chore/system-audit-2026-05-31` → **PR #970** (auto-merge squash,
+CI-gated), staging only this audit's own files (W57 anti-sibling-race discipline:
+the worktree's pre-staged sibling files were unstaged before commit and are NOT
+in the PR).

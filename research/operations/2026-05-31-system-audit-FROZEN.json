@@ -45,7 +45,7 @@
       {"path": ".worktrees/ops-autonomous-lab-scaffold", "branch": "agent/nuzantara/ops/autonomous-lab-scaffold", "dirty": 1, "mtime": "2026-05-31 00:58", "active_sibling_suspected": true},
       {"path": ".worktrees/wr2-mouth-next16-lint", "branch": "agent/nuzantara/wr2/mouth-next16-lint", "ahead_of_main": 0, "behind_main": 25, "dirty": 4, "mtime": "2026-05-30 21:50"}
     ],
-    "cleanup_safe_candidates_DEFERRED": "4 worktrees are ahead_of_main=0 (fully squash-merged, zero unique commits): crm-guardian-audit, wa-nlm-validation-battery, docs-lab-clean-recreate, wr2-mouth-next16-lint. Dirty content is README.md + *.md notes + __pycache__ noise only. NOT removed this audit: 3 of them have mtime within minutes of audit time (01:19-01:24 vs 01:49) => active sibling sessions. W62 gotcha forbids GC of recently-touched worktrees."
+    "cleanup_status_CORRECTED": "4 worktrees are ahead_of_main=0 (zero COMMITTED unique commits): crm-guardian-audit, wa-nlm-validation-battery, docs-lab-clean-recreate, wr2-mouth-next16-lint. CORRECTION: their dirty content is NOT formatting noise — it is REAL uncommitted code WIP: crm-guardian-audit=8 modified .py (drive_poll_service.py, crm_guardian/summary_queue.py + tests + 2 scripts); wa-nlm-validation-battery=6 (openclaw_whatsapp_* scripts + eval json); docs-lab-clean-recreate=16 incl. NEW untracked feature files (app/routers/workspace_event_bridge.py, 3 jobs/, 3 tests, a LaunchAgent plist, 2 shell wrappers, research/labs/); wr2-mouth-next16-lint=4 (eslint.config.mjs, package.json, Checklist.tsx, package-lock.json). This is the W 'untracked-files-lost-on-branch-switch' danger zone: unsaved/uncommitted work parked in stale worktrees. MUST NOT GC. 3 worktrees have mtime within minutes of audit (active sibling sessions). RECOMMENDATION: these sibling agents should COMMIT their WIP (esp. docs-lab-clean-recreate's untracked new files which would be lost by any `git stash` without -u)."
   },
 
   "disk": {
@@ -112,9 +112,9 @@
     "anthropic_paid_endpoint_instantiation": 0,
     "anthropic_matches_are": "defensive strip-logic + docstrings + tests only (claude_oauth_client.py strips ANTHROPIC_API_KEY unconditionally)",
     "embedding_invariant": "text-embedding-3-small / 1536 dims — INTACT in core/embeddings.py and migration_020",
-    "requests_lib_in_backend": "1 occurrence: backend/verify_route.py (25-line throwaway manual routing-test script with `import requests` + bare excepts — debugging artifact, NOT in any import chain or router manifest)",
+    "requests_lib_in_backend": "1 occurrence: backend/verify_route.py (25-line throwaway manual routing-test script with `import requests` + bare excepts — debugging artifact). VERIFIED ORPHAN in-turn: 0 importers (grep), not in router_manifest/registration. Provenance: leftover from main_cloud.py refactor (86ee1b71c), only touched by lint sweeps since. SAFELY DELETED in FASE B (this audit).",
     "httpx_asyncclient_loop_violations": "0 real — telegram_notifier.py:377 wraps the candidate loop in a SINGLE persistent AsyncClient context (correct pattern, not per-iteration)",
-    "verdict": "CLEAN. One cosmetic finding (verify_route.py orphan) flagged but NOT auto-removed (orphan-status could not be cleanly re-verified this turn due to transcript glitch — anti-hallucination: do not ship unverified deletion)."
+    "verdict": "CLEAN. One cosmetic finding (verify_route.py orphan) verified in-turn (0 importers) and SAFELY DELETED in FASE B."
   },
 
   "recent_shipped_fixes_verified_in_tree": {
@@ -123,5 +123,12 @@
     "W61_dlq_attempts_preservation": "WORKING (DLQ all-TERMINAL, no retry storm)"
   },
 
-  "overall_verdict": "GREEN. Production backend healthy and consistent; data invariants intact; golden rules clean; CI green; recent critical scars (W60/W61) confirmed closed in live state. No P0/P1 broken code path found. Outstanding items are STRUCTURAL DEBT requiring operator decisions, not safe one-shot code fixes."
+  "fase_b_shipped": {
+    "pr": "#970 (chore/system-audit-2026-05-31)",
+    "commits": ["f70f81638 docs(ops): FROZEN + report", "follow-up: corrections + chore: remove orphan backend/verify_route.py"],
+    "safe_fix": "Deleted backend/verify_route.py (orphan debug script, banned `requests` lib + bare excepts, 0 importers verified). Additive/reversible/blast-radius-0.",
+    "auto_merge": "enabled (squash); gated by CI (mergeState BLOCKED until required checks pass)"
+  },
+
+  "overall_verdict": "GREEN (prod). Production backend healthy and consistent; data invariants intact; golden rules clean; CI green; recent critical scars (W60/W61/#969) confirmed closed in live state. No P0/P1 broken code path. The one substantive STRUCTURAL finding upgraded by reliable data: ~345/509 events_outbox events stale (>24h) across multiple PG LISTEN/NOTIFY consumers (gate-off pattern broader than one daemon) — operator triage needed. Other debt: escalations_pro.jsonl bloat, stale worktrees carrying REAL uncommitted WIP. One safe fix shipped (verify_route.py orphan removal)."
 }
