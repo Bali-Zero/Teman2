@@ -87,10 +87,20 @@
     "events_outbox": {
       "total": 37419,
       "unconsumed": 507,
-      "unconsumed_breakdown": [
-        {"channel": "cell_pulse_observed", "unconsumed": 489, "oldest": "2026-05-30 14:08", "newest": "2026-05-30 17:55", "hrs_since_newest": 0.0, "verdict": "HEALTHY live drain — newest is current, normal observatory churn"},
-        {"channel": "measurer_event", "unconsumed": 18, "oldest": "2026-05-23 02:15", "newest": "2026-05-26 09:54", "hrs_since_newest": 106.0, "verdict": "GATE-OFF / dead consumer — no new measurer_event consumed since 2026-05-26; matches the cell_pulse_observed gate-off pattern (discovery_cell_pulse_observed_gate_off). 18 events stuck, NOT growing. Low blast radius (metabolic metrics only)."}
-      ]
+      "unconsumed_stale_gt_24h": 492,
+      "distinct_channels_unconsumed": 7,
+      "aggregate_source": "Stable aggregate confirmed across 3 identical queries: 507 unconsumed / 492 stale>24h / 7 channels.",
+      "unconsumed_breakdown_reliable": [
+        {"channel": "client_changed", "unconsumed": 178, "newest": "2026-05-21 18:13", "hrs_since_newest": 215.7, "verdict": "GATE-OFF since 2026-05-21 (~9 days). Consumer dead."},
+        {"channel": "inbound_webhook_queued", "unconsumed": 164, "newest": "2026-05-30 16:06", "hrs_since_newest": 1.8, "verdict": "HEALTHY live drain (newest 1.8h) but long tail to 2026-05-13 => slow/partial."},
+        {"channel": "practice_changed", "unconsumed": 78, "newest": "2026-05-29 03:26", "hrs_since_newest": 38.4, "verdict": "PARTIAL gate-off."},
+        {"channel": "cell_pulse_sustained_red", "unconsumed": 50, "newest": "2026-05-28 01:55", "hrs_since_newest": 64.0, "verdict": "GATE-OFF since 2026-05-28."},
+        {"channel": "intel_lake_event", "unconsumed": 24, "newest": "2026-05-14 23:59", "hrs_since_newest": 377.9, "verdict": "GATE-OFF since 2026-05-14 (~16 days)."},
+        {"channel": "whatsapp_message_received", "unconsumed": 8, "newest": "2026-05-24 10:00", "hrs_since_newest": 151.9, "verdict": "GATE-OFF since 2026-05-24 — EXPECTED (wa-mirror local-only cutover). Benign."},
+        {"channel": "war_room_event", "unconsumed": 5, "newest": "2026-05-15 00:10", "hrs_since_newest": 377.7, "verdict": "GATE-OFF since 2026-05-15."}
+      ],
+      "correction_note": "ANTI-HALLUCINATION CORRECTION: an earlier transient query returned a non-reproducible split (cell_pulse_observed 489 + measurer_event 18) absent from repeated queries; this is the 3x-reproducible data.",
+      "verdict": "STRUCTURAL: ~492 of 507 unconsumed events are stale>24h across MULTIPLE PG LISTEN/NOTIFY channels (client_changed 215h, practice_changed 38h, cell_pulse_sustained_red 64h, intel_lake_event 378h, war_room_event 378h) = broad multi-consumer gate-off mid-May, not a single dead daemon. inbound_webhook_queued is the only healthy drainer; whatsapp gate-off expected (wa-mirror cutover). events_outbox unbounded until phase-3 prune cron. Operator triage needed. See F-2."
     }
   },
 
