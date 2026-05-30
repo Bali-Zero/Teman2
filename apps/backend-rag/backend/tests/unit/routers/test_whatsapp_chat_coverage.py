@@ -706,6 +706,73 @@ async def test_process_whatsapp_message_onboarding_triggered():
 
 
 @pytest.mark.asyncio
+async def test_process_whatsapp_message_corrects_openclaw_villa_kbli_reply():
+    """OpenClaw replies are guarded before WhatsApp delivery."""
+    from backend.app.routers.whatsapp_chat import process_whatsapp_message
+    from backend.services.integrations.whatsapp_triage_service import TriageDecision
+
+    mock_request = MagicMock()
+    mock_triage_service = MagicMock()
+    mock_triage_service.is_allowed.return_value = True
+    mock_triage_service.should_escalate = AsyncMock(
+        return_value=(TriageDecision.BOT_CAN_HANDLE, "business_query")
+    )
+
+    mock_wa_service = MagicMock()
+    mock_wa_service.mark_message_read = AsyncMock()
+    mock_wa_service.send_message = AsyncMock()
+    mock_wa_service.chunk_message.side_effect = lambda text, max_length: [text]
+
+    mock_onboarding = MagicMock()
+    mock_onboarding.detect_and_trigger = AsyncMock(return_value=None)
+
+    context = {
+        "_wa_user_id": "whatsapp_6281234567890",
+        "_session_id": "wa_session_6281234567890",
+        "_existing_row_id": None,
+        "client_name": "Test Client",
+        "client_profile": {"detected_language": "it"},
+        "conversation_history": [],
+        "detected_language": "it",
+        "is_first_message": False,
+        "time_of_day": "afternoon",
+    }
+
+    with (
+        patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+        patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
+        patch(
+            "backend.app.routers.whatsapp_chat.get_onboarding_detector",
+            return_value=mock_onboarding,
+        ),
+        patch(
+            "backend.services.whatsapp_context_builder.build_context",
+            new=AsyncMock(return_value=context),
+        ),
+        patch(
+            "backend.app.routers.whatsapp_chat.ask_openclaw_whatsapp",
+            new=AsyncMock(return_value="55193 - Aktivitas Vila: usa questo per Airbnb."),
+        ),
+        patch("backend.app.routers.whatsapp_chat.notify_zero_conversation_log", new=AsyncMock()),
+        patch("backend.app.routers.whatsapp_chat._save_conversation", new=AsyncMock()),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
+    ):
+        await process_whatsapp_message(
+            phone="6281234567890",
+            message_text="ma 55193 o 55203?",
+            sender_name="Test Client",
+            message_id="msg_kbli_guard",
+            request=mock_request,
+        )
+
+    sent_text = mock_wa_service.send_message.call_args.kwargs["text"]
+    assert "55203" in sent_text
+    assert "55193" in sent_text
+    assert "KBLI 2020/PP28" in sent_text
+    assert "usa questo per Airbnb" not in sent_text
+
+
+@pytest.mark.asyncio
 async def test_save_conversation_inserts_messages_as_jsonb_array_text():
     """New WhatsApp conversations should store messages as parseable JSONB arrays."""
     from backend.app.routers.whatsapp_chat import _save_conversation
