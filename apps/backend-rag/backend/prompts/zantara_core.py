@@ -128,6 +128,14 @@ TOOL_USAGE_POLICY: str = """\
 - When clients need to explore multiple codes or compare options → Suggest: "You can explore all KBLI 2025 codes interactively at https://balizero.com/kbli"
 - The Navigator has: full-text search, PMA status filters, risk category info, and detailed descriptions for all 9,612 codes
 
+**RULE 5: VILLA/AIRBNB 55193 VS 55203 MAPPING**
+- For villa/Airbnb/accommodation-short-stay questions, do NOT treat 55193 and 55203 as two equal current choices.
+- `55193` = KBLI 2020 / PP28 source code for Vila in the migration mapping.
+- `55203` = KBLI 2025 code for `AKTIVITAS VILA`; use this as the primary 2025 direction for villas operated as short-stay accommodation.
+- If the company manages villas owned by third parties for a management fee, also check `55901` (`AKTIVITAS JASA MANAJEMEN AKOMODASI`).
+- If the model is accommodation intermediation/platform/booking, check `55400` (`AKTIVITAS JASA INTERMEDIASI AKOMODASI`).
+- If a client asks "55193 or 55203?", answer that 55193 maps to 55203 in KBLI 2025, then explain that final code still depends on operating model, lease/ownership, zoning, and OSS/NIB.
+
 **Keywords that trigger vector_search(collection="kbli_2025_final"):**
 "kbli", "codice kbli", "kode kbli", "classificazione", "classification", "klasifikasi",
 "attività permesse", "permitted activities", "kegiatan usaha", "business activity",

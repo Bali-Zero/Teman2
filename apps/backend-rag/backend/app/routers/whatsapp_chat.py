@@ -33,6 +33,7 @@ from backend.services.integrations.whatsapp_triage_service import (
     TriageDecision,
     whatsapp_triage_service,
 )
+from backend.services.whatsapp_kbli_guard import sanitize_whatsapp_kbli_reply
 from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
 
 logger = logging.getLogger(__name__)
@@ -366,6 +367,21 @@ async def process_whatsapp_message(
             )
 
             if openclaw_response:
+                guarded_openclaw_response = sanitize_whatsapp_kbli_reply(
+                    message_text=message_text,
+                    reply=openclaw_response,
+                    detected_language=ctx.get("detected_language"),
+                )
+                if guarded_openclaw_response.corrected:
+                    logger.warning(
+                        "WhatsApp KBLI guard corrected OpenClaw reply "
+                        "(phone=%s message_id=%s reason=%s)",
+                        phone,
+                        message_id,
+                        guarded_openclaw_response.reason,
+                    )
+                openclaw_response = guarded_openclaw_response.reply
+
                 chunks = whatsapp_service.chunk_message(openclaw_response, max_length=4000)
 
                 for i, chunk in enumerate(chunks):
@@ -478,6 +494,21 @@ async def process_whatsapp_message(
             if needs_escalation:
                 # Remove the marker before sending to client
                 response_text = response_text.replace("[ESCALATE]", "").strip()
+
+            guarded_response = sanitize_whatsapp_kbli_reply(
+                message_text=message_text,
+                reply=response_text,
+                detected_language=ctx.get("detected_language"),
+            )
+            if guarded_response.corrected:
+                logger.warning(
+                    "WhatsApp KBLI guard corrected fallback RAG reply "
+                    "(phone=%s message_id=%s reason=%s)",
+                    phone,
+                    message_id,
+                    guarded_response.reason,
+                )
+            response_text = guarded_response.reply
 
             # Split into chunks if too long for WhatsApp
             chunks = whatsapp_service.chunk_message(response_text, max_length=4000)

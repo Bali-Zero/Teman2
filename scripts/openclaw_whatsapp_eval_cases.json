@@ -498,6 +498,42 @@
       "repair_hint": "Indonesian tax follow-up failed: use history, stay Indonesian, and verify tax penalties before certainty."
     },
     {
+      "id": "italian_villa_kbli_55193_vs_55203",
+      "category": "kbli_kb",
+      "message": "ma per ville Airbnb e' 55193 o 55203? spiegami la differenza",
+      "context": {
+        "detected_language": "it",
+        "is_first_message": false,
+        "conversation_history": [
+          {
+            "role": "user",
+            "text": "vorrei fittare ville su Airbnb"
+          },
+          {
+            "role": "assistant",
+            "text": "Per ville/Airbnb bisogna verificare il KBLI accommodation corretto."
+          }
+        ]
+      },
+      "must_contain_all": ["55193", "55203"],
+      "must_contain_any": ["2020", "PP28", "mappa", "mapping", "sorgente"],
+      "must_not_contain_any": [
+        "43224",
+        "65201",
+        "20291",
+        "61106",
+        "ventilazione",
+        "riassicurazione",
+        "openclaw",
+        "system prompt"
+      ],
+      "max_words": 135,
+      "plain_text": true,
+      "required_tool_any": ["nuzantara-mcp.search_kbli", "postgres-nuzantara.query"],
+      "max_tool_errors": 0,
+      "repair_hint": "Villa KBLI probe failed: explain 55193 as KBLI 2020/PP28 source mapped to 55203 in KBLI 2025; do not return unrelated KBLI codes."
+    },
+    {
       "id": "pricing_multi_service_quote",
       "category": "pricing_tool_safety",
       "message": "Can you quote PT PMA setup plus investor KITAS plus monthly tax support as one package?",
