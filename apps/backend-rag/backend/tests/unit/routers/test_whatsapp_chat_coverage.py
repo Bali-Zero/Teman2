@@ -8,6 +8,7 @@ X-Hub-Signature-256 HMAC verification.
 import hashlib
 import hmac
 import json
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -514,6 +515,37 @@ def test_hmac_malformed_signature_rejected(client):
 # ============================================================
 
 
+class _FakeConversationAcquire:
+    def __init__(self, conn: "_FakeConversationConn") -> None:
+        self.conn = conn
+
+    async def __aenter__(self) -> "_FakeConversationConn":
+        return self.conn
+
+    async def __aexit__(self, *_args: Any) -> None:
+        return None
+
+
+class _FakeConversationPool:
+    def __init__(self, conn: "_FakeConversationConn") -> None:
+        self.conn = conn
+
+    def acquire(self) -> _FakeConversationAcquire:
+        return _FakeConversationAcquire(self.conn)
+
+
+class _FakeConversationConn:
+    def __init__(self, existing_row: dict[str, Any] | None = None) -> None:
+        self.existing_row = existing_row
+        self.executed: list[tuple[str, tuple[Any, ...]]] = []
+
+    async def fetchrow(self, *_args: Any) -> dict[str, Any] | None:
+        return self.existing_row
+
+    async def execute(self, query: str, *args: Any) -> None:
+        self.executed.append((query, args))
+
+
 @pytest.mark.asyncio
 async def test_process_whatsapp_message_not_allowed():
     """Should return early for non-allowed phone numbers."""
@@ -671,6 +703,70 @@ async def test_process_whatsapp_message_onboarding_triggered():
 
     # Should send onboarding confirmation to client
     mock_wa_service.send_message.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_save_conversation_inserts_messages_as_jsonb_array_text():
+    """New WhatsApp conversations should store messages as parseable JSONB arrays."""
+    from backend.app.routers.whatsapp_chat import _save_conversation
+
+    conn = _FakeConversationConn()
+
+    await _save_conversation(
+        db_pool=_FakeConversationPool(conn),
+        wa_user_id="whatsapp_6281234567890",
+        session_id="wa_session_6281234567890",
+        existing_row_id=None,
+        message_text="Halo Zan",
+        response_text="Halo, bisa saya bantu.",
+        client_profile={"detected_language": "id"},
+        sender_name="Client",
+        phone="6281234567890",
+    )
+
+    query, args = conn.executed[0]
+    assert "$3::text::jsonb" in query
+    assert "$4::text::jsonb" in query
+    messages = json.loads(args[2])
+    metadata = json.loads(args[3])
+    assert isinstance(messages, list)
+    assert messages == [
+        {"role": "user", "content": "Halo Zan"},
+        {"role": "assistant", "content": "Halo, bisa saya bantu."},
+    ]
+    assert metadata == {"detected_language": "id"}
+
+
+@pytest.mark.asyncio
+async def test_save_conversation_appends_from_legacy_jsonb_string_messages():
+    """Existing scalar-string JSONB rows should be repaired on append."""
+    from backend.app.routers.whatsapp_chat import _save_conversation
+
+    legacy_messages = json.dumps([{"role": "user", "content": "Old message"}])
+    conn = _FakeConversationConn(existing_row={"messages": legacy_messages})
+
+    await _save_conversation(
+        db_pool=_FakeConversationPool(conn),
+        wa_user_id="whatsapp_6281234567890",
+        session_id="wa_session_6281234567890",
+        existing_row_id=42,
+        message_text="New question",
+        response_text="New answer",
+        client_profile={"detected_language": "en"},
+        sender_name="Client",
+        phone="6281234567890",
+    )
+
+    query, args = conn.executed[0]
+    assert "$1::text::jsonb" in query
+    assert "$2::text::jsonb" in query
+    messages = json.loads(args[0])
+    assert args[2] == 42
+    assert messages == [
+        {"role": "user", "content": "Old message"},
+        {"role": "user", "content": "New question"},
+        {"role": "assistant", "content": "New answer"},
+    ]
 
 
 # ============================================================
