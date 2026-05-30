@@ -131,6 +131,75 @@ class TestFileInventoryBlock:
 
 
 # ---------------------------------------------------------------------------
+# build_file_content_snippets_block
+# ---------------------------------------------------------------------------
+
+
+class TestFileContentSnippetsBlock:
+    def test_empty_snippets_block(self, worker) -> None:
+        block = worker.build_file_content_snippets_block([], {})
+
+        assert block.startswith("<FILE_CONTENT_SNIPPETS>")
+        assert "No OCR content extracted" in block
+        assert block.endswith("</FILE_CONTENT_SNIPPETS>")
+
+    def test_snippet_prompt_budget_caps_cache_hits(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = [
+            {"id": "f1", "name": "passport.pdf"},
+            {"id": "f2", "name": "akta.pdf"},
+            {"id": "f3", "name": "npwp.pdf"},
+        ]
+        ocr_results = {
+            "f1": worker.ExtractionResult(
+                text="abcdefghi",
+                extractor="pdfminer",
+                confidence=0.9,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            ),
+            "f2": worker.ExtractionResult(
+                text="jklmnopqr",
+                extractor="pdfminer",
+                confidence=0.8,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            ),
+            "f3": worker.ExtractionResult(
+                text="stuvwxyz",
+                extractor="pdfminer",
+                confidence=0.7,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            ),
+        }
+
+        monkeypatch.setattr(worker, "CONTENT_SNIPPET_MAX_FILES", 2)
+        monkeypatch.setattr(worker, "CONTENT_SNIPPET_MAX_CHARS_PER_FILE", 5)
+        monkeypatch.setattr(worker, "CONTENT_SNIPPET_MAX_CHARS_TOTAL", 8)
+
+        block = worker.build_file_content_snippets_block(files, ocr_results)
+
+        assert "--- file_id: f1 ---" in block
+        assert "abcde" in block
+        assert "abcdef" not in block
+        assert "--- file_id: f2 ---" in block
+        assert "jkl" in block
+        assert "jklm" not in block
+        assert "--- file_id: f3 ---" not in block
+        assert "# Snippets rendered: 2" in block
+        assert "# Snippets skipped_by_prompt_budget: 1" in block
+        assert "# Snippet text chars rendered: 8/8" in block
+        assert "prompt_truncated=true" in block
+
+
+# ---------------------------------------------------------------------------
 # assemble_full_prompt
 # ---------------------------------------------------------------------------
 
