@@ -18,7 +18,8 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/bash</string>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr2_plist_watchdog.sh</string>
+		<string>-lc</string>
+		<string>if [[ -x /Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr2_plist_watchdog.sh ]]; then export WR2_REPO_ROOT=/Users/nuzantara/Desktop/nuzantara-deploy; exec /Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr2_plist_watchdog.sh; fi; export WR2_REPO_ROOT=/Users/nuzantara/Desktop/nuzantara; exec /Users/nuzantara/Desktop/nuzantara/scripts/wr2_plist_watchdog.sh</string>
 	</array>
 	<key>StartInterval</key>
 	<integer>900</integer>
