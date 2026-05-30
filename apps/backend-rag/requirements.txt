@@ -111,7 +111,7 @@ pytest-cov>=7.1.0  # Upgraded for coverage improvements
 testcontainers>=4.0.0  # For integration tests with Docker containers
 
 # Observability
-prometheus-fastapi-instrumentator>=6.1.0
+prometheus-fastapi-instrumentator>=8.0.0
 # OpenTelemetry - CONFLICT RESOLVED (Dec 2025)
 # Old versions required protobuf<5.0, new versions require protobuf>=5.0
 # Now compatible with google-cloud packages
