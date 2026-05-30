@@ -76,9 +76,9 @@ Via `postgres-nuzantara` read-only MCP:
 ### events_outbox drain — broad multi-consumer gate-off (upgraded finding)
 
 Per the mandatory "query MAX(created_at) age before interpreting drain" rule
-(`discovery_cell_pulse_observed_gate_off`). Aggregate: **509 unconsumed, 345
-stale (>24h), 8 distinct channels** (confirmed across 3 identical queries).
-Per-channel:
+(`discovery_cell_pulse_observed_gate_off`). Stable aggregate (3 identical
+queries): **507 unconsumed, 492 stale (>24h), 7 distinct channels**. Per-channel
+(captured a few seconds earlier; sums to ~507 — live outbox drifts by a few):
 
 | channel | unconsumed | newest age | verdict |
 |---|---|---|---|
