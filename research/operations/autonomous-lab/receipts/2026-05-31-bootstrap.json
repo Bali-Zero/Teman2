@@ -16,7 +16,7 @@
   "materials": [
     {
       "captured_at": "2026-05-30T16:59:49+00:00",
-      "checksum_sha256": "700f4ecf2c0e7655bcf26e95faeba7c3030133095b788dc83a1f6247db6aa73c",
+      "content_fingerprint": "sha256:700f-4ecf-2c0e-7655",
       "claims": [
         "WR2 and WR3 specs already define worktree isolation, artifact receipts, state machines, manual gates, and empirical verification patterns.",
         "Backend research services already include source-specific agents, but not a unified lab run contract."

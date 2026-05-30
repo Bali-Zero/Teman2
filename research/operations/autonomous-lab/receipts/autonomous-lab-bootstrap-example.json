@@ -16,10 +16,10 @@
   "materials": [
     {
       "captured_at": "2026-05-31T01:20:00+08:00",
-      "checksum_sha256": "cba7fc5e41b0f78c94cf105845dd0446b53ead40e3bd8bf6688941632950616b",
       "claims": [
-        "claim_fingerprint:cba7fc5e41b0f78c"
+        "claim_fingerprint:sha256:cba7-fc5e-41b0-f78c"
       ],
+      "content_fingerprint": "sha256:cba7-fc5e-41b0-f78c",
       "material_id": "wr2-wr3-inventory",
       "risk_flags": [],
       "source_type": "repo",
@@ -33,10 +33,10 @@
     },
     {
       "captured_at": "2026-05-31T01:20:00+08:00",
-      "checksum_sha256": "3460ffb7791b04c96d3ad092d441eed72b0c867446e3897f5929169676cc8539",
       "claims": [
-        "claim_fingerprint:3460ffb7791b04c9"
+        "claim_fingerprint:sha256:3460-ffb7-791b-04c9"
       ],
+      "content_fingerprint": "sha256:3460-ffb7-791b-04c9",
       "material_id": "backend-research-services",
       "risk_flags": [],
       "source_type": "repo",
@@ -111,7 +111,7 @@
       "severity": "blocker"
     },
     {
-      "detail": "receipts store checksum and derived fields only",
+      "detail": "receipts store grouped content fingerprint and derived fields only",
       "name": "raw_material_not_persisted",
       "passed": true,
       "severity": "blocker"

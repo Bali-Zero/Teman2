@@ -77,7 +77,8 @@ def test_draft_run_is_source_agnostic_and_omits_raw_text_from_receipt() -> None:
         MaterialSourceType.REPO,
     }
     assert raw_secret_phrase not in receipt
-    assert "checksum_sha256" in receipt
+    assert "content_fingerprint" in receipt
+    assert "sha256:" in receipt
     assert run.simulation_plan.worktree_command.endswith("--task-id autonomous-lab-v0")
     assert any(
         "pytest backend/tests/unit/services/autonomous_lab" in command

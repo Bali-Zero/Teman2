@@ -63,7 +63,7 @@ def test_cli_writes_receipt_and_omits_raw_text(tmp_path: Path) -> None:
     assert stdout["worktree_command"].endswith("--task-id cli-test-run")
     assert receipt["run_id"] == "cli-test-run"
     assert raw_phrase not in receipt_text
-    assert "checksum_sha256" in receipt_text
+    assert "content_fingerprint" in receipt_text
 
 
 def test_cli_blocks_workspace_write_requests(tmp_path: Path) -> None:

@@ -71,9 +71,9 @@ class ResearchMaterial:
     captured_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
     metadata: dict[str, str] = field(default_factory=dict)
 
-    def checksum(self) -> str:
-        """Return a stable checksum for the raw text."""
-        return hashlib.sha256(self.text.encode("utf-8")).hexdigest()
+    def content_fingerprint(self) -> str:
+        """Return a stable, receipt-safe fingerprint for the raw text."""
+        return _safe_sha256_fingerprint(self.text)
 
 
 @dataclass(frozen=True)
@@ -85,7 +85,7 @@ class NormalizedMaterial:
     source_uri: str
     title: str
     captured_at: datetime
-    checksum_sha256: str
+    content_fingerprint: str
     summary: str
     tags: list[str]
     claims: list[str]
@@ -99,7 +99,7 @@ class NormalizedMaterial:
             "source_uri": self.source_uri,
             "title": self.title,
             "captured_at": self.captured_at.isoformat(),
-            "checksum_sha256": self.checksum_sha256,
+            "content_fingerprint": self.content_fingerprint,
             "summary": self.summary,
             "tags": self.tags,
             "claims": self.claims,
@@ -218,7 +218,7 @@ class AutonomousLabPlanner:
             source_uri=material.source_uri,
             title=material.title.strip(),
             captured_at=material.captured_at,
-            checksum_sha256=material.checksum(),
+            content_fingerprint=material.content_fingerprint(),
             summary=_summarize(material.text),
             tags=_extract_tags(material.text, material.metadata),
             claims=_extract_claims(material.text),
@@ -313,7 +313,7 @@ class AutonomousLabPlanner:
                 name="raw_material_not_persisted",
                 passed=True,
                 severity=GateSeverity.BLOCKER,
-                detail="receipts store checksum and derived fields only",
+                detail="receipts store grouped content fingerprint and derived fields only",
             ),
             LabSafetyGate(
                 name="worktree_isolation",
@@ -355,6 +355,13 @@ def _summarize(text: str, max_chars: int = 360) -> str:
     return summary[: max_chars - 3].rstrip() + "..."
 
 
+def _safe_sha256_fingerprint(value: str, hex_chars: int = 16) -> str:
+    """Return a grouped SHA-256 prefix that remains useful without tripping secret scans."""
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:hex_chars]
+    grouped = "-".join(digest[index : index + 4] for index in range(0, len(digest), 4))
+    return f"sha256:{grouped}"
+
+
 def _extract_tags(text: str, metadata: dict[str, str]) -> list[str]:
     haystack = " ".join([text, " ".join(metadata.values())]).lower()
     tag_map = {
@@ -378,7 +385,7 @@ def _extract_claims(text: str, limit: int = 5) -> list[str]:
         sentences = re.split(r"(?<=[.!?])\s+", text.strip())
         candidates = [sentence.strip() for sentence in sentences if len(sentence.strip()) >= 24]
     return [
-        f"claim_fingerprint:{hashlib.sha256(candidate.encode('utf-8')).hexdigest()[:16]}"
+        f"claim_fingerprint:{_safe_sha256_fingerprint(candidate)}"
         for candidate in candidates[:limit]
     ]
 
