@@ -148,6 +148,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*baseline.*\.json$"),
         "orchestrator baseline JSON snapshot: git SHAs + counts, not credentials",
     ),
+    # Autonomous lab receipts persist derived checksums/fingerprints by contract
+    # and explicitly avoid raw source material. The hex hits are SHA-256 content
+    # checksums for auditability, not credentials or bearer tokens.
+    (
+        re.compile(r"^research/operations/autonomous-lab/receipts/.*\.json$"),
+        "autonomous-lab receipts: content checksums and derived fingerprints, not credentials",
+    ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),
         "README: documentation",
