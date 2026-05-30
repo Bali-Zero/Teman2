@@ -338,6 +338,10 @@ async def _tesseract_ocr_png(png_bytes: bytes) -> tuple[str, float]:
             proc.communicate(input=png_bytes),
             timeout=TESSERACT_TIMEOUT_SECONDS,
         )
+    except asyncio.CancelledError:
+        proc.kill()
+        await proc.wait()
+        raise
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()

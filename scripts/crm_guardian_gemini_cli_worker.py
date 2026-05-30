@@ -58,6 +58,7 @@ import re
 import signal
 import subprocess
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -102,10 +103,13 @@ GEMINI_TIMEOUT_SECONDS = int(os.getenv("CRM_GUARDIAN_GEMINI_TIMEOUT_SECONDS", "9
 GEMINI_DEFAULT_MODEL: str | None = None  # agy uses CLI default model — does NOT support `-m` flag (prints help instead)
 STALE_RUNNING_SECONDS = int(os.getenv("CRM_GUARDIAN_STALE_RUNNING_SECONDS", "900"))
 
-# Phase 1.5 OCR budget per client. Tesseract is fast but akta scans can spike
-# latency; we cap how many priority files we OCR in a single client run.
-# Excess files fall through as metadata-only (extractor='skipped').
-OCR_MAX_FILES_PER_CLIENT = 30
+# Phase 1.5 OCR budget per client. Fresh OCR is capped to the number of
+# snippets we can actually render, with timeboxes to keep huge Drive folders
+# from spending many minutes before the LLM call. Cache hits still render when
+# available because they are cheap and deterministic.
+OCR_MAX_FILES_PER_CLIENT = int(os.getenv("CRM_GUARDIAN_OCR_MAX_FILES_PER_CLIENT", "8"))
+OCR_MAX_SECONDS_PER_CLIENT = float(os.getenv("CRM_GUARDIAN_OCR_MAX_SECONDS_PER_CLIENT", "240"))
+OCR_MAX_SECONDS_PER_FILE = float(os.getenv("CRM_GUARDIAN_OCR_MAX_SECONDS_PER_FILE", "75"))
 
 # Prompt budget guards. Fresh extraction is capped above, but cache hits and
 # very large Drive folders can otherwise render unbounded prompt sections.
@@ -519,6 +523,8 @@ async def enrich_files_with_ocr(
     health: OcrHealth,
     *,
     budget: int = OCR_MAX_FILES_PER_CLIENT,
+    max_seconds_per_client: float = OCR_MAX_SECONDS_PER_CLIENT,
+    max_seconds_per_file: float = OCR_MAX_SECONDS_PER_FILE,
 ) -> dict[str, ExtractionResult]:
     """Extract text content for priority files, using the OCR cache when possible.
 
@@ -534,15 +540,28 @@ async def enrich_files_with_ocr(
     by (file_id, modified_time_ms). Cache hit → reconstruct ExtractionResult
     from the row. Cache miss → download bytes, extract, upsert row.
 
-    Budget cap: at most `budget` fresh extractions per client. Excess priority
-    files fall through to metadata-only. Cache hits do NOT count toward budget.
+    Budget cap: at most `budget` fresh extractions per client and at most
+    `max_seconds_per_client` seconds of OCR work. Excess priority files fall
+    through to metadata-only. Cache hits do NOT count toward either budget.
     """
     enriched: dict[str, ExtractionResult] = {}
     fresh_extractions = 0
+    cache_hits = 0
+    skipped_fresh_budget = 0
+    skipped_time_budget = 0
+    fresh_budget_logged = False
+    time_budget_logged = False
+    started_monotonic = time.monotonic()
 
     for f in flat_files:
-        doc_type = infer_doc_type_from_filename(f.get("name"))
-        f["inferred_doc_type"] = doc_type
+        f["inferred_doc_type"] = infer_doc_type_from_filename(f.get("name"))
+
+    priority_files = sum(
+        1 for f in flat_files if f.get("inferred_doc_type") in PRIORITY_DOC_TYPES
+    )
+
+    for f in flat_files:
+        doc_type = f.get("inferred_doc_type")
 
         if doc_type not in PRIORITY_DOC_TYPES:
             continue
@@ -554,6 +573,7 @@ async def enrich_files_with_ocr(
         cached = await get_cached_content(conn, file_id, modtime_ms)
         if cached:
             if cached["text_content"]:
+                cache_hits += 1
                 enriched[file_id] = ExtractionResult(
                     text=cached["text_content"],
                     extractor=cached["extractor"],
@@ -567,10 +587,21 @@ async def enrich_files_with_ocr(
 
         # Budget guard for FRESH extractions
         if fresh_extractions >= budget:
-            LOG.info(
-                "ocr budget %d reached for this client, skipping further priority files",
-                budget,
-            )
+            skipped_fresh_budget += 1
+            if not fresh_budget_logged:
+                LOG.info("ocr fresh-file budget %d reached, metadata-only for remaining priority files", budget)
+                fresh_budget_logged = True
+            continue
+
+        elapsed_seconds = time.monotonic() - started_monotonic
+        if elapsed_seconds >= max_seconds_per_client:
+            skipped_time_budget += 1
+            if not time_budget_logged:
+                LOG.info(
+                    "ocr time budget %.1fs reached, metadata-only for remaining priority files",
+                    max_seconds_per_client,
+                )
+                time_budget_logged = True
             continue
 
         # Cache miss → fetch bytes + extract
@@ -578,12 +609,39 @@ async def enrich_files_with_ocr(
         if file_bytes is None:
             continue
 
-        result = await extract_file_content(
-            file_bytes=file_bytes,
-            mime_type=f.get("mimeType", ""),
-            doc_type=doc_type,
-            health=health,
-        )
+        remaining_client_seconds = max_seconds_per_client - (time.monotonic() - started_monotonic)
+        if remaining_client_seconds <= 0:
+            skipped_time_budget += 1
+            if not time_budget_logged:
+                LOG.info(
+                    "ocr time budget %.1fs reached after download, skipping extraction",
+                    max_seconds_per_client,
+                )
+                time_budget_logged = True
+            continue
+
+        file_timeout = min(max_seconds_per_file, remaining_client_seconds)
+        extraction_started = time.monotonic()
+        try:
+            result = await asyncio.wait_for(
+                extract_file_content(
+                    file_bytes=file_bytes,
+                    mime_type=f.get("mimeType", ""),
+                    doc_type=doc_type,
+                    health=health,
+                ),
+                timeout=file_timeout,
+            )
+        except asyncio.TimeoutError:
+            result = ExtractionResult(
+                text="",
+                extractor="skipped",
+                confidence=None,
+                page_count=None,
+                duration_ms=int((time.monotonic() - extraction_started) * 1000),
+                truncated=False,
+                notes=f"file_timeout_after_{file_timeout:g}s",
+            )
         fresh_extractions += 1
 
         if result.extractor != "skipped" and result.text:
@@ -598,13 +656,19 @@ async def enrich_files_with_ocr(
         except Exception as e:
             LOG.warning("ocr cache upsert failed for %s: %s", file_id, e)
 
-    if fresh_extractions or enriched:
+    if priority_files or fresh_extractions or enriched:
         LOG.info(
-            "ocr enrichment: priority_files=%d fresh_ocr=%d cache_hits=%d snippets=%d",
-            sum(1 for f in flat_files if f.get("inferred_doc_type") in PRIORITY_DOC_TYPES),
+            (
+                "ocr enrichment: priority_files=%d fresh_ocr=%d cache_hits=%d "
+                "snippets=%d skipped_fresh_budget=%d skipped_time_budget=%d elapsed_ms=%d"
+            ),
+            priority_files,
             fresh_extractions,
-            len(enriched) - fresh_extractions if len(enriched) >= fresh_extractions else 0,
+            cache_hits,
             len(enriched),
+            skipped_fresh_budget,
+            skipped_time_budget,
+            int((time.monotonic() - started_monotonic) * 1000),
         )
     return enriched
 
