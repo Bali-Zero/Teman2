@@ -19,7 +19,7 @@ import importlib.util
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -154,61 +154,127 @@ class TestAssembleFullPrompt:
 # ---------------------------------------------------------------------------
 
 
+class FakePopen:
+    """Small Popen test double that writes into the provided output files."""
+
+    pid = 12345
+
+    def __init__(
+        self,
+        _cmd: list[str],
+        *,
+        stdout,
+        stderr,
+        returncode: int = 0,
+        stdout_text: str = "",
+        stderr_text: str = "",
+        timeout: bool = False,
+        **_kwargs,
+    ) -> None:
+        self.returncode = returncode
+        self._timeout = timeout
+        self.wait_calls = 0
+        stdout.write(stdout_text)
+        stderr.write(stderr_text)
+
+    def wait(self, timeout: int | None = None) -> int:
+        self.wait_calls += 1
+        if self._timeout and self.wait_calls == 1:
+            raise subprocess.TimeoutExpired(cmd=["agy"], timeout=timeout)
+        return self.returncode
+
+    def poll(self) -> int | None:
+        if self._timeout and self.wait_calls <= 1:
+            return None
+        return self.returncode
+
+
 class TestCallGeminiCli:
-    def test_basic_invocation(self, worker) -> None:
-        """Mock subprocess.run, verify command shape."""
-        mock_result = subprocess.CompletedProcess(
-            args=["agy", "-p", "test"],
-            returncode=0,
-            stdout='```json\n{"ok": true}\n```\n',
-            stderr="",
-        )
-        with (
-            patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
-            patch.object(worker.Path, "exists", return_value=True),
-        ):
-            out = worker.call_gemini_cli("hello prompt")
-            assert "```json" in out
-            mock_run.assert_called_once()
-            args = mock_run.call_args[0][0]
-            assert args[0] == worker.GEMINI_CLI
-            assert args[1] == "-p"
-            assert args[2] == "hello prompt"
-
-    def test_model_arg_ignored_on_agy(self, worker) -> None:
-        """agy does not support `-m`; the model arg is accepted but never passed."""
-        mock_result = subprocess.CompletedProcess(args=[], returncode=0, stdout="x", stderr="")
-        with (
-            patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
-            patch.object(worker.Path, "exists", return_value=True),
-        ):
-            worker.call_gemini_cli("p", model="gemini-2.5-pro")
-            args = mock_run.call_args[0][0]
-            assert "-m" not in args
-            assert "gemini-2.5-pro" not in args
-
-    def test_timeout_propagates(self, worker) -> None:
+    def test_basic_invocation(self, worker, tmp_path: Path) -> None:
+        """Mock subprocess.Popen, verify command and no pipe capture."""
+        popen = FakePopen
         with (
             patch.object(
                 worker.subprocess,
-                "run",
-                side_effect=subprocess.TimeoutExpired(cmd=["agy"], timeout=240),
-            ),
+                "Popen",
+                side_effect=lambda *args, **kwargs: popen(
+                    *args,
+                    stdout_text='```json\n{"ok": true}\n```\n',
+                    **kwargs,
+                ),
+            ) as mock_popen,
             patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
+        ):
+            out = worker.call_gemini_cli("hello prompt")
+            assert "```json" in out
+            mock_popen.assert_called_once()
+            args = mock_popen.call_args[0][0]
+            kwargs = mock_popen.call_args.kwargs
+            assert args[0] == worker.GEMINI_CLI
+            assert args[1] == "-p"
+            assert args[2] == "--print-timeout"
+            assert args[3].endswith("s")
+            assert "hello prompt" not in args
+            assert kwargs["stdin"] is not None
+            assert kwargs["stdout"] is not subprocess.PIPE
+            assert kwargs["stderr"] is not subprocess.PIPE
+            assert kwargs["start_new_session"] is True
+
+    def test_model_arg_ignored_on_agy(self, worker, tmp_path: Path) -> None:
+        """agy does not support `-m`; the model arg is accepted but never passed."""
+        with (
+            patch.object(
+                worker.subprocess,
+                "Popen",
+                side_effect=lambda *args, **kwargs: FakePopen(
+                    *args,
+                    stdout_text="x",
+                    **kwargs,
+                ),
+            ) as mock_popen,
+            patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
+        ):
+            worker.call_gemini_cli("p", model="gemini-2.5-pro")
+            args = mock_popen.call_args[0][0]
+            assert "-m" not in args
+            assert "gemini-2.5-pro" not in args
+
+    def test_timeout_propagates_and_kills_process_group(self, worker, tmp_path: Path) -> None:
+        with (
+            patch.object(
+                worker.subprocess,
+                "Popen",
+                side_effect=lambda *args, **kwargs: FakePopen(
+                    *args,
+                    timeout=True,
+                    stderr_text="still running",
+                    **kwargs,
+                ),
+            ),
+            patch.object(worker.os, "killpg") as mock_killpg,
+            patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
         ):
             with pytest.raises(subprocess.TimeoutExpired):
                 worker.call_gemini_cli("p", timeout_seconds=240)
+            mock_killpg.assert_called()
 
-    def test_nonzero_exit_raises(self, worker) -> None:
-        mock_result = subprocess.CompletedProcess(
-            args=[],
-            returncode=1,
-            stdout="",
-            stderr="auth required",
-        )
+    def test_nonzero_exit_raises(self, worker, tmp_path: Path) -> None:
         with (
-            patch.object(worker.subprocess, "run", return_value=mock_result),
+            patch.object(
+                worker.subprocess,
+                "Popen",
+                side_effect=lambda *args, **kwargs: FakePopen(
+                    *args,
+                    returncode=1,
+                    stderr_text="auth required",
+                    **kwargs,
+                ),
+            ),
             patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
         ):
             with pytest.raises(RuntimeError, match="gemini CLI returncode=1"):
                 worker.call_gemini_cli("p")
@@ -235,6 +301,122 @@ class TestExtractJsonBlock:
 
     def test_no_json_returns_none(self, worker) -> None:
         assert worker.extract_json_block("just words, no json") is None
+
+
+# ---------------------------------------------------------------------------
+# main() operational state
+# ---------------------------------------------------------------------------
+
+
+class TestMainOperationalState:
+    @pytest.mark.asyncio
+    async def test_reset_stale_running_jobs_returns_update_count(self, worker) -> None:
+        class FakeConn:
+            def __init__(self) -> None:
+                self.execute = AsyncMock(return_value="UPDATE 2")
+
+        fake_conn = FakeConn()
+
+        result = await worker.reset_stale_running_jobs(fake_conn, stale_after_seconds=600)
+
+        assert result == 2
+        sql = fake_conn.execute.await_args.args[0]
+        assert "status = 'running'" in sql
+        assert "status = 'pending'" in sql
+        assert fake_conn.execute.await_args.args[1] == 600
+
+    @pytest.mark.asyncio
+    async def test_no_pending_queue_bumps_i10b_success(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        prompt_file = tmp_path / "prompt.md"
+        prompt_file.write_text("prompt", encoding="utf-8")
+
+        class FakeConn:
+            def __init__(self) -> None:
+                self.execute = AsyncMock(return_value="UPDATE 0")
+                self.fetch = AsyncMock(return_value=[])
+                self.close = AsyncMock()
+
+        fake_conn = FakeConn()
+
+        import asyncpg
+
+        import backend.services.crm_guardian.base as guardian_base
+
+        bump = AsyncMock()
+        monkeypatch.setattr(worker, "_resolve_db_url", lambda: "postgresql://test/db")
+        monkeypatch.setattr(asyncpg, "connect", AsyncMock(return_value=fake_conn))
+        monkeypatch.setattr(guardian_base, "bump_circuit_breaker", bump)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "crm_guardian_gemini_cli_worker.py",
+                "--from-queue",
+                "--prompt-file",
+                str(prompt_file),
+            ],
+        )
+
+        exit_code = await worker.main()
+
+        assert exit_code == 0
+        bump.assert_awaited_once_with(fake_conn, "I10b_summary_queue", True)
+        fake_conn.close.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_processed_batch_bumps_queue_and_l1_state(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        prompt_file = tmp_path / "prompt.md"
+        prompt_file.write_text("prompt", encoding="utf-8")
+
+        class FakeConn:
+            def __init__(self) -> None:
+                self.execute = AsyncMock(return_value="UPDATE 0")
+                self.fetch = AsyncMock(return_value=[{"client_id": 123}])
+                self.close = AsyncMock()
+
+        fake_conn = FakeConn()
+
+        import asyncpg
+
+        import backend.services.crm_guardian.base as guardian_base
+
+        bump = AsyncMock()
+        monkeypatch.setattr(worker, "_resolve_db_url", lambda: "postgresql://test/db")
+        monkeypatch.setattr(asyncpg, "connect", AsyncMock(return_value=fake_conn))
+        monkeypatch.setattr(guardian_base, "bump_circuit_breaker", bump)
+        monkeypatch.setattr(guardian_base, "build_drive_service", lambda prefer_user_oauth: object())
+        monkeypatch.setattr(
+            worker,
+            "run_one_client",
+            AsyncMock(return_value={"client_id": 123, "status": "success"}),
+        )
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "crm_guardian_gemini_cli_worker.py",
+                "--from-queue",
+                "--prompt-file",
+                str(prompt_file),
+            ],
+        )
+
+        exit_code = await worker.main()
+
+        assert exit_code == 0
+        assert bump.await_args_list[0].args == (fake_conn, "I10b_summary_queue", True, None)
+        assert bump.await_args_list[1].args == (fake_conn, "I10_summary_l1", True, None)
+        fake_conn.close.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
