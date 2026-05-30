@@ -48,7 +48,7 @@ jobs:
           else
             # check_suite: pick the PR(s) associated with the suite
             PR_NUM="$(gh api repos/${{ github.repository }}/check-suites/${{ github.event.check_suite.id }}/pulls --jq '.[0].number' 2>/dev/null || echo '')"
-            if [[ -z "$PR_NUM" ]]; then
+            if ! [[ "$PR_NUM" =~ ^[0-9]+$ ]]; then
               echo "No PR linked to check_suite ${{ github.event.check_suite.id }} — skipping."
               echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0

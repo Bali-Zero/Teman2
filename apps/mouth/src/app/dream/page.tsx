@@ -16,9 +16,8 @@ import {
   EyeOff,
   Volume2,
   VolumeX,
-  Twitter,
-  Linkedin,
-  Instagram,
+  Camera,
+  Link2,
   Clock,
   TrendingUp,
   FileText,
@@ -76,6 +75,10 @@ import {
 import { dreamApi } from '@/lib/api/dream.api';
 import { logger } from '@/lib/logger';
 import { safeHtml } from '@/lib/utils/safe-html';
+
+const Twitter = X;
+const Linkedin = Link2;
+const Instagram = Camera;
 
 // ============ TYPES ============
 interface ArticleVersion {
