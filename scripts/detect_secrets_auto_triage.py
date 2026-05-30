@@ -148,6 +148,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*baseline.*\.json$"),
         "orchestrator baseline JSON snapshot: git SHAs + counts, not credentials",
     ),
+    # Frozen system audit snapshot: the high-entropy hits are a git commit
+    # SHA and Fly machine IDs captured as operational evidence, not
+    # credentials or bearer tokens.
+    (
+        re.compile(r"^research/operations/2026-05-31-system-audit-FROZEN\.json$"),
+        "system audit frozen JSON snapshot: git SHA + Fly machine IDs, not credentials",
+    ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),
         "README: documentation",
