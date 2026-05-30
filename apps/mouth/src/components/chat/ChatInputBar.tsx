@@ -157,7 +157,7 @@ export function ChatInputBar({
               variant="ghost"
               size="sm"
               onClick={() => setShowImagePrompt(false)}
-              className="ml-auto"
+              className="ml-auto focus-ring"
             >
               Cancel
             </Button>
@@ -239,7 +239,7 @@ export function ChatInputBar({
                       fileInputRef.current?.click();
                       setShowAttachMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm focus-ring"
                   >
                     <Upload className="w-4 h-4" />
                     Upload file
@@ -250,7 +250,7 @@ export function ChatInputBar({
                       setShowImagePrompt(!showImagePrompt);
                       setShowAttachMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm focus-ring"
                   >
                     <ImageIcon className="w-4 h-4" />
                     Generate image
