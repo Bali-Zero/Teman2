@@ -212,11 +212,13 @@ def _nlm_counts(report: dict[str, Any]) -> dict[str, int]:
             "error_domains": _summary_int(summary, "error_domains"),
             "failed_cases": _summary_int(summary, "failed_cases"),
             "warning_cases": _summary_int(summary, "warning_cases"),
+            "missing_review_cases": _summary_int(summary, "missing_review_cases"),
         }
 
     domains = [domain for domain in report.get("domains") or [] if isinstance(domain, dict)]
     failed_cases = report.get("failed_case_ids")
     warning_cases = report.get("warning_case_ids")
+    missing_review_cases = report.get("missing_review_case_ids")
     return {
         "domains": len(domains),
         "cases": len(
@@ -232,6 +234,9 @@ def _nlm_counts(report: dict[str, Any]) -> dict[str, int]:
         "error_domains": sum(1 for domain in domains if domain.get("status") == "error"),
         "failed_cases": len(failed_cases) if isinstance(failed_cases, list) else 0,
         "warning_cases": len(warning_cases) if isinstance(warning_cases, list) else 0,
+        "missing_review_cases": (
+            len(missing_review_cases) if isinstance(missing_review_cases, list) else 0
+        ),
     }
 
 
@@ -273,6 +278,7 @@ def build_science_report(
     max_nlm_failed_domains = int(gates_config.get("max_nlm_failed_domains", 0))
     max_nlm_error_domains = int(gates_config.get("max_nlm_error_domains", 0))
     max_nlm_failed_cases = int(gates_config.get("max_nlm_failed_cases", 0))
+    max_nlm_missing_review_cases = int(gates_config.get("max_nlm_missing_review_cases", 0))
 
     missing_categories = sorted(required_categories - categories)
     missing_case_tools = sorted(required_tools - case_required_tools)
@@ -462,6 +468,13 @@ def build_science_report(
                             "failed_domains": f"<= {max_nlm_failed_domains}",
                             "failed_cases": f"<= {max_nlm_failed_cases}",
                         },
+                    ),
+                    _gate(
+                        "nlm_review_coverage",
+                        nlm_summary["missing_review_cases"] <= max_nlm_missing_review_cases,
+                        "NLM validation reviewed every live eval response explicitly",
+                        actual=nlm_summary["missing_review_cases"],
+                        expected=f"<= {max_nlm_missing_review_cases}",
                     ),
                 ]
             )
