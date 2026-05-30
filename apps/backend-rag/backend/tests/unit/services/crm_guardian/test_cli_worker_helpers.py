@@ -15,6 +15,7 @@ test_worker_helpers.py and re-imported here only for sanity.
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import subprocess
 import sys
@@ -257,6 +258,96 @@ class TestFileContentSnippetsBlock:
         assert "# Snippets skipped_by_prompt_budget: 1" in block
         assert "# Snippet text chars rendered: 8/8" in block
         assert "prompt_truncated=true" in block
+
+
+# ---------------------------------------------------------------------------
+# enrich_files_with_ocr
+# ---------------------------------------------------------------------------
+
+
+class TestOcrEnrichmentBudgets:
+    def test_default_fresh_ocr_budget_matches_rendered_snippets(self, worker) -> None:
+        assert worker.OCR_MAX_FILES_PER_CLIENT == 8
+        assert worker.CONTENT_SNIPPET_MAX_FILES == 8
+        assert worker.OCR_MAX_SECONDS_PER_CLIENT > 0
+        assert worker.OCR_MAX_SECONDS_PER_FILE > 0
+
+    @pytest.mark.asyncio
+    async def test_fresh_ocr_budget_caps_extraction_work(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = [
+            {"id": "f1", "name": "passport-a.pdf", "mimeType": "application/pdf"},
+            {"id": "f2", "name": "passport-b.pdf", "mimeType": "application/pdf"},
+            {"id": "f3", "name": "passport-c.pdf", "mimeType": "application/pdf"},
+        ]
+        extraction = worker.ExtractionResult(
+            text="passport text",
+            extractor="pdfminer",
+            confidence=None,
+            page_count=1,
+            duration_ms=1,
+            truncated=False,
+        )
+
+        extract = AsyncMock(return_value=extraction)
+        download = AsyncMock(return_value=b"%PDF")
+        upsert = AsyncMock()
+
+        monkeypatch.setattr(worker, "get_cached_content", AsyncMock(return_value=None))
+        monkeypatch.setattr(worker, "download_drive_file_bytes", download)
+        monkeypatch.setattr(worker, "extract_file_content", extract)
+        monkeypatch.setattr(worker, "upsert_cache_row", upsert)
+
+        enriched = await worker.enrich_files_with_ocr(
+            object(),
+            object(),
+            files,
+            object(),
+            budget=2,
+            max_seconds_per_client=999,
+            max_seconds_per_file=999,
+        )
+
+        assert extract.await_count == 2
+        assert download.await_count == 2
+        assert upsert.await_count == 2
+        assert set(enriched) == {"f1", "f2"}
+        assert [f["inferred_doc_type"] for f in files] == ["passport", "passport", "passport"]
+
+    @pytest.mark.asyncio
+    async def test_fresh_ocr_file_timeout_records_skipped_cache_row(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def slow_extract(**_kwargs):
+            await asyncio.sleep(0.05)
+
+        files = [{"id": "f1", "name": "passport.pdf", "mimeType": "application/pdf"}]
+        upsert = AsyncMock()
+
+        monkeypatch.setattr(worker, "get_cached_content", AsyncMock(return_value=None))
+        monkeypatch.setattr(worker, "download_drive_file_bytes", AsyncMock(return_value=b"%PDF"))
+        monkeypatch.setattr(worker, "extract_file_content", slow_extract)
+        monkeypatch.setattr(worker, "upsert_cache_row", upsert)
+
+        enriched = await worker.enrich_files_with_ocr(
+            object(),
+            object(),
+            files,
+            object(),
+            budget=1,
+            max_seconds_per_client=999,
+            max_seconds_per_file=0.01,
+        )
+
+        assert enriched == {}
+        result = upsert.await_args.kwargs["result"]
+        assert result.extractor == "skipped"
+        assert result.notes == "file_timeout_after_0.01s"
 
 
 # ---------------------------------------------------------------------------
