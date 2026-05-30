@@ -89,3 +89,47 @@ with open(target, "w", encoding="utf-8") as fh:
 PY
     mv "$tmp" "$target"
 }
+
+codex_auto_notify() {
+    local message="${1:-}"
+    local token=""
+    local chat_id=""
+
+    [ -n "$message" ] || return 0
+
+    if [ -f "${HOME}/.nuzantara-secrets.env" ]; then
+        set -a
+        # shellcheck disable=SC1091
+        source "${HOME}/.nuzantara-secrets.env" 2>/dev/null || true
+        set +a
+    fi
+
+    token="${TELEGRAM_BOT_TOKEN:-}"
+    chat_id="${TELEGRAM_OWNER_CHAT_ID:-${TELEGRAM_ZERO_CHAT_ID:-${TELEGRAM_ADMIN_CHAT_ID:-}}}"
+    [ -n "$token" ] && [ -n "$chat_id" ] || return 0
+
+    curl -s --max-time 5 \
+        -X POST "https://api.telegram.org/bot${token}/sendMessage" \
+        -d chat_id="${chat_id}" \
+        --data-urlencode "text=${message}" \
+        > /dev/null 2>&1 || true
+}
+
+codex_auto_ensure_runtime_worktree() {
+    local primary_repo="${1:?primary repo required}"
+    local runtime_repo="${2:?runtime repo required}"
+    local base_ref="${3:-origin/main}"
+
+    if git -C "$runtime_repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [ -e "$runtime_repo" ] && [ -n "$(find "$runtime_repo" -mindepth 1 -maxdepth 1 2>/dev/null | head -1)" ]; then
+        printf 'Runtime path exists but is not a git worktree: %s\n' "$runtime_repo" >&2
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$runtime_repo")"
+    git -C "$primary_repo" fetch origin main >/dev/null 2>&1 || true
+    git -C "$primary_repo" worktree add --detach "$runtime_repo" "$base_ref" >/dev/null
+}
