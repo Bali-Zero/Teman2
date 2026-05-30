@@ -43,6 +43,50 @@ _RAW_MOCK = os.environ.get("WR3_ARCFACE_MOCK", "false").lower() == "true"
 _PRODUCTION = os.environ.get("WR3_PRODUCTION", "false").lower() == "true"
 MOCK_MODE = _RAW_MOCK and not _PRODUCTION
 
+# The identity token a shot must declare to be subject to the ArcFace gate.
+# Faceless b-roll shots (empty desks, abstract paths) do NOT carry it and must
+# be SKIPPED — they have no Zantara face by design, so cosine ~0 is correct, not
+# a failure (2026-05-30: the gate hard-failed C5a on 4 b-roll clips while all
+# 11 A007 clips passed).
+IDENTITY_TOKEN = os.environ.get("WR3_ARCFACE_IDENTITY_TOKEN", "A007")
+
+
+def select_identity_clips(
+    clips_dir: "Path", episode_dir: "Path"
+) -> "tuple[list[Path], list[Path]]":
+    """Split clips into (identity_bearing, faceless_broll) using the shot-pack.
+
+    Maps clip NN.mp4 → shots[NN-1] and keeps only clips whose shot declares
+    IDENTITY_TOKEN in its identity_tokens. If no shot-pack exists (or a clip has
+    no matching shot), the clip is treated as identity-bearing — conservative:
+    we never silently skip a clip that might contain Zantara.
+    """
+    clips = sorted(clips_dir.glob("*.mp4"))
+    shot_pack_path = episode_dir / "shot-pack.json"
+    if not shot_pack_path.exists():
+        return clips, []
+
+    try:
+        shots = json.loads(shot_pack_path.read_text()).get("shots") or []
+    except (json.JSONDecodeError, OSError):
+        return clips, []
+
+    identity: list[Path] = []
+    broll: list[Path] = []
+    for clip in clips:
+        try:
+            idx = int(clip.stem)  # "01.mp4" → 1
+        except ValueError:
+            identity.append(clip)  # unparseable name → don't skip
+            continue
+        shot = shots[idx - 1] if 1 <= idx <= len(shots) else None
+        tokens = (shot or {}).get("identity_tokens") or []
+        if shot is None or IDENTITY_TOKEN in tokens:
+            identity.append(clip)
+        else:
+            broll.append(clip)
+    return identity, broll
+
 
 class ArcFaceError(Exception):
     """Base for ArcFace-layer errors."""
@@ -233,11 +277,28 @@ def verify_clips_dir(clips_dir: Path, episode_dir: Path) -> IdentityReport:
     is set — Codex+Gemini+DeepSeek panel review 2026-05-18 caught launchd
     env-var leak risk. MOCK_MODE is computed at module load with this guard.
     """
-    clips = sorted(clips_dir.glob("*.mp4"))
-    if not clips:
+    all_clips = sorted(clips_dir.glob("*.mp4"))
+    if not all_clips:
         raise ArcFaceError(f"No clips found in {clips_dir}")
 
-    if MOCK_MODE:
+    # Identity gate applies ONLY to clips whose shot declares the A007 token.
+    # Faceless b-roll is recorded as skipped, never verified or failed.
+    clips, broll = select_identity_clips(clips_dir, episode_dir)
+    if broll:
+        print(
+            f"[wr3-arcface] skipping {len(broll)} faceless b-roll clip(s): "
+            f"{', '.join(p.name for p in broll)}",
+            flush=True,
+        )
+
+    if not clips:
+        # Episode has zero Zantara shots — nothing to verify, vacuous pass.
+        report = IdentityReport(
+            overall_cosine_avg=0.0, overall_cosine_min=0.0,
+            clips_passed=0, clips_failed=0, hard_fail_triggered=False,
+            per_clip=[], mock_mode=MOCK_MODE,
+        )
+    elif MOCK_MODE:
         # Audit log line — operator should see this in launchd logs and
         # immediately escalate if MOCK_MODE fires in production
         print(
@@ -252,8 +313,10 @@ def verify_clips_dir(clips_dir: Path, episode_dir: Path) -> IdentityReport:
         except ArcFaceError:
             raise
 
+    payload = report.to_dict()
+    payload["skipped_broll"] = [p.name for p in broll]
     report_path = episode_dir / "identity-report.json"
-    report_path.write_text(json.dumps(report.to_dict(), indent=2))
+    report_path.write_text(json.dumps(payload, indent=2))
 
     if report.hard_fail_triggered:
         raise IdentityHardFailError(
