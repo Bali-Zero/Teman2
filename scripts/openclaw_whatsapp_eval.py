@@ -273,15 +273,44 @@ def _score_tool_trace(case: EvalCase, trace: dict[str, Any]) -> list[str]:
     ):
         failures.append("missing required tool call: " + ", ".join(case.required_tool_any))
 
-    error_count = trace.get("error_count")
+    raw_errors = trace.get("errors") or []
+    ignored_errors = _ignored_tool_errors(case, trace, raw_errors)
+    effective_error_count = max(0, len(raw_errors) - len(ignored_errors))
+    trace["ignored_error_count"] = len(ignored_errors)
+    trace["effective_error_count"] = effective_error_count
+
     if (
         case.max_tool_errors is not None
-        and isinstance(error_count, int)
-        and error_count > case.max_tool_errors
+        and effective_error_count > case.max_tool_errors
     ):
-        failures.append(f"tool errors: {error_count} > {case.max_tool_errors}")
+        failures.append(f"tool errors: {effective_error_count} > {case.max_tool_errors}")
 
     return failures
+
+
+def _ignored_tool_errors(
+    case: EvalCase,
+    trace: dict[str, Any],
+    raw_errors: list[Any],
+) -> list[dict[str, Any]]:
+    """Classify controlled negative lookups that prove an obsolete code is absent."""
+    if case.category != "kbli_kb":
+        return []
+
+    called_tools = set(trace.get("called_tools") or [])
+    if "nuzantara-mcp.search_kbli" not in called_tools:
+        return []
+
+    ignored: list[dict[str, Any]] = []
+    for raw_error in raw_errors:
+        if not isinstance(raw_error, dict):
+            continue
+        if raw_error.get("name") != "nuzantara-mcp.inspect_kbli":
+            continue
+        message = str(raw_error.get("message") or "").lower()
+        if "http 404" in message and "kbli code" in message and "not found" in message:
+            ignored.append(raw_error)
+    return ignored
 
 
 def _is_transient_tool_transport_failure(result: dict[str, Any]) -> bool:
