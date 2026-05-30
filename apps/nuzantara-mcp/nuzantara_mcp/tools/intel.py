@@ -121,7 +121,7 @@ def register(mcp, _call, _call_safe):
         return await _call("/api/intel/trends", params={"period": period})
 
     @mcp.tool()
-    @require_role("visa_specialist", "tax_consultant")
+    @require_role("visa_specialist", "tax_consultant", "company_setup")
     async def search_intel(query: str, limit: int = 10) -> dict:
         """
         Search the intelligence database.

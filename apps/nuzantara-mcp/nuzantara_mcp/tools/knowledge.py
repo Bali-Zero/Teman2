@@ -1,14 +1,22 @@
 """Knowledge Tools - 6 tools for KBLI, visa, and legal knowledge."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from nuzantara_mcp.auth import require_role
+
+
+def _as_structured_result(result: Any) -> dict[str, Any]:
+    if isinstance(result, dict):
+        return result
+    if isinstance(result, list):
+        return {"results": result}
+    return {"result": result}
 
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
     @require_role("visa_specialist", "company_setup")
-    async def search_kbli(query: str, limit: int = 10) -> dict:
+    async def search_kbli(query: str, limit: int = 10) -> dict[str, Any]:
         """
         Search Indonesian business activity codes (KBLI 2025).
 
@@ -25,10 +33,11 @@ def register(mcp, _call, _call_safe):
         Returns:
             List of matching KBLI codes with title, score, PMA status, risk category.
         """
-        return await _call(
+        result = await _call(
             "/api/v1/kbli-notebook/search",
             params={"query": query, "limit": min(limit, 20)},
         )
+        return _as_structured_result(result)
 
     @mcp.tool()
     @require_role("company_setup")
@@ -95,10 +104,15 @@ def register(mcp, _call, _call_safe):
         payload: dict = {"query": question, "user_id": user_id}
         if session_id:
             payload["session_id"] = session_id
-        return await _call("/api/agentic-rag/query", method="POST", json=payload)
+        return await _call_safe(
+            "/api/agentic-rag/query",
+            method="POST",
+            json=payload,
+            timeout=60,
+        )
 
     @mcp.tool()
-    @require_role("visa_specialist")
+    @require_role("visa_specialist", "company_setup")
     async def list_visa_types() -> dict:
         """
         List all available visa types for Indonesia.
@@ -106,10 +120,10 @@ def register(mcp, _call, _call_safe):
         Returns:
             Complete list of visa types with code, name, description, eligibility summary.
         """
-        return await _call("/api/knowledge/visa-types")
+        return await _call_safe("/api/knowledge/visa/")
 
     @mcp.tool()
-    @require_role("visa_specialist")
+    @require_role("visa_specialist", "company_setup")
     async def get_visa_details(visa_code: str) -> dict:
         """
         Get detailed information about a specific visa type.
@@ -120,7 +134,7 @@ def register(mcp, _call, _call_safe):
         Returns:
             Full visa details: requirements, documents, process, timeline, costs, restrictions.
         """
-        return await _call(f"/api/knowledge/visa-types/{visa_code}")
+        return await _call_safe(f"/api/knowledge/visa/code/{visa_code}")
 
     @mcp.tool()
     async def visualize_langgraph(subgraph: Optional[str] = None) -> dict:

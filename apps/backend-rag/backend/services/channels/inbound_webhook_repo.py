@@ -32,6 +32,7 @@ async def persist(
     channel: str,
     dedup_key: str,
     payload: dict[str, Any],
+    recovery_after_seconds: int = 0,
 ) -> tuple[int | None, bool]:
     """Persist a verified inbound webhook payload.
 
@@ -53,6 +54,9 @@ async def persist(
         dedup_key: per-channel idempotency key (Meta message_id, Telegram
             f"telegram-{update_id}", Twitter direct_message_events[0].id).
         payload: full webhook body (already signature-verified).
+        recovery_after_seconds: optional grace window before the durable
+            recovery worker may claim this row. Use this when the router also
+            schedules a fast-path background task, to avoid duplicate replies.
 
     Returns:
         (row_id, inserted):
@@ -71,19 +75,35 @@ async def persist(
         raise ValueError("dedup_key must be a non-empty string")
 
     payload_json = json.dumps(payload, ensure_ascii=False, default=str)
+    recovery_delay = max(0, int(recovery_after_seconds))
 
     async with pool.acquire() as conn:
         async with conn.transaction():
             row = await conn.fetchrow(
                 """
-                INSERT INTO inbound_webhooks (channel, payload, dedup_key)
-                VALUES ($1, $2::jsonb, $3)
+                INSERT INTO inbound_webhooks (
+                    channel,
+                    payload,
+                    dedup_key,
+                    next_retry_at
+                )
+                VALUES (
+                    $1,
+                    $2::jsonb,
+                    $3,
+                    CASE
+                        WHEN $4::integer > 0
+                        THEN NOW() + ($4::integer * INTERVAL '1 second')
+                        ELSE NULL
+                    END
+                )
                 ON CONFLICT (channel, dedup_key) DO NOTHING
                 RETURNING id
                 """,
                 channel,
                 payload_json,
                 dedup_key,
+                recovery_delay,
             )
 
             if row is None:
@@ -131,4 +151,35 @@ async def persist(
             return (new_id, True)
 
 
-__all__ = ["NOTIFY_CHANNEL", "persist"]
+async def mark_processed(
+    pool: asyncpg.Pool,
+    *,
+    channel: str,
+    dedup_key: str,
+    error_message: str | None = None,
+) -> bool:
+    """Mark a persisted inbound webhook as processed after fast-path handling."""
+    if not channel:
+        raise ValueError("channel must be a non-empty string")
+    if not dedup_key:
+        raise ValueError("dedup_key must be a non-empty string")
+
+    async with pool.acquire() as conn:
+        status = await conn.execute(
+            """
+            UPDATE inbound_webhooks
+            SET processed_at = NOW(),
+                error_message = COALESCE($3, error_message)
+            WHERE channel = $1
+              AND dedup_key = $2
+              AND processed_at IS NULL
+            """,
+            channel,
+            dedup_key,
+            error_message,
+        )
+
+    return status.upper().endswith(" 1")
+
+
+__all__ = ["NOTIFY_CHANNEL", "mark_processed", "persist"]

@@ -133,6 +133,67 @@ def test_persists_payload_to_inbound_webhooks(client: TestClient, mock_db_pool):
     call_kwargs = mock_persist.call_args.kwargs
     assert call_kwargs.get("channel") == "whatsapp"
     assert "wamid.TEST_PERSIST" in call_kwargs.get("dedup_key", "")
+    assert call_kwargs.get("recovery_after_seconds") == 30
+
+
+@pytest.mark.integration
+def test_duplicate_persist_result_skips_fast_path(client: TestClient, mock_db_pool):
+    """A duplicate Meta retry must not schedule a second WhatsApp reply."""
+    payload = _whatsapp_payload(message_id="wamid.TEST_DUPLICATE")
+
+    with (
+        patch(
+            "backend.app.routers.whatsapp_chat._verify_whatsapp_signature",
+            return_value=True,
+        ),
+        patch(
+            "backend.services.channels.inbound_webhook_repo.persist",
+            new_callable=AsyncMock,
+        ) as mock_persist,
+        patch(
+            "backend.app.routers.whatsapp_chat.process_whatsapp_message_and_mark_processed",
+            new_callable=AsyncMock,
+        ) as mock_process,
+    ):
+        mock_persist.return_value = (None, False)  # duplicate
+        resp = client.post("/webhook/whatsapp", json=payload)
+
+    assert resp.status_code == 200
+    mock_process.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_fast_path_marks_inbound_webhook_processed(mock_db_pool):
+    """Fast-path completion closes the recovery row before WebhookProcessor claims it."""
+    from backend.app.routers import whatsapp_chat
+
+    request = MagicMock()
+    request.app.state.db_pool = mock_db_pool
+
+    with (
+        patch(
+            "backend.app.routers.whatsapp_chat.process_whatsapp_message",
+            new_callable=AsyncMock,
+        ) as mock_process,
+        patch(
+            "backend.services.channels.inbound_webhook_repo.mark_processed",
+            new_callable=AsyncMock,
+        ) as mock_mark_processed,
+    ):
+        await whatsapp_chat.process_whatsapp_message_and_mark_processed(
+            phone="6281234567890",
+            message_text="Hello",
+            sender_name="Test User",
+            message_id="wamid.TEST_MARK",
+            request=request,
+        )
+
+    mock_process.assert_awaited_once()
+    mock_mark_processed.assert_awaited_once_with(
+        mock_db_pool,
+        channel="whatsapp",
+        dedup_key="wamid.TEST_MARK",
+    )
 
 
 @pytest.mark.integration
