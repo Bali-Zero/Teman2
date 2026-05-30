@@ -48,6 +48,9 @@ from uuid import UUID
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
+# scripts/ on path so the headless actuator (sibling module) is importable
+# regardless of cwd (launchd runs with an arbitrary working directory).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 from backend.services.canva_renderer import build_canva_pending  # noqa: E402
@@ -380,6 +383,49 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     # Clear stale output
     if CANVA_OUTPUT_PATH.is_file():
         CANVA_OUTPUT_PATH.unlink()
+
+    # WR2_CANVA_ACTUATOR dispatch: "headless" (new, claude -p subprocess — no
+    # AppleScript/GUI) vs "desktop" (default, the AppleScript path below).
+    actuator = os.environ.get("WR2_CANVA_ACTUATOR", "desktop")
+    if actuator == "headless":
+        from wr2_canva_headless_apply import apply_headless
+
+        template_design_id = pending.get("template_design_id")
+        if not template_design_id:
+            # Stale/malformed pending (e.g. written by an older build_canva_pending
+            # before the key existed) — fail loud with Telegram, do NOT KeyError.
+            logger.error("Draft %s pending missing template_design_id", draft_id)
+            _send_telegram(
+                "WR2 headless apply aborted — pending missing template_design_id\n"
+                f"Draft: {draft_id}"
+            )
+            return False
+        _send_telegram(
+            "WR2 Canva apply starting (headless)\n"
+            f"Topic: {topic[:100]}\n"
+            f"Draft: {draft_id}"
+        )
+        result = await apply_headless(
+            conn, CANVA_PENDING_PATH, template_design_id, CANVA_OUTPUT_PATH
+        )
+        if not result:
+            _send_telegram(
+                "WR2 headless apply failed/deferred\n"
+                f"Topic: {topic[:100]}\n"
+                f"Draft: {draft_id}\n"
+                "Not marked rendered — will retry next tick."
+            )
+            return False
+        design_id, edit_url, view_url = result
+        await _persist_result(conn, draft_id, design_id, edit_url, view_url)
+        _send_telegram(
+            "WR2 Canva carousel ready (headless)\n"
+            f"Topic: {topic[:100]}\n"
+            f"Design: {design_id}\n"
+            f"Open: {edit_url}"
+        )
+        return True
+    # else: fall through to the AppleScript desktop path (actuator == "desktop")
 
     _send_telegram(
         "WR2 Canva apply starting\n"

@@ -228,7 +228,7 @@ export function ChatHeader({
                       avatarInputRef.current?.click();
                       onToggleUserMenu();
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)]"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
                   >
                     <Camera className="w-4 h-4" />
                     Change Avatar
@@ -239,7 +239,7 @@ export function ChatHeader({
                       onShowToast("Settings coming soon!", "success");
                       onToggleUserMenu();
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)]"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
                   >
                     <Settings className="w-4 h-4" />
                     Settings
@@ -251,7 +251,7 @@ export function ChatHeader({
                         router.push("/admin");
                         onToggleUserMenu();
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)]"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
                     >
                       <Shield className="w-4 h-4" />
                       Admin Dashboard
@@ -267,7 +267,7 @@ export function ChatHeader({
                       onToggleUserMenu();
                       handleLogout();
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--error)]/10 transition-colors text-sm text-[var(--error)]"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--error)]/10 transition-colors text-sm text-[var(--error)] focus-ring"
                   >
                     <LogOut className="w-4 h-4" />
                     Logout

@@ -51,10 +51,9 @@ def lint(symbiosis_path: Path) -> int:
     for i, line in enumerate(lines, 1):
         for pat in PROMISE_PATTERNS:
             if re.search(pat, line, flags=re.IGNORECASE):
-                # Look in the same line plus 5 lines before / 10 after for citation.
-                # The backward window catches table-row citations that the
-                # surrounding prose then summarises (common SYMBIOSIS pattern).
-                start = max(0, i - 6)
+                # Look in the same line plus 10 after for citation.
+                # A previous citation must not cover a later uncited promise.
+                start = i - 1
                 end = min(i + 10, len(lines))
                 window = "\n".join(lines[start:end])
                 if not any(

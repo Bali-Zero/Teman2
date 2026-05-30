@@ -258,7 +258,7 @@ async def wa_dashboard_stream(
                     full = await fetch_full_message(pool, payload["id"])
                     if full is None:
                         continue
-                    if not await can_view_message(pool, user_email, full):
+                    if not await can_view_message(pool, user, full):
                         continue
                     yield {
                         "id": str(full["id"]),

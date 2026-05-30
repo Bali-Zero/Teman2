@@ -21,6 +21,7 @@ logger = logging.getLogger("nuzantara-mcp")
 # --- Configuration ---
 BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
 API_KEY = os.getenv("NUZANTARA_API_KEY", "")
+ADMIN_API_KEY = os.getenv("NUZANTARA_ADMIN_API_KEY", "")
 TIMEOUT = int(os.getenv("NUZANTARA_TIMEOUT", "30"))
 LONG_TIMEOUT = int(os.getenv("NUZANTARA_LONG_TIMEOUT", "120"))
 
@@ -54,12 +55,14 @@ def _get_client(timeout: Optional[int] = None) -> httpx.AsyncClient:
     return _http_client
 
 
-def _headers() -> dict[str, str]:
+def _headers(*, admin: bool = False) -> dict[str, str]:
     """Build auth headers."""
     h: dict[str, str] = {"Content-Type": "application/json"}
     if API_KEY:
         h["Authorization"] = f"Bearer {API_KEY}"
         h["X-API-Key"] = API_KEY
+    if admin and ADMIN_API_KEY:
+        h["X-Debug-Key"] = ADMIN_API_KEY
     return h
 
 
@@ -70,6 +73,7 @@ async def _call(
     json: Optional[dict] = None,
     params: Optional[dict] = None,
     timeout: Optional[int] = None,
+    admin: bool = False,
 ) -> dict:
     """Authenticated call to Nuzantara backend.
 
@@ -80,7 +84,7 @@ async def _call(
     client = _get_client()
     req_kwargs = dict(
         method=method, url=endpoint, json=json, params=params,
-        headers=_headers(), timeout=timeout or TIMEOUT,
+        headers=_headers(admin=admin), timeout=timeout or TIMEOUT,
     )
     try:
         resp = await client.request(**req_kwargs)
@@ -112,10 +116,11 @@ async def _call_safe(
     json: Optional[dict] = None,
     params: Optional[dict] = None,
     timeout: Optional[int] = None,
+    admin: bool = False,
 ) -> dict[str, Any]:
     """Like _call but returns error dict instead of raising."""
     try:
-        return await _call(endpoint, method, json, params, timeout)
+        return await _call(endpoint, method, json, params, timeout, admin)
     except httpx.HTTPStatusError as e:
         return {"error": True, "status": e.response.status_code, "detail": str(e)}
     except httpx.RequestError as e:
@@ -125,10 +130,33 @@ async def _call_safe(
         return {"error": True, "status": 0, "detail": str(e)}
 
 
+async def _call_admin(
+    endpoint: str,
+    method: str = "GET",
+    json: Optional[dict] = None,
+    params: Optional[dict] = None,
+    timeout: Optional[int] = None,
+) -> dict:
+    """Authenticated admin call to Nuzantara backend."""
+    return await _call(endpoint, method, json, params, timeout, admin=True)
+
+
+async def _call_admin_safe(
+    endpoint: str,
+    method: str = "GET",
+    json: Optional[dict] = None,
+    params: Optional[dict] = None,
+    timeout: Optional[int] = None,
+) -> dict[str, Any]:
+    """Like _call_admin but returns error dict instead of raising."""
+    return await _call_safe(endpoint, method, json, params, timeout, admin=True)
+
+
 # --- Register all tool modules ---
 # --- Core domain tools ---
 from nuzantara_mcp.tools.crm import register as register_crm
 from nuzantara_mcp.tools.crm_guardian_drive import register as register_crm_guardian_drive
+from nuzantara_mcp.tools.guardian import register as register_guardian
 from nuzantara_mcp.tools.portal import register as register_portal
 from nuzantara_mcp.tools.intel import register as register_intel
 from nuzantara_mcp.tools.content import register as register_content
@@ -177,7 +205,8 @@ from nuzantara_mcp.workflows.chains import register as register_chains
 
 # Core domain
 register_crm(mcp, _call, _call_safe)
-register_crm_guardian_drive(mcp, _call, _call_safe)
+register_crm_guardian_drive(mcp, _call_admin, _call_admin_safe)
+register_guardian(mcp, _call_admin, _call_admin_safe)
 register_portal(mcp, _call, _call_safe)
 register_intel(mcp, _call, _call_safe)
 register_content(mcp, _call, _call_safe)

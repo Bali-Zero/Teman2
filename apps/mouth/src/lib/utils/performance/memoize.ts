@@ -7,7 +7,7 @@
 /**
  * Simple memoize for sync functions
  */
-export function memoize<T extends (...args: unknown[]) => unknown>(
+export function memoize<T extends (...args: never[]) => unknown>(
   func: T,
   keyGenerator?: (...args: Parameters<T>) => string,
 ): T {
@@ -29,7 +29,7 @@ export function memoize<T extends (...args: unknown[]) => unknown>(
 /**
  * Memoize with TTL (time to live)
  */
-export function memoizeWithTTL<T extends (...args: unknown[]) => unknown>(
+export function memoizeWithTTL<T extends (...args: never[]) => unknown>(
   func: T,
   ttlMs: number,
   keyGenerator?: (...args: Parameters<T>) => string,
@@ -55,7 +55,7 @@ export function memoizeWithTTL<T extends (...args: unknown[]) => unknown>(
 /**
  * Clearable memoize - returns function with clearCache method
  */
-export function createMemoize<T extends (...args: unknown[]) => unknown>(
+export function createMemoize<T extends (...args: never[]) => unknown>(
   func: T,
   keyGenerator?: (...args: Parameters<T>) => string,
 ): T & { clearCache: () => void } {

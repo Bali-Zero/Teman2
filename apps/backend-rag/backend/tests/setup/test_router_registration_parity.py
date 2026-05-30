@@ -101,6 +101,28 @@ class TestChannelHealthRegression:
         )
 
 
+class TestGuardianRegression:
+    """Regression guard for manifest-only Guardian registration drift.
+
+    Guardian's router is a light admin surface. Adding it only to the
+    manifest leaves production main_api returning 404 because runtime
+    registration is still explicit in router_registration.py.
+    """
+
+    def test_guardian_in_manifest(self):
+        names = {e.name for e in ROUTER_MANIFEST}
+        assert "guardian" in names, "guardian entry missing from ROUTER_MANIFEST."
+
+    def test_guardian_included_in_both_functions(self):
+        source = _read_registration_source()
+        body_main = _extract_function_body(source, "include_routers")
+        body_light = _extract_function_body(source, "include_light_routers")
+
+        pattern = r"include_router\s*\(\s*guardian\.router"
+        assert re.search(pattern, body_main), "guardian.router NOT in include_routers()."
+        assert re.search(pattern, body_light), "guardian.router NOT in include_light_routers()."
+
+
 class TestIncludeFunctionsParity:
     """For every _API/_BOTH router included in include_routers(), assert it
     is also included in include_light_routers().

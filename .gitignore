@@ -291,6 +291,11 @@ env.production
 .vercel
 .env*.local
 
+# OSINT sovereignty (Symbiosis Law 2 — WhatsApp/intel corpus NEVER leaves Pro)
+# Existing *.local patterns did NOT cover .local.tsv / .local.jsonl; this closes the leak.
+*.local.*
+research/personal/wa-corpus/
+
 # ========================================
 # SECURITY FIXES (2026-01-11)
 # ========================================

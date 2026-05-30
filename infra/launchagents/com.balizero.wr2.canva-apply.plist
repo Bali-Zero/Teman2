@@ -12,6 +12,10 @@
 		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
 		<key>WR2_OUTPUT_ROOT</key>
 		<string>/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva</string>
+		<key>WR2_CANVA_ACTUATOR</key>
+		<string>headless</string>
+		<key>WR2_HEADLESS_TIMEOUT_SEC</key>
+		<string>900</string>
 	</dict>
 	<key>Label</key>
 	<string>com.balizero.wr2.canva-apply</string>
