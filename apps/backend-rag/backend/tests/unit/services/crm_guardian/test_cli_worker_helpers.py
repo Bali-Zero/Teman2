@@ -268,14 +268,41 @@ class TestAssembleFullPrompt:
     def test_concatenation_order(self, worker) -> None:
         ctx = "<CROSS_FOLDER_CONTEXT>\nclient_id: 1\n</CROSS_FOLDER_CONTEXT>"
         inv = "<FILE_INVENTORY>\nfile data\n</FILE_INVENTORY>"
+        content = "<FILE_CONTENT_SNIPPETS>\nstatic ocr text\n</FILE_CONTENT_SNIPPETS>"
         tpl = "## Prompt\nYou are the CRM intelligence layer..."
-        out = worker.assemble_full_prompt(tpl, ctx, inv)
-        # Order: context → inventory → template
-        assert out.index(ctx) < out.index(inv) < out.index(tpl)
+        out = worker.assemble_full_prompt(tpl, ctx, inv, content)
+        # Order: hard agy contract -> template -> evidence -> final JSON contract.
+        assert out.index(worker.AGY_PRINT_MODE_CONTRACT) < out.index(tpl)
+        assert out.index(tpl) < out.index(ctx) < out.index(inv) < out.index(content)
+        assert out.index(content) < out.index(worker.AGY_FINAL_OUTPUT_CONTRACT)
 
     def test_double_newline_separator(self, worker) -> None:
         out = worker.assemble_full_prompt("TPL", "CTX", "INV")
-        assert "CTX\n\nINV\n\nTPL" == out
+        assert "\n\n".join(
+            [
+                worker.AGY_PRINT_MODE_CONTRACT,
+                "TPL",
+                "CTX",
+                "INV",
+                worker.AGY_FINAL_OUTPUT_CONTRACT,
+            ]
+        ) == out
+
+    def test_agy_contract_blocks_waiting_and_tools(self, worker) -> None:
+        out = worker.assemble_full_prompt("TPL", "CTX", "INV", "CONTENT")
+
+        assert "Do not use tools" in out
+        assert "Do not wait" in out
+        assert "All Drive listing, OCR extraction, and cache lookup work has already completed" in out
+        assert "Emit only one ```json fenced object now" in out
+
+    def test_default_prompt_is_v5_and_lean(self, worker) -> None:
+        prompt = worker.DEFAULT_PROMPT_FILE.read_text(encoding="utf-8")
+
+        assert worker.DEFAULT_PROMPT_FILE.name == "L1_extraction_v5.md"
+        assert len(prompt) < 10_000
+        assert "Do not wait" in prompt
+        assert '"prompt_version": "L1_extraction_v5"' in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -430,6 +457,15 @@ class TestExtractJsonBlock:
 
     def test_no_json_returns_none(self, worker) -> None:
         assert worker.extract_json_block("just words, no json") is None
+
+    def test_agentic_wait_response_detected(self, worker) -> None:
+        text = (
+            "I will wait for the background OCR task to complete before continuing.\n"
+            "Error: timed out waiting for response"
+        )
+
+        assert worker.extract_json_block(text) is None
+        assert worker._looks_like_agentic_wait_response(text) is True
 
 
 # ---------------------------------------------------------------------------
