@@ -206,12 +206,13 @@ class WhatsAppTriageService:
             "buongiorno",
         ]
 
-        # If ONLY greeting (short message), offer choice
+        # Let OpenClaw handle greeting-only messages too. A canned welcome hides
+        # the configured AI runtime and makes Meta API smoke tests misleading.
         if len(message_text.split()) <= 3 and any(
             greeting in message_lower for greeting in greetings
         ):
-            logger.info("Offering choice to %s: greeting message", phone)
-            return TriageDecision.OFFER_CHOICE, "greeting_only"
+            logger.info("AI handling greeting from %s", phone)
+            return TriageDecision.BOT_CAN_HANDLE, "greeting_only"
 
         # 6. DEFAULT: Let AI handle everything else (Zero style — always respond)
         logger.info("AI handling general query from %s", phone)

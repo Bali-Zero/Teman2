@@ -172,7 +172,7 @@ async def test_get_intel_trends_default(mock_mcp, mock_call, mock_call_safe) -> 
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
     mock_call.return_value = {"topics": [{"name": "visa", "count": 42}]}
 
-    result = await tools["get_intel_trends"]()
+    await tools["get_intel_trends"]()
     mock_call.assert_called_once_with(
         "/api/intel/trends", params={"period": "30d"}
     )
@@ -202,6 +202,18 @@ async def test_search_intel(mock_mcp, mock_call, mock_call_safe) -> None:
         method="POST",
         json={"query": "new visa regulation", "limit": 5},
     )
+
+
+@pytest.mark.asyncio
+async def test_company_setup_can_search_intel(
+    mock_mcp, mock_call, mock_call_safe, monkeypatch
+) -> None:
+    """Company setup agent needs regulatory intel for mixed PT PMA and visa flows."""
+    monkeypatch.setenv("AGENT_ROLE", "company_setup")
+    tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
+    mock_call.return_value = {"results": []}
+
+    assert await tools["search_intel"](query="PMA remote work") == {"results": []}
 
 
 @pytest.mark.asyncio

@@ -26,6 +26,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
+from backend.services.integrations.openclaw_whatsapp_bridge import ask_openclaw_whatsapp
 from backend.services.integrations.telegram_bot_service import telegram_bot
 from backend.services.integrations.whatsapp_service import whatsapp_service
 from backend.services.integrations.whatsapp_triage_service import (
@@ -41,6 +42,7 @@ _conversation_cache: dict[str, list[dict]] = defaultdict(list)
 MAX_HISTORY_MESSAGES = 20
 
 router = APIRouter(prefix="/webhook/whatsapp", tags=["whatsapp"])
+WHATSAPP_FAST_PATH_RECOVERY_DELAY_SECONDS = 30
 
 
 class WhatsAppMessage(BaseModel):
@@ -337,19 +339,86 @@ async def process_whatsapp_message(
             logger.info("Welcome message sent to %s", phone)
             return
 
-        # 4. AI CAN HANDLE — Gemini 3 Flash with RAG (direct response, no Claude)
-        from backend.prompts.whatsapp_persona import build_system_prompt
+        # 4. AI CAN HANDLE — OpenClaw bridge first, then Gemini RAG fallback.
         from backend.services.whatsapp_context_builder import build_context
 
         db_pool = _get_db_pool(request)
-
-        logger.info("🚀 Processing query from %s with Gemini 3 Flash (RAG + Zan persona)", phone)
 
         start_time = time.time()
 
         try:
             # Build rich context
             ctx = await build_context(phone, sender_name, message_text, db_pool)
+
+            openclaw_response = await ask_openclaw_whatsapp(
+                phone=phone,
+                message_text=message_text,
+                sender_name=sender_name,
+                message_id=message_id,
+                context={
+                    "client_name": ctx.get("client_name"),
+                    "client_profile": ctx.get("client_profile"),
+                    "conversation_history": ctx.get("conversation_history"),
+                    "detected_language": ctx.get("detected_language"),
+                    "is_first_message": ctx.get("is_first_message"),
+                    "time_of_day": ctx.get("time_of_day"),
+                },
+            )
+
+            if openclaw_response:
+                chunks = whatsapp_service.chunk_message(openclaw_response, max_length=4000)
+
+                for i, chunk in enumerate(chunks):
+                    await whatsapp_service.send_message(
+                        phone=phone,
+                        text=chunk,
+                        reply_to_message_id=message_id if i == 0 else None,
+                    )
+                    if i < len(chunks) - 1:
+                        await asyncio.sleep(0.5)
+
+                await notify_zero_conversation_log(
+                    phone=phone,
+                    sender_name=sender_name,
+                    client_message=message_text,
+                    bot_response=openclaw_response,
+                    language=ctx.get("detected_language"),
+                )
+
+                await _save_conversation(
+                    db_pool=db_pool,
+                    wa_user_id=ctx["_wa_user_id"],
+                    session_id=ctx["_session_id"],
+                    existing_row_id=ctx["_existing_row_id"],
+                    message_text=message_text,
+                    response_text=openclaw_response,
+                    client_profile=ctx["client_profile"],
+                    sender_name=sender_name,
+                    phone=phone,
+                )
+
+                _conversation_cache[phone].append({"role": "user", "content": message_text})
+                _conversation_cache[phone].append(
+                    {"role": "assistant", "content": openclaw_response}
+                )
+                if len(_conversation_cache[phone]) > MAX_HISTORY_MESSAGES:
+                    _conversation_cache[phone] = _conversation_cache[phone][-MAX_HISTORY_MESSAGES:]
+
+                total_duration = time.time() - start_time
+                logger.info(
+                    "✅ OpenClaw WA responded to %s in %.1fs (%d chars)",
+                    phone,
+                    total_duration,
+                    len(openclaw_response),
+                )
+                return
+
+            logger.info(
+                "🚀 Processing query from %s with Gemini 3 Flash (RAG + Zan persona)",
+                phone,
+            )
+
+            from backend.prompts.whatsapp_persona import build_system_prompt
 
             # Build dynamic WhatsApp persona instructions
             whatsapp_persona_instructions = build_system_prompt(
@@ -487,6 +556,43 @@ async def process_whatsapp_message(
             )
         except Exception as send_error:
             logger.error("Failed to send error message: %s", send_error)
+
+
+async def process_whatsapp_message_and_mark_processed(
+    phone: str,
+    message_text: str,
+    sender_name: str | None,
+    message_id: str,
+    request: Request,
+) -> None:
+    """Run WhatsApp fast-path processing and close the durable recovery row."""
+    await process_whatsapp_message(
+        phone=phone,
+        message_text=message_text,
+        sender_name=sender_name,
+        message_id=message_id,
+        request=request,
+    )
+
+    db_pool = _get_db_pool(request)
+    if db_pool is None:
+        return
+
+    try:
+        from backend.services.channels import inbound_webhook_repo
+
+        await inbound_webhook_repo.mark_processed(
+            db_pool,
+            channel="whatsapp",
+            dedup_key=message_id,
+        )
+    except Exception as exc:
+        logger.warning(
+            "WhatsApp webhook: failed to mark inbound row processed "
+            "(message_id=%s): %s",
+            message_id,
+            exc,
+        )
 
 
 def _get_db_pool(request: Request) -> Any:
@@ -666,6 +772,7 @@ async def whatsapp_webhook(
     # Meta-provided message_id (one row per inbound DM, even if Meta retries
     # the webhook before our 200 OK lands).
     db_pool = _get_db_pool(request)
+    persisted_message_inserted: dict[str, bool] = {}
     if db_pool is not None:
         for entry in webhook.entry:
             for change in entry.changes:
@@ -678,12 +785,14 @@ async def whatsapp_webhook(
                     try:
                         from backend.services.channels import inbound_webhook_repo
 
-                        await inbound_webhook_repo.persist(
+                        _, inserted = await inbound_webhook_repo.persist(
                             db_pool,
                             channel="whatsapp",
                             dedup_key=msg_id,
                             payload=raw_payload,
+                            recovery_after_seconds=WHATSAPP_FAST_PATH_RECOVERY_DELAY_SECONDS,
                         )
+                        persisted_message_inserted[msg_id] = inserted
                     except Exception as exc:
                         logger.warning(
                             "WhatsApp webhook: persist failed "
@@ -729,8 +838,15 @@ async def whatsapp_webhook(
                     logger.warning("Empty text body from %s", phone)
                     continue
 
+                if persisted_message_inserted.get(message_id) is False:
+                    logger.info(
+                        "Duplicate WhatsApp webhook skipped: %s",
+                        message_id,
+                    )
+                    continue
+
                 background_tasks.add_task(
-                    process_whatsapp_message,
+                    process_whatsapp_message_and_mark_processed,
                     phone=phone,
                     message_text=text,
                     sender_name=sender_name,
@@ -761,8 +877,12 @@ async def whatsapp_status() -> dict[str, Any]:
         "phone_number_id": settings.whatsapp_phone_number_id if configured else None,
         "triage_enabled": True,
         "personal_contacts_count": len(whatsapp_triage_service.personal_contacts),
-        "ai_model": "gemini-3-flash-preview",
-        "persona": "zan_v2",
+        "ai_model": settings.whatsapp_openclaw_model,
+        "ai_runtime": "openclaw_cli",
+        "ai_thinking": settings.whatsapp_openclaw_thinking,
+        "ai_persona": settings.whatsapp_openclaw_persona,
+        "ai_autonomy_mode": settings.whatsapp_openclaw_autonomy_mode,
+        "persona": settings.whatsapp_openclaw_persona,
     }
 
 

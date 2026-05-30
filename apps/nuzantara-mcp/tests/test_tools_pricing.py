@@ -83,3 +83,33 @@ async def test_search_service_pricing(mock_mcp, mock_call, mock_call_safe) -> No
     mock_call_safe.assert_called_once_with(
         "/api/pricing/search", params={"q": "work permit investor"}
     )
+
+
+@pytest.mark.asyncio
+async def test_search_service_pricing_accepts_model_limit(
+    mock_mcp, mock_call, mock_call_safe
+) -> None:
+    """OpenClaw may pass a limit argument; the tool should accept and apply it."""
+    tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
+    mock_call_safe.return_value = {
+        "results": [
+            {"service": "Investor KITAS Offshore"},
+            {"service": "Investor KITAS Onshore"},
+            {"service": "Investor KITAS Extension"},
+        ]
+    }
+
+    result = await tools["search_service_pricing"](query="investor kitas", limit=2)
+
+    assert len(result["results"]) == 2
+    mock_call_safe.assert_called_once_with(
+        "/api/pricing/search", params={"q": "investor kitas"}
+    )
+
+
+def test_company_setup_can_use_catalog_pricing_tools() -> None:
+    """WhatsApp company_setup role must expose catalog pricing tools."""
+    from nuzantara_mcp import auth
+
+    assert "company_setup" in auth.roles_for("get_all_prices")
+    assert "company_setup" in auth.roles_for("search_service_pricing")

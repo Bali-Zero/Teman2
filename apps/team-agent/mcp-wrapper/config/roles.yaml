@@ -40,6 +40,8 @@ roles:
   company_setup:
     description: "Company formation — PT PMA, CV, KBLI"
     tools:
+      - "get_visa_details"
+      - "list_visa_types"
       - "search_kbli"
       - "inspect_kbli"
       - "chat_kbli"
@@ -48,7 +50,10 @@ roles:
       - "get_client"
       - "list_clients"
       - "calculate_pricing"
+      - "get_all_prices"
+      - "search_service_pricing"
       - "recall_similar"
+      - "search_intel"
       - "log_interaction"
 
   admin:

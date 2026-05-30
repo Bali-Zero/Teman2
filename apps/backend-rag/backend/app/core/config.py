@@ -601,6 +601,66 @@ class Settings(BaseSettings):
             "Example: '6282264599868' — leave empty to allow everyone."
         ),
     )
+    whatsapp_openclaw_bridge_url: str | None = Field(
+        default=None,
+        description=(
+            "HTTPS URL for the local OpenClaw WhatsApp reply bridge. "
+            "Set via WHATSAPP_OPENCLAW_BRIDGE_URL env var."
+        ),
+    )
+    whatsapp_openclaw_agent: str = Field(
+        default="wa",
+        description="OpenClaw agent id for WhatsApp replies. Set via WHATSAPP_OPENCLAW_AGENT env var.",
+    )
+    whatsapp_openclaw_model: str = Field(
+        default="openai/gpt-5.5",
+        description=(
+            "OpenClaw model override for WhatsApp replies. "
+            "Set via WHATSAPP_OPENCLAW_MODEL env var."
+        ),
+    )
+    whatsapp_openclaw_thinking: str = Field(
+        default="high",
+        description=(
+            "OpenClaw CLI thinking level for WhatsApp replies. "
+            "Set via WHATSAPP_OPENCLAW_THINKING env var."
+        ),
+    )
+    whatsapp_openclaw_persona: str = Field(
+        default="zantara_whatsapp_v1",
+        description=(
+            "Persona contract sent to the OpenClaw WhatsApp bridge. "
+            "Set via WHATSAPP_OPENCLAW_PERSONA env var."
+        ),
+    )
+    whatsapp_openclaw_autonomy_mode: str = Field(
+        default="supervised_autonomous",
+        description=(
+            "Autonomy mode sent to the OpenClaw WhatsApp bridge. "
+            "Set via WHATSAPP_OPENCLAW_AUTONOMY_MODE env var."
+        ),
+    )
+    whatsapp_openclaw_timeout_seconds: float = Field(
+        default=90.0,
+        description=(
+            "Timeout for WhatsApp -> OpenClaw bridge calls. "
+            "Set via WHATSAPP_OPENCLAW_TIMEOUT_SECONDS env var."
+        ),
+    )
+    whatsapp_openclaw_bridge_secret: str | None = Field(
+        default=None,
+        description=(
+            "Shared secret for the WhatsApp OpenClaw bridge. "
+            "Set via WHATSAPP_OPENCLAW_BRIDGE_SECRET env var."
+        ),
+    )
+    openclaw_webhook_secret: str | None = Field(
+        default=None,
+        description=(
+            "Shared secret for OpenClaw webhook/bridge traffic. "
+            "Set via OPENCLAW_WEBHOOK_SECRET env var."
+        ),
+    )
 
     # ========================================
     # TELEGRAM BOT CONFIGURATION

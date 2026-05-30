@@ -38,6 +38,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("company_setup", "visa_specialist")
     async def get_all_prices() -> dict:
         """
         Get the complete pricing catalog for all services.
@@ -51,7 +52,8 @@ def register(mcp, _call, _call_safe):
         return await _call_safe("/api/pricing/all")
 
     @mcp.tool()
-    async def search_service_pricing(query: str) -> dict:
+    @require_role("company_setup", "visa_specialist")
+    async def search_service_pricing(query: str, limit: int = 5) -> dict:
         """
         Search for a specific service in the pricing catalog.
 
@@ -61,8 +63,13 @@ def register(mcp, _call, _call_safe):
         Args:
             query: Natural language description of the service
                 (e.g., "work permit for investor", "company setup bali")
+            limit: Maximum number of matches to return.
 
         Returns:
             Matching services with pricing details.
         """
-        return await _call_safe("/api/pricing/search", params={"q": query})
+        result = await _call_safe("/api/pricing/search", params={"q": query})
+        results = result.get("results")
+        if isinstance(results, list):
+            result["results"] = results[: max(1, min(limit, 20))]
+        return result
