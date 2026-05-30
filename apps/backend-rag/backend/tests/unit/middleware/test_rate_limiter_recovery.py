@@ -10,6 +10,10 @@ from __future__ import annotations
 import time
 from unittest.mock import MagicMock, patch
 
+import pytest
+from fastapi import FastAPI
+
+from backend.app.setup import service_initializer
 from backend.middleware.rate_limiter import (
     RateLimiter,
     _rate_limit_storage,
@@ -109,6 +113,37 @@ class TestBootRecovery:
             rl.is_allowed("k-cool", limit=10, window=60)
 
         assert rl.metrics["recovery_attempts"] == before
+
+    @pytest.mark.asyncio
+    async def test_light_init_refreshes_import_time_limiter_from_redis_manager(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        limiter = _fresh_limiter(redis_client=None)
+        assert limiter.redis_available is False
+
+        redis_client = MagicMock()
+        manager = MagicMock()
+        manager.available = True
+        manager.get_sync_client.return_value = redis_client
+
+        async def fake_create_pool(**_kwargs: object) -> MagicMock:
+            return MagicMock()
+
+        monkeypatch.setattr(service_initializer.asyncpg, "create_pool", fake_create_pool)
+        monkeypatch.setenv("DISABLE_BACKGROUND_WORKERS", "1")
+        monkeypatch.setattr("backend.middleware.rate_limiter.rate_limiter", limiter)
+
+        with patch("backend.core.redis_manager.RedisManager") as RM:
+            RM.get_instance.return_value = manager
+            app = FastAPI()
+            await service_initializer.initialize_services_light(app)
+
+        manager.initialize.assert_called_once()
+        manager.register_component.assert_called_with("rate_limiter", "active")
+        assert app.state.redis_manager is manager
+        assert limiter.redis_available is True
+        assert limiter.redis_client is redis_client
 
 
 class TestStatsShape:

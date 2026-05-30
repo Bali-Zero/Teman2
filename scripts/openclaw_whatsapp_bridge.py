@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -33,6 +34,50 @@ class BridgeRequest(BaseModel):
 
 
 app = FastAPI(title="OpenClaw WhatsApp Reply Bridge", redoc_url=None)
+
+_KBLI_CODE_RE = re.compile(r"\b\d{5}\b")
+_VILLA_KBLI_CODES = frozenset({"55193", "55203", "55901", "55400"})
+_UNRELATED_VILLA_CODES = frozenset(
+    {"20113", "20291", "43224", "52322", "59201", "61106", "65201"}
+)
+_VILLA_TERMS = (
+    "airbnb",
+    "akomodasi",
+    "alloggio",
+    "booking",
+    "ota",
+    "rent",
+    "rental",
+    "sewa",
+    "short stay",
+    "short-stay",
+    "villa",
+    "vila",
+    "ville",
+)
+_KBLI_TERMS = ("kbli", "code", "codes", "codice", "codici", "kode")
+_COMPARE_TERMS = (
+    "beda",
+    "compare",
+    "difference",
+    "differenza",
+    "mana",
+    "qual",
+    "quale",
+    "vs",
+)
+_MAPPING_TERMS = (
+    "2020",
+    "2025",
+    "mappa",
+    "mapped",
+    "mapping",
+    "pp28",
+    "rinumer",
+    "source",
+    "sorgente",
+    "vecchio",
+)
 
 
 def _tool_mandates(text: str, context: dict[str, Any] | None = None) -> list[str]:
@@ -93,6 +138,126 @@ def _tool_mandates(text: str, context: dict[str, Any] | None = None) -> list[str
     return mandates
 
 
+def _normalize_text(value: str) -> str:
+    return (
+        value.casefold()
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+    )
+
+
+def _contains_any(value: str, terms: tuple[str, ...]) -> bool:
+    return any(term in value for term in terms)
+
+
+def _kbli_codes(value: str) -> set[str]:
+    return set(_KBLI_CODE_RE.findall(value))
+
+
+def _is_villa_kbli_query(message_text: str) -> bool:
+    normalized = _normalize_text(message_text)
+    codes = _kbli_codes(normalized)
+
+    if {"55193", "55203"}.issubset(codes):
+        return True
+    if (codes & {"55193", "55203"}) and _contains_any(normalized, _COMPARE_TERMS):
+        return True
+    if _contains_any(normalized, _KBLI_TERMS) and _contains_any(normalized, _VILLA_TERMS):
+        return True
+    return bool(codes & _VILLA_KBLI_CODES and _contains_any(normalized, _VILLA_TERMS))
+
+
+def _reply_explains_villa_mapping(reply: str) -> bool:
+    normalized = _normalize_text(reply)
+    codes = _kbli_codes(normalized)
+    return (
+        {"55193", "55203"}.issubset(codes)
+        and _contains_any(normalized, _MAPPING_TERMS)
+        and ("villa" in normalized or "vila" in normalized)
+    )
+
+
+def _villa_answer_language(message_text: str, detected_language: Any) -> str:
+    language = str(detected_language or "").casefold()
+    if language.startswith(("it", "id", "en")):
+        return language[:2]
+
+    normalized = _normalize_text(message_text)
+    if any(term in normalized for term in ("quanto", "differenza", "codice", "ville")):
+        return "it"
+    if any(term in normalized for term in ("berapa", "kode", "mana", "sewa", "vila")):
+        return "id"
+    return "en"
+
+
+def _canonical_villa_kbli_answer(language: str) -> str:
+    if language == "id":
+        return (
+            "Perbedaannya: 55203 - AKTIVITAS VILA adalah kode KBLI 2025 yang "
+            "dicek utama untuk villa/Airbnb jika perusahaan mengoperasikan villa "
+            "sebagai akomodasi short stay. 55193 bukan pilihan villa 2025 terpisah; "
+            "itu kode sumber KBLI 2020/PP28 yang dipetakan ke 55203. Jika hanya "
+            "mengelola villa pihak ketiga dengan management fee, cek 55901. Jika "
+            "modelnya platform/intermediasi booking akomodasi, cek 55400. Finalnya "
+            "tetap perlu diverifikasi dari model bisnis, lease/ownership, zoning, "
+            "dan OSS/NIB."
+        )
+    if language == "en":
+        return (
+            "The difference: 55203 - AKTIVITAS VILA is the KBLI 2025 code to check "
+            "first for villas/Airbnb when the company operates the villa as short-stay "
+            "accommodation. 55193 is not a separate current villa code in KBLI 2025; "
+            "it is the KBLI 2020/PP28 source code that maps to 55203. If you manage "
+            "third-party villas for a management fee, check 55901. If the model is "
+            "accommodation platform/intermediation/booking, check 55400. Final code "
+            "still depends on operating model, lease/ownership, zoning, and OSS/NIB."
+        )
+    return (
+        "La differenza: 55203 - AKTIVITAS VILA e' il codice KBLI 2025 da verificare "
+        "per ville/Airbnb quando la societa' opera la villa come alloggio breve. "
+        "55193 non e' un secondo codice villa 2025: e' il codice sorgente KBLI "
+        "2020/PP28 che mappa a 55203 nel KBLI 2025. Se gestisci ville di terzi con "
+        "management fee, verifica 55901. Se il modello e' piattaforma/intermediazione/"
+        "booking accommodation, verifica 55400. Il codice finale dipende da modello "
+        "operativo, lease/ownership, zoning e OSS/NIB."
+    )
+
+
+def _guard_villa_kbli_reply(
+    message_text: str,
+    reply: str,
+    detected_language: Any = None,
+) -> str:
+    if not _is_villa_kbli_query(message_text):
+        return reply
+
+    normalized_reply = _normalize_text(reply)
+    reply_codes = _kbli_codes(normalized_reply)
+    if reply_codes & _UNRELATED_VILLA_CODES:
+        return _canonical_villa_kbli_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    if "55193" in reply_codes and not _reply_explains_villa_mapping(reply):
+        return _canonical_villa_kbli_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    if {"55193", "55203"}.issubset(
+        _kbli_codes(_normalize_text(message_text))
+    ) and not _reply_explains_villa_mapping(reply):
+        return _canonical_villa_kbli_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    if _contains_any(_normalize_text(message_text), _VILLA_TERMS) and "55203" not in reply_codes:
+        return _canonical_villa_kbli_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    return reply
+
+
 def _expected_secret() -> str:
     secret = os.getenv("WHATSAPP_OPENCLAW_BRIDGE_SECRET") or os.getenv("OPENCLAW_WEBHOOK_SECRET", "")
     if not secret:
@@ -135,6 +300,7 @@ def _build_prompt(body: BridgeRequest) -> str:
         "knowledge_tool_contract": [
             "Use available Bali Zero knowledge, KBLI, visa, pricing, CRM, and compliance tools silently when relevant.",
             "For KBLI or company setup questions, call nuzantara-mcp.search_kbli before naming a KBLI code or likely activity direction.",
+            "For villa/Airbnb short-stay KBLI questions, explain that 55193 is the KBLI 2020/PP28 source code that maps to 55203 in KBLI 2025; 55203 is the current KBLI 2025 AKTIVITAS VILA direction. For third-party villa or accommodation management fee, check 55901. For accommodation intermediation, platform, or booking, check 55400. Never answer villa/Airbnb questions with unrelated KBLI codes such as AC/ventilation, insurance, adhesives, sound recording, flight permits, or IPTV.",
             "For food import, wholesale, distribution, or other broad KBLI matches, do not list speculative code numbers; describe the direction and say the team will verify the exact KBLI against the product and licensing requirements.",
             "For visa, immigration, and work-stay questions, call a lightweight internal Nuzantara tool such as nuzantara-mcp.list_visa_types or nuzantara-mcp.search_intel before answering; use nuzantara-mcp.ask_legal only when a legal interpretation is truly needed.",
             "For remote work on a tourist visa or VOA, do not state categorical immigration or tax conclusions unless the retrieved tool output explicitly supports them; otherwise say Bali Zero should verify the current visa direction with the immigration team.",
@@ -267,6 +433,11 @@ async def reply(
             body.message_id,
             body.model,
             body.thinking,
+        )
+        response_text = _guard_villa_kbli_reply(
+            body.text,
+            response_text,
+            body.context.get("detected_language") if body.context else None,
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"OpenClaw failed: {exc}") from exc
