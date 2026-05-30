@@ -93,7 +93,7 @@ export function ChatSidebar({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors focus-ring"
               aria-label="Close sidebar"
             >
               <X className="w-5 h-5 text-gray-400" />
@@ -149,7 +149,7 @@ export function ChatSidebar({
                     <button
                       type="button"
                       onClick={(e) => onDeleteConversation(conv.id, e)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus-ring"
                       aria-label={`Delete conversation: ${conv.title || "Untitled"}`}
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
@@ -179,7 +179,7 @@ export function ChatSidebar({
             </button>
             <button
               type="button"
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors focus-ring"
             >
               <HelpCircle className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-400">Help</span>
