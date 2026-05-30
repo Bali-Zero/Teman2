@@ -17,6 +17,9 @@ export const metadata: Metadata = {
       "The definitive guide to Indonesia's KBLI 2025 business classification. 1,563 codes, PMA rules, and AI-powered analysis.",
     type: "website",
   },
+  alternates: {
+    canonical: "https://balizero.com/kbli",
+  },
 };
 
 export default async function KBLIHomePage({
