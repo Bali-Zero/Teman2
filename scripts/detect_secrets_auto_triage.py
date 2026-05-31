@@ -148,6 +148,18 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*baseline.*\.json$"),
         "orchestrator baseline JSON snapshot: git SHAs + counts, not credentials",
     ),
+    # Dated operations audit snapshots (e.g.
+    # research/operations/2026-05-31-system-audit-FROZEN.json): empirical
+    # system-state captures written by audit sessions. The high-entropy hits
+    # are PUBLIC infrastructure identifiers — Fly.io machine IDs
+    # ({"id": "7847d95ce257d8", "process_group": "api", ...}, visible in
+    # `fly machine list` and Fly proxy logs) and git object SHAs — never
+    # credentials. Same class as the research/operations/audits/*.json rule
+    # below, but for the dated top-level operations snapshots.
+    (
+        re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*audit.*\.json$"),
+        "dated operations audit snapshot: Fly machine IDs + git SHAs (public infra identifiers), not credentials",
+    ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),
         "README: documentation",
