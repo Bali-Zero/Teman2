@@ -17,10 +17,10 @@
     },
     {
       "id": "deploy-desync-2026-05-25",
-      "title": "agent-library-evolver checkout program/base on REPO_ROOT shared with wr2-deploy-puller",
-      "verdict": "de_facto_resolved",
-      "evidence": "The shared ~/Desktop/nuzantara-deploy worktree NO LONGER EXISTS as a git worktree: dir exists but is a hollow empty shell (created 2026-05-31 00:48, no .git, NOT in git worktree list --porcelain). wr2-deploy-pull-wrapper.sh now has a guard added FOR this scar (comment cites 'Cicatrix W deploy worktree desync 2026-05-25'): `if [[ ! -d $REPO_ROOT/.git ]]; then echo WARN; exit 0`. deploy-puller launchctl: last exit code=0, runs=18, state=not running. The shared-worktree collision mechanism is structurally gone. NOTE: WR2 producers relocated to ~/.openclaw/bin/wr2|wr3/ wrappers (some binary-missing per S1 reboot_bombs) — that is a SEPARATE state tracked by S1, not a re-arming of this scar.",
-      "fix_owner": "none (mechanism eliminated); decision A/B/C moot"
+      "title": "agent-library-evolver / sibling checkout on REPO_ROOT shared with wr2-deploy-puller",
+      "verdict": "exploded_silent",
+      "evidence": "DEFINITIVE (an earlier intermediate `.git`-absent / `worktree list --porcelain` read was a MISLEADING artifact — the symlink defeated `test -e`; corrected here per anti-hallucination). `git worktree list --porcelain`: ~/Desktop/nuzantara-deploy IS a registered worktree on branch refts/heads/deploy/main, but the path is a SYMLINK (created 2026-05-31 01:53) -> .worktrees/backend-rag-crm-guardian-audit (a sibling agent's worktree, HEAD 0df03d6d4 on branch agent/nuzantara/backend-rag/crm-guardian-audit, NOT deploy/main; deploy/main SHA != origin/main). wr2-deploy-pull.log shows the EXACT scar #2 failure firing HOURLY through 2026-05-31 08:26: 'ERROR: deploy worktree on branch=agent/nuzantara/backend-rag/crm-guardian-audit, expected deploy/main', with 'alert wrong_branch suppressed (cooldown active)'. deploy-puller launchctl last exit code=1, evolver last exit code=2. The WR2 production cron (WR2_REPO_ROOT defaults to ~/Desktop/nuzantara-deploy) is therefore reading STALE code from a crm-guardian worktree, silently, operator-invisible — this is the dangerous GIA-ESPLOSA-SILENTE class.",
+      "fix_owner": "operator/orchestrator (re-point ~/Desktop/nuzantara-deploy to a clean deploy/main worktree; the sibling who symlinked it 01:53 should release). Cousin of W62 + sibling-race."
     },
     {
       "id": "W38-rolsuper",
@@ -83,10 +83,11 @@
   "verdict_counts": {
     "still_armed": 4,
     "worsened": 2,
-    "de_facto_resolved": 4,
-    "exploded_silent": 0,
-    "armed_total_still_armed_plus_worsened": 6,
-    "resolved_total": 4
+    "de_facto_resolved": 3,
+    "exploded_silent": 1,
+    "armed_total_still_armed_plus_worsened_plus_exploded": 7,
+    "resolved_total": 3,
+    "correction_note": "scar deploy-desync-2026-05-25 was initially mis-verdicted de_facto_resolved on a misleading intermediate .git-absent read; DEFINITIVE re-check (git worktree list --porcelain + symlink stat + active hourly failure log) corrected it to exploded_silent. Armed-or-broken total = 7 (4 still_armed + 2 worsened + 1 exploded_silent)."
   },
 
   "branches": {
@@ -147,8 +148,14 @@
     },
     {
       "rank": 3,
+      "id": "deploy-desync-2026-05-25 (EXPLODED-SILENT)",
+      "blast": "WR2 production cron is LIVE reading stale code from a crm-guardian worktree (deploy worktree symlinked to wrong branch); hourly failure suppressed by cooldown = operator-invisible. Already broken now, not a future risk.",
+      "fix": "operator/orchestrator: re-point ~/Desktop/nuzantara-deploy at a clean deploy/main worktree (remove the 01:53 symlink to .worktrees/backend-rag-crm-guardian-audit); ensure deploy/main == origin/main. NOT auto-fixed here (touches a sibling's active worktree + shared deploy path)."
+    },
+    {
+      "rank": 4,
       "id": "W62",
-      "blast": "uncommitted code WIP in 4 stale worktrees lost on any sibling git stash/checkout (W6 sibling-race compounder); storage waste 7.0G",
+      "blast": "uncommitted code WIP in 4 stale worktrees lost on any sibling git stash/checkout (sibling-race compounder); storage waste 7.0G",
       "fix": "ship com.nuzantara.agent-worktree-cleanup cron (WIP-safe) + tests/integration/test_no_stale_worktrees.py; orchestrator: commit the 4 worktrees' WIP NOW."
     }
   ]
