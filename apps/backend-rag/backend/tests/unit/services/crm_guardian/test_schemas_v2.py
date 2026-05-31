@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from backend.services.crm_guardian.schemas import (
     SCHEMA_VERSION,
     Company,
+    DocumentRef,
     L1ClientSummary,
     LkpmRecord,
     TaxRecord,
@@ -115,6 +116,36 @@ class TestCompanyV2Extension:
         assert len(c.tax_records) == 1
         assert len(c.lkpm_history) == 1
         assert c.source_company_folders == ["folder_id_1", "folder_id_2"]
+
+
+class TestDocumentRef:
+    def test_key_fields_normalizes_scalar_and_list_values(self) -> None:
+        doc = DocumentRef(
+            file_id="drive_file",
+            file_name="permit.pdf",
+            doc_type="nib",
+            key_fields={
+                "realization_idr": 1_500_000_000,
+                "kbli_codes": ["68111", "55120"],
+                "active": True,
+            },
+        )
+
+        assert doc.key_fields == {
+            "realization_idr": "1500000000",
+            "kbli_codes": "68111, 55120",
+            "active": "True",
+        }
+
+    def test_key_fields_preserves_nested_values_as_json_string(self) -> None:
+        doc = DocumentRef(
+            file_id="drive_file",
+            file_name="akta.pdf",
+            doc_type="akta",
+            key_fields={"shareholders": [{"name": "A", "pct": 60}]},
+        )
+
+        assert doc.key_fields == {"shareholders": '[{"name": "A", "pct": 60}]'}
 
 
 class TestL1ClientSummaryV2:

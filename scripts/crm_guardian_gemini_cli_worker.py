@@ -84,6 +84,14 @@ from backend.services.crm_guardian.schemas import (  # noqa: E402
 
 LOG = logging.getLogger("crm_guardian.cli_worker")
 
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 # Phase 1.5 prompt is the new default (Phase 1 v2 is metadata-only; v3 adds
 # OCR-content blocks + identity guardrails; v5 is the lean agy print-mode
 # contract). Legacy prompts stay on disk for rollback drills.
@@ -102,6 +110,7 @@ GEMINI_CLI = "/Users/nuzantara/.local/bin/agy"  # agy CLI v1.0.0 (Antigravity), 
 GEMINI_TIMEOUT_SECONDS = int(os.getenv("CRM_GUARDIAN_GEMINI_TIMEOUT_SECONDS", "900"))
 GEMINI_DEFAULT_MODEL: str | None = None  # agy uses CLI default model — does NOT support `-m` flag (prints help instead)
 STALE_RUNNING_SECONDS = int(os.getenv("CRM_GUARDIAN_STALE_RUNNING_SECONDS", "900"))
+DRIVE_PREFER_USER_OAUTH = _env_bool("CRM_GUARDIAN_DRIVE_PREFER_USER_OAUTH", False)
 
 # Phase 1.5 OCR budget per client. Fresh OCR is capped to the number of
 # snippets we can actually render, with timeboxes to keep huge Drive folders
@@ -1452,7 +1461,11 @@ async def main() -> int:
                 targets, args.dry_run, args.model or "default")
 
     try:
-        drive_service = build_drive_service(prefer_user_oauth=True)
+        LOG.info(
+            "Drive auth mode: %s",
+            "user_oauth" if DRIVE_PREFER_USER_OAUTH else "service_account",
+        )
+        drive_service = build_drive_service(prefer_user_oauth=DRIVE_PREFER_USER_OAUTH)
     except Exception as e:
         await bump_circuit_breaker(
             conn,
