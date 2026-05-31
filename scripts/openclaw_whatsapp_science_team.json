@@ -93,9 +93,9 @@
     }
   ],
   "readiness_gates": {
-    "min_eval_cases": 20,
-    "min_tool_required_cases": 11,
-    "min_history_context_cases": 4,
+    "min_eval_cases": 40,
+    "min_tool_required_cases": 25,
+    "min_history_context_cases": 8,
     "min_pass_rate": 1.0,
     "max_failed_cases": 0,
     "max_tool_errors": 0,
@@ -104,6 +104,7 @@
     "max_nlm_failed_domains": 0,
     "max_nlm_error_domains": 0,
     "max_nlm_failed_cases": 0,
+    "max_nlm_missing_review_cases": 0,
     "required_categories": [
       "kbli_kb",
       "visa_kb",
