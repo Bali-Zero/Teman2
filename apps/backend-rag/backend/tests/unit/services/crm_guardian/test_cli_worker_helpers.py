@@ -647,10 +647,16 @@ class TestMainOperationalState:
         import backend.services.crm_guardian.base as guardian_base
 
         bump = AsyncMock()
+        drive_modes: list[bool] = []
+
+        def fake_build_drive_service(prefer_user_oauth: bool) -> object:
+            drive_modes.append(prefer_user_oauth)
+            return object()
+
         monkeypatch.setattr(worker, "_resolve_db_url", lambda: "postgresql://test/db")
         monkeypatch.setattr(asyncpg, "connect", AsyncMock(return_value=fake_conn))
         monkeypatch.setattr(guardian_base, "bump_circuit_breaker", bump)
-        monkeypatch.setattr(guardian_base, "build_drive_service", lambda prefer_user_oauth: object())
+        monkeypatch.setattr(guardian_base, "build_drive_service", fake_build_drive_service)
         monkeypatch.setattr(
             worker,
             "run_one_client",
@@ -670,6 +676,7 @@ class TestMainOperationalState:
         exit_code = await worker.main()
 
         assert exit_code == 0
+        assert drive_modes == [False]
         assert bump.await_args_list[0].args == (fake_conn, "I10b_summary_queue", True, None)
         assert bump.await_args_list[1].args == (fake_conn, "I10_summary_l1", True, None)
         fake_conn.close.assert_awaited_once()
