@@ -31,6 +31,7 @@ under prompts/.
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from typing import Literal
 
@@ -223,6 +224,32 @@ class PropertyAsset(BaseModel):
     lease_expires_at: date | None = None
 
 
+def _stringify_key_field_value(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bool, int, float)):
+        return str(value)
+    if isinstance(value, list):
+        scalar_values: list[str] = []
+        for item in value:
+            if item is None:
+                continue
+            if isinstance(item, (dict, list, tuple, set)):
+                return _json_dump_key_field(value)
+            text = str(item).strip()
+            if text:
+                scalar_values.append(text)
+        return ", ".join(scalar_values)
+    return _json_dump_key_field(value)
+
+
+def _json_dump_key_field(value: object) -> str:
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    except TypeError:
+        return json.dumps(value, ensure_ascii=False, default=str)
+
+
 class DocumentRef(BaseModel):
     """Reference to a source file inside the client's canonical folder."""
 
@@ -237,6 +264,27 @@ class DocumentRef(BaseModel):
     expires_at: date | None = None
     subject_entity: str | None = None
     key_fields: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("key_fields", mode="before")
+    @classmethod
+    def _coerce_key_fields(cls, v: object) -> dict[str, str]:
+        # Gemini often emits source-field facts as numbers or string lists
+        # (amounts, KBLI codes). Preserve the fact but keep the downstream
+        # contract stable as dict[str, str].
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            return {}
+
+        normalized: dict[str, str] = {}
+        for raw_key, raw_value in v.items():
+            if raw_key is None or raw_value is None:
+                continue
+            key = str(raw_key).strip()
+            if not key:
+                continue
+            normalized[key] = _stringify_key_field_value(raw_value)
+        return normalized
 
 
 class Timeline(BaseModel):
