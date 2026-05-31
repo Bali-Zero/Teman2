@@ -58,6 +58,7 @@ import re
 import signal
 import subprocess
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -84,14 +85,15 @@ from backend.services.crm_guardian.schemas import (  # noqa: E402
 LOG = logging.getLogger("crm_guardian.cli_worker")
 
 # Phase 1.5 prompt is the new default (Phase 1 v2 is metadata-only; v3 adds
-# the OCR-content blocks + identity-guardrail). The legacy v2 file is kept
-# on disk for rollback drills.
-DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v4.md"
+# OCR-content blocks + identity guardrails; v5 is the lean agy print-mode
+# contract). Legacy prompts stay on disk for rollback drills.
+DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v5.md"
 LEGACY_V3_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v3.md"
 LEGACY_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v2.md"
 PROMPT_VERSION_V2 = "L1_extraction_v2"  # legacy, kept for old queue rows
 PROMPT_VERSION_V3 = "L1_extraction_v3"
 PROMPT_VERSION_V4 = "L1_extraction_v4"  # 2026-05-23: anti-chat-mode header
+PROMPT_VERSION_V5 = "L1_extraction_v5"  # 2026-05-31: anti-agentic-wait contract
 
 RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -101,10 +103,37 @@ GEMINI_TIMEOUT_SECONDS = int(os.getenv("CRM_GUARDIAN_GEMINI_TIMEOUT_SECONDS", "9
 GEMINI_DEFAULT_MODEL: str | None = None  # agy uses CLI default model — does NOT support `-m` flag (prints help instead)
 STALE_RUNNING_SECONDS = int(os.getenv("CRM_GUARDIAN_STALE_RUNNING_SECONDS", "900"))
 
-# Phase 1.5 OCR budget per client. Tesseract is fast but akta scans can spike
-# latency; we cap how many priority files we OCR in a single client run.
-# Excess files fall through as metadata-only (extractor='skipped').
-OCR_MAX_FILES_PER_CLIENT = 30
+# Phase 1.5 OCR budget per client. Fresh OCR is capped to the number of
+# snippets we can actually render, with timeboxes to keep huge Drive folders
+# from spending many minutes before the LLM call. Cache hits still render when
+# available because they are cheap and deterministic.
+OCR_MAX_FILES_PER_CLIENT = int(os.getenv("CRM_GUARDIAN_OCR_MAX_FILES_PER_CLIENT", "8"))
+OCR_MAX_SECONDS_PER_CLIENT = float(os.getenv("CRM_GUARDIAN_OCR_MAX_SECONDS_PER_CLIENT", "240"))
+OCR_MAX_SECONDS_PER_FILE = float(os.getenv("CRM_GUARDIAN_OCR_MAX_SECONDS_PER_FILE", "75"))
+
+# Prompt budget guards. Fresh extraction is capped above, but cache hits and
+# very large Drive folders can otherwise render unbounded prompt sections.
+INVENTORY_MAX_FILES = int(os.getenv("CRM_GUARDIAN_INVENTORY_MAX_FILES", "80"))
+CONTENT_SNIPPET_MAX_FILES = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_FILES", "8"))
+CONTENT_SNIPPET_MAX_CHARS_PER_FILE = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_PER_FILE", "2000"))
+CONTENT_SNIPPET_MAX_CHARS_TOTAL = int(os.getenv("CRM_GUARDIAN_CONTENT_SNIPPET_MAX_CHARS_TOTAL", "16000"))
+
+AGY_PRINT_MODE_CONTRACT = """<AGY_PRINT_MODE_CONTRACT>
+You are running in non-interactive print mode. Do not use tools. Do not wait
+for background tasks. Do not create, follow, resume, or monitor OCR tasks.
+All Drive listing, OCR extraction, and cache lookup work has already completed
+before this prompt was assembled. Treat every OCR/cache/truncated/skipped
+marker as static input metadata, not as an action request.
+
+Your only valid action is to read the static blocks and emit one fenced JSON
+object. If evidence is missing or incomplete, use nulls/empty lists and add an
+extraction_notes item. Never output "I will wait" or any prose.
+</AGY_PRINT_MODE_CONTRACT>"""
+
+AGY_FINAL_OUTPUT_CONTRACT = """<FINAL_OUTPUT_CONTRACT>
+Stop. Emit only one ```json fenced object now. No prose. No waiting. No task
+status. No markdown outside the JSON fence.
+</FINAL_OUTPUT_CONTRACT>"""
 
 
 def _terminate_gemini_process(proc: subprocess.Popen[str]) -> None:
@@ -494,6 +523,8 @@ async def enrich_files_with_ocr(
     health: OcrHealth,
     *,
     budget: int = OCR_MAX_FILES_PER_CLIENT,
+    max_seconds_per_client: float = OCR_MAX_SECONDS_PER_CLIENT,
+    max_seconds_per_file: float = OCR_MAX_SECONDS_PER_FILE,
 ) -> dict[str, ExtractionResult]:
     """Extract text content for priority files, using the OCR cache when possible.
 
@@ -509,15 +540,28 @@ async def enrich_files_with_ocr(
     by (file_id, modified_time_ms). Cache hit → reconstruct ExtractionResult
     from the row. Cache miss → download bytes, extract, upsert row.
 
-    Budget cap: at most `budget` fresh extractions per client. Excess priority
-    files fall through to metadata-only. Cache hits do NOT count toward budget.
+    Budget cap: at most `budget` fresh extractions per client and at most
+    `max_seconds_per_client` seconds of OCR work. Excess priority files fall
+    through to metadata-only. Cache hits do NOT count toward either budget.
     """
     enriched: dict[str, ExtractionResult] = {}
     fresh_extractions = 0
+    cache_hits = 0
+    skipped_fresh_budget = 0
+    skipped_time_budget = 0
+    fresh_budget_logged = False
+    time_budget_logged = False
+    started_monotonic = time.monotonic()
 
     for f in flat_files:
-        doc_type = infer_doc_type_from_filename(f.get("name"))
-        f["inferred_doc_type"] = doc_type
+        f["inferred_doc_type"] = infer_doc_type_from_filename(f.get("name"))
+
+    priority_files = sum(
+        1 for f in flat_files if f.get("inferred_doc_type") in PRIORITY_DOC_TYPES
+    )
+
+    for f in flat_files:
+        doc_type = f.get("inferred_doc_type")
 
         if doc_type not in PRIORITY_DOC_TYPES:
             continue
@@ -529,6 +573,7 @@ async def enrich_files_with_ocr(
         cached = await get_cached_content(conn, file_id, modtime_ms)
         if cached:
             if cached["text_content"]:
+                cache_hits += 1
                 enriched[file_id] = ExtractionResult(
                     text=cached["text_content"],
                     extractor=cached["extractor"],
@@ -542,10 +587,21 @@ async def enrich_files_with_ocr(
 
         # Budget guard for FRESH extractions
         if fresh_extractions >= budget:
-            LOG.info(
-                "ocr budget %d reached for this client, skipping further priority files",
-                budget,
-            )
+            skipped_fresh_budget += 1
+            if not fresh_budget_logged:
+                LOG.info("ocr fresh-file budget %d reached, metadata-only for remaining priority files", budget)
+                fresh_budget_logged = True
+            continue
+
+        elapsed_seconds = time.monotonic() - started_monotonic
+        if elapsed_seconds >= max_seconds_per_client:
+            skipped_time_budget += 1
+            if not time_budget_logged:
+                LOG.info(
+                    "ocr time budget %.1fs reached, metadata-only for remaining priority files",
+                    max_seconds_per_client,
+                )
+                time_budget_logged = True
             continue
 
         # Cache miss → fetch bytes + extract
@@ -553,12 +609,39 @@ async def enrich_files_with_ocr(
         if file_bytes is None:
             continue
 
-        result = await extract_file_content(
-            file_bytes=file_bytes,
-            mime_type=f.get("mimeType", ""),
-            doc_type=doc_type,
-            health=health,
-        )
+        remaining_client_seconds = max_seconds_per_client - (time.monotonic() - started_monotonic)
+        if remaining_client_seconds <= 0:
+            skipped_time_budget += 1
+            if not time_budget_logged:
+                LOG.info(
+                    "ocr time budget %.1fs reached after download, skipping extraction",
+                    max_seconds_per_client,
+                )
+                time_budget_logged = True
+            continue
+
+        file_timeout = min(max_seconds_per_file, remaining_client_seconds)
+        extraction_started = time.monotonic()
+        try:
+            result = await asyncio.wait_for(
+                extract_file_content(
+                    file_bytes=file_bytes,
+                    mime_type=f.get("mimeType", ""),
+                    doc_type=doc_type,
+                    health=health,
+                ),
+                timeout=file_timeout,
+            )
+        except asyncio.TimeoutError:
+            result = ExtractionResult(
+                text="",
+                extractor="skipped",
+                confidence=None,
+                page_count=None,
+                duration_ms=int((time.monotonic() - extraction_started) * 1000),
+                truncated=False,
+                notes=f"file_timeout_after_{file_timeout:g}s",
+            )
         fresh_extractions += 1
 
         if result.extractor != "skipped" and result.text:
@@ -573,13 +656,19 @@ async def enrich_files_with_ocr(
         except Exception as e:
             LOG.warning("ocr cache upsert failed for %s: %s", file_id, e)
 
-    if fresh_extractions or enriched:
+    if priority_files or fresh_extractions or enriched:
         LOG.info(
-            "ocr enrichment: priority_files=%d fresh_ocr=%d cache_hits=%d snippets=%d",
-            sum(1 for f in flat_files if f.get("inferred_doc_type") in PRIORITY_DOC_TYPES),
+            (
+                "ocr enrichment: priority_files=%d fresh_ocr=%d cache_hits=%d "
+                "snippets=%d skipped_fresh_budget=%d skipped_time_budget=%d elapsed_ms=%d"
+            ),
+            priority_files,
             fresh_extractions,
-            len(enriched) - fresh_extractions if len(enriched) >= fresh_extractions else 0,
+            cache_hits,
             len(enriched),
+            skipped_fresh_budget,
+            skipped_time_budget,
+            int((time.monotonic() - started_monotonic) * 1000),
         )
     return enriched
 
@@ -625,26 +714,71 @@ def build_cross_folder_context_block(
 def build_file_inventory_block(
     flat_files: list[dict[str, Any]],
     folder_id_to_name: dict[str, str],
-    _ocr_results: dict[str, ExtractionResult] | None = None,
+    ocr_results: dict[str, ExtractionResult] | None = None,
 ) -> str:
     """Render <FILE_INVENTORY> block exposing file metadata to Gemini.
 
     Each row also tags the inferred doc_type (passport/akta/nib/...) so the
     model can prioritise the right files when extracting compliance fields.
+    The rendered table is budgeted because some Drive roots contain thousands
+    of historical files; fingerprinting still uses the complete file list.
     """
+    ocr_results = ocr_results or {}
+
+    def _doc_type(file_row: dict[str, Any]) -> str:
+        return (
+            file_row.get("inferred_doc_type")
+            or infer_doc_type_from_filename(file_row.get("name"))
+            or "-"
+        )
+
+    def _ranked_file(item: tuple[int, dict[str, Any]]) -> tuple[int, int, str, str, int]:
+        index, file_row = item
+        fid = str(file_row.get("id", ""))
+        doc_type = _doc_type(file_row)
+        if fid in ocr_results:
+            rank = 0
+        elif doc_type in PRIORITY_DOC_TYPES:
+            rank = 1
+        elif doc_type != "-":
+            rank = 2
+        else:
+            rank = 3
+        return (
+            rank,
+            -_drive_modified_time_ms(file_row.get("modifiedTime")),
+            str(file_row.get("source_folder_id", "")),
+            fid,
+            index,
+        )
+
+    ranked_files = [
+        file_row
+        for _, file_row in sorted(enumerate(flat_files), key=_ranked_file)
+    ]
+    rendered_files = ranked_files[:INVENTORY_MAX_FILES]
+    skipped_by_budget = max(0, len(flat_files) - len(rendered_files))
+
     lines = ["<FILE_INVENTORY>"]
     lines.append(
         "# Format: source_folder | file_id | name | mimeType | size_bytes | modifiedTime | inferred_doc_type"
     )
-    for f in flat_files:
+    if skipped_by_budget:
+        lines.append(
+            "# Inventory is priority-sorted: OCR-backed docs, inferred compliance docs, "
+            "then newest remaining files."
+        )
+    for f in rendered_files:
         src = folder_id_to_name.get(f.get("source_folder_id", ""), "?")
         size = f.get("size", "")
-        doc_type = f.get("inferred_doc_type") or "-"
+        doc_type = _doc_type(f)
         lines.append(
             f"{src} | {f['id']} | {f.get('name', '?')} | "
             f"{f.get('mimeType', '?')} | {size} | {f.get('modifiedTime', '?')} | {doc_type}"
         )
     lines.append(f"# Total files: {len(flat_files)}")
+    lines.append(f"# Files rendered: {len(rendered_files)}")
+    lines.append(f"# Files skipped_by_prompt_budget: {skipped_by_budget}")
     lines.append("</FILE_INVENTORY>")
     return "\n".join(lines)
 
@@ -657,9 +791,8 @@ def build_file_content_snippets_block(
 
     Phase 1.5: the model gets to see actual document content (passport MRZ,
     akta capital section, NPWP number, etc.) instead of inferring from
-    filenames. Snippets are truncated at MAX_TEXT_CHARS_PER_FILE in ocr.py
-    so prompt size stays bounded (≈12k chars × up to 30 priority files ≈
-    360k chars at worst-case — well under Gemini 2.5 Pro 1M context).
+    filenames. The OCR cache may contain many priority docs, so this renderer
+    applies a second prompt budget independent from extraction budget.
     """
     if not ocr_results:
         return "<FILE_CONTENT_SNIPPETS>\n# No OCR content extracted (no priority files, or OCR disabled).\n</FILE_CONTENT_SNIPPETS>"
@@ -674,12 +807,25 @@ def build_file_content_snippets_block(
         "# Use THIS for identity / compliance fields. Use filename inventory only as fallback."
     )
     rendered = 0
+    skipped_by_budget = 0
+    text_chars_rendered = 0
     for f in flat_files:
         fid = f["id"]
         result = ocr_results.get(fid)
         if result is None or not result.text:
             continue
+
+        remaining_total = CONTENT_SNIPPET_MAX_CHARS_TOTAL - text_chars_rendered
+        if rendered >= CONTENT_SNIPPET_MAX_FILES or remaining_total <= 0:
+            skipped_by_budget += 1
+            continue
+
+        render_limit = min(CONTENT_SNIPPET_MAX_CHARS_PER_FILE, remaining_total)
+        text = result.text[:render_limit]
+        prompt_truncated = len(result.text) > len(text)
+
         rendered += 1
+        text_chars_rendered += len(text)
         conf_str = f"{result.confidence:.2f}" if result.confidence is not None else "n/a"
         lines.append("")
         lines.append(f"--- file_id: {fid} ---")
@@ -687,11 +833,21 @@ def build_file_content_snippets_block(
             f"# extractor={result.extractor} confidence={conf_str} "
             f"pages={result.page_count or '?'} truncated={result.truncated}"
         )
+        if prompt_truncated:
+            lines.append(
+                "# prompt_truncated=true "
+                f"original_chars={len(result.text)} rendered_chars={len(text)}"
+            )
         lines.append(f"# filename: {f.get('name', '?')}")
-        lines.append(result.text)
+        lines.append(text)
 
     lines.append("")
     lines.append(f"# Snippets rendered: {rendered}")
+    lines.append(f"# Snippets skipped_by_prompt_budget: {skipped_by_budget}")
+    lines.append(
+        "# Snippet text chars rendered: "
+        f"{text_chars_rendered}/{CONTENT_SNIPPET_MAX_CHARS_TOTAL}"
+    )
     lines.append("</FILE_CONTENT_SNIPPETS>")
     return "\n".join(lines)
 
@@ -702,12 +858,22 @@ def assemble_full_prompt(
     inventory_block: str,
     content_block: str | None = None,
 ) -> str:
-    """Assemble the final prompt: template + context + inventory + content snippets."""
+    """Assemble the final prompt with hard print-mode contracts.
+
+    The agy CLI is agentic even in `--print` mode. Keep the execution contract
+    both before and after the evidence blocks so OCR/cache markers are treated
+    as static input, not as subtasks to monitor.
+    """
+    parts = [
+        AGY_PRINT_MODE_CONTRACT,
+        prompt_template,
+        context_block,
+        inventory_block,
+    ]
     if content_block:
-        return (
-            f"{context_block}\n\n{inventory_block}\n\n{content_block}\n\n{prompt_template}"
-        )
-    return f"{context_block}\n\n{inventory_block}\n\n{prompt_template}"
+        parts.append(content_block)
+    parts.append(AGY_FINAL_OUTPUT_CONTRACT)
+    return "\n\n".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -927,6 +1093,14 @@ _CHAT_MODE_PREFIXES = (
     "i have received", "ho ricevuto", "got it",
 )
 
+_AGENTIC_WAIT_MARKERS = (
+    "i will wait",
+    "wait for the background",
+    "background ocr task",
+    "older passport ocr task",
+    "timed out waiting for response",
+)
+
 
 def _looks_like_chat_response(text: str) -> bool:
     """2026-05-23: Gemini in OAuth personal sometimes ignores prompt and chats.
@@ -938,6 +1112,18 @@ def _looks_like_chat_response(text: str) -> bool:
     if not any(head.startswith(p) for p in _CHAT_MODE_PREFIXES):
         return False
     return "```json" not in text and "{" not in text
+
+
+def _looks_like_agentic_wait_response(text: str) -> bool:
+    """Detect agy print-mode responses that wait for imagined subtasks.
+
+    This is distinct from ordinary parse failure: the model/agent has accepted
+    the prompt as an operational task and stalled instead of producing JSON.
+    """
+    if "```json" in text or "{" in text:
+        return False
+    lowered = text.lower()
+    return any(marker in lowered for marker in _AGENTIC_WAIT_MARKERS)
 
 
 def extract_json_block(text: str) -> dict[str, Any] | None:
@@ -1071,6 +1257,15 @@ async def run_one_client(
     full_prompt = assemble_full_prompt(
         prompt_template, context_block, inventory_block, content_block,
     )
+    LOG.info(
+        "[client=%d] prompt assembly: files_total=%d inventory_chars=%d "
+        "content_chars=%d prompt_chars=%d",
+        client_id,
+        len(flat_files),
+        len(inventory_block),
+        len(content_block),
+        len(full_prompt),
+    )
 
     # Save the prompt for audit + debugging on parse failures
     prompt_dump = RAW_DUMP_DIR / f"client_{client_id}_{int(datetime.now().timestamp())}_prompt.txt"
@@ -1100,7 +1295,13 @@ async def run_one_client(
     if payload is None:
         # 2026-05-23: distinguish chat-mode (short greeting) from genuine parse fail
         is_chat = _looks_like_chat_response(response_text)
-        err_msg = "chat_mode_response (Gemini ignored JSON-only instruction)" if is_chat else "no JSON block in response"
+        is_wait = _looks_like_agentic_wait_response(response_text)
+        if is_chat:
+            err_msg = "chat_mode_response (Gemini ignored JSON-only instruction)"
+        elif is_wait:
+            err_msg = "agentic_wait_response (agy waited instead of JSON)"
+        else:
+            err_msg = "no JSON block in response"
         await queue_mark_terminal(conn, queue_id, "error",
                                     last_error=err_msg,
                                     raw_response_path=str(response_dump))
@@ -1111,7 +1312,7 @@ async def run_one_client(
 
     # Enrich with server-known metadata
     payload.setdefault("schema_version", SCHEMA_VERSION)
-    payload.setdefault("prompt_version", PROMPT_VERSION_V3)
+    payload.setdefault("prompt_version", PROMPT_VERSION_V5)
     payload["client_id"] = client_id
     payload["generated_at"] = datetime.now(timezone.utc).isoformat()
     payload["source_folder_id"] = folder_id

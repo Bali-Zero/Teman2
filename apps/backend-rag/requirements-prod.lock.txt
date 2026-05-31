@@ -1524,9 +1524,9 @@ langfuse==3.14.6 \
     --hash=sha256:058f7b7caa9284b964feaee81c223542d78e9fb4daabf312269b9f903471b9c4 \
     --hash=sha256:5eb22a5ea579ac10f050513e3fedccc3c9a981eeefe44f9014273bc229a56f88
     # via -r requirements-prod.txt
-langgraph==1.2.0 \
-    --hash=sha256:03fd5895a8d4b70db1ff63ebc3bacead29dd20cd794a8b1a483e7ec9018f7a65 \
-    --hash=sha256:4a9baaf62afc5d5f63144a50095140a34b9aa9b7cea695d25326d564775348e7
+langgraph==1.2.2 \
+    --hash=sha256:0a851bf4ba5939c5474a2fd57e6b439b5315283e254e42943bd392c2d71a5e03 \
+    --hash=sha256:f54a98458976b3ff0774683867df125fb52d8dbedeb2441d0b0656a51331cee5
     # via
     #   -r requirements-prod.txt
     #   langchain
@@ -3710,10 +3710,11 @@ sse-starlette==3.4.4 \
     --hash=sha256:07e0fa0460138baf25cdd5fb28683472c3995dc1642225191b3832d62526bcb0 \
     --hash=sha256:3f4dd50d8aed2771a091f3a83000323fc3844541c16b4fe585ae2420cc6df973
     # via mcp
-starlette==0.52.1 \
-    --hash=sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74 \
-    --hash=sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933
+starlette==1.0.1 \
+    --hash=sha256:512399c5f1de7fac99c88572212ded9ddeddef2fb32afa82d724000e88b38f4f \
+    --hash=sha256:7c0e69b2ee1c848bd54669d908500117a3ee13de603a21427e5c6fc1adf98dcd
     # via
+    #   -r requirements-prod.txt
     #   brotli-asgi
     #   fastapi
     #   mcp
