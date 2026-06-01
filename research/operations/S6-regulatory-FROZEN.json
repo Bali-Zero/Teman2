@@ -1,0 +1,60 @@
+{
+  "session": "S6 regulatory-deep-fill",
+  "date": "2026-06-02",
+  "orchestrator": "claude-opus-4-8",
+  "branch": "agent/nuzantara/docs/s6-regulatory",
+  "mission": "Riempire i gap sotto-documentati in research/legal, property, tax con ground-truth multi-LLM",
+  "topology_multi_llm": {
+    "ground_truth": "NotebookLM bipolar verifier (NB-2 cff93ab0, NB-3 933509f9, NB-4 d4b2eedb, NB-5 d9438180) — 3 query eseguite, verbatim citations estratte",
+    "analysts": "DeepSeek V4 Pro (deepseek-v4-pro esplicito, reasoning_effort=high) — numeric check 13 claim + devils-advocate cross-file",
+    "synthesis": "Claude opus — 4 file research scritti",
+    "note": "agy/Gemini ingestion non necessaria — NB ground-truth gia' conteneva i PDF regolatori ingeriti"
+  },
+  "gap_analysis": {
+    "pre_session": {"legal": "1 dossier (visa-taxonomy)", "property": "1 file (client due-diligence Paco Pak)", "tax": "3 file", "visa": "9 file (gia' ben coperto)"},
+    "finding": "Conoscenza missione era stale (framework 2021). NB ground-truth ha rivelato cambio strutturale 2025: PP 28/2025 sostituisce PP 5/2021, BKPM 5/2025 sostituisce BKPM 3/4/5-2021, CoreTax PMK 81/2024 sostituisce DJP Online, Perda Bali 4/2026 criminalizza nominee"
+  },
+  "files_produced": [
+    {
+      "path": "research/legal/2026-06-02-pt-pma-nominee-ban-bkpm-oss.md",
+      "words": 897,
+      "topic": "PT PMA capitale (modal disetor 2.5mld vs nilai investasi >10mld), divieto nominee (UU 25/2007 Pasal 33, Perka BKPM 13/2017, Perda Bali 4/2026 penale), OSS-RBA 4 livelli rischio, LKPM",
+      "key_sources": ["PP 28/2025 Pasal 212(2)", "BKPM 5/2025 Pasal 26(10)+27(1)", "UU 25/2007 Pasal 33", "Perpres 10/2021+49/2021", "Perda Bali 4/2026"]
+    },
+    {
+      "path": "research/legal/2026-06-02-positive-investment-list-kbli-foreign-ownership.md",
+      "words": 543,
+      "topic": "Positive Investment List TERBUKA/TERBATAS/TERTUTUP per KBLI, cap percentuali, errore comune advertising 73100 (TERBATAS 49% non TERBUKA)",
+      "key_sources": ["Perpres 49/2021 Pasal 2(1)", "Perpres 14/2024 + BPS 7/2025"]
+    },
+    {
+      "path": "research/property/2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md",
+      "words": 1011,
+      "topic": "Hak Pakai vs HGB vs Leasehold, durate 80y/80y/no-max, eredità+divestimento, nominee Pasal 26(2) void, due diligence GISTARU/KKPR/zoning",
+      "key_sources": ["UU 5/1960 Pasal 21+26", "PP 18/2021", "PP 44/1994", "Permen ATR/BPN 29/2016", "Perda Bali 4/2026"]
+    },
+    {
+      "path": "research/tax/2026-06-02-corporate-withholding-but-coretax.md",
+      "words": 959,
+      "topic": "PPh Badan 22%, withholding PPh 21/23/26 (5-35% / 15%-2% / 20%), BUT branch profit tax 20%, residenza SPDN/SPLN 183gg, CoreTax, scadenze SPT",
+      "key_sources": ["UU 7/2021 HPP", "UU 36/2008 Pasal 23+26", "PMK 81/2024 CoreTax", "PMK 168/2023 TER", "PMK 112/2025 treaty anti-abuse"]
+    }
+  ],
+  "verification": {
+    "deepseek_numeric": "13 claim verificati: 12 OK, 1 caveat (#3: soglia >10B non =10B, gap residuo >7.5B annotato in file legal)",
+    "deepseek_devils_advocate": "NO P1/P2 — zero contraddizioni cross-file tra legal/property/tax",
+    "files_on_disk_verified": true
+  },
+  "nb5_push": {
+    "attempted": true,
+    "status": "FAILED",
+    "error": "Could not add text source (2 tentativi, text + wait)",
+    "hypothesis": "NB-5 d9438180 e' shared_with_me (non owned) — source_add text potrebbe richiedere ownership, o rate-limit transient. File property resta su disco auditabile (convenzione §15 best-effort, non gate). Re-tentare manualmente o via owner account zero@balizero.com.",
+    "uuid": "d9438180-5e63-4e2a-a473-6061101f6a8d"
+  },
+  "caveats": [
+    "Modal disetro RIDOTTO a 2.5mld (BKPM 5/2025) — memory/docs pre-2025 che dicono 10mld versato sono STALE",
+    "advertising KBLI 73100 e' TERBATAS 49%, errore comune lo cita TERBUKA",
+    "NB-5 push fallito — property file non propagato a NotebookLM, solo su disco"
+  ]
+}
