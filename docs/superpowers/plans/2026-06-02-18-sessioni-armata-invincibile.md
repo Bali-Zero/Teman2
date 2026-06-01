@@ -57,14 +57,35 @@ organism backend-rag frontend ops mata-garuda`. Usa queste + task-id univoco.
 
 ---
 
-## 🌊 ONDE (dipendenze)
+## 🌊 ONDE (dipendenze + gate di merge)
 
 - **ONDA 1** (6 parallele, zero dipendenze): S1, S4, S5, S6, S15, S16
-- **ONDA 2** (6, usano output Onda 1): S2, S3, S7, S10, S13, S14
-- **ONDA 3** (6): S8, S9, S11, S12, S17, S18
+- **ONDA 2** (6, usano output Onda 1 — partono DOPO il merge Onda 1): S2, S3, S7, S10, S13, S14
+- **ONDA 3** (6, usano output Onda 1+2): S8, S9, S11, S12, S17, S18
 
 Max simultanee consigliato: **5-6** (pacing — lessons_wave_pacing). Le Codex-heavy
 (S1,S3,S9,S18) pesano poco su Claude → puoi sovrapporle.
+
+**🔑 GATE DI MERGE TRA ONDE (la chiave anti-collisione):**
+
+Ogni onda è seguita da una **sessione GENERALE** che fa merge-queue serializzata e
+pulisce main PRIMA che parta l'onda seguente. Questo:
+- azzera la matrice di collisione (6 branch per volta, non 18)
+- mette su main l'output di un'onda → l'onda dopo vede lo stato VERO (es. S6 ricerca su
+  main → S8 carousel pesca i topic reali; S1 outbox-fix su main → S12 CRM-automation parte
+  pulito)
+- evita l'accumulo di branch behind-main (scar W "deploy-desync")
+
+```
+ONDA 1 → 🎖️ GENERALE-1 (merge-queue) → main pulito ──┐
+                                                       ▼
+ONDA 2 → 🎖️ GENERALE-2 (merge-queue) → main pulito ──┐  (S2/S7… vedono S1/S6 su main)
+                                                       ▼
+ONDA 3 → 🎖️ GENERALE-3 (merge-queue + report globale)   (S8/S12… vedono S1/S6 su main)
+```
+
+Il prompt del GENERALE è in fondo al file (§ LA CONVERGENZA). Si lancia 3 volte (una per
+onda), sempre serializzato — MAI in parallelo (legge git single-threaded).
 
 ---
 
@@ -677,18 +698,74 @@ role grant) MA costruisci comunque l'harness. Embedding FROZEN (text-embedding-3
 
 ---
 
-## 🏁 LA CONVERGENZA (il Generale)
+## 🏁 LA CONVERGENZA (il Generale — 1 per ondata, ×3)
 
-Ogni sessione lascia `research/operations/S{N}-*-FROZEN.json` (o nel suo dominio). Quando
-le 3 onde sono finite, in una sessione-comando dici: **"converge"**. Il Generale:
+**Non un Generale alla fine, ma un Generale a fine OGNI ondata.** Perché: 6 branch per
+volta = collisioni rade; main pulito prima dell'onda dopo = dipendenze risolte; debito
+azzerato a ogni giro (anti scar deploy-desync). È merge-queue incrementale — lo stato
+dell'arte (GitHub merge-queue, Anthropic centralized-serialized coordination).
 
-1. Legge TUTTI i 18 FROZEN (tool reali, no memoria).
-2. Costruisce la matrice unificata: EXECUTE-NOW-già-fatto / NEEDS-ANTONELLO / DEAD / RE-SPEC.
-3. Dà UN solo report di comando: le decisioni che spettano ad Antonello (merge dei PR draft,
-   rotazioni secret, demotion rolsuper, consumer-revive) + il piano del residuo.
+Il Generale è **serializzato, mai parallelo** (legge git single-threaded). Si lancia 3
+volte: dopo Onda 1, dopo Onda 2, dopo Onda 3 (l'ultimo aggiunge il report globale).
 
-Le 18 PR draft restano in attesa del tuo merge. Tu mergi al risveglio, dopo aver letto il
-report di convergenza.
+### ▶ GENERALE-N — merge-queue coordinator  `[sessione-comando / opus, serial]`
+
+```
+Sei IL GENERALE della convergenza Onda N. NON combatti, NON spawni assalitori paralleli su
+git. Sei un coordinatore SERIALE di merge-queue. Procedi in autonomia fino allo stop:
+il merge finale su main lo conferma Antonello (o, se autorizzato, mergi solo i branch
+CI-verdi non-collidenti e ti fermi sui conflitti).
+
+PASSO 0 — gira sul main checkout (~/Desktop/nuzantara), NON in un worktree (devi vedere e
+mergiare i branch). Verifica di essere su main pulito:
+  cd ~/Desktop/nuzantara
+  git checkout main && git pull --ff-only origin main
+  git status --short   # deve essere pulito; se dirty → STOP, segnala Antonello
+
+PASSO 1 — RACCOGLI i FROZEN dell'onda. I branch dell'onda N sono agent/nuzantara/*/sN-*.
+Per Onda 1: S1,S4,S5,S6,S15,S16. Onda 2: S2,S3,S7,S10,S13,S14. Onda 3: S8,S9,S11,S12,S17,
+S18. Per ognuno: git fetch origin <branch>, leggi il suo research/operations/SN-*-FROZEN
+(tool reali, MAI memoria). Estrai: verdict (EXECUTE-NOW-fatto/NEEDS-ANTONELLO/DEAD/RE-SPEC),
+file toccati, PR draft #.
+
+PASSO 2 — MATRICE DI COLLISIONE (questo è il cuore):
+  Per ogni coppia di branch, calcola se toccano gli stessi file:
+    git diff --name-only main..origin/<branchA> > /tmp/a.txt
+    git diff --name-only main..origin/<branchB> > /tmp/b.txt
+    comm -12 <(sort /tmp/a.txt) <(sort /tmp/b.txt)   # file in comune = collisione
+  → branch DISGIUNTI (zero file comuni): merge in qualsiasi ordine.
+  → branch COLLIDENTI: ordina per dipendenza logica (chi è fondamento va prima — es. S1
+    outbox-fix prima di S12 CRM-automation; S6 ricerca prima di S8 carousel).
+
+PASSO 3 — MERGE-QUEUE SERIALIZZATA (mai parallelo, un branch alla volta):
+  Per ogni branch nell'ordine deciso:
+    a. git fetch origin <branch>
+    b. verifica CI verde: gh pr checks <PR#>  (se rosso → SKIP, segnala, NON mergiare)
+    c. rebase su main aggiornato: git checkout <branch> && git rebase main
+       → se CONFLITTO: ABORT (git rebase --abort), STOP su questo branch, riporta ad
+         Antonello (decisione umana, MAI auto-resolve un conflitto di merge)
+    d. CI ancora verde post-rebase → merge: gh pr merge <PR#> --squash (se autorizzato)
+       OPPURE lascia pronto e segnala "ready-to-merge" ad Antonello.
+    e. git checkout main && git pull --ff-only origin main  (aggiorna per il prossimo)
+    f. next branch.
+
+PASSO 4 — REPORT DI ONDATA (research/operations/GENERALE-onda-N-report.md):
+  - tabella 6-sessioni × {verdict, PR#, CI, merge-status, collisioni-risolte}
+  - NEEDS-ANTONELLO accumulati (merge bloccati, conflitti, secret-rotation, rolsuper, ecc.)
+  - DIPENDENZE SBLOCCATE per l'onda seguente (es. "S6 su main → S8 può pescare topic veri")
+  - [solo GENERALE-3] report GLOBALE: stato finale 18 sessioni, residuo totale, piano.
+
+STOP POINT: se autorizzato a mergiare → mergi i CI-verdi non-collidenti, ti fermi sui
+conflitti/rossi. Se NON autorizzato → prepari tutto (rebase, ordine, CI-check) e lasci i
+merge a un comando-batch di Antonello. MAI auto-resolve conflitti. MAI force push.
+
+OUTPUT: main pulito con i branch mergiabili integrati + report d'ondata + lista
+NEEDS-ANTONELLO. Poi: l'onda seguente può partire.
+```
+
+**Dopo GENERALE-3**: hai il report globale. Il residuo NEEDS-ANTONELLO (rolsuper demotion,
+secret rotation, consumer-revive in prod) resta tuo — sono le decisioni hard-to-reverse che
+nessuna armata esegue di notte.
 
 ---
 
@@ -701,3 +778,17 @@ report di convergenza.
 - [ ] Ollama (per S5/S7/S10): `ollama list | grep qwen3.5`
 - [ ] Disco: `df -h /` → <85% (scar 2026-05-14 disk-full)
 - [ ] Max 5-6 sessioni simultanee (pacing)
+
+**Decisione di delega merge (scegli prima di lanciare GENERALE):**
+- [ ] **Opzione conservativa**: il Generale prepara la merge-queue (rebase, ordine, CI-check)
+      ma NON mergia — tu lanci il batch di `gh pr merge` al risveglio.
+- [ ] **Opzione delegata**: il Generale mergia in autonomia i branch **CI-verdi e
+      non-collidenti**, si ferma solo su conflitti/rossi (NEEDS-ANTONELLO). Più veloce, ma
+      i merge entrano in main (→ Vercel auto-deploy) senza tua review puntuale.
+
+**Sequenza completa di lancio:**
+```
+Onda 1 (6 sessioni) → attendi FROZEN → GENERALE-1 → main pulito
+Onda 2 (6 sessioni) → attendi FROZEN → GENERALE-2 → main pulito
+Onda 3 (6 sessioni) → attendi FROZEN → GENERALE-3 → report globale
+```
