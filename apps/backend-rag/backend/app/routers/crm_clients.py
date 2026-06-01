@@ -27,9 +27,20 @@ from backend.core.cache import cached, invalidate_cache
 from backend.db.repositories.client_repository import ClientRepository
 from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
-from backend.services.crm.whatsapp_enrichment import fetch_client_whatsapp_enrichments
 
 logger = get_logger(__name__)
+
+try:
+    # Optional dependency: the WhatsApp-enrichment read service is not present in
+    # every deployment. Import it lazily-guarded so this router still imports
+    # (and pytest can collect it) when the module is absent. The single endpoint
+    # that uses it (`GET /{client_id}/whatsapp-enrichments`) then fails loudly
+    # with 501 instead of crashing the whole module at import time.
+    from backend.services.crm.whatsapp_enrichment import (  # type: ignore[import-not-found]
+        fetch_client_whatsapp_enrichments,
+    )
+except ImportError:  # pragma: no cover - exercised only when the module is absent
+    fetch_client_whatsapp_enrichments = None  # type: ignore[assignment]
 
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 
@@ -836,6 +847,13 @@ async def get_client_whatsapp_enrichments(
     This endpoint intentionally omits source hashes, dedupe keys, and raw
     WhatsApp evidence. It is for internal CRM/workspace surfaces only.
     """
+    if fetch_client_whatsapp_enrichments is None:
+        # The optional WhatsApp-enrichment read service is not installed in this
+        # deployment. Fail explicitly rather than raising an opaque NameError.
+        raise HTTPException(
+            status_code=501,
+            detail="WhatsApp enrichment service is not available in this deployment.",
+        )
     try:
         async with db_pool.acquire() as conn:
             await verify_client_access(client_id, current_user, conn, allow_assigned=True)
