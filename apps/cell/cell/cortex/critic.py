@@ -48,6 +48,87 @@ _OUTCOME_SCORE: dict[str, float] = {
     "failure": 0.0,
 }
 
+
+def _extract_json_robust(text: str) -> dict[str, Any] | None:
+    """Extract a JSON object from LLM output, tolerant of truncation.
+
+    Pipeline:
+    1. Strip optional markdown fence (```json ... ``` or ``` ... ```).
+    2. Try greedy ``{...}`` regex match + json.loads (existing PR-D3 path).
+    3. If that fails (e.g. truncated by num_predict ceiling — the trailing
+       ``}`` is missing), do balanced-brace extraction: find the first ``{``,
+       walk forward tracking depth and string state, and close the JSON at
+       the last position where every required field has been written.
+
+    Returns the parsed dict, or None when nothing recoverable is present.
+    W59 fix (2026-05-27): the legacy regex-only path failed 100% of the
+    time when qwen3.5:9b hit the 80-token cap, blocking the Critic
+    expectation flywheel for skill promotion.
+    """
+    if not text:
+        return None
+    stripped = text.strip()
+    # 1. Strip markdown fence
+    fence_match = re.match(r"^```(?:json)?\s*(.*?)\s*```\s*$", stripped, re.DOTALL)
+    if fence_match:
+        stripped = fence_match.group(1).strip()
+
+    # 2. Try greedy regex (legacy PR-D3 path — handles preamble text)
+    json_match = re.search(r"\{.*\}", stripped, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group())
+        except json.JSONDecodeError:
+            pass  # Fall through to balanced-brace recovery
+
+    # 3. Balanced-brace recovery: walk the first {...} block respecting
+    # string boundaries. If truncated, try closing at each key boundary
+    # and returning the longest valid prefix.
+    start = stripped.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    last_complete = -1
+    for i in range(start, len(stripped)):
+        ch = stripped[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                # Full balanced object
+                try:
+                    return json.loads(stripped[start : i + 1])
+                except json.JSONDecodeError:
+                    return None
+        elif ch == "," and depth == 1:
+            # End of a top-level key=value pair; remember as a possible
+            # truncation point. We'll attempt to close at this comma if
+            # depth never returns to 0.
+            last_complete = i
+
+    # Truncated: close at the last completed pair (drop trailing partial)
+    if depth == 1 and last_complete > start:
+        candidate = stripped[start:last_complete] + "}"
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            return None
+    return None
+
 # Heuristic expectations for each allowlisted action.
 # Keys: expected_outcome, expected_rt_delta_ms, expected_health_in_n
 _HEURISTIC_EXPECTATIONS: dict[str, dict[str, Any]] = {
@@ -308,8 +389,8 @@ class CriticAgent:
             "expected_outcome (success|partial|failure), "
             "expected_rt_delta_ms (int), "
             "expected_health_in_n (green|yellow|red), "
-            "rationale_nl (string). "
-            "Respond ONLY with JSON, no markdown."
+            "rationale_nl (string, max 80 chars). "
+            "Respond ONLY with JSON, no markdown. Keep rationale_nl short."
         )
         try:
             client = self._get_client()
@@ -320,28 +401,44 @@ class CriticAgent:
                     "messages": [{"role": "user", "content": prompt}],
                     "stream": False,
                     "think": False,
-                    "options": {"temperature": 0.2, "num_predict": 80},
+                    # W59 fix (2026-05-27): num_predict bumped 80→200.
+                    # Empirical: qwen3.5:9b with the 5-key JSON schema
+                    # truncated at 80 tokens (done_reason=length) on every
+                    # call where rationale_nl ran >50 chars, missing the
+                    # closing '}'. The regex below then silently failed
+                    # → 100% of Critic LLM enrichment defaulted to None →
+                    # heuristic-only expectations, no skill promotion flywheel.
+                    "options": {"temperature": 0.2, "num_predict": 200},
                 },
                 timeout=15.0,
             )
             resp.raise_for_status()
             data = resp.json()
             text = data.get("message", {}).get("content", "")
-            # PR-D3 (2026-04-30): Ollama small models occasionally wrap JSON
-            # in markdown fences ("```json {...} ```") or prefix it ("Here is
-            # the JSON: {...}"), causing json.loads(text) to fail and the
-            # whole expectation to silently degrade to None. Use the same
-            # regex extraction that strategy_mutator.py uses (line ~180):
-            # find the outermost {...} block and parse only that.
-            json_match = re.search(r"\{.*\}", text, re.DOTALL)
-            if not json_match:
-                logger.info(
-                    "Critic LLM returned no JSON object for '%s': %s",
+            done_reason = data.get("done_reason", "")
+            if done_reason == "length":
+                logger.debug(
+                    "Critic LLM hit num_predict ceiling for '%s' "
+                    "(eval_count=%s, len=%d)",
                     action,
+                    data.get("eval_count"),
+                    len(text),
+                )
+            # PR-D3 (2026-04-30) + W59 (2026-05-27): Ollama small models
+            # occasionally wrap JSON in markdown fences or prefix it, AND
+            # truncate at num_predict ceiling leaving the closing '}' off.
+            # First try greedy outer match; if json.loads fails, try
+            # balanced-brace extraction that handles truncated rationale_nl
+            # by closing the JSON at the last syntactically valid point.
+            parsed = _extract_json_robust(text)
+            if parsed is None:
+                logger.info(
+                    "Critic LLM returned no JSON object for '%s' (done=%s): %s",
+                    action,
+                    done_reason,
                     text[:200],
                 )
                 return None
-            parsed = json.loads(json_match.group())
 
             # Validate required fields.
             outcome = parsed.get("expected_outcome", "")
