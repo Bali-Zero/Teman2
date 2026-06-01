@@ -10,12 +10,14 @@ sources:
   - "memory: reference_pro_mini_sync_daemons.md"
   - "memory: discovery_memory_sync_lan_tailscale_fallback.md"
   - "~/.ssh/config (alias mini/pro, 'air' libero)"
-status: STUDY — DESIGN ONLY, no daemon installed, pending Antonello approval
+status: IMPLEMENTED 2026-06-01 — Opzione A hub-and-spoke attiva (ramo M5 nel daemon, dry-run verificato). Vedi memory decision_m5_air_fleet_join_2026_05_31 §HUB-DAEMON.
 ---
 
 # M5 memory-integrity study — topologia a 3 nodi (Pro / Mini / Air-M5)
 
-> Decisione Antonello 2026-05-31: ruolo M5 = posto di sviluppo interactive di Antonello + automazioni PESANTI (Pro sgravato dal dev; Mini = automazioni leggere + lunghe/costanti). Macchina "solo dev, niente policy office-block". memory.db = fresco per-macchina. Sync continuo: STUDIARE PRIMA, zero daemon ora.
+> ⚠️ RUOLO CORRETTO 2026-06-01 (l'header originale qui sotto aveva il ruolo INVERTITO): Air-M5 = macchina PRINCIPALE di Antonello (dev+ricerca) ma LEGGERA, modello THIN-CLIENT (lavori su M5, esegui pesante su Pro/Mini via ssh). Pro = workhorse pesante. NON il contrario. La decisione autoritativa è in memory decision_m5_air_fleet_join_2026_05_31; questo studio resta valido per la topologia di sync (Opzione A), non per il ruolo.
+>
+> [storico, ruolo invertito] Decisione Antonello 2026-05-31: ruolo M5 = posto di sviluppo interactive di Antonello + automazioni PESANTI (Pro sgravato dal dev; Mini = automazioni leggere + lunghe/costanti). Macchina "solo dev, niente policy office-block". memory.db = fresco per-macchina. Sync continuo: STUDIARE PRIMA, zero daemon ora.
 
 ## 0. Cosa intendiamo per "integrità di Claude"
 
