@@ -1,0 +1,60 @@
+name: Agent worktree broker hygiene
+
+# W62 ANTIBODY #3 — gate the agent worktree broker at PR time.
+#
+# Two things run here, both pure-stdlib (no backend deps):
+#   1. The broker's own unit tests (scripts/tests/test_agent_start.py) — these
+#      were previously orphaned from CI (NO workflow collected them).
+#   2. tests/integration/test_no_stale_worktrees.py — fails the PR if the
+#      checked-out .worktrees/ contains a worktree older than 24h, AND covers
+#      the find_stale_worktrees detector logic.
+#
+# The live-checkout guard is safe to be strict: CI runs on a fresh
+# actions/checkout with no live agent session, so there are no false positives.
+#
+# References:
+#   - cicatrix-scars.md "W62 — Agent worktree broker TTL=60min violated 34×"
+#   - docs/runbooks/agent-worktree-broker.md
+
+on:
+  pull_request:
+    paths:
+      - "scripts/agent_start.py"
+      - "scripts/agent_worktree_cleanup_cron.sh"
+      - "scripts/tests/test_agent_start.py"
+      - "tests/integration/test_no_stale_worktrees.py"
+      - "infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example"
+      - "infra/launchagents/install_agent_worktree_cleanup.sh"
+      - "docs/runbooks/agent-worktree-broker.md"
+      - ".worktrees/**"
+      - ".github/workflows/broker-hygiene.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/agent_start.py"
+      - "scripts/agent_worktree_cleanup_cron.sh"
+      - ".worktrees/**"
+
+concurrency:
+  group: broker-hygiene-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  broker-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install --quiet pytest
+
+      - name: Broker unit tests
+        run: python -m pytest scripts/tests/test_agent_start.py -q
+
+      - name: No stale worktrees (24h orphan guard)
+        run: python -m pytest tests/integration/test_no_stale_worktrees.py -q
