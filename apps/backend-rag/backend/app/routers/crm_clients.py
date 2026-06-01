@@ -27,7 +27,6 @@ from backend.core.cache import cached, invalidate_cache
 from backend.db.repositories.client_repository import ClientRepository
 from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
-from backend.services.crm.whatsapp_enrichment import fetch_client_whatsapp_enrichments
 
 logger = get_logger(__name__)
 
@@ -433,27 +432,6 @@ class ClientResponse(BaseModel):
         return str(v) if v else None
 
 
-class WhatsAppEnrichmentFactResponse(BaseModel):
-    id: int
-    fact_type: str
-    route: str
-    fact_value: dict[str, Any]
-    fact_confidence: float
-    link_strength: float
-    apply_score: float
-    status: str
-    created_at: datetime | None = None
-
-
-class WhatsAppEnrichmentResponse(BaseModel):
-    client_id: int
-    total: int
-    by_fact_type: dict[str, int]
-    by_route: dict[str, int]
-    latest_created_at: datetime | None = None
-    facts: list[WhatsAppEnrichmentFactResponse]
-
-
 # ================================================
 # ENDPOINTS
 # ================================================
@@ -815,56 +793,6 @@ async def get_client(
 
             return ClientResponse(**dict(row))
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise handle_database_error(e) from e
-
-
-@router.get(
-    "/{client_id}/whatsapp-enrichments",
-    response_model=WhatsAppEnrichmentResponse,
-)
-async def get_client_whatsapp_enrichments(
-    client_id: int = Path(..., gt=0),
-    limit: int = Query(100, ge=1, le=500),
-    db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
-) -> WhatsAppEnrichmentResponse:
-    """Return internal WhatsApp-derived enrichment facts for a CRM client.
-
-    This endpoint intentionally omits source hashes, dedupe keys, and raw
-    WhatsApp evidence. It is for internal CRM/workspace surfaces only.
-    """
-    try:
-        async with db_pool.acquire() as conn:
-            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
-            summary = await fetch_client_whatsapp_enrichments(
-                conn,
-                client_id=client_id,
-                limit=limit,
-            )
-            return WhatsAppEnrichmentResponse(
-                client_id=summary.client_id,
-                total=summary.total,
-                by_fact_type=summary.by_fact_type,
-                by_route=summary.by_route,
-                latest_created_at=summary.latest_created_at,
-                facts=[
-                    WhatsAppEnrichmentFactResponse(
-                        id=fact.id,
-                        fact_type=fact.fact_type,
-                        route=fact.route,
-                        fact_value=fact.fact_value,
-                        fact_confidence=fact.fact_confidence,
-                        link_strength=fact.link_strength,
-                        apply_score=fact.apply_score,
-                        status=fact.status,
-                        created_at=fact.created_at,
-                    )
-                    for fact in summary.facts
-                ],
-            )
     except HTTPException:
         raise
     except Exception as e:
