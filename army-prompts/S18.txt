@@ -1,0 +1,29 @@
+# DESC: S18 — RAG eval: Zantara accuracy ground-truth (ONDA 3, Codex-heavy)
+ORCHESTRATORE sessione S18 "rag-eval-truth". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane backend-rag --task-id s18-rag-eval
+  cd .worktrees/backend-rag-s18-rag-eval
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: collega a scar S2 (RAG accuracy NON misurabile via MCP — RBAC wall, role
+'unknown' blocca ask_legal/chat_kbli; villa KBLI 55193 vs 55203 dubbio). Costruisci un
+harness di eval RAG vero per Zantara prod.
+
+TOPOLOGIA (skill evaluate-rag + error-analysis + write-judge-prompt + validate-evaluator):
+- ASSALITORI: genera golden set (QA pairs visa/tax/KBLI da NB ground-truth). Per il dubbio
+  KBLI villa: risolvilo definitivamente (oracle 55193 vs codebase 55203 — quale è giusto
+  per PP28/KBLI 2025? verifica via NB-3 + inspect_kbli).
+- ANALISTI: misura retrieval (recall@k) + generation (faithfulness). Judge prompt validato.
+- COSTRUZIONE: harness in apps/evaluator/, pronto-a-girare.
+- MECCANICO (1, serial): harness + golden set + research/operations/S18-rag-eval-FROZEN.json
+  + verdict villa-KBLI. commit → push → PR draft → STOP.
+
+VINCOLI: se RBAC blocca accesso prod (role unknown) → documenta come NEEDS-ANTONELLO (serve
+role grant) MA costruisci comunque l'harness. Embedding FROZEN (text-embedding-3-small/1536)
+— mai cambiare (§9). OUTPUT: harness + golden set + FROZEN + verdict. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S18 <numero-PR-o-url>

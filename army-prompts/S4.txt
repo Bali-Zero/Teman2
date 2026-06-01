@@ -1,0 +1,37 @@
+# DESC: S4 — Worktree storm + broker enforcement (W62) (ONDA 1, M5 sonnet, fan-out Codex)
+ORCHESTRATORE sessione S4 "worktree-broker-enforcement". Autonomia piena in loop, no
+conferme, fino allo stop point.
+
+PASSO 0:
+  python scripts/agent_start.py --lane infra --task-id s4-broker
+  cd .worktrees/infra-s4-broker
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI: no peer-to-peer worker; brief completo a ognuno; git single-threaded.
+
+MISSIONE: cicatrix W62 — broker agent_start.py ha TTL=60min ma --cleanup è OPT-IN,
+nessun cron lo lancia, i subagent non chiamano --release → worktree storm con WIP reale
+non committato (danger zone "untracked-files-lost", scar W-family).
+
+⚠️ PASSO 1 CRITICO PRIMA DI TUTTO — SALVA IL WIP ALTRUI: ispeziona ogni worktree stale in
+.worktrees/ (git -C <wt> status). Se trovi WIP non committato reale (.py/.ts modificati o
+NEW untracked), committalo su un branch dedicato di salvataggio PRIMA di qualsiasi cleanup
+— altrimenti è perdita. NON fare git stash senza -u (cancella untracked). Documenta cosa
+hai salvato.
+
+TOPOLOGIA con TDD (test prima del codice):
+- ASSALITORI (Workflow, fan-out): 1 agente-audit per le 4 ANTIBODY W62.
+- ANALISTI: verifica ogni fix con test reale (pytest). Codex spalla adversarial.
+- IMPLEMENTAZIONE (TDD, serial): (1) LaunchAgent cleanup daily WIP-safe (skip worktree
+  dirty o mtime<10min), (2) hook orphan-detection in agent_start.py --list (WARN su
+  worktree >2× TTL), (3) tests/integration/test_no_stale_worktrees.py (fail CI se
+  mtime>24h), (4) broker-aware spawn convention documentata.
+- SPAZZINI: pulisci worktree scratch.
+- MECCANICO (1, serial): commit → push → PR draft → STOP.
+
+VINCOLI: NON cancellare worktree con WIP non salvato. --cleanup è già WIP-safe — non
+romperlo. OUTPUT: research/operations/S4-broker-FROZEN.json + PR con 4 fix + nota WIP
+salvato. Poi --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S4 <numero-PR-o-url>
