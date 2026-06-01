@@ -1,0 +1,965 @@
+[
+  {
+    "zone": "Claude Code agents (~/.claude/agents/*.md) — 34 subagent definitions",
+    "summary": "This zone is Bali Zero's library of 34 Claude Code subagent definitions, organized into ~8 coherent subsystems: the WR2 carousel pipeline (orchestrator + 6 workers + 2 analysts + 1 external bench), the WR3 video pipeline (orchestrator + 8 workers + 2 analysts + bench + reflexion), and standalone agents for research, HR, CRM-revenue, brand-email, competitor-intel, and infra-verify. WR2 is in real production (33 carousel output dirs, 15-row episodic log, live cron stack); WR3 reached pilot stage only (5 episode dirs, no episodic log, one missing runner binary); several standalone cron agents (competitor-monitor, yield-optimizer) are defined and LaunchAgent-loaded but have produced zero runtime artifacts.",
+    "entities": [
+      {
+        "name": "wr2-design-architect",
+        "kind": "orchestrator",
+        "status": "OPERATIVO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: model=opus, isolation=worktree, tools include Agent+Skill. Clear trigger ('design a carousel for [topic]'). Step 0 enforcement prologue + Contracts A/B/C (fan-out 4 subagents, NB ground-truth, imagegen no-reuse). Runtime proof: `ls apps/war-room/output/carousel/` = 33 dirs; wr2-episodic-log.md = 15 rows. Cron com.balizero.wr2.supervisor.plist + reflexion.weekly present on disk."
+      },
+      {
+        "name": "wr2-brief-interpreter",
+        "kind": "subagent-wr",
+        "status": "DUPLICATO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: 'MUST BE USED by wr2-design-architect at Step 2'. Coherent: tools Read/Glob/Grep/Bash/WebFetch, disallows Write/Edit, queries NB-1/4/5 via `nlm query notebook`, emits brief JSON. DUPLICATE of wr3-brief-interpreter: both are the sole NB-grounding layer of their pipeline, same nlm-CLI mechanism, same claim/citation-verbatim contract — only NB routing (NB-1/4/5 vs NB-2..7) and downstream consumer differ."
+      },
+      {
+        "name": "wr2-storyboarder",
+        "kind": "subagent-wr",
+        "status": "OPERATIVO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: 'MUST BE USED at Step 3', model=sonnet, tools Read/Glob/Grep/Bash, skills bali-zero-brand. Detailed coherent contract: 9 archetypes, narrative-arc rules, Article 6.2/6.3 bullet-promise + bilingual-assist enforcement, statement-bomb body=null hard rule. Consumes brief JSON, emits slides.json. Tightly coupled worker, non-orphan."
+      },
+      {
+        "name": "wr2-layout-composer",
+        "kind": "subagent-wr",
+        "status": "OPERATIVO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: 'MUST BE USED at Step 4', model=sonnet, tools Read/Write/Edit/Glob/Grep/Bash. Coherent: reads layouts/<family>.md, parameterizes HTML, enforces Article 5.10 sha256 anchor-vs-hero check + no-inline-hex grep + QR renderer. Referenced layouts skill dir exists (bali-zero-brand/surfaces + layouts confirmed on disk)."
+      },
+      {
+        "name": "wr2-critic",
+        "kind": "subagent-wr",
+        "status": "OPERATIVO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: 'MUST BE USED at Step 5 mandatory gate', model=opus (vision). Very detailed 5-rubric scoring + binary verdict + anti-loop circuit-breaker + Voyager _lessons harvesting + NB-INTEL ground-truth spot-check (3 UUIDs hardcoded). Reads final PDF via pages= (post-2026-05-15 false-PASS fix documented inline). Heavily exercised, coherent."
+      },
+      {
+        "name": "wr2-image-prompt-author",
+        "kind": "subagent-wr",
+        "status": "OPERATIVO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: model=opus, tools Read/Glob/Grep (disallows Write/Edit). Coherent specialist: anti-S11-monotone, 9 image-style modes (Art 5.8), empirical Tier-1/2/3 ranking from _empirical-metrics-2026-05-12.md, banned-for-cover tokens. Used by design-architect between Step 3 and Step 4. Note: not in design-architect's hardcoded 4-subagent fan-out list (brief/storyboard/layout/critic), so it is an optional insert, not gate-enforced."
+      },
+      {
+        "name": "wr2-ig-metrics-analyst",
+        "kind": "subagent-wr",
+        "status": "OPERATIVO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: model=sonnet, weekly Monday 06:00 cron, uses Gemini agy 1M-ctx via Bash. Reads queue + wr2-episodic.db + _empirical-metrics + _external-bench, proposes amendments to _proposed-amendments/. Cron com.balizero.wr2.ig-metrics-analyst.weekly.plist EXISTS on disk; wrapper ~/scripts/wr2-ig-metrics-analyst-run.sh EXISTS."
+      },
+      {
+        "name": "wr2-external-bench",
+        "kind": "subagent-wr",
+        "status": "DUPLICATO",
+        "macro_group": "WR2-carousel",
+        "evidence": "Read file: model=opus, monthly 1st-Monday cron, multi-LLM (Gemini ingest + DeepSeek pattern + Opus synth). Output _external-bench-2026-05.md EXISTS on disk (ran). DUPLICATE-by-pattern of wr3-editorial-bench: identical 'monthly SOTA external bench, 12 editorial brands + 3 competitors + trend reports, agy+Claude+DeepSeek cascade' design — one for carousel, one for video. ALSO uses deprecated 'DeepSeek Reasoner' (see gaps)."
+      },
+      {
+        "name": "wr3-design-architect",
+        "kind": "orchestrator",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: model=opus, tools Agent+Skill, 3 contracts + 6-channel state-machine + Symbiosis precedence arbitration + companion-mode (WR2→WR3). Very complete spec. BUT runtime: `ls apps/war-room/output/episode/` = 5 dirs, all pilots/single content-creator (3 are empty stubs); NO wr3-episodic-log.md exists despite Step 13 mandating append. Pipeline reached pilot, never steady-state production."
+      },
+      {
+        "name": "wr3-brief-interpreter",
+        "kind": "subagent-wr",
+        "status": "DUPLICATO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED at Step 1', model=sonnet, sole NB consumer (NB-2..7), two invocations (initial brief + legal_claim_gate). DUPLICATE of wr2-brief-interpreter: same NB-grounding role, same nlm-CLI, same verbatim-citation + claim_id contract; differs only in NB routing + duration-mapping table. Pipeline-level INCERTO (parent never ran steady-state)."
+      },
+      {
+        "name": "wr3-script-editor",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED at Step 2', model=sonnet, writes script.json (claim_id bindings, beat-sheet Hook/Frame/Discovery/Closing, word-count formula = target_s×3wpm). Internally coherent + well-specified. INCERTO because parent WR3 pipeline shows no episodic-log/steady-state output — worker spec is sound but unexercised at scale."
+      },
+      {
+        "name": "wr3-shot-director",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED at Step 3', model=opus (largest hallucination surface). Strong empirical 'Veo Tier-1 safe dialect' (banned style modifiers, banned content tokens passport/Jakarta, max-25-words) from 2026-05-20 panel; anchor_image_path mandatory (cosine 0.12 FAIL vs 0.91 PASS verified 2026-05-30). Coherent. INCERTO: parent pipeline non-steady-state."
+      },
+      {
+        "name": "wr3-pre-render-gatekeeper",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED at Step 4 before Veo spend', model=sonnet, independent spend-gate. Coherent: cliche-library + cost circuit-breaker (per-duration cr ceilings) + Veo safety/dialect regex + hard-halt-no-cascade (Law 7). References skill cliche-library.md. INCERTO: parent pipeline non-steady-state."
+      },
+      {
+        "name": "wr3-clip-renderer",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED at Step 5 after gate PASS', model=sonnet (Opus escalation). Submits Veo via wr3_flowkit_client.py (EXISTS on disk), ArcFace+VLM identity gate, WR3_VEO_AUDIO=native toggle. Coherent. INCERTO: pilot-only; clips were produced in pilots but no steady-state run."
+      },
+      {
+        "name": "wr3-audio-asset-producer",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED Step 7+8', model=sonnet. Veo-native-audio primary + Chatterbox fallback (Emma seed=42 locked), LUFS -14, voice-corpus accumulator. Scripts wr3_veo_audio_extract.py + wr3_chatterbox_runner.py EXIST on disk. Cartesia BANNED (Law 6). Coherent. INCERTO: parent non-steady-state."
+      },
+      {
+        "name": "wr3-post-assembler",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED Step 9-10-12', model=sonnet, Python-first ffmpeg concat + 4 platform variants + 18-field manifest + JOIN-enforcement pre-flight (cicatrix 2026-05-22 race fix). Coherent, detailed. INCERTO: parent pipeline non-steady-state."
+      },
+      {
+        "name": "wr3-critic",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: 'MUST BE USED Step 11 mandatory gate', model=opus + Haiku VLM pre-pass, 4-lane verdict (identity/audio/brand/legal), NO Agent tool (anti-recurse). Coherent mirror of wr2-critic. INCERTO: parent pipeline non-steady-state."
+      },
+      {
+        "name": "wr3-b-roll-curator",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: model=sonnet, lifecycle_tier=fallback, 'death by eligible-opportunity-unused ≥10 times NOT calendar days'. On-demand only when clip-renderer Veo fails 2 retries. By design idle when Veo succeeds. Coherent but inherently rarely-invoked; parent pipeline non-steady-state so realistically unexercised."
+      },
+      {
+        "name": "wr3-editorial-bench",
+        "kind": "subagent-wr",
+        "status": "ROTTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: monthly 1st-Monday cron, entry-point ~/.openclaw/bin/wr3/wr3-editorial-bench-run.sh. That runner binary is MISSING on disk (verified), while com.balizero.wr3.editorial-bench.monthly.plist IS loaded — same binary_missing class as cicatrix RED plists. Output _external-bench-video-2026-05.md exists (one prior run via the python `wr3_editorial_bench.py` which DOES exist), but the cron entry-point it now references is broken. DUPLICATE-by-pattern of wr2-external-bench."
+      },
+      {
+        "name": "wr3-reflexion-synth",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: weekly Sun 02:30 cron, model=sonnet, standalone (not in orchestrator hot-path). Cron com.balizero.wr3.reflexion.weekly.plist EXISTS on disk. But reads last-7-days episodes from apps/war-room/output/episode — input is near-empty (only pilots, no episodic-log). Cron loaded, effectively no substrate to synthesize → unexercised."
+      },
+      {
+        "name": "wr3-yt-metrics-analyst",
+        "kind": "subagent-wr",
+        "status": "INCERTO",
+        "macro_group": "WR3-video",
+        "evidence": "Read file: weekly Mon 06:00 cron, model=sonnet, reads YouTube Analytics + IG/TikTok scrape. Cron com.balizero.wr3.yt-metrics.weekly.plist EXISTS on disk. But requires n≥10 published episodes to make claims; WR3 has zero published episodes → would always emit 'insufficient data'. Defined + loaded, no substrate."
+      },
+      {
+        "name": "deep-researcher",
+        "kind": "claude-agent",
+        "status": "OPERATIVO",
+        "macro_group": "research",
+        "evidence": "Read file: model=opus, isolation=worktree, maxTurns=60, tools Read/Write/Bash/WebFetch/WebSearch. Clear trigger ('deep research X'), multi-LLM matrix (Gemini agy ingest / NLM RAG / DeepSeek math / Opus synth), writes research/<domain>/YYYY-MM-DD-slug.md per CLAUDE.md §16, devils-advocate pre-publish gate. Research output convention is actively used in repo. Coherent. CAVEAT: invokes deprecated 'DeepSeek Reasoner' (see gaps)."
+      },
+      {
+        "name": "devils-advocate",
+        "kind": "claude-agent",
+        "status": "OPERATIVO",
+        "macro_group": "research",
+        "evidence": "Read file: model=sonnet, tools Read/Bash/WebFetch (disallows Write/Edit). Red-team contrarian, DeepSeek attack pass, 5 finding categories, verdict PASS/NEEDS_FIX/BLOCK, eventbus redteam.completed emission. Hard-coupled as mandatory gate by deep-researcher Step 7.5 + client-case-quote-generator Step 6.5. NOT a true duplicate of spalla-review (content/legal red-team vs code-review). CAVEAT: deprecated 'deepseek-reasoner' model id."
+      },
+      {
+        "name": "spalla-review",
+        "kind": "claude-agent",
+        "status": "OPERATIVO",
+        "macro_group": "infra-verify",
+        "evidence": "Read file: tools Read/Grep/Glob/Bash/WebFetch (disallows Write/Edit), no model declared (inherits). Constructive PR code-review co-pilot: file:line comments, blockers vs suggestions, security check on .env/auth/billing. Self-describes as 'alternative to devils-advocate' but evidence shows DIFFERENT domain (code review, not content/legal red-team) — complementary lane, not duplicate. Coherent."
+      },
+      {
+        "name": "backend-verifier",
+        "kind": "claude-agent",
+        "status": "OPERATIVO",
+        "macro_group": "infra-verify",
+        "evidence": "Read file: tools Bash/Read/Grep/Glob/WebFetch, disallows Edit/Write/MultiEdit (read-only enforced). Clear lane: pytest selective, import-chain check, fly status, router-manifest-vs-registration cross-check, schema_migrations query. Anti-hallucination rules + report format. Coherent read-only verifier; matches the T3.3 lane-aggregator family in memory."
+      },
+      {
+        "name": "frontend-browser",
+        "kind": "claude-agent",
+        "status": "INCERTO",
+        "macro_group": "infra-verify",
+        "evidence": "Read file: tools Read/Bash/WebFetch, disallows Edit/Write. Lane: visit kita/my/prime/... subdomains, HTTP+visual QA. CONTRADICTION vs project CLAUDE.md: agent says screenshot via 'mcp__playwright__browser_snapshot or mcp__claude-in-chrome', but CLAUDE.md §5 mandates default browser MCP = claude-in-chrome and 'NEVER mcp__playwright__ unless ordered'; also the agent's `tools` list does NOT include any browser MCP, so it can only curl -sI fallback. Tool surface insufficient for its stated visual-QA mission."
+      },
+      {
+        "name": "mcp-health",
+        "kind": "claude-agent",
+        "status": "OPERATIVO",
+        "macro_group": "infra-verify",
+        "evidence": "Read file: tools Bash/Read/Grep/Glob, disallows Edit/Write. Lane: `claude mcp list` parse + per-failed-server empirical tool-call discrimination (stale-signal 60% FP per cicatrix 2026-05-22), verify_mcp_integrity.sh baseline 24LOW/0HIGH, deferred-tool count drift. Read-only, anti-stale-signal discipline. Coherent; matches mcp-health lane-aggregator in memory."
+      },
+      {
+        "name": "client-case-quote-generator",
+        "kind": "claude-agent",
+        "status": "ROTTO",
+        "macro_group": "crm",
+        "evidence": "Read file: model=opus, isolation=worktree, tools Read/Write/Edit/Bash/WebFetch. Precondition surfaces EXIST on disk (internal-print-a4 + _render.py + _template.css verified). BUT (1) Step 4 hardcodes deprecated 'deepseek-reasoner' which CLAUDE.md flags as silent flash-downgrade TRAP — corroborated by FROZEN memory S3 quote-redteam STRUCT-2 ('math on deepseek-reasoner deprecated→flash silently'); (2) FROZEN S3 audit also found STRUCT-1: toolset has NO PricingTool, violating CLAUDE.md Golden Rule #11 'all prices from PricingTool'. Verdict 0/3 quotes send-ready per that red-team. Structurally broken for production quotes."
+      },
+      {
+        "name": "yield-optimizer",
+        "kind": "claude-agent",
+        "status": "MAI_USATO",
+        "macro_group": "crm",
+        "evidence": "Read file: model=sonnet, tools Read/Bash only, weekly Sun 04:00 cron, Ollama qwen3.5:9b LOCAL (UU-PDP privacy), writes research/commercial/<YYYY-WW>-yield-opportunities.md. Cron com.balizero.yield-optimizer.weekly.plist EXISTS on disk. BUT runtime: research/commercial/ dir does NOT exist (verified) → zero opportunity files ever written → never produced an artifact despite being loaded."
+      },
+      {
+        "name": "competitor-monitor",
+        "kind": "claude-agent",
+        "status": "MAI_USATO",
+        "macro_group": "competitor-intel",
+        "evidence": "Read file: model=sonnet, tools Read/Write/Bash/WebFetch, monthly day-1 cron, qwen2.5vl local IG pre-filter. Writes research/competitive/<YYYY-MM>-digest.md. Cron com.balizero.competitor-monitor.monthly.plist EXISTS on disk. BUT runtime: research/competitive/ dir does NOT exist (verified) → zero digests ever produced. Description itself says 'plist deferred to Phase B, manually trigger first month' — never triggered."
+      },
+      {
+        "name": "email-template-builder",
+        "kind": "claude-agent",
+        "status": "INCERTO",
+        "macro_group": "brand-email",
+        "evidence": "Read file: model=sonnet, tools Read/Write/Edit/Bash/Glob/Grep, event-driven (no cron). Precondition surface email-template.md + tokens.json EXIST on disk. Coherent contract: from=zantara@balizero.com hardcoded, inline-CSS-only, NB-INTEL fact-check for regulatory emails (3 UUIDs), QA checklist. No runtime artifact convention to verify usage (saves to ~/Desktop/, not tracked) → can't confirm it has ever been invoked; spec itself is sound."
+      },
+      {
+        "name": "hr-companion",
+        "kind": "claude-agent",
+        "status": "INCERTO",
+        "macro_group": "hr",
+        "evidence": "Read file: model=sonnet, memory=user, tools Read/Write/Bash/Glob/Grep. Rich coherent spec: delegation matrix, 6 workflow patterns (leave/whistleblowing/onboarding/offboarding/SP), bilingual, hard-fail escalation via hotfix-notify.sh. BUT knowledge sources it loads — research/hr/handbook/employee-handbook-v1-ID.html + pkwtt-template-master.html — were NOT verified present this turn; if absent the agent has no scripture to cite. Spec well-formed; substrate unverified → INCERTO."
+      },
+      {
+        "name": "nb-curator",
+        "kind": "claude-agent",
+        "status": "OPERATIVO",
+        "macro_group": "research",
+        "evidence": "Read file: model=sonnet, memory=user, 3 modes (Recommendation/Health/Dedup). Runtime proof: nb-curator-routing.log EXISTS + freshly written (1 giu 06:08), research/nb-health/ has 2026-05-22-health.md + 2026-05-28 report. Cron com.balizero.nb-curator.daily.plist EXISTS (weekly + mode-c variants disabled). Read-only (never nlm add/rm). Actively running."
+      },
+      {
+        "name": "regulatory-watcher",
+        "kind": "claude-agent",
+        "status": "OPERATIVO",
+        "macro_group": "research",
+        "evidence": "Read file: model=sonnet, memory=user, daily 07:00 cron, tools Read/Write/Bash/WebFetch. Runtime proof: research/regulatory/ has delta files dated 2026-05-16/22/28 (recent, recurring). Cron com.balizero.regulatory-watcher.daily.plist EXISTS + wrapper ~/scripts/regulatory-watcher-run.sh EXISTS. Multi-LLM cascade + verbatim-citation + Telegram-only-if-new. Demonstrably producing output."
+      }
+    ],
+    "gaps": [
+      "Quoting clients by hand: client-case-quote-generator is ROTTO (no PricingTool in toolset → prices from user-input/DeepSeek; uses deprecated deepseek-reasoner that silently downgrades to flash). Bali Zero still hand-builds A4 quotes because the agent can't be trusted to send-ready (FROZEN S3 verdict 0/3). GAP: a PricingTool-grounded, v4-pro-math quote agent.",
+      "DeepSeek model-id rot across 4 agents (client-case-quote-generator, deep-researcher, devils-advocate, wr2-external-bench) still call 'deepseek-reasoner'/'DeepSeek Reasoner' — CLAUDE.md documents this as a TRAP that returns deepseek-v4-flash silently (lower quality) instead of deepseek-v4-pro. None migrated to explicit deepseek-v4-pro. Bali Zero's red-team/math/synthesis quality is silently degraded.",
+      "Competitor intelligence is fully manual: competitor-monitor (Lets Move / Emerhub / Flado) is MAI_USATO — cron loaded but research/competitive/ never created. No one is systematically tracking the 3 direct competitors' pricing/positioning; it's ad-hoc.",
+      "Revenue/upsell scanning is manual: yield-optimizer (KITAS-expiring / KITAP-eligible / dormant-high-value CRM scan) is MAI_USATO — research/commercial/ never created. Renewal & upsell opportunities are spotted by humans, not the agent that exists for it.",
+      "WR3 video production has no maintainer for its bench: wr3-editorial-bench cron entry-point binary (~/.openclaw/bin/wr3/wr3-editorial-bench-run.sh) is MISSING while its plist is loaded (same RED 'binary_missing' class as recent organism-audit findings). And the whole WR3 pipeline never reached steady-state (no episodic-log) — every WR3 episode is effectively hand-run as a pilot.",
+      "frontend-browser cannot actually do its job autonomously: its `tools` list includes no browser MCP (only Read/Bash/WebFetch), and it references mcp__playwright which project CLAUDE.md bans by default — so deploy visual-QA still falls to a human or to the operator's interactive claude-in-chrome session, not this agent.",
+      "No agent covers CRM mutation/Guardian: client-case-quote-generator's own footer says 'Update the client's CRM (out of scope; CRM-Guardian agent — TBD)'. CRM record hygiene/linking after a quote or onboarding is unautomated at the agent layer.",
+      "hr-companion's knowledge substrate (employee-handbook-v1-ID.html, pkwtt-template-master.html) is unverified on disk — if missing, every HR answer that must 'cite Bab/Pasal' has no source, so HR lookups still happen by hand against the real documents."
+    ]
+  },
+  {
+    "zone": "LaunchAgents (macOS launchd) — organism daemons + cron, Pro machine",
+    "summary": "Census of 169 LaunchAgents (com.{nuzantara,balizero,cell}.*) that run the Bali Zero \"organism\": persistent daemons (organism core, observatory, sentinels, wa-mirror, qdrant, nlm-bridge, tunnels) plus scheduled cron (WR2/WR3 content pipeline, intel lake, regulatory watcher, repomap, monitors). Empirically sampled 84 labels via launchctl print + plist ProgramArguments + log mtime + ps; the bulk are OPERATIVO, with a cluster of ROTTO around missing wrappers (.openclaw/bin/wr3 dir gone, wr2 canva-renderer wrapper gone) and Python/Ollama dependency breaks (orjson, uvicorn, gemma4:26b).",
+    "entities": [
+      {
+        "name": "com.balizero.nlm-bridge",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "notebooklm-bridge",
+        "evidence": "launchctl print: state=running, pid=997, program=venvs/nlm-bridge/bin/uvicorn, last exit code=(never exited). ps -p 997 confirms nlm-bridge python3 alive."
+      },
+      {
+        "name": "com.nuzantara.organism.supervisor",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl print: state=running, pid=1016, organism-supervisor-wrapper.sh, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.organism.control-panel",
+        "kind": "launchagent",
+        "status": "ROTTO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl: state=spawn scheduled, last exit code=1. control-panel.err mtime 2026-06-02 01:40 repeating 'No module named uvicorn'; stdout (200 OK) frozen at 2026-04-30 -> panel has not served since April, crashes every spawn."
+      },
+      {
+        "name": "com.nuzantara.organism.scheduled-tick",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl print: state=not running (cron idle between ticks), last exit code=0, program=pyenv python3."
+      },
+      {
+        "name": "com.nuzantara.launchagent-state-bridge",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl print: state=spawn scheduled, last exit code=0, pyenv python3."
+      },
+      {
+        "name": "com.nuzantara.heartbeat-bridge",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl print: state=running, pid=967, /bin/bash, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.pg-organism-bridge",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl print: state=running, pid=1004, /bin/bash, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.federation-alert-dispatcher",
+        "kind": "launchagent",
+        "status": "ROTTO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl: state=spawn scheduled, last exit code=1. launchd.err.log 21MB, mtime 2026-06-02 01:39, tail = 'ModuleNotFoundError: No module named orjson' via backend.services.events import chain. Crashes every spawn."
+      },
+      {
+        "name": "com.balizero.guardrails-daemon",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl print: state=running, pid=1035, /usr/bin/env, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.meta-dispatcher",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "organism-core",
+        "evidence": "launchctl print: state=running, pid=966, /bin/zsh, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.observatory",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "observatory",
+        "evidence": "launchctl print: state=running, pid=1046, /bin/zsh, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.observatory-server",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "observatory",
+        "evidence": "launchctl print: state=running, pid=1022, pyenv python3, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.cell-observatory",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "observatory",
+        "evidence": "launchctl print: state=spawn scheduled, last exit code=1, /bin/bash. Loaded and scheduled but last exit non-zero; no fresh log tail captured this turn to confirm recurring vs one-off."
+      },
+      {
+        "name": "com.balizero.cron-log-sentinel",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "sentinel",
+        "evidence": "launchctl print: state=running, pid=977, /bin/zsh, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.research-sentinel",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "sentinel",
+        "evidence": "launchctl print: state=running, pid=1050, /bin/zsh, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.sentinel",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "sentinel",
+        "evidence": "launchctl print: state=not running, last exit code=0 (pyenv python3). sentinel.log mtime 2026-06-02 00:46 (22MB) confirms recent successful run."
+      },
+      {
+        "name": "com.nuzantara.sentinel-aggregate",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "sentinel",
+        "evidence": "launchctl print: state=not running, last exit code=0, pyenv python3."
+      },
+      {
+        "name": "com.nuzantara.dlq-autopilot",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "dlq",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash (cron idle between ticks; clean last run)."
+      },
+      {
+        "name": "com.balizero.regulatory-watcher.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "regulatory",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/zsh."
+      },
+      {
+        "name": "com.balizero.regulatory-watcher.fix-b-verify",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "regulatory",
+        "evidence": "launchctl print: state=not running, last exit code=(never exited) -- loaded but has never run since load; no KeepAlive. Cannot confirm it ever fires."
+      },
+      {
+        "name": "com.balizero.intel.nightly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "intel",
+        "evidence": "launchctl print: state=running, pid=27658, /bin/zsh, last exit code=0 (currently executing a nightly run)."
+      },
+      {
+        "name": "com.balizero.intel-lake-router.5min",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "intel",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash (5-min cron idle between ticks, clean last exit)."
+      },
+      {
+        "name": "com.balizero.intel-lake.outbox-drain.minute",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "intel",
+        "evidence": "launchctl print: state=not running, last exit code=2. Per-minute drain whose last exit was 2 (non-zero); historically benign stderr noise but not confirmed this turn -> flag."
+      },
+      {
+        "name": "com.balizero.intel-dedup-gateway",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "intel",
+        "evidence": "launchctl print: state=running, pid=1039, /bin/zsh, last exit code=(never exited) -- persistent gateway daemon alive."
+      },
+      {
+        "name": "com.balizero.intel-radar-daily-digest",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "intel",
+        "evidence": "launchctl: state=not running, last exit code=1. But intel-radar-daily-digest.error.log frozen at 2026-04-27 18:00 -> has not fired in ~5 weeks; exit 1 is a stale April result, not a recurring crash. Ambiguous between disabled and broken."
+      },
+      {
+        "name": "com.nuzantara.repomap.15min",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "repomap-branch-cleanup",
+        "evidence": "launchctl print: state=not running, last exit code=0, build_repomap.sh. repomap.log mtime 2026-06-02 01:37 (203KB) confirms 15-min cron firing successfully."
+      },
+      {
+        "name": "com.nuzantara.branch-cleanup.weekly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "repomap-branch-cleanup",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash (weekly cron, clean last run)."
+      },
+      {
+        "name": "com.balizero.wr2.supervisor",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=running, pid=17298, wr2-script-wrapper.sh. last exit code=74 EX_IOERR is a prior worker cycle; daemon currently running with live PID + KeepAlive=true."
+      },
+      {
+        "name": "com.balizero.wr2.carousel-dispatcher",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=running, pid=17324, wr2-carousel-dispatcher-wrapper.sh, KeepAlive=true. last exit code=75 EX_TEMPFAIL from a prior cycle; process alive now."
+      },
+      {
+        "name": "com.balizero.wr2.telegram-gate",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=running, pid=81924, wr2-telegram-gate-wrapper.sh, KeepAlive=true. last exit code=1 prior cycle; running now."
+      },
+      {
+        "name": "com.balizero.wr2.queue-server",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=running, pid=984, /opt/homebrew/bin/python3, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.wr2.pg-proxy",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=running, pid=1044, fly-pg-proxy-wrapper.sh, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.wr2.canva-renderer",
+        "kind": "launchagent",
+        "status": "ROTTO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl: state=spawn scheduled, last exit code=78 EX_CONFIG. ProgramArguments points to .openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh which test -e confirms MISSING; render log frozen at 2026-05-24 22:02. Binary_missing."
+      },
+      {
+        "name": "com.balizero.wr2.canva-apply",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=(never exited). Wrapper wr2-script-wrapper.sh EXISTS, but label has never run since load -> cannot confirm functional."
+      },
+      {
+        "name": "com.balizero.wr2.draft-generator",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, wr2-script-wrapper.sh (wrapper confirmed EXISTS; clean last run)."
+      },
+      {
+        "name": "com.balizero.wr2.topic-selector",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=1, wr2-script-wrapper.sh (exists). Last exit non-zero; no fresh log tail this turn to confirm recurring vs one-off."
+      },
+      {
+        "name": "com.balizero.wr2.image-generator",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=2, wr2-script-wrapper.sh (exists). Non-zero last exit; not confirmed recurring this turn."
+      },
+      {
+        "name": "com.balizero.wr2.deploy-puller",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash (hourly cron, clean last run)."
+      },
+      {
+        "name": "com.balizero.wr2.oracle",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, wr2-cron-wrapper.sh (exists)."
+      },
+      {
+        "name": "com.balizero.wr2.strategos",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, wr2-cron-wrapper.sh."
+      },
+      {
+        "name": "com.balizero.wr2.newsletter",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, wr2-cron-wrapper.sh."
+      },
+      {
+        "name": "com.balizero.wr2.fact-checker",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=(never exited) -- loaded but never fired since load. Wrapper exists; cannot confirm it runs."
+      },
+      {
+        "name": "com.balizero.wr2.ig-scraper.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, Desktop/nuzantara/.venv/bin/python (repo venv present)."
+      },
+      {
+        "name": "com.balizero.wr2.learner-nightly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, wr2-cron-wrapper.sh."
+      },
+      {
+        "name": "com.balizero.wr2.voyager.weekly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, Desktop/nuzantara/.venv/bin/python."
+      },
+      {
+        "name": "com.balizero.wr2.reflexion.weekly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, Desktop/nuzantara/.venv/bin/python."
+      },
+      {
+        "name": "com.balizero.wr2.plist-watchdog",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl: last exit code=1 but wr2_plist_watchdog.out.log mtime 2026-06-02 01:33 (654KB, live) -> watchdog actively running; exit 1 reflects a detected-issue return code, not a crash."
+      },
+      {
+        "name": "com.balizero.wr2.canva-oauth-watchdog",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wr2-pipeline",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash."
+      },
+      {
+        "name": "com.balizero.wr3.supervisor",
+        "kind": "launchagent",
+        "status": "ROTTO",
+        "macro_group": "wr3-pipeline",
+        "evidence": "launchctl print: [NOT LOADED] though plist exists on disk. ProgramArguments points to .openclaw/bin/wr3/wr3-supervisor-wrapper.sh; ls confirms the ENTIRE wr3/ dir does not exist. Binary_missing."
+      },
+      {
+        "name": "com.balizero.wr3.yt-metrics.weekly",
+        "kind": "launchagent",
+        "status": "ROTTO",
+        "macro_group": "wr3-pipeline",
+        "evidence": "launchctl: last exit code=127 (command not found). ProgramArguments=.openclaw/bin/wr3/wr3-yt-metrics-run.sh which is MISSING (wr3/ dir absent); wr3-yt-metrics.err 190 bytes mtime 2026-06-01 06:07. Binary_missing."
+      },
+      {
+        "name": "com.balizero.wr3.editorial-bench.monthly",
+        "kind": "launchagent",
+        "status": "ROTTO",
+        "macro_group": "wr3-pipeline",
+        "evidence": "launchctl: last exit code=127. ProgramArguments=.openclaw/bin/wr3/wr3-editorial-bench-run.sh which is MISSING (wr3/ dir absent). Binary_missing."
+      },
+      {
+        "name": "com.balizero.wr3.reflexion.weekly",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "wr3-pipeline",
+        "evidence": "launchctl print: state=not running, program=apps/war-room/.venv/bin/python3, but NO 'last exit code' line emitted (never ran since load). Distinct from other wr3 labels (uses repo war-room venv, not the missing .openclaw/bin/wr3 dir). Unconfirmed."
+      },
+      {
+        "name": "com.balizero.wa-mirror",
+        "kind": "launchagent",
+        "status": "DUPLICATO",
+        "macro_group": "wa-mirror",
+        "evidence": "launchctl print: [NOT LOADED] though plist exists (node --enable-source-maps). Not in launchd; the live WhatsApp mirror is driven by com.balizero.wa-mirror-launcher (state=running pid=10543). This standalone wa-mirror label is superseded/not-bootstrapped."
+      },
+      {
+        "name": "com.balizero.wa-mirror-launcher",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wa-mirror",
+        "evidence": "launchctl print: state=running, pid=10543, /bin/bash, last exit code=0 -- this is the active wa-mirror entrypoint."
+      },
+      {
+        "name": "com.balizero.wa-dashboard-m1",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wa-mirror",
+        "evidence": "launchctl print: state=running, pid=1024, /opt/homebrew/bin/node, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.wa-viewer",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wa-mirror",
+        "evidence": "launchctl print: state=running, pid=1023, /bin/zsh, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.wa-mirror-attention-realtime",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "wa-mirror",
+        "evidence": "launchctl print: state=not running, last exit code=0, wa-mirror-enrichment-wrapper.sh (wrapper confirmed EXISTS)."
+      },
+      {
+        "name": "com.balizero.wa-mirror-auto-promote",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "wa-mirror",
+        "evidence": "launchctl print: state=not running, last exit code=1, pyenv/shims/python3. Non-zero last exit; not confirmed recurring this turn (no fresh log tail)."
+      },
+      {
+        "name": "com.balizero.qdrant.daemon",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "vector-store",
+        "evidence": "launchctl print: state=running, pid=46562, qdrant-daemon-wrapper.sh. ps -p 46562 confirms /opt/homebrew/bin/qdrant alive."
+      },
+      {
+        "name": "com.balizero.indexing-sweep.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "vector-store",
+        "evidence": "launchctl print: state=running, pid=15385, last exit code=0 (was mid-sweep at capture; ps later shows pid exited cleanly -- daily cron executing normally)."
+      },
+      {
+        "name": "com.balizero.mos-plus.qdrant-indexer",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "mos-plus",
+        "evidence": "launchctl print: state=not running, last exit code=0, .claude/venvs/mos-plus/bin/python."
+      },
+      {
+        "name": "com.balizero.mos-plus.compression",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "mos-plus",
+        "evidence": "launchctl print: state=not running, last exit code=0, pyenv python3."
+      },
+      {
+        "name": "com.balizero.post-publish-webhook",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "post-publish",
+        "evidence": "launchctl print: state=running, pid=1010, bali-intel-scraper/.venv/bin/python3, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.post-publish-poller",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "post-publish",
+        "evidence": "launchctl print: state=not running, last exit code=0, bali-intel-scraper/.venv/bin/python3 (venv present)."
+      },
+      {
+        "name": "com.balizero.nb-curator.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "notebooklm-curation",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/zsh."
+      },
+      {
+        "name": "com.nuzantara.nb-intel-delta-watcher.hourly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "notebooklm-curation",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash (hourly cron, clean last run)."
+      },
+      {
+        "name": "com.nuzantara.nb-mitochondrial-monitor.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "mata-garuda",
+        "evidence": "launchctl print: state=not running, last exit code=0, apps/mata-garuda/.venv/bin/python (mata-garuda venv present)."
+      },
+      {
+        "name": "com.balizero.translate.hourly",
+        "kind": "launchagent",
+        "status": "ROTTO",
+        "macro_group": "translation",
+        "evidence": "launchctl: last exit code=1. translate-hourly.log mtime 2026-06-02 01:30 tail = '[ERROR] Model gemma4:26b not found. Available: qwen3.5:9b, qwen2.5vl:7b, bge-m3:latest'. Fails every hour -- required Ollama model absent on Pro."
+      },
+      {
+        "name": "com.balizero.nextdns-tamper-detect.weekly",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "security-hr",
+        "evidence": "launchctl: last exit code=1. nextdns-tamper-detect.err 64 bytes mtime 2026-06-01 01:00 (ran weekly, wrote to stderr). Exit 1 may be a legit 'tamper detected'/no-config return rather than a crash; 64-byte err not inspected this turn -> flag."
+      },
+      {
+        "name": "com.nuzantara.automap-server",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "automap",
+        "evidence": "launchctl print: state=running, pid=970, pyenv python3, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.automap-telegram",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "automap",
+        "evidence": "launchctl print: state=running, pid=993, pyenv python3, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.prime-tunnel",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "tunnels",
+        "evidence": "launchctl print: state=running, pid=968, /opt/homebrew/bin/cloudflared, last exit code=(never exited)."
+      },
+      {
+        "name": "com.balizero.prime-tunnel",
+        "kind": "launchagent",
+        "status": "DUPLICATO",
+        "macro_group": "tunnels",
+        "evidence": "launchctl print: [NOT LOADED]; PlistBuddy on $HOME/Library/LaunchAgents/com.balizero.prime-tunnel.plist reports 'plist MISSING ON DISK'. The functional tunnel is com.nuzantara.prime-tunnel (pid=968). This balizero-namespaced label is a stale census artifact / superseded duplicate."
+      },
+      {
+        "name": "com.balizero.profile-monitor-wrapper",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "monitors",
+        "evidence": "launchctl print: state=running, pid=1028, scripts/profile-monitor/.venv/bin/python, last exit code=(never exited)."
+      },
+      {
+        "name": "com.nuzantara.disk-monitor",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "monitors",
+        "evidence": "launchctl print: state=not running, last exit code=0, scripts/disk-monitor.sh."
+      },
+      {
+        "name": "com.nuzantara.cpu-monitor",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "monitors",
+        "evidence": "launchctl print: state=not running, last exit code=0, scripts/cpu-monitor.sh."
+      },
+      {
+        "name": "com.balizero.audit-launchd.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "monitors",
+        "evidence": "launchctl: last exit code=1 but audit-launchd-daily.log mtime 2026-06-01 02:00 (2899 bytes) -> audit ran and produced a report; exit 1 reflects 'issues found' return code, script (scripts/audit-launchd-daily.sh) confirmed EXISTS."
+      },
+      {
+        "name": "com.nuzantara.codex-spark-loop",
+        "kind": "launchagent",
+        "status": "MAI_USATO",
+        "macro_group": "codex-autonomy",
+        "evidence": "launchctl print: [NOT LOADED]. plist exists on disk (ProgramArguments=/bin/bash scripts/cron-runner.sh) but is not bootstrapped into launchd -> never scheduled/run in current session."
+      },
+      {
+        "name": "com.nuzantara.codex-overnight-runner",
+        "kind": "launchagent",
+        "status": "MAI_USATO",
+        "macro_group": "codex-autonomy",
+        "evidence": "launchctl print: [NOT LOADED]. plist on disk (ProgramArguments=/bin/bash scripts/cron-runner.sh) not in launchd -> never runs."
+      },
+      {
+        "name": "com.nuzantara.codex-autofix-ci",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "codex-autonomy",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash (loaded cron, clean last run)."
+      },
+      {
+        "name": "com.balizero.client-value-predictor",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "crm-analytics",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash."
+      },
+      {
+        "name": "com.balizero.renewal-alerts",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "crm-analytics",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash."
+      },
+      {
+        "name": "com.balizero.seo-cell.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "seo",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash."
+      },
+      {
+        "name": "com.balizero.competitor-monitor.monthly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "competitor-intel",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/zsh."
+      },
+      {
+        "name": "com.balizero.domain-mesh.foundations.daily",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "domain-mesh",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash."
+      },
+      {
+        "name": "com.balizero.cicatrix-rotation.monthly",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "maintenance",
+        "evidence": "launchctl print: state=not running, last exit code=0, /usr/bin/env."
+      },
+      {
+        "name": "com.balizero.agent-library-evolver.weekly",
+        "kind": "launchagent",
+        "status": "INCERTO",
+        "macro_group": "agent-evolution",
+        "evidence": "launchctl print: state=not running, last exit code=2, /bin/bash. Non-zero last exit (matches known worktree-sharing scar W-series); not re-confirmed via log this turn -> flag."
+      },
+      {
+        "name": "com.cell.metabolic-rollup",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "cell-organism",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash."
+      },
+      {
+        "name": "com.cell.organism",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "cell-organism",
+        "evidence": "launchctl print: state=running, pid=9380, /bin/bash. last exit code=1 is a prior child cycle; organism.stderr.log mtime 2026-06-02 01:38 (38MB, actively growing) + KeepAlive=true confirm the daemon is alive and looping now."
+      },
+      {
+        "name": "com.nuzantara.zombie-hunter",
+        "kind": "launchagent",
+        "status": "OPERATIVO",
+        "macro_group": "maintenance",
+        "evidence": "launchctl print: state=not running, last exit code=0, /bin/bash."
+      }
+    ],
+    "gaps": [
+      "No cron auto-cleans broken NOT-LOADED/missing-wrapper plists: wr3.* labels point to .openclaw/bin/wr3/ which no longer exists, yet the plists linger (manual launchctl bootout + rm needed).",
+      "Dependency drift is undetected at the daemon level: federation-alert-dispatcher (orjson) and organism.control-panel (uvicorn) crash on import every spawn with no alert surfacing — only discoverable by tailing 20MB+ err logs.",
+      "Ollama model presence not validated before translate.hourly runs: it fails every hour because gemma4:26b was never re-pulled on Pro (only qwen3.5:9b/qwen2.5vl:7b/bge-m3 present). No pre-flight model check.",
+      "Duplicate/namespace-orphan labels (com.balizero.prime-tunnel with missing plist, com.balizero.wa-mirror superseded by wa-mirror-launcher) sit in the census with no dedup reconciliation between com.nuzantara.* and com.balizero.* namespaces.",
+      "Several loaded labels show last exit=(never exited) i.e. never ran since load (wr2.canva-apply, wr2.fact-checker, regulatory-watcher.fix-b-verify) — no watchdog flags cron that has a schedule but has produced zero runs."
+    ]
+  },
+  {
+    "zone": "chain-mcp workflow chains (apps/nuzantara-mcp/nuzantara_mcp/workflows/chains.py)",
+    "summary": "8 deterministic multi-step \"autopilot\" workflow chains exposed as MCP tools by the nuzantara-mcp server: each chains 5-8 sequential HTTP calls to the backend-rag API (CRM, intel, compliance, journey, analytics, comms) with IF/THEN branching, notification dedup, optional NotebookLM grounding, and LAM reflection — no LLM in the loop. NOTE: the task brief's \"17 chains\" does not exist in the codebase; there is exactly ONE chain registry with 8 chains (no separate chain_onboarding — it is chain_new_client_onboarding). All 8 are code-complete, registered, and tool-reachable, but NO live scheduler currently invokes them (backend scheduler caller disabled, OpenClaw live cron has 0 chain jobs).",
+    "entities": [
+      {
+        "name": "chain_daily_ops_autopilot",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:152-293 @mcp.tool(), 6 fully-implemented steps (expiry alerts->WA reminders, agent health, critical intel->auto-articles, team metrics, NLM grounding, email report) with real _call_safe/_write_safe backend calls + _should_notify dedup + _reflect_and_save. AST parse: 1 of 8 chain_ AsyncFunctionDef. py_compile OK. register_chains() called at server.py:254. test_chains.py 12/12 passed (31.98s). Reachable as mcp__nuzantara-mcp__chain_daily_ops_autopilot. GAP: only live backend caller autonomous_scheduler.py:751-757 is enabled=False ('BUG calls localhost:8000=itself, migrated to OpenClaw') and OpenClaw cron/jobs.json has 0 chain jobs -> no autonomous invocation currently."
+      },
+      {
+        "name": "chain_new_client_onboarding",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:299-509 @mcp.tool(), 8 steps (idempotent CRM create w/ email-dedup check, KBLI search, zone check, pricing-based visa determination w/ keyword fallback, Drive folder, practice, execution plan, multi-channel welcome+log) all wired to backend endpoints. py_compile OK, in test_chains.py suite (12/12 pass), tool-reachable. GAP: its only backend consumer whatsapp_onboarding_detector.py:180-214 _trigger_onboarding_chain is a STUB — logs 'Would trigger chain_new_client_onboarding' and returns a mock {'status':'queued'} dict, never invokes the chain (comment line 204-205: 'placeholder that would need to be connected to actual MCP invocation')."
+      },
+      {
+        "name": "chain_practice_lifecycle_check",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:515-683 @mcp.tool(), no-arg chain, fetches /api/crm/practices (limit 500), computes days_to_expiry/days_past_expected/days_in_status from DB fields, 4 rules (renewal-needed PATCH+portal msg <90d, blocked-overdue warning, waiting_documents>7d WA reminder, submitted>14d email escalation) + completion-rate check, _reflect_and_save. py_compile OK, test_chains.py 12/12. Tool-reachable. GAP: described as 'ogni 6h' in OpenClaw playbook/08-routing.md but absent from live OpenClaw cron/jobs.json (4 jobs, none a chain)."
+      },
+      {
+        "name": "chain_intel_pipeline",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:689-807 @mcp.tool(), default sources [kemenkumham,pajak.go.id,oss.go.id], 5 steps: POST /api/intel/scraper/submit -> asyncio.sleep(10) -> review /api/intel/staging/pending -> per-item significance assessment via direct Gemini 2.0-flash REST call (cost-optimized vs full RAG, with /api/agentic-rag/query fallback) -> auto-approve+compose if conf>0.6 -> metrics. py_compile OK, test_chains.py 12/12, tool-reachable. GAP: on-demand only, no live scheduler entry in OpenClaw jobs.json."
+      },
+      {
+        "name": "chain_weekly_report",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:813-914 @mcp.tool(), gathers 10 sections sequentially (client_stats, completion_rates, revenue, response_times, sla, query_analytics, team_productivity, burnout, intel_trends, agents_status), compiles markdown summary, optional _NB_INTEL_ID NLM grounding, sends via /api/zoho/emails, _reflect_and_save. py_compile OK, test_chains.py 12/12, tool-reachable. GAP: 'Lun 09:00' per playbook but active cron-agent-prompts/weekly-review.txt has NO chain_ reference (chain only in backup/) and OpenClaw jobs.json has no weekly-report chain job."
+      },
+      {
+        "name": "chain_client_health_monitor",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:920-1032 @mcp.tool(), no-arg: runs client-value-predictor, iterates active clients (limit 200) for re-engagement (risk>70 or inactive>30d) + VIP birthday greetings (ltv>80), processes stalled practices, optional NLM churn analysis, _reflect_and_save. py_compile OK, test_chains.py 12/12, tool-reachable. GAP: active cron-agent-prompts/client-health-monitor.txt has NO chain_ reference (only backup/client-health-monitor.txt:3 'mcporter call nuzantara-mcp.chain_client_health_monitor'); no live OpenClaw cron job."
+      },
+      {
+        "name": "chain_compliance_autopilot",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:1038-1176 @mcp.tool(), args notify_critical/auto_create_practices: fetches CRITICAL + URGENT /api/agents/compliance/alerts, multi-channel notify (WA+email+portal via per-client lookup) for CRITICAL, portal reminders for URGENT, optional renewal-practice creation, RDTR zone-drift check via /api/prime/v2/health, _reflect_and_save. py_compile OK, test_chains.py 12/12, tool-reachable. Historical run evidence in OpenClaw memory/2026-03-08.md & 2026-03-09.md ('Fonte: chain_compliance_autopilot'). GAP: last live runs March 2026; active compliance-ops.txt has NO chain_ ref, OpenClaw jobs.json has 0 chain jobs -> not currently auto-invoked."
+      },
+      {
+        "name": "chain_journey_accelerator",
+        "kind": "chain-mcp",
+        "status": "OPERATIVO",
+        "macro_group": "nuzantara-mcp deterministic workflow chains",
+        "evidence": "chains.py:1182-1322 (EOF) @mcp.tool(), args client_id/journey_type: idempotent journey create (reuse-if-exists), pricing calc (service_map pt_pma/kitas/property_due_diligence), Drive folder, compliance deadline tracking (deadline_map per type), dedup welcome msgs, submits monitoring task to /api/generals/tasks. py_compile OK, test_chains.py 12/12, tool-reachable. GAP: on-demand only, no live scheduler invocation (absent from OpenClaw jobs.json)."
+      }
+    ],
+    "gaps": [
+      "DISCREPANCY vs task brief: the task referenced '17 chains' and listed names like 'onboarding' and 'new-client-onboarding' separately — empirically there are exactly 8 chains in ONE registry (chains.py); 'onboarding' = chain_new_client_onboarding (single tool). No 17-chain registry exists anywhere (grep across apps/ for 'async def chain_' returns only these 8 + .venv library noise).",
+      "NO LIVE AUTONOMOUS INVOCATION of any chain currently. The OpenClaw playbook (08-routing.md) and STU"
+    ]
+  }
+]

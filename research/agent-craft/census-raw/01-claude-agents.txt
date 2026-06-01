@@ -1,0 +1,69 @@
+# Agenti ~/.claude/agents/ (34)
+## backend-verifier
+description: Use when need to verify Nuzantara backend health, run pytest, check Fly deploy status, audit router/service registration. Read-only by default — escalate to Antonello 
+## client-case-quote-generator
+description: Generates a Bali Zero internal-print A4 PDF client quote (visa/property/tax/regulatory) covering cost, timeline, risk, deliverables, and pricing. Loads `bali-zero-bran
+## competitor-monitor
+description: Monthly digest of Bali Zero's three direct competitors (Lets Move Indonesia, Emerhub, Flado) on web + Instagram. Detects positioning shifts, pricing changes, content t
+## deep-researcher
+description: Multi-LLM deep research agent for client cases and policy questions. Coordinates Claude Opus (synthesis), Gemini 3.1 Pro free OAuth (long-context source ingestion), De
+## devils-advocate
+description: "Red-team contrarian agent. Receives a finished dossier/research/quote/strategy and tries to DESTROY its assumptions. System prompt: \"find the legal flaw, the tax mis
+## email-template-builder
+description: Generates Brevo HTML email templates compliant with `bali-zero-brand` surface=email-template. Hardcoded `from=zantara@balizero.com` per CLAUDE.md global rule. Loads br
+## frontend-browser
+description: Use when need to QA frontend after deploy — visit kita.balizero.com / my / prime / mouth / web subdomains, verify HTTP status, brand consistency, no broken elements. B
+## hr-companion
+description: Bali Zero HR companion — autonomous assistant for all HR matters (handbook lookup, leave requests, policy questions, onboarding/offboarding workflows, performance revi
+## mcp-health
+description: Use when need to verify 8+ MCP servers reachable, audit MCP integrity hash baseline, diagnose failed-connection reports. Read-only diagnose only — restart actions esca
+## nb-curator
+description: NotebookLM inventory steward. Recommends which NB(s) to query for a given question, detects inventory gaps (e.g., "no NB covers Permenaker post-2025"), maintains healt
+## regulatory-watcher
+description: Daily watcher over NB-INTEL family + web for new Indonesian regulations (Permenkumham, PMK, PP, Perpres, UU, Peraturan BKPM, Permenaker, Permenkes) affecting Bali Zero
+## spalla-review
+description: Use for code review co-pilot (alternative to devils-advocate). Read PR diff, comment constructively on architecture, naming, edge cases, security. Less adversarial tha
+## wr2-brief-interpreter
+description: MUST BE USED by wr2-design-architect at Step 2 of every carousel run. Use IMMEDIATELY when orchestrator passes a topic + research report. Queries NotebookLM Bali Zero 
+## wr2-critic
+description: MUST BE USED by wr2-design-architect at Step 5 of every carousel run as the mandatory quality gate. Use IMMEDIATELY after Playwright renders PNGs. Reviews rendered car
+## wr2-design-architect
+description: "MUST BE USED for every Bali Zero WR2 editorial carousel. Use IMMEDIATELY when user says \"design a carousel for [topic]\", \"draft a WR2 brief\", or invokes the WR2 p
+## wr2-external-bench
+description: "Monthly external benchmark for Bali Zero IG carousel design. Researches state-of-the-art editorial IG carouseli from 12 reference brands (NYT, FT, Reuters Pictures, W
+## wr2-ig-metrics-analyst
+description: Weekly analyst that reads Instagram engagement metrics (from `_ig-metrics-scraper.py` output) + carousel attributes (domain, register, layout family, hero count, audie
+## wr2-image-prompt-author
+description: Authors original, vivid, editorial image-gen prompts for each hero slide of a WR2 carousel. Reads brief + storyboard + slide context, performs an editorial reading of 
+## wr2-layout-composer
+description: "MUST BE USED by wr2-design-architect at Step 4 of every carousel run. Use IMMEDIATELY after storyboarder returns slides.json. Receives slide-spec JSON + brief JSON ve
+## wr2-storyboarder
+description: "MUST BE USED by wr2-design-architect at Step 3 of every carousel run. Use IMMEDIATELY when brief-interpreter returns its structured brief. Receives the brief verbatim
+## wr3-audio-asset-producer
+description: "MUST BE USED by wr3-design-architect at Step 7+8 AFTER wr3-clip-renderer completes (Veo audio nativo primary path) OR IN PARALLEL (Chatterbox fallback path). Override
+## wr3-b-roll-curator
+description: "Use when wr3-clip-renderer 5.7 execute_fallback or 8.5 b_roll_curator_search triggers. On-demand fallback agent — invoked when Veo 3.1 fails specific shot AND 2 retri
+## wr3-brief-interpreter
+description: "MUST BE USED by wr3-design-architect at Step 1 of every WR3 episode run. Use IMMEDIATELY when orchestrator dispatches with a topic + audience + mode payload. Queries 
+## wr3-clip-renderer
+description: "MUST BE USED by wr3-design-architect at Step 5 ONLY after wr3-pre-render-gatekeeper returns PASS. Use IMMEDIATELY after gate PASS. Submits Veo 3.1 Fast Tier_ONE jobs 
+## wr3-critic
+description: "MUST BE USED by wr3-design-architect at Step 11 as MANDATORY quality gate. Use IMMEDIATELY after wr3-post-assembler emits assembly_ready → critic_verdict transition w
+## wr3-design-architect
+description: "MUST BE USED for every Bali Zero WR3 video episode. Use IMMEDIATELY when user says \"produce WR3 episode for [topic]\", \"run video room\", or \"retry failed episode 
+## wr3-editorial-bench
+description: "Real deep-research pipeline 2026-05-22, multi-LLM cascade agy+Claude+DeepSeek, monthly cron 1st Monday 07:00 WITA via LaunchAgent com.balizero.wr3.editorial-bench.mon
+## wr3-post-assembler
+description: "MUST BE USED by wr3-design-architect at Step 9-10-12 when ALL assets ready (clips/ + audio/ + license-report.json). Use IMMEDIATELY after BOTH wr3-clip-renderer AND w
+## wr3-pre-render-gatekeeper
+description: "MUST BE USED by wr3-design-architect at Step 4 BEFORE any Veo credit spend. Use IMMEDIATELY after wr3-shot-director returns shot-pack.json. Reviews shot-list against 
+## wr3-reflexion-synth
+description: "Weekly cron Sunday 02:30 WITA via LaunchAgent com.balizero.wr3.reflexion.weekly.plist. Reads last 7 days episodes from apps/war-room/output/episode/ + designer-overri
+## wr3-script-editor
+description: "MUST BE USED by wr3-design-architect at Step 2 of every WR3 episode run. Use IMMEDIATELY after wr3-brief-interpreter writes brief.json. Writes 60-90s VO script (scrip
+## wr3-shot-director
+description: "MUST BE USED by wr3-design-architect at Step 3 of every WR3 episode run. Use IMMEDIATELY after script_freeze passes (Step 2.5.1) and brief.json + script.json exist. D
+## wr3-yt-metrics-analyst
+description: "Weekly cron Monday 06:00 WITA via LaunchAgent com.balizero.wr3.yt-metrics.weekly.plist. Reads YouTube Analytics API + IG/TikTok engagement scrape for last 30-90 days 
+## yield-optimizer
+description: Weekly CRM scanner that connects AI to revenue. Identifies clients with renewal/upgrade potential (KITAS expiring, business pivot signal, no recent contact, high engag
