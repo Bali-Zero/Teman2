@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # wa_army_launcher.sh — lancia una sessione-armata Claude Code in tmux da un comando WhatsApp.
 #
-# Registro estendibile: ogni armata è un file <NAME>.txt in army-prompts/.
+# Registro estendibile: ogni armata è un file <NAME>.txt in docs/army-prompts/.
 # Per aggiungere un'armata non serve toccare questo script — basta creare il .txt.
 #
 # Comandi (chiamati dal bridge OpenClaw WhatsApp):
@@ -27,14 +27,14 @@ set -euo pipefail
 # dirottare QUALE script/prompt/binario viene eseguito. Solo LOG_DIR/MODEL restano regolabili
 # (innocui: una dir di log o il nome modello non cambiano cosa-viene-eseguito).
 REPO_ROOT="$HOME/Desktop/nuzantara"
-PROMPTS_DIR="$REPO_ROOT/army-prompts"
+PROMPTS_DIR="$REPO_ROOT/docs/army-prompts"
 CLAUDE_BIN="$HOME/.local/bin/claude"
 WATCHER="$REPO_ROOT/scripts/wa_army_watcher.sh"
 CLAUDE_MODEL="${WA_ARMY_MODEL:-claude-opus-4-8}"
 LOG_DIR="${WA_ARMY_LOG_DIR:-$HOME/Library/Logs/wa-army}"
 
 # Solo nomi-armata che sono basename puri [A-Za-z0-9._-]: niente path traversal, niente
-# argomenti che escono da army-prompts/. (resolve_name + questo guard = doppio fondo.)
+# argomenti che escono da docs/army-prompts/. (resolve_name + questo guard = doppio fondo.)
 _valid_army_name() { [[ "$1" =~ ^[A-Za-z0-9._-]+$ ]]; }
 
 err()  { echo "ERROR $*"; exit 1; }
