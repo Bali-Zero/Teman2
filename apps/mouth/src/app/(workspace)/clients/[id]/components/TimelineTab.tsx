@@ -91,35 +91,38 @@ export function TimelineTab({
 
   if (interactions.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-10 text-center shadow-xl space-y-3">
-        <Clock className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-2 opacity-40" />
-        <p className="text-sm font-medium text-[var(--bz-text-1)]">
-          No interactions recorded yet
-        </p>
-        <p className="text-xs text-[var(--bz-text-2)] opacity-70">
-          Interactions from WhatsApp, Telegram, email, calls, and notes will
-          appear here.
-        </p>
-        {(clientCreatedAt || clientFirstContact) && (
-          <div className="mt-4 flex flex-col items-center gap-2 text-xs text-[var(--bz-text-2)]">
-            {clientCreatedAt && (
-              <span>
-                Client added:{" "}
-                <span className="text-[var(--bz-text-1)]">
-                  {formatDate(clientCreatedAt)}
+      <div className="space-y-4">
+        <AiSummaryCard clientId={clientId} section="timeline" />
+        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-10 text-center shadow-xl space-y-3">
+          <Clock className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-2 opacity-40" />
+          <p className="text-sm font-medium text-[var(--bz-text-1)]">
+            No interactions recorded yet
+          </p>
+          <p className="text-xs text-[var(--bz-text-2)] opacity-70">
+            Interactions from WhatsApp, Telegram, email, calls, and notes will
+            appear here.
+          </p>
+          {(clientCreatedAt || clientFirstContact) && (
+            <div className="mt-4 flex flex-col items-center gap-2 text-xs text-[var(--bz-text-2)]">
+              {clientCreatedAt && (
+                <span>
+                  Client added:{" "}
+                  <span className="text-[var(--bz-text-1)]">
+                    {formatDate(clientCreatedAt)}
+                  </span>
                 </span>
-              </span>
-            )}
-            {clientFirstContact && (
-              <span>
-                First contact:{" "}
-                <span className="text-[var(--bz-text-1)]">
-                  {formatDate(clientFirstContact)}
+              )}
+              {clientFirstContact && (
+                <span>
+                  First contact:{" "}
+                  <span className="text-[var(--bz-text-1)]">
+                    {formatDate(clientFirstContact)}
+                  </span>
                 </span>
-              </span>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
