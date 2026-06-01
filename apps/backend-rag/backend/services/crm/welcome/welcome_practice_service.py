@@ -277,10 +277,10 @@ async def _send_whatsapp(
         logger.debug("PracticeKickoff WA: inactive, skipping practice %d", practice_id)
         return False
 
-    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
-    access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+    phone_number_id = settings.whatsapp_phone_number_id or os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+    access_token = settings.whatsapp_api_token or os.getenv("WHATSAPP_ACCESS_TOKEN")
     if not phone_number_id or not access_token:
-        logger.warning("PracticeKickoff WA: WHATSAPP_PHONE_NUMBER_ID or ACCESS_TOKEN not set")
+        logger.warning("PracticeKickoff WA: WHATSAPP_PHONE_NUMBER_ID or API token not set")
         return False
 
     phone = (client["phone"] or "").strip()
