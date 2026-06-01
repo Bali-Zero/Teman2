@@ -7,6 +7,8 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+---
+
 ### ⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28)
 
 _Discovered: 2026-05-28 09:00 WITA by general-purpose subagent during orchestrator wave-c-ops-triage · Severity: P2 (storage waste, sibling-race surface area increase) · Status: **REPORTED, no enforcement fix yet (broker has no auto-cleanup)**_
@@ -56,6 +58,8 @@ Each had 3-5 "dirty" files (verified by triage agent: all were pure formatting n
 - Cleanup commands executed: orchestrator session 2026-05-28 09:15 WITA (12 `git worktree remove --force` + 6 `git branch -D`)
 - Family: closes part of W59 (sibling-race), opens new structural debt for broker enforcement
 - Related: `docs/runbooks/agent-worktree-broker.md`, `research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`
+
+---
 
 ---
 
@@ -113,6 +117,8 @@ Opzione A è la più chiara (zero magic), B è più ergonomic (auto-cleanup), C 
 
 ---
 
+---
+
 ### 🚨 PENDING APPROVAL (P1 SECURITY): `backend_rag_v2` Postgres role has `rolsuper=t` — demotion spec drafted, awaiting Antonello sign-off (W38, 2026-05-23)
 
 _Discovered: 2026-05-23 ~04:30 WITA by T3.2 read-only `fly ssh console` investigation (closed in cicatrix below). Spec drafted: 2026-05-23 ~07:45 WITA W38 audit · Severity: **P1 SECURITY** · Status: **DRAFT SPEC — NOT EXECUTED — awaiting Antonello approval for any production write**_
@@ -154,62 +160,6 @@ Audit snapshot: `research/operations/audits/2026-05-23-w38-backend-rag-v2-rolsup
 **Reference**: spec `research/operations/specs/W38-backend-rag-v2-nosuperuser.md` (~330 lines, 9 sections), audit snapshot `research/operations/audits/2026-05-23-w38-backend-rag-v2-rolsuper-audit.json`. Parent cicatrix entry (T3.2 resolution) flagged this as discovery: `### ✅ RESOLVED: T3.2 Postgres MCP installato post-panel 3-LLM Hybrid D + 5 empirical discoveries (2026-05-23)` line ~770 of this file. Branch: feature branch then merge to main per L2 Autonomous Ops.
 
 ---
-
----
-
-### ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)
-
-_Discovered: 2026-05-06 22:45 WITA during Symbiosis W1 genome enrollment audit · Severity: P1 · Workaround: TBD (cleanup follow-up PR)_
-
-**TRAUMA:** 13 launchd labels fire SIMULTANEOUSLY on Pro AND Mini:
-
-```
-watcher.daily, reg-alert.30min, kg-linker, wr-topic, wr2-bridge.hourly,
-bridge.adaptive, sentinel.daily, intel-bridge.daily, daily-briefing,
-kita-feed.daily, public-channel, weekly-digest, gap.consumer
-```
-
-Blast radius: `regulation-alert.30min` sends duplicate Telegram alerts; `kg-linker` risks duplicate PG edges; `weekly-digest`/`daily-briefing` sent twice; `intel-bridge.daily` emits 2 distinct Redis entries with same OSINT content. Masked until 2026-05-04 because Mini was offline most of April.
-
-**ANTIBODY (proposed, NOT yet implemented):**
-
-1. Per-organ decision: (a) Pro-only, (b) Mini-only, or (c) leader-election. Default: Pro-only (canonical CRM + API tokens).
-2. `launchctl bootout + rm plist` on losing side; update `organs_registry.yaml`.
-3. Extend `wave1-pro-mini-dup-resolver.sh --resolve` to cover 13 labels.
-4. CI test `test_genome_no_active_active.py` — scan `organs_registry.yaml` for shared labels across hosts, fail if outside explicit allowlist.
-
-**GOTCHA:**
-
-- `organs_registry.yaml` `duplicates_id` is HEADER-ONLY — validator does NOT enforce it.
-- `--check` returns "0 conflicts" when Mini is offline → misleading. Only reliable when Mini is up.
-- Metrics: `items_processed` inflated 2× until cleanup. Dashboard queries: filter by `host_pro_or_mini`.
-- 13th entry `gap.consumer` reported as 12 in topology brief — verify with Zero if dup pair or Pro-only.
-
----
-
----
-
-### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
-
-_Discovered: 2026-05-02 — 3 hotfix PRs (#423, #424) chained on PR #422 because tests were green but live endpoints failed · Severity: P1_
-
-**TRAUMA:** PR #422 added `GET /api/channels/{name}/health` router. Unit tests 4/4 green. On prod:
-
-1. `401` — `HybridAuthMiddleware` blocked path not in `PUBLIC_ENDPOINTS`. Test `_build_app_with_db_pool()` mounted router only, not middleware. Fixed by #423: added 4 entries to `_INFRA` group in `public_endpoints.py`.
-2. `404` — router added to `router_manifest.py` but `router_registration.py` uses explicit imports, not the manifest. Fixed by #424: added `from backend.app.routers import channel_health` (×2) + `api.include_router(channel_health.router)` (×2).
-3. After #424: 200 ✅. Timeline: 11:30 UTC (401) → 12:50 UTC (404) → 14:25 UTC (200).
-
-**ANTIBODY (proposed, NOT yet implemented):**
-
-1. Integration test `tests/integration/test_endpoints_reachable.py` — mount full `create_app()` via `httpx.AsyncClient`, GET every route; `404` → fail; `/health` returning `401` → flag for PUBLIC_ENDPOINTS review.
-2. Manifest-vs-registration parity test `tests/setup/test_manifest_parity.py` — assert every `RouterEntry(name=X)` for `_API`/`_BOTH` has a matching `api.include_router(X.router)` in both include functions.
-3. Extend `tests/test_public_endpoints_registry.py`: routes with `/health`/`/heartbeat` NOT in PUBLIC_ENDPOINTS → warning (not failure); silence with `# health-private: <reason>`.
-
-**GOTCHA:**
-
-- `_build_app_with_db_pool()` is intentionally minimal (no middleware) — correct for unit tests. Bug is absence of complementary integration layer.
-- PR #422 is a regression of PRs #54/#55/#60 (same scar class). The manifest was created to prevent this but only catches symmetric include-function drift, not "manifest entry with zero include_router calls".
-- `HybridAuthMiddleware.__init__` logs `Public Endpoints: N` at startup — grep-able sanity check on Fly machines.
 
 ---
 
@@ -255,41 +205,6 @@ Incident #2 key sequence: Session-A wrote 4 untracked `.py` + 18/18 tests passin
 
 ---
 
-### ⚠️ STRUCTURAL: EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams (2026-04-29)
-
-_Discovered: 2026-04-29 audit · Severity: P0 · Phase 1 SHIPPED PR #342 (`0062090c4`); Phase 2 SHIPPED `feat/p0-2-fase2-callsite-refactor`; Phase 3 (per-handler ack + pruning cron) pending._
-
-**TRAUMA:** `SYMBIOSIS.md` Law 4 promises "Redis Streams + consumer groups". Reality: EventBus uses **PostgreSQL LISTEN/NOTIFY** (`PG_CHANNEL_MAP`: `practice_changed`, `client_changed`, `compliance_alert`, `lkpm_ingest_completed`, `war_room_event`, `intel_event`, `cognitive_event`). When PG listener disconnects (5s window), every NOTIFY is **silently lost** — pg_notify is volatile, no queue.
-
-**ANTIBODY phase 1 (PR #342):**
-
-- New `events_outbox` table (migration 144). `outbox.py` exposes `publish`/`acknowledge`/`replay_unconsumed`/`prune_consumed`. `publish()` writes to outbox + fires `pg_notify($1, $2)` parameterised (**NOT** `quote_ident` — wrong for `pg_notify(text, text)`). `_outbox_id` injected into NOTIFY payload for idempotent ack.
-- `EventBus._replay_outbox_on_reconnect` called after `add_listener`, before keep-alive loop.
-- 20 unit tests (`test_outbox.py` + `test_event_bus_replay.py`).
-- Phase-1 limit: `replay_unconsumed` auto-acks immediately after `dispatch_fn` returns; handler crash = event consumed. Phase 2 fixes.
-
-**ANTIBODY phase 2 (feat/p0-2-fase2-callsite-refactor):**
-
-- `EventBus.emit_pg` delegates to `outbox.publish` (local import, avoids circular init). Any future `emit_pg` call auto-writes to `events_outbox`.
-- Migration `146_eventbus_triggers_use_outbox.sql`: rewrites 6 trigger functions (`notify_practice_change`, `notify_client_change`, `notify_compliance_alert`, `notify_war_room_event`, `notify_intel_event`, `notify_cognitive_event`) to `INSERT INTO events_outbox … RETURNING id` + `pg_notify(channel, payload||{_outbox_id})` inside the user transaction. Idempotent (`CREATE OR REPLACE`). ROLLBACK section restores pre-146 bodies.
-- 12 new tests in `test_outbox_callsite_integration.py`.
-- Channels out of scope: `lkpm_ingest_completed` (Python emitter, no DB trigger — picks up new path via `emit_pg`); `wr2_status_change` (not in PG_CHANNEL_MAP); `partner.commission_changed` (dotted name fails `validate_channel`, not in PG_CHANNEL_MAP — must be renamed `partner_commission_changed` first).
-
-**ANTIBODY phase 3 (pending):** per-handler ack; pruning cron `prune_consumed` daily (30-day retention).
-
-**Decision:** kept PG LISTEN/NOTIFY + Outbox. SYMBIOSIS.md doc update pending (low priority — code-as-truth). Redis Streams migration rejected as too risky for an audit fix.
-
-**GOTCHA:**
-
-- Migration 146 trigger wraps INSERT+NOTIFY in the SAME user transaction — rollback loses both (correct MVCC behavior). Disconnect after commit → outbox row stays unconsumed → replayed on reconnect.
-- Consumers MUST be idempotent on `_outbox_id`. Phase 3 adds per-handler ack; until then `replay_unconsumed` auto-acks on `dispatch_fn` return.
-- **`schema_migrations` is the active runner table (88 rows); `_schema_versions` is legacy (6 rows).** Future agents: always query `schema_migrations` to check migration status.
-- `pg_notify($1, $2)` parameterised = injection-safe. Do NOT add `quote_ident($1)`.
-- `events_outbox` is unbounded until phase 3. Manual: `await prune_consumed(conn, older_than_days=30)`.
-- Migration 146 applies via post-deploy `run-sql-v2-migrations-post-deploy` job — no manual `workflow_dispatch` needed.
-
----
-
 ---
 
 ### ⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29)
@@ -303,18 +218,6 @@ _Discovered: 2026-04-29 audit zero-crash via Codex empirical scan · Severity: P
 **GOTCHA:** `RunAtLoad=true + no schedule` is ambiguous — manual review needed. Each plist gets `.pre-vademecum-audit` backup before patching. **After plist corruption hardening (see next scar): must `chmod u+w "$plist"` before patch scripts can run.**
 
 ---
-
----
-
-### ⚠️ STRUCTURAL: SQL v2 migrations duplicate numbers `129_*` and `130_*` (2026-04-29)
-
-_Discovered: 2026-04-29 audit zero-crash via Codex empirical scan · Severity: P0 · Workaround: rename non-applied duplicate (P0-7)_
-
-**TRAUMA:** `apps/backend-rag/backend/db/migrations_v2/` has TWO files each for numbers `129` and `130`. Runner (`backend/db/migration_manager.py`) tracks via `migration_number` in `_schema_versions` — duplicates cause undefined apply order and silent corruption risk.
-
-**ANTIBODY (proposed):** P0-7 — compare contents + git history, identify which is in `_schema_versions` (applied), rename the unapplied to next-available number. CI guardrail `lint-migration-numbers.yml` prevents regression. Migration runner asserts uniqueness in `discover_migrations()`.
-
-**GOTCHA:** If both have been applied (unlikely): Zero handoff. Renaming changes file hash but not SQL content — apply order must be re-verified.
 
 ---
 
@@ -369,6 +272,8 @@ done
 
 ---
 
+---
+
 ### ℹ️ INFO + LESSON: S1 organism audit 2026-05-31 — three traps in LaunchAgent liveness auditing + a sibling-wipe that erased an uncommitted branch mid-session
 
 _Discovered during the S1 organism/LaunchAgent empirical audit (167 com.{nuzantara,balizero,cell} plist) · Severity: INFO (audit-method + one ops near-miss) · Status: audit shipped PR #982 (research/operations/2026-05-31-organism-truth-FROZEN.json + report)._
@@ -403,6 +308,8 @@ _Discovered during the S1 organism/LaunchAgent empirical audit (167 com.{nuzanta
 ## Archived
 
 Resolved scars moved to [`cicatrix-scars-archive.md`](./cicatrix-scars-archive.md) (not auto-loaded per session). Currently archived:
+
+**Archived 2026-06-01 sweep (4 scars, RESOLVED-de-facto, empirically re-verified 2026-06-01 via 4-subagent fan-out — mata_garuda active-active (Pro23/Mini5 ZERO overlap bidirectional), test-infra mock≠prod (all 3 antibody tests shipped), EventBus Phase-3 (per-handler ack + daily/weekly prune cron + SYMBIOSIS.md updated), migrations 129/130 dup (0 dup/89 files, 4-layer lint guard)).** The 5 STRUCTURAL kept active are all PARTIALLY-FIXED with live residue: W62 (GC daemon shipped, missing CI test), evolver/puller (shared-path coupling + benign hourly `fatal`), untracked-files (no WIP daemon — broker+GC+stop_verify mitigate), 53-launchagents (37/192 KeepAlive, post-publish-poller correctly bare per W61), unknown-agent-plist (0 corrupted/recurrence, fs_usage trap OFF, 102/192 still 0644).
 
 **Archived 2026-05-31 sweep (6 scars, RESOLVED/INFO 2026-05-26→05-29 — W57 wa-mirror self-heal, W58 openclaw 2-profile cascade, W60 Fly api flap, W61 dlq retry-storm, W63 nested-worktree, Canva-headless REVERSAL):** grep archive by W-number.
 
