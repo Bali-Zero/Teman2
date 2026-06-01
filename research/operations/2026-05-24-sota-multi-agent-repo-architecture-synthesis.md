@@ -40,6 +40,7 @@ implementation_status:
   - L4 Repomap cron + branch cleanup — PR #854 MERGED 2026-05-25 (scripts/build_repomap.sh on main)
 update:
   - 2026-05-28 postscript appended — companion deep-research 2026-05-28-sota-multi-agent-repo-arch-update.md
+  - 2026-06-02 S16 — ORCHESTRATION-topology axis (orthogonal to this repo-arch doc): 2026-06-02-sota-multiagent-orchestration.md + 2026-06-02-sota-multiagent-FROZEN.json
 ---
 
 # SOTA Architettura Repo + Workflow AI-Dev (Nuzantara) — Sintesi 4-LLM Panel
