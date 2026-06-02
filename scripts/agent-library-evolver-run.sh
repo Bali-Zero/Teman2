@@ -66,6 +66,31 @@ RUN_TS="$(date +%Y-%m-%dT%H:%M:%S%z)"
 RUN_TELEMETRY_DIR="${TELEMETRY_DIR}/${RUN_DATE}"
 DRY_RUN="0"
 
+# ─── S13-P6b (2026-06-02): return-to-branch guard ────────────────────
+# evoskill (vendor/evoskill ProgramManager) does native git checkout of
+# program/* branches INSIDE REPO_ROOT and can leave the worktree parked
+# on a program/* branch when it exits (incl. on FATAL). In production
+# REPO_ROOT is the deploy worktree pinned to deploy/main; a left-over
+# program/* checkout breaks the next wr2-deploy-pull (wrong-branch gate).
+# This trap restores deploy/main on EXIT, but ONLY when (a) REPO_ROOT is
+# a git tree and (b) it was left on a program/* branch — so it never
+# touches a feature/test worktree on its own branch.
+_restore_deploy_branch() {
+    git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+    local cur
+    cur="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    case "${cur}" in
+        program/*)
+            if git -C "${REPO_ROOT}" rev-parse --verify --quiet deploy/main >/dev/null 2>&1; then
+                git -C "${REPO_ROOT}" checkout deploy/main >/dev/null 2>&1 \
+                    && log "return-to-branch guard: restored deploy/main (was ${cur})" \
+                    || log "WARN: return-to-branch guard failed to restore deploy/main from ${cur}"
+            fi
+            ;;
+    esac
+}
+trap _restore_deploy_branch EXIT
+
 # ─── CLI parsing ─────────────────────────────────────────────────────
 
 usage() {
