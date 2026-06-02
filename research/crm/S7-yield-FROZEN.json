@@ -1,0 +1,116 @@
+{
+  "session": "S7-crm-yield-mining",
+  "generated_at_utc": "2026-06-02T15:47:00Z",
+  "machine": "Pro (Nuzantara)",
+  "privacy": {
+    "law": "SYMBIOSIS Law 2 + UU PDP (Indonesian GDPR)",
+    "rule": "This file contains ONLY aggregate counts and internal team-owner routing. ZERO client PII (no names, passport, phone, email, client_ids). Per-client PII lives only in the gitignored local staging dir ~/.nuzantara-staging/s7-yield/ and was drafted exclusively by LOCAL Ollama qwen3.5:9b. No client data ever reached a cloud LLM.",
+    "drafting_llm": "ollama qwen3.5:9b (local, localhost:11434)",
+    "outreach": "DRAFT ONLY — nothing sent. Ops team reviews and sends manually (SYMBIOSIS Law 5)."
+  },
+  "universe": {
+    "gross_clients_rows": 11702,
+    "actionable_not_deleted": 1450,
+    "archived_or_deleted_imports": 10252,
+    "note": "The headline '11.699 clienti' is the gross import count; the revenue-actionable universe is the 1,450 non-deleted clients (10,252 rows are soft-deleted legacy imports).",
+    "status_breakdown": { "prospect": 646, "active": 638, "lead": 153, "inactive": 13 },
+    "client_type_breakdown": { "individual": 1419, "company": 28, "Corporate": 3 },
+    "practices_total": 444,
+    "practices_date_span": "2026-01-21 .. 2026-06-01",
+    "clients_with_any_practice": 344,
+    "clients_with_paid_practice": 352,
+    "total_quoted_pipeline_value_idr": 4012800000,
+    "clients_whatsapp_linked": 665
+  },
+  "data_coverage_caveats": [
+    "last_interaction_date populated for only 338/1450 clients — recency signals are partial.",
+    "client_preferences.language essentially empty (1448 null) — draft language inferred from nationality.",
+    "practices table only spans ~4.5 months (Jan-Jun 2026) — NO practice-age dormancy exists yet; classic 'dormant high-value (6mo+)' segment is genuinely 0, not a bug.",
+    "practice next_renewal_date / expiry_date have 0 rows due within 90d — renewal pipeline is driven by clients/visa expiry columns via client_expiry_alerts_view, not by practices."
+  ],
+  "segments": [
+    {
+      "id": "S1",
+      "label": "Visa/KITAS renewal pipeline (permit expiring 0-90d)",
+      "distinct_clients": 61,
+      "priority": "P0 — time-sensitive, highest conversion",
+      "pitch_type": "renewal + KITAP eligibility check",
+      "expiry_buckets": { "d0_30": 18, "d31_60": 21, "d61_90": 28 },
+      "owner_routing_doc_level": { "ari.firda": 28, "surya": 12, "adit": 10, "krisna": 9, "sahira": 5, "vino": 2, "damar": 1 }
+    },
+    {
+      "id": "S2",
+      "label": "Expired-permit win-back (visa/kitas/e-visa already expired)",
+      "distinct_clients": 67,
+      "priority": "P0 — overstay/penalty risk, urgent recovery",
+      "pitch_type": "re-activation before penalties accrue",
+      "owner_routing_doc_level": { "adit": 12, "vino": 11, "krisna": 11, "sahira": 11, "ari.firda": 9, "surya": 8, "damar": 4, "dea": 3, "rina": 1 }
+    },
+    {
+      "id": "S3",
+      "label": "Passport expiring 0-180d (blocks future visa work)",
+      "distinct_clients": 9,
+      "priority": "P2 — proactive, unblocks downstream visa revenue",
+      "pitch_type": "early passport renewal advisory"
+    },
+    {
+      "id": "S4",
+      "label": "Active client, no contact 120d+ (relationship health / re-engagement)",
+      "distinct_clients": 403,
+      "priority": "P1 — large re-engagement pool among 638 active clients",
+      "pitch_type": "check-in + needs discovery",
+      "owner_routing_client_level": { "krisna": 76, "adit": 68, "ari.firda": 59, "vino": 49, "sahira": 37, "damar": 32, "surya": 30, "dea": 24, "unassigned": 18, "ruslana": 8, "rina": 1, "ari": 1 }
+    },
+    {
+      "id": "S5",
+      "label": "Corporate (NPWP/NIB on file) with ZERO practice (tax & compliance expansion)",
+      "distinct_clients": 286,
+      "priority": "P1 — high-LTV: monthly tax retainer, LKPM, SPT, bookkeeping",
+      "pitch_type": "monthly tax & compliance retainer"
+    },
+    {
+      "id": "S6",
+      "label": "WhatsApp-warm (message <60d) with no practice (warm conversion)",
+      "distinct_clients": 30,
+      "priority": "P1 — warm intent, no commitment yet",
+      "pitch_type": "convert enquiry to concrete service plan"
+    },
+    {
+      "id": "S7",
+      "label": "Unconverted prospects/leads (status prospect|lead, no practice)",
+      "distinct_clients": 712,
+      "priority": "P3 — large top-of-funnel; nurture, not 1:1 pitch (ops bandwidth)",
+      "pitch_type": "nurture sequence / qualification (NOT in weekly cap-20 drafting)"
+    },
+    {
+      "id": "S8",
+      "label": "Repeat buyers (2+ paid practices) — loyalty/premium tier",
+      "distinct_clients": 47,
+      "priority": "P2 — proven payers, upsell to retainer/priority",
+      "pitch_type": "priority/retainer arrangement"
+    }
+  ],
+  "language_distribution_top": {
+    "Italian": 275, "English_proxy": 281, "Indonesian": 102, "Spanish": 77,
+    "Russian_Ukrainian": 114, "French": 61, "German": 51, "Dutch": 23, "null": 177,
+    "note": "English_proxy aggregates Australian/British/American/etc. RU/UA clients drafted in English as lingua franca. Italian is the single largest nationality (owner is Italian)."
+  },
+  "weekly_recommendation": {
+    "drafting_cap": 20,
+    "priority_order": ["S1", "S2", "S6", "S5", "S8", "S4", "S3"],
+    "excluded_from_1to1_drafting": ["S7"],
+    "rationale": "Cap 20/week per ops bandwidth (yield-optimizer rule 4). Lead with the two P0 time-sensitive expiry segments (S1+S2 = 128 clients), then warm/expansion. S7 (712 leads) is a nurture-funnel concern, not weekly 1:1 drafting."
+  },
+  "estimated_opportunity": {
+    "basis": "Illustrative only — no per-client value modelling (CRM lifetime_value sparse).",
+    "p0_time_sensitive_clients": 128,
+    "tax_expansion_clients": 286,
+    "comment": "S1+S2 (128) are renewal/recovery with near-certain need. S5 (286 corporate w/o practice) is the largest untapped recurring-revenue pool (monthly tax retainers)."
+  },
+  "reproducibility": {
+    "segment_sql": "scripts/s7_yield_draft_local.py (SEGMENTS dict — each segment has canonical SQL)",
+    "spec": "research/crm/S7-yield-signals-spec.md",
+    "db_role": "nuzantara_readonly (read-only) via pg-proxy localhost:15432, db nuzantara_rag",
+    "expiry_source_view": "client_expiry_alerts_view"
+  }
+}
