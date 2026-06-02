@@ -1,0 +1,27 @@
+<svg viewBox="0 0 240 400" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <clipPath id="glassInner">
+      <path d="M48 40 L192 40 L175 330 Q173 340 162 340 L78 340 Q67 340 65 330 Z"/>
+    </clipPath>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9fd0e6" stop-opacity="0.40"/>
+      <stop offset="100%" stop-color="#5e93ad" stop-opacity="0.30"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#glassInner)">
+    <path d="M52 188 Q92 176 122 184 Q152 192 188 180 L188 350 L52 350 Z" fill="url(#water)"/>
+    <path d="M52 188 Q92 176 122 184 Q152 192 188 180" fill="none" stroke="#cfeefb" stroke-width="3" opacity="0.9"/>
+    <line x1="74" y1="210" x2="84" y2="320" stroke="#ffffff" stroke-width="5" opacity="0.20" stroke-linecap="round"/>
+  </g>
+  <path d="M42 36 L198 36 L178 332 Q175 348 160 348 L80 348 Q65 348 62 332 Z"
+        fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+  <ellipse cx="120" cy="36" rx="78" ry="9" fill="none" stroke="currentColor" stroke-width="3.5"/>
+  <circle cx="120" cy="18" r="6" fill="var(--accent)"/>
+  <g stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round">
+    <line x1="120" y1="2" x2="120" y2="9"/>
+    <line x1="138" y1="8" x2="133" y2="13"/>
+    <line x1="102" y1="8" x2="107" y2="13"/>
+  </g>
+  <circle cx="64" cy="250" r="3.2" fill="none" stroke="#cfeefb" stroke-width="2" opacity="0.7"/>
+  <circle cx="184" cy="288" r="2.6" fill="none" stroke="#cfeefb" stroke-width="2" opacity="0.6"/>
+</svg>

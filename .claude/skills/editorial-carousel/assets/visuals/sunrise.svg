@@ -1,0 +1,20 @@
+<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- horizon -->
+  <line x1="30" y1="232" x2="290" y2="232" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- sun -->
+  <path d="M100 232 A60 60 0 0 1 220 232 Z" fill="var(--accent)" opacity="0.18"/>
+  <path d="M100 232 A60 60 0 0 1 220 232" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+  <!-- rays -->
+  <g stroke="var(--accent)" stroke-width="4" stroke-linecap="round">
+    <line x1="160" y1="120" x2="160" y2="92"/>
+    <line x1="108" y1="138" x2="92" y2="116"/>
+    <line x1="212" y1="138" x2="228" y2="116"/>
+    <line x1="78" y1="186" x2="52" y2="172"/>
+    <line x1="242" y1="186" x2="268" y2="172"/>
+  </g>
+  <!-- reflection dashes -->
+  <g stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.5">
+    <line x1="120" y1="252" x2="200" y2="252"/>
+    <line x1="138" y1="270" x2="182" y2="270"/>
+  </g>
+</svg>

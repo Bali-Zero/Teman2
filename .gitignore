@@ -461,6 +461,7 @@ openclaw
 !.claude/scripts/
 !.claude/hooks/
 !.claude/rules/
+!.claude/skills/
 !.claude/settings.json
 .serena/
 OPENCLAW_MASTER_GUIDE_2026.md

@@ -1,0 +1,20 @@
+<svg viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- phone body -->
+  <rect x="62" y="40" width="116" height="280" rx="22" ry="22"
+        fill="none" stroke="currentColor" stroke-width="3.5"/>
+  <!-- screen -->
+  <rect x="74" y="62" width="92" height="236" rx="8" ry="8"
+        fill="currentColor" opacity="0.06"/>
+  <!-- speaker -->
+  <line x1="104" y1="52" x2="136" y2="52" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <!-- home indicator -->
+  <line x1="104" y1="308" x2="136" y2="308" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <!-- moon (do-not-disturb) -->
+  <path d="M138 150 a34 34 0 1 0 0 60 a26 26 0 0 1 0 -60 Z"
+        fill="var(--accent)" opacity="0.9"/>
+  <!-- little stars -->
+  <g fill="var(--accent)">
+    <circle cx="150" cy="138" r="2.6"/>
+    <circle cx="160" cy="160" r="2"/>
+  </g>
+</svg>
