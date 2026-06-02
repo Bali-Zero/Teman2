@@ -37,7 +37,7 @@ async def _connect_with_retry(dsn: str) -> asyncpg.Connection | None:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             return await asyncpg.connect(dsn, timeout=CONNECT_TIMEOUT_SEC)
-        except (asyncio.TimeoutError, OSError, asyncpg.PostgresError) as e:
+        except (asyncio.TimeoutError, OSError, asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             if attempt == MAX_RETRIES:
                 logger.warning(
                     "connect exhausted %d retries (last error: %s: %s); skipping tick",
