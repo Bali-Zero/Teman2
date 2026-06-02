@@ -41,6 +41,47 @@ mcp = FastMCP(
 )
 
 
+async def _page_snapshot(page: Any) -> dict[str, Any]:
+    """Return a useful page snapshot across Playwright versions."""
+    accessibility = getattr(page, "accessibility", None)
+    snapshot = getattr(accessibility, "snapshot", None)
+    if callable(snapshot):
+        snap = await snapshot()
+        if isinstance(snap, dict):
+            return snap
+
+    return await page.evaluate(
+        """() => {
+            const clean = (value) => (value || "").replace(/\\s+/g, " ").trim();
+            const title = clean(document.title);
+            const text = clean(document.body ? document.body.innerText : "");
+            const headings = Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+              .map((el) => ({
+                role: "heading",
+                level: Number(el.tagName.slice(1)),
+                name: clean(el.innerText || el.textContent),
+              }))
+              .filter((item) => item.name)
+              .slice(0, 50);
+            const links = Array.from(document.querySelectorAll("a[href]"))
+              .map((el) => ({
+                role: "link",
+                name: clean(el.innerText || el.textContent || el.getAttribute("aria-label")),
+                href: el.href,
+              }))
+              .filter((item) => item.name || item.href)
+              .slice(0, 50);
+            return {
+              role: "WebArea",
+              name: title,
+              url: window.location.href,
+              text: text.slice(0, 5000),
+              children: headings.concat(links),
+            };
+        }"""
+    )
+
+
 @mcp.tool
 async def browser_navigate(url: str) -> dict[str, Any]:
     """Navigate to a URL and return {url, title, status}."""
@@ -59,8 +100,7 @@ async def browser_get_page_content(url: str) -> dict[str, Any]:
 async def browser_snapshot(url: str) -> dict[str, Any]:
     """Return the accessibility tree snapshot of a URL."""
     async with browser_manager.get_page(url) as page:
-        snap = await page.accessibility.snapshot()
-        return snap or {}
+        return await _page_snapshot(page)
 
 
 @mcp.tool

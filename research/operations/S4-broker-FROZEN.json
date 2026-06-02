@@ -1,0 +1,145 @@
+{
+  "session": "S4-worktree-broker-enforcement",
+  "date": "2026-06-02",
+  "orchestrator": "claude-opus-4-8",
+  "lane": "infra",
+  "task_id": "s4-broker",
+  "branch": "agent/nuzantara/infra/s4-broker",
+  "base_head": "e66ccd018",
+  "cicatrix": "W62 — Agent worktree broker TTL=60min violated 34× (no auto-cleanup)",
+  "mission": "Make the worktree-per-session broker (scripts/agent_start.py) self-enforcing: TTL was advisory (--cleanup opt-in, no cron, subagents never --release). Result was a worktree storm + sibling-race surface growth + risk of WIP loss.",
+
+  "wip_rescue": {
+    "passo_1_critical": "Inspected all 11 stale worktrees BEFORE any cleanup.",
+    "verdict": {
+      "real_wip_found": 1,
+      "details": [
+        {
+          "worktree": "codex-autofix-ci-runtime",
+          "wip": "scripts/root_guard.py +2 lines (army-prompts whitelist), staged",
+          "fate": "Sibling codex-autofix CI runtime committed it on its own mid-session (commit eecbd1c1f, observed live via reflog HEAD@{0}). Preserved on dedicated rescue branch.",
+          "rescue_branch": "rescue/s4-root-guard-army-prompts-wip",
+          "pushed_to_origin": true,
+          "origin_sha": "eecbd1c1ff75707253fa7d438af7c6b429ec4716"
+        }
+      ],
+      "subsumed_fossils": [
+        {
+          "worktree": "infra-wa-army-launcher",
+          "untracked": [
+            "scripts/wa_army_launcher.sh (6555B)",
+            "scripts/wa_army_watcher.sh",
+            "army-prompts/ (3 SPEC files)"
+          ],
+          "verdict": "SAFE — superseded by feature branch commit 531680763 (launcher hardened 6555B→7783B with OAuth token + headless -p; watcher byte-identical; army-prompts 3 SPEC→21 final). No WIP lost."
+        }
+      ],
+      "metadata_only_safe": [
+        "audit-quote-redteam-2026-05-31",
+        "backend-rag-crm-guardian-observability-hardening",
+        "backend-rag-openclaw-kbli-whatsapp-guard",
+        "codex-coverage-improver-runtime (detached HEAD, clean)",
+        "infra-claude-hooks-pathaware",
+        "infra-gitignore-wa-session-quarantine",
+        "infra-venv-rebuild-script",
+        "ops-autonomous-lab-scaffold"
+      ]
+    },
+    "loss": "ZERO — no git stash without -u was ever run; the one real WIP is committed + pushed.",
+    "note": "Cleanup of the stale worktrees themselves was NOT performed by this session (out of scope: this PR ships the enforcement mechanism; the daily cron will reap them once installed)."
+  },
+
+  "antibodies_shipped": {
+    "1_launchagent_cleanup_daily": {
+      "what": "Daily reaper invoking scripts/agent_start.py --cleanup (WIP-safe + skip-recent safe).",
+      "files": [
+        "infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example",
+        "scripts/agent_worktree_cleanup_cron.sh",
+        "infra/launchagents/install_agent_worktree_cleanup.sh"
+      ],
+      "schedule": "00:15 UTC (08:15 WITA), 15min after WR2 worktree-gc to avoid GC race",
+      "skip_recent_guard": "New: cmd_cleanup skips a TTL-expired-but-clean worktree touched <10min ago (live session). Signal = max(mtime) over worktree dir + .git. Silent skip (exit 0), NOT a WIP failure. Configurable --skip-recent-min N (0 disables). --force bypasses.",
+      "gotcha": "Cron hardcodes the MAIN checkout path; broker resolves WORKTREES_DIR from parents[1] so running from a worktree would scan .worktrees/<wt>/.worktrees/ (nonexistent) and no-op."
+    },
+    "2_orphan_detection_list": {
+      "what": "--list flags ORPHAN for any worktree older than 2× its TTL + prints WARN summary footer.",
+      "file": "scripts/agent_start.py (cmd_list, _is_orphan)",
+      "signal": "created_at (broker canonical age axis, NOT filesystem mtime). Malformed timestamps (age<0) excluded from orphan classification.",
+      "live_smoke": "Verified on real .worktrees/: 6 ORPHAN flagged correctly, fresh s4-broker (11.9min/180 TTL) NOT flagged."
+    },
+    "3_ci_stale_worktree_test": {
+      "what": "tests/integration/test_no_stale_worktrees.py fails CI if any worktree >24h old. Plus broker-hygiene.yml workflow that also runs the previously-CI-orphaned scripts/tests/test_agent_start.py.",
+      "files": [
+        "tests/integration/test_no_stale_worktrees.py",
+        ".github/workflows/broker-hygiene.yml"
+      ],
+      "signal": "created_at primary (24h absolute cap, independent of per-task TTL) + dir-mtime fallback for metadata-less dirs (catches non-broker orphans).",
+      "shared_impl": "find_stale_worktrees() added to agent_start.py so the live guard and --cleanup reason about the same detector (no drift).",
+      "gap_closed": "AUDIT FINDING: no CI workflow previously collected the top-level tests/ tree or scripts/tests/ — the broker's own unit tests never gated any PR. broker-hygiene.yml fixes this."
+    },
+    "4_broker_aware_spawn_convention": {
+      "what": "Documented 3-tier hygiene: explicit --release (preferred) → cron reaper (safety net) → CI gate (final backstop).",
+      "file": "docs/runbooks/agent-worktree-broker.md (+54 lines: auto-cleanup, orphan detection, CI gate, spawn convention)"
+    }
+  },
+
+  "latent_bug_fixed": {
+    "what": ".env.worktree (broker-generated by W59 PR #899, 2026-05-27) was NOT in the WIP ignore-list, so EVERY freshly created worktree read as dirty → cleanup could never reap a clean worktree, and two pre-existing tests were already failing on HEAD.",
+    "fix": "BROKER_GENERATED_FILES frozenset = {.agent-task.json, .env.worktree}; _worktree_has_wip ignores both.",
+    "impact": "Restores the WIP-safe cleanup path to actually function for clean worktrees. This was a silent contributor to the W62 storm (clean worktrees were never auto-eligible)."
+  },
+
+  "tests": {
+    "total": 35,
+    "passing": 35,
+    "files": [
+      "scripts/tests/test_agent_start.py (29)",
+      "tests/integration/test_no_stale_worktrees.py (6)"
+    ],
+    "new_tests": [
+      "test_cleanup_skips_recently_active_expired_clean_worktree",
+      "test_cleanup_removes_expired_clean_idle_worktree",
+      "test_cleanup_skip_recent_disabled_with_zero",
+      "test_list_warns_on_orphan_worktree",
+      "test_list_no_orphan_when_within_2x_ttl",
+      "test_detector_flags_worktree_older_than_24h",
+      "test_detector_ignores_fresh_worktree",
+      "test_detector_uses_created_at_not_dir_mtime",
+      "test_detector_falls_back_to_dir_mtime_without_metadata",
+      "test_detector_empty_when_no_worktrees_dir",
+      "test_no_stale_worktrees_in_checkout"
+    ],
+    "tdd": "RED-first verified (4 new broker tests failed before implementation), GREEN after.",
+    "verification": {
+      "bash_n": "cron wrapper + install script: OK",
+      "plutil_lint": "plist: OK",
+      "python_parse": "agent_start.py: OK"
+    }
+  },
+
+  "method": {
+    "worktree_isolation": "agent_start.py --lane infra --task-id s4-broker (this session ran in its own isolated worktree)",
+    "fan_out_audit": "2 parallel general-purpose audit agents (ANTIBODY #1 launchagent convention; ANTIBODY #2+#3 list/CI signal choice)",
+    "adversarial": "Codex GPT-5.5 read-only spalla on the staged diff (race/fail-open/cron-mask/CI-bypass/.env.worktree-shadow)"
+  },
+
+  "adversarial_fixes_applied": {
+    "summary": "Codex found 0 P1, 3 P2, 3 P3. 5 fixed, 1 accepted-as-residual.",
+    "P2_wip_before_recent": "FIXED — cmd_cleanup now checks WIP BEFORE recent-activity, so a recent+dirty worktree exits 1 with WARN instead of being silently swallowed as a live session. Test: test_cleanup_recent_AND_dirty_reports_wip_not_silent_skip.",
+    "P2_liveness_gitdir": "FIXED (partial) — liveness probe now also stats the real linked-worktree gitdir HEAD (not just the .git pointer). index deliberately excluded (git status rewrites its mtime → false-active). Lock/lease left as future work; accepted heuristic + 24h CI cap as hard ceiling.",
+    "P2_env_worktree_shadow": "ACCEPTED RESIDUAL (low) — .env.worktree is broker-generated and only ever untracked; an agent overwriting it with secret WIP is an edge case. Documented in code comment; the 24h CI cap still catches a worktree that never gets released.",
+    "P3_ci_strict_missing_metadata": "FIXED — find_stale_worktrees(strict_missing_metadata=True) used by the CI guard reports any metadata-less worktree as unmanaged (no lax dir-mtime escape). Test: test_detector_strict_flags_fresh_metadata_less_dir.",
+    "P3_heartbeat_mask_rc": "FIXED — every organism_heartbeat call in the cron wrapper guarded with || true so it cannot mask the broker RC under set -e.",
+    "P3_workflow_path_filter": "FIXED — broker-hygiene.yml paths now include the cron wrapper, plist, install script, and runbook."
+  },
+
+  "needs_operator": [
+    "Install the cron: bash infra/launchagents/install_agent_worktree_cleanup.sh (ships as .plist.example, NOT auto-bootstrapped).",
+    "Optionally reap the 6 existing ORPHAN worktrees now (--cleanup will skip the WIP ones; --release for the rest).",
+    "Branch protection: broker-hygiene.yml must be added as a required check if PR-time enforcement is desired."
+  ],
+
+  "files_changed": 8,
+  "insertions": 713,
+  "deletions": 10
+}

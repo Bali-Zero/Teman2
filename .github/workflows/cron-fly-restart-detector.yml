@@ -3,6 +3,15 @@ name: cron - fly restart loop detector (every 15 min)
 # Migrated from Pro crontab `*/15 * * * * fly-restart-loop-detector.sh` (2026-04-26).
 # Detects machines NOT in expected state or unhealthy checks across critical Fly apps.
 # Cooldown: 30min per app, persisted via Actions cache.
+#
+# 2026-06-02 (infra/fly-crashloop-autoheal): added auto-recovery. A machine stuck
+# `stopped` after a crashloop (last exit event exit_code != 0) is NOT healthy
+# autostop-idle — a fixing deploy stages the new image but does NOT force-boot a
+# dead machine, so a fixed image can sit unused for hours serving 503s (verified
+# incident 2026-06-02: nuzantara-rag rag worker, fix deployed 23:51Z, never ran
+# until manual `fly machine start`). The detector now force-starts ONLY machines
+# in that crashed-stopped state, with its own cooldown, and alerts on the action.
+# Idle autostop machines (clean stop / exit_code 0) are left untouched.
 
 on:
   schedule:
@@ -42,6 +51,8 @@ jobs:
           touch "$STATE"
           NOW=$(date +%s)
           ALERTS=""
+          # machines to auto-recover, as "app/machine_id" lines (consumed by next step)
+          RECOVER=""
 
           should_alert() {
             local key="$1"
@@ -76,7 +87,23 @@ jobs:
               for c in (m.get("checks") or []):
                   if c.get("status") not in ("passing", None):
                       unhealthy += 1
-          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}")
+          # Crashed-stopped detection: a stopped machine whose most-recent exit
+          # event carries a non-zero exit_code (app crashed), as opposed to a
+          # clean idle autostop (no exit_event / exit_code 0). These are the
+          # machines that will NOT self-recover from a later fixing deploy.
+          crashed = []
+          for m in machines:
+              if m.get("state") != "stopped":
+                  continue
+              last_exit = None
+              for e in (m.get("events") or []):  # events are newest-first
+                  ee = (e.get("request") or {}).get("exit_event") or {}
+                  if "exit_code" in ee and ee.get("exit_code") is not None:
+                      last_exit = ee.get("exit_code")
+                      break
+              if last_exit is not None and last_exit != 0:
+                  crashed.append(m.get("id", "?"))
+          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}")
           PY
           )
             echo "[$app] $SUMMARY"
@@ -91,6 +118,7 @@ jobs:
             TOTAL=$(echo "$SUMMARY" | tr '|' '\n' | grep ^total= | cut -d= -f2)
             BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
             UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
+            CRASHED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^crashed= | cut -d= -f2)
             if [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
               if should_alert "${app}_state"; then
                 ALERTS="${ALERTS}🔴 <b>${app}</b>: $((TOTAL-STARTED))/${TOTAL} machines NOT started (${BAD})"$'\n'
@@ -103,11 +131,23 @@ jobs:
                 mark_alerted "${app}_health"
               fi
             fi
+            # Queue crashed-stopped machines for auto-recovery (own cooldown per machine).
+            if [ "${CRASHED:-none}" != "none" ] && [ -n "${CRASHED}" ]; then
+              for mid in $(echo "$CRASHED" | tr ',' ' '); do
+                if should_alert "${app}_recover_${mid}"; then
+                  RECOVER="${RECOVER}${app}/${mid}"$'\n'
+                  mark_alerted "${app}_recover_${mid}"
+                fi
+              done
+            fi
           done
 
           {
             echo "alerts<<EOF"
             echo "$ALERTS"
+            echo "EOF"
+            echo "recover<<EOF"
+            echo "$RECOVER"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
           if [ -n "$ALERTS" ]; then
@@ -121,17 +161,47 @@ jobs:
           path: ${{ runner.temp }}/cooldown.state
           key: ${{ env.COOLDOWN_KEY }}-${{ github.run_id }}
 
+      # Auto-recover machines stuck stopped after a crashloop. Narrowly scoped:
+      # only machines flagged `crashed` (non-zero exit) by the check step, each
+      # rate-limited by its own cooldown key. A successful fixing deploy + this
+      # force-start = the machine actually runs the new image. Idle autostop
+      # machines are never touched (they are not flagged crashed).
+      - name: Auto-recover crashed machines
+        id: recover
+        if: steps.check.outputs.recover != ''
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          RECOVER: ${{ steps.check.outputs.recover }}
+        run: |
+          set -uo pipefail
+          echo "$RECOVER" | while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            app="${line%%/*}"
+            mid="${line##*/}"
+            echo "Recovering crashed machine ${mid} on ${app}..."
+            if flyctl machine start "$mid" -a "$app" 2>&1; then
+              echo "  -> start issued OK"
+            else
+              echo "  -> start FAILED (will alert)"
+            fi
+          done
+          # Re-read state post-start so the alert reflects what we attempted.
+          echo "recovered=$(echo "$RECOVER" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+
       - name: Telegram alert
-        if: steps.check.outputs.alerts != ''
+        if: steps.check.outputs.alerts != '' || steps.recover.outputs.recovered != ''
         env:
           BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
           ALERTS: ${{ steps.check.outputs.alerts }}
+          RECOVERED: ${{ steps.recover.outputs.recovered }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
+          RECOVER_LINE=""
+          [ -n "${RECOVERED:-}" ] && RECOVER_LINE="🔧 <b>auto-recovered (force-start):</b> ${RECOVERED}"$'\n'
           TEXT="🛫 <b>fly-restart-detector</b>
-          ${ALERTS}
+          ${ALERTS}${RECOVER_LINE}
           Run: ${RUN_URL}"
           curl -sS -m 10 -X POST \
             "https://api.telegram.org/bot${BOT}/sendMessage" \

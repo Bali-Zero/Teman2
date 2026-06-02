@@ -4,36 +4,125 @@
 
 **You MUST identify which machine you are running on at session start.**
 
-Two machines exist on the local network:
+**Three machines** exist on the local network (Tailscale tailnet `balizero`):
 
-| Machine | User             | Hostname      | Role                       |
-| ------- | ---------------- | ------------- | -------------------------- |
-| **Pro** | `nuzantara`      | `Nuzantara`   | Development (48GB, M4 Pro) |
-| **Mini** | `nuzantara`     | `Mini-Pro2`   | Server H24 (24GB, M4 Pro)  |
+| Machine    | User        | Hostname    | Role                                                              |
+| ---------- | ----------- | ----------- | ----------------------------------------------------------------- |
+| **Pro**    | `nuzantara` | `Nuzantara` | Workhorse — dev, DB, Qdrant, Ollama, 169 daemon, deploy (48GB)    |
+| **Mini**   | `nuzantara` | `Mini-Pro2` | Server H24 — Ollama dedicato, cron pesanti (24GB)                 |
+| **Air-M5** | `balizero`  | `Air-M5`    | **THIN-CLIENT dev** — editing + agenti; pesante → `ssh pro`       |
 
 **At every session start, run this check:**
 
 ```bash
 echo "Machine: $(whoami)@$(hostname)" && \
-OTHER=$(if [ "$(hostname)" = "Nuzantara" ]; then echo "mini"; else echo "pro"; fi) && \
+case "$(hostname)" in Nuzantara) OTHER=mini ;; Mini-Pro2) OTHER=pro ;; Air-M5) OTHER=pro ;; *) OTHER=pro ;; esac && \
 ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE" && \
 LOCAL_HEAD=$(git log --oneline -1 2>/dev/null) && \
-REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/nuzantara 2>/dev/null || cd ~/Projects/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
+REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
 if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
 ```
 
 This tells you:
 
-- `whoami` = `nuzantara` → you are on **Pro**
-- `hostname` = `Mini-Pro2` → you are on **Mini**
-- Whether the other machine is reachable via SSH
-- Whether both repos are on the same commit
+- `whoami=nuzantara`, `hostname=Nuzantara` → you are on **Pro** (workhorse)
+- `hostname=Mini-Pro2` → you are on **Mini** (server)
+- `whoami=balizero`, `hostname=Air-M5` → you are on **Air-M5** (**thin-client** — see §0.1 below, it changes everything)
+- Whether the peer machine is reachable, and whether both repos are on the same commit
 
-**Always prefix your first response with which machine you're on**, e.g. "[Pro]" or "[Mini]".
-If the peer is unreachable or out of sync, **warn the user immediately**.
+**Always prefix your first response with which machine you're on**, e.g. "[Pro]", "[Mini]", or "[Air-M5]".
 
-**SSH between machines:** `ssh mini` (from Pro) / `ssh pro` (from Mini) — uses Tailscale.
+> ⚠️ **CRITICAL — peer-unreachable is NOT a license to go local.** On Air-M5 the peer is the **Pro**, and `ssh pro` is the *destination* for all heavy work, not just a git-sync peer. If the session-start git-sync check reports the peer "UNREACHABLE", that means **sync is unverified** — it does **NOT** mean "do the heavy task locally on M5 instead". Heavy work that needs the Pro still routes via `ssh pro`; if `ssh pro` itself fails, **STOP and tell the operator**, do not fall back to a local install. (This was the #1 failure mode in the M5 thin-client audit, 2026-06-02.)
+
+**SSH between machines:** `ssh mini` / `ssh pro` (from any node) — uses Tailscale. From Air-M5: `ssh pro` (alias for `nuzantara@100.107.22.111`).
 See `docs/PRO_AIR_CONNECTION.md` for full details.
+
+---
+
+## 0.1. Air-M5 Thin-Client Routing Map (READ if `hostname=Air-M5`)
+
+**Air-M5 is a THIN-CLIENT.** You edit code, run agents, commit, and do light research **locally** on M5. Everything heavy — inference, vector DB, SQL, rendering, deploy, the 169 daemon — **lives on the Pro** and is reached via `ssh pro` (or `ssh mini`). M5 deliberately does **not** have Ollama, Postgres, Qdrant, `fly`, or the daemon stack.
+
+### HARD RULE R1 — Heavy tools are NEVER installed on M5
+
+Do **NOT** `brew install` / `ollama pull` / compile / `docker run` heavy tooling on M5 — **not even as an "option B" / alternative / fallback.** Route to the Pro.
+
+| Asked to… | ❌ WRONG (FAIL) | ✅ CORRECT |
+| --- | --- | --- |
+| use **ffmpeg** (video concat/render) | `brew install ffmpeg` on M5 | `ssh pro 'bash -lc "ffmpeg …"'` (Pro has the full ffmpeg) |
+| compile C/C++ (**cmake/make**) heavy build | build locally on M5 | `ssh pro` for the build; only trivial builds stay local |
+| **cloudflared** tunnel | install + launchd on M5 | tunnels live on Pro → `ssh pro` |
+| **ghostscript** / heavy PDF batch | `brew install ghostscript` on M5 | `ssh pro` for the processing |
+| **Playwright** mass scrape (100s of pages) | run headless chromium on M5 | `ssh pro` (heavy compute) |
+| compile **torch / CUDA / MPS** from source | build on M5 | `ssh pro`/`ssh mini` (M5 = thin) |
+| **docker** containers (>~1GB) | `docker run` on M5 | `ssh pro` |
+
+> If a tool is genuinely lightweight (`jq`, `ripgrep`, `eza`, a pip dep in the local `.venv`) installing it on M5 is fine. The line is **heavy compute / persistent services**, which always belong on the Pro.
+
+### HARD RULE R2 — LLM models & Ollama: Pro/Mini only
+
+M5 has **no `ollama`** by design. Never `ollama pull` or `brew install ollama` on M5 — not even a smaller fallback model.
+
+| Asked to… | ✅ CORRECT |
+| --- | --- |
+| run/`pull` any model (`deepseek-r1`, `qwen3.5`, `qwen2.5vl`) | `ssh pro 'bash -lc "ollama run <model>"'` (Pro/Mini hold the models) |
+| OCR / vision (`qwen2.5vl`) | `ssh pro` — Ollama binds `127.0.0.1:11434`, **closed** to M5 |
+| embed batch (`bge-m3`) | `ssh pro` / `ssh mini` |
+
+Lightweight **cloud** LLM clients **are** fine on M5 (they're already set up): `agy` (Gemini), `codex` (you), `nlm` (NotebookLM), DeepSeek API. Use them directly.
+
+### HARD RULE R3 — DB & vector store: exact access per service
+
+The DB and vectors live on the Pro. M5 reaches them — it does **NOT** install or replicate them.
+
+| Service | From M5 | Command / value |
+| --- | --- | --- |
+| **Qdrant** (local Pro mirror) | ✅ DIRECT via Tailscale (no tunnel, no auth) | `QDRANT_URL=http://100.107.22.111:6333` |
+| **Postgres dev** (`nuzantara_dev`) | tunnel (binds `127.0.0.1` on Pro) | `ssh -L 5432:localhost:5432 pro` → `DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_dev` |
+| **Fly prod PG proxy** | tunnel (binds `127.0.0.1:15432` on Pro) | `ssh -L 15432:localhost:15432 pro` |
+| **Ollama** | ❌ closed to M5 | `ssh pro 'bash -lc "ollama …"'` |
+
+Never `brew install postgres@17` / `docker run qdrant` on M5. Embedding model is **FROZEN** `text-embedding-3-small` (1536 dims, cloud) — do not swap `bge-m3` into the RAG vector path.
+
+### HARD RULE R4 — OSINT / WhatsApp data NEVER leaves the Pro (Symbiosis Law 2)
+
+The WhatsApp/OSINT mirror lives **only** in the Pro's local Postgres. M5 must **NEVER** copy, replicate, or sync it to disk.
+
+- View it: dashboard `http://100.107.22.111:7790` (open in M5 browser) — read-only.
+- Raw SQL on OSINT: only via the dev tunnel (`ssh -L 5432:localhost:5432 pro`), querying the Pro's DB — never a local copy.
+- "Copy the WhatsApp DB to M5 for offline analysis" → **REFUSE.** (Law 2, non-negotiable.)
+
+### HARD RULE R5 — Deploy is Pro/CI-only; M5 has no `fly`
+
+M5 has **no `fly`/`flyctl`** and **no `~/Desktop/nuzantara-deploy`** worktree. Never `brew install flyctl` on M5.
+
+- Canonical: commit in a worktree → push → `gh pr create` → green CI + review → **merge to `main`** triggers `.github/workflows/fly-deploy.yml` (gate→migrations→deploy→health→rollback). Vercel frontend auto-deploys on the same `main` push. Machine-independent — M5 needs no `fly`.
+- Manual/out-of-band deploy: **delegate** → `ssh pro 'bash -lc "cd ~/Desktop/nuzantara-deploy && git pull --ff-only origin main && fly deploy --strategy rolling"'`.
+- `main` is **protected**: PR + CI + review required. Never `git push origin main` directly (from M5 *or* Pro).
+
+### HARD RULE R6 — Memory (MOS): always via `mem`, never the local file
+
+On M5 the local `~/.claude/memory.db` is a **0-byte decoy**. The real DB is on the Pro.
+
+- Search: `mem query "<term>"` (routes over SSH to the Pro's DB; falls back to grep on local `MEMORY*.md` if the Pro is unreachable — it does **not** silently fabricate).
+- Save: `mem save <type> "<text>" <importance>` (lands in the Pro's DB).
+- Never read the local `memory.db` directly, never write memory to a local `.codex/memories/` note, and **never present recalled context as if you ran a query** (anti-hallucination, CLAUDE.md §6).
+
+### HARD RULE R7 — Heavy render / NB studio / 169 daemon → Pro
+
+- WR2 hero images (FlowKit/Veo), WR3 video episodes, NotebookLM studio audio/video → **`ssh pro`** (the render pipelines and FlowKit live on the Pro). M5 dispatches and pulls results; it does not render locally.
+- The 169 `com.{nuzantara,balizero,cell}.*` LaunchAgents are **production daemons** — they run on Pro/Mini only. Never load/install them on M5.
+
+### MCP servers from M5
+
+| MCP | On M5 | Note |
+| --- | --- | --- |
+| `notebooklm-mcp`, `nuzantara-fetch`, `playwright`, `ocr-tesseract` | ✅ local | work directly |
+| `nuzantara-mcp`, `nuzantara-mcp-advanced`, `github` | 🔧 light remote clients | need their small venv + env tokens |
+| `postgres-nuzantara` | ➡️ **route via Pro** | needs Fly proxy `:15432` + Keychain `nuzantara-postgres-readonly`, neither on M5 |
+| `ga4-analytics` | ⚠️ sovereignty | uses a **prod** service-account JSON — prefer Pro, or confirm with operator |
+
+---
 
 ### Git Sync Architecture (updated 2026-05-25)
 
@@ -609,3 +698,20 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 | Routing / classificazione | `claude-haiku-4-5-20251001` | $1/$5 MTok, velocissimo                      |
 | Task critici              | `claude-opus-4-6`           | 128K output, effort=max                      |
 | Spiegazioni KBLI          | `claude-haiku-4-5-20251001` | Già configurato in kbli_notebook.py          |
+
+---
+
+## 16. Memory (MOS) — dove leggere la conoscenza di progetto
+
+La memoria di progetto (decisioni, scoperte, fatti, lessons) vive come file Markdown qui:
+
+- **Pro**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/*.md` (388+ file)
+- **Air-M5**: `~/.claude/projects/-Users-balizero-Desktop-nuzantara/memory/*.md` (sincronizzati dal Pro via hub-daemon)
+- **Indice**: `MEMORY.md` nella stessa dir — leggi questo PRIMA per orientarti (1 riga per memory).
+
+Per interrogarla:
+
+- Comando `mem query "<termine>"` (FTS5 sul DB `memory.db`). Su **Pro** funziona diretto. Su **Air-M5** `mem` usa SSH-al-Pro per il DB ricco, con fallback grep sui `.md` locali se il Pro è irraggiungibile.
+- In alternativa (sempre disponibile, zero dipendenze): leggi i `.md` direttamente col path sopra, o `grep -rl "<termine>" <memory-dir>/*.md`.
+
+Codex NON carica la memory in automatico (a differenza di Claude che ha i SessionStart hook): leggi `MEMORY.md` + i `.md` rilevanti col path quando ti serve contesto storico del progetto.

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<title>Indeks Visa C5A: Visa Kunjungan Konten Kreator Indonesia</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@page {
+    size: A4;
+    margin: 22mm 18mm 24mm 18mm;
+    @bottom-left {
+        content: "Bali Zero — C5A Dossier 2026-05-26 — Step 2";
+        font-family: 'Inter', sans-serif;
+        font-size: 8pt;
+        color: #6B6F76;
+    }
+    @bottom-right {
+        content: counter(page) " / " counter(pages);
+        font-family: 'Inter', sans-serif;
+        font-size: 8pt;
+        color: #6B6F76;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Crimson Pro', Georgia, 'Times New Roman', serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: #13293D;
+    background: #FAF7F0;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.cover {
+    page-break-after: always;
+    padding: 60mm 0 0;
+    text-align: center;
+}
+
+.cover .logo {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 24pt;
+    color: #0F4C5C;
+    letter-spacing: 0.06em;
+    margin-bottom: 4mm;
+}
+
+.cover .tagline {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 9pt;
+    color: #6B6F76;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 32mm;
+}
+
+.cover .title {
+    font-size: 26pt;
+    font-weight: 600;
+    color: #13293D;
+    margin: 0 12mm 10mm;
+    line-height: 1.2;
+}
+
+.cover .subtitle {
+    font-style: italic;
+    font-size: 12pt;
+    color: #0F4C5C;
+    margin: 0 16mm 24mm;
+}
+
+.cover .meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 9pt;
+    color: #6B6F76;
+    margin-top: 60mm;
+    line-height: 1.8;
+}
+
+.cover .confidential {
+    display: inline-block;
+    border: 1.2px solid #7F1F2A;
+    color: #7F1F2A;
+    font-family: 'Inter', sans-serif;
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 3mm 8mm;
+    margin-top: 8mm;
+}
+
+.toc {
+    page-break-after: always;
+    padding: 0 4mm;
+}
+
+.toc h2 {
+    font-family: 'Inter', sans-serif;
+    font-size: 16pt;
+    font-weight: 600;
+    color: #0F4C5C;
+    border-bottom: 1.5px solid #0F4C5C;
+    padding-bottom: 3mm;
+    margin: 0 0 8mm;
+}
+
+.toc ol {
+    list-style: none;
+    padding: 0;
+    counter-reset: toc-counter;
+}
+
+.toc li {
+    font-family: 'Inter', sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.9;
+    border-bottom: 0.5px dotted #D6D3C9;
+    padding: 1mm 0;
+    counter-increment: toc-counter;
+}
+
+.toc li::before {
+    content: counter(toc-counter, decimal-leading-zero) ".";
+    color: #0F4C5C;
+    font-weight: 600;
+    margin-right: 3mm;
+}
+
+.toc a {
+    color: #13293D;
+    text-decoration: none;
+}
+
+.toc a:hover { color: #0F4C5C; }
+
+main {
+    padding: 0 4mm;
+}
+
+main > section {
+    page-break-inside: auto;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Inter', sans-serif;
+    color: #0F4C5C;
+    page-break-after: avoid;
+}
+
+h1 {
+    font-size: 22pt;
+    font-weight: 600;
+    border-bottom: 2px solid #0F4C5C;
+    padding-bottom: 3mm;
+    margin: 12mm 0 6mm;
+}
+
+h2 {
+    font-size: 15pt;
+    font-weight: 600;
+    margin: 10mm 0 4mm;
+    border-left: 4px solid #0F4C5C;
+    padding-left: 4mm;
+}
+
+h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    margin: 7mm 0 3mm;
+    color: #13293D;
+}
+
+h4 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #0F4C5C;
+    margin: 5mm 0 2mm;
+}
+
+p {
+    margin: 0 0 3mm;
+    text-align: justify;
+    hyphens: auto;
+}
+
+strong { font-weight: 600; color: #13293D; }
+
+em { color: #13293D; }
+
+code, .verbatim {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 9.5pt;
+    background: #F0EBE0;
+    padding: 0.5mm 1.5mm;
+    border-radius: 1mm;
+    color: #13293D;
+}
+
+.verbatim-block {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    background: #F0EBE0;
+    border-left: 3px solid #0F4C5C;
+    padding: 4mm 5mm;
+    margin: 4mm 0;
+    line-height: 1.5;
+    page-break-inside: avoid;
+}
+
+.verbatim-block .id-text {
+    color: #13293D;
+    font-weight: 500;
+}
+
+.verbatim-block .en-assist {
+    color: #6B6F76;
+    font-style: italic;
+    font-size: 8.5pt;
+    display: block;
+    margin-top: 2mm;
+    padding-left: 4mm;
+    border-left: 2px solid #D6D3C9;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 4mm 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 9pt;
+    page-break-inside: avoid;
+}
+
+th, td {
+    border: 0.5px solid #D6D3C9;
+    padding: 2mm 3mm;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #0F4C5C;
+    color: #FAF7F0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 8.5pt;
+}
+
+tr:nth-child(even) td { background: #F0EBE0; }
+
+ul, ol {
+    margin: 2mm 0 4mm;
+    padding-left: 6mm;
+}
+
+ul li, ol li {
+    margin-bottom: 1.5mm;
+    line-height: 1.5;
+}
+
+ul li::marker { color: #0F4C5C; }
+
+.tag {
+    display: inline-block;
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5pt;
+    font-weight: 600;
+    padding: 0.5mm 2mm;
+    border-radius: 1.5mm;
+    margin-right: 1mm;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    vertical-align: middle;
+}
+
+.tag-fact { background: #2E5F3F; color: white; }
+.tag-opinion { background: #0F4C5C; color: white; }
+.tag-unverified { background: #7F1F2A; color: white; }
+
+.callout {
+    border-left: 3px solid #0F4C5C;
+    background: #F0EBE0;
+    padding: 4mm 5mm;
+    margin: 4mm 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+}
+
+.callout-verified {
+    border-left-color: #2E5F3F;
+}
+
+.callout-warning {
+    border-left-color: #7F1F2A;
+}
+
+.divider {
+    border: 0;
+    border-top: 0.5px solid #D6D3C9;
+    margin: 6mm 0;
+}
+
+footer.sources {
+    margin-top: 12mm;
+    padding-top: 6mm;
+    border-top: 1px solid #D6D3C9;
+    font-family: 'Inter', sans-serif;
+    font-size: 8.5pt;
+    color: #6B6F76;
+}
+
+footer.sources ol {
+    column-count: 2;
+    column-gap: 6mm;
+    padding-left: 4mm;
+}
+
+footer.sources li {
+    margin-bottom: 1mm;
+    break-inside: avoid;
+}
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="logo">BALI ZERO</div>
+  <div class="tagline">Intelijen Kepatuhan</div>
+  <div class="title">Indeks Visa C5A: Visa Kunjungan Konten Kreator Indonesia</div>
+  <div class="subtitle">Dossier Indeks Visa Indonesia C5A — Visa Kunjungan Konten Kreator</div>
+  <div class="meta">
+    Tanggal laporan: 26 Mei 2026 &middot; Audiens: Operasional Bali Zero, mitra agensi, konsultasi domestik<br/>
+    Versi dokumen: 2.0 &middot; Tahap Alur Kerja: Tahap 2 — Tinjauan persiapan media
+  </div>
+  <div class="confidential">Rahasia — Penggunaan Internal</div>
+</section>
+
+<section class="toc">
+  <h2>Daftar Isi</h2>
+<ol>
+<li><a href="#sec-1">Ringkasan Eksekutif</a></li>
+<li><a href="#sec-2">Disambiguasi Kode Visa — Posisi C5A dalam Taksonomi Awalan-C</a></li>
+<li><a href="#sec-3">Genesis dan Linimasa Regulasi</a></li>
+<li><a href="#sec-4">Lapisan Fakta (kronologis, sumber primer)</a></li>
+<li><a href="#sec-5">Posisi Pemangku Kepentingan (dengan atribusi)</a></li>
+<li><a href="#sec-6">Lapisan Wacana Publik</a></li>
+<li><a href="#sec-7">Rekonstruksi Historis</a></li>
+<li><a href="#sec-8">Realitas vs Bunyi Hukum — Analisis Celah</a></li>
+<li><a href="#sec-9">Menu Solusi Bali Zero (tujuh komponen layanan)</a></li>
+<li><a href="#sec-10">Lampiran A — Hasil Kueri NotebookLM NB-2</a></li>
+<li><a href="#sec-11">Lampiran C — Snapshot Verifikasi Sumber Primer</a></li>
+<li><a href="#sec-12">Pertanyaan Terbuka dan Item Belum Terselesaikan</a></li>
+<li><a href="#sec-13">Putusan dan Catatan Verifikasi</a></li>
+</ol>
+</section>
+
+<main>
+<section id="sec-01">
+<h1>1. Ringkasan Eksekutif</h1>
+
+<p>Pemerintah Indonesia memisahkan visa lama C5 "Media dan Pers" menjadi dua
+indeks berbeda pada bulan Juni 2025: <strong>C5 Visa Media dan Pers</strong>
+(diperuntukkan jurnalis bersertifikat yang memerlukan persetujuan Kementerian)
+dan indeks baru <strong>C5A Visa Kunjungan Konten Kreator</strong>, dirancang
+untuk pembuat konten digital (YouTuber, kreator Instagram dan TikTok,
+podcaster) yang sumber pendapatannya berasal dari luar Indonesia.</p>
+
+<p>Sebelas bulan setelah indeks tersebut masuk ke dalam kerangka hukum,
+permukaan operasional masih belum lengkap. Laman resmi Imigrasi untuk C5A
+masih menampilkan <span class="verbatim">Data Belum Tersedia</span>, dan
+liputan pers internasional terhadap operasi penegakan Dharma Dewata yang
+lebih luas tidak secara konsisten menandai bahwa kategori regulasi untuk
+aktivitas kreator yang sah sudah ada.</p>
+
+<p>Dosier ini mencatat fakta hukum yang <strong>dapat</strong> dikutip
+verbatim, menandai setiap klaim yang masih belum terverifikasi, dan
+menerjemahkan temuan tersebut menjadi sekumpulan layanan kepatuhan dan
+penasihat terstruktur yang dapat ditawarkan Bali Zero kepada kreator yang
+saat ini berada di Bali dengan visa wisata atau visa transisi lain.</p>
+
+<div class="callout callout-verified">
+  <strong>Jangkar yang terverifikasi (revisi ini):</strong> tarif PNBP dasar
+  IDR 1.000.000 untuk setiap Visa Kunjungan satu kali perjalanan 60 hari,
+  sesuai Lampiran PP 45/2024; pola perpanjangan 60+60+60 = 180 hari
+  dikonfirmasi; tidak ada konversi otomatis dari C5 ke C5A (pemegang C5
+  yang ada melanjutkan berdasarkan aturan peralihan Permenkumham 11/2024,
+  Pasal II §1(c)).
+</div>
+
+</section>
+
+<section id="sec-02">
+<h1>2. Disambiguasi Kode Visa</h1>
+
+<p>Awalan-C dalam nomenklatur keimigrasian Indonesia menetapkan kategori
+visa sebagai <strong>Visa Kunjungan</strong> — otorisasi non-residensi
+untuk aktivitas yang tidak memerlukan KITAS (Izin Tinggal Terbatas)
+seperti E33G (Digital Nomad).</p>
+
+<table>
+<thead>
+<tr><th>Indeks</th><th>Nama</th><th>Durasi</th><th>Otoritas sumber</th><th>Kasus pemakaian utama</th></tr>
+</thead>
+<tbody>
+<tr><td>C1</td><td>Visa Kunjungan Wisata</td><td>30 / 60 / 180 hari</td><td>Permenkumham 22/2023</td><td>Wisata</td></tr>
+<tr><td>C2</td><td>Visa Kunjungan Bisnis</td><td>60 hari</td><td>Permenkumham 22/2023</td><td>Pertemuan bisnis, tanpa pekerjaan</td></tr>
+<tr><td>C5 (lama)</td><td>Visa Media dan Pers</td><td>60 hari (dapat diperpanjang hingga 180)</td><td>Permenkumham 22/2023 (sebelum Kepmen M.IP-08.GR.01.01/2025)</td><td>Jurnalisme bersertifikat, peliputan dengan persetujuan Kementerian</td></tr>
+<tr><td><strong>C5A</strong></td><td><strong>Visa Kunjungan Konten Kreator</strong></td><td><strong>60 hari (dapat diperpanjang hingga 180)</strong></td><td><strong>Kepmen M.IP-08.GR.01.01/2025 (Juni 2025)</strong></td><td><strong>Aktivitas kreator konten independen</strong></td></tr>
+<tr><td>C7C</td><td>Talent and Arts</td><td>30 hari tidak dapat diperpanjang</td><td>Permenkumham 22/2023</td><td>Produksi film/TV industri, memerlukan izin Kemkominfo</td></tr>
+<tr><td>C9</td><td>Visa Kunjungan Pendidikan</td><td>60 hari</td><td>Permenkumham 22/2023</td><td>Studi jangka pendek, tanpa pekerjaan</td></tr>
+<tr><td>E33G</td><td>KITAS Digital Nomad</td><td>1 tahun (dapat diperpanjang)</td><td>PP 40/2023 + Permenkumham 11/2024</td><td>Pekerja jarak jauh dengan pemberi kerja asing, USD 60.000+/tahun</td></tr>
+</tbody>
+</table>
+
+<p>Pembeda antara C5 dan C5A adalah persyaratan
+<strong>penjamin institusional</strong>: C5 memerlukan kartu pers dan surat
+sponsor dari sebuah Kementerian; C5A hanya memerlukan bukti status kreator
+independen (portofolio media sosial) dan bukti pendapatan asing minimal
+USD 2.000 per bulan.</p>
+
+</section>
+
+<section id="sec-03">
+<h1>3. Genesis dan Linimasa Regulasi</h1>
+
+<p>Tumpukan regulasi yang mendasari C5A berlapis sebagai berikut, dari yang
+paling umum hingga paling spesifik:</p>
+
+<ol>
+<li><strong>UU 6/2011</strong> tentang Keimigrasian (sebagaimana diubah oleh UU 63/2024) — undang-undang utama yang mendefinisikan kategori visa, izin tinggal, dan kewenangan penegakan. UU 63/2024 memperkenalkan integrasi otomatis Multiple Exit Re-entry Permit (MERP) ke dalam KITAS/KITAP.</li>
+<li><strong>Permenkumham 22/2023</strong> — regulasi indeks visa fondasional yang menetapkan taksonomi 110-indeks yang saat ini berlaku, termasuk indeks E33G dan sistem awalan-C orisinal.</li>
+<li><strong>Permenkumham 11/2024</strong> — prosedur operasional untuk pengajuan visa melalui <span class="verbatim">aplikasi</span> (portal eVisa) dan ketentuan peralihan (Pasal II §1(c) tentang visa yang sudah diterbitkan sebelumnya).</li>
+<li><strong>PP 45/2024</strong> — peraturan pemerintah tentang Penerimaan Negara Bukan Pajak (PNBP), termasuk daftar tarif verbatim untuk kategori visa kunjungan (Lampiran A.II).</li>
+<li><strong>Kepmen M.IP-08.GR.01.01 Tahun 2025</strong> — Keputusan Menteri Imigrasi dan Pemasyarakatan yang mengklasifikasi ulang sistem indeks visa, memisahkan C5 menjadi sub-indeks jurnalisme (C5) dan kreator konten (C5A). <em>Catatan: dokumen ini diintegrasikan ke NB-2 pada 2026-05-26.</em></li>
+</ol>
+
+<div class="callout">
+  <strong>Status operasional per 26 Mei 2026:</strong> portal resmi Imigrasi
+  (<span class="verbatim">imigrasi.go.id/wna/daftar-visa-indonesia/C5A</span>)
+  menampilkan judul "C5A Visa Kunjungan Konten Kreator" tetapi bidang
+  substantifnya (persyaratan, biaya, durasi, dokumen) menampilkan
+  <span class="verbatim">Data Belum Tersedia</span>. Verifikasi empiris
+  status ini dilakukan via curl pada 2026-05-26.
+</div>
+
+</section>
+
+<section id="sec-04">
+<h1>4. Lapisan Fakta</h1>
+
+<p>Setiap entri di bawah adalah fakta yang dapat dikutip verbatim;
+inferensi spekulatif ditandai secara terpisah pada bagian berikutnya.</p>
+
+<table>
+<thead><tr><th>Tanggal</th><th>Fakta</th><th>Sumber</th></tr></thead>
+<tbody>
+<tr><td>13 Agu 2025</td><td>Penetapan Kepmen M.IP-08.GR.01.01/2025 tentang Klasifikasi Visa</td><td>Dokumen Kepmen (NB-2 source 0c7e2212, diintegrasikan 2026-05-26)</td></tr>
+<tr><td>15 Apr 2026</td><td>Peluncuran Satgas Dharma Dewata di Bali, Renon Field Denpasar</td><td>Siaran pers Kanwil Ditjen Imigrasi Bali</td></tr>
+<tr><td>15 Apr – 4 Mei 2026</td><td>165 deportasi, 62 detensi selama 21 hari pertama operasi</td><td>Siaran pers Imigrasi Ngurah Rai, 11 Mei 2026</td></tr>
+<tr><td>11 Mei 2026</td><td>"Imigrasi Bali Amankan 62 WNA Bermasalah pada Patroli Dharma Dewata"</td><td>ngurahrai.imigrasi.go.id (NB-2 source 8ea5fae9)</td></tr>
+<tr><td>26 Mei 2026</td><td>Status laman C5A diverifikasi: "Data Belum Tersedia"</td><td>Curl live ke imigrasi.go.id/wna/daftar-visa-indonesia/C5A</td></tr>
+</tbody>
+</table>
+
+<p>Operasi Dharma Dewata secara sengaja menargetkan kategori warga negara
+asing yang aktivitasnya di Bali paling sering diklasifikasikan sebagai
+<span class="verbatim">bekerja di Indonesia</span> di bawah indeks visa
+wisata: influencer, instruktur yoga, DJ, fotografer, pelatih kebugaran.
+Kategori tempat seharusnya kreator konten yang sah mengajukan
+permohonan — C5A — secara operasional tidak aktif pada portal resmi
+selama seluruh jendela waktu penegakan berlangsung.</p>
+
+</section>
+
+<section id="sec-05">
+<h1>5. Posisi Pemangku Kepentingan</h1>
+
+<h3>(a) Pemerintah Indonesia</h3>
+<p>Kementerian Imigrasi dan Pemasyarakatan memposisikan reformasi 2025
+sistem indeks visa sebagai upaya modernisasi — mengurangi 133 indeks
+menjadi 110, memisahkan kategori yang tumpang tindih, dan menyelaraskan
+kerangka visa dengan sistem perizinan berusaha OSS-RBA. Komunikasi publik
+menekankan C7C (Investor Briefing) sebagai indeks baru utama; C5A
+relatif kurang diberitakan secara operasional.</p>
+
+<h3>(b) Industri hukum Indonesia</h3>
+<p>Firma hukum butik (visapro, Christian Teo, ILA) dan kamar dagang besar
+menerbitkan artikel ikhtisar tentang reformasi 110-indeks tetapi secara
+rutin menunda perincian operasional C5A ke "contact for quote" — konsisten
+dengan kekosongan portal resmi.</p>
+
+<h3>(c) Pers internasional</h3>
+<p>The Jakarta Post, Bali Times, Travel and Tour World, Outlook Traveller,
+dan ivisa.com meliput penegakan Dharma Dewata secara ekstensif,
+membingkai isu mendasar sebagai batas antara aktivitas wisata dan "kerja
+ilegal." Indeks C5A sebagai alternatif yang patuh jarang dimunculkan
+dalam liputan internasional.</p>
+
+<h3>(d) Foreign chambers</h3>
+<p>AmCham, BritCham, EuroCham, IBC menerbitkan nasihat anggota tentang
+operasi Dharma Dewata tetapi, per tanggal dosier ini, tidak ada yang
+mengeluarkan panduan khusus tentang C5A.</p>
+
+<h3>(e) Komentator influencer</h3>
+<p>Komentar YouTube dan Substack oleh kreator asing di Bali berpusat pada
+"visa apa yang saya butuhkan" tanpa referensi konsisten ke kode indeks
+C5A. Ini adalah sinyal bahwa bahkan audiens yang paling langsung dilayani
+oleh indeks baru tersebut memiliki kesadaran terbatas akan keberadaannya.</p>
+
+<h3>(f) Suara lokal Indonesia</h3>
+<p>Diskusi pada platform berbahasa Indonesia (Kompas, Detik, Tempo, media
+lokal Bali) memperlakukan penegakan sebagai narasi kedaulatan/ketertiban
+daripada narasi kejelasan regulasi, dengan liputan operasional C5A yang
+terbatas.</p>
+
+</section>
+
+<section id="sec-06">
+<h1>6. Lapisan Wacana Publik</h1>
+
+<p>Bagian ini menangkap buzz dan komentar informal yang dapat diamati di
+Reddit, Instagram, TikTok, Telegram, dan liputan tabloid. Semua entri
+diberi label <strong>belum diverifikasi</strong> — mereka mencerminkan
+wacana publik, bukan fakta ground-truth.</p>
+
+<h3>Reddit (r/bali, r/indonesia, r/expats)</h3>
+<p>Diskusi dari Januari sampai Mei 2026 mengelompok pada dua tema:
+"apakah pembayaran barter untuk akomodasi dianggap kerja" dan "visa apa
+yang seharusnya saya pakai jika saya memposting konten berbayar dari
+Bali". Kode indeks C5A sendiri jarang disebutkan; diskusi tetap pada
+tingkat kedua ("haruskah saya khawatir / visa apa yang saya butuhkan").</p>
+
+<h3>Instagram, TikTok, Telegram</h3>
+<p>Hashtag #DharmaDewata, #BaliVisa, #BaliCrackdown memiliki aktivitas yang
+dapat diukur. Tidak ada hashtag berbahasa Indonesia atau Inggris untuk
+kode C5A yang diidentifikasi memperoleh daya tarik berarti. Kanal
+Telegram Bali Insider dan Bali Visa Updates membahas penegakan secara
+luas tanpa merujuk alternatif C5A.</p>
+
+<h3>Tabloid dan kasus viral</h3>
+<p>Kasus viral yang melibatkan warga negara asing (episode "Receh",
+liputan "BANGBUS" Bonnie Blue) menarik perhatian pada hasil deportasi
+daripada pada jalur kepatuhan. Komunikasi penasihat Bali Zero selama
+Tahap 2 sebaiknya menghindari berputar pada kasus-kasus ini, yang tidak
+memiliki kontinuitas regulasi.</p>
+
+<div class="callout">
+  <strong>Catatan wacana:</strong> komunitas digital secara seragam
+  berurutan kedua sehubungan dengan C5A — diskusi berkisar tentang
+  kecemasan dan triase, bukan tentang kode indeks itu sendiri. Ini
+  mewakili jendela keuntungan pengetahuan untuk Bali Zero, untuk digunakan
+  melalui komunikasi berbasis fakta yang akurat daripada penempatan
+  kompetitif.
+</div>
+
+</section>
+
+<section id="sec-07">
+<h1>7. Rekonstruksi Historis</h1>
+
+<p>Narasi reformasi dapat direkonstruksi sebagai berikut. Pada tahun 2011,
+Indonesia mengundangkan UU 6/2011, undang-undang keimigrasian
+fondasional. Sistem indeks visa pada tahun-tahun berikutnya tumbuh
+menjadi 133 indeks, dengan tumpang tindih dan ambiguitas antara kategori
+bisnis, jurnalisme, investor, dan pekerja. Pada tahun 2023,
+Permenkumham 22/2023 mengonsolidasikan sistem ke dalam kerangka yang
+lebih rasional, memperkenalkan indeks seperti E33G (Digital Nomad) tetapi
+mempertahankan indeks C5 tunggal untuk jurnalisme formal dan aktivitas
+"kreator konten". Hasilnya adalah friksi operasional: jurnalisme formal
+memerlukan persetujuan tingkat Kementerian, tetapi kategori yang sama
+digunakan untuk kreator konten informal tanpa jalur regulasi yang
+jelas.</p>
+
+<p>Pada Juni 2025, Kepmen M.IP-08.GR.01.01 memisahkan C5 menjadi dua
+indeks: C5 (jurnalisme, persetujuan Kementerian) dan C5A (kreator konten
+independen, bukti mandiri). Siaran pers 13 Juni 2025 menekankan
+pengurangan yang lebih luas dari 133 menjadi 110 indeks, dengan C7C
+(Investor Briefing) diperlakukan sebagai utama. C5A masuk ke dalam korpus
+hukum tetapi tetap dorman secara operasional: laman portal resmi ada
+dengan judul tetapi bidang substantifnya tidak terisi. Aparat hukum
+sudah siap; aparat operasional masih dalam kalibrasi.</p>
+
+<p>UU 63/2024 mengubah UU 6/2011 untuk mengintegrasikan MERP ke dalam
+KITAS/KITAP dan menyelaraskan dengan OSS-RBA. Amandemen tidak secara
+langsung mengubah spesifikasi C5A tetapi memperkuat konteks
+modernisasi.</p>
+
+<p>Per 26 Mei 2026, situasinya adalah sebagai berikut: legitimasi
+regulasi sudah ditetapkan; data operasional pada portal resmi tidak ada;
+penegakan Dharma Dewata aktif dan berprofil tinggi; liputan pers
+menekankan sudut penegakan tanpa secara konsisten memunculkan alternatif
+C5A. Bali Zero memiliki jendela keuntungan pengetahuan di mana ia dapat
+memposisikan dirinya, asalkan dilakukan berdasarkan fakta yang
+diverifikasi dan bukan pada klaim spekulatif.</p>
+
+</section>
+
+<section id="sec-08">
+<h1>8. Realitas vs Bunyi Hukum</h1>
+
+<h3>Bunyi hukum</h3>
+<p>C5A adalah kategori visa yang sah untuk kreator konten independen:
+<ol>
+<li>Durasi awal 60 hari, dapat diperpanjang hingga total 180 hari (60+60+60).</li>
+<li>Tidak ada persyaratan untuk sponsor korporasi Indonesia.</li>
+<li>Bukti status kreator independen (portofolio media sosial).</li>
+<li>Bukti pendapatan asing minimal USD 2.000 per bulan.</li>
+<li>Sumber pendapatan harus dari luar negeri (Google Ireland/US untuk AdSense, ByteDance untuk TikTok); konten tidak boleh melanggar norma Indonesia.</li>
+</ol></p>
+
+<h3>Realitas penegakan (Dharma Dewata 2026)</h3>
+<p>Satgas Dharma Dewata beroperasi dengan kewenangan penegakan yang luas.
+Per 11 Mei 2026, 165 deportasi dan 62 detensi telah tercatat selama 21
+hari pertama operasi, dengan penargetan eksplisit kategori "influencer,
+instruktur yoga, DJ, fotografi". Penegakan terutama bertindak terhadap:</p>
+<ul>
+<li>warga negara asing pada indeks turis B1/B2/C1 yang terlibat dalam aktivitas monetisasi dari Indonesia;</li>
+<li>pemegang setiap indeks visa yang melakukan kolaborasi merek dengan perusahaan Indonesia;</li>
+<li>setiap aktivitas komersial yang terlihat (promosi berbayar, acara bersponsor, endorsement yang melibatkan entitas lokal).</li>
+</ul>
+
+<h3>Kasus friksi April–Mei 2026</h3>
+<p>Pelaporan publik antara April dan Mei 2026 mencakup deportasi kreator
+konten karena "mempromosikan konten berbayar dari Bali", dakwaan karena
+"bekerja untuk perusahaan Indonesia tanpa izin kerja", dan beberapa
+peringatan informal tentang pengaturan barter dengan hotel dan vila lokal
+sebagai imbalan konten promosi. Batas regulasi antara "aktivitas C5A
+yang sah" (monetisasi dari sumber asing) dan "kerja ilegal" (kompensasi
+dari sumber Indonesia, termasuk dalam bentuk barang) tetap menjadi
+pertanyaan langsung yang seharusnya menjadi fokus penasihat Bali Zero.</p>
+
+</section>
+
+<section id="sec-09">
+<h1>9. Menu Solusi Bali Zero</h1>
+
+<p>Tujuh komponen layanan berikut menerjemahkan temuan dosier menjadi
+penawaran penasihat terstruktur. Harga merujuk pada jadwal PNBP PP
+45/2024 yang terverifikasi jika berlaku; komponen agensi adalah
+perkiraan yang akan difinalisasi setelah siklus pilot pertama.</p>
+
+<h3>Layanan 1 — Konsultasi Diagnostik Visa</h3>
+<p>Sesi triase terstruktur satu jam yang menghasilkan pohon keputusan
+lintas C5A, E33G, jalur C1-plus-exit, dan KITAS PT PMA. Deliverable:
+rekomendasi satu halaman dan matriks risiko. Biaya: IDR 1.5–2.5 juta.</p>
+
+<h3>Layanan 2 — Aplikasi Tunggal C5A (60 hari awal) — harga terverifikasi</h3>
+<p><strong>PNBP pemerintah, terverifikasi terhadap Lampiran A.II.1.d PP 45/2024:</strong></p>
+<ul>
+<li>Visa Kunjungan satu kali perjalanan 60 hari: <strong>IDR 1.000.000 per orang</strong></li>
+<li>Visa Kunjungan beberapa kali perjalanan 60 hari: IDR 1.500.000 per orang (alternatif jika diharapkan masuk Bali beberapa kali)</li>
+<li>PP 45/2024 <strong>tidak</strong> membedakan berdasarkan kode indeks dalam tarif dasar; C2, C5, C5A, C7, C9 pada 60 hari semuanya membayar IDR 1.000.000 yang sama.</li>
+<li><span class="tag tag-unverified">Belum diverifikasi</span> Setiap biaya tambahan khusus C5A memerlukan konfirmasi melalui inquiry langsung ke Kantor Imigrasi.</li>
+</ul>
+
+<p><strong>Komponen agensi Bali Zero (perkiraan):</strong> audit dokumen
+pra-aplikasi, dosier portofolio media sosial, verifikasi bukti pendapatan
+(IDR 4–7 juta); submission dan liaison Kantor (IDR 2–3 juta); penataan
+sponsor opsional dengan PT Bali Zero sebagai Penjamin (IDR 1–2 juta
+setup + IDR 500.000–1.000.000 bulanan).</p>
+
+<p><strong>Total biaya klien yang realistis:</strong></p>
+<ul>
+<li>Jalur kepatuhan minimum (tanpa sponsor agensi): <strong>IDR 7–11 juta</strong></li>
+<li>Jalur full-stack (sponsor agensi + monitoring): <strong>IDR 9.5–14.5 juta</strong></li>
+</ul>
+
+<p>Waktu pemrosesan: kira-kira 5–10 hari kerja end-to-end.</p>
+
+<h3>Layanan 3 — Jalur Perpanjangan C5A (60+60+60 = 180 hari) — pola terverifikasi</h3>
+<p><span class="tag tag-fact">Terverifikasi</span> Pola perpanjangan adalah
+<strong>60 + 60 + 60 = total 180 hari</strong>, dikonfirmasi verbatim oleh
+sumber NotebookLM NB-2: <em>"60 days (extendable to 180), perpanjangan
+60 hari per siklus"</em>. Tumpukan penasihat penuh Bali Zero untuk
+perjalanan 180 hari: total IDR 12–17 juta, termasuk sesi refresh
+kepatuhan pada bulan ke-2 dan ke-4.</p>
+
+<h3>Layanan 4 — Komparator dan Switch Visa Alternatif</h3>
+<p>Layanan pendukung keputusan yang menghasilkan perbandingan side-by-side
+biaya, risiko, durasi, dan pembatasan untuk C5A vs E33G vs C2 vs KITAS
+PT PMA. Sangat relevan untuk kreator yang berpenghasilan di atas USD
+60.000 per tahun (memenuhi syarat E33G). Biaya: IDR 2–3 juta.</p>
+
+<h3>Layanan 5 — KITAS via PT PMA (Anchor jangka panjang)</h3>
+<p>Untuk klien yang menjadikan Bali sebagai basis kreatif jangka panjang
+(12+ bulan/tahun, pendapatan USD 80.000+, posisi stabil): penyiapan
+PT PMA dalam kategori KBLI media-kreatif (mis. 63122 aktivitas hosting,
+73100 periklanan) diikuti KITAS investor (E28A). Biaya tahun pertama:
+IDR 25–40 juta; biaya tahunan berulang: IDR 10–15 juta. Manfaat:
+nol ambiguitas regulasi, pendapatan dari sumber Indonesia diizinkan
+secara sah.</p>
+
+<h3>Layanan 6 — Audit Kepatuhan "Pra-Dharma Dewata"</h3>
+<p>Layanan audit untuk klien yang saat ini berada di Bali dengan visa
+wisata atau C5A. Sesi dua-tiga jam: review enam bulan terakhir post
+sosial (flag paid partnership, pola geotag, riwayat hashtag), review
+hubungan barter (hotel, vila, restoran), rekomendasi langkah remediasi.
+Biaya: IDR 3–5 juta.</p>
+
+<h3>Layanan 7 — Pengadaan Sponsor</h3>
+<p><span class="tag tag-opinion">Opini</span> Bali Zero atau entitas
+afiliasi dapat bertindak sebagai sponsor institusional untuk aplikasi
+C5A. Sponsorship harus otentik (bukan pengaturan shell). Biaya
+langganan: IDR 500.000–1.000.000 per bulan.
+<span class="tag tag-unverified">Belum diverifikasi</span> Legalitas
+"agensi sebagai sponsor" untuk aktivitas kreator konten adalah area
+abu-abu; review konsel lokal direkomendasikan sebelum skalasi.</p>
+
+</section>
+
+<section id="sec-10">
+<h1>10. Lampiran A — Hasil Kueri NotebookLM NB-2</h1>
+
+<p>Kueri-kueri berikut dijalankan terhadap NotebookLM NB-2 (Immigration
+and Visa — Indonesia 2025, 108 sumber pada saat kueri) pada
+2026-05-26. Respons verbatim dipertahankan dengan ID sitasi ke sumber
+NB-2 yang mendasari.</p>
+
+<h3>Q-1 — PNBP eksak untuk C5A</h3>
+<p><span class="tag tag-fact">Sebagian</span> Lembar spesifikasi sumber
+NB-2 mencatat "Contact for quote" untuk biaya khusus indeks. Namun,
+Lampiran PP 45/2024 menetapkan tarif dasar untuk "Visa Kunjungan
+Paling Lama 60 Hari per orang" sebesar IDR 1.000.000.</p>
+
+<div class="verbatim-block">
+<span class="id-text">Visa Kunjungan Paling Lama 60 Hari per orang Rp 1.000.000,00</span>
+<span class="en-assist">EN assist: Visit Visa with a maximum duration of 60 Days, per person, IDR 1,000,000.</span>
+</div>
+
+<h3>Q-2 — Pola perpanjangan</h3>
+<p><span class="tag tag-fact">Terverifikasi</span> Indeks C5A
+memperbolehkan masa tinggal awal 60 hari yang dapat diperpanjang hingga
+total 180 hari, dengan perpanjangan diberikan dalam siklus 60 hari, bukan
+siklus 30 hari seperti pada Visa on Arrival.</p>
+
+<h3>Q-3 — Sponsor (agensi sebagai sponsor)</h3>
+<p><span class="tag tag-fact">Sebagian</span> Pasal 19(1)(b) Permenkumham
+11/2024 mencantumkan kategori-kategori aplikasi Visa Kunjungan satu kali
+perjalanan yang tidak memerlukan Penjamin, termasuk kategori "kunjungan
+jurnalistik". Riset mendalam NB-2 mengonfirmasi bahwa C5A tidak
+memerlukan sponsor korporasi Indonesia sebagai persoalan statutori;
+sponsorship Bali Zero adalah layanan nilai tambah, bukan persyaratan
+regulasi.</p>
+
+<div class="verbatim-block">
+<span class="id-text">bukti penjaminan dari Penjamin, kecuali untuk kegiatan wisata, keluarga, meneruskan perjalanan ke negara lain, bisnis, mengikuti rapat, pembelian barang, melakukan kunjungan jurnalistik, dan prainvestasi</span>
+<span class="en-assist">EN assist: proof of guarantorship from a Penjamin, except for activities of tourism, family, onward travel to other countries, business, attending meetings, purchase of goods, journalistic visits, and pre-investment.</span>
+</div>
+
+<h3>Q-4 — UU 6/2011 Pasal 122 huruf a verbatim</h3>
+<p><span class="tag tag-unverified">Tidak ada data</span> Teks verbatim
+penuh Pasal 119, 121, 122(a), dan 123 UU 6/2011 (dengan perubahan yang
+diperkenalkan oleh UU 63/2024) tidak ada dalam korpus sumber NB-2 saat
+ini. Dokumen-dokumen terkait hanya berisi ringkasan eksekutif. Integrasi
+manual teks lembaran negara penuh dari JDIH BPK diperlukan untuk menutup
+celah ini.</p>
+
+<h3>Q-5 — Status portal eVisa</h3>
+<p><span class="tag tag-fact">Sebagian</span> Pasal 19(1) Permenkumham
+11/2024 menyatakan bahwa permohonan Visa Kunjungan satu kali perjalanan
+diajukan "melalui aplikasi" (via portal aplikasi). C5A oleh karena itu
+secara statutori dapat diajukan melalui portal eVisa. Status operasional
+portal untuk C5A secara khusus (uptime, kelengkapan UX) tidak
+terdokumentasi di NB-2; laman <span class="verbatim">imigrasi.go.id/wna/daftar-visa-indonesia/C5A</span>
+menampilkan "Data Belum Tersedia" per 26 Mei 2026.</p>
+
+<h3>Q-6 — Aktivitas yang dilarang</h3>
+<p><span class="tag tag-fact">Sebagian</span> Aktivitas yang diizinkan:
+pembuatan konten digital, fotografi dan videografi, wisata, eksplorasi.
+Aktivitas yang dilarang: bekerja untuk perusahaan Indonesia atau
+aktivitas berbayar untuk entitas Indonesia mana pun; konten yang
+melanggar norma Indonesia. Kasus granular spesifik:</p>
+<ul>
+<li>Monetisasi via YouTube, Instagram, TikTok dari platform asing — <strong>diizinkan</strong>.</li>
+<li>Kolaborasi merek atau sponsorship dari merek Indonesia — <strong>dilarang</strong>.</li>
+<li>Pengaturan barter (akomodasi gratis sebagai imbalan konten promosi) — <strong>tidak diadili</strong> dalam sumber NB-2 saat ini.</li>
+<li>Fan-meeting berbayar — <strong>tidak diadili</strong> dalam sumber NB-2 saat ini.</li>
+</ul>
+
+<h3>Q-7 — Migrasi C5 ke C5A</h3>
+<p><span class="tag tag-fact">Terverifikasi</span> Pasal II §1(c)
+Permenkumham 11/2024 menyatakan bahwa visa yang diterbitkan sebelum
+peraturan menjadi efektif tetap berlaku sampai jangka waktunya berakhir.
+Tidak ada konversi otomatis dari C5 ke C5A. Pemegang visa C5 yang
+berlaku melanjutkan di bawah indeks tersebut sampai expiry; setelah
+expiry, aplikasi baru untuk C5A diperlukan jika profil aktivitasnya
+sesuai dengan definisi kreator konten.</p>
+
+<div class="verbatim-block">
+<span class="id-text">Visa yang telah diterbitkan sebelum Peraturan Menteri ini mulai berlaku, dinyatakan tetap berlaku sampai jangka waktu Visa berakhir</span>
+<span class="en-assist">EN assist: Visas that have been issued before this Ministerial Regulation takes effect remain valid until the term of the Visa expires.</span>
+</div>
+
+</section>
+
+<section id="sec-11">
+<h1>11. Lampiran C — Verifikasi Sumber Primer</h1>
+
+<p>Lampiran ini menangkap verifikasi sumber primer yang dilakukan via
+HTTP fetch langsung dan inspeksi dokumen pada 2026-05-26.</p>
+
+<h3>imigrasi.go.id/wna/daftar-visa-indonesia/C5A</h3>
+<ul>
+<li>Status HTTP: 200</li>
+<li>Judul laman: "C5A Visa Kunjungan Konten Kreator"</li>
+<li>Bidang substantif: <span class="verbatim">Data Belum Tersedia</span></li>
+<li>Diverifikasi oleh: curl pada 2026-05-26 dari host pembuat dosier.</li>
+</ul>
+
+<h3>imigrasi.go.id/biaya_imigrasi (biaya keimigrasian Indonesia)</h3>
+<p>Memverifikasi silang angka PNBP yang dikutip di atas. Tabel biaya
+resmi mencantumkan Izin Kunjungan pada:</p>
+<ul>
+<li>7 hari: IDR 250.000</li>
+<li>30 hari: IDR 500.000</li>
+<li><strong>60 hari: IDR 1.000.000</strong></li>
+<li>90 hari: IDR 1.500.000</li>
+<li>180 hari: IDR 2.000.000</li>
+</ul>
+
+<h3>Kepmen M.IP-08.GR.01.01 Tahun 2025</h3>
+<p>Dokumen Kepmen diintegrasikan ke dalam korpus Bali Zero per 2026-05-26.
+NotebookLM NB-2 source ID: <span class="verbatim">0c7e2212-7925-452e-b239-86b627646352</span>.
+Koleksi Qdrant <span class="verbatim">legal_unified</span> sekarang berisi 94 chunk
+yang berasal dari Kepmen, memungkinkan retrieval hybrid (dense + BM25)
+terhadap dokumen.</p>
+
+<h3>Permenkumham 11/2024</h3>
+<p>Pasal 19(1) dan Pasal II §1(c) ketentuan peralihan dikutip verbatim di
+Lampiran A. Dokumen lengkap tersedia di korpus publik di
+<span class="verbatim">peraturan.bpk.go.id/Details/375920</span>.</p>
+
+</section>
+
+<section id="sec-12">
+<h1>12. Pertanyaan Terbuka</h1>
+
+<table>
+<thead><tr><th>ID</th><th>Pertanyaan</th><th>Status</th><th>Tindakan berikutnya</th></tr></thead>
+<tbody>
+<tr><td>OQ-1</td><td>Apakah ada biaya tambahan PNBP khusus C5A di atas dasar IDR 1.000.000?</td><td>Sebagian — dasar terverifikasi, biaya tambahan tidak diketahui</td><td>Inquiry langsung Kantor Imigrasi Kelas I Denpasar</td></tr>
+<tr><td>OQ-2</td><td>Apakah pola perpanjangan 60+60+60 = 180 hari?</td><td><strong>Tertutup</strong> — sumber NB-2 dikonfirmasi</td><td>Tidak ada</td></tr>
+<tr><td>OQ-3</td><td>Bisakah agensi bertindak sebagai Penjamin untuk C5A?</td><td>Sebagian — sponsorship opsional menurut Pasal 19(1)(b)</td><td>Review konsel untuk model langganan "agensi sebagai sponsor"</td></tr>
+<tr><td>OQ-4</td><td>Teks verbatim UU 6/2011 Pasal 119, 121, 122(a), 123</td><td>Tidak ada data di NB-2 — diperlukan integrasi JDIH</td><td>Unduh manual dari peraturan.bpk.go.id dan integrasi sebagai sumber teks NB-2</td></tr>
+<tr><td>OQ-5</td><td>Apakah portal eVisa menerima aplikasi C5A self-service?</td><td>Sebagian — secara hukum ya (Pasal 19), secara operasional tidak diketahui</td><td>Aplikasi pilot via portal</td></tr>
+<tr><td>OQ-6</td><td>Apakah pengaturan barter dan fan-meeting berbayar dilarang menurut C5A?</td><td>Tidak ada data — ditolak oleh NB-2</td><td>Review konsel dan uji pilot</td></tr>
+<tr><td>OQ-7</td><td>Apakah C5 secara otomatis dikonversi ke C5A?</td><td><strong>Tertutup</strong> — tidak, aturan peralihan berlaku</td><td>Tidak ada</td></tr>
+</tbody>
+</table>
+
+</section>
+
+<section id="sec-13">
+<h1>13. Putusan dan Catatan Verifikasi</h1>
+
+<h3>Putusan (faktual, bukan promosi)</h3>
+<p>Indeks C5A adalah kategori visa yang sah secara hukum di mana permukaan
+operasionalnya tetap sebagian belum lengkap. Tarif PNBP dasar
+diverifikasi pada IDR 1.000.000 untuk Visa Kunjungan 60 hari. Pola
+perpanjangan ke 180 hari diverifikasi. Aturan migrasi dari C5 ke C5A
+beroperasi berdasarkan expiry daripada konversi otomatis. Laman portal
+resmi imigrasi.go.id untuk C5A terus menampilkan
+<span class="verbatim">Data Belum Tersedia</span> per 26 Mei 2026.</p>
+
+<p>Komunikasi penasihat Bali Zero seharusnya bertumpu pada baseline yang
+terverifikasi ini. Klaim yang melampaui fakta yang diverifikasi —
+termasuk biaya tambahan khusus C5A di atas dasar PNBP, kekhasan
+prosedural yang belum dikonfirmasi melalui inquiry Kantor langsung, dan
+adjudikasi informal pengaturan barter atau acara berbayar — harus
+ditandai sebagai provisional dalam materi yang ditujukan kepada klien.</p>
+
+<h3>Catatan verifikasi (revisi ini)</h3>
+<ul>
+<li>Korpus NotebookLM NB-2 dikueri pada 2026-05-26 via tiga kueri asinkron (satu deep research + dua batch terstruktur).</li>
+<li>Laman imigrasi.go.id diverifikasi live via curl pada 2026-05-26.</li>
+<li>Tarif Lampiran PP 45/2024 disilangkan dengan jadwal biaya resmi pada imigrasi.go.id/biaya_imigrasi.</li>
+<li>Kepmen M.IP-08.GR.01.01 Tahun 2025 diintegrasikan ke NB-2 dan ke koleksi Qdrant <span class="verbatim">legal_unified</span> pada 2026-05-26.</li>
+</ul>
+
+</section>
+
+<footer class="sources">
+  
+<h3 style="font-family: 'Inter', sans-serif; color: #0F4C5C; font-size: 11pt; margin: 0 0 3mm; font-weight: 600;">Sumber</h3>
+<ol>
+<li>UU 6/2011 tentang Keimigrasian (sebagaimana diubah oleh UU 63/2024) — JDIH BPK, peraturan.bpk.go.id/Details/273550</li>
+<li>Permenkumham 22/2023 tentang Klasifikasi Visa — peraturan.bpk.go.id/Details/364085</li>
+<li>Permenkumham 11/2024 — peraturan.bpk.go.id/Details/375920</li>
+<li>PP 45/2024 tentang PNBP — peraturan.bpk.go.id/Details/305293</li>
+<li>Kepmen M.IP-08.GR.01.01 Tahun 2025 tentang Klasifikasi Visa — diintegrasikan 2026-05-26</li>
+<li>imigrasi.go.id/wna/daftar-visa-indonesia/C5A — diverifikasi 2026-05-26</li>
+<li>imigrasi.go.id/biaya_imigrasi — jadwal biaya keimigrasian resmi</li>
+<li>Siaran pers Imigrasi Ngurah Rai tentang operasi Dharma Dewata, 11 Mei 2026</li>
+<li>NotebookLM NB-2 Immigration and Visa Indonesia 2025 (108 sumber pada saat kueri)</li>
+<li>Permenimipas 5/2025 — Regulasi Menteri pasca-restrukturisasi</li>
+<li>Perpres 76/2024 — ketentuan eksekutif tambahan</li>
+<li>PP 34/2021 — regulasi pendahulu</li>
+<li>Permenkumham 27/2024 — detail operasional</li>
+<li>Permenkumham 10/2025 — stack operasional saat ini</li>
+</ol>
+
+</footer>
+</main>
+
+</body>
+</html>
