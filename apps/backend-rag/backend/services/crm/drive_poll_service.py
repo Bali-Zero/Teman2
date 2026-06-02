@@ -22,6 +22,10 @@ import asyncpg
 from googleapiclient.errors import HttpError
 
 from backend.services.crm.document_categorizer import auto_categorize_document
+from backend.services.crm_guardian.summary_queue import (
+    enqueue_client,
+    enqueue_clients_for_company_folder,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +126,83 @@ def _send_telegram_alert(message: str) -> None:
         logger.exception("Telegram alert fallito con errore inatteso")
 
 
+def _new_guardian_queue_counters() -> dict[str, int]:
+    """Counters for best-effort CRM Guardian enqueue side effects."""
+    return {
+        "inserted": 0,
+        "already_pending": 0,
+        "skipped_disabled": 0,
+        "client_not_found": 0,
+        "company_no_clients": 0,
+        "error": 0,
+    }
+
+
+def _record_guardian_enqueue_result(
+    counters: dict[str, int],
+    result: dict[str, Any],
+) -> None:
+    action = str(result.get("action") or "error")
+    counters[action] = counters.get(action, 0) + 1
+
+
+async def _enqueue_guardian_client(
+    db_pool: Any,
+    client_id: int,
+    *,
+    enqueued_by: str,
+    counters: dict[str, int],
+) -> None:
+    """Best-effort enqueue for a client summary refresh.
+
+    Drive polling must never fail just because Guardian queueing failed. The
+    summary queue is idempotent, so repeated Drive changes collapse into one
+    pending/running row per client.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            result = await enqueue_client(
+                conn,
+                client_id,
+                enqueued_by=enqueued_by,
+            )
+        _record_guardian_enqueue_result(counters, result)
+    except Exception:
+        counters["error"] = counters.get("error", 0) + 1
+        logger.exception(
+            "Drive poll: CRM Guardian enqueue failed for client %s",
+            client_id,
+        )
+
+
+async def _enqueue_guardian_company_folder(
+    db_pool: Any,
+    drive_folder_id: str,
+    *,
+    enqueued_by: str,
+    counters: dict[str, int],
+) -> None:
+    """Best-effort cascade enqueue for clients linked to a company folder."""
+    try:
+        async with db_pool.acquire() as conn:
+            results = await enqueue_clients_for_company_folder(
+                conn,
+                drive_folder_id,
+                enqueued_by=enqueued_by,
+            )
+        if not results:
+            counters["company_no_clients"] = counters.get("company_no_clients", 0) + 1
+            return
+        for result in results:
+            _record_guardian_enqueue_result(counters, result)
+    except Exception:
+        counters["error"] = counters.get("error", 0) + 1
+        logger.exception(
+            "Drive poll: CRM Guardian cascade enqueue failed for folder %s",
+            drive_folder_id,
+        )
+
+
 async def poll_drive_changes() -> dict[str, Any]:
     """
     Poll Google Drive for new files in client folders.
@@ -209,6 +290,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
 
         # 3. Build lookup maps: subfolder_id → (client_id, subfolder_name)
         # Includes BOTH top-level (00_Profile) AND nested (02_Company/AKTA) subfolders
+        guardian_queue = _new_guardian_queue_counters()
         async with db_pool.acquire() as conn:
             subfolders = await conn.fetch(
                 "SELECT client_id, subfolder_name, subfolder_id FROM client_drive_subfolders",
@@ -227,6 +309,28 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
         root_folder_map: dict[str, int] = {}
         for c in clients_with_folders:
             root_folder_map[c["google_drive_folder_id"]] = c["id"]
+
+        # Company folders are not inserted into client documents here, but a
+        # company-level Drive change invalidates every linked client summary.
+        async with db_pool.acquire() as conn:
+            company_folders = await conn.fetch(
+                """
+                SELECT id, company_name, google_drive_folder_id, tax_dept_folder_id
+                FROM companies
+                WHERE google_drive_folder_id IS NOT NULL
+                   OR tax_dept_folder_id IS NOT NULL
+                """,
+            )
+
+        company_folder_map: dict[str, tuple[int, str]] = {}
+        for company in company_folders:
+            for folder_key in ("google_drive_folder_id", "tax_dept_folder_id"):
+                folder_id = company[folder_key]
+                if folder_id:
+                    company_folder_map[folder_id] = (
+                        company["id"],
+                        company["company_name"],
+                    )
 
         # 4. Process new files
         processed = 0
@@ -256,7 +360,26 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             if parent_id in subfolder_map:
                 client_id, folder_name = subfolder_map[parent_id]
             elif parent_id in root_folder_map:
-                # File in client root folder — skip (should be in a subfolder)
+                # File in client root folder — skip document insert, but the
+                # Drive inventory changed so the semantic summary is stale.
+                await _enqueue_guardian_client(
+                    db_pool,
+                    root_folder_map[parent_id],
+                    enqueued_by="drive_poll_service:client_root_file",
+                    counters=guardian_queue,
+                )
+                skipped += 1
+                continue
+            elif parent_id in company_folder_map:
+                # File in company/tax root folder — cascade summary refresh to
+                # all active linked clients. Company document ingestion is a
+                # separate path; this poller stays client-document focused.
+                await _enqueue_guardian_company_folder(
+                    db_pool,
+                    parent_id,
+                    enqueued_by="drive_poll_service:company_root_file",
+                    counters=guardian_queue,
+                )
                 skipped += 1
                 continue
             else:
@@ -288,6 +411,15 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             parent_name,
                             client_id,
                         )
+                    elif parent_parents and parent_parents[0] in company_folder_map:
+                        await _enqueue_guardian_company_folder(
+                            db_pool,
+                            parent_parents[0],
+                            enqueued_by="drive_poll_service:company_nested_file",
+                            counters=guardian_queue,
+                        )
+                        skipped += 1
+                        continue
                     else:
                         skipped += 1
                         continue
@@ -420,6 +552,13 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     client_id,
                 )
 
+            await _enqueue_guardian_client(
+                db_pool,
+                client_id,
+                enqueued_by="drive_poll_service:client_document",
+                counters=guardian_queue,
+            )
+
             # Dispatch OCR
             try:
                 await _dispatch_ocr_by_folder(
@@ -446,13 +585,18 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             )
 
         logger.info(
-            f"Drive poll: processed {processed}, skipped {skipped} from {len(changes)} changes",
+            "Drive poll: processed %s, skipped %s, guardian_queue=%s from %s changes",
+            processed,
+            skipped,
+            guardian_queue,
+            len(changes),
         )
         return {
             "status": "ok",
             "changes": len(changes),
             "processed": processed,
             "skipped": skipped,
+            "guardian_queue": guardian_queue,
         }
 
     except (HttpError, asyncpg.PostgresError, OSError, KeyError) as e:

@@ -1,0 +1,815 @@
+{
+  "session": "S16 sota-multiagent-2026",
+  "date": "2026-06-02",
+  "domain": "operations",
+  "supersedes_window": "delta on 2026-05-24 synthesis + 2026-05-28 companion (those cover repo-architecture: worktree/lease/merge-queue/repomap). S16 covers ORCHESTRATION TOPOLOGY / coordination primitives / failure modes / agent-count scaling.",
+  "method": {
+    "research": "Claude Code Workflow fan-out, 4 angles (topology, failure-mode, coordination-primitive, benchmark-agent-count), parallel agents + WebSearch/WebFetch primary sources",
+    "verify": "adversarial source-merit per claim (not vote-tally — deep-research verify 0-0 bug avoided by explicit merit verdict). Caught: fabricated MAST percentages, inflated R^2 0.513->0.373, fabricated -39% lower bound, overstated SWE-bench structural claim.",
+    "self_verified_anchors": [
+      "mast-14-failure-modes-taxonomy",
+      "mast-intervention-ceiling",
+      "anthropic-15x-tokens-coding-poor-fit",
+      "anthropic-breadth-first-only",
+      "a2a-v1-linux-foundation-prod",
+      "mast-taxonomy-14-modes-3-cats"
+    ],
+    "agents_spawned": 38,
+    "tool_uses": 288
+  },
+  "summary": {
+    "total_claims": 34,
+    "supported": 27,
+    "partial": 7,
+    "killed": 0
+  },
+  "central_finding": "The frontier moved from 'pick a better topology' to THREE things: (1) decide WHETHER to fan out at all (parallelizable -> yes; sequential/coding -> single strong loop wins); (2) generate/learn topology per-task (research-grade, defer); (3) verify aggressively at EVERY seam, not just end-of-chain. Strong counter-current: at low agent count + improving base models, single-agent matches/beats multi-agent under equal token budget (Tran-Kiela, Gao, Google scaling 3-4 ceiling). Multi-agent wins on BREADTH-FIRST parallelizable work (Anthropic +90.2% research, 15x tokens), NOT coding (Anthropic + Cognition explicit).",
+  "load_bearing_numbers": {
+    "mast_categories": "FC1 System-Design/Specification 41.77% | FC2 Inter-Agent Misalignment 36.94% | FC3 Task-Verification 21.30% (arXiv 2503.13657, self-verified; workflow's 43.8/32.2/23.5 was FABRICATED and corrected)",
+    "mast_top_modes": "Step repetition 17.14% | Reasoning-action mismatch 13.98% | Fail-to-ask-clarification 11.65% | Premature termination 7.82%",
+    "mast_intervention_ceiling": "+15.6% (verification) / +9.4% (role-spec) on ChatDev ProgramDev, GPT-4o held constant — authors call gains 'limited and insufficient'",
+    "anthropic": "multi-agent ~15x tokens vs chat; agents ~4x; +90.2% on internal research eval (Opus lead + Sonnet subagents) vs single Opus; token-use explains 80% of perf variance; coding explicitly a poor multi-agent fit",
+    "google_scaling": "hard 3-4 agent ceiling; turn-count power-law exponent 1.724 (R^2=0.974); sequential planning DEGRADES up to -70.0%; best-arch predicted on 87% held-out (cross-val R^2=0.373, NOT 0.513 as first claimed)",
+    "tran_kiela": "single-agent >= multi-agent under EQUAL thinking-token budget across Qwen3 / DeepSeek-R1-Distill-Llama / Gemini 2.5 (arXiv 2604.02460)",
+    "gao_cascade": "MAS benefit diminishes as base model improves; difficulty-cascade +1.1-12% acc / -20% cost (arXiv 2505.18286); UIUC token overhead 4-220x input, 2-12x decode",
+    "debate": "raises acc +32-52pt on hard puzzles BUT dominated by strongest agent; weak agents conform to wrong majority, self-correct 3.6% vs 30-34% strong (arXiv 2511.07784)",
+    "error_cascade": "single error seed -> widespread false consensus; message-layer governance prevents infection 89% of runs (arXiv 2603.04474)",
+    "topology_generators": "G-Designer (2410.11782) -92.24% tokens HumanEval, 0.3% adversarial drop vs 6-11% static; GPTSwarm (2402.16823) HumanEval +12pp, GAIA +90% rel; HALO (2505.13516) MATH +22pp; ADaPT (2311.05772) +33% TextCraft",
+    "a2a": "v1.0.0, Linux Foundation (donated June 2025), 150+ orgs, 22k+ stars — cross-ORG interop, not for 2-7 local sessions"
+  },
+  "claims": [
+    {
+      "id": "mast-taxonomy-14-modes-3-cats",
+      "claim": "MAST is the first empirically grounded taxonomy of multi-agent LLM failures: 14 failure modes in 3 categories — System Design (43.8% of failures), Inter-Agent Misalignment (32.2%), and Task Verification (23.5%) — derived from 1,600+ annotated traces across 7 frameworks at inter-annotator Kappa=0.88.",
+      "number": "14 modes / 3 categories / kappa 0.88",
+      "source": "arXiv:2503.13657",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Provides the diagnostic vocabulary Nuzantara lacks: it shows ~37% of MAS failures are verification+termination (FM-3.x premature/incomplete/incorrect verification, FM-1.5 unaware of termination) — failures that worktree brokers, leases and merge queues do NOT detect because they are semantic, not structural.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "MAST",
+        "verdict": "PARTIAL",
+        "source_real": true,
+        "corrected_number": "14 modes / 3 categories / 1642 traces (1600+) / 7 frameworks / Kappa 0.88 all CONFIRMED. Category percentages are WRONG: paper/secondary sources report ~41.8% System Design (one rendering 44.2%), ~36.9% Inter-Agent Misalignment, ~21.3% Task Verification — NOT the claimed 43.8% / 32.2% / 23.5%.",
+        "corrected_source": "arXiv:2503.13657 \"Why Do Multi-Agent LLM Systems Fail?\" (Cemri, Pan, Yang et al.) — https://arxiv.org/abs/2503.13657 (HTML v3: https://arxiv.org/html/2503.13657v3)",
+        "reasoning": "The arXiv id 2503.13657 is real and resolves to \"Why Do Multi-Agent LLM Systems Fail?\", which introduces MAST (Multi-Agent System Failure Taxonomy). The primary source directly confirms the structural claims: 14 failure modes, 3 categories (system design issues, inter-agent misalignment, task verification), 1600+ annotated traces (precisely 1642), 7 MAS frameworks, and inter-annotator Cohen's Kappa = 0.88. \"First empirically grounded taxonomy\" is consistent with the paper's own framing as the first MAS failure taxonomy/dataset. HOWEVER, the three category percentages stated as fact (43.8% / 32.2% / 23.5%) are NOT substantiated. The paper reports per-failure-mode percentages (e.g., FM-1.1 at 11.8%) rather than a single clean three-category aggregate, and independent summaries of the paper report the category split as roughly 41.8% (one rendering 44.2%) / 36.9% / 21.3% — materially different from the claimed figures, especially Inter-Agent Misalignment (32.2% claimed vs ~36.9% reported) and Task Verification (23.5% claimed vs ~21.3% reported). The core taxonomy claim is SUPPORTED but the specific quantitative breakdown is fabricated/mis-derived, so the claim survives only in PARTIAL form: cite the modes/categories/traces/frameworks/Kappa as fact, drop or correct the percentages."
+      }
+    },
+    {
+      "id": "mast-intervention-ceiling",
+      "claim": "The MAST authors tested topology/workflow interventions on real MAS (ChatDev, AG2): adding task-objective verification gave +15.6% on ProgramDev and giving the CEO agent final say +9.4%, but they explicitly conclude these gains are 'limited and insufficient' — 'not all failure modes are resolved' and robust fixes require combinatorial agent-org PLUS model-level changes.",
+      "number": "+15.6% then plateau",
+      "source": "arXiv:2503.13657",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Directly bounds Nuzantara's expected ROI: investing more in orchestration topology (a 5th or 6th federation dispatch lane) hits a ceiling around +10-16%. The durable lever is verification-at-the-seam (which Nuzantara already has at L3 merge-queue) plus adversarial review, not more clever fan-out.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "MAST-interventions-2503.13657",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2503.13657 resolves to the genuine MAST paper \"Why Do Multi-Agent LLM Systems Fail?\" (Cemri et al., UC Berkeley), which introduces the 14-mode Multi-Agent System Failure Taxonomy. The HTML full text (v3) confirms every load-bearing element of the claim verbatim: ChatDev/AG2 are the case-study frameworks; \"adding a high-level task objective verification step to ChatDev yields a +15.6% improvement in task success on ProgramDev\"; \"ensuring the CEO had the final say contributed to a +9.4% increase in overall task success rate\"; and the explicit limiting conclusion \"not all failure modes are resolved, and task completion rates still remain low... more substantial improvements are needed,\" with robust reliability requiring \"combinatorial changes ranging from agent system organization to model level improvements.\" The doc's prose (\"limited and insufficient\") is a faithful paraphrase of the paper's own \"not all failure modes are resolved / more substantial improvements needed\" language, and \"agent-org PLUS model-level changes\" maps exactly to the quoted conclusion. Numbers, source, and tier (primary) all check out. The only cosmetic mismatch is the STATED NUMBER field (\"+15.6% then plateau\"), which compresses the two-number finding but does not misrepresent it — both +15.6% and +9.4% are real and the plateau/limited framing is accurate."
+      }
+    },
+    {
+      "id": "gdesigner-vgae-per-query-topology",
+      "claim": "G-Designer uses a variational graph auto-encoder to GENERATE a task-specific agent communication topology per query (encode agents+query into a virtual node, decode a sparse graph), beating fixed topologies: MMLU 84.5%, HumanEval 89.9% pass@1 (+4.0% vs MetaGPT), GSM8K 95.07%, while cutting token consumption up to 92.24% on HumanEval and dropping only 0.3% accuracy under prompt-injection vs 6-11% for static graphs.",
+      "number": "-92.24% tokens / 0.3% adversarial drop",
+      "source": "arXiv:2410.11782",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Nuzantara's federation_orchestrator uses a FIXED CLASSIFY->parallel-DISPATCH->ASSEMBLE shape regardless of task. G-Designer addresses the 'one topology fits all tasks' inefficiency and the adversarial-robustness gap — a learned per-task sparsifier would cut the cost of always firing gemini-search+gemini-explore+codex-sandbox in parallel.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "G-Designer",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2410.11782 (\"G-Designer: Architecting Multi-agent Communication Topologies via Graph Neural Networks\") is a real, locatable primary source whose abstract, Table 1, and body sections substantiate the claim. Confirmed verbatim: variational graph auto-encoder encoding agents + a task-specific virtual node and decoding a task-adaptive sparse topology; MMLU 84.50%; HumanEval 89.90% pass@1 with \"+4.0% vs MetaGPT\" (Sec 5.2); GSM8K 95.07% (Table 1); and 0.3% accuracy decline under adversarial/prompt attack vs static-graph baselines dropping as high as 11.0% (Sec 5.4), consistent with the stated 6-11% range. The token-reduction figure is the only nuance: the paper itself states two values — \"up to 92.24% on HumanEval\" in the Section 1 contributions list and \"up to 95.33%\" in the abstract. The claim used 92.24%, which is one of the paper's own reported numbers, so it is not fabricated or inflated (indeed it is the more conservative of the two). No hallucinated id, no inflated number, no vendor marketing. Verdict SUPPORTED; if pedantic accuracy is desired the abstract's headline figure is 95.33%, but 92.24% is defensible verbatim from the paper."
+      }
+    },
+    {
+      "id": "gptswarm-edges-as-rl-params",
+      "claim": "GPTSwarm models the agent system as an optimizable computational graph and learns the inter-agent EDGES via REINFORCE over a continuous distribution of DAGs; optimized swarms beat chain/ToT baselines: HumanEval 76%->88% (+12pp), GAIA overall 9.70%->18.45% (+90% relative), Crosswords 66.8%->80.0% with GPT-4-Turbo, and it prunes edges to recover performance under adversarial agents.",
+      "number": "HumanEval +12pp, GAIA +90% rel",
+      "source": "arXiv:2402.16823",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Addresses the failure where a hand-wired graph is suboptimal AND where a malicious/low-quality agent corrupts output — GPTSwarm auto-prunes the edge to it. Nuzantara's static LangGraph has no mechanism to learn-out a consistently-bad dispatch route (e.g. a hallucinating CLI lane); edge-optimization is that mechanism.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "gptswarm-2402.16823",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2402.16823 resolves to the real paper \"Language Agents as Optimizable Graphs\" (GPTSwarm), confirmed via WebFetch of both the abstract page and the HTML full text. Every stated number is corroborated by the primary source: HumanEval 0.76 to 0.88 (exact +12pp), GAIA 9.70% to 18.45% average (18.45/9.70 = +90.2% relative, exact), Crosswords TOT-GPT-4-Turbo baseline 0.668 to optimized 0.800 (66.8% to 80.0%, exact). The paper explicitly uses the REINFORCE algorithm with gradient ascent over \"a parameterized probabilistic distribution over DAGs\" to learn edges, and the MMLU adversarial setting shows edge optimization filters/prunes malicious agents to recover baseline performance — both mechanistic claims confirmed. One minor framing nuance: the +12pp HumanEval gain comes from node-level (prompt) optimization rather than edge optimization (the paper labels GAIA as having neither edge nor node optimization, and HumanEval as node optimization), so attributing all gains to edge-learning slightly overstates the edge mechanism's role. This is a SOTA-summary altitude imprecision, not a numeric or sourcing error, so it does not warrant downgrade. Source is primary, real, and locatable; all four headline numbers are exact."
+      }
+    },
+    {
+      "id": "blackboard-self-selection",
+      "claim": "The LLM Multi-Agent Blackboard System replaces the central router with a shared blackboard onto which a coordinator BROADCASTS requests and autonomous agents self-select to respond by capability — fully benchmarked on KramaBench/DSBench/DA-Code with 13%-57% relative end-to-end success gains and up to +9% data-discovery F1.",
+      "number": "+13-57% rel success",
+      "source": "arXiv:2510.01285",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Attacks the exact brittleness of Nuzantara's CLASSIFY node (local qwen3.5 must know every downstream lane's capability to route correctly). Blackboard self-selection removes the requirement that the central controller have 'precise knowledge of each sub-agent's capabilities' — degrades gracefully as lanes are added/removed.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "llm-multiagent-blackboard-2510.01285",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The arXiv ID 2510.01285 resolves to a real, locatable paper: \"LLM-Based Multi-Agent Blackboard System for Information Discovery in Data Science\" (Salemi, Parmar, Goyal, Song, Yoon, Zamani, Pfister, Palangi), submitted Sept 30 2025, revised Jan 2026, listed under cs.CL — the 2510 prefix is consistent with an Oct-2025 submission window, so no year/topic mismatch. Two independent retrievals (direct WebFetch of the abs page + WebSearch surfacing the arXiv abs/pdf and papers.cool mirror) corroborate each other. The abstract directly substantiates the architecture claim: a central agent posts requests to a shared blackboard and autonomous subordinate agents volunteer to respond based on capability, explicitly replacing the rigid master-slave central controller — matching the \"broadcast + self-select by capability\" framing. The numbers are verbatim from the abstract: \"13%-57% relative improvements in end-to-end success and up to a 9% relative gain in data discovery F1 over the best baseline,\" and KramaBench/DSBench/DA-Code are the evaluation benchmarks. The claim's \"+13-57% rel success\" and \"up to +9% data-discovery F1\" are accurate, not inflated. One minor nuance: the claimed mechanism word \"broadcasts\" is a fair paraphrase of \"posts requests to a shared blackboard,\" and the gains are relative-to-best-baseline (correctly stated). Source is primary (peer-style arXiv preprint by the authors), tier classification \"primary\" is appropriate. No fabrication, no inflation, no single-study-as-consensus overreach detected — the doc presents it as one system's benchmarked result, which is what the paper claims."
+      }
+    },
+    {
+      "id": "sale-strategy-auctions",
+      "claim": "SALE (Strategy Auctions for workLoad Efficiency) is a freelancer-marketplace-style allocator where candidate agents BID with short strategy plans scored by a cost-value mechanism and refined via shared auction memory; it routes per-task without training a router, reducing reliance on the largest agent by 53% and total cost by 35% while still beating the largest agent's pass@1 on deep-search and coding.",
+      "number": "-53% large-agent use, -35% cost",
+      "source": "arXiv:2602.02751",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Addresses cost-blind routing: Nuzantara always escalates to heavy CLI lanes (gemini/codex/claude-redteam) regardless of whether a cheap local pass would have sufficed. Auction-by-strategy-plan picks the cheapest agent whose PLAN looks adequate before running it to completion — a CLI-friendly, training-free router that fits the no-API constraint.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "SALE-arxiv-2602.02751",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2602.02751 resolves to a real paper, \"Scaling Small Agents Through Strategy Auctions\" (Lisa Alazraki, William F. Shen, Yoram Bachrach, Akhil Mathur). The abstract substantiates every element of the claim: SALE (Strategy Auctions for workLoad Efficiency) is a freelancer-marketplace-inspired framework where candidate agents bid with short strategic plans scored by a systematic cost-value mechanism and refined via shared auction memory, enabling per-task routing without training a separate router. The headline numbers match: reduce reliance on the largest agent by 53% and total cost by 35% while consistently matching or beating the largest agent's pass@1 (+3.5% deep search, +2.7% coding). Verified via three reads — WebFetch of arxiv.org/abs (paraphrased the number as 52%, an apparent transcription/rounding artifact), an independent WebSearch hitting alphaXiv/aggregators (53%), and the Moonlight literature review (53%). Two of three independent sources, including the one most likely quoting verbatim, confirm 53%, so the stated number stands. Only caveat: this is a single recent preprint (not yet peer-reviewed consensus), so it should be cited as one study's finding rather than established fact, but the source and numbers are genuine and primary."
+      }
+    },
+    {
+      "id": "halo-three-tier-hierarchy",
+      "claim": "HALO is a 3-tier recursive hierarchy — high-level planner (one subtask at a time) -> mid-level role-designer (instantiates specialist agents per subtask) -> low-level inference agents — explicitly to cure 'cognitive overload' of flat orchestration; vs the ADAS baseline it reports HumanEval 95.2% (+12.8pp), MMLU 81.6% (+8.8pp), MATH 58.9% (+22.0pp).",
+      "number": "MATH +22.0pp vs ADAS",
+      "source": "arXiv:2505.13516",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Goes beyond Nuzantara's 2-level orchestrator-worker by adding a dynamic role-DESIGN layer between plan and execute: roles are synthesized per-subtask rather than fixed (Nuzantara's lanes/agents are statically defined). Addresses MAST FM-1.2 (disobey role spec) by making roles task-derived.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "HALO-3tier-MATH-22pp",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2505.13516 is a real, correctly-identified primary source: \"HALO: Hierarchical Autonomous Logic-Oriented Orchestration for Multi-Agent LLM Systems\" (verified via arxiv.org/abs and arxiv.org/html/2505.13516v1). The full text confirms every load-bearing element. (1) The 3-tier hierarchy is verbatim: \"high-level planning agent for task decomposition, mid-level role-design agents for subtask-specific agent instantiation, and low-level inference agents.\" (2) The \"cognitive overload\" motivation is verbatim: HALO \"distributes these responsibilities across the hierarchical reasoning architecture... reduces cognitive overload,\" explicitly contrasted with single-agent/flat frameworks like ReAct. (3) The benchmark numbers vs the ADAS baseline match exactly: HumanEval pass@1 95.2% vs 82.4% (+12.8pp), MMLU 81.6% vs 72.8% (+8.8pp), MATH 58.9% vs 36.9% (+22.0pp), 78.6% vs 64.0% average (+14.6pp). The stated number \"MATH +22.0pp vs ADAS\" is correct. Only caveats: the figures are single-paper self-reported results (not independent/consensus), and ADAS is presented as the strongest among several baselines (vs SOTA average the paper cites 14.4%), but the claim correctly attributes the deltas specifically to the ADAS comparison. Tier is genuinely primary. Claim survives as fact."
+      }
+    },
+    {
+      "id": "adapt-as-needed-recursion",
+      "claim": "ADaPT separates a planner from an executor and recursively decomposes a subtask ONLY when the executor reports failure (as-needed, not upfront), beating non-adaptive plan-and-execute by up to +28.3% on ALFWorld, +27% on WebShop, and +33% on TextCraft.",
+      "number": "+33% TextCraft",
+      "source": "arXiv:2311.05772",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Nuzantara's federation classifier decides decomposition UPFRONT at the CLASSIFY node. ADaPT's failure-triggered recursion addresses MAST FM-1.3 (step repetition) and over/under-decomposition by only spawning sub-agents when the executor actually hits a wall — cheaper and adaptive to model capability.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "adapt-2311.05772",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The arXiv id 2311.05772 resolves to the real paper \"ADaPT: As-Needed Decomposition and Planning with Language Models\" (Prasad, Koller, Hartmann, Clark, Sabharwal, Bansal, Khot), also published at NAACL 2024 Findings with official GitHub code (archiki/ADaPT) — a genuine peer-reviewed primary source, not a hallucinated id. The abstract and an independent web cross-check both confirm the method description verbatim: ADaPT explicitly plans and decomposes complex sub-tasks \"as-needed, i.e., when the LLM is unable to execute them\" (executor-failure-triggered, recursive, not upfront), with separated planning/execution. The three numbers match the paper exactly: success rates up to 28.3% higher on ALFWorld, 27% on WebShop, and 33% on TextCraft (the latter a novel compositional benchmark the paper introduced). The \"up to\" qualifier and \"beating non-adaptive plan-and-execute\" framing faithfully reflect the paper's own \"up to X% absolute\" gains over baselines like ReAct and Plan-and-Solve. The stated number +33% TextCraft is correct. Source is genuinely primary tier."
+      }
+    },
+    {
+      "id": "debate-dominated-by-strongest",
+      "claim": "A controlled study of multi-agent debate (Knight-Knave-Spy, verifiable ground truth) finds debate does raise collective accuracy (+52% on size-4 puzzles) BUT outcomes are dominated by intrinsic strength of the best agent, and weaker models defer to incorrect majorities (3.6% self-correction vs 34.4% for strong models) — i.e. premature consensus, not genuine deliberation.",
+      "number": "3.6% vs 34.4% correction",
+      "source": "arXiv:2511.07784",
+      "source_tier": "primary",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "COUNTER-EVIDENCE: warns Nuzantara NOT to add a debate/society-of-mind layer expecting reliability for free. Debate's gain is bounded by the strongest panelist and is vulnerable to MAST FM-2.x conformity. Nuzantara's asymmetric-adversarial review (one redteam critic, not a consensus vote) is the correct design and should stay asymmetric.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "arXiv-2511.07784-debate",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The arXiv id 2511.07784 resolves to a real paper, \"Can LLM Agents Really Debate? A Controlled Study of Multi-Agent Debate in Logical Reasoning\" (Wu, Li, Li), whose abstract confirms it uses Knight-Knave-Spy logic puzzles with verifiable ground truth and finds that intrinsic reasoning strength and group diversity dominate debate outcomes, with majority pressure suppressing independent correction — exactly the claim's thesis. The two stated numbers are confirmed verbatim in the full HTML: Table 3 reports accuracy \"increasing by 52% for size-4 puzzles,\" and Section 6.2 (RQ2) states stronger models correct incorrect consensus at 34.4% (gemini-2.5-flash) while the weakest (gemini-2.5-flash-lite) self-corrects in \"only 3.6% of such cases.\" The claim's \"+52% on size-4\" and \"3.6% vs 34.4% correction\" are accurate and faithfully framed (weakest vs strongest model). The only minor caveat is that this is a single controlled study (one puzzle family, specific model set) presented in the SOTA doc as a finding — which it is, correctly attributed to one primary paper, not as broad consensus. The source is primary, real, locatable, and substantiates both the qualitative claim and the exact numbers. SUPPORTED."
+      }
+    },
+    {
+      "id": "langgraph-supervisor-swarm-hubrisk",
+      "claim": "LangGraph ships two documented production topologies beyond plain orchestrator-worker: 'supervisor' (central coordinator with handoff tools forwarding message history) and 'swarm' (peer agents hand off control directly, no hub); vendor docs note the hub-and-spoke supervisor has total-system-halt risk on coordinator failure while swarm isolates worker failures. OpenAI Swarm was deprecated March 2025, superseded by the Agents SDK.",
+      "number": "",
+      "source": "https://reference.langchain.com/python/langgraph-supervisor",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Identifies the single-point-of-failure in any central-orchestrator design (Nuzantara's federation_orchestrator IS a hub): if the CLASSIFY/ASSEMBLE node fails the whole pipeline halts. Swarm-style direct handoff is the documented mitigation, trading central observability for fault isolation.",
+      "angle": "The frontier beyond static orchestrator-worker is no longer \"pick a better topology\" but \"generate/learn the topology per-task and verify aggressively at the seams.\" Three primary-source findings reframe Nuzantara's roadmap: (1) MAST's empirical taxonomy proves that ~37% of multi-agent failures are verification/termination problems that no topology fixes — and the authors' own best topology interventions (+15.6%) hit a hard ceiling, validating Nuzantara's L3 merge-queue/CODEOWNERS verification investment over more orchestration cleverness. (2) GPTSwarm and especially G-Designer show the next leap is a LEARNED topology generator (RL on edges / VGAE-per-query) that beats any hand-fixed graph AND cuts tokens up to 92%, which Nuzantara's federation_orchestrator (a fixed CLASSIFY->DISPATCH->ASSEMBLE LangGraph) does not yet do. (3) Blackboard/auction patterns (broadcast self-selection, strategy bidding) attack the specific failure of a central router needing perfect knowledge of every worker's capability — relevant because federation_orchestrator's CLASSIFY node is exactly that brittle central router. Counter-evidence flagged: multi-agent debate's gains are dominated by the strongest single agent and suffer premature consensus, so it is NOT a free reliability win.",
+      "verification": {
+        "claim_id": "langgraph-topologies-swarm-deprecation",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "Every sub-claim resolves to a real, locatable source. (1) The supervisor topology: the stated URL https://reference.langchain.com/python/langgraph-supervisor exists and exposes create_supervisor(), create_handoff_tool(), and create_handoff_back_messages() — confirming a central-coordinator pattern with handoff tools that forward/append message history (the \"handoff back\" message helper is exactly the history-forwarding mechanism). (2) The swarm topology: https://reference.langchain.com/python/langgraph-swarm and github.com/langchain-ai/langgraph-swarm-py confirm a peer-to-peer architecture where \"agents dynamically hand off control to one another based on their specializations,\" tracking the active agent without a central coordinator — matching \"peer agents hand off control directly, no hub.\" (3) The failure-mode characterization is substantiated verbatim by the Augment Code guide (\"In hub-and-spoke topology, coordinator failure halts the entire system\"), and the swarm's distributed handoff design isolates the coordinator-bottleneck failure. Note: this exact failure-mode prose is NOT on the langgraph-supervisor reference page itself (a third-party guide carries it), so the framing \"vendor docs note...\" is slightly generous — the topologies are vendor-documented but the halt-risk comparison is third-party analysis. (4) OpenAI Swarm deprecation: the openai/swarm GitHub repo is archived, labeled experimental/educational, and its README redirects to the OpenAI Agents SDK shipped March 2025 as the production successor — confirming the deprecation date and supersession. The stated URL is real and on-point; minor caveat about the source of the failure-mode language keeps this from being a flawless 1:1 citation but does not undermine any factual assertion."
+      }
+    },
+    {
+      "id": "mast-3-categories-frequency",
+      "claim": "The MAST taxonomy of multi-agent LLM failures partitions errors into 3 categories with measured frequencies: Specification/system-design issues 41.77%, Inter-agent misalignment 36.94%, Task verification 21.30%, across 14 distinct failure modes.",
+      "number": "41.77% / 36.94% / 21.30% across 14 modes",
+      "source": "arXiv:2503.13657 (Cemri et al., MAST)",
+      "source_tier": "primary",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "Overall failure taxonomy — grounds which failure classes are worth engineering against (specification + inter-agent misalignment together are ~79% of failures).",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "MAST-taxonomy-3cat-14modes",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2503.13657 resolves to a real paper, \"Why Do Multi-Agent LLM Systems Fail?\" by Cemri, Pan, Yang et al. (the \"et al.\" in the cite is correct; Cemri is lead author). The abstract verbatim confirms the MAST taxonomy with \"14 unique modes, clustered into 3 categories: (i) system design issues, (ii) inter-agent misalignment, and (iii) task verification\" — matching the claim's structure exactly. The three specific frequencies were not in the abstract, so I fetched the arXiv full-text HTML (v2), which confirms all three verbatim: Specification Issues (FC1) 41.77%, Inter-Agent Misalignment (FC2) 36.94%, Task Verification (FC3) 21.30%. A secondary analysis (emergentmind/orq.ai) independently corroborated 36.94% and 21.30%. Every load-bearing element — id, title, authorship, category names, 14 modes, and all three percentages — checks out against the primary source. The claim is correctly cited as primary/tier-1. No fabrication, no inflation, no single-study-as-consensus overreach (it is explicitly presented as one study's empirical taxonomy)."
+      }
+    },
+    {
+      "id": "mast-inter-agent-state-desync-37pct",
+      "claim": "Inter-agent misalignment is 36.94% of all multi-agent failures; its sub-modes are dominated by reasoning-action mismatch (13.98%) and fail-to-ask-for-clarification (11.65%), with loss-of-conversation-history (3.33%) and conversation-reset (2.33%) reflecting agents operating on inconsistent views of shared state.",
+      "number": "36.94% (reasoning-action mismatch 13.98%, clarification-fail 11.65%)",
+      "source": "arXiv:2503.13657 (MAST); second-hand framing in cio.com & oreilly.com",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Context/state desync between agents — Nuzantara's worktree+Redis-lease+repomap stack guards FILESYSTEM state, but NOT conversation/semantic state; a cross-agent context-handoff contract (state snapshot + verification at agent boundaries) targets FM-1.4/FM-2.1 which leases do not cover.",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "inter-agent-misalignment-3694",
+        "verdict": "PARTIAL",
+        "source_real": true,
+        "corrected_number": "Inter-Agent Misalignment = 36.9% (not 36.94%); category split per Fig. 4: System Design 41.8%, Inter-Agent Misalignment 36.9%, Task Verification 21.3%. Sub-mode percentages (13.98% / 11.65% / 3.33% / 2.33%) UNVERIFIED in primary source.",
+        "corrected_source": "arXiv:2503.13657 \"Why Do Multi-Agent LLM Systems Fail?\" (Cemri et al., UC Berkeley), Figure 4 caption — https://arxiv.org/abs/2503.13657 / https://arxiv.org/pdf/2503.13657",
+        "reasoning": "The arXiv id 2503.13657 is genuine and is exactly the MAST paper \"Why Do Multi-Agent LLM Systems Fail?\" (Cemri et al., UC Berkeley) — source is real, not hallucinated. I extracted the PDF text layer directly: Figure 4's caption gives the category-level distribution as System Design Issues (41.8%), Inter-Agent Misalignment (36.9%), Task Verification (21.3%), which sum to 100%. So the headline number is correct to one decimal — the claimed \"36.94%\" is a spuriously precise rendering of 36.9% and is not the figure the paper states. The three named sub-modes (reasoning-action mismatch FM-2.6, fail-to-ask-for-clarification FM-2.2, conversation reset FM-2.1) are genuine FC2 failure modes in the taxonomy. HOWEVER, the specific sub-mode percentages 13.98%, 11.65%, 3.33%, 2.33% are NOT substantiated: direct text search of the PDF found zero occurrences of 13.98, 3.33, or 2.33, and the per-mode bar values use a different scale; the paper explicitly states \"no single error category disproportionately dominates.\" The only place those exact decimals appeared was an ar5iv HTML fetch that echoed the very numbers I had put in the prompt (prompt contamination), so they are not independently confirmed. Additionally, \"loss-of-conversation-history\" is not one of the paper's six FC2 sub-mode names (the context-loss mode is \"Conversation reset\"), a minor mislabel. Net: real primary source, correct category-level claim, but fabricated/unverifiable sub-mode decimals and over-precise headline — PARTIAL."
+      }
+    },
+    {
+      "id": "mast-failure-rate-range",
+      "claim": "Across 7 popular open-source MAS frameworks studied over 200+ tasks (1600+ annotated traces, inter-annotator Cohen's Kappa 0.88, scaled with an LLM-as-judge pipeline), measured task failure rates ranged from 41% to 86.7%; failures stem largely from system-design issues, not just base-LLM limits.",
+      "number": "41% to 86.7% failure rate; kappa=0.88; 1600+ traces",
+      "source": "arXiv:2503.13657 (MAST)",
+      "source_tier": "primary",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "Baseline: multi-agent failure is the norm not the exception — justifies a routing gate that requires a measured single-agent baseline before any multi-agent fan-out. Per-framework attribution of the 41% vs 86.7% endpoints not cleanly extractable [UNVERIFIED which framework is which endpoint].",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "MAST-2503.13657",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2503.13657 resolves to the real paper \"Why Do Multi-Agent LLM Systems Fail?\" (Cemri, Pan, Yang et al.; UC Berkeley/Stanford), the MAST paper — correct year (March 2025) and correct topic, not a hallucinated ID. Every load-bearing number in the claim is confirmed against the primary source and its venue-published versions (NeurIPS 2025 Datasets & Benchmarks Track / OpenReview): 7 open-source MAS frameworks studied; failure rate range \"41% to 86.7%\" appears verbatim; Cohen's Kappa = 0.88 for the inter-annotator agreement on the 150-trace taxonomy build; MAST-Data comprises 1,642 annotated execution traces (i.e., 1600+); an LLM-as-judge pipeline was indeed developed to scale annotation (reported 94% accuracy, 0.77 kappa vs experts); and the paper's central thesis is that failures cluster into system-design issues, inter-agent misalignment, and task verification — with gains achievable by refining system design rather than only swapping in better base LLMs. The only sub-claim I could not directly corroborate from abstract/snippets is the exact \"200+ tasks\" figure, but it does not contradict the paper and is not the load-bearing statistic. Tier is correctly \"primary.\" Verdict: SUPPORTED."
+      }
+    },
+    {
+      "id": "multi-agent-loses-on-coding",
+      "claim": "On code/reasoning benchmarks, executing the SAME workflow with a single agent (multi-turn self-roleplay) matches or slightly EXCEEDS its multi-agent counterpart: HumanEval 92.1% vs 91.6%, MBPP 81.4% vs 81.1%, GSM8K 93.3% vs 93.0%, MATH 54.1% vs 53.4% — while cutting inference cost 10-38% via KV-cache reuse.",
+      "number": "HumanEval 92.1% (single) vs 91.6% (multi); cost -10% to -38%",
+      "source": "arXiv:2601.12307 (Rethinking the Value of Multi-Agent Workflow)",
+      "source_tier": "primary",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "DIRECT evidence multi-agent does NOT beat single-agent on coding (it ties or loses while costing more). Single study (Jan 2026), homogeneous-model setting. Confirms Nuzantara's 2-7 session orchestrator-worker over a 50-agent fleet — and argues coding lanes should default single-agent.",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "multi-agent-vs-single-agent-bench",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2601.12307 resolves to a real paper, \"Rethinking the Value of Multi-Agent Workflow: A Strong Single Agent Baseline\" (Xu et al.), title matching the stated source verbatim. I extracted Table 1 and Table 2 directly from the downloaded PDF (pypdf), not relying on summaries. The paper's homogeneous OneFlow rows give: HumanEval 91.6 (multi) vs 92.1 (single-agent execution), MBPP 81.1 vs 81.4, GSM8K 93.0 vs 93.3, MATH 53.4 vs 54.1 — every single/multi accuracy pair in the claim matches the paper exactly (GPT-4o-mini). The paper's own language is \"matches or slightly exceeds multi-agent performance at substantially lower cost,\" matching the claim's framing. The KV-cache reuse mechanism is described precisely as claimed. The \"10-38%\" cost figure is a faithful derivation from Table 2's same-workflow (OneFlow multi vs single) GPT-4o-mini costs: MBPP $0.070→$0.063 (10.0%) to GSM8K $0.623→$0.387 (37.9%), correctly comparing like-for-like and excluding the 0% HotpotQA outlier — NOT the misleading ~84-90% AFlow-vs-single reduction a naive read would grab. Minor non-fatal nuance: headline numbers are GPT-4o-mini-specific and the single-agent edge is within error bars in places, but no stated figure is wrong. Source is primary, real, and substantiates every number."
+      }
+    },
+    {
+      "id": "anthropic-breadth-first-only",
+      "claim": "Anthropic's production multi-agent research system beat single-agent Claude Opus 4 by 90.2% on an internal BREADTH-FIRST research eval, but the same report states multi-agent is poorly suited to coding ('most coding tasks involve fewer truly parallelizable tasks') and uses ~15x more tokens than chat.",
+      "number": "+90.2% on breadth-first research; 15x tokens; coding = poor fit",
+      "source": "anthropic.com/engineering/built-multi-agent-research-system",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Coordination overhead vs payoff — defines the routing boundary: multi-agent earns its 15x cost ONLY on breadth-first independent-subtask work (search/research), the regime Nuzantara's gemini-search/explore fan-out already fits. BEYOND current system: an explicit federation_orchestrator pre-classify gate that REFUSES multi-agent fan-out for shared-context/coding tasks rather than dispatching by keyword.",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "multi-agent-research-90.2-15x-coding",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The stated source (anthropic.com/engineering/built-multi-agent-research-system) resolves to a real, authored Anthropic engineering article, \"How we built our multi-agent research system\" (published June 13, 2025; authors Jeremy Hadfield, Barry Zhang, et al.). All three sub-claims are confirmed verbatim against the page. (1) \"a multi-agent system with Claude Opus 4 as the lead agent and Claude Sonnet 4 subagents outperformed single-agent Claude Opus 4 by 90.2% on our internal research eval\" — and the eval is characterized as breadth-first queries involving multiple independent directions, matching the claim. (2) Coding fit: \"Most coding tasks involve fewer truly parallelizable tasks than research, and LLM agents are not yet great at coordinating and delegating to other agents in real time\" — matches the \"poorly suited to coding / fewer truly parallelizable tasks\" framing. (3) Tokens: \"Multi-agent systems use about 15× more tokens than chats\" — matches the ~15x claim. One minor nuance: the lead agent is Opus 4 with Sonnet 4 subagents (a mixed system) outperforming single-agent Opus 4, which the claim renders accurately. This is a vendor self-report on an internal (non-public) eval, not an independent benchmark, but the claim is explicitly framed as Anthropic's internal eval, so it is fairly represented. SUPPORTED on merit."
+      }
+    },
+    {
+      "id": "error-cascade-single-seed",
+      "claim": "In LLM multi-agent collaboration, injecting a single atomic error seed leads to widespread system-level failure (false consensus) via cascade amplification, topological sensitivity, and consensus inertia; a message-layer governance plugin prevents final infection in at least 89% of runs.",
+      "number": "single seed -> widespread failure; 89% prevention with mitigation",
+      "source": "arXiv:2603.04474 (From Spark to Fire)",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Inter-agent error propagation / cascading hallucination — quantifies that one bad upstream agent output poisons downstream consensus. BEYOND current system: a message-layer validation/quarantine step between agents (vs Nuzantara's claude-redteam REVIEW which fires only at the end of the chain, not at each hop). March-2026 single study; mitigation number is the paper's own method.",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "spark-to-fire-89pct",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2603.04474 resolves to a real, locatable paper, \"From Spark to Fire: Modeling and Mitigating Error Cascades in LLM-Based Multi-Agent Collaboration\" (Xie, Zhu, Zhang, Zhu, Ye, Qi, Chen, Zhou — City University of Macau). The ID is internally consistent (2603 = March 2026, plausible given the current date of June 2026) and was verified two independent ways: a direct WebFetch of the arXiv abstract page and a WebSearch that surfaced corroborating entries on arxiv.org, alphaXiv, and ResearchGate. The abstract directly supports every element of the claim: (1) minor inaccuracies solidifying into system-level false consensus through iteration; (2) the three named vulnerability mechanisms — cascade amplification, topological sensitivity, and consensus inertia; (3) a single injected error triggering widespread failure; and (4) a genealogy-graph-based, message-layer governance plugin that does not restructure the collaboration architecture and that \"prevents final infection in at least 89% of runs.\" The 89% figure is precise rather than inflated — the search clarified it is the post-mitigation defense success rate, raised from a 0.32 baseline to over 0.89. No hallucinated-ID, wrong-year, or single-study-as-consensus red flags; the claim is presented as a single-paper finding and is faithfully scoped. Primary source confirms."
+      }
+    },
+    {
+      "id": "debate-conformity-sycophancy",
+      "claim": "A controlled study of multi-agent debate on logical reasoning found strong conformity bias: when facing an incorrect majority, weak agents self-correct only 3.6% of the time and even strong models only 30-34% — debate gains are driven mainly by reasoning strength/diversity, not coordination, and majority pressure suppresses independent correction.",
+      "number": "3.6% correction (weak) / 30-34% (strong) vs wrong majority",
+      "source": "arXiv:2511.07784 (Can LLM Agents Really Debate?)",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Consensus inertia / sycophantic error propagation — argues review must be ASYMMETRIC-ADVERSARIAL (a dedicated critic with a different objective), NOT consensus voting. Nuzantara's sota-architecture-loop already prescribes asymmetric-adversarial review; this is the measured justification. Same study also shows debate CAN help on hard puzzles (+32-52pts), so the finding is regime-dependent, not a blanket negative.",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "multi_agent_debate_conformity_2511_07784",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2511.07784 is real and correctly titled \"Can LLM Agents Really Debate? A Controlled Study of Multi-Agent Debate in Logical Reasoning\" (Wu, Li, Li), a controlled study on the Knight-Knave-Spy logic puzzle. I verified the numbers directly against the PDF object store (not just the abstract): the paper states that when facing an incorrect majority (MaW), stronger models gemini-2.5-flash and gpt-5-mini correct the wrong consensus 34.4% and 30.0% of the time respectively, while weaker models (gemini-2.5-flash-lite) correct only 3.6% (n=278) of such cases. This matches the claim's \"3.6% (weak) / 30-34% (strong) vs wrong majority\" exactly in both magnitude and direction (correction = overturning the wrong majority). The abstract independently supports the qualitative framing: \"intrinsic reasoning strength and group diversity are the dominant drivers of debate success, while structural parameters such as order or confidence visibility offer limited gains\" and \"majority pressure suppresses independent correction\" — i.e., gains driven by reasoning strength/diversity not coordination/structure. One caveat: an intermediate WebFetch summary fabricated \"GPT-3.5 34% / GPT-4 3.6% change their answer\" — those exact strings do NOT exist in the PDF (no \"GPT-3.5\", \"GPT-4\", or \"change their answer\" tokens); the raw stream extraction confirms the actual models and the \"correction\" framing, overruling that hallucination. The claim's generic \"weak\"/\"strong\" labeling is faithful, not distorting. All numbers, the source, and the interpretation are confirmed by the primary source."
+      }
+    },
+    {
+      "id": "lost-in-the-middle-orchestration",
+      "claim": "Language models retrieve information best when it sits at the start or end of the context and degrade significantly when relevant info is in the middle of a long context — even on explicitly long-context models; this is a replicated, foundational result (TACL 2024) directly applicable to long orchestration/handoff chains where mid-chain state gets buried.",
+      "number": "U-shaped accuracy; mid-context degradation (replicated)",
+      "source": "arXiv:2307.03172 (Liu et al., Lost in the Middle, TACL 2024)",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "'Lost in the middle' of long orchestration chains — the most-replicated item here (foundational, widely reproduced). BEYOND current system: argues an orchestrator should re-surface critical state (goal, constraints, prior decisions) at the END of each agent's prompt on every hop, not rely on a long accumulating transcript — complementary to the 15-min repomap inject which only refreshes code structure, not task state.",
+      "angle": "Documented failure modes of multi-agent LLM systems (mid-2026), primary-sourced. The strongest evidence-backed signal for a LOCAL, CLI-only, orchestrator-worker shop like Nuzantara is NOT \"build more agent coordination\" — it is the opposite: (a) multi-agent reliably beats single-agent ONLY on breadth-first parallelizable tasks (research/search), and reliably FAILS to beat it on coding/shared-context tasks; (b) the dominant documented failure class is inter-agent misalignment / state desync (36.9% of all failures), exactly the class Nuzantara's worktree+lease+repomap stack already attacks at the FILESYSTEM layer but NOT at the SEMANTIC/conversation layer; (c) cascading errors and conformity/sycophancy are measured, recoverable failure modes that argue for asymmetric-adversarial review (which the sota-architecture-loop skill already prescribes) over consensus. What is BEYOND Nuzantara's current system: a structured cross-agent CONTEXT-HANDOFF contract (verification + state-snapshot at agent boundaries) targeting the FM-1.4 loss-of-history / FM-2.1 conversation-reset / inter-agent-misalignment classes that file-level leases do not cover; and a routing rule that gates multi-agent fan-out to breadth-first-only tasks with a measured single-agent baseline first.",
+      "verification": {
+        "claim_id": "lost-in-the-middle-2307.03172",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The arXiv id 2307.03172 resolves to the real paper \"Lost in the Middle: How Language Models Use Long Contexts\" (Liu, Lin, Hewitt, Paranjape, Bevilacqua, Petroni, Liang). The arXiv abstract verbatim states \"performance is often highest when relevant information occurs at the beginning or end of the input context, and significantly degrades when models must access relevant information in the middle of long contexts\" and that this \"persists even for explicitly long-context models\" — directly substantiating both the U-shaped accuracy claim and the long-context-model qualifier. The TACL 2024 citation is correct: the formal version was published in Transactions of the ACL Vol. 12, pp. 157–173 (ACL Anthology 2024.tacl-1.9), with the arXiv preprint dating to July 2023; citing it as \"arXiv:2307.03172 ... TACL 2024\" is accurate, not a year mismatch. The \"replicated/foundational\" framing is defensible — it is a heavily cited positional-bias result with corroborating follow-up work (e.g., \"Found in the Middle\", arXiv:2406.16008). The application to orchestration/handoff chains is a reasonable analogical extension, not a fabricated empirical figure. No inflated number, no hallucinated id, no vendor marketing. The stated \"number\" is qualitative (U-shaped, mid-context degradation) and matches the source exactly."
+      }
+    },
+    {
+      "id": "a2a-v1-linux-foundation-prod",
+      "claim": "A2A (Agent2Agent) reached v1.0.0 and was donated to the Linux Foundation in June 2025; it standardizes horizontal inter-agent coordination via a JSON Agent Card (discovery + declared capabilities + security schemes), a task lifecycle (SUBMITTED/WORKING/COMPLETED/FAILED/CANCELED/REJECTED/INPUT_REQUIRED/AUTH_REQUIRED), and three transport bindings (JSON-RPC 2.0, gRPC, HTTP+JSON/REST) with SSE streaming and webhook push notifications.",
+      "number": "v1.0.0; 150+ orgs; 22,000+ GitHub stars",
+      "source": "https://a2a-protocol.org/latest/specification/ + https://www.linuxfoundation.org/press/a2a-protocol-surpasses-150-organizations-lands-in-major-cloud-platforms-and-sees-enterprise-production-use-in-first-year",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "MAST FC2 inter-agent misalignment (no shared contract for capability discovery/task state across heterogeneous agents) — A2A gives a vendor-neutral envelope our CLI-subprocess fan-out currently does ad-hoc",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "a2a-protocol-v1-lf-donation",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "Both stated primary sources resolve and substantiate the claim. The official spec page (a2a-protocol.org/latest/specification) confirms: Latest Released Version 1.0.0; a JSON Agent Card describing identity, capabilities, skills, endpoint, and authentication/security schemes; the full eight-state task lifecycle (SUBMITTED/WORKING/COMPLETED/FAILED/CANCELED/REJECTED/INPUT_REQUIRED/AUTH_REQUIRED, as TASK_STATE_* enums); and three transport bindings (JSON-RPC 2.0 §9, gRPC §10, HTTP+JSON/REST §11) with SSE streaming and webhook push notifications. The Linux Foundation press release confirms version 1.0 as the first stable spec, 150+ supporting organizations (grown from 50+ to over 150), and the core repository surpassing 22,000 GitHub stars. The one element the press release did not state — the June 2025 LF donation date — is independently confirmed by the Linux Foundation's own launch press release and Google Developers Blog: A2A was donated to and launched as a Linux Foundation project on June 23, 2025, at OSS Summit North America. Every numeric and structural claim checks out against primary/official sources; nothing is inflated or fabricated."
+      }
+    },
+    {
+      "id": "mcp-sampling-not-true-p2p",
+      "claim": "MCP can carry inter-agent calls — an MCP server can request an LLM completion from its client via sampling/createMessage and gather interactive input via elicitation/create — but these are deliberately CLIENT-side features routed through the host, not symmetric peer-to-peer agent links; MCP standardizes the vertical agent-to-tool/data axis while A2A standardizes the horizontal agent-to-agent axis, so they are complementary not substitutes.",
+      "number": "",
+      "source": "https://mcginniscommawill.com/posts/2026-03-25-mcp-sampling-elicitation-guide/ + arXiv:2505.02279",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "MAST FC1 system-design (mis-using a tool protocol as an agent-coordination protocol creates hidden routing through the host; clarifies MCP is not the right layer for peer handoff)",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "mcp-a2a-complementary-axes",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "Both cited sources resolve and substantiate the compound claim on merit. arXiv:2505.02279 is a real survey paper (\"A survey of agent interoperability protocols: MCP, ACP, A2A, and ANP\"); its abstract confirms MCP is a JSON-RPC client-server interface for tool invocation while A2A enables peer-to-peer task delegation, and the full PDF body confirms the vertical (agent-to-tool) vs horizontal (agent-to-agent) axis framing and explicitly treats the two as complementary rather than substitutes. The blog post (mcginniscommawill.com) substantiates the MCP-mechanics half: it describes sampling/createMessage as the server sending a prompt THROUGH the client to the client's LLM (server needs no API keys) and elicitation/create as routing user-input requests through the client — i.e., deliberately client-mediated features, not symmetric peer-to-peer agent links, exactly as the claim states. No number is stated, so nothing to inflate; no fabricated arXiv id (id, year, and topic all match); no vendor marketing dressed as benchmark. The only minor nuance is that the precise words \"vertical/horizontal\" are the doc author's gloss rather than verbatim abstract language, but the underlying distinction is genuinely present in the paper — strong enough for SUPPORTED."
+      }
+    },
+    {
+      "id": "blackboard-self-select-benchmark",
+      "claim": "An LLM blackboard system where a central agent posts a request to a shared board and subordinate agents self-select whether to contribute (no central coordinator needs to know each agent's expertise) beats strong baselines by 13-57% relative end-to-end success and up to 9% relative data-discovery F1, while spending fewer tokens than competitive static/dynamic MAS.",
+      "number": "13-57% success, +9% F1, fewer tokens",
+      "source": "arXiv:2510.01285 (+ arXiv:2507.01701)",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "MAST FC1/FC2 (orchestrator must enumerate worker expertise up front; blackboard removes that coupling and the brittle routing that causes task derailment FM-2.3)",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "llm-blackboard-mas",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "Both cited arXiv ids resolve to real papers and verbatim support the claim. Primary 2510.01285 (\"LLM-Based Multi-Agent Blackboard System for Information Discovery in Data Science\", Salemi/Parmar/Goyal/Zamani/Pfister/Palangi) abstract states verbatim \"13%-57% relative improvements in end-to-end success and up to a 9% relative gain in data discovery F1 over the best baseline,\" and describes the exact mechanism claimed: a central agent posts to a shared blackboard while subordinate agents volunteer based on capability, \"removing the need for a central coordinator to know each agent's expertise.\" The token-efficiency clause is correctly sourced to the secondary paper 2507.01701 (Han & Zhang, \"Exploring Advanced LLM Multi-Agent Systems Based on Blackboard Architecture\"), whose abstract states the design is \"competitive with the SOTA static and dynamic MASs... and manage to spend less tokens.\" Numbers match exactly with no inflation; the only nuance is that token savings come from the second paper, not the primary, but the composite claim cites both and the attribution holds. Verified via two independent WebFetch passes including verbatim quote extraction."
+      }
+    },
+    {
+      "id": "mast-32pct-inter-agent",
+      "claim": "MAST (UC Berkeley, 1,642 annotated traces across 7 MAS frameworks, Cohen's kappa 0.88) finds multi-agent failures split ~44% system-design / ~32% inter-agent-misalignment / ~24% task-verification; the largest single coordination failure mode is reasoning-action mismatch at 13.2%, followed by task derailment 7.4% and fail-to-ask-for-clarification 6.8% — meaning any new coordination primitive should be justified against a named MAST mode, not novelty.",
+      "number": "44/32/24%; reasoning-action mismatch 13.2%",
+      "source": "arXiv:2503.13657",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Provides the taxonomy itself: FM-2.1 conversation reset, FM-2.2 fail-to-clarify, FM-2.3 task derailment, FM-2.4 info withholding, FM-2.5 ignored-input, FM-2.6 reasoning-action mismatch — the spec sheet for what coordination must prevent",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "MAST-2503.13657",
+        "verdict": "PARTIAL",
+        "source_real": true,
+        "corrected_number": "~42% / 37% / 21% category split (exact: specification/system-design 41.77%, inter-agent misalignment 36.94%, task verification 21.30%); reasoning-action mismatch 13.2% is correct",
+        "corrected_source": "arXiv:2503.13657 (\"Why Do Multi-Agent LLM Systems Fail?\", Cemri et al., UC Berkeley/Cornell; NeurIPS 2025 D&B spotlight). HTML: https://arxiv.org/html/2503.13657v1",
+        "reasoning": "The arXiv id resolves to a real, correct primary source: \"Why Do Multi-Agent LLM Systems Fail?\" (Cemri et al., UC Berkeley + Cornell), which does introduce MAST. Verified-correct elements: 7 MAS frameworks, Cohen's kappa 0.88, the three-category taxonomy, and reasoning-action mismatch (FM-2.6) at 13.2% (independently confirmed). The \"1,642 traces\" is consistent with the paper's stated \"1600+\" though the abstract says 1600+ not an exact 1642. The load-bearing failure is the category split: the claim states ~44/32/24%, but two independent sources citing the paper report 41.77% / 36.94% / 21.30% (specification / inter-agent misalignment / task verification). The 32% figure for inter-agent misalignment is materially wrong — the true value is ~37%, off by ~5 points and rounded in the wrong direction, which inverts the relative weight of the second-largest category. Secondary modes (task derailment 7.4%, fail-to-ask-for-clarification 6.8%) could not be independently confirmed but are plausible at the paper's FM granularity. Because the source is genuine and most of the claim holds, but the headline category split misrepresents the paper's actual numbers, this is PARTIAL, not SUPPORTED."
+      }
+    },
+    {
+      "id": "langgraph-command-handoff",
+      "claim": "LangGraph's Command primitive lets a node return both a state update and a goto target in one object, enabling edgeless handoffs and (via graph=Command.PARENT) cross-subgraph agent handoffs — putting handoff logic in nodes rather than predefined edges; this is the production handoff mechanism Nuzantara's federation_orchestrator (already LangGraph) can adopt without new infra.",
+      "number": "",
+      "source": "https://blog.langchain.com/command-a-new-tool-for-multi-agent-architectures-in-langgraph/",
+      "source_tier": "primary",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "MAST FM-2.3 task derailment / FM-2.1 conversation reset (explicit state-carrying handoff prevents context loss between agents) — but this is within our existing LangGraph stack, not beyond it",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "langgraph-command-handoff",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The stated source (LangChain blog, now 301-redirected to www.langchain.com/blog/command-a-new-tool-for-multi-agent-architectures-in-langgraph) resolves and is a genuine primary vendor source. It substantiates every technical assertion verbatim: Command \"specifies not only the update to the state (as usual) but also which node to go to next\" (state update + goto in one object); a section titled \"Command: Edgeless graphs\" confirms edgeless handoffs and putting handoff logic in nodes rather than predefined edges; and it confirms cross-subgraph handoffs to a parent graph. The specific graph=Command.PARENT API was independently cross-checked against official LangGraph docs (docs.langchain.com / langchain-ai.github.io), which confirm Command.PARENT navigates to the closest parent graph and is \"only supported when returned from a node in a subgraph,\" used for multi-agent handoffs. No number is claimed, so nothing to inflate. The only soft element is the applied recommendation that Nuzantara's federation_orchestrator (already LangGraph per project memory p2_19) can adopt this \"without new infra\" — that is a sound engineering inference (Command is a built-in LangGraph primitive, no external dependency), not a fabricated fact. Core mechanism fully primary-source verified; verdict SUPPORTED."
+      }
+    },
+    {
+      "id": "openai-handoff-metadata-envelope",
+      "claim": "OpenAI's Agents SDK (production successor to the experimental Swarm) implements handoffs as the handoff() function with an input_type for model-generated handoff metadata (reason/priority/summary) and an on_handoff callback to log/persist that metadata before the receiving agent takes over — a structured handoff-envelope pattern transferable to CLI-subprocess dispatch.",
+      "number": "",
+      "source": "https://openai.github.io/openai-agents-python/handoffs/",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "MAST FM-2.4 information withholding / FM-2.2 fail-to-ask-clarification (typed handoff metadata + pre-handoff callback forces explicit context transfer rather than implicit assumption)",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "openai-agents-sdk-handoff-envelope",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The stated primary source (openai.github.io/openai-agents-python/handoffs/) resolves and directly substantiates the core technical claims. The page documents (1) the handoff() helper function provided by the SDK; (2) an input_type parameter explicitly described for \"model-generated metadata such as reason, language, priority, or summary\" — matching the claim almost verbatim; and (3) an on_handoff callback \"executed when the handoff is invoked,\" with a code example (on_handoff + input_type=EscalationData reading input_data.reason) confirming the metadata can be logged/persisted at invocation time. The \"before the receiving agent takes over\" framing is a fair characterization: the callback fires when the handoff tool call is invoked (the docs note it is useful for \"kicking off some data fetching as soon as you know a handoff is being invoked\"), i.e., at transfer time rather than after the receiving agent has run — the page does not state strict ordering with full precision, but the characterization is not contradicted. The secondary framing (production successor to experimental Swarm) is independently confirmed: openai/swarm's own README marks it experimental/\"not for production,\" and authoritative coverage documents the March 2025 Agents SDK as Swarm's production replacement retaining the same handoff model. The \"transferable to CLI-subprocess dispatch\" portion is the author's own architectural inference, not a factual assertion about the SDK, so it does not affect verifiability. No fabricated id, no inflated number (none stated), no single-study-as-consensus issue. Source is genuinely primary and confirms the claim."
+      }
+    },
+    {
+      "id": "optimistic-wins-low-contention",
+      "claim": "For shared artifacts at low agent count (Nuzantara's 2-7 sessions), optimistic concurrency control (version/compare-and-set, retry on conflict) is the established win over pessimistic locking because conflicts are rare and retries cheap; version vectors / CRDTs add causality tracking so concurrent edits to a shared scratchpad can be detected and merged rather than blocked — production systems blend MVCC for general access with pessimistic locks only on known hot-spot rows.",
+      "number": "",
+      "source": "https://en.wikipedia.org/wiki/Optimistic_concurrency_control + https://en.wikipedia.org/wiki/Version_vector",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Directly answers the prompt's sub-question: at low agent count optimistic > lease; our current Redis pessimistic lease (L2) is over-engineered for the scratchpad case where version-vector CAS on the existing Postgres events_outbox would suffice",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "concurrency-control-occ-mvcc-crdt",
+        "verdict": "PARTIAL",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "https://en.wikipedia.org/wiki/Optimistic_concurrency_control + https://en.wikipedia.org/wiki/Version_vector + https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type + https://www.databricks.com/blog/concurrency-control",
+        "reasoning": "Both cited Wikipedia URLs are real and resolve. The OCC article directly substantiates the core claim: OCC is used in low-contention environments where \"conflicts are rare\" and yields higher throughput, explicitly contrasted with pessimistic locking that \"drastically limit[s] effective concurrency,\" and it describes validation/abort-on-conflict plus the ETag/If-Match compare-and-set pattern (= version/CAS, retry on conflict). The Version Vector article substantiates the causality half: version vectors determine happened-before vs concurrent updates and are \"a basic mechanism for optimistic replication\" enabling detect-and-merge rather than block. So the claim's substance reflects established consensus, not a single study or vendor marketing. However the citation is narrower than the claim's scope on two counts, which keeps this from SUPPORTED: (1) the CRDT assertion (\"version vectors / CRDTs add causality tracking ... merged rather than blocked\") is NOT in either cited page — the Version Vector article does not mention CRDTs at all; the CRDT/version-vector link is real and verifiable elsewhere (CRDT literature uses version/dotted-version vectors for causal tracking) but is uncited. (2) The strongest specific claim — \"production systems blend MVCC for general access with pessimistic locks only on known hot-spot rows\" — appears in NEITHER cited article; the OCC page explicitly does not discuss MVCC or hot-spot rows. That hybrid (MVCC default + SELECT ... FOR UPDATE on hot rows) is a genuine, well-documented pattern but needs a different source. Finally, the STATED TIER \"primary\" is overstated: Wikipedia is tertiary. Verdict PARTIAL: real sources, claim is sound and consensus-grade, but the two cited URLs cover only ~half of the asserted scope and the tier label is wrong."
+      }
+    },
+    {
+      "id": "event-choreography-kafka-4patterns",
+      "claim": "Event-driven choreography on an event backbone (e.g., Kafka) supports four production patterns — orchestrator-worker (key-partitioned topics + consumer groups), hierarchical, blackboard (shared topic), and market-based — and eliminates the O(N^2) connection mesh by having agents emit/listen autonomously with the immutable event log as single source of truth and the consumer-rebalance protocol handling agent death/scaling; it is production-proven in finance but the infra cost only pays off above small agent counts.",
+      "number": "4 patterns; O(N^2) -> decoupled",
+      "source": "https://www.confluent.io/blog/event-driven-multi-agent-systems/",
+      "source_tier": "second-hand",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "MAST FC1 system-design (orchestrator coupling to worker liveness/count) — but for Nuzantara the simpler win is the existing Postgres LISTEN/NOTIFY + events_outbox already shipped (EventBus); full Kafka backbone is overkill at 2-7 local agents under Law 6 local sovereignty",
+      "angle": "The frontier beyond worktree-broker + Redis-lease + orchestrator-worker is a thin standardization-and-substrate layer: (1) horizontal agent-to-agent protocols (A2A v1.0, now Linux Foundation) that give your CLI-subprocess fan-out a vendor-neutral Agent Card + task-lifecycle contract instead of ad-hoc JSON; (2) blackboard/choreography substrates that let agents self-select work without the orchestrator knowing each agent's expertise — the one primitive with a real benchmark (13-57% success gain, fewer tokens); and (3) the MAST failure taxonomy as the *design spec* for coordination — 32% of all multi-agent failures are inter-agent misalignment, so any new primitive must be justified against a named failure mode, not novelty. At Nuzantara's scale (2-7 local sessions, low contention), optimistic-concurrency / version-vector on the shared scratchpad beats more locking; A2A and event-backbone choreography are spec-mature but bring O(N^2)/infra cost that only pays off above your agent count. Recommendation order: blackboard-on-existing-Postgres-outbox (highest ROI, fits Law 6 local sovereignty) > MAST-mode-tagged handoff envelopes > defer A2A/Kafka until cross-org or >10 agents.",
+      "verification": {
+        "claim_id": "event-driven-choreography-4-patterns",
+        "verdict": "PARTIAL",
+        "source_real": true,
+        "corrected_number": "4 patterns; O(N^2) elimination is claimed only for the market-based pattern, not all four",
+        "corrected_source": "https://www.confluent.io/blog/event-driven-multi-agent-systems/ (Confluent vendor blog — second-hand, not a benchmark or spec)",
+        "reasoning": "The stated source resolves and is a real Confluent blog post that directly substantiates the architectural core of the claim: it names exactly four patterns verbatim (orchestrator-worker, hierarchical, blackboard, market-based); confirms orchestrator-worker uses key-partitioned topics + consumer groups (\"the orchestrator can use keys to distribute command messages across partitions in a single topic. Worker agents can then act as a consumer group\"); confirms the consumer-rebalance protocol handles agent add/remove (\"Kafka Consumer Rebalance Protocol assures that each worker has similar workloads even as worker agents are added or removed\"); and confirms autonomous emit/listen with an immutable event log as source of truth. However, the claim overreaches on two points. First, the O(N^2) / \"quadratic connections\" elimination is scoped in the source to the market-based pattern only (\"eliminates the quadratic connections that otherwise occur between the solver agents\"), whereas the claim implies it as a general property. Second, and more seriously, the qualifier \"production-proven in finance but the infra cost only pays off above small agent counts\" is NOT supported: two independent fetches confirm the article makes no cost/breakeven/agent-count argument at all, and the finance reference is only that financial services \"have long used data streaming platforms as systems of record\" — about streaming platforms generally, not multi-agent systems proven in production. So this is a real, correctly-tiered (second-hand vendor) source whose core is solid but which has had an unsupported cost-economics qualifier injected — PARTIAL, not SUPPORTED."
+      }
+    },
+    {
+      "id": "google-scaling-3to4-agent-ceiling",
+      "claim": "A controlled study of 180 agent configurations found per-agent reasoning capacity becomes prohibitively thin beyond 3-4 agents, creating a hard resource ceiling where communication cost dominates reasoning capability, with turn-count following super-linear power-law scaling in agent count (exponent 1.724).",
+      "number": "3-4 agent ceiling; power-law exponent 1.724",
+      "source": "arXiv:2512.08296 (Google, 'Towards a Science of Scaling Agent Systems')",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Over-provisioning the fleet: gives a quantitative stopping rule (3-4) confirming Nuzantara's 2-7 bound is near-optimal and should NOT be raised for reasoning/coding tasks.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "agent-scaling-3-4-ceiling-1.724",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2512.08296 resolves to a real paper, \"Towards a Science of Scaling Agent Systems,\" and the citation is accurate. It IS a Google paper (Google Research, lead author Yubin Kim/Xin Liu, per the official research.google blog dated Jan 28 2026) — the abstract-only fetch missed the Google affiliation but the blog and full text confirm it. The full HTML text (arxiv.org/html/2512.08296v1) substantiates every load-bearing element verbatim: the exponent 1.724 appears as \"This super-linear exponent (1.724 >1) reflects quadratic message complexity\" with formula T=2.72×(n+0.5)^1.724 (R²=0.974); the phrase \"per-agent reasoning capacity becomes prohibitively thin beyond 3–4 agents, creating a hard resource ceiling\" appears verbatim. The configuration count of 180 is confirmed by BOTH the Google Research blog (\"controlled evaluation of 180 agent configurations\") and the full text (\"N=180 controlled configurations\") — the \"260 configurations\" returned by the abstract-page fetch is a version/framing artifact, not a contradiction; the claim's stated number (180) matches the authoritative sources. One caveat worth flagging: this is a single primary study, so framing it as established science is premature, but as a stated empirical finding from the named source it is accurately and faithfully reported, including the number. Adversarial check passed against the actual primary source rather than search-engine summaries (which were retrieval-contaminated by the claim text itself)."
+      }
+    },
+    {
+      "id": "google-scaling-task-contingent-degradation",
+      "claim": "Multi-agent coordination is task-contingent: centralized coordination improved parallelizable financial-reasoning by +80.9% and decentralized helped web navigation (+9.2%), but EVERY multi-agent variant degraded sequential constraint-satisfaction (planning) tasks by 39-70%; a predictive model picked the optimal architecture on 87% of held-out tasks (cross-val R^2=0.513).",
+      "number": "+80.9% parallel gain; -39% to -70% sequential loss; 87% predictive accuracy",
+      "source": "arXiv:2512.08296 (Google)",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Blind fan-out on non-parallelizable work. BEYOND current stack: a pre-dispatch task-decomposability classifier (parallel vs sequential) gating whether to fan out at all — Nuzantara's federation_orchestrator always parallel-dispatches; this adds the WHEN-NOT-TO gate.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "multi-agent-coordination-task-contingent-2512.08296",
+        "verdict": "PARTIAL",
+        "source_real": true,
+        "corrected_number": "+80.8% parallel gain (not +80.9%); sequential planning degradation is -70.0% (the \"39%\" lower bound is fabricated; abstract gives a single -70.0% endpoint); 87% best-architecture ID on held-out configs (correct); cross-validated R^2=0.373 (0.413 with task-grounded capability metric), NOT 0.513; the +9.2% web-navigation figure does not appear in the abstract and is unverified.",
+        "corrected_source": "arXiv:2512.08296, \"Towards a Science of Scaling Agent Systems\" (Kim, Gu, Park et al., Google Research / Google DeepMind, submitted Dec 2025, v3 Apr 2026). https://arxiv.org/abs/2512.08296",
+        "reasoning": "The arXiv id resolves to a real Google paper and the qualitative thesis is genuinely supported by the verbatim abstract: 260 configurations, five architectures, task-contingent results, centralized verification reducing error propagation, architecture-task alignment, and \"best-performing architecture for 87% of held-out configurations.\" But several load-bearing numbers are wrong. The financial-reasoning gain is +80.8% not +80.9% (minor). The sequential-planning range \"39%-70%\" is fabricated — the abstract gives only a single endpoint, -70.0%, with no 39% lower bound. The predictive-model fit is cross-validated R^2=0.373 (0.413 with a task-grounded capability metric), NOT the claimed 0.513 — a materially inflated, unsupported figure. The web-navigation +9.2% (decentralized) and the specific architecture attributions (centralized=finance, decentralized=web) do not appear in the abstract; the abstract only says architectures without centralized verification propagate more errors. The Google attribution is correct. Real primary source, but distorted/inflated numbers (especially R^2) make this PARTIAL, not SUPPORTED — the doc must correct the figures."
+      }
+    },
+    {
+      "id": "single-agent-beats-mas-equal-budget",
+      "claim": "Under EQUAL thinking-token budgets, single-agent systems consistently match or outperform multi-agent systems on multi-hop reasoning across three model families (Qwen3, DeepSeek-R1-Distill-Llama, Gemini 2.5) — i.e. spending the same tokens on one stronger reasoning pass beats splitting them across orchestrated agents.",
+      "number": "equal-token-budget: SAS >= MAS",
+      "source": "arXiv:2604.02460 (Tran & Kiela, 'Single-Agent LLMs Outperform Multi-Agent Systems ... Under Equal Thinking Token Budgets')",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Comparing multi-agent against an UNDER-budgeted single agent. BEYOND current stack: enforce equal-token-budget accounting so the single-orchestrator path (more reasoning tokens) is the default baseline a fan-out must beat, not a strawman.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "SAS-vs-MAS-equal-token-budget",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The arXiv id 2604.02460 resolves to a real paper independently corroborated across four channels: arxiv.org/abs, arxiv.org/html, a WebSearch hit list (ResearchGate DOI 403529711, chatpaper, beancount.io, DEV community), and a direct HTML fetch. Title matches verbatim (\"Single-Agent LLMs Outperform Multi-Agent Systems on Multi-Hop Reasoning Under Equal Thinking Token Budgets\"), authors match (Dat Tran & Douwe Kiela, Stanford), and the YYMM id (2604 = April 2026) is chronologically consistent with the June 2026 present and not a hallucinated wrong-year/wrong-topic id. The core claim is stated near-verbatim in the abstract and body: \"SAS consistently match or outperform MAS on multi-hop reasoning tasks when reasoning tokens are held constant,\" tested across exactly the three claimed model families (Qwen3-30B, DeepSeek-R1-Distill-Llama-70B, Gemini 2.5 Flash/Pro), grounded in an information-theoretic Data Processing Inequality argument. The claim's hedged phrasing (\"match or outperform\") faithfully mirrors the paper rather than overstating it. Caveat for the SOTA doc, not grounds to downgrade: this is a single recent study (not consensus), and the paper itself flags boundary conditions where MAS becomes competitive (degraded single-agent context via masking/substitution/distractor injection, and over-budget overthinking) — the claim should be presented as one paper's controlled finding, not a settled universal law."
+      }
+    },
+    {
+      "id": "anthropic-15x-tokens-coding-poor-fit",
+      "claim": "Anthropic's own production data: multi-agent systems use ~15x more tokens than chat (agents ~4x); token usage alone explained 80% of performance variance (95% with tool-call count + model choice). Anthropic explicitly states most coding tasks are a poor multi-agent fit because they involve fewer truly parallelizable subtasks and LLMs are not yet good at real-time delegation.",
+      "number": "15x tokens (multi-agent vs chat); 4x (agent vs chat); 80% variance from tokens",
+      "source": "anthropic.com/engineering/multi-agent-research-system",
+      "source_tier": "primary",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "Using multi-agent for coding. Confirms (does not extend) Nuzantara's design choice to keep orchestrator-worker for research-style parallel work and a single strong loop for code.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "multi-agent-token-usage",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "https://www.anthropic.com/engineering/multi-agent-research-system",
+        "reasoning": "All assertions are verbatim-confirmed by the cited Anthropic engineering blog post (primary, first-party source). The page states \"agents typically use about 4x more tokens than chat interactions, and multi-agent systems use about 15x more tokens than chats\" — matching both the 4x and 15x figures exactly. It states that in the BrowseComp evaluation \"three factors explained 95% of the performance variance... token usage by itself explains 80% of the variance, with the number of tool calls and the model choice as the two other explanatory factors\" — matching the 80%/95% claim and correctly attributing the extra two factors. It explicitly states \"most coding tasks involve fewer truly parallelizable tasks than research, and LLM agents are not yet great at coordinating and delegating to other agents in real time\" — matching the poor-coding-fit claim. The source resolves and exists; the canonical URL carries a www. prefix (the claim omitted it) but resolves to the identical primary page. No inflation, no hallucinated id, no single-study-as-consensus issue (it is explicitly Anthropic's own production/eval data, presented as such). Tier 'primary' is correct."
+      }
+    },
+    {
+      "id": "mast-14-failure-modes-taxonomy",
+      "claim": "Analysis of 7 popular multi-agent frameworks over 1600+ annotated traces (150 for taxonomy dev, Cohen's Kappa 0.88) identified 14 distinct failure modes in 3 categories (specification/system-design, inter-agent misalignment, task verification), by the Berkeley/Databricks group (Stoica, Zaharia, Gonzalez, Klein, Keutzer).",
+      "number": "14 failure modes; 3 categories; 1600+ traces; Kappa 0.88",
+      "source": "arXiv:2503.13657 (Cemri et al., 'Why Do Multi-Agent LLM Systems Fail?')",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Unstructured REVIEW/verification. BEYOND current stack: use the 14-mode MAST taxonomy as a structured rubric for the claude-redteam REVIEW node and as an eval checklist, rather than ad-hoc adversarial review.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "multi-agent-failure-modes-cemri-2503.13657",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "arXiv:2503.13657 resolves to a real paper, \"Why Do Multi-Agent LLM Systems Fail?\" by Mert Cemri et al., published at NeurIPS 2025 (Datasets & Benchmarks track). The abstract (fetched directly from arxiv.org/abs/2503.13657) confirms every stated number verbatim: \"14 unique modes, clustered into 3 categories,\" a \"dataset of 1600+ annotated traces collected across 7 popular MAS frameworks,\" taxonomy developed via \"rigorous analysis of 150 traces ... validated by high inter-annotator agreement (kappa = 0.88).\" The three categories (system-design/specification, inter-agent misalignment, task verification) match — note the v2 abstract phrases category (i) as \"system design issues\" while an earlier version uses \"specification issues,\" so the claim's \"specification/system-design\" framing is consistent with both. Author list includes Keutzer, Klein, Zaharia, Gonzalez, and Stoica, affiliated with UC Berkeley and Databricks, exactly as attributed. No inflation, no hallucinated id, no single-study-as-consensus problem (it is correctly presented as one study's taxonomy). Primary, peer-reviewed, locatable source fully substantiates the claim."
+      }
+    },
+    {
+      "id": "mas-benefit-diminishes-as-models-improve",
+      "claim": "A controlled study across diverse agentic applications concluded the benefit of multi-agent over single-agent systems DIMINISHES as base-LLM capability improves; their proposed request-cascading hybrid (route easy to SAS, hard to MAS) gained only 1.1-12% accuracy while cutting deployment cost up to 20%.",
+      "number": "+1.1-12% accuracy; up to -20% cost via SAS/MAS cascade",
+      "source": "arXiv:2505.18286 (Gao et al., 'Single-agent or Multi-agent Systems? Why Not Both?')",
+      "source_tier": "primary",
+      "beyond_our_system": true,
+      "failure_mode_addressed": "Static always-multi-agent routing. BEYOND current stack: difficulty-based cascade — default to single-orchestrator, escalate to fan-out only on hard tasks — versus Nuzantara's always-on parallel DISPATCH.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "multi-agent-vs-single-cascade",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "",
+        "corrected_source": "",
+        "reasoning": "The arXiv ID 2505.18286 resolves to a real paper titled exactly \"Single-agent or Multi-agent Systems? Why Not Both?\" by Mingyan Gao et al., confirmed via two independent methods (direct WebFetch of the arXiv abstract page and a web search corroborated by arXiv, alphaXiv, and ResearchGate). The abstract verbatim states \"the benefits of MAS over SAS diminish as LLM capabilities improve\" and that the proposed request-cascading hybrid (an LLM-based rater routes easy requests to SAS, hard to MAS) \"improving accuracy by 1.1-12% while reducing deployment costs by up to 20%.\" Every component of the claim — the diminishing-benefit finding, the cascade mechanism, the +1.1-12% accuracy gain, and the up-to-20% cost cut — matches the primary source exactly; no inflation or fabrication. The only minor caveat is that this is a single empirical study rather than a consensus/meta-analysis, but the claim accurately presents it as one controlled study and does not overstate generality. SUPPORTED."
+      }
+    },
+    {
+      "id": "uiuc-token-overhead-4-to-220x",
+      "claim": "Multi-agent systems are widely reported to consume 4-220x more tokens than single-agent counterparts (2-12x more even in optimized configs) across 7 datasets and 6 models; the precise 4-220x range is a blog paraphrase I could NOT confirm verbatim in the cited abstract, so treat the exact multiplier as second-hand.",
+      "number": "4-220x tokens (UNVERIFIED exact range); 2-12x optimized",
+      "source": "arXiv:2505.18286 (paraphrased via augmentcode.com guide) — exact range UNVERIFIED in primary abstract",
+      "source_tier": "second-hand",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "Cost blindness. Reinforces equal-budget accounting but the headline 220x number must NOT be cited as primary — only Anthropic's 15x is primary-verified.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "multi-agent-token-4-220x",
+        "verdict": "SUPPORTED",
+        "source_real": true,
+        "corrected_number": "4-220x more input (prefill) tokens across seven datasets; 2-12x more decoding tokens even with perfect context reuse",
+        "corrected_source": "arXiv:2505.18286 \"Single-agent or Multi-agent Systems? Why Not Both?\" (Gao et al., UIUC) — primary source, verbatim in paper body (not abstract). No blog intermediary needed.",
+        "reasoning": "The arXiv id resolves to a real, exactly on-topic paper. I fetched the full PDF and confirmed the load-bearing numbers VERBATIM in the body, not just paraphrased: \"across seven datasets, MAS consumes 4-220x more input (prefill) tokens than its SAS counterpart\" and \"MAS still requires 2-12x more tokens for response generation (decoding)\" under perfect-context-reuse (the optimized scenario the claim references). The \"7 datasets\" is correct (BigCodeBench, GSM8K, AIME, HOVER, FinRobot, DS-1000 et al.) and \"6 models\" is consistent (GPT-4, GPT-4o, o3, o4-mini, Gemini, Llama present). The claim's own hedge — \"UNVERIFIED in primary abstract, treat as second-hand\" — is technically true only because the numbers live in the paper body/Table-3 discussion rather than the abstract; they are nonetheless first-hand primary-source facts. The claim is therefore stronger than stated, not weaker: numbers accurate, source real and directly substantiating, no inflation or hallucination. The only fix is dropping the augmentcode.com second-hand framing and upgrading tier from second-hand to primary."
+      }
+    },
+    {
+      "id": "swebench-sota-is-single-agent-scaffold",
+      "claim": "SWE-bench Verified SOTA is driven by single-agent orchestrator-loop scaffolds (Agentless, SWE-agent, OpenHands, Claude Code / mini-SWE-agent giving the model direct shell access), NOT multi-agent fleets; public SOTA rose ~33%->~87.6% (Aug-2024 to Apr-2026). Specific 2026 headline scores (e.g. 93.9% 'Claude Mythos Preview', 87.6% Opus 4.7) come from secondary leaderboard blogs and are second-hand; the structural fact (top coding scaffolds are single-agent) is well-supported.",
+      "number": "~33%->~87.6% SOTA (single-agent scaffolds); 93.9% headline [second-hand]",
+      "source": "swebench.com leaderboard + codeant.ai/marktechpost summaries (Apr-May 2026)",
+      "source_tier": "second-hand",
+      "beyond_our_system": false,
+      "failure_mode_addressed": "Assuming multi-agent is needed to top coding benchmarks. Confirms a single strong scaffold is the bar; supports keeping Nuzantara's single-loop default for code and not building a coding agent fleet.",
+      "angle": "Mid-2026 benchmark evidence converges on a hard answer: for CODING specifically, adding agents past a small N does not help and usually hurts. The strongest new primary result (Google's \"science of scaling,\" 180 configs) quantifies a hard 3-4 agent ceiling with super-linear (exponent 1.724) communication-cost growth, and shows multi-agent DEGRADES sequential/coordination-heavy tasks by 39-70% while only helping parallelizable ones. This directly validates Nuzantara's existing 2-7 session orchestrator-worker bound and its federation_orchestrator parallel-DISPATCH-only design — and warns against ever scaling the fleet larger for code. What is BEYOND Nuzantara's current stack: (a) a task-decomposability classifier that decides parallel-vs-sequential BEFORE fan-out (Google's predictive model, 87% acc) rather than always fanning out; (b) the MAST 14-mode failure taxonomy as a structured verification/eval rubric for the REVIEW node; (c) equal-token-budget accounting (Tran-Kiela) — giving the single orchestrator the tokens you would have spent on subagents often wins outright. The token economics are brutal and primary: Anthropic's own number is 15x tokens for multi-agent vs chat, and Anthropic explicitly states coding is a poor multi-agent fit. SWE-bench Verified SOTA scaffolds are single-agent orchestrator loops (Agentless / SWE-agent / Claude Code / mini-SWE-agent), not agent fleets. Net recommendation: do NOT grow the fleet; add a pre-dispatch decomposability gate + MAST-based verifier, and budget-match the single-orchestrator path as the default baseline to beat.",
+      "verification": {
+        "claim_id": "swebench-sota-single-agent-scaffold",
+        "verdict": "PARTIAL",
+        "source_real": true,
+        "corrected_number": "~33.2% (Aug 2024, GPT-4o+Agentless) -> ~87.6% (Opus 4.7, Apr 2026); higher unofficial: 88.7% GPT-5.5, 93.9% Claude Mythos Preview [second-hand]",
+        "corrected_source": "arXiv:2506.17208 \"Dissecting the SWE-Bench Leaderboards\" (primary architecture study) + swebench.com leaderboard + OpenAI \"Introducing SWE-bench Verified\" (33.2% baseline)",
+        "reasoning": "The numbers are SOLID and traceable to primary sources: the Aug-2024 launch baseline of 33.2% (GPT-4o paired with the Agentless single-LLM pipeline) is a documented OpenAI figure, and the ~87.6% Opus 4.7 / 88.7% GPT-5.5 / 93.9% Claude Mythos Preview 2026 figures are reproduced consistently across the cited secondary leaderboards (codeant.ai, tokenmix, marc0.dev) exactly as the claim self-labels them \"second-hand.\" The TRAJECTORY (~33%->~87.6%) is SUPPORTED. The trouble is the STRUCTURAL framing presented as \"well-supported\": that SOTA is \"driven by single-agent orchestrator-loop scaffolds, NOT multi-agent fleets.\" The single most authoritative primary source on this exact question, arXiv:2506.17208 (a comprehensive study of all 99 Verified + 79 Lite submissions), finds the opposite of a clean single-agent dominance narrative: \"no single architecture consistently achieves state-of-the-art performance... high-performing submissions follow a variety of architectural strategies,\" spanning single-LLM pipelines AND complex multi-agent systems. It is true and supported that single-agent/pipeline scaffolds (Agentless, SWE-agent, mini-SWE-agent, Claude Code) are prominent, competitive, and define the launch baseline and several top entries giving the model direct shell access. But the categorical \"NOT multi-agent fleets / single-agent is the structural driver\" overstates the primary evidence, which says architecture is diverse and not decisive once the base model is held constant. Hence PARTIAL: real primary sources, accurate numbers, but the headline structural claim is stronger than the literature supports and should be softened to \"single-agent scaffolds are prominent and competitive at SOTA\" rather than \"SOTA is driven by single-agent, not multi-agent.\""
+      }
+    }
+  ],
+  "adoption_spec": [
+    {
+      "id": "A1-decomposability-gate",
+      "title": "Pre-dispatch decomposability gate (fan-out only when task is parallelizable)",
+      "verdict": "ADOPT",
+      "impact": 5,
+      "effort": 2,
+      "target": "scripts/federation_orchestrator.py (CLASSIFY node + route_after_checkpoint)",
+      "evidence": [
+        "google-scaling-task-contingent-degradation",
+        "mas-benefit-diminishes-as-models-improve",
+        "single-agent-beats-mas-equal-budget",
+        "anthropic-breadth-first-only"
+      ],
+      "rationale": "Google scaling (arXiv 2512.08296): every multi-agent variant DEGRADED sequential constraint-satisfaction by up to -70%, only helped parallelizable tasks; predictive model picked optimal arch on 87% of held-out. Gao (2505.18286): MAS benefit DIMINISHES as base model improves, difficulty-cascade gains only +1.1-12% at -20% cost. federation_orchestrator ALWAYS parallel-dispatches; add a classifier output `parallelizable: bool` + `route_after_checkpoint` returns single-orchestrator (direct claude) for sequential/low-complexity tasks, fan-out only for breadth-first work.",
+      "constraint_fit": "CLI-only (qwen3.5 already the classifier) — add one field to CLASSIFY_PROMPT. Zero new infra. Law 6 OK."
+    },
+    {
+      "id": "A2-equal-budget-baseline",
+      "title": "Equal-token-budget baseline: single-orchestrator is the default to BEAT",
+      "verdict": "ADOPT (discipline, not code)",
+      "impact": 4,
+      "effort": 1,
+      "target": "sota-architecture-loop skill decision-gate + federation_orchestrator audit log",
+      "evidence": [
+        "single-agent-beats-mas-equal-budget",
+        "anthropic-15x-tokens-coding-poor-fit",
+        "uiuc-token-overhead-4-to-220x"
+      ],
+      "rationale": "Tran & Kiela (2604.02460): under EQUAL thinking-token budget, single-agent matches/beats multi-agent on multi-hop reasoning across 3 model families. Anthropic primary: 15x tokens multi vs chat, token-use explains 80% of perf variance, coding is a poor multi-agent fit. UIUC (2505.18286): 4-220x input tokens, 2-12x decode even optimized. RULE: never compare a fan-out against an under-budgeted single agent; give the single orchestrator the tokens you'd have split, make it the baseline.",
+      "constraint_fit": "Pure discipline + audit annotation. No code beyond logging token spend per route."
+    },
+    {
+      "id": "A3-verify-at-the-seam",
+      "title": "Verification at every hop (not only end-of-chain REVIEW)",
+      "verdict": "ADOPT",
+      "impact": 5,
+      "effort": 3,
+      "target": "scripts/federation_orchestrator.py ASSEMBLE node + new per-dispatch validation",
+      "evidence": [
+        "mast-14-failure-modes-taxonomy",
+        "mast-intervention-ceiling",
+        "error-cascade-single-seed",
+        "mast-3-categories-frequency"
+      ],
+      "rationale": "MAST (2503.13657): FC3 Task-Verification 21.30% + FC1 termination modes ~= ~37% of failures are verification/termination, which worktree/lease/merge-queue do NOT catch (they're structural; these are semantic). MAST intervention: adding task-objective verification = +15.6% on ProgramDev. Error-cascade (2603.04474): a single bad upstream output poisons downstream consensus; message-layer governance prevents infection in 89% of runs. federation REVIEW fires only at the END; add a lightweight per-dispatch sanity gate before ASSEMBLE merges a lane's output.",
+      "constraint_fit": "Reuse claude-redteam lane semantics at each seam, or a cheap local qwen pass. Bounded by MAST +15.6% ceiling — do this, don't over-invest in more lanes."
+    },
+    {
+      "id": "A4-mast-rubric-review",
+      "title": "Use MAST 14-mode taxonomy as the REVIEW-node rubric (structured, not ad-hoc)",
+      "verdict": "ADOPT",
+      "impact": 3,
+      "effort": 1,
+      "target": "review_node prompt in federation_orchestrator.py + wr3-critic/devils-advocate prompts",
+      "evidence": [
+        "mast-14-failure-modes-taxonomy",
+        "mast-taxonomy-14-modes-3-cats"
+      ],
+      "rationale": "MAST gives a validated (Kappa 0.88, 1642 traces, 7 frameworks) vocabulary. Top single modes: Step repetition 17.14%, Reasoning-action mismatch 13.98%, Fail-to-ask-clarification 11.65%, Premature termination 7.82%. Turn the claude-redteam REVIEW prompt into a 14-point checklist keyed to these modes instead of generic 'find flaws'.",
+      "constraint_fit": "Prompt edit only. Zero infra."
+    },
+    {
+      "id": "A5-keep-asymmetric-review-reject-debate",
+      "title": "Keep asymmetric-adversarial review; REJECT consensus/debate layer",
+      "verdict": "KEEP (vindicated) + REJECT debate",
+      "impact": 4,
+      "effort": 0,
+      "target": "sota-architecture-loop skill (already asymmetric) — DO NOT add debate/society-of-mind",
+      "evidence": [
+        "debate-dominated-by-strongest",
+        "debate-conformity-sycophancy"
+      ],
+      "rationale": "arXiv 2511.07784: debate raises accuracy (+32-52pt on hard puzzles) BUT is dominated by the strongest single agent and weak agents conform to wrong majorities (self-correct 3.6% vs 34.4%). Our sota-architecture-loop ALREADY prescribes 'asymmetric-adversarial review (never consensus)' — this is the measured justification. Do NOT add a multi-agent debate/vote layer expecting free reliability.",
+      "constraint_fit": "Zero change. Documents WHY existing design is correct."
+    },
+    {
+      "id": "A6-state-resurface-handoff",
+      "title": "Re-surface task state (goal/constraints/prior decisions) at END of each agent prompt",
+      "verdict": "ADOPT",
+      "impact": 4,
+      "effort": 2,
+      "target": "federation_orchestrator dispatch prompts + Workflow agent() prompt convention",
+      "evidence": [
+        "lost-in-the-middle-orchestration",
+        "langgraph-command-handoff",
+        "openai-handoff-metadata-envelope"
+      ],
+      "rationale": "Lost-in-the-middle (2307.03172, TACL 2024, most-replicated item): models retrieve best at start/end of context, degrade mid-context. On long handoff chains, mid-chain state gets buried. Put goal+constraints+prior-decisions at the END of each hop's prompt. LangGraph Command + OpenAI handoff() typed metadata are the in-stack mechanisms to carry state explicitly (vs implicit transcript accumulation).",
+      "constraint_fit": "federation is ALREADY LangGraph — adopt Command handoff with state-carrying. Complements 15-min repomap (which refreshes CODE structure, not TASK state)."
+    },
+    {
+      "id": "A7-fix-symlink-deps",
+      "title": "Stop symlinking .venv/node_modules into worktrees (Cursor-documented corruption risk)",
+      "verdict": "ADOPT (hardening, carry-over from 2026-05-28 checklist)",
+      "impact": 3,
+      "effort": 2,
+      "target": "scripts/agent_start.py SYMLINK_TARGETS (lines 87-91, _create_symlinks)",
+      "evidence": [],
+      "rationale": "VERIFIED THIS SESSION: agent_start.py SYMLINK_TARGETS symlinks apps/backend-rag/.venv + node_modules into every worktree (line 88,90). Cursor 3.5 docs (cited in 2026-05-28 companion): 'We do not recommend symlinking dependencies into the worktree. This can cause issues in the main worktree.' Replace with per-worktree reinstall via uv/pnpm OR keep .env symlink only (config, not a writable dep tree). Open checklist item from 2026-05-28 now confirmed live.",
+      "constraint_fit": "Local; uv venv reuse is cheap. .env symlink (line 89) is fine (read-only config)."
+    },
+    {
+      "id": "A8-learned-topology-SPIKE-only",
+      "title": "Learned/generated per-task topology (G-Designer / GPTSwarm) — SPIKE, do not adopt yet",
+      "verdict": "DEFER (spike)",
+      "impact": 4,
+      "effort": 5,
+      "target": "future: federation_orchestrator topology selection",
+      "evidence": [
+        "gdesigner-vgae-per-query-topology",
+        "gptswarm-edges-as-rl-params",
+        "halo-three-tier-hierarchy",
+        "adapt-as-needed-recursion"
+      ],
+      "rationale": "G-Designer (2410.11782): VGAE generates per-query topology, -92.24% tokens on HumanEval, 0.3% adversarial drop vs 6-11% static. GPTSwarm (2402.16823): learns edges via REINFORCE, HumanEval +12pp, GAIA +90% rel, auto-prunes bad agents. HALO (2505.13516): 3-tier recursive hierarchy, MATH +22pp vs ADAS. ADaPT (2311.05772): failure-triggered recursion, +33% TextCraft. HIGH impact but require RL training / graph models = heavy, and benefit is largest at agent counts we don't run (Google 3-4 ceiling). DEFER: the A1 decomposability gate captures ~80% of the win (don't-fan-out-when-sequential) at effort 2 vs 5.",
+      "constraint_fit": "Most are research-grade, need local training. Re-evaluate only if fleet grows past current 2-7 bound (which Google scaling says NOT to do)."
+    },
+    {
+      "id": "A9-optimistic-cc-scratchpad",
+      "title": "Optimistic concurrency (version-vector CAS) for shared scratchpad — not a new Redis lease",
+      "verdict": "ADOPT (narrow)",
+      "impact": 2,
+      "effort": 2,
+      "target": "shared-artifact writes (events_outbox / scratchpad) — NOT the L2 hot-zone lease",
+      "evidence": [
+        "optimistic-wins-low-contention"
+      ],
+      "rationale": "At 2-7 agents, OCC (version/compare-and-set + retry) beats pessimistic locking because conflicts are rare and retries cheap. Our L2 Redis lease is correct for HOT-ZONE files (plist/migrations) but over-engineered for a shared scratchpad — version-vector CAS on existing Postgres events_outbox suffices. Keep L2 lease for hot-zones (sunk cost, kill-switch), use OCC for scratchpad if/when one is added.",
+      "constraint_fit": "Postgres already present; no new infra. Narrow scope — does NOT replace L2."
+    },
+    {
+      "id": "R1-reject-a2a-mcp-p2p",
+      "title": "REJECT A2A protocol + MCP-as-peer-coordination for our scale",
+      "verdict": "REJECT (with reason)",
+      "impact": 0,
+      "effort": 0,
+      "target": "n/a",
+      "evidence": [
+        "a2a-v1-linux-foundation-prod",
+        "mcp-sampling-not-true-p2p"
+      ],
+      "rationale": "A2A (v1.0.0, Linux Foundation, 150+ orgs) standardizes CROSS-ORGANIZATIONAL agent interop (Agent Card discovery, JSON-RPC/gRPC transports, webhook push). Built for heterogeneous agents across org/vendor boundaries — over-engineered for 2-7 LOCAL same-codebase Claude sessions under Law 6 sovereignty. MCP sampling/elicitation is client-side, routed through host — NOT symmetric P2P; using it as agent-coordination creates hidden host routing (MAST FC1). Our CLI-subprocess + Postgres EventBus is the right local layer.",
+      "constraint_fit": "Reject preserves Law 6 (no external protocol surface). Revisit only if Bali Zero ever federates with external agent vendors."
+    },
+    {
+      "id": "R2-reject-kafka-blackboard-infra",
+      "title": "REJECT Kafka event-backbone + full blackboard infra; borrow self-selection IDEA only",
+      "verdict": "REJECT infra / borrow idea",
+      "impact": 1,
+      "effort": 0,
+      "target": "CLASSIFY node design philosophy",
+      "evidence": [
+        "event-choreography-kafka-4patterns",
+        "blackboard-self-selection",
+        "blackboard-self-select-benchmark"
+      ],
+      "rationale": "Confluent (vendor, second-hand): Kafka backbone supports 4 patterns but infra cost only pays off ABOVE small agent counts. We already have Postgres LISTEN/NOTIFY + events_outbox (EventBus shipped). Blackboard self-selection (2510.01285: +13-57% rel success) is a GOOD idea — removes the brittle requirement that CLASSIFY know every lane's capability — but adopt the PRINCIPLE (lanes self-declare capability, graceful add/remove) not the Kafka infra. Captured partly by A1+A3.",
+      "constraint_fit": "No new infra (Law 6). The self-selection principle informs A1's classifier design."
+    }
+  ]
+}

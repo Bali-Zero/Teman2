@@ -70,3 +70,41 @@ def test_write_state_records_actionable_outcome(tmp_path: Path) -> None:
     assert data["branch"] == "branch-1"
     assert data["worktree"] == "/tmp/wt"
     assert isinstance(data["ts"], float)
+
+
+def test_ensure_runtime_worktree_creates_missing_detached_checkout(tmp_path: Path) -> None:
+    source_repo = tmp_path / "source"
+    runtime_repo = tmp_path / "worktrees" / "codex-autofix-ci-runtime"
+    _init_git_repo(source_repo)
+
+    script = f"""
+        set -euo pipefail
+        source {LIB}
+        codex_auto_ensure_runtime_worktree {source_repo} {runtime_repo} HEAD
+        test -d "{runtime_repo}/.git" -o -f "{runtime_repo}/.git"
+        git -C "{runtime_repo}" rev-parse --is-inside-work-tree
+        git -C "{runtime_repo}" rev-parse --abbrev-ref HEAD
+    """
+    result = _run_bash(script)
+
+    assert result.returncode == 0, result.stderr
+    assert "true" in result.stdout
+    assert "HEAD" in result.stdout
+
+
+def test_ensure_runtime_worktree_rejects_non_git_non_empty_path(tmp_path: Path) -> None:
+    source_repo = tmp_path / "source"
+    runtime_repo = tmp_path / "worktrees" / "codex-autofix-ci-runtime"
+    _init_git_repo(source_repo)
+    runtime_repo.mkdir(parents=True)
+    (runtime_repo / "leftover.txt").write_text("dirty\n", encoding="utf-8")
+
+    script = f"""
+        set -euo pipefail
+        source {LIB}
+        codex_auto_ensure_runtime_worktree {source_repo} {runtime_repo} HEAD
+    """
+    result = _run_bash(script)
+
+    assert result.returncode != 0
+    assert "Runtime path exists but is not a git worktree" in result.stderr

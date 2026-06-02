@@ -15,11 +15,12 @@ test_worker_helpers.py and re-imported here only for sanity.
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -129,6 +130,225 @@ class TestFileInventoryBlock:
         block = worker.build_file_inventory_block([], {})
         assert "source_folder | file_id | name | mimeType | size_bytes | modifiedTime" in block
 
+    def test_inventory_prompt_budget_prioritizes_ocr_and_doc_type(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = [
+            {
+                "id": "old_plain",
+                "name": "meeting-notes-2020.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2020-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+            {
+                "id": "new_plain",
+                "name": "meeting-notes-2026.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2026-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+            {
+                "id": "priority_doc",
+                "name": "passport.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2021-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+            {
+                "id": "ocr_doc",
+                "name": "random-scan.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "2019-01-01T00:00:00Z",
+                "source_folder_id": "f",
+            },
+        ]
+        ocr_results = {
+            "ocr_doc": worker.ExtractionResult(
+                text="ocr text",
+                extractor="pdfminer",
+                confidence=0.9,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            )
+        }
+
+        monkeypatch.setattr(worker, "INVENTORY_MAX_FILES", 3)
+
+        block = worker.build_file_inventory_block(files, {"f": "Folder"}, ocr_results)
+
+        assert "ocr_doc" in block
+        assert "priority_doc" in block
+        assert "new_plain" in block
+        assert "old_plain" not in block
+        assert block.index("ocr_doc") < block.index("priority_doc") < block.index("new_plain")
+        assert "priority_doc | passport.pdf | application/pdf |  | 2021-01-01T00:00:00Z | passport" in block
+        assert "# Total files: 4" in block
+        assert "# Files rendered: 3" in block
+        assert "# Files skipped_by_prompt_budget: 1" in block
+
+
+# ---------------------------------------------------------------------------
+# build_file_content_snippets_block
+# ---------------------------------------------------------------------------
+
+
+class TestFileContentSnippetsBlock:
+    def test_empty_snippets_block(self, worker) -> None:
+        block = worker.build_file_content_snippets_block([], {})
+
+        assert block.startswith("<FILE_CONTENT_SNIPPETS>")
+        assert "No OCR content extracted" in block
+        assert block.endswith("</FILE_CONTENT_SNIPPETS>")
+
+    def test_snippet_prompt_budget_caps_cache_hits(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = [
+            {"id": "f1", "name": "passport.pdf"},
+            {"id": "f2", "name": "akta.pdf"},
+            {"id": "f3", "name": "npwp.pdf"},
+        ]
+        ocr_results = {
+            "f1": worker.ExtractionResult(
+                text="abcdefghi",
+                extractor="pdfminer",
+                confidence=0.9,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            ),
+            "f2": worker.ExtractionResult(
+                text="jklmnopqr",
+                extractor="pdfminer",
+                confidence=0.8,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            ),
+            "f3": worker.ExtractionResult(
+                text="stuvwxyz",
+                extractor="pdfminer",
+                confidence=0.7,
+                page_count=1,
+                duration_ms=1,
+                truncated=False,
+            ),
+        }
+
+        monkeypatch.setattr(worker, "CONTENT_SNIPPET_MAX_FILES", 2)
+        monkeypatch.setattr(worker, "CONTENT_SNIPPET_MAX_CHARS_PER_FILE", 5)
+        monkeypatch.setattr(worker, "CONTENT_SNIPPET_MAX_CHARS_TOTAL", 8)
+
+        block = worker.build_file_content_snippets_block(files, ocr_results)
+
+        assert "--- file_id: f1 ---" in block
+        assert "abcde" in block
+        assert "abcdef" not in block
+        assert "--- file_id: f2 ---" in block
+        assert "jkl" in block
+        assert "jklm" not in block
+        assert "--- file_id: f3 ---" not in block
+        assert "# Snippets rendered: 2" in block
+        assert "# Snippets skipped_by_prompt_budget: 1" in block
+        assert "# Snippet text chars rendered: 8/8" in block
+        assert "prompt_truncated=true" in block
+
+
+# ---------------------------------------------------------------------------
+# enrich_files_with_ocr
+# ---------------------------------------------------------------------------
+
+
+class TestOcrEnrichmentBudgets:
+    def test_default_fresh_ocr_budget_matches_rendered_snippets(self, worker) -> None:
+        assert worker.OCR_MAX_FILES_PER_CLIENT == 8
+        assert worker.CONTENT_SNIPPET_MAX_FILES == 8
+        assert worker.OCR_MAX_SECONDS_PER_CLIENT > 0
+        assert worker.OCR_MAX_SECONDS_PER_FILE > 0
+
+    @pytest.mark.asyncio
+    async def test_fresh_ocr_budget_caps_extraction_work(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = [
+            {"id": "f1", "name": "passport-a.pdf", "mimeType": "application/pdf"},
+            {"id": "f2", "name": "passport-b.pdf", "mimeType": "application/pdf"},
+            {"id": "f3", "name": "passport-c.pdf", "mimeType": "application/pdf"},
+        ]
+        extraction = worker.ExtractionResult(
+            text="passport text",
+            extractor="pdfminer",
+            confidence=None,
+            page_count=1,
+            duration_ms=1,
+            truncated=False,
+        )
+
+        extract = AsyncMock(return_value=extraction)
+        download = AsyncMock(return_value=b"%PDF")
+        upsert = AsyncMock()
+
+        monkeypatch.setattr(worker, "get_cached_content", AsyncMock(return_value=None))
+        monkeypatch.setattr(worker, "download_drive_file_bytes", download)
+        monkeypatch.setattr(worker, "extract_file_content", extract)
+        monkeypatch.setattr(worker, "upsert_cache_row", upsert)
+
+        enriched = await worker.enrich_files_with_ocr(
+            object(),
+            object(),
+            files,
+            object(),
+            budget=2,
+            max_seconds_per_client=999,
+            max_seconds_per_file=999,
+        )
+
+        assert extract.await_count == 2
+        assert download.await_count == 2
+        assert upsert.await_count == 2
+        assert set(enriched) == {"f1", "f2"}
+        assert [f["inferred_doc_type"] for f in files] == ["passport", "passport", "passport"]
+
+    @pytest.mark.asyncio
+    async def test_fresh_ocr_file_timeout_records_skipped_cache_row(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def slow_extract(**_kwargs):
+            await asyncio.sleep(0.05)
+
+        files = [{"id": "f1", "name": "passport.pdf", "mimeType": "application/pdf"}]
+        upsert = AsyncMock()
+
+        monkeypatch.setattr(worker, "get_cached_content", AsyncMock(return_value=None))
+        monkeypatch.setattr(worker, "download_drive_file_bytes", AsyncMock(return_value=b"%PDF"))
+        monkeypatch.setattr(worker, "extract_file_content", slow_extract)
+        monkeypatch.setattr(worker, "upsert_cache_row", upsert)
+
+        enriched = await worker.enrich_files_with_ocr(
+            object(),
+            object(),
+            files,
+            object(),
+            budget=1,
+            max_seconds_per_client=999,
+            max_seconds_per_file=0.01,
+        )
+
+        assert enriched == {}
+        result = upsert.await_args.kwargs["result"]
+        assert result.extractor == "skipped"
+        assert result.notes == "file_timeout_after_0.01s"
+
 
 # ---------------------------------------------------------------------------
 # assemble_full_prompt
@@ -139,14 +359,41 @@ class TestAssembleFullPrompt:
     def test_concatenation_order(self, worker) -> None:
         ctx = "<CROSS_FOLDER_CONTEXT>\nclient_id: 1\n</CROSS_FOLDER_CONTEXT>"
         inv = "<FILE_INVENTORY>\nfile data\n</FILE_INVENTORY>"
+        content = "<FILE_CONTENT_SNIPPETS>\nstatic ocr text\n</FILE_CONTENT_SNIPPETS>"
         tpl = "## Prompt\nYou are the CRM intelligence layer..."
-        out = worker.assemble_full_prompt(tpl, ctx, inv)
-        # Order: context → inventory → template
-        assert out.index(ctx) < out.index(inv) < out.index(tpl)
+        out = worker.assemble_full_prompt(tpl, ctx, inv, content)
+        # Order: hard agy contract -> template -> evidence -> final JSON contract.
+        assert out.index(worker.AGY_PRINT_MODE_CONTRACT) < out.index(tpl)
+        assert out.index(tpl) < out.index(ctx) < out.index(inv) < out.index(content)
+        assert out.index(content) < out.index(worker.AGY_FINAL_OUTPUT_CONTRACT)
 
     def test_double_newline_separator(self, worker) -> None:
         out = worker.assemble_full_prompt("TPL", "CTX", "INV")
-        assert "CTX\n\nINV\n\nTPL" == out
+        assert "\n\n".join(
+            [
+                worker.AGY_PRINT_MODE_CONTRACT,
+                "TPL",
+                "CTX",
+                "INV",
+                worker.AGY_FINAL_OUTPUT_CONTRACT,
+            ]
+        ) == out
+
+    def test_agy_contract_blocks_waiting_and_tools(self, worker) -> None:
+        out = worker.assemble_full_prompt("TPL", "CTX", "INV", "CONTENT")
+
+        assert "Do not use tools" in out
+        assert "Do not wait" in out
+        assert "All Drive listing, OCR extraction, and cache lookup work has already completed" in out
+        assert "Emit only one ```json fenced object now" in out
+
+    def test_default_prompt_is_v5_and_lean(self, worker) -> None:
+        prompt = worker.DEFAULT_PROMPT_FILE.read_text(encoding="utf-8")
+
+        assert worker.DEFAULT_PROMPT_FILE.name == "L1_extraction_v5.md"
+        assert len(prompt) < 10_000
+        assert "Do not wait" in prompt
+        assert '"prompt_version": "L1_extraction_v5"' in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -154,61 +401,127 @@ class TestAssembleFullPrompt:
 # ---------------------------------------------------------------------------
 
 
+class FakePopen:
+    """Small Popen test double that writes into the provided output files."""
+
+    pid = 12345
+
+    def __init__(
+        self,
+        _cmd: list[str],
+        *,
+        stdout,
+        stderr,
+        returncode: int = 0,
+        stdout_text: str = "",
+        stderr_text: str = "",
+        timeout: bool = False,
+        **_kwargs,
+    ) -> None:
+        self.returncode = returncode
+        self._timeout = timeout
+        self.wait_calls = 0
+        stdout.write(stdout_text)
+        stderr.write(stderr_text)
+
+    def wait(self, timeout: int | None = None) -> int:
+        self.wait_calls += 1
+        if self._timeout and self.wait_calls == 1:
+            raise subprocess.TimeoutExpired(cmd=["agy"], timeout=timeout)
+        return self.returncode
+
+    def poll(self) -> int | None:
+        if self._timeout and self.wait_calls <= 1:
+            return None
+        return self.returncode
+
+
 class TestCallGeminiCli:
-    def test_basic_invocation(self, worker) -> None:
-        """Mock subprocess.run, verify command shape."""
-        mock_result = subprocess.CompletedProcess(
-            args=["agy", "-p", "test"],
-            returncode=0,
-            stdout='```json\n{"ok": true}\n```\n',
-            stderr="",
-        )
-        with (
-            patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
-            patch.object(worker.Path, "exists", return_value=True),
-        ):
-            out = worker.call_gemini_cli("hello prompt")
-            assert "```json" in out
-            mock_run.assert_called_once()
-            args = mock_run.call_args[0][0]
-            assert args[0] == worker.GEMINI_CLI
-            assert args[1] == "-p"
-            assert args[2] == "hello prompt"
-
-    def test_model_arg_ignored_on_agy(self, worker) -> None:
-        """agy does not support `-m`; the model arg is accepted but never passed."""
-        mock_result = subprocess.CompletedProcess(args=[], returncode=0, stdout="x", stderr="")
-        with (
-            patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
-            patch.object(worker.Path, "exists", return_value=True),
-        ):
-            worker.call_gemini_cli("p", model="gemini-2.5-pro")
-            args = mock_run.call_args[0][0]
-            assert "-m" not in args
-            assert "gemini-2.5-pro" not in args
-
-    def test_timeout_propagates(self, worker) -> None:
+    def test_basic_invocation(self, worker, tmp_path: Path) -> None:
+        """Mock subprocess.Popen, verify command and no pipe capture."""
+        popen = FakePopen
         with (
             patch.object(
                 worker.subprocess,
-                "run",
-                side_effect=subprocess.TimeoutExpired(cmd=["agy"], timeout=240),
-            ),
+                "Popen",
+                side_effect=lambda *args, **kwargs: popen(
+                    *args,
+                    stdout_text='```json\n{"ok": true}\n```\n',
+                    **kwargs,
+                ),
+            ) as mock_popen,
             patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
+        ):
+            out = worker.call_gemini_cli("hello prompt")
+            assert "```json" in out
+            mock_popen.assert_called_once()
+            args = mock_popen.call_args[0][0]
+            kwargs = mock_popen.call_args.kwargs
+            assert args[0] == worker.GEMINI_CLI
+            assert args[1] == "-p"
+            assert args[2] == "--print-timeout"
+            assert args[3].endswith("s")
+            assert "hello prompt" not in args
+            assert kwargs["stdin"] is not None
+            assert kwargs["stdout"] is not subprocess.PIPE
+            assert kwargs["stderr"] is not subprocess.PIPE
+            assert kwargs["start_new_session"] is True
+
+    def test_model_arg_ignored_on_agy(self, worker, tmp_path: Path) -> None:
+        """agy does not support `-m`; the model arg is accepted but never passed."""
+        with (
+            patch.object(
+                worker.subprocess,
+                "Popen",
+                side_effect=lambda *args, **kwargs: FakePopen(
+                    *args,
+                    stdout_text="x",
+                    **kwargs,
+                ),
+            ) as mock_popen,
+            patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
+        ):
+            worker.call_gemini_cli("p", model="gemini-2.5-pro")
+            args = mock_popen.call_args[0][0]
+            assert "-m" not in args
+            assert "gemini-2.5-pro" not in args
+
+    def test_timeout_propagates_and_kills_process_group(self, worker, tmp_path: Path) -> None:
+        with (
+            patch.object(
+                worker.subprocess,
+                "Popen",
+                side_effect=lambda *args, **kwargs: FakePopen(
+                    *args,
+                    timeout=True,
+                    stderr_text="still running",
+                    **kwargs,
+                ),
+            ),
+            patch.object(worker.os, "killpg") as mock_killpg,
+            patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
         ):
             with pytest.raises(subprocess.TimeoutExpired):
                 worker.call_gemini_cli("p", timeout_seconds=240)
+            mock_killpg.assert_called()
 
-    def test_nonzero_exit_raises(self, worker) -> None:
-        mock_result = subprocess.CompletedProcess(
-            args=[],
-            returncode=1,
-            stdout="",
-            stderr="auth required",
-        )
+    def test_nonzero_exit_raises(self, worker, tmp_path: Path) -> None:
         with (
-            patch.object(worker.subprocess, "run", return_value=mock_result),
+            patch.object(
+                worker.subprocess,
+                "Popen",
+                side_effect=lambda *args, **kwargs: FakePopen(
+                    *args,
+                    returncode=1,
+                    stderr_text="auth required",
+                    **kwargs,
+                ),
+            ),
             patch.object(worker.Path, "exists", return_value=True),
+            patch.object(worker, "RAW_DUMP_DIR", tmp_path),
         ):
             with pytest.raises(RuntimeError, match="gemini CLI returncode=1"):
                 worker.call_gemini_cli("p")
@@ -235,6 +548,138 @@ class TestExtractJsonBlock:
 
     def test_no_json_returns_none(self, worker) -> None:
         assert worker.extract_json_block("just words, no json") is None
+
+    def test_agentic_wait_response_detected(self, worker) -> None:
+        text = (
+            "I will wait for the background OCR task to complete before continuing.\n"
+            "Error: timed out waiting for response"
+        )
+
+        assert worker.extract_json_block(text) is None
+        assert worker._looks_like_agentic_wait_response(text) is True
+
+
+# ---------------------------------------------------------------------------
+# main() operational state
+# ---------------------------------------------------------------------------
+
+
+class TestMainOperationalState:
+    @pytest.mark.asyncio
+    async def test_reset_stale_running_jobs_returns_update_count(self, worker) -> None:
+        class FakeConn:
+            def __init__(self) -> None:
+                self.execute = AsyncMock(return_value="UPDATE 2")
+
+        fake_conn = FakeConn()
+
+        result = await worker.reset_stale_running_jobs(fake_conn, stale_after_seconds=600)
+
+        assert result == 2
+        sql = fake_conn.execute.await_args.args[0]
+        assert "status = 'running'" in sql
+        assert "status = 'pending'" in sql
+        assert fake_conn.execute.await_args.args[1] == 600
+
+    @pytest.mark.asyncio
+    async def test_no_pending_queue_bumps_i10b_success(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        prompt_file = tmp_path / "prompt.md"
+        prompt_file.write_text("prompt", encoding="utf-8")
+
+        class FakeConn:
+            def __init__(self) -> None:
+                self.execute = AsyncMock(return_value="UPDATE 0")
+                self.fetch = AsyncMock(return_value=[])
+                self.close = AsyncMock()
+
+        fake_conn = FakeConn()
+
+        import asyncpg
+
+        import backend.services.crm_guardian.base as guardian_base
+
+        bump = AsyncMock()
+        monkeypatch.setattr(worker, "_resolve_db_url", lambda: "postgresql://test/db")
+        monkeypatch.setattr(asyncpg, "connect", AsyncMock(return_value=fake_conn))
+        monkeypatch.setattr(guardian_base, "bump_circuit_breaker", bump)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "crm_guardian_gemini_cli_worker.py",
+                "--from-queue",
+                "--prompt-file",
+                str(prompt_file),
+            ],
+        )
+
+        exit_code = await worker.main()
+
+        assert exit_code == 0
+        bump.assert_awaited_once_with(fake_conn, "I10b_summary_queue", True)
+        fake_conn.close.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_processed_batch_bumps_queue_and_l1_state(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        prompt_file = tmp_path / "prompt.md"
+        prompt_file.write_text("prompt", encoding="utf-8")
+
+        class FakeConn:
+            def __init__(self) -> None:
+                self.execute = AsyncMock(return_value="UPDATE 0")
+                self.fetch = AsyncMock(return_value=[{"client_id": 123}])
+                self.close = AsyncMock()
+
+        fake_conn = FakeConn()
+
+        import asyncpg
+
+        import backend.services.crm_guardian.base as guardian_base
+
+        bump = AsyncMock()
+        drive_modes: list[bool] = []
+
+        def fake_build_drive_service(prefer_user_oauth: bool) -> object:
+            drive_modes.append(prefer_user_oauth)
+            return object()
+
+        monkeypatch.setattr(worker, "_resolve_db_url", lambda: "postgresql://test/db")
+        monkeypatch.setattr(asyncpg, "connect", AsyncMock(return_value=fake_conn))
+        monkeypatch.setattr(guardian_base, "bump_circuit_breaker", bump)
+        monkeypatch.setattr(guardian_base, "build_drive_service", fake_build_drive_service)
+        monkeypatch.setattr(
+            worker,
+            "run_one_client",
+            AsyncMock(return_value={"client_id": 123, "status": "success"}),
+        )
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "crm_guardian_gemini_cli_worker.py",
+                "--from-queue",
+                "--prompt-file",
+                str(prompt_file),
+            ],
+        )
+
+        exit_code = await worker.main()
+
+        assert exit_code == 0
+        assert drive_modes == [False]
+        assert bump.await_args_list[0].args == (fake_conn, "I10b_summary_queue", True, None)
+        assert bump.await_args_list[1].args == (fake_conn, "I10_summary_l1", True, None)
+        fake_conn.close.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

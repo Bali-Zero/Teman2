@@ -102,6 +102,7 @@ reports/
 *.json.report
 sentinel-results/
 deep-analysis-results/
+.openclaw-evals/
 
 # Environment (never commit real secrets)
 .env*

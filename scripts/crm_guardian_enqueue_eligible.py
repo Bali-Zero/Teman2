@@ -43,7 +43,6 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -314,7 +313,7 @@ def _print_summary(audit: dict[str, Any]) -> None:
         for p in audit["preview_first_10"]:
             tier = p.get("prior_tier") or "—"
             msg += f"    [{p['client_id']:>5}] {p['full_name']} (prior_tier={tier})\n"
-    print(msg)
+    sys.stdout.write(msg)
 
 
 def main() -> int:
@@ -358,7 +357,7 @@ def main() -> int:
 
     out_path = _write_audit(audit)
     _print_summary(audit)
-    print(f"  audit_json        = {out_path}")
+    sys.stdout.write(f"  audit_json        = {out_path}\n")
     return 0
 
 

@@ -514,6 +514,7 @@ def include_light_routers(api: FastAPI) -> None:
         wa_mirror_messages,
         webhooks,
         websocket,
+        whatsapp_chat,
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
@@ -616,6 +617,9 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(telegram_webhook.router)
     api.include_router(twitter.router)  # P0-6 re-enabled 2026-04-29
     api.include_router(twitter.webhook_router)  # P0-6 re-enabled 2026-04-29
+    api.include_router(
+        whatsapp_chat.router,
+    )  # Meta WhatsApp webhook must live on public api process
     api.include_router(whatsapp_conversations.router)
     api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
     api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)

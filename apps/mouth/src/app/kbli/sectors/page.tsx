@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "KBLI 2025 Sectors — Browse All Business Categories",
   description:
     "Browse all 22 KBLI 2025 business sectors. Indonesia's complete business classification system with PMA rules and licensing requirements.",
+  alternates: {
+    canonical: "https://balizero.com/kbli/sectors",
+  },
 };
 
 export default function SectorsPage() {

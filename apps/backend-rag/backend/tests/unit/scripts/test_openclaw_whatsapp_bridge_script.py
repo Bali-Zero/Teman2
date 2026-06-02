@@ -1,0 +1,233 @@
+"""Tests for the local OpenClaw WhatsApp bridge runtime script."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from types import ModuleType
+from typing import Any
+
+import pytest
+
+
+def _load_bridge_module() -> ModuleType:
+    repo_root = Path(__file__).resolve().parents[6]
+    script_path = repo_root / "scripts" / "openclaw_whatsapp_bridge.py"
+    spec = importlib.util.spec_from_file_location("openclaw_whatsapp_bridge_script", script_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+bridge = _load_bridge_module()
+
+
+def test_build_prompt_includes_kb_tool_contract_and_autonomy() -> None:
+    history = [{"role": "user", "text": f"message {idx}"} for idx in range(10)]
+    body = bridge.BridgeRequest(
+        agent="wa",
+        model="openai/gpt-5.5",
+        thinking="high",
+        persona="zantara_whatsapp_v1",
+        autonomy_mode="supervised_autonomous",
+        phone="+62 812-345",
+        sender_name="Client",
+        message_id="wamid.test",
+        text="I want to open a cafe in Canggu. Which KBLI?",
+        context={
+            "detected_language": "en",
+            "is_first_message": False,
+            "client_profile": {"segment": "founder"},
+            "conversation_history": history,
+        },
+    )
+
+    prompt = json.loads(bridge._build_prompt(body))
+
+    assert prompt["persona"] == "zantara_whatsapp_v1"
+    assert prompt["autonomy_mode"] == "supervised_autonomous"
+    assert prompt["incoming_text"] == "I want to open a cafe in Canggu. Which KBLI?"
+    assert prompt["client_profile"] == {"segment": "founder"}
+    assert len(prompt["recent_history"]) == 8
+    assert prompt["recent_history"][0]["text"] == "message 2"
+    assert any("KBLI" in rule for rule in prompt["knowledge_tool_contract"])
+    assert any("nuzantara-mcp.search_kbli" in rule for rule in prompt["knowledge_tool_contract"])
+    assert any("Nuzantara MCP tools" in rule for rule in prompt["knowledge_tool_contract"])
+    assert any("do not invent" in rule for rule in prompt["reply_rules"])
+    assert any("self-triggered loop" in step for step in prompt["operating_loop"])
+    assert any("Do not expose internal tools" in rule for rule in prompt["reply_rules"])
+
+
+def test_build_prompt_marks_pricing_intent_as_mandatory_tool_call() -> None:
+    body = bridge.BridgeRequest(
+        phone="+62 812-345",
+        sender_name="Client",
+        message_id="wamid.price",
+        text="Give me the exact total price for investor KITAS and guarantee the timeline.",
+    )
+
+    prompt = json.loads(bridge._build_prompt(body))
+
+    assert any("Pricing/quote/timeline intent detected" in rule for rule in prompt["tool_mandates"])
+    assert any("nuzantara-mcp.search_service_pricing" in rule for rule in prompt["tool_mandates"])
+    assert any("mandatory" in rule for rule in prompt["knowledge_tool_contract"])
+
+
+def test_build_prompt_marks_kbli_followup_from_recent_context() -> None:
+    body = bridge.BridgeRequest(
+        phone="+62 812-345",
+        sender_name="Client",
+        message_id="wamid.followup",
+        text="And can that work with a PT PMA, or do I need a different setup?",
+        context={
+            "conversation_history": [
+                {
+                    "role": "user",
+                    "text": "I want to open a small cafe in Canggu. Which KBLI?",
+                }
+            ]
+        },
+    )
+
+    prompt = json.loads(bridge._build_prompt(body))
+
+    assert any("KBLI/company-setup intent detected" in rule for rule in prompt["tool_mandates"])
+    assert any("nuzantara-mcp.search_kbli" in rule for rule in prompt["tool_mandates"])
+
+
+def test_build_prompt_includes_villa_55193_to_55203_mapping_rule() -> None:
+    body = bridge.BridgeRequest(
+        phone="+62 812-345",
+        sender_name="Client",
+        message_id="wamid.villa",
+        text="ma per ville Airbnb e' 55193 o 55203?",
+        context={"detected_language": "it"},
+    )
+
+    prompt = json.loads(bridge._build_prompt(body))
+    contract = "\n".join(prompt["knowledge_tool_contract"])
+
+    assert "55193" in contract
+    assert "55203" in contract
+    assert "KBLI 2020/PP28" in contract
+    assert "KBLI 2025" in contract
+    assert "55901" in contract
+    assert "55400" in contract
+    assert "AC/ventilation" in contract
+
+
+def test_bridge_guard_corrects_bad_villa_55193_reply() -> None:
+    guarded = bridge._guard_villa_kbli_reply(
+        "ma per ville Airbnb e' 55193 o 55203?",
+        "55193 - Aktivitas Vila: usa questo codice per Airbnb.",
+        "it",
+    )
+
+    assert "55203" in guarded
+    assert "55193" in guarded
+    assert "KBLI 2020/PP28" in guarded
+    assert "usa questo codice" not in guarded
+
+
+def test_bridge_guard_keeps_grounded_villa_mapping_reply() -> None:
+    reply = (
+        "55193 era il codice KBLI 2020/PP28 sorgente; nel mapping KBLI 2025 "
+        "mappa a 55203 - AKTIVITAS VILA."
+    )
+
+    assert bridge._guard_villa_kbli_reply("Differenza 55193 vs 55203", reply, "it") == reply
+
+
+def test_run_script_uses_installed_bridge_app_dir() -> None:
+    repo_root = Path(__file__).resolve().parents[6]
+    script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert '--app-dir "$HOME/.openclaw/bin"' in script
+    assert ".worktrees/backend-rag-openclaw-whatsapp-meta" not in script
+
+
+def test_session_key_strips_phone_punctuation_and_scopes_message() -> None:
+    assert bridge._session_key("wa", "+62 812-345") == "agent:wa:whatsapp-meta-62812345"
+    assert (
+        bridge._session_key("wa", "+62 812-345", "wamid.test:123")
+        == "agent:wa:whatsapp-meta-62812345-wamid-test-123"
+    )
+    assert bridge._session_key("wa", "no digits") == "agent:wa:whatsapp-meta-unknown"
+
+
+@pytest.mark.asyncio
+async def test_run_openclaw_passes_runtime_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeProcess:
+        returncode = 0
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            payload = {"result": {"finalAssistantVisibleText": "Ready from Zantara."}}
+            return json.dumps(payload).encode(), b""
+
+    async def fake_create_subprocess_exec(*args: str, **kwargs: Any) -> FakeProcess:
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return FakeProcess()
+
+    monkeypatch.setattr(bridge.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    monkeypatch.setenv("OPENCLAW_WHATSAPP_TIMEOUT_SECONDS", "30")
+
+    reply = await bridge._run_openclaw(
+        "wa",
+        '{"incoming_text":"hi"}',
+        "628123",
+        "wamid.test",
+        "openai/gpt-5.5",
+        "high",
+    )
+
+    args = captured["args"]
+    assert reply == "Ready from Zantara."
+    assert args[:4] == ("openclaw", "agent", "--agent", "wa")
+    assert "--channel" in args
+    assert args[args.index("--channel") + 1] == "whatsapp"
+    assert "--to" in args
+    assert args[args.index("--to") + 1] == "+628123"
+    assert "--session-key" in args
+    assert args[args.index("--session-key") + 1] == "agent:wa:whatsapp-meta-628123-wamid-test"
+    assert "--model" in args
+    assert args[args.index("--model") + 1] == "openai/gpt-5.5"
+    assert "--thinking" in args
+    assert args[args.index("--thinking") + 1] == "high"
+    assert "--deliver" not in args
+
+
+@pytest.mark.asyncio
+async def test_run_openclaw_uses_env_model_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeProcess:
+        returncode = 0
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            payload = {"result": {"payloads": [{"text": "Env defaults ok."}]}}
+            return json.dumps(payload).encode(), b""
+
+    async def fake_create_subprocess_exec(*args: str, **kwargs: Any) -> FakeProcess:
+        captured["args"] = args
+        return FakeProcess()
+
+    monkeypatch.setattr(bridge.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    monkeypatch.setenv("OPENCLAW_WHATSAPP_MODEL", "openai/gpt-5.5")
+    monkeypatch.setenv("OPENCLAW_WHATSAPP_THINKING", "high")
+
+    reply = await bridge._run_openclaw("wa", "{}", "+628123", "wamid.env", None, None)
+
+    args = captured["args"]
+    assert reply == "Env defaults ok."
+    assert args[args.index("--model") + 1] == "openai/gpt-5.5"
+    assert args[args.index("--thinking") + 1] == "high"

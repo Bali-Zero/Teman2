@@ -148,6 +148,32 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*baseline.*\.json$"),
         "orchestrator baseline JSON snapshot: git SHAs + counts, not credentials",
     ),
+    # Dated operations audit snapshots (e.g.
+    # research/operations/2026-05-31-system-audit-FROZEN.json): empirical
+    # system-state captures written by audit sessions. The high-entropy hits
+    # are PUBLIC infrastructure identifiers — Fly.io machine IDs
+    # ({"id": "7847d95ce257d8", "process_group": "api", ...}, visible in
+    # `fly machine list` and Fly proxy logs) and git object SHAs — never
+    # credentials. Same class as the research/operations/audits/*.json rule
+    # below, but for the dated top-level operations snapshots.
+    (
+        re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*audit.*\.json$"),
+        "dated operations audit snapshot: Fly machine IDs + git SHAs (public infra identifiers), not credentials",
+    ),
+    # Frozen audit snapshots (e.g. research/operations/2026-05-31-organism-truth-FROZEN.json,
+    # research/operations/S4-broker-FROZEN.json, S5-plist-secrets-FROZEN.json,
+    # S15-symbiosis-FROZEN.json). Same class as the dated audit/baseline rules
+    # above — empirical system-state captures written by audit sessions. The
+    # high-entropy hits are git object SHAs (`git_sha`, `origin_sha`) and the
+    # "Secret Keyword" hits are NAMES of secrets in a rotation checklist
+    # (e.g. {"secret": "GH_TOKEN", "rotate_cmd": ...}) — the document describes
+    # which secrets need rotating, it does NOT contain their values. Never
+    # credentials. Covers both the dated `*-FROZEN.json` and the sprint-prefixed
+    # `S<N>-*-FROZEN.json` audit families.
+    (
+        re.compile(r"^research/operations/.*FROZEN\.json$"),
+        "frozen operations audit snapshot: git SHAs + secret-name rotation checklists (public/structural identifiers), not credentials",
+    ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),
         "README: documentation",
