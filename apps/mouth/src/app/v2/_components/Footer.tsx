@@ -141,7 +141,7 @@ export function Footer() {
           >
             © 2026 Bali Zero. All rights reserved.
           </span>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-x-5 gap-y-2 flex-wrap justify-end">
             <a
               href="/v2/privacy"
               className="text-[11px]"
