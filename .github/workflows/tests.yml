@@ -277,7 +277,13 @@ jobs:
         run: npm install --no-fund
 
       - name: npm audit
-        run: npm audit --audit-level=high
+        # --omit=dev: audit only what we ship to production, not the test
+        # toolchain. All current high/critical advisories are in devDependencies
+        # (vitest / @vitest/coverage-v8 "UI server arbitrary file read", vite,
+        # esbuild) — exploitable only when running `vitest --ui` locally, never
+        # in CI or prod. Without --omit=dev these dev-only advisories failed the
+        # gate on EVERY PR repo-wide. Production-dependency soglia stays at high.
+        run: npm audit --audit-level=high --omit=dev
         continue-on-error: false
 
       - name: Run tests (with coverage)

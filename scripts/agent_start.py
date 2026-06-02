@@ -55,6 +55,9 @@ from typing import Iterable
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKTREES_DIR = REPO_ROOT / ".worktrees"
 TASK_METADATA_FILENAME = ".agent-task.json"
+# Broker-generated files that must NOT count as user WIP (otherwise every
+# freshly created worktree reads as dirty and is never cleanup-eligible).
+BROKER_GENERATED_FILES = frozenset({".agent-task.json", ".env.worktree"})
 
 # Lanes documented in CLAUDE.md + research synthesis.
 # This is an ALLOW-list for create; --list/--cleanup/--release accept any lane
@@ -94,6 +97,16 @@ LOG_DIR = Path.home() / "logs"
 LOG_FILE = LOG_DIR / "agent-broker.log"
 
 KILL_SWITCH_ENV = "AGENT_BROKER_ENABLED"
+
+# W62 ANTIBODY #1: cleanup must not reap a TTL-expired-but-clean worktree that
+# is still being actively worked on. A worktree touched more recently than this
+# threshold is treated as a live session and skipped (override with --force or
+# skip_recent_minutes=0).
+RECENT_ACTIVITY_MINUTES = 10
+
+# W62 ANTIBODY #2/#3: a worktree older than this multiple of its TTL is a
+# suspected orphan (surfaced by --list, gated by the CI hygiene test).
+ORPHAN_TTL_MULTIPLE = 2
 
 
 # ---------------------------------------------------------------------------
@@ -449,8 +462,8 @@ def _worktree_has_wip(worktree: Path) -> bool:
     if proc.returncode != 0:
         # If git can't read the worktree (corrupt) treat as WIP to be safe.
         return True
-    # Ignore the metadata file itself when computing WIP, otherwise every
-    # freshly created worktree would report dirty.
+    # Ignore broker-generated files (.agent-task.json, .env.worktree) when
+    # computing WIP, otherwise every freshly created worktree reports dirty.
     relevant = []
     for line in proc.stdout.splitlines():
         # Porcelain v1: first 2 cols are status, then a space, then path.
@@ -459,10 +472,127 @@ def _worktree_has_wip(worktree: Path) -> bool:
         path = line[3:].strip()
         # Strip "->" rename targets.
         path = path.split(" -> ")[-1].strip().strip('"')
-        if path == TASK_METADATA_FILENAME:
+        if path in BROKER_GENERATED_FILES:
             continue
         relevant.append(line)
     return bool(relevant)
+
+
+def _worktree_recently_active(
+    worktree: Path, *, threshold_minutes: int = RECENT_ACTIVITY_MINUTES
+) -> bool:
+    """True if the worktree shows filesystem activity within threshold_minutes.
+
+    Distinct from age (created_at): this is a *liveness* probe so cleanup never
+    reaps a worktree whose TTL clock expired while a session was still working
+    in it (W62 ANTIBODY #1). Signal = newest mtime among the worktree dir, its
+    `.git` pointer, and the REAL gitdir HEAD (the linked-worktree gitdir is
+    under REPO_ROOT/.git/worktrees/<name>/; HEAD is bumped by commit/checkout —
+    codex P2: the `.git` pointer alone is not enough for linked worktrees).
+
+    NB: the gitdir `index` is deliberately NOT probed — `git status` (run by the
+    WIP check that precedes this guard) rewrites the index mtime, so it would
+    read as "active" on every cleanup pass. HEAD is stable under read-only
+    status, so it tracks genuine commit/checkout activity only.
+
+    This is a best-effort liveness heuristic, NOT a security control: an
+    adversary could `touch` a path to keep an orphan alive. Its only job is to
+    avoid reaping a genuinely active session; the 24h CI cap (find_stale_
+    worktrees) is the hard ceiling no heuristic can opt out of.
+    """
+    if threshold_minutes <= 0:
+        return False
+    cutoff = time.time() - threshold_minutes * 60
+    probes = [worktree, worktree / ".git"]
+    real_gitdir = _resolve_worktree_gitdir(worktree)
+    if real_gitdir is not None:
+        probes.append(real_gitdir / "HEAD")
+    try:
+        return any(p.exists() and p.stat().st_mtime > cutoff for p in probes)
+    except OSError:
+        return True
+
+
+def _resolve_worktree_gitdir(worktree: Path) -> Path | None:
+    """Resolve the real gitdir of a linked worktree (REPO_ROOT/.git/worktrees/
+    <name>). For a linked worktree, `worktree/.git` is a file
+    `gitdir: <abs-path>`; return that path. Returns None on any error."""
+    git_pointer = worktree / ".git"
+    try:
+        if git_pointer.is_file():
+            text = git_pointer.read_text(encoding="utf-8").strip()
+            if text.startswith("gitdir:"):
+                return Path(text.split(":", 1)[1].strip())
+        elif git_pointer.is_dir():
+            return git_pointer
+    except OSError:
+        return None
+    return None
+
+
+def _is_orphan(meta: "TaskMetadata", *, now: datetime | None = None) -> bool:
+    """True if age exceeds ORPHAN_TTL_MULTIPLE × ttl. Malformed timestamps
+    (age_minutes == -1.0) are NOT orphans — operator must inspect them."""
+    age = meta.age_minutes(now=now)
+    if age < 0:
+        return False
+    return age > ORPHAN_TTL_MULTIPLE * meta.ttl_minutes
+
+
+# Hard ceiling (W62 ANTIBODY #3): no worktree should survive this long. Enforced
+# at PR-time by tests/integration/test_no_stale_worktrees.py. Independent of any
+# per-task TTL — a runaway TTL cannot opt out of the absolute cap.
+STALE_WORKTREE_MAX_AGE_MINUTES = 24 * 60
+
+
+def find_stale_worktrees(
+    worktrees_dir: Path | None = None,
+    *,
+    max_age_minutes: int = STALE_WORKTREE_MAX_AGE_MINUTES,
+    strict_missing_metadata: bool = False,
+    now: datetime | None = None,
+) -> list[tuple[str, float]]:
+    """Return [(name, age_minutes)] for worktrees older than max_age_minutes.
+
+    Age signal (W62 audit decision): primary is the broker's own `created_at`
+    metadata (the canonical age axis used by --list/--cleanup).
+
+    For a worktree dir WITHOUT a valid `.agent-task.json`:
+      - strict_missing_metadata=False (default): fall back to directory mtime so
+        non-broker orphans are still caught when they happen to be old.
+      - strict_missing_metadata=True (CI gate): an unmanaged/malformed worktree
+        is ALWAYS reported (age = +inf), because a fresh-but-untracked dir under
+        .worktrees/ has a recent mtime and would slip past a 24h mtime check
+        (codex P3 false-negative). At PR time there is no live session, so any
+        metadata-less worktree is a defect to fix.
+    """
+    worktrees_dir = worktrees_dir if worktrees_dir is not None else WORKTREES_DIR
+    if not worktrees_dir.is_dir():
+        return []
+    now = now or datetime.now(timezone.utc)
+    now_ts = now.timestamp()
+    stale: list[tuple[str, float]] = []
+    for entry in sorted(worktrees_dir.iterdir()):
+        if not entry.is_dir():
+            continue
+        meta_path = entry / TASK_METADATA_FILENAME
+        managed = False
+        age = -1.0
+        if meta_path.is_file():
+            try:
+                meta = TaskMetadata.from_path(meta_path)
+                age = meta.age_minutes(now=now)
+                managed = age >= 0
+            except (OSError, json.JSONDecodeError, KeyError, ValueError):
+                managed = False
+        if not managed:
+            if strict_missing_metadata:
+                stale.append((entry.name, float("inf")))
+                continue
+            age = max(0.0, (now_ts - entry.stat().st_mtime) / 60.0)
+        if age > max_age_minutes:
+            stale.append((entry.name, age))
+    return stale
 
 
 def cmd_list() -> int:
@@ -472,18 +602,30 @@ def cmd_list() -> int:
         return 0
     print(
         f"{'TASK':<24} {'LANE':<14} {'HOST':<14} "
-        f"{'AGE_MIN':>8} {'TTL':>5} {'WIP':<4} BRANCH"
+        f"{'AGE_MIN':>8} {'TTL':>5} {'WIP':<4} {'ORPHAN':<7} BRANCH"
     )
     now = datetime.now(timezone.utc)
+    orphan_count = 0
     for meta in rows:
         wt = Path(meta.worktree_path) if meta.worktree_path else _worktree_path(
             meta.lane, meta.task_id
         )
         wip_flag = "yes" if wt.is_dir() and _worktree_has_wip(wt) else "no"
         age = meta.age_minutes(now=now)
+        orphan = _is_orphan(meta, now=now)
+        if orphan:
+            orphan_count += 1
+        orphan_flag = "ORPHAN" if orphan else ""
         print(
             f"{meta.task_id:<24} {meta.lane:<14} {meta.host:<14} "
-            f"{age:>8.1f} {meta.ttl_minutes:>5d} {wip_flag:<4} {meta.branch}"
+            f"{age:>8.1f} {meta.ttl_minutes:>5d} {wip_flag:<4} "
+            f"{orphan_flag:<7} {meta.branch}"
+        )
+    if orphan_count:
+        print(
+            f"\nWARN: {orphan_count} orphan worktree(s) detected "
+            f"(age > {ORPHAN_TTL_MULTIPLE}× TTL) — review then run "
+            "--cleanup or --release."
         )
     return 0
 
@@ -493,12 +635,25 @@ def cmd_list() -> int:
 # ---------------------------------------------------------------------------
 
 
-def cmd_cleanup(*, force: bool = False) -> int:
+def cmd_cleanup(
+    *, force: bool = False, skip_recent_minutes: int = RECENT_ACTIVITY_MINUTES
+) -> int:
     """Remove expired worktrees. WIP-safe: emits WARNING and skips if dirty.
 
-    Pass force=True to override the WIP guard (operator escape hatch).
+    Two guards protect a worktree from being reaped even when its TTL clock
+    expired. Order matters — WIP is checked FIRST so a worktree that is BOTH
+    recently-touched AND dirty still surfaces as a WIP failure (never silently
+    swallowed as a "live session"):
+      1. WIP guard — uncommitted changes present (tracked or untracked). This
+         is a *failure* to clean (the operator must commit/stash) → exit 1.
+      2. Recent-activity guard (W62 ANTIBODY #1) — applied only to CLEAN
+         worktrees: filesystem activity within skip_recent_minutes marks a live
+         session. This is *not* a failure; the next tick reaps it once idle.
+
+    Pass force=True to override BOTH guards (operator escape hatch).
+    skip_recent_minutes=0 disables only the recent-activity guard.
     Returns 0 if every expired worktree was removed cleanly OR no work
-    needed; 1 if at least one removal was skipped/errored.
+    needed; 1 if at least one removal was skipped for WIP / errored.
     """
     if _kill_switch_active():
         raise SystemExit(
@@ -518,6 +673,9 @@ def cmd_cleanup(*, force: bool = False) -> int:
         wt = Path(meta.worktree_path) if meta.worktree_path else _worktree_path(
             meta.lane, meta.task_id
         )
+        # WIP guard FIRST: a dirty worktree is always a failure to clean,
+        # even if it was touched recently (codex P2: recent+dirty must not
+        # exit 0 silently).
         if wt.is_dir() and _worktree_has_wip(wt) and not force:
             logger.warning(
                 "cleanup skip %s — uncommitted WIP present (use --force)",
@@ -528,6 +686,23 @@ def cmd_cleanup(*, force: bool = False) -> int:
                 f"Commit or stash inside {wt}, then re-run --cleanup."
             )
             issues += 1
+            continue
+        # Recent-activity guard SECOND, on clean worktrees only: a live session
+        # that simply outran its TTL clock — keep it, reap when idle.
+        if (
+            wt.is_dir()
+            and not force
+            and _worktree_recently_active(wt, threshold_minutes=skip_recent_minutes)
+        ):
+            logger.info(
+                "cleanup skip %s — recent activity (<%dmin), likely live session",
+                meta.task_id,
+                skip_recent_minutes,
+            )
+            print(
+                f"skip {meta.task_id} (recent activity <{skip_recent_minutes}min) "
+                "— live session, will reap when idle"
+            )
             continue
         try:
             _remove_worktree(wt, meta.branch, delete_branch=False)
@@ -678,6 +853,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="With --cleanup/--release: override WIP and merged-status guards",
     )
+    p.add_argument(
+        "--skip-recent-min",
+        type=int,
+        default=RECENT_ACTIVITY_MINUTES,
+        help=(
+            "With --cleanup: skip worktrees with filesystem activity in the last "
+            f"N minutes (default: {RECENT_ACTIVITY_MINUTES}; 0 disables the guard)"
+        ),
+    )
     return p
 
 
@@ -699,7 +883,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         return cmd_list()
     if args.cleanup:
-        return cmd_cleanup(force=args.force)
+        return cmd_cleanup(force=args.force, skip_recent_minutes=args.skip_recent_min)
     if args.release:
         return cmd_release(args.release, force=args.force)
 

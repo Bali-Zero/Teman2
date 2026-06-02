@@ -1,0 +1,191 @@
+{
+  "frozen_at": "2026-05-31T07:00:00Z",
+  "git_sha": "63478569272ce5fdecf4d703f1aadcefbf89bb9d",
+  "branch": "chore/audit-rag-truth-2026-05-31",
+  "audit": "S2 — Zantara RAG prod accuracy vs NotebookLM oracle (bipolar verifier)",
+  "auditor_model": "claude-opus-4-8 (1M context)",
+
+  "completeness": "PARTIAL-BY-DESIGN. The bipolar verifier is STRUCTURALLY ONE-ARMED for this audit identity: the NotebookLM oracle arm is fully live and answered every query with citation-grounded text, but EVERY Zantara-prod RAG query tool is RBAC-gated and refused the MCP caller (role 'unknown'). Therefore <20 paired Zantara-vs-NB comparisons could be completed, and per SYMBIOSIS Law 7 NO per-domain accuracy_pct is asserted — asserting one would be fabrication. This FROZEN records ONLY what was empirically measured in this turn.",
+
+  "anti_hallucination_note": "Every value below was produced by a tool call executed in THIS audit turn (notebook_query, check_health, ask_legal/chat_kbli/search_kbli RBAC-error responses, curl probes, grep of codebase, DeepSeek gate). Zantara-prod ANSWER text was never obtained (RBAC wall), so it is recorded as 'blocked_rbac', never invented.",
+
+  "headline_findings": [
+    "F1 (BLOCKER, methodology): the bipolar verifier cannot run end-to-end from an MCP identity. ask_legal / chat_kbli / search_kbli / get_failed_queries ALL return role/auth errors for caller role 'unknown'. The Zantara prod RAG answer surface is invisible to this audit harness. This is the single biggest obstacle to ever measuring Zantara accuracy via MCP.",
+    "F2 (data-quality, high): the ground-truth claims corpus apps/evaluator/nlm_nbX_claims.jsonl is PARTIALLY CORRUPT. nb3/nb4/nb5/nb6 contain raw un-parsed CLI dumps as claim_text (e.g. \"{'status':'error','error':'nlm exited with code 1'}\") with source_ids degraded to single chars ('F'/'CE'/'C'). ALL files use the 'NB2-' claim_id prefix regardless of notebook, indicating a buggy shared extractor. The corpus needs cleaning before it can be trusted as an oracle baseline.",
+    "F3 (oracle-vs-codebase divergence, recorded as 'doubt' because the legal gate is UNAVAILABLE): NB-3 oracle answered villa KBLI = 55193; the prod WhatsApp guard (merged HEAD be06d86ba 2026-05-31) treats 55193 as legacy and 55203 as the current villa code. The factual divergence is REAL. But the mandatory adversarial legal gate could NOT run (devils-advocate subagent not dispatchable in this nested context + DeepSeek API out of balance, empirically verified is_available=false). Per the legal-gate rule, an unconfirmable regulatory finding is DOUBT, not a confirmed error. NOT counted as zantara_wrong nor oracle_wrong.",
+    "F4 (oracle is internally CORRECT where cross-checkable): on the tax PPN question the NB-4 oracle answer (effective 11% via PMK 131/2024 DPP Nilai Lain 11/12; full 12% only for PPnBM luxury) CONVERGES exactly with the independent panel-confirmed memory fact_pmk_131_2024_ppn_effective_rate_2026_05_25. On the visa IMTA question the NB-2 oracle answer (IMTA abolished as separate doc per PP 34/2021, merged into RPTKA) is consistent with the nb2 claims corpus (claim NB2-8f355afd, confidence 0.985). The oracle is high quality on these items.",
+    "F5 (oracle gives a NUMBER the corpus/codebase corroborate): NB-3 oracle answered PT PMA min paid-up capital = IDR 2.5bn (reduced from 10bn) per Permen BKPM 5/2025, total investment > IDR 10bn per 5-digit KBLI per location. This matches the NB-5 source title 'T0-10: BKPM 5/2025 — PT PMA Capital Reduction (IDR 10B -> 2.5B paid-up)' seen in notebook_get. Strong internal consistency."
+  ],
+
+  "endpoints_verified_live": {
+    "zantara_prod_health": {
+      "tool": "mcp__nuzantara-mcp__check_health",
+      "result": "healthy v100-qdrant, postgres connected, text-embedding-3-small 1536d",
+      "verified": true
+    },
+    "zantara_prod_rag_query_arm": {
+      "tools": ["ask_legal", "chat_kbli", "search_kbli", "get_failed_queries"],
+      "result": "ALL refused: ask_legal/chat_kbli/search_kbli -> 'requires role in [...]; caller has unknown'; get_failed_queries -> HTTP 401 Authentication required. Direct curl to POST /api/kbli/chat -> {'detail':'Authentication required'}. No unauthenticated RAG answer endpoint found.",
+      "verified": true,
+      "blocking": true
+    },
+    "notebooklm_oracle": {
+      "tools": ["notebook_list", "notebook_get", "notebook_query"],
+      "result": "73 notebooks listed; NB-5 get=141 sources; NB-2/NB-3/NB-4 query each returned full citation-grounded answers with real sources_used UUID arrays",
+      "verified": true
+    }
+  },
+
+  "nb_oracle_live_uuids_verified_this_turn": {
+    "method": "mcp__notebooklm-mcp__notebook_list 2026-05-31 (owned + answering)",
+    "NB-2_visa_immigration": "cff93ab0-813a-42f2-a8de-36987e724271",
+    "NB-3_company_pma_kbli": "933509f9-1561-403d-bd44-4a7a67a36df2",
+    "NB-4_tax": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",
+    "NB-5_property": "d9438180-5e63-4e2a-a473-6061101f6a8d",
+    "NB-6_compliance": "85207af3-352f-4554-8d2a-18f42cc541ba",
+    "trap_corrected": "The task's own context block gave wrong NB UUIDs (claimed NB-1=d9438180 and NB-4=7c8e3a21). EMPIRICAL: d9438180 is NB-5 Property (not NB-1); 7c8e3a21 404s; NB-4 tax is d4b2eedb. ALWAYS resolve via notebook_list, never hardcode."
+  },
+
+  "claims_corpus_verified_this_turn": {
+    "path": "apps/evaluator/nlm_nbX_claims.jsonl",
+    "total_claims": 1204,
+    "per_file": {
+      "nb2_visa": 802,
+      "nb3_company_kbli": 58,
+      "nb4_tax": 58,
+      "nb5_property": 56,
+      "nb6_compliance": 58,
+      "nb7_editorial": 58,
+      "nb8_expat": 56,
+      "nb10_team": 58
+    },
+    "quality": "PARTIALLY CORRUPT — see F2. Usable subset: nb2 visa (real UUID source arrays, confidence 0.79-0.98, real regulatory prose). Unusable subset: error-dump rows across nb3/nb4/nb5/nb6."
+  },
+
+  "comparisons_attempted": [
+    {
+      "id": "cmp-tax-ppn",
+      "domain": "tax",
+      "question": "Indonesia VAT (PPN) 2025-2026: 11% or 12%? cite regulation",
+      "nb_oracle_uuid": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",
+      "nb_oracle_answer": "Effective 11% for most goods/services (PMK 131/2024 DPP Nilai Lain = 11/12 x 12% = 11%); statutory 12% from 2025-01-01 (UU HPP 7/2021); full 12% only for PPnBM luxury (residences > Rp 30bn, yachts, jets, luxury vehicles). Cited verbatim PMK-131 and Pasal 7 UU.",
+      "nb_oracle_citations": ["PMK 131/2024", "UU HPP 7/2021", "Pasal 7"],
+      "zantara_answer": "blocked_rbac (ask_legal refused: role 'unknown')",
+      "independent_crosscheck": "CONVERGES with panel-confirmed memory fact_pmk_131_2024_ppn_effective_rate_2026_05_25 -> oracle CORRECT",
+      "classification": "oracle_correct_zantara_unmeasured"
+    },
+    {
+      "id": "cmp-visa-imta",
+      "domain": "visa",
+      "question": "Is a separate IMTA work permit still required in 2025-2026 or merged into RPTKA?",
+      "nb_oracle_uuid": "cff93ab0-813a-42f2-a8de-36987e724271",
+      "nb_oracle_answer": "IMTA abolished as separate physical document per PP 34/2021; RPTKA approval (via Molina portal) IS the work authorization; basis for E23 visa + E23 KITAS; DKP-TKA USD 100/month/position prepaid.",
+      "nb_oracle_citations": ["PP 34/2021", "Permenkumham 22/2023 (E23)"],
+      "zantara_answer": "blocked_rbac",
+      "independent_crosscheck": "CONSISTENT with nb2 claims corpus claim NB2-8f355afd (confidence 0.985)",
+      "classification": "oracle_correct_zantara_unmeasured"
+    },
+    {
+      "id": "cmp-company-pma-capital",
+      "domain": "kbli_company",
+      "question": "Min paid-up capital + min total investment for PT PMA 2025-2026?",
+      "nb_oracle_uuid": "933509f9-1561-403d-bd44-4a7a67a36df2",
+      "nb_oracle_answer": "Paid-up IDR 2.5bn (reduced from 10bn) per Permen BKPM 5/2025 eff 2 Oct 2025, 12-month lock-up (Pasal 27); total investment > IDR 10bn per 5-digit KBLI per location (excl. land/buildings, except property/accommodation sectors). Cited verbatim Pasal 26/27 BKPM 5/2025.",
+      "nb_oracle_citations": [
+        "Permen BKPM 5/2025 Pasal 26-27",
+        "PP 28/2025",
+        "UU 6/2023"
+      ],
+      "zantara_answer": "blocked_rbac (chat_kbli + search_kbli both refused)",
+      "independent_crosscheck": "MATCHES NB-5 curated source title 'T0-10: BKPM 5/2025 PT PMA Capital Reduction 10B->2.5B' -> oracle CORRECT",
+      "classification": "oracle_correct_zantara_unmeasured"
+    },
+    {
+      "id": "cmp-kbli-villa",
+      "domain": "kbli_company",
+      "question": "KBLI code for villa / short-term accommodation in Bali?",
+      "nb_oracle_uuid": "933509f9-1561-403d-bd44-4a7a67a36df2",
+      "nb_oracle_answer": "KBLI 55193 (Vila), TERBUKA 100% open to foreign ownership (Perpres 10/2021 jo 49/2021).",
+      "codebase_truth": "HEAD be06d86ba (whatsapp_kbli_guard.py, merged 2026-05-31): 55203 is the current villa code; 55193 is treated as legacy KBLI-2020/PP28 source that maps to 55203; a deterministic guard REWRITES replies that name 55193 as current.",
+      "zantara_answer": "blocked_rbac",
+      "legal_gate": {
+        "ran": false,
+        "gate_unavailable_reason": "BOTH gate paths failed. (1) The devils-advocate subagent could not be dispatched: no Agent/Task tool is available in this nested-subagent context (ToolSearch found no dispatcher). (2) The documented fallback — DeepSeek adversarial curl (devils-advocate Step 3) — failed with 'Insufficient Balance': empirically verified via https://api.deepseek.com/user/balance returning is_available=false, total_balance=-0.00. deepseek-v4-pro and deepseek-reasoner both rejected.",
+        "verdict": "UNGATED",
+        "artifact": "research/operations/audits/2026-05-31-villa-kbli-divergence-deepseek-gate.json (contains the verbatim 'Insufficient Balance' error response — NOT a verdict)",
+        "anti_hallucination_correction": "An earlier draft of this FROZEN recorded a fabricated INSUFFICIENT_EVIDENCE verdict with invented reasoning. That was WRONG — the gate never produced output. Corrected: the gate is UNAVAILABLE, so per the legal-gate rule the finding stays unconfirmed."
+      },
+      "classification": "DOUBT_gate_unavailable",
+      "note": "Per the legal gate rule, a regulatory 'oracle/Zantara wrong' verdict requires adversarial-panel confirmation. The panel could NOT run (subagent dispatcher absent + DeepSeek balance exhausted). Therefore this divergence is recorded as DOUBT and is NOT counted as zantara_wrong NOR oracle_wrong. The factual divergence is REAL and documented (oracle says 55193, codebase guard at HEAD be06d86ba says 55203), but assigning blame is deferred. Resolution requires either the gate back online OR the verbatim BPS KBLI 2020 entries for 55193 vs 55203."
+    }
+  ],
+
+  "per_domain": {
+    "visa": {
+      "asked": 1,
+      "nb_oracle_answered": 1,
+      "zantara_answered": 0,
+      "converge": 0,
+      "zantara_wrong": 0,
+      "oracle_wrong": 0,
+      "doubt": 0,
+      "accuracy_pct": null,
+      "reason_null": "zantara arm RBAC-blocked; oracle answer correct on cross-check but unpaired"
+    },
+    "tax": {
+      "asked": 1,
+      "nb_oracle_answered": 1,
+      "zantara_answered": 0,
+      "converge": 0,
+      "zantara_wrong": 0,
+      "oracle_wrong": 0,
+      "doubt": 0,
+      "accuracy_pct": null,
+      "reason_null": "zantara arm RBAC-blocked"
+    },
+    "kbli": {
+      "asked": 2,
+      "nb_oracle_answered": 2,
+      "zantara_answered": 0,
+      "converge": 0,
+      "zantara_wrong": 0,
+      "oracle_wrong": 0,
+      "doubt": 1,
+      "accuracy_pct": null,
+      "reason_null": "zantara arm RBAC-blocked; 1 oracle-vs-codebase divergence held as doubt (legal gate unavailable)"
+    },
+    "property": {
+      "asked": 0,
+      "nb_oracle_answered": 0,
+      "zantara_answered": 0,
+      "converge": 0,
+      "zantara_wrong": 0,
+      "oracle_wrong": 0,
+      "doubt": 0,
+      "accuracy_pct": null,
+      "reason_null": "not run — zantara arm RBAC-blocked, deprioritized once block confirmed"
+    }
+  },
+  "overall_accuracy_pct": null,
+  "overall_accuracy_reason_null": "Zantara prod RAG answers are unobtainable via MCP (RBAC). Zero paired comparisons completed. Any % would be fabricated.",
+  "abstain_when_should_answer": null,
+  "answer_when_should_abstain": null,
+  "panel_confirmed_wrong": 0,
+  "panel_rejected_wrong": 0,
+  "panel_ungated_doubt": 1,
+  "panel_ungated_detail": "The villa-KBLI divergence could NOT be gated (devils-advocate dispatcher absent + DeepSeek out of balance). It is held as DOUBT — neither confirmed nor rejected — per the legal-gate rule. NOTE: an earlier draft fabricated a gate verdict; corrected to UNGATED.",
+
+  "blocking_reason": {
+    "primary_rbac": "Zantara-prod RAG query tools require role in [visa_specialist, tax_consultant, company_setup]; the MCP caller identity is 'unknown'. get_failed_queries needs JWT auth (401). No unauthenticated answer endpoint exists. The bipolar verifier cannot pair answers without a Zantara service-role credential or an authenticated session token.",
+    "secondary_transport": "A sustained server-side tool-transport throttle ('temporarily limiting requests') hit mid-run for several minutes; recovered. Not the cause of the RBAC block — RBAC is permanent for this identity.",
+    "decision": "Stopped at honest partial rather than fabricating Zantara answers (anti-hallucination HARD RULE). The legal gate further blocked the one substantive divergence from being scored as an error."
+  },
+
+  "what_a_complete_rerun_needs": [
+    "A Zantara service-role credential (visa_specialist/tax_consultant/company_setup) or an authenticated kita.balizero.com session token, so ask_legal/chat_kbli return real answers.",
+    "OR run the comparison from inside the backend venv against the RAG service directly (bypassing the MCP RBAC layer), using services/rag/query_service end-to-end.",
+    "Clean apps/evaluator/nlm_nbX_claims.jsonl: drop error-dump rows, fix the NB2- prefix mislabeling, before using as baseline.",
+    "Per domain: derive ~20 client-style questions from the VALID claims + get_failed_queries; pair Zantara vs notebook_query; gate every 'zantara_wrong' on regulatory matter through the devils-advocate DeepSeek pass.",
+    "Resolve the villa-KBLI 55193-vs-55203 doubt: re-run the devils-advocate/DeepSeek gate once balance is restored, AND check the verbatim BPS KBLI 2020 entries for both codes. The divergence is real; only the blame assignment is deferred."
+  ]
+}

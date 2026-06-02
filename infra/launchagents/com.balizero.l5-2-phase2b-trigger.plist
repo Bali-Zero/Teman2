@@ -30,7 +30,7 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/ci/l5_2_phase2b_trigger_wrapper.sh</string>
+    <string>/Users/nuzantara/scripts/l5-2-phase2b/l5_2_phase2b_trigger_wrapper.sh</string>
   </array>
 
   <key>StartCalendarInterval</key>
