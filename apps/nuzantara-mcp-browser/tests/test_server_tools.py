@@ -155,6 +155,26 @@ async def test_browser_snapshot(mcp_client: Client) -> None:
     assert data["name"] == "Mocked Title"
 
 
+async def test_page_snapshot_dom_fallback() -> None:
+    """browser_snapshot should work when Playwright has no accessibility API."""
+    from nuzantara_mcp_browser.server import _page_snapshot
+
+    class PageWithoutAccessibility:
+        evaluate = AsyncMock(
+            return_value={
+                "role": "WebArea",
+                "name": "Example Domain",
+                "url": "https://example.com/",
+                "text": "Example Domain",
+                "children": [],
+            }
+        )
+
+    data = await _page_snapshot(PageWithoutAccessibility())
+    assert data["role"] == "WebArea"
+    assert data["name"] == "Example Domain"
+
+
 async def test_browser_click(
     mcp_client: Client, fake_page: MagicMock
 ) -> None:

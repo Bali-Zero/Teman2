@@ -605,8 +605,9 @@ function TimelineBody({ summary }: { summary: L1ClientSummary }) {
     return <EmptySectionMsg text="No timeline events extracted." />;
   }
   // Sort descending by date
+  const dateValue = (value: string | null | undefined) => value ?? "";
   const sorted = [...events].sort((a, b) =>
-    b.event_date.localeCompare(a.event_date),
+    dateValue(b.event_date).localeCompare(dateValue(a.event_date)),
   );
   return (
     <div className="space-y-1 text-sm">
@@ -619,7 +620,9 @@ function TimelineBody({ summary }: { summary: L1ClientSummary }) {
           className="border-l-2 border-amber-500/30 pl-2 py-1 text-xs"
         >
           <div className="flex items-center gap-2">
-            <span className="text-amber-300 font-medium">{e.event_date}</span>
+            <span className="text-amber-300 font-medium">
+              {e.event_date ?? "Unknown date"}
+            </span>
             <span className="text-gray-500">{e.event_type}</span>
           </div>
           <div className="text-gray-300 mt-0.5">{e.description}</div>
