@@ -468,7 +468,16 @@ class ProgramManager:
         config_path = self.cwd / self.PROGRAM_FILE
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, "w") as f:
-            yaml.dump(config.model_dump(), f, default_flow_style=False, sort_keys=False)
+            # mode="json" serializes nested Path/datetime values in the
+            # metadata dict to plain str so yaml.safe_load can round-trip
+            # them on read (avoids !!python/object/apply:pathlib.PosixPath
+            # tags that safe_load rejects). Fixes evoskill FATAL since 2026-05-24.
+            yaml.safe_dump(
+                config.model_dump(mode="json"),
+                f,
+                default_flow_style=False,
+                sort_keys=False,
+            )
 
     def _read_config(self) -> ProgramConfig:
         """Read program config from YAML file."""
