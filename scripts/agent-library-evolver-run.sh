@@ -89,7 +89,9 @@ _restore_deploy_branch() {
             ;;
     esac
 }
-trap _restore_deploy_branch EXIT
+# NOTE: do NOT register a standalone EXIT trap here — bash allows only
+# one EXIT trap and the advisory-lock trap (acquire_lock) would overwrite
+# it. _restore_deploy_branch is invoked from the combined trap below.
 
 # ─── CLI parsing ─────────────────────────────────────────────────────
 
@@ -267,7 +269,12 @@ acquire_lock() {
         log "advisory lock acquired (key=${PG_LOCK_KEY})"
         # Best-effort release on EXIT (Bash trap)
         # shellcheck disable=SC2064
-        trap "psql '${DATABASE_URL}' -c 'SELECT pg_advisory_unlock(${PG_LOCK_KEY});' >/dev/null 2>&1 || true" EXIT
+        # Combined EXIT trap: release the advisory lock AND restore deploy/main
+        # (bash keeps only ONE EXIT trap, so both actions must live here — a
+        # separate `trap _restore_deploy_branch EXIT` would silently overwrite
+        # this one, S13-P6b regression discovered 2026-06-02).
+        # shellcheck disable=SC2064
+        trap "psql '${DATABASE_URL}' -c 'SELECT pg_advisory_unlock(${PG_LOCK_KEY});' >/dev/null 2>&1 || true; _restore_deploy_branch" EXIT
         return 0
     fi
     log "another run holds the advisory lock (key=${PG_LOCK_KEY}) — exiting"
@@ -364,6 +371,17 @@ if [[ ! -f "${EVOSKILL_CONFIG}" ]]; then
 fi
 
 run_evoskill() {
+    # S13-P6b (2026-06-02): evoskill creates program/* branches inside REPO_ROOT
+    # and leaves them; a prior run's branches make this run's `git checkout -b
+    # program/iter-skill-N` fail (exit 128, already-exists). Prune them first.
+    # Safe: program/* are evoskill-only artifacts, never pushed, regenerated each
+    # run. The base is recreated clean by the fixed writer.
+    if git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        for _pb in $(git -C "${REPO_ROOT}" branch --list 'program/*' --format='%(refname:short)' 2>/dev/null); do
+            git -C "${REPO_ROOT}" branch -D "${_pb}" >/dev/null 2>&1 \
+                && log "pruned stale evoskill branch ${_pb}" || true
+        done
+    fi
     log "invoking uv run evoskill run --config ${EVOSKILL_CONFIG}"
     # Codex panel R5 BLOCKING #2 fix: evoskill CLI does NOT support
     # `--output-telemetry`. Cost is reported via the post-run RunReport
