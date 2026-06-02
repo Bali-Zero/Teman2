@@ -374,3 +374,55 @@ Resolved scars moved to [`cicatrix-scars-archive.md`](./cicatrix-scars-archive.m
 - ✅ RESOLVED: SQL v2 migrations apply on OLD image, not the freshly-built one (2026-04-26 → 2026-04-29)
 - ✅ RESOLVED: Deploy crash before health check went unalerted (Air A3, 2026-04-18)
 - ✅ RESOLVED: Dockerfile cell-core missing (PR #56 → PR #62 → monorepo workspace promotion)
+
+---
+
+### ⚠️ W64 (REOPEN of W34): asyncpg silent-death pattern re-introduced by W49 sibling-fix in wr2_canva_lease_watchdog.py (2026-06-02)
+
+_Discovered: 2026-06-02 05:15 WITA by S15 symbiosis-deep-audit (cicatrix-resurrection assailant + orchestrator independent re-verify) · Severity: P2 · Status: **REOPENED** — antibody (lint script) alive, codebase compliance regressed_
+
+**TRAUMA**: W34 (2026-05-23, commit cb32f8214) patched 5 daemon sites + shipped `scripts/lint_asyncpg_except_completeness.py` and claimed "Live codebase post-fixes: 0 violations". S15 re-test runs the lint live → **REAL_LINT_EXIT=1** (orchestrator isolated `$?` after catching a pipe-masked exit-0 false-read). Violation: `scripts/wr2_canva_lease_watchdog.py:40` has `except (asyncio.TimeoutError, OSError, asyncpg.PostgresError) as e:` — **missing `asyncpg.InterfaceError`** (sibling of PostgresError, NOT a subclass → connection-interface failures silently swallowed in a daemon reconnect loop). The file is a genuine daemon (`async def main()` + `asyncio.run(main())` + retry loop, the W49 lease-watchdog cron). Git blame: violation introduced by commit `120078999` "fix(wr2): lease-watchdog connect-with-retry (W49)" dated 2026-05-23 14:40:54 — AFTER W34's cb32f8214 landed the SAME DAY. W34's own sibling fix re-introduced the exact silent-death class W34 was built to prevent. CI never caught it because W34's GOTCHA admitted CI integration was "deferred to W35" — the guard never gated commits.
+
+**ANTIBODY**: (1) Patch `scripts/wr2_canva_lease_watchdog.py:40` to `except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, asyncio.TimeoutError) as exc:` (lint fix-template). (2) Finally wire `lint_asyncpg_except_completeness.py` into CI / pre-commit (close the W35 deferral) so the next sibling-fix regression gates at PR time, not at audit time 10 days later. NOT executed by S15 (read-only diagnosis; reopen = structured entry, not fix).
+
+**GOTCHA**: The antibody-vs-wound distinction matters: the lint SCRIPT is healthy and correctly detects the bug. A future agent grepping "is W34 resolved?" must RUN the lint, not check the script exists. Also: piping the lint through `tail`/`head` masks its exit code — capture `$?` immediately or redirect to file first. `asyncpg.InterfaceError` is the load-bearing omission (connection lost mid-query); `PostgresError` alone covers SQL errors but NOT interface/connection failures.
+
+**Reference**: S15 FROZEN `research/operations/S15-symbiosis-FROZEN.json`. Lint output `/tmp/s15-lint-asyncpg.txt`. Parent W34 in `cicatrix-scars-archive.md` (Archived 2026-05-27 sweep). Regression-introducing commit `120078999`. Target file `scripts/wr2_canva_lease_watchdog.py:40`.
+
+---
+
+### ⚠️ W65 (RESIDUE of 2026-04-29 plist-secret-644): skills-bridge-consumer .bak leaks 64-hex API key world-readable; live plist hardened but backup ignored (2026-06-02)
+
+_Discovered: 2026-06-02 05:15 WITA by S15 symbiosis-deep-audit (launchagent-health assailant; devils-advocate FALSELY refuted, orchestrator grep re-confirmed) · Severity: P2 SECURITY · Status: **OPEN** — needs chmod + key rotation_
+
+**TRAUMA**: The S4 2026-05-31 hardening sweep correctly chmod'd the LIVE `com.nuzantara.skills-bridge-consumer.plist` to 0400. But it created a backup `com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531` and left it **world-readable (`-r--r--r--`, 0444)** — and that backup still embeds the real secret: `<key>BRIDGE_SKILLS_API_KEY</key><string><<REDACTED_64HEX_ROTATE_BRIDGE_SKILLS_API_KEY>></string>` (64-hex). The hardening hardened the file but leaked its own backup — the exact 2026-04-29 plist-secret-644 scar pattern, residue edition. (Sibling finding: 3 `wa-dashboard-m1` plist backups also world-readable carrying a local postgres DSN — lower severity, no password.)
+
+**ANTIBODY**: (1) `chmod 0400` (or `rm`) the backup: `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531`. (2) **ROTATE `BRIDGE_SKILLS_API_KEY`** — the 64-hex value sat world-readable on a multi-process machine; treat as exposed. (3) Patch the hardening sweep script so it `chmod 0400`s every `.bak*` it produces, not just the live file. NOT executed by S15 (read-only; reopen = entry, not fix).
+
+**GOTCHA**: The devils-advocate analyst (DeepSeek-class refuter) FALSELY claimed this backup contained ONLY a placeholder comment (`Operator must add BRIDGE_SKILLS_API_KEY here`) and NO embedded secret, trying to downgrade the finding to INFO. Orchestrator grep proved the comment is FOLLOWED by a real value on the next `<string>` line. Lesson: even adversarial verifiers hallucinate — the orchestrator's independent re-grep (anti-hallucination rule 2) is what caught it. NEVER accept a "refuted" verdict on a security finding without re-running the grep yourself.
+
+**Reference**: S15 FROZEN `research/operations/S15-symbiosis-FROZEN.json` (contradictions_caught[1]). File `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531` (0444). Parent scar "Unknown agent overwrites loaded LaunchAgent plist files" (2026-04-29, this file). Sibling: wa-dashboard-m1 backups.
+
+### ✅ RESOLVED: Live 503 "RAG worker unavailable" on kita /process = deploy-desync, NOT runtime (2026-06-02)
+
+_Discovered: 2026-06-02 13:10 WITA · Severity: RESOLVED · Status: Fixed (v3429)_
+
+**TRAUMA**: kita.balizero.com/process threw 503 "RAG worker unavailable" on /api/crm/practices. Looked like a DB/runtime outage. Reality: Fly app nuzantara-rag has 2 process groups (api + rag). The rag machine crash-looped 10x on startup with ModuleNotFoundError: backend.services.crm.whatsapp_enrichment (crm_clients.py:30), then Fly left it STOPPED. The api machine kept /health=200 and unauth endpoints=401 — masking that the rag worker was dead. Broken import was an orphan from W59 CRM AI-profile feature, already removed in origin/main by #1018 (6206f0cf4); but deployed image v3428 predated the fix. Classic deploy-desync (S4 family).
+
+**ANTIBODY**: Clean redeploy from deploy/main (already had the fix) — no code change. Pre-deploy gate green: dep-import smoke + RAG app factory boot + 91/91 RAG pytests + zero whatsapp_enrichment grep hits. Deployed v3429, force-started rag machine, confirmed clean boot past include_heavy_routers, endpoint now 401 not 503.
+
+**GOTCHA**: TRAP 1: `fly deploy` from inside apps/backend-rag FAILS — Dockerfile uses monorepo-root-relative COPY (packages/cell-core, apps/crm-cell), build context MUST be repo root: `cd ~/Desktop/nuzantara-deploy && fly deploy --config apps/backend-rag/fly.toml --dockerfile apps/backend-rag/Dockerfile`. TRAP 2: a STOPPED rag machine post-deploy is autostop-idle, NOT proof of fix — `fly machine start <rag-id>` + read boot logs to confirm clean startup. TRAP 3: pre-deploy import smoke fails on JWT_SECRET_KEY/API_KEYS pydantic validation (Fly runtime secrets) — export dummy 32-char values to reach the real import check. DIAGNOSTIC: split-brain health (api up, rag down) hides worker death behind /health=200 — always check per-process-group state with `fly status`, not just /health.
+
+**Reference**: fix #1018 commit 6206f0cf4 · deployed v3429 image deployment-01KT32YTJJGN1T7YXDCK9BRGQ5 · related: fix_crm_guardian_deploy_venv_empty_2026_06_02.md, S4 structural-debt scar
+
+### CORRECTION to above 503 scar — verified root cause is STUCK-STOPPED machine, not stale deploy (2026-06-02)
+
+_Discovered: 2026-06-02 13:25 WITA · Severity: P2 · Status: Corrected_
+
+**TRAUMA**: The scar entry directly above claimed "deployed image v3428 predated the fix #1018". FALSE — corrected after checking `gh run list` + post-23:51 logs. Verified timeline: (1) 18:15 UTC W59 #1010 deploys broken whatsapp_enrichment import; (2) 19:08 UTC rag machine crash-loops 10x, hits Fly max-restart cap, left STOPPED; (3) 23:51 UTC fix #1018 auto-deploys SUCCESSFULLY via CI (fly-deploy.yml) -> v3428 = FIXED image; (4) BUT the rag machine was already stopped/failed — a rolling deploy to an autostop machine stages the new image and leaves it stopped, does NOT force-boot it. So the fixed code was present from 23:51 but NEVER EXECUTED. Zero crash signatures in logs after 23:51 confirms it never re-ran the app. (5) browser hit /process -> rag worker stopped -> 503. Fix shipped 5h+ before the error was seen; machine just never rebooted to pick it up.
+
+**ANTIBODY**: The real lesson — a Fly machine that crash-loops to the max-restart cap gets stuck STOPPED and is NOT auto-recovered by a later fixing deploy. CI auto-deploy worked correctly; the gap is machine-recovery. Mitigations: (a) cron-fly-restart-detector.yml exists — verify it actually force-starts machines stuck stopped-after-crashloop, not just alerts; (b) post-deploy, always `fly machine start <id>` + read boot logs for autostop machines (a 'stopped' state after deploy is NOT proof the new image runs); (c) consider min_machines_running=1 for the rag process group if 503-on-cold-rag is unacceptable.
+
+**GOTCHA**: A successful `fly releases` entry + green CI does NOT mean the fix is live on an autostop machine that was already dead. `fly status` showing rag=stopped is ambiguous: could be healthy-idle OR stuck-after-crashloop. Disambiguate by force-start + boot-log read. Also: crash stack traces in `fly logs` carry the ORIGINAL crash timestamp (19:08) even when surfaced later — don't misread an old trace as a fresh crash.
+
+**Reference**: gh run 26789282348 (#1018 deploy success 23:51Z) · supersedes mechanism-claim in scar immediately above · cron-fly-restart-detector.yml to audit
