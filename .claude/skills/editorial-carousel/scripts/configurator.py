@@ -7,7 +7,7 @@ choices as JSON, which the skill then applies to the real carousel spec.
 
 Usage: python configurator.py [--out configurator.html] [--assets <dir>]
 """
-import argparse, pathlib, re
+import argparse, pathlib
 
 THEMES = [
     {"id": "dark-editorial", "label": "dark-editorial", "bg": "#0d0d0f", "fg": "#f0b429"},
