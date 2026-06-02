@@ -162,8 +162,15 @@ def main():
         _dd = num_display.get(i)
         num = (f'<div class="num">{_dd:02d} / {num_total:02d}</div>'
                if numbering == "counter" and _dd else "")
-        ghost_html = (f'<div class="big-index">{_dd:02d}</div>'
-                      if numbering == "ghost" and _dd and not is_vtip else "")
+        # explicit per-slide `badge` (documented "big ghost number") wins and
+        # renders regardless of the global numbering mode; otherwise fall back
+        # to the position-derived ghost number when global ghost is enabled.
+        _badge = s.get("badge")
+        if _badge is not None and str(_badge) != "" and not is_vtip:
+            ghost_html = f'<div class="big-index">{esc(str(_badge))}</div>'
+        else:
+            ghost_html = (f'<div class="big-index">{_dd:02d}</div>'
+                          if numbering == "ghost" and _dd and not is_vtip else "")
         nick_html = f'<div class="nick">{esc(nick)}</div>' if nick else ""
         kicker = f'<div class="kicker">{fmt(s["kicker"])}</div>' if s.get("kicker") else ""
 
