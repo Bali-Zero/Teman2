@@ -123,6 +123,22 @@ validate_secrets() {
     # shellcheck disable=SC1090
     source "${SECRETS_FILE}"
     set +x
+    # S13-P6 (2026-06-02): DEEPSEEK_API_KEY drifts out of SECRETS_FILE on
+    # re-sync from apps/backend-rag/.env (last lost 2026-05-29). Fall back to
+    # the single-source-of-truth .env.master, extracting ONLY this one key —
+    # never source the whole file (it holds ~90 unrelated secrets incl.
+    # OPENAI/OAuth that must not leak into the evoskill subprocess env).
+    if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
+        ds_master="${DEEPSEEK_MASTER_ENV:-${HOME}/.openclaw/workspace/.env.master}"
+        if [[ -f "${ds_master}" ]]; then
+            ds_line="$(grep -m1 -E '^DEEPSEEK_API_KEY=' "${ds_master}" || true)"
+            if [[ -n "${ds_line}" ]]; then
+                export DEEPSEEK_API_KEY="${ds_line#DEEPSEEK_API_KEY=}"
+                DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY%\"}"; DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY#\"}"
+                log "DEEPSEEK_API_KEY recovered from ${ds_master} (SECRETS_FILE drift)"
+            fi
+        fi
+    fi
     if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
         log "FATAL: DEEPSEEK_API_KEY not set after sourcing ${SECRETS_FILE}"
         exit 2
