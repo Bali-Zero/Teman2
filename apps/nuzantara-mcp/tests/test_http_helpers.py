@@ -6,6 +6,22 @@ import httpx
 import pytest
 
 
+def test_headers_scope_debug_key_to_admin_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    """X-Debug-Key is only sent on explicit admin calls."""
+    from nuzantara_mcp import server
+
+    monkeypatch.setattr(server, "API_KEY", "service-key")
+    monkeypatch.setattr(server, "ADMIN_API_KEY", "admin-key")
+
+    standard_headers = server._headers()
+    admin_headers = server._headers(admin=True)
+
+    assert standard_headers["X-API-Key"] == "service-key"
+    assert "X-Debug-Key" not in standard_headers
+    assert admin_headers["X-API-Key"] == "service-key"
+    assert admin_headers["X-Debug-Key"] == "admin-key"
+
+
 @pytest.mark.asyncio
 async def test_call_success() -> None:
     """_call should return parsed JSON on success."""

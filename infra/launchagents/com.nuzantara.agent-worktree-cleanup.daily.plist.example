@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Agent worktree broker reaper — daily 08:15 WITA (W62 ANTIBODY #1).
+Runbook: docs/runbooks/agent-worktree-broker.md §Auto-cleanup
+
+Invokes scripts/agent_start.py --cleanup (WIP-safe + skip-recent safe) so
+abandoned worktrees no longer accumulate into a storm. Scheduled 15min after
+the WR2 worktree-gc (00:00 UTC) to avoid two GC passes racing on .worktrees/.
+
+Install (Pro):
+    cp infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example \
+       ~/Library/LaunchAgents/com.nuzantara.agent-worktree-cleanup.daily.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.agent-worktree-cleanup.daily.plist
+  (or: bash infra/launchagents/install_agent_worktree_cleanup.sh)
+
+Kill switch (without removing plist):
+    launchctl setenv AGENT_BROKER_ENABLED false
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.agent-worktree-cleanup.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/agent_worktree_cleanup_cron.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>15</integer>
+    </dict>
+    <!-- 00:15 UTC = 08:15 WITA (15min after WR2 worktree-gc at 00:00) -->
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>AGENT_BROKER_ENABLED</key>
+        <string>true</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/agent-worktree-cleanup.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/agent-worktree-cleanup.error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
