@@ -60,6 +60,7 @@ async def get_current_user_or_internal(request: Request) -> dict | None:
     # Credentials come from FastAPI's HTTPBearer security; we replicate that here.
     try:
         from fastapi.security import HTTPAuthorizationCredentials
+
         auth_header = request.headers.get("Authorization") or ""
         credentials: HTTPAuthorizationCredentials | None = None
         if auth_header.lower().startswith("bearer "):
@@ -93,6 +94,7 @@ def _report_drive_folder_failure(
     """
     try:
         import sentry_sdk
+
         with sentry_sdk.push_scope() as scope:
             scope.set_tag("subsystem", "drive_folder_create")
             scope.set_tag("client_type", client_type or "unknown")
@@ -125,16 +127,22 @@ async def _create_drive_folder_with_observability(
             db_pool=db_pool,
         )
         if not result.get("success"):
-            err = RuntimeError(f"create_client_folder returned success=False: {result.get('error')}")
+            err = RuntimeError(
+                f"create_client_folder returned success=False: {result.get('error')}"
+            )
             logger.error(
                 "Drive folder creation failed for client %s (%s): %s",
-                client_id, client_type, result.get("error"),
+                client_id,
+                client_type,
+                result.get("error"),
             )
             _report_drive_folder_failure(client_id, client_name, client_type, err)
     except Exception as e:
         logger.error(
             "Drive folder creation exception for client %s (%s): %s",
-            client_id, client_type, e,
+            client_id,
+            client_type,
+            e,
         )
         _report_drive_folder_failure(client_id, client_name, client_type, e)
 
@@ -387,6 +395,12 @@ class ClientResponse(BaseModel):
     nib: str | None = None
     current_visa_type: str | None = None
     current_visa_sponsor: str | None = None
+    ai_summary_status: str | None = None
+    ai_summary_generated_at: datetime | None = None
+    ai_profile_tier: str | None = None
+    ai_profile_archetype: str | None = None
+    ai_red_flags_count: int = 0
+    ai_extraction_confidence: float | None = None
     created_at: datetime
     updated_at: datetime
     created_by: str | None = None
@@ -619,7 +633,30 @@ async def list_clients(
                     c.custom_fields, c.address, c.notes, c.npwp, c.nib,
                     c.tags, c.created_at, c.updated_at,
                     i.sentiment as last_sentiment,
-                    i.summary as last_interaction_summary
+                    i.summary as last_interaction_summary,
+                    CASE
+                        WHEN c.ai_summary IS NOT NULL THEN 'available'
+                        WHEN gq.status IS NOT NULL THEN 'pending'
+                        ELSE 'not_generated'
+                    END AS ai_summary_status,
+                    c.ai_summary_generated_at,
+                    NULLIF(c.ai_summary->'profile'->>'tier', '') AS ai_profile_tier,
+                    NULLIF(c.ai_summary->'profile'->>'archetype', '') AS ai_profile_archetype,
+                    COALESCE(
+                        jsonb_array_length(
+                            CASE
+                                WHEN jsonb_typeof(c.ai_summary->'compliance'->'red_flags') = 'array'
+                                THEN c.ai_summary->'compliance'->'red_flags'
+                                ELSE '[]'::jsonb
+                            END
+                        ),
+                        0
+                    ) AS ai_red_flags_count,
+                    CASE
+                        WHEN jsonb_typeof(c.ai_summary->'extraction_confidence') = 'number'
+                        THEN (c.ai_summary->>'extraction_confidence')::double precision
+                        ELSE NULL
+                    END AS ai_extraction_confidence
                 FROM clients c
                 LEFT JOIN LATERAL (
                     SELECT sentiment, summary
@@ -628,6 +665,14 @@ async def list_clients(
                     ORDER BY interaction_date DESC
                     LIMIT 1
                 ) i ON true
+                LEFT JOIN LATERAL (
+                    SELECT status
+                    FROM crm_guardian_summary_queue
+                    WHERE client_id = c.id
+                      AND status IN ('pending', 'running')
+                    ORDER BY enqueued_at DESC
+                    LIMIT 1
+                ) gq ON true
                 WHERE c.deleted_at IS NULL
                 """,
             ]

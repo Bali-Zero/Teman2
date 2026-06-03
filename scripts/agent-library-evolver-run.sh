@@ -66,6 +66,38 @@ RUN_TS="$(date +%Y-%m-%dT%H:%M:%S%z)"
 RUN_TELEMETRY_DIR="${TELEMETRY_DIR}/${RUN_DATE}"
 DRY_RUN="0"
 
+# ─── S13-P6b (2026-06-02): return-to-branch guard ────────────────────
+# evoskill (vendor/evoskill ProgramManager) does native git checkout of
+# branches INSIDE REPO_ROOT and can leave the worktree parked on the
+# wrong branch when it exits (incl. on FATAL). It checks out program/*
+# branches AND, between programs, pre-existing agent/* branches
+# (e.g. agent/nuzantara/backend-rag/crm-guardian-audit). In production
+# REPO_ROOT is the deploy worktree pinned to deploy/main; ANY left-over
+# non-deploy/main checkout breaks the next wr2-deploy-pull (wrong-branch
+# gate) — observed twice on 2026-06-03, manual restore both times.
+# S13-#11 (2026-06-03): broaden the restore to fire whenever HEAD is on
+# any branch other than deploy/main (not only program/*), guarded by a
+# clean-tree check so we never clobber uncommitted tracked work in a
+# feature/test worktree. Untracked files (cache/) are fine.
+_restore_deploy_branch() {
+    git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+    local cur
+    cur="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo )"
+    if [[ -n "${cur}" && "${cur}" != "deploy/main" ]] \
+        && git -C "${REPO_ROOT}" show-ref --verify --quiet refs/heads/deploy/main; then
+        if git -C "${REPO_ROOT}" diff --quiet && git -C "${REPO_ROOT}" diff --cached --quiet; then
+            git -C "${REPO_ROOT}" checkout deploy/main >/dev/null 2>&1 \
+                && log "return-to-branch guard: restored deploy/main (was ${cur})" \
+                || log "WARN: return-to-branch guard failed to restore deploy/main from ${cur}"
+        else
+            log "WARN: return-to-branch guard: uncommitted tracked changes, NOT switching from ${cur}"
+        fi
+    fi
+}
+# NOTE: do NOT register a standalone EXIT trap here — bash allows only
+# one EXIT trap and the advisory-lock trap (acquire_lock) would overwrite
+# it. _restore_deploy_branch is invoked from the combined trap below.
+
 # ─── CLI parsing ─────────────────────────────────────────────────────
 
 usage() {
@@ -123,6 +155,22 @@ validate_secrets() {
     # shellcheck disable=SC1090
     source "${SECRETS_FILE}"
     set +x
+    # S13-P6 (2026-06-02): DEEPSEEK_API_KEY drifts out of SECRETS_FILE on
+    # re-sync from apps/backend-rag/.env (last lost 2026-05-29). Fall back to
+    # the single-source-of-truth .env.master, extracting ONLY this one key —
+    # never source the whole file (it holds ~90 unrelated secrets incl.
+    # OPENAI/OAuth that must not leak into the evoskill subprocess env).
+    if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
+        ds_master="${DEEPSEEK_MASTER_ENV:-${HOME}/.openclaw/workspace/.env.master}"
+        if [[ -f "${ds_master}" ]]; then
+            ds_line="$(grep -m1 -E '^DEEPSEEK_API_KEY=' "${ds_master}" || true)"
+            if [[ -n "${ds_line}" ]]; then
+                export DEEPSEEK_API_KEY="${ds_line#DEEPSEEK_API_KEY=}"
+                DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY%\"}"; DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY#\"}"
+                log "DEEPSEEK_API_KEY recovered from ${ds_master} (SECRETS_FILE drift)"
+            fi
+        fi
+    fi
     if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
         log "FATAL: DEEPSEEK_API_KEY not set after sourcing ${SECRETS_FILE}"
         exit 2
@@ -226,7 +274,12 @@ acquire_lock() {
         log "advisory lock acquired (key=${PG_LOCK_KEY})"
         # Best-effort release on EXIT (Bash trap)
         # shellcheck disable=SC2064
-        trap "psql '${DATABASE_URL}' -c 'SELECT pg_advisory_unlock(${PG_LOCK_KEY});' >/dev/null 2>&1 || true" EXIT
+        # Combined EXIT trap: release the advisory lock AND restore deploy/main
+        # (bash keeps only ONE EXIT trap, so both actions must live here — a
+        # separate `trap _restore_deploy_branch EXIT` would silently overwrite
+        # this one, S13-P6b regression discovered 2026-06-02).
+        # shellcheck disable=SC2064
+        trap "psql '${DATABASE_URL}' -c 'SELECT pg_advisory_unlock(${PG_LOCK_KEY});' >/dev/null 2>&1 || true; _restore_deploy_branch" EXIT
         return 0
     fi
     log "another run holds the advisory lock (key=${PG_LOCK_KEY}) — exiting"
@@ -323,6 +376,17 @@ if [[ ! -f "${EVOSKILL_CONFIG}" ]]; then
 fi
 
 run_evoskill() {
+    # S13-P6b (2026-06-02): evoskill creates program/* branches inside REPO_ROOT
+    # and leaves them; a prior run's branches make this run's `git checkout -b
+    # program/iter-skill-N` fail (exit 128, already-exists). Prune them first.
+    # Safe: program/* are evoskill-only artifacts, never pushed, regenerated each
+    # run. The base is recreated clean by the fixed writer.
+    if git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        for _pb in $(git -C "${REPO_ROOT}" branch --list 'program/*' --format='%(refname:short)' 2>/dev/null); do
+            git -C "${REPO_ROOT}" branch -D "${_pb}" >/dev/null 2>&1 \
+                && log "pruned stale evoskill branch ${_pb}" || true
+        done
+    fi
     log "invoking uv run evoskill run --config ${EVOSKILL_CONFIG}"
     # Codex panel R5 BLOCKING #2 fix: evoskill CLI does NOT support
     # `--output-telemetry`. Cost is reported via the post-run RunReport

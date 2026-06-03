@@ -1,0 +1,32 @@
+# DESC: S8 — WR2 carousel batch: contenuti IG (ONDA 3, Mini acct2, FlowKit)
+ORCHESTRATORE sessione S8 "wr2-content-batch". Autonomia piena in loop, no conferme, FINO
+al Telegram review gate (NON auto-publish, Legge 5).
+
+PASSO 0:
+  python scripts/agent_start.py --lane wr2 --task-id s8-content-batch
+  cd .worktrees/wr2-s8-content-batch
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: 4-6 carousel IG Bali Zero su temi regolatori freschi. La pipeline WR2 esiste
+COMPLETA (skill wr2-carousel-pipeline + 27 subagent wr2-*/wr3-*). NON ricostruire —
+ORCHESTRA invocando la skill.
+
+TOPOLOGIA (skill wr2-carousel-pipeline guida tutto):
+- Per ogni topic: wr2-design-architect orchestra (brief-interpreter NB ground-truth →
+  storyboarder → image-prompt-author → layout-composer → critic gate). Questo È già
+  orchestrator-worker.
+- Immagini via FlowKit (skill nuzantara-flowkit-flow-generation, AI Ultra, NON Gemini API
+  pagata — ricorda il fix TIER1P5).
+- Topic: pesca da S6 (ricerca regolatoria fresca, se completata) + regulatory-watcher
+  delta recenti + bali-zero-brand voice.
+- Critic gate OBBLIGATORIO (Article 6.2 bilingual, 6.3 bullet-promise, 5.10
+  no-silent-reuse). Retry se FAIL.
+- MECCANICO: draft + Telegram review gate. research/operations/S8-wr2-FROZEN.json (topic ×
+  critic-verdict). commit → push → PR draft → STOP.
+
+VINCOLI: MAI auto-publish IG (Legge 5). OUTPUT: 4-6 carousel in queue + FROZEN. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S8 <numero-PR-o-url>

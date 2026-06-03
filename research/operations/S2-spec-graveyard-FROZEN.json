@@ -1,0 +1,300 @@
+{
+  "audit": "S2-spec-graveyard",
+  "date": "2026-06-02",
+  "machine": "Air-M5 (balizero) thin-client",
+  "orchestrator_branch": "agent/air-m5/docs/s2-spec-graveyard",
+  "method": "Workflow fan-out: 11 assailant agents (1 per spec) verified spec-claim vs shipped-disk-reality; orchestrator independently spot-checked L5.1/L5.1-iter2/R1/R4/L5.2 + W39 CVE state; adversarial Codex phase SKIPPED because 0 EXECUTE-NOW candidates emerged.",
+  "scope_note": "The ~11 genuinely-pending specs named by the S2 mission. NOT triaged here (out of scope): orchestration-machinery for the already-run 2026-05-21 wave (G0-G4 gates, T-1/T-2 backup, WAVE-MINUS-1, panel _*.json), shipped T1.x/T2.x/T3.2/T3.3/T3.4 hooks/skills/MCP (confirmed live), and separate product specs (WA-inbox, chat-intelligence, canva-actuator).",
+  "tally": {
+    "NEEDS-ANTONELLO": 3,
+    "DEAD": 6,
+    "RE-SPEC": 2
+  },
+  "execute_now_count": 0,
+  "headline": "0 EXECUTE-NOW. 6 DEAD (archive), 3 NEEDS-ANTONELLO, 2 RE-SPEC. No autonomous code execution warranted.",
+  "w38_reverification": {
+    "verdict": "NEEDS-ANTONELLO (DO-NOT-EXECUTE, hard rule)",
+    "live_mcp_from_m5": "UNREACHABLE this session (postgres-nuzantara MCP error -32603 on trivial SELECT; M5 thin-client has no local PG, Fly readonly role not reachable). Consistent with SessionStart 'compliance-ops: CRM backend unreachable'.",
+    "authoritative_confirmation": "2026-05-31 S4 audit (research/operations/2026-05-31-structural-debt-FROZEN.json, commit 4729bbb9b) verified backend_rag_v2 rolsuper=true TWICE via postgres-nuzantara MCP read-only; demotion never applied (no NOSUPERUSER in migrations_v2). Bomb LIVE as of 2026-05-31.",
+    "spec_annotation": "W38 spec updated with this 2026-06-02 re-verification note + M5 MCP limitation."
+  },
+  "needs_antonello": [
+    {
+      "spec": "W38",
+      "action": "ALTER ROLE backend_rag_v2 NOSUPERUSER (prod security write, irreversible-class). Stage B ADMIN_DATABASE_URL code split NOT implemented. Bomb #1 by blast radius."
+    },
+    {
+      "spec": "L5.2",
+      "action": "Flip hot-zone-pr-gate.yml from monitor-mode (6x continue-on-error:true) to enforce + add to required_status_checks + Phase 1 bot privilege downgrade + Phase 3 branch-protection writes. All prod GitHub API writes governed by spec's own empirical gates."
+    },
+    {
+      "spec": "R2",
+      "action": "Exa MCP OAuth: (1) interactive browser OAuth grant an agent cannot perform; (2) paid-API HARD RULE check — Exa not in sanctioned subscription arsenal, on-disk EXA_API_KEY=9e54... is a per-token paid key. Owner must clear policy + grant OAuth. Side cleanup: scrub stale mcp__exa__* allowlist + leaked key from settings.local.json."
+    }
+  ],
+  "re_spec": [
+    {
+      "spec": "T3.5",
+      "reason": "Merge plan stale vs live 14-entry M5 SessionStart layout (was designed for 13 content-category blocks; ~8 current entries are maintenance script-calls outside the taxonomy). HIGH risk if executed blind (breaks every session bootstrap). Needs fresh consolidation design."
+    },
+    {
+      "spec": "T3.6",
+      "reason": "A/B methodology stale: spec targets ~/.zshenv but var moved to ~/.claude/settings.json; requires 3-session >=10% subagent-dispatch delta measurement the spec itself names as Antonello-driven-over-time. Blind env flip violates spec's own decision gate. Needs tractable measurement design."
+    }
+  ],
+  "dead_archive": [
+    {
+      "spec": "W39",
+      "reason": "All 8 Dependabot alerts resolved on GitHub prod (3 npm fixed 2026-05-22, 5 pip dismissed); 3 npm overrides shipped in package.json/lock; WONT-FIX justifications re-verified (0 direct imports, HS256 JWT)."
+    },
+    {
+      "spec": "L5.1",
+      "reason": "worktree_isolation.py + worktree_file_write_check.py + agent_start.py + agent-session-discipline skill all live + registered in settings.json; superseded by L5.1-iter2 + L5.2 (PR #1000, #882)."
+    },
+    {
+      "spec": "L5.1-iter2",
+      "reason": "Core (path-canon enforce-mode hooks A1-A6) shipped + live; W62/W63 broker-cleanup gap closed by scripts/worktree_gc_universal.py (PR #925). Residuals (A9 stop_verify harmonize, 60s alive-cron, R1 MultiEdit) cosmetic/redundant."
+    },
+    {
+      "spec": "T2.4",
+      "reason": "Functional intent (stop telling Antonello to navigate Vercel UI) shipped 2026-05-22 via claude.ai marketplace mcp__claude_ai_Vercel__* (verified list_teams/list_projects); Step 6 memory updated; deploy_to_vercel in guardrails; git-push auto-deploy lowers MCP value. Project-local mcp__vercel__* redundant."
+    },
+    {
+      "spec": "R1",
+      "reason": "claude-mem installed but disabled (settings.json enabledPlugins false), zero hook integration; semantic-L3 gap closed via MOS+Qdrant (qdrant plugin true) + MOS+ auto-capture. Evaluated and de-facto rejected."
+    },
+    {
+      "spec": "R4",
+      "reason": "EXPERIMENTAL_AGENT_TEAMS=1 live; successful pilot captured (project_pilot_cross_llm_agent_teams_2026_05_13.md, SUCCESS/adopt); this triage session itself runs under the team harness. Adoption is current operating mode."
+    }
+  ],
+  "verdicts": [
+    {
+      "spec_id": "W38",
+      "file": "research/operations/specs/W38-backend-rag-v2-nosuperuser.md",
+      "verdict": "NEEDS-ANTONELLO",
+      "execute_now_risk": "n/a",
+      "spec_claim": "Demote the application Postgres role `backend_rag_v2` from SUPERUSER to NOSUPERUSER (defense-in-depth, P1 security) via 3 stages: Stage A pre-flight tests, Stage B code patch introducing an `ADMIN_DATABASE_URL` split in the migration runner + `GRANT pg_monitor`, and Stage C the actual `ALTER ROLE backend_rag_v2 NOSUPERUSER` production write (single-statement reversible).",
+      "disk_reality": "Nothing has shipped. The role is STILL rolsuper=t in prod (confirmed by the 2026-05-31 S4 audit). The Stage B code prerequisite (`ADMIN_DATABASE_URL`) was never implemented anywhere in the backend, the migration runner still reads only `settings.database_url`, and no NOSUPERUSER demotion migration exists. The spec is a pure draft; the security bomb is live and unmitigated. Per hard rule, this is a DO-NOT-EXECUTE prod-write security change — verdict is NEEDS-ANTONELLO, never EXECUTE-NOW.",
+      "evidence": [
+        "Spec file present and read fully: /Users/balizero/Desktop/nuzantara/research/operations/specs/W38-backend-rag-v2-nosuperuser.md (line 3: 'Status: DRAFT — PENDING ANTONELLO APPROVAL — DO NOT EXECUTE'; line 186 the Stage C statement 'ALTER ROLE backend_rag_v2 NOSUPERUSER;')",
+        "Stage B code never implemented: `grep -rln ADMIN_DATABASE_URL /Users/balizero/Desktop/nuzantara/apps/backend-rag/` returned ZERO matches (whole backend)",
+        "Migration runner unchanged: /Users/balizero/Desktop/nuzantara/apps/backend-rag/backend/db/migration_manager.py:96 `self.database_url = database_url or settings.database_url` — no ADMIN_DATABASE_URL fallback as the spec's §2.4 / Stage B required",
+        "config.py:352 `database_url: str | None = None` and only one DSN validator — no ADMIN_DATABASE_URL field defined",
+        "No demotion migration: `grep -rln 'NOSUPERUSER|ALTER ROLE backend_rag_v2' apps/backend-rag/backend/db/migrations_v2/` returned empty (demotion never applied)",
+        "rolsuper STILL t (current ground state): /Users/balizero/Desktop/nuzantara/research/operations/2026-05-31-structural-debt-FROZEN.json line 29 cites postgres-nuzantara MCP read-only 'verified TWICE this turn: SELECT rolname,rolsuper FROM pg_roles WHERE rolsuper=true returns backend_rag_v2 rolsuper=true ... Bomb is LIVE'; line 132 `rolsuper_still_armed: true`; line 134 `w38_status: DRAFT — awaiting Antonello approval; NOT EXECUTED`; lines 138-141 rank-1 armed bomb by blast radius",
+        "Audit snapshot exists: /Users/balizero/Desktop/nuzantara/research/operations/audits/2026-05-23-w38-backend-rag-v2-rolsuper-audit.json (15k, ls-verified)"
+      ],
+      "rationale": "The work has NOT shipped (Stage B `ADMIN_DATABASE_URL` absent from the entire backend, migration_manager.py unchanged, no demotion migration) and the underlying security problem STILL exists — the 2026-05-31 S4 FROZEN audit independently re-verified backend_rag_v2 rolsuper=t live via postgres MCP and ranks it the #1 armed bomb by blast radius (DB-host RCE / DROP DATABASE if the app secret leaks). The spec's own frontmatter says DO-NOT-EXECUTE, but more importantly the terminal action (Stage C `ALTER ROLE ... NOSUPERUSER`) is an irreversible-class production security write on a prod Postgres role that touches every backend service via DATABASE_URL, plus a new Fly secret and a code/secret split. Per the orchestrator hard rule and the nature of the change (prod write + security), this is unambiguously NEEDS-ANTONELLO and must never be auto-executed. I did not attempt any prod write; verification was grep/file/disk only.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "W39",
+      "file": "research/operations/specs/W39-dependabot-cve-triage-2026-05-23.md",
+      "verdict": "DEAD",
+      "execute_now_risk": "n/a",
+      "spec_claim": "Triage of 8 open Dependabot CVE alerts (#409-416) on Balizero1987/Teman2: bump 3 npm overrides (qs->6.15.2, ws->8.20.1, brace-expansion->5.0.6) to fix 3 alerts, and dismiss 5 WONT-FIX pip alerts (3x ecdsa Minerva, 2x transformers Trainer torch.load) as no-attack-path.",
+      "disk_reality": "All 8 W39 alerts are resolved in GitHub prod and the npm patch is shipped on disk. The 3 npm overrides are present in root package.json and resolved correctly in package-lock.json; the 5 pip WONT-FIX alerts are dismissed; the WONT-FIX justifications still hold (0 direct imports, JWT=HS256). The 6 currently-open Dependabot alerts (vitest 417-420, vite 389, esbuild 388) are unrelated newer CVEs, not part of W39.",
+      "evidence": [
+        "Live Dependabot per-alert state (unset GITHUB_TOKEN; gh api repos/Balizero1987/Teman2/dependabot/alerts/N): #409 brace-expansion state=fixed fixed_at=2026-05-22T23:47:36Z; #410 ws state=fixed; #416 qs state=fixed; #411/#412/#414 ecdsa state=dismissed reason=tolerable_risk; #413/#415 transformers state=dismissed reason=not_used",
+        "Live open-alerts count = 6, and listing shows only vitest #417-420 (critical), vite #389, esbuild #388 — none are W39 packages",
+        "package.json overrides (python3 json parse of /Users/balizero/Desktop/nuzantara/package.json): qs '>=6.15.2', ws (dep) '^8.20.1', brace-expansion '>=5.0.6' — all 3 spec bumps present",
+        "package-lock.json resolved versions: qs=['6.15.2'], ws=['7.5.10','8.21.0'] (8.21.0 >= fix 8.20.1; 7.5.10 transitive outside vuln range >=8.0.0 per spec), brace-expansion=['1.1.13','2.0.3','5.0.6'] (5.0.6 = fix)",
+        "WONT-FIX claims re-verified: grep -rEn 'from transformers import|from transformers\\.' apps/backend-rag/backend apps/backend-rag/scripts (minus test_) = 0 lines; grep '(import ecdsa|from ecdsa|SigningKey)' = 0 lines; grep jwt_algorithm apps/backend-rag/backend/app/core/config.py = 'jwt_algorithm: str = \"HS256\"'",
+        "pip pins unchanged as WONT-FIX expects: transformers==4.57.6 (requirements.lock.txt:4711, transitive via sentence-transformers==5.5.0), ecdsa==0.19.2 (requirements.lock.txt:1014, requirements-prod.lock.txt:872)"
+      ],
+      "rationale": "Every line item of the spec is done. The 3 npm AUTO-PATCH alerts (409/410/416) show state=fixed at 2026-05-22T23:47:36Z with the corresponding overrides present in package.json and the patched versions resolved in package-lock.json. The 5 WONT-FIX pip alerts (411/412/413/414/415) show state=dismissed with the exact reasons the spec planned (tolerable_risk for ecdsa, not_used for transformers), and the underlying safety justifications independently re-verify this turn (zero direct imports, HS256 JWT). The unchecked Done-criteria boxes in the spec body are stale template markdown, not ground truth — GitHub's authoritative alert state overrules them. The 6 open alerts today are a distinct later batch (vitest/vite/esbuild), not W39. No code change remains; spec should be archived. Not W38, so the rolsuper DO-NOT-EXECUTE rule does not apply.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "T3.5",
+      "file": "research/operations/specs/T3.5-session-start-consolidation.md",
+      "verdict": "RE-SPEC",
+      "execute_now_risk": "high",
+      "spec_claim": "Consolidate SessionStart hooks from 13 content blocks down to 6 grouped scripts (sessionstart-1-environment.sh ... sessionstart-6-resume.sh), each <=2KB, total wall <3s, no info loss.",
+      "disk_reality": "NOT shipped. ~/.claude/settings.json SessionStart has 14 hook entries (one MORE than the 13 baseline). The 6 target consolidated scripts (~/.claude/hooks/sessionstart-*.sh) do NOT exist (glob no match). Current machine is balizero@Air-M5, not the Pro/Mini the spec assumes.",
+      "evidence": [
+        "python3 sum(len(h['hooks'])) over settings.json SessionStart -> entries: 14 (verified)",
+        "ls ~/.claude/hooks/sessionstart-*.sh -> no matches (target scripts absent)",
+        "~8 of 14 entries (log-rotate, memory-leak-check, mcp-cleanup, nuz-sync-check, repomap-inject, agent_workspace_setup, tmux-briefing, active-context-read) fall OUTSIDE the spec's 6-block content taxonomy",
+        "Machine is balizero@Air-M5 (thin-client added 2026-05-31); spec hardcodes Pro-centric ssh mini + backup name settings-pre-T3.5-20260521.json"
+      ],
+      "rationale": "Genuinely unshipped but the merge plan is stale: designed against a 13-entry content-category layout, while live 14-entry layout is dominated by operational maintenance script-calls the 6-block taxonomy never addresses. Executing as written would drop load-bearing maintenance hooks or require improvising unspecified mappings. File governs EVERY session bootstrap; broken merge = broken startup. Needs fresh consolidation design against real 14-entry M5 inventory. Blocker is plan staleness, not owner sign-off.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "T3.6",
+      "file": "research/operations/specs/T3.6-tool-search-auto-10.md",
+      "verdict": "RE-SPEC",
+      "execute_now_risk": "n/a",
+      "spec_claim": "A/B-test ENABLE_TOOL_SEARCH auto:5 vs auto:10 (vs auto:none) across 3 separate ~30min sessions to validate a DeepSeek hypothesis that the auto:5 deferral threshold prunes subagent tool schemas and causes orchestration decay; only flip the env to auto:10 if the measurement shows >=10% subagent-dispatch increase, then document in a memory entry.",
+      "disk_reality": "Not shipped. Live env is ENABLE_TOOL_SEARCH=auto:5, sourced from /Users/balizero/.claude/settings.json line 6 (\"ENABLE_TOOL_SEARCH\": \"auto:5\"); the spec's auto:10 target is NOT applied. The Step-6 deliverable memory file discovery_tool_search_threshold_2026_05_21.md does not exist on any project memory path, and no *tool_search* memory artifact exists anywhere. No A/B measurement was ever recorded. The problem (is auto:5 pruning subagents?) remains unmeasured/open.",
+      "evidence": [
+        "env|grep: ENABLE_TOOL_SEARCH=auto:5 (live shell, exit=0)",
+        "grep -rn ENABLE_TOOL_SEARCH ~/.claude/settings.json -> /Users/balizero/.claude/settings.json:6:    \"ENABLE_TOOL_SEARCH\": \"auto:5\"",
+        "Read /Users/balizero/.claude/settings.json:3-6 confirms env block sets auto:5 (no auto:10 anywhere in settings)",
+        "grep ~/.zshenv ~/.zshrc ~/.zprofile for ENABLE_TOOL_SEARCH -> zero matches (spec Step 5 assumed ~/.zshenv; actual source is settings.json)",
+        "find ~/.claude/projects/ -name '*tool_search*' -> empty; discovery_tool_search_threshold_2026_05_21.md NOT present on -Users-balizero- or -Users-nuzantara- memory paths (Step 6 never executed)",
+        "Spec line 174: 'A/B test richiede 3 sessioni separate ~30min... effort utente Antonello, non orchestrator inline... monitor over week, not do today'",
+        "Spec line 37 decision gate: adopt only 'If auto:10 >=10% increase in subagent dispatches'; Step 6 anti-pattern: 'alterare threshold senza A/B baseline'",
+        "Project settings have no override: grep of /Users/balizero/Desktop/nuzantara/.claude/settings*.json -> no ENABLE_TOOL_SEARCH",
+        "Measurement tool exists (/Users/balizero/.claude/commands/dispatch-stat.md) but the multi-session week-long A/B it requires cannot be run inline by an assailant agent",
+        "research/operations/2026-05-21-codex-best-config-audit.md:111 still lists the auto:5-vs-auto:10 A/B as a pending recommendation -> never closed"
+      ],
+      "rationale": "Work did not ship and the problem is unresolved, so not DEAD. The naive temptation is EXECUTE-NOW (a one-line settings.json flip to auto:10 is low-risk and reversible), but that would skip the entire reason the spec exists: its acceptance criteria and decision gate REQUIRE an empirical >=10% subagent-dispatch delta from a 3-session A/B before adoption, and Step 6 explicitly names 'altering the threshold without an A/B baseline' as the anti-pattern. Flipping the env blind would violate the spec's own contract. The mandated methodology (3 separate ~30min sessions over a week) is, by the spec's own admission (line 174), Antonello-driven over-time effort that an inline assailant cannot perform in one pass, and the harness has since moved the var into ~/.claude/settings.json (not the ~/.zshenv that Step 5 targets), so the implementation/rollback steps are stale. The actionable path is a fresh spec with a tractable measurement design (e.g., harness/telemetry-based dispatch counting or a bounded controlled comparison) anchored to the current settings.json config surface. Hence RE-SPEC, not EXECUTE-NOW. Not W38; no prod/secret/security action involved.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "L5.1",
+      "file": "research/operations/specs/L5.1-agent-worktree-enforcement-2026-05-25.md",
+      "verdict": "DEAD",
+      "execute_now_risk": "n/a",
+      "spec_claim": "L5.1 wanted to close the \"opt-in worktree broker = ~0% adoption\" gap by shipping a PreToolUse hook (worktree_isolation.py) blocking dangerous git ops in the main checkout, a SessionStart hook (agent_workspace_setup.py), an agent-session-discipline skill, an AGENTS.md patch, and the settings.json registration — all to enforce that agent sessions run under .worktrees/ instead of racing on the shared main checkout.",
+      "disk_reality": "Every deliverable is shipped and live. All three artifacts exist on disk, are registered in ~/.claude/settings.json, run without crashing (exit 0 on smoke tests), and were merged + hardened for the M5 machine via PR #1000. The spec was also superseded/extended by L5.1-iter2 (2026-05-26), its panel synthesis, and L5.2 server-side enforcement (PR #882) — including an additional Edit|Write|MultiEdit blocker (worktree_file_write_check.py) not in the original draft. The problem the spec addressed no longer exists.",
+      "evidence": [
+        "~/.claude/hooks/worktree_isolation.py EXISTS (9.8KB, mtime 1 giu 21:06), machine-agnostic _derive_repo_root() at line 53/82 supporting Pro /Users/nuzantara and M5 /Users/balizero",
+        "~/.claude/hooks/agent_workspace_setup.py EXISTS (3.1KB)",
+        "~/.claude/hooks/worktree_file_write_check.py EXISTS (7.4KB) — iter2 addition",
+        "~/.claude/skills/agent-session-discipline/SKILL.md EXISTS (4.6KB, mtime 25 mag 08:48)",
+        "settings.json PreToolUse[matcher=Bash] registers 'python3 ~/.claude/hooks/worktree_isolation.py'; PreToolUse[matcher=Edit|Write|MultiEdit] registers worktree_file_write_check.py; SessionStart registers 'python3 ~/.claude/hooks/agent_workspace_setup.py'",
+        "scripts/agent_start.py EXISTS (24KB) — L1 broker prerequisite shipped",
+        "AGENTS.md line 139 §0.5 'Agent Worktree Discipline (L5.1, 2026-05-25)'; line 173 references both hooks",
+        "CLAUDE.md line 22 'Agent Worktree Discipline (2026-05-24)' present",
+        "git log: 1d4aefe4f 'feat(infra): version worktree-isolation hooks + make them path-aware (Pro+M5) (#1000)' and 800ebbc56 'L5.2: Server-Side Enforcement (#882)'",
+        "Superseding specs on disk: L5.1-iter2-agent-worktree-enforcement-2026-05-26.md (29KB), L5.1-L5.2-panel-iter2-synthesis-2026-05-26.md, L5.2-server-side-enforcement-2026-05-26.md",
+        "Smoke test: isolation hook exit 0 on safe cmd, file_write_check exit 0, workspace_setup exit 0 — all functional non-stubs"
+      ],
+      "rationale": "The spec is fully implemented on disk and in the active hook configuration, then explicitly superseded by L5.1-iter2 and L5.2. The orchestrator hint is confirmed: agent_start.py exists and both PreToolUse hooks are active in settings.json. The original gap (no enforcement) is closed by two layered hooks (Bash-git-op block + file-write block), both machine-agnostic for Pro and M5, merged via PR #1000. Not W38, so no NEEDS-ANTONELLO override. Spec should be archived as DEAD.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "L5.1-iter2",
+      "file": "research/operations/specs/L5.1-iter2-agent-worktree-enforcement-2026-05-26.md",
+      "verdict": "DEAD",
+      "execute_now_risk": "n/a",
+      "spec_claim": "Iter-2 of agent worktree enforcement: close iter-1's \"security theater\" gaps by shipping path-canonicalized PreToolUse hooks that block git ops (worktree_isolation.py) AND file writes (worktree_file_write_check.py for Edit/Write/MultiEdit) in the shared main checkout while sibling agents are active, plus SessionStart alive-count cache, T2.6 harmonization, cron skip contract, and a phased monitor->enforce rollout. Frontmatter status: pending-iter-3 (7 residual defects R1-R7).",
+      "disk_reality": "The core of iter-2 is SHIPPED and LIVE in enforce mode on this machine (M5, user balizero — thin-client, only 4 LaunchAgents). Both PreToolUse hooks exist, are executable, registered in ~/.claude/settings.json, and exit 2 (hard block): worktree_isolation.py (matcher Bash) and worktree_file_write_check.py (matcher Edit|Write|MultiEdit). They implement amendments A1 (pathlib.Path.resolve + is_relative_to), A3 (git -C / cd&&git effective-target parsing), A4 (env-var-only kill switch AGENT_WORKTREE_ENFORCEMENT, no transcript bypass), A5 (probe logging to ~/.claude/l5_1_hook_probe.jsonl), A6 (cached alive count /tmp/nuz_alive_count), plus a machine-agnostic REPO_ROOT derivation that exceeds the spec. SessionStart hook agent_workspace_setup.py is registered and populates the alive cache + resets the block counter. The orchestrator's specific concern — the W62/W63 broker-TTL auto-cleanup gap (broker had no auto-cleanup) — was CLOSED by a later, separate effort: scripts/worktree_gc_universal.py shipped in PR #925 (commit ad8928019, 2026-05-29) with a test, explicitly citing cicatrix W62/W63 + 3-LLM panel 2026-05-29; the same PR also closed residual R4 (Bash rm/mv destructive bypass) via guardrails-static.py Patch 7 (cd+rm). Genuinely-NOT-done residuals are cosmetic/redundant: (a) stop_verify.py NOT harmonized per A9 (still transcript-marker based, does not read /tmp/nuz_l5_1_blocks); (b) the spec's com.nuzantara.alive-count.60s.plist cron does not exist (cache populated at SessionStart instead — functionally adequate); (c) no standalone worktree-cleanup LaunchAgent cron (GC is a manual script, not cron-wired) but W62 antibody is independent and the heavy cron fleet lives on Pro, not this thin-client M5; (d) R1 MultiEdit edits[*] iteration not done but moot since the current tool schema carries top-level file_path.",
+      "evidence": [
+        "~/.claude/hooks/worktree_isolation.py:233-292 — main() blocks (exit 2) git checkout/switch/stash/reset/merge/rebase/pull when effective target resolves to REPO_ROOT; A1 path-canon at _is_path_in_allowed_worktree() lines 134-182; A3 _effective_git_target() lines 185-196 parses git -C (GIT_C_RE l.94) and cd&&git (CD_GIT_RE l.97); A4 _kill_switch_active() l.104-106 env-only",
+        "~/.claude/hooks/worktree_file_write_check.py:154-216 — main() blocks (exit 2) Edit/Write/MultiEdit whose file_path resolves under REPO_ROOT but not an allowed worktree; header lines 1-19 cite Codex P0 amendment A2 and panel-synthesis CRITICAL NEW FINDING; R1 residual: l.167-169 reads only top-level file_path, no edits[*] iteration",
+        "settings.json hook registration (python3 introspection this turn): PreToolUse has matcher='Bash' -> worktree_isolation.py AND matcher='Edit|Write|MultiEdit' -> worktree_file_write_check.py; SessionStart matcher='' -> agent_workspace_setup.py; both enforce hooks live",
+        "scripts/worktree_gc_universal.py:1-60 — 'Universal worktree GC ... Closes the gap ... cicatrix W62/W63 + 3-LLM panel 2026-05-29'; quarantine-before-removal, dirty-classification, dry-run default; git log: shipped in commit ad8928019 PR #925 (2026-05-29); test at scripts/tests/test_worktree_gc_universal.py",
+        "git show --stat ad8928019 — 'feat(enforcement): guardrails cd+rm bypass fix + universal worktree GC (#925)' closes both W62/W63 cleanup gap AND the cd+rm destructive bypass (spec residual R4); guardrails-static.py:35-41 Patch 7 regex blocks 'cd into root/$HOME + rm -rf'",
+        "~/.claude/hooks/stop_verify.py — full file read this turn: still uses INTENT_MARKERS transcript scan, NO read of /tmp/nuz_l5_1_blocks → A9 harmonization NOT applied (residual, non-blocking)",
+        "ls ~/Library/LaunchAgents/com.nuzantara.alive-count.60s.plist → No such file (os error 2); ls ~/Library/LaunchAgents grep worktree/cleanup/alive → 0 matches; total plist=4 (M5 thin-client). /tmp/nuz_alive_count exists (value 0) populated by SessionStart hook, /tmp/nuz_l5_1_blocks exists",
+        "git worktree list → 7 worktrees, none stale-orphaned (all mtimes 31 mag–2 giu, within active window); .github/workflows grep worktree → no server-side L5.2 CI required-check shipped (separate spec L5.2, out of scope for this verdict)"
+      ],
+      "rationale": "The spec's load-bearing intent — replace iter-1's broken regex with path-canonicalized enforcement of BOTH git ops and file writes in the main checkout — has shipped and is live in enforce (exit-2) mode, verified by reading the two hooks and their settings.json registration this turn. The amendments A1/A2/A3/A4/A5/A6 are all present in code. The single residual the orchestrator flagged (W62 broker TTL had no auto-cleanup) was independently closed by scripts/worktree_gc_universal.py in PR #925, which also closed spec residual R4 (cd+rm bypass). The remaining gaps (A9 stop_verify harmonization, the 60s alive-count cron, a dedicated cleanup LaunchAgent, R1 MultiEdit edits[*]) are cosmetic or redundant: alive-count is already cached at SessionStart, the GC exists as a script, R1 is moot under the current tool schema, and A9 only affects a warning's tone. None of these warrant re-running this 14-day phased rollout spec. The 'pending-iter-3' frontmatter is a stale template artifact (HARD RULE warned about this) — shipped reality contradicts it. The spec is superseded by shipped hooks + PR #925 and should be archived. This is NOT W38, so the W38 do-not-execute rule does not apply.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "L5.2",
+      "file": "research/operations/specs/L5.2-server-side-enforcement-2026-05-26.md",
+      "verdict": "NEEDS-ANTONELLO",
+      "execute_now_risk": "n/a",
+      "spec_claim": "Ship server-side, non-bypassable enforcement of hot-zone discipline: bot privilege downgrade, a required GitHub Action replaying lease-check + lint at merge, scope-restricted CODEOWNERS with branch-protection required reviews, and append-only audit + Telegram alerts for HUSKY=0/--no-verify/direct-push bypass on hot-zone files.",
+      "disk_reality": "Executed phase-by-phase but NOT armed. SHIPPED on origin/main: Phase 0 audit; Phase 2a workflow .github/workflows/hot-zone-pr-gate.yml (workflow name hot-zone-enforcement) in MONITOR-MODE (every step continue-on-error:true, NOT in required_status_checks); Phase 3 .github/CODEOWNERS (hot-zone scoped, explicit 'L5.2 Phase 3' annotations) + merge-queue rulesets; Phase 2b auto-analyzer scaffolding (scripts/ci/l5_2_phase2b_auto_analyzer.py, redis_lease_check.py, trigger wrapper, runbook); L2 lease prerequisite (docs/runbooks/redis-lease-registry.md, scripts/agent_lease.py, .git/hooks/pre-commit). NOT done: enforce-flip (still monitor-mode on origin/main, gate not required); Phase 1 bot privilege downgrade (PR #882 was only the spec roadmap doc); Phase 4 audit append-only workflow (none in .github/workflows/). The Phase 2b one-shot auto-trigger meant to fire TODAY (TARGET_DATE 2026-06-02) is NOT armed on this M5 host (no plist, no sentinel, no analyzer logs — it was provisioned for the Pro).",
+      "evidence": [
+        "origin/main:.github/workflows/hot-zone-pr-gate.yml L1 'Phase 2a … (monitor-mode)', L7 'continue-on-error: true on every check step', L9 'NOT yet in required_status_checks.contexts'; steps L156/203/233/258 all continue-on-error:true",
+        "git log -- .github/workflows/hot-zone-pr-gate.yml = single commit f8b54c4fb '(#888) Phase 2a monitor-mode' — never flipped to enforce",
+        "Spec's named file .github/workflows/hot-zone-enforcement.yml does NOT exist (ls error); shipped under hot-zone-pr-gate.yml with workflow name hot-zone-enforcement (L29)",
+        "/Users/balizero/Desktop/nuzantara/.github/CODEOWNERS exists (6KB) with 'L5.2 Phase 3 2026-05-26' forward-decl comments L52-57 + L64-68; commits 999a4fcd3 (#889) + 2c773a294 (#851)",
+        "git show --stat 800ebbc56 (#882) = L5 spec roadmap doc commit, NOT bot-downgrade implementation — Componente 1 Phase 1 unimplemented",
+        "ls .github/workflows/ | grep -iE 'audit|bypass|append' = empty; no 'AUDIT Workflow discipline|append-only|bypass_signal' in workflows → Phase 4 not shipped",
+        "research/operations/audits/2026-05-26-L5.2-phase0-empirical-audit.md L27 'Componente 2 ancora da implementare' confirms Phase-0 audit present",
+        "scripts/ci/l5_2_phase2b_auto_analyzer.py + redis_lease_check.py + l5_2_phase2b_trigger_wrapper.sh present (28 May); runbook docs/runbooks/l5-2-phase2b-auto-trigger.md TARGET_DATE=2026-06-02, but NO ~/Library/LaunchAgents/com.balizero.l5-2-phase2b-trigger.plist, NO ~/.agent/l5-2-phase2b-fired.sentinel, NO ~/logs/l5-2-phase2b-analyzer/ on this M5 host → auto-trigger not armed here",
+        "docs/runbooks/redis-lease-registry.md exists (9.6KB, 26 May); scripts/agent_lease.py (25KB); .git/hooks/pre-commit present (27 May) — L2 prerequisite shipped"
+      ],
+      "rationale": "Not DEAD: the spec's core promise — a non-bypassable server-side required check — is NOT live. The workflow exists but is monitor-mode (continue-on-error:true) and not in required_status_checks, so the HUSKY=0/--no-verify/direct-push bypass (cicatrix W34) it set out to close is still NOT blocked server-side; the targeted problem persists. Not RE-SPEC: the spec is being executed faithfully phase-by-phase (Phase 0/2a/3 + Phase 2b scaffolding shipped), so it is current and actionable, not obsolete. Not EXECUTE-NOW: every remaining step is owner-sign-off territory — flipping the gate to enforce + adding hot-zone-enforcement to required_status_checks, Phase 1 bot privilege downgrade, and Phase 3 branch-protection updates (require_code_owner_reviews/dismiss_stale/require_last_push_approval) are PRODUCTION GitHub branch-protection writes governed by the spec's own Phase-3/Phase-5 empirical gates (<5% false-positive, 48h observation), and the spec keeps Antonello in the loop (the Phase 2b analyzer only opens a PR he approves+merges). NOT W38 (no Postgres rolsuper); for the record the 2026-05-31 S4 audit research/operations/2026-05-31-structural-debt-FROZEN.json still flags backend_rag_v2 rolsuper=t as armed, but that is orthogonal to L5.2.",
+      "files_touched_if_exec": [
+        ".github/workflows/hot-zone-pr-gate.yml (flip continue-on-error:false)",
+        "GitHub branch protection required_status_checks.contexts (add hot-zone-enforcement) — prod API write",
+        "GitHub branch protection required reviews (require_code_owner_reviews/dismiss_stale/require_last_push_approval) — prod API write",
+        "GitHub collaborator/team permissions (Componente 1 bot downgrade) — prod API write",
+        "new .github/workflows audit-append workflow (Phase 4, not yet created)"
+      ]
+    },
+    {
+      "spec_id": "T2.4",
+      "file": "research/operations/specs/T2.4-vercel-mcp.md",
+      "verdict": "DEAD",
+      "execute_now_risk": "n/a",
+      "spec_claim": "Install a project-local Vercel MCP (HTTP transport https://mcp.vercel.com, tool namespace mcp__vercel__*) so Claude can query Vercel deployments/build-logs/settings directly, closing the 2026-05-21 regression where Claude repeatedly instructed Antonello to navigate the Vercel UI (\"Ignored Build Step → Disable\"). Also update the orchestration-first memory rule (Step 6).",
+      "disk_reality": "The spec's functional intent already shipped 2026-05-22 via the claude.ai-side marketplace Vercel MCP (mcp__claude_ai_Vercel__*), not the project-local .mcp.json transport the spec literally describes. The literal artifact (a 'vercel' server in .mcp.json with mcp__vercel__* namespace) is genuinely absent — confirmed not in project .mcp.json, not in ~/.claude.json global, not in live `claude mcp list`. But that was one of two interchangeable means to the same end. The end is met: (a) memory Step 6 done, (b) empirical T2.4 verify passed 2026-05-22 (list_teams→nuzantara-2026, list_projects→7), (c) deploy_to_vercel wired into guardrails, (d) official vercel plugin v0.43.0 cached pointing at mcp.vercel.com, (e) vercel CLI v54.6.1 installed as the write path. The regression is closed; frontend auto-deploys on git push (CLAUDE.md §11) further lowers MCP value.",
+      "evidence": [
+        "spec read: research/operations/specs/T2.4-vercel-mcp.md:1-135 (status:DRAFT frontmatter, Step 6 = update feedback_orchestration_first.md trigger #6)",
+        ".mcp.json servers = [ga4-analytics, github, notebooklm-mcp, nuzantara-browser, nuzantara-fetch, nuzantara-mcp, nuzantara-mcp-advanced, ocr-tesseract, playwright, postgres-nuzantara] — NO vercel (grep 'NO vercel in .mcp.json')",
+        "~/.claude.json: GLOBAL mcpServers=[], no 'vercel' string anywhere — project-local literal install absent",
+        "live `claude mcp list` -> 'no vercel in claude mcp list' (confirmed this turn)",
+        "feedback_orchestration_first.md:20 -> trigger #6 ALREADY updated: 'NEVER instruct Antonello to navigate Vercel UI (T2.4 confermato 2026-05-22: mcp__claude_ai_Vercel__* LIVE 7 progetti, regression 2026-05-21 chiusa)' — this is spec Step 6, shipped",
+        "unresolved_mcp_failed_connection_cluster_2026_05_22.md:37-39 -> 'empirical T2.4 verify 2026-05-22: mcp__claude_ai_Vercel__list_teams + list_projects -> 200 OK, returned team nuzantara-2026 + 7 projects' = spec Test 1 acceptance PASSED",
+        "~/.claude/hooks/guardrails-static.py:74 -> 'mcp__claude_ai_Vercel__deploy_to_vercel' in MCP_DESTRUCTIVE_TOOLS (answers spec Open Question #2: deploy trigger gated by guardrails)",
+        "~/.claude/plugins/cache/claude-plugins-official/vercel/0.43.0/.mcp.json:5 -> url https://mcp.vercel.com (official plugin cached)",
+        "vercel CLI present: /Users/balizero/.local/share/mise/installs/node/22/bin/vercel v54.6.1 (write path covered)",
+        "CLAUDE.md:144 -> 'Frontend on Vercel (auto-deploy on git push origin main)' — deploy trigger not needed via MCP"
+      ],
+      "rationale": "The spec's stated Problem (Claude told Antonello to navigate the Vercel UI 3x) and its key acceptance criterion #5 / Test 1 were satisfied 2026-05-22 by the claude.ai marketplace Vercel MCP — corroborated by three independent on-disk artifacts written THIS turn: the updated memory trigger #6, the empirical verify note (list_teams=nuzantara-2026, 7 projects), and the guardrails registration of deploy_to_vercel. The spec itself names mcp__claude_ai_Vercel__* in its Problem section as the existing-but-inactive tool; it became active, so the gap closed via that path rather than the redundant project-local mcp__vercel__* it proposed. Installing a second HTTP transport now would duplicate a live capability for no functional gain, and is further devalued by git-push auto-deploy (CLAUDE.md §11) and the working vercel CLI v54.6.1. Verdict DEAD: archive the spec; the regression it targets is resolved and the Step 6 doc work shipped. Not RE-SPEC because nothing actionable remains. Not EXECUTE-NOW because the value is already delivered.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "R1",
+      "file": "research/operations/specs/R1-claude-mem-3layer.md",
+      "verdict": "DEAD",
+      "execute_now_risk": "n/a",
+      "spec_claim": "A P4 research-evaluation spec to assess the open-source claude-mem 3-layer progressive memory tool (hot/warm/cold + vector semantic recall) against the current MOS, decide adopt/stay/hybrid, and close the identified gap of \"no semantic search (L3 cold)\".",
+      "disk_reality": "claude-mem was installed (thedotmack v12.1.0, manifest installedAt 2026-04-29) but is explicitly DISABLED in active config, and zero active hooks invoke it. The MOS remains the sole live memory system, and the exact gap R1 flagged (semantic L3 search) was independently closed via a different path: MOS+Qdrant (shipped 2026-05-30/31) plus MOS+ auto-capture/AI-compression (2026-05-24), with the qdrant plugin enabled. The spec's subject was effectively evaluated and rejected; the gap is resolved. The only literal spec deliverable never produced is the formal decision-memo file, but the decision is de facto made and captured in MOS memories. No live problem remains and no load-bearing autonomous work is left.",
+      "evidence": [
+        "settings.json line 526: \"claude-mem@thedotmack\": false in enabledPlugins (grep ~/.claude/settings.json:526) — explicitly disabled",
+        "Active hooks audit: python3 over settings.json hooks -> 'claude-mem in hooks: False'; all 5 memory hooks (SessionStart/UserPromptSubmit/PostCompact) invoke ~/.claude/scripts/mem and mos-db, never claude-mem",
+        "claude-mem present only as cached/installed plugin: ~/.claude/plugins/cache/thedotmack/claude-mem/12.1.0/ (installed_plugins.json installedAt 2026-04-29, installPath under /Users/nuzantara) — no claude-mem binary on PATH ('claude-mem not found'), no running process (ps aux | grep claude-mem empty), no data dir",
+        "MOS is live: ~/.claude/scripts/mem and mos-db scripts actively maintained (mtime 2026-06-01); 'mem query \"claude-mem\"' this turn returned real memories incl id 4227 MOS+qdrant shipped (importance 9), id 2691/2695 MOS+ 3-features 2026-05-24",
+        "qdrant@qdrant: true enabled in settings.json enabledPlugins (the semantic/L3 path actually adopted, in lieu of claude-mem)",
+        "No R1 decision memo file: ls ~/.claude/projects/*/memory/decision_claude_mem* -> 'no matches found' (Step 6 artifact never written, but decision substance lives in MOS)"
+      ],
+      "rationale": "R1 is a P4 evaluation whose subject (claude-mem) was installed, assessed, and rejected — it sits disabled with no hook integration, while MOS stays the sole live memory system. The semantic-search gap that motivated the spec was closed by an independent, already-shipped path (MOS+Qdrant + MOS+ auto-capture/compression). There is no remaining live problem (not RE-SPEC — nothing actionable needs respecifying) and no autonomous work worth doing (writing a backfill decision memo for an already-settled P4 eval is not load-bearing). The correct disposition is to archive the spec as resolved/superseded.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "R2",
+      "file": "research/operations/specs/R2-exa-mcp-oauth.md",
+      "verdict": "NEEDS-ANTONELLO",
+      "execute_now_risk": "n/a",
+      "spec_claim": "Install/OAuth the Exa MCP (mcp__claude_ai_Exa__*, a claude.ai-marketplace semantic web search server) so the deep-researcher agent / /research command gains a 5th panelist for fresh semantic web search with topic clustering + summaries. Steps: initiate OAuth, Antonello grants in browser, verify auth, test query, update deep-researcher.md, write a memory doc.",
+      "disk_reality": "NOT shipped. Exa MCP (spec target mcp__claude_ai_Exa__*) is not installed: .mcp.json lists 10 servers (ga4-analytics, github, notebooklm-mcp, nuzantara-browser, nuzantara-fetch, nuzantara-mcp, nuzantara-mcp-advanced, ocr-tesseract, playwright, postgres-nuzantara) — none is exa. Zero claude_ai_Exa references exist anywhere on disk. None of the acceptance criteria are met: no OAuth, no tool in list, no test, and the promised memory doc reference_exa_mcp_2026_05_21.md does not exist on either machine path. The deep-researcher agent has no Exa integration (its only 'exa' hit is the word 'Example'). Separately, settings.local.json contains STALE allowlist entries for a DIFFERENT, API-key-based Exa server (mcp__exa__web_search_exa, deep_researcher_start, etc.) plus a hardcoded EXA_API_KEY=9e545476-... in an allowlisted Bash command pointing at agents/01_grok_scraper.py — but no 'exa' server is actually defined in any mcpServers block (~/.claude.json, ~/.claude/settings*.json all have empty mcpServers) and that grok_scraper.py no longer exists on disk. So the only Exa footprint is dead permission cruft from a prior paid-key attempt, not the marketplace-OAuth path the spec describes.",
+      "evidence": [
+        "/Users/balizero/Desktop/nuzantara/.mcp.json mcpServers keys = ['ga4-analytics','github','notebooklm-mcp','nuzantara-browser','nuzantara-fetch','nuzantara-mcp','nuzantara-mcp-advanced','ocr-tesseract','playwright','postgres-nuzantara'] — no exa (python3 json parse)",
+        "grep -i 'exa' /Users/balizero/Desktop/nuzantara/.mcp.json -> NO MATCH",
+        "grep -rin 'claude_ai_Exa' repo-wide excluding R2 spec -> ZERO hits (all prior 'exa' grep hits were substring false positives e.g. 'Example')",
+        "ls /Users/balizero/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/reference_exa_mcp_2026_05_21.md -> No such file (NOT created); same for -Users-balizero- path",
+        "grep -in 'exa' /Users/balizero/.claude/agents/deep-researcher.md -> only line 54 'Example:' (no Exa integration)",
+        "settings.local.json lines 314-654 contain stale allow entries mcp__exa__web_search_exa / deep_researcher_start / company_research_exa / people_search_exa, and line 759 hardcodes EXA_API_KEY=9e545476-d402-45c1-96d7-8ad6f7ac7990 in a Bash allow rule for agents/01_grok_scraper.py",
+        "python3 scan: ~/.claude.json mcpServers=[] ; ~/.claude/settings.json mcpServers=[] ; ~/.claude/settings.local.json mcpServers=[] -> no 'exa' server definition anywhere",
+        "ls /Users/balizero/Desktop/nuzantara/agents/01_grok_scraper.py -> No such file (the script the EXA_API_KEY served is gone)",
+        "research/operations/specs/00-INDEX.md line 128: R2 Exa MCP OAuth, 10 min, P3, under 'Research / R&D — opzionale' (sibling to R3-KILLED and R4-P5)",
+        "git log -- research/operations/specs/R2-exa-mcp-oauth.md -> single commit fb5e3256b (the 31-spec corpus dump), never touched/executed since"
+      ],
+      "rationale": "Not DEAD: nothing shipped — zero acceptance criteria met, memory doc absent, agent un-integrated. Not RE-SPEC: the spec is still internally coherent and the tool-surface concept is valid; it just hasn't been run. Not EXECUTE-NOW for two independent blockers. (1) The procedure is inherently interactive: Steps 1-2 require 'OAuth completato Antonello' via a browser grant — an autonomous agent cannot click through a marketplace OAuth consent screen, so the spec literally cannot be completed without the owner. (2) Paid-API HARD RULE risk: Exa is NOT in the sanctioned subscription arsenal (Claude MAX, ChatGPT Pro, Google AI Ultra, DeepSeek, NotebookLM). The spec's own Open Question #1 admits the free-tier/query limit is unverified, and the on-disk EXA_API_KEY=9e545476-... is exactly a per-token paid Exa key — evidence Exa was previously wired the paid way. Standing up Exa without confirming a genuinely free OAuth tier risks violating the global 'zero paid API keys' rule, which is an owner-sign-off matter, not an autonomous call. Therefore the owner must both perform the OAuth grant AND clear the paid-API policy question before any wiring. Secondary cleanup hint (not part of this verdict's action): the stale mcp__exa__* allowlist + leaked EXA_API_KEY in settings.local.json should be scrubbed regardless of R2's fate.",
+      "files_touched_if_exec": []
+    },
+    {
+      "spec_id": "R4",
+      "file": "research/operations/specs/R4-experimental-agent-teams.md",
+      "verdict": "DEAD",
+      "execute_now_risk": "n/a",
+      "spec_claim": "R4 proposes a ~60-min pilot of Claude Code's EXPERIMENTAL_AGENT_TEAMS (lead orchestrator delegates to a parallel sub-team, then synthesizes with a strict anti-hallucination verification gate), to decide whether to adopt multi-agent teams for Nuzantara. It is P5, gated behind 2 weeks of T1.x stability, and carries an explicit cicatrix warning about the 2026-05-12/13 hallucinated-deliverables incident.",
+      "disk_reality": "The pilot has already been run and the feature is de-facto adopted. The experimental feature flag is live, a successful pilot is captured in memory with an adoption decision, and the current triage session itself runs under the team harness. The R4-named deliverable file was never created, and the pilot's artifact directory is absent from disk and git on all branches — consistent with the cicatrix fabrication warning, but the env flag plus the pilot memory are independent confirmation the work happened. No orchestrator/workflow code references R4 itself.",
+      "evidence": [
+        "/Users/balizero/.claude/settings.json:5 — \"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS\": \"1\" (feature flag enabled live)",
+        "Memory /Users/balizero/.claude/projects/-Users-balizero-Desktop-nuzantara/memory/project_pilot_cross_llm_agent_teams_2026_05_13.md — pilot 'claim-verifier-4x' on v2.1.139, 'Pilot status: SUCCESS — adopt pattern for v2 with 4 adjustments', score 4/4 + 1 bonus, $0.0035 + 25min vs single-LLM 7-pass $0.30+30min",
+        "This triage session runs under TeamCreate/SendMessage/TaskUpdate team harness (tools present), confirming operational adoption",
+        "research/operations/specs/00-INDEX.md:130 — R4 listed P5, 'deprioritized P5 by DS', 'Agent teams pilot (only after 2 weeks T1.x stability)'",
+        "find /Users/balizero/.claude/projects -name 'decision_agent_teams_pilot*' → (none): the R4-spec Step-5 deliverable memory was never created at its path",
+        "ls research/dev-tools/pilot-cross-llm-2026-05-12/ → No such file or directory on worktree AND main checkout; git log --all + git ls-files '*pilot-cross-llm*' → zero hits (artifacts never git-tracked — cicatrix-fabrication consistent, not a blocker to DEAD)",
+        "grep -rl agent-teams refs across repo → only the spec file, 00-INDEX.md, and an old 2026-04-29 audit README; zero production/orchestrator code references R4",
+        "apps/backend-rag/backend/services/agents/team_agent_config.py exists (17k) but is the SEPARATE Agent-Mesh-V1 RBAC role system per memory agent-mesh-v1-live.md, NOT the Claude Code EXPERIMENTAL_AGENT_TEAMS feature R4 targets"
+      ],
+      "rationale": "R4 asks to (a) confirm EXPERIMENTAL_AGENT_TEAMS is available, (b) run a pilot with an anti-hallucination gate, and (c) record an adopt/reject decision. All three are already satisfied: the flag is enabled (settings.json:5), a successful pilot with the exact 4-teammate adversarial-verifier + verification-gate shape was executed 2026-05-13 and captured a SUCCESS/adopt decision in memory, and the harness is in active use right now. The spec's own Open-Question-1 (is the feature real?) is resolved YES, and its prior-pilot cicatrix risk has already been lived through and documented. The spec is therefore obsolete/already-resolved and should be archived. It is not RE-SPEC because no fresh spec is needed to make adoption actionable — adoption is the current operating mode; the only minor gap (the R4-named decision memo) is substantively covered by the 2026-05-13 pilot memory.",
+      "files_touched_if_exec": []
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+# DESC: S13 — Agent library evolution (Voyager + Reflexion) (ONDA 2, Mini acct2, agy)
+ORCHESTRATORE sessione S13 "agent-library-evolution". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane organism --task-id s13-agent-evolve
+  cd .worktrees/organism-s13-agent-evolve
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI. + rispetta NB Contract 2 (solo brief-interpreter consuma NB direttamente).
+
+MISSIONE: 37 agenti custom esistono. Voyager skill-library + Reflexion weekly (wr3-
+reflexion-synth, agent-library-evolver) girano. Ciclo di evoluzione: quali agenti hanno
+lesson accumulate non sintetizzate? quali skill mancano? quali si sovrappongono?
+
+TOPOLOGIA:
+- ASSALITORI INGESTION (agy Gemini 1M context): ingerisci TUTTO il corpus agenti +
+  lessons.md + 64 carousel + episodi WR3 in un pass.
+- ANALISTI (Claude opus): ≤10 lesson verbali per agente; mappa overlap/gap; proposte skill
+  draft. Codex adversarial su proposte ridondanti.
+- MECCANICO (1, serial): research/agent-library/S13-evolution-FROZEN.json + N skill draft
+  in _proposed/ + overlap matrix. commit → push → PR draft → STOP.
+
+VINCOLI: NON modificare agenti in produzione. Proposte in _proposed/, Antonello approva
+append a lessons.md. OUTPUT: FROZEN + draft + matrix. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S13 <numero-PR-o-url>

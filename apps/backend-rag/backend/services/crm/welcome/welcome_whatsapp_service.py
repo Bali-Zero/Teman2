@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+from backend.app.core.config import settings
 from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import (
     ADVISOR_FALLBACK,
@@ -59,12 +60,12 @@ async def send_client_welcome(client_id: int, db_pool: asyncpg.Pool) -> None:
 
 
 async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> None:
-    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
-    access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+    phone_number_id = settings.whatsapp_phone_number_id or os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+    access_token = settings.whatsapp_api_token or os.getenv("WHATSAPP_ACCESS_TOKEN")
 
     if not phone_number_id or not access_token:
         logger.warning(
-            "WelcomeWhatsApp: WHATSAPP_PHONE_NUMBER_ID or ACCESS_TOKEN not set, skipping",
+            "WelcomeWhatsApp: WHATSAPP_PHONE_NUMBER_ID or API token not set, skipping",
         )
         return
 
