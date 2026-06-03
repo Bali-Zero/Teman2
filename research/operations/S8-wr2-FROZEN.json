@@ -1,0 +1,24 @@
+{
+  "session": "ONDA-3 S8 wr2-content-batch",
+  "date": "2026-06-03",
+  "orchestrator": "Mac M5 via SSH to Pro (nuzantara@Nuzantara), worktree .worktrees/wr2-s8-content-batch",
+  "pipeline": "scripts/wr2_carousel_orchestrator.py (autonomous, claude --print --agent subagents), DB nuzantara_dev local, wr2_carousel_runs",
+  "pipeline_steps": ["brief_interpreter(opus-4-7)", "storyboarder(opus-4-7)", "image_prompt_author(sonnet-4-6)", "layout_composer(sonnet-4-6)", "critic(opus-4-7)", "render_playwright(PNG 1080x1350)", "awaiting_approval"],
+  "image_strategy": "Pipeline renders slide PNGs via Playwright HTML->PNG (layout-composer HTML). Hero photoreal images NOT via FlowKit in this autonomous path. FlowKit/Flow (AI Ultra) reserved for separate hero-photo generation; status tracked per-carousel below.",
+  "review_gate": "Telegram (wr2_telegram_publish_gate.py). NEVER auto-publish to Instagram (Legge 5). Orchestrator stops at awaiting_approval.",
+  "research_sources": [
+    "research/legal/2026-06-02-pt-pma-nominee-ban-bkpm-oss.md",
+    "research/legal/2026-06-02-positive-investment-list-kbli-foreign-ownership.md",
+    "research/property/2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md",
+    "research/tax/2026-06-02-corporate-withholding-but-coretax.md"
+  ],
+  "editorial_briefs": "research/wr2/s8-content-batch/00-six-carousel-briefs.md (all 6, ground-truth verified, brand-compliant)",
+  "carousels": [
+    {"id": "c1", "session_id": "s8-c1-nominee", "topic": "Bali nominee ban now criminal (Perda Bali 4/2026)", "domain": "legal", "carousel_id": "fc3069bf-acf5-45ef-8700-bf803dccc6a5", "state": "running", "critic_verdict": "pending", "images": "pending"},
+    {"id": "c2", "session_id": "s8-c2-pma-capital", "topic": "PT PMA capital: 2.5bn paid-up vs 10bn invested (the two thresholds)", "domain": "legal", "state": "queued", "critic_verdict": "pending", "images": "pending"},
+    {"id": "c3", "session_id": "s8-c3-property", "topic": "Foreign property: Hak Pakai vs HGB vs Leasehold", "domain": "property", "state": "queued", "critic_verdict": "pending", "images": "pending"},
+    {"id": "c4", "session_id": "s8-c4-coretax", "topic": "CoreTax 2025 switch (PMK 81/2024), DJP Online dead", "domain": "tax", "state": "queued", "critic_verdict": "pending", "images": "pending"},
+    {"id": "c5", "session_id": "s8-c5-withholding-but", "topic": "Repatriating profits: PPh 26, branch profit tax, treaty PMK 112/2025", "domain": "tax", "state": "queued", "critic_verdict": "pending", "images": "pending"},
+    {"id": "c6", "session_id": "s8-c6-positive-list", "topic": "Positive Investment List: TERBUKA/TERBATAS/TERTUTUP, advertising 73100 trap", "domain": "legal", "state": "queued", "critic_verdict": "pending", "images": "pending"}
+  ]
+}
