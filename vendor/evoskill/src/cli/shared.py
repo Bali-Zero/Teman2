@@ -194,9 +194,19 @@ async def call_llm(provider: str, model: str, prompt: str) -> str:
             base_url="https://api.deepseek.com/v1",
             api_key=api_key,
         )
+        # DeepSeek V4 Pro is a REASONING model: it spends completion tokens on
+        # internal reasoning BEFORE emitting content. With the upstream
+        # max_tokens=16 it burned the whole budget mid-reasoning and returned
+        # content='' (finish_reason='length') on EVERY scorer eval — Frontier:[],
+        # 0 proposals, since 2026-05-24. Realistic scorer prompts use ~180-512
+        # reasoning tokens and occasionally saturate a 512 cap, so we BOTH cap
+        # generously (2000) AND request reasoning_effort='low' to keep the
+        # reasoning short and bounded for a trivial "0.0/1.0" judgment.
+        # (reasoning_effort valid variants for v4-pro: low|high|max.)
         response = await client.chat.completions.create(
             model=normalized_model,
-            max_tokens=16,
+            max_tokens=2000,
+            reasoning_effort="low",
             messages=[{"role": "user", "content": prompt}],
         )
         return response.choices[0].message.content

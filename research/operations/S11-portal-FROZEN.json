@@ -1,0 +1,74 @@
+{
+  "session": "ONDA-3 S11 portal-audit",
+  "date": "2026-06-03",
+  "orchestrator": "claude-opus-4-8 (M5 via ssh pro)",
+  "scope": "read-only audit, no prod mutation",
+  "repo": "Balizero1987/Teman2",
+  "worktree": ".worktrees/frontend-s11-portal-audit",
+  "rebased_on": "e8e59150e",
+  "subdomains_http": {
+    "kita.balizero.com": {"status": 307, "redirect": "/login", "final": 200, "role": "team/internal portal", "verdict": "LIVE"},
+    "my.balizero.com": {"status": 307, "redirect": "/portal/login", "final": 200, "role": "CLIENT portal (apps/mouth Next.js)", "verdict": "LIVE"},
+    "prime.balizero.com": {"status": 200, "redirect": null, "role": "prime tier", "verdict": "LIVE"}
+  },
+  "backend": {
+    "registration_mechanism": "router_registration.py include_light_routers() (prod cloud) + include_routers() (full via app_factory). main_api.py calls include_light_routers().",
+    "manifest_note": "router_manifest.py lists 13 portal routers but is consumed ONLY by tests (parity guard), NOT by runtime. Runtime = explicit include_router calls.",
+    "auth": {
+      "get_current_client": "defined in portal.py, JWT role=client + linked_client_id, superuser impersonation ?as_client audit-logged. Returns {client_id,user_id,email,name,impersonating}.",
+      "get_current_portal_client": "deps/auth.py, mirror of above, used by portal_visa/portal_taxes. Returns {id,email,full_name,impersonating}. CONSISTENT with core auth.",
+      "verdict": "All portal endpoints authenticated. No open-auth endpoint found."
+    },
+    "registered_routers_PROD": [
+      {"router": "portal", "prefix": "/api/portal", "endpoints": ["GET /dashboard","GET /visa","GET /companies","GET /company/{id}","POST /company/{id}/select","GET /taxes","GET /documents","POST /documents/upload","GET /documents/{id}/download","GET /messages","POST /messages","POST /messages/{id}/read","GET /settings","PATCH /settings","GET /timeline","GET /process/required-documents","GET /profile","PATCH /profile"], "auth": "get_current_client", "status": "LIVE"},
+      {"router": "portal_visa", "prefix": "/api/portal/visa", "endpoints": ["GET /","GET /summary"], "auth": "get_current_portal_client", "status": "LIVE"},
+      {"router": "portal_taxes", "prefix": "/api/portal/taxes", "endpoints": ["GET /","GET /summary"], "auth": "get_current_portal_client", "status": "LIVE"},
+      {"router": "portal_billing", "prefix": "/api/portal/billing", "endpoints": ["GET \"\"","GET /{invoice_id}/pdf-url","GET /{invoice_id}/pdf"], "auth": "get_current_client", "status": "LIVE"},
+      {"router": "portal_matters", "prefix": "/api/portal/matters", "endpoints": ["GET \"\"","GET /{matter_id}"], "auth": "get_current_client", "status": "LIVE"},
+      {"router": "portal_process_timeline", "prefix": "/api/portal/process", "endpoints": ["GET /{practice_id}/timeline"], "auth": "get_current_client", "status": "LIVE"},
+      {"router": "portal_notifications", "prefix": "/api/portal/notifications", "endpoints": ["GET \"\"","POST /{id}/read","POST /read-all"], "auth": "get_current_client", "status": "LIVE"},
+      {"router": "portal_drive", "prefix": "/api/portal/drive", "endpoints": ["GET /files","GET /files/{folder_id}/list"], "auth": "get_current_client", "status": "LIVE"},
+      {"router": "portal_invite", "prefix": "/api/portal/invite", "endpoints": ["POST /send","GET /client/{id}","POST /resend/{id}","GET /validate/{token}","POST /complete"], "auth": "mixed (team + public token)", "status": "LIVE"},
+      {"router": "portal_admin", "prefix": "/api/portal/admin", "endpoints": ["GET /clients/search","GET /me"], "auth": "superuser", "status": "LIVE"},
+      {"router": "crm_portal_integration", "prefix": "/api/crm/portal", "endpoints": ["GET /clients/{id}/status","POST /clients/{id}/invite","GET /clients/{id}/preview","GET /messages/unread-count","GET /clients/{id}/messages","POST /clients/{id}/messages","POST /clients/{id}/messages/{mid}/read","GET /activity/recent"], "auth": "team", "status": "LIVE"}
+    ],
+    "ORPHAN_routers_404_in_prod": [
+      {"router": "portal_dashboard", "prefix": "/api/portal/dashboard", "endpoints": ["GET /summary"], "file": "apps/backend-rag/backend/app/routers/portal_dashboard.py", "in_manifest": true, "in_registration": false, "frontend_callers": ["apps/mouth/src/lib/api/portal/portal.api.ts:52","apps/mouth/src/app/api/portal/deadlines/ical/route.ts"], "impact": "dashboard rich summary (open actions, deadlines, unread) + iCal deadline export -> 404", "severity": "P0"},
+      {"router": "portal_family", "prefix": "/api/portal/family", "endpoints": ["GET \"\""], "file": "apps/backend-rag/backend/app/routers/portal_family.py", "in_manifest": true, "in_registration": false, "frontend_callers": ["apps/mouth/src/app/portal/(authenticated)/family/page.tsx:33"], "impact": "Client Family page (adults/minors) -> 404, page broken", "severity": "P0"},
+      {"router": "portal_notification_prefs", "prefix": "/api/portal/notifications/prefs", "endpoints": ["GET \"\"","PUT \"\""], "file": "apps/backend-rag/backend/app/routers/portal_notification_prefs.py", "in_manifest": true, "in_registration": false, "frontend_callers": ["apps/mouth/src/app/portal/(authenticated)/settings/notifications/page.tsx","apps/mouth/src/hooks/useNotificationPrefs.ts","apps/mouth/src/components/portal/settings/NotificationSettings.tsx"], "impact": "Notification preferences load+save -> 404, settings broken", "severity": "P0"}
+    ],
+    "scar_class": "Identical to Sprint 1.B PR #422->#424 (manifest entry without include_router => prod 404, tests green). cicatrix-scars.md ref. Parity test test_router_registration_parity.py is intentionally narrow (only guards channel_health/guardian), did NOT catch these 3.",
+    "bugs_checked": {
+      "cl.name_vs_full_name": "NOT present in portal routers — crm_portal_integration correctly uses c.full_name. No workspace_inbox-class bug found.",
+      "open_auth_endpoints": "none"
+    },
+    "mcp_tools": {
+      "module": "apps/nuzantara-mcp/nuzantara_mcp/tools/portal.py",
+      "tools": ["get_portal_dashboard -> /api/portal/dashboard","get_portal_visa_status -> /api/portal/visa (require_role visa_specialist)","list_portal_messages -> /api/portal/messages","send_portal_message -> POST /api/portal/messages","list_portal_documents -> /api/portal/documents","get_portal_timeline -> /api/portal/timeline"],
+      "note": "All 6 MCP tools target LIVE core endpoints. They pass client_id as query param; core endpoints derive identity from JWT (get_current_client), client_id honored only on superuser ?as_client path — verify MCP service account is superuser, else client_id param is ignored.",
+      "verdict": "MCP surface OK, minor identity-param caveat"
+    }
+  },
+  "frontend": {
+    "app": "apps/mouth (Next.js, = my.balizero.com)",
+    "portal_pages_count": 28,
+    "api_proxy": "src/app/api/[...path]/route.ts catch-all -> backend Fly (no per-route handlers except deadlines/ical which itself hits orphan endpoint)",
+    "pages": ["dashboard","visa","taxes","billing","matters","matters/{id}","family(BROKEN)","settings","settings/notifications(BROKEN)","messages","chat","companies","company/{id}","process","process/{practiceId}","profile","vault","lkpm","lkpm/submit","lkpm/{quarter}","partner/dashboard","partner/commissions","partner/referrals","partner/profile","login-upgraded","register","forgot-password"],
+    "screenshot_qa": "NOT DONE via subagent (browser MCP not available in this subagent context). curl HTTP+HTML inspection done instead: login pages render (200, Next.js shell, email/password form present). Screenshot-QA MARKED MANUAL-TODO."
+  },
+  "gaps_prioritized": [
+    {"id": "G1", "severity": "P0", "title": "3 portal routers orphaned -> 404 on live client features", "detail": "portal_dashboard, portal_family, portal_notification_prefs defined + in manifest but never include_router(). Frontend Family page, Notification settings, dashboard summary + iCal deadline export are broken in prod NOW.", "fix": "Add explicit imports + include_router calls in BOTH include_routers() and include_light_routers() in router_registration.py. Extend parity test to guard all 3."},
+    {"id": "G2", "severity": "P2", "title": "Parity test too narrow", "detail": "test_router_registration_parity.py guards only channel_health+guardian; the manifest-vs-registration drift that caused G1 was not caught. Same scar recurred.", "fix": "Generalize parity check OR add explicit guards for every portal router."},
+    {"id": "G3", "severity": "P3", "title": "router_manifest.py is non-authoritative dead-ish doc", "detail": "Manifest lists 13 portal routers but only tests consume it; runtime ignores it. Misleading source of truth (it claims dashboard/family/prefs are mounted).", "fix": "Either wire manifest into runtime registration (single source of truth) or annotate clearly it is test-only."},
+    {"id": "G4", "severity": "P3", "title": "MCP client_id param vs JWT identity ambiguity", "detail": "MCP portal tools pass client_id query param but core endpoints take identity from JWT; client_id only honored on superuser as_client path.", "fix": "Confirm MCP service account is superuser, document the as_client contract."}
+  ],
+  "ux_gaps_client_perspective": [
+    {"id": "UX1", "have": false, "title": "Real-time practice status / process tracker", "note": "Backend GET /process/{id}/timeline + /process/required-documents EXIST and are wired (process page present). Good coverage."},
+    {"id": "UX2", "have": "partial", "title": "Visa deadline alerts", "note": "Visa status + summary endpoints LIVE; but dashboard deadline aggregation + iCal export rely on ORPHAN /dashboard/summary -> currently broken."},
+    {"id": "UX3", "have": true, "title": "Downloadable documents", "note": "GET /documents + /documents/{id}/download + portal_drive LIVE."},
+    {"id": "UX4", "have": true, "title": "Chat / messaging with team", "note": "GET/POST /messages + read receipts LIVE, chat page present."},
+    {"id": "UX5", "have": "broken", "title": "Family / dependents management", "note": "Frontend page exists, backend orphaned -> 404. Immigration clients need dependent visa tracking."},
+    {"id": "UX6", "have": "broken", "title": "Notification preferences (email/WA/phone)", "note": "Frontend + hook exist, backend orphaned -> 404."},
+    {"id": "UX7", "have": true, "title": "Billing / invoices", "note": "portal_billing LIVE (list + pdf-url + pdf)."}
+  ]
+}
