@@ -213,3 +213,125 @@ def latest_message_at(conn, team_phone: str, counterpart_phone: str) -> datetime
         (team_phone, counterpart_phone),
     )
     return cur.fetchone()[0]
+
+
+# --- State store: wa_corpus_docs -----------------------------------------
+# Local-only table (nuzantara_dev) recording what the reconciler did per
+# (team_email, counterpart_phone): the Doc/source ids, the last title we set,
+# and the watermarks. Lets every pass be idempotent (CREATE/RENAME/UPDATE/SKIP).
+
+_STATE_DDL = """
+CREATE TABLE IF NOT EXISTS wa_corpus_docs (
+    team_email        TEXT NOT NULL,
+    counterpart_phone TEXT NOT NULL,
+    nb_id             TEXT NOT NULL,
+    file_id           TEXT NOT NULL,
+    source_id         TEXT,
+    last_title        TEXT NOT NULL,
+    last_verdict      TEXT,
+    last_msg_at       TIMESTAMPTZ,
+    last_recap_at     TIMESTAMPTZ,
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (team_email, counterpart_phone)
+);
+"""
+
+
+def ensure_state_table(conn) -> None:
+    cur = conn.cursor()
+    cur.execute(_STATE_DDL)
+    conn.commit()
+
+
+def get_doc_state(conn, team_email: str, counterpart_phone: str):
+    """Return the recorded row as a dict, or None if never seen."""
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT nb_id, file_id, source_id, last_title, last_verdict,
+               last_msg_at, last_recap_at
+        FROM wa_corpus_docs
+        WHERE team_email=%s AND counterpart_phone=%s
+        """,
+        (team_email, counterpart_phone),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    keys = ("nb_id", "file_id", "source_id", "last_title", "last_verdict",
+            "last_msg_at", "last_recap_at")
+    return dict(zip(keys, row))
+
+
+def upsert_doc_state(
+    conn,
+    *,
+    team_email: str,
+    counterpart_phone: str,
+    nb_id: str,
+    file_id: str,
+    source_id: str | None,
+    last_title: str,
+    last_verdict: str | None,
+    last_msg_at: datetime | None,
+    last_recap_at: datetime | None,
+) -> None:
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO wa_corpus_docs
+            (team_email, counterpart_phone, nb_id, file_id, source_id,
+             last_title, last_verdict, last_msg_at, last_recap_at, updated_at)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s, NOW())
+        ON CONFLICT (team_email, counterpart_phone) DO UPDATE SET
+            nb_id=EXCLUDED.nb_id,
+            file_id=EXCLUDED.file_id,
+            source_id=EXCLUDED.source_id,
+            last_title=EXCLUDED.last_title,
+            last_verdict=EXCLUDED.last_verdict,
+            last_msg_at=EXCLUDED.last_msg_at,
+            last_recap_at=COALESCE(EXCLUDED.last_recap_at, wa_corpus_docs.last_recap_at),
+            updated_at=NOW()
+        """,
+        (team_email, counterpart_phone, nb_id, file_id, source_id,
+         last_title, last_verdict, last_msg_at, last_recap_at),
+    )
+    conn.commit()
+
+
+def write_strategic_recap(conn, client_id: int, recap: str) -> None:
+    """Write the grounded recap into clients.strategic_recap (source=wa_auto).
+
+    `wa_auto` is one of the allowed values of the strategic_recap_source CHECK
+    constraint (migration 189). A later human edit flips it to 'manual' via the
+    CRM router, so we never clobber human-curated text silently.
+    """
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE clients
+        SET strategic_recap = %s,
+            strategic_recap_updated_at = NOW(),
+            strategic_recap_source = 'wa_auto'
+        WHERE id = %s
+        """,
+        (recap[:2000], client_id),
+    )
+    conn.commit()
+
+
+def client_id_for_phone(conn, phone: str) -> int | None:
+    """Return clients.id for a phone (phone_normalized or whatsapp), else None."""
+    digits = _digits(phone)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id FROM clients
+        WHERE regexp_replace(COALESCE(phone_normalized,''),'[^0-9]','','g') = %s
+           OR regexp_replace(COALESCE(whatsapp,''),'[^0-9]','','g') = %s
+        LIMIT 1
+        """,
+        (digits, digits),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
