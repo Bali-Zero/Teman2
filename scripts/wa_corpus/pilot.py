@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import psycopg2
 
 from scripts.wa_corpus import db
-from scripts.wa_corpus.classifier import CounterpartClassifier, Verdict
+from scripts.wa_corpus.classifier import CounterpartClassifier
 from scripts.wa_corpus.config import DB_DSN
 from scripts.wa_corpus.prompt_master import recap_is_valid
 from scripts.wa_corpus.query_runner import QueryRunner
@@ -37,11 +37,16 @@ def main() -> int:
     n_names = db.count_distinct_names(conn, args.team, args.counterpart)
 
     verdict = CounterpartClassifier().classify(
-        contact_type=ct, n_msgs=len(lines), n_distinct_names=n_names
+        contact_type=ct,
+        n_msgs=len(lines),
+        n_distinct_names=n_names,
+        chat_type="direct",
+        is_team_member=db.is_team_member(conn, args.counterpart),
+        in_crm=db.is_in_crm(conn, args.counterpart),
     )
     print(f"[pilot] classify -> {verdict.verdict.value}: {verdict.reason}")
-    if verdict.verdict is not Verdict.CLIENT and not args.force:
-        print("[pilot] not a 1-a-1 client; refusing to build a profile recap.")
+    if not verdict.loadable and not args.force:
+        print("[pilot] not a loadable client/prospect; refusing to build a recap.")
         return 2
 
     md = render_markdown(args.team, args.counterpart, lines)

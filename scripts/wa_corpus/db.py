@@ -104,6 +104,59 @@ def get_contact_type(conn, counterpart_phone: str) -> str | None:
     return row[0] if row else None
 
 
+def is_team_member(conn, phone: str) -> bool:
+    """True if the phone belongs to the Bali Zero team.
+
+    Two independent signals, either suffices (team batte client/prospect):
+      1. whatsapp_contacts.contact_type='team' for this number, OR
+      2. the number appears as a team_member_phone in mirrored chats (it is one
+         of the team's own outbound lines).
+    """
+    digits = _digits(phone)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT 1
+        FROM whatsapp_contacts
+        WHERE contact_type='team'
+          AND regexp_replace(phone_normalized,'[^0-9]','','g') = %s
+        LIMIT 1
+        """,
+        (digits,),
+    )
+    if cur.fetchone():
+        return True
+    cur.execute(
+        """
+        SELECT 1
+        FROM whatsapp_message_context
+        WHERE regexp_replace(team_member_phone,'[^0-9]','','g') = %s
+        LIMIT 1
+        """,
+        (digits,),
+    )
+    return cur.fetchone() is not None
+
+
+def is_in_crm(conn, phone: str) -> bool:
+    """True if the phone matches a row in the clients table (already a client).
+
+    Matched against both clients.phone_normalized and clients.whatsapp.
+    """
+    digits = _digits(phone)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT 1 FROM clients
+        WHERE regexp_replace(COALESCE(phone_normalized,''),'[^0-9]','','g') = %s
+           OR regexp_replace(COALESCE(whatsapp,''),'[^0-9]','','g') = %s
+        LIMIT 1
+        """,
+        (digits, digits),
+    )
+    return cur.fetchone() is not None
+
+
 def count_distinct_names(conn, team_phone: str, counterpart_phone: str) -> int:
     """Rough count of distinct client-like names mentioned in the chat body.
 
