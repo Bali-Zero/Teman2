@@ -92,14 +92,14 @@ def test_key_resolution_vault_fallback(monkeypatch=None):
     # No env key, point a fake vault file via DEEPSEEK_MASTER_ENV.
     with tempfile.TemporaryDirectory() as td:
         vault = Path(td) / "fake.env"
-        vault.write_text('FOO=bar\nDEEPSEEK_API_KEY="sk-test-123"\nBAZ=qux\n')
+        vault.write_text('FOO=bar\nDEEPSEEK_API_KEY="unit-test-placeholder-value"\nBAZ=qux\n')
         old_env = os.environ.get("DEEPSEEK_API_KEY")
         old_master = os.environ.get("DEEPSEEK_MASTER_ENV")
         try:
             os.environ.pop("DEEPSEEK_API_KEY", None)
             os.environ["DEEPSEEK_MASTER_ENV"] = str(vault)
             key = resolve_deepseek_key()
-            assert key == "sk-test-123", f"expected recovered key, got {key!r}"
+            assert key == "unit-test-placeholder-value", f"expected recovered key, got {key!r}"
         finally:
             if old_env is not None:
                 os.environ["DEEPSEEK_API_KEY"] = old_env
