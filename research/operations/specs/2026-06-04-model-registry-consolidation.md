@@ -171,3 +171,25 @@ string for backward-compat, e.g. `get_role(r)` returns `.model`, `get_contract(r
 ### Verdict
 Spec direction sound; rollout NOT ready as-was. Blockers before Phase 1: per-host validation,
 fail-closed policy per role, resolver-without-repo-import. Phase 0 (PR #1091) stands.
+
+## 9. Residual gemma4-ghost roles — partial fix 2026-06-04
+
+Verified per-host (panel finding 2): heavy models (gemma3:27b, SEA-LION, deepseek-r1:32b)
+exist ONLY on Pro; Mini has only light models (qwen 7-9b, embed). gemma4:* exists on NEITHER.
+
+4 roles named gemma4 ghost:
+- `translation` gemma4:e4b → gemma3:27b — FIXED PR #1091.
+- `cron_fallback` gemma4:e4b → gemma3:27b — FIXED this commit (batch fallback, low risk).
+- `kg_json` gemma4:26b → **NOT TOUCHED**. Used by backend RAG (`config.py:35`,
+  `ollama_client.py:31` MODEL_KG/MODEL_JSON) for Knowledge-Graph extraction. Backend does NOT
+  read the registry (own hardcoded copy) and runs on Fly, not Pro. If Fly runs gemma4:26b and
+  works, the model exists THERE. Changing the registry to gemma3:27b would create FALSE
+  coherence (registry says gemma3, backend uses gemma4) — worse drift. Resolution belongs in
+  Phase 2 (migrate backend to get_role) WITH a Fly `ollama list` check, not a blind edit.
+- `cell_tier1` gemma4:26b → **NOT TOUCHED**. Live Cell organ reasoner; needs host-of-execution
+  verification before change.
+
+Lesson (reinforces panel finding 2 + 8): you cannot reconcile a registry value without knowing
+(a) which host the consumer runs on, (b) whether the consumer even reads the registry. Two of
+the four ghosts are backend/organ consumers that bypass the registry — fixing the registry
+string alone is cosmetic for them.
