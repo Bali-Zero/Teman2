@@ -59,7 +59,7 @@ def test_migration_207_has_rollback_marker() -> None:
 def test_migration_207_targets_runtime_role_conditionally() -> None:
     forward = _forward(MIGRATION_FILE.read_text())
 
-    assert "runtime_role text := 'backend_rag_v2'" in forward
+    assert "runtime_role constant text := 'backend_rag_v2'" in forward
     assert "pg_roles WHERE rolname = runtime_role" in forward
     assert "GRANT USAGE ON SCHEMA public TO backend_rag_v2" in forward
 
@@ -68,7 +68,19 @@ def test_migration_207_is_safe_when_historical_objects_are_missing() -> None:
     forward = _forward(MIGRATION_FILE.read_text())
 
     assert "to_regclass(object_name)" in forward
-    assert "IF object_reg IS NOT NULL" in forward
+    assert "IF object_reg IS NULL THEN" in forward
+    assert "CONTINUE;" in forward
+
+
+def test_migration_207_checks_existing_privileges_before_granting() -> None:
+    forward = _forward(MIGRATION_FILE.read_text())
+
+    assert "has_schema_privilege(runtime_role, 'public', 'USAGE')" in forward
+    assert "has_table_privilege(runtime_role, object_reg, 'SELECT')" in forward
+    assert "WHEN insufficient_privilege THEN" in forward
+    assert "manual grant required: GRANT USAGE ON SCHEMA public" in forward
+    assert "manual grant required: GRANT SELECT ON TABLE" in forward
+    assert "apply manual grant with an owner/admin role" in forward
 
 
 def test_migration_207_grants_live_error_objects() -> None:
