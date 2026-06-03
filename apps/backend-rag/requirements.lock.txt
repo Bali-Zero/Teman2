@@ -1032,7 +1032,6 @@ fastapi==0.136.1 \
     --hash=sha256:a6e9d7eeada96c93a4d69cb03836b44fa34e2854accb7244a1ece36cd4781c3f
     # via
     #   -r requirements.txt
-    #   prometheus-fastapi-instrumentator
     #   sentry-sdk
 fastuuid==0.14.0 \
     --hash=sha256:05a8dde1f395e0c9b4be515b7a521403d1e8349443e7641761af07c7ad1624b1 \
@@ -2510,6 +2509,7 @@ numpy==2.4.6 \
     #   -r requirements.txt
     #   blis
     #   datasets
+    #   opencv-python-headless
     #   pandas
     #   qdrant-client
     #   scikit-learn
@@ -2530,6 +2530,16 @@ openai==2.38.0 \
     #   langchain-openai
     #   langfuse
     #   litellm
+opencv-python-headless==4.13.0.92 \
+    --hash=sha256:0525a3d2c0b46c611e2130b5fdebc94cf404845d8fa64d2f3a3b679572a5bd22 \
+    --hash=sha256:0bd48544f77c68b2941392fcdf9bcd2b9cdf00e98cb8c29b2455d194763cf99e \
+    --hash=sha256:1a7d040ac656c11b8c38677cc8cccdc149f98535089dbe5b081e80a4e5903209 \
+    --hash=sha256:3e0a6f0a37994ec6ce5f59e936be21d5d6384a4556f2d2da9c2f9c5dc948394c \
+    --hash=sha256:5c8cfc8e87ed452b5cecb9419473ee5560a989859fe1d10d1ce11ae87b09a2cb \
+    --hash=sha256:77a82fe35ddcec0f62c15f2ba8a12ecc2ed4207c17b0902c7a3151ae29f37fb6 \
+    --hash=sha256:a7cf08e5b191f4ebb530791acc0825a7986e0d0dee2a3c491184bd8599848a4b \
+    --hash=sha256:eb60e36b237b1ebd40a912da5384b348df8ed534f6f644d8e0b4f103e272ba7d
+    # via -r requirements.txt
 openinference-instrumentation==0.1.51 \
     --hash=sha256:7923619c9e1c3f3a8ae924f909e86bdeda27186222352a7a8a7a6cecea1771a6 \
     --hash=sha256:a35b45f4912c2668fb6986394229fa5d785b9f7ded038793dc0ceed88f699a5b
@@ -4457,6 +4467,7 @@ starlette==1.0.1 \
     #   brotli-asgi
     #   fastapi
     #   mcp
+    #   prometheus-fastapi-instrumentator
     #   sse-starlette
 structlog==25.5.0 \
     --hash=sha256:098522a3bebed9153d4570c6d0288abf80a031dfdb2048d59a49e9dc2190fc98 \

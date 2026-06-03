@@ -51,6 +51,7 @@ pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 reportlab>=4.2.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
 beautifulsoup4>=4.14.3  # Security and stability updates
 python-magic>=0.4.27  # MIME type detection from file content
+opencv-python-headless>=4.10,<5  # intake preprocess.py image enhancement (deskew/denoise/binarize); headless = no GUI/X11 deps in container
 
 # OCR (Gemini Vision based - same as passport box)
 # Uses google-genai already included above

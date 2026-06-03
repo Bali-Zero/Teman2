@@ -56,6 +56,7 @@ reportlab>=4.2.0  # PDF generation (LKPM ready-pack, invoices); also in -prod.tx
 # OCR and Advanced Document Processing (Gemini Vision based)
 # Uses PDFVisionService with Gemini-2.0-flash for OCR (same as passport box)
 python-magic>=0.4.27  # MIME type detection from file content
+opencv-python-headless>=4.10,<5  # intake preprocess.py image enhancement (deskew/denoise/binarize); headless = no GUI/X11 deps in container
 # Note: PyMuPDF (fitz) is already included above for PDF processing
 
 # LangChain Ecosystem
