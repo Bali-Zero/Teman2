@@ -1339,7 +1339,7 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
 
     # Playwright profile is only required if Playwright is reachable from the
     # selected backend. `flowkit`-only mode skips browser launch entirely.
-    if IMAGE_BACKEND != "flowkit" and not GEMINI_PROFILE_DIR.exists():
+    if IMAGE_BACKEND == "playwright" and not GEMINI_PROFILE_DIR.exists():
         logger.error(
             "Gemini profile not found at %s — run "
             "`bash scripts/playwright/login-all.sh gemini` first",
