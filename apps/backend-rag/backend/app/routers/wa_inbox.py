@@ -298,7 +298,8 @@ async def send_message(
                     thread_id, direction, sender_role, body, status, idempotency_key
                 )
                 VALUES ($1, 'outbound', 'human', $2, 'queued', $3)
-                ON CONFLICT (thread_id, idempotency_key) DO NOTHING
+                ON CONFLICT (thread_id, idempotency_key)
+                    WHERE idempotency_key IS NOT NULL DO NOTHING
                 RETURNING id
                 """,
                 thread_id,
