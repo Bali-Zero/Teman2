@@ -176,6 +176,32 @@ Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped*
   Lia (team=True E in CRM) → INTERNAL corretto (precedenza). Screenshot conferma Surya=+628133946856.
 - 23 unit test green (era 18; +5 per group/team-beats-client/prospect/loadable).
 
+### AGGIORNAMENTO 2026-06-04 (notte 2) — naming OBBLIGATORIO + query perfezionata
+
+**Naming Doc — OBBLIGO Antonello** ✅
+
+- Il nome del Doc è **o il nome cliente CRM, o il numero telefono** (che diventerà cliente CRM).
+  Il numero è SEMPRE la chiave stabile nel title (per ricerca/rename alla conversione lead→client).
+- `db.crm_name(phone)` (full_name||company_name da `clients`) + `renderer.doc_title(phone, crm_name)`:
+  in CRM → `WA · <nome> · <numero>`; non in CRM → `WA · <numero>`.
+- Verificato: Alexandre/Johanna → con nome; `+6281358196299` → solo numero.
+
+**Query perfezionata — recap multi-prospettiva + punti specifici (MOLTI test)** ✅
+
+- `query_lab.py` + `prompt_variants.py`: iterati 5 prompt (v1-v5) su 3 chat reali di Surya
+  (Alexandre/Johanna/Fabio) con scoring ground-truth (recall fatti / allucinazioni / citazioni / char).
+- **Vincitore v5** (ora `prompt_master.PROMPT_MASTER`): struttura a **2 livelli** — `HEADLINE` (1 frase) +
+  `GENERAL RECAP` da 4 punti di vista (Operational / Relationship / Commercial / Risk) +
+  `SPECIFIC POINTS` (7 punti: company / service / deadlines / amounts / documents / next-action / last-contact).
+  Tutto grounded con quote verbatim, ENGLISH, <2000 char.
+- Risultati v5: Alexandre 5/5 fatti, Fabio cattura `17.8 mill`+date+`war in Iran`, 0 allucinazioni,
+  0 cross-source leak su tutte e 3. E2E produzione su Fabio: 6 citazioni, struttura valida, 1934 char.
+- **LAB FINDING (importante)**: NLM è **non-deterministico** nel popolare le `references` strutturate —
+  stesso prompt+source → 0 citazioni una run, 8 la successiva. Il `query_runner.run_prompt_master`
+  ora **ritenta (max 3)** finché le citazioni sono vuote; se ancora vuote, il chiamante flagga il recap
+  come "unverified" (gate HITL — un recap senza citazioni tracciabili non passa l'anti-allucinazione).
+- 32 unit test green (era 23; +4 prompt-master nuova struttura + retry, +5 doc-title già contati sopra).
+
 ### TODO manuale Antonello (nessun MCP delete-Drive)
 
 Cestinare su Drive (profilo zero) + cancellare 3 NB di test (`nlm notebook delete <id> -p zero`):
