@@ -404,3 +404,27 @@ _Discovered: 2026-06-02 05:15 WITA by S15 symbiosis-deep-audit (launchagent-heal
 **GOTCHA**: The devils-advocate analyst (DeepSeek-class refuter) FALSELY claimed this backup contained ONLY a placeholder comment (`Operator must add BRIDGE_SKILLS_API_KEY here`) and NO embedded secret, trying to downgrade the finding to INFO. Orchestrator grep proved the comment is FOLLOWED by a real value on the next `<string>` line. Lesson: even adversarial verifiers hallucinate — the orchestrator's independent re-grep (anti-hallucination rule 2) is what caught it. NEVER accept a "refuted" verdict on a security finding without re-running the grep yourself.
 
 **Reference**: S15 FROZEN `research/operations/S15-symbiosis-FROZEN.json` (contradictions_caught[1]). File `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531` (0444). Parent scar "Unknown agent overwrites loaded LaunchAgent plist files" (2026-04-29, this file). Sibling: wa-dashboard-m1 backups.
+
+### ✅ RESOLVED: Live 503 "RAG worker unavailable" on kita /process = deploy-desync, NOT runtime (2026-06-02)
+
+_Discovered: 2026-06-02 13:10 WITA · Severity: RESOLVED · Status: Fixed (v3429)_
+
+**TRAUMA**: kita.balizero.com/process threw 503 "RAG worker unavailable" on /api/crm/practices. Looked like a DB/runtime outage. Reality: Fly app nuzantara-rag has 2 process groups (api + rag). The rag machine crash-looped 10x on startup with ModuleNotFoundError: backend.services.crm.whatsapp_enrichment (crm_clients.py:30), then Fly left it STOPPED. The api machine kept /health=200 and unauth endpoints=401 — masking that the rag worker was dead. Broken import was an orphan from W59 CRM AI-profile feature, already removed in origin/main by #1018 (6206f0cf4); but deployed image v3428 predated the fix. Classic deploy-desync (S4 family).
+
+**ANTIBODY**: Clean redeploy from deploy/main (already had the fix) — no code change. Pre-deploy gate green: dep-import smoke + RAG app factory boot + 91/91 RAG pytests + zero whatsapp_enrichment grep hits. Deployed v3429, force-started rag machine, confirmed clean boot past include_heavy_routers, endpoint now 401 not 503.
+
+**GOTCHA**: TRAP 1: `fly deploy` from inside apps/backend-rag FAILS — Dockerfile uses monorepo-root-relative COPY (packages/cell-core, apps/crm-cell), build context MUST be repo root: `cd ~/Desktop/nuzantara-deploy && fly deploy --config apps/backend-rag/fly.toml --dockerfile apps/backend-rag/Dockerfile`. TRAP 2: a STOPPED rag machine post-deploy is autostop-idle, NOT proof of fix — `fly machine start <rag-id>` + read boot logs to confirm clean startup. TRAP 3: pre-deploy import smoke fails on JWT_SECRET_KEY/API_KEYS pydantic validation (Fly runtime secrets) — export dummy 32-char values to reach the real import check. DIAGNOSTIC: split-brain health (api up, rag down) hides worker death behind /health=200 — always check per-process-group state with `fly status`, not just /health.
+
+**Reference**: fix #1018 commit 6206f0cf4 · deployed v3429 image deployment-01KT32YTJJGN1T7YXDCK9BRGQ5 · related: fix_crm_guardian_deploy_venv_empty_2026_06_02.md, S4 structural-debt scar
+
+### CORRECTION to above 503 scar — verified root cause is STUCK-STOPPED machine, not stale deploy (2026-06-02)
+
+_Discovered: 2026-06-02 13:25 WITA · Severity: P2 · Status: Corrected_
+
+**TRAUMA**: The scar entry directly above claimed "deployed image v3428 predated the fix #1018". FALSE — corrected after checking `gh run list` + post-23:51 logs. Verified timeline: (1) 18:15 UTC W59 #1010 deploys broken whatsapp_enrichment import; (2) 19:08 UTC rag machine crash-loops 10x, hits Fly max-restart cap, left STOPPED; (3) 23:51 UTC fix #1018 auto-deploys SUCCESSFULLY via CI (fly-deploy.yml) -> v3428 = FIXED image; (4) BUT the rag machine was already stopped/failed — a rolling deploy to an autostop machine stages the new image and leaves it stopped, does NOT force-boot it. So the fixed code was present from 23:51 but NEVER EXECUTED. Zero crash signatures in logs after 23:51 confirms it never re-ran the app. (5) browser hit /process -> rag worker stopped -> 503. Fix shipped 5h+ before the error was seen; machine just never rebooted to pick it up.
+
+**ANTIBODY**: The real lesson — a Fly machine that crash-loops to the max-restart cap gets stuck STOPPED and is NOT auto-recovered by a later fixing deploy. CI auto-deploy worked correctly; the gap is machine-recovery. Mitigations: (a) cron-fly-restart-detector.yml exists — verify it actually force-starts machines stuck stopped-after-crashloop, not just alerts; (b) post-deploy, always `fly machine start <id>` + read boot logs for autostop machines (a 'stopped' state after deploy is NOT proof the new image runs); (c) consider min_machines_running=1 for the rag process group if 503-on-cold-rag is unacceptable.
+
+**GOTCHA**: A successful `fly releases` entry + green CI does NOT mean the fix is live on an autostop machine that was already dead. `fly status` showing rag=stopped is ambiguous: could be healthy-idle OR stuck-after-crashloop. Disambiguate by force-start + boot-log read. Also: crash stack traces in `fly logs` carry the ORIGINAL crash timestamp (19:08) even when surfaced later — don't misread an old trace as a fresh crash.
+
+**Reference**: gh run 26789282348 (#1018 deploy success 23:51Z) · supersedes mechanism-claim in scar immediately above · cron-fly-restart-detector.yml to audit

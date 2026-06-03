@@ -963,6 +963,87 @@ async def _run_openclaw(
     raise RuntimeError(last_error or "OpenClaw failed")
 
 
+# ---------------------------------------------------------------------------
+# Army commands: "/lancia <NOME>", "/armate", "/armate-status", "/ferma <NOME>"
+# Let Antonello launch autonomous Claude Code "army" sessions from WhatsApp.
+# These bypass the LLM entirely — they shell out to wa_army_launcher.sh on the Pro.
+# ---------------------------------------------------------------------------
+
+_ARMY_LAUNCHER = os.getenv(
+    "WA_ARMY_LAUNCHER",
+    os.path.join(os.path.expanduser("~"), "Desktop", "nuzantara", "scripts", "wa_army_launcher.sh"),
+)
+
+# Command triggers (case-insensitive). Italian + a couple of aliases.
+_ARMY_LIST_RE = re.compile(r"^\s*/?(armate|armies|lista[\s-]armate)\s*$", re.IGNORECASE)
+_ARMY_STATUS_RE = re.compile(r"^\s*/?(armate[\s-]?status|stato[\s-]armate|status[\s-]armate)\s*$", re.IGNORECASE)
+_ARMY_LAUNCH_RE = re.compile(r"^\s*/?(lancia|launch|avvia)\s+(?P<name>[\w.-]+)\s*$", re.IGNORECASE)
+_ARMY_KILL_RE = re.compile(r"^\s*/?(ferma|stop|kill)\s+(?P<name>[\w.-]+)\s*$", re.IGNORECASE)
+
+
+async def _run_army_launcher(*args: str) -> tuple[int, str, str]:
+    """Run wa_army_launcher.sh with args, return (rc, stdout, stderr)."""
+    proc = await asyncio.create_subprocess_exec(
+        "/bin/bash",
+        _ARMY_LAUNCHER,
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    raw_out, raw_err = await asyncio.wait_for(proc.communicate(), timeout=60)
+    out = raw_out.decode("utf-8", errors="replace").strip()
+    err = raw_err.decode("utf-8", errors="replace").strip()
+    return (proc.returncode or 0, out, err)
+
+
+async def _handle_army_command(text: str) -> str | None:
+    """If `text` is an army command, execute it and return the WhatsApp reply.
+
+    Returns None when the message is NOT an army command (caller proceeds to LLM).
+    """
+    if not text:
+        return None
+    stripped = text.strip()
+
+    if _ARMY_LIST_RE.match(stripped):
+        rc, out, err = await _run_army_launcher("list")
+        if rc != 0:
+            return f"⚠️ Errore lista armate: {err or out}"
+        return "🎖️ Armate disponibili (scrivi /lancia <NOME>):\n\n" + (out or "(nessuna)")
+
+    if _ARMY_STATUS_RE.match(stripped):
+        rc, out, err = await _run_army_launcher("status")
+        if rc != 0:
+            return f"⚠️ Errore stato armate: {err or out}"
+        return "🎖️ Armate in corso:\n\n" + (out or "(nessuna)")
+
+    m = _ARMY_LAUNCH_RE.match(stripped)
+    if m:
+        name = m.group("name")
+        rc, out, err = await _run_army_launcher("launch", name)
+        if rc != 0:
+            return f"⚠️ {err or out}"
+        # out = "LAUNCHED <session> <log>"
+        parts = out.split()
+        session = parts[1] if len(parts) > 1 else "?"
+        return (
+            f"🎖️ Armata {name} LANCIATA.\n"
+            f"Sessione: {session}\n"
+            f"Va in autonomia (commit→push→PR draft→STOP pre-merge).\n"
+            f"Ti avviso su Telegram quando la PR è pronta."
+        )
+
+    m = _ARMY_KILL_RE.match(stripped)
+    if m:
+        name = m.group("name")
+        rc, out, err = await _run_army_launcher("kill", name)
+        if rc != 0:
+            return f"⚠️ {err or out}"
+        return f"🛑 {out or ('Armata ' + name + ' terminata.')}"
+
+    return None
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -976,6 +1057,21 @@ async def reply(
     x_openclaw_webhook_secret: str | None = Header(default=None),
 ) -> dict[str, Any]:
     _check_auth(authorization, x_openclaw_webhook_secret)
+
+    # Army commands (/lancia, /armate, ...) bypass the LLM and run on the Pro.
+    try:
+        army_reply = await _handle_army_command(body.text)
+    except Exception as exc:  # never let an army-command error break the channel
+        army_reply = f"⚠️ Comando armata fallito: {exc}"
+    if army_reply is not None:
+        return {
+            "reply": army_reply,
+            "agent": body.agent,
+            "persona": body.persona,
+            "autonomy_mode": body.autonomy_mode,
+            "request_id": request.headers.get("x-request-id"),
+        }
+
     prompt = _build_prompt(body)
     agent = body.agent or os.getenv("WHATSAPP_OPENCLAW_AGENT", "wa")
     try:

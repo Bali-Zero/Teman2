@@ -1,0 +1,32 @@
+# DESC: S2 — Spec graveyard: le 11 DRAFT pendenti (ONDA 2, M5 sonnet, fan-out Codex)
+ORCHESTRATORE sessione S2 "spec-graveyard-triage". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane docs --task-id s2-spec-graveyard
+  cd .worktrees/docs-s2-spec-graveyard
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: ~30 spec in research/operations/specs/, ~11 in status DRAFT/NOT-EXECUTED/pending
+(W38 rolsuper, W39 dependabot-cve, T3.5 session-start-consolidation, T3.6 tool-search-auto,
+L5.1/L5.2 worktree-enforcement, T2.x). Per OGNUNA: ancora valida? superata da lavoro
+shippato? eseguibile in autonomia o NEEDS-ANTONELLO?
+
+TOPOLOGIA (Workflow fan-out 1 per spec):
+- ASSALITORI (5 paralleli): per ogni spec, grep stato shippato vs spec, verifica se il
+  problema esiste ANCORA sul disco/prod. Classifica: EXECUTE-NOW (autonomo, basso rischio)
+  / NEEDS-ANTONELLO / DEAD (già risolto, archivia) / RE-SPEC (obsoleta).
+- ANALISTI: Codex adversarial sul rischio degli EXECUTE-NOW (è davvero basso rischio?).
+  W38 rolsuper: NON eseguire (DO-NOT-EXECUTE confermato), ma verifica via postgres MCP che
+  backend_rag_v2 rolsuper=t sia ANCORA vero + aggiorna lo spec con la data.
+- ESECUZIONE (solo EXECUTE-NOW basso-rischio, ognuno nel SUO sub-worktree se tocca codice):
+  TDD, test, PR draft separata.
+- MECCANICO (1, serial): research/operations/S2-spec-graveyard-FROZEN.json (matrice 11
+  spec × verdict) + N PR draft. commit → push → PR draft → STOP.
+
+VINCOLI: W38 mai eseguire. EXECUTE-NOW solo se l'analista conferma basso rischio +
+reversibile. OUTPUT: matrice + PR. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S2 <numero-PR-o-url>

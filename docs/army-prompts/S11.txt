@@ -1,0 +1,28 @@
+# DESC: S11 — Portal cliente: audit UX + gap (ONDA 3, M5 sonnet, browser)
+ORCHESTRATORE sessione S11 "portal-audit". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane frontend --task-id s11-portal-audit
+  cd .worktrees/frontend-s11-portal-audit
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: il portal cliente esiste (get_portal_dashboard/timeline/visa_status,
+list_portal_documents/messages, send_portal_message MCP). Audit completo: cosa vede il
+cliente, cosa manca, dove si rompe.
+
+TOPOLOGIA:
+- ASSALITORI: (a) frontend-browser subagent (skill browser, nuzantara-browser MCP stealth)
+  per QA live subdomini balizero.com (kita/my/prime) — UX-walk login→dashboard→timeline→
+  docs→messaggi; (b) backend-verifier per le route portal.
+- ANALISTI: gap-analysis (cosa un cliente immigration vorrebbe e non c'è) + broken-element
+  scan. Codex adversarial.
+- MECCANICO (1, serial): research/operations/S11-portal-FROZEN.json + backlog UX
+  prioritizzato + screenshot evidenze. commit → push → PR draft → STOP.
+
+VINCOLI: post-deploy QA discipline (§11) — curl 200/307 PRIMA di screenshot. NON modificare
+prod, solo audit + spec. OUTPUT: FROZEN + backlog + screenshot. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S11 <numero-PR-o-url>

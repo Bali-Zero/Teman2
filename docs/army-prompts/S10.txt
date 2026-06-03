@@ -1,0 +1,30 @@
+# DESC: S10 — CRM data quality: i 11.699 clienti (ONDA 2, Pro obbligatorio, Ollama)
+ORCHESTRATORE sessione S10 "crm-data-quality" — DEVE girare sul Pro (PII). Autonomia piena
+in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane backend-rag --task-id s10-crm-quality
+  cd .worktrees/backend-rag-s10-crm-quality
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI. + LEGGE PII: aggregati SÌ, PII nei file NO. Conta "847 duplicati", non
+"Mario==Mario". Reasoning su PII → Ollama locale.
+
+MISSIONE: 11.699 clienti — quanti duplicati, incompleti, orfani (no pratica/contatto),
+Drive-link rotti? CRM-Guardian esiste (crm_guardian_* MCP tools). Mappa-salute completa.
+
+TOPOLOGIA (Workflow + CRM-Guardian MCP):
+- ASSALITORI (4 paralleli): (a) duplicati (stesso nome/email/phone); (b) completezza
+  (campi critici mancanti); (c) orfani (no pratica né timeline); (d) drive
+  (crm_guardian_find_stale_drive_links + find_unlinked_drive_items +
+  find_external_owner_risks).
+- ANALISTI (Ollama locale): valida i cluster duplicati (omonimi ≠ duplicati).
+- SPAZZINI: verifica zero PII nei file output.
+- MECCANICO (1, serial): research/crm-guardian/S10-crm-quality-FROZEN.json (metriche
+  AGGREGATE) + spec remediation prioritizzato. commit → push → PR draft → STOP.
+
+VINCOLI: fix DB mai via MCP (read-only). Remediation = spec, NEEDS-ANTONELLO. Cache
+invalidation discipline se proponi mutation (§9). OUTPUT: metriche + spec. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S10 <numero-PR-o-url>
