@@ -206,6 +206,118 @@ async def test_run_openclaw_passes_runtime_contract(monkeypatch: pytest.MonkeyPa
     assert "--deliver" not in args
 
 
+def test_army_owner_allowlist_deny_all_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Panel fix (Gemini): unset env = true closed-by-default = deny-all,
+    # NOT hardcoded-open-to-one. The army feature is disabled until opt-in.
+    monkeypatch.delenv("WA_ARMY_OWNERS", raising=False)
+    assert bridge._army_owner_allowlist() == frozenset()
+    monkeypatch.setenv("WA_ARMY_OWNERS", "   ")
+    assert bridge._army_owner_allowlist() == frozenset()
+
+
+def test_army_owner_allowlist_parses_and_normalizes_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WA_ARMY_OWNERS", " +62 822-6459-9868 , 6281234567890 , ")
+    allow = bridge._army_owner_allowlist()
+    assert allow == frozenset({"6282264599868", "6281234567890"})
+
+
+def test_army_owner_allowlist_drops_non_digit_entries(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Panel fix (Codex): an env value that normalizes to "" must NOT become a
+    # member, or a malformed sender phone normalizing to "" would match it.
+    monkeypatch.setenv("WA_ARMY_OWNERS", "abc, 6282264599868, ---")
+    allow = bridge._army_owner_allowlist()
+    assert allow == frozenset({"6282264599868"})
+    assert "" not in allow
+
+
+def test_is_army_owner_normalizes_punctuation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
+    assert bridge._is_army_owner("+62 822-6459-9868") is True
+    assert bridge._is_army_owner("6282264599868") is True
+    assert bridge._is_army_owner("+62 812-000-0000") is False
+    assert bridge._is_army_owner(None) is False
+    assert bridge._is_army_owner("") is False
+
+
+def test_is_army_owner_rejects_malformed_phone_against_empty_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Panel fix (Codex): even if the allowlist were somehow empty, a phone
+    # that normalizes to "" must never match. Belt-and-suspenders on both sides.
+    monkeypatch.delenv("WA_ARMY_OWNERS", raising=False)
+    assert bridge._is_army_owner("no-digits-here") is False
+    assert bridge._is_army_owner("---") is False
+
+
+@pytest.mark.asyncio
+async def test_army_command_owner_can_launch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
+    captured: dict[str, Any] = {}
+
+    async def fake_runner(*args: str) -> tuple[int, str, str]:
+        captured["args"] = args
+        return (0, "LAUNCHED sess-1 /tmp/log", "")
+
+    monkeypatch.setattr(bridge, "_run_army_launcher", fake_runner)
+
+    reply = await bridge._handle_army_command("/lancia S1", "+62 822-6459-9868")
+
+    assert captured["args"] == ("launch", "S1")
+    assert reply is not None
+    assert "LANCIATA" in reply
+
+
+@pytest.mark.asyncio
+async def test_army_command_non_owner_falls_through_silently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
+    called = False
+
+    async def fake_runner(*args: str) -> tuple[int, str, str]:
+        nonlocal called
+        called = True
+        return (0, "should-not-run", "")
+
+    monkeypatch.setattr(bridge, "_run_army_launcher", fake_runner)
+
+    # Non-owner sends every army command shape — all must return None and
+    # NEVER touch the launcher (no claude --dangerously-skip-permissions).
+    for text in ("/lancia S1", "/armate", "armate-status", "/ferma S1"):
+        assert await bridge._handle_army_command(text, "+62 812-000-0000") is None
+    assert called is False
+
+
+@pytest.mark.asyncio
+async def test_army_command_deny_all_blocks_even_owner_number_when_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # With WA_ARMY_OWNERS unset, the allowlist is empty → NOBODY can launch,
+    # not even the default owner number. Deny-all is the safe failure mode.
+    monkeypatch.delenv("WA_ARMY_OWNERS", raising=False)
+    called = False
+
+    async def fake_runner(*args: str) -> tuple[int, str, str]:
+        nonlocal called
+        called = True
+        return (0, "should-not-run", "")
+
+    monkeypatch.setattr(bridge, "_run_army_launcher", fake_runner)
+
+    assert await bridge._handle_army_command("/lancia S1", "+62 822-6459-9868") is None
+    assert called is False
+
+
+@pytest.mark.asyncio
+async def test_army_command_non_command_returns_none_for_everyone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
+    # Even the owner: a normal message is not a command → None (LLM handles it).
+    assert await bridge._handle_army_command("ciao come stai?", "+62 822-6459-9868") is None
+    assert await bridge._handle_army_command("", "+62 822-6459-9868") is None
+
+
 @pytest.mark.asyncio
 async def test_run_openclaw_uses_env_model_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, Any] = {}
