@@ -45,6 +45,26 @@ _BLOB_ROOT = Path(
 
 _HTTP_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
+# Persistent HTTP client (Golden Rule #10): module-level lazy singleton,
+# never instantiate httpx.AsyncClient inside the function body. Mirrors
+# services/intake/classify.py and extract.py.
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(timeout=_HTTP_TIMEOUT)
+    return _client
+
+
+async def close_client() -> None:
+    global _client
+    if _client and not _client.is_closed:
+        await _client.aclose()
+        _client = None
+
+
 
 async def _load_token(pool: asyncpg.Pool) -> dict[str, Any] | None:
     """Return the most-recently-updated Zoho token row, or None if none exists."""
@@ -121,9 +141,9 @@ async def drain_zoho(
     headers = {"Authorization": f"Zoho-oauthtoken {token['access_token']}"}
     cursor = await _load_cursor(pool)
 
-    owns_client = client is None
+    owns_client = False  # singleton is owned by the module, never closed per-drain
     if client is None:
-        client = httpx.AsyncClient(timeout=_HTTP_TIMEOUT)
+        client = _get_client()
 
     new_watermark = cursor
     try:
