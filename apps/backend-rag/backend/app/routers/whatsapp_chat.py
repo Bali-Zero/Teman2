@@ -856,7 +856,8 @@ async def _handle_meta_inbox_message(
                 media_type, status, webhook_id
             )
             VALUES ($1, $2, 'inbound', 'customer', $3, $4, 'received', $5)
-            ON CONFLICT (meta_message_id) DO NOTHING
+            ON CONFLICT (meta_message_id) WHERE meta_message_id IS NOT NULL
+                DO NOTHING
             RETURNING id
             """,
             thread_id,

@@ -97,7 +97,10 @@ async def test_new_inbound_bot_handled_enqueues_bot_reply() -> None:
     sql = conn.all_sql()
     assert "INSERT INTO meta_inbox_threads" in sql
     assert "GREATEST" in sql  # last_customer_at via GREATEST
-    assert "ON CONFLICT (meta_message_id) DO NOTHING" in sql
+    # partial-index arbiter — the WHERE predicate is load-bearing (without it
+    # Postgres can't match uq_meta_inbox_messages_wamid and the INSERT raises).
+    assert "ON CONFLICT (meta_message_id) WHERE meta_message_id IS NOT NULL" in sql
+    assert "DO NOTHING" in sql
     assert "INSERT INTO wa_outbox" in sql
     # bot ledger row inserted as queued/bot, needs_generation enqueued
     assert any("'bot'" in s and "queued" in s for s, _ in conn.fetchrow_calls)
