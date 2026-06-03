@@ -119,6 +119,60 @@ def resolve_deepseek_key() -> Optional[str]:
 
 _DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 
+# NotebookLM grounding — NB-AGENTS (agent-craft ground-truth) lives on the
+# antonellosiano@ account, reachable via the `default` nlm CLI profile.
+_NB_AGENTS_ID = "6d449787-04e3-430e-acbe-d6fc38d379a9"
+_NB_AGENTS_PROFILE = "default"
+_NLM_BIN = os.environ.get("NLM_BIN", "nlm")
+
+
+def ground_via_nlm(
+    family: str,
+    incident_summary: str,
+    notebook_id: str = _NB_AGENTS_ID,
+    profile: str = _NB_AGENTS_PROFILE,
+    timeout: int = 90,
+) -> Optional[str]:
+    """Consult NB-AGENTS for the known pattern of this failure class.
+
+    Returns a short ground-truth string to inject into the PROPOSE prompt, or
+    None on ANY failure (Law 4: ungrounded propose is still valid, never block).
+    The query carries only the abstract failure class + incident summary —
+    engineering know-how, not client PII (boundary rectified 2026-06-04).
+    """
+    question = (
+        "An autonomous agent must write a defensive guard/antibody for this "
+        f"recurring production failure class ('{family}'). Incident: "
+        f"{incident_summary[:600]} "
+        "In 4-6 sentences, cite the KNOWN best-practice pattern (locking, "
+        "isolation, idempotency, preflight, rollback) that prevents this class, "
+        "and the specific pitfall to avoid. Be concrete and executable-minded."
+    )
+    try:
+        proc = subprocess.run(
+            [_NLM_BIN, "notebook", "query", "--profile", profile, notebook_id, question],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        logger.warning("grounding: nlm query failed (%s) — proceeding ungrounded", exc)
+        return None
+    if proc.returncode != 0:
+        logger.warning("grounding: nlm rc=%s — proceeding ungrounded: %s",
+                       proc.returncode, (proc.stderr or "")[:160])
+        return None
+    out = (proc.stdout or "").strip()
+    # nlm may return JSON ({"value":{"answer":...}}) or plain text depending on flags.
+    if out.startswith("{"):
+        try:
+            data = json.loads(out)
+            out = (data.get("value", {}) or {}).get("answer", "") or str(data)
+        except json.JSONDecodeError:
+            pass
+    out = out.strip()
+    if not out:
+        return None
+    return out[:1500]  # cap injected context
+
 
 @dataclass
 class ProposalResult:
@@ -137,6 +191,7 @@ def propose_antibody(
     timeout: int = 180,
     max_tokens: int = 6000,
     reasoning_effort: str = "low",
+    grounding: Optional[str] = None,
 ) -> ProposalResult:
     """Ask DeepSeek for an EXECUTABLE antibody given ONLY the incident summary.
 
@@ -151,8 +206,16 @@ def propose_antibody(
         "failure class. It must be idempotent and side-effect-safe. Do not assume "
         "any specific absolute path beyond what the contract gives you via env vars."
     )
+    ground_block = ""
+    if grounding:
+        ground_block = (
+            "KNOWN GROUND-TRUTH PATTERN (from the agent-craft knowledge base — "
+            "use it to inform your antibody, but the antibody must still satisfy "
+            f"the contract precisely):\n{grounding}\n\n"
+        )
     user = (
         f"INCIDENT SUMMARY (what went wrong, no fix shown):\n{incident_summary}\n\n"
+        f"{ground_block}"
         f"ANTIBODY CONTRACT (what your snippet receives and must guarantee):\n"
         f"{probe_contract}\n\n"
         "Return the bash snippet only."
@@ -294,6 +357,7 @@ def run_probe(
     key: Optional[str],
     offline: bool = False,
     prior_antibody: Optional[str] = None,
+    ground: bool = False,
 ) -> ProbeReport:
     """Execute the full gate sequence for one probe.
 
@@ -323,7 +387,14 @@ def run_probe(
             rep.notes.append("offline mode + no prior antibody: cannot evolve, replay-only no-op")
             return rep
     else:
-        prop = propose_antibody(key, probe.incident_summary, probe.contract)
+        grounding = None
+        if ground:
+            grounding = ground_via_nlm(probe.family, probe.incident_summary)
+            if grounding:
+                rep.notes.append("grounded via NB-AGENTS")
+        prop = propose_antibody(
+            key, probe.incident_summary, probe.contract, grounding=grounding
+        )
         rep.proposal_ok = prop.ok
         rep.cost_usd = prop.cost_usd
         if not prop.ok:
@@ -480,6 +551,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Scar-Replay Antibody Harness")
     ap.add_argument("--family", help="run only this scar family")
     ap.add_argument("--offline", action="store_true", help="offline replay only (no DeepSeek)")
+    ap.add_argument("--ground", action="store_true",
+                    help="consult NB-AGENTS for the known pattern before proposing (richer antibody)")
     ap.add_argument("--budget-usd", type=float, default=0.50, help="soft cost ceiling")
     ap.add_argument("--repo-root", default=str(Path.home() / "Desktop" / "nuzantara-deploy"))
     ap.add_argument("--telemetry-dir",
@@ -549,14 +622,14 @@ def main(argv: Optional[list[str]] = None) -> int:
                 results.append({"family": probe.family, "daily_state": results_note,
                                 "skipped": "budget exhausted"})
                 continue
-            rep = run_probe(probe, key, offline=False, prior_antibody=stored)
+            rep = run_probe(probe, key, offline=False, prior_antibody=stored, ground=args.ground)
             rep_d = {**asdict(rep), "daily_state": results_note}
         else:
             # Full run (every probe hits the LLM unless offline).
             if spent >= args.budget_usd and not offline:
                 results.append({"family": probe.family, "skipped": "budget exhausted"})
                 continue
-            rep = run_probe(probe, key, offline=offline, prior_antibody=stored)
+            rep = run_probe(probe, key, offline=offline, prior_antibody=stored, ground=args.ground)
             rep_d = asdict(rep)
 
         spent += rep.cost_usd
