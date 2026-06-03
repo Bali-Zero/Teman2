@@ -7,6 +7,7 @@ Each program is stored as a git branch with:
 """
 
 import json
+import logging
 import random
 import subprocess
 from pathlib import Path
@@ -15,6 +16,8 @@ from typing import Any
 import yaml
 
 from .models import ProgramConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ProgramManagerError(RuntimeError):
@@ -338,7 +341,11 @@ class ProgramManager:
                 score = config.get_score()
                 if score is not None:
                     scored.append((name, score, index))
-            except Exception:
+            except subprocess.CalledProcessError:
+                # Branch or program.yaml genuinely absent: skip this member.
+                continue
+            except Exception as e:  # noqa: BLE001 - keep loop resilient, but surface
+                logger.warning("frontier score read failed for %s: %s", name, e)
                 continue
         scored.sort(key=lambda item: (item[1], item[2]), reverse=True)
         return [(name, score) for name, score, _ in scored]
@@ -488,7 +495,7 @@ class ProgramManager:
 
     def _read_config_from_branch(self, branch: str) -> ProgramConfig:
         """Read program config from a specific branch without checking out."""
-        result = self._run_git(["show", f"{branch}:{self.PROGRAM_FILE}"])
+        result = self._run_git(["show", f"{branch}:./{self.PROGRAM_FILE}"])
         data = yaml.safe_load(result.stdout)
         return ProgramConfig.model_validate(data)
 
