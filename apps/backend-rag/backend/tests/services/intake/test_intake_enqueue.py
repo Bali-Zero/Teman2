@@ -45,6 +45,24 @@ async def cleanup_hashes(pool: asyncpg.Pool):
     yield hashes
     if hashes:
         async with pool.acquire() as conn:
+            # Defense-in-depth: delete child rows first. Migration 210 sets
+            # ON DELETE CASCADE on these FKs, but the explicit purge keeps the
+            # teardown robust even if run against a pre-CASCADE schema.
+            await conn.execute(
+                "DELETE FROM intake_stage_metrics WHERE queue_id IN "
+                "(SELECT id FROM intake_queue WHERE blob_hash = ANY($1::char(64)[]))",
+                hashes,
+            )
+            await conn.execute(
+                "DELETE FROM document_routing_proposal WHERE queue_id IN "
+                "(SELECT id FROM intake_queue WHERE blob_hash = ANY($1::char(64)[]))",
+                hashes,
+            )
+            await conn.execute(
+                "DELETE FROM intake_corrections WHERE queue_id IN "
+                "(SELECT id FROM intake_queue WHERE blob_hash = ANY($1::char(64)[]))",
+                hashes,
+            )
             await conn.execute(
                 "DELETE FROM intake_queue WHERE blob_hash = ANY($1::char(64)[])", hashes
             )
