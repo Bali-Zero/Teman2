@@ -548,7 +548,9 @@ research/marketing/zantara-visual-dataset/
 research/marketing/flow-assets/
 research/crm-exports/
 research/hr/
-research/agent-craft/
+# research/agent-craft: ignore working subdirs, but TRACK proposed-agents/ + S17 frozen index
+research/agent-craft/_assets/
+research/agent-craft/census-raw/
 research/nb-archive/
 research/nlm-elevation/
 research/seo_cell/
