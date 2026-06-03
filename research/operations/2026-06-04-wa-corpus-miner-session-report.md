@@ -154,18 +154,44 @@ Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped*
 - `pilot.py` — driver end-to-end. **Pilot live PASS**: recap 6 sezioni, 4 citazioni verbatim,
   semanticamente reale (LKPM/OSS, PT AUM, cliente frustrato), read-only (HITL, non scrive CRM).
 
+### AGGIORNAMENTO 2026-06-04 (notte) — SCALA 10 chat + classificatore a 3 categorie
+
+**Test di scala (chiude bloccante v6 + incognita #3 cross-source contamination)** ✅
+
+- `multi_chat_pilot.py`: 10 chat REALI di Surya (`team_member_email=surya@balizero.com`,
+  linea `+628133946856`) caricate nello **stesso NB**, sync esplicito, 1 query per source con
+  `--source-ids`. **Risultato: 0 cross-source leak su 10** (ogni citazione proviene dal source giusto).
+  Il bloccante v6 "1 chat curata inganna" è superato: 10 chat diverse gestite correttamente.
+  Selezione automatica via classificatore: scelti solo i 10 CLIENT, saltati i counterpart INTERNAL.
+
+**Classificatore robusto a 3 categorie + gruppi** (richiesta Antonello) ✅
+
+- Gerarchia precedenza (ordine conta): **GROUP** (chat_type=group) > **INTERNAL** (team — `contact_type=team`
+  OR è una linea `team_member_phone`; team BATTE client) > **MULTI_CLIENT** (alto volume + molti nomi) >
+  **CLIENT** (già in `clients` via phone/whatsapp) > **PROSPECT** (esterno NON in CRM, volume normale) > **REVIEW**.
+- `Verdict.loadable` = CLIENT|PROSPECT (entrambi ricevono Doc+recap; CLIENT→profilo cliente, PROSPECT→lead).
+  team/group/multi-client esclusi in v1.
+- Nuovi segnali in `db.py`: `is_team_member` (roster + linea team) e `is_in_crm` (match `clients`).
+- **Verificato sui counterpart reali di Surya (top 20)**: 6 internal / 12 client / 1 prospect / 1 review.
+  Lia (team=True E in CRM) → INTERNAL corretto (precedenza). Screenshot conferma Surya=+628133946856.
+- 23 unit test green (era 18; +5 per group/team-beats-client/prospect/loadable).
+
 ### TODO manuale Antonello (nessun MCP delete-Drive)
 
-Cestinare su Drive (profilo zero) + cancellare 2 NB di test:
+Cestinare su Drive (profilo zero) + cancellare 3 NB di test (`nlm notebook delete <id> -p zero`):
 
-- NB `WA-CORPUS-GATE-TEST-20260604` (id `f4dcb203-c6cf-45b1-b6a9-dd5e14bb4663`)
-- NB `WA-CORPUS-PILOT-CLEAN-20260604` (id `7e4665c3-1c78-4648-9e49-2415a099abee`)
-- Doc `WA-GATE-TEST1-+33614653019-...` (id `1YsU-X-4nyhpXEjhfo1phv47WWYtwfw5ie-OQsu67al4`)
-- Doc `WA-+33614653019-...` del pilot (id `17TDAELRcd6U2It-nRqo23QZi-k_yBAS1HAfLA47mMsA`)
-  (`nlm notebook delete <id> -p zero` cancella i NB; i Doc Drive vanno dal cestino Drive di zero@.)
+- NB `WA-CORPUS-GATE-TEST-20260604` (`f4dcb203-c6cf-45b1-b6a9-dd5e14bb4663`)
+- NB `WA-CORPUS-PILOT-CLEAN-20260604` (`7e4665c3-1c78-4648-9e49-2415a099abee`)
+- NB `WA-CORPUS-SCALE-SURYA-20260604` (`9c82e1db-1cf5-4048-b9f2-5bc8e0c8f26c`) — contiene 10 Doc WA-MULTI-\*
+- Doc `WA-GATE-TEST1-+33614653019-...` (`1YsU-X-4nyhpXEjhfo1phv47WWYtwfw5ie-OQsu67al4`)
+- Doc `WA-+33614653019-...` del pilot (`17TDAELRcd6U2It-nRqo23QZi-k_yBAS1HAfLA47mMsA`)
+- 10 Doc `WA-MULTI-*-20260604-*` (chat reali Surya, dal cestino Drive di zero@)
 
 ### FASE 2 (non in v1, da spec §7)
 
-gruppi (23% traffico), rename auto da CRM, cross-NB per i 37 clienti multi-membro, quota/retry batch
+gruppi (23% traffico — il classificatore già li riconosce come GROUP, manca solo il rendering
+multi-party), rename auto da CRM, cross-NB per i 37 clienti multi-membro, quota/retry batch
 hardening, persistenza recap in `clients.strategic_recap`/`ai_summary` (campi già esistenti). Plus:
-calibrazione fine soglie classificatore su un campione più ampio (la coppia REVIEW va validata a mano).
+validare a mano i counterpart REVIEW; raffinare la soglia volume per separare i numeri-team
+non ancora marcati (es. `+628213454728` classificato PROSPECT ma forse linea team — il roster
+`whatsapp_contacts.contact_type` va completato).
