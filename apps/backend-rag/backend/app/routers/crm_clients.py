@@ -943,7 +943,9 @@ async def update_client(
     try:
         async with db_pool.acquire() as conn:
             # RBAC: Verify user has access to this client
-            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                client_id, current_user, conn, allow_assigned=True, write=True
+            )
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []
@@ -1107,7 +1109,9 @@ async def delete_client(
 
         async with db_pool.acquire() as conn:
             # RBAC: Verify user has access to this client
-            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                client_id, current_user, conn, allow_assigned=True, write=True
+            )
 
             # Soft delete (mark as inactive + set deleted_at so list queries exclude it)
             row = await conn.fetchrow(
