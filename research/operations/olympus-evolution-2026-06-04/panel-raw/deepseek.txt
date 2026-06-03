@@ -1,0 +1,20 @@
+**Thesis Under Fire**  
+Installing `pg_stat_statements` is listed first, yet it’s blocked by a PG restart and superuser approval that could take weeks. Chasing a blocked goal halts all other progress; the thesis itself admits the blocker but still puts it front of the queue. Later, “versioned rollback → DROP unused index” is a dangerous fantasy: you cannot roll back a dropped index without rebuilding it, and without any query‑side intelligence you cannot prove an index is truly unused. The thesis over‑values autonomy while ignoring that the guardian already runs heavy maintenance (VACUUM ANALYZE, un‑throttled) inside the application process – a far bigger immediate risk.
+
+**Order of Operations**  
+“Observability + consume before more actions” is correct in spirit, but the ordering must be inverted in practice. The 8,242 un‑consumed insights and unbounded tables require no infrastructure changes; they are the purest, lowest‑risk wins. Therefore the real sequence is:  
+1. Insight digest + self‑retention (hours of work).  
+2. Lightweight metrics (txid age, lock duration) – no restart needed.  
+3. `pg_stat_statements` only after the restart is scheduled and risk‑mitigated.  
+4. Qualify proposals with heuristics.  
+5. Gate any write action behind actual safeguards (not phony rollback).  
+
+**Highest‑Leverage Move for the Next 2 Weeks**  
+Ship a weekly insight report to Telegram and add a simple `DELETE`‑based retention (e.g., 90 days for insights, 60 days for heartbeats). This costs maybe 50 lines of code, surfaces the 8k silent observations, and stops unbounded growth. Every other improvement is wasted until those insights are consumed.
+
+**Risks Over‑ and Under‑weighted**  
+- *Underweighted*: Running VACUUM ANALYZE and future `pgstattuple` scans in‑process. A long VACUUM on a busy table can stall the application and exhaust connection pools; `pgstattuple` scans the whole table and can spike I/O. Lock‑duration monitoring (gap #5) is more critical than index bloating – locks kill user experience now.  
+- *Overweighted*: “Versioned rollback” as a prerequisite for L3 actions. For DROP INDEX it is essentially impossible; a confidence‑score decay is not a real safety net. The whole L3 ambition is premature until query insights (pgss) are live.
+
+**Architectural Concern**  
+Olympus runs in‑process on a single 2 GB Fly machine. Any memory leak, runaway VACUUM, or pool exhaustion from the guardian can crash the main application. This is the plan’s largest hidden risk. The correct evolution is to extract Olympus into a separate Fly Machine (or sidecar) with its own resource limits and connection pool, even if that delays feature work. The existing coupling is a single point of failure that the thesis never mentions, yet it dwarfs the gaps related to insight duplication.

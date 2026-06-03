@@ -1,0 +1,60 @@
+**Verdict: thesis mostly right, but missing the first gate: containment.**
+
+1. **Attack on Thesis**
+The “half-blind and mute” framing is accurate, but too generous. Olympus is also **over-privileged, co-resident with the app, and writing to prod while measuring success weakly**. A health score of 98 is not meaningful if query load, lock pressure, retention growth, and action outcome deltas are absent.
+
+The biggest smell is not pg_stat_statements. It is this: **an in-process app service with a superuser DB role is running autonomous maintenance on production**. That is a blast-radius problem before it is an observability problem.
+
+Also, “zero degraded rules” after 20,504 actions is suspicious. Either failure detection is too narrow, success criteria are too weak, or the confidence model is ceremonial.
+
+2. **Order**
+“Observability + consume before more actions” is directionally right, but I would reorder:
+
+1. **Contain first:** demote privileges, add hard kill-switches, action budgets, lock timeouts, statement timeouts, and explicit write-action allowlists.
+2. **Make existing output useful:** retention, dedupe/supersede, weekly digest, owner-facing recommendations.
+3. **Then improve visibility:** pg_stat_statements, pgstattuple, lock/txid metrics.
+4. **Then qualify actions:** heuristics, replay windows, before/after measurement.
+5. **Only then gated L3.**
+
+Reason: pgss increases insight quality, but it does not reduce current operational risk. Containment does.
+
+3. **Highest-Leverage 2-Week Move**
+Ship an **Olympus Safety Envelope**:
+
+- demote `backend_rag_v2` from superuser or split Olympus into a narrower maintenance role;
+- add `statement_timeout`, `lock_timeout`, max actions per pulse, max runtime per pulse;
+- add an operator kill-switch in DB/env;
+- implement retention for `olympus_*`;
+- publish one weekly digest from deduped insights.
+
+That converts Olympus from “trusted autonomous actor” into “bounded operator with auditable output.” It also prepares the system for pgss and later L3 actions.
+
+4. **Underweighted Risks**
+- **In-process coupling:** a guardian bug can damage app latency, pool health, memory, and DB state simultaneously.
+- **Pool corruption / asyncpg InterfaceError:** this deserves a circuit breaker, not just logging.
+- **Superuser role:** this is the sharpest current risk.
+- **False health:** score 98 may mask lock waits, slow queries, app starvation, table growth, and duplicated insight churn.
+- **Insight table growth:** not just storage; it poisons decision quality.
+
+5. **Overweighted Gaps**
+- **Txid wraparound:** verified low risk now. Track it, but do not center the roadmap.
+- **Matview failures:** historical only; do not overreact.
+- **HypoPG absence:** annoying, not blocking. Good heuristics plus pgss history beat imaginary perfect planning.
+
+**Architectural Concern**
+Yes. Running inside the FastAPI app on a single 2GB Fly machine is a design liability. Olympus should eventually become a separate worker/process with its own pool, limits, role, logs, and restart behavior. Until then, no L3 automation.
+**Verdict: thesis mostly right, but missing the first gate: containment.**
+
+1. **Attack on Thesis**
+The “half-blind and mute” framing is accurate, but too generous. Olympus is also **over-privileged, co-resident with the app, and writing to prod while measuring success weakly**. A health score of 98 is not meaningful if query load, lock pressure, retention growth, and action outcome deltas are absent.
+
+The biggest smell is not pg_stat_statements. It is this: **an in-process app service with a superuser DB role is running autonomous maintenance on production**. That is a blast-radius problem before it is an observability problem.
+
+Also, “zero degraded rules” after 20,504 actions is suspicious. Either failure detection is too narrow, success criteria are too weak, or the confidence model is ceremonial.
+
+2. **Order**
+“Observability + consume before more actions” is directionally right, but I would reorder:
+
+1. **Contain first:** demote privileges, add hard kill-switches, action budgets, lock timeouts, statement timeouts, and explicit write-action allowlists.
+2. **Make existing output useful:** retention, dedupe/supersede, weekly digest, owner-facing recommendations.
+3. **Then improve visibility:** pg_stat_statements, pgstattuple, lock/txid metrics.
