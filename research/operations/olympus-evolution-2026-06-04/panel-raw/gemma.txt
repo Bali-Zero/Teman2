@@ -1,0 +1,70 @@
+## Olympus Red Team Review
+
+Your thesis – “half-blind and mute” – is *largely* accurate, but your propo
+proposed evolution order is subtly dangerous and misses a fundamental risk.
+risk. You're prioritizing observability *before* establishing a basic safet
+safety net.
+
+**1. Attacking the Thesis:**
+
+The biggest flaw is framing Olympus as SAE Level 2. It’s closer to Level 1 
+*with automated tasks*. The "rules engine" with confidence scores is a flim
+flimsy safeguard. 1.0 confidence across the board suggests the rules are tr
+trivial or never truly tested against edge cases. Zero failures *isn’t* a g
+good sign; it means the rules aren't pushed, or the environment is too cons
+constrained. Saying it "acts well in its lane" is generous. It *executes* w
+within its lane, but with limited understanding of consequences.
+
+**2. Order of Operations: SAFETY FIRST**
+
+Observability is crucial *eventually*, but it shouldn't precede establishin
+establishing versioned rollback for even the simplest actions. You’re about
+about to unleash more automation onto a production database with minimal re
+recourse if something goes wrong. **Prioritize #4 (versioned rollback) IMME
+IMMEDIATELY.** You need to prove you can *undo* mistakes before you make mo
+more of them, even if it’s just for VACUUM/ANALYZE.  Without rollback, addi
+adding more automated actions significantly increases blast radius. "SEE be
+better" is useless if you can’t reverse bad vision.
+
+**3. Highest Leverage Move (Next 2 Weeks): Rollback Infrastructure**
+
+Implement a basic versioning/rollback system *for the existing PULSE action
+actions*. Start with VACUUM/ANALYZE.  Before running VACUUM on a table, cre
+create a pre-operation snapshot (e.g., table statistics summary).  After ex
+execution, record metrics. If a post-operation check flags issues (e.g., pe
+performance regression – even a basic one), you need a path to quickly reve
+revert to the pre-operation state.  This is a focused effort with immediate
+immediate safety impact.
+
+**4. Under/Overweighting Risks & Gaps:**
+
+* **UNDERWEIGHT:** The in-process nature is a massive risk. A bug in the Ol
+Olympus code *directly* impacts the RAG application.  Single process = sing
+single point of failure. This far outweighs many of the gaps you’ve identif
+identified.
+* **OVERWEIGHT:** While important, endless index recommendations are a symp
+symptom, not the disease. Focus on understanding *why* those indexes are pr
+proposed, not just accumulating them.
+* **MISSING:** Failure mode analysis. What happens when the Fly machine res
+restarts mid-PULSE? What’s the recovery plan?  You've highlighted boot-era 
+matview failures; you need a documented incident response.
+* **MISSING:** Monitoring *of* Olympus itself. How do you know the guardian
+guardian isn't malfunctioning *internally* (e.g. asyncpg connection leaks, 
+excessive CPU)?
+
+**5. Architectural Concern:**
+
+The in-process, single-machine architecture is a significant vulnerability.
+vulnerability. 2GB is insufficient headroom for both the RAG app *and* a da
+database guardian performing potentially resource-intensive tasks (VACUUM, 
+REINDEX).  This will lead to resource contention and instability. This shou
+should be a blocking issue for any expansion of automated actions.  Conside
+Consider a separate, dedicated process (even a small container) or a more s
+scalable approach.
+
+
+
+In short, Olympus needs a parachute before it attempts to fly higher. Safet
+Safety, rollback, and preventing single points of failure *must* come befor
+before expanded automation.
+

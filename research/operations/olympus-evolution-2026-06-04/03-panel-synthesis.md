@@ -16,9 +16,14 @@ status: STEP 3 of 5 — panel synthesis complete (2 strong independent voices, c
 # 03 — Panel Synthesis: red-team della tesi Olympus
 
 > Quarto report. Ho sottoposto gap-analysis + tesi a un panel multi-LLM eterogeneo.
-> Raccolti 2 voci forti e **indipendentemente convergenti** (DeepSeek V4 Pro + Codex GPT-5.5).
-> Gemini fallito (OAuth scaduto), gemma3:27b locale troppo lento (non-bloccante).
-> La convergenza di 2 modelli con prior diversi sullo STESSO punto #1 vale più di una 3ª voce.
+> Raccolti **3 voci indipendentemente convergenti**: DeepSeek V4 Pro + Codex GPT-5.5 + gemma3:27b
+> locale (Pro Ollama). Gemini fallito (OAuth scaduto, non-bloccante).
+> **3/3 convergono sul punto #1: il rischio architetturale in-process/superuser viene PRIMA
+> dell'osservabilità.** Gemma: "proposed order is subtly dangerous and misses a fundamental risk →
+> SAFETY FIRST; in-process is a massive risk → separate process." (unica divergenza: Gemma mette
+> "rollback infra" come mossa-2-settimane, ma DeepSeek l'ha già confutato — rollback per DROP è
+> impossibile → si tiene il Safety Envelope). La convergenza 3/3 di modelli con prior diversi è
+> il segnale più forte possibile.
 
 ---
 
