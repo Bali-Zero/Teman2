@@ -97,6 +97,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "__tests__/** tree: test fixtures",
     ),
     (
+        # pytest/unittest convention: test_*.py / *_test.py files outside a
+        # tests/ dir (e.g. agent-library/scar_replay/test_*.py,
+        # scripts/test_*.py). Fake credentials in these are fixtures.
+        re.compile(r"(^|/)(test_[^/]+|[^/]+_test)\.(py|ts|tsx|js|jsx)$"),
+        "test_*/_test file: unit-test fixture, not a production secret",
+    ),
+    (
         re.compile(r"\.test\.(py|ts|tsx|js|jsx)$"),
         "*.test.* file: unit test fixture",
     ),
