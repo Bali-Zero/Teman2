@@ -5,6 +5,19 @@
 
 set -euo pipefail
 
+# Fix 2026-05-27: source secrets fallback chain so the script works under
+# both invocation paths: (a) via wrapper fly-backup.sh which sources first,
+# (b) via cron-wrapper.sh which invokes us DIRECT with no env. Without
+# this, the cron-wrapper path silently failed for 4 days at line 20.
+for _secrets_file in "$HOME/.nuzantara-secrets.env" "$HOME/Desktop/secretkey.env"; do
+    if [ -z "${AWS_ACCESS_KEY_ID:-}" ] && [ -f "$_secrets_file" ]; then
+        set -a
+        # shellcheck disable=SC1090
+        source "$_secrets_file"
+        set +a
+    fi
+done
+
 BACKUP_DIR="$HOME/backups/fly-postgres"
 TIMESTAMP=$(date +%Y%m%d-%H%M)
 BACKUP_FILE="$BACKUP_DIR/nuzantara-fly-$TIMESTAMP.sql.gz"
@@ -17,8 +30,8 @@ DUMP_TIMEOUT=180  # seconds per attempt — pg_dump takes ~60s, tunnel setup ~30
 # Tigris credentials (set by fly storage create)
 TIGRIS_ENDPOINT="https://fly.storage.tigris.dev"
 TIGRIS_BUCKET="nuzantara-backups"
-TIGRIS_KEY="${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID not set — set in ~/.zshrc.secrets}"
-TIGRIS_SECRET="${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY not set — set in ~/.zshrc.secrets}"
+TIGRIS_KEY="${AWS_ACCESS_KEY_ID:-}"   # FIX 2026-06-03: :- not :? so missing Tigris creds do NOT kill the local backup
+TIGRIS_SECRET="${AWS_SECRET_ACCESS_KEY:-}"   # FIX 2026-06-03: local pg_dump needs no Tigris; upload skipped below if empty
 
 mkdir -p "$BACKUP_DIR"
 
@@ -43,9 +56,14 @@ for attempt in $(seq 1 $MAX_RETRIES); do
     DUMP_TMP="$BACKUP_DIR/.dump_tmp_${attempt}.sql"
     rm -f "$DUMP_TMP"
 
-    # Use timeout to prevent indefinite hang on tunnel issues
+    # Use timeout to prevent indefinite hang on tunnel issues.
+    # Fix 2026-05-27: FLY_PG_PASSWORD was sourced from ~/.zshrc.secrets but the
+    # variable was never recreated on this machine after the 2026-05-23 secrets
+    # migration → fly_pg_backup failed silently for 4 days. Switch to the
+    # postgres app's built-in OPERATOR_PASSWORD env var (always available on
+    # the Fly postgres machine), removing the host-side secret dependency.
     timeout "$DUMP_TIMEOUT" fly ssh console --app "$FLY_APP" \
-        -C "sh -c \"PGPASSWORD=${FLY_PG_PASSWORD:?FLY_PG_PASSWORD not set} pg_dump -h 127.0.0.1 -p 5432 -U backend_rag_v2 -d nuzantara_rag\"" \
+        -C "sh -c 'PGPASSWORD=\$OPERATOR_PASSWORD pg_dump -h 127.0.0.1 -p 5432 -U postgres -d nuzantara_rag'" \
         > "$DUMP_TMP" 2>/dev/null || true
 
     # Find where the actual SQL starts (skip fly ssh banner lines before --)
@@ -102,29 +120,57 @@ if ! echo "$HEADER_PREVIEW" | grep -q "PostgreSQL database dump"; then
 fi
 log "pg_dump header verified OK"
 
-# Step 3: Upload to Tigris
-if command -v aws &> /dev/null; then
-    AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
-    AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
-    aws s3 cp "$BACKUP_FILE" \
-        "s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")" \
+# Step 3: Upload to Tigris (with creds preflight 2026-05-27)
+if [ -z "$TIGRIS_KEY" ] || [ -z "$TIGRIS_SECRET" ]; then
+    log "WARN: Tigris creds absent (AWS_ACCESS_KEY_ID unset) — LOCAL backup kept, cloud upload SKIPPED."
+    log "WARN: Fix cloud: regenerate via 'fly storage update nuzantara-backups' then set keys in ~/.nuzantara-secrets.env"
+elif command -v aws &> /dev/null; then
+    # Fix 2026-05-27: cheap preflight `aws s3 ls` to verify creds work on this
+    # bucket BEFORE attempting upload. The TIGRIS_KEY/SECRET in
+    # ~/Desktop/secretkey.env returned InvalidAccessKeyId on `nuzantara-backups`
+    # (creds either rotated or for a different bucket). Without this check the
+    # script silenced the upload failure (2>/dev/null) and logged success, so
+    # the operator only noticed via Cell organism backup-age sensor turning red.
+    # `set +e` block: `set -e` at top of file would kill the script on a
+    # failing `aws s3 ls` (e.g. InvalidAccessKeyId), skipping Step 3+4 silently.
+    # Temporarily disable so we can capture rc and decide.
+    set +e
+    PREFLIGHT_OUT=$(AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
+        AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
+        aws s3 ls "s3://$TIGRIS_BUCKET/" \
         --endpoint-url "$TIGRIS_ENDPOINT" \
-        --region auto 2>/dev/null
-    log "Uploaded to Tigris: s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")"
+        --region auto 2>&1)
+    PREFLIGHT_RC=$?
+    set -e
 
-    # Cleanup old remote backups (keep last KEEP_REMOTE)
-    AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
-    AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
-    aws s3 ls "s3://$TIGRIS_BUCKET/postgres/" \
-        --endpoint-url "$TIGRIS_ENDPOINT" \
-        --region auto 2>/dev/null | sort -r | tail -n +$((KEEP_REMOTE + 1)) | awk '{print $4}' | while read -r old; do
+    if [ $PREFLIGHT_RC -ne 0 ]; then
+        log "WARN: Tigris preflight failed (rc=$PREFLIGHT_RC) — skipping remote upload."
+        log "WARN: Tigris error: $(echo "$PREFLIGHT_OUT" | head -2 | tr '\n' ' ')"
+        log "WARN: Local backup retained at $BACKUP_FILE — restore manually if needed."
+        log "WARN: Fix: regenerate Tigris creds via 'fly storage update nuzantara-backups' or reconcile keys in ~/Desktop/secretkey.env."
+    else
         AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
         AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
-        aws s3 rm "s3://$TIGRIS_BUCKET/postgres/$old" \
+        aws s3 cp "$BACKUP_FILE" \
+            "s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")" \
             --endpoint-url "$TIGRIS_ENDPOINT" \
             --region auto 2>/dev/null
-        log "Removed old remote: $old"
-    done
+        log "Uploaded to Tigris: s3://$TIGRIS_BUCKET/postgres/$(basename "$BACKUP_FILE")"
+
+        # Cleanup old remote backups (keep last KEEP_REMOTE)
+        AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
+        AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
+        aws s3 ls "s3://$TIGRIS_BUCKET/postgres/" \
+            --endpoint-url "$TIGRIS_ENDPOINT" \
+            --region auto 2>/dev/null | sort -r | tail -n +$((KEEP_REMOTE + 1)) | awk '{print $4}' | while read -r old; do
+            AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \
+            AWS_SECRET_ACCESS_KEY="$TIGRIS_SECRET" \
+            aws s3 rm "s3://$TIGRIS_BUCKET/postgres/$old" \
+                --endpoint-url "$TIGRIS_ENDPOINT" \
+                --region auto 2>/dev/null
+            log "Removed old remote: $old"
+        done
+    fi
 else
     log "WARN: aws CLI not found, skipping Tigris upload. Install: brew install awscli"
 fi
