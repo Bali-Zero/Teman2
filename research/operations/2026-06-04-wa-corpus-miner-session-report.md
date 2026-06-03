@@ -202,16 +202,68 @@ Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped*
   come "unverified" (gate HITL — un recap senza citazioni tracciabili non passa l'anti-allucinazione).
 - 32 unit test green (era 23; +4 prompt-master nuova struttura + retry, +5 doc-title già contati sopra).
 
+### AGGIORNAMENTO 2026-06-04 (notte 3) — FLUSSO AGENTICO (riconciliazione di stato)
+
+Antonello: "devi essere più strutturato e creare il flusso agentico" — non basta creare il Doc una
+volta, serve gestire le **transizioni di stato** ad ogni passata (es. prospect→client → il file va
+rinominato numero → nome+numero). Decisioni Antonello: rename (non archive/cancel), cron giornaliero
+subito, recap scritto **diretto** in `clients.strategic_recap`.
+
+**Stato CRM verificato** (anti-allucinazione, NON assunto): `strategic_recap` era VUOTO su tutte le
+11446 righe (mai scritto). Migration 189 → CHECK constraint `strategic_recap_source IN
+('manual','ollama_local','wa_auto','human_curated')`. Scrivo con `source='wa_auto'`; un edit umano
+successivo lo passa a `manual` via il router CRM (riga 972). Chiave = `clients.id` da phone.
+
+**Decision logic agentica PURA** (`reconcile.decide_action`, 10 test): matrice transizioni
+CREATE / RENAME / UPDATE / SKIP / ARCHIVE. Gerarchia: nuovo+loadable→CREATE; non-più-loadable→ARCHIVE
+(rename `ARCHIVED · …`, NON cancella); title cambiato→RENAME (prospect→client, nome CRM nuovo);
+nuovi msg→UPDATE; invariato→SKIP. RENAME ha precedenza su UPDATE. Numero SEMPRE preservato.
+
+**State store** `wa_corpus_docs` (tabella locale nuzantara_dev): per `(team_email, counterpart_phone)`
+traccia file_id/source_id/nb_id/last_title/last_verdict/last_msg_at/last_recap_at. Upsert idempotente.
+
+**Reconciler I/O** (`reconciler.py`): per membro itera i counterpart, calcola stato desiderato,
+`decide_action`, esegue (rename_doc Drive / update+sync / recap+CRM write), persiste, accumula digest.
+Recap scritto in CRM SOLO se in `clients` AND ha citazioni (retry garantisce o flag unverified).
+
+**VERIFICATO LIVE** (Surya, NB reconcile-test `a10ea479-6e88-4010-8201-6d21720b57a5`):
+
+- run1: `create=2 recap_written=2` → Brandi+Johanna in `clients.strategic_recap` source=wa_auto
+  (verificato sul DB: 1560 e 1942 char con HEADLINE grounded).
+- run2 (stessi parametri): `skip=3` → **idempotente**, zero spreco.
+- run3 (simulato prospect→client falsificando last_title a solo-numero): **`rename=1`** → Doc
+  rinominato su Drive E nello state store a `WA · Johanna · +46737002611` (numero preservato). ✅
+  **Questo è esattamente il caso che Antonello chiedeva.**
+
+**Cron giornaliero** (`run_all_members.py` + `wa_corpus_daily_run.sh` + plist example 05:00 WITA):
+legge `wa_corpus_members.json` (email/team_phone/nb_id per i 7 membri con chat), reconcile per membro,
+digest Telegram (solo TOTAL+righe membro, mai contenuto chat). **NON installato** — l'operatore prima
+crea 1 NB per membro + riempie nb_id + token, poi `launchctl bootstrap`. Membri senza nb_id → skip con
+warning. Verificato: bash -n OK, plutil -lint OK, dry-run all-members OK. 52 unit test green totali.
+
 ### TODO manuale Antonello (nessun MCP delete-Drive)
 
-Cestinare su Drive (profilo zero) + cancellare 3 NB di test (`nlm notebook delete <id> -p zero`):
+Cestinare su Drive (profilo zero) + cancellare 4 NB di test (`nlm notebook delete <id> -p zero`):
 
 - NB `WA-CORPUS-GATE-TEST-20260604` (`f4dcb203-c6cf-45b1-b6a9-dd5e14bb4663`)
 - NB `WA-CORPUS-PILOT-CLEAN-20260604` (`7e4665c3-1c78-4648-9e49-2415a099abee`)
-- NB `WA-CORPUS-SCALE-SURYA-20260604` (`9c82e1db-1cf5-4048-b9f2-5bc8e0c8f26c`) — contiene 10 Doc WA-MULTI-\*
+- NB `WA-CORPUS-SCALE-SURYA-20260604` (`9c82e1db-1cf5-4048-b9f2-5bc8e0c8f26c`) — 10 Doc WA-MULTI-\*
+- NB `WA-CORPUS-RECONCILE-TEST-20260604` (`a10ea479-6e88-4010-8201-6d21720b57a5`) — 2 Doc reconcile-test
 - Doc `WA-GATE-TEST1-+33614653019-...` (`1YsU-X-4nyhpXEjhfo1phv47WWYtwfw5ie-OQsu67al4`)
 - Doc `WA-+33614653019-...` del pilot (`17TDAELRcd6U2It-nRqo23QZi-k_yBAS1HAfLA47mMsA`)
-- 10 Doc `WA-MULTI-*-20260604-*` (chat reali Surya, dal cestino Drive di zero@)
+- 10 Doc `WA-MULTI-*` + 2 Doc reconcile (`WA · Brandi…`, `WA · Johanna…`) dal cestino Drive di zero@
+- ⚠️ **2 righe `clients.strategic_recap` scritte dal test** (Brandi id 5730, Johanna id 6087, source=wa_auto)
+  — sono recap reali corretti; lasciarli o resettarli a piacere (`UPDATE clients SET strategic_recap=NULL,
+strategic_recap_source=NULL WHERE id IN (5730,6087)`).
+
+### PER ANDARE IN PRODUZIONE (operatore)
+
+1. Crea 1 NB per membro: `nlm notebook create "NB-Surya" -p zero` (×7), copia gli id.
+2. `cp infra/launchagents/wa_corpus_members.example.json ~/.config/nuzantara/wa_corpus_members.json`,
+   riempi gli `nb_id`.
+3. `cp infra/launchagents/com.nuzantara.wa-corpus.daily.plist.example ~/Library/LaunchAgents/…plist`,
+   metti `TELEGRAM_BOT_TOKEN`, `chmod 0400`, `launchctl bootstrap gui/$(id -u) …`.
+4. Primo giro consigliato con `WA_CORPUS_DRY_RUN=1` per vedere il digest senza scritture.
 
 ### FASE 2 (non in v1, da spec §7)
 
