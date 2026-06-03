@@ -116,9 +116,11 @@ class BackendUnavailableError(RuntimeError):
 # from a search/seed pool instead. We can't change Gemini, but we can refuse
 # the image post-download and retry a fresh tab.
 #
-# We use a local Ollama VLM to score alignment. Default: gemma4:26b
-# (MoE, 16 GB Q4, vision+thinking, 262k context). Faster and more
-# discriminative than qwen2.5vl:7b on this task.
+# We use a local Ollama VLM to score alignment. Default: qwen2.5vl:7b
+# (the documented + installed vision model; serves HTTP 200 on /api/generate).
+# gemma4:26b was the original benchmark winner (faster, tighter scores) but is
+# NOT installed in the Pro/Mini Ollama arsenal, so it 404'd on every call and
+# silently disabled scoring (scorer is fail-open). Override via WR2_IMAGE_VLM_MODEL.
 #
 # Side-by-side benchmark (Pro M4 Pro 48GB, 2026-04-26):
 #                   WRONG-case   CORRECT-case   avg latency
@@ -134,7 +136,7 @@ VLM_VALIDATION_ENABLED = (
     os.environ.get("WR2_IMAGE_VLM_VALIDATION", "true").lower() == "true"
 )
 VLM_OLLAMA_URL = os.environ.get("WR2_IMAGE_VLM_URL", "http://127.0.0.1:11434")
-VLM_MODEL = os.environ.get("WR2_IMAGE_VLM_MODEL", "gemma4:26b")
+VLM_MODEL = os.environ.get("WR2_IMAGE_VLM_MODEL", "qwen2.5vl:7b")
 VLM_MIN_SCORE = float(os.environ.get("WR2_IMAGE_MIN_ALIGN_SCORE", "0.5"))
 VLM_TIMEOUT_SEC = int(os.environ.get("WR2_IMAGE_VLM_TIMEOUT", "60"))
 
