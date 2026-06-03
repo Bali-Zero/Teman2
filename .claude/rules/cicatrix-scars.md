@@ -23,8 +23,8 @@ _Discovered: 2026-06-03 ~20:30 WITA during the organism TAC (read-only diagnosis
 **GOTCHA:**
 
 - Rotation is NOT a solo `ALTER ROLE ... PASSWORD` — it cascades to Fly secret + N local `.env` files + any cron wrapper that sources them. Coordinate as one atomic change in a low-traffic window (same window as W38 demotion).
-- The secret is in THIS transcript regardless of rotation — if the transcript is synced anywhere (Drive mirror, logs), it carries the live credential until rotated. Rotation is the only true remediation; `chmod` only stops *future* reads.
-- Orthogonal to W38 (which minimizes blast radius *if* the secret leaks). This scar is "the secret leaks trivially". Both layer: rotate (this) + demote NOSUPERUSER (W38) = leaked-secret becomes both fresh-invalid AND low-privilege.
+- The secret is in THIS transcript regardless of rotation — if the transcript is synced anywhere (Drive mirror, logs), it carries the live credential until rotated. Rotation is the only true remediation; `chmod` only stops _future_ reads.
+- Orthogonal to W38 (which minimizes blast radius _if_ the secret leaks). This scar is "the secret leaks trivially". Both layer: rotate (this) + demote NOSUPERUSER (W38) = leaked-secret becomes both fresh-invalid AND low-privilege.
 - Family: 2026-04-29 plist world-readable secrets, 2026-05-21 P0 postgres password in 32 files. Recurring class: **prod credentials in cleartext on the Pro filesystem**, reachable by any process/agent with read access.
 
 **Reference**: discovered during `research/operations/2026-06-03-organism-tac.md` (organism TAC). Related: W38 (`backend_rag_v2` rolsuper demotion spec), archived 2026-05-21 P0 postgres-password-leak. NO secret value recorded in this scar by design.
@@ -454,3 +454,17 @@ _Discovered: 2026-06-02 13:25 WITA · Severity: P2 · Status: Corrected_
 **GOTCHA**: A successful `fly releases` entry + green CI does NOT mean the fix is live on an autostop machine that was already dead. `fly status` showing rag=stopped is ambiguous: could be healthy-idle OR stuck-after-crashloop. Disambiguate by force-start + boot-log read. Also: crash stack traces in `fly logs` carry the ORIGINAL crash timestamp (19:08) even when surfaced later — don't misread an old trace as a fresh crash.
 
 **Reference**: gh run 26789282348 (#1018 deploy success 23:51Z) · supersedes mechanism-claim in scar immediately above · cron-fly-restart-detector.yml to audit
+
+---
+
+### ℹ️ P3 FLAKY TEST (clock race): `test_duplicate_alert_id_skipped` blocks innocent PRs on a 1-second boundary (2026-06-04)
+
+_Discovered: 2026-06-04 06:15 WITA while monitoring PR #1101 (a scar_replay-only change touching ZERO backend code) · Severity: P3 · Status: **REPORTED — fix belongs in a backend-scoped PR, not shipped here**_
+
+**TRAUMA**: CI "Backend Tests (Python)" failed on exactly ONE test — `apps/backend-rag/backend/tests/unit/services/ingestion/test_performance_monitor.py:311 TestCreateAlert::test_duplicate_alert_id_skipped` — with `AssertionError: assert 2 == 1` (10576 passed, 1 failed, stop-after-1). The test's OWN comment admits the design: `# Same metric + same second → same alert_id → skip`. It calls `monitor._create_alert("parsing_duration", ...)` twice and asserts `len(active_alerts) == count_before`, RELYING on both calls landing in the **same wall-clock second** so the timestamp-derived `alert_id` collides and the 2nd is skipped as a duplicate. The CI log showed the two ids were `parsing_duration_1780524705` and `parsing_duration_1780524706` — the two calls straddled a 1-second tick, so the ids differed, both alerts were stored, and `2 != 1`. There is NO time mock. The test passes most of the time and fails ~randomly whenever the two `_create_alert` calls fall across a second boundary. It blocked an unrelated PR's auto-merge.
+
+**ANTIBODY** (proposed, NOT shipped — wrong PR scope): freeze/mock time in the test so both `_create_alert` calls deterministically share the same second. Either `@patch` the time source used to build the id (`time.time` / `datetime.now` inside `backend.services.ingestion.performance_monitor`) to a constant, or pass an explicit timestamp into `_create_alert`. The fix belongs in a backend-scoped PR. Immediate mitigation (used now): `gh run rerun <run-id> --failed` re-rolls the dice and usually passes.
+
+**GOTCHA**: This is a non-mine flake — a scar_replay-only PR (`#1101` touches only `agent-library/scar_replay/scar_replay.py` + `test_scar_replay.py`) was blocked by it. **Diagnostic rule**: when CI Backend Tests fail on a PR that changed NO backend code, check whether the failing test is timestamp/clock-dependent BEFORE assuming regression — verify via `gh pr view <N> --json files -q '.files[].path'` that your diff doesn't touch the failing module. The same test passed clean on `#1104` minutes earlier (same suite) → proof it's nondeterministic, not a real break. Any PR whose `update-branch` re-triggers the full Backend Tests can hit it. Family: **nondeterministic-test-blocks-merge (clock race)**. Related discipline: anti-hallucination rule — verify the failing path is actually yours, don't assume.
+
+**Reference**: CI run 26915762002 job 79404910575 (#1101). Failing test `apps/backend-rag/backend/tests/unit/services/ingestion/test_performance_monitor.py:311`. Source under test `apps/backend-rag/backend/services/ingestion/performance_monitor.py` (alert-id generation). PR #1101 files: scar_replay only.
