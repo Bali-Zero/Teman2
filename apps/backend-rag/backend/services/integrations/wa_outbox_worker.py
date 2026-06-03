@@ -227,7 +227,68 @@ async def process_outbox_once(
             await conn.execute(
                 "UPDATE wa_outbox SET status = 'generating' WHERE id = $1", outbox_id
             )
-            body_text = await bot_generate_fn(thread)
+            # bot_generate_fn may raise (transient RAG error, or — in the
+            # human-send-only v1 — a NotImplementedError sentinel). Without this
+            # guard the exception bubbles to the scheduler and the row is left
+            # ORPHANED in 'generating' (reclaim only resets 'claimed' rows), so
+            # it is never retried nor surfaced. Mirror the send retry/backoff
+            # policy: retry with backoff up to MAX_ATTEMPTS, then mark failed.
+            try:
+                body_text = await bot_generate_fn(thread)
+            except Exception as gen_exc:
+                attempts += 1
+                if attempts >= MAX_ATTEMPTS:
+                    await conn.execute(
+                        "UPDATE wa_outbox SET status = 'failed', attempts = $2 WHERE id = $1",
+                        outbox_id,
+                        attempts,
+                    )
+                    await conn.execute(
+                        """
+                        UPDATE meta_inbox_messages
+                        SET status = 'failed', error = $2
+                        WHERE id = $1
+                        """,
+                        message_id,
+                        f"bot_generate_failed_after_{attempts}_attempts: {gen_exc}",
+                    )
+                    logger.error(
+                        "wa_outbox: bot generation failed permanently "
+                        "(outbox=%s thread=%s): %s",
+                        outbox_id,
+                        thread_id,
+                        gen_exc,
+                    )
+                    return "failed"
+
+                backoff = RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
+                await conn.execute(
+                    """
+                    UPDATE wa_outbox
+                    SET status = 'pending', attempts = $2,
+                        next_retry_at = NOW() + ($3 * INTERVAL '1 second'),
+                        claim_token = NULL, claimed_at = NULL, claim_expires_at = NULL
+                    WHERE id = $1
+                    """,
+                    outbox_id,
+                    attempts,
+                    backoff,
+                )
+                await conn.execute(
+                    "UPDATE meta_inbox_messages SET status = 'queued' WHERE id = $1",
+                    message_id,
+                )
+                logger.warning(
+                    "wa_outbox: bot generation failed (attempt %d/%d), retry in %ds "
+                    "(outbox=%s): %s",
+                    attempts,
+                    MAX_ATTEMPTS,
+                    backoff,
+                    outbox_id,
+                    gen_exc,
+                )
+                return "retry"
+
             await conn.execute(
                 "UPDATE meta_inbox_messages SET body = $2 WHERE id = $1",
                 message_id,
