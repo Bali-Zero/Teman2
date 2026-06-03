@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { serialize } from "next-mdx-remote/serialize";
 import remarkGfm from "remark-gfm";
-import {
-  getArticleBySlug,
-  getArticleByLocale,
-  getAvailableLocales,
-} from "@/lib/blog/articles";
+import { getArticleBySlug, getArticleByLocale } from "@/lib/blog/articles";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
 import { ArticleClient } from "./ArticleClient";
 import {
@@ -92,24 +88,8 @@ export async function generateMetadata({
     if (article) {
       const baseMetadata = generateArticleMetadata(article);
 
-      // Build hreflang alternates for available translations
-      const availableLocales = getAvailableLocales(category, slug);
-      const baseUrl = "https://balizero.com";
-      const languages: Record<string, string> = {
-        en: `${baseUrl}/${category}/${slug}`,
-        "x-default": `${baseUrl}/${category}/${slug}`,
-      };
-      for (const loc of availableLocales) {
-        if (loc === "en") continue;
-        languages[loc] = `${baseUrl}/${category}/${slug}?lang=${loc}`;
-      }
-
       return {
         ...baseMetadata,
-        alternates: {
-          ...baseMetadata.alternates,
-          languages,
-        },
       };
     }
   } catch (err) {
@@ -131,7 +111,7 @@ export async function generateMetadata({
 const CATEGORY_LABELS: Record<string, string> = {
   visas: "Immigration",
   business: "Business",
-  "taxes": "Tax & Legal",
+  taxes: "Tax & Legal",
   property: "Property",
   living: "Lifestyle",
   "digital-nomad": "Digital Nomad",
