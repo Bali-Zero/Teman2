@@ -13,6 +13,7 @@ CI `actions/checkout`. Untracked files fall back to stat.
 
 See docs/superpowers/specs/2026-04-24-docs-hygiene-design.md for the full spec.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -79,8 +80,16 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Override DOCSYNC key expected value: KEY:value. Repeatable.",
     )
-    p.add_argument("--check", action="store_true", help="Compare with committed inventory; exit 1 on drift.")
-    p.add_argument("--apply", action="store_true", help="Physically git mv orphans to docs/archive/. Default: dry-run.")
+    p.add_argument(
+        "--check",
+        action="store_true",
+        help="Compare with committed inventory; exit 1 on drift.",
+    )
+    p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Physically git mv orphans to docs/archive/. Default: dry-run.",
+    )
     p.add_argument("--quiet", action="store_true", help="No stdout on success.")
     p.add_argument("--json", action="store_true", help="Emit stats JSON on stdout.")
     return p.parse_args()
@@ -91,11 +100,15 @@ def parse_clusters(raw: List[str]) -> List[ClusterDef]:
     for r in raw:
         parts = r.split(":")
         if len(parts) != 3:
-            raise SystemExit(f"Invalid --cluster spec (need key:members:canonical): {r}")
+            raise SystemExit(
+                f"Invalid --cluster spec (need key:members:canonical): {r}"
+            )
         key, members_csv, canonical = parts
         members = [m.strip() for m in members_csv.split(",") if m.strip()]
         if canonical not in members:
-            raise SystemExit(f"Cluster {key}: canonical {canonical} not in members {members}")
+            raise SystemExit(
+                f"Cluster {key}: canonical {canonical} not in members {members}"
+            )
         clusters.append(ClusterDef(key=key, members=members, canonical=canonical))
     return clusters
 
@@ -124,19 +137,32 @@ def walk_docs(repo: Path) -> List[Path]:
     try:
         tracked = subprocess.run(
             ["git", "ls-files", "docs/"],
-            cwd=repo, check=True, capture_output=True, text=True,
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout
         untracked = subprocess.run(
             ["git", "ls-files", "--others", "--exclude-standard", "docs/"],
-            cwd=repo, check=True, capture_output=True, text=True,
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return sorted(p for p in docs_root.rglob("*.md") if p.name != "DOCS_INVENTORY.md")
+        return sorted(
+            p for p in docs_root.rglob("*.md") if p.name != "DOCS_INVENTORY.md"
+        )
     seen: set[str] = set()
     paths: List[Path] = []
     for line in (tracked + untracked).splitlines():
         rel = line.strip()
-        if not rel or not rel.endswith(".md") or rel.endswith("DOCS_INVENTORY.md") or rel in seen:
+        if (
+            not rel
+            or not rel.endswith(".md")
+            or rel.endswith("DOCS_INVENTORY.md")
+            or rel in seen
+        ):
             continue
         seen.add(rel)
         paths.append(repo / rel)
@@ -149,7 +175,15 @@ def compute_refs_in(repo: Path, target: Path) -> int:
     # Scan roots: docs/** and a handful of root files. Skip the file itself + archive dest.
     # Use walk_docs() (git-aware) so candidates match local↔CI exactly.
     candidates: List[Path] = [p for p in walk_docs(repo) if p != target]
-    for root_name in ("CLAUDE.md", "INDEX.md", "SYMBIOSIS.md", "VADEMECUM.md", "AGENTS.md", "GEMINI.md", "AUTONOMOUS_OPS.md"):
+    for root_name in (
+        "CLAUDE.md",
+        "INDEX.md",
+        "SYMBIOSIS.md",
+        "VADEMECUM.md",
+        "AGENTS.md",
+        "GEMINI.md",
+        "AUTONOMOUS_OPS.md",
+    ):
         rp = repo / root_name
         if rp.is_file() and rp != target:
             candidates.append(rp)
@@ -229,7 +263,16 @@ def compute_mtime_days(repo: Path, doc: Path) -> int:
     """
     try:
         result = subprocess.run(
-            ["git", "-C", str(repo), "log", "-1", "--format=%ct", "--", str(doc.relative_to(repo))],
+            [
+                "git",
+                "-C",
+                str(repo),
+                "log",
+                "-1",
+                "--format=%ct",
+                "--",
+                str(doc.relative_to(repo)),
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -300,11 +343,7 @@ def classify(
             return row
 
     # Rule 2: orphan
-    if (
-        row.mtime_days > orphan_days
-        and row.refs_in == 0
-        and rel not in whitelist
-    ):
+    if row.mtime_days > orphan_days and row.refs_in == 0 and rel not in whitelist:
         row.status = "ARCHIVED"
         row.action = f"archive: orphan, mtime={row.mtime_days}d, refs=0"
         return row
@@ -353,12 +392,18 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
         pct = (100 * cnt / total) if total else 0
         out.append(f"| {st:<8} | {cnt:>5} | {pct:.0f}% |")
     out.append("")
-    out.append(f"**Drift:** {drift_n} · **Broken links:** {broken_n} · **Orphans:** {orphan_n}")
+    out.append(
+        f"**Drift:** {drift_n} · **Broken links:** {broken_n} · **Orphans:** {orphan_n}"
+    )
     out.append("")
     out.append("## Files")
     out.append("")
-    out.append("| File | Status | mtime_days | refs_in | broken | drift | cluster | action |")
-    out.append("|------|--------|-----------:|--------:|-------:|-------|---------|--------|")
+    out.append(
+        "| File | Status | mtime_days | refs_in | broken | drift | cluster | action |"
+    )
+    out.append(
+        "|------|--------|-----------:|--------:|-------:|-------|---------|--------|"
+    )
     for r in rows:
         drift_s = "yes" if r.drift else "no"
         cluster_s = r.cluster or "—"
@@ -384,7 +429,9 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
             out.append(f"Canonical: `{cl.canonical}`")
             archive_candidates = [m for m in cl.members if m != cl.canonical]
             if archive_candidates:
-                out.append(f"Archive candidates: {', '.join('`' + a + '`' for a in archive_candidates)}")
+                out.append(
+                    f"Archive candidates: {', '.join('`' + a + '`' for a in archive_candidates)}"
+                )
             out.append("")
 
     broken_rows = [r for r in rows if r.broken > 0]
@@ -401,6 +448,8 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
             out.append(f"- `{r.path}` (mtime={r.mtime_days}d, zero inbound refs)")
         out.append("")
 
+    while out and out[-1] == "":
+        out.pop()
     return "\n".join(out) + "\n"
 
 
@@ -418,7 +467,9 @@ def apply_moves(repo: Path, rows: List[DocRow], use_git: bool = True) -> int:
             continue
         target = dest / src.name
         if use_git:
-            subprocess.run(["git", "-C", str(repo), "mv", str(src), str(target)], check=True)
+            subprocess.run(
+                ["git", "-C", str(repo), "mv", str(src), str(target)], check=True
+            )
         else:
             src.rename(target)
         moved += 1
@@ -433,11 +484,16 @@ def main() -> int:
     expected_keys = parse_docsync_keys(args.docsync_key)
 
     docs = walk_docs(repo)
-    rows = [classify(d, repo, args.orphan_days, whitelist, clusters, expected_keys) for d in docs]
+    rows = [
+        classify(d, repo, args.orphan_days, whitelist, clusters, expected_keys)
+        for d in docs
+    ]
 
     new_content = render_inventory(rows, clusters)
     inventory_path = repo / "docs" / "DOCS_INVENTORY.md"
-    old_content = inventory_path.read_text(encoding="utf-8") if inventory_path.exists() else ""
+    old_content = (
+        inventory_path.read_text(encoding="utf-8") if inventory_path.exists() else ""
+    )
 
     # Normalise volatile fields before comparing committed vs. rendered:
     #   * "Last run: …" — wall-clock timestamp, changes every run
