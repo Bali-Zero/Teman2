@@ -173,13 +173,15 @@ probe_tool_count() {
   # output, causing the regex to fail and the watchdog to misclassify
   # a healthy state as stale (verified empirically 2026-05-08 02:01:50
   # WITA — the first script run returned tail=<empty> instead of 35).
+  # Return the FULL raw output. Claude sometimes wraps the count in prose
+  # ("il conteggio reale e **37**", "The deferred tool list shows 37 names");
+  # main() extracts the first integer, so do NOT collapse/strip here (tail -1
+  # could drop the very line that holds the number). See parse note in main().
   local raw
   raw=$(timeout "${PROBE_TIMEOUT}" claude -p --output-format text \
     "Output the count of MCP tool names starting with mcp__claude_ai_Canva__. Output JUST the integer, nothing else." \
     < /dev/null \
-    2>/dev/null \
-    | tail -1 \
-    | tr -d '[:space:]')
+    2>/dev/null) || true
   printf '%s' "$raw"
 }
 
@@ -205,8 +207,16 @@ main() {
 
   log "probe start (last_status=${last_status:-unknown} last_alert_ts=${last_alert_ts:-never})"
 
-  local count
-  count=$(probe_tool_count)
+  local raw count
+  raw=$(probe_tool_count)
+  # Extract the FIRST integer from the (possibly prose) output. Claude does
+  # not always honor "JUST the integer" — it sometimes returns a sentence
+  # with the count bolded ("il conteggio reale e **37**"). A strict
+  # ^[0-9]+$ on the whole stripped line then failed — 4 false STALE
+  # Telegram pages in 48h (each actually had ≥30 tools). Pulling the first
+  # integer fixes the false positive; if there is genuinely NO number,
+  # count stays empty and the strict check below still correctly trips STALE.
+  count=$(printf '%s' "$raw" | grep -oE '[0-9]+' | head -1 || true)
 
   # Healthy: integer ≥ MIN_TOOLS.
   if [[ "$count" =~ ^[0-9]+$ ]] && (( count >= MIN_TOOLS )); then

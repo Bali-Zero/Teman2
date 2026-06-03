@@ -1,0 +1,30 @@
+# DESC: S17 — Crea agenti SOTA nuovi (libertà creativa) (ONDA 3, M5 sonnet, 4-LLM panel)
+ORCHESTRATORE sessione S17 "new-sota-agents". Libertà creativa (richiesta Antonello).
+Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane organism --task-id s17-new-agents
+  cd .worktrees/organism-s17-new-agents
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: progetta e crea 3-5 NUOVI agenti SOTA che mancano nell'arsenale. Identifica i
+buchi: cosa Bali Zero fa a mano che un agente potrebbe fare? (es: lead-qualifier da
+WhatsApp inbound, document-ocr-classifier per akta, compliance-deadline-sentinel,
+competitor-pricing-tracker, onboarding-orchestrator).
+
+TOPOLOGIA (skill writing-skills + sota-architecture-loop 8-step per ognuno):
+- ASSALITORI: identifica i gap (cosa è manuale e automatizzabile). Usa NB-AGENTS (86
+  source agent-craft, 6d449787-...) come ground-truth di design.
+- ANALISTI (4-LLM panel review su OGNI spec agente — Gemini agy + Codex GPT-5.5 + DeepSeek
+  V4 Pro + NB-AGENTS): verdict per agente. Pattern bipolar verifier.
+- COSTRUZIONE: ogni nuovo agente = file in ~/.claude/agents/ + skill se serve + test.
+- MECCANICO (1, serial): 3-5 agent definition + research/agent-craft/S17-new-agents-
+  FROZEN.json + 4-LLM panel verdict per ognuno. commit → push → PR draft → STOP.
+
+VINCOLI: rispetta i ban (no ANTHROPIC_API_KEY, CLI-only). NON registrare in cron senza
+Antonello. Proposte, non auto-deploy. OUTPUT: agent defs + FROZEN + panel. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S17 <numero-PR-o-url>

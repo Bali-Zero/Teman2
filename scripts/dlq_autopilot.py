@@ -53,6 +53,25 @@ except ImportError:
     def _write_escalation(entry: dict) -> None:  # type: ignore[misc]
         pass  # graceful degradation if sentinel_lib not importable
 
+# S3 (2026-06-02): per-job escalation cooldown. The sentinel's alerter already
+# gates Telegram by a 4h per-job cooldown (escalation_cooldown.json), but the
+# DLQ-autopilot escalation path (escalate_to_claude_code) did NOT consult it —
+# so a job stuck with an empty/short error re-escalated EVERY 30-min tick,
+# growing shared/escalations_pro.jsonl + spamming claude_tasks/*.json for ~5h
+# until attempts hit max → TERMINAL (W61 storm relay, ~33 jobs cycled). Reusing
+# the SAME cooldown helpers makes the JSONL writer respect the same 4h window.
+try:
+    from sentinel_lib.alerter import (
+        check_escalation_cooldown as _check_escalation_cooldown,
+        mark_escalation_sent as _mark_escalation_sent,
+    )
+except ImportError:
+    def _check_escalation_cooldown(job_id: str) -> bool:  # type: ignore[misc]
+        return False  # graceful degradation: never suppress if lib unavailable
+
+    def _mark_escalation_sent(job_id: str) -> None:  # type: ignore[misc]
+        pass
+
 # ── Tuning constants ───────────────────────────────────────────────────────────
 LOCK_STALE_AGE_S = 1500          # 25min — if lock older than this, treat as stale
 MAX_ATTEMPTS = 10                 # per DLQ entry (default; per-job override via registry max_attempts)
@@ -381,9 +400,32 @@ def escalate_to_claude_code(
     entry: dict,
     reasoning: dict | None,
     aider_failure: str | None = None,
+    bypass_cooldown: bool = False,
 ) -> None:
-    """Write a claude_tasks JSON file and send Telegram alert."""
+    """Write a claude_tasks JSON file and send Telegram alert.
+
+    S3 (2026-06-02): unless ``bypass_cooldown`` is True, this is gated by the
+    per-job 4h escalation cooldown (sentinel_lib.alerter). A job already
+    escalated within the window is skipped entirely (no claude_tasks file, no
+    JSONL append, no Telegram) — preventing the W61 every-30-min storm that
+    re-grew shared/escalations_pro.jsonl. The cooldown is per-JOB, not per-error:
+    a job already known-failing won't re-spam, but the full error history still
+    lives in the DLQ entry + the SQLite mirror, and the eventual TERMINAL
+    transition escalates with ``bypass_cooldown=True`` so the operator always
+    gets the one signal that matters.
+    """
     job = entry["job"]
+
+    # S3: suppress repeat escalations for a job on cooldown (state-change
+    # escalations — e.g. reaching TERMINAL — pass bypass_cooldown=True).
+    if not bypass_cooldown and _check_escalation_cooldown(job):
+        logger.info(
+            f"{job}: escalation on cooldown (<4h since last) — "
+            f"skipping claude_tasks file + JSONL append + Telegram"
+        )
+        _record_suppressed(job)
+        return
+
     CLAUDE_TASKS_DIR.mkdir(parents=True, exist_ok=True)
     task_file = CLAUDE_TASKS_DIR / f"{job}_{int(time.time())}.json"
 
@@ -429,6 +471,34 @@ def escalate_to_claude_code(
         f"Task file: {task_file.name}"
     )
 
+    # S3: record the escalation so subsequent ticks within 4h are suppressed.
+    # (Mirrors what the sentinel alerter does for its own Telegram alerts.)
+    if not bypass_cooldown:
+        _mark_escalation_sent(job)
+
+
+def _record_suppressed(job: str) -> None:
+    """S3: bump a per-job ``suppressed_count`` in escalation_cooldown.json.
+
+    The W55 weekly digest (scripts/escalations_suppressed_digest.py) reads these
+    counters so the operator sees how many escalations the cooldown hid. The
+    cooldown JSON is written by a single machine per file in the 2-node setup
+    (Pro writes the pro state), so a best-effort read-modify-write is adequate —
+    same locking posture as the existing alerter._save_escalation_state.
+    Never raises: a counter miss must not block the autopilot.
+    """
+    try:
+        from sentinel_lib import alerter as _al
+        data = _al._load_escalation_state()
+        entry = data.get(job) or {}
+        entry["suppressed_count"] = int(entry.get("suppressed_count", 0)) + 1
+        entry["last_suppressed_at"] = time.time()
+        # Preserve escalation_sent_at / _writer if present.
+        data[job] = {**entry}
+        _al._save_escalation_state(data)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(f"suppressed-count bump failed for {job} (non-fatal): {exc}")
+
 
 # ── Main entry processor ──────────────────────────────────────────────────────
 
@@ -462,7 +532,10 @@ def process_entry(entry: dict, registry: dict) -> str:
         logger.warning(f"{job}: max attempts ({max_attempts}) reached → TERMINAL")
         entry["status"] = "TERMINAL"
         entry["first_abandoned_at"] = entry.get("first_abandoned_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        escalate_to_claude_code(entry, None)
+        # S3: TERMINAL is a state-change — the one signal the operator must
+        # always receive. Bypass the cooldown so it is never suppressed by the
+        # repeated escalations during the climb to max_attempts.
+        escalate_to_claude_code(entry, None, bypass_cooldown=True)
         send_telegram(
             f"🛑 TERMINAL: `{job}` reached {max_attempts} autopilot attempts with no fix.\n"
             f"Error: {error[:80]}\n"

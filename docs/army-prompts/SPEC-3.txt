@@ -1,0 +1,54 @@
+# DESC: Fusione WR2/WR3 — estrae primitive condivise (DOPO R1)
+ORCHESTRATORE sessione "wr2-wr3-fusione". Autonomia piena in loop, no conferme.
+Lavori da solo come Grande Generale: spawni subagent per fan-out, ma TU coordini e committi.
+
+PASSO 0:
+  cd ~/Desktop/nuzantara
+  python scripts/agent_start.py --lane wr2 --task-id wr2-wr3-fusione
+  cd .worktrees/wr2-wr2-wr3-fusione
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI ANTI-AUTODISTRUZIONE:
+  1. I worker (subagent) NON comunicano peer-to-peer — coordinano solo via file che TU leggi.
+  2. Ogni worker riceve il brief COMPLETO.
+  3. git single-threaded — SOLO TU committi/pushi.
+
+PREREQUISITO: DOPO R1 (WR3 deve girare prima di fonderlo — non fondere un sistema rotto).
+
+MISSIONE: WR2 (8 agenti carousel) e WR3 (13 agenti video) condividono il PATTERN ma
+duplicano 2-3 agenti quasi-gemelli. Decisione Antonello: ripara WR3 (fatto in R1) E POI
+fondi. NON merge totale (WR3 ha 8 agenti video-specifici: clip-renderer, audio-asset-
+producer, shot-director, pre-render-gatekeeper, post-assembler, b-roll-curator — non hanno
+gemello WR2). Fusione = ESTRARRE PRIMITIVE CONDIVISE. Riferimento: dossier §6 M2/duplicati
+D1-D2, Codex FASE2 area-7.
+
+I DUPLICATI VERI (dal censimento, RI-VERIFICA leggendo i .md):
+- D1: wr2-brief-interpreter ≈ wr3-brief-interpreter (stesso ruolo NB-grounding, stesso
+  nlm-CLI, stesso claim/citation-verbatim contract; differisce solo NB routing NB-1/4/5 vs
+  NB-2..7) → estrai `BriefGrounder` parametrico (param: nb_routing, downstream_consumer).
+- D2: wr2-external-bench ≈ wr3-editorial-bench (stesso design "monthly SOTA bench, 12 brand
+  + 3 competitor, agy+Claude+DeepSeek cascade") → estrai `ExternalBench` (param: domain
+  carousel|video). NOTA: wr3-editorial-bench è anche ROTTO → R1 deve averlo sistemato.
+- (valuta) wr2-critic ≈ wr3-critic (entrambi quality-gate 4-rubric) → primitiva `CriticGate`?
+
+COME FONDERE (senza rompere produzione WR2 che è VIVA — 33 output, supervisor pid 17298):
+1. Estrai la primitiva condivisa come modulo/skill base parametrico.
+2. wr2-X e wr3-X diventano THIN WRAPPER che chiamano la primitiva con i loro parametri.
+3. Test: WR2 carousel deve ancora produrre identico (regression — è in produzione!).
+4. WR3 episode deve girare con la primitiva fusa.
+5. Aggiorna i riferimenti "MUST BE USED by wr2/wr3-design-architect".
+
+VINCOLI: WR2 è PRODUZIONE VIVA — zero regressione (test prima/dopo che il carousel esce
+identico). Non toccare gli 8 agenti video-specifici WR3 (no gemello). Le primitive vanno
+in ~/.claude/agents/ o skill condivisa.
+
+STOP POINT: commit atomici → push branch → apri PR DRAFT → STOP pre-merge (NON mergiare su
+main, mai --force). Poi `python scripts/agent_start.py --release --task-id wr2-wr3-fusione`.
+Anti-hallucination: ogni numero da un tool eseguito IN-TURN.
+
+OUTPUT: BriefGrounder + ExternalBench (+CriticGate?) estratti + wr2/wr3 agenti come wrapper +
+research/operations/wr2-wr3-fusione-report.md (before: 2 agenti duplicati; after: 1 primitiva
++ 2 wrapper; test regression WR2 PASS).
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE SPEC-3 <numero-PR-o-url>

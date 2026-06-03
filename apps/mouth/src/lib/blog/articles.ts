@@ -385,7 +385,7 @@ async function getMdxArticleBySlug(
     slug: frontmatter.slug || slug,
     title: frontmatter.title || "Untitled",
     subtitle: frontmatter.subtitle,
-    excerpt: frontmatter.excerpt || "",
+    excerpt: cleanExcerpt(frontmatter.excerpt || ""),
     content: content,
     coverImage:
       frontmatter.coverImage ||
@@ -506,7 +506,7 @@ export async function getArticleByLocale(
         slug: frontmatter.slug || slug,
         title: frontmatter.title || "Untitled",
         subtitle: frontmatter.subtitle,
-        excerpt: frontmatter.excerpt || "",
+        excerpt: cleanExcerpt(frontmatter.excerpt || ""),
         content,
         coverImage:
           frontmatter.coverImage ||

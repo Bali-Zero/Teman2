@@ -108,10 +108,13 @@ def include_routers(api: FastAPI) -> None:
         portal,
         portal_admin,
         portal_billing,
+        portal_dashboard,
         portal_drive,
+        portal_family,
         portal_invite,
         portal_matters,
         portal_notifications,
+        portal_notification_prefs,
         portal_process_timeline,
         portal_taxes,
         portal_visa,
@@ -134,6 +137,7 @@ def include_routers(api: FastAPI) -> None:
         voice,
         wa_actions,
         wa_dashboard_stream,
+        wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         webhooks,
         websocket,
@@ -232,10 +236,13 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal.router)
     api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
+    api.include_router(portal_dashboard.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_drive.router)
+    api.include_router(portal_family.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
+    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
@@ -293,6 +300,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
     api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
@@ -486,10 +494,13 @@ def include_light_routers(api: FastAPI) -> None:
         portal,
         portal_admin,
         portal_billing,
+        portal_dashboard,
         portal_drive,
+        portal_family,
         portal_invite,
         portal_matters,
         portal_notifications,
+        portal_notification_prefs,
         portal_process_timeline,
         portal_taxes,
         portal_visa,
@@ -511,6 +522,7 @@ def include_light_routers(api: FastAPI) -> None:
         visa_oracle,
         wa_actions,
         wa_dashboard_stream,
+        wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         webhooks,
         websocket,
@@ -592,10 +604,13 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(portal.router)
     api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
+    api.include_router(portal_dashboard.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_drive.router)
+    api.include_router(portal_family.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
+    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
@@ -624,6 +639,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
     api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
     api.include_router(webhooks.router)

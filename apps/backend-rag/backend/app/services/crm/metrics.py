@@ -10,78 +10,103 @@ from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
-from prometheus_client import Counter, Gauge, Histogram, Info
+import prometheus_client
 
 from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
+async def get_database_pool() -> asyncpg.Pool:
+    """Patchable fallback used when the collector was not explicitly initialized."""
+    raise RuntimeError(
+        "CRMMetricsCollector not initialized with pool. Call .initialize(pool) first.",
+    )
+
+
 # Prometheus Metrics Definition
 class CRMMetrics:
     """CRM-specific metrics for business operations"""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        registry: prometheus_client.CollectorRegistry | None = None,
+    ) -> None:
+        self.registry = registry or prometheus_client.CollectorRegistry(auto_describe=True)
+
         # Client metrics
-        self.active_clients_total = Gauge(
+        self.active_clients_total = prometheus_client.Gauge(
             "crm_active_clients_total",
             "Total number of active clients",
             ["assigned_to", "client_type"],
+            registry=self.registry,
         )
 
-        self.client_creation_duration = Histogram(
+        self.client_creation_duration = prometheus_client.Histogram(
             "crm_client_creation_duration_seconds",
             "Time taken to create a new client",
             ["client_type", "lead_source"],
+            registry=self.registry,
         )
 
-        self.client_status_changes = Counter(
+        self.client_status_changes = prometheus_client.Counter(
             "crm_client_status_changes_total",
             "Total number of client status changes",
             ["from_status", "to_status", "changed_by"],
+            registry=self.registry,
         )
 
         # Application processing metrics
-        self.application_processing_duration = Histogram(
+        self.application_processing_duration = prometheus_client.Histogram(
             "crm_application_processing_duration_seconds",
             "Time from application start to completion",
             ["visa_type", "destination_country", "outcome"],
+            registry=self.registry,
         )
 
-        self.applications_in_progress = Gauge(
+        self.applications_in_progress = prometheus_client.Gauge(
             "crm_applications_in_progress_total",
             "Number of applications currently in progress",
             ["stage", "priority"],
+            registry=self.registry,
         )
 
         # Business metrics
-        self.conversion_rate = Gauge(
+        self.conversion_rate = prometheus_client.Gauge(
             "crm_conversion_rate",
             "Conversion rate from prospect to active client",
             ["period", "source"],
+            registry=self.registry,
         )
 
-        self.client_lifecycle_duration = Histogram(
+        self.client_lifecycle_duration = prometheus_client.Histogram(
             "crm_client_lifecycle_duration_seconds",
             "Time from first contact to final resolution",
             ["outcome", "client_type"],
+            registry=self.registry,
         )
 
         # Operational metrics
-        self.interaction_response_time = Histogram(
+        self.interaction_response_time = prometheus_client.Histogram(
             "crm_interaction_response_time_seconds",
             "Time between client interactions",
             ["interaction_type", "channel"],
+            registry=self.registry,
         )
 
-        self.document_processing_duration = Histogram(
+        self.document_processing_duration = prometheus_client.Histogram(
             "crm_document_processing_duration_seconds",
             "Time to process client documents",
             ["document_type", "verification_status"],
+            registry=self.registry,
         )
 
         # System info
-        self.crm_info = Info("crm_info", "CRM system information")
+        self.crm_info = prometheus_client.Info(
+            "crm_info",
+            "CRM system information",
+            registry=self.registry,
+        )
 
         self.crm_info.info(
             {
@@ -93,7 +118,7 @@ class CRMMetrics:
 
 
 # Global metrics instance
-crm_metrics = CRMMetrics()
+crm_metrics = CRMMetrics(registry=prometheus_client.REGISTRY)
 
 
 class CRMMetricsCollector:
@@ -110,9 +135,7 @@ class CRMMetricsCollector:
     async def _get_pool(self):
         """Get database pool connection"""
         if not self.pool:
-            raise RuntimeError(
-                "CRMMetricsCollector not initialized with pool. Call .initialize(pool) first.",
-            )
+            self.pool = await get_database_pool()
         return self.pool
 
     async def update_all_metrics(self) -> dict[str, Any]:

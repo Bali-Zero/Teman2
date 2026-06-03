@@ -16,6 +16,13 @@ from backend.app.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+async def get_database_pool() -> asyncpg.Pool:
+    """Patchable fallback used when the service was not explicitly initialized."""
+    raise RuntimeError(
+        "CRMAuditLogger not initialized with pool. Call .initialize(pool) first.",
+    )
+
+
 class CRMAuditLogger:
     """Centralized audit logging for CRM operations"""
 
@@ -30,11 +37,7 @@ class CRMAuditLogger:
     async def _get_pool(self):
         """Get database pool connection"""
         if not self.pool:
-            # Try to get it from backend.app.state if we can't find it
-            # But in a service, it should be initialized
-            raise RuntimeError(
-                "CRMAuditLogger not initialized with pool. Call .initialize(pool) first.",
-            )
+            self.pool = await get_database_pool()
         return self.pool
 
     async def log_state_change(
@@ -307,25 +310,26 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
 
             # Get old state before change
             old_state = {}
+            should_log = True
             if entity_id and entity_type == "client":
                 # Fetch current client state
                 try:
-                    # Get pool from resolved params or global instance
+                    # Get pool from resolved params, global instance, or patchable fallback.
                     pool = all_params.get("db_pool") or audit_logger.pool
-                    if pool:
-                        async with pool.acquire() as conn:
-                            row = await conn.fetchrow(
-                                "SELECT * FROM clients WHERE id = $1",
-                                entity_id,
-                            )
-                            if row and hasattr(row, "items"):
-                                old_state = dict(row)
-                            elif row:
-                                # If it's a real record but doesn't have items() (unlikely for asyncpg)
-                                old_state = dict(row)
-                    else:
-                        logger.warning("⚠️ No database pool available for audit logging")
+                    if not pool:
+                        pool = await get_database_pool()
+                    async with pool.acquire() as conn:
+                        row = await conn.fetchrow(
+                            "SELECT * FROM clients WHERE id = $1",
+                            entity_id,
+                        )
+                        if row and hasattr(row, "items"):
+                            old_state = dict(row)
+                        elif row:
+                            # If it's a real record but doesn't have items() (unlikely for asyncpg)
+                            old_state = dict(row)
                 except Exception as e:
+                    should_log = False
                     logger.error("Failed to fetch client state: %s", e, exc_info=True)
 
             # Execute the function
@@ -344,7 +348,7 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
             if not entity_id and change_type == "create" and new_state:
                 entity_id = new_state.get("id")
 
-            if entity_id and user_email:
+            if should_log and entity_id and user_email:
                 await audit_logger.log_state_change(
                     entity_type=entity_type,
                     entity_id=entity_id,
@@ -366,6 +370,12 @@ async def create_audit_log_table(pool: asyncpg.Pool | None = None):
     """Create the CRM audit log table"""
     if not pool:
         pool = audit_logger.pool
+
+    if not pool:
+        try:
+            pool = await get_database_pool()
+        except Exception:
+            pool = None
 
     if not pool:
         logger.error("❌ Cannot create audit log table: no database pool available")
