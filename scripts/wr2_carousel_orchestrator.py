@@ -55,6 +55,21 @@ logger = logging.getLogger("wr2.orchestrator")
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _SUBAGENTS_DIR = Path.home() / ".claude" / "agents"
 _OUTPUT_BASE = Path.home() / ".claude" / "carousels"
+# Canonical carousel output dir consumed by wr2-layout-composer + wr2-critic.
+# The critic's mandatory pre-Rubric vision sweep reads
+# apps/war-room/output/carousel/<slug>/carousel.pdf — the orchestrator MUST
+# render into the same slug dir so <draft_id> == slugify(topic). See
+# docs/runbooks (S8 render fix) for the path-divergence root cause.
+_WAR_ROOM_CAROUSEL_BASE = _REPO_ROOT / "apps" / "war-room" / "output" / "carousel"
+
+
+def slugify(topic: str) -> str:
+    """Topic → on-disk carousel slug (e.g. 'KITAS C312 Expat Workers 2026' →
+    'kitas-c312-expat-workers-2026'). Matches the war-room slug convention the
+    layout-composer/critic agents hardcode. Empty/degenerate topics fall back
+    to a stable placeholder so the path is always well-formed."""
+    s = re.sub(r"[^a-z0-9]+", "-", topic.lower()).strip("-")
+    return s or "untitled-carousel"
 
 CLAUDE_BIN = shutil.which("claude") or "/Users/nuzantara/.npm-global/bin/claude"
 DEFAULT_STEP_TIMEOUT_SEC = 300
@@ -147,7 +162,10 @@ async def get_or_create_run(
         publish_mode = "manual"
 
     new_id = uuid.uuid4()
-    output_dir = _OUTPUT_BASE / session_id
+    # Render into the canonical war-room slug dir so the critic's mandatory
+    # vision sweep finds carousel.pdf at apps/war-room/output/carousel/<slug>/.
+    # <draft_id> == slugify(topic). (session_id stays in the DB for traceability.)
+    output_dir = _WAR_ROOM_CAROUSEL_BASE / slugify(topic)
     output_dir.mkdir(parents=True, exist_ok=True)
     row = await conn.fetchrow(
         """
@@ -324,6 +342,13 @@ async def run_pipeline_step(
             "carousel_id": str(carousel_id),
             "topic": run["topic"],
             "step": step["name"],
+            # Tell the subagents WHERE the carousel lives on disk so the
+            # layout-composer writes HTML/_base.css/logo.png/qr.png into the
+            # SAME slides dir the hero generator + renderer use, and the critic
+            # reads carousel.pdf from the right path. layout-composer documents
+            # output_dir as input #3 — previously never supplied (agent guessed).
+            "output_dir": str(output_dir),
+            "slides_dir": str(output_dir / "slides"),
             "prior": prior_artifacts,
         },
         ensure_ascii=False,
@@ -353,13 +378,37 @@ def _resolve_slide_html_paths(layout_payload: dict[str, Any], output_dir: Path) 
          [\"/path/<NN>.html\", ...]}\n```\n<more>"}
 
     Falls back to scanning `output_dir/slides/*.html` if envelope parsing yields nothing.
+
+    The layout-composer is an LLM and sometimes writes degenerate `slides_written`
+    paths (e.g. abbreviated `.../slides/01.html`) that don't resolve on disk.
+    Envelope paths are therefore VALIDATED — accepted only if they actually exist
+    (tried both verbatim and relative to output_dir) — else we fall through to the
+    authoritative filesystem scan, since output_dir is the source of truth.
     """
+
+    def _validate(paths: list[Any]) -> list[Path]:
+        resolved: list[Path] = []
+        for p in paths:
+            if not isinstance(p, str):
+                continue
+            cand = Path(p)
+            if cand.exists():
+                resolved.append(cand)
+                continue
+            # Retry relative to the authoritative output_dir / its slides dir.
+            alt = output_dir / "slides" / cand.name
+            if alt.exists():
+                resolved.append(alt)
+        return resolved
+
     if not isinstance(layout_payload, dict):
-        return []
+        return _scan_slides_dir(output_dir)
     # 1. Bare top-level (test fixtures, future direct schema)
     direct = layout_payload.get("slides_written")
     if isinstance(direct, list) and direct:
-        return [Path(p) for p in direct if isinstance(p, str)]
+        validated = _validate(direct)
+        if validated:
+            return validated
     # 2. Claude SDK envelope nested in result text
     result_text = layout_payload.get("result")
     if isinstance(result_text, str):
@@ -369,10 +418,17 @@ def _resolve_slide_html_paths(layout_payload: dict[str, Any], output_dir: Path) 
                 parsed = json.loads(match.group(1))
                 paths = parsed.get("slides_written") if isinstance(parsed, dict) else None
                 if isinstance(paths, list) and paths:
-                    return [Path(p) for p in paths if isinstance(p, str)]
+                    validated = _validate(paths)
+                    if validated:
+                        return validated
             except json.JSONDecodeError:
                 pass
-    # 3. Fallback: filesystem scan
+    # 3. Fallback: filesystem scan (authoritative — output_dir is source of truth)
+    return _scan_slides_dir(output_dir)
+
+
+def _scan_slides_dir(output_dir: Path) -> list[Path]:
+    """Authoritative slide-HTML discovery: glob output_dir/slides/NN.html."""
     slides_dir = output_dir / "slides"
     if slides_dir.is_dir():
         return sorted(slides_dir.glob("[0-9]*.html"))
@@ -443,6 +499,8 @@ def _compose_pdf(png_paths: list[Path], pdf_path: Path) -> None:
     )
     for img in images:
         img.close()
+
+
 async def generate_hero_images(
     output_dir: Path,
     image_prompt_payload: dict[str, Any],
@@ -455,7 +513,7 @@ async def generate_hero_images(
     Reads image-prompt-author output (slide-indexed prompts) + storyboarder
     output (hero flag per slide). For each slide with hero=true, dispatch
     `codex exec --sandbox workspace-write "$imagegen <prompt>"` and move the
-    generated image to `slides/<idx>-hero.jpg`.
+    generated image to `slides/<NN>-hero.jpg` (1-based, matching `NN.html`).
 
     Codex $imagegen quirk (lessons learned 2026-05-06): ignores output path
     in prompt, writes to ~/.codex/generated_images/<uuid>/. Workflow:
@@ -467,6 +525,13 @@ async def generate_hero_images(
     """
     slides_dir = output_dir / "slides"
     slides_dir.mkdir(parents=True, exist_ok=True)
+
+    # Smoke-test escape hatch: skip the (paid, slow) Codex $imagegen calls when
+    # validating the path/ordering wiring. Heroes are non-fatal downstream.
+    if os.environ.get("WR2_SKIP_IMAGEGEN") == "1":
+        logger.warning("WR2_SKIP_IMAGEGEN=1 — skipping hero image generation")
+        return []
+
     codex_bin = shutil.which("codex") or "/opt/homebrew/bin/codex"
 
     if not Path(codex_bin).is_file():
@@ -481,26 +546,62 @@ async def generate_hero_images(
         return []
 
     # Best-effort JSON extraction (subagents emit JSON inside ```json fences)
-    def _extract_json(blob: str) -> dict[str, Any]:
+    def _extract_json(blob: str, want_keys: tuple[str, ...]) -> dict[str, Any]:
+        """Extract a JSON object from an LLM result blob, preferring the object
+        that actually carries one of `want_keys` (a non-empty list).
+
+        The LLM sometimes emits MULTIPLE ```json fences (e.g. a metadata header
+        AND the slides payload, or an audit narrative + a header), so we scan
+        ALL fences and pick the one with the wanted array — not blindly the
+        first. Falls back to any parseable fence, then the whole blob.
+        """
         import re as _re
-        m = _re.search(r"```json\s*(\{.*?\})\s*```", blob, _re.DOTALL)
-        if m:
+
+        fences = _re.findall(r"```json\s*(\{.*?\})\s*```", blob, _re.DOTALL)
+        candidates: list[dict[str, Any]] = []
+        for frag in fences:
             try:
-                return json.loads(m.group(1))
+                obj = json.loads(frag)
             except json.JSONDecodeError:
-                pass
-        # Try whole blob
+                continue
+            if isinstance(obj, dict):
+                candidates.append(obj)
+        # Prefer a candidate that carries a non-empty wanted array.
+        for obj in candidates:
+            for k in want_keys:
+                v = obj.get(k)
+                if isinstance(v, list) and v:
+                    return obj
+        if candidates:
+            return candidates[0]
+        # No fence parsed — try the whole blob as raw JSON.
         try:
-            return json.loads(blob)
+            obj = json.loads(blob)
+            return obj if isinstance(obj, dict) else {}
         except (json.JSONDecodeError, TypeError):
             return {}
 
-    story = _extract_json(raw_story)
-    prompts = _extract_json(raw_prompts)
+    story = _extract_json(raw_story, ("slides",))
+    prompts = _extract_json(raw_prompts, ("slides", "prompts"))
     slides = story.get("slides", []) if isinstance(story, dict) else []
-    prompt_list = prompts.get("prompts", []) if isinstance(prompts, dict) else []
+    # image-prompt-author emits the prompt array under "slides" (1-based index
+    # per entry). Fall back to "prompts" for back-compat with any older artifact.
+    prompt_list = (
+        (prompts.get("slides") or prompts.get("prompts", []))
+        if isinstance(prompts, dict)
+        else []
+    )
 
     if not slides or not prompt_list:
+        # Loud, not silent: a slides=0 here means the storyboarder returned a
+        # narrative/metadata-only result with no slides array. Log a snippet of
+        # the raw blob so the failure is diagnosable instead of mysterious.
+        logger.warning(
+            "storyboarder result keys=%s (slides present=%s); raw head: %s",
+            list(story.keys()) if isinstance(story, dict) else type(story).__name__,
+            bool(slides),
+            raw_story[:300].replace("\n", " "),
+        )
         logger.warning(
             f"unable to extract slides/prompts (slides={len(slides)} prompts={len(prompt_list)}) — skip hero generation"
         )
@@ -509,24 +610,32 @@ async def generate_hero_images(
     generated: list[Path] = []
     codex_image_dir = Path.home() / ".codex" / "generated_images"
 
-    for idx, slide in enumerate(slides):
-        if not slide.get("hero"):
+    for pos, slide in enumerate(slides):
+        # storyboarder marks hero slides with "is_hero_image" (boolean);
+        # accept legacy "hero" too.
+        if not (slide.get("is_hero_image") or slide.get("hero")):
             continue
-        # Match prompt by slide index or position
+        # Both storyboarder and image-prompt-author use 1-based "index".
+        # Use the slide's own index (fall back to 1-based enumerate position).
+        slide_index = slide.get("index") or (pos + 1)
+        # Match the prompt entry by its 1-based index (NOT enumerate position).
         prompt_text = None
         for p in prompt_list:
-            if isinstance(p, dict) and (p.get("slide_index") == idx or p.get("index") == idx):
+            if isinstance(p, dict) and (
+                p.get("index") == slide_index or p.get("slide_index") == slide_index
+            ):
                 prompt_text = p.get("prompt") or p.get("text")
                 break
-        if not prompt_text and idx < len(prompt_list):
-            entry = prompt_list[idx]
-            prompt_text = entry.get("prompt") if isinstance(entry, dict) else str(entry)
+        # Last-resort: the storyboarder slide may carry a placeholder image_prompt.
+        if not prompt_text:
+            prompt_text = slide.get("image_prompt")
 
         if not prompt_text:
-            logger.warning(f"slide {idx} hero=true but no prompt found")
+            logger.warning(f"slide {slide_index} hero=true but no prompt found")
             continue
 
-        target_path = slides_dir / f"{idx:02d}-hero.jpg"
+        # 1-based name to match the layout HTML (01.html → 01-hero.jpg).
+        target_path = slides_dir / f"{slide_index:02d}-hero.jpg"
         codex_prompt = f"$imagegen {prompt_text}"
         t0 = time.monotonic()
 
@@ -541,16 +650,16 @@ async def generate_hero_images(
             )
             stdout, stderr = await asyncio.wait_for(r.communicate(), timeout=timeout_sec)
         except asyncio.TimeoutError:
-            logger.warning(f"codex $imagegen slide {idx} timeout {timeout_sec}s")
+            logger.warning(f"codex $imagegen slide {slide_index} timeout {timeout_sec}s")
             continue
         except (FileNotFoundError, OSError) as exc:
-            logger.warning(f"codex spawn failed slide {idx}: {exc}")
+            logger.warning(f"codex spawn failed slide {slide_index}: {exc}")
             continue
 
         elapsed_ms = int((time.monotonic() - t0) * 1000)
         if r.returncode != 0:
             err = (stderr.decode("utf-8", errors="replace") or "")[:300]
-            logger.warning(f"codex $imagegen slide {idx} exit {r.returncode}: {err}")
+            logger.warning(f"codex $imagegen slide {slide_index} exit {r.returncode}: {err}")
             continue
 
         # Find most recent file in ~/.codex/generated_images/ (Codex CLI quirk)
@@ -564,18 +673,58 @@ async def generate_hero_images(
         )
         recent = [p for p in candidates if time.time() - p.stat().st_mtime < 60]
         if not recent:
-            logger.warning(f"no recent codex output for slide {idx} (looked in {codex_image_dir})")
+            logger.warning(f"no recent codex output for slide {slide_index} (looked in {codex_image_dir})")
             continue
 
         try:
             shutil.copy2(recent[0], target_path)
             generated.append(target_path)
-            logger.info(f"hero slide {idx} → {target_path.name} ({elapsed_ms}ms)")
+            logger.info(f"hero slide {slide_index} → {target_path.name} ({elapsed_ms}ms)")
         except OSError as exc:
-            logger.warning(f"copy hero {idx} failed: {exc}")
+            logger.warning(f"copy hero {slide_index} failed: {exc}")
 
     logger.info(f"generated {len(generated)} hero images")
     return generated
+
+
+_BRAND_SKILL_DIR = Path.home() / ".claude" / "skills" / "bali-zero-brand"
+# Canonical wordmark the brand uses ("3 ALI ZERO" with the 3 stacked). The LLM
+# layout-composer occasionally emits a literal "BALI ZERO" — normalize it.
+_WORDMARK_RE = re.compile(
+    r'(<div[^>]*class="logo"[^>]*>)\s*BALI\s*ZERO\s*(</div>)', re.IGNORECASE
+)
+_WORDMARK_CANONICAL = r"\g<1>3<br/>ALI ZERO\g<2>"
+
+
+def _ensure_brand_assets(slides_dir: Path) -> None:
+    """Copy logo.png (+ _base.css) from the brand skill into the slides dir so
+    the HTML's `url('logo.png')` and `../_base.css`/`./_base.css` resolve.
+    Mirrors the known-good manual _compose.py. Non-fatal if the source is
+    missing (logged), so render still proceeds (critic will flag it)."""
+    for asset in ("assets/logo.png", "layouts/_base.css"):
+        src = _BRAND_SKILL_DIR / asset
+        dst = slides_dir / Path(asset).name
+        try:
+            if src.is_file() and not dst.is_file():
+                shutil.copy2(src, dst)
+                logger.info(f"brand asset co-located: {dst.name}")
+            elif not src.is_file():
+                logger.warning(f"brand asset source missing: {src}")
+        except OSError as exc:
+            logger.warning(f"failed to copy brand asset {asset}: {exc}")
+
+
+def _normalize_wordmark(html_path: Path) -> None:
+    """Rewrite a non-canonical `.logo` wordmark ('BALI ZERO') to the canonical
+    '3<br/>ALI ZERO' in place. Deterministic; no-op if already canonical."""
+    try:
+        text = html_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    new_text, n = _WORDMARK_RE.subn(_WORDMARK_CANONICAL, text)
+    if n:
+        html_path.write_text(new_text, encoding="utf-8")
+        logger.info(f"normalized wordmark in {html_path.name} ({n} fix)")
 
 
 async def render_playwright(
@@ -598,6 +747,13 @@ async def render_playwright(
     slides_dir = output_dir / "slides"
     slides_dir.mkdir(parents=True, exist_ok=True)
 
+    # Co-locate the brand assets the HTML references. The layout-composer agent
+    # only copies _base.css (per its prompt), NOT logo.png — but _base.css does
+    # `.logo { background-image: url('logo.png') }`, so without the asset the
+    # logo is invisible (critic Article 4 hard-fail). Mirror the known-good
+    # manual _compose.py: copy logo.png (+ _base.css as belt-and-suspenders).
+    _ensure_brand_assets(slides_dir)
+
     html_paths = _resolve_slide_html_paths(layout_payload, output_dir)
     if not html_paths:
         logger.warning(
@@ -613,17 +769,22 @@ async def render_playwright(
     per_slide_timeout_ms = max(5000, (timeout_sec * 1000) // max(len(html_paths), 1))
 
     png_paths: list[Path] = []
-    for i, html_path in enumerate(html_paths):
+    for html_path in html_paths:
         if not html_path.exists():
-            logger.warning(f"slide {i:02d}: HTML missing at {html_path}, skipping")
+            logger.warning(f"slide HTML missing at {html_path}, skipping")
             continue
-        png_path = slides_dir / f"{i:02d}-rendered.png"
+        # Normalize the non-canonical wordmark the LLM sometimes writes
+        # ("BALI ZERO" → canonical "3<br/>ALI ZERO"); deterministic, in place.
+        _normalize_wordmark(html_path)
+        # Name the PNG from the HTML stem (preserves 1-based 01..NN), NOT a
+        # 0-based enumerate counter (off-by-one cosmetic bug).
+        png_path = slides_dir / f"{html_path.stem}-rendered.png"
         try:
             await _render_html_to_png(html_path, png_path, timeout_ms=per_slide_timeout_ms)
             png_paths.append(png_path)
-            logger.info(f"slide {i:02d}: rendered → {png_path.name}")
+            logger.info(f"slide {html_path.stem}: rendered → {png_path.name}")
         except Exception as exc:
-            logger.warning(f"slide {i:02d}: render failed ({exc!s}), continuing")
+            logger.warning(f"slide {html_path.stem}: render failed ({exc!s}), continuing")
 
     if not png_paths:
         logger.warning("render_playwright: zero PNGs rendered, skipping PDF composition")
@@ -665,9 +826,13 @@ def _extract_critic_verdict_dict(critic_payload: dict[str, Any]) -> dict[str, An
     Resolution order:
     1. If payload already has `binary_carousel_verdict` or `overall_verdict` at
        top level (bare JSON shape), return payload directly.
-    2. If payload has `result` text field, extract first ```json ... ``` fence
-       and parse it.
-    3. Otherwise return empty dict.
+    2. Scan ALL ```json fences in `result`, preferring the object that carries a
+       verdict key (the critic may emit multiple fences).
+    3. Try the whole `result` text as JSON.
+    4. PROSE FALLBACK: the critic sometimes emits NO fence at all and writes the
+       verdict inline as markdown, e.g. **`binary_carousel_verdict: FAIL`**.
+       Scan for the verdict keys as inline text and synthesize a dict.
+    5. Otherwise return empty dict.
     """
     if not isinstance(critic_payload, dict):
         return {}
@@ -676,17 +841,44 @@ def _extract_critic_verdict_dict(critic_payload: dict[str, Any]) -> dict[str, An
     result_text = critic_payload.get("result")
     if not isinstance(result_text, str):
         return {}
-    match = _CRITIC_JSON_FENCE_RE.search(result_text)
-    if match:
+    # 2. Scan ALL json fences, prefer the one carrying a verdict key.
+    fenced: list[dict[str, Any]] = []
+    for frag in _CRITIC_JSON_FENCE_RE.findall(result_text):
         try:
-            return json.loads(match.group(1))
+            obj = json.loads(frag)
         except json.JSONDecodeError:
-            pass
-    # Last resort: try whole text as JSON
+            continue
+        if isinstance(obj, dict):
+            fenced.append(obj)
+    for obj in fenced:
+        if "binary_carousel_verdict" in obj or "overall_verdict" in obj:
+            return obj
+    if fenced:
+        return fenced[0]
+    # 3. Whole text as JSON.
     try:
-        return json.loads(result_text)
+        whole = json.loads(result_text)
+        if isinstance(whole, dict):
+            return whole
     except (json.JSONDecodeError, TypeError):
-        return {}
+        pass
+    # 4. Prose fallback — verdict written inline as markdown, no JSON fence.
+    # Match only the long, specific keys (a bare `verdict:` regex would match the
+    # suffix of `binary_carousel_verdict`), and constrain values to the real enum
+    # tokens (so it can't grab unrelated prose like "objective ... PASS").
+    prose: dict[str, Any] = {}
+    for key, allowed in (
+        ("binary_carousel_verdict", ("PASS", "FAIL")),
+        ("overall_verdict", ("pass", "soft_fail", "hard_fail")),
+    ):
+        m = re.search(
+            rf"{key}[\"'`*:\s]*\b(" + "|".join(allowed) + r")\b",
+            result_text,
+            re.IGNORECASE,
+        )
+        if m:
+            prose[key] = m.group(1)
+    return prose
 
 
 def critic_verdict(critic_payload: dict[str, Any]) -> str:
@@ -766,7 +958,28 @@ async def run_pipeline(
                 logger.warning(f"hero image generation failed (non-fatal): {exc}")
                 artifacts["hero_images"] = []
 
-    # Step 5 — critic gate with retry max 2
+    # Step 5 — Playwright render (MUST run BEFORE the critic: wr2-critic's
+    # mandatory pre-Rubric vision sweep reads carousel.pdf, so the PDF must
+    # exist before the critic is invoked). Render once — re-rendering identical
+    # HTML on a critic retry is pointless.
+    rendered = await render_playwright(output_dir, artifacts.get("layout_composer", {}))
+    artifacts["rendered_paths"] = [str(p) for p in rendered]
+    # render_playwright writes rendered.json with PDF path internally.
+    pdf_path = output_dir / "carousel.pdf"
+    # Hand the critic explicit artifact paths so it never mis-derives <draft_id>
+    # (the critic doc says the orchestrator passes these; previously it did not).
+    artifacts["render_paths"] = {
+        "pdf_path": str(pdf_path),
+        "slides_dir": str(output_dir / "slides"),
+        "png_paths": [str(p) for p in rendered],
+        "hero_paths": artifacts.get("hero_images", []),
+    }
+    await transition_state(conn, carousel_id, "rendered")
+
+    # Step 6 — critic gate with retry max 2 (now operates on the rendered PDF).
+    # On RETRYABLE_FAIL we re-invoke ONLY the critic (re-Read the same PDF) —
+    # the HTML/PNG/PDF are unchanged, so re-rendering would be wasted work.
+    # A real FAIL stays terminal as before.
     critic_step = PIPELINE_STEPS[4]
     for attempt in range(CRITIC_RETRY_MAX + 1):
         try:
@@ -801,12 +1014,6 @@ async def run_pipeline(
         raise FatalOrchestratorError(
             f"critic RETRYABLE_FAIL exhausted after {CRITIC_RETRY_MAX + 1} attempts"
         )
-
-    # Step 6 — Playwright render
-    rendered = await render_playwright(output_dir, artifacts.get("layout_composer", {}))
-    artifacts["rendered_paths"] = [str(p) for p in rendered]
-    # render_playwright writes rendered.json with PDF path internally; no double-write here.
-    await transition_state(conn, carousel_id, "rendered")
 
     # Step 7 — awaiting approval (Telegram gate consumer takes over)
     await transition_state(conn, carousel_id, "awaiting_approval")
