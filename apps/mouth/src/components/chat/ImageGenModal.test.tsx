@@ -20,6 +20,9 @@ describe("ImageGenModal", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Generate Image")).toBeInTheDocument();
     expect(
+      screen.getByLabelText("Image generation prompt"),
+    ).toBeInTheDocument();
+    expect(
       screen.getByPlaceholderText(/a magical unicorn/i),
     ).toBeInTheDocument();
   });
