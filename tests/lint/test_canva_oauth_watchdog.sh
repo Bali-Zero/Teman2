@@ -201,6 +201,21 @@ STUB_OUTPUT=29 run_watchdog
 assert_eq "stale exit code (29)" "1" "$rc"
 assert_eq "state.last_count (29)" "29" "$(state_get last_count)"
 
+echo ""
+echo "TEST 7: prose-wrapped count (regression 2026-06-04 false STALE)"
+# Claude sometimes ignores \"JUST the integer\" and returns a sentence with the
+# count bolded. The old strict ^[0-9]+$ on the tr-stripped line failed -> 4
+# false STALE Telegram pages in 48h. Parser must pull the FIRST integer.
+reset_state
+STUB_OUTPUT="The deferred tool list shows 37 names with the prefix." run_watchdog
+assert_eq "healthy exit code (prose)" "0" "$rc"
+assert_eq "state.last_status (prose)" "healthy" "$(state_get last_status)"
+assert_eq "state.last_count (prose first-int)" "37" "$(state_get last_count)"
+reset_state
+STUB_OUTPUT="Correzione: il conteggio reale e **33**." run_watchdog
+assert_eq "healthy exit code (it-prose)" "0" "$rc"
+assert_eq "state.last_count (it-prose first-int)" "33" "$(state_get last_count)"
+
 # ─────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────
