@@ -5,22 +5,36 @@ from scripts.wa_corpus.prompt_master import (
 )
 
 
-def test_prompt_contains_all_six_sections():
+def test_prompt_contains_all_top_level_sections():
     for sec in REQUIRED_SECTIONS:
         assert sec in PROMPT_MASTER
 
 
-def test_prompt_demands_verbatim_and_english():
-    assert "verbatim" in PROMPT_MASTER.lower()
-    assert "english" in PROMPT_MASTER.lower()
-    assert "not mentioned" in PROMPT_MASTER.lower()
+def test_prompt_has_two_levels_and_perspectives():
+    # PART A multi-perspective + PART B specific points (Antonello's requirement)
+    for perspective in ("Operational", "Relationship", "Commercial", "Risk"):
+        assert perspective in PROMPT_MASTER
+    for point in ("Company / entity", "Deadlines", "Amounts / payments",
+                  "Next concrete action"):
+        assert point in PROMPT_MASTER
+
+
+def test_prompt_demands_verbatim_and_english_and_no_invent():
+    low = PROMPT_MASTER.lower()
+    assert "verbatim" in low
+    assert "english" in low
+    assert "not mentioned" in low
+    assert "never infer or invent" in low
 
 
 def test_valid_recap_has_all_sections():
-    recap = "\n".join(f"## {s}\nnot mentioned" for s in REQUIRED_SECTIONS)
+    recap = (
+        "**HEADLINE**: x\n\nGENERAL RECAP\n- Operational: y\n\n"
+        "SPECIFIC POINTS\n- Company / entity: z"
+    )
     assert recap_is_valid(recap) is True
 
 
 def test_recap_missing_a_section_is_invalid():
-    recap = "\n".join(f"## {s}\nx" for s in list(REQUIRED_SECTIONS)[:-1])
+    recap = "**HEADLINE**: x\n\nGENERAL RECAP\n- Operational: y"  # no SPECIFIC POINTS
     assert recap_is_valid(recap) is False

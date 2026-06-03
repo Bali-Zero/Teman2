@@ -65,9 +65,25 @@ class QueryRunner:
     def sync_source(self, nb_id: str, source_id: str) -> None:
         _nlm(["source", "sync", nb_id, "--source-ids", source_id, "-y"])
 
-    def run_prompt_master(self, nb_id: str, source_id: str) -> RecapResult:
-        out = _nlm(
-            ["notebook", "query", nb_id, PROMPT_MASTER,
-             "--source-ids", source_id, "--json", "-t", "150"]
-        )
-        return parse_query_result(out)
+    def run_prompt_master(
+        self, nb_id: str, source_id: str, max_attempts: int = 3
+    ) -> RecapResult:
+        """Run the prompt-master, retrying while NLM returns zero citations.
+
+        Lab finding: NLM is non-deterministic about populating structured
+        references — the same prompt on the same source can return 0 then 8
+        citations on consecutive runs. A recap without traceable citations
+        cannot pass the HITL anti-hallucination check, so retry up to
+        max_attempts before returning whatever we got (caller checks
+        .has_citations and flags it if still empty).
+        """
+        result = RecapResult(answer="", cited_texts=[])
+        for _ in range(max_attempts):
+            out = _nlm(
+                ["notebook", "query", nb_id, PROMPT_MASTER,
+                 "--source-ids", source_id, "--json", "-t", "150"]
+            )
+            result = parse_query_result(out)
+            if result.has_citations:
+                return result
+        return result
