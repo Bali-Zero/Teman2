@@ -1,0 +1,74 @@
+{
+  "session": "ONDA-3 S9 client-case-dossier",
+  "date": "2026-06-03",
+  "orchestrator": "Claude Opus 4.8 (1M context), thin-client M5 -> ssh pro worktree .worktrees/docs-s9-client-cases",
+  "pricing_tool": {
+    "status": "GREEN",
+    "source_of_truth": "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json (version 2026.1, effective 2026-01-01)",
+    "binding_proof": "apps/backend-rag/backend/services/pricing/pricing_service.py lines 4,30-31 declare this JSON as authoritative source-of-truth",
+    "rbac_blocked": false,
+    "note": "Prices read directly from the PricingTool source JSON. NO price from DeepSeek, NO user-input, NO speculation. STRUCT-1 anti-pattern (speculative pricing seen in C5A files as '[OPINIONE - SPECULATIVE pricing]') explicitly avoided."
+  },
+  "math_engine": {
+    "model": "deepseek-v4-pro",
+    "note": "Explicit deepseek-v4-pro used (NOT deprecated deepseek-reasoner alias which silently returns flash). Model field verified in API response. Cross-checked by Codex node re-derivation + manual orchestrator sanity check."
+  },
+  "devils_advocate": {
+    "spalla": "Codex GPT-5.5 (codex exec --sandbox read-only), health-check PONG exit 0 pre-run",
+    "method": "adversarial pass hunting legal error / miscalc / missing regulation / hallucinated KBLI / contradiction; orchestrator adjudicated findings against ground-truth source (not blind obedience)"
+  },
+  "cases": [
+    {
+      "id": "marc-buckner-content-creator-3mo-bali",
+      "domain": "visa",
+      "client": "Marc Buckner (IG @marcbuckner), Sudafricano, content creator 2M+ follower, 3 mesi Bali giu-set 2026",
+      "dossier": "research/visa/clients/2026-06-03-marc-buckner-S9-dossier.md",
+      "eligibility": {
+        "recommended": "E33G Remote Worker KITAS (copre SOLO la gamba reddito-estero)",
+        "rejected": ["C5A (non operativo, portale Data Belum Tersedia)", "C7/C7C (categoria sbagliata)", "E23/E28A (economicamente fuori scope per 3 mesi)"],
+        "source": "research/visa/2026-05-31-marc-buckner-c5a-e33g-barter-case.md (NB-2 Kepmen M.IP-08.GR.01.01/2025 verbatim + 7 web sources)"
+      },
+      "cost_status": "GREEN (PricingTool) ma quote NON send-ready",
+      "cost": "E33G Remote Worker Offshore = IDR 13.000.000 (Altus/Onshore 14.000.000) — bali_zero_official_prices_2026.json kitas_permits",
+      "math": "n/a (caso visa puro, nessun calcolo richiesto)",
+      "devils_advocate_verdict": "PASS-after-fix",
+      "devils_advocate_findings_resolved": [
+        "ACCOLTO: chiarito che E33G copre SOLO reddito-estero, non l'intero caso ne il barter",
+        "ACCOLTO (key): aggiunto CAVEAT BLOCCANTE gate 'contratto datore estero' per creator autonomo — secondo blocco oltre soglia reddito",
+        "PARZIALE: triangolazione gia marcata 'zona grigia alto rischio', conforme a NB-2"
+      ],
+      "send_ready": false,
+      "blockers": ["prova reddito estero >= USD 60k/anno", "struttura contratto datore estero (creator autonomo)", "disclosure natura deal hotel (barter vs contrattualizzabile)"]
+    },
+    {
+      "id": "paco-pak-seseh-shophouse-lease",
+      "domain": "property",
+      "client": "Paco Pak (tenant: Michele Cangiano), lease 10 anni 2 shophouse + 60m2, Jalan Raya Seseh, Munggu, Badung",
+      "dossier": "research/visa/clients/2026-06-03-paco-pak-S9-dossier.md",
+      "eligibility": {
+        "structure": "Leasehold / Hak Sewa (PP 44/1994) — solo passaporto, no BPN, protezione = contratto PPAT",
+        "critical_risks": ["zoning sawah/agricolo vs uso commerciale (Perda Bali 4/2026 criminalizza conversione, demolizione forzata)", "owner BPN = Pura/Desa Adat vs firmatario individuo (autorita a concedere)"],
+        "source": "research/property/paco-pak-due-diligence-2026-05-22.html + research/property/2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md (S6 NB-5)"
+      },
+      "cost_status": "NEEDS-ANTONELLO",
+      "cost": "Legal/DD real-estate su misura = 'Depend (Contact for quote)' nel listino 2026 → NESSUNA cifra inventata. Voci ancillari a listino se cliente procede: NPWPD 2.500.000, NPWP+Coretax 1.000.000.",
+      "math": {
+        "verified_by": "deepseek-v4-pro + Codex node re-derivation",
+        "scenario_A_compound_annual_7pct": "IDR 3.592.276.470",
+        "scenario_B_block_based_contract_table": "IDR 2.943.155.000 (contratto dichiara 2.943.156.000, delta 1.000 arrotondamento)",
+        "difference_A_minus_B": "IDR 649.121.470",
+        "finding": "contratto coerente sotto interpretazione block; clausola va resa esplicita per evitare esposizione +649M"
+      },
+      "devils_advocate_verdict": "PASS",
+      "devils_advocate_findings_resolved": ["NONE"],
+      "send_ready": false,
+      "blockers": ["4 cure HIGH aperti (owner/signatory, zoning, building legality, lease-object-to-title)", "quote legale a preventivo (Contact for quote)"]
+    }
+  ],
+  "summary": {
+    "dossiers_produced": 2,
+    "send_ready": 0,
+    "all_draft_needs_antonello": true,
+    "reason": "Vincolo S9 rispettato: quote NON send-ready senza PricingTool-verde + devils-advocate-PASS. Marc: PricingTool verde + DA PASS ma 3 blockers cliente. Paco: DA PASS ma cost=Contact-for-quote + 4 cure HIGH."
+  }
+}
