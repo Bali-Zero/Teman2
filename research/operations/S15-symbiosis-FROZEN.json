@@ -1,0 +1,103 @@
+{
+  "frozen_meta": {
+    "audit_id": "S15-symbiosis-deep-audit",
+    "session": "S15 symbiosis-deep-audit (ONDA 1)",
+    "generated_at_local": "2026-06-02T05:15+08:00 (WITA)",
+    "auditor": "Claude Opus 4.8 orchestrator + 3 parallel assailants + devils-advocate (Workflow fan-out)",
+    "machine": "Pro (nuzantara@Nuzantara)",
+    "worktree": "/Users/nuzantara/Desktop/nuzantara/.worktrees/organism-s15-symbiosis",
+    "branch": "agent/nuzantara/organism/s15-symbiosis",
+    "head_sha": "e66ccd018e2908c07cf1befbcace83316b298517",
+    "phase": "read-only diagnostic snapshot",
+    "anti_hallucination_note": "Orchestrator independently re-verified the 4 hottest findings (W34 lint exit, seo_auto_fixer paid endpoint, 4 RED launchagents via launchctl print, skills-bridge secret) with own tool calls THIS turn. TWO false claims were caught and corrected during verification — see contradictions_caught.",
+    "scope_note": "Diagnosi read-only su prod. Riaprire una cicatrix = entry strutturata in cicatrix-scars.md, NON un fix. Nessuna mutazione prod."
+  },
+
+  "contradictions_caught": [
+    {
+      "what": "Initial lint pipe masked exit code",
+      "detail": "First run piped lint_asyncpg_except_completeness.py through `tail` — captured tail's exit (0), not lint's. Re-ran isolating $? → REAL_LINT_EXIT=1. Anti-hallucination rule 2 (double-check critical values) caught it.",
+      "resolution": "W34 REOPEN CONFIRMED: lint exits 1, violation scripts/wr2_canva_lease_watchdog.py:40."
+    },
+    {
+      "what": "Devils-advocate falsely refuted skills-bridge secret leak",
+      "detail": "Devil claimed skills-bridge backup contains ONLY a placeholder comment, NO embedded secret, downgrading Assailant C to INFO. Orchestrator grep found the comment IS followed by a real 64-hex value under <key>BRIDGE_SKILLS_API_KEY</key> (value REDACTED here — see live backup file; rotate it). The devil was WRONG; Assailant C was RIGHT.",
+      "resolution": "skills-bridge backup secret_world_readable CONFIRMED as real leak (0444 world-readable, 64-hex API key embedded). RIAPERTA as scar."
+    }
+  ],
+
+  "symbiosis_laws": {
+    "law_count_real": 7,
+    "note": "Spawning prompt said '8 Leggi' — SYMBIOSIS.md actually defines 7 (ends at Law 7 'Numeri prima'). The SessionStart hook also lists 7. Prompt count was wrong.",
+    "verdicts": {
+      "law_1_cli_only_llm": {
+        "verdict": "PARTIAL",
+        "armed_violation": "apps/evaluator/seo_auto_fixer.py:95 POSTs to https://api.anthropic.com/v1/messages with x-api-key=ANTHROPIC_API_KEY (line 98) — BANNED paid pay-as-you-go endpoint. LIVE automation: scripts/dlq_autopilot.py:70 lists 'seo_auto_fixer' job + scripts/automation_catalog.json:22. Degrades to title[:155] only when key UNSET (line 77). Independently verified by orchestrator grep: lines 25/77/95/98.",
+        "dead_paths": "3 other paid instantiations de-facto dead: bali-intel ai_engine.py:195 (unreachable — all callers force AIProvider.OPENAI), claims_extractor.py:136 + process_batches_2_3.py:34 (old one-shot Mar 2026).",
+        "gap": "No enforcing lint covers seo_auto_fixer — scripts/lint/wr3_lint_cli_only.py scopes only scripts/wr3_*.py.",
+        "canonical_path_ok": "claude_oauth_client.py strips ANTHROPIC_API_KEY (line 137); multi_ai_adapter.ClaudeAdapter routes through CLI."
+      },
+      "law_2_osint_blindato": {
+        "verdict": "PARTIAL",
+        "evidence": "Docs say bali-intel local-only (bali-intel CLAUDE.md:39, backend-rag CLAUDE.md:246) but apps/bali-intel-scraper/fly.toml EXISTS + scripts default QDRANT_URL=https://nuzantara-qdrant.fly.dev (load_intel_sources.py:27, init_news_collection.py:22) + preview URLs https://bali-intel-scraper.fly.dev. Static audit cannot confirm what OSINT data actually crosses at runtime — needs network observation. wa-mirror OSINT correctly local-only (127.0.0.1:5432)."
+      },
+      "law_3_event_driven_durability": { "verdict": "RESPECTED", "evidence": "lint_symbiosis_promises.py EXIT=0 this session. SYMBIOSIS.md Law3 table cites test_outbox.py/test_outbox_callsite_integration.py/test_event_bus_replay.py." },
+      "law_4_graceful_degradation": { "verdict": "RESPECTED", "evidence": "outbox replay max_age_minutes=60, Test: cited, lint EXIT=0." },
+      "law_5_zero_last_instance": { "verdict": "RESPECTED", "evidence": "Telegram escalation in federation_alerts/approval.py + cognitive CLIs + TELEGRAM_OWNER_CHAT_ID=1125336968." },
+      "law_6_local_sovereignty": { "verdict": "RESPECTED", "evidence": "bali-intel+drive-poll pinned to Pro, wa-mirror local PG, Ollama local. STALE doc detail: SYMBIOSIS.md:195 still names 'Air 16GB' (decommissioned 2026-05-05)." },
+      "law_7_numbers_first": { "verdict": "RESPECTED", "evidence": "SYMBIOSIS.md:210 carries computed metrics with sample sizes (T0-Pro 7d-median IA=0.0192 FE=0.0000 n=9)." }
+    }
+  },
+
+  "cicatrix_resurrection": {
+    "retested": 8,
+    "still_resolved": 6,
+    "reopened": 1,
+    "cannot_verify": 1,
+    "results": [
+      { "scar": "P0-SECURITY postgres password leak (2026-05-21)", "verdict": "STILL_RESOLVED", "evidence": "All formerly-leaked DSNs carry placeholder <<ROTATED_2026_05_22>>; zero tracked .env; only test-fixture 'secret' remains. CAVEAT: git HISTORY not scrubbed (rotation-only)." },
+      { "scar": "SQL migrations 129/130 de-dup (P0-7)", "verdict": "STILL_RESOLVED", "evidence": "One file per number (129_crm_guardian.sql, 130_crm_guardian_summary_queue.sql); uniq -d empty across 89 files; lint-migration-numbers.yml present." },
+      { "scar": "W31 fly_machines_restart actuator", "verdict": "STILL_RESOLVED", "evidence": "actuator file + SAFE_ACTUATORS whitelist (dispatch.py:55) + base.yaml:94 rule all wired." },
+      { "scar": "W34 asyncpg silent-death lint guard", "verdict": "REOPENED", "evidence": "ORCHESTRATOR-VERIFIED THIS TURN: lint exits 1 (REAL_LINT_EXIT=1), violation scripts/wr2_canva_lease_watchdog.py:40 'except (asyncio.TimeoutError, OSError, asyncpg.PostgresError)' missing asyncpg.InterfaceError. Regression introduced by W49 fix (commit 120078999) AFTER W34's cb32f8214 same day; CI deferred to 'W35' so guard never gated. Antibody (lint) alive, wound (compliance) open." },
+      { "scar": "EventBus outbox (PR #342 + mig 146)", "verdict": "STILL_RESOLVED", "evidence": "outbox.py full API (publish/acknowledge/replay_unconsumed/prune_consumed) + mig 144/146 + tests present. Phase3 pending as documented (not regression)." },
+      { "scar": "W57 wa-mirror self-healing", "verdict": "STILL_RESOLVED", "evidence": "python_env_repair.py (427 LOC) with _DEP_ALLOWLIST guard + wa_mirror_enrichment_sensor.py (312 LOC) intact." },
+      { "scar": "W50 dlq_autopilot wrapper deploy-path", "verdict": "STILL_RESOLVED", "evidence": "launch_dlq_autopilot.sh:30 REPO_DIR=$HOME/Desktop/nuzantara (SSOT); HOME-fork exec gone." },
+      { "scar": "canva-renderer flycast DNS wrapper", "verdict": "CANNOT_VERIFY", "evidence": "plist present but NO flycast wrapper script found via grep. Cross-note: this same plist is RED binary_missing below (wrapper wr2-canva-renderer-wrapper.sh absent) — contradicts clean resolution. Needs Pro re-check." }
+    ]
+  },
+
+  "launchagent_health": {
+    "total": 169,
+    "loaded": 161,
+    "method": "launchctl print authoritative (NOT ps/log-mtime). Orchestrator independently re-verified all 4 CONFIRMED-RED.",
+    "green": 116,
+    "yellow": 46,
+    "confirmed_red": 4,
+    "downgraded_from_red": 3,
+    "confirmed_red_details": [
+      { "label": "com.balizero.wr2.canva-renderer", "severity": "P1", "evidence": "VERIFIED: wrapper /Users/nuzantara/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh ABSENT (dir has only wr2-cron-wrapper.sh + wr2-script-wrapper.sh). StartInterval=300 + RunAtLoad=true → fails EVERY 5 MIN. launchctl: state=spawn scheduled, last exit=78 EX_CONFIG. Most severe." },
+      { "label": "com.nuzantara.workspace-event-bridge-sheets-import", "severity": "P2", "evidence": "VERIFIED: target script in DELETED worktree .worktrees/docs-lab-clean-recreate/ (ls: No such file). launchctl: runs=228, last exit=127, state=not running. StartInterval=900 → fails every 15min." },
+      { "label": "com.balizero.wr3.editorial-bench.monthly", "severity": "P3", "evidence": "VERIFIED: /Users/nuzantara/.openclaw/bin/wr3/ dir ABSENT. exit 127. StartCalendarInterval monthly (Day=1 Hour=7) → near-zero blast radius until next 1st." },
+      { "label": "com.balizero.wr3.yt-metrics.weekly", "severity": "P3", "evidence": "Same absent wr3 dir. exit 127. Weekday=1 weekly. Low-frequency RED." }
+    ],
+    "downgraded": [
+      { "label": "com.nuzantara.cleanup-2026-05-16-ttl-sentinel", "to": "YELLOW tombstone", "evidence": "VERIFIED: StartCalendarInterval Year=2026 Month=5 Day=16 Hour=8 Min=35 = PAST one-shot. runs=0, never exited. launchd will NEVER re-fire a past dated-calendar event → cannot fail. Hygiene-only un-unloaded tombstone." },
+      { "label": "com.balizero.wa-dashboard-m1 backups (3)", "to": "LOW hygiene", "evidence": "VERIFIED: live plist 0400. .pre-dev-db-fix + .pre-hideteam = -r--r--r-- world-readable; .pre-ghost-worktree = -rw-r--r--. Each carries postgres://nuzantara@127.0.0.1:5432/nuzantara_dev (local DSN, NO password). Real residual leak surface, lower severity." }
+    ],
+    "w61_no_keepalive_structural_debt": "post-publish-poller, sentinel, automap-watchdog: RunAtLoad=true + no schedule + no KeepAlive=true. Currently exit 0 / not storming = YELLOW structural debt, flagged not crash-looping. post-publish-poller is the scar-documented critical daemon to watch."
+  },
+
+  "scars_reopened_this_session": [
+    "W64 — W34 asyncpg silent-death regression via W49 sibling-fix (scripts/wr2_canva_lease_watchdog.py:40)",
+    "W65 — skills-bridge-consumer backup leaks a 64-hex API key world-readable, value REDACTED from this artifact (devils-advocate false-refutation corrected)"
+  ],
+
+  "needs_antonello": [
+    "Law 1 PARTIAL: seo_auto_fixer.py uses BANNED paid Anthropic endpoint — patch to CLI path OR confirm key intentionally unset in prod env. Add lint coverage (extend wr3_lint_cli_only scope).",
+    "4 RED binary_missing launchagents: bootout the 4 plist OR restore wrappers (canva-renderer wrapper, wr3/ dir, docs-lab-clean-recreate worktree). canva-renderer P1 (fails every 5min).",
+    "W64 reopen: add asyncpg.InterfaceError to wr2_canva_lease_watchdog.py:40 + wire lint into CI (W35 deferral) so regressions gate.",
+    "W65 reopen: chmod 0400 (or rm) skills-bridge-consumer.plist.bak-pre-chmod0400-20260531 + ROTATE BRIDGE_SKILLS_API_KEY (64-hex value was world-readable). Extend hardening sweep to chmod its own backups.",
+    "Law 2 PARTIAL: confirm bali-intel fly.toml + qdrant.fly.dev URLs are vestigial vs active cloud OSINT crossing (runtime/network check needed).",
+    "SYMBIOSIS.md:195 stale 'Air 16GB' (decommissioned 2026-05-05) — doc cleanup."
+  ]
+}

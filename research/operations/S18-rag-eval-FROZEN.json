@@ -1,0 +1,77 @@
+{
+  "session": "S18-rag-eval-truth",
+  "date": "2026-06-03",
+  "orchestrator_model": "claude-opus-4-8 (1M context)",
+  "lane": "backend-rag",
+  "branch": "agent/nuzantara/backend-rag/s18-rag-eval",
+  "links_to_scar": "S2 — research/operations/2026-05-31-rag-truth-vs-nlm-oracle.md (RAG accuracy unmeasurable via MCP due to RBAC wall)",
+  "mission": "Build a real RAG eval harness for Zantara prod (retrieval recall@k + generation faithfulness) on a verified golden set, runnable even while the prod arm is RBAC-blocked; resolve the villa-KBLI divergence (55193 vs 55203).",
+
+  "deliverables": {
+    "harness": "apps/evaluator/rag_eval/rag_eval.py",
+    "golden_set": "apps/evaluator/rag_eval/golden_set.json",
+    "tests": "apps/evaluator/rag_eval/test_rag_eval.py",
+    "readme": "apps/evaluator/rag_eval/README.md",
+    "frozen": "research/operations/S18-rag-eval-FROZEN.json"
+  },
+
+  "embedding_frozen": {
+    "model": "text-embedding-3-small",
+    "dim": 1536,
+    "enforcement": "load_golden() asserts the golden set declares this model+dim; the harness never embeds itself, it consumes prod RAG retrieval, so the frozen embedding is honoured by construction."
+  },
+
+  "golden_set": {
+    "n_pairs": 13,
+    "by_domain": {"kbli": 3, "company": 3, "tax": 4, "property": 3},
+    "ground_truth_provenance": "100% from artifacts committed on origin/main; every must_contain fact grep-verified on the branch (counts all >=1). NO NotebookLM live calls.",
+    "sources": [
+      "apps/backend-rag/scripts/generated_guides/company/kbli_2025_catalogo_completo.txt (BPS Reg 7/2025 = KBLI 2025)",
+      "research/legal/2026-06-02-pt-pma-nominee-ban-bkpm-oss.md",
+      "research/legal/2026-06-02-positive-investment-list-kbli-foreign-ownership.md",
+      "research/tax/2026-06-02-corporate-withholding-but-coretax.md",
+      "research/property/2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md",
+      "research/company/2026-05-31-kbli-2025-accommodation-crosswalk-nlm-source.md",
+      "memory fact_pmk_131_2024_ppn_effective_rate_2026_05_25"
+    ]
+  },
+
+  "metrics_implemented": {
+    "retrieval": "recall@k — fraction of expected_sources basenames found in top-k prod sources (substring + stem match)",
+    "generation_cheap": "must_contain coverage — fraction of ground-truth key facts asserted in the answer (no LLM, always runs)",
+    "generation_judge": "LLM faithfulness 0-1 via Claude Max-plan OAuth CLI (claude -p --model claude-sonnet-4-6); subprocess STRIPS ANTHROPIC_API_KEY; degrades to lexical scorer if CLI absent — never a paid SDK call",
+    "stale_guard": "asserts_stale_as_current — flags answers presenting 55193 as the current 2025 villa code"
+  },
+
+  "verification_this_session": {
+    "offline_self_check": "python3 rag_eval.py --offline -> EXIT 0, PASSED",
+    "tests": "10/10 passed (repo .venv pytest 9.0.3), incl. anti-hallucination test asserting 55203 present / 55193 absent in canonical catalog",
+    "golden_facts_grep": "55203 AKTIVITAS VILA=1, 2.5bn=4, PP28 Pasal212(2)=2, nominee Pasal33=2, PPh22%=7, CoreTax PMK81/2024=3, HakPakai 80y=4, Perpres49/2021 Pasal2=1"
+  },
+
+  "verdict_villa_kbli": {
+    "answer": "55203",
+    "rejected": "55193",
+    "confidence": "high",
+    "rationale": "Triangulated from three independent sources on this branch: (1) the canonical KBLI 2025 catalog (apps/.../kbli_2025_catalogo_completo.txt, extracted from Peraturan BPS 7/2025) contains '55203 — AKTIVITAS VILA' and does NOT contain 55193 at all; (2) research/company/2026-05-31-kbli-2025-accommodation-crosswalk-nlm-source.md states 55203=AKTIVITAS VILA is the current KBLI 2025 villa code and 55193 is a legacy/stale KBLI-2020 reference; (3) apps/backend-rag/backend/services/whatsapp_kbli_guard.py codifies 55203 as the current code and 55193 as the KBLI-2020/PP28 source code that maps to 55203. The NB-3 oracle answer of 55193 (per S2 audit) is STALE: it reflects the pre-KBLI-2025 classification. Caveat: final classification still depends on operating model — 55203 for direct villa operation, 55901 for third-party management, 55400 for booking/intermediation. (Note: the S6 nominee/positive-list research files mention 55194 for Vila, itself a legacy code not in the 2025 catalog; 55203 supersedes it under BPS 7/2025.)",
+    "resolves": "S2 DOUBT_gate_unavailable — the divergence is now resolved on documentary ground-truth (no DeepSeek gate needed; three committed sources agree). The codebase value (55203) is correct; the oracle value (55193) is stale."
+  },
+
+  "needs_antonello": [
+    {
+      "id": "F1-rbac-grant",
+      "severity": "blocker-for-prod-eval",
+      "issue": "/api/oracle/query requires a JWT bound to a team_members row (get_current_user in apps/backend-rag/backend/app/routers/auth.py). An MCP/unknown caller gets HTTP 401, so the prod arm of the eval cannot run.",
+      "ask": "Provision a JWT for a team_members row with a service role (visa_specialist/tax_consultant/company_setup), or authorize the eval to run inside the backend venv against services/rag/query_service. Then: python3 rag_eval.py --jwt <token> --judge --report report.json",
+      "harness_ready": true
+    }
+  ],
+
+  "non_goals_honored": [
+    "No merge to main, no --force",
+    "No edits to ~/Desktop/nuzantara (dirty checkout) — only the worktree",
+    "No paid Anthropic endpoint: judge uses Claude Max OAuth CLI, strips ANTHROPIC_API_KEY",
+    "Embedding model never changed (text-embedding-3-small/1536 frozen)",
+    "No fabricated numbers: every claim grep-verified or from a tool call this session"
+  ]
+}

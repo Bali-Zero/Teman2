@@ -7,6 +7,7 @@ Each program is stored as a git branch with:
 """
 
 import json
+import logging
 import random
 import subprocess
 from pathlib import Path
@@ -15,6 +16,8 @@ from typing import Any
 import yaml
 
 from .models import ProgramConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ProgramManagerError(RuntimeError):
@@ -338,7 +341,11 @@ class ProgramManager:
                 score = config.get_score()
                 if score is not None:
                     scored.append((name, score, index))
-            except Exception:
+            except subprocess.CalledProcessError:
+                # Branch or program.yaml genuinely absent: skip this member.
+                continue
+            except Exception as e:  # noqa: BLE001 - keep loop resilient, but surface
+                logger.warning("frontier score read failed for %s: %s", name, e)
                 continue
         scored.sort(key=lambda item: (item[1], item[2]), reverse=True)
         return [(name, score) for name, score, _ in scored]
@@ -468,7 +475,16 @@ class ProgramManager:
         config_path = self.cwd / self.PROGRAM_FILE
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, "w") as f:
-            yaml.dump(config.model_dump(), f, default_flow_style=False, sort_keys=False)
+            # mode="json" serializes nested Path/datetime values in the
+            # metadata dict to plain str so yaml.safe_load can round-trip
+            # them on read (avoids !!python/object/apply:pathlib.PosixPath
+            # tags that safe_load rejects). Fixes evoskill FATAL since 2026-05-24.
+            yaml.safe_dump(
+                config.model_dump(mode="json"),
+                f,
+                default_flow_style=False,
+                sort_keys=False,
+            )
 
     def _read_config(self) -> ProgramConfig:
         """Read program config from YAML file."""
@@ -479,7 +495,7 @@ class ProgramManager:
 
     def _read_config_from_branch(self, branch: str) -> ProgramConfig:
         """Read program config from a specific branch without checking out."""
-        result = self._run_git(["show", f"{branch}:{self.PROGRAM_FILE}"])
+        result = self._run_git(["show", f"{branch}:./{self.PROGRAM_FILE}"])
         data = yaml.safe_load(result.stdout)
         return ProgramConfig.model_validate(data)
 
