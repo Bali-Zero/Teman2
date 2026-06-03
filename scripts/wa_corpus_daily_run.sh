@@ -17,6 +17,15 @@ VENV_PY="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
 LOG="$HOME/logs/wa-corpus-daily.log"
 mkdir -p "$HOME/logs"
 
+# Telegram secrets live in ~/.wa-mirror.env (0600), same as the other wa-mirror
+# crons — NOT in the plist. Source it if present (plist env still wins if set).
+if [[ -f "$HOME/.wa-mirror.env" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$HOME/.wa-mirror.env"
+  set +a
+fi
+
 ts() { date "+%Y-%m-%d %H:%M:%S %Z"; }
 echo "[$(ts)] wa-corpus daily start" >>"$LOG"
 

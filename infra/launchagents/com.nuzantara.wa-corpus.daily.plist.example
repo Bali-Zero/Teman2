@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   WA-corpus daily reconcile. Copy to ~/Library/LaunchAgents/ (drop .example),
-  fill the secret values, then: launchctl bootstrap gui/$(id -u) <plist>.
+  then: launchctl bootstrap gui/$(id -u) <plist>.
   Runs 05:00 WITA daily. Logs to ~/logs/wa-corpus-daily.{out,err}.log.
-  Secrets live ONLY in this plist (chmod 0400) — never in the wrapper script.
+  Telegram secrets are NOT in this plist — the wrapper sources ~/.wa-mirror.env
+  (0600), same as the other wa-mirror crons. No secret to fill or rotate here.
 -->
 <plist version="1.0">
 <dict>
@@ -18,8 +19,6 @@
     <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>WA_CORPUS_REPO_ROOT</key><string>/Users/nuzantara/Desktop/nuzantara</string>
     <key>WA_CORPUS_MEMBERS_CONFIG</key><string>/Users/nuzantara/.config/nuzantara/wa_corpus_members.json</string>
-    <key>TELEGRAM_BOT_TOKEN</key><string>__FILL_ME__</string>
-    <key>TELEGRAM_OWNER_CHAT_ID</key><string>1125336968</string>
   </dict>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
