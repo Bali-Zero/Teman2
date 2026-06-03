@@ -1166,7 +1166,7 @@ async def update_client_profile(
     Update client profile fields (avatar, Google Drive folder, etc.)
     """
     async with pool.acquire() as _conn:
-        await verify_client_access(client_id, current_user, _conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, _conn, allow_assigned=True, write=True)
     update_fields = []
     values = []
     param_num = 1
@@ -1360,7 +1360,7 @@ async def create_family_member(
     Add a family member to a client.
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
 
         # Sanitize date fields - convert strings to date objects for asyncpg
         date_of_birth = None
@@ -1423,7 +1423,7 @@ async def update_family_member(
     Update a family member.
     """
     async with pool.acquire() as _conn:
-        await verify_client_access(client_id, current_user, _conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, _conn, allow_assigned=True, write=True)
     # Date fields that need string → date object conversion for asyncpg
     date_fields = {"date_of_birth", "passport_expiry", "visa_expiry"}
 
@@ -1480,7 +1480,7 @@ async def delete_family_member(
     Delete a family member.
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
         result = await conn.execute(
             "DELETE FROM client_family_members WHERE id = $1 AND client_id = $2",
             member_id,

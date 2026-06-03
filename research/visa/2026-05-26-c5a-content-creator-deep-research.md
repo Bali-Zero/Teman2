@@ -47,10 +47,10 @@ sources: 36
 | **C5**  | **Visa Media dan Pers**                 | **Journalism / press** (post-riforma 2025: solo giornalismo professionale, esclude creator social) |
 | **C5A** | **Visa Kunjungan Konten Kreator**       | **Social media content creator** (NEW, scorporato da C5 nel 2025)                                  |
 | C6      | Visa Kegiatan Sosial                    | Social activities                                                                                  |
-| C7      | Visa Kegiatan Seni dan Budaya           | Arts & culture (con sotto-indici)                                                                  |
-| C7A     | (variante)                              | Arts performer + supporting staff (può ricevere compenso)                                          |
-| C7B     | (variante)                              | Music performance                                                                                  |
-| **C7C** | **Visa Kegiatan Seni Budaya Non-Musik** | **Magia, fan-meeting, chef demo TV** (NEW 2025)                                                    |
+| C7      | Visa Kegiatan Seni dan Budaya           | Arts/culture/skills performance — *seni, budaya, dan keterampilan* (Kepmen verbatim)               |
+| C7A     | Visa Pertunjukan Musik                  | **Music performance** — *...berhubungan dengan musik* (Kepmen M.IP-08 verbatim; CORRECTED 2026-05-29) |
+| C7B     | Visa Pendukung Pertunjukan Musik        | **Music performance SUPPORT staff** — *Mendukung orang asing ... pertunjukan musik* (CORRECTED 2026-05-29) |
+| C7C     | Visa Pertunjukan Keterampilan/Keahlian  | **Skills/expertise demonstration** — *...keterampilan atau keahlian* (Kepmen verbatim; CORRECTED 2026-05-29) |
 | C8      | Visa Kegiatan Olahraga                  | Sports                                                                                             |
 | C9      | Visa Pendidikan Singkat                 | Short-term study (con C9A religious training, C9B language)                                        |
 | C10     | Visa Pembicara Bisnis                   | Business speaker                                                                                   |
@@ -686,7 +686,7 @@ Eseguito da `devils-advocate` subagent (DeepSeek Reasoner-class) dopo write iniz
 | H-2  | HIGH      | Extension pattern 60+60+60=180d inherited da C5, UNVERIFIED per C5A specifically (vedi OQ-2) — Section 9 Servizi descrivevano 180d come assodato | OQ-2 esistente               | ✅ Servizio #3 rinominato "N extensions", caveat 120d vs 180d aggiunto |
 | H-3  | HIGH      | NB-2 (visa) NON queried per framework regulations (UU 6/2011, Permenkumham 22/2023, PMK 82/2023) — solo per Kepmen 2025 (corretto skip)          | Appendix A admission         | ⏳ Deferred a Step 2 prep (NB-2 query batch)                           |
 | H-4  | HIGH      | Bonnie Blue Tempo URL → empirical HTTP 404; primary Ngurah Rai Imigrasi → HTTP 200 conferma "4 WNA" verbatim                                     | Empirical curl 2026-05-26    | ✅ Appendix C citation corrected to primary                            |
-| M-1  | MEDIUM    | C7A/C7B "(variante)" inferred but not labeled inline in §2 taxonomy table                                                                        | Self-flagged §12 v1 F-MED-5  | ⏳ Inline label addition deferred (low Step 2 impact)                  |
+| M-1  | RESOLVED  | C7A/C7B now verbatim from Kepmen M.IP-08 (2026-05-29): C7A=music perf, C7B=music support staff — were inverted/inferred, CORRECTED in §2 table                                                                        | Self-flagged §12 v1 F-MED-5  | ⏳ Inline label addition deferred (low Step 2 impact)                  |
 | M-2  | MEDIUM    | Servizio #7 grey-area legale NON warned in Executive Summary                                                                                     | §1 conflated with full menu  | ✅ Warning grey-area aggiunto §1                                       |
 | M-3  | MEDIUM    | 62 detenzioni = primi 21 giorni, NON cumulative 41 giorni (gap 4-26 mag = 3 weeks)                                                               | OQ-9 esistente               | ✅ Temporal scope corrected §1                                         |
 | M-4  | MEDIUM    | PMK 82/2023 (Golden Visa) citato in Sources implica supporta C5A fee range — non lo fa                                                           | Sources list line 10         | ✅ Caveat in §9 Servizio #2 chiarisce PMK 82/2023 ≠ C5A ref            |
@@ -758,7 +758,7 @@ Eseguito da `devils-advocate` subagent (DeepSeek Reasoner-class) dopo write iniz
 2. **F-CRIT-2**: Caso Bonnie Blue è ben attestato; usarlo come anchor nel media communication SENZA citare il nome (per evitare scivolata in sensazionalismo brand-incompatibile).
 3. **F-HIGH-3**: Quote Felucia Sengky Ratna è verbatim verificata; OK per copy.
 4. **F-HIGH-4**: Quote Yuldi Yusman re: C7C OK; quote Yuldi su C5A specifically NON identificata → non fabbricare.
-5. **F-MED-5**: Tabella codici C-prefix include alcuni sub-indici (C7A/B, C9A/B) che sono inferiti da pattern Kepmen, non verbatim verificati. Footnote required nel deliverable Step 2.
+5. **F-MED-5** (RESOLVED 2026-05-29): C7A/C7B ora verbatim da Kepmen M.IP-08 — erano INVERTITI (C7A era "arts performer", C7B "music"; corretto a C7A=*musik*, C7B=*pendukung pertunjukan musik*). C9A/B restano da verificare verbatim. Cross-ref: research/legal/2026-05-26-kepmen-visa-taxonomy/01-raw-extraction.md:104-105.
 6. **F-MED-6**: La distinzione PT PMA sponsor vs agency sponsor è grey area legale. Step 2 deve consultare avvocato Indonesia prima di marketizzare Servizio #7.
 7. **F-LOW-7**: Bali Zero pagina servizi corrente cita "C5/C5A" come unified product; coerente con la Kepmen ma può confondere (sono due categorie distinte). Recommend aggiornare la pagina post-Step-2.
 
