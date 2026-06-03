@@ -9,10 +9,15 @@
 -- The objects are historical/prod-owned in some environments, so every grant is
 -- guarded with to_regclass(). The runtime role is absent in CI test databases,
 -- so the whole migration is guarded on pg_roles.
+--
+-- In production this migration is executed by the runtime role. That role can
+-- verify its existing privileges, but cannot grant privileges on objects owned
+-- by other roles. If owner-level grants are still missing, fail with a precise
+-- manual-remediation message instead of a raw PostgreSQL permission error.
 
 DO $grant_block$
 DECLARE
-    runtime_role text := 'backend_rag_v2';
+    runtime_role constant text := 'backend_rag_v2';
     object_name text;
     object_reg regclass;
     read_objects text[] := ARRAY[
@@ -35,13 +40,45 @@ BEGIN
         RETURN;
     END IF;
 
-    GRANT USAGE ON SCHEMA public TO backend_rag_v2;
+    IF NOT has_schema_privilege(runtime_role, 'public', 'USAGE') THEN
+        BEGIN
+            GRANT USAGE ON SCHEMA public TO backend_rag_v2;
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING
+                    'manual grant required: GRANT USAGE ON SCHEMA public TO %',
+                    runtime_role;
+        END;
+    END IF;
+
+    IF NOT has_schema_privilege(runtime_role, 'public', 'USAGE') THEN
+        RAISE EXCEPTION
+            'backend_rag_v2 is missing USAGE on schema public; apply manual grant with an owner/admin role';
+    END IF;
 
     FOREACH object_name IN ARRAY read_objects LOOP
         object_reg := to_regclass(object_name);
 
-        IF object_reg IS NOT NULL THEN
-            EXECUTE format('GRANT SELECT ON TABLE %s TO %I', object_reg, runtime_role);
+        IF object_reg IS NULL THEN
+            CONTINUE;
+        END IF;
+
+        IF NOT has_table_privilege(runtime_role, object_reg, 'SELECT') THEN
+            BEGIN
+                EXECUTE format('GRANT SELECT ON TABLE %s TO %I', object_reg, runtime_role);
+            EXCEPTION
+                WHEN insufficient_privilege THEN
+                    RAISE WARNING
+                        'manual grant required: GRANT SELECT ON TABLE % TO %',
+                        object_name,
+                        runtime_role;
+            END;
+        END IF;
+
+        IF NOT has_table_privilege(runtime_role, object_reg, 'SELECT') THEN
+            RAISE EXCEPTION
+                'backend_rag_v2 is missing SELECT on %; apply manual grant with an owner/admin role',
+                object_name;
         END IF;
     END LOOP;
 END
