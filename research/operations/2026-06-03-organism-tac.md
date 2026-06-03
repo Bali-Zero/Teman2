@@ -90,15 +90,26 @@ startup reconcile: kicked 3 stalled draft(s)                    (guarisce 3 orga
 
 Tutti gli organi guardati da vicino mostrano **lo stesso identico profilo**. Sente ✅ Giudica ✅ Agisce ✅ **Rivede se stesso ❌**.
 
-### 3.1 Cell `red` da 17 ore su un falso positivo certificato — IL caso emblematico
+### 3.1 Cell `red` da ~5 giorni — È UN ALLARME VERO, non un falso positivo (autocorrezione del referto)
+
+> ⚠️ **CORREZIONE (errore onesto, recuperato 2026-06-03):** una prima stesura di questo referto affermava "falso positivo certificato". **Sbagliato.** Verifica completa del meccanismo di aggregazione ha dimostrato che **Cell ha ragione**: c'è un guasto reale. Lasciata la correzione in chiaro come da disciplina anti-hallucination (errore di mis-interpretazione, recuperabile — non fabbricazione).
 
 - Ultimo `green`: **30 maggio 19:19**. Dal **2 giugno 12:21**: `red` ininterrotto, **1.047 battiti rossi consecutivi in 24h**.
-- Cosa "ragiona" Cell (dal suo `error_message`, ×959): *"Health is currently red, BUT recent logs show consistent red health status with **low response time (122-165ms) and no errors**. This indicates a **potential transient issue that needs verification**."*
-- **PROVA INDIPENDENTE (curl dal Pro, non da Cell):** `nuzantara-rag.fly.dev/health` → **HTTP 200 in 0.128s.** Il backend è perfettamente sano.
+- L'health endpoint primario È sano: il **sidecar scritto da Cell** (`~/.organism/last_seen/backend.api.json`) mostra `status:ok, http_status:200, latency_ms:135.73`. `reachable=True`. Il backend `/health` risponde, e Cell lo vede.
+- **MA `health_status` del pulse = il PEGGIORE tra 13 sensori** (`cell/core/pulse.py:366-367`: `worst = max(sensor_statuses, key=severity)`). L'health è green; un sensore secondario è red e trascina tutto.
+- **Il `sensors={...}` reale del pulse (dal log 2026-06-03) identifica il colpevole:**
+  ```
+  db:connected · qdrant:ok · error_rate:errors_5min=4>3→YELLOW · ollama:4 loaded ·
+  backup:age_hours=113.3 (ultimo nuzantara-fly-20260530-0320) · cron:failed_jobs=[fly_pg_backup] ·
+  vercel:0 down · outbox:0 unconsumed
+  ```
+- **Sonda diretta dal Pro di TUTTI i servizi:** qdrant :6333 → 200, ollama :11434 → 200, /api/cell/metrics → 200, kita.balizero.com → 307. **Tutti vivi.** L'unica cosa rotta è il **backup Postgres**.
 
-**Cell segna rosso un paziente che risponde 200 in 128ms.** Il `red` è un falso positivo. E Cell *lo sospetta* (metacognizione presente!) ma **non riesce a chiudere il cerchio**: non sa declassare il proprio sensore bugiardo o ritarare la soglia. Resta a ri-verificare 959 volte la stessa cosa.
+**Conclusione: il `red` È VERO. Radice = `fly_pg_backup` fallisce da ~5 giorni** → il `backup_sensor` vede l'ultimo backup riuscito vecchio di 113h (30 maggio, *lo stesso giorno dell'ultimo green*) e il `cron_sensor` vede `fly_pg_backup` in `failed_jobs`. Cell segna rosso correttamente: **il database di produzione non ha un backup fresco da 4.7 giorni** — guasto reale e grave.
 
-**RADICE ISOLATA (verifica codice 2026-06-03, no env):** il classificatore `cell/core/pulse.py::classify_http_status` è **corretto** — dato `200 + body sano` ritorna GREEN (è stato già hardenato in aprile contro il blind-spot `startup_failed`). E `cell/core/config.py:14` punta esattamente a `https://nuzantara-rag.fly.dev/health`, lo stesso URL che dal Pro risponde 200/128ms. Quindi il `red` NON nasce dalla soglia né dall'URL sbagliato: nasce da **`reading.reachable=False` dentro Cell** — il client HTTP del daemon launchd non raggiunge un endpoint che dalla shell del Pro risponde 200. Causa probabile: timeout troppo aggressivo o ambiente di rete/DNS diverso nel contesto launchd vs shell interattiva. **Il termometro non è tarato male — è scollegato dal paziente.** Fix mirato: diagnosticare la `reachable=False` del client di Cell (timeout/DNS nel contesto daemon), NON ritarare la soglia.
+> **Riscontro incrociato:** memoria operatore `session_2026_05_31` annotava già *"DLQ 13→1 (solo fly_pg_backup failed lasciato)"* + *"CAVEAT APERTO: fly_pg_backup failed da indagare"*. **Cell stava gridando questo caveat da 3 giorni.** L'organismo funzionava — l'allarme vero veniva letto come falso dall'operatore (e in prima battuta da questa analisi).
+
+**Il vero limite NON era "Cell sbaglia".** Era duplice: (1) l'allarme vero non era **leggibile** — Cell diceva genericamente "red", non "il backup del DB è fermo da 5 giorni"; (2) i suoi freni (daily-limit 20/20, cooldown) lo zittivano senza che l'allarme venisse mai escalato in forma comprensibile. **Fix corretto: riparare `fly_pg_backup` (P0 dati) + rendere l'allarme di Cell LEGGIBILE (quale sensore, perché) — NON ritarare soglie né "spegnere il falso positivo".**
 
 Peggio: i suoi freni di sicurezza — **giusti** (anti-storm, cicatrice W61) — lo zittiscono senza risolvere:
 ```
