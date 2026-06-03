@@ -236,6 +236,79 @@ async def test_send_failure_retries_with_backoff() -> None:
 
 
 @pytest.mark.asyncio
+async def test_bot_generate_failure_retries_not_orphaned() -> None:
+    # Panel 2026-06-04 (Codex): a raising bot_generate_fn must NOT leave the row
+    # orphaned in 'generating' — it must retry with backoff (the v1 sentinel
+    # raises NotImplementedError, and a transient RAG error in B must retry too).
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {
+                "id": 6,
+                "thread_id": 7,
+                "message_id": 600,
+                "needs_generation": True,
+                "attempts": 0,
+            },
+            # thread load → human NOT handling, so the bot path proceeds
+            {
+                "thread_id": 7,
+                "counterpart_phone": "628111",
+                "human_handling": False,
+                "last_customer_at": "x",
+            },
+        ]
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    async def _bot_raises(_thread: Any) -> str:
+        raise NotImplementedError("bot not wired in v1")
+
+    result = await process_outbox_once(pool, svc, _bot_raises)
+
+    assert result == "retry"
+    svc.send_message.assert_not_awaited()
+    # row went back to pending (NOT left in 'generating') + attempts incremented
+    retry_updates = conn.sql_with_args("status = 'pending'")
+    assert retry_updates, "bot-gen failure must re-queue, never orphan in generating"
+    assert any("next_retry_at" in s for s, _ in retry_updates)
+    assert any(1 in a for _, a in retry_updates)  # attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_bot_generate_failure_terminal_after_max_attempts() -> None:
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {
+                "id": 7,
+                "thread_id": 7,
+                "message_id": 700,
+                "needs_generation": True,
+                "attempts": wa_outbox_worker.MAX_ATTEMPTS - 1,
+            },
+            {
+                "thread_id": 7,
+                "counterpart_phone": "628111",
+                "human_handling": False,
+                "last_customer_at": "x",
+            },
+        ]
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    async def _bot_raises(_thread: Any) -> str:
+        raise NotImplementedError("bot not wired in v1")
+
+    result = await process_outbox_once(pool, svc, _bot_raises)
+
+    assert result == "failed"
+    svc.send_message.assert_not_awaited()
+    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed', attempts")
+    assert any("bot_generate_failed_after_" in str(a) for _, a in conn.executed)
+
+
+@pytest.mark.asyncio
 async def test_send_failure_terminal_after_max_attempts() -> None:
     conn = ScriptedConn(
         fetchrow_results=[
