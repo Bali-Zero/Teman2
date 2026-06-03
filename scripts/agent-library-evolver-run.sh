@@ -68,26 +68,31 @@ DRY_RUN="0"
 
 # ─── S13-P6b (2026-06-02): return-to-branch guard ────────────────────
 # evoskill (vendor/evoskill ProgramManager) does native git checkout of
-# program/* branches INSIDE REPO_ROOT and can leave the worktree parked
-# on a program/* branch when it exits (incl. on FATAL). In production
-# REPO_ROOT is the deploy worktree pinned to deploy/main; a left-over
-# program/* checkout breaks the next wr2-deploy-pull (wrong-branch gate).
-# This trap restores deploy/main on EXIT, but ONLY when (a) REPO_ROOT is
-# a git tree and (b) it was left on a program/* branch — so it never
-# touches a feature/test worktree on its own branch.
+# branches INSIDE REPO_ROOT and can leave the worktree parked on the
+# wrong branch when it exits (incl. on FATAL). It checks out program/*
+# branches AND, between programs, pre-existing agent/* branches
+# (e.g. agent/nuzantara/backend-rag/crm-guardian-audit). In production
+# REPO_ROOT is the deploy worktree pinned to deploy/main; ANY left-over
+# non-deploy/main checkout breaks the next wr2-deploy-pull (wrong-branch
+# gate) — observed twice on 2026-06-03, manual restore both times.
+# S13-#11 (2026-06-03): broaden the restore to fire whenever HEAD is on
+# any branch other than deploy/main (not only program/*), guarded by a
+# clean-tree check so we never clobber uncommitted tracked work in a
+# feature/test worktree. Untracked files (cache/) are fine.
 _restore_deploy_branch() {
     git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
     local cur
-    cur="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-    case "${cur}" in
-        program/*)
-            if git -C "${REPO_ROOT}" rev-parse --verify --quiet deploy/main >/dev/null 2>&1; then
-                git -C "${REPO_ROOT}" checkout deploy/main >/dev/null 2>&1 \
-                    && log "return-to-branch guard: restored deploy/main (was ${cur})" \
-                    || log "WARN: return-to-branch guard failed to restore deploy/main from ${cur}"
-            fi
-            ;;
-    esac
+    cur="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo )"
+    if [[ -n "${cur}" && "${cur}" != "deploy/main" ]] \
+        && git -C "${REPO_ROOT}" show-ref --verify --quiet refs/heads/deploy/main; then
+        if git -C "${REPO_ROOT}" diff --quiet && git -C "${REPO_ROOT}" diff --cached --quiet; then
+            git -C "${REPO_ROOT}" checkout deploy/main >/dev/null 2>&1 \
+                && log "return-to-branch guard: restored deploy/main (was ${cur})" \
+                || log "WARN: return-to-branch guard failed to restore deploy/main from ${cur}"
+        else
+            log "WARN: return-to-branch guard: uncommitted tracked changes, NOT switching from ${cur}"
+        fi
+    fi
 }
 # NOTE: do NOT register a standalone EXIT trap here — bash allows only
 # one EXIT trap and the advisory-lock trap (acquire_lock) would overwrite
