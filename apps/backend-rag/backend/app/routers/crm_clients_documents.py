@@ -194,7 +194,7 @@ async def extract_passport_enhanced(
             async with db_pool.acquire() as conn:
                 # RBAC: verify user has access to this specific client
                 await verify_client_access(
-                    request.client_id, current_user, conn, allow_assigned=True
+                    request.client_id, current_user, conn, allow_assigned=True, write=True
                 )
 
                 client = await conn.fetchrow(
@@ -529,7 +529,9 @@ async def delete_client_document(
                 raise HTTPException(status_code=404, detail="Document not found")
 
             # RBAC: verify caller has access to the client this document belongs to
-            await verify_client_access(doc["client_id"], current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                doc["client_id"], current_user, conn, allow_assigned=True, write=True
+            )
 
             if doc["status"] == "deleted":
                 return {
@@ -605,7 +607,9 @@ async def extract_npwp(
     try:
         # RBAC check: verify caller has access to this client
         async with db_pool.acquire() as conn:
-            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                request.client_id, current_user, conn, allow_assigned=True, write=True
+            )
 
         # Validate base64 before decoding
         raw = request.file.split(",")[-1] if "," in request.file else request.file
@@ -740,7 +744,9 @@ async def extract_nib(
     try:
         # RBAC check: verify caller has access to this client
         async with db_pool.acquire() as conn:
-            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                request.client_id, current_user, conn, allow_assigned=True, write=True
+            )
 
         # Validate base64 before decoding
         raw = request.file.split(",")[-1] if "," in request.file else request.file
