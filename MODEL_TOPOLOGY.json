@@ -32,7 +32,7 @@
     "cron_primary_tool_calling": "qwen3:8b",
     "cron_fallback": "gemma4:e4b",
     "cloud_fallback": "google-gemini-cli/gemini-3-flash-preview",
-    "translation": "gemma4:e4b",
+    "translation": "gemma3:27b",
     "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
     "ocr_vision": "qwen3-vl:8b",
