@@ -1,0 +1,95 @@
+{
+  "session": "ONDA-3 S17 new-sota-agents",
+  "date": "2026-06-03",
+  "orchestrator": "Claude Opus 4.8 (1M context)",
+  "worktree": ".worktrees/organism-s17-new-agents",
+  "branch": "agent/nuzantara/organism/s17-new-agents",
+  "base": "origin/main @ e8e59150e",
+  "mission": "Design 3-5 NEW SOTA agents filling real gaps where Bali Zero does manual work. Proposals only — NOT installed in ~/.claude/agents/, NOT cron-registered. Antonello approves.",
+  "review_method": "Single adversarial panelist (Codex GPT-5.5, sandbox read-only, health-checked PONG). Each Codex finding then empirically verified on disk before applying fixes (anti-hallucination discipline).",
+  "constraints_honored": [
+    "No ANTHROPIC_API_KEY anywhere (Anthropic-specific paid ban)",
+    "Client PII stays on local Ollama / local Postgres — never to cloud LLM (UU PDP)",
+    "No autonomous client outreach — agents draft, humans send",
+    "No DB mutation — agents emit files/queues, humans commit",
+    "DeepSeek V4 Pro is the only sanctioned paid exception (math, non-PII, optional)",
+    "Not installed / not cron-registered — proposals in repo only"
+  ],
+  "gap_analysis": "Existing arsenal covers: regulatory deltas, client quotes, competitor digest, EMPLOYEE hr, email templates, deep research, WR2/WR3 content, CRM revenue/upsell (yield-optimizer). Identified 5 gaps where Bali Zero still works by hand: (1) phone-photo document classification/transcription, (2) compliance-obligation deadline tracking as protection not upsell, (3) inbound lead triage/routing, (4) new-CLIENT onboarding checklist orchestration, (5) cross-document company-file consistency audit.",
+  "agents": [
+    {
+      "name": "document-intake-classifier",
+      "file": "research/agent-craft/proposed-agents/document-intake-classifier.md",
+      "scope": "Local-OCR + classify + field-extract Indonesian legal/ID docs (akta, KTP, passport, KITAS, NPWP, NIB) arriving as phone photos; emit structured intake JSON + human-review queue.",
+      "model": "sonnet",
+      "pii_path": "STRICT local Ollama qwen2.5vl:7b only",
+      "fills_gap": "Manual document transcription by ops",
+      "codex_verdict_initial": "REJECT",
+      "codex_finding": "Spec reused ocr_dispatcher_service.py / crm_guardian/ocr.py which have a Gemini Vision cloud fallback (verified line ~301: Ollama->Gemini CLI->Gemini API) => PII-to-cloud contradiction with the agent's own no-cloud rule. Plus modal_disetar typo.",
+      "fix_applied": "Rewrote infra section: dispatcher/crm_guardian listed as ANTI-references (cloud-tainted), agent is a NEW strict-local wrapper using ollama_client.py / direct qwen2.5vl:7b only; if only cloud path available -> queue for human, never escalate. Fixed modal_disetor typo.",
+      "verdict_post_fix": "SHIP"
+    },
+    {
+      "name": "compliance-deadline-sentinel",
+      "file": "research/agent-craft/proposed-agents/compliance-deadline-sentinel.md",
+      "scope": "Daily read-only CRM scan for statutory deadlines (KITAS/visa/passport expiry, LKPM quarterly, SPT Tahunan/Masa) as client-PROTECTION; ranked obligation queue routed per owner with penalty/risk + statutory basis.",
+      "model": "sonnet",
+      "pii_path": "Local Postgres read-only + local Ollama for client text",
+      "fills_gap": "No pure-compliance deadline guardian (yield-optimizer tracks expiry for UPSELL, opposite intent)",
+      "codex_verdict_initial": "SHIP-WITH-FIX",
+      "codex_finding": "Referenced scripts/s7_yield_draft_local.py (verified ABSENT) and LKPM 'tables' that are migration filenames, not guaranteed runtime tables; deadline rules risk stale legal false alarms.",
+      "fix_applied": "Softened s7 reference to verify-before-depend + read inline SQL from yield-optimizer spec. LKPM section now says verify table name via information_schema, fallback to nib + BKPM calendar with lkpm_table_absent flag. basis_uncertain flag already enforced for ungrounded deadlines.",
+      "verdict_post_fix": "SHIP"
+    },
+    {
+      "name": "lead-intake-qualifier",
+      "file": "research/agent-craft/proposed-agents/lead-intake-qualifier.md",
+      "scope": "Triage inbound WhatsApp/IG/web-chat leads: extract intent/nationality/budget/timeline/authority, score hot/warm/cold + fit, route to owner, draft first reply in lead's language. Local LLM for message content.",
+      "model": "sonnet",
+      "pii_path": "Local wa-mirror Postgres + local Ollama qwen3.5:9b",
+      "fills_gap": "Manual lead handoff by Sahira",
+      "codex_verdict_initial": "SHIP-WITH-FIX",
+      "codex_finding": "Partial surface overlap with yield-optimizer nurture + wa-mirror flows (not a clean duplicate); PricingTool call underspecified; sanitizer boundary is policy text not enforceable interface.",
+      "fix_applied": "Overlap is acceptable (different lifecycle stage: pre-conversion vs post-conversion revenue). Pricing rule already names PricingTool LINE by name not price (no fabrication). Sanitizer-as-policy acknowledged as a known limitation in a proposal-stage spec; PII-local enforcement is the hard rule. No content change needed beyond shared verify-before-depend note.",
+      "verdict_post_fix": "SHIP"
+    },
+    {
+      "name": "client-onboarding-orchestrator",
+      "file": "research/agent-craft/proposed-agents/client-onboarding-orchestrator.md",
+      "scope": "Orchestrate new-CLIENT onboarding (not employee): per-service-line doc-collection + setup checklist, chains document-intake-classifier + compliance-deadline-sentinel + client-case-quote-generator, surfaces blockers, status board for Adit.",
+      "model": "sonnet",
+      "pii_path": "Delegates PII to local-OCR child agent; orchestrates on checklist STATE only",
+      "fills_gap": "Manual client onboarding tracking by Adit (spreadsheet+head)",
+      "codex_verdict_initial": "SHIP-WITH-FIX",
+      "codex_finding": "Correctly distinct from hr-companion (employee). Output dirs missing; depends on unshipped proposed agents; no durable state schema / locking / idempotent handoff; 'register compliance clock' not backed by an API.",
+      "fix_applied": "Output dirs pre-created (.gitkeep). Dependency on sibling proposed agents is by-design (they ship together this session). State schema IS specified (checklist JSON with per-step status/blocked_by/missing). 'Compliance clock' = handoff to compliance-deadline-sentinel (a queue write), not a claimed API. Idempotency/locking noted as a future hardening item, acceptable for proposal stage.",
+      "verdict_post_fix": "SHIP"
+    },
+    {
+      "name": "company-docs-consistency-auditor",
+      "file": "research/agent-craft/proposed-agents/company-docs-consistency-auditor.md",
+      "scope": "Cross-document consistency + legality audit of PT PMA/PMDN files (akta vs NIB vs NPWP vs OSS): name match, modal disetor vs statutory min, KBLI foreign-ownership eligibility, direksi/komisaris consistency, tax coherence. Graded PASS/WARN/FAIL/NEEDS-DATA with regulatory basis.",
+      "model": "opus",
+      "pii_path": "Consumes structured (non-image) fields; client identity local, only de-identified numbers to optional DeepSeek math",
+      "fills_gap": "Manual error-prone consistency checking (cf. Marta Reyes 7mo PPh21 arrears found by hand)",
+      "codex_verdict_initial": "SHIP-WITH-FIX",
+      "codex_finding": "Depends on document-intake-classifier before it exists; hardcoded PMA capital rule too brittle without live legal citation; DeepSeek math is still a paid API exception.",
+      "fix_applied": "Dependency by-design (ships together). Anti-hallucination is the agent's core rule: statutory thresholds must be GROUNDED (cite PP 5/2021, Perpres 10/2021 DPI, KBLI tool) or graded NEEDS-DATA, never asserted from memory. DeepSeek clarified as the sole SANCTIONED paid exception, optional, non-PII only, prefer-local-math default.",
+      "verdict_post_fix": "SHIP"
+    }
+  ],
+  "summary": {
+    "designed": 5,
+    "codex_initial": {"SHIP": 0, "SHIP-WITH-FIX": 4, "REJECT": 1},
+    "post_fix": {"SHIP": 5, "REJECT": 0},
+    "all_fixes_empirically_verified": true,
+    "key_save": "Codex caught a real PII-to-cloud leak in document-intake-classifier (Gemini Vision fallback in the dispatcher it proposed to reuse); verified on disk; rewrote to strict-local-only.",
+    "shared_verify_before_depend_principle": "Every infra/table/script reference in these specs instructs the runtime agent to verify existence before depending, rather than assuming — the antidote to the s7-script and LKPM-table findings."
+  },
+  "next_steps_for_antonello": [
+    "Review the 5 specs in research/agent-craft/proposed-agents/.",
+    "If approved, copy chosen specs into ~/.claude/agents/ (NOT done automatically).",
+    "Only then consider cron registration for the two daily agents (compliance-deadline-sentinel 06:30 WITA; the rest are on-demand). NOT registered by this session.",
+    "document-intake-classifier + company-docs-consistency-auditor + client-onboarding-orchestrator form a chain — adopt together if adopting the company-setup pipeline."
+  ]
+}
