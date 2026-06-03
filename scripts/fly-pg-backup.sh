@@ -25,7 +25,7 @@ FLY_APP="nuzantara-postgres"
 KEEP_LOCAL=7
 KEEP_REMOTE=30
 MAX_RETRIES=3
-DUMP_TIMEOUT=180  # seconds per attempt — pg_dump takes ~60s, tunnel setup ~30s
+DUMP_TIMEOUT=600  # FIX 2026-06-03: was 180s but full dump >201s/593MB (DB grew past 350MB) → timeout killed it mid-dump → empty file. 600s covers growth.
 
 # Tigris credentials (set by fly storage create)
 TIGRIS_ENDPOINT="https://fly.storage.tigris.dev"
