@@ -18,12 +18,14 @@ LOG="$HOME/logs/wa-corpus-daily.log"
 mkdir -p "$HOME/logs"
 
 # Telegram secrets live in ~/.wa-mirror.env (0600), same as the other wa-mirror
-# crons — NOT in the plist. Source it if present (plist env still wins if set).
+# crons — NOT in the plist. Do NOT `source` it: that file has values with spaces
+# (WA_MIRROR_SESSION_LABEL=Bali Zero …) that break shell sourcing. Extract just
+# the two keys we need, safely. plist env still wins if already set.
+_env_val() { grep -m1 -E "^$1=" "$HOME/.wa-mirror.env" 2>/dev/null | cut -d= -f2-; }
 if [[ -f "$HOME/.wa-mirror.env" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$HOME/.wa-mirror.env"
-  set +a
+  : "${TELEGRAM_BOT_TOKEN:=$(_env_val TELEGRAM_BOT_TOKEN)}"
+  : "${TELEGRAM_OWNER_CHAT_ID:=$(_env_val TELEGRAM_OWNER_CHAT_ID)}"
+  export TELEGRAM_BOT_TOKEN TELEGRAM_OWNER_CHAT_ID
 fi
 
 ts() { date "+%Y-%m-%d %H:%M:%S %Z"; }
