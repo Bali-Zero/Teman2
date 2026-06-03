@@ -104,6 +104,15 @@ class ChatDocRenderer:
             supportsAllDrives=True,
         ).execute()
 
+    def rename_doc(self, file_id: str, new_name: str) -> None:
+        """Rename the Doc (metadata only) — used on prospect→client / archive."""
+        self.svc.files().update(
+            fileId=file_id,
+            body={"name": new_name},
+            fields="id, name",
+            supportsAllDrives=True,
+        ).execute()
+
     def share_with_nlm_account(self, file_id: str) -> None:
         self.svc.permissions().create(
             fileId=file_id,
