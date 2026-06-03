@@ -1,4 +1,4 @@
--- 206_intake_unified.sql — Unified document-intake (LOCAL Pro DB only)
+-- 210_intake_unified.sql — Unified document-intake (LOCAL Pro DB only)
 -- Recepisce X1-X12 (04-0) + C1/C2/C3/C4/C5/C6 (03-panel).
 -- Reference spec: research/operations/doc-intake-unified/05-final-spec.md section 2
 -- PII 100% locale (Law 2 / UU-PDP): MAI applicare su Fly. Solo nuzantara_dev @127.0.0.1:5432.
@@ -70,7 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_iq_dead
 -- C. Metriche per-stadio (append-only, osservabilita C6)
 CREATE TABLE IF NOT EXISTS intake_stage_metrics (
     id          BIGSERIAL PRIMARY KEY,
-    queue_id    BIGINT NOT NULL REFERENCES intake_queue(id),
+    queue_id    BIGINT NOT NULL REFERENCES intake_queue(id) ON DELETE CASCADE,
     stage       VARCHAR(16) NOT NULL,
     latency_ms  INT,
     confidence  REAL,
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS intake_stage_metrics (
 -- D. Routing proposal (P4 scrive, P5 legge) — X8/X9
 CREATE TABLE IF NOT EXISTS document_routing_proposal (
     id               BIGSERIAL PRIMARY KEY,
-    queue_id         BIGINT NOT NULL REFERENCES intake_queue(id),
+    queue_id         BIGINT NOT NULL REFERENCES intake_queue(id) ON DELETE CASCADE,
     doc_index        INT NOT NULL DEFAULT 0,
     pipeline_version VARCHAR(32) NOT NULL,
     routing_key      TEXT NOT NULL,
@@ -98,7 +98,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_rp_routing_key ON document_routing_proposal
 -- E. Correzioni HITL (seme evolver) — P5
 CREATE TABLE IF NOT EXISTS intake_corrections (
     id            BIGSERIAL PRIMARY KEY,
-    queue_id      BIGINT      NOT NULL REFERENCES intake_queue(id),
+    queue_id      BIGINT      NOT NULL REFERENCES intake_queue(id) ON DELETE CASCADE,
     blob_hash     CHAR(64)    NOT NULL,
     doc_type      TEXT        NOT NULL,
     field_name    TEXT        NOT NULL,

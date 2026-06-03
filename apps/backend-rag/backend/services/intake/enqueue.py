@@ -5,7 +5,7 @@ PII stays 100% local (Law 2 / UU-PDP) — never call cloud LLMs here, never
 ship document bytes off-box. This module computes content hashes and performs
 idempotent INSERTs only.
 
-Contract (migration 206, FASE 1A):
+Contract (migration 210, FASE 1A):
 - document_instances: immutable blob registry, UNIQUE(blob_hash, pipeline_version).
 - intake_queue: work queue, UNIQUE(intake_key) where
   intake_key = sha256("{source}|{source_ref}|{blob_hash}|{pipeline_version}").
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # Current pipeline version (X7). Bump only with a re-index plan.
 PIPELINE_VERSION = "intake-v1"
 
-# Valid sources (mirrors CHECK constraints in migration 206).
+# Valid sources (mirrors CHECK constraints in migration 210).
 VALID_SOURCES = frozenset({"whatsapp", "drive", "zoho"})
 
 # intake_key separator (X7) — hashlib stdlib, "|" separator.
