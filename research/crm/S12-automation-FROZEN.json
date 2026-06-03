@@ -1,0 +1,100 @@
+{
+  "session": "ONDA-3 S12 crm-automation-revive",
+  "frozen_at_utc": "2026-06-02T20:23:00Z",
+  "links_to": "S1 (events_outbox client_changed gate-off, already on main)",
+  "method": "read-only forensic: code grep + launchctl authoritative + crontab + OpenClaw cron + asyncpg SELECT-only on prod. Numbers derived from tool output this turn; no DB mutation.",
+  "architecture_note": "Two parallel CRM-automation realities: (A) in-process EventBus inside the Fly nuzantara-rag app consumes PG LISTEN/NOTIFY (client_changed, practice_changed) in real time; (B) a standalone nightly crontab script apps/backend-rag/scripts/crm_automation_engine.py reimplements quality/docs/renewals/stale inline and does NOT import services/crm/*. The services/crm/ modules assignment.py + birthday_notifier + birthplace_enrichment are largely orphaned relative to the live runtime.",
+  "events_outbox_forensics": {
+    "table_columns": ["id","channel","payload","created_at","consumed_at","consumer_id"],
+    "client_changed": {
+      "total": 6390,
+      "unconsumed": 554,
+      "newest_created": "2026-06-02T07:48:08Z",
+      "live_consumer": "event_bus:client.changed",
+      "live_consumer_count": 5535,
+      "live_consumer_last_consumed": "2026-06-02T07:48:08Z",
+      "live_consumer_first_consumed": "2026-05-15T23:59:03Z",
+      "orphan_backlog_consumer": "None (old pre-EventBus consumer)",
+      "orphan_last_consumed": "2026-05-12T12:33:42Z",
+      "gap_window": "2026-05-12T12:33Z -> 2026-05-15T23:59Z (~83h consumer gap, then revived)",
+      "verdict": "ALIVE — consumer drains in real time (~65ms latency). The 554 unconsumed are stale consumer=None backlog from the gap window (oldest 2026-05-12, newest 2026-05-31), never replayed. NOT a live gate-off. S1 revival held."
+    },
+    "practice_changed": {
+      "total": 802,
+      "unconsumed": 82,
+      "live_consumer": "event_bus:practice.status_changed",
+      "live_consumer_last_consumed": "2026-06-02T09:06:46Z",
+      "orphan_unconsumed": "82 rows consumer=None, old backlog",
+      "verdict": "ALIVE — PracticeStatusListener consuming real time."
+    }
+  },
+  "fly_app_health": {"endpoint": "https://nuzantara-rag.fly.dev/health", "http": 200, "db": "connected", "implication": "in-process EventBus + PracticeStatusListener are running"},
+  "matrix": [
+    {
+      "service": "EventBus client_changed consumer (services/events/handlers/_core.py on_client_changed + event_bus.py)",
+      "kind": "in-process PG LISTEN consumer (Fly app)",
+      "state": "ALIVE",
+      "last_run": "2026-06-02T07:48:08Z (real-time)",
+      "registered": "app_factory.py:221 EventBus.start + register_handlers",
+      "evidence": "consumer_id event_bus:client.changed last_consumed == newest event; Fly /health 200",
+      "revive_plan": "none needed (S1 fix held). OPTIONAL cleanup: replay/prune 554 stale consumer=None client_changed rows (2026-05-12..05-31). NEEDS-ANTONELLO if replay (touches prod outbox state)."
+    },
+    {
+      "service": "PracticeStatusListener (services/crm/practice_status_listener.py)",
+      "kind": "in-process PG LISTEN daemon (Fly app)",
+      "state": "ALIVE",
+      "last_run": "2026-06-02T09:06:46Z (real-time)",
+      "registered": "app_factory.py:211 practice_listener.start()",
+      "evidence": "consumer_id event_bus:practice.status_changed last_consumed real-time",
+      "revive_plan": "none. OPTIONAL prune 82 stale consumer=None practice_changed rows."
+    },
+    {
+      "service": "crm_automation_engine.py (nightly full-cycle: quality/docs/renewals/stale)",
+      "kind": "crontab daily 23:00 UTC = 07:00 WITA, standalone script (apps/backend-rag/scripts/)",
+      "state": "ALIVE",
+      "last_run": "2026-06-02T23:00:02Z exit 0",
+      "registered": "user crontab: cron-wrapper.sh crm-automation; 5 consecutive OK runs 05-29..06-02 in logs/cron/crm-automation.jsonl",
+      "evidence": "crm_automation.log mtime 2026-06-02 23:00, digest LIVE; jsonl status ok exit 0",
+      "revive_plan": "none. NOTE: does NOT import services/crm/* — parallel reimplementation."
+    },
+    {
+      "service": "automation.py (ProcessAutomationService / CompletedProcessService / WaitingDocumentsService)",
+      "kind": "on-demand service classes (called by routers + crm_practices flows), NOT a daemon",
+      "state": "ON-DEMAND",
+      "last_run": "n/a (request-driven)",
+      "registered": "imported by routers; methods invoked per-request",
+      "evidence": "no scheduler/daemon; class methods; crm_automation_engine reimplements equivalent logic inline rather than calling these",
+      "revive_plan": "none (on-demand by design). DEBT: engine duplicates this logic — consolidation candidate, NEEDS-ANTONELLO (refactor, out of S12 read-only scope)."
+    },
+    {
+      "service": "assignment.py (trigger_lead_assignment / assign_lead / create_lead_assignment_workflow / LeadAssignmentState)",
+      "kind": "LangGraph workflow, intended event/on-demand trigger",
+      "state": "DEAD",
+      "last_run": "never wired in current tree",
+      "registered": "NONE",
+      "evidence": "repo-wide grep: zero live callers. Only shim lead_assignment_agent.py re-export + __init__ export + self-reference. No router, no EventBus handler, no scheduler, no webhook invokes it. crm_automation_engine has its OWN inline run_lead_assignment (round-robin SQL), but it is NOT in the nightly default module list [quality,docs,renewals,stale] — runs only via manual --module assignment.",
+      "revive_plan": "SPEC + NEEDS-ANTONELLO. Decide owner: either (a) wire services/crm/assignment.py to the client.changed EventBus handler (auto-assign on new lead INSERT), or (b) add assignment to crm_automation_engine nightly default modules. Two implementations exist; pick one, delete the other. Do NOT execute (prod consumer wiring is hard-to-reverse)."
+    },
+    {
+      "service": "birthday_notifier_service.py (run_birthday_notifier_task)",
+      "kind": "daily scheduled task; also HTTP endpoint POST /api/cron/notifiers/birthday",
+      "state": "DEAD",
+      "last_run": "no evidence of live invocation",
+      "registered": "autonomous_scheduler enabled=False (comment: migrated to OpenClaw client-health-monitor)",
+      "evidence": "(1) autonomous_scheduler registers it enabled=False. (2) OpenClaw cron jobs.json has only 4 jobs [pro-readonly-health, mcp-smoke-readonly, weekly-lobster-audit, Memory Dreaming Promotion] — the client-health-monitor migration target is GONE. (3) No crontab, no Pro script, no LaunchAgent hits /api/cron/notifiers/birthday. (4) No birthday_notifier_enabled kill-switch in system_settings. => zero live trigger; only reachable by manual curl.",
+      "revive_plan": "SPEC + NEEDS-ANTONELLO. The migration comment is STALE (OpenClaw target deleted). Options: (a) add a crontab line hitting POST /api/cron/notifiers/birthday with X-API-Key daily ~08:00 WITA, or (b) re-enable in autonomous_scheduler (but 24h interval > Fly auto_stop uptime — same reason it was disabled). Recommend (a). Add a system_settings kill-switch for symmetry with visa/lkpm. Do NOT execute."
+    },
+    {
+      "service": "enrichment.py birthplace (run_birthplace_enrichment_task / BirthplaceEnrichmentService)",
+      "kind": "daily batch (Ollama-dependent)",
+      "state": "DEAD-IN-PROD",
+      "last_run": "no prod run (Ollama unavailable on Fly)",
+      "registered": "autonomous_scheduler TASK 8 enabled=True BUT guarded by _is_production -> skipped on Fly (ENVIRONMENT=production in fly.toml)",
+      "evidence": "fly.toml ENVIRONMENT=production; scheduler code: if _is_production: skip registration. Only runs if scheduler runs in a non-prod env. No Pro-local scheduler process found for it.",
+      "revive_plan": "SPEC + NEEDS-ANTONELLO. Birthplace enrichment needs Ollama -> belongs on Mini-Pro2 (H24 Ollama), not Fly. Plan: a Pro/Mini cron that runs run_birthplace_enrichment_task against prod DB using local Ollama, OR ship enrichment to the crm_automation_engine nightly with an Ollama endpoint. Currently the birthday_notifier depends on birthplace data for personalization -> both dead together. Do NOT execute."
+    }
+  ],
+  "summary_counts": {"ALIVE": 3, "ON-DEMAND": 1, "DEAD": 2, "DEAD-IN-PROD": 1, "total_services_classified": 7},
+  "headline": "S1 channel (client_changed) is ALIVE again — consumer drains real-time, gate-off resolved. The live CRM automation is the nightly crontab crm_automation_engine.py (quality/docs/renewals/stale, 5 clean runs) which BYPASSES services/crm/. Three services/crm/ automations are orphaned: lead assignment (DEAD, zero callers), birthday_notifier (DEAD, OpenClaw migration target deleted, no cron), birthplace_enrichment (DEAD-IN-PROD, Ollama-guarded off on Fly). All revives are SPEC + NEEDS-ANTONELLO (prod consumer wiring is hard-to-reverse).",
+  "no_pii": "All figures are aggregates / channel counts. Stale-practice client first-names appear only in the live Telegram digest log (not copied here)."
+}

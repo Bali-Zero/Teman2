@@ -4,6 +4,7 @@ Program-aware run caching for agent evaluations.
 Cache invalidates automatically when behavior-affecting files change:
 - .claude/skills/** (skill definitions)
 - src/agent_profiles/base_agent/prompt.txt (prompt text)
+- .evoskill/task.md (task description / prompt)
 
 Excludes metadata files like .claude/program.yaml to avoid unnecessary
 cache invalidation when only scores or timestamps change.
@@ -89,6 +90,7 @@ class RunCache:
         Only hashes files that actually affect agent behavior:
         - .claude/skills/** - skill definitions
         - src/agent_profiles/base_agent/prompt.txt - prompt text
+        - .evoskill/task.md - task description / prompt
 
         Excludes metadata files like .claude/program.yaml which contain
         mutable fields (score, created_at) that don't affect behavior.
@@ -101,6 +103,7 @@ class RunCache:
         behavior_paths = [
             (".claude/skills", "**/*"),  # All skill files
             ("src/agent_profiles/base_agent", "prompt.txt"),  # Prompt text
+            (".evoskill", "task.md"),  # Task description / output contract (production system prompt)
         ]
 
         content_hashes = []

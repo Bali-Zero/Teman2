@@ -211,7 +211,7 @@ class BrowserManager:
                         timeout=self.config.page_load_timeout_ms,
                     )
 
-                    if response.status >= 400:
+                    if response is not None and response.status >= 400:
                         raise BrowserError(f"HTTP {response.status} for {url}")
 
                 yield page
