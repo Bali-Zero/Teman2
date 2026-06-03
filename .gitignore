@@ -709,3 +709,8 @@ apps/mouth/scripts/output/
 
 # Generated artifacts from analysis scripts
 apps/mouth/scripts/output/
+
+# Root-level runtime cache (cache/projects.json from WR2 cron) — blocks the
+# deploy worktree ff-only pull when untracked. Root-anchored so it does NOT
+# match vendor/evoskill/src/cache/ (tracked).
+/cache/
