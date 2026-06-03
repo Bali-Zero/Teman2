@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("openclaw_whatsapp_bridge")
 
 
 class BridgeRequest(BaseModel):
@@ -996,14 +999,63 @@ async def _run_army_launcher(*args: str) -> tuple[int, str, str]:
     return (proc.returncode or 0, out, err)
 
 
-async def _handle_army_command(text: str) -> str | None:
+def _army_owner_allowlist() -> frozenset[str]:
+    """Phone numbers (digits-only) authorized to launch the autonomous army.
+
+    Source: env WA_ARMY_OWNERS, comma-separated. UNSET → empty allowlist =
+    deny-all (true closed-by-default; the army feature is simply disabled
+    until an operator opts in). Army commands shell out to `claude
+    --dangerously-skip-permissions`, so this allowlist is the SOLE
+    authorization boundary on a public WhatsApp number.
+
+    Entries that normalize to the empty string (e.g. a non-digit env value)
+    are dropped — an empty member must NEVER exist, or a malformed sender
+    phone that also normalizes to "" would spuriously match.
+    """
+    raw = os.environ.get("WA_ARMY_OWNERS", "")
+    if not raw.strip():
+        logger.warning("WA_ARMY_OWNERS is unset — army launcher disabled (deny-all)")
+        return frozenset()
+    normalized = (re.sub(r"\D", "", n) for n in raw.split(","))
+    return frozenset(n for n in normalized if n)
+
+
+def _is_army_owner(phone: str | None) -> bool:
+    if not phone:
+        return False
+    normalized = re.sub(r"\D", "", phone)
+    if not normalized:
+        return False
+    return normalized in _army_owner_allowlist()
+
+
+# Any command this regex set matches is owner-gated below.
+_ARMY_COMMAND_RES = (_ARMY_LIST_RE, _ARMY_STATUS_RE, _ARMY_LAUNCH_RE, _ARMY_KILL_RE)
+
+
+async def _handle_army_command(text: str, sender_phone: str | None) -> str | None:
     """If `text` is an army command, execute it and return the WhatsApp reply.
 
-    Returns None when the message is NOT an army command (caller proceeds to LLM).
+    Returns None when the message is NOT an army command (caller proceeds to
+    LLM). Also returns None — silently, falling through to the normal LLM —
+    when the sender is NOT in the owner allowlist: an unauthorized contact
+    must never learn army commands exist, and `/lancia` must do nothing.
     """
     if not text:
         return None
     stripped = text.strip()
+
+    # Sender authorization gate. Army commands run `claude
+    # --dangerously-skip-permissions`; only the owner may trigger them.
+    # Non-owners fall through (return None) so /lancia is indistinguishable
+    # from any other non-command message — no oracle, no error reply.
+    if not _is_army_owner(sender_phone):
+        if any(rx.match(stripped) for rx in _ARMY_COMMAND_RES):
+            logger.warning(
+                "army command from non-owner sender suppressed (sender=%s)",
+                re.sub(r"\D", "", sender_phone or "") or "?",
+            )
+        return None
 
     if _ARMY_LIST_RE.match(stripped):
         rc, out, err = await _run_army_launcher("list")
@@ -1059,8 +1111,9 @@ async def reply(
     _check_auth(authorization, x_openclaw_webhook_secret)
 
     # Army commands (/lancia, /armate, ...) bypass the LLM and run on the Pro.
+    # Owner-gated inside the handler: only WA_ARMY_OWNERS may trigger them.
     try:
-        army_reply = await _handle_army_command(body.text)
+        army_reply = await _handle_army_command(body.text, body.phone)
     except Exception as exc:  # never let an army-command error break the channel
         army_reply = f"⚠️ Comando armata fallito: {exc}"
     if army_reply is not None:
