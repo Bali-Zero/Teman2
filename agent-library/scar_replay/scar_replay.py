@@ -420,6 +420,39 @@ def cleanup_scories(repo_root: Path, telemetry_dir: Path, apply: bool = False) -
 
 
 # --------------------------------------------------------------------------- #
+# Antibody store — persist promoted antibodies so daily runs can replay them    #
+# (vigilance) for free and only call the LLM for new/regressed probes.          #
+# --------------------------------------------------------------------------- #
+
+_DEFAULT_STORE = Path.home() / ".agent" / "decisions" / "agent-library-evolver" / "antibodies"
+
+
+def _store_path(store_dir: Path, family: str) -> Path:
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", family)
+    return store_dir / f"{safe}.sh"
+
+
+def load_stored_antibody(store_dir: Path, family: str) -> Optional[str]:
+    """Return the last promoted antibody for a family, or None if never promoted."""
+    p = _store_path(store_dir, family)
+    if p.is_file():
+        try:
+            return p.read_text(encoding="utf-8")
+        except OSError:
+            return None
+    return None
+
+
+def save_antibody(store_dir: Path, family: str, antibody: str) -> None:
+    """Persist a promoted antibody (atomically). evolver-owned scope for cleanup."""
+    store_dir.mkdir(parents=True, exist_ok=True)
+    p = _store_path(store_dir, family)
+    tmp = p.with_suffix(".sh.tmp")
+    tmp.write_text(antibody, encoding="utf-8")
+    tmp.replace(p)
+
+
+# --------------------------------------------------------------------------- #
 # Probe registry — import the concrete probes                                  #
 # --------------------------------------------------------------------------- #
 
@@ -454,6 +487,10 @@ def main(argv: Optional[list[str]] = None) -> int:
                                / "agent-library-evolver" / "telemetry"))
     ap.add_argument("--cleanup", action="store_true", help="reap evolver-owned scories")
     ap.add_argument("--apply-cleanup", action="store_true", help="actually delete scories")
+    ap.add_argument("--daily", action="store_true",
+                    help="vigilance mode: replay stored antibodies free; LLM only for new/stale probes")
+    ap.add_argument("--store-dir", default=str(_DEFAULT_STORE),
+                    help="where promoted antibodies are persisted")
     ap.add_argument("--list", action="store_true", help="list probes and exit")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
@@ -480,24 +517,61 @@ def main(argv: Optional[list[str]] = None) -> int:
     key = resolve_deepseek_key()
     offline = args.offline or key is None
 
+    store_dir = Path(args.store_dir)
     results = []
     spent = 0.0
     promoted = 0
+    new_or_stale = 0
+    vigilance_ok = 0
     for probe in probes:
-        if spent >= args.budget_usd and not offline:
-            results.append({"family": probe.family, "skipped": "budget exhausted"})
-            continue
-        rep = run_probe(probe, key, offline=offline)
+        stored = load_stored_antibody(store_dir, probe.family)
+
+        if args.daily:
+            # Vigilance: first, replay the stored antibody for FREE (offline).
+            if stored is not None:
+                watch = run_probe(probe, key=None, offline=True, prior_antibody=stored)
+                if watch.promoted:
+                    # Stored antibody still holds. Done — no LLM spend.
+                    vigilance_ok += 1
+                    results.append({**asdict(watch), "daily_state": "vigilance_pass"})
+                    continue
+                # Stored antibody no longer passes => STALE/regressed. Re-evolve.
+                results_note = "stale_reevolve"
+            else:
+                results_note = "new_evolve"
+            new_or_stale += 1
+            if offline:
+                # Can't evolve offline; flag for human (a new/regressed probe with no LLM).
+                results.append({"family": probe.family, "daily_state": results_note,
+                                "note": "offline: cannot evolve new/stale probe"})
+                continue
+            if spent >= args.budget_usd:
+                results.append({"family": probe.family, "daily_state": results_note,
+                                "skipped": "budget exhausted"})
+                continue
+            rep = run_probe(probe, key, offline=False, prior_antibody=stored)
+            rep_d = {**asdict(rep), "daily_state": results_note}
+        else:
+            # Full run (every probe hits the LLM unless offline).
+            if spent >= args.budget_usd and not offline:
+                results.append({"family": probe.family, "skipped": "budget exhausted"})
+                continue
+            rep = run_probe(probe, key, offline=offline, prior_antibody=stored)
+            rep_d = asdict(rep)
+
         spent += rep.cost_usd
         if rep.promoted:
             promoted += 1
-        results.append(asdict(rep))
+            save_antibody(store_dir, probe.family, rep.antibody)  # persist the win
+        results.append(rep_d)
 
     # Law 7 — numbers first. effective_antibodies is the real metric.
     summary = {
-        "mode": "offline" if offline else "online",
+        "mode": ("daily" if args.daily else "full") + ("/offline" if offline else "/online"),
         "probes_run": len(results),
-        "effective_antibodies": promoted,   # baseline-failed & original-passed & all-variants-passed
+        "effective_antibodies": promoted,   # NEW antibodies promoted this run
+        "vigilance_pass": vigilance_ok,     # stored antibodies that still hold (free)
+        "evolved_new_or_stale": new_or_stale,
         "cost_usd": round(spent, 4),
         "results": results,
     }

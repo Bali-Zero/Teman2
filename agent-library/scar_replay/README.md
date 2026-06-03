@@ -55,7 +55,9 @@ The real metric (Law 7, numbers first):
 ```
 effective_antibodies = fail_before_pass_after − regressions − overbroad_blocks
 ```
-Never `proposals_passed > 0`.
+Never `proposals_passed > 0`. In daily mode two extra counters separate
+free vigilance from paid evolution: `vigilance_pass` (stored antibodies that
+still hold, $0) and `evolved_new_or_stale` (probes that needed the LLM).
 
 ## Files
 
@@ -77,6 +79,13 @@ bash scar-replay-run.sh --family shared_worktree_git_ops
 
 # degraded mode (DeepSeek down / no key): replay-only, never crashes, never alerts
 bash scar-replay-run.sh --offline
+
+# DAILY mode — vigilance + evolve-on-novelty (the cron default).
+# Every day: replay the stored antibodies for FREE (offline) to confirm they
+# still hold; call DeepSeek (~$0.003) ONLY for a probe that is NEW (never
+# promoted) or STALE (its stored antibody no longer passes). ~$0/day at
+# steady state; alerts only when a probe regresses.
+bash scar-replay-run.sh --daily
 
 # reap evolver-owned scories (stale evolver/* branches, old telemetry) — dry-run
 bash scar-replay-run.sh --cleanup
