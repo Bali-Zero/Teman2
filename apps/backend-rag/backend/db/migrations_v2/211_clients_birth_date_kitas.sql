@@ -1,4 +1,4 @@
--- 207_clients_birth_date_kitas.sql — debito schema 04-4 (C4 entity-resolution)
+-- 211_clients_birth_date_kitas.sql — debito schema 04-4 (C4 entity-resolution)
 -- clients NON ha birth_date ne kitas_number come colonne (verificato models.py + live nuzantara_dev).
 -- C4 richiede birth_date come discriminante BLOCKING (oggi solo tie-breaker via custom_fields).
 -- LOCAL Pro DB only (nuzantara_dev). Backfill da custom_fields opzionale/separato/non bloccante.
