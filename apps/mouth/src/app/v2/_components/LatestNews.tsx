@@ -167,6 +167,22 @@ export function LatestNews({
           );
         })}
       </div>
+
+      <div className="flex justify-center mt-10">
+        <a
+          href="/business"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:-translate-y-0.5"
+          style={{
+            background: "color-mix(in srgb, #f59e0b 10%, transparent)",
+            border: "1px solid color-mix(in srgb, #f59e0b 30%, transparent)",
+            color: "#f59e0b",
+            textDecoration: "none",
+          }}
+        >
+          View all Business articles
+          <ArrowUpRight size={14} strokeWidth={2} />
+        </a>
+      </div>
     </section>
   );
 }

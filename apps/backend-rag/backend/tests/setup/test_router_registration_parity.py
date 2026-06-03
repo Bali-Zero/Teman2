@@ -164,3 +164,52 @@ class TestIncludeFunctionsParity:
             f"would silently 404 in main_api production. Add explicit "
             f"`api.include_router(<name>.router)` in include_light_routers()."
         )
+
+
+class TestPortalManifestRegistrationParity:
+    """Every `portal_*` manifest entry MUST be registered in BOTH include
+    functions — the exact class of the ONDA-3 S11 P0 scar (#1055 audit).
+
+    Unlike the general "manifest entry implies include_router" check (which
+    is out of scope because some routers mount via app_factory and would
+    false-positive), the portal_* family is fully explicit-registration:
+    all 13 portal routers are wired by hand in include_routers() +
+    include_light_routers(). This test is therefore false-positive-free for
+    that family.
+
+    Scar: portal_dashboard / portal_family / portal_notification_prefs were
+    in ROUTER_MANIFEST but never include_router()'d → 404 in production on
+    the client portal Family page, Notification settings, and dashboard
+    summary + iCal export. Same drift class as channel_health (#422→#424).
+    """
+
+    def _portal_manifest_names(self) -> set[str]:
+        from backend.app.setup.router_manifest import _API, _BOTH
+
+        return {
+            e.name
+            for e in ROUTER_MANIFEST
+            if e.name.startswith("portal_") and e.process_groups in (_API, _BOTH)
+        }
+
+    def test_every_portal_router_in_both_include_functions(self):
+        source = _read_registration_source()
+        body_main = _extract_function_body(source, "include_routers")
+        body_light = _extract_function_body(source, "include_light_routers")
+
+        pat = re.compile(r"include_router\s*\(\s*(\w+)\.router")
+        in_main = set(pat.findall(body_main))
+        in_light = set(pat.findall(body_light))
+
+        portal = self._portal_manifest_names()
+        missing_main = sorted(portal - in_main)
+        missing_light = sorted(portal - in_light)
+
+        assert not missing_main, (
+            f"portal_* routers in manifest but NOT in include_routers(): "
+            f"{missing_main} — would 404 in production. (ONDA-3 S11 P0 scar.)"
+        )
+        assert not missing_light, (
+            f"portal_* routers in manifest but NOT in include_light_routers(): "
+            f"{missing_light} — would 404 in main_api production. (ONDA-3 S11 P0 scar.)"
+        )

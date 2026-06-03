@@ -38,7 +38,7 @@ Quattro categorie effettive:
 
 | KBLI | Attività | Cap WNA | Nota |
 |---|---|---|---|
-| 73100 | Aktivitas Periklanan (advertising) | **MAX 49%** | ⚠️ Spesso citato erroneamente come TERBUKA. Fonte aggiornata BPS 7/2025 + Perpres 14/2024 lo classifica TERBATAS, obbligo kemitraan locale |
+| 73100 | Aktivitas Periklanan (advertising) | **MAX 49%** (⚠️ NON groundato NB) | ⚠️ Spesso citato erroneamente come TERBUKA. Fonte attribuita BPS 7/2025 + Perpres 14/2024 (TERBATAS, obbligo kemitraan locale). **Verifica 2026-06-03**: il cap 49% NON è confermato dalle fonti curate NB-3 (KBLI) — il NB conferma 68111 Real Estate 100% TERBUKA ma non riporta la % per 73100. VERIFICARE sul testo Perpres 10/2021 lampiran + Perpres 14/2024 prima di citarlo a un cliente |
 | 41011 | Costruzioni edili | MAX 67% | |
 | 86102 | Klinik (clinica) | MAX 67% | Risiko Tinggi |
 | 55120 / 55111 | Accommodation/hotel | ~67% (verificare lista corrente) | Tourism — può richiedere partner |

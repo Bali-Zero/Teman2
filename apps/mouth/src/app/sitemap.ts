@@ -1,7 +1,7 @@
-import type { MetadataRoute } from 'next';
-import { getAllArticles, getNoIndexSlugs, getAvailableLocales } from '@/lib/blog/articles';
-import { getAllCodes, getSections } from '@/lib/kbli-data.server';
-import { logger } from '@/lib/logger';
+import type { MetadataRoute } from "next";
+import { getAllArticles, getNoIndexSlugs } from "@/lib/blog/articles";
+import { getAllCodes, getSections } from "@/lib/kbli-data.server";
+import { logger } from "@/lib/logger";
 
 /**
  * Dynamic Sitemap Generator
@@ -25,7 +25,7 @@ import { logger } from '@/lib/logger';
  * - monthly: Static pages
  */
 
-const baseUrl = 'https://balizero.com';
+const baseUrl = "https://balizero.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [];
@@ -35,61 +35,61 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: `${baseUrl}`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 1.0,
     },
     {
       url: `${baseUrl}/kbli`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/services`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/news`,
       lastModified: new Date(),
-      changeFrequency: 'daily' as const,
+      changeFrequency: "daily" as const,
       priority: 0.8,
     },
     {
       url: `${baseUrl}/team`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.7,
     },
     {
       url: `${baseUrl}/contact`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.7,
     },
     {
       url: `${baseUrl}/kbli-explorer`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.8,
     },
     {
       url: `${baseUrl}/llms.txt`,
       lastModified: new Date(),
-      changeFrequency: 'daily' as const,
+      changeFrequency: "daily" as const,
       priority: 1.0,
     },
     {
       url: `${baseUrl}/llms-full.txt`,
       lastModified: new Date(),
-      changeFrequency: 'daily' as const,
+      changeFrequency: "daily" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/llms-id.txt`,
       lastModified: new Date(),
-      changeFrequency: 'daily' as const,
+      changeFrequency: "daily" as const,
       priority: 0.9,
     },
   ];
@@ -101,25 +101,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: `${baseUrl}/services/visa`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/services/company`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/services/tax`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/services/property`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
   ];
@@ -127,12 +127,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   routes.push(...servicePages);
 
   // 3. Category pages (match actual routes: /{category})
-  const categories = ['visas', 'business', 'taxes', 'property', 'living', 'trends'];
+  const categories = [
+    "visas",
+    "business",
+    "taxes",
+    "property",
+    "living",
+    "trends",
+  ];
 
   const newsCategoryPages = categories.map((category) => ({
     url: `${baseUrl}/${category}`,
     lastModified: new Date(),
-    changeFrequency: 'daily' as const,
+    changeFrequency: "daily" as const,
     priority: 0.7,
   }));
 
@@ -148,27 +155,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const articlePages = articles
       .filter((article) => !noIndexSlugs.has(article.slug))
       .map((article) => {
-        const locales = getAvailableLocales(article.category, article.slug);
         // Priority: featured editorial (0.9) > ai-enriched (0.8) > basic (0.6)
-        const priority = article.featured ? 0.9 : article.aiGenerated ? 0.8 : 0.6;
+        const priority = article.featured
+          ? 0.9
+          : article.aiGenerated
+            ? 0.8
+            : 0.6;
         const entry: MetadataRoute.Sitemap[number] = {
           url: `${baseUrl}/${article.category}/${article.slug}`,
-          lastModified: article.publishedAt ? new Date(article.publishedAt) : new Date(),
-          changeFrequency: 'weekly' as const,
+          lastModified: article.publishedAt
+            ? new Date(article.publishedAt)
+            : new Date(),
+          changeFrequency: "weekly" as const,
           priority,
         };
-
-        // Add hreflang alternates if translations exist
-        if (locales.length > 1) {
-          const languages: Record<string, string> = {};
-          for (const loc of locales) {
-            languages[loc] =
-              loc === 'en'
-                ? `${baseUrl}/${article.category}/${article.slug}`
-                : `${baseUrl}/${article.category}/${article.slug}?lang=${loc}`;
-          }
-          entry.alternates = { languages };
-        }
 
         return entry;
       });
@@ -176,9 +176,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     routes.push(...articlePages);
   } catch (error) {
     logger.error(
-      '[SITEMAP] Failed to load articles',
+      "[SITEMAP] Failed to load articles",
       {},
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
   }
 
@@ -188,15 +188,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const kbliPages = codes.map((c) => ({
       url: `${baseUrl}/kbli/${c.code}`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.8,
     }));
     routes.push(...kbliPages);
   } catch (error) {
     logger.error(
-      '[SITEMAP] Failed to load KBLI codes',
+      "[SITEMAP] Failed to load KBLI codes",
       {},
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
   }
 
@@ -207,31 +207,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: `${baseUrl}/visa`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/visa/match`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/visa/clock`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: "weekly" as const,
       priority: 0.9,
     },
     {
       url: `${baseUrl}/visa/privacy`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.5,
     },
     {
       url: `${baseUrl}/visa/terms`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.5,
     },
   ];
@@ -242,7 +242,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     routes.push({
       url: `${baseUrl}/kbli/sectors`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.8,
     });
 
@@ -250,15 +250,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const sectorPages = sections.map((s) => ({
       url: `${baseUrl}/kbli/sectors/${s.id}`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
+      changeFrequency: "monthly" as const,
       priority: 0.7,
     }));
     routes.push(...sectorPages);
   } catch (error) {
     logger.error(
-      '[SITEMAP] Failed to load KBLI sectors',
+      "[SITEMAP] Failed to load KBLI sectors",
       {},
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
   }
 

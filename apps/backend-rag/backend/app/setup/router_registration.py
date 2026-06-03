@@ -108,10 +108,13 @@ def include_routers(api: FastAPI) -> None:
         portal,
         portal_admin,
         portal_billing,
+        portal_dashboard,
         portal_drive,
+        portal_family,
         portal_invite,
         portal_matters,
         portal_notifications,
+        portal_notification_prefs,
         portal_process_timeline,
         portal_taxes,
         portal_visa,
@@ -232,10 +235,13 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal.router)
     api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
+    api.include_router(portal_dashboard.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_drive.router)
+    api.include_router(portal_family.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
+    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
@@ -486,10 +492,13 @@ def include_light_routers(api: FastAPI) -> None:
         portal,
         portal_admin,
         portal_billing,
+        portal_dashboard,
         portal_drive,
+        portal_family,
         portal_invite,
         portal_matters,
         portal_notifications,
+        portal_notification_prefs,
         portal_process_timeline,
         portal_taxes,
         portal_visa,
@@ -592,10 +601,13 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(portal.router)
     api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
+    api.include_router(portal_dashboard.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_drive.router)
+    api.include_router(portal_family.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
+    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)

@@ -1,0 +1,95 @@
+{
+  "frozen_at": "2026-06-02T08:00:00Z",
+  "session": "S3 escalation-debt-cleanup",
+  "machine": "Air-M5 (balizero), thin-client; live state verified on Pro (nuzantara@Nuzantara) via ssh",
+  "branch": "agent/air-m5/infra/s3-escalation-debt",
+  "mission_premise_vs_reality": {
+    "premise": "shared/escalations_pro.jsonl = 1.17MB / 4519 pending entries, git-tracked, storm contained (last ts 2026-05-24), needs safe rotation + W55 weekly digest.",
+    "reality": "The 4519-entry graveyard was ALREADY truncated by PR #972 (0e328523a, 2026-05-31). git HEAD:shared/escalations_pro.jsonl = 0 bytes on every checkout. The mission's core symptom was resolved 1 day before this session. BUT investigation surfaced that the underlying GENERATOR is still alive: the file is silently re-accumulating on Pro (11 lines, dirty vs HEAD, as of 2026-06-02 04:09).",
+    "pivot": "Mission re-scoped from 're-truncate the graveyard' (already done) to 'fix the storm generator + add the missing rotation backstop + close the W55 digest gap', which is the durable fix."
+  },
+  "empirical_ground_truth": {
+    "git_head_size_bytes": 0,
+    "pro_live_working_tree_lines": 11,
+    "pro_live_working_tree_bytes": 2729,
+    "pro_file_dirty_vs_head": true,
+    "pro_file_mtime": "2026-06-02 04:09",
+    "all_11_live_entries": "job=nlm_nb1_daily_refresh, type=dlq_autopilot_escalation, error_summary='' (EMPTY), appended every ~1801s (~30min)",
+    "dlq_json_queue_pro": "8 entries, ALL status=TERMINAL attempts=10 (fly_pg_backup, client_value_predictor, fly_cost_alert, qdrant_snapshot, fly_qdrant_backup, rag_canary, conversation_trainer, nlm_nb1_daily_refresh)",
+    "sqlite_mirror_pro": "525 rows (22 nlm_nb1_daily_refresh, 524 unresolved), span 2026-05-25..2026-06-01 — proves JSONL truncation is LOSSLESS (data persists out-of-tree)",
+    "escalation_cooldown_json": "16 jobs, each only {escalation_sent_at,_writer} — NO suppressed_count field existed (W55 digest had no count source)",
+    "escalations_prune_plist_loaded": false,
+    "nuz_sync_loaded_on_pro": false,
+    "no_git_autosync_daemon_touches_file": true,
+    "prod_dlq_autopilot_runs_from": "REPO copy ($HOME/Desktop/nuzantara/scripts/dlq_autopilot.py via docs/infra/launchagents/launch_dlq_autopilot.sh, pyenv 3.11.11) — W50 HOME-fork already fixed; edits to repo copy take effect"
+  },
+  "root_cause_W61_storm_relay": {
+    "summary": "Same W61 retry-storm family, still alive as a RELAY cycling through ~33 jobs over time (zombie_hunter x13, conversation_trainer x5, rag_canary x3, nlm_nb1 x3...).",
+    "chain": [
+      "1. Job goes 'stale' with EMPTY error_summary (job writes heartbeat only on success, so a failure leaves no error text).",
+      "2. Sentinel failure path (nuzantara-sentinel.py:732) calls add_to_dlq(last_error='') unconditionally; cooldown gates only send_alert (Telegram), not add_to_dlq.",
+      "3. dlq-autopilot every 30min: process_entry passes TERMINAL guard (not yet terminal) + max_attempts, hits 'if len(error) < MIN_ERROR_LEN(20)' (dlq_autopilot.py:486) -> escalate_to_claude_code() EVERY tick -> appends 1 JSONL line + writes claude_tasks/*.json + (cooldown-muted) Telegram. escalate_to_claude_code NEVER consulted escalation_cooldown.json.",
+      "4. After ~10 ticks (~5h) attempts hit max -> status=TERMINAL -> TERMINAL guard finally skips it. Storm ends for that job until the next stale-with-empty-error job starts the next ~5h storm."
+    ],
+    "W61_2026-05-28_fix_assessment": "PARTIAL. The TERMINAL-state guard + add_to_dlq attempts-preservation (repairer.py:144) correctly bound each storm to ~5h/job and prevent duplicate DLQ entries. But they do NOT stop per-tick JSONL/claude_tasks growth DURING the 5h climb. dedup-on-job-key already exists and is NOT the problem."
+  },
+  "forensic_consumer_audit": {
+    "verdict": "ROTATION SAFE",
+    "consumers_mapped": 12,
+    "readers": [
+      "sentinel_lib/escalations.py:100 read_all_escalations — skips blank+malformed, filters resolved",
+      "packages/cell-core/.../collector.py:347 _count_escalations — TRANSIENT WINDOW reader (window_hours), os.path.isfile guard, returns 0 on empty/missing",
+      "migrate_escalations_to_sqlite.py:198 import_jsonl — INSERT OR IGNORE idempotent, skips missing/empty/junk"
+    ],
+    "sole_writer": "sentinel_lib/escalations.py:48 write_escalation (O_WRONLY|O_CREAT|O_APPEND, open+write+close each call); only prod caller is dlq_autopilot.py escalate_to_claude_code",
+    "empty_file_behavior": "ALL readers tolerate empty/missing/malformed (verified by executing each path)",
+    "ledger_vs_window": "NO consumer treats it as a durable ledger; all are transient-window or idempotent-import. Old entries being gone is harmless.",
+    "o_append_race": "PROVEN harmless on macOS APFS: 73,798 concurrent appends (4 hammering writers, no sleep) + mid-stream truncate = 0 corrupt lines in archive AND post-truncate file. In prod there is 1 writer at ~4 lines/30min — collision probability negligible. Worst case 1 in-flight line lost in sub-ms window, and it survives in the SQLite mirror anyway.",
+    "git_caveat": "File is git-tracked. Resurrection risk (working-tree truncate undone by FF-pull) is LOW: nuz-sync NOT loaded on Pro, no git auto-sync daemon touches it. Rotation --commit defaults OFF to avoid daemon-commits-shared-worktree (cicatrix W50/W51/W59 family); empty state propagates via normal commit flow / canonical node (as PR #972 did manually)."
+  },
+  "adversarial_review": {
+    "tool": "Codex GPT-5.5 (Tier 3) attempted",
+    "outcome": "HUNG — process alive but 0 CPU for 8+min, no session rollout file, zero stdout (documented OAuth-revoked / network-stall failure mode per CLAUDE.md). Killed. Tier 2 (agy/Gemini) also unavailable on Air-M5 (re-auth required). Per anti-hallucination discipline, NO adversarial output was fabricated.",
+    "mitigation": "The safety claims Codex was asked to challenge were instead settled EMPIRICALLY (race test, lossless round-trip, SQLite durability, consumer execution) — stronger than an LLM opinion. The 2 remaining judgment calls (Q1 commit-default, Q2 per-job cooldown) were decided by the operator-agent grounded in cicatrix scar history; both are documented below for Antonello override."
+  },
+  "fixes_shipped": {
+    "FIX_1_generator": {
+      "file": "scripts/dlq_autopilot.py",
+      "change": "escalate_to_claude_code gains bypass_cooldown param; unless True, gated by alerter.check_escalation_cooldown (4h per-job). On cooldown: skip claude_tasks file + JSONL append + Telegram, bump suppressed_count via _record_suppressed. On pass: mark_escalation_sent. The max-attempts->TERMINAL escalation (dlq_autopilot.py) passes bypass_cooldown=True so the operator NEVER misses the TERMINAL signal.",
+      "effect": "Per-tick JSONL growth drops ~8x (10 lines/storm -> ~2). claude_tasks no longer regenerated every 30min for a dead job.",
+      "additive": true,
+      "import_safety": "lazy import with graceful-degradation stub (never suppress if alerter unimportable)"
+    },
+    "FIX_2_rotation_backstop": {
+      "files": ["scripts/escalations_rotate.py", "scripts/escalations_prune_cron.sh (wired in, daily 03:00)"],
+      "change": "When canonical escalations_<machine>.jsonl exceeds 5000 lines OR 1MiB: gzip-archive to ~/.agent/decisions/escalations_archive_<machine>_<date>.jsonl.gz (fsync) THEN truncate to 0. --commit OFF by default. --check / --force / --file flags for ops + testing.",
+      "tested_on": "/tmp copies ONLY (6001-line fixture). Lossless 6001==6001, 0 corrupt, idempotent, threshold both-ways, no-double-archive, concurrent-race. REAL file NEVER touched.",
+      "additive": true
+    },
+    "FIX_3_W55_digest": {
+      "files": ["scripts/escalations_suppressed_digest.py", "scripts/escalations_digest_cron.sh", "infra/launchd/com.nuzantara.escalations-digest.weekly.plist (Sun 09:07 WITA, Pro only)"],
+      "change": "Reads escalation_cooldown.json (suppressed_count from FIX 1) + alert_dedup.json, emits weekly Telegram summary of escalations hidden by cooldown, then resets counters. Closes the W55 GOTCHA ('suppression presumes a dashboard that does not exist').",
+      "additive": true
+    }
+  },
+  "tests": {
+    "file": "scripts/tests/test_escalations_s3.py",
+    "result": "14/14 PASS (backend-rag .venv pytest 9.0.3)",
+    "coverage": "rotation (lossless/threshold/empty/missing/idempotent/byte/no-double-archive/concurrent-race), FIX1 cooldown-gate (pass-then-suppress / TERMINAL-bypass / suppressed-record), digest (with-suppressions/quiet-week/reset)"
+  },
+  "judgment_calls_for_antonello": {
+    "Q1_rotation_commit_default": "DECIDED OFF. A cron must not git-commit a shared worktree mid-session (cicatrix W50/W51/W59). File stays git-tracked; operator/canonical-flow propagates empty state. OVERRIDE: pass --commit, or untrack+gitignore if the git federation-bus contract is dead in the 2-node setup.",
+    "Q2_per_job_cooldown_false_negative": "ACCEPTED. The 4h cooldown is per-JOB not per-error-hash, so a genuinely-new distinct error for an already-DLQ'd job is suppressed in the JSONL for up to 4h. Acceptable: full error history remains in the DLQ entry + SQLite mirror + the TERMINAL alert bypasses cooldown. OVERRIDE: switch to per-error-hash cooldown if a known-failing job's NEW errors must escalate immediately.",
+    "install_action": "The new plists + the rotation step are SHIPPED in repo but NOT installed/loaded. Installing com.nuzantara.escalations-digest.weekly.plist + verifying escalations-prune.plist is loaded on Pro is a deploy-time step (the SQLite prune plist itself was found NOT loaded — secondary debt).",
+    "secondary_debt_found": [
+      "escalations-prune.plist (SQLite mirror rotation) is NOT loaded on Pro — the SQLite mirror also grows unbounded (currently 525 rows, benign, but should be installed).",
+      "The deeper generator fix (sentinel should not add_to_dlq with empty error, and jobs should write a real error on failure) is OUT OF SCOPE for S3 — FIX 1 stops the SYMPTOM (storm growth) idempotently. Tracked for a sentinel-side follow-up."
+    ]
+  },
+  "blast_radius": "3 new files + 2 modified (dlq_autopilot.py, escalations_prune_cron.sh) + 1 new plist + 1 test. No prod state mutated. No live escalations file touched. All changes additive + reversible.",
+  "the_3_laws": {
+    "law_2_OSINT": "n/a — no intelligence data; escalations are ops telemetry, stay local.",
+    "law_5_zero_last_instance": "structural fixes (rotation policy, cooldown semantics) flagged as judgment_calls_for_antonello; PR is DRAFT.",
+    "law_7_numbers_first": "every claim empirical: 6001 lossless, 73798 race-safe, 525 mirror rows, 11 live lines, 8 DLQ TERMINAL, 14/14 tests, ~8x growth reduction."
+  }
+}
