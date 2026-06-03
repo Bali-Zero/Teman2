@@ -1,0 +1,45 @@
+# DESC: S1 — events-outbox: i 6 canali morti (ONDA 1, Codex-heavy)
+Sei l'ORCHESTRATORE della sessione S1 "events-outbox-resurrection". Procedi in piena
+autonomia in loop senza chiedere conferma ad Antonello, fino allo stop point.
+
+PASSO 0 worktree isolato (OBBLIGATORIO prima di toccare qualsiasi cosa):
+  python scripts/agent_start.py --lane backend-rag --task-id s1-events-outbox
+  cd .worktrees/backend-rag-s1-events-outbox
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI ANTI-AUTODISTRUZIONE: (1) i tuoi worker non parlano tra loro, coordinano solo
+via file in questo worktree; (2) ogni worker riceve il brief COMPLETO qui sotto, non
+frammenti; (3) git single-threaded: UN solo meccanico committa, serializzato.
+
+MISSIONE: events_outbox ha ~492 eventi stale >24h su canali in gate-off da metà maggio:
+client_changed (215h, consumer morto), practice_changed (38h parziale),
+cell_pulse_sustained_red (64h), intel_lake_event (378h), war_room_event (378h).
+whatsapp_message_received gate-off è ATTESO (wa-mirror local-only cutover) — benigno, NON
+toccare. Fonte verità: research/operations/2026-05-31-system-audit-FROZEN.json
+§prod_data_postgres.
+
+TOPOLOGIA (orchestrator-worker, pipeline):
+- ASSALITORI (Workflow tool, fan-out 1 per canale = 5 paralleli, schema {channel,
+  expected_consumer, death_cause, last_alive_ts, resurrection_plan, replay_risk}): ogni
+  assalitore (a) trova il daemon/handler che DOVREBBE consumare quel canale (grep
+  apps/backend-rag/backend/ + infra/launchagents/), (b) verifica perché è morto
+  (launchctl print, log mtime, git log file handler), (c) propone resurrection.
+- ANALISTI (adversarial, dopo ogni assalitore): 1 devils-advocate (puoi usare
+  `codex exec --sandbox read-only` come spalla) che cerca il RISCHIO DI REPLAY — eventi
+  16-giorni-vecchi replayati possono causare doppi side-effect (doppia email? doppio
+  edge KG? doppia notifica)? Verdetto SAFE/UNSAFE per canale.
+- SPAZZINI: 1 agente che ripulisce il worktree (rimuove file temp/scratch, verifica
+  niente PII nei file di output).
+- MECCANICO (1 solo, serial): research/operations/S1-outbox-resurrection-FROZEN.json
+  (tabella 5-canali × verdetto) + report .md. git add -A . (scope worktree) →
+  git commit → git push origin $BRANCH_EXPECTED → gh pr create --draft → STOP.
+
+VINCOLI: query Postgres SOLO read-only via postgres-nuzantara MCP. Mai mutation. Il fix
+vero (riavviare consumer / prune cron) è NEEDS-ANTONELLO — produci lo spec eseguibile +
+il rischio, NON eseguire. events_outbox è unbounded fino a phase-3 prune.
+
+OUTPUT FINALE: il FROZEN.json + PR draft. Poi: python ../../scripts/agent_start.py
+--release s1-events-outbox (solo se branch pushato).
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S1 <numero-PR-o-url>

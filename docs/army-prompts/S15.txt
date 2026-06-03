@@ -1,0 +1,33 @@
+# DESC: S15 — Symbiosis & cicatrici: organismo profondo (ONDA 1, M5 sonnet, fan-out Codex)
+ORCHESTRATORE sessione S15 "symbiosis-deep-audit". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane organism --task-id s15-symbiosis
+  cd .worktrees/organism-s15-symbiosis
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI. + sii FORENSE, anti-celebrativo (lessons_close_out_numbers_unverified): ogni
+numero derivato da tool IN QUESTO TURN, mai ricordato.
+
+MISSIONE: audit profondo dell'organismo. Le 8 Leggi Symbiosis rispettate nel codice reale?
+Le cicatrici "archiviate" DAVVERO risolte o nascoste? I 167 LaunchAgent — quanti zombie/
+flapping/no-KeepAlive (W61 storm)? Questo è il "ricordare cose vecchie dimenticate".
+
+TOPOLOGIA (Workflow fan-out):
+- ASSALITORI (3-5 paralleli): (a) Symbiosis-compliance — lint_symbiosis_promises.py +
+  verifica ogni Legge nel codice; (b) cicatrix-resurrection — rileggi
+  cicatrix-scars-archive.md, verifica sul disco/prod che ogni RESOLVED sia ANCORA risolto
+  (re-test empirico, non fede); (c) launchagent-health — 167 plist (KeepAlive,
+  binary_missing, flapping via launchctl print active_count).
+- ANALISTI: Codex devils-advocate sui falsi-positivi (un daemon "morto" per log-mtime può
+  essere vivo — usa launchctl print authoritative, non ps/log).
+- SPAZZINI: pulisci scratch.
+- MECCANICO (1, serial): research/operations/S15-symbiosis-FROZEN.json + lista cicatrici
+  RIAPERTE (se ce ne sono — usa la skill `scar` per appendere, APPEND-ONLY no auto-commit).
+  commit → push → PR draft → STOP.
+
+VINCOLI: read-only diagnosi su prod. Riaprire una cicatrix = entry strutturata, non fix.
+OUTPUT: FROZEN + organism-truth aggiornato. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S15 <numero-PR-o-url>
