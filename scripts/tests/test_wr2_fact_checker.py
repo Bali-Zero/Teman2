@@ -236,6 +236,7 @@ def _make_facted_row(draft_id: uuid.UUID, claims: list[dict], source: str) -> di
         "register": "pedagogico",
         "slides_json": {"slides": [{"index": 1, "title": "X", "body": source}]},
         "research_json": {"text": source},
+        "brief_json": {"article_summary": source},
         "council_debate_json": None,
         "fact_check_json": {"claims": claims, "extracted_at": "2026-05-08T00:00:00+00:00"},
     }
@@ -282,6 +283,7 @@ def test_process_one_draft_handles_string_blobs(fc):
         "register": "pedagogico",
         "slides_json": json.dumps({"slides": [{"index": 1, "title": "X", "body": "PP 28/2025"}]}),
         "research_json": json.dumps({"text": "PP 28/2025"}),
+        "brief_json": json.dumps({"article_summary": "PP 28/2025"}),
         "council_debate_json": None,
         "fact_check_json": json.dumps({"claims": [{"claim": "PP 28/2025", "slide_index": 1, "type": "law"}]}),
     }
@@ -343,3 +345,56 @@ def test_uses_claude_oauth_client_not_anthropic_sdk():
             if node.module and node.module.endswith("claude_oauth_client"):
                 used_oauth_client = True
     assert used_oauth_client
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Regression: research_json is systemically NULL in production; the actual
+# research lives in brief_json (article_summary / article_body_full /
+# enrichment). The checker must include brief_json in its source corpus or it
+# false-flags headline numbers the slides omit for editorial brevity.
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_extract_source_text_includes_brief_json(fc):
+    """A figure present only in brief_json must land in the source corpus."""
+    text = fc._extract_source_text(
+        research_json=None,
+        council_debate_json=None,
+        slides=[{"title": "Pajak", "body": "Aturan baru berlaku"}],
+        brief_json={
+            "article_summary": "Target setoran pajak Rp 52 triliun tahun ini.",
+            "enrichment": {"the_facts": "Angka 2.500 unit terdampak."},
+        },
+    )
+    assert "52" in text
+    assert "2.500" in text
+
+
+def test_process_one_draft_verifies_number_only_in_brief_json(fc):
+    """Headline number 52 lives only in brief_json (research_json NULL, slides
+    omit it). Before the fix this was a false 'contradicted' → fact_check_failed.
+    After the fix the checker verifies it against brief_json."""
+    draft_id = uuid.uuid4()
+    row = {
+        "id": draft_id,
+        "topic": "Pajak",
+        "register": "pedagogico",
+        # Slides deliberately omit the headline number (editorial brevity).
+        "slides_json": {"slides": [{"index": 1, "title": "Pajak", "body": "Setoran pajak meningkat tahun ini."}]},
+        # research_json systemically NULL in production.
+        "research_json": None,
+        # The real research the article was derived from.
+        "brief_json": {"article_summary": "Target setoran pajak Rp 52 triliun tahun ini."},
+        "council_debate_json": None,
+        "fact_check_json": {
+            "claims": [
+                {"claim": "target Rp 52 triliun", "slide_index": 1, "type": "number", "context": ""},
+            ],
+        },
+    }
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    ok = asyncio.run(fc._process_one_draft(conn, row, llm_enabled=False))
+    assert ok is True
+    args = conn.execute.call_args[0]
+    assert args[3] == "pass"  # not "fail"
+    assert args[4] == "drafts_imaged_checked"  # not "fact_check_failed"
