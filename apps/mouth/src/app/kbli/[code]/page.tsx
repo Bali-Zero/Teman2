@@ -59,8 +59,8 @@ export async function generateMetadata({
         ? `Restricted (max ${kbli.pma.maxForeign}% foreign)`
         : "Closed to Foreign Investment";
 
-  const title = `KBLI ${kbli.code} — ${kbli.titleEn} | KBLI 2025 Navigator`;
-  const description = `KBLI 2025: ${kbli.code} — ${kbli.titleEn} (${kbli.titleId}). ${pmaLabel}. Full licensing requirements, PMA rules, and risk level under Indonesian business classification 2025. Expert setup via Bali Zero.`;
+  const title = `KBLI ${kbli.code} — ${kbli.titleEn}: PMA Eligibility, Risk Level & 2026 Requirements`;
+  const description = `${kbli.titleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
 
   return {
     title,
