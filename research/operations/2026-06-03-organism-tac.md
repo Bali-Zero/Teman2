@@ -98,6 +98,8 @@ Tutti gli organi guardati da vicino mostrano **lo stesso identico profilo**. Sen
 
 **Cell segna rosso un paziente che risponde 200 in 128ms.** Il `red` è un falso positivo. E Cell *lo sospetta* (metacognizione presente!) ma **non riesce a chiudere il cerchio**: non sa declassare il proprio sensore bugiardo o ritarare la soglia. Resta a ri-verificare 959 volte la stessa cosa.
 
+**RADICE ISOLATA (verifica codice 2026-06-03, no env):** il classificatore `cell/core/pulse.py::classify_http_status` è **corretto** — dato `200 + body sano` ritorna GREEN (è stato già hardenato in aprile contro il blind-spot `startup_failed`). E `cell/core/config.py:14` punta esattamente a `https://nuzantara-rag.fly.dev/health`, lo stesso URL che dal Pro risponde 200/128ms. Quindi il `red` NON nasce dalla soglia né dall'URL sbagliato: nasce da **`reading.reachable=False` dentro Cell** — il client HTTP del daemon launchd non raggiunge un endpoint che dalla shell del Pro risponde 200. Causa probabile: timeout troppo aggressivo o ambiente di rete/DNS diverso nel contesto launchd vs shell interattiva. **Il termometro non è tarato male — è scollegato dal paziente.** Fix mirato: diagnosticare la `reachable=False` del client di Cell (timeout/DNS nel contesto daemon), NON ritarare la soglia.
+
 Peggio: i suoi freni di sicurezza — **giusti** (anti-storm, cicatrice W61) — lo zittiscono senza risolvere:
 ```
 Proposed alert_human but blocked: hit daily limit (20/20)
