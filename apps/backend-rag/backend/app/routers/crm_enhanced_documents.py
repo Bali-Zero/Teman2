@@ -116,7 +116,7 @@ async def create_document(
     Add a document to a client. Auto-triggers OCR for passport documents.
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
         # Sanitize date field - convert string to date object for asyncpg
         expiry_date = None
         if data.expiry_date:
@@ -249,7 +249,7 @@ async def create_documents_bulk(
         raise HTTPException(status_code=400, detail="No documents provided")
 
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
 
         inserted_ids = []
         ocr_count = 0
@@ -383,7 +383,7 @@ async def update_document(
     values.extend([doc_id, client_id])
 
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
         result = await conn.execute(
             f"""
             UPDATE documents
@@ -412,7 +412,7 @@ async def archive_document(
     Archive or delete a document.
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
         if permanent:
             result = await conn.execute(
                 "DELETE FROM documents WHERE id = $1 AND client_id = $2",
@@ -513,7 +513,7 @@ async def extract_visa_data(
     Body: {"file_id": "...", "doc_id": 123}
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
     file_id = body.get("file_id")
     doc_id = body.get("doc_id")
     if not file_id:
@@ -559,7 +559,7 @@ async def upload_document_base64(
     """
     # RBAC check before processing upload
     async with pool.acquire() as _conn:
-        await verify_client_access(client_id, current_user, _conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, _conn, allow_assigned=True, write=True)
 
     try:
         # Decode Base64
@@ -883,7 +883,7 @@ async def delete_document(
         doc_row = await conn.fetchrow("SELECT client_id FROM documents WHERE id = $1", doc_id)
         if doc_row:
             await verify_client_access(
-                doc_row["client_id"], current_user, conn, allow_assigned=True
+                doc_row["client_id"], current_user, conn, allow_assigned=True, write=True
             )
         if permanent:
             result = await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)

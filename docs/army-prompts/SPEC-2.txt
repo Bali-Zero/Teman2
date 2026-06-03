@@ -1,0 +1,65 @@
+# DESC: R1 Self-Improvement Loop + WR3 fix — ripara i 4 giunti del loop (ROI 250%)
+ORCHESTRATORE sessione "r1-selfimprovement-loop". Autonomia piena in loop, no conferme.
+Lavori da solo come Grande Generale: spawni subagent per fan-out, ma TU coordini e committi.
+
+PASSO 0:
+  cd ~/Desktop/nuzantara
+  python scripts/agent_start.py --lane organism --task-id r1-loop
+  cd .worktrees/organism-r1-loop
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI ANTI-AUTODISTRUZIONE:
+  1. I worker (subagent) NON comunicano peer-to-peer — coordinano solo via file che TU leggi.
+  2. Ogni worker riceve il brief COMPLETO.
+  3. git single-threaded — SOLO TU committi/pushi.
+
+PREREQUISITO: idealmente dopo G4 (così misuri che ogni fix attecchisce).
+
+MISSIONE: l'architettura di auto-miglioramento è sofisticata (Voyager evolver + Reflexion
+anti-self-justification + outcome-bucketing) MA il LOOP NON SI CHIUDE — è aperto a OGNI
+giunto. ROI 250% ($60k riparazione → $70k/anno, DeepSeek FASE2). Riferimento: dossier §7 R1.
+
+I 4 GIUNTI ROTTI (verificati sul codice in-turn, NON da memoria — RI-VERIFICA ognuno):
+
+GIUNTO 1 — federation_orchestrator NO checkpointer:
+  scripts/federation_orchestrator.py:509 = `return graph.compile()` senza checkpointer.
+  → aggiungi PostgresSaver (durabile) o MemorySaver. Verifica il pattern già usato in
+    kg_langgraph_orchestrator + workflow/checkpointer (esistono nel repo). Il
+    human_checkpoint_node usa input() bloccante → valuta interrupt LangGraph durabile.
+
+GIUNTO 2 — WR3 reflexion morto CODESIGNING (questo è il WR3-fix di Antonello):
+  com.balizero.wr3.reflexion.weekly → OS_REASON_CODESIGNING su apps/war-room/.venv/bin/
+  python3 (è un SYMLINK a ~/.pyenv/versions/3.11.11/bin/python3, xattr com.apple.provenance).
+  → DIAGNOSI ESATTA prima del fix: `codesign -v $(readlink -f apps/war-room/.venv/bin/
+    python3)` per vedere cosa fallisce. Fix robusto = RICOSTRUIRE la venv war-room sul Pro
+    (python3 -m venv, reinstalla requirements) invece di patchare il symlink. Poi
+    `launchctl kickstart -k gui/$(id -u)/com.balizero.wr3.reflexion.weekly` + verifica che
+    ~/Library/Logs/wr3-reflexion-weekly.log venga finalmente prodotto.
+
+GIUNTO 3 — agent-library-evolver DEEPSEEK_KEY mancante (generation=0):
+  com.balizero.agent-library-evolver.weekly → 2026-05-31 FATAL: DEEPSEEK_API_KEY not set.
+  Il plist ha EnvironmentVariables ma NON la key (commento dice "NOT here" per il bypass,
+  ma EvoSkill ne ha bisogno). → la key è in ~/.openclaw/workspace/.env.master. Il WRAPPER
+  (agent-library-evolver-run.sh) deve sourcearla, NON il plist (Law: secret non nei plist
+  world-readable — vedi scar 2026-04-29). Verifica il wrapper, aggiungi source della key lì.
+  Poi kickstart + verifica generation passa da 0 a >0.
+
+GIUNTO 4 — wr2.reflexion AFFAMATO (carousel_runs=0):
+  wr2.reflexion gira (exit 0) ma il suo input (carousel_runs) è VUOTO → la pipeline WR2
+  upstream non lo alimenta. → trova dove WR2 dovrebbe scrivere i run consumati da reflexion
+  e collega. (Potenziamento P1 del dossier.)
+
+VINCOLI: ogni fix ha test/verifica empirica (kickstart + log prodotto + generation>0). Il
+checkpointer DB tocca schema → se serve migration, usa Codex sandbox per testarla
+(upgrade+downgrade). NON ruotare secret esterni (NEEDS-ANTONELLO). Secret MAI nei plist
+(sempre nel wrapper via source).
+
+STOP POINT: commit atomici → push branch → apri PR DRAFT → STOP pre-merge (NON mergiare su
+main, mai --force). Poi `python scripts/agent_start.py --release --task-id r1-loop`.
+Anti-hallucination: ogni numero da un tool eseguito IN-TURN.
+
+OUTPUT: 4 giunti riparati + research/operations/R1-loop-report.md (before/after: generation
+0→N, reflexion log prodotto sì/no, checkpointer attivo).
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE SPEC-2 <numero-PR-o-url>

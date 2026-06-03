@@ -335,6 +335,11 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         tags=("channels", "crm", "wa-dashboard", "sse"),
     ),
     RouterEntry(
+        name="wa_inbox",
+        process_groups=_API,
+        tags=("channels", "wa-meta-inbox"),
+    ),
+    RouterEntry(
         name="wa_mirror_messages", process_groups=_API, tags=("channels", "crm", "wa-mirror")
     ),
     RouterEntry(name="whatsapp_chat", process_groups=_BOTH, tags=("channels", "rag")),

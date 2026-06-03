@@ -1,0 +1,124 @@
+{
+  "version": "1.0",
+  "session": "S18-rag-eval-truth",
+  "date": "2026-06-03",
+  "embedding_model": "text-embedding-3-small",
+  "embedding_dim": 1536,
+  "description": "Verified golden Q&A set for Zantara RAG evaluation. Ground-truth is sourced ONLY from research files committed on origin/main (S6 regulatory captures) and the canonical KBLI 2025 catalog extracted from BPS Reg 7/2025. Each pair carries: the question, a verbatim-grounded ground_truth answer, the must-contain key facts the answer must assert (for generation faithfulness scoring), and the expected_source basenames a correct retrieval should surface (for recall@k). NO NotebookLM live calls — all ground-truth is from committed artifacts (anti-hallucination: every claim is grep-verifiable on this branch).",
+  "ground_truth_authority": {
+    "kbli": "apps/backend-rag/scripts/generated_guides/company/kbli_2025_catalogo_completo.txt (extracted from Peraturan BPS 7/2025 = KBLI 2025)",
+    "company_capital_nominee": "research/legal/2026-06-02-pt-pma-nominee-ban-bkpm-oss.md (NB-3 ground-truth, DeepSeek-verified)",
+    "positive_investment_list": "research/legal/2026-06-02-positive-investment-list-kbli-foreign-ownership.md (NB-3 ground-truth)",
+    "tax": "research/tax/2026-06-02-corporate-withholding-but-coretax.md (NB-4 ground-truth, DeepSeek 13/13 OK) + memory fact_pmk_131_2024_ppn_effective_rate",
+    "property": "research/property/2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md (NB-5 ground-truth)",
+    "villa_kbli_crosswalk": "research/company/2026-05-31-kbli-2025-accommodation-crosswalk-nlm-source.md"
+  },
+  "pairs": [
+    {
+      "id": "kbli-villa-current",
+      "domain": "kbli",
+      "question": "What is the current KBLI 2025 code for a villa / short-stay accommodation in Bali, and is 55193 or 55203 the right one?",
+      "ground_truth": "Under KBLI 2025 (BPS Regulation 7/2025) the current code for direct villa operations is 55203 - AKTIVITAS VILA (TERBUKA, 100% foreign ownership allowed). 55193 is NOT a current KBLI 2025 villa code: it is a legacy KBLI 2020 / PP28 source code that maps to 55203 in KBLI 2025. Final classification still depends on the operating model (direct operation vs third-party management 55901 vs intermediation 55400).",
+      "must_contain": ["55203", "vila", "2025"],
+      "must_not_assert_current": ["55193 is the current code", "55193 is correct for 2025"],
+      "expected_sources": ["kbli_2025_catalogo_completo.txt", "2026-05-31-kbli-2025-accommodation-crosswalk-nlm-source.md", "whatsapp_kbli_guard.py"],
+      "verdict_anchor": "55203"
+    },
+    {
+      "id": "kbli-villa-foreign-ownership",
+      "domain": "kbli",
+      "question": "Can a foreigner own 100% of a villa accommodation business (KBLI 55203) in Indonesia?",
+      "ground_truth": "Yes. KBLI 55203 (AKTIVITAS VILA) is classified TERBUKA in the KBLI 2025 catalog, meaning 100% foreign ownership (WNA) is allowed via a PT PMA. Licensing is Mikro/Kecil/Menengah: Menengah Rendah, requiring NIB plus Sertifikat Standar.",
+      "must_contain": ["55203", "terbuka", "100%"],
+      "expected_sources": ["kbli_2025_catalogo_completo.txt"]
+    },
+    {
+      "id": "company-pma-paidup-capital",
+      "domain": "company",
+      "question": "What is the minimum paid-up capital for a PT PMA in 2025?",
+      "ground_truth": "The minimum paid-up capital (modal ditempatkan/disetor) for a PT PMA is IDR 2,500,000,000 (2.5 billion) per company, set by Permen BKPM 5/2025 Pasal 26(10), reduced drastically from the previous IDR 10 billion. There is a 12-month lock-up (Pasal 27(1)): the capital cannot be moved out of the company account for at least 12 months except for asset purchase, building construction, or operational expenses.",
+      "must_contain": ["2.5", "billion", "BKPM 5/2025", "12 month"],
+      "expected_sources": ["2026-06-02-pt-pma-nominee-ban-bkpm-oss.md"]
+    },
+    {
+      "id": "company-pma-total-investment",
+      "domain": "company",
+      "question": "What is the minimum total investment value for a PT PMA in 2025?",
+      "ground_truth": "The minimum total investment (nilai investasi) must be greater than IDR 10,000,000,000 (10 billion) per 5-digit KBLI code per business location, per PP 28/2025 Pasal 212(2). This excludes land and buildings, except for real-estate/accommodation sectors (e.g. 68111 Real Estate, villa) where land+buildings count toward the threshold. It is 'greater than' 10 billion, not equal to.",
+      "must_contain": ["10 billion", "PP 28/2025", "KBLI", "location"],
+      "expected_sources": ["2026-06-02-pt-pma-nominee-ban-bkpm-oss.md"]
+    },
+    {
+      "id": "company-nominee-ban",
+      "domain": "company",
+      "question": "Is a nominee arrangement legal for a PT PMA in Indonesia?",
+      "ground_truth": "No. Nominee arrangements are prohibited. The ban originates in UU 25/2007 (Penanaman Modal) Pasal 33 and is restated verbatim in Perka BKPM 13/2017 Pasal 12 ayat (6): investors are forbidden from making any agreement or statement that share ownership in a PT is for and on behalf of another person. In Bali, Perda Provinsi Bali 4/2026 criminalizes nominee arrangements.",
+      "must_contain": ["nominee", "prohibited", "Pasal 33"],
+      "expected_sources": ["2026-06-02-pt-pma-nominee-ban-bkpm-oss.md", "2026-06-02-positive-investment-list-kbli-foreign-ownership.md"]
+    },
+    {
+      "id": "kbli-positive-list-principle",
+      "domain": "kbli",
+      "question": "What is the general principle of the Indonesian Positive Investment List?",
+      "ground_truth": "Per Perpres 49/2021 Pasal 2(1) (amending Perpres 10/2021, which abolished the Negative Investment List/DNI), all business fields are open to investment EXCEPT those declared closed (tertutup) or reserved exclusively for the central government. The four effective categories are TERBUKA (100% foreign allowed), TERBATAS (foreign-ownership cap, requires local partner), TERTUTUP (closed to foreigners), and Priority Sectors (incentive-eligible).",
+      "must_contain": ["terbuka", "tertutup", "Perpres", "open"],
+      "expected_sources": ["2026-06-02-positive-investment-list-kbli-foreign-ownership.md"]
+    },
+    {
+      "id": "tax-ppn-rate",
+      "domain": "tax",
+      "question": "What is the effective VAT (PPN) rate in Indonesia for 2025-2026?",
+      "ground_truth": "The effective PPN rate for standard goods/services is 11%, derived from PMK 131/2024 using DPP Nilai Lain of 11/12 times the 12% statutory rate. The statutory headline rate is 12% from 2025-01-01 (UU HPP 7/2021), but the full 12% applies only to luxury goods subject to PPnBM (e.g. residences over Rp 30 billion, yachts, jets).",
+      "must_contain": ["11%", "12%", "PMK 131"],
+      "expected_sources": ["fact_pmk_131_2024_ppn_effective_rate", "2026-06-02-corporate-withholding-but-coretax.md"]
+    },
+    {
+      "id": "tax-pph-badan",
+      "domain": "tax",
+      "question": "What is the corporate income tax (PPh Badan) rate in Indonesia?",
+      "ground_truth": "The standard corporate income tax (PPh Badan) rate for resident corporate taxpayers and permanent establishments (BUT) is 22%, effective from tax year 2022, per UU 7/2021 (HPP). PPh 25 monthly installments are paid at 1/12 of the prior year's tax liability, due by the 15th of the following month.",
+      "must_contain": ["22%", "PPh Badan", "UU 7/2021"],
+      "expected_sources": ["2026-06-02-corporate-withholding-but-coretax.md"]
+    },
+    {
+      "id": "tax-pph23-rate",
+      "domain": "tax",
+      "question": "What is the PPh 23 withholding rate on domestic services and royalties?",
+      "ground_truth": "PPh 23 withholding under UU 36/2008 Pasal 23(1) is 15% of the gross amount for dividends, interest, and royalties paid to residents. (A 2% rate applies to certain service fees; an extra 100% surcharge applies if the recipient has no NPWP.)",
+      "must_contain": ["15%", "PPh 23", "royalt"],
+      "expected_sources": ["2026-06-02-corporate-withholding-but-coretax.md"]
+    },
+    {
+      "id": "tax-coretax",
+      "domain": "tax",
+      "question": "What system replaced DJP Online for Indonesian tax filing in 2025?",
+      "ground_truth": "CoreTax (PSIAP), introduced by PMK 81/2024, definitively replaced the legacy DJP Online system in 2025.",
+      "must_contain": ["CoreTax", "PMK 81/2024", "DJP Online"],
+      "expected_sources": ["2026-06-02-corporate-withholding-but-coretax.md"]
+    },
+    {
+      "id": "property-hak-milik-foreigner",
+      "domain": "property",
+      "question": "Can a foreigner own freehold land (Hak Milik) in Indonesia?",
+      "ground_truth": "No. Hak Milik (freehold) can only be held by Indonesian citizens (WNI) per UU 5/1960 (UUPA) Pasal 21. Foreigners cannot hold Hak Milik directly, and using a nominee to do so is void and a criminal offense.",
+      "must_contain": ["Hak Milik", "WNI", "Pasal 21"],
+      "expected_sources": ["2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md"]
+    },
+    {
+      "id": "property-hak-pakai",
+      "domain": "property",
+      "question": "What is the maximum duration of Hak Pakai (right-to-use) land for a foreigner?",
+      "ground_truth": "Hak Pakai has a maximum duration of 80 years, structured as 30 years initial + 20 years extension (perpanjangan) + 30 years renewal (pembaharuan), per Permen ATR/BPN 29/2016. It is the only direct land title available to an individual foreigner (WNA), requires a valid KITAS/KITAP, and is limited to residential use.",
+      "must_contain": ["80 year", "Hak Pakai", "KITAS"],
+      "expected_sources": ["2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md"]
+    },
+    {
+      "id": "property-hgb-pma",
+      "domain": "property",
+      "question": "Can a PT PMA hold HGB (right-to-build) land for commercial use?",
+      "ground_truth": "Yes. HGB (Hak Guna Bangunan) can be held by Indonesian legal entities including a PT PMA (but not by an individual foreigner directly). Its maximum duration is 80 years (30+20+30) and it permits commercial use such as rental villas and hotels.",
+      "must_contain": ["HGB", "PT PMA", "80 year"],
+      "expected_sources": ["2026-06-02-foreign-property-rights-hak-pakai-hgb-leasehold.md"]
+    }
+  ]
+}

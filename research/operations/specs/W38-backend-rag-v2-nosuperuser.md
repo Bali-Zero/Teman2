@@ -8,6 +8,14 @@
 **Touch scope**: production Postgres role + 1 new Fly secret (`ADMIN_DATABASE_URL`)
 **Reversibility**: trivial (single `ALTER ROLE backend_rag_v2 SUPERUSER` rollback)
 
+> **Re-verification 2026-06-02 (S2 spec-graveyard triage):** Bomb STILL LIVE — `backend_rag_v2 rolsuper=t`
+> last verified twice via postgres-nuzantara MCP read-only in the 2026-05-31 S4 audit
+> (`research/operations/2026-05-31-structural-debt-FROZEN.json`, commit `4729bbb9b`); demotion never
+> applied (no `NOSUPERUSER` in `migrations_v2/`), Stage B `ADMIN_DATABASE_URL` split still absent from
+> the backend (`grep -rln ADMIN_DATABASE_URL apps/backend-rag/` → 0). Live MCP re-check from Air-M5 this
+> session was NOT possible (M5 thin-client; postgres-nuzantara MCP error `-32603`, CRM backend unreachable).
+> Verdict unchanged: **NEEDS-ANTONELLO, DO-NOT-EXECUTE.** Ranked #1 armed bomb by blast radius.
+
 ---
 
 ## 1. Audit findings (read-only, 2026-05-23 07:30 WITA)

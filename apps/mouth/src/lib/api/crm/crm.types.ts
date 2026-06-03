@@ -243,6 +243,27 @@ export interface Interaction {
   extracted_entities?: JsonObject; // [NEW] AI extracted entities
 }
 
+export interface WhatsAppEnrichmentFact {
+  id: number;
+  fact_type: string;
+  route: string;
+  fact_value: JsonObject;
+  fact_confidence: number;
+  link_strength: number;
+  apply_score: number;
+  status: string;
+  created_at?: string | null;
+}
+
+export interface WhatsAppEnrichmentResponse {
+  client_id: number;
+  total: number;
+  by_fact_type: Record<string, number>;
+  by_route: Record<string, number>;
+  latest_created_at?: string | null;
+  facts: WhatsAppEnrichmentFact[];
+}
+
 export interface PracticeStats {
   total_practices: number;
   active_practices: number;
@@ -294,6 +315,12 @@ export interface Client {
   last_interaction_date?: string;
   last_sentiment?: string;
   last_interaction_summary?: string;
+  ai_summary_status?: "available" | "not_generated" | "pending";
+  ai_summary_generated_at?: string | null;
+  ai_profile_tier?: "VIP" | "standard" | "archive" | "unknown" | string | null;
+  ai_profile_archetype?: string | null;
+  ai_red_flags_count?: number;
+  ai_extraction_confidence?: number | null;
   tags?: string[];
   lead_source?: string;
   service_interest?: string | string[];
@@ -1121,7 +1148,7 @@ export interface AiDocumentRef {
 }
 
 export interface AiTimelineEvent {
-  event_date: string;
+  event_date: string | null;
   event_type: string;
   description: string;
   source_file_id?: string | null;

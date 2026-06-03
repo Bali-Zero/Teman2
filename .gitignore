@@ -548,7 +548,9 @@ research/marketing/zantara-visual-dataset/
 research/marketing/flow-assets/
 research/crm-exports/
 research/hr/
-research/agent-craft/
+# research/agent-craft: ignore working subdirs, but TRACK proposed-agents/ + S17 frozen index
+research/agent-craft/_assets/
+research/agent-craft/census-raw/
 research/nb-archive/
 research/nlm-elevation/
 research/seo_cell/
@@ -709,3 +711,8 @@ apps/mouth/scripts/output/
 
 # Generated artifacts from analysis scripts
 apps/mouth/scripts/output/
+
+# Root-level runtime cache (cache/projects.json from WR2 cron) — blocks the
+# deploy worktree ff-only pull when untracked. Root-anchored so it does NOT
+# match vendor/evoskill/src/cache/ (tracked).
+/cache/

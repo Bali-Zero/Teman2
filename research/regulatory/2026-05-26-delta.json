@@ -1,0 +1,35 @@
+{
+  "run_at": "2026-05-26T07:00:00+08:00",
+  "today": "2026-05-26",
+  "yesterday_seen_count": 1,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403)",
+    "https://muc.co.id/article (403)",
+    "https://ikpi.or.id/news/ (404)"
+  ],
+  "nb_query_errors": [],
+  "nb_query_notes": {
+    "NB-INTEL-Regulation": "Queried UUID a17f134e-b9ab-42d9-bfc2-5bbc45165c76. sources_used=[]. No verifiable citations returned for May 23-26 window.",
+    "NB-INTEL-Press": "Queried UUID 9d262101-abeb-4e15-af9c-c38e028c62fe. sources_used=[]. No regulations matching May 23-26 2026 date range found.",
+    "NB-INTEL-Tax": "Queried UUID 7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f. sources_used=[]. No new citations in May 23-26 window.",
+    "NB-INTEL-Immigration": "Queried UUID 1ed02e54-542f-426a-94f8-53c5ffde4b7d. sources_used=[]. No specific regulatory texts for May 23-26 confirmed."
+  },
+  "web_sources_checked": {
+    "ddtc.co.id": "OK - articles present but no regulation citations May 23-26",
+    "ortax.org": "OK - no articles in window",
+    "peraturan.go.id": "OK - 5 May 2026 regulations found but all pre-May-23 and none in Bali Zero service lines (tourism/education/civil service/agraria)",
+    "pajak.go.id": "OK - latest is PER-6/PJ/2026 dated May 4 (already in seen_citations)",
+    "imigrasi.go.id": "OK - latest news May 21 2026, no regulatory announcements May 23-26"
+  },
+  "deltas": [],
+  "dropped_candidates": [
+    {
+      "citation": "Peraturan Menteri Agraria dan Tata Ruang/BPN Nomor 6 Tahun 2026",
+      "reason": "Published May 13 2026, outside May 23-26 window. Also: addresses spatial planning approval procedures — may affect property service line (KKPR/RDTR) but predates this run window. Recommend monitor if Bali Zero property clients encounter PBG/SLF issues referencing this Permen ATR."
+    }
+  ],
+  "seen_citations": ["PER-6/PJ/2026"],
+  "note": "Run covers gap 2026-05-22 to 2026-05-26 (4 days, no intermediate delta files). All 4 NB-INTEL returned sources_used=[] — consistent with prior runs post-UUID-switch 2026-05-18. Web sources (DDTC, ortax, pajak.go.id, imigrasi.go.id) confirmed no new regulation citations in target window May 23-26. Permen ATR 6/2026 (May 13) flagged as near-miss for property service line — outside window, not included in deltas. PER-6/PJ/2026 carried forward in seen_citations."
+}

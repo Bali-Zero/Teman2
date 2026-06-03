@@ -583,6 +583,17 @@ class Settings(BaseSettings):
         default=None,
         description="WhatsApp Business Account ID from Meta. Set via WHATSAPP_BUSINESS_ACCOUNT_ID env var.",
     )
+    wa_inbox_api_key: str | None = Field(
+        default=None,
+        description=(
+            "Dedicated least-privilege API key for the WA Meta Inbox local console "
+            "(/api/wa-inbox/*). Set via WA_INBOX_API_KEY env var. The router enforces "
+            "that the X-API-Key header EQUALS this exact value (route-level scoping), "
+            "so a generic admin key cannot read/write the Meta inbox. The key SHOULD "
+            "still contain the substring 'secret' so the HybridAuthMiddleware grants it "
+            "POST capability before the route-level dependency runs."
+        ),
+    )
     whatsapp_personal_contacts: str | None = Field(
         default=None,
         description=(
