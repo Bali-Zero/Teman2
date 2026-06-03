@@ -157,6 +157,32 @@ def is_in_crm(conn, phone: str) -> bool:
     return cur.fetchone() is not None
 
 
+def crm_name(conn, phone: str) -> str | None:
+    """Return the CRM display name for a phone, or None if not a client.
+
+    Prefers clients.full_name; falls back to company_name. Matched against both
+    phone_normalized and whatsapp. Used by the naming rule (Doc title = CRM name
+    when the counterpart is already a client, else the phone number).
+    """
+    digits = _digits(phone)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT NULLIF(TRIM(full_name),''), NULLIF(TRIM(company_name),'')
+        FROM clients
+        WHERE regexp_replace(COALESCE(phone_normalized,''),'[^0-9]','','g') = %s
+           OR regexp_replace(COALESCE(whatsapp,''),'[^0-9]','','g') = %s
+        LIMIT 1
+        """,
+        (digits, digits),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    full_name, company_name = row
+    return full_name or company_name
+
+
 def count_distinct_names(conn, team_phone: str, counterpart_phone: str) -> int:
     """Rough count of distinct client-like names mentioned in the chat body.
 

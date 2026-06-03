@@ -7,7 +7,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 
 import psycopg2
 
@@ -16,7 +15,7 @@ from scripts.wa_corpus.classifier import CounterpartClassifier
 from scripts.wa_corpus.config import DB_DSN
 from scripts.wa_corpus.prompt_master import recap_is_valid
 from scripts.wa_corpus.query_runner import QueryRunner
-from scripts.wa_corpus.renderer import ChatDocRenderer, render_markdown
+from scripts.wa_corpus.renderer import ChatDocRenderer, doc_title, render_markdown
 
 
 def main() -> int:
@@ -51,9 +50,10 @@ def main() -> int:
 
     md = render_markdown(args.team, args.counterpart, lines)
     renderer = ChatDocRenderer()
-    name = f"WA-{args.counterpart}-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}"
+    # OBLIGATORY naming: CRM name if a client, else the phone number.
+    name = doc_title(args.counterpart, db.crm_name(conn, args.counterpart))
     file_id = renderer.create_doc(name, md)
-    print(f"[pilot] doc created + shared: {file_id}")
+    print(f"[pilot] doc '{name}' created + shared: {file_id}")
 
     qr = QueryRunner()
     source_id = qr.ensure_source(args.nb, file_id, title=name)

@@ -28,7 +28,7 @@ from scripts.wa_corpus.classifier import CounterpartClassifier
 from scripts.wa_corpus.config import DB_DSN
 from scripts.wa_corpus.prompt_master import recap_is_valid
 from scripts.wa_corpus.query_runner import QueryRunner, parse_query_result, _nlm
-from scripts.wa_corpus.renderer import ChatDocRenderer, render_markdown
+from scripts.wa_corpus.renderer import ChatDocRenderer, doc_title, render_markdown
 
 
 def select_loadable_counterparts(conn, email: str, team_phone: str, limit: int):
@@ -92,7 +92,8 @@ def main() -> int:
     for cp, n, _verdict in chosen:
         lines = db.fetch_chat(conn, args.team_phone, cp)
         md = render_markdown(args.team_phone, cp, lines)
-        name = f"WA-MULTI-{cp}-{stamp}"
+        # OBLIGATORY naming: CRM name if client, else phone (stable key always present).
+        name = doc_title(cp, db.crm_name(conn, cp))
         file_id = renderer.create_doc(name, md)
         source_id = qr.ensure_source(args.nb, file_id, title=name)
         docs.append((cp, file_id, source_id, name))

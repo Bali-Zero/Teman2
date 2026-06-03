@@ -8,6 +8,7 @@ Drive calls are exactly the ones proven in the 2026-06-04 gate:
 from __future__ import annotations
 
 import io
+import re
 from datetime import datetime, timezone
 
 from google.oauth2 import service_account
@@ -41,6 +42,29 @@ def render_markdown(team_phone: str, counterpart_phone: str, lines: list[ChatLin
         out.append(f"**[{ts}] {who}:** {ln.text}")
         out.append("")
     return "\n".join(out)
+
+
+def _safe(s: str) -> str:
+    """Collapse anything not safe/legible in a Drive title to a single space."""
+    return re.sub(r"\s+", " ", re.sub(r"[\\/:*?\"<>|]", " ", s)).strip()
+
+
+def doc_title(counterpart_phone: str, crm_name: str | None) -> str:
+    """OBLIGATORY naming rule (Antonello, 2026-06-04):
+
+    The Doc name is EITHER the CRM client name OR the phone number (a number that
+    will later become a CRM client). The phone number is ALWAYS embedded as the
+    stable key (so the title can be searched and renamed when the lead converts);
+    when a CRM name exists it leads the title for human readability.
+
+      - in CRM:     "WA · <CRM name> · <phone>"
+      - not in CRM: "WA · <phone>"
+    """
+    phone = counterpart_phone.strip()
+    name = _safe(crm_name) if crm_name else ""
+    if name:
+        return f"WA · {name} · {phone}"
+    return f"WA · {phone}"
 
 
 class ChatDocRenderer:
