@@ -137,6 +137,7 @@ def include_routers(api: FastAPI) -> None:
         voice,
         wa_actions,
         wa_dashboard_stream,
+        wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         webhooks,
         websocket,
@@ -299,6 +300,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
     api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
@@ -520,6 +522,7 @@ def include_light_routers(api: FastAPI) -> None:
         visa_oracle,
         wa_actions,
         wa_dashboard_stream,
+        wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         webhooks,
         websocket,
@@ -636,6 +639,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
     api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
     api.include_router(webhooks.router)
