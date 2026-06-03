@@ -341,7 +341,8 @@ export function CompanyTab({
 
   if (!companyData && !hasCompanyName && !hasAnyDoc) {
     return (
-      <>
+      <div className="space-y-4">
+        <AiSummaryCard clientId={clientId} section="company" />
         <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center space-y-4">
           <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
           <p className="text-sm font-medium text-[var(--bz-text-1)]">
@@ -374,7 +375,7 @@ export function CompanyTab({
             }}
           />
         )}
-      </>
+      </div>
     );
   }
 

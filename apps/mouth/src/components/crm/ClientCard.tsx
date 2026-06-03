@@ -10,6 +10,7 @@ import {
   BellOff,
   Tag,
   Plus,
+  Sparkles,
 } from "lucide-react";
 import { Client } from "@/lib/api/crm/crm.types";
 import { useRouter } from "next/navigation";
@@ -90,6 +91,21 @@ export const ClientCard = React.memo(
     const assignedAvatar = assignedMember?.avatar ?? null;
     const assignedName =
       assignedMember?.label || client.assigned_to?.split("@")[0] || null;
+    const aiTier = client.ai_profile_tier;
+    const aiArchetype = client.ai_profile_archetype?.replace(/_/g, " ");
+    const aiRedFlags = client.ai_red_flags_count ?? 0;
+    const aiConfidence =
+      client.ai_extraction_confidence !== null &&
+      client.ai_extraction_confidence !== undefined
+        ? Math.round(client.ai_extraction_confidence * 100)
+        : null;
+    const aiSummaryFreshness =
+      isMounted && client.ai_summary_generated_at
+        ? Math.floor(
+            (Date.now() - new Date(client.ai_summary_generated_at).getTime()) /
+              86400000,
+          )
+        : null;
 
     return (
       <div className="relative group perspective-1000">
@@ -203,6 +219,48 @@ export const ClientCard = React.memo(
                 >
                   <BellOff className="w-2.5 h-2.5" />
                   Silent {silenceDays}d
+                </div>
+              )}
+              {client.ai_summary_status === "available" && (
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  {aiTier && aiTier !== "unknown" && (
+                    <span
+                      className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${
+                        aiTier === "VIP"
+                          ? "bg-amber-500/20 text-amber-300"
+                          : aiTier === "archive"
+                            ? "bg-gray-500/20 text-gray-400"
+                            : "bg-blue-500/20 text-blue-300"
+                      }`}
+                      title={[
+                        aiArchetype ? `AI archetype: ${aiArchetype}` : null,
+                        aiConfidence !== null ? `Confidence: ${aiConfidence}%` : null,
+                        aiSummaryFreshness !== null
+                          ? `Generated ${aiSummaryFreshness === 0 ? "today" : `${aiSummaryFreshness}d ago`}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      {aiTier}
+                    </span>
+                  )}
+                  {aiRedFlags > 0 && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-300"
+                      title={`${aiRedFlags} CRM Guardian red flag${aiRedFlags > 1 ? "s" : ""}`}
+                    >
+                      <AlertCircle className="w-2.5 h-2.5" />
+                      {aiRedFlags} flag{aiRedFlags > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              )}
+              {client.ai_summary_status === "pending" && (
+                <div className="mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                  <Sparkles className="w-2.5 h-2.5 animate-pulse" />
+                  AI pending
                 </div>
               )}
             </div>

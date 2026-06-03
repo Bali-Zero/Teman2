@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -225,10 +226,58 @@ def _backdate_metadata(worktree: Path, mod, minutes: int) -> None:
     meta_path.write_text(json.dumps(data, indent=2, sort_keys=True))
 
 
+def _commit_in_worktree(worktree: Path, mod, rel_path: str, msg: str) -> None:
+    """Stage + commit a file inside the worktree so it reads as CLEAN."""
+    env = dict(os.environ)
+    env.update(
+        GIT_AUTHOR_NAME="Test",
+        GIT_AUTHOR_EMAIL="test@example.com",
+        GIT_COMMITTER_NAME="Test",
+        GIT_COMMITTER_EMAIL="test@example.com",
+    )
+    for args in (["add", rel_path], ["commit", "-m", msg]):
+        subprocess.run(
+            ["git", *args], cwd=worktree, check=True,
+            capture_output=True, text=True, env=env,
+        )
+
+
+def _backdate_worktree_mtime(worktree: Path, minutes: int) -> None:
+    """Push every file's mtime back so the worktree reads as idle (no recent
+    activity). Covers both the worktree tree AND the linked-worktree gitdir
+    (REPO_ROOT/.git/worktrees/<name>/index|HEAD), since the liveness probe
+    inspects the real gitdir too."""
+    past = time.time() - minutes * 60
+
+    def _back(p: Path) -> None:
+        try:
+            os.utime(p, (past, past))
+        except OSError:
+            pass
+
+    for path in worktree.rglob("*"):
+        _back(path)
+    _back(worktree)
+    # Linked-worktree real gitdir (resolve `.git` file pointer).
+    git_pointer = worktree / ".git"
+    try:
+        if git_pointer.is_file():
+            text = git_pointer.read_text().strip()
+            if text.startswith("gitdir:"):
+                gitdir = Path(text.split(":", 1)[1].strip())
+                for name in ("index", "HEAD"):
+                    _back(gitdir / name)
+                _back(gitdir)
+        _back(git_pointer)
+    except OSError:
+        pass
+
+
 def test_cleanup_removes_expired_clean_worktree(fake_repo, capsys):
     mod, repo = fake_repo
     wt = mod.cmd_create("wr2", "expired-001", ttl_minutes=5)
     _backdate_metadata(wt, mod, minutes=120)
+    _backdate_worktree_mtime(wt, minutes=120)  # idle, not a live session
     rc = mod.cmd_cleanup()
     assert rc == 0
     assert not wt.exists()
@@ -241,6 +290,7 @@ def test_cleanup_skips_wip_with_warning(fake_repo, capsys):
     wt = mod.cmd_create("wr2", "wip-keep", ttl_minutes=5)
     _backdate_metadata(wt, mod, minutes=120)
     (wt / "wip.txt").write_text("not committed\n")
+    _backdate_worktree_mtime(wt, minutes=120)  # idle clock, but real WIP present
     rc = mod.cmd_cleanup()
     assert rc == 1  # signals at least one skip
     assert wt.exists()  # WIP-safe
@@ -265,6 +315,105 @@ def test_cleanup_leaves_fresh_worktrees_alone(fake_repo):
     rc = mod.cmd_cleanup()
     assert rc == 0
     assert wt.exists()
+
+
+# ---------------------------------------------------------------------------
+# cleanup — skip-recent guard (W62 ANTIBODY #1)
+# ---------------------------------------------------------------------------
+
+
+def test_cleanup_skips_recently_active_expired_clean_worktree(fake_repo, capsys):
+    """A clean, TTL-expired worktree that was touched <10min ago is an ACTIVE
+    session — cleanup must NOT drop it (W62: avoid killing a live session that
+    simply outran its TTL clock)."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "active-001", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)  # expired by the clock
+    # Simulate live activity: a freshly written tracked file (recent mtime),
+    # but committed so the worktree is CLEAN (no WIP).
+    work_file = wt / "live.txt"
+    work_file.write_text("active session output\n")
+    _commit_in_worktree(wt, mod, "live.txt", "active work")
+    rc = mod.cmd_cleanup()
+    assert rc == 0  # not an error — just skipped a live session
+    assert wt.exists()  # preserved because recently active
+    out = capsys.readouterr().out
+    assert "active-001" in out
+    assert "recent" in out.lower() or "active" in out.lower()
+
+
+def test_cleanup_removes_expired_clean_idle_worktree(fake_repo):
+    """An expired, clean worktree with NO recent activity (mtime old) is a true
+    orphan — cleanup removes it."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "idle-001", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    _backdate_worktree_mtime(wt, minutes=120)
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert not wt.exists()
+
+
+def test_cleanup_recent_AND_dirty_reports_wip_not_silent_skip(fake_repo, capsys):
+    """A worktree that is BOTH recently active AND dirty must surface as a WIP
+    failure (exit 1), never be silently swallowed as a live session (codex P2:
+    WIP guard runs before the recent-activity guard)."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "recent-dirty", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)  # expired
+    (wt / "uncommitted.txt").write_text("real WIP\n")  # dirty + fresh mtime
+    rc = mod.cmd_cleanup()
+    assert rc == 1  # WIP failure, NOT a silent exit-0 skip
+    assert wt.exists()
+    out = capsys.readouterr().out
+    assert "recent-dirty" in out
+    assert "WIP" in out
+
+
+def test_cleanup_skip_recent_disabled_with_zero(fake_repo):
+    """skip_recent_minutes=0 disables the recent-activity guard (operator
+    escape for a forced sweep of even just-touched worktrees)."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "recent-002", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "fresh.txt").write_text("just now\n")
+    _commit_in_worktree(wt, mod, "fresh.txt", "fresh")
+    rc = mod.cmd_cleanup(skip_recent_minutes=0)
+    assert rc == 0
+    assert not wt.exists()
+
+
+# ---------------------------------------------------------------------------
+# list — orphan detection (W62 ANTIBODY #2)
+# ---------------------------------------------------------------------------
+
+
+def test_list_warns_on_orphan_worktree(fake_repo, capsys):
+    """A worktree older than 2× its TTL is flagged ORPHAN with a summary line."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "orphan-001", ttl_minutes=30)
+    _backdate_metadata(wt, mod, minutes=120)  # 120 > 2*30 = 60 → orphan
+    rc = mod.cmd_list()
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "orphan-001" in out
+    assert "ORPHAN" in out
+    assert "1 orphan" in out.lower() or "orphan worktree" in out.lower()
+
+
+def test_list_no_orphan_when_within_2x_ttl(fake_repo, capsys):
+    """A worktree past TTL but under 2× TTL is NOT yet an orphan."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "young-001", ttl_minutes=30)
+    _backdate_metadata(wt, mod, minutes=45)  # 30 < 45 < 60 → not orphan
+    rc = mod.cmd_list()
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "young-001" in out
+    # "ORPHAN" appears in the header column; assert the data row is NOT flagged.
+    data_row = next(line for line in out.splitlines() if "young-001" in line)
+    assert "ORPHAN" not in data_row
+    assert "orphan worktree" not in out.lower()
 
 
 def test_cleanup_blocked_by_kill_switch(fake_repo, monkeypatch):

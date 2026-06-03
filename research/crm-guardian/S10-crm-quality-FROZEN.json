@@ -1,0 +1,152 @@
+{
+  "audit_id": "S10-crm-data-quality",
+  "frozen_at": "2026-06-02T07:30:00+08:00",
+  "machine": "Nuzantara (Pro)",
+  "data_source": "postgres-nuzantara MCP (read-only role nuzantara_readonly, Fly prod)",
+  "pii_policy": "AGGREGATE ONLY — zero nomi/email/phone/passport nei file. Reasoning su PII via Ollama qwen3.5:9b locale.",
+  "laws_respected": ["SYMBIOSIS Law 2 (OSINT/PII sovereignty)", "Law 7 (numeri before)", "DB read-only, mutation=spec only"],
+
+  "headline_finding": {
+    "stated_mission": "11.699 clienti da analizzare",
+    "reality": "11.699 e' il TOTALE STORICO. Solo 1.447 sono ATTIVI (deleted_at IS NULL). 10.252 (87,6%) sono GIA' soft-deleted da lavori di data-quality precedenti (mar 2026).",
+    "operative_dataset": 1447,
+    "interpretation": "La salute CRM va misurata sui 1.447 attivi. I 10.252 cancellati NON sono spazzatura: sono il risultato di dedup+archiviazione gia' eseguiti."
+  },
+
+  "counts": {
+    "total_all": 11699,
+    "active": 1447,
+    "soft_deleted": 10252,
+    "soft_deleted_breakdown": {
+      "archive_migration": 7822,
+      "dedup_system_v2": 1404,
+      "null_deleted_by": 581,
+      "dedup_system": 302,
+      "cleanup_drive_import_noise": 48,
+      "dedup_fuzzy_2026_03_13": 29,
+      "dedup_2026_03_13": 18,
+      "crm-dedup-2026-05-20": 13,
+      "deep_clean_2026-03-13": 11,
+      "merge_dedup": 8,
+      "note": "tutte le cancellazioni concentrate mar 2026 (+1 wave 18 mag). Massa = archive_migration (storico) + dedup automatici."
+    }
+  },
+
+  "assailant_A_duplicates": {
+    "scope": "active only (deleted_at IS NULL)",
+    "email_dup_clusters": 0,
+    "email_dup_note": "0 perche' email mancante nel 68,4% degli attivi — segnale email inutilizzabile per dedup",
+    "phone_dup_clusters": 48,
+    "phone_dup_rows": 100,
+    "name_dup_clusters": 16,
+    "name_dup_rows": 33,
+    "passport_dup_clusters_active": 19,
+    "passport_dup_rows_active": 39,
+    "passport_dup_clusters_all_incl_deleted": 68,
+    "disambiguation_validated_by_ollama": {
+      "name_clusters_total": 16,
+      "strong_dup_same_passport": 9,
+      "strong_dup_same_phone": 4,
+      "likely_homonym_diff_nationality": 7,
+      "likely_homonym_diff_passport": 2,
+      "policy": [
+        "1. Passaporto identico -> MERGE (campo univoco, certezza quasi-assoluta)",
+        "2. Telefono+Nome identici -> MERGE (filtra linee condivise/famiglia)",
+        "3. Telefono+Nazionalita' identici -> MERGE con review (omonimi esteri)",
+        "4. Solo Nome identico -> NO MERGE (troppi falsi positivi)"
+      ],
+      "analyst": "qwen3.5:9b locale, input anonimo (solo pattern strutturali, zero PII)"
+    },
+    "high_confidence_merge_candidates": 19,
+    "high_confidence_basis": "19 cluster passaporto-uguale tra attivi = stesso documento d'identita' = stessa persona"
+  },
+
+  "assailant_B_completeness": {
+    "scope": "active only (n=1447)",
+    "missing": {
+      "email": {"n": 990, "pct": 68.4},
+      "phone": {"n": 343, "pct": 23.7},
+      "whatsapp": {"n": 359, "pct": 24.8},
+      "phone_normalized": {"n": 343, "pct": 23.7},
+      "nationality": {"n": 177, "pct": 12.2},
+      "passport_number": {"n": 267, "pct": 18.5},
+      "assigned_to": {"n": 46, "pct": 3.2},
+      "status": {"n": 0, "pct": 0.0},
+      "client_type": {"n": 0, "pct": 0.0},
+      "drive_folder": {"n": 39, "pct": 2.7},
+      "first_contact_date": {"n": 964, "pct": 66.6},
+      "last_interaction_date": {"n": 1113, "pct": 76.9},
+      "ALL_contact_channels": {"n": 300, "pct": 20.7, "note": "no email AND no phone AND no whatsapp — non contattabili"}
+    },
+    "malformed": {
+      "email_malformed": 0,
+      "phone_malformed": 8
+    },
+    "worst_fields": ["last_interaction_date 76,9%", "email 68,4%", "first_contact_date 66,6%"]
+  },
+
+  "assailant_C_orphans": {
+    "scope": "active only (n=1447)",
+    "no_practice": 1119,
+    "no_interaction": 1419,
+    "no_timeline": 1152,
+    "no_whatsapp": 1415,
+    "full_orphan": {"n": 1093, "pct": 75.5, "definition": "no practice AND no interaction AND no timeline AND no whatsapp_conversation"},
+    "orphan_segmentation": {
+      "ghost_no_contact": {"n": 287, "note": "orfano + zero canale contatto = candidato archiviazione"},
+      "with_contact_recoverable": {"n": 806, "note": "orfano ma contattabile = candidato lead-nurturing"},
+      "older_than_1y": 0,
+      "distinct_lead_sources": 10
+    },
+    "interpretation": "75,5% degli attivi non ha alcuna attivita' operativa tracciata. interactions table quasi vuota (1419/1447 senza). Solo 328 clienti hanno >=1 pratica. Profilo coerente con import lead/scrape mai convertiti in relazione."
+  },
+
+  "assailant_D_drive": {
+    "source": "crm_guardian_drive_metadata_snapshot (auth-free via DB; MCP crm_guardian_* tools = HTTP 401 RBAC wall)",
+    "snapshot_freshness": {
+      "metadata_last_validated": "2026-05-25T04:46:28Z",
+      "staleness_days": 8,
+      "warning": "snapshot fermo da 8 giorni — non riflette stato Drive attuale"
+    },
+    "db_link_snapshot": {
+      "rows": 0,
+      "captured_at": null,
+      "CRITICAL": "tabella crm_guardian_drive_db_link_snapshot VUOTA — il pilastro DB->Drive link mai popolato o troncato. find_stale_drive_links/find_unlinked_drive_items non hanno base dati."
+    },
+    "metadata_validation": {
+      "total_files": 77025,
+      "ok": 66045,
+      "error_404": {"n": 10980, "pct": 14.3, "meaning": "file referenziato ma cancellato/spostato in Drive = link rotto"},
+      "trashed": 37
+    },
+    "external_owner_risk": {
+      "scope": "validation_status=ok (n=66045)",
+      "gmail_com_external": {"n": 56696, "pct": 85.8},
+      "balizero_com": {"n": 8819, "pct": 13.4},
+      "other_external": {"n": 154},
+      "null_owner": {"n": 376},
+      "CRITICAL": "85,8% dei file clienti posseduti da account gmail.com personali, non da balizero.com. Rischio perdita dati se dipendente lascia (cf. sovranita' dati / case Surya). Solo 13,4% su dominio aziendale."
+    },
+    "active_client_drive_coverage": {"with_folder": 1408, "pct": 97.3, "paradox": "97% ha cartella Drive ma 75% e' orfano operativo — documenti presenti, relazione non tracciata"}
+  },
+
+  "ai_enrichment_coverage": {
+    "active_with_ai_summary": {"n": 509, "pct": 35.2},
+    "active_with_strategic_recap": {"n": 38, "pct": 2.6}
+  },
+
+  "ownership": {
+    "distinct_owners_active": 13,
+    "unassigned_active": 46
+  },
+
+  "spazzino_pii_audit": {
+    "verdict": "PASS",
+    "checks": [
+      "Nessun nome/email/phone/passport/uuid/id individuale in questo file",
+      "Solo conteggi, percentuali, e nomi-di-attributo",
+      "Reasoning disambiguazione delegato a Ollama locale (qwen3.5:9b), input anonimizzato",
+      "Esempi di duplicati NON inclusi (solo cardinalita' cluster)"
+    ]
+  }
+}
