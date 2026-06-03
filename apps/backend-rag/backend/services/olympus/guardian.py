@@ -14,6 +14,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.app.core.circuit_breaker import CircuitBreaker
 from backend.services.common.background import get_bg_pool_semaphore
 from backend.services.olympus.alerts import OlympusAlerts
 from backend.services.olympus.heartbeat import Heartbeat
@@ -23,6 +24,12 @@ from backend.services.olympus.pulse import Pulse
 from backend.services.olympus.rules_engine import RulesEngine
 
 logger = logging.getLogger("olympus.guardian")
+
+# W64 / 2026-04-12 pool-corruption family: InterfaceError is a sibling of
+# PostgresError (NOT a subclass) and signals a broken connection/interface —
+# exactly the failure that previously corrupted the shared pool and forced the
+# DISABLE_BACKGROUND_WORKERS kill-switch. Treat these as circuit-breaker trips.
+_POOL_FATAL_ERRORS = (asyncpg.InterfaceError, asyncpg.PostgresConnectionError)
 
 
 class OlympusGuardian:
@@ -35,6 +42,16 @@ class OlympusGuardian:
         self._running: bool = False
         self._tasks: list[asyncio.Task[None]] = []
         self.insights: InsightsCollector | None = None
+        # P0.3 — circuit breaker on the shared pool. After 3 consecutive
+        # connection-fatal errors the loops back off for `timeout` seconds
+        # instead of hammering a broken pool (the 2026-04-12 storm). HALF_OPEN
+        # after the cooldown lets a single probe re-close it.
+        self._breaker = CircuitBreaker(
+            failure_threshold=3,
+            success_threshold=1,
+            timeout=900.0,
+            name="olympus-pool",
+        )
 
     async def initialize(self) -> None:
         self.rules_engine = RulesEngine(self._pool)
@@ -92,29 +109,120 @@ class OlympusGuardian:
         # v4 readiness check: enough insights to activate Voyager skills?
         await self._check_v4_readiness()
 
+        # P1.2 — weekly digest of deduped insights (the missing consumer).
+        await self._maybe_send_weekly_digest()
+
         logger.info("Pulse complete: %d actions, %d failures", len(actions), failures)
         return actions
 
+    async def _maybe_send_weekly_digest(self) -> None:
+        """Once per ISO week, send a digest of active (deduped) insights to the
+        operator. This is the consumer the 8,242 inert insights lacked.
+
+        Cadence is tracked in a DB rule (`insight_digest_last_iso_week`) so it
+        survives restarts and never double-sends. No PII: insights are
+        index/bloat metadata only (table + index names, sizes, scan counts)."""
+        try:
+            async with self._pool.acquire() as conn:
+                week_row = await conn.fetchrow("SELECT to_char(NOW(), 'IYYY-IW') AS wk")
+                this_week = week_row["wk"] if week_row else None
+                if this_week is None:
+                    return
+                last = await conn.fetchval(
+                    "SELECT config->>'value' FROM olympus_rules "
+                    "WHERE rule_name = 'insight_digest_last_iso_week'"
+                )
+                if last == this_week:
+                    return  # already sent this week
+
+                rows = await conn.fetch(
+                    "SELECT insight_type, title, content FROM olympus_insights "
+                    "WHERE superseded_by IS NULL "
+                    "ORDER BY insight_type, last_accessed DESC NULLS LAST, created_at DESC "
+                    "LIMIT 20"
+                )
+                total_active = await conn.fetchval(
+                    "SELECT count(*) FROM olympus_insights WHERE superseded_by IS NULL"
+                )
+        except Exception:
+            logger.exception("weekly digest: query failed")
+            return
+
+        if not rows:
+            return
+
+        lines = [f"📊 Olympus weekly insight digest ({total_active} active recommendations)"]
+        for r in rows:
+            title = (r["title"] or "")[:90]
+            lines.append(f"• [{r['insight_type']}] {title}")
+        digest = "\n".join(lines)[:3800]  # Telegram-safe length, no PII
+
+        await self.alerts.send_alert(digest)
+
+        # Record cadence (upsert the rule so it survives restarts).
+        try:
+            async with self._pool.acquire() as conn:
+                await conn.execute(
+                    "INSERT INTO olympus_rules (rule_name, category, config, source) "
+                    "VALUES ('insight_digest_last_iso_week', 'schedule', "
+                    "jsonb_build_object('value', $1::text), 'safety_envelope') "
+                    "ON CONFLICT (rule_name) DO UPDATE "
+                    "SET config = jsonb_build_object('value', $1::text), updated_at = NOW()",
+                    this_week,
+                )
+        except Exception:
+            logger.exception("weekly digest: cadence update failed")
+
+    def _flag_enabled(self, rule_name: str) -> bool:
+        """P0.4 — granular kill-switch. Returns True unless a DB rule flag is
+        explicitly false. Master `olympus_enabled` gates everything."""
+        if self.rules_engine is None:
+            return True
+        if not bool(self.rules_engine.get_threshold("olympus_enabled", default=True)):
+            return False
+        return bool(self.rules_engine.get_threshold(rule_name, default=True))
+
+    async def _run_cycle_guarded(self, cycle_name: str, coro_fn: Any) -> None:
+        """Run one heartbeat/pulse cycle under the pool circuit breaker (P0.3).
+
+        Connection-fatal errors (InterfaceError / connection lost) trip the
+        breaker; other exceptions are logged but do not count toward opening it
+        (a single bad VACUUM shouldn't suspend the whole guardian)."""
+        if self._breaker.is_open():
+            logger.warning("Olympus %s skipped — circuit breaker OPEN", cycle_name)
+            return
+        try:
+            await coro_fn()
+            self._breaker.record_success()
+        except _POOL_FATAL_ERRORS as exc:
+            self._breaker.record_failure()
+            logger.exception("Olympus %s pool-fatal error: %s", cycle_name, type(exc).__name__)
+            if self._breaker.is_open():
+                await self.alerts.send_alert(
+                    f"Olympus circuit breaker OPEN after pool-fatal errors in {cycle_name}"
+                )
+        except Exception:
+            logger.exception("Olympus %s cycle failed", cycle_name)
+
     async def _heartbeat_loop(self) -> None:
         while self._running:
-            try:
+            if self._flag_enabled("olympus_heartbeat_enabled"):
                 # Bound concurrent background-loop pool access (see
                 # backend.services.common.background — god-test S12 / FIX-1
                 # cicatrix 2026-05-24).
                 async with get_bg_pool_semaphore():
-                    await self.run_heartbeat_once()
-            except Exception:
-                logger.exception("Heartbeat cycle failed")
+                    await self._run_cycle_guarded("heartbeat", self.run_heartbeat_once)
+            else:
+                logger.debug("Heartbeat skipped — kill-switch off")
             await asyncio.sleep(self._get_heartbeat_interval())
 
     async def _pulse_loop(self) -> None:
         await asyncio.sleep(60)
         while self._running:
-            try:
-                await self.run_pulse_once()
-            except Exception:
-                logger.exception("Pulse cycle failed")
-                await self.alerts.send_alert("Pulse cycle failed — check logs")
+            if self._flag_enabled("olympus_pulse_enabled"):
+                await self._run_cycle_guarded("pulse", self.run_pulse_once)
+            else:
+                logger.debug("Pulse skipped — kill-switch off")
             await asyncio.sleep(self._get_pulse_interval_hours() * 3600)
 
     async def start(self) -> None:
