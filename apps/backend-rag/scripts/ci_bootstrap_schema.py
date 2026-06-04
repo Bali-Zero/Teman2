@@ -464,6 +464,63 @@ def main() -> int:
             conn.execute(text(stmt))
     print("[bootstrap] practice_types prod-only columns ensured (typical_duration_days + is_active + updated_at + active default + created_at default)")
 
+    # companies prod-only divergence.
+    #
+    # SQLModel ``Company`` (backend/app/modules/crm/company_models.py) declares
+    # ``setup_progress: int = Field(default=0)`` and ``created_at``/``updated_at``
+    # via ``default_factory=datetime.utcnow`` -- all Python-side defaults only, so
+    # create_all() emits them as NOT NULL with NO server default. Raw-SQL inserts
+    # (e.g. the FASE-4 routing tests seeding synthetic companies) that don't list
+    # these columns trip the NOT NULL constraint in CI even though prod, which was
+    # hand-bootstrapped, carries server defaults. Mirror prod by giving them DB
+    # defaults. Same fix class as clients/team_members/practice_types above.
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE companies ALTER COLUMN setup_progress SET DEFAULT 0",
+            "ALTER TABLE companies ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE companies ALTER COLUMN updated_at SET DEFAULT NOW()",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] companies prod-only columns ensured (setup_progress + created_at + updated_at defaults)")
+
+    # practices prod-only divergence.
+    #
+    # Prod ``practices`` carries hand-added columns ``practice_type_code`` (text FK
+    # mirror of ``practice_type_id``) and ``title`` that no migration creates -- SQL
+    # v2 migration 157 even guards their use with an IF-EXISTS check. The intake
+    # routing code (backend/services/intake/routing.py) SELECTs ``practice_type_code``
+    # and the FASE-4 routing tests INSERT ``practice_type_code``/``title``. Mirror prod
+    # so both the production query path and the raw-SQL test seeds resolve in CI.
+    # Also give the Python-side-default timestamp/inquiry columns DB defaults so
+    # raw-SQL inserts that omit them don't trip NOT NULL.
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE practices ADD COLUMN IF NOT EXISTS practice_type_code VARCHAR(100)",
+            "ALTER TABLE practices ADD COLUMN IF NOT EXISTS title VARCHAR(500)",
+            "ALTER TABLE practices ALTER COLUMN inquiry_date SET DEFAULT NOW()",
+            "ALTER TABLE practices ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE practices ALTER COLUMN updated_at SET DEFAULT NOW()",
+            "ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] practices prod-only columns ensured (practice_type_code + title + inquiry/created/updated defaults + practice_type_id nullable)")
+
+    # client_company_links prod-only divergence.
+    #
+    # SQLModel ``ClientCompanyLink`` (backend/app/modules/crm/company_models.py)
+    # declares ``created_at``/``updated_at`` via ``default_factory=datetime.utcnow``
+    # -- Python-side only, so create_all() emits them NOT NULL with no server
+    # default. The FASE-4 routing fixture INSERTs links listing only
+    # (client_id, company_id, role, is_primary), tripping NOT NULL on the
+    # timestamps in CI. Mirror prod by giving them DB defaults.
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE client_company_links ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE client_company_links ALTER COLUMN updated_at SET DEFAULT NOW()",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] client_company_links prod-only columns ensured (created_at + updated_at defaults)")
+
     return 0
 
 
