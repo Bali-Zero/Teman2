@@ -9,8 +9,8 @@ implementations:
     (local SEA-LION field extraction, Maybe pattern).
   * ``validate``           -> :func:`backend.services.intake.validate_rules.validate_stage`
     (deterministic, no LLM).
-  * ``route``              -> :func:`_route_stage_stub` (FASE-4 placeholder: writes
-    ONE ``document_routing_proposal`` row, ZERO CRM writes).
+  * ``route``              -> :func:`backend.services.intake.routing.route_stage`
+    (FASE-4: entity-resolution + ONE ``document_routing_proposal`` row, ZERO CRM writes).
 
 Contract (FASE-2 worker, ``worker.py``):
     The worker calls ``stage_handler(job, stage)`` async, and merges the returned
@@ -67,6 +67,7 @@ from backend.services.intake.extract import (
     extract_stage,
 )
 from backend.services.intake.validate_rules import validate_stage
+from backend.services.intake.routing import route_stage as _route_stage_fase4
 
 logger = logging.getLogger("zantara.intake.stages")
 
@@ -110,75 +111,6 @@ def _ocr_text_per_page_as_strings(stage_output: dict[str, Any]) -> list[str]:
         else:
             out.append(str(p or ""))
     return out
-
-
-async def _route_stage_stub(pool: asyncpg.Pool, job: dict) -> dict:
-    """FASE-4 placeholder: write ONE ``document_routing_proposal`` row.
-
-    This is the ONLY structured output of the whole pipeline at this FASE. It is a
-    read-only *proposal* (status ``review_pending``): FASE-5 HITL / FASE-4 routing
-    will decide whether to act on it. ZERO CRM writes — we never touch clients /
-    practices / documents here.
-
-    The proposal carries the resolved doc_type + extracted fields + the validate
-    verdict as evidence, but takes NO routing decision (entity_resolution / routing
-    are empty placeholders; commit_gate records that this is a FASE-3 stub).
-    """
-    queue_id = job["id"]
-    so = await _fetch_stage_output(pool, queue_id)
-    classify_out = so.get("classify") or {}
-    extract_out = so.get("extract") or {}
-    validate_out = so.get("validate") or {}
-
-    doc_type = classify_out.get("doc_type") or extract_out.get("doc_type") or "unknown"
-    # routing_key is UNIQUE; make it idempotent per (queue_id, doc_index).
-    routing_key = f"intake:{queue_id}:0:{job.get('pipeline_version', 'v1')}"
-
-    proposal = {
-        "doc_type": doc_type,
-        "type_confidence": classify_out.get("type_confidence"),
-        "fields": extract_out.get("fields") or {},
-        "validate": {
-            "valid": validate_out.get("valid"),
-            "rule_failures": validate_out.get("rule_failures") or [],
-        },
-    }
-    commit_gate = {
-        "fase": "3-stub",
-        "decision": "proposal_only",
-        "note": "FASE-4 will do real routing/entity-resolution. No CRM write.",
-    }
-
-    proposal_id = await pool.fetchval(
-        """
-        INSERT INTO document_routing_proposal
-            (queue_id, doc_index, pipeline_version, routing_key,
-             entity_resolution, routing, commit_gate, status)
-        VALUES ($1, 0, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, 'review_pending')
-        ON CONFLICT (routing_key) DO UPDATE
-            SET routing      = EXCLUDED.routing,
-                commit_gate  = EXCLUDED.commit_gate
-        RETURNING id
-        """,
-        queue_id,
-        job.get("pipeline_version", "v1"),
-        routing_key,
-        json.dumps({}),          # entity_resolution: FASE-4 fills this.
-        json.dumps(proposal),    # routing: the proposal evidence payload.
-        json.dumps(commit_gate),
-    )
-    logger.info(
-        "route(stub): job=%s proposal_id=%s doc_type=%s (0 CRM writes)",
-        queue_id, proposal_id, doc_type,
-    )
-    return {
-        "routed": False,
-        "proposal_id": proposal_id,
-        "routing_key": routing_key,
-        "doc_type": doc_type,
-        "stub": True,
-        "_metric": {"model": "route-proposal-stub", "confidence": 1.0},
-    }
 
 
 def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
@@ -258,7 +190,8 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
             return payload
 
         if stage == "route":
-            return await _route_stage_stub(pool, job)
+            # FASE-4: real entity-resolution + routing proposal (was _route_stage_stub).
+            return await _route_stage_fase4(job, stage, pool)
 
         # Unknown stage: do not fabricate. Surface a no-op marker so the worker can
         # advance only if it chooses; an unexpected stage is a wiring bug.
