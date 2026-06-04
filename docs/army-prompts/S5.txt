@@ -1,0 +1,36 @@
+# DESC: S5 — Secret in chiaro nei plist (P0 SECURITY) (ONDA 1, Pro obbligatorio, Ollama)
+ORCHESTRATORE sessione S5 "plist-secret-hardening" — DEVE girare sul Pro (OSINT/secret,
+Symbiosis Law 2). Autonomia piena in loop sul reversibile, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane infra --task-id s5-plist-secrets
+  cd .worktrees/infra-s5-plist-secrets
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI. + LEGGE SECRET: nessun worker tocca il cloud. Reasoning solo locale (Ollama
+qwen3.5:9b se serve). MAI loggare il VALORE di un secret — solo nome-chiave + path.
+
+MISSIONE: residuo scar 2026-04-29 + audit S4: plist world-readable con secret in chiaro
+(wa-dashboard-m1 DB url 0644, skills-bridge-consumer API key, + ghp_/FIREWORKS/SCRAPER
+tokens citati in session_2026_05_31). I 644 sono leggibili da qualsiasi processo.
+
+TOPOLOGIA:
+- ASSALITORI (locali, fan-out): scansiona ~/Library/LaunchAgents/com.{nuzantara,balizero,
+  cell}.*.plist per EnvironmentVariables con pattern secret (token|key|password|
+  url-con-credenziali). Lista nome-chiave × plist × permessi attuali (SENZA valori).
+- ANALISTI: per ognuno classifica blast-radius (se ruoti sbagliato cosa si rompe?).
+  GH_TOKEN/DATABASE_URL = alto (spegne CI/deploy). Altri = basso.
+- AZIONE AUTONOMA (reversibile): chmod 0400 sui plist con secret. Dove possibile, sposta
+  il secret a Keychain o env-file fuori-plist e referenzia. Questo è autonomo.
+- SPAZZINI: verifica nessun file di output contenga un valore-secret. Pulisci scratch.
+- MECCANICO (1, serial): research/operations/S5-plist-secrets-FROZEN.json (lista
+  secret×plist×azione, SENZA VALORI) + rotation checklist (NEEDS-ANTONELLO per i token
+  esterni). git add SOLO file safe (mai un file con secret). commit → push → PR draft →
+  STOP.
+
+VINCOLI: chmod è autonomo. Rotazione token esterni (gh secret set / fly secrets set) =
+NEEDS-ANTONELLO. NON committare MAI un valore-secret. OUTPUT: FROZEN + chmod applicati +
+checklist. Poi --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S5 <numero-PR-o-url>

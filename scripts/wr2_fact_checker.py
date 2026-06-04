@@ -205,13 +205,17 @@ def _meaningful_text_len(blob: Any) -> int:
     return len(str(blob).strip())
 
 
-def _has_external_truth(research_json: Any, council_debate_json: Any) -> bool:
+def _has_external_truth(
+    research_json: Any, council_debate_json: Any, *, brief_json: Any = None
+) -> bool:
     """True only if there is a non-trivial EXTERNAL source to verify against.
 
     The draft's own slides are NOT external truth — verifying a claim against
     the slides that asserted it is self-reference (autopsy finding #6). On the
-    live pipeline `research_json` is never populated, so this is usually False
-    and the checker must NOT return a clean 'pass' (see _aggregate_status).
+    live pipeline `research_json` is never populated (only probes/smoke tests
+    set it); the production corpus lives in `brief_json` (#1112). So external
+    truth = research_json OR brief_json OR council_debate_json; with none of
+    them the checker must NOT return a clean 'pass' (see _aggregate_status).
 
     2026-06-05 (panel fix C): the old check stripped the literal chars
     "{}[]...null" (which also deleted the letters n/u/l) from the SERIALIZED
@@ -222,11 +226,21 @@ def _has_external_truth(research_json: Any, council_debate_json: Any) -> bool:
     a real law citation as a strong positive signal regardless of length.
     """
     # Strong signal: a real legal citation in the external source.
-    serialized = _blob_to_text(research_json) + "\n" + _blob_to_text(council_debate_json)
+    serialized = (
+        _blob_to_text(research_json)
+        + "\n"
+        + _blob_to_text(brief_json)
+        + "\n"
+        + _blob_to_text(council_debate_json)
+    )
     if _find_law_citations(serialized):
         return True
     # Otherwise require a non-trivial amount of leaf text content.
-    content_len = _meaningful_text_len(research_json) + _meaningful_text_len(council_debate_json)
+    content_len = (
+        _meaningful_text_len(research_json)
+        + _meaningful_text_len(brief_json)
+        + _meaningful_text_len(council_debate_json)
+    )
     return content_len >= 40
 
 
@@ -234,23 +248,36 @@ def _extract_source_text(
     research_json: Any,
     council_debate_json: Any,
     slides: list[dict[str, Any]],
+    brief_json: Any = None,
     *,
     include_slides: bool = True,
 ) -> str:
     """Concatenate available source-text the draft was derived from.
 
-    research_json (from topic-selector + draft-generator) is the primary
-    truth. council_debate_json captures the LLM panel's reasoning; useful
-    for paraphrase matches. Slide bodies are last-resort fallback for
+    brief_json (from the topic-selector) is the ACTUAL research the draft
+    generator consumed: article_summary, article_body_full, source_url and
+    the structured `enrichment` object (the_facts / bali_zero_take /
+    in_practice / next_steps / faq). research_json is a separate column the
+    production pipeline never populates (only probes/smoke tests do), so
+    without brief_json the checker has almost no source corpus and
+    false-flags headline numbers the slides omit for editorial brevity.
+    council_debate_json captures the LLM panel's reasoning; useful for
+    paraphrase matches. Slide bodies are last-resort fallback for
     paraphrase/number matching ONLY — they are excluded (include_slides=False)
     when verifying law citations, so a citation can never be "verified" purely
     because it appears in the draft itself.
     """
     parts: list[str] = []
-    for blob in (research_json, council_debate_json):
-        text = _blob_to_text(blob)
-        if text:
-            parts.append(text)
+    for blob in (research_json, brief_json, council_debate_json):
+        if blob is None:
+            continue
+        if isinstance(blob, str):
+            parts.append(blob)
+        else:
+            try:
+                parts.append(json.dumps(blob, ensure_ascii=False))
+            except (TypeError, ValueError):
+                parts.append(str(blob))
     if include_slides:
         for slide in slides:
             if isinstance(slide, dict):
@@ -477,7 +504,7 @@ async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyn
     return await conn.fetch(
         """
         SELECT id, topic, register, slides_json, research_json,
-               council_debate_json, fact_check_json
+               brief_json, council_debate_json, fact_check_json
           FROM war_room_drafts
          WHERE status = 'drafts_imaged_facted'
            AND fact_check_json IS NOT NULL
@@ -589,6 +616,12 @@ async def _process_one_draft(
             council = json.loads(council)
         except json.JSONDecodeError:
             pass
+    brief = row.get("brief_json")
+    if isinstance(brief, str):
+        try:
+            brief = json.loads(brief)
+        except json.JSONDecodeError:
+            pass
     slides_blob = row["slides_json"]
     if isinstance(slides_blob, str):
         try:
@@ -601,15 +634,21 @@ async def _process_one_draft(
         else slides_blob
     ) or []
 
-    source_text = _extract_source_text(research, council, slides)
+    # brief_json is the corpus the production pipeline actually populates
+    # (research_json is probe/smoke-only), so it is threaded into every source
+    # extraction below — including the EXTERNAL view used for law matching and
+    # the external-truth gate, otherwise live drafts would have no corpus.
+    source_text = _extract_source_text(research, council, slides, brief_json=brief)
     # Law citations are matched against the EXTERNAL source only (no slides),
     # so a citation cannot self-verify just by appearing in the draft.
-    external_text = _extract_source_text(research, council, slides, include_slides=False)
+    external_text = _extract_source_text(
+        research, council, slides, brief_json=brief, include_slides=False
+    )
     source_laws = _find_law_citations(external_text)
-    has_external_truth = _has_external_truth(research, council)
+    has_external_truth = _has_external_truth(research, council, brief_json=brief)
     if not has_external_truth:
         logger.warning(
-            "Draft %s has NO external truth (research_json empty) — "
+            "Draft %s has NO external truth (research_json/brief_json empty) — "
             "fact-check capped at 'degraded', law claims unverifiable.",
             draft_id,
         )

@@ -1,0 +1,1061 @@
+{
+  "session": "S14-nb-curation-sweep",
+  "generated_wita": "2026-06-02",
+  "machine": "Pro",
+  "profile": "default (antonellosiano@gmail.com — AI Ultra)",
+  "law_osint": "NB-INTEL Pro-only, never cloud, never team (Law 2)",
+  "methodology": {
+    "nb_count_probe": "nlm notebook list -p default --json (independent re-count)",
+    "intel_uuid_probe": "nlm notebook query <uuid> ping --timeout 25 (5/5 live confirmed, anti-trap vs nb-migration-mapping.json inverted)",
+    "staleness_caveat": "ALL updated_at == 2026-06-01 (global touch from recent sync) — NOT a reliable content-staleness proxy. Cron health report 2026-06-02 confirms NB-INTEL feeder paused since 2026-05-23/25 (real staleness signal), stale-deadline 2026-06-22/24.",
+    "baseline_report": "research/nb-health/2026-06-02-health.md (cron Mode B+C)"
+  },
+  "summary": {
+    "total_nb": 74,
+    "total_sources": 3530,
+    "healthy_with_sources": 56,
+    "empty": 18,
+    "broken": 0,
+    "brief_expected": {
+      "nb": 64,
+      "sources": 3618,
+      "note": "brief figures stale; live drift 74 NB / 3530 src is normal"
+    }
+  },
+  "family_breakdown": {
+    "NB-INTEL": 5,
+    "RESEARCH-ADHOC": 45,
+    "CORE": 20,
+    "MATA-GARUDA": 4
+  },
+  "classification_breakdown": {
+    "active": 50,
+    "cleanup_marked_delete": 6,
+    "empty_scaffold": 17,
+    "probe_sandbox": 1
+  },
+  "intel_uuid_verification": {
+    "Immigration": {
+      "uuid": "1ed02e54-542f-426a-94f8-53c5ffde4b7d",
+      "live": true,
+      "sources": 80
+    },
+    "Tax": {
+      "uuid": "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f",
+      "live": true,
+      "sources": 17
+    },
+    "Press": {
+      "uuid": "9d262101-abeb-4e15-af9c-c38e028c62fe",
+      "live": true,
+      "sources": 216
+    },
+    "Regulation": {
+      "uuid": "a17f134e-b9ab-42d9-bfc2-5bbc45165c76",
+      "live": true,
+      "sources": 41
+    },
+    "AIResearch": {
+      "uuid": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de",
+      "live": true,
+      "sources": 356
+    },
+    "verdict": "NB-INTEL family NOT degraded — all 5 live UUIDs respond. PR #922/#923 fix held. Brief assumption of degradation REFUTED empirically."
+  },
+  "notebooks": [
+    {
+      "uuid": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de",
+      "uuid_prefix": "dc5d01cd",
+      "title": "NB-INTEL-AIResearch — Daily AI Intelligence",
+      "source_count": 356,
+      "updated_at": "2026-06-01T20:34:21Z",
+      "family": "NB-INTEL",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "9d262101-abeb-4e15-af9c-c38e028c62fe",
+      "uuid_prefix": "9d262101",
+      "title": "NB-INTEL-Press — Daily Press Intelligence",
+      "source_count": 216,
+      "updated_at": "2026-06-01T20:29:43Z",
+      "family": "NB-INTEL",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "85207af3-352f-4554-8d2a-18f42cc541ba",
+      "uuid_prefix": "85207af3",
+      "title": "NB-6 Operations & Compliance Indonesia 2025 — Bali Zero",
+      "source_count": 199,
+      "updated_at": "2026-06-01T20:28:09Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "d2a05271-2f65-4c02-a44d-eefeb7c7f7cd",
+      "uuid_prefix": "d2a05271",
+      "title": "NB-9: Research Lab",
+      "source_count": 197,
+      "updated_at": "2026-06-01T20:27:15Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "933509f9-1561-403d-bd44-4a7a67a36df2",
+      "uuid_prefix": "933509f9",
+      "title": "NB-3: Company Setup — Indonesia 2025",
+      "source_count": 194,
+      "updated_at": "2026-06-01T20:28:51Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "f0307c2c-9220-4160-93c8-f4a6ef4a3b65",
+      "uuid_prefix": "f0307c2c",
+      "title": "NB-10: Team Guides — Bali Zero",
+      "source_count": 161,
+      "updated_at": "2026-06-01T20:26:11Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "6d449787-04e3-430e-acbe-d6fc38d379a9",
+      "uuid_prefix": "6d449787",
+      "title": "NB-AGENTS",
+      "source_count": 157,
+      "updated_at": "2026-06-01T20:29:20Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",
+      "uuid_prefix": "d4b2eedb",
+      "title": "NB-4 — Tax & Fiscal Indonesia | Bali Zero",
+      "source_count": 155,
+      "updated_at": "2026-06-01T20:30:29Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "201b4b94-deda-40a9-9fcb-0e67a3f81e52",
+      "uuid_prefix": "201b4b94",
+      "title": "[MERGED-INTO-d2a05271-2026-05-07] Digital Sovereignty & Ancestral Wisdom AI",
+      "source_count": 150,
+      "updated_at": "2026-06-01T20:26:57Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "cleanup_marked_delete",
+      "health": "healthy"
+    },
+    {
+      "uuid": "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c",
+      "uuid_prefix": "4fd8cd0f",
+      "title": "NB-8 Expat Life Bali 2025",
+      "source_count": 150,
+      "updated_at": "2026-06-01T20:26:46Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "d9438180-5e63-4e2a-a473-6061101f6a8d",
+      "uuid_prefix": "d9438180",
+      "title": "NB-5 — Property & Real Estate Indonesia 2025",
+      "source_count": 141,
+      "updated_at": "2026-06-01T20:31:08Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "50396b3e-b2f9-4903-8df5-65c2b9709eba",
+      "uuid_prefix": "50396b3e",
+      "title": "[MERGED-INTO-dc5d01cd-2026-05-07] Claude Code optimization research 2026-04-21",
+      "source_count": 129,
+      "updated_at": "2026-06-01T20:27:39Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "cleanup_marked_delete",
+      "health": "healthy"
+    },
+    {
+      "uuid": "cff93ab0-813a-42f2-a8de-36987e724271",
+      "uuid_prefix": "cff93ab0",
+      "title": "NB-2: Immigration & Visa — Indonesia 2025",
+      "source_count": 110,
+      "updated_at": "2026-06-01T20:29:43Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "5af11152-7809-4ece-8000-7ca8ce4e9678",
+      "uuid_prefix": "5af11152",
+      "title": "MATA GARUDA — Self-Improving Agent Research",
+      "source_count": 102,
+      "updated_at": "2026-06-01T20:26:24Z",
+      "family": "MATA-GARUDA",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",
+      "uuid_prefix": "f51ab8a0",
+      "title": "NB-7 Editorial & Content Strategy 2025 — Bali Zero",
+      "source_count": 99,
+      "updated_at": "2026-06-01T20:28:08Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "e00d497a-f55a-47c7-9c79-6a7b7641b528",
+      "uuid_prefix": "e00d497a",
+      "title": "MATA GARUDA — Open Source Intel Tools",
+      "source_count": 89,
+      "updated_at": "2026-06-01T20:27:08Z",
+      "family": "MATA-GARUDA",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "1ed02e54-542f-426a-94f8-53c5ffde4b7d",
+      "uuid_prefix": "1ed02e54",
+      "title": "NB-INTEL-Immigration — Daily Immigration Intelligence",
+      "source_count": 80,
+      "updated_at": "2026-06-01T20:29:35Z",
+      "family": "NB-INTEL",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "6164fbb6-e079-4d2a-a1cc-c38ea5a086b7",
+      "uuid_prefix": "6164fbb6",
+      "title": "NB-META-LIFECYCLE-STUDY-2026-05-04",
+      "source_count": 78,
+      "updated_at": "2026-06-01T20:29:58Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "f6ecd115-dd89-4c9b-b3dd-071e0e2f1876",
+      "uuid_prefix": "f6ecd115",
+      "title": "NB-1: Nuzantara Codebase & Architecture",
+      "source_count": 75,
+      "updated_at": "2026-06-01T20:28:43Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "4a8f3162-6f63-4876-9fe9-642dd9ae0606",
+      "uuid_prefix": "4a8f3162",
+      "title": "[ARCHIVED-DELETE-2026-05-07] Analisi Video AI Agency",
+      "source_count": 67,
+      "updated_at": "2026-06-01T20:28:10Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "cleanup_marked_delete",
+      "health": "healthy"
+    },
+    {
+      "uuid": "305f5f2e-d2f4-4f77-a771-c2b7aa0867e4",
+      "uuid_prefix": "305f5f2e",
+      "title": "Mata Garuda — Self-Evolving Agent Research",
+      "source_count": 57,
+      "updated_at": "2026-06-01T20:27:43Z",
+      "family": "MATA-GARUDA",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "76de5123-af21-4d2c-81f1-cbc97e5e65e9",
+      "uuid_prefix": "76de5123",
+      "title": "MATA GARUDA — Intelligence Architecture Research",
+      "source_count": 51,
+      "updated_at": "2026-06-01T20:28:16Z",
+      "family": "MATA-GARUDA",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "ea08038b-bd80-45d9-8583-95ae6cb69cb0",
+      "uuid_prefix": "ea08038b",
+      "title": "AI Evolutionary Frontier quicktime 2026 — ALTK/DGM/PTB/SoM",
+      "source_count": 51,
+      "updated_at": "2026-06-01T20:27:13Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "917a1300-61ac-4fdb-8d94-8a42503c0442",
+      "uuid_prefix": "917a1300",
+      "title": "[MERGED-INTO-dc5d01cd-2026-05-07] World Models 2026 — Comprehensive Survey (Genie, Waypoint, GameNGen, SORA)",
+      "source_count": 49,
+      "updated_at": "2026-06-01T20:28:49Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "cleanup_marked_delete",
+      "health": "healthy"
+    },
+    {
+      "uuid": "d97ff70b-9c14-42a3-8813-5416039b24f7",
+      "uuid_prefix": "d97ff70b",
+      "title": "[MERGED-INTO-dc5d01cd-2026-05-07] Nexus — Palantir Architecture Deep Research",
+      "source_count": 44,
+      "updated_at": "2026-06-01T20:29:20Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "cleanup_marked_delete",
+      "health": "healthy"
+    },
+    {
+      "uuid": "a17f134e-b9ab-42d9-bfc2-5bbc45165c76",
+      "uuid_prefix": "a17f134e",
+      "title": "NB-INTEL-Regulation — Daily Regulatory Intelligence",
+      "source_count": 41,
+      "updated_at": "2026-06-01T20:29:52Z",
+      "family": "NB-INTEL",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "3ad29783-2dae-4a4c-9891-266e4a150a8b",
+      "uuid_prefix": "3ad29783",
+      "title": "WA CRM Enrichment Architecture 2026",
+      "source_count": 39,
+      "updated_at": "2026-06-01T20:31:23Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "a02abcb5-9c11-4d9f-b8d5-f4200f35f261",
+      "uuid_prefix": "a02abcb5",
+      "title": "NLM Video Falla Research 2026-05-08",
+      "source_count": 36,
+      "updated_at": "2026-06-01T20:26:48Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "6ebae8fd-43d4-4292-a6cf-cd2a04b8dcbd",
+      "uuid_prefix": "6ebae8fd",
+      "title": "Codex Config Deep Research 2026 — Nuzantara Operator",
+      "source_count": 29,
+      "updated_at": "2026-06-01T20:26:56Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "d4544630-162c-46cf-b50a-ed9bfa7a143b",
+      "uuid_prefix": "d4544630",
+      "title": "Codex 5.5 best practices May 2026",
+      "source_count": 28,
+      "updated_at": "2026-06-01T20:26:35Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "6f2bc4fd-9fe1-4124-a78f-b3cb1705ac45",
+      "uuid_prefix": "6f2bc4fd",
+      "title": "August 2025 Income Tax Return for The Creative Agency",
+      "source_count": 24,
+      "updated_at": "2026-06-01T20:27:39Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "ec8f308f-0c5f-4732-b6cb-379f52fa6b14",
+      "uuid_prefix": "ec8f308f",
+      "title": "Regulatory Research 2025-2026",
+      "source_count": 20,
+      "updated_at": "2026-06-01T20:28:05Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f",
+      "uuid_prefix": "7fb12c9c",
+      "title": "NB-INTEL-Tax — Daily Tax/Fiscal Intelligence",
+      "source_count": 17,
+      "updated_at": "2026-06-01T20:30:10Z",
+      "family": "NB-INTEL",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "1e5f9b04-9485-4620-a775-801b7e6b0395",
+      "uuid_prefix": "1e5f9b04",
+      "title": "NB-14: Claude Code Session Memory",
+      "source_count": 12,
+      "updated_at": "2026-06-01T20:30:50Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "077fd5cc-fc83-433f-a40d-b4ad5bb17a5d",
+      "uuid_prefix": "077fd5cc",
+      "title": "NB-HARARI — Yuval Noah Harari on AI (2021-2026)",
+      "source_count": 12,
+      "updated_at": "2026-06-01T20:29:09Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "815b081c-d477-48b0-9780-45f12c1d664f",
+      "uuid_prefix": "815b081c",
+      "title": "NB-DESIGN-AGENT — Bali Zero AI Design Agent Architecture",
+      "source_count": 12,
+      "updated_at": "2026-06-01T20:28:50Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "7a312429-5555-453c-8358-1cea0a07418c",
+      "uuid_prefix": "7a312429",
+      "title": "WR2 Badung HOREKA Waste Carousel Verification 2026-05-11",
+      "source_count": 10,
+      "updated_at": "2026-06-01T20:30:03Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "50aa5afd-898b-4599-9179-3732264af251",
+      "uuid_prefix": "50aa5afd",
+      "title": "Labor Regulatory Check May 2026",
+      "source_count": 10,
+      "updated_at": "2026-06-01T20:29:44Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "a21f0444-fb9b-4ce5-abac-575844241d8d",
+      "uuid_prefix": "a21f0444",
+      "title": "CRM sync open-source patterns fast import 2026-05-09",
+      "source_count": 10,
+      "updated_at": "2026-06-01T20:29:26Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "64e834cb-ae06-42ae-a97c-dc1b18eb0b41",
+      "uuid_prefix": "64e834cb",
+      "title": "NIB PMA Regulations 2025-2026 Research",
+      "source_count": 10,
+      "updated_at": "2026-06-01T20:29:05Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "fc86e27e-a0dc-41f9-b0b2-4324c3186ec2",
+      "uuid_prefix": "fc86e27e",
+      "title": "Employment Regulations 2025-2026",
+      "source_count": 10,
+      "updated_at": "2026-06-01T20:28:46Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "4561782a-3320-4d4e-af5e-e6e43d18fbbb",
+      "uuid_prefix": "4561782a",
+      "title": "Labor Law Research 2025-2026",
+      "source_count": 10,
+      "updated_at": "2026-06-01T20:27:20Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "5c2c3d90-eed2-4755-86b1-269e637e51e1",
+      "uuid_prefix": "5c2c3d90",
+      "title": "NB-12: Bali Zero Business Intelligence",
+      "source_count": 6,
+      "updated_at": "2026-06-01T20:30:09Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "46b4dfe0-2be9-4fe4-97cd-3d44ef28a8ab",
+      "uuid_prefix": "46b4dfe0",
+      "title": "[ARCHIVED-DELETE-2026-05-07] NB-NLM-ELEVATION — SOTA research & brainstorm 2026-04-25",
+      "source_count": 6,
+      "updated_at": "2026-06-01T20:30:02Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "cleanup_marked_delete",
+      "health": "healthy"
+    },
+    {
+      "uuid": "2072e518-e6f9-437d-93ea-f9037ec54052",
+      "uuid_prefix": "2072e518",
+      "title": "NB-11: Bali Zero Ops Live",
+      "source_count": 6,
+      "updated_at": "2026-06-01T20:29:53Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "b35dbe38-a574-4719-b62a-9df7972f8948",
+      "uuid_prefix": "b35dbe38",
+      "title": "Ciclo di Vita e Manutenzione dei Sistemi Informativi NotebookLM",
+      "source_count": 6,
+      "updated_at": "2026-06-01T20:27:48Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "9a70162a-db99-496a-8e3d-237982249f9c",
+      "uuid_prefix": "9a70162a",
+      "title": "NB-0 Meta-NLM — System Reflection",
+      "source_count": 4,
+      "updated_at": "2026-06-01T20:29:46Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "f03b5c70-b3a2-445f-acb0-ff0c96885fd5",
+      "uuid_prefix": "f03b5c70",
+      "title": "NB-0: Zantara Cognitive Identity Blueprint",
+      "source_count": 4,
+      "updated_at": "2026-06-01T20:29:30Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "27b4e05f-3fb9-47ac-8204-526f46cfb8a2",
+      "uuid_prefix": "27b4e05f",
+      "title": "Meet 2026-05-13 Salvatore Iorio — Bali Real Estate",
+      "source_count": 2,
+      "updated_at": "2026-06-01T20:28:39Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "f0246e9e-9e34-491b-a94f-7a9e4d64d664",
+      "uuid_prefix": "f0246e9e",
+      "title": "Agenti in Evoluzione: Rapporto sulla Ricerca 2026",
+      "source_count": 2,
+      "updated_at": "2026-06-01T20:28:25Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "6dfee545-b1fe-4ccc-8c09-f3ac8cf48625",
+      "uuid_prefix": "6dfee545",
+      "title": "Kura Kura Bali Crisis 2026-05-12 — OSINT briefing",
+      "source_count": 2,
+      "updated_at": "2026-06-01T20:28:10Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "53441d9e-fb11-44cc-8dd8-4d70637b651f",
+      "uuid_prefix": "53441d9e",
+      "title": "NB-13: Bali Zero System Telemetry",
+      "source_count": 1,
+      "updated_at": "2026-06-01T20:30:39Z",
+      "family": "CORE",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "d49ac2f8-0e75-45d4-ba10-89a200c1d38f",
+      "uuid_prefix": "d49ac2f8",
+      "title": "ANALISI-LEGALE-ZANTARA",
+      "source_count": 1,
+      "updated_at": "2026-06-01T20:29:40Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "7f12203a-fc7a-4ef9-b918-07c395a39d71",
+      "uuid_prefix": "7f12203a",
+      "title": "[EXPORTED-2026-05-07] BZ Morning News — Multi-Domain Briefing",
+      "source_count": 1,
+      "updated_at": "2026-06-01T20:29:26Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "f71be3ba-b8e6-4023-99f5-59b572df016e",
+      "uuid_prefix": "f71be3ba",
+      "title": "Bali Zero Setup Guide Mac+Mobile — Cinematic ID",
+      "source_count": 1,
+      "updated_at": "2026-06-01T20:29:08Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "afd7fc4e-2568-4fff-861f-67b661842ece",
+      "uuid_prefix": "afd7fc4e",
+      "title": "Piano di Ristrutturazione e Conformità per PT Wirramanda",
+      "source_count": 1,
+      "updated_at": "2026-06-01T20:28:55Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "active",
+      "health": "healthy"
+    },
+    {
+      "uuid": "75b73262-8357-443d-93be-212d736d8c44",
+      "uuid_prefix": "75b73262",
+      "title": "Air-M5 thin-client max power config",
+      "source_count": 0,
+      "updated_at": "2026-05-31T23:04:59Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "f772ead1-b44b-4f28-9fda-82c9e3212c87",
+      "uuid_prefix": "f772ead1",
+      "title": "UU Cipta Kerja 2025-2026 Research",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:37Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "3da23b70-3797-40c8-b446-a0103760bc33",
+      "uuid_prefix": "3da23b70",
+      "title": "Bali Minimum Wage 2025 Research",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:36Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "2cbc2a04-21ce-4c7f-ab98-08bacdfef0e3",
+      "uuid_prefix": "2cbc2a04",
+      "title": "",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:35Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "2090c49d-1cce-4164-9abb-4ed92eb3258a",
+      "uuid_prefix": "2090c49d",
+      "title": "Nuzantara CRM autonomous DB Workspace Drive sync research 2026-05-09",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:34Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "c16466d0-8156-44b3-9742-0942524f6222",
+      "uuid_prefix": "c16466d0",
+      "title": "Arming Claude Code May 2026 — deep research",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:33Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "783f4613-39cb-44a4-9ae3-b523fd808142",
+      "uuid_prefix": "783f4613",
+      "title": "Veo Flow Ecosystem Research 2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:32Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "376cf22b-1e16-497f-a144-9030a575e935",
+      "uuid_prefix": "376cf22b",
+      "title": "Regulatory Research May 2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:32Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "7e6ae978-136c-4c96-bed5-9fab6f39176f",
+      "uuid_prefix": "7e6ae978",
+      "title": "NB-PROBE-SANDBOX-2026-05",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:31Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "probe_sandbox",
+      "health": "empty"
+    },
+    {
+      "uuid": "c7f24c3a-cecd-47f5-8c47-477456b84667",
+      "uuid_prefix": "c7f24c3a",
+      "title": "Veo Competitors 2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:30Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "53052fbf-a9c3-498b-9cef-226636ad68ce",
+      "uuid_prefix": "53052fbf",
+      "title": "HGB Property Research 2025-2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:29Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "60c7ade7-5e20-45b0-9773-611b99417fa0",
+      "uuid_prefix": "60c7ade7",
+      "title": "",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:28Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "c3f1536d-7604-4e0c-b0fa-0304d2e0a88e",
+      "uuid_prefix": "c3f1536d",
+      "title": "Tax Changes Research 2025-2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:27Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "bafceb4f-cd61-4922-8fc1-932852d1c054",
+      "uuid_prefix": "bafceb4f",
+      "title": "Labor Law Research May 2025",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:31:26Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "c8c3b3c5-fcb1-42e4-aef8-bed693163951",
+      "uuid_prefix": "c8c3b3c5",
+      "title": "Indonesian Tax Updates 2025-2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:30:31Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "7ed36fec-53be-48b9-90e5-4a4cab37e552",
+      "uuid_prefix": "7ed36fec",
+      "title": "KITAP Research 2025-2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:30:30Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "dd9a4084-c124-4845-b07d-57b31ae0f34f",
+      "uuid_prefix": "dd9a4084",
+      "title": "KITAS Research 2025-2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:30:29Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    },
+    {
+      "uuid": "081df4ff-e1db-4824-8587-b03463a2d51e",
+      "uuid_prefix": "081df4ff",
+      "title": "Immigration Regulation Search 2025-2026",
+      "source_count": 0,
+      "updated_at": "2026-05-31T18:30:28Z",
+      "family": "RESEARCH-ADHOC",
+      "classification": "empty_scaffold",
+      "health": "empty"
+    }
+  ],
+  "curation_proposals": {
+    "P1_HIGH_cleanup_marked_delete": {
+      "rationale": "6 NB self-titled [MERGED-INTO-*] or [ARCHIVED-DELETE-*] dated 2026-05-07 still live 25d later, holding 445 sources total. Content already merged into target NBs (dc5d01cd / d2a05271). These are pure cleanup-debt: deletable NBs (not sources) inflating NB count + storage. Each verify target NB absorbed content before delete.",
+      "action": "Antonello approves NB-level delete (nlm notebook delete <uuid>) after spot-check target absorbed content. NOT source-level delete.",
+      "candidates": [
+        {
+          "uuid": "201b4b94-deda-40a9-9fcb-0e67a3f81e52",
+          "title": "[MERGED-INTO-d2a05271-2026-05-07] Digital Sovereignty & Ancestral Wisdom AI",
+          "sources": 150,
+          "merge_target": "d2a05271",
+          "delete_risk": "PARTIAL-ABSORPTION — verify content-diff before delete (Palantir/Anchorage sources may not be in target d2a05271)"
+        },
+        {
+          "uuid": "50396b3e-b2f9-4903-8df5-65c2b9709eba",
+          "title": "[MERGED-INTO-dc5d01cd-2026-05-07] Claude Code optimization research 2026-04-21",
+          "sources": 129,
+          "merge_target": "dc5d01cd",
+          "delete_risk": "low (self-marked, merge target healthy)"
+        },
+        {
+          "uuid": "4a8f3162-6f63-4876-9fe9-642dd9ae0606",
+          "title": "[ARCHIVED-DELETE-2026-05-07] Analisi Video AI Agency",
+          "sources": 67,
+          "merge_target": "archive-no-target",
+          "delete_risk": "low (self-marked, merge target healthy)"
+        },
+        {
+          "uuid": "917a1300-61ac-4fdb-8d94-8a42503c0442",
+          "title": "[MERGED-INTO-dc5d01cd-2026-05-07] World Models 2026 — Comprehensive Survey (Genie, Waypoint, GameNGen, SORA)",
+          "sources": 49,
+          "merge_target": "dc5d01cd",
+          "delete_risk": "low (self-marked, merge target healthy)"
+        },
+        {
+          "uuid": "d97ff70b-9c14-42a3-8813-5416039b24f7",
+          "title": "[MERGED-INTO-dc5d01cd-2026-05-07] Nexus — Palantir Architecture Deep Research",
+          "sources": 44,
+          "merge_target": "dc5d01cd",
+          "delete_risk": "low (self-marked, merge target healthy)"
+        },
+        {
+          "uuid": "46b4dfe0-2be9-4fe4-97cd-3d44ef28a8ab",
+          "title": "[ARCHIVED-DELETE-2026-05-07] NB-NLM-ELEVATION — SOTA research & brainstorm 2026-04-25",
+          "sources": 6,
+          "merge_target": "archive-no-target",
+          "delete_risk": "low (self-marked, merge target healthy)"
+        }
+      ],
+      "total_nb": 6,
+      "total_sources_freed": 445,
+      "verification_spotcheck": {
+        "method": "bipolar verifier — query merge-target NB for absorbed-content topic",
+        "dc5d01cd_AIResearch": {
+          "tested_topic": "Claude Code optimization (from merged 50396b3e)",
+          "result": "CONFIRMED absorbed (5 sources cited) — 50396b3e SAFE to delete"
+        },
+        "d2a05271_ResearchLab": {
+          "tested_topic": "digital sovereignty / Palantir / Anchorage (from merged 201b4b94)",
+          "result": "PARTIAL — covers digital sovereignty but EXPLICITLY no Palantir/Anduril/Anchorage. 201b4b94 (150 src) merge may be INCOMPLETE.",
+          "recommendation": "DO NOT blind-delete 201b4b94. Deep content-diff vs target before delete, or re-merge missing sources first."
+        },
+        "verdict": "P1 split: 5 of 6 NB safe-delete (merge confirmed/archive). 201b4b94 needs content-diff first (partial-absorption risk caught empirically)."
+      }
+    },
+    "P2_MEDIUM_dedup_sources": {
+      "rationale": "24 source-level dedup proposals carried unchanged from cron health report 2026-06-02 (and prior Jun-01). Garbage (Cloudflare/Vercel anti-bot walls, off-topic Wikipedia) + same-title YouTube re-ingests with no URL.",
+      "source": "research/nb-health/2026-06-02-health.md Mode C",
+      "clusters": [
+        {
+          "id": "PRESS-1",
+          "nb": "NB-INTEL-Press (9d262101)",
+          "remove": [
+            "b7a6ee97"
+          ],
+          "reason": "off-topic Neoregelia lillyae Wikipedia"
+        },
+        {
+          "id": "TAX-1",
+          "nb": "NB-4 (d4b2eedb)",
+          "keep": "0044a518",
+          "remove": [
+            "31b1e576",
+            "5fa290ff",
+            "6d966bdd",
+            "9f036179",
+            "a9167e83",
+            "c119363c",
+            "f3be654f",
+            "fea0725e"
+          ],
+          "reason": "9x identical YouTube title, no URL"
+        },
+        {
+          "id": "TAX-2",
+          "nb": "NB-4 (d4b2eedb)",
+          "keep": "1320d061",
+          "remove": [
+            "7531256f"
+          ],
+          "reason": "2x identical title no URL"
+        },
+        {
+          "id": "TAX-3",
+          "nb": "NB-4 (d4b2eedb)",
+          "keep": "0b889bda",
+          "remove": [
+            "65e3a6be"
+          ],
+          "reason": "2x identical title no URL"
+        },
+        {
+          "id": "AIR-1",
+          "nb": "NB-INTEL-AIResearch (dc5d01cd)",
+          "remove": [
+            "50bf613a",
+            "88a840bc",
+            "8d600b73",
+            "9c7ad762",
+            "ad88f4db",
+            "b85199c9",
+            "bda8a48e",
+            "cda0e126",
+            "e143f418"
+          ],
+          "reason": "9x Cloudflare anti-bot wall, 0 content"
+        },
+        {
+          "id": "AIR-3",
+          "nb": "NB-INTEL-AIResearch (dc5d01cd)",
+          "remove": [
+            "0a48f083",
+            "1ef262e8",
+            "9cb188a0",
+            "ef5a2a75"
+          ],
+          "reason": "4x Vercel security checkpoint, 0 content"
+        }
+      ],
+      "total_sources_removable": 24,
+      "do_not_remove": [
+        "388db383 (legit Embodied World Models)",
+        "5a2d4999/7b43831a (Maltego KB, distinct URLs)"
+      ]
+    },
+    "P3_LOW_empty_scaffolds": {
+      "rationale": "17 empty NBs (0 sources) + 1 probe-sandbox. Most are orphaned research_start scaffolds (UU Cipta Kerja, Bali Minimum Wage, HGB Property, KITAS/KITAP Research, etc.) never populated. Pure NB-count noise. Low risk to delete but verify none is an intentional in-progress scaffold (75b73262 Air-M5 created 2026-06-02 — KEEP, fresh).",
+      "action": "Antonello approves batch NB delete of confirmed-orphan scaffolds. Exclude any <48h old.",
+      "candidates": [
+        {
+          "uuid": "75b73262-8357-443d-93be-212d736d8c44",
+          "title": "Air-M5 thin-client max power config",
+          "updated_at": "2026-05-31T23:04:59Z"
+        },
+        {
+          "uuid": "f772ead1-b44b-4f28-9fda-82c9e3212c87",
+          "title": "UU Cipta Kerja 2025-2026 Research",
+          "updated_at": "2026-05-31T18:31:37Z"
+        },
+        {
+          "uuid": "3da23b70-3797-40c8-b446-a0103760bc33",
+          "title": "Bali Minimum Wage 2025 Research",
+          "updated_at": "2026-05-31T18:31:36Z"
+        },
+        {
+          "uuid": "2cbc2a04-21ce-4c7f-ab98-08bacdfef0e3",
+          "title": "(untitled)",
+          "updated_at": "2026-05-31T18:31:35Z"
+        },
+        {
+          "uuid": "2090c49d-1cce-4164-9abb-4ed92eb3258a",
+          "title": "Nuzantara CRM autonomous DB Workspace Drive sync research 2026-05-09",
+          "updated_at": "2026-05-31T18:31:34Z"
+        },
+        {
+          "uuid": "c16466d0-8156-44b3-9742-0942524f6222",
+          "title": "Arming Claude Code May 2026 — deep research",
+          "updated_at": "2026-05-31T18:31:33Z"
+        },
+        {
+          "uuid": "783f4613-39cb-44a4-9ae3-b523fd808142",
+          "title": "Veo Flow Ecosystem Research 2026",
+          "updated_at": "2026-05-31T18:31:32Z"
+        },
+        {
+          "uuid": "376cf22b-1e16-497f-a144-9030a575e935",
+          "title": "Regulatory Research May 2026",
+          "updated_at": "2026-05-31T18:31:32Z"
+        },
+        {
+          "uuid": "c7f24c3a-cecd-47f5-8c47-477456b84667",
+          "title": "Veo Competitors 2026",
+          "updated_at": "2026-05-31T18:31:30Z"
+        },
+        {
+          "uuid": "53052fbf-a9c3-498b-9cef-226636ad68ce",
+          "title": "HGB Property Research 2025-2026",
+          "updated_at": "2026-05-31T18:31:29Z"
+        },
+        {
+          "uuid": "60c7ade7-5e20-45b0-9773-611b99417fa0",
+          "title": "(untitled)",
+          "updated_at": "2026-05-31T18:31:28Z"
+        },
+        {
+          "uuid": "c3f1536d-7604-4e0c-b0fa-0304d2e0a88e",
+          "title": "Tax Changes Research 2025-2026",
+          "updated_at": "2026-05-31T18:31:27Z"
+        },
+        {
+          "uuid": "bafceb4f-cd61-4922-8fc1-932852d1c054",
+          "title": "Labor Law Research May 2025",
+          "updated_at": "2026-05-31T18:31:26Z"
+        },
+        {
+          "uuid": "c8c3b3c5-fcb1-42e4-aef8-bed693163951",
+          "title": "Indonesian Tax Updates 2025-2026",
+          "updated_at": "2026-05-31T18:30:31Z"
+        },
+        {
+          "uuid": "7ed36fec-53be-48b9-90e5-4a4cab37e552",
+          "title": "KITAP Research 2025-2026",
+          "updated_at": "2026-05-31T18:30:30Z"
+        },
+        {
+          "uuid": "dd9a4084-c124-4845-b07d-57b31ae0f34f",
+          "title": "KITAS Research 2025-2026",
+          "updated_at": "2026-05-31T18:30:29Z"
+        },
+        {
+          "uuid": "081df4ff-e1db-4824-8587-b03463a2d51e",
+          "title": "Immigration Regulation Search 2025-2026",
+          "updated_at": "2026-05-31T18:30:28Z"
+        }
+      ],
+      "exclude_keep": [
+        "75b73262 Air-M5 thin-client (fresh 2026-06-02)",
+        "7e6ae978 NB-PROBE-SANDBOX (test fixture)"
+      ],
+      "total_nb": 17
+    }
+  },
+  "constraints_honored": {
+    "no_autonomous_source_delete": true,
+    "no_autonomous_nb_delete": true,
+    "curated_nb_0_14": "dedup/summarize proposals only; Antonello approves delete",
+    "osint_law_2": "NB-INTEL data never left Pro; only counts/UUIDs/proposals captured"
+  },
+  "priority_summary": {
+    "P1_nb_delete_candidates": 6,
+    "P1_sources_freed": 445,
+    "P2_source_dedup": 24,
+    "P3_empty_nb_delete_candidates": 17,
+    "recommended_first_action": "P1 — delete 6 self-marked MERGED/ARCHIVED NBs (445 src) after target-absorption spot-check. Highest signal, lowest ambiguity."
+  }
+}

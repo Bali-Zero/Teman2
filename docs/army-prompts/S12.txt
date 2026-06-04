@@ -1,0 +1,28 @@
+# DESC: S12 — CRM automation: i daemon morti (ONDA 3, Codex-heavy)
+ORCHESTRATORE sessione S12 "crm-automation-revive". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane backend-rag --task-id s12-crm-automation
+  cd .worktrees/backend-rag-s12-crm-automation
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: collega a S1 — client_changed gate-off da 215h (consumer CRM morto). Quali
+automazioni CRM (assignment, birthday_notifier, birthplace_enrichment, automation.py) sono
+vive vs morte? Cosa NON gira che dovrebbe?
+
+TOPOLOGIA (Workflow fan-out 1 per servizio):
+- ASSALITORI: 1 agente per servizio in apps/backend-rag/backend/services/crm/ — handler
+  registrato? daemon attivo? ultimo run? events_outbox drenato? + cross-ref con i 167
+  LaunchAgent.
+- ANALISTI: Codex adversarial sui falsi-positivi (servizio "morto" può essere on-demand,
+  non daemon).
+- MECCANICO (1, serial): research/crm/S12-automation-FROZEN.json (servizio × stato ×
+  revive-plan). commit → push → PR draft → STOP.
+
+VINCOLI: read-only diagnosi. Revive = spec + NEEDS-ANTONELLO (toccare consumer prod).
+OUTPUT: FROZEN. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S12 <numero-PR-o-url>

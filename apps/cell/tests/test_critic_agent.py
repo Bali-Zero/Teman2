@@ -18,6 +18,7 @@ from cell.cortex.critic import (
     WEAKNESS_PATTERN_THRESHOLD,
     CriticAgent,
     Expectation,
+    _extract_json_robust,
 )
 
 # ---------------------------------------------------------------------------
@@ -832,3 +833,90 @@ class TestClientLifecycle:
         agent = CriticAgent(AsyncMock())
         client = agent._get_client()
         assert isinstance(client, httpx.AsyncClient)
+
+
+# ---------------------------------------------------------------------------
+# W59 (2026-05-27): _extract_json_robust — tolerates truncated LLM output
+# ---------------------------------------------------------------------------
+
+
+class TestExtractJsonRobust:
+    """Critic LLM enrichment was 100% failing for ~2 weeks because
+    qwen3.5:9b hit num_predict=80 ceiling and emitted JSON without the
+    closing brace. The new helper recovers truncated objects so the
+    skill-promotion flywheel can resume."""
+
+    def test_clean_complete_json(self):
+        result = _extract_json_robust('{"expected_outcome":"success","x":1}')
+        assert result == {"expected_outcome": "success", "x": 1}
+
+    def test_markdown_fence_json(self):
+        result = _extract_json_robust('```json\n{"a":1,"b":2}\n```')
+        assert result == {"a": 1, "b": 2}
+
+    def test_markdown_fence_unlabeled(self):
+        result = _extract_json_robust('```\n{"x":42}\n```')
+        assert result == {"x": 42}
+
+    def test_preamble_text_then_json(self):
+        result = _extract_json_robust('Here is the JSON: {"y":7}')
+        assert result == {"y": 7}
+
+    def test_empty_returns_none(self):
+        assert _extract_json_robust("") is None
+
+    def test_no_json_returns_none(self):
+        assert _extract_json_robust("I cannot respond.") is None
+
+    def test_truncated_at_num_predict_ceiling(self):
+        """Real prod sample 2026-05-27: qwen3.5:9b at num_predict=80 emits
+        310 chars with rationale_nl cut mid-sentence and no closing brace."""
+        truncated = (
+            '{\n'
+            '  "expected_outcome": "partial",\n'
+            '  "expected_rt_delta_ms": 1500,\n'
+            '  "expected_health_in_n": "yellow",\n'
+            '  "rationale_nl": "The pg_dead_tuples threshold indicates excessive '
+            'dead rows, likely causing vacuum lag and increased I/O wait. While '
+            'the health monitor is currently red, immediate action (vacuum or autovac'
+        )
+        result = _extract_json_robust(truncated)
+        assert result is not None
+        assert result["expected_outcome"] == "partial"
+        assert result["expected_health_in_n"] == "yellow"
+        assert result["expected_rt_delta_ms"] == 1500
+
+    def test_truncated_drops_partial_trailing_key(self):
+        """The truncated rationale_nl key must NOT appear in recovered dict —
+        we close the object at the last complete comma boundary."""
+        truncated = (
+            '{"expected_outcome":"success","expected_health_in_n":"green",'
+            '"rationale_nl":"this is a partial string that got cut'
+        )
+        result = _extract_json_robust(truncated)
+        assert result is not None
+        assert "rationale_nl" not in result
+        assert result["expected_outcome"] == "success"
+
+    def test_nested_object_truncation_returns_none(self):
+        """Truncation mid-nested-string is unrecoverable, must return None."""
+        nested = '{"a":"hello","b":{"nested":"world tha'
+        assert _extract_json_robust(nested) is None
+
+    def test_escaped_quote_in_string(self):
+        """Brace counter must not trip on \\" inside string values."""
+        text = r'{"msg":"she said \"hi\" to me","outcome":"success"}'
+        result = _extract_json_robust(text)
+        assert result == {"msg": 'she said "hi" to me', "outcome": "success"}
+
+    def test_brace_in_string_not_counted(self):
+        """A literal { or } inside a string must not affect depth."""
+        text = '{"code":"if (x) { return; }","val":1}'
+        result = _extract_json_robust(text)
+        assert result == {"code": "if (x) { return; }", "val": 1}
+
+    def test_text_with_trailing_garbage(self):
+        """LLM sometimes appends commentary after the JSON."""
+        text = '{"a":1} -- end of JSON, sorry for the noise'
+        result = _extract_json_robust(text)
+        assert result == {"a": 1}

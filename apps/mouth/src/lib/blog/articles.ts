@@ -72,16 +72,85 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
   return CATEGORY_MAP[rawCategory] || "living";
 }
 
-/** Strip markdown headings and formatting from excerpt text */
+/** Strip markdown headings and formatting from excerpt text (used for frontmatter/backend strings) */
 function cleanExcerpt(text: string | null): string {
   if (!text) return "";
   return text
-    .replace(/^#{1,6}\s+/gm, "") // ## Headings
+    .replace(/^#{1,6}\s+.*$/gm, "") // remove ## heading lines entirely
     .replace(/\*\*(.*?)\*\*/g, "$1") // **bold**
     .replace(/\*(.*?)\*/g, "$1") // *italic*
     .replace(/\[(.*?)\]\(.*?\)/g, "$1") // [link](url)
     .replace(/`(.*?)`/g, "$1") // `code`
+    .replace(/\n{2,}/g, " ") // collapse blank lines
     .trim();
+}
+
+/**
+ * Extract the first meaningful paragraph from MDX body content.
+ * Skips all heading lines (## ...) and their immediate content blocks,
+ * picks the first paragraph longer than 60 characters.
+ */
+function extractBodyExcerpt(body: string): string {
+  if (!body) return "";
+
+  // Split into lines and process
+  const lines = body.split("\n");
+  let inHeadingBlock = false;
+  const paragraphLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // New heading encountered — reset block accumulator and skip
+    if (/^#{1,6}\s/.test(trimmed)) {
+      // If we already have paragraph lines, stop here (we're past first para)
+      if (paragraphLines.length > 0) break;
+      inHeadingBlock = true;
+      continue;
+    }
+
+    // Blank line after a heading block — heading block ends, but skip blank
+    if (inHeadingBlock && trimmed === "") {
+      inHeadingBlock = false;
+      continue;
+    }
+
+    // Skip JSX/import lines and HTML-ish tags
+    if (/^import\s|^export\s|^<[A-Z]|^<\//.test(trimmed)) continue;
+
+    // Skip lines that are only markdown decorators (hr, list bullets, blockquote markers)
+    if (/^[-*_]{3,}$|^>\s/.test(trimmed)) continue;
+
+    if (trimmed !== "") {
+      paragraphLines.push(trimmed);
+    } else if (paragraphLines.length > 0) {
+      // Blank line = paragraph break; check if accumulated text is long enough
+      const candidate = paragraphLines
+        .join(" ")
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/\*(.*?)\*/g, "$1")
+        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+        .replace(/`(.*?)`/g, "$1")
+        .trim();
+      if (candidate.length > 60) return candidate;
+      // Too short — reset and keep looking
+      paragraphLines.length = 0;
+    }
+  }
+
+  // End of file — check whatever is accumulated
+  if (paragraphLines.length > 0) {
+    const candidate = paragraphLines
+      .join(" ")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+      .replace(/`(.*?)`/g, "$1")
+      .trim();
+    if (candidate.length > 60) return candidate;
+  }
+
+  return "";
 }
 
 /** Default cover images per normalized category (files that actually exist in public/static/blog/) */
@@ -385,7 +454,9 @@ async function getMdxArticleBySlug(
     slug: frontmatter.slug || slug,
     title: frontmatter.title || "Untitled",
     subtitle: frontmatter.subtitle,
-    excerpt: frontmatter.excerpt || "",
+    excerpt: frontmatter.excerpt
+      ? cleanExcerpt(frontmatter.excerpt)
+      : extractBodyExcerpt(content),
     content: content,
     coverImage:
       frontmatter.coverImage ||
@@ -506,7 +577,9 @@ export async function getArticleByLocale(
         slug: frontmatter.slug || slug,
         title: frontmatter.title || "Untitled",
         subtitle: frontmatter.subtitle,
-        excerpt: frontmatter.excerpt || "",
+        excerpt: frontmatter.excerpt
+          ? cleanExcerpt(frontmatter.excerpt)
+          : extractBodyExcerpt(content),
         content,
         coverImage:
           frontmatter.coverImage ||

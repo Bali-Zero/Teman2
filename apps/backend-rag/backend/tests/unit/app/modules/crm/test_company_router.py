@@ -580,9 +580,11 @@ class TestClientCompanyLink:
         test_app.dependency_overrides[get_current_user] = lambda: mock_current_user
 
         mock_db_pool._mock_conn.fetchval = AsyncMock(return_value=1)
-        mock_db_pool._mock_conn.fetchrow = AsyncMock(
-            side_effect=[None, MagicMock(__getitem__=lambda s, k: {"id": 10}[k])],
+        client_row = MagicMock(
+            __getitem__=lambda s, k: {"assigned_to": None, "created_by": None}[k]
         )
+        link_row = MagicMock(__getitem__=lambda s, k: {"id": 10}[k])
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(side_effect=[client_row, None, link_row])
 
         with TestClient(test_app) as tc:
             resp = tc.post(

@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 import { BZLogo } from "@balizero/core/components/BZLogo";
+import { HeroCTA } from "./HeroCTA";
 
 /**
  * HeroBlueprint — Essay-Opener hero.
@@ -112,28 +112,8 @@ export function HeroBlueprint() {
                 We also write about why it keeps happening.
               </p>
 
-              {/* CTAs — text links, not buttons, per brand voice */}
-              <div className="flex items-center gap-4 md:gap-8 mb-6 md:mb-10 flex-wrap">
-                <a
-                  href="#visa"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-md text-[14px] font-semibold transition-transform hover:-translate-y-0.5"
-                  style={{
-                    background: "#ffffff",
-                    color: "#121016",
-                    boxShadow: "0 10px 32px rgba(0,0,0,0.35)",
-                  }}
-                >
-                  Book a 30-minute call
-                  <ArrowRight size={15} strokeWidth={2.2} />
-                </a>
-                <a
-                  href="#news"
-                  className="text-[13px] font-semibold underline-offset-4 hover:underline"
-                  style={{ color: "rgba(255,255,255,0.85)" }}
-                >
-                  Read the dispatch →
-                </a>
-              </div>
+              {/* CTAs — delegated to client island for onClick analytics */}
+              <HeroCTA />
 
               {/* Trust line — concrete, not generic. Hidden on small mobile. */}
               <div
