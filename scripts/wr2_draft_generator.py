@@ -157,10 +157,22 @@ HARD RULES:
 - Slide 11 = CTA to Bali Zero
 - Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
 
+TONAL PALETTE (per hero slide — drives the photographic look, fights monotony):
+Each `is_hero_image: true` slide MUST include a `tonal_palette` field. Pick ONE
+that fits the slide's mood; do NOT use the same palette for every hero slide,
+and vary it across carousels on the same topic (the brand forbids two
+same-domain carousels looking identical):
+- "warm-ochre": warm, intimate, document/interior mood (the house style)
+- "cool-teal": detached, analytical, institutional, data-heavy
+- "monochrome": stark, archival, historical, high-gravity
+- "high-contrast": tense, confrontational, urgent
+- "bleached-daylight": open, hopeful, resolution, "the way out"
+Non-hero slides do not need it.
+
 HERO IMAGE SELECTION (MANDATORY):
 You MUST mark exactly 4 slides as `is_hero_image: true`:
 - Slide 1 (cover) — ALWAYS hero
-- Slide 11 (CTA closer "What This Means For You") — ALWAYS hero
+- Slide 11 (CTA closer) — ALWAYS hero
 - 2 mid-carousel slides at NARRATIVE TURNING POINTS — pick the slides that
   open a new beat (e.g. "the shift", "the stakes", "fiction vs substance"),
   not the ones that list facts or numbers.
@@ -246,8 +258,8 @@ Structure:
       "slide_type": "cta",
       "is_cover": false,
       "is_hero_image": true,
-      "headline": "What This Means For You",
-      "body": "Two-sentence call to action. Bali Zero — Link in bio for a consultation."
+      "headline": "Where this leaves you",
+      "body": "One clear consequence, then one concrete next step. Reach Bali Zero when the deadline is yours, not theirs."
     }
   ]
 }
@@ -709,6 +721,12 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
 
     normalised: list[dict[str, Any]] = []
     for i, raw in enumerate(slides, start=1):
+        # tonal_palette (2026-06-05): per-hero look selector consumed by
+        # wr2_image_generator._resolve_tonal. Passthrough as a lowercase hint;
+        # unknown/missing values resolve to the default look downstream, so we
+        # store whatever the model gave (or None) without hard-validating here.
+        tonal = raw.get("tonal_palette")
+        tonal = tonal.strip().lower() if isinstance(tonal, str) and tonal.strip() else None
         slide = {
             "slide_number": i,
             "slide_type": raw.get("slide_type", "body"),
@@ -718,6 +736,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
             "subhead": (raw.get("subhead") or "").strip()[:120],
             "body": (raw.get("body") or "").strip()[:500],
             "image_prompt": (raw.get("image_prompt") or "").strip()[:600],
+            "tonal_palette": tonal,
             "image_url": None,  # filled later for cover only
         }
         normalised.append(slide)
@@ -881,7 +900,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     await _persist_ready(conn, draft_id, register, slides, council_meta)
     logger.info("Draft %s → status=drafts", draft_id)
 
-    cover_status = "OK (Imagen Ultra)" if cover_url else f"FAILED: {(cover_err or '')[:60]}"
+    cover_status = "OK" if cover_url else f"FAILED: {(cover_err or '')[:60]}"
     body_count = len(slides) - 1
     _send_telegram(
         "WR2 draft pronto per Canva\n"
