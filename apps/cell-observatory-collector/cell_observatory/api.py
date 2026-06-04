@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Header, HTTPException
 
 from cell_observatory.config import Config
 from cell_observatory.storage import Storage
+
+# Boot timestamp captured at import — used to report process uptime in /health.
+_BOOT_TIME = time.time()
 
 
 async def build_app() -> tuple[FastAPI, Storage]:
@@ -30,7 +34,7 @@ async def build_app() -> tuple[FastAPI, Storage]:
             ((datetime.now(timezone.utc) - timedelta(hours=24)).timestamp() * 1000,),
         )
         return {
-            "alive": True, "uptime_s": 0,  # stub for fase 0
+            "alive": True, "uptime_s": int(time.time() - _BOOT_TIME),
             "events_total": rows[0]["n"],
             "events_24h": events_24h[0]["n"],
         }
