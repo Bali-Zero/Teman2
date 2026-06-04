@@ -14,6 +14,7 @@ import json
 
 import pytest
 
+from backend.llm.ollama_client import is_ollama_available
 from backend.services.intake import extract
 
 # --------------------------------------------------------------------------- #
@@ -200,6 +201,8 @@ async def test_extract_stage_rejects_wrong_stage():
 @pytest.mark.integration
 async def test_live_sealion_golden_rule_null_on_illegible():
     """Real SEA-LION must null an illegible field, not invent it."""
+    if not await is_ollama_available():
+        pytest.skip("SEA-LION/Ollama not reachable (localhost:11434)")
     ocr = (
         "NOMOR INDUK BERUSAHA\n"
         "NIB: 9876543210987\n"
