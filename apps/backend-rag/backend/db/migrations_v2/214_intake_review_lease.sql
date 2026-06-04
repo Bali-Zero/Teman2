@@ -1,4 +1,4 @@
--- 213_intake_review_lease.sql — FASE 5A review-queue claim/lease columns (LOCAL Pro DB only)
+-- 214_intake_review_lease.sql — FASE 5A review-queue claim/lease columns (LOCAL Pro DB only)
 -- Adds the reviewer-lease primitives to document_routing_proposal so the HITL
 -- review-queue API (5A) can atomically "claim" a proposal for one reviewer.
 -- Panel P0#5 (06-fase5-hitl-writer-design §8): claim with TTL alone is a race —
