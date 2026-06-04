@@ -130,3 +130,22 @@ It derives no-touch lanes first, then proposes candidate workstreams only when
 the component area is not already owned by an open PR, active worktree, or live
 runtime signal. This keeps the orchestration map reusable without relying on a
 single stale report snapshot.
+
+## 2026-06-05 Multi-Machine Extension
+
+The live mapper can now include read-only remote observations before deriving
+safe candidate workstreams:
+
+```bash
+python scripts/ops/orchestrator_live_map.py --include-m5 --format markdown
+python scripts/ops/orchestrator_live_map.py --remote m5 --format json
+python scripts/ops/orchestrator_live_map.py --remote air=air:/Users/balizero/Desktop/nuzantara
+```
+
+Remote collection is intentionally narrow: `ssh`, `git -C <repo> worktree list
+--porcelain`, repo head metadata, and `ps aux`. It does not run remote cleanup,
+does not send process signals, and does not call `gh` remotely. Remote
+worktrees and process signals are tagged with their source machine, but their
+lanes block local candidate generation globally. That is the operational rule
+needed to avoid Codex and Claude Code working on the same feature from Pro and
+Air-M5 at the same time.
