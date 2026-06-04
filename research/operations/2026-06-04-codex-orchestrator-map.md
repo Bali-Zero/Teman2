@@ -114,3 +114,19 @@ High priority, frontend/MCP:
 - Ops lane: prove CRM Guardian/WA/doc-intake runtime from logs before changing
   worker automation.
 - M5 lane: resolve Olympus/db safety work before changing light process exposure.
+
+## 2026-06-05 Reusable Live Mapper
+
+The manual map is now backed by `scripts/ops/orchestrator_live_map.py`, a
+read-only CLI that gathers:
+
+- `git worktree list --porcelain` for active isolated lanes.
+- `gh pr list` for open remote branches and likely ownership.
+- local process signals for Claude, Codex, Gemini, FlowKit, WA, and backend
+  runtimes.
+- high-signal incomplete markers in operative source roots.
+
+It derives no-touch lanes first, then proposes candidate workstreams only when
+the component area is not already owned by an open PR, active worktree, or live
+runtime signal. This keeps the orchestration map reusable without relying on a
+single stale report snapshot.
