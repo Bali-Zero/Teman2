@@ -532,3 +532,26 @@ export function trackPropertyCTA(
 ): void {
   trackFunnelCTA("property", action, extra);
 }
+
+// ============================================================
+// Hero Section CTA Tracking
+// Thin wrappers for the two hero CTAs — triple-dispatch
+// (GA4 + internal CRM bus + funnel store) via trackFunnelEvent.
+// ============================================================
+
+type HeroCTAEvent = "hero_book_call_click" | "hero_read_dispatch_click";
+
+/**
+ * Track a hero section CTA click.
+ * Triple-dispatch: GA4 + internal CRM bus + funnel store.
+ *
+ * @param event - Canonical event name from FUNNEL_EVENTS
+ */
+export function trackHeroCTA(event: HeroCTAEvent): void {
+  sendGA4Event(event, { event_category: "Hero" });
+  trackEvent(event, { section: "hero" });
+  void trackFunnelEvent(event, {
+    sessionId: getOrCreateSessionId(),
+    payload: { section: "hero" },
+  });
+}
