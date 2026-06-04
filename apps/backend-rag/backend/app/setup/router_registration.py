@@ -24,8 +24,12 @@ def include_routers(api: FastAPI) -> None:
     from backend.app.modules.knowledge.router import router as knowledge_router
     from backend.app.routers import (
         admin_conversation_cleanup,
+        admin_email_health,  # [ORPHAN-FIX] manifest-declared, was never include_router'd
         admin_logs,
+        admin_pii,  # [ORPHAN-FIX] PII redaction admin surface
         admin_practice_auto_create,
+        admin_rate_limit,  # [ORPHAN-FIX] _BOTH — rate-limit stats admin
+        admin_self_healing,  # [ORPHAN-FIX] _BOTH — self-healing agent admin
         admin_team_activity,
         agent,  # [NEW] LangGraph agentic layer
         agentic_rag,
@@ -42,6 +46,7 @@ def include_routers(api: FastAPI) -> None:
         channel_health,  # [HEARTBEAT] Sprint 1.B 2026-05-02 — Cell-side bridge
         channels,  # Channel health, DLQ, unified conversations
         collective_memory,
+        compliance_alerts,  # [ORPHAN-FIX] alert outcome recording + autotune metrics
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
         crm_clients,
@@ -82,6 +87,7 @@ def include_routers(api: FastAPI) -> None:
         ingest,
         instagram_chat,
         intel_lake,
+        intel_observability,  # [ORPHAN-FIX] _BOTH — intel pipeline health/observability
         kbli_notebook,
         kbli_notebook_chat,
         kg_agentic,
@@ -91,6 +97,7 @@ def include_routers(api: FastAPI) -> None:
         lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         legal_ingest,
         lkpm,
+        llm_costs,  # [ORPHAN-FIX] remote LLM cost ingestion (Pro/Air cron agents)
         media,
         messaging_identity,
         metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 — 4 metabolic metrics (read-only)
@@ -113,14 +120,15 @@ def include_routers(api: FastAPI) -> None:
         portal_family,
         portal_invite,
         portal_matters,
-        portal_notifications,
         portal_notification_prefs,
+        portal_notifications,
         portal_process_timeline,
         portal_taxes,
         portal_visa,
         prime,
         prime_v2,  # [PRIME NEXUS] Layered geospatial intelligence API
         query_analytics,
+        research_control,  # [ORPHAN-FIX] SOTA research kill-switches
         session,
         sheets,
         skill,  # [SKILL] Skill Registry — canonical procedures (Sprint 5.2 W3-4)
@@ -139,12 +147,14 @@ def include_routers(api: FastAPI) -> None:
         wa_dashboard_stream,
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
+        war_room_dashboard,  # [ORPHAN-FIX] War Room metrics aggregate (Sprint 11)
         webhooks,
         websocket,
         whatsapp_chat,
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
+        workspace_analytics,  # [ORPHAN-FIX] workspace analytics admin surface
         workspace_inbox,  # /api/workspace/inbox unified team feed (wa-mirror, telegram, email)
         zoho_email,
     )
@@ -416,6 +426,22 @@ def include_routers(api: FastAPI) -> None:
     # Guardian V4 decision audit + risk scores
     api.include_router(guardian.router)
 
+    # ── Manifest-orphan routers (PR #422 scar class) ──────────────────────
+    # These were declared in router_manifest.py but had ZERO include_router
+    # calls here, so their endpoints 404'd despite the feature being shipped.
+    # Wired into both include_routers() and include_light_routers() (all are
+    # _API or _BOTH). See test_manifest_registration_parity.py for the guard.
+    api.include_router(admin_email_health.router)  # /api/admin/email-health
+    api.include_router(admin_pii.router)  # /api/admin/pii — PII redaction admin
+    api.include_router(admin_rate_limit.router)  # [_BOTH] /api/admin/rate-limit
+    api.include_router(admin_self_healing.router)  # [_BOTH] /api/admin/self-healing
+    api.include_router(compliance_alerts.router)  # /api/compliance/alerts
+    api.include_router(intel_observability.router)  # [_BOTH] /api/intel/health
+    api.include_router(llm_costs.router)  # /api/admin/llm-costs
+    api.include_router(research_control.router)  # /api/research/control kill-switches
+    api.include_router(war_room_dashboard.router)  # /api/war-room/metrics
+    api.include_router(workspace_analytics.router)  # /api/workspace/analytics
+
     # Visa Oracle — public product (no auth required)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
 
@@ -437,8 +463,12 @@ def include_light_routers(api: FastAPI) -> None:
         admin_drive_health,
         admin_drive_refresh,
         admin_drive_setup,
+        admin_email_health,  # [ORPHAN-FIX] manifest-declared, was never include_router'd
         admin_logs,
+        admin_pii,  # [ORPHAN-FIX] PII redaction admin surface
         admin_practice_auto_create,
+        admin_rate_limit,  # [ORPHAN-FIX] _BOTH — rate-limit stats admin
+        admin_self_healing,  # [ORPHAN-FIX] _BOTH — self-healing agent admin
         admin_team_activity,
         admin_zoho_auth,
         analytics,
@@ -449,6 +479,7 @@ def include_light_routers(api: FastAPI) -> None:
         cell_status,
         channel_health,  # [HEARTBEAT] Sprint 1.B 2026-05-02 — Cell-side bridge
         channels,  # Channel health, DLQ, unified conversations
+        compliance_alerts,  # [ORPHAN-FIX] alert outcome recording + autotune metrics
         crm_analytics,
         crm_clients_documents,
         crm_company,
@@ -479,9 +510,11 @@ def include_light_routers(api: FastAPI) -> None:
         image_generation,
         instagram_chat,
         intel_lake,
+        intel_observability,  # [ORPHAN-FIX] _BOTH — intel pipeline health/observability
         knowledge_activity,
         lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         lkpm,
+        llm_costs,  # [ORPHAN-FIX] remote LLM cost ingestion (Pro/Air cron agents)
         media,
         messaging_identity,
         metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 read-only metrics (PR #60)
@@ -499,14 +532,15 @@ def include_light_routers(api: FastAPI) -> None:
         portal_family,
         portal_invite,
         portal_matters,
-        portal_notifications,
         portal_notification_prefs,
+        portal_notifications,
         portal_process_timeline,
         portal_taxes,
         portal_visa,
         prime,
         prime_v2,
         query_analytics,
+        research_control,  # [ORPHAN-FIX] SOTA research kill-switches
         session,
         sheets,
         skill,  # [SKILL] Skill Registry — canonical procedures (PR #55)
@@ -524,12 +558,14 @@ def include_light_routers(api: FastAPI) -> None:
         wa_dashboard_stream,
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
+        war_room_dashboard,  # [ORPHAN-FIX] War Room metrics aggregate (Sprint 11)
         webhooks,
         websocket,
         whatsapp_chat,
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
+        workspace_analytics,  # [ORPHAN-FIX] workspace analytics admin surface
         workspace_inbox,  # /api/workspace/inbox unified team feed
         zoho_email,
     )
@@ -724,6 +760,22 @@ def include_light_routers(api: FastAPI) -> None:
     # Knowledge Activity Tracking
     api.include_router(knowledge_activity.router)
 
+    # ── Manifest-orphan routers (PR #422 scar class) ──────────────────────
+    # Declared in router_manifest.py but had ZERO include_router calls → 404
+    # in main_api production despite the feature being shipped. All are _API
+    # or _BOTH, so they MUST appear on the light (api) process too.
+    # Guard: test_manifest_registration_parity.py.
+    api.include_router(admin_email_health.router)  # /api/admin/email-health
+    api.include_router(admin_pii.router)  # /api/admin/pii — PII redaction admin
+    api.include_router(admin_rate_limit.router)  # [_BOTH] /api/admin/rate-limit
+    api.include_router(admin_self_healing.router)  # [_BOTH] /api/admin/self-healing
+    api.include_router(compliance_alerts.router)  # /api/compliance/alerts
+    api.include_router(intel_observability.router)  # [_BOTH] /api/intel/health
+    api.include_router(llm_costs.router)  # /api/admin/llm-costs
+    api.include_router(research_control.router)  # /api/research/control kill-switches
+    api.include_router(war_room_dashboard.router)  # /api/war-room/metrics
+    api.include_router(workspace_analytics.router)  # /api/workspace/analytics
+
     # Visa Oracle — public product (no auth required, light deps only)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
 
@@ -743,6 +795,8 @@ def include_heavy_routers(api: FastAPI) -> None:
     from backend.app.modules.identity.router import router as identity_router
     from backend.app.modules.knowledge.router import router as knowledge_router
     from backend.app.routers import (
+        admin_rate_limit,  # [ORPHAN-FIX] _BOTH — rate-limit stats admin
+        admin_self_healing,  # [ORPHAN-FIX] _BOTH — self-healing agent admin
         agent,
         agentic_rag,
         agents,
@@ -766,6 +820,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         ingest,
         intel,
         intel_analytics,
+        intel_observability,  # [ORPHAN-FIX] _BOTH — intel pipeline health/observability
         intel_scraper,
         kbli_notebook,
         kbli_notebook_chat,
@@ -869,5 +924,14 @@ def include_heavy_routers(api: FastAPI) -> None:
 
     # RAG Monitoring router (Retrieval quality metrics and alerts)
     api.include_router(monitoring_rag.router)
+
+    # ── Manifest-orphan routers, _BOTH process group (PR #422 scar class) ──
+    # These were declared _BOTH in router_manifest.py but had ZERO
+    # include_router calls anywhere → 404 on the rag process too. The _API
+    # variants of these are wired in include_routers/include_light_routers.
+    # Guard: test_manifest_registration_parity.py.
+    api.include_router(admin_rate_limit.router)  # /api/admin/rate-limit
+    api.include_router(admin_self_healing.router)  # /api/admin/self-healing
+    api.include_router(intel_observability.router)  # /api/intel/health
 
     # Visa Oracle — already registered in include_light_routers(), skip duplicate
