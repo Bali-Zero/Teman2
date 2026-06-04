@@ -119,24 +119,20 @@ async def post_retrain(
     """Manually trigger threshold autotune (admin only, honors kill-switch).
 
     Args:
-        body: {dry_run, category?}. dry_run is accepted but not yet enforced
-              at the service layer (reserved for future).
+        body: {dry_run, category?}. dry_run previews threshold changes without
+              persisting them.
         user: Authenticated user dict.
         pool: DB connection pool.
 
     Returns:
-        {changed: [...], reason: "applied"|"no_change"|"autotune_disabled"}
+        {changed: [...], reason: "applied"|"dry_run"|"no_change"|"autotune_disabled"}
     """
     _require_admin(user)
     fb = AlertFeedback(db_pool=pool)
-    result: dict[str, Any] = await fb.retrain(category=body.category if body.category else None)
-    if body.dry_run:
-        logger.warning(
-            "dry_run=true requested but not implemented at service layer; "
-            "thresholds were actually updated",
-        )
-        result["dry_run_not_implemented"] = True
-    return result
+    return await fb.retrain(
+        category=body.category if body.category else None,
+        dry_run=body.dry_run,
+    )
 
 
 @router.get("")

@@ -42,6 +42,7 @@ def include_routers(api: FastAPI) -> None:
         channel_health,  # [HEARTBEAT] Sprint 1.B 2026-05-02 — Cell-side bridge
         channels,  # Channel health, DLQ, unified conversations
         collective_memory,
+        compliance_alerts,
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
         crm_clients,
@@ -82,6 +83,7 @@ def include_routers(api: FastAPI) -> None:
         ingest,
         instagram_chat,
         intel_lake,
+        intel_observability,
         kbli_notebook,
         kbli_notebook_chat,
         kg_agentic,
@@ -104,13 +106,17 @@ def include_routers(api: FastAPI) -> None:
         omnichannel,  # [NEW] Unified inbox for cross-channel conversations
         oracle_ingest,
         oracle_universal,
+        partners,  # [PARTNERS] CRM Partners module v1 (PR #141 + follow-ups)
         performance,
         portal,
         portal_admin,
         portal_billing,
+        portal_dashboard,
         portal_drive,
+        portal_family,
         portal_invite,
         portal_matters,
+        portal_notification_prefs,
         portal_notifications,
         portal_process_timeline,
         portal_taxes,
@@ -118,6 +124,7 @@ def include_routers(api: FastAPI) -> None:
         prime,
         prime_v2,  # [PRIME NEXUS] Layered geospatial intelligence API
         query_analytics,
+        research_control,
         session,
         sheets,
         skill,  # [SKILL] Skill Registry — canonical procedures (Sprint 5.2 W3-4)
@@ -134,13 +141,16 @@ def include_routers(api: FastAPI) -> None:
         voice,
         wa_actions,
         wa_dashboard_stream,
+        wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
+        war_room_dashboard,
         webhooks,
         websocket,
         whatsapp_chat,
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
+        workspace_analytics,
         workspace_inbox,  # /api/workspace/inbox unified team feed (wa-mirror, telegram, email)
         zoho_email,
     )
@@ -205,6 +215,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_tax_pilot.router)
     api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
+    api.include_router(partners.router)  # [PARTNERS] /api/partners/* — CRM Partners module
 
     # Channel system + Omnichannel router (unified inbox)
     api.include_router(channel_health.router)  # /api/channels/{name}/health Cell heartbeat bridge
@@ -232,19 +243,28 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal.router)
     api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
+    api.include_router(portal_dashboard.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_drive.router)
+    api.include_router(portal_family.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
+    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
 
     # Compliance routers
+    api.include_router(compliance_alerts.router)
     api.include_router(lkpm.router)  # LKPM Investment Activity Reports
 
     # Analytics routers (Admin/reporting)
     api.include_router(analytics.router)
+    api.include_router(war_room_dashboard.router)
+    api.include_router(workspace_analytics.router)
+
+    # SOTA research controls (kill-switch guarded)
+    api.include_router(research_control.router)
 
     # Ingestion routers
     api.include_router(ingest.router)
@@ -293,9 +313,11 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
     api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
+    api.include_router(intel_observability.router)  # Intel Lake + WR2 pipeline health
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
         messaging_identity.router,
@@ -315,15 +337,25 @@ def include_routers(api: FastAPI) -> None:
         admin_drive_health,
         admin_drive_refresh,
         admin_drive_setup,
+        admin_email_health,
+        admin_pii,
+        admin_rate_limit,
+        admin_self_healing,
         admin_zoho_auth,
+        llm_costs,
     )
 
     api.include_router(admin_crm_kg.router)
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
+    api.include_router(admin_email_health.router)
+    api.include_router(admin_pii.router)
+    api.include_router(admin_rate_limit.router)
     api.include_router(admin_drive_refresh.router)
     api.include_router(admin_drive_setup.router)
+    api.include_router(admin_self_healing.router)
     api.include_router(admin_zoho_auth.router)
+    api.include_router(llm_costs.router)
 
     # Blog routers
     api.include_router(newsletter.router)
@@ -429,8 +461,12 @@ def include_light_routers(api: FastAPI) -> None:
         admin_drive_health,
         admin_drive_refresh,
         admin_drive_setup,
+        admin_email_health,
         admin_logs,
+        admin_pii,
         admin_practice_auto_create,
+        admin_rate_limit,
+        admin_self_healing,
         admin_team_activity,
         admin_zoho_auth,
         analytics,
@@ -441,6 +477,7 @@ def include_light_routers(api: FastAPI) -> None:
         cell_status,
         channel_health,  # [HEARTBEAT] Sprint 1.B 2026-05-02 — Cell-side bridge
         channels,  # Channel health, DLQ, unified conversations
+        compliance_alerts,
         crm_analytics,
         crm_clients_documents,
         crm_company,
@@ -471,9 +508,11 @@ def include_light_routers(api: FastAPI) -> None:
         image_generation,
         instagram_chat,
         intel_lake,
+        intel_observability,
         knowledge_activity,
         lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         lkpm,
+        llm_costs,
         media,
         messaging_identity,
         metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 read-only metrics (PR #60)
@@ -486,9 +525,12 @@ def include_light_routers(api: FastAPI) -> None:
         portal,
         portal_admin,
         portal_billing,
+        portal_dashboard,
         portal_drive,
+        portal_family,
         portal_invite,
         portal_matters,
+        portal_notification_prefs,
         portal_notifications,
         portal_process_timeline,
         portal_taxes,
@@ -496,6 +538,7 @@ def include_light_routers(api: FastAPI) -> None:
         prime,
         prime_v2,
         query_analytics,
+        research_control,
         session,
         sheets,
         skill,  # [SKILL] Skill Registry — canonical procedures (PR #55)
@@ -503,7 +546,7 @@ def include_light_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
-        team_members,
+        # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
         telegram,
         telegram_webhook,
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
@@ -511,13 +554,16 @@ def include_light_routers(api: FastAPI) -> None:
         visa_oracle,
         wa_actions,
         wa_dashboard_stream,
+        wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
+        war_room_dashboard,
         webhooks,
         websocket,
         whatsapp_chat,
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
+        workspace_analytics,
         workspace_inbox,  # /api/workspace/inbox unified team feed
         zoho_email,
     )
@@ -592,19 +638,28 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(portal.router)
     api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
+    api.include_router(portal_dashboard.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_drive.router)
+    api.include_router(portal_family.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
+    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
 
     # Compliance routers
+    api.include_router(compliance_alerts.router)
     api.include_router(lkpm.router)
 
     # Analytics routers
     api.include_router(analytics.router)
+    api.include_router(war_room_dashboard.router)
+    api.include_router(workspace_analytics.router)
+
+    # SOTA research controls (kill-switch guarded)
+    api.include_router(research_control.router)
 
     # Preview router (for Telegram article previews)
     from backend.app.routers import preview
@@ -624,6 +679,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
     api.include_router(wa_dashboard_stream.router)  # WA Team Inbox SSE live stream (M1 read-only)
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
     api.include_router(webhooks.router)
@@ -640,9 +696,14 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(admin_crm_kg.router)
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
+    api.include_router(admin_email_health.router)
+    api.include_router(admin_pii.router)
+    api.include_router(admin_rate_limit.router)
     api.include_router(admin_drive_refresh.router)
     api.include_router(admin_drive_setup.router)
+    api.include_router(admin_self_healing.router)
     api.include_router(admin_zoho_auth.router)
+    api.include_router(llm_costs.router)
 
     # Blog routers (light)
     api.include_router(newsletter.router)
@@ -658,7 +719,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(team.router)
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
-    api.include_router(team_members.router)
+    # api.include_router(team_members.router)  # DISABLED: duplicates team.py (audit 2026-04-03)
 
     # Media router
     api.include_router(media.router)
@@ -668,6 +729,7 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Intel Lake — Wave 1 (mig 168) unified intel pipeline ingest endpoint
     api.include_router(intel_lake.router)
+    api.include_router(intel_observability.router)
 
     # Query Analytics router
     api.include_router(query_analytics.router)
@@ -727,6 +789,8 @@ def include_heavy_routers(api: FastAPI) -> None:
     from backend.app.modules.identity.router import router as identity_router
     from backend.app.modules.knowledge.router import router as knowledge_router
     from backend.app.routers import (
+        admin_rate_limit,
+        admin_self_healing,
         agent,
         agentic_rag,
         agents,
@@ -750,6 +814,8 @@ def include_heavy_routers(api: FastAPI) -> None:
         ingest,
         intel,
         intel_analytics,
+        intel_lake,
+        intel_observability,
         intel_scraper,
         kbli_notebook,
         kbli_notebook_chat,
@@ -771,6 +837,8 @@ def include_heavy_routers(api: FastAPI) -> None:
     # Health endpoints (required for Fly.io process health checks)
     api.include_router(health.router)
     api.include_router(handlers.router)
+    api.include_router(admin_rate_limit.router)
+    api.include_router(admin_self_healing.router)
 
     # Agent routers
     api.include_router(agent.router)
@@ -811,6 +879,8 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(intel.router)
     api.include_router(intel_scraper.router)
     api.include_router(intel_analytics.router)
+    api.include_router(intel_lake.router)
+    api.include_router(intel_observability.router)
 
     from backend.app.core.config import settings
 

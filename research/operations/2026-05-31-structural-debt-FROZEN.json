@@ -1,0 +1,162 @@
+{
+  "audit": "S4-structural-debt-surface",
+  "frozen_at": 1780189456,
+  "frozen_at_utc": "2026-05-31T00:44:16Z",
+  "host": "Nuzantara (Pro)",
+  "auditor": "Claude Opus 4.8 (1M ctx) — autonomous L2 subagent",
+  "anti_hallucination_note": "Every verdict below is tool-derived in THIS audit turn (postgres-nuzantara MCP read-only, git, ls/stat, plutil, launchctl, ssh mini, grep on live files). No remembered or fabricated outputs. Verdicts use ONLY current world-state, not the scar narrative.",
+  "scope_note": "Did ONLY the gaps left by the two prior audits. Reused (did NOT recount): worktree W62 inventory, branch counts, escalations, events_outbox gate-off from 2026-05-31-system-audit-FROZEN.json (on branch chore/system-audit-2026-05-31); 167-plist green/yellow/red, reboot bombs, secret plists from 2026-05-31-organism-truth-FROZEN.json (committed at HEAD of chore/audit-organism-2026-05-31). New work: rolsuper W38, migrations 129/130, mata_garuda active-active Pro-vs-Mini, EventBus doc drift, per-scar verdict for all 10.",
+
+  "scars": [
+    {
+      "id": "W62",
+      "title": "agent worktree broker TTL=60min violated — orphan worktrees, no auto-cleanup",
+      "verdict": "worsened",
+      "evidence": "git worktree list: 8 worktrees now (W62 incident had 6). system-audit-FROZEN confirms 4 hold REAL uncommitted code WIP (crm-guardian-audit=8 .py, wa-nlm-validation-battery=6, docs-lab-clean-recreate=16 incl NEW untracked feature files, wr2-mouth-next16-lint=4). Proposed W62 antibodies NOT shipped: no com.nuzantara.agent-worktree-cleanup.* LaunchAgent (absent), no tests/integration/test_no_stale_worktrees.py (absent). agent_start.py broker exists but --cleanup is opt-in and WIP-safe (won't drop dirty). Surface is actively accumulating.",
+      "fix_owner": "operator/orchestrator (commit sibling WIP first, then GC non-dirty)"
+    },
+    {
+      "id": "deploy-desync-2026-05-25",
+      "title": "agent-library-evolver / sibling checkout on REPO_ROOT shared with wr2-deploy-puller",
+      "verdict": "exploded_silent",
+      "evidence": "DEFINITIVE (an earlier intermediate `.git`-absent / `worktree list --porcelain` read was a MISLEADING artifact — the symlink defeated `test -e`; corrected here per anti-hallucination). `git worktree list --porcelain`: ~/Desktop/nuzantara-deploy IS a registered worktree on branch refts/heads/deploy/main, but the path is a SYMLINK (created 2026-05-31 01:53) -> .worktrees/backend-rag-crm-guardian-audit (a sibling agent's worktree, HEAD 0df03d6d4 on branch agent/nuzantara/backend-rag/crm-guardian-audit, NOT deploy/main; deploy/main SHA != origin/main). wr2-deploy-pull.log shows the EXACT scar #2 failure firing HOURLY through 2026-05-31 08:26: 'ERROR: deploy worktree on branch=agent/nuzantara/backend-rag/crm-guardian-audit, expected deploy/main', with 'alert wrong_branch suppressed (cooldown active)'. deploy-puller launchctl last exit code=1, evolver last exit code=2. The WR2 production cron (WR2_REPO_ROOT defaults to ~/Desktop/nuzantara-deploy) is therefore reading STALE code from a crm-guardian worktree, silently, operator-invisible — this is the dangerous GIA-ESPLOSA-SILENTE class.",
+      "fix_owner": "operator/orchestrator (re-point ~/Desktop/nuzantara-deploy to a clean deploy/main worktree; the sibling who symlinked it 01:53 should release). Cousin of W62 + sibling-race."
+    },
+    {
+      "id": "W38-rolsuper",
+      "title": "backend_rag_v2 Postgres role has rolsuper=t (PENDING P1 SECURITY)",
+      "verdict": "still_armed",
+      "evidence": "postgres-nuzantara MCP read-only (verified TWICE this turn): SELECT rolname,rolsuper FROM pg_roles WHERE rolsuper=true returns backend_rag_v2 rolsuper=true. Spec research/operations/specs/W38-backend-rag-v2-nosuperuser.md EXISTS (18420 bytes), frontmatter 'status: DRAFT — awaiting Antonello approval', 'status_detail: NOT EXECUTED — Stage C (ALTER ROLE NOSUPERUSER) requires explicit operator sign-off'. Audit snapshot 2026-05-23-w38-backend-rag-v2-rolsuper-audit.json EXISTS (15123 bytes). grep migrations_v2 for NOSUPERUSER = NONE (demotion never applied). Bomb is LIVE. Correctly NEEDS-ANTONELLO; NOT demoted by this audit.",
+      "fix_owner": "ANTONELLO (sign-off required; do NOT ALTER ROLE autonomously)"
+    },
+    {
+      "id": "mata-garuda-active-active",
+      "title": "12+1 mata_garuda LaunchAgents active-active Pro+Mini",
+      "verdict": "de_facto_resolved",
+      "evidence": "Pro ~/Library/LaunchAgents: 23 labels (21 com.matagaruda.* + 2 com.garuda.*). Mini (ssh mini): 5 labels (intel-bridge.daily, kg-query-api, ner-worker.hourly, normalizer.hourly, sentinel.daily). comm -12 of the two label sets = ZERO overlap. The original blast radius (13 labels firing on BOTH machines -> duplicate Telegram, duplicate PG edges, double digests) is GONE; work is split per-machine. RESIDUAL DEBT: proposed CI guard test_genome_no_active_active.py still absent. The duplication bomb is disarmed; only the guard is missing.",
+      "fix_owner": "operator (optional: add CI guard); decision per-organ moot"
+    },
+    {
+      "id": "test-infra-mock-neq-prod",
+      "title": "Test infrastructure mock != production stack (Sprint 1.B)",
+      "verdict": "still_armed",
+      "evidence": "Proposed antibodies NOT shipped: repo-wide find for test_endpoints_reachable.py and test_manifest_parity.py returns EMPTY. The api/rag process-split that this scar family describes is still live (system-audit: check_health_detailed on api process returns raw_status=critical BY DESIGN — search/ai live on rag group). No full-create_app() integration reachability test exists to catch 401/404 regressions before prod. Structural gap unchanged.",
+      "fix_owner": "operator (write integration reachability + manifest-parity tests)"
+    },
+    {
+      "id": "sibling-race-untracked-loss",
+      "title": "Untracked files lost when sibling automation switches branches mid-session",
+      "verdict": "still_armed",
+      "evidence": "Partial antibodies SHIPPED: ~/.claude/hooks/stop_verify.py (6864B, blocks Stop on dirty+no-intent), scripts/agent_start.py broker (worktree isolation), pre-commit lease-check (per CLAUDE.md). BUT the danger surface is LIVE NOW: 4 worktrees hold uncommitted WIP (system-audit), incl docs-lab-clean-recreate with NEW untracked feature files that a `git stash` without -u would silently drop. 3 worktrees had mtime within minutes of the system-audit (active sibling sessions). Risk reduced (worktree isolation lowers cross-branch-switch frequency) but not eliminated while WIP sits untracked in worktrees.",
+      "fix_owner": "operator/orchestrator (commit WIP in active worktrees)"
+    },
+    {
+      "id": "eventbus-doc-drift",
+      "title": "EventBus is PG LISTEN/NOTIFY but SYMBIOSIS docs say Redis Streams",
+      "verdict": "de_facto_resolved",
+      "evidence": "SYMBIOSIS.md line 191 explicitly: 'Cicatrix riferiti: EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams (2026-04-29) — RESOLVED via PR #342 + migration 144 + migration 146.' Legge 3 table (lines 184-186) now correctly maps the 12 CRM/cognitive/observatory channels to PostgreSQL LISTEN/NOTIFY + events_outbox (migration 144) + triggers refactored to outbox.publish (migration 146), with per-channel Test: citations. Redis Streams correctly scoped to garuda:raw ONLY (line 184). Code-as-truth and doc are ALIGNED. NO doc fix needed.",
+      "fix_owner": "none (doc already aligned)"
+    },
+    {
+      "id": "launchagents-keepalive-13pct",
+      "title": "53 LaunchAgents, 13% KeepAlive (2026-04-29) — now 167 plist",
+      "verdict": "worsened",
+      "evidence": "Plist count grew 53 -> 167 (S1 organism-truth-FROZEN: 167 = 60 nuzantara + 105 balizero + 2 cell). S1 verdict: nervous system FUNCTIONALLY HEALTHY live, ZERO dead-but-alive daemons, but carries reboot-fragility debt: 5 binary-missing wrappers (com.balizero.wr2.canva-renderer, wr3.editorial-bench.monthly, wr3.supervisor, wr3.yt-metrics.weekly, nuzantara.cleanup-2026-05-16-ttl-sentinel) that would fail to spawn on reboot. lint_launchagents.sh exists (mitigation tooling). KeepAlive ratio not re-counted (S1 scope; daemon-level detail deferred to S1 per prompt coordination). Scale worsened, live-health mitigated.",
+      "fix_owner": "operator (fix 5 binary-missing wrappers); S1 owns per-daemon detail"
+    },
+    {
+      "id": "migrations-129-130-duplicate",
+      "title": "SQL v2 migrations duplicate numbers 129_* and 130_*",
+      "verdict": "de_facto_resolved",
+      "evidence": "ls apps/backend-rag/backend/db/migrations_v2/: exactly ONE file each — 129_crm_guardian.sql, 130_crm_guardian_summary_queue.sql. grep -cE '^(129|130)' = 2 (not 4). The duplicate pair was already renamed; no ambiguous apply order remains. Both files dated 25 Apr (the original CRM-guardian pair). RESIDUAL: lint-migration-numbers.yml CI guard not verified present (out of scope for verdict — the duplicate itself is gone).",
+      "fix_owner": "none (duplicates eliminated); optional CI lint to prevent regression"
+    },
+    {
+      "id": "plist-overwrite-json-dump",
+      "title": "Unknown agent overwrites loaded plist with JSON dump + leaks secrets in 0644 plist",
+      "verdict": "still_armed",
+      "evidence": "2 plists carry REAL secret VALUES at mode 644 (world-readable) RIGHT NOW: com.balizero.wa-dashboard-m1 (WA_DASHBOARD_DATABASE_URL, 1 postgres conn string, mode 644) + com.nuzantara.skills-bridge-consumer (BRIDGE_SKILLS_API_KEY, 1 api-key string, mode 644). NOTE drift: S1 FROZEN at 00:37 recorded skills-bridge-consumer as 0o444; live stat now = 644 — perms CHANGED in ~7min, consistent with ongoing plist rewrite/churn (the exact scar mechanism). Recovery tool ~/p0-3-recovery/reconstruct_plist.py EXISTS. com.balizero.wr2.plist-watchdog INSTALLED but launchctl status '-'/0 (not actively guarding). World-readable-secret leak surface is LIVE; root-cause producer still unidentified.",
+      "fix_owner": "SHIPPED chmod 0400 on the 2 secret plists this audit (Phase B); secret rotation + producer ID = ANTONELLO"
+    }
+  ],
+
+  "verdict_counts": {
+    "still_armed": 4,
+    "worsened": 2,
+    "de_facto_resolved": 3,
+    "exploded_silent": 1,
+    "armed_total_still_armed_plus_worsened_plus_exploded": 7,
+    "resolved_total": 3,
+    "correction_note": "scar deploy-desync-2026-05-25 was initially mis-verdicted de_facto_resolved on a misleading intermediate .git-absent read; DEFINITIVE re-check (git worktree list --porcelain + symlink stat + active hourly failure log) corrected it to exploded_silent. Armed-or-broken total = 7 (4 still_armed + 2 worsened + 1 exploded_silent)."
+  },
+
+  "branches": {
+    "method": "git branch | wc -l ; git branch -r | wc -l ; git branch --merged origin/main (origin/main=324503501)",
+    "local": 56,
+    "remote": 141,
+    "all_a": 197,
+    "merged_into_origin_main_deletable_local": 0,
+    "merged_into_origin_main_deletable_remote": 0,
+    "merged_note": "Only 3 local + 1 remote branch are merged into origin/main, and ALL are protected/current: main, deploy/main (protected alias), chore/audit-organism-2026-05-31 (S1 active, local+remote). The SAFE 'merged & deletable' category (excluding protected/current) is EMPTY. The 56/141 bloat is unmerged WIP + zombie claude/* + codex-overnight/* + stale — all REPORT-ONLY per branch_graveyard_cleanup.sh policy. Nothing safely deletable this turn.",
+    "cleanup_script": "scripts/branch_graveyard_cleanup.sh PRESENT (weekly cron, default dry-run; categories: 1 merged&deletable [--apply-able], 2 zombie claude/* >30d [REPORT-ONLY], 3 stale >90d [REPORT-ONLY], 4 active)"
+  },
+
+  "superuser_roles": [
+    "backend_rag_v2",
+    "backend_ts_user",
+    "flypgadmin",
+    "nuzantara_memory",
+    "nuzantara_rag",
+    "postgres",
+    "repmgr",
+    "zantara_rag_user"
+  ],
+  "superuser_roles_count": 8,
+  "superuser_note": "Verified live via postgres-nuzantara MCP read-only. Exactly the 8 from the W38 scar. backend_rag_v2 is the ONLY one reachable via a leakable application secret (DATABASE_URL); it is the W38 demotion target. The other 7 are legacy/Fly-platform — attack surface only for in-repo hardcoded DSNs; separate spec needed (NEEDS-ANTONELLO).",
+
+  "plist_with_secrets_0644": [
+    {
+      "label": "com.balizero.wa-dashboard-m1",
+      "keys": ["WA_DASHBOARD_DATABASE_URL"],
+      "mode_at_freeze": "644",
+      "hardened_to_0400_phaseB": true
+    },
+    {
+      "label": "com.nuzantara.skills-bridge-consumer",
+      "keys": ["BRIDGE_SKILLS_API_KEY"],
+      "mode_at_freeze": "644",
+      "hardened_to_0400_phaseB": true
+    }
+  ],
+
+  "rolsuper_still_armed": true,
+  "w38_spec_exists": true,
+  "w38_status": "DRAFT — awaiting Antonello approval; NOT EXECUTED",
+
+  "top3_armed_bombs_by_blast_radius": [
+    {
+      "rank": 1,
+      "id": "W38-rolsuper",
+      "blast": "DB-host RCE / DROP DATABASE / ALTER SYSTEM if app secret leaks — full prod data + Postgres host",
+      "fix": "ANTONELLO sign-off on W38 spec Stage A/B/C (ADMIN_DATABASE_URL split + GRANT pg_monitor + ALTER ROLE NOSUPERUSER in low-traffic window). Reversible single ALTER."
+    },
+    {
+      "rank": 2,
+      "id": "plist-overwrite-json-dump",
+      "blast": "world-readable secrets (Postgres DSN + API key) on a multi-process box; on reboot the JSON-dump corruption can wipe 51 loaded services",
+      "fix": "chmod 0400 SHIPPED this audit; ANTONELLO: rotate the 2 exposed secrets + identify the overwriting producer (fs_usage trap)."
+    },
+    {
+      "rank": 3,
+      "id": "deploy-desync-2026-05-25 (EXPLODED-SILENT)",
+      "blast": "WR2 production cron is LIVE reading stale code from a crm-guardian worktree (deploy worktree symlinked to wrong branch); hourly failure suppressed by cooldown = operator-invisible. Already broken now, not a future risk.",
+      "fix": "operator/orchestrator: re-point ~/Desktop/nuzantara-deploy at a clean deploy/main worktree (remove the 01:53 symlink to .worktrees/backend-rag-crm-guardian-audit); ensure deploy/main == origin/main. NOT auto-fixed here (touches a sibling's active worktree + shared deploy path)."
+    },
+    {
+      "rank": 4,
+      "id": "W62",
+      "blast": "uncommitted code WIP in 4 stale worktrees lost on any sibling git stash/checkout (sibling-race compounder); storage waste 7.0G",
+      "fix": "ship com.nuzantara.agent-worktree-cleanup cron (WIP-safe) + tests/integration/test_no_stale_worktrees.py; orchestrator: commit the 4 worktrees' WIP NOW."
+    }
+  ]
+}

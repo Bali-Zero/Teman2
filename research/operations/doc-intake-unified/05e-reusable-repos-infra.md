@@ -22,18 +22,18 @@ NOT pip-as-blackbox — code of others to read and adapt. Privilege small/readab
 
 ## Master table
 
-| Esigenza | Repo | URL | Stelle | Lic | Pezzo copiabile | Grade |
-|---|---|---|---|---|---|---|
-| (a) PG queue worker-loop | **pgqueuer** | github.com/janbjorge/pgqueuer | ~1.5k | MIT | `pgqueuer/queries.py` (SKIP LOCKED dequeue SQL) + `qb.py` query-builder + executor retry | Production |
-| (a) PG queue lease/DLQ readable | **raquel** | github.com/vduseev/raquel | ~50 | Apache-2.0 | claimed-status + `claimed_at+1min` reclaim + exponential backoff + `exhausted`/`expired` terminal states | Small/readable |
-| (a) PG queue minimal reference | **pg-queue** | github.com/mattbillenstein/pg-queue | ~19 | MIT | `pg-queue.sql` schema + `workers/python/worker.py` (single-file loop, LISTEN/NOTIFY + tries + timeout) | Demo/reference |
-| (b) Multi-source adapter abstraction | **singer-tap-template** | github.com/singer-io/singer-tap-template | ~73 | **AGPL-3.0** | discover/sync two-mode connector skeleton (catalog + stream schemas) | Template |
-| (b) Real connector examples | **singer-io/getting-started + tap-github** | github.com/singer-io | — | varies | `sync()`/`discover()` stream pattern, bookmark/state mgmt | Reference |
-| (c) Entity resolution + review threshold | **splink** | github.com/moj-analytical-services/splink | ~2.2k | MIT | DuckDB local backend, comparison-vs-threshold + Comparison Viewer dashboard for clerical review | Production |
-| (d) Deterministic stage pipeline + resume | **python-checkpointing2** | github.com/a-rahimi/python-checkpointing2 | small | MIT | generator-yield checkpoint→disk, resume from last good stage | Reference/idea |
-| (d) Idempotent stage guard | **pyrunner** | github.com/cdancette/pyrunner | small | MIT | wrap script step → idempotent + no parallel double-run (done-marker pattern) | Micro-lib readable |
-| (e) LLM structured extract + retry | **instructor (567-labs)** | github.com/567-labs/instructor | ~9k+ | MIT | `dsl/maybe.py` (Maybe escape-hatch = never-invent), `dsl/partial.py`, Optional-field semantics, auto-reask on validation fail | Production |
-| (e) Ollama-specific validation loop | **ollama-instructor** | github.com/lennartpollvogt/ollama-instructor | ~77 | MIT | `src/ollama_instructor/` wraps Ollama Client + Pydantic validate + configurable retry attempts | Small/readable |
+| Esigenza                                  | Repo                                       | URL                                          | Stelle | Lic          | Pezzo copiabile                                                                                                               | Grade              |
+| ----------------------------------------- | ------------------------------------------ | -------------------------------------------- | ------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| (a) PG queue worker-loop                  | **pgqueuer**                               | github.com/janbjorge/pgqueuer                | ~1.5k  | MIT          | `pgqueuer/queries.py` (SKIP LOCKED dequeue SQL) + `qb.py` query-builder + executor retry                                      | Production         |
+| (a) PG queue lease/DLQ readable           | **raquel**                                 | github.com/vduseev/raquel                    | ~50    | Apache-2.0   | claimed-status + `claimed_at+1min` reclaim + exponential backoff + `exhausted`/`expired` terminal states                      | Small/readable     |
+| (a) PG queue minimal reference            | **pg-queue**                               | github.com/mattbillenstein/pg-queue          | ~19    | MIT          | `pg-queue.sql` schema + `workers/python/worker.py` (single-file loop, LISTEN/NOTIFY + tries + timeout)                        | Demo/reference     |
+| (b) Multi-source adapter abstraction      | **singer-tap-template**                    | github.com/singer-io/singer-tap-template     | ~73    | **AGPL-3.0** | discover/sync two-mode connector skeleton (catalog + stream schemas)                                                          | Template           |
+| (b) Real connector examples               | **singer-io/getting-started + tap-github** | github.com/singer-io                         | —      | varies       | `sync()`/`discover()` stream pattern, bookmark/state mgmt                                                                     | Reference          |
+| (c) Entity resolution + review threshold  | **splink**                                 | github.com/moj-analytical-services/splink    | ~2.2k  | MIT          | DuckDB local backend, comparison-vs-threshold + Comparison Viewer dashboard for clerical review                               | Production         |
+| (d) Deterministic stage pipeline + resume | **python-checkpointing2**                  | github.com/a-rahimi/python-checkpointing2    | small  | MIT          | generator-yield checkpoint→disk, resume from last good stage                                                                  | Reference/idea     |
+| (d) Idempotent stage guard                | **pyrunner**                               | github.com/cdancette/pyrunner                | small  | MIT          | wrap script step → idempotent + no parallel double-run (done-marker pattern)                                                  | Micro-lib readable |
+| (e) LLM structured extract + retry        | **instructor (567-labs)**                  | github.com/567-labs/instructor               | ~9k+   | MIT          | `dsl/maybe.py` (Maybe escape-hatch = never-invent), `dsl/partial.py`, Optional-field semantics, auto-reask on validation fail | Production         |
+| (e) Ollama-specific validation loop       | **ollama-instructor**                      | github.com/lennartpollvogt/ollama-instructor | ~77    | MIT          | `src/ollama_instructor/` wraps Ollama Client + Pydantic validate + configurable retry attempts                                | Small/readable     |
 
 ## (a) Postgres job queue — worker loop, lease, DLQ
 
@@ -44,7 +44,7 @@ state-machine semantics) → `pgqueuer` (production-grade SQL + asyncpg pool + L
   Python 3.11+, PG 12+. Workers coordinate via `FOR UPDATE SKIP LOCKED`; LISTEN/NOTIFY wakes idle workers with
   polling backup. Custom executors give retry strategies + job cancellation. Copy: the dequeue SQL in `queries.py`
   and the executor retry wrapper. Has graceful shutdown, completion guarantees, Prometheus.
-- **raquel** — best *semantics* reference for lease + DLQ, deliberately tiny ("rewrite in a day"). When a worker
+- **raquel** — best _semantics_ reference for lease + DLQ, deliberately tiny ("rewrite in a day"). When a worker
   dies the row unlocks but stays `claimed`; reclaim if `claimed_at + 1 minute` elapsed and not locked = clean
   visibility-timeout. Retry = `backoff_base * 2^attempt` between `min_retry_delay`(1s) and `max_retry_delay`(12h).
   Terminal/DLQ states: `exhausted` (max_retry_count) and `expired` (max_age). SQLAlchemy core (not asyncpg) but
@@ -61,13 +61,13 @@ the dequeue with pgqueuer's `FOR UPDATE SKIP LOCKED ... LIMIT 1` SQL over our as
 - **singer-tap-template** — the cleanest minimal "base adapter" abstraction: every source implements two modes,
   `--discover` (emit catalog of streams + JSON schemas) and `--sync` (emit records as JSON over stdout). Clean
   separation config / schema-discovery / sync. **CAVEAT: AGPL-3.0** — copyleft, do NOT vendor verbatim into our
-  proprietary backend; use as *pattern reference only* (re-implement the discover/sync interface ourselves).
+  proprietary backend; use as _pattern reference only_ (re-implement the discover/sync interface ourselves).
 - **singer-io/getting-started + tap-github** — real taps showing `sync()` per-stream + bookmark/state for
   incremental pulls. Good for seeing IMAP/Drive/webhook-style sources collapse into one record schema.
 
 **Adapt for us**: a `BaseAdapter` with `discover()` + `poll() -> Iterable[RawDoc]`; concrete `EmailIMAPAdapter`,
 `DriveAdapter`, `WebhookAdapter` each normalize to one envelope, then enqueue into the PG queue from (a).
-Singer's stdout-JSON contract is overkill — keep the *abstraction*, drop the subprocess/pipe transport.
+Singer's stdout-JSON contract is overkill — keep the _abstraction_, drop the subprocess/pipe transport.
 
 ## (c) Entity resolution — doc → canonical persona
 
@@ -114,10 +114,12 @@ null, never fabricated. Add a `confidence: float` field per Ollama's structured-
 validate-then-reask; cap attempts. Validation = Pydantic; null-safe = Maybe escape-hatch.
 
 ## License caveats (load-bearing)
+
 - **singer-tap-template = AGPL-3.0** → pattern-reference ONLY, never vendor into proprietary code.
 - All others MIT / Apache-2.0 → safe to read, adapt, vendor with attribution.
 
 ## Bottom-line recommended stack to copy
+
 - Queue: raquel state-machine semantics + pgqueuer SKIP-LOCKED SQL over our asyncpg pool.
 - Adapters: singer discover/sync abstraction re-implemented (skip AGPL code), normalize to one envelope.
 - Entity resolution: splink + DuckDB local, two-threshold auto/review routing.

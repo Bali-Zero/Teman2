@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { ContextPanel } from "./_components/ContextPanel";
+import { I18nProvider } from "@/i18n";
 
 export const metadata: Metadata = {
   title: "Zantara AI | Your Business Assistant in Bali",
@@ -24,13 +25,15 @@ export default async function ChatLayout({
   const theme = authenticated ? "operative-light" : "editorial";
 
   return (
-    <div data-theme={theme} className="flex flex-row h-screen">
-      <main className="flex-1 min-w-0">{children}</main>
-      {authenticated && (
-        <aside className="hidden lg:block w-80 border-l border-[var(--glass-rim)] overflow-y-auto">
-          <ContextPanel />
-        </aside>
-      )}
-    </div>
+    <I18nProvider>
+      <div data-theme={theme} className="flex flex-row h-screen">
+        <main className="flex-1 min-w-0">{children}</main>
+        {authenticated && (
+          <aside className="hidden lg:block w-80 border-l border-[var(--glass-rim)] overflow-y-auto">
+            <ContextPanel />
+          </aside>
+        )}
+      </div>
+    </I18nProvider>
   );
 }
