@@ -49,9 +49,13 @@ def test_verify_law_claim_unknown_citation(fc):
     assert out["verdict"] == "unverifiable"
 
 
-def test_verify_law_claim_substring_fallback(fc):
+def test_verify_law_claim_no_self_substring_fallback(fc):
+    # WR2 autopsy P-5: the self-substring fallback for law claims was REMOVED
+    # (with research_json NULL the only "source" was the slides themselves, so
+    # every citation self-verified). A claim with no matchable external citation
+    # is now 'unverifiable' (aggregates to 'degraded', never a silent 'pass').
     out = fc._verify_law_claim("subhi office", set(), "subhi office is in Kerobokan")
-    assert out["verdict"] == "verified"
+    assert out["verdict"] == "unverifiable"
 
 
 def test_verify_quote_claim_exact_match(fc):

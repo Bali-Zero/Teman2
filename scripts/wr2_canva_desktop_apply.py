@@ -147,27 +147,47 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
     return v == "true"
 
 
+# 2026-06-04 (WR2 autopsy P-5/finding #7): the canva renderer used to accept
+# pre-fact-check statuses ('drafts_imaged', 'drafts', 'drafts_imaged_facted'),
+# so a draft could render — and publish — before the fact-checker ever saw it,
+# racing the checker cron. That is a plausible path by which the Golden Visa
+# carousel reached Canva with no 'pass'/'degraded' verdict. We now lock
+# eligibility to the post-fact-check status by default. An explicit env
+# override exists ONLY as an operational safety valve (e.g. fact stages
+# intentionally disabled), and it is loud when used.
+_REQUIRE_FACTCHECK = os.environ.get("WR2_CANVA_REQUIRE_FACTCHECK", "true").lower() != "false"
+# Statuses the fact-checker promotes a draft to (pass → checked, degraded →
+# checked, fail → fact_check_failed which is NOT here). Only 'checked' renders.
+_CHECKED_STATUSES = ("drafts_imaged_checked",)
+_LEGACY_PREFACTCHECK_STATUSES = ("drafts_imaged", "drafts", "drafts_imaged_facted")
+
+
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
     # WR2 pipeline: topic → briefed → (draft_generator) → drafts →
-    # (image_generator) → drafts_imaged → (canva_apply) → published.
-    # Accept 'drafts_imaged' (normal), 'drafts' (legacy/fallback when
-    # image_generator is disabled), 'drafts_imaged_facted' (post fact-extractor),
-    # and 'drafts_imaged_checked' (post fact-checker — supervisor routes this
-    # status to canva-apply per wr2_supervisor.py:97). The supervisor's
-    # routing table is the source of truth; this query must accept any
-    # status the supervisor will route here. Bug fix 2026-05-20: previously
-    # drafts that passed fact-checker were stuck because the query only
-    # matched 'drafts_imaged' / 'drafts'.
+    # (image_generator) → drafts_imaged → (fact-extractor) → drafts_imaged_facted
+    # → (fact-checker) → drafts_imaged_checked → (canva_apply) → published.
+    if _REQUIRE_FACTCHECK:
+        eligible = _CHECKED_STATUSES
+    else:
+        logger.warning(
+            "WR2_CANVA_REQUIRE_FACTCHECK=false — rendering drafts that have NOT "
+            "passed the fact-checker (%s). This bypasses the fact gate; use only "
+            "when fact stages are intentionally disabled.",
+            ", ".join(_LEGACY_PREFACTCHECK_STATUSES + _CHECKED_STATUSES),
+        )
+        eligible = _LEGACY_PREFACTCHECK_STATUSES + _CHECKED_STATUSES
+    placeholders = ", ".join(f"${i + 2}" for i in range(len(eligible)))
     return await conn.fetch(
-        """
+        f"""
         SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status IN ('drafts_imaged', 'drafts', 'drafts_imaged_facted', 'drafts_imaged_checked')
+         WHERE status IN ({placeholders})
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
         """,
         limit,
+        *eligible,
     )
 
 
