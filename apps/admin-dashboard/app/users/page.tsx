@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 interface UserRecord {
   id: string;
   email?: string;
-  name?: string;
+  full_name?: string;
   role?: string;
   created_at?: string;
 }
@@ -29,8 +29,9 @@ interface UserFact {
 interface UserMemory {
   id: string;
   content: string;
-  timestamp?: string;
+  created_at?: string;
   importance?: number;
+  type?: string;
 }
 
 export default function UsersPage() {
@@ -75,6 +76,9 @@ export default function UsersPage() {
     }
   };
 
+  const getUserDisplayName = (user: UserRecord) =>
+    user.full_name || user.email || "Unnamed User";
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* LEFT: User List */}
@@ -113,9 +117,7 @@ export default function UsersPage() {
                     : "bg-card border-transparent",
                 )}
               >
-                <div className="font-semibold">
-                  {user.full_name || "Unnamed User"}
-                </div>
+                <div className="font-semibold">{getUserDisplayName(user)}</div>
                 <div className="text-xs text-muted-foreground">
                   {user.email}
                 </div>
@@ -139,7 +141,9 @@ export default function UsersPage() {
           <div className="space-y-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold">{selectedUser.full_name}</h2>
+                <h2 className="text-3xl font-bold">
+                  {getUserDisplayName(selectedUser)}
+                </h2>
                 <div className="text-muted-foreground">
                   {selectedUser.email}
                 </div>
@@ -212,7 +216,9 @@ export default function UsersPage() {
                         <p className="mb-1">{mem.content}</p>
                         <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-2">
                           <span>
-                            {new Date(mem.created_at).toLocaleDateString()}
+                            {mem.created_at
+                              ? new Date(mem.created_at).toLocaleDateString()
+                              : "Unknown date"}
                           </span>
                           <Badge variant="outline" className="text-[10px] h-5">
                             {mem.type || "general"}
