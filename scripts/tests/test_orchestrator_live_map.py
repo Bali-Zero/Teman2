@@ -1,4 +1,5 @@
 """Tests for scripts/ops/orchestrator_live_map.py."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -11,7 +12,9 @@ SCRIPT_PATH = Path(__file__).resolve().parents[1] / "ops" / "orchestrator_live_m
 
 
 def _load_module():
-    spec = importlib.util.spec_from_file_location("orchestrator_live_map_under_test", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "orchestrator_live_map_under_test", SCRIPT_PATH
+    )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -42,6 +45,30 @@ detached
     assert worktrees[1].task_id == "live-map"
     assert worktrees[2].detached is True
     assert worktrees[2].lane == "wr2"
+
+
+def test_parse_remote_target_supports_default_and_explicit() -> None:
+    default = olm.parse_remote_target("m5")
+    assert default.name == "m5"
+    assert default.host == "m5"
+    assert default.repo_root == "/Users/balizero/Desktop/nuzantara"
+
+    explicit = olm.parse_remote_target(
+        "staging=mini:/Users/nuzantara/Desktop/nuzantara"
+    )
+    assert explicit.name == "staging"
+    assert explicit.host == "mini"
+    assert explicit.repo_root == "/Users/nuzantara/Desktop/nuzantara"
+
+
+def test_parse_worktree_porcelain_tags_machine() -> None:
+    text = """worktree /repo/.worktrees/backend-rag-wire-orphan-routers
+HEAD abc
+branch refs/heads/agent/air-m5/backend-rag/wire-orphan-routers
+"""
+    worktrees = olm.parse_worktree_porcelain(text, machine="m5")
+    assert worktrees[0].machine == "m5"
+    assert worktrees[0].lane == "backend-rag"
 
 
 def test_parse_pr_json_infers_lanes() -> None:
@@ -82,11 +109,16 @@ def test_parse_pr_json_infers_lanes() -> None:
     ]
     prs = olm.parse_pr_json(json.dumps(payload))
     assert [pr.lane for pr in prs] == ["backend-router", "wr2", "mouth"]
+    assert [pr.machine for pr in prs] == ["m5", "pro", None]
 
 
 def test_derive_no_touch_lanes_uses_prs_worktrees_and_processes() -> None:
     worktrees = [
-        olm.WorktreeInfo(path="/repo/.worktrees/doc-intake-dossier", branch="agent/pro/research/doc-intake-dossier", lane="doc-intake"),
+        olm.WorktreeInfo(
+            path="/repo/.worktrees/doc-intake-dossier",
+            branch="agent/pro/research/doc-intake-dossier",
+            lane="doc-intake",
+        ),
     ]
     prs = [
         olm.PullRequestInfo(
@@ -103,8 +135,16 @@ def test_derive_no_touch_lanes_uses_prs_worktrees_and_processes() -> None:
         )
     ]
     processes = [
-        olm.ProcessSignal(pid=100, category="flowkit", command="/Users/nuzantara/flowkit/venv/bin/python"),
-        olm.ProcessSignal(pid=101, category="flowkit", command="/Users/nuzantara/flowkit/venv/bin/python -m agent.main"),
+        olm.ProcessSignal(
+            pid=100,
+            category="flowkit",
+            command="/Users/nuzantara/flowkit/venv/bin/python",
+        ),
+        olm.ProcessSignal(
+            pid=101,
+            category="flowkit",
+            command="/Users/nuzantara/flowkit/venv/bin/python -m agent.main",
+        ),
     ]
     lanes = olm.derive_no_touch_lanes(worktrees, prs, processes)
     lane_names = {lane.lane for lane in lanes}
@@ -142,9 +182,37 @@ def test_flowkit_no_touch_blocks_wr3_candidates() -> None:
             evidence="placeholder",
         ),
     ]
-    no_touch = [olm.NoTouchLane(lane="flowkit", reason="running", source="process", reference="flowkit")]
+    no_touch = [
+        olm.NoTouchLane(
+            lane="flowkit", reason="running", source="process", reference="flowkit"
+        )
+    ]
     candidates = olm.derive_candidate_workstreams(findings, no_touch)
     assert [candidate.area for candidate in candidates] == ["admin-dashboard"]
+
+
+def test_remote_no_touch_blocks_local_candidate() -> None:
+    findings = [
+        olm.ComponentFinding(
+            component_id="backend-rag",
+            area="backend-rag",
+            path="apps/backend-rag/backend/services/naga.py",
+            line=1,
+            marker="placeholder_text",
+            severity="medium",
+            evidence="placeholder",
+        )
+    ]
+    no_touch = [
+        olm.NoTouchLane(
+            lane="backend-rag",
+            reason="active remote worktree exists",
+            source="worktree",
+            reference="agent/air-m5/backend-rag/wire-orphan-routers",
+            machine="m5",
+        )
+    ]
+    assert olm.derive_candidate_workstreams(findings, no_touch) == []
 
 
 def test_scan_incomplete_markers_and_candidates_skip_no_touch(tmp_path: Path) -> None:
@@ -160,9 +228,15 @@ def test_scan_incomplete_markers_and_candidates_skip_no_touch(tmp_path: Path) ->
     )
     (mouth / "settings.tsx").write_text("export const value = 'placeholder result';\n")
 
-    findings = olm.scan_incomplete_markers(repo, ["apps/backend-rag/backend", "apps/mouth"], limit=20)
+    findings = olm.scan_incomplete_markers(
+        repo, ["apps/backend-rag/backend", "apps/mouth"], limit=20
+    )
     assert {finding.area for finding in findings} == {"backend-router", "mouth"}
-    no_touch = [olm.NoTouchLane(lane="backend-rag", reason="active PR", source="test", reference="pr")]
+    no_touch = [
+        olm.NoTouchLane(
+            lane="backend-rag", reason="active PR", source="test", reference="pr"
+        )
+    ]
     candidates = olm.derive_candidate_workstreams(findings, no_touch)
     assert [candidate.area for candidate in candidates] == ["mouth"]
     assert candidates[0].task_id == "audit-mouth-incomplete"
@@ -173,8 +247,26 @@ def test_render_markdown_includes_no_touch_and_candidates() -> None:
         generated_at="2026-06-04T16:00:00Z",
         repo_root="/repo",
         current_branch="agent/nuzantara/ops/live-map",
+        machines=[
+            olm.MachineStatus(
+                name="m5",
+                host="m5",
+                repo_root="/Users/balizero/Desktop/nuzantara",
+                reachable=True,
+                current_branch="HEAD",
+                head="40b28a2",
+                origin_main="36fb513",
+                identity="balizero@Air-M5",
+            )
+        ],
         no_touch_lanes=[
-            olm.NoTouchLane(lane="wr2", reason="active git worktree exists", source="worktree", reference="agent/wr2")
+            olm.NoTouchLane(
+                lane="wr2",
+                reason="active git worktree exists",
+                source="worktree",
+                reference="agent/wr2",
+                machine="m5",
+            )
         ],
         candidate_workstreams=[
             olm.CandidateWorkstream(
@@ -189,6 +281,9 @@ def test_render_markdown_includes_no_touch_and_candidates() -> None:
         ],
     )
     rendered = olm.render_markdown(report)
+    assert "## Machines" in rendered
+    assert "`m5` via `m5`" in rendered
     assert "## No-Touch Lanes" in rendered
+    assert "[m5]" in rendered
     assert "`wr2`" in rendered
     assert "`audit-mouth-incomplete`" in rendered
