@@ -15,7 +15,7 @@ import json
 import pytest
 
 from backend.llm.ollama_client import is_ollama_available
-from backend.services.intake import extract
+from backend.services.intake import extract, model_roles
 
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
@@ -31,6 +31,24 @@ def _fake_gen(payload: dict):
 # --------------------------------------------------------------------------- #
 # Schema / doc-type mapping                                                    #
 # --------------------------------------------------------------------------- #
+
+
+def test_resolve_extraction_model_reads_model_topology(tmp_path, monkeypatch):
+    topology = {"roles": {"intake_extraction": "registry-sealion:q4"}}
+    (tmp_path / "MODEL_TOPOLOGY.json").write_text(json.dumps(topology), encoding="utf-8")
+    monkeypatch.delenv("INTAKE_EXTRACTION_MODEL", raising=False)
+    monkeypatch.setenv("INTAKE_REPO_ROOT", str(tmp_path))
+    model_roles.clear_model_role_cache()
+    try:
+        assert extract._resolve_extraction_model() == "registry-sealion:q4"
+    finally:
+        model_roles.clear_model_role_cache()
+
+
+def test_extraction_model_env_override_wins(monkeypatch):
+    monkeypatch.setenv("INTAKE_EXTRACTION_MODEL", "override-model:q4")
+    assert extract._resolve_extraction_model() == "override-model:q4"
+
 
 def test_canonical_doc_type_aliases():
     assert extract.canonical_doc_type("nib") == "nib"
