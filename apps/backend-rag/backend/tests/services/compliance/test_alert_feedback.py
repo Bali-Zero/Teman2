@@ -125,6 +125,31 @@ async def test_low_precision_widens_threshold(
 
 
 @pytest.mark.asyncio
+async def test_dry_run_reports_change_without_updating_threshold(
+    db_tx: asyncpg.Connection, sample_client: dict
+) -> None:
+    """dry_run previews threshold movement without persisting it."""
+    await _enable_autotune(db_tx)
+    await db_tx.execute(
+        "INSERT INTO system_settings (key, value) VALUES "
+        "('compliance_alert_threshold_urgent_visa_expiry','7') "
+        "ON CONFLICT (key) DO UPDATE SET value='7'",
+    )
+    await _seed_outcomes(db_tx, sample_client["id"], "visa_expiry", acted=5, dismissed=20)
+
+    fb = AlertFeedback(connection=db_tx)
+    result = await fb.retrain(dry_run=True)
+
+    new = await db_tx.fetchval(
+        "SELECT value FROM system_settings WHERE key='compliance_alert_threshold_urgent_visa_expiry'",
+    )
+    assert int(new) == 7
+    assert result["reason"] == "dry_run"
+    assert result["dry_run"] is True
+    assert ("visa_expiry", 7, 8) in [(c["category"], c["old"], c["new"]) for c in result["changed"]]
+
+
+@pytest.mark.asyncio
 async def test_high_precision_tightens_threshold(
     db_tx: asyncpg.Connection, sample_client: dict
 ) -> None:
