@@ -4,7 +4,7 @@ Lists new mail attachments via the Zoho Mail API using the OAuth token already
 managed by `admin_zoho_auth.py` (table `zoho_email_tokens`) and enqueues each
 attachment blob. ZERO CRM writes.
 
-Cursor: `system_settings` key `zoho_intake_cursor` (seeded '{}' by migration 210).
+Cursor: `system_settings` key `zoho_intake_cursor` (seeded '{}' by migration 212).
 We store `{"last_message_time": <epoch_ms>}` and only fetch messages newer than
 that watermark.
 
