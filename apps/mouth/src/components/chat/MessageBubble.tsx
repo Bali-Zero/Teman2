@@ -32,7 +32,8 @@ import { isKnownTool } from "./tool-labels";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { formatMessageTime } from "@/lib/utils";
+import { formatMessageTime, cn } from "@/lib/utils";
+import { useChatLocale } from "@/hooks/useChatLocale";
 import { Message } from "@/types";
 import { PricingTable } from "./PricingTable";
 import { PricingResponse } from "@/types/pricing";
@@ -180,6 +181,7 @@ function MessageBubbleComponent({
   isLast,
   onFollowUpClick,
 }: MessageBubbleProps) {
+  const { t } = useChatLocale();
   const {
     role,
     content,
@@ -416,12 +418,14 @@ function MessageBubbleComponent({
                   aria-expanded={isThinkingExpanded}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
-                  <span>Thinking Process</span>
-                  {isThinkingExpanded ? (
-                    <ChevronDown className="w-3 h-3" />
-                  ) : (
-                    <ChevronRight className="w-3 h-3" />
-                  )}
+                  <span>{t("thinkingProcess")}</span>
+                  <ChevronDown
+                    data-testid="thinking-chevron"
+                    className={cn(
+                      "w-3 h-3 transition-transform duration-200",
+                      isThinkingExpanded ? "rotate-0" : "-rotate-90"
+                    )}
+                  />
                 </button>
 
                 <AnimatePresence>
@@ -432,9 +436,9 @@ function MessageBubbleComponent({
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="pl-3 border-l-2 border-[var(--border)] space-y-2 py-1">
+                      <ul className="pl-3 border-l-2 border-[var(--border)] space-y-2 py-1">
                         {steps?.map((step, idx) => (
-                          <div
+                          <li
                             key={idx}
                             className="text-xs text-[var(--foreground-secondary)]"
                           >
@@ -481,7 +485,7 @@ function MessageBubbleComponent({
                                 </div>
                                 {step.data.message && (
                                   <span className="text-[10px] text-[var(--foreground-muted)] ml-4 italic">
-                                    "{step.data.message}"
+                                    &ldquo;{step.data.message}&rdquo;
                                   </span>
                                 )}
                                 {/* Show details if available (e.g. corrections count) */}
@@ -510,9 +514,9 @@ function MessageBubbleComponent({
                                 )}
                               </div>
                             )}
-                          </div>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -575,22 +579,23 @@ function MessageBubbleComponent({
                 <div className="mt-4 pt-3 border-t border-[var(--border)]/50">
                   <p className="text-[10px] font-medium text-[var(--foreground-muted)] mb-2 flex items-center gap-1.5">
                     <MessageSquarePlus size={12} />
-                    SUGGESTED FOLLOW-UPS
+                    {t("suggestedFollowups")}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <ul className="flex flex-wrap gap-2">
                     {message.metadata.followup_questions.map(
                       (question, idx) => (
-                        <button
-                          type="button"
-                          key={idx}
-                          onClick={() => onFollowUpClick?.(question)}
-                          className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200 focus-ring"
-                        >
-                          {question}
-                        </button>
+                        <li key={idx}>
+                          <button
+                            type="button"
+                            onClick={() => onFollowUpClick?.(question)}
+                            className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200 focus-ring"
+                          >
+                            {question}
+                          </button>
+                        </li>
                       ),
                     )}
-                  </div>
+                  </ul>
                 </div>
               )}
 
@@ -618,7 +623,7 @@ function MessageBubbleComponent({
               type="button"
               onClick={handleCopy}
               className="transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded opacity-70 hover:opacity-100 focus-ring"
-              aria-label="Copy message"
+              aria-label={copied ? t("messageCopied") : t("copyMessage")}
             >
               {copied ? (
                 <Check className="w-3 h-3 text-[var(--success)]" />

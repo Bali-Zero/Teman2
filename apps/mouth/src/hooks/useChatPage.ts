@@ -231,7 +231,7 @@ export function useChatPage(): UseChatPageReturn {
         const title =
           messages.length === 0
             ? chatInput.input.slice(0, 50) + (chatInput.input.length > 50 ? '...' : '')
-            : 'Nuova Conversazione';
+            : 'New Conversation';
 
         // L'API di actions.ts si aspetta un oggetto con title, messages, e options
 
@@ -543,7 +543,7 @@ export function useChatPage(): UseChatPageReturn {
       metadata: { promptLength: chatInput.imageGenPrompt.trim().length },
     });
 
-    chatInput.setInput(`Genera un'immagine: ${chatInput.imageGenPrompt.trim()}`);
+    chatInput.setInput(`Generate an image: ${chatInput.imageGenPrompt.trim()}`);
     chatInput.setImageGenPrompt('');
     setTimeout(() => {
       const textarea = document.querySelector('textarea');
