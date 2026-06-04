@@ -34,6 +34,9 @@ export const FUNNEL_EVENTS = [
   "property_consult_click",
   "property_search_submit",
   "property_suggestion_click",
+  // --- Hero Section CTAs ---
+  "hero_book_call_click",
+  "hero_read_dispatch_click",
 ] as const;
 
 export type FunnelEventName = (typeof FUNNEL_EVENTS)[number];
