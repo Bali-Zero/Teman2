@@ -19,6 +19,7 @@ export {
   ArticleWithFAQJsonLd,
   HowToJsonLd,
   EnhancedArticleJsonLd,
+  TopLevelArticleJsonLd,
 } from "./EnhancedJsonLd";
 
 export { DynamicJsonLd } from "./DynamicJsonLd";
