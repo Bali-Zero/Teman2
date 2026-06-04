@@ -152,16 +152,25 @@ def _log_telemetry(record: dict) -> None:
 # ─────────────────────────────────────────────────────────────────────────
 
 def _extract_source_text(
-    research_json: Any, council_debate_json: Any, slides: list[dict[str, Any]]
+    research_json: Any,
+    council_debate_json: Any,
+    slides: list[dict[str, Any]],
+    brief_json: Any = None,
 ) -> str:
     """Concatenate all available source-text the draft was derived from.
 
-    research_json (from topic-selector + draft-generator) is the primary
-    truth. council_debate_json captures the LLM panel's reasoning; useful
-    for paraphrase matches. Slide bodies are last-resort fallback.
+    brief_json (from the topic-selector) is the ACTUAL research the draft
+    generator consumed: article_summary, article_body_full, source_url and
+    the structured `enrichment` object (the_facts / bali_zero_take /
+    in_practice / next_steps / faq). research_json is a separate column the
+    production pipeline never populates (only probes/smoke tests do), so
+    without brief_json the checker has almost no source corpus and
+    false-flags headline numbers the slides omit for editorial brevity.
+    council_debate_json captures the LLM panel's reasoning; useful for
+    paraphrase matches. Slide bodies are last-resort fallback.
     """
     parts: list[str] = []
-    for blob in (research_json, council_debate_json):
+    for blob in (research_json, brief_json, council_debate_json):
         if blob is None:
             continue
         if isinstance(blob, str):
@@ -374,7 +383,7 @@ async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyn
     return await conn.fetch(
         """
         SELECT id, topic, register, slides_json, research_json,
-               council_debate_json, fact_check_json
+               brief_json, council_debate_json, fact_check_json
           FROM war_room_drafts
          WHERE status = 'drafts_imaged_facted'
            AND fact_check_json IS NOT NULL
@@ -475,6 +484,12 @@ async def _process_one_draft(
             council = json.loads(council)
         except json.JSONDecodeError:
             pass
+    brief = row.get("brief_json")
+    if isinstance(brief, str):
+        try:
+            brief = json.loads(brief)
+        except json.JSONDecodeError:
+            pass
     slides_blob = row["slides_json"]
     if isinstance(slides_blob, str):
         try:
@@ -487,7 +502,7 @@ async def _process_one_draft(
         else slides_blob
     ) or []
 
-    source_text = _extract_source_text(research, council, slides)
+    source_text = _extract_source_text(research, council, slides, brief_json=brief)
     source_laws = _find_law_citations(source_text)
 
     t0 = time.time()
