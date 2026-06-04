@@ -11,22 +11,25 @@ from __future__ import annotations
 from typing import Any, Literal
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.logging_utils import get_logger
 from backend.services.war_room.dashboard_service import DashboardService
 from backend.services.war_room.repository import WarRoomRepository
 
 logger = get_logger(__name__)
 
-router = APIRouter(
-    prefix="/api/war-room/metrics",
-    tags=["war-room-metrics"],
-)
-
-
 # ── Helpers ───────────────────────────────────────────────────
+
+
+async def _require_admin(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    if not is_crm_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
 
 
 def _service(pool: asyncpg.Pool) -> DashboardService:
@@ -34,6 +37,13 @@ def _service(pool: asyncpg.Pool) -> DashboardService:
 
 
 DaysParam = Literal[14, 30, 90]
+
+
+router = APIRouter(
+    prefix="/api/war-room/metrics",
+    tags=["war-room-metrics"],
+    dependencies=[Depends(_require_admin)],
+)
 
 
 # ── Endpoints ─────────────────────────────────────────────────

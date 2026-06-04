@@ -30,6 +30,7 @@ Cicatrix ref: .claude/rules/cicatrix-scars.md "Test infrastructure mock
 
 from __future__ import annotations
 
+import ast
 import inspect
 import re
 
@@ -53,6 +54,40 @@ def _extract_function_body(source: str, fn_name: str) -> str:
     if next_match:
         return source[start : start + 1 + next_match.start()]
     return source[start:]
+
+
+def _included_router_pairs(fn_name: str) -> set[tuple[str, str]]:
+    """Return (module, router_attr) pairs passed to api.include_router()."""
+    tree = ast.parse(_read_registration_source())
+    function = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == fn_name
+    )
+
+    imported_modules: dict[str, str] = {}
+    for node in ast.walk(function):
+        if isinstance(node, ast.ImportFrom) and node.module == "backend.app.routers":
+            for alias in node.names:
+                imported_modules[alias.asname or alias.name] = alias.name
+
+    pairs: set[tuple[str, str]] = set()
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "include_router":
+            continue
+
+        router_arg = node.args[0]
+        if not isinstance(router_arg, ast.Attribute) or not isinstance(
+            router_arg.value, ast.Name
+        ):
+            continue
+
+        module_name = imported_modules.get(router_arg.value.id, router_arg.value.id)
+        pairs.add((module_name, router_arg.attr))
+
+    return pairs
 
 
 class TestChannelHealthRegression:
@@ -212,4 +247,45 @@ class TestPortalManifestRegistrationParity:
         assert not missing_light, (
             f"portal_* routers in manifest but NOT in include_light_routers(): "
             f"{missing_light} — would 404 in main_api production. (ONDA-3 S11 P0 scar.)"
+        )
+
+
+class TestManifestApiRuntimeCoverage:
+    """Regression guard for manifest-only API routers.
+
+    Manifest entries with process_groups containing `api` are explicitly
+    registered in both runtime functions. Import-path module routers are
+    intentionally excluded because they mount through local aliases. Olympus is
+    the one documented light-process exception: router_registration.py keeps its
+    internal admin surface full-only.
+    """
+
+    LIGHT_PROCESS_EXCEPTIONS: frozenset[tuple[str, str]] = frozenset(
+        {("olympus", "internal_router")}
+    )
+
+    def _api_manifest_pairs(self) -> set[tuple[str, str]]:
+        return {
+            (entry.name, entry.attr)
+            for entry in ROUTER_MANIFEST
+            if "api" in entry.process_groups and entry.import_path is None
+        }
+
+    def test_api_manifest_entries_registered_in_full_and_light(self) -> None:
+        expected_full = self._api_manifest_pairs()
+        expected_light = expected_full - self.LIGHT_PROCESS_EXCEPTIONS
+
+        in_full = _included_router_pairs("include_routers")
+        in_light = _included_router_pairs("include_light_routers")
+
+        missing_full = sorted(expected_full - in_full)
+        missing_light = sorted(expected_light - in_light)
+
+        assert not missing_full, (
+            "_API/_BOTH manifest routers missing from include_routers(): "
+            f"{missing_full}"
+        )
+        assert not missing_light, (
+            "_API/_BOTH manifest routers missing from include_light_routers(): "
+            f"{missing_light}"
         )
