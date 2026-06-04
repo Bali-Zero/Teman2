@@ -539,7 +539,7 @@ export function trackPropertyCTA(
 // (GA4 + internal CRM bus + funnel store) via trackFunnelEvent.
 // ============================================================
 
-type HeroCTAEvent = "hero_book_call_click" | "hero_read_dispatch_click";
+type HeroCTAEvent = "hero_cta_book_call" | "hero_cta_read_dispatch";
 
 /**
  * Track a hero section CTA click.
