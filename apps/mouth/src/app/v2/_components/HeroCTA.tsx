@@ -12,8 +12,8 @@ import { trackHeroCTA } from "@/lib/analytics";
  *
  * Triple-dispatch on click: GA4 + internal CRM bus + funnel store.
  * Events registered in packages/core/analytics/funnel-view.ts:
- *   - hero_book_call_click
- *   - hero_read_dispatch_click
+ *   - hero_cta_book_call
+ *   - hero_cta_read_dispatch
  */
 export function HeroCTA() {
   return (
@@ -26,7 +26,7 @@ export function HeroCTA() {
           color: "#121016",
           boxShadow: "0 10px 32px rgba(0,0,0,0.35)",
         }}
-        onClick={() => trackHeroCTA("hero_book_call_click")}
+        onClick={() => trackHeroCTA("hero_cta_book_call")}
       >
         Book a 30-minute call
         <ArrowRight size={15} strokeWidth={2.2} />
@@ -35,7 +35,7 @@ export function HeroCTA() {
         href="#news"
         className="text-[13px] font-semibold underline-offset-4 hover:underline"
         style={{ color: "rgba(255,255,255,0.85)" }}
-        onClick={() => trackHeroCTA("hero_read_dispatch_click")}
+        onClick={() => trackHeroCTA("hero_cta_read_dispatch")}
       >
         Read the dispatch →
       </a>
