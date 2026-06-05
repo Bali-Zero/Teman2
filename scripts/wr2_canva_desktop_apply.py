@@ -147,27 +147,47 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
     return v == "true"
 
 
+# 2026-06-04 (WR2 autopsy P-5/finding #7): the canva renderer used to accept
+# pre-fact-check statuses ('drafts_imaged', 'drafts', 'drafts_imaged_facted'),
+# so a draft could render — and publish — before the fact-checker ever saw it,
+# racing the checker cron. That is a plausible path by which the Golden Visa
+# carousel reached Canva with no 'pass'/'degraded' verdict. We now lock
+# eligibility to the post-fact-check status by default. An explicit env
+# override exists ONLY as an operational safety valve (e.g. fact stages
+# intentionally disabled), and it is loud when used.
+_REQUIRE_FACTCHECK = os.environ.get("WR2_CANVA_REQUIRE_FACTCHECK", "true").lower() != "false"
+# Statuses the fact-checker promotes a draft to (pass → checked, degraded →
+# checked, fail → fact_check_failed which is NOT here). Only 'checked' renders.
+_CHECKED_STATUSES = ("drafts_imaged_checked",)
+_LEGACY_PREFACTCHECK_STATUSES = ("drafts_imaged", "drafts", "drafts_imaged_facted")
+
+
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
     # WR2 pipeline: topic → briefed → (draft_generator) → drafts →
-    # (image_generator) → drafts_imaged → (canva_apply) → published.
-    # Accept 'drafts_imaged' (normal), 'drafts' (legacy/fallback when
-    # image_generator is disabled), 'drafts_imaged_facted' (post fact-extractor),
-    # and 'drafts_imaged_checked' (post fact-checker — supervisor routes this
-    # status to canva-apply per wr2_supervisor.py:97). The supervisor's
-    # routing table is the source of truth; this query must accept any
-    # status the supervisor will route here. Bug fix 2026-05-20: previously
-    # drafts that passed fact-checker were stuck because the query only
-    # matched 'drafts_imaged' / 'drafts'.
+    # (image_generator) → drafts_imaged → (fact-extractor) → drafts_imaged_facted
+    # → (fact-checker) → drafts_imaged_checked → (canva_apply) → published.
+    if _REQUIRE_FACTCHECK:
+        eligible = _CHECKED_STATUSES
+    else:
+        logger.warning(
+            "WR2_CANVA_REQUIRE_FACTCHECK=false — rendering drafts that have NOT "
+            "passed the fact-checker (%s). This bypasses the fact gate; use only "
+            "when fact stages are intentionally disabled.",
+            ", ".join(_LEGACY_PREFACTCHECK_STATUSES + _CHECKED_STATUSES),
+        )
+        eligible = _LEGACY_PREFACTCHECK_STATUSES + _CHECKED_STATUSES
+    placeholders = ", ".join(f"${i + 2}" for i in range(len(eligible)))
     return await conn.fetch(
-        """
+        f"""
         SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status IN ('drafts_imaged', 'drafts', 'drafts_imaged_facted', 'drafts_imaged_checked')
+         WHERE status IN ({placeholders})
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
         """,
         limit,
+        *eligible,
     )
 
 
@@ -177,6 +197,10 @@ async def _persist_result(
     design_id: str,
     edit_url: str,
     view_url: str | None,
+    *,
+    topic: str | None = None,
+    slides_json: object | None = None,
+    register: str | None = None,
 ) -> None:
     await conn.execute(
         """
@@ -193,6 +217,65 @@ async def _persist_result(
         design_id,
         edit_url,
         view_url,
+    )
+    # P-4 (constitution Art 10.6): write one anti-sameness ledger row per
+    # rendered carousel. Best-effort + savepoint-isolated so a logging failure
+    # can NEVER abort the status='rendered' update above. Covers BOTH call paths
+    # (headless + desktop) because both go through _persist_result.
+    try:
+        async with conn.transaction():  # savepoint — isolates the insert
+            await _log_topic_type(
+                conn, draft_id, topic, slides_json, register
+            )
+    except Exception as exc:  # noqa: BLE001 — observability, never fail the render
+        logger.warning("topic_type_log write failed for %s: %s", draft_id, exc)
+
+
+async def _log_topic_type(
+    conn: asyncpg.Connection,
+    draft_id: UUID,
+    topic: str | None,
+    slides_json: object | None,
+    register: str | None,
+) -> None:
+    """Derive (domain, dominant_mode, layout_family, archetype) and INSERT one
+    row into topic_type_log, idempotent on draft_id.
+
+    If topic/slides_json/register were not threaded in by the caller, fall back
+    to a single SELECT on war_room_drafts (best-effort logging tolerates the
+    extra query). Pure-derivation lives in wr2_topic_type.
+    """
+    import wr2_topic_type as tt  # local import: keep module import side-effect-free
+
+    if topic is None or slides_json is None or register is None:
+        rec = await conn.fetchrow(
+            "SELECT topic, register, slides_json FROM war_room_drafts WHERE id = $1",
+            draft_id,
+        )
+        if rec is not None:
+            topic = topic if topic is not None else rec["topic"]
+            register = register if register is not None else rec["register"]
+            slides_json = slides_json if slides_json is not None else rec["slides_json"]
+
+    domain = tt.derive_domain(topic)
+    dominant_mode = tt.derive_dominant_mode(slides_json)
+    layout_family = tt.derive_layout_family(slides_json)
+    archetype = tt.extract_archetype(slides_json)
+
+    await conn.execute(
+        """
+        INSERT INTO topic_type_log
+            (draft_id, domain, register, dominant_mode, layout_family, archetype, topic)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (draft_id) DO NOTHING
+        """,
+        draft_id,
+        domain,
+        register,
+        dominant_mode,
+        layout_family,
+        archetype,
+        topic,
     )
 
 
@@ -417,7 +500,10 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             )
             return False
         design_id, edit_url, view_url = result
-        await _persist_result(conn, draft_id, design_id, edit_url, view_url)
+        await _persist_result(
+            conn, draft_id, design_id, edit_url, view_url,
+            topic=topic, slides_json=slides_json, register=tone,
+        )
         _send_telegram(
             "WR2 Canva carousel ready (headless)\n"
             f"Topic: {topic[:100]}\n"
@@ -544,7 +630,10 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         return False
 
     design_id, edit_url, view_url = result
-    await _persist_result(conn, draft_id, design_id, edit_url, view_url)
+    await _persist_result(
+        conn, draft_id, design_id, edit_url, view_url,
+        topic=topic, slides_json=slides_json, register=tone,
+    )
     duration = time.time() - started_at
     logger.info(
         "Draft %s rendered — design=%s edit=%s duration=%.0fs",

@@ -96,14 +96,38 @@ class MetricsCollector {
    */
   async flush(): Promise<void> {
     if (this.metrics.length === 0) return;
+    if (typeof window === "undefined") return;
 
     const metricsToSend = [...this.metrics];
     this.metrics = [];
 
-    // TODO: Enable when backend endpoint /api/metrics/frontend is implemented
-    // Currently the endpoint returns 404, so we skip the network call
-    // Metrics are still collected locally and available via getMetrics()
-    return;
+    const base =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "https://nuzantara-rag.fly.dev";
+
+    try {
+      const res = await fetch(`${base}/api/metrics/frontend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ metrics: metricsToSend }),
+        keepalive: true,
+      });
+      if (!res.ok) {
+        // Re-queue best-effort so a transient 5xx does not drop the batch.
+        this.requeue(metricsToSend);
+      }
+    } catch {
+      // Network failure: never throw from a metrics flush. Re-queue bounded.
+      this.requeue(metricsToSend);
+    }
+  }
+
+  /**
+   * Re-queue metrics after a failed flush, bounded by maxMetrics.
+   */
+  private requeue(pending: MetricValue[]): void {
+    const merged = [...pending, ...this.metrics];
+    this.metrics =
+      merged.length > this.maxMetrics ? merged.slice(-this.maxMetrics) : merged;
   }
 
   /**

@@ -9,6 +9,7 @@ import {
   ArticleWithFAQJsonLd,
   EnhancedArticleJsonLd,
   BreadcrumbJsonLd,
+  TopLevelArticleJsonLd,
 } from "@/components/seo";
 import { logger } from "@/lib/logger";
 
@@ -204,6 +205,17 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   return (
     <>
       <BreadcrumbJsonLd items={breadcrumbItems} />
+      {articleProps && (
+        <TopLevelArticleJsonLd
+          title={articleProps.title}
+          description={articleProps.description ?? undefined}
+          slug={articleProps.slug}
+          category={articleProps.category}
+          publishedAt={articleProps.publishedAt}
+          updatedAt={articleProps.updatedAt}
+          image={articleProps.image ?? undefined}
+        />
+      )}
       {articleProps && article?.faq?.length ? (
         <ArticleWithFAQJsonLd {...articleProps} faq={article.faq} />
       ) : articleProps ? (

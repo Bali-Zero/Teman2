@@ -264,9 +264,31 @@ class Pulse:
         actions: list[PulseAction] = []
         for row in rows:
             table, column, seq = row["table_name"], row["column_name"], row["seq"]
-            async with self._pool.acquire() as conn:
-                max_val = await conn.fetchval(f"SELECT COALESCE(MAX({column}), 0) FROM {table}")
-                last_val = await conn.fetchval(f"SELECT last_value FROM {seq}")
+            try:
+                async with self._pool.acquire() as conn:
+                    max_val = await conn.fetchval(f"SELECT COALESCE(MAX({column}), 0) FROM {table}")
+                    last_val = await conn.fetchval(f"SELECT last_value FROM {seq}")
+            except Exception as exc:
+                actions.append(
+                    PulseAction(
+                        action_type="repair_sequence",
+                        target=seq,
+                        detail={
+                            "table": table,
+                            "column": column,
+                            "reason": str(exc),
+                        },
+                        outcome="skipped",
+                        reflection="sequence read failed; check runtime grants",
+                    )
+                )
+                logger.warning(
+                    "Skipping sequence repair check for %s: %s",
+                    seq,
+                    exc,
+                    exc_info=True,
+                )
+                continue
 
             if max_val is not None and last_val is not None and max_val > last_val:
                 t0 = time.monotonic()

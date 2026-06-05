@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { OpenAI } from "openai";
-import { QdrantClient } from "@qdrant/js-client-rest";
 import { logger } from "@/lib/logger";
+import { createQdrantClient } from "@/lib/qdrant";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,7 @@ export async function POST(request: Request) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const qdrant = new QdrantClient({
-      url: process.env.QDRANT_URL,
-      apiKey: process.env.QDRANT_API_KEY,
-    });
+    const qdrant = createQdrantClient();
 
     // 1. Generate Embedding
     const embeddingResponse = await openai.embeddings.create({
@@ -47,6 +44,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     logger.error("RAG Search Error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
   }
 }

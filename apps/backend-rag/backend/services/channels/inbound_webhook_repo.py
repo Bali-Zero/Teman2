@@ -118,11 +118,14 @@ async def persist(
             new_id = int(row["id"])
 
             # Wake up the WebhookProcessor via the existing Outbox helper.
-            # The PG NOTIFY is volatile, but the row is durable — the
-            # processor's poll-fallback (5s) catches the row anyway if
-            # the listener is disconnected.
+            # The PG NOTIFY is volatile, but the inbound_webhooks row is durable
+            # — the processor's poll-fallback (5s) catches the row anyway if the
+            # listener is disconnected. publish() stays INSIDE the transaction so
+            # the wake-up row + NOTIFY are atomic with the INSERT (roll back
+            # together if the INSERT is undone).
+            outbox_id: int | None = None
             try:
-                await events_outbox.publish(
+                outbox_id = await events_outbox.publish(
                     conn,
                     channel=NOTIFY_CHANNEL,
                     payload={
@@ -132,9 +135,9 @@ async def persist(
                     },
                 )
             except Exception as exc:
-                # Outbox failure must not break the ack — the row is in
-                # inbound_webhooks and the processor will pick it up via
-                # the 5s poll.
+                # Outbox publish failure must not break the ack-first contract —
+                # the row is in inbound_webhooks and the processor's 5s poll
+                # picks it up. Swallow so the INSERT still commits.
                 logger.warning(
                     "inbound_webhooks: outbox notify failed for id=%d channel=%s: %s",
                     new_id,
@@ -148,7 +151,32 @@ async def persist(
                 channel,
                 dedup_key,
             )
-            return (new_id, True)
+
+        # ── transaction committed ──
+        # Best-effort ack of the wake-up row, OUTSIDE the transaction so a failed
+        # ack can NEVER roll back the just-committed inbound_webhooks row. Nothing
+        # else acks the `inbound_webhook_queued` channel, so without this
+        # events_outbox grows unbounded (188+ orphans as of 2026-06-05;
+        # replay_unconsumed's 60-min window never reclaims them, prune_consumed
+        # only touches consumed rows). The durable truth is the inbound_webhooks
+        # row (drained by the WebhookProcessor 5s poll regardless), so
+        # pre-consuming the outbox row only forfeits replay — which is redundant
+        # with the poll for this channel. consumer_id is per-channel for a
+        # readable events_outbox audit trail.
+        if outbox_id is not None:
+            try:
+                await events_outbox.acknowledge(
+                    conn, outbox_id, consumer_id=f"inbound_webhook_persist:{channel}"
+                )
+            except Exception as exc:
+                logger.warning(
+                    "inbound_webhooks: outbox ack failed (non-fatal) for id=%d channel=%s: %s",
+                    new_id,
+                    channel,
+                    exc,
+                )
+
+        return (new_id, True)
 
 
 async def mark_processed(
