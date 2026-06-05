@@ -24,7 +24,12 @@ jobs:
 
     services:
       postgres:
-        image: postgres:17
+        # PostGIS image (not bare postgres:17): the prod dump declares a
+        # `public.geometry(Point,4326)` column on `clients` (+ CREATE EXTENSION
+        # postgis). Without postgis, CREATE TABLE clients fails, the table is
+        # never created, and its COPY rows leak as SQL syntax errors. Drop-in
+        # superset of the postgres image — same POSTGRES_* env contract.
+        image: postgis/postgis:17-3.5
         env:
           POSTGRES_USER: drill
           POSTGRES_PASSWORD: drill
