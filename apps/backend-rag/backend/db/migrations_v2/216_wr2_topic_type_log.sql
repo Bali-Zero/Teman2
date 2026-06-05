@@ -1,4 +1,4 @@
--- 206_wr2_topic_type_log.sql
+-- 216_wr2_topic_type_log.sql
 -- WR2 anti-sameness (constitution Art 10.6): persist one row per rendered
 -- carousel so the draft generator can enforce "same-domain carousels must
 -- differ in register AND image-mode" instead of treating it as aspirational.
