@@ -133,6 +133,9 @@ google_credentials.json
 
 # AI/dev tooling (local state)
 .cursor/
+# Codex CLI local config: MCP server map + hooks carrying absolute /Users
+# paths and Keychain/secret references — machine-local, never versioned.
+.codex/
 .libs/
 **/.claude/settings.local.json
 **/.claude/locks/

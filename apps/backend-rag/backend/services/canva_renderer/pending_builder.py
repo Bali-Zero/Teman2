@@ -90,6 +90,46 @@ def _sanitize_slide_text(text: str) -> str:
 # shadow validation (the skill auto-reconciled but warned the default was stale).
 # The renderer clamps to MAX_SLIDES_TEMPLATE (11).
 TEMPLATE_DESIGN_ID = "DAHJSqJOIO8"
+
+# P-2a (2026-06-05): per-archetype master templates. The autopsy
+# (research/operations/2026-06-04-wr2-autopsy-report.md, W66 spec) found every
+# live carousel is a text-swap of the SINGLE gray master above, so structural
+# sameness is guaranteed by construction. This map lets build_canva_pending pick
+# a distinct master per archetype.
+#
+# CODE-ONLY scaffolding: the four non-default IDs below are PLACEHOLDERS. The
+# real Canva masters are a manual design task (duplicate DAHJSqJOIO8, vary the
+# background / grid, keep the antracite/white/yellow palette per Art 2 + 14.4) +
+# operator sign-off. Until a real design ID replaces a placeholder, that
+# archetype falls back to TEMPLATE_DESIGN_ID via select_template_design_id() --
+# so behaviour is IDENTICAL to today until both (a) a caller passes an archetype
+# AND (b) that archetype has a non-placeholder ID. The archetype names match the
+# layout families already declared in bali-zero-brand/tokens.json.
+_PLACEHOLDER_PREFIX = "PLACEHOLDER-"
+TEMPLATE_DESIGN_IDS: dict[str, str] = {
+    "default": TEMPLATE_DESIGN_ID,
+    "swiss-grid-asymmetry": _PLACEHOLDER_PREFIX + "swiss-grid-asymmetry",
+    "stat-card-hero": _PLACEHOLDER_PREFIX + "stat-card-hero",
+    "thin-red-rule-divider": _PLACEHOLDER_PREFIX + "thin-red-rule-divider",
+    "monospace-evidence-block": _PLACEHOLDER_PREFIX + "monospace-evidence-block",
+}
+
+
+def select_template_design_id(archetype: str | None) -> str:
+    """Resolve the Canva master design ID for an archetype.
+
+    Falls back to the default master (TEMPLATE_DESIGN_ID) when archetype is None,
+    unknown, or still backed by a placeholder ID. This keeps the live path
+    byte-identical to pre-P-2a behaviour until a real Canva master is recorded
+    AND a caller actually passes the matching archetype.
+    """
+    if not archetype:
+        return TEMPLATE_DESIGN_ID
+    candidate = TEMPLATE_DESIGN_IDS.get(archetype)
+    if not candidate or candidate.startswith(_PLACEHOLDER_PREFIX):
+        return TEMPLATE_DESIGN_ID
+    return candidate
+
 CAROUSEL_FOLDER_ID = "FAHEwkTYduI"
 
 # Legibility Armor gradient overlay — 4:5 PNG with strong dark at top (heading
@@ -289,6 +329,7 @@ def build_canva_pending(
     topic: str,
     tone: str,
     slides: list[dict[str, Any]],
+    archetype: str | None = None,
 ) -> dict[str, Any]:
     """Build the full canva_pending.json payload from WR2 draft data.
 
@@ -325,7 +366,8 @@ def build_canva_pending(
     hero_slides_used = [s["slide_number"] for s in effective_slides if s.get("is_hero_image")]
 
     return {
-        "template_design_id": TEMPLATE_DESIGN_ID,
+        "template_design_id": select_template_design_id(archetype),
+        "archetype": archetype,
         "folder_id": CAROUSEL_FOLDER_ID,
         "design_id": None,
         "design_url": None,

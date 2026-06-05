@@ -24,7 +24,12 @@ jobs:
 
     services:
       postgres:
-        image: postgres:17
+        # PostGIS image (not bare postgres:17): the prod dump declares a
+        # `public.geometry(Point,4326)` column on `clients` (+ CREATE EXTENSION
+        # postgis). Without postgis, CREATE TABLE clients fails, the table is
+        # never created, and its COPY rows leak as SQL syntax errors. Drop-in
+        # superset of the postgres image — same POSTGRES_* env contract.
+        image: postgis/postgis:17-3.5
         env:
           POSTGRES_USER: drill
           POSTGRES_PASSWORD: drill
@@ -41,10 +46,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install aws CLI + postgresql-client
+      - name: Install postgresql-client + ensure aws CLI
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client awscli
+          # NOTE: do NOT apt-install `awscli` — it has no installation candidate
+          # on ubuntu-24.04 runners (apt exit 100, drill failed every run since
+          # 2026-05-05). aws CLI v2 is pre-installed on GitHub-hosted runners;
+          # verify it, and fall back to the official installer if ever absent.
+          sudo apt-get install -y -qq postgresql-client
+          if ! command -v aws >/dev/null 2>&1; then
+            echo "aws CLI not pre-installed — fetching official v2 bundle"
+            curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+            unzip -q /tmp/awscliv2.zip -d /tmp
+            sudo /tmp/aws/install
+          fi
+          aws --version
 
       - name: Run restore drill
         env:
@@ -66,6 +82,16 @@ jobs:
           set -e
           cd "$GITHUB_WORKSPACE"
 
+          # Creds preflight: distinguish "Tigris repo secrets not configured"
+          # (a setup gap) from "backups genuinely missing/corrupt" (a DR
+          # emergency). Without this they both surfaced as the same alarming
+          # "backups may not be recoverable" alert. The TIGRIS_ACCESS_KEY_ID /
+          # TIGRIS_SECRET_ACCESS_KEY repo secrets are absent as of 2026-06-05.
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+            echo "::error title=Tigris credentials not configured::TIGRIS_ACCESS_KEY_ID / TIGRIS_SECRET_ACCESS_KEY repo secrets are empty. The drill cannot list/download backups. Set them with: gh secret set TIGRIS_ACCESS_KEY_ID  and  gh secret set TIGRIS_SECRET_ACCESS_KEY  (values from the Tigris/Fly storage dashboard). This is a setup gap, NOT proof that backups are corrupt."
+            exit 1
+          fi
+
           # Find + download latest backup
           LATEST=$(aws --endpoint-url "$TIGRIS_ENDPOINT" s3 ls \
             "s3://$TIGRIS_BUCKET/postgres/" \
@@ -80,11 +106,19 @@ jobs:
           echo "Downloaded $DUMP_SIZE bytes"
           test "$DUMP_SIZE" -gt 1000000
 
-          # Restore into CI postgres service
-          PGPASSWORD=drill gunzip -c "/tmp/$LATEST" | \
-            psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill \
+          # Restore into CI postgres service.
+          # NOTE: PGPASSWORD must prefix psql, NOT gunzip — an env prefix only
+          # applies to the left side of a pipe, so `PGPASSWORD=drill gunzip | psql`
+          # leaves psql with NO password → instant auth-fail → 0 tables restored
+          # (the 2026-06-06 silent-restore bug the drill itself surfaced).
+          gunzip -c "/tmp/$LATEST" | \
+            PGPASSWORD=drill psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill \
                  -v ON_ERROR_STOP=0 \
               > /tmp/restore.log 2>&1 || true
+
+          # Surface restore output — previously hidden, which is what let the
+          # PGPASSWORD-scope bug stay invisible until a manual investigation.
+          echo "=== restore.log (tail) ==="; tail -25 /tmp/restore.log || true; echo "=== end restore.log ==="
 
           # Sanity
           q() { PGPASSWORD=drill psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill -Atc "$1"; }

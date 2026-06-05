@@ -1,6 +1,6 @@
 {
   "_version": "2.0",
-  "_updated": "2026-05-06",
+  "_updated": "2026-06-05 (doc-intake roles + translation/cron_fallback ghost fixes)",
   "_doc": "Single source of truth for active Pro/Mini LLM model assignments. Air was decommissioned on 2026-05-05 and is not an active Ollama node.",
   "nodes": {
     "pro": {
@@ -30,11 +30,13 @@
   "roles": {
     "cron_primary": "qwen3.5:9b",
     "cron_primary_tool_calling": "qwen3:8b",
-    "cron_fallback": "gemma4:e4b",
+    "cron_fallback": "gemma3:27b",
     "cloud_fallback": "google-gemini-cli/gemini-3-flash-preview",
-    "translation": "gemma4:e4b",
+    "translation": "gemma3:27b",
     "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
+    "ocr_vision": "qwen3-vl:8b",
+    "intake_extraction": "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
     "reasoning": "deepseek-r1:32b",
     "fast": "qwen3.5:9b",
     "sentry": "qwen3:4b",

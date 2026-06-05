@@ -177,6 +177,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Federation / Feedback ──
     RouterEntry(name="federation", process_groups=_API, tags=("agent",)),
     RouterEntry(name="feedback", process_groups=_API, tags=("core",)),
+    RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
     # ── Google Drive / Integrations ──
@@ -201,6 +202,8 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(
         name="instagram_chat", attr="webhook_router", process_groups=_API, tags=("channels",)
     ),
+    # ── Document-intake HITL review (FASE 5A, RAG process — LOCAL Pro DB only) ──
+    RouterEntry(name="intake_review", process_groups=_RAG, tags=("intake", "crm", "hitl")),
     # ── Intel (RAG process only — needs /data volume) ──
     RouterEntry(name="intel", process_groups=_RAG, tags=("intel",)),
     RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),

@@ -87,6 +87,12 @@ DEFAULT_TIMEOUT_S = int(os.environ.get("WR2_FACT_CHECKER_TIMEOUT_S", "120"))
 TELEMETRY_PATH = Path.home() / "logs" / "wr2_fact_checker_telemetry.jsonl"
 
 # Law regexes — compiled once.
+# 2026-06-04 (WR2 autopsy P-5): added Permenkumham / Permenimipas / Permen* /
+# Perpres / Pasal — the exact instrument classes cited in VISA carousels
+# (Golden Visa, KITAS). They were ABSENT before, so a visa law citation never
+# regex-matched and fell through to the self-substring fallback below =
+# "verified against the draft itself". That is how the Golden Visa carousel
+# shipped a wrong-but-real Pasal citation. See _verify_law_claim.
 LAW_PATTERNS = [
     re.compile(r"\bPP\s+\d+/\d{4}\b", re.IGNORECASE),
     re.compile(r"\bPMK\s+\d+/\d{4}\b", re.IGNORECASE),
@@ -95,6 +101,20 @@ LAW_PATTERNS = [
     re.compile(r"\bUU\s+\d+/\d{4}\b", re.IGNORECASE),
     re.compile(r"\bPerbup\s+\d+/\d{4}\b", re.IGNORECASE),
     re.compile(r"\bPerda\s+\d+/\d{4}\b", re.IGNORECASE),
+    # Ministerial regs (Permenkumham, Permenimipas, Permenaker, Permenkeu, …)
+    # — "Permen" + optional agency suffix + number/year.
+    re.compile(r"\bPermen[a-z]*\s+\d+/\d{4}\b", re.IGNORECASE),
+    re.compile(r"\bPerpres\s+\d+/\d{4}\b", re.IGNORECASE),
+    re.compile(r"\bPerpu\s+\d+/\d{4}\b", re.IGNORECASE),
+    # Article references inside an instrument (Pasal 198, Pasal 26A, …).
+    # 2026-06-05 (panel fix B): match ONLY the article number, NOT the
+    # subsection — Indonesian citations write the subsection three ways
+    # ("Pasal 26 ayat (2)", "Pasal 26 (2)", "Pasal 26(2)"). Capturing the
+    # subsection made "Pasal 26 ayat (2)" (→ PASAL 26) and "Pasal 26 (2)"
+    # (→ PASAL 26 (2)) fail to cross-match. Normalizing to the bare article
+    # ("PASAL 26") makes all three forms compare equal. Subsection-level
+    # precision is out of scope for a citation-presence check.
+    re.compile(r"\bPasal\s+\d+[A-Za-z]?\b", re.IGNORECASE),
 ]
 
 
@@ -151,17 +171,104 @@ def _log_telemetry(record: dict) -> None:
 # Source-text helpers
 # ─────────────────────────────────────────────────────────────────────────
 
-def _extract_source_text(
-    research_json: Any, council_debate_json: Any, slides: list[dict[str, Any]]
-) -> str:
-    """Concatenate all available source-text the draft was derived from.
+def _blob_to_text(blob: Any) -> str:
+    """Render a JSON blob (or string) to comparable text. '' if empty/None."""
+    if blob is None:
+        return ""
+    if isinstance(blob, str):
+        return blob
+    try:
+        return json.dumps(blob, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return str(blob)
 
-    research_json (from topic-selector + draft-generator) is the primary
-    truth. council_debate_json captures the LLM panel's reasoning; useful
-    for paraphrase matches. Slide bodies are last-resort fallback.
+
+def _meaningful_text_len(blob: Any) -> int:
+    """Length of the human-readable TEXT carried by a JSON blob (or string).
+
+    For a dict/list we sum the lengths of leaf string/number values — NOT the
+    serialized form — so structural punctuation ({}, [], quotes, keys) doesn't
+    inflate or, after a naive strip, deflate the measure. A compact but real
+    `{"claims":[{"text":"Perpres 37/2023"}]}` correctly counts its content.
+    """
+    if blob is None:
+        return 0
+    if isinstance(blob, str):
+        return len(blob.strip())
+    if isinstance(blob, (int, float)):
+        return len(str(blob))
+    if isinstance(blob, dict):
+        # values only — keys are schema, not ground truth
+        return sum(_meaningful_text_len(v) for v in blob.values())
+    if isinstance(blob, (list, tuple)):
+        return sum(_meaningful_text_len(v) for v in blob)
+    return len(str(blob).strip())
+
+
+def _has_external_truth(
+    research_json: Any, council_debate_json: Any, *, brief_json: Any = None
+) -> bool:
+    """True only if there is a non-trivial EXTERNAL source to verify against.
+
+    The draft's own slides are NOT external truth — verifying a claim against
+    the slides that asserted it is self-reference (autopsy finding #6). On the
+    live pipeline `research_json` is never populated (only probes/smoke tests
+    set it); the production corpus lives in `brief_json` (#1112). So external
+    truth = research_json OR brief_json OR council_debate_json; with none of
+    them the checker must NOT return a clean 'pass' (see _aggregate_status).
+
+    2026-06-05 (panel fix C): the old check stripped the literal chars
+    "{}[]...null" (which also deleted the letters n/u/l) from the SERIALIZED
+    json and required ≥40 chars — so a compact real research blob like
+    {"claims":[{"text":"Perpres 37/2023"}]} stripped to 26 chars and was
+    wrongly judged empty, capping a legitimately-grounded draft at 'degraded'
+    forever. We now measure leaf-value text length, and treat the presence of
+    a real law citation as a strong positive signal regardless of length.
+    """
+    # Strong signal: a real legal citation in the external source.
+    serialized = (
+        _blob_to_text(research_json)
+        + "\n"
+        + _blob_to_text(brief_json)
+        + "\n"
+        + _blob_to_text(council_debate_json)
+    )
+    if _find_law_citations(serialized):
+        return True
+    # Otherwise require a non-trivial amount of leaf text content.
+    content_len = (
+        _meaningful_text_len(research_json)
+        + _meaningful_text_len(brief_json)
+        + _meaningful_text_len(council_debate_json)
+    )
+    return content_len >= 40
+
+
+def _extract_source_text(
+    research_json: Any,
+    council_debate_json: Any,
+    slides: list[dict[str, Any]],
+    brief_json: Any = None,
+    *,
+    include_slides: bool = True,
+) -> str:
+    """Concatenate available source-text the draft was derived from.
+
+    brief_json (from the topic-selector) is the ACTUAL research the draft
+    generator consumed: article_summary, article_body_full, source_url and
+    the structured `enrichment` object (the_facts / bali_zero_take /
+    in_practice / next_steps / faq). research_json is a separate column the
+    production pipeline never populates (only probes/smoke tests do), so
+    without brief_json the checker has almost no source corpus and
+    false-flags headline numbers the slides omit for editorial brevity.
+    council_debate_json captures the LLM panel's reasoning; useful for
+    paraphrase matches. Slide bodies are last-resort fallback for
+    paraphrase/number matching ONLY — they are excluded (include_slides=False)
+    when verifying law citations, so a citation can never be "verified" purely
+    because it appears in the draft itself.
     """
     parts: list[str] = []
-    for blob in (research_json, council_debate_json):
+    for blob in (research_json, brief_json, council_debate_json):
         if blob is None:
             continue
         if isinstance(blob, str):
@@ -171,10 +278,11 @@ def _extract_source_text(
                 parts.append(json.dumps(blob, ensure_ascii=False))
             except (TypeError, ValueError):
                 parts.append(str(blob))
-    for slide in slides:
-        if isinstance(slide, dict):
-            parts.append(str(slide.get("body", "")))
-            parts.append(str(slide.get("title", "")))
+    if include_slides:
+        for slide in slides:
+            if isinstance(slide, dict):
+                parts.append(str(slide.get("body", "")))
+                parts.append(str(slide.get("title", "")))
     return "\n".join(parts)
 
 
@@ -191,17 +299,36 @@ def _find_law_citations(text: str) -> set[str]:
 # Per-claim verification
 # ─────────────────────────────────────────────────────────────────────────
 
-def _verify_law_claim(claim_text: str, source_laws: set[str], source_text: str) -> dict[str, str]:
-    """A 'law' claim is verified if at least one of its citations
-    regex-matches in source. Multi-citation claims are common (e.g.
-    "PP 28/2025 supersedes PP 5/2021" — only the primary cite needs to
-    be in the source).
+def _verify_law_claim(
+    claim_text: str,
+    source_laws: set[str],
+    source_text: str,
+    *,
+    has_external_truth: bool = True,
+) -> dict[str, str]:
+    """A 'law' claim is verified ONLY against an external source.
+
+    A claim's citation must regex-match a citation found in the EXTERNAL
+    source text (research_json/council), not in the draft's own slides.
+    Multi-citation claims are common (e.g. "PP 28/2025 supersedes PP 5/2021"
+    — only the primary cite needs to be in the source).
 
     Returns: {"verdict": "verified"|"unverifiable", "note": str}.
     'fail' is reserved for active contradictions; we don't auto-contradict
     laws (a missing law means we couldn't find it, not that it's wrong).
+
+    2026-06-04 (WR2 autopsy P-5): the old self-substring fallback ("claim
+    text appears in source") is REMOVED for law claims — with research_json
+    NULL the only "source" was the slides themselves, so every citation
+    self-verified. A law claim with no external corroboration is now
+    'unverifiable', which aggregates to 'degraded' (never silent 'pass').
     """
     claim_laws = _find_law_citations(claim_text)
+    if not has_external_truth:
+        return {
+            "verdict": "unverifiable",
+            "note": "no external source (research_json empty) — law claim cannot self-verify",
+        }
     overlap = claim_laws & source_laws
     if overlap:
         return {
@@ -211,11 +338,8 @@ def _verify_law_claim(claim_text: str, source_laws: set[str], source_text: str) 
     if claim_laws:
         return {
             "verdict": "unverifiable",
-            "note": f"law citation {','.join(sorted(claim_laws))} not found in research_json",
+            "note": f"law citation {','.join(sorted(claim_laws))} not found in external source",
         }
-    # No regex match → fall back to substring search of the claim itself.
-    if claim_text.lower() in source_text.lower():
-        return {"verdict": "verified", "note": "exact substring match in source"}
     return {"verdict": "unverifiable", "note": "law claim has no matchable citation"}
 
 
@@ -271,7 +395,11 @@ def _verify_other_claim(claim_text: str, source_text: str) -> dict[str, str]:
 
 
 def _verify_claim(
-    claim: dict[str, Any], source_text: str, source_laws: set[str]
+    claim: dict[str, Any],
+    source_text: str,
+    source_laws: set[str],
+    *,
+    has_external_truth: bool = True,
 ) -> dict[str, Any]:
     """Synchronous, deterministic per-claim verifier. No LLM call.
 
@@ -285,7 +413,9 @@ def _verify_claim(
         return out
 
     if ctype == "law":
-        verdict = _verify_law_claim(text, source_laws, source_text)
+        verdict = _verify_law_claim(
+            text, source_laws, source_text, has_external_truth=has_external_truth
+        )
     elif ctype == "quote":
         verdict = _verify_quote_claim(text, source_text)
     elif ctype in ("number", "date"):
@@ -374,7 +504,7 @@ async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyn
     return await conn.fetch(
         """
         SELECT id, topic, register, slides_json, research_json,
-               council_debate_json, fact_check_json
+               brief_json, council_debate_json, fact_check_json
           FROM war_room_drafts
          WHERE status = 'drafts_imaged_facted'
            AND fact_check_json IS NOT NULL
@@ -423,7 +553,9 @@ async def _persist_checked(
 # Per-draft pipeline
 # ─────────────────────────────────────────────────────────────────────────
 
-def _aggregate_status(verified_claims: list[dict[str, Any]]) -> str:
+def _aggregate_status(
+    verified_claims: list[dict[str, Any]], *, has_external_truth: bool = True
+) -> str:
     """Aggregate per-claim verdicts into a single fact_check_status.
 
     Rules (locked-in spec from B-bis):
@@ -431,6 +563,12 @@ def _aggregate_status(verified_claims: list[dict[str, Any]]) -> str:
       - any verdict == 'unverifiable'  → 'degraded' (and no contradicted)
       - all 'verified'                 → 'pass'
       - empty claims list              → 'pass' (vacuously true)
+
+    2026-06-04 (WR2 autopsy P-5) FAIL-CLOSED: if there was NO external source
+    to verify against (research_json empty — the live-pipeline norm), a draft
+    with claims can NEVER be a clean 'pass' — the best it earns is 'degraded'.
+    Otherwise the checker rubber-stamps the LLM's own assertions. An empty
+    claims list stays 'pass' (nothing to mis-verify).
     """
     if not verified_claims:
         return "pass"
@@ -445,6 +583,9 @@ def _aggregate_status(verified_claims: list[dict[str, Any]]) -> str:
     if has_contradicted:
         return "fail"
     if has_unverifiable:
+        return "degraded"
+    if not has_external_truth:
+        # All claims "verified" but only against the draft itself → not trusted.
         return "degraded"
     return "pass"
 
@@ -475,6 +616,12 @@ async def _process_one_draft(
             council = json.loads(council)
         except json.JSONDecodeError:
             pass
+    brief = row.get("brief_json")
+    if isinstance(brief, str):
+        try:
+            brief = json.loads(brief)
+        except json.JSONDecodeError:
+            pass
     slides_blob = row["slides_json"]
     if isinstance(slides_blob, str):
         try:
@@ -487,19 +634,46 @@ async def _process_one_draft(
         else slides_blob
     ) or []
 
-    source_text = _extract_source_text(research, council, slides)
-    source_laws = _find_law_citations(source_text)
+    # brief_json is the corpus the production pipeline actually populates
+    # (research_json is probe/smoke-only), so it is threaded into every source
+    # extraction below — including the EXTERNAL view used for law matching and
+    # the external-truth gate, otherwise live drafts would have no corpus.
+    source_text = _extract_source_text(research, council, slides, brief_json=brief)
+    # Law citations are matched against the EXTERNAL source only (no slides),
+    # so a citation cannot self-verify just by appearing in the draft.
+    external_text = _extract_source_text(
+        research, council, slides, brief_json=brief, include_slides=False
+    )
+    source_laws = _find_law_citations(external_text)
+    has_external_truth = _has_external_truth(research, council, brief_json=brief)
+    if not has_external_truth:
+        logger.warning(
+            "Draft %s has NO external truth (research_json/brief_json empty) — "
+            "fact-check capped at 'degraded', law claims unverifiable.",
+            draft_id,
+        )
 
     t0 = time.time()
 
     # Pass 1: deterministic verification.
     verified: list[dict[str, Any]] = []
     for claim in claims_in:
-        verified.append(_verify_claim(claim, source_text, source_laws))
+        verified.append(
+            _verify_claim(
+                claim, source_text, source_laws, has_external_truth=has_external_truth
+            )
+        )
 
     # Pass 2 (optional): LLM cross-check for any 'unverifiable' claims to
     # see if they're actually 'verified' (paraphrase) or 'contradicted'
     # (drift). Skipped when llm_enabled=False (fast deterministic path).
+    # 2026-06-05 (panel fix, defense-in-depth): feed the LLM the EXTERNAL
+    # source (slides excluded) so it cannot "verify" a claim by paraphrase-
+    # matching the draft's own slides — the same self-reference class the
+    # fail-closed cap guards against. With no external truth, external_text is
+    # thin and the LLM correctly returns 'unverifiable' (and the cap forces
+    # 'degraded' anyway).
+    llm_source = source_text if has_external_truth else external_text
     if llm_enabled:
         for c in verified:
             if c.get("verdict") != "unverifiable":
@@ -507,7 +681,7 @@ async def _process_one_draft(
             try:
                 llm_out = await _llm_verify_claim(
                     str(c.get("claim", "")),
-                    source_text,
+                    llm_source,
                     model=DEFAULT_MODEL,
                     timeout_s=DEFAULT_TIMEOUT_S,
                 )
@@ -526,7 +700,7 @@ async def _process_one_draft(
                 c["note"] = f"{prev_note} | LLM: {llm_out.get('note', '')}"[:200]
 
     duration = time.time() - t0
-    fact_check_status = _aggregate_status(verified)
+    fact_check_status = _aggregate_status(verified, has_external_truth=has_external_truth)
 
     fact_check_payload = {
         "claims": verified,
