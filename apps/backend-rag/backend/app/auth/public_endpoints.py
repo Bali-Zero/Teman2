@@ -142,6 +142,19 @@ _INFRA = (
         "Intel Lake batched observation ingest — X-Producer-Token auth in-router",
         match="exact",
     ),
+    # wa-mirror CRM write-back (2026-06-06): service-side lead promotion +
+    # strategic_recap from the Pro-local wa-corpus to the Fly CRM. Public to bypass
+    # HybridAuthMiddleware — but enforces its OWN X-CRM-Write-Key header auth +
+    # WA_MIRROR_CRM_WRITE_ENABLED flag in-router (verify_crm_write_key). Uses a
+    # DISTINCT scoped key from wa_mirror_internal_key (least-privilege — this key
+    # authorizes ONLY phone-keyed lead upsert). See
+    # backend/app/routers/crm_clients.py::upsert_client_by_phone.
+    PublicEndpoint(
+        "/api/crm/clients/upsert-by-phone",
+        Category.INFRA,
+        "wa-mirror CRM lead upsert — X-CRM-Write-Key + WA_MIRROR_CRM_WRITE_ENABLED auth in-router",
+        match="exact",
+    ),
 )
 
 _AUTH = (
