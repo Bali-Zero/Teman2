@@ -1147,10 +1147,11 @@ async def upsert_client_by_phone(
         logger.warning("upsert-by-phone: cache invalidation failed: %s", exc)
 
     if result.get("matched_count", 0) > 1:
+        # Do NOT log the phone (PII / UU PDP + log-injection: it's user-supplied).
+        # client_id + matched_count are non-PII DB integers and fully identify the row.
         logger.warning(
-            "upsert-by-phone: phone %s matched %s rows (shared number) — acted on id=%s; "
+            "upsert-by-phone: %s clients share a phone (acted on id=%s) — "
             "review for possible duplicate-client merge",
-            phone,
             result["matched_count"],
             result["client_id"],
         )
