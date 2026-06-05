@@ -1,0 +1,240 @@
+"""Tests for the intake extraction stage (FASE 3 β).
+
+Two layers:
+  * Fast/CI: inject a fake ``generate_fn`` so no Ollama call is made — tests the
+    Maybe-pattern coercion, the GOLDEN RULE (illegible field -> null + 0.0), the
+    schema-per-doc-type, and the worker stage-handler contract deterministically.
+  * ``slow``: hit the REAL SEA-LION model on local Ollama and assert the golden
+    rule holds on real output. Deselect with ``-m "not slow"``.
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from backend.llm.ollama_client import is_ollama_available
+from backend.services.intake import extract, model_roles
+
+# --------------------------------------------------------------------------- #
+# Helpers                                                                      #
+# --------------------------------------------------------------------------- #
+
+def _fake_gen(payload: dict):
+    """Return a generate_fn that always yields ``payload`` as JSON."""
+    async def _gen(model: str, prompt: str) -> str:  # noqa: ARG001
+        return json.dumps(payload)
+    return _gen
+
+
+# --------------------------------------------------------------------------- #
+# Schema / doc-type mapping                                                    #
+# --------------------------------------------------------------------------- #
+
+
+def test_resolve_extraction_model_reads_model_topology(tmp_path, monkeypatch):
+    topology = {"roles": {"intake_extraction": "registry-sealion:q4"}}
+    (tmp_path / "MODEL_TOPOLOGY.json").write_text(json.dumps(topology), encoding="utf-8")
+    monkeypatch.delenv("INTAKE_EXTRACTION_MODEL", raising=False)
+    monkeypatch.setenv("INTAKE_REPO_ROOT", str(tmp_path))
+    model_roles.clear_model_role_cache()
+    try:
+        assert extract._resolve_extraction_model() == "registry-sealion:q4"
+    finally:
+        model_roles.clear_model_role_cache()
+
+
+def test_extraction_model_env_override_wins(monkeypatch):
+    monkeypatch.setenv("INTAKE_EXTRACTION_MODEL", "override-model:q4")
+    assert extract._resolve_extraction_model() == "override-model:q4"
+
+
+def test_canonical_doc_type_aliases():
+    assert extract.canonical_doc_type("nib") == "nib"
+    assert extract.canonical_doc_type("NIB_OSS") == "nib"
+    assert extract.canonical_doc_type("akta") == "akta_pendirian"
+    assert extract.canonical_doc_type("paspor") == "passport"
+    assert extract.canonical_doc_type("unknown_thing") is None
+    assert extract.canonical_doc_type(None) is None
+
+
+async def test_unsupported_doc_type_raises():
+    with pytest.raises(ValueError):
+        await extract.extract_fields("drivers_license", ["some text"])
+
+
+# --------------------------------------------------------------------------- #
+# Maybe pattern + GOLDEN RULE (fake model, deterministic)                      #
+# --------------------------------------------------------------------------- #
+
+async def test_full_nib_extraction_with_evidence():
+    payload = {
+        "nib_number": {"value": "1234567890123", "source_page": 1},
+        "company_name": {"value": "PT BALI ZERO SUKSES", "source_page": 1},
+        "kbli_codes": {"value": ["56101", "68111"], "source_page": 2},
+        "address": {"value": "Jl. Sunset Road 88, Kuta", "source_page": 1},
+        "issue_date": {"value": "2024-03-12", "source_page": 1},
+    }
+    out = await extract.extract_fields(
+        "nib", ["page one text", "page two kbli"], generate_fn=_fake_gen(payload)
+    )
+    assert out["doc_type"] == "nib"
+    assert out["extraction_model"] == "sea-lion"
+    assert out["fields"]["nib_number"]["value"] == "1234567890123"
+    assert out["fields"]["nib_number"]["source_page"] == 1
+    assert out["fields"]["nib_number"]["confidence"] >= 0.6
+    assert out["fields"]["kbli_codes"]["value"] == ["56101", "68111"]
+    assert out["any_low_confidence"] is False
+
+
+async def test_golden_rule_illegible_field_becomes_null():
+    """THE CRITICAL TEST: a field the model returns as null stays null + 0.0.
+
+    The model is told to null illegible fields; here address + issue_date are
+    null. The extractor must NOT invent — it preserves null with confidence 0.0.
+    """
+    payload = {
+        "nib_number": {"value": "9876543210987", "source_page": 1},
+        "company_name": {"value": "PT NUZANTARA JAYA", "source_page": 1},
+        "kbli_codes": {"value": ["70209"], "source_page": 1},
+        "address": {"value": None, "source_page": None},  # illegible smudge
+        "issue_date": {"value": None, "source_page": None},  # absent
+    }
+    out = await extract.extract_fields(
+        "nib", ["legible header, smudged address"], generate_fn=_fake_gen(payload)
+    )
+    addr = out["fields"]["address"]
+    date = out["fields"]["issue_date"]
+    assert addr["value"] is None and addr["confidence"] == 0.0 and addr["source_page"] is None
+    assert date["value"] is None and date["confidence"] == 0.0
+    assert out["any_low_confidence"] is True
+    # legible fields untouched
+    assert out["fields"]["nib_number"]["value"] == "9876543210987"
+
+
+async def test_empty_string_sentinels_coerced_to_null():
+    payload = {
+        "nib_number": {"value": "", "source_page": 1},
+        "company_name": {"value": "N/A", "source_page": 1},
+        "kbli_codes": {"value": [], "source_page": None},
+        "address": {"value": "-", "source_page": None},
+        "issue_date": {"value": "null", "source_page": None},
+    }
+    out = await extract.extract_fields("nib", ["junk"], generate_fn=_fake_gen(payload))
+    for name in ("nib_number", "company_name", "kbli_codes", "address", "issue_date"):
+        assert out["fields"][name]["value"] is None, name
+        assert out["fields"][name]["confidence"] == 0.0
+
+
+async def test_bare_value_without_evidence_object_is_low_confidence():
+    """Model returns bare scalars (no {value,source_page}). Value kept, citation
+    distrusted -> halved confidence, never fabricated page."""
+    payload = {
+        "nib_number": "1234567890123",
+        "company_name": "PT X",
+        "kbli_codes": ["56101"],
+        "address": "Jl. Y",
+        "issue_date": "2024-01-01",
+    }
+    out = await extract.extract_fields("nib", ["p1"], generate_fn=_fake_gen(payload))
+    f = out["fields"]["nib_number"]
+    assert f["value"] == "1234567890123"
+    assert f["source_page"] is None
+    assert 0 < f["confidence"] < extract._PRESENT_CONFIDENCE  # halved
+
+
+async def test_out_of_range_source_page_dropped():
+    payload = {"nib_number": {"value": "1234567890123", "source_page": 99}}
+    out = await extract.extract_fields("nib", ["only one page"], generate_fn=_fake_gen(payload))
+    f = out["fields"]["nib_number"]
+    assert f["value"] == "1234567890123"
+    assert f["source_page"] is None  # 99 > 1 page -> dropped, not trusted
+
+
+async def test_empty_ocr_yields_all_null_without_model_call():
+    """No legible OCR -> every field null, model NOT called (golden rule)."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    out = await extract.extract_fields("akta_pendirian", ["", "   "], generate_fn=_gen)
+    assert called["n"] == 0
+    assert out["any_low_confidence"] is True
+    for name in ("company_name", "directors", "commissioners", "capital", "notary", "date"):
+        assert out["fields"][name]["value"] is None
+
+
+async def test_akta_list_fields():
+    payload = {
+        "company_name": {"value": "PT MAJU", "source_page": 1},
+        "directors": {"value": ["Budi Santoso", "Siti Aminah"], "source_page": 2},
+        "commissioners": {"value": ["Andi Wijaya"], "source_page": 2},
+        "capital": {"value": "Rp 1.000.000.000", "source_page": 1},
+        "notary": {"value": "Notaris Made Sutrisna", "source_page": 1},
+        "date": {"value": "2023-11-02", "source_page": 1},
+    }
+    out = await extract.extract_fields(
+        "akta_pendirian", ["p1", "p2 directors"], generate_fn=_fake_gen(payload)
+    )
+    assert out["fields"]["directors"]["value"] == ["Budi Santoso", "Siti Aminah"]
+    assert out["fields"]["commissioners"]["value"] == ["Andi Wijaya"]
+
+
+# --------------------------------------------------------------------------- #
+# Worker stage-handler contract                                               #
+# --------------------------------------------------------------------------- #
+
+async def test_extract_stage_reads_upstream_stage_output(monkeypatch):
+    payload = {"nib_number": {"value": "1234567890123", "source_page": 1}}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        return json.dumps(payload)
+
+    monkeypatch.setattr(extract, "_ollama_generate", _gen)
+    job = {
+        "id": 42,
+        "stage_output": {
+            "classify": {"doc_type": "nib"},
+            "ocr": {"ocr_text_per_page": ["NIB: 1234567890123"]},
+        },
+    }
+    out = await extract.extract_stage(job, "extract")
+    assert out["doc_type"] == "nib"
+    assert out["fields"]["nib_number"]["value"] == "1234567890123"
+
+
+async def test_extract_stage_rejects_wrong_stage():
+    with pytest.raises(ValueError):
+        await extract.extract_stage({"id": 1}, "validate")
+
+
+# --------------------------------------------------------------------------- #
+# LIVE: real SEA-LION model (deselect with -m "not slow")                     #
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.slow
+@pytest.mark.integration
+async def test_live_sealion_golden_rule_null_on_illegible():
+    """Real SEA-LION must null an illegible field, not invent it."""
+    if not await is_ollama_available():
+        pytest.skip("SEA-LION/Ollama not reachable (localhost:11434)")
+    ocr = (
+        "NOMOR INDUK BERUSAHA\n"
+        "NIB: 9876543210987\n"
+        "Nama Perusahaan: PT NUZANTARA JAYA\n"
+        "Alamat: [tidak terbaca / illegible smudge]\n"
+        "KBLI: 70209"
+    )
+    out = await extract.extract_fields("nib", [ocr])
+    # legible fields present
+    assert out["fields"]["nib_number"]["value"] == "9876543210987"
+    assert out["fields"]["company_name"]["value"] == "PT NUZANTARA JAYA"
+    # GOLDEN RULE: illegible address must be null, not fabricated
+    assert out["fields"]["address"]["value"] is None
+    assert out["fields"]["address"]["confidence"] == 0.0
+    # issue_date absent -> null
+    assert out["fields"]["issue_date"]["value"] is None
+    await extract.close_extract_client()

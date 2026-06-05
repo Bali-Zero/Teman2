@@ -25,3 +25,4 @@ def test_health_authed(app):
     assert resp.status_code == 200
     body = resp.json()
     assert body["alive"] is True
+    assert body["uptime_s"] >= 0
