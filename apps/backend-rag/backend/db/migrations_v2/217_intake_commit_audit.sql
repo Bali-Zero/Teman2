@@ -1,4 +1,4 @@
--- 217_intake_commit_audit.sql — FASE 5B/5C CRM-writer audit + idempotency (LOCAL Pro DB only)
+-- 217_intake_commit_audit.sql — FASE 5B/5C CRM-writer audit + idempotency (DDL, no data)
 -- Adds the two persistence primitives the document-intake CRM writer needs:
 --   1. intake_commit_audit            — forensic trace of EVERY commit attempt
 --                                        (committed / dry_run / failed / rolled_back).
@@ -16,7 +16,15 @@
 --
 -- READ-ONLY w.r.t. the CRM in 5B: the new \`documents\` columns are only WRITTEN by the
 -- real (5C) commit path, gated by INTAKE_WRITER_ENABLED (default OFF).
--- PII 100% locale (Law 2 / UU-PDP): MAI applicare su Fly. Solo nuzantara_dev @127.0.0.1:5432.
+-- DDL-vs-DATA boundary (Law 2 / UU-PDP): this migration is SCHEMA ONLY — an empty
+-- `intake_commit_audit` table + two nullable `documents` columns. The numbered-migration
+-- runner (migration_manager.discover_migrations) applies every migrations_v2/*.sql by
+-- number on EVERY DB it runs against (local AND Fly), so this schema IS present on Fly —
+-- a `-- comment` cannot gate the runner. That is fine: zero PII is written by the schema.
+-- What is PII-local-only is the DATA: the 5C writer (gated by INTAKE_WRITER_ENABLED,
+-- default OFF) must only ever write rows here against nuzantara_dev @127.0.0.1, never Fly.
+-- (Earlier header said "MAI applicare su Fly" — that was wrong about the DDL; corrected
+--  2026-06-06 after empirical verify that 217 is in _schema_versions on Fly, table empty.)
 -- === FORWARD ===
 
 -- A. Idempotency + provenance columns on documents (nullable: legacy rows untouched).
