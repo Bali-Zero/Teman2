@@ -262,12 +262,125 @@ async def test_release_wrong_token_409(pool, seed):
                        params={"claim_token": tok})
 
 
-async def test_reject_stub_501(pool, seed):
-    """reject is still a FASE 5C stub (terminal CRM-affecting write)."""
+async def _proposal_status(pool: asyncpg.Pool, pid: int) -> str:
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", pid)
+
+
+async def test_reject_transitions_to_rejected(pool, seed):
+    """Admin claim → reject → proposal terminal 'rejected', lease cleared."""
+    pid = seed["p_owner"]
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert rc.status_code == 200, rc.text
+        rr = await cl.post(
+            f"/api/intake/review/{pid}/reject",
+            json={"claim_token": rc.json()["claim_token"], "reason": "garbage scan"},
+        )
+    assert rr.status_code == 200, rr.text
+    assert rr.json()["status"] == "rejected"
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT status, lease_owner, lease_expires_at, claim_token, claimed_at "
+            "FROM document_routing_proposal WHERE id=$1", pid)
+    assert row["status"] == "rejected"
+    assert row["lease_owner"] is None
+    assert row["lease_expires_at"] is None
+    assert row["claim_token"] is None
+    assert row["claimed_at"] is None
+
+
+async def test_reject_clears_lease_not_reclaimable(pool, seed):
+    """After reject the proposal is terminal — claim must 409 (not review_pending)."""
+    pid = seed["p_nomatch"]
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        await cl.post(f"/api/intake/review/{pid}/reject",
+                      json={"claim_token": rc.json()["claim_token"]})
+        # terminal 'rejected' is not 'review_pending' → claim's WHERE no longer matches
+        rcl = await cl.post(f"/api/intake/review/{pid}/claim")
+    assert rcl.status_code == 409, rcl.text
+    assert await _proposal_status(pool, pid) == "rejected"
+
+
+async def test_reject_requires_claim_409(pool, seed):
+    """reject on an UNCLAIMED (review_pending) proposal → 409 (must be review_claimed)."""
     app = _make_app(pool, ADMIN)
     async with _client(app) as cl:
         rr = await cl.post(f"/api/intake/review/{seed['p_owner']}/reject")
-    assert rr.status_code == 501 and "5C" in rr.json()["detail"]
+    assert rr.status_code == 409, rr.text
+    assert await _proposal_status(pool, seed["p_owner"]) == "review_pending"
+
+
+async def test_reject_non_admin_token_enforcement(pool, seed):
+    """Non-admin must hold the lease + present the matching token (P0#5)."""
+    pid = seed["p_owner"]  # assigned_to TEAM_OWNER → owner has access
+    owner_app = _make_app(pool, TEAM_OWNER)
+    async with _client(owner_app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert rc.status_code == 200, rc.text
+        token = rc.json()["claim_token"]
+        # no token → 400
+        no_tok = await cl.post(f"/api/intake/review/{pid}/reject", json={})
+        assert no_tok.status_code == 400, no_tok.text
+        # wrong token → 403
+        wrong = await cl.post(f"/api/intake/review/{pid}/reject",
+                              json={"claim_token": str(uuid.uuid4())})
+        assert wrong.status_code == 403, wrong.text
+        # correct token → 200
+        ok = await cl.post(f"/api/intake/review/{pid}/reject",
+                           json={"claim_token": token})
+        assert ok.status_code == 200, ok.text
+    assert await _proposal_status(pool, pid) == "rejected"
+
+
+async def test_reject_idempotent_noop(pool, seed):
+    """Re-reject an already-rejected proposal → 409, status stays rejected."""
+    pid = seed["p_other"]
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        r1 = await cl.post(f"/api/intake/review/{pid}/reject",
+                           json={"claim_token": rc.json()["claim_token"]})
+        assert r1.status_code == 200, r1.text
+        # second reject — proposal is terminal, not review_claimed → 409
+        r2 = await cl.post(f"/api/intake/review/{pid}/reject", json={})
+    assert r2.status_code == 409, r2.text
+    assert await _proposal_status(pool, pid) == "rejected"
+
+
+async def test_reject_writes_no_crm_rows(pool, seed):
+    """A full claim→reject mutates NO clients/practices and writes NO audit row."""
+    before = await _crm_counts(pool)
+    pid = seed["p_owner"]
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        rr = await cl.post(f"/api/intake/review/{pid}/reject",
+                           json={"claim_token": rc.json()["claim_token"]})
+    assert rr.status_code == 200, rr.text
+    after = await _crm_counts(pool)
+    assert after == before, f"CRM mutated by reject! {before} -> {after}"
+    async with pool.acquire() as conn:
+        n_audit = await conn.fetchval(
+            "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1", pid)
+    assert n_audit == 0, "reject wrote an intake_commit_audit row (should write none)"
+
+
+async def test_reject_not_flag_gated(pool, seed, monkeypatch):
+    """reject works with INTAKE_WRITER_ENABLED OFF — it is a queue-management op."""
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
+    pid = seed["p_nomatch"]
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        rr = await cl.post(f"/api/intake/review/{pid}/reject",
+                           json={"claim_token": rc.json()["claim_token"]})
+    assert rr.status_code == 200, rr.text
+    assert rr.json()["status"] == "rejected"
 
 
 async def test_approve_requires_claim_409(pool, seed):
