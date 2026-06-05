@@ -315,6 +315,12 @@ _PG_NOTIFY_ONLY_CHANNELS = frozenset(
         # written, but the path is Python-callsite, not migration-146-trigger.
         # Track A 2026-05-02 — see PR #411 + #416 + #425.
         "cell_pulse_observed",
+        # cell_pulse_sustained_red: twin of cell_pulse_observed — emitted by
+        # cell_core.observatory.emit_sustained_red / emit_enrichment_repair_request
+        # (W57) via Python direct outbox.publish, NOT a DB trigger. Registered in
+        # PG_CHANNEL_MAP 2026-06-05 so the in-app EventBus replay-acks its rows
+        # (loop-repair: 52 unconsumed orphans). No migration-146 INSERT expected.
+        "cell_pulse_sustained_red",
         # partner_commission_changed: emitted by services/crm/partners/events.py
         # `_publish_changed` after CommissionEngine.accrue_from_practice. Python-
         # only callsite via outbox.publish (no DB trigger). Renamed 2026-05-09
