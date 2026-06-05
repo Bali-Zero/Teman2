@@ -202,6 +202,8 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(
         name="instagram_chat", attr="webhook_router", process_groups=_API, tags=("channels",)
     ),
+    # ── Document-intake HITL review (FASE 5A, RAG process — LOCAL Pro DB only) ──
+    RouterEntry(name="intake_review", process_groups=_RAG, tags=("intake", "crm", "hitl")),
     # ── Intel (RAG process only — needs /data volume) ──
     RouterEntry(name="intel", process_groups=_RAG, tags=("intel",)),
     RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),
