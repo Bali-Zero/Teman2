@@ -77,6 +77,16 @@ jobs:
           set -e
           cd "$GITHUB_WORKSPACE"
 
+          # Creds preflight: distinguish "Tigris repo secrets not configured"
+          # (a setup gap) from "backups genuinely missing/corrupt" (a DR
+          # emergency). Without this they both surfaced as the same alarming
+          # "backups may not be recoverable" alert. The TIGRIS_ACCESS_KEY_ID /
+          # TIGRIS_SECRET_ACCESS_KEY repo secrets are absent as of 2026-06-05.
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+            echo "::error title=Tigris credentials not configured::TIGRIS_ACCESS_KEY_ID / TIGRIS_SECRET_ACCESS_KEY repo secrets are empty. The drill cannot list/download backups. Set them with: gh secret set TIGRIS_ACCESS_KEY_ID  and  gh secret set TIGRIS_SECRET_ACCESS_KEY  (values from the Tigris/Fly storage dashboard). This is a setup gap, NOT proof that backups are corrupt."
+            exit 1
+          fi
+
           # Find + download latest backup
           LATEST=$(aws --endpoint-url "$TIGRIS_ENDPOINT" s3 ls \
             "s3://$TIGRIS_BUCKET/postgres/" \
