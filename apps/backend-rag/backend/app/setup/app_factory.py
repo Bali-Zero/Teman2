@@ -144,6 +144,15 @@ async def lifespan(app: FastAPI):
         app.state.startup_complete = True
         logger.info("✅ ZANTARA startup complete - all services ready")
 
+        # FASE 5C: announce intake-writer flag state loudly (WARNING when real
+        # commits are active, INFO when dry-run). Never let the flag be silent.
+        try:
+            from backend.services.intake.writer import log_writer_status
+
+            log_writer_status()
+        except Exception as e:  # never let a log line break startup
+            logger.warning("⚠️ intake writer status log skipped: %s", e)
+
         # Warm-up CrossEncoder model in background thread (prevents 10-30s first-request spike)
         try:
             from backend.services.rag.reranker import CrossEncoderReranker

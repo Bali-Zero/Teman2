@@ -506,15 +506,21 @@ async def approve_review(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Approve a proposal — FASE 5B DRY-RUN.
+    """Approve a proposal — dry-run (5B) OR real commit (5C, flag-gated).
 
-    Builds the full CommitPlan (what the writer WOULD do) and runs it through
-    ``execute_commit(dry_run=True)``: it records ONE ``intake_commit_audit(dry_run=true)``
-    row and writes NOTHING to the CRM (no documents INSERT, no practices UPDATE).
+    Builds the full CommitPlan and runs it through ``execute_commit``. The
+    ``dry_run`` argument is ``not writer_enabled()``:
+
+    * **Flag OFF (default — 5B behaviour):** dry-run. Records ONE
+      ``intake_commit_audit(dry_run=true)`` row, writes NOTHING to the CRM, and
+      leaves the proposal ``review_claimed`` (P0#9).
+    * **Flag ON (5C go-live):** the real atomic path runs inside THIS request's
+      transaction — document UPSERT + practice link + proposal advanced to
+      ``routed`` + audit ``committed`` — all-or-nothing. A blocked plan still writes
+      nothing and stays ``review_claimed``.
 
     P0#5: the caller must hold the active claim — non-admins must present the
-    matching ``claim_token`` on a non-expired lease. The proposal status is NOT
-    advanced to a terminal state in dry-run (P0#9): it stays ``review_claimed``.
+    matching ``claim_token`` on a non-expired lease.
 
     body: {client_id?, practice_id?, final_fields?, claim_token?}
     """
@@ -572,16 +578,27 @@ async def approve_review(
                 override_practice_id=override_practice_id,
                 final_fields=final_fields,
             )
-            result = await intake_writer.execute_commit(plan, conn, dry_run=True)
+            # FASE 5C gate: dry-run UNLESS INTAKE_WRITER_ENABLED is truthy. With the
+            # flag OFF (default) this stays True → simulate + audit-only, exactly as
+            # 5B. With the flag ON the real atomic path runs INSIDE this transaction
+            # (write document + append practice + advance proposal + audit), so a
+            # failure anywhere rolls the WHOLE approve back.
+            dry_run = not intake_writer.writer_enabled()
+            result = await intake_writer.execute_commit(plan, conn, dry_run=dry_run)
 
+    # Response status reflects what actually happened: a committed real write
+    # advanced the proposal to 'routed'; a dry-run (or a blocked plan) left it
+    # review_claimed (P0#9).
+    advanced = result.outcome == "committed"
+    response_status = "routed" if advanced else "review_claimed"
     logger.info(
-        "intake.review.approve.dry_run proposal=%s reviewer=%s outcome=%s",
-        proposal_id, user_email, result.outcome,
+        "intake.review.approve proposal=%s reviewer=%s dry_run=%s outcome=%s status=%s",
+        proposal_id, user_email, result.dry_run, result.outcome, response_status,
     )
     return {
         "proposal_id": proposal_id,
-        "dry_run": True,
-        "status": "review_claimed",  # P0#9: NOT advanced in dry-run
+        "dry_run": result.dry_run,
+        "status": response_status,
         "outcome": result.outcome,
         "would_commit": plan.to_dict(),
         "result": result.to_dict(),
