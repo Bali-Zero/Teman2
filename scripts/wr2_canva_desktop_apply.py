@@ -197,6 +197,10 @@ async def _persist_result(
     design_id: str,
     edit_url: str,
     view_url: str | None,
+    *,
+    topic: str | None = None,
+    slides_json: object | None = None,
+    register: str | None = None,
 ) -> None:
     await conn.execute(
         """
@@ -213,6 +217,65 @@ async def _persist_result(
         design_id,
         edit_url,
         view_url,
+    )
+    # P-4 (constitution Art 10.6): write one anti-sameness ledger row per
+    # rendered carousel. Best-effort + savepoint-isolated so a logging failure
+    # can NEVER abort the status='rendered' update above. Covers BOTH call paths
+    # (headless + desktop) because both go through _persist_result.
+    try:
+        async with conn.transaction():  # savepoint — isolates the insert
+            await _log_topic_type(
+                conn, draft_id, topic, slides_json, register
+            )
+    except Exception as exc:  # noqa: BLE001 — observability, never fail the render
+        logger.warning("topic_type_log write failed for %s: %s", draft_id, exc)
+
+
+async def _log_topic_type(
+    conn: asyncpg.Connection,
+    draft_id: UUID,
+    topic: str | None,
+    slides_json: object | None,
+    register: str | None,
+) -> None:
+    """Derive (domain, dominant_mode, layout_family, archetype) and INSERT one
+    row into topic_type_log, idempotent on draft_id.
+
+    If topic/slides_json/register were not threaded in by the caller, fall back
+    to a single SELECT on war_room_drafts (best-effort logging tolerates the
+    extra query). Pure-derivation lives in wr2_topic_type.
+    """
+    import wr2_topic_type as tt  # local import: keep module import side-effect-free
+
+    if topic is None or slides_json is None or register is None:
+        rec = await conn.fetchrow(
+            "SELECT topic, register, slides_json FROM war_room_drafts WHERE id = $1",
+            draft_id,
+        )
+        if rec is not None:
+            topic = topic if topic is not None else rec["topic"]
+            register = register if register is not None else rec["register"]
+            slides_json = slides_json if slides_json is not None else rec["slides_json"]
+
+    domain = tt.derive_domain(topic)
+    dominant_mode = tt.derive_dominant_mode(slides_json)
+    layout_family = tt.derive_layout_family(slides_json)
+    archetype = tt.extract_archetype(slides_json)
+
+    await conn.execute(
+        """
+        INSERT INTO topic_type_log
+            (draft_id, domain, register, dominant_mode, layout_family, archetype, topic)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (draft_id) DO NOTHING
+        """,
+        draft_id,
+        domain,
+        register,
+        dominant_mode,
+        layout_family,
+        archetype,
+        topic,
     )
 
 
@@ -437,7 +500,10 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             )
             return False
         design_id, edit_url, view_url = result
-        await _persist_result(conn, draft_id, design_id, edit_url, view_url)
+        await _persist_result(
+            conn, draft_id, design_id, edit_url, view_url,
+            topic=topic, slides_json=slides_json, register=tone,
+        )
         _send_telegram(
             "WR2 Canva carousel ready (headless)\n"
             f"Topic: {topic[:100]}\n"
@@ -564,7 +630,10 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         return False
 
     design_id, edit_url, view_url = result
-    await _persist_result(conn, draft_id, design_id, edit_url, view_url)
+    await _persist_result(
+        conn, draft_id, design_id, edit_url, view_url,
+        topic=topic, slides_json=slides_json, register=tone,
+    )
     duration = time.time() - started_at
     logger.info(
         "Draft %s rendered — design=%s edit=%s duration=%.0fs",
