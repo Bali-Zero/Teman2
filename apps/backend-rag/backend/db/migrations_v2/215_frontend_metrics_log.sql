@@ -1,5 +1,5 @@
 -- ============================================================
--- 214_frontend_metrics_log.sql
+-- 215_frontend_metrics_log.sql
 -- Ingestion sink for frontend (browser) metrics.
 -- Date: 2026-06-05
 --
