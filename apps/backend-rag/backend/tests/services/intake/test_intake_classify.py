@@ -12,14 +12,15 @@ exercised separately by the on-Pro E2E run, not here.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 import pytest
 
 from backend.services.intake import classify as cls
+from backend.services.intake import model_roles
 from backend.services.intake import preprocess as pre
-
 
 # ---------------------------------------------------------------------------
 # classify_document -- pure text, no model
@@ -110,6 +111,17 @@ async def test_source_page_attribution():
 # ---------------------------------------------------------------------------
 # ocr_pages -- monkeypatched vision call (deterministic)
 # ---------------------------------------------------------------------------
+
+
+def test_resolve_ocr_model_reads_model_topology(tmp_path, monkeypatch):
+    topology = {"roles": {"ocr_vision": "registry-qwen3-vl:8b"}}
+    (tmp_path / "MODEL_TOPOLOGY.json").write_text(json.dumps(topology), encoding="utf-8")
+    monkeypatch.setenv("INTAKE_REPO_ROOT", str(tmp_path))
+    model_roles.clear_model_role_cache()
+    try:
+        assert cls._resolve_ocr_model() == "registry-qwen3-vl:8b"
+    finally:
+        model_roles.clear_model_role_cache()
 
 
 class _FakePage:
