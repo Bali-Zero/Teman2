@@ -46,11 +46,6 @@ router = APIRouter(prefix="/api/intake/review", tags=["intake-review"])
 # How long a single reviewer holds a proposal before it becomes reclaimable.
 CLAIM_TTL_MINUTES = 15
 
-# FASE 5C writer endpoints are not active yet — surfaced as explicit 501.
-_WRITER_DISABLED_DETAIL = (
-    "FASE 5C — writer non ancora attivo. approve/reject/commit scrivono il CRM "
-    "e sono dietro feature-flag (INTAKE_WRITER_ENABLED). Non implementato in 5A."
-)
 
 
 # --------------------------------------------------------------------------- #
@@ -497,7 +492,50 @@ async def release_review(
 
 
 # --------------------------------------------------------------------------- #
-# FASE 5C stubs — writer not active in 5A
+# Shared claim/lease guard (P0#5) — used by approve AND reject
+# --------------------------------------------------------------------------- #
+async def _require_active_claim(
+    prop: asyncpg.Record,
+    *,
+    admin: bool,
+    user_email: str,
+    claim_token: str | None,
+) -> None:
+    """Raise unless the caller holds the active, unexpired claim on ``prop``.
+
+    P0#5: the proposal must be ``review_claimed`` with a non-expired lease; a
+    non-admin must own the lease AND present the matching ``claim_token`` UUID.
+    Admins bypass the owner/token checks but NOT the status/expiry checks.
+
+    The caller must have already ``SELECT ... FOR UPDATE``'d ``prop`` (so this is a
+    pure in-memory check on the locked row). Mirrors the original inline guard in
+    ``approve_review`` exactly — extracted so ``reject_review`` enforces the
+    identical rule without drift.
+    """
+    now = datetime.now(timezone.utc)
+    if prop["status"] != "review_claimed":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Proposal must be review_claimed (status={prop['status']}).",
+        )
+    lease_exp = prop["lease_expires_at"]
+    if lease_exp is None or lease_exp < now:
+        raise HTTPException(status_code=409, detail="Claim lease expired - re-claim first.")
+    if not admin:
+        if (prop["lease_owner"] or "").lower().strip() != user_email:
+            raise HTTPException(status_code=403, detail="You do not hold this claim.")
+        if claim_token is None:
+            raise HTTPException(status_code=400, detail="claim_token required.")
+        try:
+            tok = uuid.UUID(str(claim_token))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid claim_token.") from exc
+        if prop["claim_token"] != tok:
+            raise HTTPException(status_code=403, detail="claim_token does not match active claim.")
+
+
+# --------------------------------------------------------------------------- #
+# approve (dry-run 5B / real commit 5C) + reject (terminal, queue-management)
 # --------------------------------------------------------------------------- #
 @router.post("/{proposal_id}/approve")
 async def approve_review(
@@ -531,8 +569,6 @@ async def approve_review(
     override_practice_id = body.get("practice_id")
     final_fields = body.get("final_fields") if isinstance(body.get("final_fields"), dict) else None
 
-    now = datetime.now(timezone.utc)
-
     async with pool.acquire() as conn:
         async with conn.transaction():
             prop = await conn.fetchrow(
@@ -549,26 +585,10 @@ async def approve_review(
             if prop is None:
                 raise HTTPException(status_code=404, detail="Proposal not found")
 
-            # P0#5 — claim/lease enforcement.
-            if prop["status"] != "review_claimed":
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Proposal must be review_claimed to approve (status={prop['status']}).",
-                )
-            lease_exp = prop["lease_expires_at"]
-            if lease_exp is None or lease_exp < now:
-                raise HTTPException(status_code=409, detail="Claim lease expired - re-claim first.")
-            if not admin:
-                if (prop["lease_owner"] or "").lower().strip() != user_email:
-                    raise HTTPException(status_code=403, detail="You do not hold this claim.")
-                if claim_token is None:
-                    raise HTTPException(status_code=400, detail="claim_token required.")
-                try:
-                    tok = uuid.UUID(str(claim_token))
-                except ValueError as exc:
-                    raise HTTPException(status_code=400, detail="Invalid claim_token.") from exc
-                if prop["claim_token"] != tok:
-                    raise HTTPException(status_code=403, detail="claim_token does not match active claim.")
+            # P0#5 — claim/lease enforcement (shared with reject).
+            await _require_active_claim(
+                prop, admin=admin, user_email=user_email, claim_token=claim_token,
+            )
 
             plan = await intake_writer.plan_commit(
                 prop,
@@ -605,13 +625,81 @@ async def approve_review(
     }
 
 
-@router.post("/{proposal_id}/reject", status_code=501)
-async def reject_review_stub(
+@router.post("/{proposal_id}/reject")
+async def reject_review(
     proposal_id: int = Path(..., ge=1),
+    body: dict[str, Any] = Body(default_factory=dict),
     user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Stub — terminal/dead-state write, lives in FASE 5C."""
-    raise HTTPException(status_code=501, detail=_WRITER_DISABLED_DETAIL)
+    """Reject a proposal — terminal transition ``review_claimed`` → ``rejected``.
+
+    This is a **queue-management** operation: it writes ONLY the proposal status +
+    clears the lease. It touches NO CRM data (no ``documents``, no ``practices``),
+    so — unlike ``approve`` — it is NOT gated by ``INTAKE_WRITER_ENABLED``: reviewers
+    must be able to dispose of garbage/NO_MATCH proposals in every phase (5B and 5C),
+    exactly like ``claim``/``release`` (which are also un-gated).
+
+    P0#5: identical claim/lease enforcement as ``approve`` (shared helper). No
+    ``intake_commit_audit`` row is written — that table is the CRM-commit forensic
+    log; a rejection is fully recorded by the proposal's own terminal ``status``
+    (and its lease history). Idempotent under concurrency / re-reject: the
+    ``status='review_claimed'`` guard makes a second reject a 409 no-op, never a
+    double-write.
+
+    body: {claim_token?, reason?}  — ``reason`` is logged (truncated), not persisted.
+    """
+    admin = is_crm_admin(user)
+    user_email = (user.get("email") or "").lower().strip()
+    claim_token = body.get("claim_token")
+    reason = body.get("reason")
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            prop = await conn.fetchrow(
+                """
+                SELECT id, status, lease_owner, lease_expires_at, claim_token
+                FROM document_routing_proposal
+                WHERE id = $1
+                FOR UPDATE
+                """,
+                proposal_id,
+            )
+            if prop is None:
+                raise HTTPException(status_code=404, detail="Proposal not found")
+
+            await _require_active_claim(
+                prop, admin=admin, user_email=user_email, claim_token=claim_token,
+            )
+
+            # Terminal transition + lease clear. Reuse the release_review lease-clear
+            # UPDATE but set status='rejected' (terminal per chk_rp_status), NOT
+            # 'review_pending'. The status='review_claimed' guard makes a concurrent
+            # loser / re-reject a no-op (RETURNING NULL → 409 below).
+            updated = await conn.fetchrow(
+                """
+                UPDATE document_routing_proposal
+                   SET status = 'rejected',
+                       lease_owner = NULL,
+                       lease_expires_at = NULL,
+                       claim_token = NULL,
+                       claimed_at = NULL
+                 WHERE id = $1 AND status = 'review_claimed'
+                RETURNING id
+                """,
+                proposal_id,
+            )
+
+    if updated is None:
+        # Lost the race or already terminal (the guard above passed at SELECT time
+        # but the row changed) — surface as conflict.
+        raise HTTPException(status_code=409, detail="Proposal no longer review_claimed.")
+
+    logger.info(
+        "intake.review.rejected proposal=%s reviewer=%s admin=%s reason=%s",
+        proposal_id, user_email, admin, (reason or "")[:200],
+    )
+    return {"proposal_id": proposal_id, "status": "rejected"}
 
 
 # --------------------------------------------------------------------------- #
