@@ -102,6 +102,12 @@ _INFRA = (
         "Channel health (web) — Cell heartbeat bridge poll target",
         match="exact",
     ),
+    PublicEndpoint(
+        "/api/metrics/frontend",
+        Category.INFRA,
+        "Best-effort frontend browser metrics ingestion - no PII, no auth header",
+        match="exact",
+    ),
     # M1.2 WA Dashboard (2026-05-23): SSE stream health probe. The /stream
     # endpoint itself remains auth-protected (cookie JWT); only /stream/health
     # is public for smoke-test + dashboard reachability ping.

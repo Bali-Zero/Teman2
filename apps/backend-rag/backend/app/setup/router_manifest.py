@@ -177,6 +177,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Federation / Feedback ──
     RouterEntry(name="federation", process_groups=_API, tags=("agent",)),
     RouterEntry(name="feedback", process_groups=_API, tags=("core",)),
+    RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
     # ── Google Drive / Integrations ──
