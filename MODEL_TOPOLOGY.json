@@ -1,6 +1,6 @@
 {
   "_version": "2.0",
-  "_updated": "2026-05-06",
+  "_updated": "2026-06-04 (FASE 0 doc-intake: +ocr_vision, +intake_extraction)",
   "_doc": "Single source of truth for active Pro/Mini LLM model assignments. Air was decommissioned on 2026-05-05 and is not an active Ollama node.",
   "nodes": {
     "pro": {
@@ -35,6 +35,8 @@
     "translation": "gemma4:e4b",
     "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
+    "ocr_vision": "qwen3-vl:8b",
+    "intake_extraction": "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
     "reasoning": "deepseek-r1:32b",
     "fast": "qwen3.5:9b",
     "sentry": "qwen3:4b",
