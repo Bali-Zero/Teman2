@@ -101,11 +101,19 @@ jobs:
           echo "Downloaded $DUMP_SIZE bytes"
           test "$DUMP_SIZE" -gt 1000000
 
-          # Restore into CI postgres service
-          PGPASSWORD=drill gunzip -c "/tmp/$LATEST" | \
-            psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill \
+          # Restore into CI postgres service.
+          # NOTE: PGPASSWORD must prefix psql, NOT gunzip — an env prefix only
+          # applies to the left side of a pipe, so `PGPASSWORD=drill gunzip | psql`
+          # leaves psql with NO password → instant auth-fail → 0 tables restored
+          # (the 2026-06-06 silent-restore bug the drill itself surfaced).
+          gunzip -c "/tmp/$LATEST" | \
+            PGPASSWORD=drill psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill \
                  -v ON_ERROR_STOP=0 \
               > /tmp/restore.log 2>&1 || true
+
+          # Surface restore output — previously hidden, which is what let the
+          # PGPASSWORD-scope bug stay invisible until a manual investigation.
+          echo "=== restore.log (tail) ==="; tail -25 /tmp/restore.log || true; echo "=== end restore.log ==="
 
           # Sanity
           q() { PGPASSWORD=drill psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill -Atc "$1"; }
