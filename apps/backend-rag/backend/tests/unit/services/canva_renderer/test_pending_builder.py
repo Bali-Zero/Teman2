@@ -16,7 +16,9 @@ from backend.services.canva_renderer.pending_builder import (
     CAROUSEL_FOLDER_ID,
     MAX_SLIDES_TEMPLATE,
     TEMPLATE_DESIGN_ID,
+    TEMPLATE_DESIGN_IDS,
     build_canva_pending,
+    select_template_design_id,
     slides_to_operations,
 )
 
@@ -250,3 +252,63 @@ class TestBuildCanvaPending:
         slides = [{"slide_number": i, "headline": f"s{i}"} for i in range(1, 15)]
         with pytest.raises(ValueError, match="cannot exceed 13 slides"):
             build_canva_pending(topic="x", tone="pedagogico", slides=slides)
+
+
+class TestArchetypeTemplateSelection:
+    """P-2a: per-archetype master selection. The four non-default IDs are
+    placeholders for now, so every archetype MUST still fall back to the live
+    default master until a real Canva design ID is recorded. These tests pin
+    that fallback contract + the additive payload field."""
+
+    def test_default_map_points_at_live_master(self) -> None:
+        assert TEMPLATE_DESIGN_IDS["default"] == TEMPLATE_DESIGN_ID
+
+    def test_none_archetype_falls_back_to_default(self) -> None:
+        assert select_template_design_id(None) == TEMPLATE_DESIGN_ID
+
+    def test_unknown_archetype_falls_back_to_default(self) -> None:
+        assert select_template_design_id("no-such-archetype") == TEMPLATE_DESIGN_ID
+
+    def test_placeholder_archetype_falls_back_to_default(self) -> None:
+        # All four non-default entries are placeholders today -> all fall back.
+        for key in (
+            "swiss-grid-asymmetry",
+            "stat-card-hero",
+            "thin-red-rule-divider",
+            "monospace-evidence-block",
+        ):
+            assert select_template_design_id(key) == TEMPLATE_DESIGN_ID, key
+
+    def test_real_id_is_returned_when_no_longer_placeholder(self) -> None:
+        # Simulate an operator wiring a real Canva master for one archetype.
+        import backend.services.canva_renderer.pending_builder as pb
+
+        original = dict(pb.TEMPLATE_DESIGN_IDS)
+        try:
+            pb.TEMPLATE_DESIGN_IDS["stat-card-hero"] = "DAHrealmaster"
+            assert pb.select_template_design_id("stat-card-hero") == "DAHrealmaster"
+            # other placeholders still fall back
+            assert pb.select_template_design_id("swiss-grid-asymmetry") == TEMPLATE_DESIGN_ID
+        finally:
+            pb.TEMPLATE_DESIGN_IDS.clear()
+            pb.TEMPLATE_DESIGN_IDS.update(original)
+
+    def test_build_payload_default_archetype_unchanged(self) -> None:
+        # No archetype passed (the only production call site today) -> identical
+        # template_design_id as before P-2a.
+        payload = build_canva_pending(
+            topic="x", tone="pedagogico", slides=_slides_fixture()
+        )
+        assert payload["template_design_id"] == TEMPLATE_DESIGN_ID
+        assert payload["archetype"] is None
+
+    def test_build_payload_placeholder_archetype_still_default(self) -> None:
+        payload = build_canva_pending(
+            topic="x",
+            tone="pedagogico",
+            slides=_slides_fixture(),
+            archetype="swiss-grid-asymmetry",
+        )
+        # placeholder -> falls back, but the chosen archetype is still recorded
+        assert payload["template_design_id"] == TEMPLATE_DESIGN_ID
+        assert payload["archetype"] == "swiss-grid-asymmetry"
