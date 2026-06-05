@@ -93,11 +93,40 @@ Narrative arc: _we all live it_ (S2) → _this time it reached the top_ (S3) →
 - Render: `chrome-headless-shell` → `png/slide{1..6}.png` (verified 1080×1350).
 - Brand compliance: Montserrat 800, palette antracite/black/white/yellow/red only, no emoji, no forbidden phrases, no CTA.
 
-## 7. Open items
+## 7. v2 — legal red-team applied (2026-06-05)
 
-- [ ] Apply legal red-team (`devils-advocate`) findings.
-- [ ] Refine S6 to ≤2 visual lines (currently 4 at 74px) — shrink font.
-- [ ] Lower dossier-stamp opacity behind S3 facts for legibility.
-- [ ] S5 body rhetorical question `apakah ini giliran kita?` — confirm acceptable (Art. forbidden-phrases F bans `?` on TITLES only; this is body editorial). Critic to confirm.
-- [ ] Draft IG caption (Bahasa Indonesia) + source line.
-- [ ] Telegram review gate → Antonello publishes manually.
+`devils-advocate` (DeepSeek) verdict on v1 = **BLOCK** (2 BLOCKER, 4 WARN, 2 tweak). All applied in `build.py` v2:
+
+- [x] **BLOCKER#1** S4 — separated system-total (Rp 145,5 M · 2022–2026) from Karim's personal weekly take (~Rp 100 jt/mgg · 2023–2024 Dirjen) + period qualifiers + footer "Sumber: KPK · 4 Juni 2026". (was a 7× math contradiction readable with a calculator)
+- [x] **BLOCKER#2** S5 — softened: removed "meruntuhkan satu republik yang korup" + the rhetorical "apakah ini giliran kita?" (foreign PT PMA → UU ITE Pasal 28(2) exposure; no UU 40/1999 press shield). Kept the Mani Pulite bridge as shared-hope; new close "Setiap sistem bisa dibersihkan — kalau berhenti dianggap wajar."
+- [x] WARN#3 S3 — full title "Wakil Menteri Imigrasi **dan Pemasyarakatan**".
+- [x] WARN#5 S1 — cover empirical anchor "17 TERSANGKA · 48 JAM · Rp 145,5 M" (Art. 6.9).
+- [x] OK#7 S4 — re-attributed to KPK (footer source line).
+- [x] OK#8 S5 — dropped "kecil" (Mario Chiesa was not a minor official).
+- [x] S6 → 3 lines (font 74→60); S3 dossier opacity lowered + text-shadow for legibility.
+
+### Residual DECISION for Antonello (S5)
+
+red-team recommended Option B (delete S5, replace with a constructive slide). I applied **Option A (soften)** to preserve your Tangentopoli intent. Pick:
+
+- **A** keep softened S5 [DONE — current state]
+- **B** delete S5 → constructive 7th slide (e.g. what a WNA should do when faced with pungli)
+- **C** restore the sharper version, accepting the legal risk
+
+### Still open
+
+- [ ] Antonello: S5 decision (A / B / C).
+- [ ] IG caption — drafted (§8), pending approval.
+- [ ] Telegram review gate → Antonello publishes manually (Legge 5, never auto-publish).
+
+## 8. IG caption (Bahasa Indonesia — draft)
+
+> PUNGLINESIA — bukan oknum, ini penyakit sistemik.
+>
+> 4 Juni 2026: KPK menahan Wakil Menteri Imigrasi dan Pemasyarakatan Silmy Karim dan menetapkannya sebagai tersangka. Dalam operasi 2–3 Juni, 17 orang ditangkap — 8 penyelenggara negara, 9 perantara swasta — atas dugaan pemerasan pengurusan izin tinggal WNA. Menurut KPK, Rp 145,5 miliar mengalir dari Ditjen Imigrasi sepanjang 2022–2026.
+>
+> Pungli bukan berita baru buat kita. Ia terlanjur dianggap wajar — dan justru di situ penyakitnya. Italia pernah di titik yang sama pada 1992; mereka berhenti menyebutnya "oknum" dan mulai membersihkan sistemnya.
+>
+> Setiap sistem bisa dibersihkan, kalau berhenti dianggap wajar.
+>
+> Sumber: KPK (4 Juni 2026) — via Antara, The Jakarta Post, Jakarta Globe. Semua tuduhan masih dalam proses hukum; yang bersangkutan berstatus tersangka, belum terbukti bersalah.

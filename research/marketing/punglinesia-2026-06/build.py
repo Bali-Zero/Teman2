@@ -64,7 +64,7 @@ html,body{width:1080px;height:1350px;overflow:hidden;
 .bg-dossier{background:radial-gradient(120% 90% at 50% 30%,#15171c 0%,#0a0b0e 70%,#000 100%)}
 .veins{position:absolute;inset:0;z-index:1;mix-blend-mode:screen}
 /* faint state-dossier stamps */
-.dossier{position:absolute;inset:0;z-index:0;opacity:.06;color:#fff;overflow:hidden}
+.dossier{position:absolute;inset:0;z-index:0;opacity:.05;color:#fff;overflow:hidden}
 .dossier span{position:absolute;border:2px solid #fff;border-radius:4px;
   padding:8px 18px;font-weight:700;letter-spacing:.18em;font-size:22px;white-space:nowrap;text-transform:uppercase}
 .dossier .line{border:none;height:1px;background:#fff;opacity:.5;padding:0}
@@ -84,7 +84,7 @@ html,body{width:1080px;height:1350px;overflow:hidden;
 .wordmark .w{color:var(--white)}
 .cover-sub{margin-top:34px;color:#fff;font-weight:800;font-size:38px;letter-spacing:.02em;line-height:1.15}
 .cover-sub .y{color:var(--yellow)}
-.h{font-weight:800;color:#fff;font-size:60px;line-height:1.04;letter-spacing:.02em;text-transform:uppercase}
+.h{font-weight:800;color:#fff;font-size:60px;line-height:1.04;letter-spacing:.02em;text-transform:uppercase;text-shadow:0 2px 10px rgba(0,0,0,.7)}
 .h.yellow{color:var(--yellow)}
 .divider{width:72px;height:5px;background:var(--yellow);margin:24px 0 36px}
 .body{color:#fff;font-weight:700;font-size:33px;line-height:1.38;letter-spacing:0}
@@ -101,7 +101,7 @@ html,body{width:1080px;height:1350px;overflow:hidden;
 .facts{display:flex;flex-direction:column;gap:26px;margin-top:4px}
 .fact{display:flex;gap:18px;align-items:flex-start}
 .fact .m{color:var(--yellow);font-weight:800;font-size:26px;min-width:42px;line-height:1.2}
-.fact .t{color:#fff;font-weight:700;font-size:30px;line-height:1.28;text-transform:uppercase}
+.fact .t{color:#fff;font-weight:700;font-size:30px;line-height:1.28;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.85)}
 .take{margin-top:auto;border-top:2px solid rgba(244,196,48,.4);padding-top:18px}
 .take .lab{color:var(--yellow);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
 .take .tx{color:#fff;font-weight:800;font-size:30px;letter-spacing:.01em;text-transform:uppercase;line-height:1.1}
@@ -111,9 +111,11 @@ html,body{width:1080px;height:1350px;overflow:hidden;
 .stat .num{color:var(--yellow);font-weight:800;font-size:64px;line-height:1;letter-spacing:.01em}
 .stat .lab{color:rgba(255,255,255,.62);font-weight:700;font-size:24px;letter-spacing:.05em;text-transform:uppercase}
 /* statement-bomb */
-.statement{font-weight:800;font-size:74px;line-height:1.06;letter-spacing:.02em;color:#fff;
-  text-transform:uppercase;text-align:center;max-width:960px}
+.statement{font-weight:800;font-size:60px;line-height:1.08;letter-spacing:.02em;color:#fff;
+  text-transform:uppercase;text-align:center;max-width:900px}
 .statement .y{color:var(--yellow)}
+.cover-anchor{margin-top:24px;color:var(--yellow);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;font-size:22px;letter-spacing:.05em}
+.attr{position:absolute;left:60px;bottom:50px;z-index:4;color:var(--muted);font-weight:700;font-size:18px;letter-spacing:.03em}
 """.replace("LOGO_PATH", LOGO)
 
 DOSSIER = (
@@ -151,6 +153,7 @@ slides["slide1"] = page(
     '<div class="spacer"></div>'
     '<div class="wordmark"><span class="r">PUNGLI</span><span class="w">NESIA</span></div>'
     '<div class="cover-sub">BUKAN OKNUM.<br>INI <span class="y">PENYAKIT SISTEMIK</span>.</div>'
+    '<div class="cover-anchor">17 TERSANGKA &middot; 48 JAM &middot; Rp 145,5 M</div>'
     '<div class="spacer"></div>',
     bg="bg-dossier", veins_seed=7, dossier=True, badge="KPK · 04.06.2026",
     logo=True, center=True)
@@ -174,7 +177,7 @@ slides["slide3"] = page(
     '<div class="h">REKAMAN KPK</div>'
     '<div class="divider"></div>'
     '<div class="facts">'
-    '<div class="fact"><div class="m">&sect;1</div><div class="t">KPK menahan Wakil Menteri Imigrasi Silmy Karim, ditetapkan tersangka</div></div>'
+    '<div class="fact"><div class="m">&sect;1</div><div class="t">KPK menahan Wakil Menteri Imigrasi dan Pemasyarakatan Silmy Karim, ditetapkan tersangka</div></div>'
     '<div class="fact"><div class="m">&sect;2</div><div class="t">17 orang ditangkap dalam 48 jam (2&ndash;3 Juni 2026)</div></div>'
     '<div class="fact"><div class="m">&sect;3</div><div class="t">Dugaan pemerasan pengurusan izin tinggal WNA</div></div>'
     '<div class="fact"><div class="m">&sect;4</div><div class="t">Rp 145,5 miliar &middot; 2022&ndash;2026 &middot; sumber angka: KPK</div></div>'
@@ -188,24 +191,25 @@ slides["slide4"] = page(
     '<div class="h">BUKAN<br>SATU OKNUM</div>'
     '<div class="divider"></div>'
     '<div class="stats">'
-    '<div class="stat"><div class="num">Rp 145,5 M</div><div class="lab">dalam empat tahun</div></div>'
-    '<div class="stat"><div class="num">~Rp 100 jt</div><div class="lab">setiap minggu</div></div>'
+    '<div class="stat"><div class="num">Rp 145,5 M</div><div class="lab">dikumpulkan sistem &middot; 2022&ndash;2026</div></div>'
+    '<div class="stat"><div class="num">~Rp 100 jt</div><div class="lab">per minggu &middot; bagian Karim (2023&ndash;2024, Dirjen)</div></div>'
     '<div class="stat"><div class="num">9 calo</div><div class="lab">swasta di dalam sistem</div></div>'
     '</div>'
     '<div class="punch">Ini bukan pegawai nakal &mdash; ini <span class="y">mesin</span> '
     'yang terlanjur dianggap wajar.</div>'
-    '<div class="spacer"></div>',
+    '<div class="spacer"></div>'
+    '<div class="attr">Sumber: KPK &middot; 4 Juni 2026</div>',
     bg="bg-antracite", dossier=True, dot=True)
 
 # S5 BRIDGE
 slides["slide5"] = page(
     '<div class="h">DUNIA<br>PERNAH LIHAT INI</div>'
     '<div class="divider"></div>'
-    '<div class="body">Italia, 1992. Satu penangkapan kecil membuka operasi '
-    '<span class="y">&ldquo;Tangan Bersih&rdquo;</span> (Mani Pulite) &mdash; dan meruntuhkan '
-    'satu republik yang korup.<br><br>Mereka berhenti menyebutnya oknum.</div>'
-    '<div class="punch" style="font-weight:800;font-size:40px">Pertanyaannya: '
-    '<span class="y">apakah ini giliran kita?</span></div>'
+    '<div class="body">Italia, 1992. Dimulai dari satu kasus, operasi '
+    '<span class="y">&ldquo;Tangan Bersih&rdquo;</span> (Mani Pulite) mengubah '
+    'sebuah negeri selamanya.<br><br>Di sana, mereka berhenti menyebutnya oknum.</div>'
+    '<div class="punch" style="font-weight:800;font-size:38px">Setiap sistem bisa '
+    '<span class="y">dibersihkan</span> &mdash; kalau berhenti dianggap wajar.</div>'
     '<div class="spacer"></div>',
     bg="bg-antracite", dossier=True, dot=True)
 
