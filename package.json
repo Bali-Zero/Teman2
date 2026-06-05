@@ -7,7 +7,9 @@
     "apps/backend-rag",
     "apps/mouth",
     "apps/admin-dashboard",
-    "apps/admin-dashboard-local"
+    "apps/admin-dashboard-local",
+    "apps/web",
+    "packages/ts-schemas"
   ],
   "scripts": {
     "prepare": "husky",
