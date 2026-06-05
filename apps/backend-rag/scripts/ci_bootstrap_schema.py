@@ -55,12 +55,12 @@ def main() -> int:
     from sqlalchemy import create_engine
     from sqlmodel import SQLModel
 
-    import backend.app.models.feedback  # noqa: F401
-    import backend.app.models.openclaw_message  # noqa: F401
-    import backend.app.modules.crm.company_models  # noqa: F401
-    import backend.app.modules.crm.models  # noqa: F401
-    import backend.app.modules.identity.models  # noqa: F401
-    import backend.services.memory.models  # noqa: F401
+    import backend.app.models.feedback
+    import backend.app.models.openclaw_message
+    import backend.app.modules.crm.company_models
+    import backend.app.modules.crm.models
+    import backend.app.modules.identity.models
+    import backend.services.memory.models  # noqa: F401  (import-for-side-effect: registers SQLModel tables)
 
     table_names = sorted(SQLModel.metadata.tables.keys())
     print(f"[bootstrap] {len(table_names)} tables registered: {', '.join(table_names)}")
@@ -392,6 +392,32 @@ def main() -> int:
         ):
             conn.execute(text(stmt))
     print("[bootstrap] clients prod-only columns ensured (drive + deleted_at + timestamp defaults)")
+
+    # documents: prod-only legacy table, hand-created (no SQLModel class, no
+    # migration file creates it). Router code (CRM enhanced documents,
+    # drive poll, document-intake writer) and migration 217
+    # (217_intake_commit_audit.sql) ALTER it — migration 217 is the FIRST
+    # numbered migration to touch `documents`, so without this CREATE the
+    # migrate step dies with `relation "documents" does not exist`. DDL
+    # mirrors tests/integration/app/routers/test_crm_enhanced_integration.py
+    # (the canonical hand-bootstrap shape used by the integration fixtures).
+    # FK on clients(id) — must run AFTER create_all() materialised `clients`.
+    with engine.begin() as conn:
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS documents (
+                id            SERIAL PRIMARY KEY,
+                client_id     INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+                document_type VARCHAR(100),
+                file_name     VARCHAR(255),
+                file_path     VARCHAR(500),
+                status        VARCHAR(50) DEFAULT 'active',
+                uploaded_by   VARCHAR(255),
+                created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] documents prod-only legacy table ensured (FK clients, for migration 217 + intake writer)")
 
     # team_members prod-only divergence.
     #

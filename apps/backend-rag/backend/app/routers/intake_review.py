@@ -33,10 +33,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
+from backend.services.intake import writer as intake_writer
 
 logger = logging.getLogger(__name__)
 
@@ -498,13 +499,93 @@ async def release_review(
 # --------------------------------------------------------------------------- #
 # FASE 5C stubs — writer not active in 5A
 # --------------------------------------------------------------------------- #
-@router.post("/{proposal_id}/approve", status_code=501)
-async def approve_review_stub(
+@router.post("/{proposal_id}/approve")
+async def approve_review(
     proposal_id: int = Path(..., ge=1),
+    body: dict[str, Any] = Body(default_factory=dict),
     user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Stub — writes CRM, lives in FASE 5C behind a feature-flag."""
-    raise HTTPException(status_code=501, detail=_WRITER_DISABLED_DETAIL)
+    """Approve a proposal — FASE 5B DRY-RUN.
+
+    Builds the full CommitPlan (what the writer WOULD do) and runs it through
+    ``execute_commit(dry_run=True)``: it records ONE ``intake_commit_audit(dry_run=true)``
+    row and writes NOTHING to the CRM (no documents INSERT, no practices UPDATE).
+
+    P0#5: the caller must hold the active claim — non-admins must present the
+    matching ``claim_token`` on a non-expired lease. The proposal status is NOT
+    advanced to a terminal state in dry-run (P0#9): it stays ``review_claimed``.
+
+    body: {client_id?, practice_id?, final_fields?, claim_token?}
+    """
+    admin = is_crm_admin(user)
+    user_email = (user.get("email") or "").lower().strip()
+    claim_token = body.get("claim_token")
+    override_client_id = body.get("client_id")
+    override_practice_id = body.get("practice_id")
+    final_fields = body.get("final_fields") if isinstance(body.get("final_fields"), dict) else None
+
+    now = datetime.now(timezone.utc)
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            prop = await conn.fetchrow(
+                """
+                SELECT id, queue_id, doc_index, pipeline_version, status,
+                       entity_resolution, routing, commit_gate,
+                       lease_owner, lease_expires_at, claim_token
+                FROM document_routing_proposal
+                WHERE id = $1
+                FOR UPDATE
+                """,
+                proposal_id,
+            )
+            if prop is None:
+                raise HTTPException(status_code=404, detail="Proposal not found")
+
+            # P0#5 — claim/lease enforcement.
+            if prop["status"] != "review_claimed":
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Proposal must be review_claimed to approve (status={prop['status']}).",
+                )
+            lease_exp = prop["lease_expires_at"]
+            if lease_exp is None or lease_exp < now:
+                raise HTTPException(status_code=409, detail="Claim lease expired - re-claim first.")
+            if not admin:
+                if (prop["lease_owner"] or "").lower().strip() != user_email:
+                    raise HTTPException(status_code=403, detail="You do not hold this claim.")
+                if claim_token is None:
+                    raise HTTPException(status_code=400, detail="claim_token required.")
+                try:
+                    tok = uuid.UUID(str(claim_token))
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail="Invalid claim_token.") from exc
+                if prop["claim_token"] != tok:
+                    raise HTTPException(status_code=403, detail="claim_token does not match active claim.")
+
+            plan = await intake_writer.plan_commit(
+                prop,
+                conn,
+                committed_by=user_email or "system:hitl",
+                override_client_id=override_client_id,
+                override_practice_id=override_practice_id,
+                final_fields=final_fields,
+            )
+            result = await intake_writer.execute_commit(plan, conn, dry_run=True)
+
+    logger.info(
+        "intake.review.approve.dry_run proposal=%s reviewer=%s outcome=%s",
+        proposal_id, user_email, result.outcome,
+    )
+    return {
+        "proposal_id": proposal_id,
+        "dry_run": True,
+        "status": "review_claimed",  # P0#9: NOT advanced in dry-run
+        "outcome": result.outcome,
+        "would_commit": plan.to_dict(),
+        "result": result.to_dict(),
+    }
 
 
 @router.post("/{proposal_id}/reject", status_code=501)

@@ -262,13 +262,43 @@ async def test_release_wrong_token_409(pool, seed):
                        params={"claim_token": tok})
 
 
-async def test_approve_reject_stub_501(pool, seed):
+async def test_reject_stub_501(pool, seed):
+    """reject is still a FASE 5C stub (terminal CRM-affecting write)."""
     app = _make_app(pool, ADMIN)
     async with _client(app) as cl:
-        ra = await cl.post(f"/api/intake/review/{seed['p_owner']}/approve")
         rr = await cl.post(f"/api/intake/review/{seed['p_owner']}/reject")
-    assert ra.status_code == 501 and "5C" in ra.json()["detail"]
     assert rr.status_code == 501 and "5C" in rr.json()["detail"]
+
+
+async def test_approve_requires_claim_409(pool, seed):
+    """FASE 5B: approve is wired (dry-run) but P0#5 requires an active claim.
+
+    p_owner is review_pending (unclaimed) → approve must 409, NOT write the CRM.
+    """
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        ra = await cl.post(f"/api/intake/review/{seed['p_owner']}/approve", json={})
+    assert ra.status_code == 409, ra.text
+
+
+async def test_approve_dry_run_after_claim(pool, seed):
+    """FASE 5B: claim then approve → 200 dry-run, zero CRM write."""
+    before = await _crm_counts(pool)
+    app = _make_app(pool, ADMIN)
+    pid = seed["p_owner"]
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert rc.status_code == 200, rc.text
+        ra = await cl.post(
+            f"/api/intake/review/{pid}/approve",
+            json={"claim_token": rc.json()["claim_token"]},
+        )
+    assert ra.status_code == 200, ra.text
+    body = ra.json()
+    assert body["dry_run"] is True
+    assert body["status"] == "review_claimed"  # P0#9: not advanced
+    after = await _crm_counts(pool)
+    assert after == before
 
 
 async def test_zero_crm_write(pool, seed):
