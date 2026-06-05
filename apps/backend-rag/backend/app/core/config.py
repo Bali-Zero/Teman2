@@ -877,6 +877,15 @@ class Settings(BaseSettings):
     # `fly secrets set WA_MIRROR_INTERNAL_KEY=...`. Unset → endpoint requires JWT only.
     wa_mirror_internal_key: str | None = None
 
+    # Scoped service key for POST /api/crm/clients/upsert-by-phone (wa-mirror lead
+    # promotion + strategic_recap write-back to the Fly CRM). DISTINCT from
+    # wa_mirror_internal_key by design (least-privilege: this key authorizes ONLY
+    # phone-keyed lead upsert, not full CRUD). Header: X-CRM-Write-Key. The endpoint
+    # is hard-gated by wa_mirror_crm_write_enabled (default False → 503), a kill-switch.
+    # Rotate via `fly secrets set WA_MIRROR_CRM_WRITE_KEY=...`.
+    wa_mirror_crm_write_key: str | None = None
+    wa_mirror_crm_write_enabled: bool = False
+
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 
     # ========================================
