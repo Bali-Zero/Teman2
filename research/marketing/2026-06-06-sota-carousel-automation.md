@@ -216,3 +216,42 @@ Items relayed from Sonnet lanes but **NOT independently re-verified by the orche
 - [ ] Soften the "17.2× (Google)" attribution wherever it appears in our agent docs / brand cortex to match §1.
 - [ ] Re-verify the ~20 unverified repo star/date claims before any one becomes a dependency.
 - [ ] P6 LangGraph migration — park until next draft-loss-on-restart incident, then prioritize.
+
+---
+
+## 12. ⭐ VITALE — Nuova architettura War Room (da agenti freschi, 2026-06-06)
+
+> Antonello: "lavora con agenti freschi per sistemare la nuova potenziale architettura della War Room + un grafico con tutti gli step affiancato all'attuale WR2 per capire cosa deve cambiare." Fatto. Il **grafico affiancato step-by-step completo** è nel file companion:
+> **`2026-06-06-warroom-new-vs-current-STEPMAP.md`** (stesso dir). Qui sotto la sintesi caricante.
+
+### La scoperta che cambia tutto (audit del codice vivo)
+
+WR2 oggi ha **DUE pipeline che non si parlano** — confermato dal codice, file:riga:
+
+- **PATH A** (vivo H24, cron, tabella `war_room_drafts`): `topic_selector(05:10) → supervisor(NOTIFY+kickstart) → draft_generator(opus) → image_generator(4 hero) → fact_extractor → fact_checker → canva_renderer(ReportLab→Canva)`. **È quello che produce davvero, e NON ha un critic di brand/qualità.** L'unico gate è `qwen2.5vl:7b` che controlla solo prompt↔immagine.
+- **PATH B** (scritto ma plist `.example`, NON installato, tabella `wr2_carousel_runs`): `dispatcher → orchestrator → 5 subagent Claude (brief→storyboard→image-prompt→layout→critic) → telegram_gate`. **Qui vive il critic-as-agent. Non gira.**
+
+Questo conferma l'autopsy del 2026-06-04 ("A intelligente = dead-code, B che pubblica = text-swap"). **La nuova architettura fonde i due path in uno**: il path-A vivo eredita il critic e l'intelligenza del path-B, dentro un control-flow durevole (LangGraph).
+
+### 3 fragilità del path vivo che l'audit ha trovato (da fixare in Fase 1, $0)
+
+1. 🔴 `WR2_USE_FULL_ENRICHED_PROMPT` **default FALSE** → Claude vede solo `summary[:3500]` = **25% del materiale** (`wr2_draft_generator.py:378`). → accendere.
+2. 🔴 fact_checker **disabled di default** → no-op silente, avanza comunque il draft (`wr2_fact_checker.py:760`). → accendere.
+3. 🔴 **ZERO critic di brand nel path vivo** → il giudizio editoriale non esiste in produzione. → attivare il critic VLM (Stadio 6).
+
+### Le 5 decisioni della nuova War Room
+
+- **D1 / P6** — control-flow → **LangGraph** (`route_on_status` su enum, riusa `get_checkpointer()` **già in-tree**). La tabella `war_room_drafts` è GIÀ una macchina a 17 stati. _Unico refactor breaking → per ultimo._
+- **D2 ⚑** — **TENERE ReportLab**, NON migrare a HTML/Satori. _Contro la raccomandazione generica del report (P4/P5)_, perché il PDF text-layered è ciò che rende il design **editabile in Canva** (Legge-5); il PNG-flat di Satori/open-carrusel lo romperebbe. Il vincolo Canva-editabile che §4 non modellava.
+- **D3 / P1** — consistenza cross-slide via **Nano Banana Pro 14-ref** ($0, già in Google AI Ultra). Il guadagno-titolo.
+- **D4 / P2** — **`instructor`** (Pydantic+retry) su brief/storyboard/critic → uccide la classe-bug mappazza.
+- **D5 / P7** — **negative-example library** intra-run + critic context-isolation.
+
+### Migrazione: additivo prima, refactor per ultimo
+
+- **Fase 1** ($0, non-breaking): `instructor` + critic context-isolation + rubriche binarie + **accendi full-prompt & fact-checker** (fix 🔴) + declassa HTML a staging.
+- **Fase 2**: Nano Banana 14-ref (prototipo misurato su 1 carosello → default, Codex fallback).
+- **Fase 3**: negative-example library + **accendi il critic VLM brand nel path vivo** (il buco più grande).
+- **Fase 4** (breaking): migrazione LangGraph — feature-flag + shadow-run, parcheggiata fino al prossimo incidente draft-loss.
+
+**Correzione a §4/§8**: P4 (Satori/render-contract) e P5 (Playwright pool) **non si applicano al path di produzione** — che usa ReportLab, non un browser headless. Valgono solo per il path HTML-staging. La decisione consapevole (D2) è "ReportLab vs HTML/CSS", non "Playwright vs Satori".
