@@ -3,13 +3,15 @@ date: 2026-06-06
 domain: compliance
 client_case: document-intake CRM writer (FASE 5C go-live)
 sources:
-  - apps/backend-rag/backend/services/intake/writer.py (origin/main @ a94a236b1)
+  - apps/backend-rag/backend/services/intake/writer.py (origin/main @ 12c67b38d — post #1145)
   - apps/backend-rag/backend/app/routers/intake_review.py
   - apps/backend-rag/backend/app/setup/router_manifest.py:206
   - apps/backend-rag/backend/db/migrations_v2/217_intake_commit_audit.sql
   - apps/backend-rag/backend/tests/services/intake/test_intake_writer.py
+  - apps/backend-rag/backend/tests/routers/test_intake_review.py
   - backend-verifier empirical investigation 2026-06-06 (read-only, DB + code)
-status: DRAFT — awaiting Antonello decision on the Fly-vs-local sovereignty fork + 4-LLM panel review
+  - PR #1145 (writer real-commit path, MERGED 12c67b38d) + PR #1147 (/reject)
+status: LIVE RUNBOOK — Fork A chosen (operator 2026-06-06); writer impl MERGED (#1145); /reject (#1147); awaiting operator Stage-1 secret activation
 ---
 
 # FASE 5C — Document-Intake CRM Writer Go-Live — Spec
@@ -18,25 +20,39 @@ status: DRAFT — awaiting Antonello decision on the Fly-vs-local sovereignty fo
 > the document to the client/practice in the CRM (today, 5B, an approve only logs a
 > `dry_run=true` audit row and writes nothing).
 >
-> This spec is **NOT an implementation**. It documents the verified current state, the
-> ONE load-bearing open decision (Fly-vs-local), the missing work, and the safe
-> activation + rollback path. Nothing here is executed until Antonello picks the fork
-> and the 4-LLM panel red-teams it.
+> **POST-IMPLEMENTATION RUNBOOK (updated 2026-06-06).** The original draft was a
+> research doc written BEFORE the code existed. The code is now shipped: the writer
+> real-commit path merged in **PR #1145** and `/reject` in **PR #1147**. What remains is
+> purely the **operator's Stage-1 secret activation** in a low-traffic window. Everything
+> below the strikethrough/✅ marks describes what is now DONE; §4 is the live go-live
+> sequence.
 
 ---
 
-## 0. TL;DR — why "flip the flag" is wrong
+## 0. TL;DR — what changed, and what's left
 
-`INTAKE_WRITER_ENABLED=on` **alone does nothing**. The only caller of the writer
-(`approve_review` in `intake_review.py`) passes `dry_run=True` **hardcoded**. The env
-flag is a *second inner guard*, not the activation switch. 5C is **unshipped code**, not
-a config toggle. Plus there is one architectural decision that must be made first.
+**Then (draft):** `INTAKE_WRITER_ENABLED=on` alone did nothing — `approve_review` passed
+`dry_run=True` **hardcoded**, so the flag was a dead inner guard and 5C was unshipped code.
+
+**Now (#1145 merged):** the call-site is `dry_run = not writer_enabled()`. The flag IS the
+switch. With it OFF (default) approve is dry-run (5B); with it ON, approve commits for real
+inside one transaction (document UPSERT + practice link + proposal→`routed` + audit), and
+`rollback_commit()` can undo a bad commit. 11/11 real-write tests pass on `nuzantara_dev`.
+
+**Left:** ONE operator action — set the Fly secret in a low-traffic window (§4 Stage 1),
+canary, observe. No code remains. The §1 fork decision (Fly vs local) is **DECIDED: Fork A**.
 
 ---
 
 ## 1. The load-bearing decision: where does 5C write? (Fly vs local)
 
-**The contradiction** (verified empirically):
+> ✅ **DECIDED: Fork A (write to the Fly prod CRM). Operator confirmed 2026-06-06.**
+> The real Bali Zero CRM (`clients`/`practices`/`documents`) lives on Fly; the intake
+> writer attaches documents where the real clients are. The misleading "mai Fly" comment
+> on migration 217 was corrected (PR #1143). The Fork A/B analysis below is kept for the
+> record. **Fork B (local-only re-architecture) is NOT pursued.**
+
+**The contradiction** (verified empirically — this is what the decision resolved):
 
 - `217_intake_commit_audit.sql` header + `writer.py` docstring assert:
   *"PII 100% locale (Law 2 / UU-PDP): MAI applicare su Fly. Solo nuzantara_dev @127.0.0.1."*
@@ -88,10 +104,11 @@ sovereignty decision and belongs to Antonello, not inferred by the implementer.*
 
 ---
 
-## 2. Verified current state (origin/main @ a94a236b1)
+## 2. Verified current state (origin/main @ 12c67b38d — post #1145)
 
 ### Control flow
-- `approve_review()` → `execute_commit(plan, conn, dry_run=True)`  ← **hardcoded True**.
+- `approve_review()` → `execute_commit(plan, conn, dry_run=not writer_enabled())`
+  ← ✅ **was hardcoded `True`; #1145 wired it to the flag.**
 - `execute_commit`:
   - `plan.blocked` → audit `outcome="blocked"`, return (both modes).
   - `dry_run=True` → ONE `intake_commit_audit(dry_run=true, outcome="dry_run")`, return. No CRM write.
@@ -103,9 +120,14 @@ sovereignty decision and belongs to Antonello, not inferred by the implementer.*
 ### What the real path writes (dry_run=False)
 1. `INSERT INTO documents ... ON CONFLICT (client_id, intake_idempotency_key) DO UPDATE
    SET updated_at=now() RETURNING id` (UPSERT — `write_client_document`).
-2. `UPDATE practices SET documents=$1, updated_at=NOW() WHERE id=$2` (append to JSONB
-   `documents[]` after `SELECT ... FOR UPDATE` + dedup by `drive_file_id`).
-3. `INSERT INTO intake_commit_audit (... dry_run=false, outcome='committed' ...)`.
+2. `UPDATE practices SET documents=$1::jsonb, updated_at=NOW() WHERE id=$2` (append to
+   JSONB `documents[]` after `SELECT ... FOR UPDATE` + dedup by `drive_file_id`).
+3. `advance_proposal()`: `UPDATE document_routing_proposal SET status='routed' + clear
+   lease WHERE status='review_claimed'` (#1145 — proposal advanced exactly once, same TX).
+4. `INSERT INTO intake_commit_audit (... dry_run=false, outcome='committed' ...)`.
+
+All four are inside ONE `conn.transaction()` (the `approve_review` request TX). A failure
+anywhere rolls back all of them (verified: `test_exception_mid_tx_rolls_back`).
 
 ### Guards already present (substantive — keep)
 - Idempotency UNIQUE `uq_documents_intake_key (client_id, intake_idempotency_key)` +
@@ -121,78 +143,129 @@ sovereignty decision and belongs to Antonello, not inferred by the implementer.*
 
 ---
 
-## 3. What is MISSING before 5C (the actual work)
+## 3. Work checklist (was "missing" — now mostly DONE)
 
-1. **[DECISION] Resolve §1 fork.** Blocks everything. Fork A → proceed below. Fork B →
-   5C is deferred behind a CRM-domain re-architecture (separate spec).
-2. **[CODE] Call-site activation.** Change `approve_review` to pass `dry_run=False` when
-   the writer should commit — e.g. `dry_run=not writer_enabled()`, so the flag becomes the
-   real switch and a missing flag still falls back to dry-run (fail-safe).
-3. **[CODE] Implement deferred proposal/queue advancement + `intake_corrections` INSERT.**
-   Currently a `# … happens here in 5C` placeholder. Without it, a committed doc leaves the
-   proposal still `review_claimed` → it re-surfaces as claimable (double-attach risk
-   bounded by idempotency UPSERT, but state is wrong). MUST advance proposal→terminal +
-   release/close the queue row in the SAME transaction as the writes.
-4. **[TEST] Real-write coverage (dry_run=False, flag ON).** Today ZERO tests exercise an
-   actual INSERT/UPDATE. Need:
-   - real `documents` INSERT + `practices` UPDATE assertions;
-   - idempotent re-commit (2nd commit of same proposal = UPSERT no-op, no dup in
-     `practices.documents[]`);
-   - blocked-plan → zero write;
-   - exception mid-TX → full rollback (nothing partially committed);
-   - proposal advanced to terminal state exactly once.
-5. **[OPS] Reversal runbook.** No automated un-commit exists. Document the manual SQL:
-   from `intake_commit_audit WHERE outcome='committed'` → delete `documents` by
-   `(client_id, intake_idempotency_key)` → strip from `practices.documents[]` → mark audit
-   `rolled_back`. (Consider a `rollback_commit()` helper as a 5C+1 nice-to-have.)
-6. **[OPS] Confirm migration 217 applied on the target DB** (Fork A: Fly — verified present).
+1. **[DECISION] Resolve §1 fork.** ✅ **DONE** — Fork A (Fly prod CRM), operator 2026-06-06.
+2. **[CODE] Call-site activation.** ✅ **DONE (#1145)** — `approve_review` passes
+   `dry_run = not intake_writer.writer_enabled()`. Flag OFF (default) → dry-run fail-safe;
+   flag ON → real commit. Startup `log_writer_status()` logs a WARNING when the flag is ON.
+3. **[CODE] Proposal advancement in the commit TX.** ✅ **DONE (#1145)** — `advance_proposal()`
+   moves the proposal `review_claimed → routed` (terminal) + clears the lease, inside the
+   SAME transaction as the document/practice writes. Idempotent guard on
+   `status='review_claimed'`.
+4. **[TEST] Real-write coverage (dry_run=False, flag ON).** ✅ **DONE (#1145)** — 11/11 on
+   `nuzantara_dev` (Pro): real `documents` INSERT + `practices` append + proposal `routed` +
+   audit `committed`; idempotent re-commit (UPSERT no-op, no dup); blocked-plan zero write;
+   exception mid-TX full rollback; proposal advanced exactly once.
+5. **[OPS] Reversal.** ✅ **`rollback_commit()` shipped (#1145)** — deletes the document by
+   `(client_id, intake_idempotency_key)`, detaches the practice link, re-opens the proposal
+   (`routed → review_claimed`), writes a `rolled_back` audit row, idempotent. The manual-SQL
+   fallback (delete `documents` → strip `practices.documents[]` → mark audit) stays
+   documented for the case where the helper can't run.
+6. **[OPS] Confirm migration 217 applied on the target DB** (Fork A: Fly). ✅ Verified
+   present in Fly `_schema_versions` after #1137.
+7. **[CODE] `/reject` terminal path.** ✅ **DONE (#1147)** — `review_claimed → rejected` +
+   lease clear. **NOT flag-gated** (queue-management op, no CRM PII — works in 5B and 5C so
+   reviewers can dispose of garbage proposals now). **No `intake_commit_audit` row** (a
+   rejection is recorded by the proposal's own terminal status). No migration. 7 reject
+   tests green on `nuzantara_dev`.
 
 ---
 
-## 4. Safe activation sequence (Fork A — DRAFT, pending panel)
+## 4. Safe activation sequence (Fork A — LIVE)
 
 > Mirrors the W38 staged-with-observation pattern. Nothing flips without a low-traffic
 > window + immediate verification + ability to revert in one step.
 
-- **Stage 0** — ship the CODE (items §3.2–3.4) as a normal reviewed PR, **flag still OFF**
-  (default). Merging this changes nothing at runtime because `INTAKE_WRITER_ENABLED` unset
-  → `dry_run=True` fallback. CI green + real-write tests passing is the gate.
-- **Stage 1** — pick a **low-traffic window**. Set the Fly secret
-  `INTAKE_WRITER_ENABLED=on` on `nuzantara-rag`. The next approve commits for real.
-- **Stage 2** — **canary**: do ONE real approve on a known test/throwaway client, verify:
-  `documents` row created, `practices.documents[]` updated, `intake_commit_audit
-  outcome='committed'`, proposal advanced. Then verify a re-approve is a no-op (idempotent).
-- **Stage 3** — observe N hours; watch `intake_commit_audit outcome IN ('failed','blocked')`
-  rate. Any anomaly → **revert = unset the Fly secret** (`fly secrets unset
-  INTAKE_WRITER_ENABLED`) → future commits raise `WriterDisabledError`, no new writes.
-- **Rollback of DATA already written** (if needed): manual SQL per §3.5 runbook. The flag
-  only stops future writes; it does not un-write.
+- **Stage 0 — ship the code, flag OFF.** ✅ **DONE.** Writer (#1145) + `/reject` (#1147)
+  merged. Runtime unchanged: `INTAKE_WRITER_ENABLED` unset → `dry_run=True` fallback. CI
+  green; 11/11 writer + 7 reject tests pass on `nuzantara_dev`.
+
+- **Stage 1 — flip the secret (operator action, low-traffic window).** The next approve
+  commits for real:
+  ```bash
+  fly secrets set INTAKE_WRITER_ENABLED=1 -a nuzantara-rag
+  # ( =1 | =true | =yes | =on are all truthy per writer_enabled() )
+  ```
+  On the next request the rag machine restarts and logs at startup:
+  `INTAKE WRITER ENABLED — real CRM commits are ACTIVE` (grep the Fly logs to confirm).
+
+- **Stage 2 — canary.** Do ONE real approve on a known throwaway/test client (claim →
+  approve with its token), then verify on the Fly DB (`:pid` = the proposal id):
+  ```sql
+  -- document written + linked to the right client/proposal
+  SELECT id, client_id, intake_proposal_id, intake_idempotency_key, practice_id
+    FROM documents WHERE intake_proposal_id = :pid;
+  -- practice membership appended
+  SELECT id, jsonb_array_length(documents) AS n_docs FROM practices WHERE id = :practice_id;
+  -- audit committed (not dry_run)
+  SELECT id, outcome, dry_run, doc_id, committed_at FROM intake_commit_audit
+    WHERE proposal_id = :pid ORDER BY committed_at DESC LIMIT 3;
+  -- proposal advanced to terminal
+  SELECT id, status, lease_owner FROM document_routing_proposal WHERE id = :pid;  -- expect 'routed'
+  ```
+  Then re-approve the SAME intake instance and confirm idempotency: still ONE `documents`
+  row, no duplicate entry in `practices.documents[]`, same `doc_id`.
+
+- **Stage 3 — observe N hours.** Watch the audit outcome mix:
+  ```sql
+  SELECT outcome, count(*) FROM intake_commit_audit
+   WHERE committed_at > now() - interval '6 hours'
+   GROUP BY outcome ORDER BY 2 DESC;
+  -- anomaly signal: outcome IN ('failed','blocked') climbing
+  ```
+  (Note: a healthy stream of human `/reject`s does NOT show here — reject writes no audit
+  row by design, so the `failed`/`blocked` signal stays clean.)
+
+- **Revert (one step).** Any anomaly → unset the secret; future commits raise
+  `WriterDisabledError`, no new writes:
+  ```bash
+  fly secrets unset INTAKE_WRITER_ENABLED -a nuzantara-rag
+  ```
+
+- **Rollback of DATA already written** (if a bad commit landed): use `rollback_commit()`
+  (writer.py — deletes the doc, detaches the practice link, re-opens the proposal,
+  audits `rolled_back`) or the manual SQL in §3.5. The flag only stops *future* writes.
+
+- **`/reject` is unaffected by all staging** — it is flag-independent and already live from
+  the moment #1147 merges.
 
 ---
 
-## 5. Open questions for the 4-LLM panel (mandatory pre-impl, CLAUDE.md §6)
+## 5. Panel questions — RESOLVED
 
-1. Is **Fork A** the right call, or is there a Law-2 reading that mandates Fork B? (Gemini
-   + DeepSeek to argue both sides; NB-1 if a sovereignty doc exists.)
-2. Is `dry_run = not writer_enabled()` the right fail-safe call-site wiring, or should
-   activation be even more explicit (per-request opt-in, admin-only)?
-3. Transaction boundary: are writes + proposal-advancement + audit all in ONE TX? Confirm
-   no partial-commit window (the `_append_practice_document` lock + the documents UPSERT +
-   the proposal UPDATE must be atomic).
-4. Is the idempotency key truly collision-safe across a re-OCR of the same physical blob
-   for the same client? (P0#1 says intake-instance, not content — confirm a re-upload
-   doesn't silently dedup a genuinely new document.)
-5. Reversal: is manual-SQL-via-audit acceptable for go-live, or is a `rollback_commit()`
-   helper a hard prerequisite?
+The pre-impl 4-LLM panel ran (2026-06-06) and every question is now answered + shipped:
+
+1. **Fork A vs Fork B?** → **Fork A** (operator decision). The CRM already lives on Fly;
+   5C does not widen the PII perimeter.
+2. **`dry_run = not writer_enabled()` the right wiring?** → **Yes**, shipped (#1145). The
+   flag is the single switch; missing flag falls back to dry-run (fail-safe). A startup
+   WARNING log makes the ON state loud.
+3. **Writes + advancement + audit in ONE TX?** → **Yes** — `advance_proposal()` runs in the
+   same `conn.transaction()` as the document UPSERT + practice append + audit. Verified by
+   `test_exception_mid_tx_rolls_back` (a mid-TX failure rolls back all four). This was the
+   panel's load-bearing failure-mode (no orphan doc, no routed-without-doc).
+4. **Idempotency key collision-safe across re-OCR?** → **Yes** — intake-instance key
+   `sha256(source|source_ref|blob_hash|doc_index|pipeline_version)`, UNIQUE per
+   `(client_id, key)`. Verified by `test_real_commit_idempotent_recommit` (re-commit reuses
+   the same `doc_id`, no dup).
+5. **Manual-SQL reversal vs `rollback_commit()` helper?** → Panel elevated the helper to a
+   HARD prerequisite. **`rollback_commit()` shipped (#1145)**, tested
+   (`test_rollback_commit_undoes_document`). Manual SQL kept as fallback.
+
+> The panel + running the tests on a real DB caught 4 latent bugs that the dry-run path
+> never exercised (partial-index `ON CONFLICT`, JSONB double-encoding, NULL `practice_id`,
+> `chk_ica_*` violations) — all fixed before merge. See PR #1145.
 
 ---
 
-## 6. Recommendation (process, not action)
+## 6. Recommendation — only Stage 1 remains
 
-- **Do NOT set `INTAKE_WRITER_ENABLED=on` today.** It would do nothing useful (call-site
-  still dry-run) and, once the call-site is wired, would write to Fly prod — which is
-  exactly the §1 decision that must be made first.
-- **Sequence**: Antonello picks the §1 fork → 4-LLM panel red-teams this spec → if Fork A,
-  implement §3.2–3.4 behind the still-OFF flag as a reviewed PR → only then the staged §4
-  activation. Every step reversible; the writer never touches real client data until the
-  canary + observation pass.
+All code gates are passed. The single remaining action is the operator's:
+
+- **When ready, in a low-traffic window, run §4 Stage 1** (`fly secrets set
+  INTAKE_WRITER_ENABLED=1 -a nuzantara-rag`), then the §4 Stage 2 canary + Stage 3
+  observation. Revert is one `fly secrets unset`. Already-written rows are reversible via
+  `rollback_commit()`.
+- Until then the flag stays OFF and the system is byte-identical to 5B (dry-run). `/reject`
+  is already live and flag-independent.
