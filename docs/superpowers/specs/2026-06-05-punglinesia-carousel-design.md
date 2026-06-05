@@ -90,6 +90,7 @@ Narrative arc: _we all live it_ (S2) → _this time it reached the top_ (S3) →
 ## 6. Production artifacts
 
 - Generator: `research/marketing/punglinesia-2026-06/build.py` (shared CSS, brand tokens, deterministic SVG veins, dossier stamps).
+- Cover (S1): uses Antonello's ORIGINAL raster wordmark via `cover_from_source.py` — crops the wordmark+veins band (Garuda + "BRIEF GRAFIS" annotation excluded), fades it into the portrait canvas; subtitle + empirical anchor ("17 TERSANGKA · 48 JAM · Rp 145,5 M", placed at the foot) re-rendered in CSS. Source: `~/Desktop/PHOTO-2026-06-05-12-55-13.jpg`.
 - Render: `chrome-headless-shell` → `png/slide{1..6}.png` (verified 1080×1350).
 - Brand compliance: Montserrat 800, palette antracite/black/white/yellow/red only, no emoji, no forbidden phrases, no CTA.
 

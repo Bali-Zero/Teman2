@@ -116,6 +116,9 @@ html,body{width:1080px;height:1350px;overflow:hidden;
 .statement .y{color:var(--yellow)}
 .cover-anchor{margin-top:24px;color:var(--yellow);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;font-size:22px;letter-spacing:.05em}
 .attr{position:absolute;left:60px;bottom:50px;z-index:4;color:var(--muted);font-weight:700;font-size:18px;letter-spacing:.03em}
+.cover-img-bg{position:absolute;inset:0;z-index:0;background-image:url('cover-bg.png');background-size:cover;background-position:center;background-repeat:no-repeat}
+.cover-sub-abs{position:absolute;left:60px;right:60px;top:730px;z-index:4;text-align:center;color:#fff;font-weight:800;font-size:37px;letter-spacing:.02em;line-height:1.15}
+.cover-anchor-abs{position:absolute;left:60px;right:60px;bottom:150px;z-index:4;text-align:center;color:var(--yellow);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;font-size:24px;letter-spacing:.05em}
 """.replace("LOGO_PATH", LOGO)
 
 DOSSIER = (
@@ -149,14 +152,17 @@ def page(body: str, *, bg: str, veins_seed=None, dossier=False, badge=None,
 slides = {}
 
 # S1 COVER
-slides["slide1"] = page(
-    '<div class="spacer"></div>'
-    '<div class="wordmark"><span class="r">PUNGLI</span><span class="w">NESIA</span></div>'
-    '<div class="cover-sub">BUKAN OKNUM.<br>INI <span class="y">PENYAKIT SISTEMIK</span>.</div>'
-    '<div class="cover-anchor">17 TERSANGKA &middot; 48 JAM &middot; Rp 145,5 M</div>'
-    '<div class="spacer"></div>',
-    bg="bg-dossier", veins_seed=7, dossier=True, badge="KPK · 04.06.2026",
-    logo=True, center=True)
+# S1 cover uses Antonello's original raster wordmark (cover_from_source.py),
+# Garuda + 'BRIEF GRAFIS' cropped out, faded into the portrait canvas.
+slides["slide1"] = (
+    '<!doctype html><html><head><meta charset="utf-8"><style>' + CSS + '</style></head>'
+    '<body><div class="slide bg-black">'
+    '<div class="cover-img-bg"></div>'
+    '<div class="badge">KPK &middot; 04.06.2026</div>'
+    '<div class="cover-sub-abs">BUKAN OKNUM. INI PENYAKIT SISTEMIK.</div>'
+    '<div class="cover-anchor-abs">17 TERSANGKA &middot; 48 JAM &middot; Rp 145,5 M</div>'
+    '<div class="logo"></div>'
+    '</div></body></html>')
 
 # S2 RECOGNITION
 slides["slide2"] = page(
