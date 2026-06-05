@@ -77,6 +77,7 @@ async def enqueue(
     mime_type: str | None = None,
     blob_hash: str | None = None,
     byte_size: int | None = None,
+    received_by: str | None = None,
     pipeline_version: str = PIPELINE_VERSION,
 ) -> EnqueueResult:
     """Idempotently register a blob and enqueue it for processing.
@@ -139,17 +140,21 @@ async def enqueue(
                 )
 
             # 2. intake_queue — idempotent on intake_key.
+            #    received_by (m218) records the team member who RECEIVED the
+            #    document (live-WhatsApp path only; NULL for drive/zoho/export).
             queue_id = await conn.fetchval(
                 """
                 INSERT INTO intake_queue
                     (instance_id, source, source_ref, blob_path, blob_hash,
-                     text_hash, phash, client_id_hint, pipeline_version, intake_key)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                     text_hash, phash, client_id_hint, received_by,
+                     pipeline_version, intake_key)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT (intake_key) DO NOTHING
                 RETURNING id
                 """,
                 instance_id, source, source_ref, blob_path_str, blob_hash,
-                text_hash, phash, client_id_hint, pipeline_version, intake_key,
+                text_hash, phash, client_id_hint, received_by,
+                pipeline_version, intake_key,
             )
             was_new = queue_id is not None
             if queue_id is None:
