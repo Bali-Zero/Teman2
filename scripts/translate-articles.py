@@ -156,7 +156,6 @@ def translate_article(article: dict, lang: str, force: bool, skip_existing: bool
     """Translate one article. Returns True if translation was written."""
     src_path: Path = article["path"]
     slug = article["slug"]
-    cat = article["category"]
     out_path = src_path.parent / f"{slug}.{lang}.mdx"
 
     # Check existing
@@ -295,7 +294,6 @@ def main():
     done = 0
     success = 0
     skipped = 0
-    failed = 0
     t_start = time.time()
 
     for i, art in enumerate(articles, 1):
