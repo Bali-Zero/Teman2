@@ -45,14 +45,16 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 import logging
 import os
 import re
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import asyncpg
 import httpx
+
+from backend.services.intake.model_roles import resolve_model_role
 
 logger = logging.getLogger("zantara.intake.classify")
 
@@ -60,9 +62,8 @@ logger = logging.getLogger("zantara.intake.classify")
 # Models / endpoint
 # ---------------------------------------------------------------------------
 
-# ocr_vision role (FASE 0 registry). NOTE: registry has no "ocr_vision" key as
-# of 2026-06-04, so hardcoded per spec. If scripts.model_topology gains the role
-# it is preferred automatically (see _resolve_ocr_model).
+# ocr_vision role (FASE 0 registry). Fall back to the same local model if the
+# topology file is unavailable in an isolated worker/test environment.
 _OCR_PRIMARY_DEFAULT = "qwen3-vl:8b"  # ocr_vision role
 
 # Local-only fallback (CLAUDE.md S9 default vision model). Used when the primary
@@ -89,12 +90,7 @@ _OCR_PROMPT = (
 
 def _resolve_ocr_model() -> str:
     """Prefer the FASE-0 registry ``ocr_vision`` role; else the hardcoded default."""
-    try:
-        from scripts.model_topology import get_role  # type: ignore
-
-        return get_role("ocr_vision")
-    except Exception:  # noqa: BLE001 -- role absent or topology unavailable.
-        return _OCR_PRIMARY_DEFAULT
+    return resolve_model_role("ocr_vision", _OCR_PRIMARY_DEFAULT)
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +215,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                 salvaged = _salvage_thinking(thinking or "")
                 if salvaged:
                     text, via = salvaged, "thinking"
-        except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001
+        except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
             logger.warning("OCR primary %s failed on page %d: %s", primary, idx, exc)
 
         # (b) local cascade to qwen2.5vl when primary yielded nothing usable.
@@ -231,7 +227,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                 )
                 if resp:
                     text, via, model_used = resp, "fallback", _OCR_FALLBACK
-            except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001
+            except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
                 logger.warning("OCR fallback failed on page %d: %s", idx, exc)
 
         results.append(
