@@ -6,7 +6,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -923,6 +923,241 @@ async def ensure_drive_folder(
     }
 
 
+# ================================================
+# SERVICE-TO-SERVICE: phone-keyed lead upsert (wa-mirror)
+# ================================================
+
+
+def _name_is_junk(name: str | None) -> bool:
+    """A name is placeholder/junk when empty, a 'Lead +<digits>' stub, 'unknown',
+    or a bare phone number — i.e. not a real human/company name."""
+    n = (name or "").strip().lower()
+    if not n:
+        return True
+    if n == "unknown" or n.startswith("lead +") or n.startswith("lead+"):
+        return True
+    return n.replace("+", "").replace(" ", "").replace("-", "").isdigit()
+
+
+def _name_is_better(new: str | None, current: str | None) -> bool:
+    """`new` improves on `current` only when `new` is a real name AND `current` is
+    empty/junk. Never downgrades an existing real name."""
+    if not new or _name_is_junk(new):
+        return False
+    return _name_is_junk(current)
+
+
+async def verify_crm_write_key(request: Request) -> str:
+    """Auth for POST /upsert-by-phone — a DEDICATED scoped service key
+    (`settings.wa_mirror_crm_write_key`, header `X-CRM-Write-Key`), DISTINCT from the
+    broad `wa_mirror_internal_key`. Least-privilege: this key authorizes ONLY phone-keyed
+    lead upsert, nothing else. Hard-gated by `settings.wa_mirror_crm_write_enabled`
+    (default False) — a kill-switch that 503s the endpoint when the feature is off.
+
+    Returns the service-actor label used for created_by/updated_by audit.
+    """
+    from backend.app.core.config import settings as _settings
+
+    if not getattr(_settings, "wa_mirror_crm_write_enabled", False):
+        raise HTTPException(status_code=503, detail="crm service-write disabled")
+    provided = (request.headers.get("X-CRM-Write-Key") or "").strip()
+    configured = (getattr(_settings, "wa_mirror_crm_write_key", None) or "").strip()
+    if not configured or not provided or provided != configured:
+        raise HTTPException(status_code=401, detail="invalid or missing X-CRM-Write-Key")
+    return "wa-mirror-crm-writer@balizero.com"
+
+
+class ClientUpsertByPhone(BaseModel):
+    """Sanitized payload for service-side lead promotion. Raw WhatsApp content NEVER
+    crosses this boundary — only derived fields (name, note recap, strategic summary)."""
+
+    phone_normalized: str  # digits only, no leading '+'
+    full_name: str | None = None  # required to CREATE a new lead
+    lead_source: str = "whatsapp_auto"
+    assigned_to: str | None = None
+    notes_append: str | None = None  # appended to clients.notes (never raw log text)
+    strategic_recap: str | None = None  # 2-3 sentence Ollama-local summary, optional
+    create_if_missing: bool = True  # auto-promote=True; recap-updater=False (update-only)
+    restore_if_archived: bool = True
+    improve_name: bool = True
+    notes_append_min_age_hours: int = 24  # on enrich, append notes at most once per window
+
+    @field_validator("phone_normalized")
+    @classmethod
+    def _validate_phone(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v.isdigit() or not (6 <= len(v) <= 20):
+            raise ValueError("phone_normalized must be 6-20 digits with no '+'")
+        return v
+
+
+@router.post("/upsert-by-phone")
+async def upsert_client_by_phone(
+    payload: ClientUpsertByPhone,
+    request: Request,
+    actor: str = Depends(verify_crm_write_key),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """Idempotent phone-keyed client upsert for wa-mirror lead promotion + strategic recap.
+
+    Atomic per phone: a transaction-scoped advisory lock serializes concurrent upserts for
+    the same phone (no unique constraint needed — production data has 51 live shared-phone
+    groups), then `SELECT ... FOR UPDATE WHERE phone_normalized = $1` picks the best match
+    (live first, then most-recent) and ENRICHes it, or INSERTs a fresh lead. Shared-phone
+    groups (spouses / reused numbers) are reported via `matched_count` for audit.
+    `strategic_recap` is applied only when the existing `strategic_recap_source` is not
+    'manual' (human edit wins).
+
+    Auth: scoped `X-CRM-Write-Key` + `WA_MIRROR_CRM_WRITE_ENABLED` flag.
+    """
+    phone = payload.phone_normalized
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            # Serialize concurrent upserts for THIS phone (insert-race proof without a
+            # unique index, which is infeasible: 51 live shared-phone groups exist).
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", phone)
+
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name, notes, deleted_at, strategic_recap_source, updated_at
+                FROM clients
+                WHERE phone_normalized = $1
+                ORDER BY (deleted_at IS NULL) DESC, updated_at DESC NULLS LAST
+                FOR UPDATE
+                """,
+                phone,
+            )
+            matched_count = len(rows)
+
+            if rows:
+                row = rows[0]
+                cid: int = row["id"]
+                was_archived = row["deleted_at"] is not None
+                set_parts: list[str] = []
+                params: list[Any] = []
+                pi = 1
+
+                if was_archived and payload.restore_if_archived:
+                    set_parts.append("deleted_at = NULL")
+                    set_parts.append("deleted_by = NULL")
+                if payload.improve_name and _name_is_better(payload.full_name, row["full_name"]):
+                    set_parts.append(f"full_name = ${pi}")
+                    params.append(payload.full_name.strip())  # type: ignore[union-attr]
+                    pi += 1
+                # Append notes at most once per `notes_append_min_age_hours` window
+                # (the cron fires every ~5min; without this gate enrich would bloat
+                # notes on every run). Gate on the authoritative Fly `updated_at`.
+                _ua = row["updated_at"]
+                if _ua is not None and _ua.tzinfo is None:
+                    _ua = _ua.replace(tzinfo=timezone.utc)
+                _notes_stale = _ua is None or (
+                    datetime.now(timezone.utc) - _ua
+                    >= timedelta(hours=payload.notes_append_min_age_hours)
+                )
+                if payload.notes_append and _notes_stale:
+                    sep = "\n\n" if (row["notes"] or "").strip() else ""
+                    set_parts.append(f"notes = COALESCE(NULLIF(notes, ''), '') || ${pi}")
+                    params.append(sep + payload.notes_append)
+                    pi += 1
+
+                recap_applied = False
+                if payload.strategic_recap and (row["strategic_recap_source"] or "") != "manual":
+                    set_parts.append(f"strategic_recap = ${pi}")
+                    params.append(payload.strategic_recap)
+                    pi += 1
+                    # 'ollama_local' is the only constraint-valid automated source
+                    # (clients_strategic_recap_source_check, mig 189). 'manual' is human.
+                    set_parts.append("strategic_recap_source = 'ollama_local'")
+                    set_parts.append("strategic_recap_updated_at = NOW()")
+                    recap_applied = True
+
+                if set_parts:
+                    set_parts.append("updated_at = NOW()")
+                    set_parts.append(f"updated_by = ${pi}")
+                    params.append(actor)
+                    pi += 1
+                    params.append(cid)
+                    # set_parts are hardcoded column assignments; only $N placeholders
+                    # are interpolated (param indices) — values stay parameterized.
+                    await conn.execute(
+                        f"UPDATE clients SET {', '.join(set_parts)} WHERE id = ${pi}",
+                        *params,
+                    )
+                    action = "enriched"
+                else:
+                    action = "skipped_no_change"
+
+                result: dict[str, Any] = {
+                    "client_id": cid,
+                    "was_created": False,
+                    "action": action,
+                    "matched_count": matched_count,
+                    "recap_applied": recap_applied,
+                }
+            else:
+                if not payload.create_if_missing:
+                    return {
+                        "client_id": None,
+                        "was_created": False,
+                        "action": "skipped_not_found",
+                        "matched_count": 0,
+                        "recap_applied": False,
+                    }
+                if not payload.full_name or not payload.full_name.strip():
+                    raise HTTPException(
+                        status_code=422, detail="full_name required to create a new lead"
+                    )
+                new_id = await conn.fetchval(
+                    """
+                    INSERT INTO clients (
+                      full_name, phone, whatsapp, phone_normalized,
+                      status, client_type, lead_source, assigned_to,
+                      created_by, updated_by, notes,
+                      strategic_recap, strategic_recap_source, strategic_recap_updated_at
+                    ) VALUES (
+                      $1, '+' || $2, '+' || $2, $2,
+                      'lead', 'individual', $3, $4,
+                      $5, $5, $6,
+                      $7,
+                      CASE WHEN $7 IS NULL THEN NULL ELSE 'ollama_local' END,
+                      CASE WHEN $7 IS NULL THEN NULL ELSE NOW() END
+                    )
+                    RETURNING id
+                    """,
+                    payload.full_name.strip(),
+                    phone,
+                    payload.lead_source,
+                    payload.assigned_to,
+                    actor,
+                    payload.notes_append,
+                    payload.strategic_recap,
+                )
+                result = {
+                    "client_id": new_id,
+                    "was_created": True,
+                    "action": "inserted",
+                    "matched_count": 0,
+                    "recap_applied": bool(payload.strategic_recap),
+                }
+
+    # Cache invalidation OUTSIDE the transaction (HTTP-layer cache; best-effort).
+    try:
+        await invalidate_cache("zantara:crm_clients_stats:*")
+    except Exception as exc:  # pragma: no cover - cache best-effort
+        logger.warning("upsert-by-phone: cache invalidation failed: %s", exc)
+
+    if result.get("matched_count", 0) > 1:
+        # Do NOT log the phone (PII / UU PDP + log-injection: it's user-supplied).
+        # client_id + matched_count are non-PII DB integers and fully identify the row.
+        logger.warning(
+            "upsert-by-phone: %s clients share a phone (acted on id=%s) — "
+            "review for possible duplicate-client merge",
+            result["matched_count"],
+            result["client_id"],
+        )
+    return result
+
+
 @router.patch("/{client_id}", response_model=ClientResponse)
 @audit_change(entity_type="client", change_type="update")
 async def update_client(
@@ -1014,10 +1249,18 @@ async def update_client(
             if not update_fields:
                 raise HTTPException(status_code=400, detail="No fields to update")
 
-            # If strategic_recap was edited by a human, bump its source + timestamp
+            # If strategic_recap was edited by a human AND the value actually changed,
+            # bump source -> 'manual' + timestamp. Guard against full-payload saves: the
+            # frontend resubmits the whole client (incl. unchanged strategic_recap), which
+            # would otherwise silently flip every recap to 'manual' and permanently lock
+            # out the automated wa-mirror recap updater (panel finding 2026-06-06).
             if "strategic_recap" in updates.dict(exclude_unset=True):
-                update_fields.append("strategic_recap_updated_at = NOW()")
-                update_fields.append("strategic_recap_source = 'manual'")
+                _current_recap = await conn.fetchval(
+                    "SELECT strategic_recap FROM clients WHERE id = $1", client_id
+                )
+                if (updates.strategic_recap or None) != (_current_recap or None):
+                    update_fields.append("strategic_recap_updated_at = NOW()")
+                    update_fields.append("strategic_recap_source = 'manual'")
 
             # Add updated_at
             update_fields.append("updated_at = NOW()")
