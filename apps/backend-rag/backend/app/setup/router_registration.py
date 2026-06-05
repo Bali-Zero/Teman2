@@ -342,6 +342,7 @@ def include_routers(api: FastAPI) -> None:
         admin_rate_limit,
         admin_self_healing,
         admin_zoho_auth,
+        frontend_metrics,
         llm_costs,
     )
 
@@ -355,6 +356,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(admin_drive_setup.router)
     api.include_router(admin_self_healing.router)
     api.include_router(admin_zoho_auth.router)
+    api.include_router(frontend_metrics.router)  # POST /api/metrics/frontend ingestion
     api.include_router(llm_costs.router)
 
     # Blog routers
@@ -512,6 +514,7 @@ def include_light_routers(api: FastAPI) -> None:
         knowledge_activity,
         lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         lkpm,
+        frontend_metrics,
         llm_costs,
         media,
         messaging_identity,
@@ -703,6 +706,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(admin_drive_setup.router)
     api.include_router(admin_self_healing.router)
     api.include_router(admin_zoho_auth.router)
+    api.include_router(frontend_metrics.router)  # POST /api/metrics/frontend ingestion
     api.include_router(llm_costs.router)
 
     # Blog routers (light)
