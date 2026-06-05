@@ -308,6 +308,11 @@ async def plan_commit(
     )
 
     payload = _document_payload(routing, stage_output, source_ref)
+    # Persist the resolved practice on the document row itself (documents.practice_id):
+    # _document_payload doesn't know it, but write_client_document writes
+    # payload["practice_id"], and rollback_commit reads it back to detach the link.
+    # Without this the column is NULL and rollback can't find the practice to clean.
+    payload["practice_id"] = practice_id
     if final_fields:
         payload["extracted_fields"] = {**payload.get("extracted_fields", {}), **final_fields}
 
@@ -496,6 +501,7 @@ async def write_client_document(
                 intake_idempotency_key, intake_proposal_id
             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'received','google_drive',$11,$12,$13)
             ON CONFLICT (client_id, intake_idempotency_key)
+                WHERE intake_idempotency_key IS NOT NULL
             DO UPDATE SET updated_at = now()
             RETURNING id
             """,
@@ -524,6 +530,7 @@ async def write_client_document(
                 intake_idempotency_key, intake_proposal_id
             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'received','google_drive',$11,$12)
             ON CONFLICT (client_id, intake_idempotency_key)
+                WHERE intake_idempotency_key IS NOT NULL
             DO UPDATE SET updated_at = now()
             RETURNING id
             """,
@@ -661,6 +668,27 @@ async def execute_commit(
         raise
 
 
+def _load_json_list(value: Any) -> list[Any]:
+    """Decode a jsonb column to a Python list, codec-agnostic.
+
+    asyncpg returns jsonb as a decoded object ONLY if the pool registered a json
+    codec; on a plain pool (the production backend pool + the test pool) it returns
+    the raw TEXT. ``list("[]")`` would then iterate characters — the double-encoding
+    trap (see cicatrix discovery_jsonb_double_encoding_systemic). Always parse a str.
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (ValueError, TypeError):
+            return []
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
 async def _append_practice_document(
     conn: asyncpg.Connection, plan: CommitPlan, doc_id: int
 ) -> None:
@@ -670,7 +698,7 @@ async def _append_practice_document(
     )
     if prow is None:
         raise RuntimeError(f"practice {plan.practice_id} vanished mid-TX")
-    documents = list(prow["documents"] or [])
+    documents = _load_json_list(prow["documents"])
     file_id = plan.payload.get("file_id")
     if any(isinstance(d, dict) and d.get("drive_file_id") == file_id for d in documents):
         return  # already linked — idempotent
@@ -683,9 +711,11 @@ async def _append_practice_document(
             "doc_id": doc_id,
         }
     )
+    # Write jsonb via explicit dumps + cast (pool has no json codec — passing a list
+    # raw makes asyncpg reject it as "expected str, got list").
     await conn.execute(
-        "UPDATE practices SET documents = $1, updated_at = NOW() WHERE id = $2",
-        documents,
+        "UPDATE practices SET documents = $1::jsonb, updated_at = NOW() WHERE id = $2",
+        json.dumps(documents),
         plan.practice_id,
     )
 
@@ -774,12 +804,12 @@ async def rollback_commit(
             if prow is not None:
                 remaining = [
                     d
-                    for d in list(prow["documents"] or [])
+                    for d in _load_json_list(prow["documents"])
                     if not (isinstance(d, dict) and d.get("doc_id") == doc_id)
                 ]
                 await conn.execute(
-                    "UPDATE practices SET documents = $1, updated_at = NOW() WHERE id = $2",
-                    remaining,
+                    "UPDATE practices SET documents = $1::jsonb, updated_at = NOW() WHERE id = $2",
+                    json.dumps(remaining),
                     practice_id,
                 )
         # Remove the document itself.
@@ -796,27 +826,35 @@ async def rollback_commit(
                 proposal_id,
             )
 
-    audit_id = await conn.fetchval(
-        """
-        INSERT INTO intake_commit_audit (
-            proposal_id, queue_id, client_id, doc_id, practice_id,
-            decision, committed_by, dry_run, outcome, idempotency_key, plan, error
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12)
-        RETURNING id
-        """,
-        proposal_id,
-        None,
-        client_id,
-        doc_id,
-        practice_id,
-        "rollback",
-        committed_by,
-        False,
-        "rolled_back",
-        idempotency_key,
-        json.dumps({"rolled_back_doc_id": doc_id}, default=str),
-        None,
-    )
+    # Forensic audit ONLY when something was actually undone. A no-op rollback (no
+    # matching document → doc_id/proposal_id are None) writes nothing: intake_commit_audit
+    # requires a non-null proposal_id (FK to document_routing_proposal), and there is
+    # no proposal to attribute a no-op to. The no-op stays idempotent and silent.
+    audit_id: int | None = None
+    if doc_id is not None and proposal_id is not None:
+        audit_id = await conn.fetchval(
+            """
+            INSERT INTO intake_commit_audit (
+                proposal_id, queue_id, client_id, doc_id, practice_id,
+                decision, committed_by, dry_run, outcome, idempotency_key, plan, error
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12)
+            RETURNING id
+            """,
+            proposal_id,
+            None,
+            client_id,
+            doc_id,
+            practice_id,
+            # decision must be NULL or one of the routing decisions (chk_ica_decision);
+            # 'rollback' is an OUTCOME, not a decision — recorded via outcome='rolled_back'.
+            None,
+            committed_by,
+            False,
+            "rolled_back",
+            idempotency_key,
+            json.dumps({"rolled_back_doc_id": doc_id}, default=str),
+            None,
+        )
     logger.warning(
         "intake.writer.ROLLED_BACK client=%s key=%s doc=%s proposal=%s by=%s",
         client_id,
@@ -831,7 +869,7 @@ async def rollback_commit(
         outcome="rolled_back",
         doc_id=doc_id,
         practice_id=practice_id,
-        audit_id=int(audit_id),
+        audit_id=int(audit_id) if audit_id is not None else None,
     )
 
 

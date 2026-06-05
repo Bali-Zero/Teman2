@@ -296,6 +296,19 @@ async def test_dry_run_writes_only_audit_row(pool, seed):
 # Every test flips INTAKE_WRITER_ENABLED=1 for its own process only (monkeypatch)
 # and relies on the `seed` fixture teardown to delete any documents it inserts.
 # --------------------------------------------------------------------------- #
+def _parse_docs(value) -> list:  # noqa: ANN001
+    """Decode a practices.documents jsonb cell — the pool has no json codec, so a
+    jsonb column comes back as a TEXT string; list(str) would iterate characters."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        parsed = json.loads(value)
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
 async def _docs_for_client(pool: asyncpg.Pool, client_id: int) -> list[asyncpg.Record]:
     async with pool.acquire() as conn:
         return await conn.fetch(
@@ -345,7 +358,7 @@ async def test_real_commit_writes_document_and_advances(pool, seed, monkeypatch)
     # Practice membership now lists the document (P0#6 dual-link).
     async with pool.acquire() as conn:
         prac = await conn.fetchrow("SELECT documents FROM practices WHERE id=$1", seed["prac_a"])
-    members = list(prac["documents"] or [])
+    members = _parse_docs(prac["documents"])
     assert any(isinstance(d, dict) and d.get("doc_id") == new_doc["id"] for d in members)
 
     # Audit row says committed, not dry_run.
@@ -472,7 +485,7 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
         prac = await conn.fetchrow("SELECT documents FROM practices WHERE id=$1", seed["prac_a"])
     assert gone == 0, "document not deleted by rollback"
     assert not any(
-        isinstance(d, dict) and d.get("doc_id") == doc_id for d in list(prac["documents"] or [])
+        isinstance(d, dict) and d.get("doc_id") == doc_id for d in _parse_docs(prac["documents"])
     ), "practice link not detached by rollback"
     assert await _proposal_status(pool, seed["p_a"]) == "review_claimed", "proposal not re-opened"
 
