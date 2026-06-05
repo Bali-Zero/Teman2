@@ -77,6 +77,26 @@ class WriterDisabledError(RuntimeError):
     """Raised if a real (dry_run=False) commit is attempted while the flag is OFF."""
 
 
+def log_writer_status() -> None:
+    """Emit a one-line status at app startup so the flag state is never silent.
+
+    Call once from the app lifespan. When the flag is ON this logs a WARNING — a
+    real-commit writer touching production CRM should be loud in the logs, not a
+    quiet default. When OFF it logs an INFO confirming dry-run (the safe state).
+    """
+    if writer_enabled():
+        logger.warning(
+            "INTAKE WRITER ENABLED — real CRM commits are ACTIVE "
+            "(INTAKE_WRITER_ENABLED is truthy). approve will write documents + "
+            "advance proposals to 'routed'. This is FASE 5C go-live state."
+        )
+    else:
+        logger.info(
+            "intake writer DRY-RUN (INTAKE_WRITER_ENABLED off) — approve simulates, "
+            "writes only an audit row, never touches the CRM."
+        )
+
+
 # --------------------------------------------------------------------------- #
 # Plan / result value objects
 # --------------------------------------------------------------------------- #
@@ -592,7 +612,14 @@ async def execute_commit(
             "INTAKE_WRITER_ENABLED is OFF — real CRM commit refused (FASE 5B is dry-run only)."
         )
 
-    # The real atomic TX (5C). The caller wraps this in `async with conn.transaction()`.
+    # The real atomic TX (5C). The caller MUST wrap this in `async with
+    # conn.transaction()` — every write below (document UPSERT, practice append,
+    # proposal advancement, audit row) lands in the SAME transaction. If ANY step
+    # raises, the enclosing transaction unwinds ALL of them atomically: no orphan
+    # document without a routed proposal, no routed proposal without its document
+    # (panel Q3 — the load-bearing failure mode). We re-raise (never swallow) so the
+    # caller's `transaction()` rolls back; the audit `failed` row below is written on
+    # a SEPARATE connection so it survives the rollback as forensic evidence.
     try:
         doc_id = await write_client_document(
             conn,
@@ -603,9 +630,19 @@ async def execute_commit(
         )
         if plan.practice_id is not None:
             await _append_practice_document(conn, plan, doc_id)
-        # proposal/queue advancement + corrections happen here in 5C…
+        # Proposal advancement to the terminal 'routed' state — in the SAME TX as the
+        # writes. P0#9 inverse: the DRY-RUN path never advances; the REAL path advances
+        # exactly once, atomically with the document it routed.
+        await advance_proposal(conn, plan.proposal_id)
         audit_id = await _write_audit(
             conn, plan, dry_run=False, outcome="committed", doc_id=doc_id
+        )
+        logger.info(
+            "intake.writer.COMMITTED proposal=%s client=%s doc=%s practice=%s (real write)",
+            plan.proposal_id,
+            plan.client_id,
+            doc_id,
+            plan.practice_id,
         )
         return CommitResult(
             proposal_id=plan.proposal_id,
@@ -616,7 +653,10 @@ async def execute_commit(
             audit_id=audit_id,
             would_write=would_write,
         )
-    except Exception as exc:  # pragma: no cover - real path not run in 5B
+    except Exception as exc:
+        # The enclosing transaction WILL roll back doc/practice/proposal/audit. Surface
+        # the failure loudly; the caller decides whether to record a forensic `failed`
+        # audit row out-of-band (it cannot live in this TX — it would roll back too).
         logger.error("intake.writer.failed proposal=%s err=%s", plan.proposal_id, exc)
         raise
 
@@ -647,6 +687,151 @@ async def _append_practice_document(
         "UPDATE practices SET documents = $1, updated_at = NOW() WHERE id = $2",
         documents,
         plan.practice_id,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# advance_proposal — terminal state transition (real path only, 5C)
+# --------------------------------------------------------------------------- #
+async def advance_proposal(conn: asyncpg.Connection, proposal_id: int) -> None:
+    """Move a proposal to its terminal 'routed' state and release the claim.
+
+    Called ONLY on the real (dry_run=False) commit path, inside the same TX as the
+    document write. 'routed' is the success terminal in the chk_rp_status CHECK
+    (migration 212: review_pending | review_claimed | routed | rejected | dead).
+
+    Idempotent-by-guard: the WHERE only matches a proposal still in review_claimed,
+    so a re-run (or a concurrent winner) is a no-op rather than a double-advance. The
+    lease columns are cleared because a routed proposal is terminal — no reviewer
+    holds it anymore.
+    """
+    await conn.execute(
+        """
+        UPDATE document_routing_proposal
+           SET status = 'routed',
+               lease_owner = NULL,
+               lease_expires_at = NULL,
+               claim_token = NULL
+         WHERE id = $1
+           AND status = 'review_claimed'
+        """,
+        proposal_id,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# rollback_commit — undo a committed intake instance (panel Q5 hard-prereq, 5C)
+# --------------------------------------------------------------------------- #
+async def rollback_commit(
+    conn: asyncpg.Connection,
+    *,
+    client_id: int,
+    idempotency_key: str,
+    committed_by: str,
+) -> CommitResult:
+    """Reverse a previously-committed intake instance, identified by its key.
+
+    The operator escape hatch the panel (Q5) elevated to a HARD prerequisite before
+    any production activation: if a real commit attached the wrong document (or to
+    the wrong client), this undoes it deterministically.
+
+    What it undoes, in ONE transaction (the caller wraps this in
+    `async with conn.transaction()`):
+
+    * the ``documents`` row keyed by ``(client_id, intake_idempotency_key)`` — removed;
+    * its membership entry in any ``practices.documents[]`` that linked it (matched by
+      the stored ``doc_id``);
+    * the originating ``document_routing_proposal`` — moved BACK from 'routed' to
+      'review_claimed' so a reviewer can re-decide (NOT to 'dead' — rollback is a
+      do-over, not a rejection).
+
+    Idempotent: if no document matches the key, nothing is undone and the result is
+    ``outcome='rolled_back', doc_id=None`` (a second rollback is a safe no-op). Writes
+    one ``intake_commit_audit(outcome='rolled_back')`` forensic row either way.
+
+    NOT flag-gated: rollback is a corrective action — it must work even with the
+    writer flag toggled back OFF after a bad commit.
+    """
+    doc = await conn.fetchrow(
+        """
+        SELECT id, intake_proposal_id, practice_id
+        FROM documents
+        WHERE client_id = $1 AND intake_idempotency_key = $2
+        """,
+        client_id,
+        idempotency_key,
+    )
+    doc_id = doc["id"] if doc else None
+    proposal_id = doc["intake_proposal_id"] if doc else None
+    practice_id = doc["practice_id"] if doc else None
+
+    if doc_id is not None:
+        # Detach from the practice membership array (match by stored doc_id).
+        if practice_id is not None:
+            prow = await conn.fetchrow(
+                "SELECT documents FROM practices WHERE id = $1 FOR UPDATE", practice_id
+            )
+            if prow is not None:
+                remaining = [
+                    d
+                    for d in list(prow["documents"] or [])
+                    if not (isinstance(d, dict) and d.get("doc_id") == doc_id)
+                ]
+                await conn.execute(
+                    "UPDATE practices SET documents = $1, updated_at = NOW() WHERE id = $2",
+                    remaining,
+                    practice_id,
+                )
+        # Remove the document itself.
+        await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)
+        # Re-open the proposal for re-decision (routed -> review_claimed).
+        if proposal_id is not None:
+            await conn.execute(
+                """
+                UPDATE document_routing_proposal
+                   SET status = 'review_claimed'
+                 WHERE id = $1
+                   AND status = 'routed'
+                """,
+                proposal_id,
+            )
+
+    audit_id = await conn.fetchval(
+        """
+        INSERT INTO intake_commit_audit (
+            proposal_id, queue_id, client_id, doc_id, practice_id,
+            decision, committed_by, dry_run, outcome, idempotency_key, plan, error
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12)
+        RETURNING id
+        """,
+        proposal_id,
+        None,
+        client_id,
+        doc_id,
+        practice_id,
+        "rollback",
+        committed_by,
+        False,
+        "rolled_back",
+        idempotency_key,
+        json.dumps({"rolled_back_doc_id": doc_id}, default=str),
+        None,
+    )
+    logger.warning(
+        "intake.writer.ROLLED_BACK client=%s key=%s doc=%s proposal=%s by=%s",
+        client_id,
+        idempotency_key,
+        doc_id,
+        proposal_id,
+        committed_by,
+    )
+    return CommitResult(
+        proposal_id=proposal_id or 0,
+        dry_run=False,
+        outcome="rolled_back",
+        doc_id=doc_id,
+        practice_id=practice_id,
+        audit_id=int(audit_id),
     )
 
 

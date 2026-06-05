@@ -143,6 +143,11 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
            "p_a": p_a, "p_b": p_b, "bh": bh, "created": created}
 
     async with pool.acquire() as conn:
+        # Real-write tests (flag ON) may have INSERTed documents for these clients —
+        # remove them first so the FK to clients doesn't block teardown.
+        for cid in created["clients"]:
+            await conn.execute("DELETE FROM documents WHERE client_id=$1", cid)
+            await conn.execute("DELETE FROM intake_commit_audit WHERE client_id=$1", cid)
         for pid in created["proposals"]:
             await conn.execute("DELETE FROM intake_commit_audit WHERE proposal_id=$1", pid)
             await conn.execute("DELETE FROM document_routing_proposal WHERE id=$1", pid)
@@ -283,3 +288,200 @@ async def test_dry_run_writes_only_audit_row(pool, seed):
     assert row["dry_run"] is True
     assert row["outcome"] == "dry_run"
     assert row["doc_id"] is None
+
+
+# --------------------------------------------------------------------------- #
+# FASE 5C — REAL-WRITE PATH (flag ON). Mirror image of the 5B assertions: here
+# the writer DOES write, the proposal IS advanced, and the audit says committed.
+# Every test flips INTAKE_WRITER_ENABLED=1 for its own process only (monkeypatch)
+# and relies on the `seed` fixture teardown to delete any documents it inserts.
+# --------------------------------------------------------------------------- #
+async def _docs_for_client(pool: asyncpg.Pool, client_id: int) -> list[asyncpg.Record]:
+    async with pool.acquire() as conn:
+        return await conn.fetch(
+            "SELECT * FROM documents WHERE client_id = $1 ORDER BY id", client_id
+        )
+
+
+async def _proposal_status(pool: asyncpg.Pool, proposal_id: int) -> str:
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id = $1", proposal_id
+        )
+
+
+async def test_real_commit_writes_document_and_advances(pool, seed, monkeypatch):
+    """Flag ON: approve writes ONE document, links the practice, advances proposal."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    assert intake_writer.writer_enabled() is True
+
+    docs_before = await _docs_for_client(pool, seed["cid_a"])
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["dry_run"] is False
+    assert body["outcome"] == "committed"
+    assert body["status"] == "routed"  # proposal advanced (real path)
+    assert body["result"]["doc_id"] is not None
+
+    docs_after = await _docs_for_client(pool, seed["cid_a"])
+    assert len(docs_after) == len(docs_before) + 1, "exactly one document written"
+    new_doc = docs_after[-1]
+    assert new_doc["intake_proposal_id"] == seed["p_a"]
+    assert new_doc["intake_idempotency_key"].startswith("ik:")
+
+    # Proposal moved to terminal 'routed' and the claim was released.
+    async with pool.acquire() as conn:
+        prop = await conn.fetchrow(
+            "SELECT status, claim_token, lease_owner FROM document_routing_proposal WHERE id=$1",
+            seed["p_a"],
+        )
+    assert prop["status"] == "routed"
+    assert prop["claim_token"] is None
+    assert prop["lease_owner"] is None
+
+    # Practice membership now lists the document (P0#6 dual-link).
+    async with pool.acquire() as conn:
+        prac = await conn.fetchrow("SELECT documents FROM practices WHERE id=$1", seed["prac_a"])
+    members = list(prac["documents"] or [])
+    assert any(isinstance(d, dict) and d.get("doc_id") == new_doc["id"] for d in members)
+
+    # Audit row says committed, not dry_run.
+    async with pool.acquire() as conn:
+        audit = await conn.fetchrow(
+            "SELECT dry_run, outcome, doc_id FROM intake_commit_audit "
+            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1", seed["p_a"])
+    assert audit["dry_run"] is False
+    assert audit["outcome"] == "committed"
+    assert audit["doc_id"] == new_doc["id"]
+
+
+async def test_real_commit_idempotent_recommit(pool, seed, monkeypatch):
+    """Flag ON: re-approving the same intake instance is a no-op (same doc, no dup).
+
+    P0#2: the UPSERT on (client_id, intake_idempotency_key) returns the SAME doc_id;
+    a second commit must not create a second documents row.
+    """
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    app = _make_app(pool, ADMIN)
+
+    async with _client(app) as cl:
+        r1 = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r1.status_code == 200, r1.text
+    doc_id_1 = r1.json()["result"]["doc_id"]
+    assert doc_id_1 is not None
+    docs_after_first = await _docs_for_client(pool, seed["cid_a"])
+
+    # The proposal is now 'routed' (terminal) — plan_commit would block it as "not
+    # approvable". Re-arm it to 'review_claimed' so a SECOND execute_commit reaches
+    # the UPSERT (the unit under test): same idempotency key → same canonical doc_id,
+    # no duplicate row.
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET status='review_claimed' WHERE id=$1",
+            seed["p_a"],
+        )
+        async with conn.transaction():
+            prop = await conn.fetchrow(
+                "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+            plan = await intake_writer.plan_commit(prop, conn, committed_by=ADMIN["email"])
+            # existing doc surfaced by the idempotency probe
+            assert plan.existing_doc_id == doc_id_1
+            assert plan.blocked is False
+            result = await intake_writer.execute_commit(plan, conn, dry_run=False)
+    assert result.outcome == "committed"
+    assert result.doc_id == doc_id_1, "re-commit must reuse the same canonical doc_id"
+
+    docs_after_second = await _docs_for_client(pool, seed["cid_a"])
+    assert len(docs_after_second) == len(docs_after_first), "no duplicate document on re-commit"
+
+
+async def test_blocked_plan_no_write_even_with_flag_on(pool, seed, monkeypatch):
+    """Flag ON but plan blocked (soft-deleted client) → still zero CRM writes."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    before = await _crm_counts(pool)
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE clients SET deleted_at = now() WHERE id=$1", seed["cid_a"])
+        try:
+            async with conn.transaction():
+                prop = await conn.fetchrow(
+                    "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+                plan = await intake_writer.plan_commit(prop, conn, committed_by=ADMIN["email"])
+                result = await intake_writer.execute_commit(plan, conn, dry_run=False)
+        finally:
+            await conn.execute("UPDATE clients SET deleted_at = NULL WHERE id=$1", seed["cid_a"])
+    assert plan.blocked is True
+    assert result.outcome == "blocked"
+    after = await _crm_counts(pool)
+    assert after == before, "blocked plan wrote to CRM despite being blocked"
+    assert await _proposal_status(pool, seed["p_a"]) == "review_claimed", "blocked must not advance"
+
+
+async def test_exception_mid_tx_rolls_back(pool, seed, monkeypatch):
+    """Flag ON: a failure AFTER the document write rolls the whole approve back.
+
+    We force the practice append to explode (practice vanishes mid-TX) and assert
+    the document INSERT it preceded is also gone and the proposal is untouched.
+    """
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    before = await _crm_counts(pool)
+
+    async def _boom(conn, plan, doc_id):  # noqa: ANN001
+        raise RuntimeError("simulated practice append failure mid-TX")
+
+    monkeypatch.setattr(intake_writer, "_append_practice_document", _boom)
+
+    async with pool.acquire() as conn:
+        with pytest.raises(RuntimeError, match="simulated practice append failure"):
+            async with conn.transaction():
+                prop = await conn.fetchrow(
+                    "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+                plan = await intake_writer.plan_commit(prop, conn, committed_by=ADMIN["email"])
+                await intake_writer.execute_commit(plan, conn, dry_run=False)
+
+    after = await _crm_counts(pool)
+    assert after == before, "TX did not roll back — orphan document survived the failure"
+    assert await _proposal_status(pool, seed["p_a"]) == "review_claimed", "proposal advanced despite rollback"
+
+
+async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
+    """rollback_commit removes the document, re-opens the proposal, is idempotent."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    doc_id = r.json()["result"]["doc_id"]
+    idem_key = r.json()["would_commit"]["idempotency_key"]
+    assert await _proposal_status(pool, seed["p_a"]) == "routed"
+
+    # First rollback — undoes the commit.
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            res = await intake_writer.rollback_commit(
+                conn, client_id=seed["cid_a"], idempotency_key=idem_key,
+                committed_by=ADMIN["email"],
+            )
+    assert res.outcome == "rolled_back"
+    assert res.doc_id == doc_id
+
+    async with pool.acquire() as conn:
+        gone = await conn.fetchval("SELECT count(*) FROM documents WHERE id=$1", doc_id)
+        prac = await conn.fetchrow("SELECT documents FROM practices WHERE id=$1", seed["prac_a"])
+    assert gone == 0, "document not deleted by rollback"
+    assert not any(
+        isinstance(d, dict) and d.get("doc_id") == doc_id for d in list(prac["documents"] or [])
+    ), "practice link not detached by rollback"
+    assert await _proposal_status(pool, seed["p_a"]) == "review_claimed", "proposal not re-opened"
+
+    # Second rollback — safe no-op (idempotent).
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            res2 = await intake_writer.rollback_commit(
+                conn, client_id=seed["cid_a"], idempotency_key=idem_key,
+                committed_by=ADMIN["email"],
+            )
+    assert res2.outcome == "rolled_back"
+    assert res2.doc_id is None, "second rollback should find nothing to undo"
