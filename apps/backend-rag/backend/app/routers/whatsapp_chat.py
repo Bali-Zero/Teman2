@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -39,6 +40,12 @@ from backend.services.whatsapp_kbli_guard import sanitize_whatsapp_kbli_reply
 from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
 
 logger = logging.getLogger(__name__)
+
+# Local sovereign blob root for downloaded WhatsApp media (Law 2 — PII stays
+# local, never third-party cloud). Same convention as the intake adapters.
+_INTAKE_BLOB_ROOT = os.environ.get(
+    "INTAKE_BLOB_ROOT", os.path.expanduser("~/.nuzantara/intake-blobs")
+)
 
 # In-memory conversation history per phone number (fast fallback)
 _conversation_cache: dict[str, list[dict]] = defaultdict(list)
@@ -905,6 +912,75 @@ async def _resolve_webhook_id(conn: Any, wamid: str) -> int | None:
         return None
 
 
+async def _meta_inbox_received_by(_media: Any) -> str | None:
+    """Resolve who OWNS a document received on the official BALI ZERO line.
+
+    v1 policy (honest): there is NO per-person receiver for the shared official
+    number — one line, whole team. So this returns None: the document enters the
+    intake queue as a no-receiver orphan and falls back to assigned_to scoping
+    (once routing identifies the client) or surfaces to whoever in the gate.
+
+    This is the single seam to change when a real policy is chosen (e.g. route
+    official-line docs to a duty owner, or to the thread's human-handler once
+    threads carry an assignee). Injected into ingest_live_media so the webhook
+    wiring never has to change again.
+    """
+    return None
+
+
+async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request) -> None:
+    """Background task: pull any media attachments on the official line into intake.
+
+    Separate from process_meta_inbox_payload's ledger TX on purpose — a media
+    download (Meta I/O) must never sit inside the ledger transaction. Runs after
+    the 200 ACK like its sibling. Reuses ingest_live_media (parse → download →
+    enqueue with received_by). Best-effort: failures are logged, never raised
+    (the webhook already ACKed; Meta will not be impacted).
+    """
+    # Cheap pre-check: only spin up an HTTP client if the payload actually
+    # carries media on the official number.
+    from backend.channels.whatsapp.media_webhook_parse import parse_media_webhook
+
+    parsed = parse_media_webhook(raw_payload)
+    official = [m for m in parsed.media if m.phone_number_id == META_INBOX_PHONE_NUMBER_ID]
+    if not official:
+        return
+
+    pool = _get_db_pool(request)
+    if pool is None:
+        logger.warning("meta-inbox media: no db pool, skipping %d media", len(official))
+        return
+
+    access_token = settings.whatsapp_api_token
+    if not access_token:
+        logger.warning("meta-inbox media: WHATSAPP token unset, skipping %d media", len(official))
+        return
+
+    import httpx
+
+    from backend.services.intake.whatsapp_live_adapter import ingest_live_media
+
+    try:
+        # Short-lived client for this one background ingest (NOT a per-iteration
+        # client in a hot loop — Golden Rule #10 is about the latter).
+        async with httpx.AsyncClient(timeout=60.0) as http_client:
+            counters = await ingest_live_media(
+                raw_payload,
+                pool=pool,
+                http_client=http_client,
+                access_token=access_token,
+                dest_dir=_INTAKE_BLOB_ROOT,
+                resolve_received_by=_meta_inbox_received_by,
+            )
+        logger.info(
+            "meta-inbox media ingest: found=%d new=%d dup=%d dl_err=%d enq_err=%d",
+            counters.media_found, counters.enqueued_new, counters.already_present,
+            counters.download_errors, counters.enqueue_errors,
+        )
+    except Exception as exc:
+        logger.error("meta-inbox media ingest failed: %s", exc, exc_info=True)
+
+
 async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
     """Background task: drive the meta-inbox ledger for the target number only.
 
@@ -1103,6 +1179,14 @@ async def whatsapp_webhook(
     if meta_inbox_in_payload:
         background_tasks.add_task(
             process_meta_inbox_payload,
+            raw_payload=raw_payload,
+            request=request,
+        )
+        # Anello 1: pull any media attachments on the official line into the
+        # intake pipeline (download → enqueue). Separate task so a media
+        # download never delays the ledger or the Meta ACK.
+        background_tasks.add_task(
+            _ingest_meta_inbox_media,
             raw_payload=raw_payload,
             request=request,
         )
