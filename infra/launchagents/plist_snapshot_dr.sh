@@ -107,7 +107,7 @@ REDACTED = "REDACTED"
 # Value-based redaction (defense layer 2): a VALUE that looks like a secret is
 # redacted regardless of its key name. Closes the gap where keys like
 # WA_DASHBOARD_DATABASE_URL / *_REDIS_URL (end in URL, not TOKEN/KEY) carry an
-# inline password (postgres://u:pass@h). Specific shapes only — NOT bare hex
+# inline password (postgres://u:pass@h). Specific shapes only — NOT bare hex  # pragma: allowlist secret
 # (would over-redact git shas). Sub-redacts only the secret span, preserving the
 # rest (host/command) for DR usefulness.
 VALUE_SECRET_RE = re.compile(
