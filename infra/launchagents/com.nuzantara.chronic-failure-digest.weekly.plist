@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.chronic-failure-digest.weekly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/infra/launchagents/chronic_failure_digest.sh</string>
+    </array>
+
+    <!-- Monday 08:30 WITA (every week) — 30min after the branch-cleanup weekly,
+         so the operator gets the chronic-failure digest in the same Monday batch.
+         Reads the last N daily audit snapshots; the daily audit runs 02:00. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>REPO_ROOT</key>
+        <string>/Users/nuzantara/Desktop/nuzantara</string>
+        <key>CHRONIC_DIGEST_ENABLED</key>
+        <string>true</string>
+        <!-- Min consecutive RED days before a job is reported (default 3). -->
+        <key>CHRONIC_DIGEST_THRESHOLD</key>
+        <string>3</string>
+        <!-- Number of recent daily snapshots to scan (default 8 = ~1 week + 1). -->
+        <key>CHRONIC_DIGEST_WINDOW</key>
+        <string>8</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/chronic-failure-digest.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/chronic-failure-digest.error.log</string>
+</dict>
+</plist>
