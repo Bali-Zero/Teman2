@@ -119,8 +119,24 @@ v1 was "build a new weekly sentinel." v2 is: **add the 3 missing checks to the e
 
 ## 7. Next steps (gated)
 
-1. **Antonello approval** of this v2 direction (extend-not-build).
-2. **Re-verify on Pro** every `[ASSUMED-MEMORY]` tag once Pro is back online (esp.
-   `verify_mcp_integrity.sh` location, tier binaries, existing watchdog coverage).
+1. **Antonello approval** of this v2 direction (extend-not-build). ✅ APPROVED 2026-06-06.
+2. **Re-verify on Pro** every `[ASSUMED-MEMORY]` tag. ✅ DONE 2026-06-06 (Pro back online):
 3. Implement as extension to `nuzantara-sentinel.py` + register with `sentinel_meta_watchdog.sh`.
 4. TDD per acceptance §6 before any LaunchAgent install.
+
+## 8bis. Pro live re-verification (2026-06-06) — `[VERIFIED-PRO]` replaces `[ASSUMED-MEMORY]`
+
+- **`verify_mcp_integrity.sh` does NOT exist on Pro either** (not in `~/.claude/scripts/`, repo,
+  or `~/scripts/`). Memory `p2_21_mcp_integrity_verify` claims it shipped with a baseline. It is
+  absent on BOTH machines. → NEW SCAR (the spec's own thesis, again). Either it was never shipped,
+  or it was lost. Registry Check B must NOT seed it as `expected-present` until resolved.
+- **`sentinel_meta_watchdog.sh` IS deployed + alive** on Pro: `com.nuzantara.sentinel-meta-watchdog`
+  loaded in launchctl (last status 0), watches `~/.agent/decisions/sentinel_status.json` (age 3min,
+  fresh). reuse-target confirmed REAL. Also live: `organism.supervisor`, `wr2.supervisor-watchdog`,
+  `disk-watchdog`, `cron-log-sentinel`, `matagaruda.sentinel.hourly`, `automap-watchdog`.
+- **Cascade T1/T2 binaries EXIST on Pro** (corrected — my first `command -v` under `bash -lc`
+  falsely reported MISSING; re-verified via `ls`): `~/.local/bin/claude` → v2.1.166,
+  `~/.local/bin/agy` (136MB, 4 Jun). T3 `codex` + T4 `ollama` in `/opt/homebrew/bin`. The real
+  defect is unchanged: wrapper calls them by HARDCODED path (`$HOME/.local/bin/claude`,
+  `/Users/nuzantara/.local/bin/agy`) — works on Pro, breaks on any other user/host. Check A must
+  resolve via `command -v` with an explicit PATH, never hardcode.

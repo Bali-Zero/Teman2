@@ -376,6 +376,7 @@ done
 _Discovered: 2026-06-05 while planning P-4 (topic_type_log) off the autopsy report · Severity: P3 (process/trust, not runtime) · Status: REPORTED — the autopsy report stays as-is (it was right about the SUBSTANCE), this scar inoculates future readers against its 3 phantom citations_
 
 **TRAUMA:** `research/operations/2026-06-04-wr2-autopsy-report.md` (the 13-agent autopsy, finding #10 + per-dimension "Anti-monotony") cites, with PRECISE line numbers, three artifacts that DO NOT EXIST:
+
 - `_state-schema.sql:63` (claimed to define a SQLite `topic_type_log` table)
 - `_voyager-curriculum.py:49` (claimed to read it via a LEFT JOIN)
 - `topic_type_log` itself as an existing-but-empty table
@@ -387,6 +388,7 @@ A SECOND autopsy claim was also wrong (caught by an Explore + direct re-verify):
 **ANTIBODY:** When a long multi-agent report (autopsy, deep-research, council synthesis) cites `file:line`, treat those citations as LEADS, not facts — re-run `find`/`grep`/`Read` on each load-bearing one BEFORE building on it. The autopsy was CORRECT about the substance (the variety machine is unplugged; the fact-checker self-references; BRAND_SUFFIX clamps) — verified, and batch-1 fixes shipped on it (PR #1125). But 3 of its specific file refs were hallucinated. The discipline that caught this is the standing anti-hallucination rule (CLAUDE.md §6): "mai citare output di un tool senza averlo eseguito in QUESTO turn". Extended here to: **mai costruire un piano su un file:line di un REPORT senza ri-verificare che il file esista in questo turn.** The P-4 plan (`research/operations/P4-topic-type-log-plan.md` §0) documents the corrections and was built on the verified reality, not the report text.
 
 **GOTCHA:**
+
 - The autopsy is NOT retracted — it remains the authoritative diagnosis of WR2's monotony/fact problems. Only its 3 phantom citations are wrong. Future agents: use it for the WHAT, re-verify every WHERE.
 - The hallucinated `_voyager-curriculum.py` is plausible because a real Voyager-style skill-library evolver DOES exist in this ecosystem (`agent-library` / EvoSkill, see `discovery_s13_evolution_loop_never_closed`). The autopsy likely pattern-matched that into a WR2 curriculum reader that was never built. Plausibility ≠ existence.
 - P-4 (migration 216, shipped 2026-06-05 PR #1133) is the FIRST real `topic_type_log` — it's a Postgres table on the production path, NOT the phantom SQLite one. Anyone grepping `topic_type_log` after 2026-06-05 will find the real one; do not confuse it with the autopsy's phantom.
@@ -490,3 +492,15 @@ _Discovered: 2026-06-04 06:15 WITA while monitoring PR #1101 (a scar_replay-only
 **GOTCHA**: This is a non-mine flake — a scar_replay-only PR (`#1101` touches only `agent-library/scar_replay/scar_replay.py` + `test_scar_replay.py`) was blocked by it. **Diagnostic rule**: when CI Backend Tests fail on a PR that changed NO backend code, check whether the failing test is timestamp/clock-dependent BEFORE assuming regression — verify via `gh pr view <N> --json files -q '.files[].path'` that your diff doesn't touch the failing module. The same test passed clean on `#1104` minutes earlier (same suite) → proof it's nondeterministic, not a real break. Any PR whose `update-branch` re-triggers the full Backend Tests can hit it. Family: **nondeterministic-test-blocks-merge (clock race)**. Related discipline: anti-hallucination rule — verify the failing path is actually yours, don't assume.
 
 **Reference**: CI run 26915762002 job 79404910575 (#1101). Failing test `apps/backend-rag/backend/tests/unit/services/ingestion/test_performance_monitor.py:311`. Source under test `apps/backend-rag/backend/services/ingestion/performance_monitor.py` (alert-id generation). PR #1101 files: scar_replay only.
+
+### ℹ️ P3 (phantom-in-memory): `verify_mcp_integrity.sh` claimed-shipped in memory, ABSENT on disk M5+Pro (2026-06-06)
+
+_Discovered: 2026-06-06 12:00 WITA while re-verifying `[ASSUMED-MEMORY]` tags for the guardrail-liveness-sentinel spec, Pro back online · Severity: P3 (process/trust) · Status: **REPORTED**_
+
+**TRAUMA**: Memory `p2_21_mcp_integrity_verify` (2026-05-20) states `scripts/verify_mcp_integrity.sh` shipped at 6636B mode 755 with baseline LOW=24/HIGH=0/MEDIUM=0. Empirical re-check 2026-06-06: the file does **NOT EXIST** on M5 (`~/.claude/scripts/`, repo, `~/scripts/`) NOR on Pro (same three locations via `ssh pro`). A guardrail recorded as shipped-with-baseline is absent on both machines — either never shipped, or lost in a later sweep/worktree-drift. The memory reads as ground truth (precise byte count, mode, baseline numbers) but the artifact is phantom.
+
+**ANTIBODY**: (1) The guardrail-liveness-sentinel's registry (Check B) must NOT seed `verify_mcp_integrity.sh` as `expected-present` until it's re-created or the memory corrected — otherwise the sentinel would alert on a guardrail that was never really there. (2) General rule, which is literally the sentinel's whole thesis: **a guardrail claimed-shipped-in-memory must be re-verified on disk before being relied upon**. Memory is a claim, not a fact. (3) Decide separately whether to re-create `verify_mcp_integrity.sh` (the MCP integrity baseline check is a real safety mechanism worth having) or amend `p2_21` to mark it lost.
+
+**GOTCHA**: This is the **2nd phantom-in-memory caught this session**. The 1st was the WR2 autopsy's 3 hallucinated `file:line` refs (`_state-schema.sql:63` etc., see the META scar 2026-06-05). Same family: **claimed-artifact-absent-on-disk**. Both were caught only by re-running `find`/`ls` in-turn rather than trusting the recorded claim. The anti-hallucination discipline (CLAUDE.md §6) extends to memory entries, not just tool output: a memory that names a file with byte-precision is exactly as fabricable as a hallucinated tool result.
+
+**Reference**: memory `p2_21_mcp_integrity_verify.md`. Spec `docs/superpowers/specs/2026-06-06-guardrail-liveness-sentinel.md` §8bis (Pro live re-verification). Sibling phantom: META WR2-autopsy scar 2026-06-05. Family: claimed-artifact-absent-on-disk. Born from: `decision_guardrail_liveness_sentinel_spec_2026_06_06`.
