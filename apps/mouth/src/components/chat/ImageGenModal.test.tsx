@@ -45,7 +45,7 @@ describe("ImageGenModal", () => {
 
   it("calls onSubmit with prompt when Generate button is clicked", () => {
     render(<ImageGenModal {...defaultProps} />);
-    const textarea = screen.getByLabelText("Image generation prompt");
+    const textarea = screen.getByLabelText(/image generation prompt/i);
     fireEvent.change(textarea, { target: { value: "A cool dragon" } });
     fireEvent.click(screen.getByText("Generate", { selector: "button" }));
     expect(defaultProps.onSubmit).toHaveBeenCalledWith("A cool dragon");
