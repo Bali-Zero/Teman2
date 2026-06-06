@@ -60,7 +60,11 @@ OUT_DIR_DEFAULT = Path.home() / "Desktop" / "nuzantara" / "var" / "war_room"
 
 # ---- Token MAX dal Keychain (auto-refresh dal CLI), fallback env ------------
 def load_oauth_token() -> str:
-    """accessToken OAuth dal Keychain del CLI claude. MAI loggato. Fallback env var."""
+    """accessToken OAuth MAX. MAI loggato. Ordine: Keychain → ~/.claude/.credentials.json → env.
+
+    Sul Pro (SSH headless, dove gira il cron) il Keychain è bloccato: il token vive nel file
+    ~/.claude/.credentials.json. Per questo proviamo il file PRIMA della env var. MAI stampare il token.
+    """
     try:
         raw = subprocess.run(
             ["security", "find-generic-password",
@@ -71,10 +75,18 @@ def load_oauth_token() -> str:
         if tok:
             return tok
     except Exception as exc:  # noqa: BLE001
-        logger.debug("keychain token read failed (%s), trying env", type(exc).__name__)
+        logger.debug("keychain token read failed (%s), trying credentials file", type(exc).__name__)
+    try:
+        cred = Path.home() / ".claude" / ".credentials.json"
+        if cred.exists():
+            tok = json.loads(cred.read_text())["claudeAiOauth"]["accessToken"]
+            if tok:
+                return tok
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("credentials file read failed (%s), trying env", type(exc).__name__)
     tok = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
     if not tok:
-        raise RuntimeError("nessun token MAX: né Keychain 'Claude Code-credentials' né CLAUDE_CODE_OAUTH_TOKEN")
+        raise RuntimeError("nessun token MAX: né Keychain, né ~/.claude/.credentials.json, né CLAUDE_CODE_OAUTH_TOKEN")
     return tok
 
 
