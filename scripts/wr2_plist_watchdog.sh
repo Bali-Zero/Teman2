@@ -22,6 +22,7 @@ REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/Desktop/nuzantara-deploy}"
 SOURCE_DIR="${REPO_ROOT}/infra/launchagents"
 TARGET_DIR="${HOME}/Library/LaunchAgents"
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
+WR2_RETIRED_PLIST_LABELS="${WR2_RETIRED_PLIST_LABELS:-com.balizero.wr2.canva-renderer}"
 
 if [[ -f "${SECRETS_FILE}" ]]; then
     # shellcheck disable=SC1090
@@ -34,6 +35,33 @@ UID_VAL="$(id -u)"
 DOMAIN="gui/${UID_VAL}"
 RECOVERIES=()
 ERRORS=()
+
+_plist_label() {
+    local plist="$1"
+    local parsed=""
+    if command -v plutil >/dev/null 2>&1; then
+        parsed="$(plutil -extract Label raw -o - "${plist}" 2>/dev/null || true)"
+    fi
+    if [[ -z "${parsed}" && -x /usr/libexec/PlistBuddy ]]; then
+        parsed="$(/usr/libexec/PlistBuddy -c "Print :Label" "${plist}" 2>/dev/null || true)"
+    fi
+    if [[ -n "${parsed}" ]]; then
+        printf '%s\n' "${parsed}"
+    else
+        basename "${plist}" .plist
+    fi
+}
+
+_is_retired_label() {
+    local candidate="$1"
+    local retired=""
+    for retired in ${WR2_RETIRED_PLIST_LABELS}; do
+        if [[ "${candidate}" == "${retired}" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 _telegram() {
     local text="$1"
@@ -59,8 +87,13 @@ fi
 # write their own watchdog if they need one.
 shopt -s nullglob
 for source_plist in "${SOURCE_DIR}"/com.balizero.wr2.*.plist; do
-    label="$(basename "${source_plist}" .plist)"
-    target_plist="${TARGET_DIR}/${label}.plist"
+    source_name="$(basename "${source_plist}" .plist)"
+    label="$(_plist_label "${source_plist}")"
+    target_plist="${TARGET_DIR}/${source_name}.plist"
+
+    if _is_retired_label "${label}"; then
+        continue
+    fi
 
     if [[ ! -f "${target_plist}" ]]; then
         echo "[wr2-plist-watchdog] ${label}: missing on disk, restoring..."

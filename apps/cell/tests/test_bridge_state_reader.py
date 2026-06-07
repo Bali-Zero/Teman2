@@ -360,3 +360,23 @@ def test_http_source_unknown_status_vocab_maps_to_degraded():
     with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
         reading = BridgeStateReader([src]).read_all()[0]
     assert reading.status == "degraded"
+
+
+def test_http_source_without_timestamp_uses_read_time(monkeypatch):
+    """Simple health endpoints can omit ts; read time becomes liveness ts."""
+    cls = _mock_httpx_client(
+        status_code=200,
+        json_body={"ok": True, "service": "automap_server"},
+    )
+    src = BridgeSource(
+        organ_id="pro.automap_server",
+        type="http",
+        path="http://127.0.0.1:18791/health",
+        json_path="ok",
+    )
+    monkeypatch.setattr("cell.sensors.bridge_state_reader.time.time", lambda: 1234.5)
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert reading.error == "", reading.error
+    assert reading.timestamp == 1234.5
+    assert reading.status == "ok"

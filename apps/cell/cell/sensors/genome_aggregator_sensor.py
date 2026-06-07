@@ -11,11 +11,11 @@ Reads three inputs and merges them into one SensorReading:
    by the Supervisor consume loop in Wave 2 with `organ_id → last_seen`
    (unix epoch). For W0 the table may be absent: all organi without a
    bridge_source are treated as `stale`.
-3. **bridge sources** — for organi with a `bridge_source: state_file` entry
-   in organs_registry.yaml, the timestamp comes from
+3. **bridge sources** — for organi with a `bridge_source` entry in
+   organs_registry.yaml, the timestamp/status comes from
    `BridgeStateReader.read_all()` (see
-   `apps/cell/cell/sensors/bridge_state_reader.py`). Bridge timestamps
-   override last_seen.db lookups for that organ.
+   `apps/cell/cell/sensors/bridge_state_reader.py`). Bridge readings override
+   last_seen.db lookups for that organ.
 
 Classification per organ (07_innervation_protocol.md §1.1):
 
@@ -249,6 +249,10 @@ class GenomeAggregatorSensor:
                 kwargs["timestamp_field"] = str(decl["timestamp_field"])
             if "status_field" in decl:
                 kwargs["status_field"] = str(decl["status_field"])
+            if "json_path" in decl:
+                kwargs["json_path"] = str(decl["json_path"])
+            if "http_timeout_s" in decl:
+                kwargs["http_timeout_s"] = float(decl["http_timeout_s"])
             sources.append(BridgeSource(**kwargs))
 
         if not sources:
@@ -284,6 +288,7 @@ class GenomeAggregatorSensor:
             elif bridge.timestamp is not None:
                 ts = bridge.timestamp
                 source = "bridge"
+        bridge_state = self._bridge_status_state(bridge.status if bridge else "")
         if ts is None:
             db_ts = last_seen.get(organ_id)
             if db_ts is not None:
@@ -293,7 +298,13 @@ class GenomeAggregatorSensor:
         # Infra rule: expected_hb_seconds == 0 → bridge presence only.
         if expected_seconds == 0:
             if bridge is not None and not bridge.error and bridge.timestamp is not None:
-                return {"organ_id": organ_id, "state": "alive", "source": "bridge"}
+                state = bridge_state or "alive"
+                return {
+                    "organ_id": organ_id,
+                    "state": state,
+                    "source": "bridge_status" if bridge_state else "bridge",
+                    "bridge_status": bridge.status,
+                }
             return {
                 "organ_id": organ_id,
                 "state": "dead",
@@ -317,12 +328,51 @@ class GenomeAggregatorSensor:
             state = "stale"
         else:
             state = "dead"
+
+        if bridge_state == "dead":
+            state = "dead"
+            source = "bridge_status"
+        elif bridge_state == "stale" and state == "alive":
+            state = "stale"
+            source = "bridge_status"
+
         return {
             "organ_id": organ_id,
             "state": state,
             "source": source,
             "age_seconds": age,
+            **({"bridge_status": bridge.status} if bridge is not None else {}),
         }
+
+    @staticmethod
+    def _bridge_status_state(status: str) -> str:
+        """Return an aggregate state override for explicit bridge status."""
+        v = str(status or "").strip().lower()
+        if v in {
+            "down",
+            "fail",
+            "failed",
+            "failure",
+            "red",
+            "false",
+            "unhealthy",
+            "unavailable",
+            "error",
+            "critical",
+            "dead",
+        }:
+            return "dead"
+        if v in {
+            "degraded",
+            "partial",
+            "yellow",
+            "warning",
+            "warn",
+            "initializing",
+            "loading",
+        }:
+            return "stale"
+        return ""
 
 
 __all__ = ["GenomeAggregatorSensor", "SensorReading"]

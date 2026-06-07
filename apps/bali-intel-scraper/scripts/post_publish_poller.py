@@ -20,6 +20,7 @@ Sources:
   - 'news':  news_items from /api/news (image generation only)
 """
 import json
+import importlib.util
 import os
 import subprocess
 import sys
@@ -44,6 +45,25 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 GITHUB_OWNER = "Balizero1987"
 GITHUB_REPO = "Teman2"
 IMAGE_GH_DIR = "apps/mouth/public/static/news"
+
+
+def _load_organism_heartbeat():
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "scripts" / "lib" / "heartbeat.py"
+        if not candidate.exists():
+            continue
+        spec = importlib.util.spec_from_file_location("nuzantara_heartbeat", candidate)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.organism_heartbeat
+    return None
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat:
+        heartbeat(organ_id, status, note)
 
 
 def log(msg: str):
@@ -103,7 +123,7 @@ def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
         check = subprocess.run(["pgrep", "-f", "translate_articles.py"], capture_output=True, text=True)
         if check.returncode != 0:
             return True
-        log(f"⏳ Ollama busy — waiting 60s...")
+        log("⏳ Ollama busy — waiting 60s...")
         time.sleep(60)
         waited += 60
     log("⚠ Timeout waiting for Ollama")
@@ -253,7 +273,7 @@ def run_translate(slug: str, category: str) -> bool:
     repo_root = SCRIPT_DIR.parent.parent.parent
     mdx_local = repo_root / "apps" / "mouth" / "src" / "content" / "articles" / category / f"{slug}.mdx"
     if not mdx_local.exists():
-        log(f"  ⚠ MDX not found locally — pulling from GitHub")
+        log("  ⚠ MDX not found locally — pulling from GitHub")
         try:
             import base64 as _b64
             gh_result = subprocess.run(
@@ -268,7 +288,7 @@ def run_translate(slug: str, category: str) -> bool:
                 mdx_local.write_text(content, encoding="utf-8")
                 log(f"  ✅ MDX pulled from GitHub ({len(content)} chars)")
             else:
-                log(f"  ❌ MDX not on GitHub either — cannot translate")
+                log("  ❌ MDX not on GitHub either — cannot translate")
                 return False
         except Exception as e:
             log(f"  ❌ GitHub pull error: {e}")
@@ -501,7 +521,7 @@ def git_pull_monorepo():
     try:
         result = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True, cwd=str(repo_root), timeout=60)
         if result.returncode == 0:
-            log(f"✅ git pull OK")
+            log("✅ git pull OK")
         else:
             # Try stash + pull + pop
             subprocess.run(["git", "stash"], capture_output=True, cwd=str(repo_root), timeout=10)
@@ -598,7 +618,7 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
         return (True, [])
 
 
-def main():
+def main() -> tuple[str, str]:
     log("=" * 50)
     log("🔄 Post-publish poller v3 started")
 
@@ -607,11 +627,11 @@ def main():
         pending = result.get("pending", [])
     except Exception as e:
         log(f"❌ Queue read error: {e}")
-        return
+        return ("error", f"queue read error: {e}")
 
     if not pending:
         log("✅ No articles in queue")
-        return
+        return ("ok", "no pending articles")
 
     log(f"📋 {len(pending)} articles in queue")
     git_pull_monorepo()
@@ -679,7 +699,23 @@ def main():
             )
 
     log("🏁 Poller completed")
+    if failed_items:
+        return ("degraded", f"failed_items={len(failed_items)}")
+    return ("ok", f"done={len(done_slugs)} pending={len(pending)}")
+
+
+def _run_with_heartbeat() -> int:
+    organ_id = "pro.post_publish_poller"
+    organism_heartbeat(organ_id, "starting", "poller started")
+    try:
+        status, note = main()
+    except Exception as exc:
+        organism_heartbeat(organ_id, "error", f"{type(exc).__name__}: {exc}")
+        raise
+
+    organism_heartbeat(organ_id, status, note)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(_run_with_heartbeat())

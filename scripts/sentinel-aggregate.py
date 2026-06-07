@@ -20,8 +20,8 @@ Status classification (per organ):
   stale     expected_hb_seconds < age <= 3 * expected_hb_seconds
   dead      age > 3 * expected_hb_seconds  OR  status field != ok
   unknown   no heartbeat file AND no launchctl entry (or registry-only fly_machine)
-  noheartbeat  organ has no bridge_source AND launchctl shows it loaded
-               (registry coverage exists but no liveness signal)
+  noheartbeat  organ declares a state_file bridge_source, launchctl shows it
+               loaded, but the state file is missing
 
 Schedule: ~/Library/LaunchAgents/com.nuzantara.sentinel-aggregate.plist
   StartInterval = 300 seconds (5 min).
@@ -38,6 +38,8 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -73,12 +75,110 @@ def _parse_ts(ts: Any) -> float | None:
     return None
 
 
+def _extract_dotted(data: dict[str, Any], path: str) -> Any:
+    cur: Any = data
+    for seg in path.split("."):
+        if not isinstance(cur, dict) or seg not in cur:
+            return None
+        cur = cur[seg]
+    return cur
+
+
+def _map_bridge_status(value: Any) -> str:
+    v = str(value or "").strip().lower()
+    if v in {"up", "ok", "healthy", "green", "connected", "operational", "true"}:
+        return "ok"
+    if v in {"degraded", "partial", "yellow", "warning", "warn", "initializing", "loading"}:
+        return "degraded"
+    if v in {"down", "fail", "failed", "failure", "red", "false", "unhealthy", "unavailable", "error", "critical"}:
+        return "fail"
+    return "degraded"
+
+
+def _read_http_bridge(bridge_source: dict[str, Any]) -> dict[str, Any]:
+    url = str(bridge_source.get("path", ""))
+    timeout = float(bridge_source.get("http_timeout_s", 5.0))
+    now = _now_epoch()
+    if not url:
+        return {"ts": now, "status": "error", "error": "http bridge path missing"}
+
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "nuzantara-sentinel-aggregate/1"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status_code = int(getattr(resp, "status", resp.getcode()))
+            body = resp.read().decode("utf-8", errors="replace")
+    except (OSError, urllib.error.URLError, ValueError) as exc:
+        return {
+            "ts": now,
+            "status": "error",
+            "error": f"http request failed: {type(exc).__name__}: {exc}",
+            "source": url,
+        }
+
+    if status_code != 200:
+        return {
+            "ts": now,
+            "status": "error",
+            "error": f"http {status_code}: body={body[:200]!r}",
+            "source": url,
+        }
+
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        return {
+            "ts": now,
+            "status": "error",
+            "error": f"http body json parse error: {exc.msg}",
+            "source": url,
+        }
+    if not isinstance(data, dict):
+        return {
+            "ts": now,
+            "status": "error",
+            "error": f"http body must be JSON object, got {type(data).__name__}",
+            "source": url,
+        }
+
+    ts_field = str(bridge_source.get("timestamp_field", "ts"))
+    ts = _parse_ts(data.get(ts_field)) if ts_field in data else now
+    if ts is None:
+        return {
+            "ts": now,
+            "status": "error",
+            "error": f"could not coerce http timestamp field {ts_field!r}",
+            "source": url,
+        }
+
+    json_path = str(bridge_source.get("json_path", ""))
+    if json_path:
+        raw_status = _extract_dotted(data, json_path)
+    else:
+        raw_status = data.get(str(bridge_source.get("status_field", "status")), "")
+    if raw_status is None:
+        return {
+            "ts": ts,
+            "status": "error",
+            "error": f"http body missing json_path {json_path!r}",
+            "source": url,
+        }
+
+    return {
+        "ts": ts,
+        "status": _map_bridge_status(raw_status),
+        "raw_status": raw_status,
+        "source": url,
+    }
+
+
 def _read_last_seen(organ_id: str, organ: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """Read heartbeat for an organ. Honours bridge_source.path if declared,
     falls back to ~/.organism/last_seen/<organ_id>.json convention."""
     candidates: list[Path] = []
     if organ is not None:
         bs = organ.get("bridge_source") or {}
+        if isinstance(bs, dict) and bs.get("type") == "http":
+            return _read_http_bridge(bs)
         if isinstance(bs, dict) and bs.get("type") == "state_file":
             raw = bs.get("path")
             if isinstance(raw, str) and raw:
@@ -148,19 +248,6 @@ def _classify(
             "disabled_reason": organ.get("disabled_reason", ""),
         }
 
-    # fly_machine: no local launchctl, status comes from health endpoint —
-    # out of scope for this aggregator. Mark as remote.
-    if runtime == "fly_machine":
-        return {
-            "id": organ_id,
-            "runtime": runtime,
-            "status": "remote",
-            "age_seconds": None,
-            "severity": "info",
-            "owner_module": organ.get("owner_module"),
-            "recovery_action": organ.get("recovery_action"),
-        }
-
     # Heartbeat present: compute freshness.
     if hb is not None:
         ts = _parse_ts(hb.get("ts"))
@@ -220,7 +307,23 @@ def _classify(
             result["pid"] = launchctl_entry.get("pid")
             result["last_exit"] = launchctl_entry.get("last_exit")
             result["hb_source"] = "launchctl_running"
+        if hb.get("error"):
+            result["error"] = hb.get("error")
+        if hb.get("source"):
+            result["hb_source"] = hb.get("source")
         return result
+
+    # fly_machine without an http bridge reading: no local launchctl fallback.
+    if runtime == "fly_machine":
+        return {
+            "id": organ_id,
+            "runtime": runtime,
+            "status": "remote",
+            "age_seconds": None,
+            "severity": "info",
+            "owner_module": organ.get("owner_module"),
+            "recovery_action": organ.get("recovery_action"),
+        }
 
     # No heartbeat. Fall back to launchctl liveness.
     # Convention (2026-05-09 wave 2): launchd-loaded + last_exit==0 is the

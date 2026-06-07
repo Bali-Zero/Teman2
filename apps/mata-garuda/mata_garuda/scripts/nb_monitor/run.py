@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from mata_garuda.heartbeat import run_with_heartbeat
 from mata_garuda.scripts.nb_monitor import (
     BOOTSTRAP_FILE,
     DATA_DIR,
@@ -441,4 +442,4 @@ def _status(rf7: int | None, freshness: int | None, psr: float | None) -> str:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run_with_heartbeat("pro.nb_mitochondrial_monitor_daily", main))

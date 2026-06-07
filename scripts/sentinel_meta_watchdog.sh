@@ -46,6 +46,15 @@ COOLDOWN_SEC=3600            # 1 h between alerts/restarts
 LOG_FILE="$HOME/logs/sentinel-meta-watchdog.log"
 WATCHDOG_STATE_FILE="$HOME/.agent/decisions/state/sentinel_meta_watchdog.json"
 COOLDOWN_FILE="$HOME/.agent/decisions/state/sentinel_meta_watchdog.cooldown"
+ORGAN_ID="pro.sentinel_meta_watchdog"
+
+HB_SCRIPT="$HOME/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+if [[ -f "$HB_SCRIPT" ]]; then
+    # shellcheck disable=SC1090
+    source "$HB_SCRIPT"
+else
+    organism_heartbeat() { return 0; }
+fi
 
 # Source secrets (TELEGRAM_BOT_TOKEN + TELEGRAM_ADMIN_CHAT_ID).
 # NEVER hardcode the bot token in the script or plist.
@@ -85,6 +94,13 @@ write_state() {
   "_writer": "sentinel_meta_watchdog"
 }
 EOF
+    local hb_status
+    case "$status" in
+        ok) hb_status="ok" ;;
+        missing|stale) hb_status="error" ;;
+        *) hb_status="warning" ;;
+    esac
+    organism_heartbeat "$ORGAN_ID" "$hb_status" "age=${age}s action=${action} detail=${detail}"
 }
 
 cooldown_active() {

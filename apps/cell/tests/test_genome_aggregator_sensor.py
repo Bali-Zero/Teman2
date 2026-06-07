@@ -641,6 +641,31 @@ def test_w1_channel_web_enrolled_via_http(tmp_path):
     assert dead.metadata["dead_organs"] == ["channel.web"]
 
 
+def test_http_bridge_status_fail_marks_dead_even_when_fresh(tmp_path):
+    """Fresh HTTP timestamp is not enough: json_path status=down must be dead."""
+    genome = tmp_path / "channel_down_genome.yaml"
+    db = tmp_path / "channel_down_last_seen.db"
+    _write_genome(
+        genome,
+        [
+            _w1_organ_http(
+                "channel.whatsapp",
+                json_path="channels.whatsapp.status",
+            )
+        ],
+    )
+
+    with _patch(
+        "cell.sensors.bridge_state_reader.httpx.Client",
+        _mock_http_response("down", age_s=1.0),
+    ):
+        sensor = GenomeAggregatorSensor(genome_path=genome, last_seen_db_path=db)
+        reading = _run(sensor)
+
+    assert reading.status == "red"
+    assert reading.metadata["dead_organs"] == ["channel.whatsapp"]
+
+
 # ---------- W1.3 intel + content cron organi (state_file bridge) -----------
 
 

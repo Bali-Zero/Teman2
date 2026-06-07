@@ -14,11 +14,30 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV_PY="$REPO_DIR/.venv/bin/python"
 LOG="/Users/nuzantara/logs/ai-intel-sentinel.log"
 DATE=$(date '+%Y-%m-%d %H:%M:%S %Z')
+ORGAN_ID="mata_garuda.sentinel_daily.mini"
+
+HB_SCRIPT="$(cd "$REPO_DIR/../.." && pwd)/scripts/lib/heartbeat.sh"
+if [[ -f "$HB_SCRIPT" ]]; then
+    organism_heartbeat() { "$HB_SCRIPT" "$@" >/dev/null 2>&1 || true; }
+else
+    organism_heartbeat() { return 0; }
+fi
+
+finalize_heartbeat() {
+    local rc=$?
+    local status="ok"
+    if [[ "$rc" -ne 0 ]]; then
+        status="error"
+    fi
+    organism_heartbeat "$ORGAN_ID" "$status" "sentinel daily rc=${rc}"
+}
+trap finalize_heartbeat EXIT
 
 mkdir -p "$(dirname "$LOG")"
 
 echo "" >> "$LOG"
 echo "=== AI-Intel-Sentinel — $DATE ===" >> "$LOG"
+organism_heartbeat "$ORGAN_ID" "starting" "sentinel daily started"
 
 cd "$REPO_DIR"
 

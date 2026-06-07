@@ -24,6 +24,7 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import logging
 import os
@@ -55,9 +56,29 @@ DEFAULT_ACTIVE_FLAG_PATH = Path.home() / ".agent" / "supervisor" / "active.flag"
 DEFAULT_BLACKOUT_FLAG_PATH = Path.home() / ".agent" / "supervisor" / "pause.flag"
 
 
+def _load_organism_heartbeat():
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "scripts" / "lib" / "heartbeat.py"
+        if not candidate.exists():
+            continue
+        spec = importlib.util.spec_from_file_location("nuzantara_heartbeat", candidate)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.organism_heartbeat
+    return None
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat:
+        heartbeat(organ_id, status, note)
+
+
 async def _write_heartbeat(redis) -> None:
     """Refresh the Supervisor liveness key used by W0.3 guardians."""
     await redis.set(SUPERVISOR_HB_KEY, str(time.time()), ex=HB_TTL)
+    organism_heartbeat("organism.supervisor", "ok", "redis heartbeat refreshed")
 
 
 async def _ensure_consumer_group(redis) -> None:

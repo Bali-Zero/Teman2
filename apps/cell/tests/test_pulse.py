@@ -1,8 +1,10 @@
 """Tests for the pulse cycle — CELL's heartbeat."""
-from unittest.mock import AsyncMock, MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from cell.core.dna_interpreter import DNAInterpreter
 from cell.core.pulse import PulseEngine
 from cell.fast.health_triage import HealthStatus
 
@@ -128,6 +130,15 @@ def _make_outbox_sensor(status: str, count: int = 0) -> MagicMock:
     return sensor
 
 
+def _make_backup_sensor(status: str, metadata: dict) -> MagicMock:
+    reading = MagicMock()
+    reading.status = status
+    reading.metadata = metadata
+    sensor = MagicMock()
+    sensor.read.return_value = reading
+    return sensor
+
+
 @pytest.mark.asyncio
 async def test_pulse_without_outbox_sensor_is_no_op() -> None:
     """A PulseEngine with outbox_sensor=None (default) must work unchanged."""
@@ -175,3 +186,78 @@ async def test_pulse_outbox_sensor_exception_does_not_break_pulse() -> None:
     assert result.halted is False
     assert result.skipped is False
     assert result.health_status == HealthStatus.YELLOW
+
+
+@pytest.mark.asyncio
+async def test_pulse_red_backup_persists_driver_headline() -> None:
+    deps = _make_healthy_pulse_deps()
+    deps["metabolism"].daily_spend = 0.0
+    deps["metabolism"]._daily_limit = 10.0
+    backup = _make_backup_sensor(
+        "red",
+        {"age_hours": 113.3, "path": "fly_pg_backup.sql.gz"},
+    )
+    engine = PulseEngine(**deps, dna_expected_hash="hash", backup_sensor=backup)
+
+    with patch("cell.core.pulse.cell_db.log_pulse", new_callable=AsyncMock) as log_pulse:
+        result = await engine.single_pulse(pulse_number=7)
+
+    assert result.health_status == HealthStatus.RED
+    assert result.driver_sensors == ["backup"]
+    assert result.health_headline is not None
+    assert "backup" in result.health_headline
+    log_pulse.assert_awaited_once()
+    error_message = log_pulse.call_args.kwargs["error_message"]
+    assert "backup" in error_message
+    assert "113h" in error_message
+
+
+@pytest.mark.asyncio
+async def test_pulse_blocked_alert_human_records_suppressed_alert() -> None:
+    deps = _make_healthy_pulse_deps()
+    deps["metabolism"].daily_spend = 0.0
+    deps["metabolism"]._daily_limit = 10.0
+    backup = _make_backup_sensor(
+        "red",
+        {"age_hours": 113.3, "path": "fly_pg_backup.sql.gz"},
+    )
+    reasoner = AsyncMock()
+    reasoner.think.return_value = SimpleNamespace(
+        action="alert_human",
+        reason="operator needed",
+        confidence=0.9,
+        tier_used=0,
+        cost_usd=0.0,
+    )
+    interpreter = DNAInterpreter()
+    interpreter.record_action("alert_human")
+
+    engine = PulseEngine(
+        **deps,
+        dna_expected_hash="hash",
+        backup_sensor=backup,
+        reasoner=reasoner,
+        dna_interpreter=interpreter,
+    )
+
+    with (
+        patch("cell.core.pulse.cell_db.log_alert", new_callable=AsyncMock) as log_alert,
+        patch("cell.core.pulse.cell_db.log_pulse", new_callable=AsyncMock),
+    ):
+        result = await engine.single_pulse(pulse_number=8)
+
+    assert result.health_status == HealthStatus.RED
+    assert result.action_taken is None
+    assert result.action_reason is not None
+    assert "blocked" in result.action_reason
+    suppressed_calls = [
+        call.kwargs
+        for call in log_alert.await_args_list
+        if call.kwargs.get("action") == "alert_suppressed"
+    ]
+    assert len(suppressed_calls) == 1
+    assert suppressed_calls[0]["level"] == "warn"
+    assert suppressed_calls[0]["health_status"] == "red"
+    assert suppressed_calls[0]["pulse_number"] == 8
+    assert "backup" in suppressed_calls[0]["message"]
+    assert "113h" in suppressed_calls[0]["message"]

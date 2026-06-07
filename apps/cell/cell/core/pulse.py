@@ -14,6 +14,11 @@ if TYPE_CHECKING:
 
 from cell.core import db as cell_db
 from cell.fast.health_triage import HealthStatus
+from cell.fast.red_summary import summarize_pulse
+from cell.slow.suppression_digest import (
+    run_suppression_digest,
+    should_run_suppression_digest,
+)
 
 logger = logging.getLogger("cell.pulse")
 
@@ -124,6 +129,8 @@ class PulseResult:
     action_reason: str | None = None
     thought_tier: int | None = None
     error: str | None = None
+    driver_sensors: list[str] | None = None
+    health_headline: str | None = None
 
 
 class PulseEngine:
@@ -264,6 +271,16 @@ class PulseEngine:
 
         # Secondary sensors (reuse /health body, no extra HTTP)
         sensor_metadata: dict[str, Any] = {}
+        http_metadata: dict[str, Any] = {
+            "reachable": reading.reachable,
+            "status_code": reading.status_code,
+            "response_time_ms": response_ms,
+        }
+        if isinstance(getattr(reading, "body", None), dict):
+            body_status = reading.body.get("status")
+            if body_status:
+                http_metadata["body_status"] = str(body_status)
+        sensor_status_by_name: dict[str, str] = {"http": http_status.value}
         db_ok: float = 1.0
         qdrant_ok: float = 1.0
         error_rate_norm: float = 0.0
@@ -271,6 +288,7 @@ class PulseEngine:
         if self._db_sensor is not None:
             db_reading = self._db_sensor.read(reading)
             sensor_metadata["db"] = db_reading.metadata
+            sensor_status_by_name["db"] = db_reading.status
             if db_reading.status == "red":
                 db_ok = 0.0
             elif db_reading.status == "yellow":
@@ -279,6 +297,7 @@ class PulseEngine:
         if self._qdrant_sensor is not None:
             qdrant_reading = self._qdrant_sensor.read(reading)
             sensor_metadata["qdrant"] = qdrant_reading.metadata
+            sensor_status_by_name["qdrant"] = qdrant_reading.status
             if qdrant_reading.status == "red":
                 qdrant_ok = 0.0
             elif qdrant_reading.status == "yellow":
@@ -287,6 +306,7 @@ class PulseEngine:
         if self._error_rate_sensor is not None:
             error_reading = await self._error_rate_sensor.read()
             sensor_metadata["error_rate"] = error_reading.metadata
+            sensor_status_by_name["error_rate"] = error_reading.status
             error_rate_norm = error_reading.error_rate_norm
 
         # New sensors — local visibility
@@ -295,24 +315,28 @@ class PulseEngine:
             ollama_reading = await self._ollama_sensor.read()
             sensor_metadata["ollama"] = ollama_reading.metadata
             ollama_status = ollama_reading.status
+        sensor_status_by_name["ollama"] = ollama_status
 
         backup_status = "green"
         if self._backup_sensor is not None:
             backup_reading = self._backup_sensor.read()
             sensor_metadata["backup"] = backup_reading.metadata
             backup_status = backup_reading.status
+        sensor_status_by_name["backup"] = backup_status
 
         cron_status = "green"
         if self._cron_sensor is not None:
             cron_reading = self._cron_sensor.read()
             sensor_metadata["cron"] = cron_reading.metadata
             cron_status = cron_reading.status
+        sensor_status_by_name["cron"] = cron_status
 
         vercel_status = "green"
         if self._vercel_sensor is not None:
             vercel_reading = await self._vercel_sensor.read()
             sensor_metadata["vercel"] = vercel_reading.metadata
             vercel_status = vercel_reading.status
+        sensor_status_by_name["vercel"] = vercel_status
 
         # LEVA 3 (2026-05-13): outbox lag — perceives durable EventBus
         # pressure on business channels. cell_pulse_observed is excluded
@@ -326,19 +350,12 @@ class PulseEngine:
                 outbox_status = outbox_reading.status
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"OutboxSensor read failed: {e}")
+                sensor_metadata["outbox"] = {"reason": str(e)}
                 outbox_status = "yellow"
+        sensor_status_by_name["outbox"] = outbox_status
 
         # Aggregate: final status is the worst across all sensors
-        sensor_statuses = [http_status.value]
-        if self._db_sensor is not None:
-            sensor_statuses.append(db_reading.status)  # type: ignore[possibly-undefined]
-        if self._qdrant_sensor is not None:
-            sensor_statuses.append(qdrant_reading.status)  # type: ignore[possibly-undefined]
-        if self._error_rate_sensor is not None:
-            sensor_statuses.append(error_reading.status)  # type: ignore[possibly-undefined]
-        sensor_statuses.extend([
-            ollama_status, backup_status, cron_status, vercel_status, outbox_status,
-        ])
+        sensor_statuses = list(sensor_status_by_name.values())
 
         # AI Intel Sensor — daily harvest (24h cooldown)
         ai_intel_items: list[dict] = []
@@ -346,6 +363,7 @@ class PulseEngine:
             try:
                 ai_reading = await self._ai_intel_sensor.read()
                 sensor_metadata["ai_intel"] = ai_reading.metadata
+                sensor_status_by_name["ai_intel"] = ai_reading.status
                 sensor_statuses.append(ai_reading.status)
                 if ai_reading.harvested and ai_reading.items:
                     ai_intel_items = ai_reading.items
@@ -361,11 +379,19 @@ class PulseEngine:
                             logger.warning(f"NLM effector failed: {e}")
             except Exception as e:
                 logger.warning(f"AI Intel sensor failed: {e}")
+                sensor_metadata["ai_intel"] = {"reason": str(e)}
+                sensor_status_by_name["ai_intel"] = "yellow"
                 sensor_statuses.append("yellow")
 
-        _severity = {"green": 0, "yellow": 1, "red": 2}
+        _severity = {"green": 0, "yellow": 1, "unknown": 1, "failed": 2, "red": 2}
         worst = max(sensor_statuses, key=lambda s: _severity.get(s, 0))
+        if worst == "unknown":
+            worst = "yellow"
+        elif worst == "failed":
+            worst = "red"
         status = HealthStatus(worst)
+        summary_metadata = {"http": http_metadata, **sensor_metadata}
+        red_summary = summarize_pulse(status.value, sensor_status_by_name, summary_metadata)
         if _m:
             _m.record_phase(_cell, "sense", time.monotonic() - _t0)
             if self._homeostatic:
@@ -376,6 +402,8 @@ class PulseEngine:
             f"reachable={reading.reachable}, "
             f"status_code={reading.status_code}, "
             f"response_time={reading.response_time_seconds:.3f}s"
+            + (f", drivers={red_summary.driver_sensors}, headline={red_summary.headline}"
+               if red_summary.headline else "")
             + (f", sensors={sensor_metadata}" if sensor_metadata else "")
         )
 
@@ -489,6 +517,8 @@ class PulseEngine:
                 health_status=status,
                 skipped=True,
                 skip_reason="sleeping — dreaming and consolidating",
+                driver_sensors=red_summary.driver_sensors or None,
+                health_headline=red_summary.headline or None,
             )
 
             # Cell Pulse Observatory hook (sleep path).
@@ -509,7 +539,7 @@ class PulseEngine:
                         pulse_timestamp_ms=int(now.timestamp() * 1000),
                         phase="sleep",
                         sensors=[
-                            {"name": k, "status": v.get("status") if isinstance(v, dict) else None,
+                            {"name": k, "status": sensor_status_by_name.get(k),
                              "value": v if not isinstance(v, dict) else None,
                              "metadata": v if isinstance(v, dict) else {}}
                             for k, v in (sensor_metadata or {}).items()
@@ -520,6 +550,8 @@ class PulseEngine:
                             "trend_label": None,
                             "skipped": True,
                             "skip_reason": "sleeping — dreaming and consolidating",
+                            "driver_sensors": red_summary.driver_sensors,
+                            "headline": red_summary.headline,
                         },
                         homeostatic_state={
                             "circadian_phase": "asleep",
@@ -755,6 +787,21 @@ class PulseEngine:
                             f"THINK → BLOCKED: {proposal.action} — {validation.reason} "
                             f"(rule {validation.rule_violated})"
                         )
+                        if proposal.action == "alert_human" and validation.rule_violated in {2, 3}:
+                            suppressed_message = (
+                                red_summary.headline or proposal.reason or validation.reason
+                            )[:500]
+                            await cell_db.log_alert(
+                                level="warn",
+                                action="alert_suppressed",
+                                message=suppressed_message,
+                                health_status=status.value,
+                                pulse_number=pulse_number,
+                            )
+                            logger.info(
+                                "alert_human suppression recorded: "
+                                f"{suppressed_message[:80]}"
+                            )
                         action_reason = f"Proposed {proposal.action} but blocked: {validation.reason}"
                 else:
                     action_reason = proposal.reason
@@ -765,6 +812,7 @@ class PulseEngine:
                 action_reason = f"Reasoner error: {e}"
 
         # 7. PERSIST to PostgreSQL for dashboard
+        non_green_reason = action_reason or red_summary.headline or None
         try:
             await cell_db.log_pulse(
                 pulse_number=pulse_number,
@@ -774,7 +822,7 @@ class PulseEngine:
                 budget_spent=self._metabolism.daily_spend,
                 budget_limit=self._metabolism._daily_limit,
                 action_taken=action,
-                error_message=action_reason if status != HealthStatus.GREEN else None,
+                error_message=non_green_reason if status != HealthStatus.GREEN else None,
             )
         except Exception as e:
             logger.error(f"Pulse DB log failed: {e}")
@@ -861,7 +909,35 @@ class PulseEngine:
             action_taken=action,
             action_reason=action_reason,
             thought_tier=thought_tier,
+            driver_sensors=red_summary.driver_sensors or None,
+            health_headline=red_summary.headline or None,
         )
+
+        if should_run_suppression_digest(pulse_number) and red_summary.headline:
+            try:
+                import asyncio as _asyncio
+
+                async def _suppression_digest_task() -> None:
+                    try:
+                        pool = await cell_db.get_pool()
+                        result = await run_suppression_digest(
+                            pool,
+                            current_headline=red_summary.headline,
+                            health_status=status.value,
+                            pulse_number=pulse_number,
+                            emitter=self._alerter.send if self._alerter else None,
+                        )
+                        if result.should_emit:
+                            logger.info(
+                                "suppression digest emitted: "
+                                f"{len(result.groups)} group(s)"
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning(f"suppression digest failed (non-blocking): {exc}")
+
+                _asyncio.create_task(_suppression_digest_task())
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"suppression digest scheduling failed (non-blocking): {exc}")
 
         # W27 Path A (2026-05-23): consecutive-red streak tracking. When
         # streak reaches SUSTAINED_RED_THRESHOLD (3 = ~3 min at 60s cadence),
@@ -1020,7 +1096,7 @@ class PulseEngine:
                     pulse_timestamp_ms=int(now.timestamp() * 1000),
                     phase="active",
                     sensors=[
-                        {"name": k, "status": v.get("status") if isinstance(v, dict) else None,
+                        {"name": k, "status": sensor_status_by_name.get(k),
                          "value": v if not isinstance(v, dict) else None,
                          "metadata": v if isinstance(v, dict) else {}}
                         for k, v in (sensor_metadata or {}).items()
@@ -1029,6 +1105,8 @@ class PulseEngine:
                         "classifier_self": status.value if hasattr(status, "value") else str(status),
                         "trend_window_min": None,
                         "trend_label": None,
+                        "driver_sensors": red_summary.driver_sensors,
+                        "headline": red_summary.headline,
                     },
                     homeostatic_state={
                         "db_ok": db_ok,

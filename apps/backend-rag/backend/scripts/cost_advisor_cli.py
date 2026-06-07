@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import logging
 import os
 import sys
@@ -24,6 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from backend.llm.claude_oauth_client import complete_async as claude_complete
@@ -33,6 +35,31 @@ logger = logging.getLogger(__name__)
 
 DAILY_SPEND_ALERT_THRESHOLD_USD: Decimal = Decimal("20.00")
 TELEGRAM_CHAT_ID: str = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+
+
+def _load_organism_heartbeat():
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "scripts" / "lib" / "heartbeat.py"
+        if not candidate.exists():
+            continue
+        spec = importlib.util.spec_from_file_location("nuzantara_heartbeat", candidate)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.organism_heartbeat
+    return None
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat:
+        heartbeat(organ_id, status, note)
+
+
+def _organ_id_for_args(args: argparse.Namespace) -> str:
+    if args.check_daily_cap:
+        return "pro.cost_advisor_daily_cap"
+    return "pro.cost_advisor_weekly"
 
 
 # ---------------------------------------------------------------------------
@@ -180,9 +207,26 @@ def _parse_argv(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+async def _run_with_heartbeat(args: argparse.Namespace) -> None:
+    organ_id = _organ_id_for_args(args)
+    mode = "daily cap" if args.check_daily_cap else "weekly report"
+    organism_heartbeat(organ_id, "starting", f"{mode} started")
+    try:
+        await _main(args)
+    except SystemExit as exc:
+        code = int(exc.code or 0) if isinstance(exc.code, int) else 1
+        status = "ok" if code == 0 else "error"
+        organism_heartbeat(organ_id, status, f"{mode} rc={code}")
+        raise
+    except Exception as exc:
+        organism_heartbeat(organ_id, "error", f"{type(exc).__name__}: {exc}")
+        raise
+    organism_heartbeat(organ_id, "ok", f"{mode} completed")
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
-    asyncio.run(_main(_parse_argv()))
+    asyncio.run(_run_with_heartbeat(_parse_argv()))

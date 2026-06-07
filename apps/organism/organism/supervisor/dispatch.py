@@ -12,12 +12,14 @@ Integrates:
 Modes:
 - shadow_mode=True: log decision and return SHADOW_LOGGED, do NOT invoke actuator.
 - shadow_mode=False (W2): look up actuator in `actuator_registry`,
-  call `await actuator.run(params=..., correlation_id=..., dry_run=False)`,
+  write the dispatch row to the incident ledger, call
+  `await actuator.run(params=..., correlation_id=..., dry_run=False)`,
   invoke optional `on_dispatched` callback (Telegram side-effect), return
   DISPATCHED. Actuator's own ActuatorBase.run() captures exceptions and
-  emits done/failed events; the dispatcher only crashes if the actuator
-  test double explicitly raises (it then records a CB failure and reports
-  DISPATCHED — the upstream supervise loop continues).
+  emits done/failed events that update the pre-existing dispatch row; the
+  dispatcher only crashes if the actuator test double explicitly raises (it
+  then records a CB failure and reports DISPATCHED — the upstream supervise
+  loop continues).
 """
 import logging
 from enum import Enum
@@ -194,6 +196,21 @@ class Dispatcher:
                 )
                 return DispatchOutcome.REJECTED_UNKNOWN
 
+            # W37/W4 proof ordering: the durable dispatch row must exist
+            # before the actuator runs, otherwise ActuatorBase.record_outcome()
+            # can fire first and silently miss the row it is meant to close.
+            try:
+                await incident_ledger.record_dispatch(
+                    correlation_id=correlation_id,
+                    actuator=actuator,
+                    outcome=DispatchOutcome.DISPATCHED.value,
+                    params=decision.params,
+                )
+            except Exception:
+                log.exception(
+                    "dispatch: incident_ledger.record_dispatch raised (non-fatal)",
+                )
+
             log.info(
                 "dispatch (active): actuator=%s params=%s corr=%s",
                 actuator, decision.params, correlation_id,
@@ -223,23 +240,7 @@ class Dispatcher:
                     except Exception:
                         log.exception("dispatch: CB record_failure failed (non-fatal)")
 
-            # 7. W37 — record the dispatch in the durable incident ledger.
-            #    Best-effort: ledger module swallows errors. We record BEFORE
-            #    the Telegram callback so that even a callback explosion
-            #    leaves a ledger trail behind.
-            try:
-                await incident_ledger.record_dispatch(
-                    correlation_id=correlation_id,
-                    actuator=actuator,
-                    outcome=DispatchOutcome.DISPATCHED.value,
-                    params=decision.params,
-                )
-            except Exception:
-                log.exception(
-                    "dispatch: incident_ledger.record_dispatch raised (non-fatal)",
-                )
-
-            # 8. Best-effort callback (e.g. Telegram alert). Failures here
+            # 7. Best-effort callback (e.g. Telegram alert). Failures here
             #    must NOT propagate — they would cascade into supervise-loop
             #    crashes the moment the bot token expires.
             if self.on_dispatched is not None:

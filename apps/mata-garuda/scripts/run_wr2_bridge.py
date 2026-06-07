@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.agents.wr2_bridge_publisher import run_wr2_bridge_cycle
+from mata_garuda.heartbeat import run_with_heartbeat
 
 
 def main() -> int:
@@ -18,4 +19,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_with_heartbeat("mata_garuda.wr2_bridge_hourly.pro", main))

@@ -23,6 +23,8 @@ Auth: ``DEEPSEEK_API_KEY`` env var (already deployed on `nuzantara-rag`).
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import os
 import time
@@ -36,6 +38,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL: Final[str] = "deepseek-v4-pro"
 DEFAULT_BASE_URL: Final[str] = "https://api.deepseek.com/v1"
 DEFAULT_TIMEOUT_S: Final[float] = 60.0
+JSON_RETRY_FEEDBACK: Final[str] = (
+    "Your previous reply was not valid JSON. "
+    "Reply with exactly one JSON object and no surrounding text."
+)
 
 ReasoningEffort = Literal["low", "high", "max"]
 
@@ -273,3 +279,65 @@ async def complete_async(
             )
         except Exception as exc:
             logger.warning("llm_cost recorder failed for deepseek: %s", exc)
+
+
+async def complete_json_async(
+    prompt: str,
+    *,
+    model: str = DEFAULT_MODEL,
+    system: str | None = None,
+    max_tokens: int = 4096,
+    temperature: float = 0.3,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    endpoint: str | None = None,
+    request_id: str | None = None,
+    reasoning_effort: ReasoningEffort | None = "low",
+    max_retries: int = 2,
+    backoff_seconds: tuple[float, ...] = (0.5, 1.5),
+) -> DeepSeekResponse:
+    """Run DeepSeek in JSON-object mode with parser-aware retry.
+
+    DeepSeek's JSON mode requires the prompt context to contain the literal
+    token "JSON". This helper enforces that precondition and verifies the
+    returned content parses as one JSON object before handing it to callers.
+    """
+    if "JSON" not in f"{system or ''}\n{prompt}":
+        raise DeepSeekError("complete_json_async requires prompt or system to contain 'JSON'")
+
+    attempts = max_retries + 1
+    current_prompt = prompt
+    last_error: DeepSeekError | None = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            response = await complete_async(
+                current_prompt,
+                model=model,
+                system=system,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                response_format={"type": "json_object"},
+                timeout_s=timeout_s,
+                endpoint=endpoint,
+                request_id=request_id,
+                reasoning_effort=reasoning_effort,
+            )
+            try:
+                value = json.loads(response.text)
+            except json.JSONDecodeError as exc:
+                raise DeepSeekError(
+                    f"DeepSeek returned non-JSON content in JSON mode: {response.text[:200]}",
+                ) from exc
+            if not isinstance(value, dict):
+                raise DeepSeekError("DeepSeek JSON mode returned a non-object JSON value")
+            return response
+        except DeepSeekError as exc:
+            last_error = exc
+            if attempt >= attempts:
+                break
+            delay = backoff_seconds[min(attempt - 1, len(backoff_seconds) - 1)]
+            await asyncio.sleep(delay)
+            current_prompt = f"{prompt}\n\nPARSER FEEDBACK:\n{JSON_RETRY_FEEDBACK}"
+
+    assert last_error is not None
+    raise last_error

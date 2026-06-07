@@ -32,9 +32,37 @@ LOG_FILE="${LOG_FILE:-$HOME/logs/launchd-env-loader.log}"
 mkdir -p "$(dirname "$LOG_FILE")"
 log() { echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $*" >>"$LOG_FILE"; }
 
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh}"
+[[ -f "$HEARTBEAT_LIB" ]] && source "$HEARTBEAT_LIB" || true
+
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="launchd env loader start"
+
+organism_hb_set() {
+  ORGANISM_HB_STATUS="$1"
+  ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_finalize() {
+  local rc="${1:-0}"
+  if [ "$rc" -eq 0 ]; then
+    if [ "$ORGANISM_HB_STATUS" = "starting" ]; then
+      organism_hb_set ok "completed"
+    fi
+  elif [ "$ORGANISM_HB_STATUS" = "starting" ] || [ "$ORGANISM_HB_STATUS" = "ok" ]; then
+    organism_hb_set error "rc=${rc}"
+  fi
+  if declare -F organism_heartbeat >/dev/null 2>&1; then
+    organism_heartbeat "pro.launchd_env_loader" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE"
+  fi
+}
+
+trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
+
 SECRETS_FILE="$HOME/.nuzantara-secrets.env"
 if [ ! -f "$SECRETS_FILE" ]; then
   log "ERROR: $SECRETS_FILE missing — cannot load env"
+  organism_hb_set error "secrets missing"
   exit 1
 fi
 
@@ -67,3 +95,4 @@ if [ "${#SKIPPED[@]}" -gt 0 ]; then
   log "Skipped (not in secrets): ${SKIPPED[*]}"
 fi
 log "Done. Total loaded: ${#LOADED[@]}, skipped: ${#SKIPPED[@]}"
+organism_hb_set ok "loaded=${#LOADED[@]} skipped=${#SKIPPED[@]}"

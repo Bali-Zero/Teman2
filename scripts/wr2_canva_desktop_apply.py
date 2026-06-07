@@ -56,6 +56,7 @@ import asyncpg  # noqa: E402
 from backend.services.canva_renderer import build_canva_pending  # noqa: E402
 
 logger = logging.getLogger("wr2.canva_desktop_apply")
+ORGAN_ID = "wr2.canva_apply"
 
 MAX_DRAFTS_PER_RUN = 1  # GUI automation is fragile — never race
 CLAUDE_APP_NAME = "Claude"
@@ -100,6 +101,15 @@ POLL_TIMEOUT_SEC = int(os.environ.get("WR2_POLL_TIMEOUT_SEC", "1800"))
 # grace, attempt 1 has a chance to succeed. See E6 in the 2026-05-10
 # pipeline audit.
 PRE_KEYSTROKE_GRACE_SEC = int(os.environ.get("WR2_PRE_KEYSTROKE_GRACE_SEC", "8"))
+
+
+def _organism_heartbeat(status: str, note: str = "") -> None:
+    try:
+        from lib.heartbeat import organism_heartbeat
+
+        organism_heartbeat(ORGAN_ID, status, note)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("organism heartbeat failed: %s", exc)
 
 
 def _configure_logging() -> None:
@@ -450,12 +460,14 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     slides = slides_json.get("slides") if isinstance(slides_json, dict) else slides_json
     if not slides:
         logger.warning("Draft %s has no slides — skipping", draft_id)
+        _organism_heartbeat("warning", f"draft={draft_id} no slides")
         return False
 
     try:
         pending = build_canva_pending(topic=topic, tone=tone, slides=slides)
     except ValueError as exc:
         logger.error("Draft %s pending build failed: %s", draft_id, exc)
+        _organism_heartbeat("error", f"draft={draft_id} pending build failed")
         return False
 
     pending["status"] = "pending"  # /canva-apply skill requires this
@@ -482,6 +494,7 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
                 "WR2 headless apply aborted — pending missing template_design_id\n"
                 f"Draft: {draft_id}"
             )
+            _organism_heartbeat("error", f"draft={draft_id} missing template_design_id")
             return False
         _send_telegram(
             "WR2 Canva apply starting (headless)\n"
@@ -498,6 +511,7 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
                 f"Draft: {draft_id}\n"
                 "Not marked rendered — will retry next tick."
             )
+            _organism_heartbeat("error", f"draft={draft_id} headless failed")
             return False
         design_id, edit_url, view_url = result
         await _persist_result(
@@ -510,6 +524,7 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             f"Design: {design_id}\n"
             f"Open: {edit_url}"
         )
+        _organism_heartbeat("ok", f"draft={draft_id} rendered headless")
         return True
     # else: fall through to the AppleScript desktop path (actuator == "desktop")
 
@@ -529,6 +544,7 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     skill_path = Path.home() / ".claude" / "skills" / "canva-apply.md"
     if not skill_path.is_file():
         logger.error("Skill file missing: %s", skill_path)
+        _organism_heartbeat("error", f"skill missing: {skill_path}")
         return False
     skill_body = skill_path.read_text(encoding="utf-8")
     # Strip the frontmatter (Claude Desktop doesn't care about YAML meta)
@@ -586,6 +602,7 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         _send_telegram(
             f"WR2 Canva apply GUI failed after 5 retries: {last_error}"
         )
+        _organism_heartbeat("error", f"draft={draft_id} gui retries exhausted")
         return False
 
     logger.info("Command sent — polling for output...")
@@ -627,6 +644,7 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             f"Check {CANVA_OUTPUT_PATH} for late skill output, "
             f"or run: python scripts/wr2_canva_reconcile.py --draft-id {draft_id}"
         )
+        _organism_heartbeat("error", f"draft={draft_id} timeout")
         return False
 
     design_id, edit_url, view_url = result
@@ -649,6 +667,7 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         f"Open: {edit_url}\n"
         f"Duration: {duration:.0f}s"
     )
+    _organism_heartbeat("ok", f"draft={draft_id} rendered duration={duration:.0f}s")
     return True
 
 
@@ -674,15 +693,18 @@ async def _fetch_one_by_id(
 
 
 async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
+    _organism_heartbeat("starting", "canva apply run starting")
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         logger.critical("DATABASE_URL not set")
+        _organism_heartbeat("error", "DATABASE_URL not set")
         return 2
 
     conn = await asyncpg.connect(dsn, timeout=10)
     try:
         if not await _kill_switch_enabled(conn):
             logger.info("wr2_canva_desktop_apply_enabled != true — exiting")
+            _organism_heartbeat("ok", "kill switch disabled")
             return 0
 
         if draft_id:
@@ -693,18 +715,21 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
                     "{drafts_imaged, drafts} AND canva_edit_url IS NULL)",
                     draft_id,
                 )
+                _organism_heartbeat("error", f"draft={draft_id} not eligible")
                 return 2
             logger.info("Manual override: processing single draft %s", draft_id)
         else:
             drafts = await _fetch_ready_drafts(conn, MAX_DRAFTS_PER_RUN)
         if not drafts:
             logger.info("no drafts ready")
+            _organism_heartbeat("ok", "no drafts ready")
             return 0
 
         if dry_run:
             logger.info("[DRY-RUN] would process %d drafts:", len(drafts))
             for d in drafts:
                 logger.info("  %s — %s", d["id"], d["topic"][:80])
+            _organism_heartbeat("ok", f"dry run drafts={len(drafts)}")
             return 0
 
         successes = 0
@@ -714,7 +739,10 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
                     successes += 1
             except Exception as e:
                 logger.exception("Draft %s crashed: %s", row["id"], e)
+                _organism_heartbeat("error", f"draft={row['id']} crashed")
 
+        if successes != len(drafts):
+            _organism_heartbeat("error", f"successes={successes}/{len(drafts)}")
         return 0 if successes == len(drafts) else 1
     finally:
         await conn.close()
@@ -739,10 +767,12 @@ def main() -> int:
     try:
         return asyncio.run(run(dry_run=args.dry_run, draft_id=args.draft_id))
     except KeyboardInterrupt:
+        _organism_heartbeat("degraded", "keyboard interrupt")
         return 130
     except Exception as e:
         logger.exception("Unhandled error: %s", e)
         _send_telegram(f"WR2 canva_desktop_apply crashed: {str(e)[:300]}")
+        _organism_heartbeat("error", f"unhandled: {type(e).__name__}")
         return 2
 
 

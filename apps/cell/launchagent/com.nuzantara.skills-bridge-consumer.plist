@@ -10,9 +10,8 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/cell/.venv/bin/python</string>
-    <string>-u</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/cell/scripts/skills_bridge_consumer.py</string>
+    <string>/bin/bash</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/cell/scripts/skills_bridge_consumer_launcher.sh</string>
   </array>
 
   <key>EnvironmentVariables</key>
@@ -23,8 +22,8 @@
     <string>redis://127.0.0.1:6379</string>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    <!-- Operator must add BRIDGE_SKILLS_API_KEY here OR ensure -->
-    <!-- a shim sources ~/.nuzantara-secrets.env at runtime.    -->
+    <!-- The launcher sources ~/.nuzantara-secrets.env at runtime. -->
+    <!-- Do not place BRIDGE_SKILLS_API_KEY inline in this plist.  -->
   </dict>
 
   <!-- Every 5 min between 06:00 and 21:55 WITA (17h × 12 = 204 ticks/day) -->
@@ -47,7 +46,7 @@
     <!-- Operator: see apps/cell/launchagent/generate_intervals.py to -->
     <!-- generate the full 06:00–21:55 every-5-min array if needed.  -->
     <!-- For now this plist covers the 06:00 hour only — operator    -->
-    <!-- expands per their deploy ritual + chmod 0444 antibody.     -->
+    <!-- expands per their deploy ritual + chmod 0400 antibody.     -->
   </array>
 
   <key>RunAtLoad</key>

@@ -28,6 +28,54 @@ fi
 MODULE="$1"
 shift
 
+case "$MODULE" in
+    backend.services.cognitive.connector_cli)
+        ORGANISM_HB_ID="wr2.connector"
+        ;;
+    backend.services.intel.dossier_compiler_cli)
+        ORGANISM_HB_ID="wr2.dossier_compiler"
+        ;;
+    backend.services.learner.learner_cli)
+        ORGANISM_HB_ID="wr2.learner_nightly"
+        ;;
+    backend.services.measurer.scheduler_cli)
+        ORGANISM_HB_ID="wr2.measurer"
+        ;;
+    backend.services.review.sla_worker_cli)
+        ORGANISM_HB_ID="wr2.sla_worker"
+        ;;
+    backend.services.cognitive.strategos_cli)
+        ORGANISM_HB_ID="wr2.strategos"
+        ;;
+    backend.services.intel.trend_hunter.cli)
+        ORGANISM_HB_ID="wr2.trend_hunter"
+        ;;
+    backend.services.hardening.*)
+        ORGANISM_HB_ID="wr2.hardening"
+        ;;
+    *)
+        ORGANISM_HB_ID=""
+        ;;
+esac
+
+HEARTBEAT_LIB="${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+if [[ -n "$ORGANISM_HB_ID" && -f "$HEARTBEAT_LIB" ]]; then
+    # shellcheck disable=SC1090
+    source "$HEARTBEAT_LIB"
+    organism_heartbeat "$ORGANISM_HB_ID" "starting" "module=$MODULE"
+    _organism_hb_finalize() {
+        local rc=$?
+        local status="ok"
+        if [[ "$rc" -eq 1 ]]; then
+            status="warning"
+        elif [[ "$rc" -ne 0 ]]; then
+            status="error"
+        fi
+        organism_heartbeat "$ORGANISM_HB_ID" "$status" "module=$MODULE rc=$rc"
+    }
+    trap _organism_hb_finalize EXIT
+fi
+
 REPO_ROOT="${NUZANTARA_REPO_ROOT:-$HOME/Desktop/nuzantara}"
 SECRETS_FILE="${NUZANTARA_SECRETS:-$HOME/.nuzantara-secrets.env}"
 LOG_DIR="${WR2_LOG_DIR:-$HOME/.openclaw/workspace/logs/war-room-v2}"
@@ -67,4 +115,8 @@ if [[ ! -x "$VENV_PY" ]]; then
     VENV_PY="python"
 fi
 
-exec env PYTHONPATH=. "$VENV_PY" -m "$MODULE" "$@"
+set +e
+env PYTHONPATH=. "$VENV_PY" -m "$MODULE" "$@"
+rc=$?
+set -e
+exit "$rc"

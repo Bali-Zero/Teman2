@@ -45,6 +45,7 @@ Anthropic invariant (OB-3)
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import logging
 import os
@@ -68,6 +69,37 @@ from backend.llm.claude_oauth_client import (  # noqa: E402
 )
 
 logger = logging.getLogger("wr2.fact_extractor")
+
+
+def _load_organism_heartbeat():
+    heartbeat_path = _REPO_ROOT / "scripts" / "lib" / "heartbeat.py"
+    spec = importlib.util.spec_from_file_location("organism_heartbeat_lib", heartbeat_path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        return None
+    return getattr(module, "organism_heartbeat", None)
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat is not None:
+        heartbeat(organ_id, status, note)
+
+
+def _run_with_heartbeat(organ_id: str, runner) -> int:
+    organism_heartbeat(organ_id, "starting", "run starting")
+    try:
+        rc = int(runner())
+    except Exception as exc:
+        organism_heartbeat(organ_id, "error", f"{type(exc).__name__}: {exc}")
+        raise
+    status = "ok" if rc == 0 else "warning" if rc == 1 else "error"
+    organism_heartbeat(organ_id, status, f"rc={rc}")
+    return rc
 
 # Tunables
 MAX_DRAFTS_PER_RUN = int(os.environ.get("WR2_FACT_EXTRACTOR_BATCH", "3"))
@@ -451,4 +483,4 @@ async def run() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(run()))
+    sys.exit(_run_with_heartbeat("wr2.fact_extractor", lambda: asyncio.run(run())))

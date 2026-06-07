@@ -29,9 +29,11 @@ Spec ref: docs/superpowers/specs/2026-05-01-post-agentic-injection-design.md §3
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import logging
 import signal
 import sys
+from pathlib import Path
 from typing import Any
 
 from cell.sensors.channel_sensor import ChannelSensor
@@ -50,6 +52,25 @@ logging.basicConfig(
 DEFAULT_INTERVAL_SECONDS: float = 60.0
 
 _shutdown = asyncio.Event()
+
+
+def _load_organism_heartbeat():
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "scripts" / "lib" / "heartbeat.py"
+        if not candidate.exists():
+            continue
+        spec = importlib.util.spec_from_file_location("nuzantara_heartbeat", candidate)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.organism_heartbeat
+    return None
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat:
+        heartbeat(organ_id, status, note)
 
 
 def _handle_signal(sig: int, frame: Any) -> None:
@@ -73,10 +94,12 @@ async def run_loop(interval_seconds: float = DEFAULT_INTERVAL_SECONDS) -> None:
         iteration += 1
         try:
             results = await sensor.bridge_channels_to_sidecar()
+            organism_heartbeat("pro.heartbeat_bridge", "ok", f"iter={iteration}")
             logger.info(
                 f"iter={iteration} bridge results: {results}",
             )
         except Exception as exc:  # noqa: BLE001
+            organism_heartbeat("pro.heartbeat_bridge", "error", f"iter={iteration}: {exc}")
             logger.warning(f"iter={iteration} bridge raised (caught): {exc}")
         try:
             await asyncio.wait_for(_shutdown.wait(), timeout=interval_seconds)
@@ -92,7 +115,9 @@ async def main() -> int:
         f"heartbeat-bridge starting; interval={DEFAULT_INTERVAL_SECONDS}s; "
         f"emits sidecar files to ~/.organism/last_seen/channel.*.json"
     )
+    organism_heartbeat("pro.heartbeat_bridge", "starting", "heartbeat bridge starting")
     await run_loop(DEFAULT_INTERVAL_SECONDS)
+    organism_heartbeat("pro.heartbeat_bridge", "degraded", "heartbeat bridge stopped")
     logger.info("heartbeat-bridge stopped cleanly")
     return 0
 

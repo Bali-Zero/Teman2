@@ -22,7 +22,25 @@ set -uo pipefail
 
 WRAPPER="${WR2_WRAPPER:-$HOME/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh}"
 LOG_DIR="${WR2_LOG_DIR:-$HOME/.openclaw/workspace/logs/war-room-v2}"
+HEARTBEAT_LIB="${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh"
 mkdir -p "$LOG_DIR"
+
+if [[ -f "$HEARTBEAT_LIB" ]]; then
+    # shellcheck disable=SC1090
+    source "$HEARTBEAT_LIB"
+    organism_heartbeat "wr2.hardening" "starting" "hardening chain starting"
+    _organism_hb_finalize() {
+        local rc=$?
+        local status="ok"
+        if [[ "$rc" -eq 1 ]]; then
+            status="warning"
+        elif [[ "$rc" -ne 0 ]]; then
+            status="error"
+        fi
+        organism_heartbeat "wr2.hardening" "$status" "rc=$rc sub_runs=${SUB_RUN_COUNT:-0}"
+    }
+    trap _organism_hb_finalize EXIT
+fi
 
 # Source observed-shell helper if available (best-effort observability — the
 # helper's own failure modes are non-fatal). Path is the canonical Sprint 1

@@ -63,6 +63,18 @@ import asyncpg
 
 logger = logging.getLogger("wr2.supervisor_watchdog")
 
+try:
+    from lib.heartbeat import organism_heartbeat as _write_organism_heartbeat
+except Exception:  # pragma: no cover - heartbeat must never block watchdog import
+    _write_organism_heartbeat = None
+
+
+def _organism_heartbeat(status: str, note: str = "") -> None:
+    """Best-effort organism heartbeat for sentinel bridge_source."""
+    if _write_organism_heartbeat is None:
+        return
+    _write_organism_heartbeat("wr2.supervisor_watchdog", status, note)
+
 # ─────────────────────────────────────────────────────────────────────────
 # Tunables — env-overridable for test isolation
 # ─────────────────────────────────────────────────────────────────────────
@@ -77,6 +89,8 @@ ALERT_COOLDOWN_SEC = int(os.environ.get("WR2_WATCHDOG_ALERT_COOLDOWN_SEC", "8640
 
 STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "wr2_supervisor_watchdog.state"
 TELEMETRY_PATH = Path.home() / "logs" / "wr2_canva_apply_telemetry.jsonl"
+CANVA_RENDERER_SETTING_KEY = "wr2_canva_renderer_enabled"
+CANVA_RENDERER_SUPERSEDED_BY_KEY = "wr2_canva_renderer_superseded_by"
 
 # ─────────────────────────────────────────────────────────────────────────
 # State (cooldown tracking)
@@ -98,7 +112,7 @@ def _state_get(key: str) -> int | None:
     return None
 
 
-def _state_set(key: str, value: int) -> None:
+def _state_set_value(key: str, value: str) -> None:
     """Write key=value into the state file (overwrites existing key)."""
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
@@ -119,12 +133,41 @@ def _state_set(key: str, value: int) -> None:
     STATE_PATH.write_text("\n".join(lines) + "\n")
 
 
+def _state_set(key: str, value: int) -> None:
+    """Write an integer key=value into the state file."""
+    _state_set_value(key, str(value))
+
+
+def _state_unset(*keys: str) -> None:
+    """Remove keys from the state file when present."""
+    if not STATE_PATH.is_file():
+        return
+    drop = set(keys)
+    kept = [
+        line for line in STATE_PATH.read_text().splitlines()
+        if line.partition("=")[0] not in drop
+    ]
+    if kept:
+        STATE_PATH.write_text("\n".join(kept) + "\n")
+    else:
+        STATE_PATH.write_text("")
+
+
 def _alert_due(key: str, now_epoch: int, cooldown: int = ALERT_COOLDOWN_SEC) -> bool:
     """True if the cooldown for this alert key has elapsed (or never fired)."""
     last = _state_get(f"last_alert_{key}")
     if last is None:
         return True
     return (now_epoch - last) >= cooldown
+
+
+def _record_canva_self_silence_receipt(reason: str, now_epoch: int, detail: str = "") -> None:
+    """Persist an explicit receipt when renderer-specific checks self-silence."""
+    _state_set("last_self_silence_canva_renderer", now_epoch)
+    _state_set_value("last_self_silence_canva_renderer_reason", reason)
+    _state_set_value("last_self_silence_canva_renderer_target", "wr2_canva_renderer")
+    if detail:
+        _state_set_value("last_self_silence_canva_renderer_detail", detail)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -203,7 +246,7 @@ async def _probe_canva_renderer_enabled(conn: asyncpg.Connection) -> bool:
     try:
         row = await conn.fetchval(
             "SELECT value FROM system_settings WHERE key = $1",
-            "wr2_canva_renderer_enabled",
+            CANVA_RENDERER_SETTING_KEY,
         )
     except asyncpg.UndefinedTableError:
         logger.debug("system_settings table missing — degrade-open (assume enabled)")
@@ -211,6 +254,24 @@ async def _probe_canva_renderer_enabled(conn: asyncpg.Connection) -> bool:
     if row is None:
         return True  # missing row = default enabled
     return str(row).strip().lower() in {"true", "1", "yes", "on", "enabled"}
+
+
+async def _probe_canva_renderer_superseded_by(conn: asyncpg.Connection) -> str | None:
+    """Return the replacement target when the renderer has been superseded."""
+    try:
+        row = await conn.fetchval(
+            "SELECT value FROM system_settings WHERE key = $1",
+            CANVA_RENDERER_SUPERSEDED_BY_KEY,
+        )
+    except asyncpg.UndefinedTableError:
+        logger.debug("system_settings table missing — no supersession marker")
+        return None
+    if row is None:
+        return None
+    value = str(row).strip()
+    if not value or value.lower() in {"false", "0", "no", "off", "none", "null", "active"}:
+        return None
+    return value
 
 
 async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
@@ -227,6 +288,16 @@ async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
             "oldest_pending_hours": 0.0,
             "rendered_recent": 0,
             "canva_disabled": True,
+            "self_silence_reason": "kill_switch_off",
+        }
+    superseded_by = await _probe_canva_renderer_superseded_by(conn)
+    if superseded_by:
+        return {
+            "oldest_pending_hours": 0.0,
+            "rendered_recent": 0,
+            "canva_disabled": True,
+            "self_silence_reason": "superseded",
+            "superseded_by": superseded_by,
         }
     # Non-terminal statuses are everything that NeedsToProgress; the
     # supervisor reconcile uses the same list (cf. NONTERMINAL_TO_NEXT_STAGE).
@@ -349,22 +420,17 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
 
     # P0 — PIPELINE_FROZEN (W46: skip when canva-apply is kill-switched OFF)
     pipeline = await _probe_pipeline_state(conn)
-    if pipeline.get("canva_disabled"):
+    if pipeline.get("self_silence_reason"):
         # Operator deliberately disabled canva-apply via
         # system_settings.wr2_canva_renderer_enabled=false. Pipeline being
-        # "frozen" while feature is off is the expected state, not an
-        # incident. Skip the alert + reset cooldown so the next genuine
-        # incident fires immediately when feature is re-enabled.
-        logger.info("pipeline_frozen check skipped (canva-renderer kill switch OFF)")
-        # Clear stale cooldown so re-enabling the feature gets a fresh alert
-        # window if the pipeline is still actually frozen.
-        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        if STATE_PATH.is_file():
-            kept = [
-                line for line in STATE_PATH.read_text().splitlines()
-                if not line.startswith("last_alert_pipeline_frozen=")
-            ]
-            STATE_PATH.write_text("\n".join(kept) + ("\n" if kept else ""))
+        # "frozen" while feature is off (or while the target is superseded)
+        # is the expected state, not an incident. Persist a receipt and clear
+        # stale cooldowns so the next genuine incident fires immediately.
+        reason = str(pipeline["self_silence_reason"])
+        detail = str(pipeline.get("superseded_by") or "")
+        logger.info("pipeline_frozen check skipped (canva-renderer self-silenced: %s)", reason)
+        _record_canva_self_silence_receipt(reason, now_epoch, detail=detail)
+        _state_unset("last_alert_pipeline_frozen", "last_alert_success_rate_low")
     elif (
         pipeline["oldest_pending_hours"] > PENDING_OLDEST_HOURS
         and pipeline["rendered_recent"] == 0
@@ -396,8 +462,11 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
 
     # P1 — SUCCESS_RATE_LOW (7-day rolling, W46: skip when canva-apply OFF —
     # no work attempted = telemetry trivially shows "low rate", false-alert)
-    if pipeline.get("canva_disabled"):
-        logger.info("success_rate_low check skipped (canva-renderer kill switch OFF)")
+    if pipeline.get("self_silence_reason"):
+        logger.info(
+            "success_rate_low check skipped (canva-renderer self-silenced: %s)",
+            pipeline["self_silence_reason"],
+        )
         return
     sr = _probe_success_rate_telemetry()
     # Need a minimum sample size to avoid first-day flutter.
@@ -432,6 +501,7 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
         logger.debug(
             "success rate ok (rate=%.1f%% attempts=%d)", sr["rate_pct"], sr["attempted"]
         )
+    _organism_heartbeat("ok", "tick")
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -498,6 +568,7 @@ async def _run_loop() -> None:
             asyncio.TimeoutError,
         ) as e:
             logger.warning("watchdog connection lost: %s — reconnecting in %.1fs", e, backoff)
+            _organism_heartbeat("degraded", f"connection lost: {e}")
         finally:
             if conn is not None:
                 try:
@@ -547,12 +618,16 @@ async def _amain() -> None:
 
 def main() -> int:
     _configure_logging()
+    _organism_heartbeat("starting", "watchdog starting")
     try:
         asyncio.run(_amain())
     except SystemExit:
+        _organism_heartbeat("error", "system exit")
         raise
     except KeyboardInterrupt:
+        _organism_heartbeat("degraded", "keyboard interrupt")
         return 130
+    _organism_heartbeat("ok", "watchdog stopped cleanly")
     return 0
 
 

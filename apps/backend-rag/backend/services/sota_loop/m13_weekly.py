@@ -35,8 +35,22 @@ def _repo_root() -> Path:
     env = os.environ.get("NUZANTARA_REPO_ROOT")
     if env:
         return Path(env)
-    # Fallback: from backend/services/sota_loop/m13_weekly.py go 4 up.
-    return Path(__file__).resolve().parents[4]
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "apps").is_dir() and (parent / "research").is_dir():
+            return parent
+    return Path(__file__).resolve().parents[5]
+
+
+def _organism_heartbeat(status: str, note: str = "") -> None:
+    try:
+        scripts_dir = _repo_root() / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from lib.heartbeat import organism_heartbeat
+
+        organism_heartbeat("sota.m13_weekly", status, note)
+    except Exception:
+        pass
 
 
 async def kill_switch_on(conn) -> bool:
@@ -200,4 +214,14 @@ def _notify_telegram(
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    _organism_heartbeat("starting", "weekly run started")
+    try:
+        result = asyncio.run(main())
+    except KeyboardInterrupt:
+        _organism_heartbeat("degraded", "keyboard interrupt")
+        raise
+    except Exception as exc:
+        _organism_heartbeat("error", f"crashed: {exc}")
+        raise
+    _organism_heartbeat("ok" if result == 0 else "error", f"rc={result}")
+    sys.exit(result)

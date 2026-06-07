@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import logging
 import os
@@ -37,6 +38,37 @@ import asyncpg  # noqa: E402
 import httpx  # noqa: E402
 
 logger = logging.getLogger("wr2.topic_selector")
+
+
+def _load_organism_heartbeat():
+    heartbeat_path = _REPO_ROOT / "scripts" / "lib" / "heartbeat.py"
+    spec = importlib.util.spec_from_file_location("organism_heartbeat_lib", heartbeat_path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        return None
+    return getattr(module, "organism_heartbeat", None)
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat is not None:
+        heartbeat(organ_id, status, note)
+
+
+def _run_with_heartbeat(organ_id: str, runner) -> int:
+    organism_heartbeat(organ_id, "starting", "run starting")
+    try:
+        rc = int(runner())
+    except Exception as exc:
+        organism_heartbeat(organ_id, "error", f"{type(exc).__name__}: {exc}")
+        raise
+    status = "ok" if rc == 0 else "warning" if rc == 1 else "error"
+    organism_heartbeat(organ_id, status, f"rc={rc}")
+    return rc
 
 BZ_KEYWORDS: dict[str, int] = {
     # visa / immigration (highest priority)
@@ -687,4 +719,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run_with_heartbeat("wr2.topic_selector", main))

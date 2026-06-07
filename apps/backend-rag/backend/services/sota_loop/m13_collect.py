@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import asyncpg
 
@@ -23,6 +24,28 @@ from backend.services.measurer.m13_feedback_loop import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("sota.m13.collect")
+
+
+def _repo_root() -> Path:
+    env = os.environ.get("NUZANTARA_REPO_ROOT")
+    if env:
+        return Path(env)
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "apps").is_dir() and (parent / "research").is_dir():
+            return parent
+    return Path(__file__).resolve().parents[5]
+
+
+def _organism_heartbeat(status: str, note: str = "") -> None:
+    try:
+        scripts_dir = _repo_root() / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from lib.heartbeat import organism_heartbeat
+
+        organism_heartbeat("sota.m13_collect", status, note)
+    except Exception:
+        pass
 
 
 async def kill_switch_on(conn) -> bool:
@@ -89,4 +112,14 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    _organism_heartbeat("starting", "collect run started")
+    try:
+        result = asyncio.run(main())
+    except KeyboardInterrupt:
+        _organism_heartbeat("degraded", "keyboard interrupt")
+        raise
+    except Exception as exc:
+        _organism_heartbeat("error", f"crashed: {exc}")
+        raise
+    _organism_heartbeat("ok" if result == 0 else "error", f"rc={result}")
+    sys.exit(result)

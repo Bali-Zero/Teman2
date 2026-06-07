@@ -22,6 +22,25 @@ log() {
     "$(date '+%Y-%m-%d %H:%M:%S WITA')" "$*" >> "$LOG"
 }
 
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${SOURCE_REPO}/scripts/lib/heartbeat.sh}"
+[[ -f "$HEARTBEAT_LIB" ]] && source "$HEARTBEAT_LIB" || true
+
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="deploy-pull start"
+
+organism_hb_set() {
+  ORGANISM_HB_STATUS="$1"
+  ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_flush() {
+  if declare -F organism_heartbeat >/dev/null 2>&1; then
+    organism_heartbeat "wr2.deploy_puller" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE"
+  fi
+}
+
+trap 'rc=$?; if (( rc != 0 )) && [[ "$ORGANISM_HB_STATUS" != "error" ]]; then organism_hb_set error "rc=${rc}"; fi; organism_hb_flush' EXIT
+
 if [[ -f "$SECRETS" ]]; then
   TELEGRAM_BOT_TOKEN="$(grep '^TELEGRAM_BOT_TOKEN=' "$SECRETS" | head -1 | cut -d= -f2- | tr -d '"')" || true
   TELEGRAM_OWNER_CHAT_ID="$(grep '^TELEGRAM_OWNER_CHAT_ID=' "$SECRETS" | head -1 | cut -d= -f2- | tr -d '"')" || true
@@ -32,6 +51,7 @@ if command -v flock >/dev/null 2>&1; then
   exec 9>"$LOCK"
   if ! flock -n 9; then
     log "another deploy-pull is in progress, skipping"
+    organism_hb_set degraded "locked"
     exit 0
   fi
 fi
@@ -145,6 +165,7 @@ log "deploy-pull start dir=${DEPLOY_DIR}"
 if ! is_git_worktree "$DEPLOY_DIR"; then
   if ! bootstrap_deploy_worktree; then
     log "ERROR: deploy worktree missing at ${DEPLOY_DIR}"
+    organism_hb_set error "deploy worktree missing"
     send_telegram "deploy_missing" \
       "WR2 deploy worktree MISSING. Expected at \`${DEPLOY_DIR}\`. Self-heal from \`${SOURCE_REPO}\` failed. Run: \`cd ~/Desktop/nuzantara && git worktree add ~/Desktop/nuzantara-deploy deploy/main\`"
     exit 1
@@ -153,12 +174,14 @@ fi
 
 cd "$DEPLOY_DIR" || {
   log "ERROR: cannot cd to ${DEPLOY_DIR}"
+  organism_hb_set error "cannot cd deploy dir"
   exit 1
 }
 
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 if [[ "$CURRENT_BRANCH" != "$EXPECTED_BRANCH" ]]; then
   log "ERROR: deploy worktree on branch=${CURRENT_BRANCH}, expected ${EXPECTED_BRANCH}"
+  organism_hb_set error "wrong branch ${CURRENT_BRANCH}"
   send_telegram "wrong_branch" \
     "WR2 deploy worktree on WRONG branch. Expected: \`${EXPECTED_BRANCH}\`. Found: \`${CURRENT_BRANCH}\`. Fix: \`cd ${DEPLOY_DIR} && git checkout ${EXPECTED_BRANCH}\`"
   exit 1
@@ -167,6 +190,7 @@ fi
 DIRTY="$(git status --porcelain 2>/dev/null | head -1)"
 if [[ -n "$DIRTY" ]]; then
   log "ERROR: deploy worktree has local changes - first dirty entry: ${DIRTY}"
+  organism_hb_set error "dirty worktree"
   send_telegram "dirty_worktree" \
     "WR2 deploy worktree DIRTY. First dirty entry: \`${DIRTY}\`. Inspect: \`cd ${DEPLOY_DIR} && git status\`."
   exit 1
@@ -175,6 +199,7 @@ fi
 if ! git fetch --quiet origin "$EXPECTED_BRANCH" 2>>"$LOG"; then
   if ! git fetch --quiet origin main 2>>"$LOG"; then
     log "ERROR: git fetch failed for both ${EXPECTED_BRANCH} and main"
+    organism_hb_set error "fetch failed"
     send_telegram "fetch_failed" \
       "WR2 deploy-pull: git fetch failed for \`${DEPLOY_DIR}\`. Check network and GitHub auth."
     exit 1
@@ -193,12 +218,14 @@ if [[ "$LOCAL_HEAD" == "$REMOTE_HEAD" ]]; then
   state_set "last_status" "ok"
   state_set "last_run_ts" "$(now_epoch)"
   state_set "last_head" "$LOCAL_HEAD"
+  organism_hb_set ok "already up-to-date ${LOCAL_HEAD:0:9}"
   exit 0
 fi
 
 AHEAD="$(git rev-list --count "${REMOTE_REF}..HEAD" 2>/dev/null || echo 0)"
 if [[ "$AHEAD" =~ ^[0-9]+$ ]] && (( AHEAD > 0 )); then
   log "ERROR: deploy worktree is ${AHEAD} commit(s) ahead of ${REMOTE_REF} - refusing to merge"
+  organism_hb_set error "local ahead ${AHEAD}"
   send_telegram "local_ahead" \
     "WR2 deploy worktree has LOCAL commits: ${AHEAD} ahead of \`${REMOTE_REF}\`. Inspect: \`cd ${DEPLOY_DIR} && git log ${REMOTE_REF}..HEAD\`."
   exit 1
@@ -206,6 +233,7 @@ fi
 
 if ! git merge-base --is-ancestor "$LOCAL_HEAD" "$REMOTE_HEAD"; then
   log "ERROR: branches diverged - local=${LOCAL_HEAD:0:9} remote=${REMOTE_HEAD:0:9}"
+  organism_hb_set error "branches diverged"
   send_telegram "diverged" \
     "WR2 deploy-pull: branches DIVERGED. local \`${LOCAL_HEAD:0:9}\`, remote \`${REMOTE_HEAD:0:9}\`. Manual resolution required."
   exit 1
@@ -213,6 +241,7 @@ fi
 
 if ! git merge --ff-only "$REMOTE_REF" >>"$LOG" 2>&1; then
   log "ERROR: git merge --ff-only failed unexpectedly"
+  organism_hb_set error "ff merge failed"
   send_telegram "ff_failed" \
     "WR2 deploy-pull: ff-merge failed unexpectedly. Inspect: \`cd ${DEPLOY_DIR} && git status\`."
   exit 1
@@ -225,4 +254,5 @@ state_set "last_status" "advanced"
 state_set "last_run_ts" "$(now_epoch)"
 state_set "last_head" "$NEW_HEAD"
 state_set "last_advance_count" "$COMMIT_COUNT"
+organism_hb_set ok "advanced ${COMMIT_COUNT} commits"
 exit 0

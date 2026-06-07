@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.agents.nlm_expander_agent import run_nlm_expander
+from mata_garuda.heartbeat import run_with_heartbeat
 
 
 def main() -> int:
@@ -26,4 +27,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_with_heartbeat("mata_garuda.nlm_expander_weekly.pro", main))

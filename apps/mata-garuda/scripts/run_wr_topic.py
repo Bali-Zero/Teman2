@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.agents.wr_topic_agent import run_wr_topic_agent
+from mata_garuda.heartbeat import run_with_heartbeat
 
 
 def main() -> int:
@@ -18,4 +19,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_with_heartbeat("mata_garuda.wr_topic.pro", main))

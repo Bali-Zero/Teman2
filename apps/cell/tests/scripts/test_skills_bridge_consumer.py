@@ -23,6 +23,7 @@ pytest.importorskip("redis")
 # so load it via importlib from the file path.
 import importlib.util
 import pathlib
+import plistlib
 
 _SCRIPT_PATH = (
     pathlib.Path(__file__).resolve().parents[2] / "scripts" / "skills_bridge_consumer.py"
@@ -229,3 +230,18 @@ async def test_503_counter_reset_after_success(isolated_state_dir):
         assert rc == 0
         # File deleted by _reset_503_counter
         assert not sbc.FAIL_COUNT_FILE.exists()
+
+
+def test_launchagent_uses_secret_loader_not_inline_key():
+    plist_path = (
+        pathlib.Path(__file__).resolve().parents[2]
+        / "launchagent"
+        / "com.nuzantara.skills-bridge-consumer.plist"
+    )
+    plist = plistlib.loads(plist_path.read_bytes())
+
+    env = plist.get("EnvironmentVariables", {})
+    args = plist.get("ProgramArguments", [])
+
+    assert "BRIDGE_SKILLS_API_KEY" not in env
+    assert any("skills_bridge_consumer_launcher.sh" in arg for arg in args)

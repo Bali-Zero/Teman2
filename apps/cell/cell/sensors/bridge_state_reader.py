@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -39,10 +40,13 @@ class BridgeSource:
       - state_file → filesystem path (may contain `~`, expanded at read time)
       - http       → URL for `httpx.Client.get(...)`
 
-    `json_path` is dotted notation (e.g. `channels.whatsapp.status`) used by
-    the http reader to pluck a single value out of the response body. Empty
-    string means "use top-level `status_field`" — same semantics as
-    state_file, useful when the entire body IS the status payload.
+    `timestamp_field` is required for state_file sources. For http sources,
+    the reader uses it when present and falls back to read time for simple
+    health endpoints that only expose status. `json_path` is dotted notation
+    (e.g. `channels.whatsapp.status`) used by the http reader to pluck a single
+    value out of the response body. Empty string means "use top-level
+    `status_field`" — same semantics as state_file, useful when the entire body
+    IS the status payload.
     """
 
     organ_id: str
@@ -200,24 +204,20 @@ class BridgeStateReader:
                 error=f"http body must be JSON object, got {type(data).__name__}",
             )
 
-        if src.timestamp_field not in data:
-            return BridgeReading(
-                organ_id=src.organ_id,
-                payload=data,
-                error=f"http body missing timestamp field {src.timestamp_field!r}",
-            )
-
-        ts = self._coerce_timestamp(data[src.timestamp_field])
-        if ts is None:
-            return BridgeReading(
-                organ_id=src.organ_id,
-                payload=data,
-                error=(
-                    f"could not coerce http timestamp value "
-                    f"{data[src.timestamp_field]!r} from field "
-                    f"{src.timestamp_field!r}"
-                ),
-            )
+        if src.timestamp_field in data:
+            ts = self._coerce_timestamp(data[src.timestamp_field])
+            if ts is None:
+                return BridgeReading(
+                    organ_id=src.organ_id,
+                    payload=data,
+                    error=(
+                        f"could not coerce http timestamp value "
+                        f"{data[src.timestamp_field]!r} from field "
+                        f"{src.timestamp_field!r}"
+                    ),
+                )
+        else:
+            ts = time.time()
 
         # Status: pull via dotted json_path; fallback to top-level status_field.
         if src.json_path:
@@ -268,11 +268,11 @@ class BridgeStateReader:
         creating a false alarm if the backend ever returns a new state.
         """
         v = value.strip().lower()
-        if v in {"up", "ok", "healthy", "green"}:
+        if v in {"up", "ok", "healthy", "green", "connected", "operational", "true"}:
             return "ok"
-        if v in {"degraded", "partial", "yellow"}:
+        if v in {"degraded", "partial", "yellow", "warning", "warn", "initializing", "loading"}:
             return "degraded"
-        if v in {"down", "fail", "failed", "red"}:
+        if v in {"down", "fail", "failed", "failure", "red", "false", "unhealthy", "unavailable", "error", "critical"}:
             return "fail"
         return "degraded"
 

@@ -9,6 +9,7 @@ Girato da: launchd com.balizero.post-publish-webhook (sempre attivo)
 Chiamato da: backend Fly.io dopo ogni publish dalla news-room
 """
 import json
+import importlib.util
 import os
 import subprocess
 import threading
@@ -23,6 +24,35 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / "post_publish_webhook.log"
 
 SECRET = os.environ.get("POST_PUBLISH_SECRET", "balizero-post-publish-2026")
+
+
+def _load_organism_heartbeat():
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "scripts" / "lib" / "heartbeat.py"
+        if not candidate.exists():
+            continue
+        spec = importlib.util.spec_from_file_location("nuzantara_heartbeat", candidate)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.organism_heartbeat
+    return None
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat:
+        heartbeat(organ_id, status, note)
+
+
+def _start_heartbeat_thread(stop_event: threading.Event) -> threading.Thread:
+    def _loop() -> None:
+        while not stop_event.wait(60):
+            organism_heartbeat("pro.post_publish_webhook", "ok", "webhook alive")
+
+    thread = threading.Thread(target=_loop, name="organism-heartbeat", daemon=True)
+    thread.start()
+    return thread
 
 
 def log(msg: str):
@@ -105,6 +135,19 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("WEBHOOK_PORT", "7788"))
+    stop_heartbeat = threading.Event()
+    organism_heartbeat("pro.post_publish_webhook", "starting", f"webhook starting on {port}")
+    _start_heartbeat_thread(stop_heartbeat)
     log(f"🌐 Post-publish webhook su ::{port}")
     server = HTTPServer(("127.0.0.1", port), WebhookHandler)
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        organism_heartbeat("pro.post_publish_webhook", "degraded", "keyboard interrupt")
+        raise
+    except Exception as exc:
+        organism_heartbeat("pro.post_publish_webhook", "error", f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        stop_heartbeat.set()
+        organism_heartbeat("pro.post_publish_webhook", "degraded", "webhook stopped")

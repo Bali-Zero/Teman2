@@ -23,6 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.config import NLM_FEEDER_BATCH_SIZE, NLM_FEEDER_SLEEP_BETWEEN_S
+from mata_garuda.heartbeat import run_with_heartbeat
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.nlm_feeder import (
     run_nlm_feeder_from_alerts,
@@ -62,4 +63,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_with_heartbeat("mata_garuda.nlm_feeder_stream_hourly.pro", main))

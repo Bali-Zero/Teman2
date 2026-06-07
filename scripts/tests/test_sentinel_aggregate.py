@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 from types import ModuleType
 
@@ -111,3 +112,71 @@ def test_parse_launchctl_list_handles_remote_mini_output() -> None:
 
     assert result["com.matagaruda.ner-worker.hourly"] == {"pid": None, "last_exit": 0}
     assert result["com.example.running"] == {"pid": 123, "last_exit": 1}
+
+
+def test_read_last_seen_http_bridge_uses_json_path_and_read_timestamp(monkeypatch) -> None:
+    module = _load_sentinel_aggregate()
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def getcode(self) -> int:
+            return 200
+
+        def read(self) -> bytes:
+            return json.dumps({"services": {"redis": {"status": "healthy"}}}).encode()
+
+    def fake_urlopen(req, timeout):
+        assert req.full_url == "https://example.test/health/detailed"
+        assert timeout == 5.0
+        return FakeResponse()
+
+    monkeypatch.setattr(module, "_now_epoch", lambda: 1234.5)
+    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+
+    hb = module._read_last_seen(
+        "infra.redis",
+        {
+            "bridge_source": {
+                "type": "http",
+                "path": "https://example.test/health/detailed",
+                "json_path": "services.redis.status",
+            }
+        },
+    )
+
+    assert hb is not None
+    assert hb["ts"] == 1234.5
+    assert hb["status"] == "ok"
+    assert hb["raw_status"] == "healthy"
+
+
+def test_fly_machine_with_http_heartbeat_is_classified_not_remote() -> None:
+    module = _load_sentinel_aggregate()
+
+    result = module._classify(
+        {
+            "id": "backend.api",
+            "runtime": "fly_machine",
+            "type": "webhook",
+            "expected_hb_seconds": 60,
+            "severity_on_silence": "critical",
+        },
+        hb={
+            "ts": 1_778_319_990.0,
+            "status": "healthy",
+            "source": "https://example.test/health",
+        },
+        launchctl_entry=None,
+        now=1_778_320_000.0,
+    )
+
+    assert result["status"] == "ok"
+    assert result["severity"] == "info"
+    assert result["hb_source"] == "https://example.test/health"

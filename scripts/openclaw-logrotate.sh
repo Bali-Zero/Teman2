@@ -34,6 +34,32 @@ set -euo pipefail
 
 LOG_DIR="${HOME}/.openclaw/logs"
 ARCHIVE_DIR="${LOG_DIR}/archive"
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh}"
+[[ -f "$HEARTBEAT_LIB" ]] && source "$HEARTBEAT_LIB" || true
+
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="openclaw logrotate start"
+
+organism_hb_set() {
+  ORGANISM_HB_STATUS="$1"
+  ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_finalize() {
+  local rc="${1:-0}"
+  if [[ "$rc" -eq 0 ]]; then
+    if [[ "$ORGANISM_HB_STATUS" == "starting" ]]; then
+      organism_hb_set ok "completed"
+    fi
+  elif [[ "$ORGANISM_HB_STATUS" == "starting" || "$ORGANISM_HB_STATUS" == "ok" ]]; then
+    organism_hb_set error "rc=${rc}"
+  fi
+  if declare -F organism_heartbeat >/dev/null 2>&1; then
+    organism_heartbeat "pro.openclaw_logrotate" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE"
+  fi
+}
+
+trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
 
 # Round-2 review fix: validate env vars BEFORE arithmetic evaluation. Bash
 # arithmetic context evaluates command substitutions inside variables, so
@@ -44,10 +70,12 @@ RETENTION_DAYS="${OPENCLAW_LOGROTATE_RETENTION_DAYS:-7}"
 
 if [[ ! "$THRESHOLD_BYTES" =~ ^[0-9]+$ ]]; then
   echo "ERROR: OPENCLAW_LOGROTATE_THRESHOLD must be a non-negative integer" >&2
+  organism_hb_set error "invalid threshold"
   exit 2
 fi
 if [[ ! "$RETENTION_DAYS" =~ ^[0-9]+$ ]]; then
   echo "ERROR: OPENCLAW_LOGROTATE_RETENTION_DAYS must be a non-negative integer" >&2
+  organism_hb_set error "invalid retention"
   exit 2
 fi
 
@@ -60,6 +88,7 @@ case "${1:-}" in
   "")        MODE="dry-run" ;;
   *)
     echo "Usage: $0 [--dry-run|--apply]" >&2
+    organism_hb_set error "invalid mode"
     exit 2
     ;;
 esac
@@ -172,3 +201,4 @@ done
 prune_archives
 
 log "done"
+organism_hb_set ok "mode=${MODE}"

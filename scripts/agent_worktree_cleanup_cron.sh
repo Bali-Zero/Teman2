@@ -64,7 +64,7 @@ echo "$OUTPUT" | tee -a "$LOG"
 # guard every call with || true and exit on the captured $RC.
 case "$RC" in
     0) organism_heartbeat "pro.agent_worktree_cleanup" "ok" "clean" || true ;;
-    1) organism_heartbeat "pro.agent_worktree_cleanup" "warn" "WIP worktree skipped" || true ;;
+    1) organism_heartbeat "pro.agent_worktree_cleanup" "warning" "WIP worktree skipped" || true ;;
     *) organism_heartbeat "pro.agent_worktree_cleanup" "fail" "exit $RC" || true ;;
 esac
 

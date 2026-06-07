@@ -129,14 +129,22 @@ def test_success_rate_handles_malformed_lines(wd):
 # evaluate_once tiered alerts
 # ─────────────────────────────────────────────────────────────────────────
 
-def _make_conn(heartbeat_age, oldest_pending_hours, rendered_recent):
-    """Build a mock asyncpg.Connection with the 3 fetchval responses."""
+def _make_conn(
+    heartbeat_age,
+    oldest_pending_hours,
+    rendered_recent,
+    *,
+    renderer_enabled="true",
+    superseded_by=None,
+):
+    """Build a mock asyncpg.Connection with ordered fetchval responses."""
     conn = MagicMock()
-    conn.fetchval = AsyncMock(side_effect=[
-        heartbeat_age,
-        oldest_pending_hours,
-        rendered_recent,
-    ])
+    responses = [heartbeat_age, renderer_enabled]
+    if str(renderer_enabled).strip().lower() in {"true", "1", "yes", "on", "enabled"}:
+        responses.append(superseded_by)
+        if superseded_by is None:
+            responses.extend([oldest_pending_hours, rendered_recent])
+    conn.fetchval = AsyncMock(side_effect=responses)
     return conn
 
 
@@ -179,6 +187,47 @@ def test_evaluate_pipeline_frozen_requires_both_conditions(wd):
     with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn2))
     assert any("Pipeline FROZEN" in m for m in sent)
+
+
+def test_evaluate_canva_disabled_records_self_silence_receipt_and_clears_cooldowns(wd):
+    """Renderer kill switch OFF is a self-silence receipt, not a frozen alert."""
+    wd._state_set("last_alert_pipeline_frozen", 100)
+    wd._state_set("last_alert_success_rate_low", 100)
+    conn = _make_conn(
+        heartbeat_age=10,
+        oldest_pending_hours=5.0,
+        rendered_recent=0,
+        renderer_enabled="false",
+    )
+    sent: list[str] = []
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
+        asyncio.run(wd._evaluate_once(conn))
+
+    state = wd.STATE_PATH.read_text()
+    assert sent == []
+    assert wd._state_get("last_self_silence_canva_renderer") is not None
+    assert "last_self_silence_canva_renderer_reason=kill_switch_off" in state
+    assert "last_self_silence_canva_renderer_target=wr2_canva_renderer" in state
+    assert wd._state_get("last_alert_pipeline_frozen") is None
+    assert wd._state_get("last_alert_success_rate_low") is None
+
+
+def test_evaluate_canva_superseded_records_self_silence_receipt(wd):
+    """A superseded renderer target self-silences with explicit replacement detail."""
+    conn = _make_conn(
+        heartbeat_age=10,
+        oldest_pending_hours=5.0,
+        rendered_recent=0,
+        superseded_by="wr2_canva_renderer_v3",
+    )
+    sent: list[str] = []
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
+        asyncio.run(wd._evaluate_once(conn))
+
+    state = wd.STATE_PATH.read_text()
+    assert sent == []
+    assert "last_self_silence_canva_renderer_reason=superseded" in state
+    assert "last_self_silence_canva_renderer_detail=wr2_canva_renderer_v3" in state
 
 
 def test_evaluate_p1_success_rate_below_threshold(wd):
@@ -237,6 +286,8 @@ def test_evaluate_degrades_open_on_missing_heartbeat_table(wd):
     # calls (pipeline) return safe values.
     conn.fetchval = AsyncMock(side_effect=[
         asyncpg.UndefinedTableError("relation does not exist"),
+        "true",  # renderer enabled
+        None,  # no supersession marker
         0.1,  # oldest_pending_hours
         3,  # rendered_recent
     ])

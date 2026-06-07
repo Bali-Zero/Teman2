@@ -15,6 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.agents.regulation_alert_agent import run_regulation_alert
+from mata_garuda.heartbeat import run_with_heartbeat
 
 
 def main() -> int:
@@ -32,4 +33,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_with_heartbeat("mata_garuda.reg_alert_30min.pro", main))

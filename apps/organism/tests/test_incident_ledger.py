@@ -272,3 +272,62 @@ async def test_dispatcher_records_ledger_on_dispatched(fake_redis, tmp_path):
     assert args[3] == "7847d95ce257d8"
     assert args[4] == "fly_machines_restart"
     assert args[5] == "dispatched"
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_records_dispatch_before_actuator_outcome(
+    fake_redis, tmp_path, monkeypatch,
+):
+    """Ledger proof order is INSERT dispatch, then UPDATE terminal outcome."""
+    from organism.actuators.base import ActuatorBase
+    from organism.blackout import BlackoutManager
+    from organism.redis_bus import EventBus
+    from organism.schemas import ActionDecision
+    from organism.supervisor.circuit_breaker import CircuitBreaker
+    from organism.supervisor.dispatch import Dispatcher, DispatchOutcome
+    from organism.supervisor.mutex import Mutex
+
+    class _LedgerActuator(ActuatorBase):
+        name = "fly_machines_restart"
+
+        async def _execute(self, params):
+            return {"did": "restart"}
+
+        async def _dry_run(self, params):
+            return {"would": "restart"}
+
+    bus = EventBus(redis=fake_redis, jsonl_path=tmp_path / "events.jsonl")
+    monkeypatch.setattr("organism.emit._get_bus", lambda: bus)
+    monkeypatch.setattr("organism.actuators.base.WAL_DIR", tmp_path / "wal")
+
+    pool = FakePool()
+    incident_ledger.set_pool_for_tests(pool)
+    dispatcher = Dispatcher(
+        redis=fake_redis,
+        circuit_breaker=CircuitBreaker(redis=fake_redis),
+        mutex=Mutex(redis=fake_redis),
+        blackout=BlackoutManager(flag_path=tmp_path / "pause.flag"),
+        shadow_mode=False,
+        actuator_registry={"fly_machines_restart": _LedgerActuator()},
+    )
+    decision = ActionDecision(
+        actuator="fly_machines_restart",
+        params={"app": "nuzantara-rag", "machine": "7847d95ce257d8"},
+        confidence=0.95,
+        tier="L0_yaml",
+    )
+
+    outcome = await dispatcher.dispatch(
+        decision=decision,
+        target="nuzantara-rag",
+        correlation_id="corr-proof",
+    )
+
+    assert outcome == DispatchOutcome.DISPATCHED
+    assert len(pool.calls) == 2
+    insert_sql, insert_args = pool.calls[0]
+    update_sql, update_args = pool.calls[1]
+    assert "INSERT INTO incident_ledger" in insert_sql
+    assert insert_args[0] == "corr-proof"
+    assert "UPDATE incident_ledger" in update_sql
+    assert update_args == ("done", None, "corr-proof", "fly_machines_restart")

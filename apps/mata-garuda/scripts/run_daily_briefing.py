@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.agents.daily_briefing_agent import run_daily_briefing
+from mata_garuda.heartbeat import run_with_heartbeat
 
 
 def main() -> int:
@@ -35,4 +36,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_with_heartbeat("mata_garuda.daily_briefing.pro", main))

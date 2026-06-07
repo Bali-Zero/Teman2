@@ -9,6 +9,8 @@ Given a situation, the reasoner proposes an action from the allowlist.
 """
 import json
 import logging
+import math
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,6 +18,7 @@ import httpx
 
 from cell.effectors.allowlist import ActionNotAllowed, ActionRegistry
 from cell.memory.pattern_index import PatternIndex
+from cell.slow.robust_parse import RobustParseError, parse_json_object, robust_json_call
 
 logger = logging.getLogger("cell.slow")
 
@@ -49,6 +52,7 @@ class ReasonerProposal:
     confidence: float
     tier_used: int  # -1=pattern, 0=qwen9b, 1=qwen27b
     cost_usd: float
+    fallback: bool = False
 
 
 class SlowReasoner:
@@ -112,8 +116,107 @@ RECENT HISTORY (last 10 pulses):
 {extra}
 What action should I take?"""
 
-    def _parse_response(self, text: str, tier: int, cost: float) -> ReasonerProposal:
-        """Extract JSON from LLM response."""
+    def _robust_enabled(self) -> bool:
+        return os.getenv("CELL_REASONER_ROBUST", "true").strip().lower() not in {
+            "0", "false", "no", "off",
+        }
+
+    def _fallback_payload_for_unparseable(
+        self,
+        health_status: str,
+        raw: str,
+        error: str | None,
+    ) -> dict[str, Any]:
+        raw_head = (raw or "")[:100].replace("\n", " ").strip()
+        reason = "Reasoner unavailable after structured parse retries"
+        if error:
+            reason += f" ({error})"
+        if raw_head:
+            reason += f"; raw_head={raw_head}"
+
+        if health_status == "red":
+            return {"action": "alert_silent", "reason": reason, "confidence": 0.0}
+
+        return {
+            "action": "none",
+            "reason": f"{reason}; health={health_status}",
+            "confidence": 0.9 if health_status == "green" else 0.6,
+        }
+
+    def _proposal_from_payload(
+        self,
+        data: dict[str, Any],
+        *,
+        tier: int,
+        cost: float,
+        fallback: bool = False,
+    ) -> ReasonerProposal:
+        action = str(data.get("action") or "none")
+        reason = str(data.get("reason") or "no reason given")
+        try:
+            confidence = float(data.get("confidence", 0.5))
+        except (TypeError, ValueError):
+            confidence = 0.5
+        if not math.isfinite(confidence):
+            confidence = 0.5
+
+        # Validate action exists in allowlist (unless "none")
+        if action != "none":
+            try:
+                self._registry.get(action)
+            except ActionNotAllowed:
+                logger.warning(f"Reasoner proposed invalid action: {action}")
+                return ReasonerProposal(
+                    action="none",
+                    reason=f"Proposed action '{action}' not in allowlist. Original reason: {reason}",
+                    confidence=0.0,
+                    tier_used=tier,
+                    cost_usd=cost,
+                    fallback=fallback,
+                )
+
+        return ReasonerProposal(
+            action=action,
+            reason=reason,
+            confidence=min(max(confidence, 0.0), 1.0),
+            tier_used=tier,
+            cost_usd=cost,
+            fallback=fallback,
+        )
+
+    def _parse_response(
+        self,
+        text: str,
+        tier: int,
+        cost: float,
+        *,
+        health_status: str = "red",
+    ) -> ReasonerProposal:
+        """Extract JSON from LLM response without turning junk into authority."""
+        if not self._robust_enabled():
+            return self._legacy_parse_response(text, tier=tier, cost=cost)
+
+        try:
+            return self._proposal_from_payload(
+                parse_json_object(text),
+                tier=tier,
+                cost=cost,
+            )
+        except RobustParseError as exc:
+            logger.warning(
+                "Reasoner produced unparseable output: error=%s raw_head=%r",
+                exc,
+                (text or "")[:200],
+            )
+            return self._proposal_from_payload(
+                self._fallback_payload_for_unparseable(health_status, text, str(exc)),
+                tier=tier,
+                cost=cost,
+                fallback=True,
+            )
+
+    def _legacy_parse_response(self, text: str, tier: int, cost: float) -> ReasonerProposal:
+        """Legacy one-shot parser kept behind CELL_REASONER_ROBUST=false."""
         # Find JSON in response (LLM may wrap it in markdown)
         start = text.find("{")
         end = text.rfind("}") + 1
@@ -128,32 +231,7 @@ What action should I take?"""
             )
 
         try:
-            data = json.loads(text[start:end])
-            action = data.get("action", "none")
-            reason = data.get("reason", "no reason given")
-            confidence = float(data.get("confidence", 0.5))
-
-            # Validate action exists in allowlist (unless "none")
-            if action != "none":
-                try:
-                    self._registry.get(action)
-                except ActionNotAllowed:
-                    logger.warning(f"Reasoner proposed invalid action: {action}")
-                    return ReasonerProposal(
-                        action="none",
-                        reason=f"Proposed action '{action}' not in allowlist. Original reason: {reason}",
-                        confidence=0.0,
-                        tier_used=tier,
-                        cost_usd=cost,
-                    )
-
-            return ReasonerProposal(
-                action=action,
-                reason=reason,
-                confidence=min(max(confidence, 0.0), 1.0),
-                tier_used=tier,
-                cost_usd=cost,
-            )
+            return self._proposal_from_payload(json.loads(text[start:end]), tier=tier, cost=cost)
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Failed to parse reasoner JSON: {e}")
             return ReasonerProposal(
@@ -185,6 +263,59 @@ What action should I take?"""
             data = response.json()
             return data["message"]["content"], 0.0
 
+    async def _call_ollama_json(
+        self,
+        model: str,
+        system: str,
+        user: str,
+        *,
+        timeout: float,
+        tier: int,
+        health_status: str,
+    ) -> ReasonerProposal:
+        if not self._robust_enabled():
+            text, cost = await self._call_ollama(model, system, user, timeout=timeout)
+            return self._legacy_parse_response(text, tier=tier, cost=cost)
+
+        total_cost = 0.0
+
+        async def call(feedback: str | None) -> str:
+            nonlocal total_cost
+            user_with_feedback = user
+            if feedback:
+                user_with_feedback = f"{user}\n\nPARSER FEEDBACK:\n{feedback}"
+            text, cost = await self._call_ollama(
+                model, system, user_with_feedback, timeout=timeout,
+            )
+            total_cost += cost
+            return text
+
+        result = await robust_json_call(
+            call,
+            default_value=self._fallback_payload_for_unparseable(health_status, "", None),
+        )
+        if result.fallback:
+            logger.warning(
+                "Reasoner robust parse fallback: model=%s tier=%s attempts=%s error=%s raw_head=%r",
+                model,
+                tier,
+                result.attempts,
+                result.error,
+                result.raw[:200],
+            )
+            payload = self._fallback_payload_for_unparseable(
+                health_status, result.raw, result.error,
+            )
+        else:
+            payload = result.value
+
+        return self._proposal_from_payload(
+            payload,
+            tier=tier,
+            cost=total_cost,
+            fallback=result.fallback,
+        )
+
     async def bootstrap_memory(self) -> int:
         """Load persisted patterns from DB into the in-memory PatternIndex.
 
@@ -203,8 +334,8 @@ What action should I take?"""
         error_rate_norm: float = 0.0,
     ) -> None:
         """Record a resolved proposal into the pattern index for future reuse."""
-        if proposal.action == "none":
-            return  # Don't learn "do nothing" — not useful for pattern matching
+        if proposal.action == "none" or proposal.fallback:
+            return  # Don't learn no-op or parser-fallback artifacts.
         self._patterns.add(
             health_status=health_status,
             response_time_ms=response_time_ms,
@@ -274,8 +405,14 @@ What action should I take?"""
 
         # Tier 0: Qwen 3.5 9B (fast)
         try:
-            text, cost = await self._call_ollama(self._model_fast, system, user, timeout=15.0)
-            proposal = self._parse_response(text, tier=0, cost=cost)
+            proposal = await self._call_ollama_json(
+                self._model_fast,
+                system,
+                user,
+                timeout=15.0,
+                tier=0,
+                health_status=health_status,
+            )
             logger.info(f"Tier 0 (Qwen 9B): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
 
             # If confident enough, use its answer
@@ -311,8 +448,14 @@ What action should I take?"""
 
         # Tier 1: Qwen 3.5 27B (deeper reasoning)
         try:
-            text, cost = await self._call_ollama(self._model_heavy, system, user, timeout=60.0)
-            proposal = self._parse_response(text, tier=1, cost=cost)
+            proposal = await self._call_ollama_json(
+                self._model_heavy,
+                system,
+                user,
+                timeout=60.0,
+                tier=1,
+                health_status=health_status,
+            )
             logger.info(f"Tier 1 (Qwen 27B): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
             self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
                                 db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm)

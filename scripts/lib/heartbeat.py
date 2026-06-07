@@ -16,16 +16,41 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 _DEFAULT_DIR = Path.home() / ".organism" / "last_seen"
+_ORGAN_ID_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_.]{0,80}$")
+_ALLOWED_STATUSES = {
+    "ok",
+    "error",
+    "warning",
+    "starting",
+    "degraded",
+    "fail",
+    "success",
+    "healthy",
+}
+
+
+def _valid_organ_id(organ_id: str) -> bool:
+    return bool(_ORGAN_ID_RE.fullmatch(organ_id)) and ".." not in organ_id
+
+
+def _normalise_status(status: str) -> str:
+    status = str(status or "ok").lower()
+    return status if status in _ALLOWED_STATUSES else "ok"
 
 
 def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "", *, last_seen_dir: Path | None = None) -> bool:
     """Write a heartbeat. Returns True on success, False otherwise (never raises)."""
     try:
+        organ_id = str(organ_id)
+        if not _valid_organ_id(organ_id):
+            return False
+        status = _normalise_status(status)
         directory = Path(last_seen_dir) if last_seen_dir is not None else Path(os.environ.get("ORGANISM_LAST_SEEN_DIR", str(_DEFAULT_DIR)))
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{organ_id}.json"

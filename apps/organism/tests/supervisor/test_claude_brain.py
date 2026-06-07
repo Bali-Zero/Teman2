@@ -138,7 +138,7 @@ async def test_timeout_returns_defer(fake_redis):
         "asyncio.create_subprocess_exec",
         AsyncMock(return_value=_HangingProc()),
     ):
-        with patch("asyncio.wait_for", side_effect=__import__("asyncio").TimeoutError):
+        with patch("organism.supervisor.claude_brain.CLAUDE_TIMEOUT_SECONDS", 0.001):
             result = await brain.decide(
                 _event(kind="novel"), ollama_bucket=None, recent_events_count=1,
                 available_actuators=["cleanup_log"],

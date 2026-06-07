@@ -25,7 +25,22 @@ def _repo_root() -> Path:
     env = os.environ.get("NUZANTARA_REPO_ROOT")
     if env:
         return Path(env)
-    return Path(__file__).resolve().parents[4]
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "apps").is_dir() and (parent / "research").is_dir():
+            return parent
+    return Path(__file__).resolve().parents[5]
+
+
+def _organism_heartbeat(status: str, note: str = "") -> None:
+    try:
+        scripts_dir = _repo_root() / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from lib.heartbeat import organism_heartbeat
+
+        organism_heartbeat("sota.m13_monthly", status, note)
+    except Exception:
+        pass
 
 
 def run(cmd: list[str], *, timeout: int = 1800) -> int:
@@ -119,4 +134,14 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    _organism_heartbeat("starting", "monthly run started")
+    try:
+        result = main()
+    except KeyboardInterrupt:
+        _organism_heartbeat("degraded", "keyboard interrupt")
+        raise
+    except Exception as exc:
+        _organism_heartbeat("error", f"crashed: {exc}")
+        raise
+    _organism_heartbeat("ok" if result == 0 else "error", f"rc={result}")
+    sys.exit(result)

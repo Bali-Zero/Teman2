@@ -45,6 +45,18 @@ import asyncpg  # noqa: E402
 
 logger = logging.getLogger("wr2.image_generator")
 
+try:
+    from lib.heartbeat import organism_heartbeat as _write_organism_heartbeat
+except Exception:  # pragma: no cover - heartbeat must never block imagegen import
+    _write_organism_heartbeat = None
+
+
+def _organism_heartbeat(status: str, note: str = "") -> None:
+    """Best-effort organism heartbeat for sentinel bridge_source."""
+    if _write_organism_heartbeat is None:
+        return
+    _write_organism_heartbeat("wr2.image_generator", status, note)
+
 # ─────────────────────────────────────────────────────────────────────────
 # Configuration
 # ─────────────────────────────────────────────────────────────────────────
@@ -1495,14 +1507,19 @@ def main() -> int:
     args = parser.parse_args()
 
     _configure_logging()
+    _organism_heartbeat("starting", "image generator run starting")
     try:
-        return asyncio.run(run(dry_run=args.dry_run, draft_id=args.draft_id))
+        rc = asyncio.run(run(dry_run=args.dry_run, draft_id=args.draft_id))
     except KeyboardInterrupt:
+        _organism_heartbeat("degraded", "keyboard interrupt")
         return 130
     except Exception as e:
         logger.exception("Unhandled error: %s", e)
         _send_telegram(f"WR2 image_generator crashed\n{str(e)[:400]}")
+        _organism_heartbeat("error", f"crashed: {e}")
         return 2
+    _organism_heartbeat("ok" if rc == 0 else "error", f"rc={rc}")
+    return rc
 
 
 if __name__ == "__main__":

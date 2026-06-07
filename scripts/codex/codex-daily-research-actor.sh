@@ -29,6 +29,24 @@ mkdir -p "$STATE_DIR" "$LOG_DIR" "$OVERNIGHT_BACKLOG_DIR"
 # shellcheck source=/Users/nuzantara/scripts/codex-automation-lib.sh
 [ -f "$CODEX_AUTOMATION_LIB" ] && source "$CODEX_AUTOMATION_LIB"
 
+HEARTBEAT_LIB="${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+if [ -f "$HEARTBEAT_LIB" ]; then
+    # shellcheck disable=SC1090
+    source "$HEARTBEAT_LIB"
+    organism_heartbeat "codex.research_actor" "starting" "research actor starting"
+fi
+_organism_hb_finalize() {
+    local rc="${1:-0}"
+    local status="ok"
+    if [ "$rc" -ne 0 ]; then
+        status="error"
+    fi
+    if command -v organism_heartbeat >/dev/null 2>&1; then
+        organism_heartbeat "codex.research_actor" "$status" "rc=$rc"
+    fi
+}
+trap 'rc=$?; trap - EXIT; _organism_hb_finalize "$rc"; exit "$rc"' EXIT
+
 CODEX_TIMEOUT=2400  # 40min per finding
 DAILY_PR_CAP=3
 
@@ -68,7 +86,7 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     fi
 fi
 echo "$$" > "$LOCK_DIR/pid"
-trap 'rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+trap 'rc=$?; trap - EXIT; rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true; _organism_hb_finalize "$rc"; exit "$rc"' EXIT
 
 # Daily cap
 TODAY=$(date '+%Y-%m-%d')

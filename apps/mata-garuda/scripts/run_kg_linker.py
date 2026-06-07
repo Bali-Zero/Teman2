@@ -22,6 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.runtime.kg_sqlite import KnowledgeGraph
+from mata_garuda.heartbeat import run_with_heartbeat
 from mata_garuda.workers.kg_linker import run_kg_linker
 
 
@@ -99,4 +100,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_with_heartbeat("mata_garuda.kg_linker.pro", main))

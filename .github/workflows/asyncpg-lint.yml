@@ -1,0 +1,36 @@
+name: asyncpg except completeness lint
+
+on:
+  pull_request:
+    paths:
+      - "apps/**/*.py"
+      - "packages/**/*.py"
+      - "scripts/**/*.py"
+      - ".github/workflows/asyncpg-lint.yml"
+      - "scripts/lint_asyncpg_except_completeness.py"
+      - "scripts/tests/test_lint_asyncpg_except_completeness.py"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/**/*.py"
+      - "packages/**/*.py"
+      - "scripts/**/*.py"
+      - ".github/workflows/asyncpg-lint.yml"
+      - "scripts/lint_asyncpg_except_completeness.py"
+      - "scripts/tests/test_lint_asyncpg_except_completeness.py"
+
+concurrency:
+  group: asyncpg-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  asyncpg-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Run asyncpg except completeness linter
+        run: python scripts/lint_asyncpg_except_completeness.py

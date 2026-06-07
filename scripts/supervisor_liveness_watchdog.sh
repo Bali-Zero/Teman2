@@ -51,6 +51,33 @@ mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")"
 now_ts() { date +%s; }
 log() { echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $*" >>"$LOG_FILE"; }
 
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh}"
+[[ -f "$HEARTBEAT_LIB" ]] && source "$HEARTBEAT_LIB" || true
+
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="supervisor liveness watchdog start"
+
+organism_hb_set() {
+  ORGANISM_HB_STATUS="$1"
+  ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_finalize() {
+  local rc="${1:-0}"
+  if [ "$rc" -eq 0 ]; then
+    if [ "$ORGANISM_HB_STATUS" = "starting" ]; then
+      organism_hb_set ok "completed"
+    fi
+  elif [ "$ORGANISM_HB_STATUS" = "starting" ] || [ "$ORGANISM_HB_STATUS" = "ok" ]; then
+    organism_hb_set error "rc=${rc}"
+  fi
+  if declare -F organism_heartbeat >/dev/null 2>&1; then
+    organism_heartbeat "pro.supervisor_liveness_watchdog" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE"
+  fi
+}
+
+trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
+
 # --- Telegram helper ---
 send_telegram() {
   local msg="$1"
@@ -101,6 +128,7 @@ NOW=$(now_ts)
 
 if [ ! -f "$DECISIONS_LOG" ]; then
   log "ERROR: $DECISIONS_LOG missing"
+  organism_hb_set error "decisions log missing"
   send_telegram "🚨 Supervisor watchdog: decisions.jsonl missing at \`$DECISIONS_LOG\`. Daemon never wrote anything. Investigate."
   exit 1
 fi
@@ -109,6 +137,7 @@ fi
 LAST_TS=$(/usr/bin/tail -n 1 "$DECISIONS_LOG" 2>/dev/null | /usr/bin/jq -r '.ts // empty' 2>/dev/null)
 if [ -z "$LAST_TS" ] || [ "$LAST_TS" = "null" ]; then
   log "ERROR: cannot parse last ts from $DECISIONS_LOG"
+  organism_hb_set error "cannot parse last ts"
   exit 1
 fi
 
@@ -123,6 +152,7 @@ if [ "$FORCE_ALERT" = "1" ]; then
   log "FORCE_ALERT=1 → sending test alert"
   send_telegram "🧪 Supervisor watchdog test alert (FORCE_ALERT=1). last_gap=${GAP}s."
   write_state "test_alert" "$GAP"
+  organism_hb_set degraded "force alert gap ${GAP}s"
   exit 0
 fi
 
@@ -130,6 +160,7 @@ fi
 if [ "$GAP" -le "$LIVENESS_THRESHOLD_S" ]; then
   log "OK: supervisor processing events (gap ${GAP}s < ${LIVENESS_THRESHOLD_S}s)"
   write_state "ok" "$GAP"
+  organism_hb_set ok "gap ${GAP}s"
   exit 0
 fi
 
@@ -138,6 +169,7 @@ LAST_ACTION_TS=$(read_last_action_ts)
 SINCE_LAST_ACTION=$((NOW - LAST_ACTION_TS))
 if [ "$SINCE_LAST_ACTION" -lt "$COOLDOWN_S" ]; then
   log "WARN: gap=${GAP}s exceeded but cooldown active (${SINCE_LAST_ACTION}s < ${COOLDOWN_S}s) — skipping action"
+  organism_hb_set degraded "gap ${GAP}s cooldown"
   exit 0
 fi
 
@@ -162,6 +194,7 @@ Investigate: \`tail ~/logs/organism/supervisor.err\`"
 
 write_state "kickstart" "$GAP"
 log "ACTION done"
+organism_hb_set degraded "kickstart gap ${GAP}s"
 
 # Tier-2 escalation check: wait 60s, re-check gap; if still > threshold,
 # the simple respawn didn't fix it (bug in code/config, not just stale

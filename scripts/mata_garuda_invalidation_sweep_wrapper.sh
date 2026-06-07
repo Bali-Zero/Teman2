@@ -33,6 +33,22 @@
 
 set -euo pipefail
 
+HEARTBEAT_LIB="${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+if [[ -f "$HEARTBEAT_LIB" ]]; then
+    # shellcheck disable=SC1090
+    source "$HEARTBEAT_LIB"
+    organism_heartbeat "mata_garuda.invalidation_sweep.pro" "starting" "invalidation sweep starting"
+    _organism_hb_finalize() {
+        local rc=$?
+        local status="ok"
+        if [[ "$rc" -ne 0 ]]; then
+            status="error"
+        fi
+        organism_heartbeat "mata_garuda.invalidation_sweep.pro" "$status" "rc=$rc"
+    }
+    trap _organism_hb_finalize EXIT
+fi
+
 # Source DATABASE_URL (and any other env the sweep script may need)
 # from the Pro-local secrets file. The file MUST exist and contain
 # DATABASE_URL=postgres://... — fail-fast if absent.
@@ -62,4 +78,8 @@ else
 fi
 
 cd "${REPO_ROOT}"
-exec "${PYTHON}" "${REPO_ROOT}/scripts/mata_garuda_invalidation_sweep.py" "$@"
+set +e
+"${PYTHON}" "${REPO_ROOT}/scripts/mata_garuda_invalidation_sweep.py" "$@"
+rc=$?
+set -e
+exit "$rc"

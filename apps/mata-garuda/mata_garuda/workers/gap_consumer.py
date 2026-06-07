@@ -24,6 +24,7 @@ import time
 from typing import Any, Callable, Optional
 
 from mata_garuda.config import STREAM_NEXUS_GAPS
+from mata_garuda.heartbeat import run_with_heartbeat
 from mata_garuda.workers.base_worker import stream_ack, stream_read_new
 from mata_garuda.workers.gap_legacy import (
     coerce_to_canonical,
@@ -328,4 +329,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_with_heartbeat("mata_garuda.gap_consumer.pro", main))

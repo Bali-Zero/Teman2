@@ -3,13 +3,14 @@
 SEO Auto-Fixer — consumes high_escalations from seo_observe_report and fixes them autonomously.
 
 Supported fix types:
-  - fix_meta_description_fallback: generates ai_summary via Haiku, patches DB
+  - fix_meta_description_fallback: generates deterministic ai_summary, patches DB
 
 Called by OpenClaw job `seo-auto-fixer` after each seo-guardian-observe run.
 """
 import asyncio
 import json
 import os
+import re
 import sys
 import urllib.request
 from datetime import datetime, timezone
@@ -22,7 +23,6 @@ DB_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
 )
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_SEO_CHAT_ID", "1125336968")
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://nuzantara-rag.fly.dev")
@@ -72,40 +72,27 @@ def save_fixer_report(report: dict) -> None:
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False))
 
 
-def generate_meta_description(slug: str, title: str, body_excerpt: str) -> str:
-    """Call Claude Haiku to generate a 155-char SEO meta description."""
-    if not ANTHROPIC_API_KEY:
-        # Fallback: clean title truncation
-        return title[:155]
+def _compact_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
 
-    prompt = (
-        f"Write a compelling SEO meta description (max 155 characters) for this article.\n"
-        f"Title: {title}\n"
-        f"Excerpt: {body_excerpt[:500]}\n\n"
-        f"Rules: factual, no clickbait, include Indonesia/Bali if relevant, end naturally.\n"
-        f"Output ONLY the description, no quotes, no extra text."
-    )
-    payload = json.dumps({
-        "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 100,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode()
-    try:
-        req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=payload,
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = json.loads(resp.read())
-            return body["content"][0]["text"].strip()[:155]
-    except Exception as e:
-        log(f"Haiku error: {e}")
-        return title[:155]
+
+def _truncate_meta(text: str, limit: int = 155) -> str:
+    compact = _compact_text(text)
+    if len(compact) <= limit:
+        return compact
+    cut = compact[: limit + 1].rsplit(" ", 1)[0].rstrip(" ,.;:-")
+    return (cut or compact[:limit]).rstrip(" ,.;:-")
+
+
+def generate_meta_description(slug: str, title: str, body_excerpt: str) -> str:
+    """Generate a 155-char SEO meta description without direct paid LLM APIs."""
+    clean_title = _compact_text(title) or slug.replace("-", " ").title()
+    clean_excerpt = _compact_text(body_excerpt[:500])
+    if not clean_excerpt:
+        return _truncate_meta(clean_title)
+    if clean_title.lower() in clean_excerpt[:120].lower():
+        return _truncate_meta(clean_excerpt)
+    return _truncate_meta(f"{clean_title}: {clean_excerpt}")
 
 
 def fetch_article_from_backend(category: str, slug: str) -> dict:
@@ -131,7 +118,7 @@ def fetch_article_from_backend(category: str, slug: str) -> dict:
 
 async def fix_meta_description(conn: asyncpg.Connection, escalation: dict) -> dict:
     """
-    Fix: article has no ai_summary → generate one with Haiku and patch DB.
+    Fix: article has no ai_summary -> generate one locally and patch DB.
     Returns {status, slug, generated_description}
     """
     target_url = escalation.get("target", "")  # e.g. /business/2026-guide-...
@@ -166,7 +153,7 @@ async def fix_meta_description(conn: asyncpg.Connection, escalation: dict) -> di
             ""
         )
 
-    # Generate with Haiku
+    # Generate locally; Law 1 forbids direct pay-as-you-go LLM API keys here.
     description = generate_meta_description(slug, title, body_excerpt)
     log(f"  Generated: {repr(description[:80])}")
 

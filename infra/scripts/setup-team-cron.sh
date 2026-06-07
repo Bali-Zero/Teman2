@@ -19,9 +19,38 @@
 #   8. Snapshot summary JSON to ~/.cache/setup-team/snapshots/YYYYMMDD.json
 set -uo pipefail
 
+REPO_ROOT="${SETUP_TEAM_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${REPO_ROOT}/scripts/lib/heartbeat.sh}"
+[[ -f "$HEARTBEAT_LIB" ]] && source "$HEARTBEAT_LIB" || true
+
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="setup team daily start"
+
+organism_hb_set() {
+    ORGANISM_HB_STATUS="$1"
+    ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_finalize() {
+    local rc="${1:-0}"
+    if [ "$rc" -eq 0 ]; then
+        if [ "$ORGANISM_HB_STATUS" = "starting" ]; then
+            organism_hb_set ok "completed"
+        fi
+    elif [ "$ORGANISM_HB_STATUS" = "starting" ] || [ "$ORGANISM_HB_STATUS" = "ok" ]; then
+        organism_hb_set error "rc=${rc}"
+    fi
+    if declare -F organism_heartbeat >/dev/null 2>&1; then
+        organism_heartbeat "pro.setup_team_daily" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE"
+    fi
+}
+
+trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
+
 # Kill switch.
 if [ "${SETUP_TEAM_CRON_ENABLED:-true}" = "false" ]; then
     echo "$(date) setup-team cron disabled via SETUP_TEAM_CRON_ENABLED=false" >&2
+    organism_hb_set ok "disabled"
     exit 0
 fi
 
@@ -33,15 +62,16 @@ LOG_FILE="$LOG_DIR/setup-team-daily-$(date +%Y%m%d).log"
 SNAPSHOT_FILE="$SNAPSHOT_DIR/setup-team-$(date +%Y%m%d).json"
 SNAPSHOT_TMP="${SNAPSHOT_FILE}.tmp.$$"
 
-REPO_ROOT="${SETUP_TEAM_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
 cd "$REPO_ROOT/apps/mata-garuda" || {
     echo "$(date) FAILED: cannot cd to $REPO_ROOT/apps/mata-garuda" >> "$LOG_FILE"
+    organism_hb_set error "cannot cd"
     exit 1
 }
 
 VENV_PY="$REPO_ROOT/.venv/bin/python"
 if [ ! -x "$VENV_PY" ]; then
     echo "$(date) FAILED: venv python not executable at $VENV_PY" >> "$LOG_FILE"
+    organism_hb_set error "venv python missing"
     exit 2
 fi
 
@@ -165,6 +195,7 @@ EXIT_CODE=$?
 if [ $EXIT_CODE -ne 0 ]; then
     rm -f "$SNAPSHOT_TMP"
     echo "$(date) FAILED setup-team daily pipeline (exit $EXIT_CODE)" >> "$LOG_FILE"
+    organism_hb_set error "pipeline rc=${EXIT_CODE}"
     exit $EXIT_CODE
 fi
 
@@ -183,5 +214,6 @@ else:
           f\"auto_approved={d['auto_approved_tier1']}\")
 ")
 echo "$(date) setup-team summary: $SUMMARY" >> "$LOG_FILE"
+organism_hb_set ok "$SUMMARY"
 
 exit 0

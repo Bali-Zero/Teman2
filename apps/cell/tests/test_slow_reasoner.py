@@ -44,8 +44,10 @@ def test_reasoner_parse_garbage():
         "I don't know what to do, sorry!",
         tier=0, cost=0.0,
     )
-    assert result.action == "alert_human"  # Fallback to human
-    assert "unparseable" in result.reason.lower()
+    assert result.action == "alert_silent"
+    assert result.confidence == 0.0
+    assert result.fallback is True
+    assert "parse" in result.reason.lower()
 
 
 def test_reasoner_clamps_confidence():
@@ -55,6 +57,27 @@ def test_reasoner_clamps_confidence():
         tier=0, cost=0.0,
     )
     assert result.confidence == 1.0  # Clamped
+
+
+@pytest.mark.asyncio
+async def test_reasoner_empty_red_reply_is_silent_fallback_not_human_alert():
+    """Pillar C: junk LLM output is recorded honestly, not acted on as truth."""
+    reasoner = SlowReasoner()
+
+    with patch.object(reasoner, "_call_ollama", new_callable=AsyncMock) as mock_ollama:
+        mock_ollama.return_value = ("", 0.0)
+        proposal = await reasoner.think(
+            health_status="red",
+            response_time_ms=30_000,
+            error_message="Connection refused",
+            max_tier=0,
+        )
+
+    assert mock_ollama.call_count == 3
+    assert proposal.action == "alert_silent"
+    assert proposal.confidence == 0.0
+    assert proposal.fallback is True
+    assert "parse" in proposal.reason.lower()
 
 
 # --- DNA Interpreter ---

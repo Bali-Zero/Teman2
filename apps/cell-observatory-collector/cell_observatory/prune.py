@@ -1,11 +1,32 @@
 import asyncio
+import importlib.util
 import structlog
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 from cell_observatory.config import Config
 from cell_observatory.storage import Storage
 
 log = structlog.get_logger(__name__)
+
+
+def _load_organism_heartbeat():
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "scripts" / "lib" / "heartbeat.py"
+        if not candidate.exists():
+            continue
+        spec = importlib.util.spec_from_file_location("nuzantara_heartbeat", candidate)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.organism_heartbeat
+    return None
+
+
+def organism_heartbeat(organ_id: str, status: str = "ok", note: str = "") -> None:
+    heartbeat = _load_organism_heartbeat()
+    if heartbeat:
+        heartbeat(organ_id, status, note)
 
 
 async def prune_old_events(storage: Storage, retention_days: int) -> int:
@@ -40,5 +61,19 @@ async def main():
         await s.close()
 
 
+async def _run_with_heartbeat() -> None:
+    organism_heartbeat("cell.observatory_prune", "starting", "prune started")
+    try:
+        await main()
+    except Exception as exc:
+        organism_heartbeat(
+            "cell.observatory_prune",
+            "error",
+            f"{type(exc).__name__}: {exc}",
+        )
+        raise
+    organism_heartbeat("cell.observatory_prune", "ok", "prune completed")
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(_run_with_heartbeat())

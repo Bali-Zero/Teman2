@@ -14,6 +14,32 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VENV_DIR="$PROJECT_ROOT/.venv"
 LOG_DIR="$PROJECT_ROOT/logs"
 LOG_FILE="$LOG_DIR/daily_indexing_sweep.log"
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${PROJECT_ROOT}/scripts/lib/heartbeat.sh}"
+[[ -f "$HEARTBEAT_LIB" ]] && source "$HEARTBEAT_LIB" || true
+
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="indexing sweep start"
+
+organism_hb_set() {
+  ORGANISM_HB_STATUS="$1"
+  ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_finalize() {
+  local rc="${1:-0}"
+  if [ "$rc" -eq 0 ]; then
+    if [ "$ORGANISM_HB_STATUS" = "starting" ]; then
+      organism_hb_set ok "completed"
+    fi
+  elif [ "$ORGANISM_HB_STATUS" = "starting" ] || [ "$ORGANISM_HB_STATUS" = "ok" ]; then
+    organism_hb_set error "rc=${rc}"
+  fi
+  if declare -F organism_heartbeat >/dev/null 2>&1; then
+    organism_heartbeat "pro.indexing_sweep_daily" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE"
+  fi
+}
+
+trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
 
 # Ensure log dir exists
 mkdir -p "$LOG_DIR"
@@ -43,8 +69,10 @@ mkdir -p "$LOG_DIR"
 
   if [ $EXIT_CODE -eq 0 ]; then
     echo "[OK] Sweep completed successfully"
+    organism_hb_set ok "sweep completed"
   else
     echo "[ERROR] Sweep failed with exit code $EXIT_CODE"
+    organism_hb_set error "sweep rc=${EXIT_CODE}"
   fi
 
   echo "==============================================================================="

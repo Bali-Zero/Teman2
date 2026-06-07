@@ -30,6 +30,24 @@ mkdir -p "$QUEUE_DIR" "$BACKLOG_DIR" "$LOG_DIR" "$STATE_DIR"
 # shellcheck source=/Users/nuzantara/scripts/codex-automation-lib.sh
 [ -f "$CODEX_AUTOMATION_LIB" ] && source "$CODEX_AUTOMATION_LIB"
 
+HEARTBEAT_LIB="${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+if [ -f "$HEARTBEAT_LIB" ]; then
+    # shellcheck disable=SC1090
+    source "$HEARTBEAT_LIB"
+    organism_heartbeat "codex.overnight_feeder" "starting" "overnight feeder starting"
+fi
+_organism_hb_finalize() {
+    local rc="${1:-0}"
+    local status="ok"
+    if [ "$rc" -ne 0 ]; then
+        status="error"
+    fi
+    if command -v organism_heartbeat >/dev/null 2>&1; then
+        organism_heartbeat "codex.overnight_feeder" "$status" "rc=$rc"
+    fi
+}
+trap 'rc=$?; trap - EXIT; _organism_hb_finalize "$rc"; exit "$rc"' EXIT
+
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 notify() { [ -x "$TELEGRAM_NOTIFY" ] && "$TELEGRAM_NOTIFY" "$@" 2>/dev/null || true; }
 is_uint() {
@@ -62,7 +80,7 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     fi
 fi
 echo "$$" > "$LOCK_DIR/pid"
-trap 'rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+trap 'rc=$?; trap - EXIT; rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true; _organism_hb_finalize "$rc"; exit "$rc"' EXIT
 
 # Skip if queue already has entries
 QUEUE_COUNT=$(find "$QUEUE_DIR" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')

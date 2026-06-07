@@ -2,7 +2,8 @@
 
 > **DO NOT edit autonomously.** Per `cicatrix-scars.md` 2026-04-29 antibody
 > pattern, plist files in `~/Library/LaunchAgents/` must be operator-deployed
-> with `chmod 0444` after manual review.
+> with read-only permissions after manual review. Use `0444` only for plists
+> without inline secrets; use `0400` for any plist that can carry secrets.
 
 This directory stores the canonical source for plist files; operators copy
 them into `~/Library/LaunchAgents/` and chmod them read-only.
@@ -68,11 +69,10 @@ Fly Upstash to Pro localhost Redis. Spec:
    fly secrets set BRIDGE_SKILLS_API_KEY=<generated-key> -a nuzantara-rag
    ```
 
-4. Edit `com.nuzantara.skills-bridge-consumer.plist` to add
-   `BRIDGE_SKILLS_API_KEY` to `EnvironmentVariables` OR ensure the
-   plist sources `~/.nuzantara-secrets.env` at runtime (recommended:
-   wrap `skills_bridge_consumer.py` invocation in a shell that
-   sources the secrets file).
+4. Do not add `BRIDGE_SKILLS_API_KEY` to the plist. The plist calls
+   `apps/cell/scripts/skills_bridge_consumer_launcher.sh`, which sources
+   `~/.nuzantara-secrets.env` at runtime and then execs
+   `skills_bridge_consumer.py`.
 
 5. Expand the `StartCalendarInterval` array to cover the full
    06:00–21:55 window (every 5 min × 17h = 204 entries). The shipped
@@ -89,7 +89,7 @@ Fly Upstash to Pro localhost Redis. Spec:
    ```bash
    cp apps/cell/launchagent/com.nuzantara.skills-bridge-consumer.plist \
       ~/Library/LaunchAgents/
-   chmod 0444 ~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist
+   chmod 0400 ~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist
    launchctl bootstrap gui/$(id -u) \
       ~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist
    ```

@@ -23,16 +23,49 @@ export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
 # Config
 # ───────────────────────────────────────────────────────────────
 REPO_ROOT="${CODEX_AUTOFIX_REPO_ROOT:-${HOME}/Desktop/nuzantara/.worktrees/codex-autofix-ci-runtime}"
+PRIMARY_REPO_ROOT="${CODEX_AUTOFIX_PRIMARY_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
 REPO_SLUG="${CODEX_AUTOFIX_REPO_SLUG:-Balizero1987/Teman2}"
 STATE_DIR="${CODEX_AUTOFIX_STATE_DIR:-${HOME}/.agent/decisions/state}"
 STATE_FILE="${STATE_DIR}/codex_autofix_ci.state"
 LOG_DIR="${CODEX_AUTOFIX_LOG_DIR:-${HOME}/logs/codex-autofix-ci}"
 TELEGRAM_NOTIFY="${HOME}/.claude/scripts/hotfix-notify.sh"
 CODEX_AUTOMATION_LIB="${CODEX_AUTOMATION_LIB:-${HOME}/scripts/codex/automation-lib.sh}"
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${PRIMARY_REPO_ROOT}/scripts/lib/heartbeat.sh}"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR"
 # shellcheck source=/Users/nuzantara/scripts/codex/automation-lib.sh
 [ -f "$CODEX_AUTOMATION_LIB" ] && source "$CODEX_AUTOMATION_LIB"
+[[ -f "$HEARTBEAT_LIB" ]] && source "$HEARTBEAT_LIB" || true
+
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="autofix-ci start"
+ORGANISM_LOCK_ACQUIRED=0
+
+organism_hb_set() {
+    ORGANISM_HB_STATUS="$1"
+    ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_flush() {
+    if declare -F organism_heartbeat >/dev/null 2>&1; then
+        organism_heartbeat "pro.codex_autofix_ci" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE"
+    fi
+}
+
+cleanup_lock() {
+    if [ "${ORGANISM_LOCK_ACQUIRED:-0}" = "1" ]; then
+        rm -f "$LOCK_DIR/pid"
+        rmdir "$LOCK_DIR" 2>/dev/null || true
+    fi
+}
+
+organism_hb_finalize() {
+    local rc="${1:-0}"
+    if [ "$rc" -ne 0 ] && [ "$ORGANISM_HB_STATUS" != "error" ]; then
+        organism_hb_set error "rc=${rc}"
+    fi
+    organism_hb_flush
+}
 
 # Cap: max 3 autofix attempts per rolling 24h
 DAILY_CAP=3
@@ -69,24 +102,29 @@ codex_state() {
 
 # Idempotence guard — mkdir-based mutex (macOS-compatible, no flock dependency)
 LOCK_DIR="${STATE_DIR}/codex_autofix_ci.lock.d"
+trap 'rc=$?; organism_hb_finalize "$rc"; cleanup_lock' EXIT
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     LOCK_PID=$(cat "$LOCK_DIR/pid" 2>/dev/null || true)
     if is_uint "$LOCK_PID" && ! kill -0 "$LOCK_PID" 2>/dev/null; then
         log "Stale lock detected (pid $LOCK_PID is not running). Reclaiming."
         rmdir "$LOCK_DIR" 2>/dev/null || rm -rf "$LOCK_DIR"
         mkdir "$LOCK_DIR"
+        ORGANISM_LOCK_ACQUIRED=1
     elif [ -d "$LOCK_DIR" ] && [ "$(find "$LOCK_DIR" -maxdepth 0 -mmin +240 2>/dev/null)" ]; then
         log "Stale lock detected (>4h old). Reclaiming."
         rmdir "$LOCK_DIR" 2>/dev/null || rm -rf "$LOCK_DIR"
         mkdir "$LOCK_DIR"
+        ORGANISM_LOCK_ACQUIRED=1
     else
         log "Another instance running, exiting"
         codex_state skipped locked "Another instance running" "" "$REPO_ROOT"
+        organism_hb_set degraded "locked"
         exit 0
     fi
+else
+    ORGANISM_LOCK_ACQUIRED=1
 fi
 echo "$$" > "$LOCK_DIR/pid"
-trap 'rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
 # ───────────────────────────────────────────────────────────────
 # Daily cap check
@@ -98,14 +136,15 @@ ATTEMPTS_TODAY=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
 if [ "$ATTEMPTS_TODAY" -ge "$DAILY_CAP" ]; then
     log "Daily cap $DAILY_CAP reached ($ATTEMPTS_TODAY attempts today). Skipping."
     codex_state skipped daily_cap "Daily cap reached ($ATTEMPTS_TODAY/$DAILY_CAP)" "" "$REPO_ROOT"
+    organism_hb_set ok "daily cap reached"
     exit 0
 fi
 
-PRIMARY_REPO_ROOT="${CODEX_AUTOFIX_PRIMARY_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
 if command -v codex_auto_ensure_runtime_worktree >/dev/null 2>&1; then
     codex_auto_ensure_runtime_worktree "$PRIMARY_REPO_ROOT" "$REPO_ROOT" "origin/main" || {
         log "Runtime worktree unavailable: $REPO_ROOT"
         codex_state blocked missing_worktree "Runtime worktree unavailable" "" "$REPO_ROOT"
+        organism_hb_set error "runtime worktree unavailable"
         notify "🔴 Codex autofix-ci: runtime worktree unavailable at $REPO_ROOT"
         exit 1
     }
@@ -123,6 +162,7 @@ if [ "${CODEX_AUTOFIX_DRY_RUN:-0}" != "1" ] &&
     [ "${CODEX_AUTOFIX_ALLOW_STASH:-0}" != "1" ]; then
     log "Working tree dirty — skipping full run before CI failure scan. Set CODEX_AUTOFIX_ALLOW_STASH=1 to override."
     codex_state skipped dirty_worktree "Runtime worktree dirty before CI failure scan" "" "$REPO_ROOT"
+    organism_hb_set degraded "dirty worktree before scan"
     notify "⚠️ Codex autofix-ci: skipped because working tree is dirty"
     exit 0
 fi
@@ -144,6 +184,7 @@ fi
 if [ "$FAILED_RUNS" = "[]" ] || [ -z "$FAILED_RUNS" ]; then
     log "No failed runs found"
     codex_state idle no_failed_runs "No failed GitHub Actions runs found" "" "$REPO_ROOT"
+    organism_hb_set ok "no failed runs"
     exit 0
 fi
 
@@ -190,6 +231,7 @@ done < <(printf '%s\n' "$FAILED_RUNS" | jq -c --arg now "$NOW_EPOCH" --arg coold
 if [ -z "$ELIGIBLE_RUN_JSON" ]; then
     log "No eligible failures (all already handled or in cooldown)"
     codex_state idle no_eligible_failures "No eligible failures outside cooldown" "" "$REPO_ROOT"
+    organism_hb_set ok "no eligible failures"
     exit 0
 fi
 
@@ -201,6 +243,7 @@ TITLE=$(printf '%s\n' "$ELIGIBLE_RUN_JSON" | jq -r '.title')
 
 if ! is_uint "$RUN_ID"; then
     log "Invalid GitHub Actions run id after parsing: $RUN_ID"
+    organism_hb_set error "invalid run id"
     exit 1
 fi
 
@@ -241,6 +284,7 @@ if [ -n "$(git status --porcelain)" ]; then
     if [ "${CODEX_AUTOFIX_ALLOW_STASH:-0}" != "1" ]; then
     log "Working tree dirty — skipping before checkout. Set CODEX_AUTOFIX_ALLOW_STASH=1 to permit auto-stash."
         codex_state skipped dirty_worktree "Runtime worktree dirty before checkout" "$FIX_BRANCH" "$REPO_ROOT"
+        organism_hb_set degraded "dirty worktree before checkout"
         notify "⚠️ Codex autofix-ci: skipped because working tree became dirty before checkout"
         exit 0
     fi
@@ -263,12 +307,13 @@ restore_stash() {
 
 # Auto-restore stash on any exit (success, failure, signal)
 # Combined with mkdir-mutex trap above
-trap 'restore_stash; rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+trap 'rc=$?; restore_stash; organism_hb_finalize "$rc"; cleanup_lock' EXIT
 
 if ! FETCH_OUTPUT=$(git fetch origin "$BRANCH" 2>&1); then
     printf '%s\n' "$FETCH_OUTPUT" | head -5
     log "Cannot fetch $BRANCH (likely deleted). Skipping without consuming daily cap."
     codex_state skipped branch_not_fetchable "Branch $BRANCH not fetchable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
+    organism_hb_set degraded "branch not fetchable"
     notify "⚠️ Codex autofix: branch $BRANCH not fetchable"
     restore_stash
     exit 0
@@ -278,6 +323,7 @@ printf '%s\n' "$FETCH_OUTPUT" | head -5
 git checkout --detach FETCH_HEAD 2>&1 | head -3 || {
     log "Cannot checkout $BRANCH (likely deleted). Skipping."
     codex_state skipped branch_not_checkoutable "Branch $BRANCH not checkoutable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
+    organism_hb_set degraded "branch not checkoutable"
     notify "⚠️ Codex autofix: branch $BRANCH not checkoutable"
     restore_stash
     exit 0
@@ -286,6 +332,7 @@ if ! RESET_OUTPUT=$(git reset --hard "$SHA" 2>&1); then
     printf '%s\n' "$RESET_OUTPUT" | head -5
     log "Cannot reset to $SHA. Skipping without consuming daily cap."
     codex_state skipped sha_not_resettable "SHA $SHA not resettable; cap not consumed" "$FIX_BRANCH" "$REPO_ROOT"
+    organism_hb_set degraded "sha not resettable"
     notify "⚠️ Codex autofix: SHA ${SHA:0:7} not resettable"
     restore_stash
     exit 0
@@ -345,6 +392,7 @@ else
     rc=$?
     log "Codex failed/timeout (exit $rc)"
     codex_state blocked codex_failed "Codex exit $rc on run $RUN_ID" "$FIX_BRANCH" "$REPO_ROOT"
+    organism_hb_set error "codex exit ${rc}"
     notify "🔴 Codex autofix: timed out or failed on run $RUN_ID workflow $WORKFLOW_NAME"
     git checkout --detach "$SHA" 2>&1 | head -2 || true
     git branch -D "$FIX_BRANCH" 2>&1 | head -2 || true
@@ -359,6 +407,7 @@ COMMITS_AHEAD=$(git rev-list --count "${SHA}..${FIX_BRANCH}" 2>/dev/null || echo
 if [ "$COMMITS_AHEAD" -eq 0 ]; then
     log "Codex made no commit. Likely could not fix cleanly."
     codex_state skipped no_commit "Codex made no commit for run $RUN_ID" "$FIX_BRANCH" "$REPO_ROOT"
+    organism_hb_set degraded "codex made no commit"
     if [ -f "/tmp/codex-autofix-${RUN_ID}.txt" ]; then
         REASON=$(cat "/tmp/codex-autofix-${RUN_ID}.txt" | head -200)
         notify "⚠️ Codex autofix: declined run $RUN_ID workflow $WORKFLOW_NAME — $REASON"
@@ -378,6 +427,7 @@ log "Codex committed $COMMITS_AHEAD changes. Pushing $FIX_BRANCH..."
 if ! git push -u origin "$FIX_BRANCH" 2>&1 | head -10; then
     log "Push failed"
     codex_state blocked push_failed "Push failed for $FIX_BRANCH" "$FIX_BRANCH" "$REPO_ROOT"
+    organism_hb_set error "push failed"
     notify "🔴 Codex autofix: push failed for $FIX_BRANCH"
     exit 1
 fi
@@ -420,6 +470,7 @@ if PR_URL=$(gh pr create \
 else
     log "PR creation failed (maybe already exists?)"
     codex_state blocked pr_failed "PR creation failed for $FIX_BRANCH" "$FIX_BRANCH" "$REPO_ROOT"
+    organism_hb_set degraded "pr creation failed"
     notify "⚠️ Codex autofix: PR creation failed for run $RUN_ID (check if duplicate)"
 fi
 
@@ -429,3 +480,4 @@ git checkout --detach origin/main 2>&1 | head -2 || true
 restore_stash
 
 log "Done. Daily counter: $((ATTEMPTS_TODAY + 1))/$DAILY_CAP"
+organism_hb_set ok "attempt complete run ${RUN_ID}"
