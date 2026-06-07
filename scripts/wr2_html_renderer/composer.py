@@ -196,6 +196,100 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
     return html
 
 
+# Lever → CSS. The designer loop accumulates levers in slide["_levers"]; this
+# turns them into a small <style> block appended last so it overrides the
+# skeleton. Kept INTENTIONALLY narrow + brand-safe (only legibility knobs the
+# brand verifier will accept): a darkening scrim over the text band, a text
+# outline, a font down-step, and moving the text block to a calmer band. It can
+# NOT change palette / font-family / add colors — so a lever can never drift the
+# brand (the autonomy guardrail is structural, not just the verifier).
+_TEXT_BANDS = {
+    # band index → vertical placement of the text block (top/middle/bottom third)
+    0: ("top: 6%;", "bottom: auto;"),
+    1: ("top: 38%;", "bottom: auto;"),
+    2: ("top: auto;", "bottom: 8%;"),
+}
+
+
+def _levers_to_css(levers: dict[str, Any]) -> str:
+    """Build a brand-safe <style> override block from accumulated levers.
+
+    Targets common brand text containers (.body, .subhead, .headline, .text,
+    [data-zone-type='text']) and the scrim layer. Selectors are defensive
+    (multiple class names) because skeletons differ; an unused selector is inert.
+    """
+    if not levers:
+        return ""
+    rules: list[str] = []
+
+    # scrim_opacity: darken behind the text. Brand skeletons use a gradient
+    # overlay (.legibility-armor / .scrim / .overlay). We strengthen it with an
+    # extra bottom-anchored dark gradient layer sized to the text band.
+    scrim = levers.get("scrim_opacity")
+    if scrim is not None:
+        a = max(0.0, min(0.95, float(scrim)))
+        # an additional ::after layer on the slide root, dark at the text edge
+        rules.append(
+            ".slide::after, .cover::after, body::after {"
+            "content:'';position:absolute;inset:0;z-index:1;pointer-events:none;"
+            f"background:linear-gradient(to bottom, transparent 45%, rgba(13,13,13,{a:.2f}) 100%);"
+            "}"
+        )
+        # make sure text sits above the scrim
+        rules.append(
+            ".headline,.subhead,.subheading,.body,.text,[data-zone-type='text'],"
+            ".cover-text,.slide-text{position:relative;z-index:2;}"
+        )
+
+    # text_stroke: stronger outline for crispness over residual highlights.
+    if levers.get("text_stroke"):
+        rules.append(
+            ".headline,.subhead,.subheading,.body,.text,[data-zone-type='text'],"
+            ".cover-text,.slide-text{"
+            "text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 1px rgba(0,0,0,0.9);"
+            "paint-order:stroke fill;-webkit-text-stroke:0.4px rgba(0,0,0,0.55);"
+            "}"
+        )
+
+    # shrink_font: down-step a too-dense element. Each accumulated step = -8%.
+    for elem in ("body", "heading", "subhead"):
+        steps = levers.get(f"shrink_{elem}", 0)
+        if steps:
+            factor = max(0.6, 1.0 - 0.08 * int(steps))
+            sel = {
+                "body": ".body,.text,[data-zone-type='text']",
+                "heading": ".headline,.heading,h1",
+                "subhead": ".subhead,.subheading",
+            }[elem]
+            rules.append(f"{sel}{{font-size:calc(1em * {factor:.2f});line-height:1.25;}}")
+
+    # text_anchor_band: move the text block to a calmer band of the photo.
+    band = levers.get("text_anchor_band")
+    if band is not None and int(band) in _TEXT_BANDS:
+        top, bottom = _TEXT_BANDS[int(band)]
+        rules.append(
+            ".text-block,.cover-text,.slide-text,.copy,.text-zone{"
+            f"position:absolute;{top}{bottom}left:6%;right:6%;"
+            "}"
+        )
+
+    if not rules:
+        return ""
+    return "\n<style data-levers=\"1\">\n" + "\n".join(rules) + "\n</style>\n"
+
+
+def _apply_levers_to_html(html: str, slide: dict[str, Any]) -> str:
+    """Append the lever override <style> just before </head> (or </body>)."""
+    css = _levers_to_css(slide.get("_levers") or {})
+    if not css:
+        return html
+    if "</head>" in html:
+        return html.replace("</head>", css + "</head>", 1)
+    if "</body>" in html:
+        return html.replace("</body>", css + "</body>", 1)
+    return html + css
+
+
 def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str | None) -> str:
     """Fill {{placeholders}} + simple {{#if}} blocks from a slide dict.
 
@@ -299,6 +393,7 @@ async def compose_carousel(
             if plan.expect_hero and hero_filename:
                 html = _hero_bg_to_img(html, hero_filename)
             html = _fill_placeholders(html, plan.slide, hero_filename=hero_filename)
+            html = _apply_levers_to_html(html, plan.slide)  # designer-loop levers
 
             html_path = slides_dir / f"{plan.index:02d}.html"
             html_path.write_text(html, encoding="utf-8")
@@ -321,6 +416,95 @@ async def compose_carousel(
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return result
+
+
+async def materialize_slide_html(
+    slide: dict[str, Any],
+    slides_dir: Path,
+    *,
+    index: int,
+    total: int,
+    hero_filename: str | None = None,
+) -> tuple[Path, bool]:
+    """Materialize ONE slide to HTML (honoring slide['_levers']) in slides_dir.
+
+    Returns (html_path, expect_hero). Assets must already be staged in slides_dir
+    (fonts/logo/_base.css) and the hero (if any) already downloaded to
+    slides_dir/hero_filename. This is the per-slide half of compose_carousel,
+    factored out so the designer loop can re-materialize a single slide with new
+    levers between iterations without touching the others.
+    """
+    family = map_slide_to_family(slide, index, total)
+    if family in UNDEFINED_FAMILIES:
+        logger.warning("slide %d mapped to undefined family %s — falling back", index, family)
+        family = "photo-headline-yellow-sub"
+    expect_hero = bool(slide.get("is_hero_image")) or index == 1
+
+    skeleton = _extract_skeleton(family)
+    html = _normalize_skeleton(skeleton)
+    if expect_hero and hero_filename:
+        html = _hero_bg_to_img(html, hero_filename)
+    html = _fill_placeholders(html, slide, hero_filename=hero_filename)
+    html = _apply_levers_to_html(html, slide)
+
+    html_path = slides_dir / f"{index:02d}.html"
+    html_path.write_text(html, encoding="utf-8")
+    return html_path, expect_hero
+
+
+def make_slide_render_fn(
+    *,
+    slides_dir: Path,
+    index: int,
+    total: int,
+    hero_filename: str | None,
+    timeout_ms: int = 30000,
+):
+    """Build a render_fn(slide_with_levers, png_path) for run_designer_loop.
+
+    The returned async callable re-materializes THIS slide's HTML with whatever
+    levers the loop has accumulated (slide['_levers']) and renders it to png_path,
+    enforcing the hero-placement gate. slides_dir must already have staged assets
+    + the downloaded hero. This is the bridge between designer_loop (which owns
+    the lever STATE) and the composer (which owns lever→CSS + rendering).
+    """
+    from .renderer import render_html_files
+
+    async def _render_fn(slide_with_levers: dict[str, Any], png_path: Path) -> None:
+        # Re-materialize THIS slide's HTML with the loop's accumulated levers.
+        # materialize writes into slides_dir; the renderer expects assets +
+        # the HTML under output_dir/"slides", so we render with
+        # output_dir = slides_dir.parent and let it use slides_dir.
+        render_root = slides_dir.parent
+        await materialize_slide_html(
+            slide_with_levers, slides_dir, index=index, total=total, hero_filename=hero_filename
+        )
+        html_path = slides_dir / f"{index:02d}.html"
+        # render_html_files writes PNG to (render_root/"slides")/f"{enum_idx:02d}.png"
+        # where enum_idx is the 1-based position in the list → always "01" here.
+        res = await render_html_files(
+            [(html_path, expect_hero_for_index(slide_with_levers, index))],
+            render_root,
+            timeout_ms=timeout_ms,
+            make_pdf=False,
+        )
+        produced: Path | None = None
+        if res.png_paths:
+            produced = Path(res.png_paths[0])
+        else:
+            cand = render_root / "slides" / "01.png"
+            if cand.is_file():
+                produced = cand
+        if produced and produced.is_file() and produced.resolve() != png_path.resolve():
+            png_path.parent.mkdir(parents=True, exist_ok=True)
+            produced.replace(png_path)
+
+    return _render_fn
+
+
+def expect_hero_for_index(slide: dict[str, Any], index: int) -> bool:
+    """Whether this slide must carry a hero image (cover or explicit hero)."""
+    return bool(slide.get("is_hero_image")) or index == 1
 
 
 async def _download_hero(client: Any, url: str, dest: Path) -> bool:
