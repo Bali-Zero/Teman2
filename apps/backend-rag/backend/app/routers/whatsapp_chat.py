@@ -17,7 +17,6 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -41,11 +40,9 @@ from backend.services.whatsapp_onboarding_detector import get_onboarding_detecto
 
 logger = logging.getLogger(__name__)
 
-# Local sovereign blob root for downloaded WhatsApp media (Law 2 — PII stays
-# local, never third-party cloud). Same convention as the intake adapters.
-_INTAKE_BLOB_ROOT = os.environ.get(
-    "INTAKE_BLOB_ROOT", os.path.expanduser("~/.nuzantara/intake-blobs")
-)
+# NB: media downloads do NOT happen on Fly (Law 2 — PII stays on the Pro). The
+# official-line media handoff publishes metadata only to events_outbox; the
+# sovereign Pro worker (scripts/wa_media_pull_worker.py) owns the blob root.
 
 # In-memory conversation history per phone number (fast fallback)
 _conversation_cache: dict[str, list[dict]] = defaultdict(list)
@@ -912,33 +909,27 @@ async def _resolve_webhook_id(conn: Any, wamid: str) -> int | None:
         return None
 
 
-async def _meta_inbox_received_by(_media: Any) -> str | None:
-    """Resolve who OWNS a document received on the official BALI ZERO line.
-
-    v1 policy (honest): there is NO per-person receiver for the shared official
-    number — one line, whole team. So this returns None: the document enters the
-    intake queue as a no-receiver orphan and falls back to assigned_to scoping
-    (once routing identifies the client) or surfaces to whoever in the gate.
-
-    This is the single seam to change when a real policy is chosen (e.g. route
-    official-line docs to a duty owner, or to the thread's human-handler once
-    threads carry an assignee). Injected into ingest_live_media so the webhook
-    wiring never has to change again.
-    """
-    return None
+_WA_MEDIA_PENDING_CHANNEL = "whatsapp_media_pending"
 
 
 async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request) -> None:
-    """Background task: pull any media attachments on the official line into intake.
+    """Background task: hand off official-line media to the sovereign Pro worker.
 
-    Separate from process_meta_inbox_payload's ledger TX on purpose — a media
-    download (Meta I/O) must never sit inside the ledger transaction. Runs after
-    the 200 ACK like its sibling. Reuses ingest_live_media (parse → download →
-    enqueue with received_by). Best-effort: failures are logged, never raised
-    (the webhook already ACKed; Meta will not be impacted).
+    PULL architecture (Law 2 — PII never leaves the Pro): Fly does NOT download
+    the media here. It enqueues a *metadata-only* hand-off row into
+    ``events_outbox`` (channel ``whatsapp_media_pending``) — just the Meta
+    ``media_id`` + provenance, never a single byte of the document. A worker on
+    the Pro pulls these rows, downloads from Meta itself, and stores the blob on
+    the Pro's local disk + local intake_queue. Fly ephemeral storage never
+    touches client PII (passports, KTP, akta).
+
+    Runs AFTER the 200 ACK like its sibling, so the webhook is never delayed.
+    Best-effort: failures are logged, never raised (the webhook already ACKed;
+    Meta will not be impacted — the outbox row, if written, is durable and the
+    Pro worker is idempotent on the source_ref it derives).
     """
-    # Cheap pre-check: only spin up an HTTP client if the payload actually
-    # carries media on the official number.
+    # Cheap pre-check: only touch the DB if the payload actually carries media
+    # on the official number.
     from backend.channels.whatsapp.media_webhook_parse import parse_media_webhook
 
     parsed = parse_media_webhook(raw_payload)
@@ -951,34 +942,38 @@ async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request
         logger.warning("meta-inbox media: no db pool, skipping %d media", len(official))
         return
 
-    access_token = settings.whatsapp_api_token
-    if not access_token:
-        logger.warning("meta-inbox media: WHATSAPP token unset, skipping %d media", len(official))
-        return
+    from backend.services.events import outbox
 
-    import httpx
-
-    from backend.services.intake.whatsapp_live_adapter import ingest_live_media
-
+    published = 0
     try:
-        # Short-lived client for this one background ingest (NOT a per-iteration
-        # client in a hot loop — Golden Rule #10 is about the latter).
-        async with httpx.AsyncClient(timeout=60.0) as http_client:
-            counters = await ingest_live_media(
-                raw_payload,
-                pool=pool,
-                http_client=http_client,
-                access_token=access_token,
-                dest_dir=_INTAKE_BLOB_ROOT,
-                resolve_received_by=_meta_inbox_received_by,
-            )
+        async with pool.acquire() as conn:
+            # One transaction for the whole batch: publish() is atomic with the
+            # caller's tx (INSERT + NOTIFY both vanish on rollback). All-or-nothing
+            # is fine here — the Pro worker reconciles whatever lands.
+            async with conn.transaction():
+                for media in official:
+                    await outbox.publish(
+                        conn,
+                        _WA_MEDIA_PENDING_CHANNEL,
+                        {
+                            "media_id": media.media_id,
+                            "mime_type": media.mime_type,
+                            "message_type": media.message_type,
+                            "filename": media.filename,
+                            "declared_sha256": media.declared_sha256,
+                            "wa_message_id": media.wa_message_id,
+                            "from_phone": media.from_phone,
+                            "phone_number_id": media.phone_number_id,
+                            "sender_name": media.sender_name,
+                        },
+                    )
+                    published += 1
         logger.info(
-            "meta-inbox media ingest: found=%d new=%d dup=%d dl_err=%d enq_err=%d",
-            counters.media_found, counters.enqueued_new, counters.already_present,
-            counters.download_errors, counters.enqueue_errors,
+            "meta-inbox media handoff: found=%d published=%d (PULL: no download on Fly)",
+            len(official), published,
         )
     except Exception as exc:
-        logger.error("meta-inbox media ingest failed: %s", exc, exc_info=True)
+        logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
 
 
 async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
