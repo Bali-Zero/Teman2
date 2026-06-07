@@ -1,0 +1,338 @@
+"""WR2 carousel composer: war_room_drafts slides_json → per-slide HTML → render.
+
+This is Phase 2. It turns a real draft (the slides_json the live
+wr2_draft_generator writes) into a fully rendered carousel by:
+
+  1. Mapping each slide to a brand layout family (slides_json carries no
+     `layout` field — gap #2 from GROUND — so we derive it from slide_type /
+     is_cover / is_hero_image / position).
+  2. Loading that family's HTML/CSS skeleton from
+     `~/.claude/skills/bali-zero-brand/layouts/<family>.md` and filling its
+     {{placeholders}} + {{#if}} / {{#each}} blocks.
+  3. Normalizing the skeleton for the local renderer:
+       - strip the Google-Fonts `@import` (we vendor fonts locally — _fonts.css)
+       - rewrite the hero from CSS `background-image:url(...)` to a real `<img>`
+         so the renderer's `img.decode()` gate can verify placement (the exact
+         thing the Canva path failed at). The `data-zone-type="hero-photo"` and
+         the gradient overlay are preserved.
+       - point `_base.css` href at the co-located generated file.
+  4. Downloading each hero's Tigris URL into the slides dir (so file:// sees it).
+  5. Rendering via renderer.render_html_files with per-slide expect_hero, which
+     ENFORCES heroes_placed == heroes_expected before calling it rendered.
+
+It does NOT write to any DB and does NOT touch the live pipeline. Output is a
+directory of PNGs + carousel.pdf + a manifest.json. Wiring to war_room_drafts
+is Phase 3 (gated by the 4-LLM panel).
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from .renderer import RenderResult, _stage_assets, render_html_files
+
+logger = logging.getLogger("wr2.composer")
+
+_BRAND = Path.home() / ".claude" / "skills" / "bali-zero-brand"
+_LAYOUTS = _BRAND / "layouts"
+
+# The 9 layout families that have real HTML/CSS skeletons (GROUND phase verified).
+RENDERABLE_FAMILIES = {
+    "cover-photo",
+    "photo-headline-yellow-sub",
+    "qa-dialogue",
+    "timeline-pinboard",
+    "dark-status-list",
+    "evidence-carved",
+    "statement-bomb",
+    "elegant-close",
+    "source-citation",
+}
+
+# Families named in tokens.json layout_defaults but with NO skeleton yet
+# (GROUND gap #1). The composer must NEVER silently emit one of these — it would
+# produce a blank/broken slide. If a mapping would pick one, fall back + warn.
+UNDEFINED_FAMILIES = {
+    "swiss-grid-asymmetry",
+    "stat-card-hero",
+    "thin-red-rule-divider",
+    "monospace-evidence-block",
+    "three-verdicts",
+}
+
+
+@dataclass
+class SlidePlan:
+    index: int  # 1-based
+    family: str
+    slide: dict[str, Any]
+    expect_hero: bool
+
+
+def map_slide_to_family(slide: dict[str, Any], index: int, total: int) -> str:
+    """Derive a brand layout family from a slides_json slide.
+
+    slides_json fields (from wr2_draft_generator normalizer):
+      slide_number, slide_type, is_cover, is_hero_image, headline, subhead,
+      body, image_prompt, image_url.
+
+    Mapping rules (conservative — only the 9 renderable families):
+      - slide 1 / is_cover            -> cover-photo            (Art 9.3 hard rule)
+      - last slide / slide_type cta   -> statement-bomb         (Art 9.5 hard rule)
+      - is_hero_image (mid)           -> photo-headline-yellow-sub (hero + text)
+      - has explicit list structure   -> evidence-carved        (facts) [future]
+      - default body                  -> photo-headline-yellow-sub if image_url
+                                         else dark-status-list-ish text slide
+
+    Returns a family in RENDERABLE_FAMILIES. Never returns an UNDEFINED one.
+    """
+    st = (slide.get("slide_type") or "").lower()
+
+    if index == 1 or slide.get("is_cover"):
+        return "cover-photo"
+    if index == total or st in {"cta", "closing", "statement"}:
+        return "statement-bomb"
+    if slide.get("is_hero_image"):
+        return "photo-headline-yellow-sub"
+    # text-forward body slide: if it has an image use the photo layout, else a
+    # text layout. (dark-status-list expects label/value items; without that
+    # structure we keep it on the photo layout with image, or a plain text
+    # variant. For now, default to photo-headline if image present.)
+    if slide.get("image_url"):
+        return "photo-headline-yellow-sub"
+    return "photo-headline-yellow-sub"  # safe default (renders heading+sub+body)
+
+
+def _extract_skeleton(family: str) -> str:
+    """Pull the HTML skeleton out of a layout family .md file (first ```html block)."""
+    md_path = _LAYOUTS / f"{family}.md"
+    if not md_path.is_file():
+        raise FileNotFoundError(f"layout family not found: {md_path}")
+    text = md_path.read_text(encoding="utf-8")
+    m = re.search(r"```html\s*(.*?)```", text, re.DOTALL)
+    if not m:
+        raise ValueError(f"no ```html block in {md_path}")
+    return m.group(1).strip()
+
+
+def _normalize_skeleton(html: str) -> str:
+    """Make a brand skeleton renderer-ready.
+
+    - strip Google-Fonts @import (fonts vendored locally via _fonts.css)
+    - inject <link _fonts.css> in <head>
+    - rewrite _base.css href ../_base.css -> _base.css (co-located)
+    """
+    # strip @import url('...fonts.googleapis...');
+    html = re.sub(r"@import\s+url\(['\"]https://fonts\.googleapis[^)]*\)\s*;", "", html)
+    # point base css to co-located file
+    html = html.replace('href="../_base.css"', 'href="_base.css"')
+    html = html.replace("href='../_base.css'", "href='_base.css'")
+    html = html.replace('href="./_base.css"', 'href="_base.css"')
+    # inject _fonts.css link right after the _base.css link (or in head)
+    if "_fonts.css" not in html:
+        if 'href="_base.css"' in html:
+            html = html.replace(
+                'href="_base.css">',
+                'href="_base.css">\n<link rel="stylesheet" href="_fonts.css">',
+                1,
+            )
+        else:
+            html = html.replace("<head>", '<head>\n<link rel="stylesheet" href="_fonts.css">', 1)
+    return html
+
+
+def _hero_bg_to_img(html: str, hero_filename: str) -> str:
+    """Rewrite a CSS background-image hero into a real <img> for decode-gating.
+
+    The brand cover/photo skeletons render the hero as:
+        <div class="hero" ...></div>   with CSS .hero{background-image:url('{{image_url}}')}
+
+    The fix (verified against the cover-photo bug 2026-06-07 where a separate
+    <img> got covered by the .hero div's background-color): we CONVERT the .hero
+    div ITSELF into an <img class="hero"> in place — same element, same position,
+    same stacking — rather than adding a second overlapping element. We:
+      1. turn the `.hero` CSS rule into an image-styled rule (object-fit:cover,
+         drop the now-useless background-image; keep position/inset so it sits
+         exactly where the div sat),
+      2. replace the empty `<div class="hero" ...></div>` with
+         `<img class="hero" src="hero.jpg" ...>` so img.decode() applies to the
+         actual hero element and nothing paints over it.
+
+    If the skeleton has NO `<div class="hero">` (some layouts use a different
+    hero container), we fall back to injecting a positioned <img> after <body>.
+    """
+    # 1. In the .hero CSS rule, drop the background-image:url('{{image_url}}')
+    #    (the div becomes an <img>, so background-image is irrelevant) and ensure
+    #    object-fit:cover is present so the image fills like background-size:cover.
+    html = re.sub(
+        r"background-image:\s*url\(['\"]?\{\{image_url\}\}['\"]?\)\s*;?",
+        "object-fit: cover;",
+        html,
+    )
+
+    # 2. Convert <div class="hero" ...></div> → <img class="hero" src=... >.
+    div_pattern = re.compile(r'<div\s+class="hero"([^>]*)>\s*</div>')
+    if div_pattern.search(html):
+        html = div_pattern.sub(
+            lambda m: f'<img class="hero" src="{hero_filename}"{m.group(1)}>',
+            html,
+            count=1,
+        )
+        return html
+
+    # Fallback: no <div class="hero"> — inject a positioned <img> after <body>.
+    hero_img_css = (
+        "\n.hero-img{position:absolute;inset:0;width:100%;height:100%;"
+        "object-fit:cover;z-index:0;}\n"
+    )
+    html = html.replace("</style>", hero_img_css + "</style>", 1)
+    img_tag = f'<img class="hero-img" src="{hero_filename}" alt="" data-zone-type="hero-photo">'
+    html = re.sub(r"(<body[^>]*>)", r"\1\n  " + img_tag, html, count=1)
+    return html
+
+
+def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str | None) -> str:
+    """Fill {{placeholders}} + simple {{#if}} blocks from a slide dict.
+
+    Supported fields map to common skeleton placeholders:
+      heading, subheading, body, image_url, regulation_code, statement.
+    {{#if regulation_code}}...{{/if}} renders only if present.
+    """
+    headline = (slide.get("headline") or "").strip()
+    subhead = (slide.get("subhead") or "").strip()
+    body = (slide.get("body") or "").strip()
+    reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()
+
+    # {{#if regulation_code}} ... {{/if}}
+    if reg:
+        html = re.sub(r"\{\{#if regulation_code\}\}(.*?)\{\{/if\}\}", r"\1", html, flags=re.DOTALL)
+    else:
+        html = re.sub(r"\{\{#if regulation_code\}\}.*?\{\{/if\}\}", "", html, flags=re.DOTALL)
+
+    # statement-bomb uses {{statement}}; map from headline/body
+    statement = (slide.get("statement") or headline or body).strip()
+
+    replacements = {
+        "{{heading}}": headline,
+        "{{subheading}}": subhead,
+        "{{subhead}}": subhead,
+        "{{body}}": body,
+        "{{regulation_code}}": reg,
+        "{{statement}}": statement,
+    }
+    for k, v in replacements.items():
+        html = html.replace(k, v)
+
+    # image_url: if we moved hero to <img>, the {{image_url}} in CSS is already
+    # neutralized; any remaining {{image_url}} (e.g. unconverted) -> local file
+    if hero_filename:
+        html = html.replace("{{image_url}}", hero_filename)
+    else:
+        html = html.replace("{{image_url}}", "")
+
+    return html
+
+
+async def compose_carousel(
+    slides_json: list[dict[str, Any]] | dict[str, Any],
+    output_dir: Path,
+    *,
+    topic: str = "",
+    timeout_ms: int = 30000,
+) -> RenderResult:
+    """Compose + render a full carousel from a slides_json into output_dir.
+
+    Accepts either a list of slide dicts or the full carousel object
+    {"slides": [...], ...}. Returns the RenderResult (whose .ok enforces that
+    every hero image was actually placed).
+    """
+    import httpx  # async, Golden Rule #4
+
+    if isinstance(slides_json, dict):
+        slides = slides_json.get("slides", [])
+    else:
+        slides = slides_json
+    if not slides:
+        raise ValueError("slides_json has no slides")
+
+    total = len(slides)
+    output_dir = Path(output_dir)
+    _stage_assets(output_dir)
+    slides_dir = output_dir / "slides"
+    slides_dir.mkdir(parents=True, exist_ok=True)
+    _stage_assets(slides_dir)  # fonts/logo/_base.css co-located with the HTML
+
+    # Build plans
+    plans: list[SlidePlan] = []
+    for i, slide in enumerate(slides, start=1):
+        family = map_slide_to_family(slide, i, total)
+        if family in UNDEFINED_FAMILIES:
+            logger.warning("slide %d mapped to undefined family %s — falling back", i, family)
+            family = "photo-headline-yellow-sub"
+        expect_hero = bool(slide.get("is_hero_image")) or i == 1
+        plans.append(SlidePlan(index=i, family=family, slide=slide, expect_hero=expect_hero))
+
+    # Download heroes + materialize HTML per slide
+    html_specs: list[tuple[Path, bool]] = []
+    async with httpx.AsyncClient() as client:
+        for plan in plans:
+            hero_filename: str | None = None
+            if plan.expect_hero:
+                url = (plan.slide.get("image_url") or "").strip()
+                if url:
+                    hero_filename = f"slide-{plan.index:02d}-hero.jpg"
+                    dest = slides_dir / hero_filename
+                    ok = await _download_hero(client, url, dest)
+                    if not ok:
+                        # leave hero_filename pointing at a missing file → the
+                        # renderer gate will FAIL this slide (correct: we must
+                        # NOT ship a hero slide without its image)
+                        logger.warning("slide %d hero download failed url=%s", plan.index, url)
+
+            skeleton = _extract_skeleton(plan.family)
+            html = _normalize_skeleton(skeleton)
+            if plan.expect_hero and hero_filename:
+                html = _hero_bg_to_img(html, hero_filename)
+            html = _fill_placeholders(html, plan.slide, hero_filename=hero_filename)
+
+            html_path = slides_dir / f"{plan.index:02d}.html"
+            html_path.write_text(html, encoding="utf-8")
+            html_specs.append((html_path, plan.expect_hero))
+
+    result = await render_html_files(html_specs, output_dir, timeout_ms=timeout_ms, make_pdf=True)
+
+    # write a manifest
+    manifest = {
+        "topic": topic,
+        "total_slides": total,
+        "families": [p.family for p in plans],
+        "heroes_expected": result.heroes_expected,
+        "heroes_placed": result.heroes_placed,
+        "slides_rendered": result.slides_rendered,
+        "ok": result.ok,
+        "failures": result.failures,
+        "png_paths": [str(p) for p in result.png_paths],
+        "pdf_path": str(result.pdf_path) if result.pdf_path else None,
+    }
+    (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return result
+
+
+async def _download_hero(client: Any, url: str, dest: Path) -> bool:
+    try:
+        resp = await client.get(url, follow_redirects=True, timeout=30.0)
+    except Exception as exc:
+        logger.warning("hero GET failed url=%s err=%s", url, exc)
+        return False
+    if resp.status_code != 200 or not resp.headers.get("content-type", "").startswith("image/"):
+        logger.warning("hero bad response url=%s status=%s ctype=%s", url, resp.status_code, resp.headers.get("content-type"))
+        return False
+    if not resp.content:
+        return False
+    dest.write_bytes(resp.content)
+    return True

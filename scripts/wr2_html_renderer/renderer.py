@@ -285,7 +285,17 @@ async def render_html_files(
                     result.png_paths.append(png_path)
                     result.slides_rendered += 1
                     if hero_placed:
-                        result.heroes_placed += 1
+                        # Second gate (anti false-positive): decode() proved the
+                        # bytes loaded; now prove the hero is VISIBLE on canvas
+                        # (not covered/painted-over — the 2026-06-07 cover bug).
+                        if _hero_visible_in_png(png_path):
+                            result.heroes_placed += 1
+                        else:
+                            result.failures.append(
+                                f"{png_path.name}: HERO DECODED BUT NOT VISIBLE — "
+                                f"top region is flat/empty (covered or mis-layered); "
+                                f"not counting as placed"
+                            )
                 if error:
                     result.failures.append(error)
         finally:
@@ -307,6 +317,48 @@ def _verify_png_dims(png_path: Path) -> bool:
 
     with Image.open(png_path) as img:
         return img.size == (CANVAS_W, CANVAS_H)
+
+
+def _hero_visible_in_png(png_path: Path) -> bool:
+    """Pixel-level check that a hero photo is actually VISIBLE in the top region.
+
+    Defends against the decode-but-covered false positive found 2026-06-07 (the
+    cover slide: the hero <img> decoded fine — gate said placed — but a sibling
+    .hero div with background-color painted over it, so the rendered top was flat
+    black). `img.decode()` proves the bytes loaded; THIS proves they reached the
+    canvas. A real photo has color variance in the top third; a covered/missing
+    hero is near-uniform (flat black or flat antracite).
+
+    Returns True if the top third shows enough non-background, varied pixels.
+    """
+    from PIL import Image  # lazy
+
+    with Image.open(png_path) as img:
+        img = img.convert("RGB")
+        w, h = img.size
+        # Sample the TOP THIRD (hero photo dominates above the gradient+text
+        # block which sits in the bottom ~180px+).
+        xs = range(w // 8, 7 * w // 8, 30)
+        ys = range(h // 12, h // 3, 30)
+        samples = []
+        for y in ys:
+            for x in xs:
+                samples.append(img.getpixel((x, y)))
+        if not samples:
+            return False
+        # (a) brightness: fraction of samples that are not near-black
+        non_dark = sum(1 for (r, g, b) in samples if (r + g + b) > 60)
+        bright_frac = non_dark / len(samples)
+        # (b) variance: a flat fill (even a grey one) has tiny spread; a photo
+        # has real spread across samples. Use per-channel range as a cheap proxy.
+        rs = [s[0] for s in samples]
+        gs = [s[1] for s in samples]
+        bs = [s[2] for s in samples]
+        spread = (max(rs) - min(rs)) + (max(gs) - min(gs)) + (max(bs) - min(bs))
+        # A photo lights up most samples AND has color spread. Thresholds chosen
+        # so a flat antracite (#2C2F38, spread 0) or flat black fails, while a
+        # real cinematic hero passes.
+        return bright_frac > 0.4 and spread > 40
 
 
 def _compose_pdf(png_paths: list[Path], pdf_path: Path) -> None:
