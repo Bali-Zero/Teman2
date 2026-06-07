@@ -30,12 +30,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
 from backend.app.dependencies import get_database_pool
-from backend.services.analytics.attendance_monitor import (
-    STATE_AWAITING_REPLY,
-    STATE_REMINDER_SENT,
-    STATE_RESOLVED,
-    STATE_RESOLVED_LATE,
-)
+from backend.services.hr.late_incident_resolver import next_state_for
 
 logger = logging.getLogger(__name__)
 
@@ -253,10 +248,7 @@ async def post_late_reply(
         if row["reply_received_at"] is not None:
             return HTMLResponse(_render_already_replied(), status_code=200)
 
-        next_state = {
-            STATE_AWAITING_REPLY: STATE_RESOLVED,
-            STATE_REMINDER_SENT: STATE_RESOLVED_LATE,
-        }.get(row["state"], row["state"])  # ESCALATED stays ESCALATED
+        next_state = next_state_for(row["state"])  # shared helper (anti-drift)
 
         await conn.execute(
             """
