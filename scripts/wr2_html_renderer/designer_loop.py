@@ -39,6 +39,7 @@ from .critic_signals import (
     geometry_lint,
     text_region_contrast,
 )
+from .ocr_check import OcrVerdict, headline_legible, is_text_legibility_claim
 
 logger = logging.getLogger("wr2.designer_loop")
 
@@ -65,6 +66,21 @@ class VisionCritic(Protocol):
     """A pluggable vision judgment. Implementations call a VLM (Claude/qwen)."""
 
     def __call__(self, png_path: Path, slide: dict[str, Any], context: dict[str, Any]) -> Critique: ...
+
+
+class OcrCritic(Protocol):
+    """A pluggable OCR round-trip check (default: ocr_check.headline_legible).
+
+    Returns an OcrVerdict for whether `expected` reads back from the PNG. Kept
+    pluggable so the loop is unit-testable offline (a stub can simulate
+    legible/illegible without EasyOCR installed).
+    """
+
+    def __call__(self, png_path: Path, expected: str) -> OcrVerdict: ...
+
+
+def _default_ocr_critic(png_path: Path, expected: str) -> OcrVerdict:
+    return headline_legible(png_path, expected)
 
 
 # ---------------------------------------------------------------------------
@@ -130,12 +146,48 @@ def critic_legibility(
             )
             # remedy IN PLACE: a heavier scrim + stroke so text survives the busy
             # bottom (no repositioning). Only add if not already proposed above.
-            if not any(l.get("lever") == "scrim_opacity" for l in levers):
+            if not any(lev.get("lever") == "scrim_opacity" for lev in levers):
                 levers.append({"lever": "scrim_opacity", "delta": +0.2, "reason": "text over busy band — darken in place"})
-            if not any(l.get("lever") == "text_stroke" for l in levers):
+            if not any(lev.get("lever") == "text_stroke" for lev in levers):
                 levers.append({"lever": "text_stroke", "reason": "text over busy band — outline in place"})
 
     return Critique(tier="legibility", passed=not issues, issues=issues, levers=levers, score=min(contrast / 21.0, 1.0))
+
+
+def critic_ocr(
+    png_path: Path,
+    slide: dict[str, Any],
+    ocr_critic: OcrCritic | None,
+) -> Critique:
+    """Tier 1.5 — OCR round-trip: does the headline read back from the PNG?
+
+    The deterministic anti-hallucination signal. If the title can't be OCR'd
+    verbatim it's clipped/garbled/too-low-contrast → fail with in-place remedy
+    levers (shrink heading, then deepen scrim). NEVER proposes repositioning.
+    Passes (no-op) if there's no headline, no OCR critic, or OCR degraded.
+    """
+    headline = (slide.get("headline") or slide.get("heading") or "").strip()
+    if not headline or ocr_critic is None:
+        return Critique(tier="ocr", passed=True, score=None)
+
+    verdict = ocr_critic(png_path, headline)
+    if verdict.degraded:
+        # OCR engine unavailable → don't block (graceful degradation)
+        return Critique(tier="ocr", passed=True, issues=["ocr degraded — skipped"], score=None)
+
+    if verdict.legible:
+        return Critique(tier="ocr", passed=True, score=verdict.score)
+
+    issues = [
+        f"headline not readable in render (ocr score {verdict.score:.2f}; "
+        f"read '{verdict.ocr_text[:80]}')"
+    ]
+    # remedy ladder, in place only: shrink the heading to fit, then darken behind
+    levers = [
+        {"lever": "shrink_font", "target": "heading", "reason": f"headline OCR {verdict.score:.2f} — shrink to fit"},
+        {"lever": "scrim_opacity", "delta": +0.15, "reason": "headline OCR low — darken behind"},
+    ]
+    return Critique(tier="ocr", passed=False, issues=issues, levers=levers, score=verdict.score)
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +213,7 @@ async def run_designer_loop(
     hero_path: Path | None = None,
     vision_critic: VisionCritic | None = None,
     brand_verifier: VisionCritic | None = None,
+    ocr_critic: OcrCritic | None = _default_ocr_critic,
     max_iters: int = 3,
     use_vision: bool = True,
 ) -> DesignerResult:
@@ -201,9 +254,15 @@ async def run_designer_loop(
             png_path, slide, is_hero=is_hero, hero_path=hero_path,
             fg_rgb=(255, 255, 255),
         )
+        # --- Tier 1.5: OCR round-trip (cheap, deterministic) ---
+        # Does the headline actually read back from the rendered PNG? Catches
+        # clipped/garbled titles that contrast/geometry miss (e.g. the broken
+        # top-clipped cover whose bottom-box contrast scored a false-high). Only
+        # runs if we know the expected headline.
+        ocr = critic_ocr(png_path, slide, ocr_critic)
 
-        passes_cheap = geo.passed and leg.passed
-        cheap_levers = geo.levers + leg.levers
+        passes_cheap = geo.passed and leg.passed and ocr.passed
+        cheap_levers = geo.levers + leg.levers + ocr.levers
 
         # track best by the cheap legibility score (higher contrast = better)
         score = leg.score or 0.0
@@ -215,6 +274,7 @@ async def run_designer_loop(
             "iter": it,
             "geometry": {"passed": geo.passed, "issues": geo.issues},
             "legibility": {"passed": leg.passed, "issues": leg.issues, "score": round(score, 3)},
+            "ocr": {"passed": ocr.passed, "issues": ocr.issues, "score": ocr.score},
             "levers_applied_before": dict(levers_acc),
         }
 
@@ -222,7 +282,7 @@ async def run_designer_loop(
             # apply the cheap remedy levers and re-render (no model cost)
             applied = _apply_levers(levers_acc, cheap_levers)
             iter_record["cheap_levers_pulled"] = applied
-            if any(l.get("lever") == "rerender" for l in cheap_levers) and not applied:
+            if any(lev.get("lever") == "rerender" for lev in cheap_levers) and not applied:
                 # nothing CSS-fixable (near-empty) → escalate
                 escalated = True
                 iter_record["escalated"] = "near-empty, not CSS-fixable"
@@ -249,7 +309,7 @@ async def run_designer_loop(
             proposed = {**levers_acc}
             applied = _apply_levers(proposed, vc.levers)
             if not applied:
-                non_css = sorted({l.get("lever") for l in vc.levers})
+                non_css = sorted({lev.get("lever") for lev in vc.levers})
                 iter_record["verdict"] = (
                     f"vision flagged but only non-CSS levers {non_css} "
                     "(composition, not auto-fixable) — keeping best"
@@ -263,17 +323,40 @@ async def run_designer_loop(
                 await render_fn({**slide, "_levers": proposed}, trial_png)
                 bv = brand_verifier(trial_png, slide, {"check": "brand"})
                 iter_record["brand_verify"] = {"passed": bv.passed, "issues": bv.issues}
-                if bv.passed:
+                effective_pass = bv.passed
+                if not bv.passed:
+                    # ANTI-HALLUCINATION: if the ONLY reasons the verifier blocked
+                    # are text-legibility claims (headline garbled/clipped/cut),
+                    # adjudicate with OCR — a deterministic read of the trial PNG.
+                    # If OCR can read the headline verbatim, the verifier
+                    # hallucinated (it does this: "5 RULES" vs "3 RULES") → override.
+                    # Palette/font/logo claims are NOT overridable (not OCR's domain).
+                    text_claims = [i for i in bv.issues if is_text_legibility_claim(i)]
+                    other_claims = [i for i in bv.issues if not is_text_legibility_claim(i)]
+                    headline = (slide.get("headline") or slide.get("heading") or "").strip()
+                    if text_claims and not other_claims and headline and ocr_critic is not None:
+                        ov = ocr_critic(trial_png, headline)
+                        iter_record["brand_verify_ocr_adjudication"] = {
+                            "ocr_score": ov.score, "legible": ov.legible,
+                            "degraded": ov.degraded, "ocr_text": ov.ocr_text[:80],
+                        }
+                        if ov.legible and not ov.degraded:
+                            effective_pass = True
+                            iter_record["brand_verify_overridden_by_ocr"] = (
+                                f"verifier claimed text broken {text_claims} but OCR "
+                                f"read headline (score {ov.score:.2f}) — hallucination overridden"
+                            )
+                if effective_pass:
                     levers_acc = proposed
                     iter_record["vision_levers_pulled"] = applied
+                    history.append(iter_record)
+                    continue
                 else:
                     iter_record["vision_levers_rejected"] = "brand verifier blocked"
                     # the rejected change isn't kept; if we have no other lead,
                     # stop (don't re-propose the same blocked lever forever).
                     history.append(iter_record)
                     break
-                history.append(iter_record)
-                continue
             else:
                 # no verifier but we have a CSS lever — apply it and re-render
                 levers_acc = proposed
