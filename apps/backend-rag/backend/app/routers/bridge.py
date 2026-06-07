@@ -21,6 +21,7 @@ References:
 from __future__ import annotations
 
 import hmac
+import json
 import logging
 import os
 from typing import Any
@@ -31,6 +32,9 @@ from pydantic import BaseModel, Field
 
 from backend.app.deps.database import get_database_pool
 from backend.services.bridge.outbox import fetch_outbox_events
+from backend.services.events import outbox as events_outbox
+
+_WA_MEDIA_PENDING_CHANNEL = "whatsapp_media_pending"
 
 logger = logging.getLogger(__name__)
 
@@ -304,3 +308,126 @@ async def get_skills(
         events_orphaned=events_orphaned,
         stream_lowest_id=stream_lowest_id,
     )
+
+
+# ── WhatsApp media PULL hand-off (Anello 1, Law 2) ───────────────────────
+#
+# The Fly webhook publishes metadata-only rows to events_outbox
+# (channel whatsapp_media_pending) — see whatsapp_chat._ingest_meta_inbox_media.
+# The sovereign Pro worker pulls those rows here, downloads the media from Meta
+# ITSELF (token held only on the Pro), stores the blob locally, then acks. NO
+# PII bytes ever cross these endpoints — only media_id + provenance.
+
+
+class WaMediaPendingItem(BaseModel):
+    outbox_id: int
+    media_id: str
+    mime_type: str | None = None
+    message_type: str | None = None
+    filename: str | None = None
+    declared_sha256: str | None = None
+    wa_message_id: str | None = None
+    from_phone: str | None = None
+    phone_number_id: str | None = None
+    sender_name: str | None = None
+    created_at: str
+
+
+class WaMediaPendingResponse(BaseModel):
+    items: list[WaMediaPendingItem]
+    last_id: int
+
+
+def _unwrap_payload(raw: Any, row_id: int) -> dict[str, Any]:
+    """events_outbox.payload is jsonb (dict via codec) — defensive str unwrap.
+
+    Mirrors the CICATRIX 2026-05-21 double-encoding guard in
+    services/bridge/outbox.fetch_outbox_events: a legacy/stale code path could
+    leave a string in the column; never let that crash the pull.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {}
+        except (TypeError, ValueError):
+            logger.warning("wa-media pending row id=%s malformed payload", row_id)
+    return {}
+
+
+@router.get("/wa-media/pending", response_model=WaMediaPendingResponse)
+async def get_wa_media_pending(
+    since: int = Query(0, ge=0, description="Return rows with id > since"),
+    limit: int = Query(50, ge=1, le=200, description="Max rows per request"),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    x_bridge_auth: str | None = Header(default=None, alias="X-Bridge-Auth"),
+) -> WaMediaPendingResponse:
+    """Pro worker pulls unconsumed whatsapp_media_pending rows (metadata only)."""
+    _check_auth(x_bridge_auth)
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, payload, created_at
+              FROM events_outbox
+             WHERE channel = $1
+               AND consumed_at IS NULL
+               AND id > $2
+             ORDER BY id ASC
+             LIMIT $3
+            """,
+            _WA_MEDIA_PENDING_CHANNEL,
+            int(since),
+            int(limit),
+        )
+
+    items: list[WaMediaPendingItem] = []
+    for r in rows:
+        p = _unwrap_payload(r["payload"], int(r["id"]))
+        items.append(
+            WaMediaPendingItem(
+                outbox_id=int(r["id"]),
+                media_id=str(p.get("media_id", "")),
+                mime_type=p.get("mime_type"),
+                message_type=p.get("message_type"),
+                filename=p.get("filename"),
+                declared_sha256=p.get("declared_sha256"),
+                wa_message_id=p.get("wa_message_id"),
+                from_phone=p.get("from_phone"),
+                phone_number_id=p.get("phone_number_id"),
+                sender_name=p.get("sender_name"),
+                created_at=r["created_at"].isoformat(),
+            )
+        )
+
+    last_id = items[-1].outbox_id if items else int(since)
+    return WaMediaPendingResponse(items=items, last_id=last_id)
+
+
+class WaMediaAckRequest(BaseModel):
+    outbox_ids: list[int] = Field(..., description="outbox row ids the Pro stored locally")
+
+
+class WaMediaAckResponse(BaseModel):
+    acked: list[int]
+
+
+@router.post("/wa-media/ack", response_model=WaMediaAckResponse)
+async def ack_wa_media(
+    body: WaMediaAckRequest,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    x_bridge_auth: str | None = Header(default=None, alias="X-Bridge-Auth"),
+) -> WaMediaAckResponse:
+    """Pro worker acks rows it has downloaded + enqueued locally. Idempotent."""
+    _check_auth(x_bridge_auth)
+
+    acked: list[int] = []
+    async with db_pool.acquire() as conn:
+        for oid in body.outbox_ids:
+            ok = await events_outbox.acknowledge(
+                conn, int(oid), consumer_id="wa_media_pull_worker"
+            )
+            if ok:
+                acked.append(int(oid))
+    return WaMediaAckResponse(acked=acked)
