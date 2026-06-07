@@ -431,3 +431,75 @@ async def ack_wa_media(
             if ok:
                 acked.append(int(oid))
     return WaMediaAckResponse(acked=acked)
+
+
+# ── INTAKE login-gate document-count mirror (Pro → Fly, non-PII) ───────────
+# Gate-1 document PII lives only on the Pro (Law 2). The Pro pushes per-user
+# pending-document COUNTS (integers, not PII) here so the Fly gate evaluator can
+# enforce the documents gate. See migration 219_intake_gate_doc_counts.sql.
+
+
+class DocCountItem(BaseModel):
+    user_email: str = Field(min_length=1, max_length=255)
+    pending_count: int = Field(ge=0)
+
+
+class DocCountsRequest(BaseModel):
+    # Full snapshot of per-user pending counts. Users absent from the snapshot
+    # are reset to 0 (they have no pending docs) so the mirror never goes stale-high.
+    counts: list[DocCountItem] = Field(default_factory=list)
+
+
+class DocCountsResponse(BaseModel):
+    upserted: int
+    zeroed: int
+
+
+@router.post("/intake-gate/doc-counts", response_model=DocCountsResponse)
+async def push_intake_gate_doc_counts(
+    body: DocCountsRequest,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    x_bridge_auth: str | None = Header(default=None, alias="X-Bridge-Auth"),
+) -> DocCountsResponse:
+    """Pro pushes a full snapshot of per-user pending-document counts (non-PII).
+
+    Upserts each (user_email, pending_count); any user NOT in the snapshot is
+    zeroed (no pending docs) so a cleared user's gate-1 actually clears on Fly.
+    Idempotent — the Pro can push every few minutes.
+    """
+    _check_auth(x_bridge_auth)
+
+    emails = [item.user_email.lower().strip() for item in body.counts]
+    upserted = 0
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            for item in body.counts:
+                await conn.execute(
+                    """
+                    INSERT INTO intake_gate_doc_counts (user_email, pending_count, updated_at)
+                    VALUES ($1, $2, now())
+                    ON CONFLICT (user_email)
+                    DO UPDATE SET pending_count = EXCLUDED.pending_count,
+                                  updated_at = now()
+                    """,
+                    item.user_email.lower().strip(),
+                    int(item.pending_count),
+                )
+                upserted += 1
+            # Zero everyone not in this snapshot (they have no pending docs now).
+            zeroed_rows = await conn.fetch(
+                """
+                UPDATE intake_gate_doc_counts
+                   SET pending_count = 0, updated_at = now()
+                 WHERE pending_count > 0
+                   AND NOT (lower(user_email) = ANY($1::text[]))
+                RETURNING user_email
+                """,
+                emails,
+            )
+            zeroed = len(zeroed_rows)
+
+    logger.info(
+        "intake-gate doc-counts mirror: upserted=%d zeroed=%d", upserted, zeroed
+    )
+    return DocCountsResponse(upserted=upserted, zeroed=zeroed)
