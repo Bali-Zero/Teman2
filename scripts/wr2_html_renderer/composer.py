@@ -198,25 +198,27 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
 
 # Lever → CSS. The designer loop accumulates levers in slide["_levers"]; this
 # turns them into a small <style> block appended last so it overrides the
-# skeleton. Kept INTENTIONALLY narrow + brand-safe (only legibility knobs the
-# brand verifier will accept): a darkening scrim over the text band, a text
-# outline, a font down-step, and moving the text block to a calmer band. It can
-# NOT change palette / font-family / add colors — so a lever can never drift the
-# brand (the autonomy guardrail is structural, not just the verifier).
-_TEXT_BANDS = {
-    # band index → vertical placement of the text block (top/middle/bottom third)
-    0: ("top: 6%;", "bottom: auto;"),
-    1: ("top: 38%;", "bottom: auto;"),
-    2: ("top: auto;", "bottom: 8%;"),
-}
+# skeleton. Kept INTENTIONALLY narrow + brand-safe: a darkening scrim, a text
+# outline, and a font down-step. These can NOT change palette / font-family /
+# add colors / reposition blocks — so a lever can never drift the brand NOR
+# break the template's composition (the autonomy guardrail is structural).
+#
+# REMOVED 2026-06-07 after E2E: `text_anchor` (absolute-repositioning the text
+# block to a "calm band"). On the cover layout it fought the template, jammed the
+# title against the top edge (clipped, overlapping the wordmark) and the cheap
+# legibility score then read a FALSE-HIGH 0.924 because it measured the now-empty
+# bottom box. Repositioning is a COMPOSITION decision (which layout family) — not
+# a safe runtime CSS override. The remaining levers only ever IMPROVE legibility
+# in place; none can move or clip text.
 
 
 def _levers_to_css(levers: dict[str, Any]) -> str:
-    """Build a brand-safe <style> override block from accumulated levers.
+    """Build a brand-safe, composition-safe <style> override block from levers.
 
     Targets common brand text containers (.body, .subhead, .headline, .text,
     [data-zone-type='text']) and the scrim layer. Selectors are defensive
     (multiple class names) because skeletons differ; an unused selector is inert.
+    Only legibility-in-place knobs — never position/size-of-box/color/font.
     """
     if not levers:
         return ""
@@ -224,11 +226,12 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
 
     # scrim_opacity: darken behind the text. Brand skeletons use a gradient
     # overlay (.legibility-armor / .scrim / .overlay). We strengthen it with an
-    # extra bottom-anchored dark gradient layer sized to the text band.
+    # extra bottom-anchored dark gradient layer (the text lives in the bottom
+    # third on every renderable family), so the scrim always lands behind text.
     scrim = levers.get("scrim_opacity")
     if scrim is not None:
         a = max(0.0, min(0.95, float(scrim)))
-        # an additional ::after layer on the slide root, dark at the text edge
+        # an additional ::after layer on the slide root, dark at the BOTTOM (text)
         rules.append(
             ".slide::after, .cover::after, body::after {"
             "content:'';position:absolute;inset:0;z-index:1;pointer-events:none;"
@@ -263,15 +266,7 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
             }[elem]
             rules.append(f"{sel}{{font-size:calc(1em * {factor:.2f});line-height:1.25;}}")
 
-    # text_anchor_band: move the text block to a calmer band of the photo.
-    band = levers.get("text_anchor_band")
-    if band is not None and int(band) in _TEXT_BANDS:
-        top, bottom = _TEXT_BANDS[int(band)]
-        rules.append(
-            ".text-block,.cover-text,.slide-text,.copy,.text-zone{"
-            f"position:absolute;{top}{bottom}left:6%;right:6%;"
-            "}"
-        )
+    # NOTE: text_anchor_band is intentionally NOT honored here (see module note).
 
     if not rules:
         return ""

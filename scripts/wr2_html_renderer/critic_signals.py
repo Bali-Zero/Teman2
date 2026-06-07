@@ -169,7 +169,18 @@ class GeometryLint:
 
 
 def geometry_lint(png_path: Path) -> GeometryLint:
-    """Gross structural problems detectable from the PNG alone (Tier 0, free)."""
+    """Gross structural problems detectable from the PNG alone (Tier 0, free).
+
+    NOTE (E2E 2026-06-07): a "top-edge ink" check for clipped titles was tried
+    and REJECTED — it conflated a clipped full-width title with the legitimate
+    yellow regulation pill in the top-right corner (both register as "ink near
+    the top"). On real slides the good baseline read 0.71 and the clipped one
+    0.97 — too close, and the good one would false-positive. Pixel-level clip
+    detection isn't reliable here; clipping is prevented structurally instead
+    (the dangerous text_anchor reposition lever was removed) and the vision
+    critic catches any residual clip. So geometry only flags the two things it
+    CAN judge reliably: near-empty render + bottom overflow.
+    """
     arr = _load_rgb(png_path).astype(np.float64)
     h, w, _ = arr.shape
     flags: list[str] = []
