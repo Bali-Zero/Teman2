@@ -1,0 +1,72 @@
+name: Verify the Verifiers (meta-gate)
+
+# P1 §4 meta-verifier: makes it OBSERVABLE when any safety gate is DISARMED.
+# Runs on an ISOLATED GitHub runner (R1, council DeepSeek): the agent cannot
+# disarm this from its local machine. The integrity step (sha256) + CODEOWNERS
+# protection on the three files make the meta-verifier itself tamper-evident —
+# "quis custodiet ipsos custodes?" answered by immutability, not by intelligence.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/verify_the_verifiers.py"
+      - "scripts/verify_the_verifiers_gates.yaml"
+      - ".github/verify-the-verifiers.sha256"
+      - ".github/workflows/verify-the-verifiers.yml"
+      - ".github/workflows/hot-zone-pr-gate.yml"
+      - "scripts/tests/test_verify_the_verifiers.py"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_the_verifiers.py"
+      - "scripts/verify_the_verifiers_gates.yaml"
+      - ".github/workflows/hot-zone-pr-gate.yml"
+
+concurrency:
+  group: verify-the-verifiers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-the-verifiers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install pyyaml
+        run: python3 -m pip install --quiet pyyaml
+
+      # R1 — integrity: the meta-verifier must not be silently altered. Recompute
+      # the sha256 of script+registry and compare to the committed value. A change
+      # to either file WITHOUT updating the committed hash (which is CODEOWNERS-
+      # protected) fails here. Legit changes update .github/verify-the-verifiers.sha256
+      # in the same PR — which requires @Balizero1987 review.
+      - name: Integrity check (sha256 of meta-verifier files)
+        run: |
+          set -euo pipefail
+          EXPECTED_FILE=".github/verify-the-verifiers.sha256"
+          if [[ ! -f "$EXPECTED_FILE" ]]; then
+            echo "::error::missing $EXPECTED_FILE — meta-verifier integrity baseline absent"
+            exit 1
+          fi
+          # shasum over the two load-bearing files, sorted for determinism.
+          ACTUAL=$(shasum -a 256 \
+            scripts/verify_the_verifiers.py \
+            scripts/verify_the_verifiers_gates.yaml | sort | shasum -a 256 | awk '{print $1}')
+          EXPECTED=$(cat "$EXPECTED_FILE")
+          if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "::error::meta-verifier integrity mismatch."
+            echo "  expected: $EXPECTED"
+            echo "  actual:   $ACTUAL"
+            echo "  If this change is intentional, update $EXPECTED_FILE (requires @Balizero1987 review)."
+            exit 1
+          fi
+          echo "integrity OK: $ACTUAL"
+
+      - name: Run meta-verifier tests
+        run: python3 -m pytest scripts/tests/test_verify_the_verifiers.py -q
+
+      - name: Run meta-verifier (all gates must be ARMED)
+        run: python3 scripts/verify_the_verifiers.py --json --no-signal
