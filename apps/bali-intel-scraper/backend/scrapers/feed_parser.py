@@ -5,7 +5,7 @@ Efficiently parses news feeds for article discovery.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 import aiohttp
 import feedparser
@@ -106,10 +106,13 @@ class FeedParser:
         )
 
         # Parse last build date
+        # feedparser *_parsed is a struct_time already in UTC -> attach tzinfo=UTC
+        # (was naive, which downstream binds to TIMESTAMPTZ as UTC by luck here, but
+        # being explicit avoids the +8h class of bug; fix 2026-06-06).
         if "updated_parsed" in parsed.feed:
-            feed_data.last_build_date = datetime(*parsed.feed.updated_parsed[:6])
+            feed_data.last_build_date = datetime(*parsed.feed.updated_parsed[:6], tzinfo=timezone.utc)
         elif "published_parsed" in parsed.feed:
-            feed_data.last_build_date = datetime(*parsed.feed.published_parsed[:6])
+            feed_data.last_build_date = datetime(*parsed.feed.published_parsed[:6], tzinfo=timezone.utc)
 
         # Parse entries
         for entry in parsed.entries:
@@ -123,9 +126,9 @@ class FeedParser:
         # Parse published date
         published = None
         if "published_parsed" in entry:
-            published = datetime(*entry.published_parsed[:6])
+            published = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
         elif "updated_parsed" in entry:
-            published = datetime(*entry.updated_parsed[:6])
+            published = datetime(*entry.updated_parsed[:6], tzinfo=timezone.utc)
 
         # Get content
         content = None

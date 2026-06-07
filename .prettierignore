@@ -73,6 +73,12 @@ README.md
 docs/AI_ONBOARDING.md
 docs/DOCS_INVENTORY.md
 
+# Research captures (CLAUDE.md §15) — ad-hoc auditable prose, NOT code.
+# CI runs no prettier on research/; the pre-commit hook should match it,
+# otherwise a merge that carries pre-existing non-conformant research md
+# (authored by another session) is blocked locally though CI is green.
+research/
+
 # Quarantined attempts kept for audit only — should NOT be reformatted
 # (the byte-identical content is the point: it shows what we tried).
 .disabled/

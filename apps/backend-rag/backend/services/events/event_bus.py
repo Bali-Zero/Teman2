@@ -103,6 +103,15 @@ PG_CHANNEL_MAP: dict[str, str] = {
     #  metadata{host,machine_role,...}, _outbox_id}.
     # Consumer: apps/cell-observatory-collector (PR-3, Pro local SQLite).
     "cell_pulse_observed": "cell.pulse.observed",
+    # Emitted by cell_core.observatory.emit_sustained_red() +
+    # emit_enrichment_repair_request() (W57) when a cell reports N consecutive
+    # red pulses. Payload: {classifier_self, consecutive, pulse_id, app,
+    # process_group, _outbox_id}. The pg-to-organism bridge already forwards
+    # this channel to organism:events; this map entry is what makes the in-app
+    # EventBus LISTEN + replay-ack the outbox rows. Without it the rows stay
+    # unconsumed forever (twin of cell_pulse_observed, which IS in the map) —
+    # 52 orphan rows as of 2026-06-05. See loop-repair dossier 2026-06-04.
+    "cell_pulse_sustained_red": "cell.pulse.sustained_red",
     # Emitted by post_metrics_history + m13_retrain_log AFTER INSERT triggers
     # (migration 152, Sprint 2 measurer event-driven compliance — Symbiosis
     # Law 4). Payload: {metric_id|retrain_id, post_id|trigger_type,

@@ -63,12 +63,14 @@ export function ChatInput({
         onKeyDown={handleKeyDown}
         onInput={handleInput}
         placeholder={placeholder}
+        aria-label="Chat message"
         rows={1}
         className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
         disabled={isLoading}
       />
       {isLoading ? (
         <Button
+          type="button"
           variant="ghost"
           onClick={onAbort}
           aria-label="Stop"
@@ -78,6 +80,7 @@ export function ChatInput({
         </Button>
       ) : (
         <Button
+          type="button"
           onClick={handleSend}
           disabled={!value.trim()}
           aria-label="Send"

@@ -32,9 +32,13 @@ from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
+# scripts/ on path so the pure topic-type helpers (sibling module) import
+# regardless of cwd (launchd runs with an arbitrary working directory).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 
+import wr2_topic_type as tt  # noqa: E402  (pure, side-effect-free)
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,
     ClaudeOAuthNotAvailable,
@@ -169,6 +173,22 @@ same-domain carousels looking identical):
 - "bleached-daylight": open, hopeful, resolution, "the way out"
 Non-hero slides do not need it.
 
+IMAGE MODE (per hero slide — the SCENE TYPE, drives anti-sameness):
+Each `is_hero_image: true` slide MUST include an `image_mode` field naming the
+KIND of scene. Pick the ONE mode that matches what the photo depicts, and VARY
+it across the slides (two same-domain carousels must not repeat the same dominant
+mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
+- "desk-document": papers, forms, a desk, a document close enough to read
+- "event-photo": a real moment/scene with people doing something
+- "architecture-or-texture": buildings, surfaces, materials, no people
+- "provocation-photo": a tense or confrontational image that unsettles
+- "human-silhouette": a person shown as shape/shadow, anonymous, no face
+- "object-comparison": two or more objects set against each other
+- "calendar-photo": dates, deadlines, time made visible
+- "data-visualization": a chart, graph, map, or numbers as the image
+- "cultural-photo": Indonesian/Balinese culture, ritual, place, daily life
+Use the slug verbatim (e.g. "desk-document"). Non-hero slides may omit it.
+
 HERO IMAGE SELECTION (MANDATORY):
 You MUST mark exactly 4 slides as `is_hero_image: true`:
 - Slide 1 (cover) — ALWAYS hero
@@ -241,7 +261,8 @@ Structure:
       "headline": "...",
       "subhead": "...",
       "body": "...",
-      "image_prompt": "editorial scene, 1-2 sentences"
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "image_mode": "desk-document"
     },
     {
       "slide_number": 2,
@@ -259,7 +280,8 @@ Structure:
       "is_cover": false,
       "is_hero_image": true,
       "headline": "Where this leaves you",
-      "body": "One clear consequence, then one concrete next step. Reach Bali Zero when the deadline is yours, not theirs."
+      "body": "One clear consequence, then one concrete next step. Reach Bali Zero when the deadline is yours, not theirs.",
+      "image_mode": "human-silhouette"
     }
   ]
 }
@@ -268,6 +290,10 @@ REPEAT (MUST OBEY): every slide object MUST include the `is_hero_image` field
 (true or false). Slide 1 hero=true, slide 11 hero=true, plus exactly 2 more
 slides hero=true at narrative turning points = 4 hero slides total per
 carousel. The other 7 slides have is_hero_image=false. THIS IS NON-NEGOTIABLE.
+
+ALSO MANDATORY: every is_hero_image=true slide MUST carry an `image_mode` (one
+of the 9 slugs above), and the 4 hero slides should use at least 3 DISTINCT
+modes — do not paint all four with the same scene type.
 """
 
 
@@ -362,20 +388,22 @@ def _build_draft_prompt(
     source_url: str,
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
+    avoid_steer: str = "",
 ) -> str:
     """Build the slide-composition prompt.
 
     PR-1 §C: when an enrichment object is available we hand Claude the full
     structured brief (1400-2000 words across the_facts, bali_zero_take,
-    in_practice, next_steps, faq) instead of a truncated paragraph. This
-    is gated by WR2_USE_FULL_ENRICHED_PROMPT so the legacy path stays
-    available for back-compat / rollback.
+    in_practice, next_steps, faq) instead of a truncated paragraph. This is
+    the default path (WR2_USE_FULL_ENRICHED_PROMPT defaults to "true"); set
+    WR2_USE_FULL_ENRICHED_PROMPT=false to opt out and force the legacy path
+    for back-compat / rollback.
 
     Falls back to summary[:3500] when:
-      - WR2_USE_FULL_ENRICHED_PROMPT != "true" (legacy mode), OR
+      - WR2_USE_FULL_ENRICHED_PROMPT == "false" (legacy opt-out), OR
       - enrichment dict is empty / missing all expected fields.
     """
-    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "false").lower() == "true"
+    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
 
     body = ""
     if use_full_enriched and enrichment:
@@ -385,7 +413,7 @@ def _build_draft_prompt(
         # Legacy path: truncated summary. Always available as fallback.
         body = summary[:3500]
 
-    return f"""{SYSTEM_INSTRUCTIONS}
+    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}
 
 ---
 
@@ -425,10 +453,12 @@ async def claude_compose_slides(
     source_url: str,
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
+    avoid_steer: str = "",
 ) -> dict[str, Any]:
     prompt = _build_draft_prompt(
         topic, summary, source_url,
         enrichment=enrichment, live_reasons=live_reasons,
+        avoid_steer=avoid_steer,
     )
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
@@ -727,6 +757,11 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
         # store whatever the model gave (or None) without hard-validating here.
         tonal = raw.get("tonal_palette")
         tonal = tonal.strip().lower() if isinstance(tonal, str) and tonal.strip() else None
+        # image_mode (2026-06-05, P-4): per-hero scene-mode (constitution Art 5.8,
+        # 9 modes) consumed by topic_type_log.derive_dominant_mode for the
+        # anti-sameness ledger. Whitelisted here like tonal_palette — without
+        # this line the field is stripped at persistence. Lowercased hint; no
+        # hard validation (unknown values just don't constrain downstream).
         slide = {
             "slide_number": i,
             "slide_type": raw.get("slide_type", "body"),
@@ -737,6 +772,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
             "body": (raw.get("body") or "").strip()[:500],
             "image_prompt": (raw.get("image_prompt") or "").strip()[:600],
             "tonal_palette": tonal,
+            "image_mode": (raw.get("image_mode") or "").strip().lower() or None,
             "image_url": None,  # filled later for cover only
         }
         normalised.append(slide)
@@ -783,6 +819,56 @@ async def _fetch_briefed_drafts(conn: asyncpg.Connection, limit: int) -> list[as
          LIMIT $1
         """,
         limit,
+    )
+
+
+async def fetch_recent_same_domain(
+    conn: asyncpg.Connection, domain: str, limit: int = 2
+) -> list[dict[str, Any]]:
+    """Last-N rendered carousels in this domain, newest first (P-4, Art 10.6).
+
+    Returns a list of {"register", "dominant_mode"} dicts for the anti-sameness
+    steer/reject. Best-effort: any error (e.g. the topic_type_log table not yet
+    migrated on this DB) returns [] so generation is never blocked. The "unknown"
+    domain bucket is never queried (it must not cross-constrain unrelated topics).
+    """
+    if not domain or domain == tt.UNKNOWN:
+        return []
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT register, dominant_mode
+              FROM topic_type_log
+             WHERE domain = $1
+               AND deleted_at IS NULL
+             ORDER BY rendered_at DESC
+             LIMIT $2
+            """,
+            domain,
+            limit,
+        )
+    except Exception as exc:  # noqa: BLE001 — table may not exist yet; never block
+        logger.warning("fetch_recent_same_domain(%s) failed: %s", domain, exc)
+        return []
+    return [{"register": r["register"], "dominant_mode": r["dominant_mode"]} for r in rows]
+
+
+def _build_avoid_steer(recent: list[dict[str, Any]]) -> str:
+    """Render the recent same-domain (register, mode) combos as a soft-steer
+    block to append to the generation prompt. Empty list -> empty string."""
+    if not recent:
+        return ""
+    combos = ", ".join(
+        f"(register={r.get('register') or '?'}, image-mode={r.get('dominant_mode') or '?'})"
+        for r in recent
+    )
+    return (
+        "\n\nANTI-SAMENESS (constitution Art 10.6 — MUST OBEY): the last "
+        "same-domain carousels we published used these (register, image-mode) "
+        f"combinations: {combos}. Your carousel MUST DIFFER in EITHER the "
+        "register OR the dominant image-mode from each of them — do not reuse "
+        "the same pairing. Prefer a fresh register and a different dominant "
+        "scene-mode so two same-domain carousels never look alike."
     )
 
 
@@ -851,27 +937,87 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         bool(enrichment), brief.get("live_news_score"),
     )
 
-    try:
-        parsed = await claude_compose_slides(
-            topic=topic, summary=summary, source_url=source_url,
-            enrichment=enrichment, live_reasons=live_reasons,
-        )
-    except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
-        logger.error("Claude OAuth failed: %s", e)
-        await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
-        _send_telegram(f"WR2 draft_generator Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
-        return False
-    except (json.JSONDecodeError, ValueError) as e:
-        logger.error("Claude output parse failed: %s", e)
-        await _mark_rejected(conn, draft_id, f"parse_error: {e}")
-        return False
+    # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
+    # Soft steer (ALWAYS ON): derive the prospective domain from the topic,
+    # look up the last-2 rendered same-domain carousels, and tell the model to
+    # vary register/image-mode away from them. The HARD reject loop below only
+    # engages when WR2_ANTIMONOTONE_ENFORCE=true (default OFF) — it ships
+    # dormant-but-safe so it can be turned on after topic_type_log fills with
+    # real data. The "unknown" domain bucket is never constrained.
+    prospective_domain = tt.derive_domain(topic)
+    recent = await fetch_recent_same_domain(conn, prospective_domain, limit=2)
+    avoid_steer = _build_avoid_steer(recent)
+    enforce = os.environ.get("WR2_ANTIMONOTONE_ENFORCE", "false").lower() == "true"
+    max_regen = 2  # => up to 3 total generation attempts
 
-    try:
-        register, slides = _normalise_slides(parsed)
-    except ValueError as e:
-        logger.error("Normalisation failed: %s", e)
-        await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
-        return False
+    parsed: dict[str, Any] | None = None
+    register = ""
+    slides: list[dict[str, Any]] = []
+    for attempt in range(max_regen + 1):
+        try:
+            parsed = await claude_compose_slides(
+                topic=topic, summary=summary, source_url=source_url,
+                enrichment=enrichment, live_reasons=live_reasons,
+                avoid_steer=avoid_steer,
+            )
+        except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
+            logger.error("Claude OAuth failed: %s", e)
+            await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
+            _send_telegram(f"WR2 draft_generator Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
+            return False
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error("Claude output parse failed: %s", e)
+            await _mark_rejected(conn, draft_id, f"parse_error: {e}")
+            return False
+
+        try:
+            register, slides = _normalise_slides(parsed)
+        except ValueError as e:
+            logger.error("Normalisation failed: %s", e)
+            await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
+            return False
+
+        # Derived signature of THIS draft for the anti-sameness check.
+        slides_envelope = {"slides": slides}
+        dominant_mode = tt.derive_dominant_mode(slides_envelope)
+
+        if (
+            not enforce
+            or prospective_domain == tt.UNKNOWN
+            or not tt.collides_with_recent(register, dominant_mode, recent)
+        ):
+            break  # accepted (enforcement off, unknown domain, or no collision)
+
+        if attempt < max_regen:
+            logger.warning(
+                "Anti-sameness collision (domain=%s register=%s mode=%s) vs recent "
+                "%s — regenerating (attempt %d/%d).",
+                prospective_domain, register, dominant_mode, recent,
+                attempt + 1, max_regen,
+            )
+            # Strengthen the steer on retry so the model does not repeat itself.
+            avoid_steer = _build_avoid_steer(recent) + (
+                "\n\nYour PREVIOUS attempt repeated a forbidden combination. "
+                f"Do NOT use register={register!r} with image-mode={dominant_mode!r} "
+                "again. Change at least one of them."
+            )
+        else:
+            logger.warning(
+                "Anti-sameness collision persisted after %d retries "
+                "(domain=%s register=%s mode=%s) — proceeding anyway (WARN).",
+                max_regen, prospective_domain, register, dominant_mode,
+            )
+
+    assert parsed is not None  # loop always sets parsed or returns
+
+    # Intra-carousel variety WARN (autopsy): a single carousel should use >=3
+    # distinct image-modes. Becomes meaningful now that §3.0 emits image_mode.
+    n_distinct = tt.distinct_mode_count({"slides": slides})
+    if n_distinct < 3:
+        logger.warning(
+            "Draft %s has only %d distinct image-modes (<3) — monotone carousel.",
+            draft_id, n_distinct,
+        )
 
     logger.info(
         "Slides composed: register=%s count=%d cover_prompt=%r",
