@@ -19,7 +19,9 @@ import httpx
 import pytest
 import pytest_asyncio
 
-_REPO_ROOT = Path(__file__).resolve().parents[4]
+# test file: apps/backend-rag/backend/tests/scripts/<this>
+# parents: [0]=scripts [1]=tests [2]=backend [3]=backend-rag [4]=apps [5]=repo root
+_REPO_ROOT = Path(__file__).resolve().parents[5]
 _WORKER_PATH = _REPO_ROOT / "scripts" / "wa_media_pull_worker.py"
 
 _DB_URL = os.environ.get(
