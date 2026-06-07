@@ -207,3 +207,62 @@ gates:
       files. Wired into .husky/pre-commit (so NOT a consumer-less W64 lint). First-
       level heuristic, easily evaded — value is raising the cost of the lazy cheat,
       NOT proving tests honest (the reliable layer is STRATO-5 human gate).
+
+  # ----- FASE-4 gates (3-worker parallel fan-out, registry-serialized here) -----
+  # The 3 worker PRs (#1175 guardrails_static, #1176 federation_parallelize,
+  # #1177 mutation_incremental) ship the CODE; this central commit REGISTERS the
+  # gates with the meta-verifier (registry-serialization pattern: N disjoint
+  # workers, ONE registry edit + ONE baseline, avoids the W59/W62 sibling-race).
+  # Every target/consumer path below was verified on disk 2026-06-07.
+
+  - id: guardrails_static
+    kind: claude_hook
+    target: ~/.claude/hooks/guardrails-static.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    # The hook is Tier-2 of ~/.claude/hooks/guardrails-client.sh, which IS the
+    # PreToolUse `*` entry in settings.json. NOTE id != guardrails_client (the .sh
+    # wrapper gate above) — distinct artifact, no collision. The Tier-1 daemon
+    # (~/.claude/daemons/guardrails.py) is ABSENT on M5, so the static evaluator is
+    # the SOLE active deterministic PreToolUse block.
+    invoked_via: ~/.claude/hooks/guardrails-client.sh
+    disarm_substring: "GUARDRAILS_STATIC_OFF=1"
+    canary:
+      env: { GUARDRAILS_STATIC_OFF: "1" }
+      expect: disarmed
+    note: >
+      P1 STRATO-0 (FASE-4 worker-p1s0). Deterministic, bias-immune, ~0-cost block of
+      known-dangerous tool_use BEFORE execution (rm -rf, git reset --hard, force-push
+      main, fly/gcloud/aws destroy, curl|bash, destructive MCP verbs, SQL DDL, writes
+      to off-limits paths). Fails CLOSED on parse error. Matching logic is repo-
+      vendored (scripts/guardrails_static_core.py, CI-tested 65 cases via
+      scripts/test_guardrails_static.py — PR #1175) so it cannot silently rot; the
+      ~/.claude hook imports it with a byte-identical vendored fallback.
+
+  - id: federation_parallelize_gate
+    kind: lint_script
+    target: scripts/test_federation_parallelize_gate.py
+    consumer: .github/workflows/p6-federation-parallelize.yml
+    note: >
+      P6 (FASE-4 worker-p6, PR #1176). Guards the default-SERIAL posture of
+      scripts/federation_orchestrator.py: the parallelize HYPOTHESIS
+      (scripts/federation_parallelize.py) must default serial and only fan out for
+      breadth/role-distinct disjoint work. ARMED via a real CI consumer added in THIS
+      serialization commit (the worker honestly shipped consumer:null per W64; the
+      orchestrator armed it — a gate that gates nothing is half a gate). Honest limit:
+      a static lint verifies the static-estimator half only; it cannot prove the
+      runtime monitor re-serializes on lease contention (runtime-revocable hypothesis).
+
+  - id: mutation_incremental
+    kind: lint_script
+    target: scripts/mutation_incremental.py
+    consumer: .github/workflows/p1s2-mutation-incremental.yml
+    note: >
+      P1 STRATO-2 (FASE-4 worker-p1s2, PR #1177). Incremental AST-diff mutation:
+      mutates ONLY changed executable statement lines (git diff ∩ AST), never the full
+      codebase. HIDDEN CANARY MUTANTS (frozen, hash-pinned, operator-owned seed) are
+      the anti-cheat — a surviving canary FAILs the gate regardless of reported score.
+      Real CI consumer shipped with the slice. Honest limit: mutmut is OPTIONAL/CI-
+      provided — absent (M5) the mutmut leg SKIPs (exit 2, never a false pass) while
+      the pure-Python canary self-test still runs and can still FAIL. Companion test
+      scripts/test_mutation_incremental.py (20 cases).
