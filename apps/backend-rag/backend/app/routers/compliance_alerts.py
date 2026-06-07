@@ -53,7 +53,11 @@ def _require_admin(user: dict[str, Any]) -> None:
 
 
 class OutcomeBody(BaseModel):
-    outcome: Literal["acted", "dismissed"]
+    # "acknowledged" added for the login gate (spec §3.3): "I've got this" on a
+    # client deadline = acknowledge, distinct from "dismissed" (irrelevant) and
+    # "acted" (resolved). All three are explicit so the gate's intent is recorded
+    # in alert_outcomes, not collapsed onto "dismissed".
+    outcome: Literal["acted", "dismissed", "acknowledged"]
     note: str | None = None
 
 
@@ -247,6 +251,9 @@ async def post_outcome(
         if not assigned or assigned.lower() != user_email:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not your client")
 
+    # acted → resolved; acknowledged / dismissed → acknowledged (both leave the
+    # pending set so the gate clears). The distinct outcome value is preserved in
+    # alert_outcomes below for audit / metrics.
     new_status = "resolved" if body.outcome == "acted" else "acknowledged"
 
     async with pool.acquire() as conn:
