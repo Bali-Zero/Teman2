@@ -114,20 +114,26 @@ def critic_legibility(
         levers.append({"lever": "scrim_opacity", "delta": +0.15, "reason": f"contrast {contrast:.1f}"})
         levers.append({"lever": "text_stroke", "weight": "increase", "reason": "fallback legibility"})
 
-    # saliency placement — only meaningful for hero slides with a photo
+    # saliency placement — only meaningful for hero slides with a photo.
+    # We DETECT "text sits on the busiest band" but do NOT try to fix it by
+    # repositioning the text (that broke the cover in E2E 2026-06-07). Instead
+    # the remedy is stronger scrim/stroke (keep text where the template put it
+    # but make it survive the busy region); if that's already maxed, it's a
+    # composition problem → rerender signal, not a CSS nudge.
     if is_hero and hero_path and hero_path.is_file():
         best_band, busyness = calmest_band(hero_path, n_bands=3)
-        # text currently sits in band 2 (bottom third). If bottom is the busiest,
-        # suggest moving text to the calmest band.
         bottom_band = len(busyness) - 1
         if busyness[bottom_band] > min(busyness) * 1.5 and best_band != bottom_band:
             issues.append(
                 f"text band (bottom, busyness {busyness[bottom_band]:.2f}) is busier "
                 f"than calmest band {best_band} ({busyness[best_band]:.2f})"
             )
-            levers.append(
-                {"lever": "text_anchor", "to_band": best_band, "reason": "place text on calm region"}
-            )
+            # remedy IN PLACE: a heavier scrim + stroke so text survives the busy
+            # bottom (no repositioning). Only add if not already proposed above.
+            if not any(l.get("lever") == "scrim_opacity" for l in levers):
+                levers.append({"lever": "scrim_opacity", "delta": +0.2, "reason": "text over busy band — darken in place"})
+            if not any(l.get("lever") == "text_stroke" for l in levers):
+                levers.append({"lever": "text_stroke", "reason": "text over busy band — outline in place"})
 
     return Critique(tier="legibility", passed=not issues, issues=issues, levers=levers, score=min(contrast / 21.0, 1.0))
 
@@ -236,27 +242,44 @@ async def run_designer_loop(
                 return DesignerResult(
                     final_png=best_png, iterations=it, converged=True, history=history
                 )
-            # vision wants changes → guard with brand verifier before applying
-            if brand_verifier is not None and vc.levers:
-                proposed = {**levers_acc}
-                _apply_levers(proposed, vc.levers)
-                # render a trial to verify brand compliance
+            # vision wants changes → only act if at least one is a CSS-applicable
+            # (legibility-in-place) lever. Non-CSS proposals (text_anchor,
+            # rebalance_wrap, rerender) are composition signals we can't safely
+            # auto-apply — so we stop and keep the best render rather than spin.
+            proposed = {**levers_acc}
+            applied = _apply_levers(proposed, vc.levers)
+            if not applied:
+                non_css = sorted({l.get("lever") for l in vc.levers})
+                iter_record["verdict"] = (
+                    f"vision flagged but only non-CSS levers {non_css} "
+                    "(composition, not auto-fixable) — keeping best"
+                )
+                iter_record["escalated_levers"] = non_css
+                history.append(iter_record)
+                break
+            if brand_verifier is not None:
+                # render a trial to verify the applied change didn't drift brand
                 trial_png = out_dir / f"iter-{it:02d}-trial.png"
                 await render_fn({**slide, "_levers": proposed}, trial_png)
                 bv = brand_verifier(trial_png, slide, {"check": "brand"})
                 iter_record["brand_verify"] = {"passed": bv.passed, "issues": bv.issues}
                 if bv.passed:
                     levers_acc = proposed
-                    iter_record["vision_levers_pulled"] = vc.levers
+                    iter_record["vision_levers_pulled"] = applied
                 else:
                     iter_record["vision_levers_rejected"] = "brand verifier blocked"
+                    # the rejected change isn't kept; if we have no other lead,
+                    # stop (don't re-propose the same blocked lever forever).
+                    history.append(iter_record)
+                    break
                 history.append(iter_record)
                 continue
             else:
-                # no verifier or no levers — accept current as best and stop
-                iter_record["verdict"] = "vision flagged but no safe lever; keeping best"
+                # no verifier but we have a CSS lever — apply it and re-render
+                levers_acc = proposed
+                iter_record["vision_levers_pulled_unverified"] = applied
                 history.append(iter_record)
-                break
+                continue
         else:
             # no vision: cheap tiers passed → done
             iter_record["verdict"] = "PASS (cheap only, vision disabled)"
@@ -276,13 +299,17 @@ async def run_designer_loop(
 def _apply_levers(acc: dict[str, Any], levers: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Fold a list of lever dicts into the accumulated lever state.
 
-    Returns the levers actually applied (rerender/regen are not CSS levers and
-    are skipped here — they're handled by the controller).
-    Lever semantics the renderer/composer must honor in slide["_levers"]:
+    Returns the levers actually applied. Levers NOT folded here are handled by
+    the controller as escalation signals, not CSS:
+      - "rerender" / "regen"  → structural; controller re-renders or escalates
+      - "text_anchor"         → REMOVED as a CSS lever (E2E 2026-06-07: absolute-
+        repositioning broke the cover layout + caused a false-high legibility
+        score). Treated as a rerender/composition signal instead.
+    CSS levers the composer honors in slide["_levers"] (all legibility-in-place,
+    never position/color/font):
       scrim_opacity: float    (added darkening behind text; 0..1, clamped)
-      text_stroke:   bool/str ("increase" → stronger outline)
-      shrink_font:   str      (which element to shrink: "body"|"heading")
-      text_anchor:   int      (band index 0..2 to place text)
+      text_stroke:   bool     (stronger outline)
+      shrink_<elem>: int      (step counter; elem = body|heading|subhead)
     """
     applied: list[dict[str, Any]] = []
     for lev in levers:
@@ -297,8 +324,6 @@ def _apply_levers(acc: dict[str, Any], levers: list[dict[str, Any]]) -> list[dic
             key = f"shrink_{lev.get('target', 'body')}"
             acc[key] = acc.get(key, 0) + 1
             applied.append(lev)
-        elif name == "text_anchor":
-            acc["text_anchor_band"] = int(lev.get("to_band", 2))
-            applied.append(lev)
-        # "rerender" / "regen" are controller concerns, not CSS levers
+        # "text_anchor", "rebalance_wrap", "rerender", "regen" are NOT CSS levers:
+        # they're composition/structural signals the controller handles.
     return applied
