@@ -266,3 +266,36 @@ gates:
       provided — absent (M5) the mutmut leg SKIPs (exit 2, never a false pass) while
       the pure-Python canary self-test still runs and can still FAIL. Companion test
       scripts/test_mutation_incremental.py (20 cases).
+
+  # ----- P9 GOVERN cost-breaker gates (FASE-0.5 transversal, registry-serialized) -----
+  - id: cost_breaker
+    kind: lint_script
+    target: scripts/cost_breaker.py
+    # Consumer verified 2026-06-08: .github/workflows/p9-cost-breaker.yml runs
+    # `python -m pytest scripts/test_cost_breaker.py` which imports cost_breaker.
+    # The workflow names scripts/cost_breaker.py in its paths: filter too, so the
+    # consumer check resolves the basename. ARMED, not consumer-less (W64).
+    consumer: .github/workflows/p9-cost-breaker.yml
+    note: >
+      P9 GOVERN cost-breaker (FASE-0.5/transversal). Reads the local cost ledger
+      (llm_cost_events m117 / JSONL fallback) and triggers the existing cascade —
+      never spends, never sends PII. HONEST LIMIT: the per-provider budget is a
+      PROXY USD threshold (a configurable estimate), NOT the opaque flat-rate
+      MAX/subscription quota, which is not machine-readable. The breaker degrades
+      on a money-proxy; the ultimate backstop is still the human the STOP push asks.
+
+  - id: cost_breaker_deadman
+    kind: lint_script
+    target: scripts/cost_breaker_deadman.sh
+    # Honest classification: this is a cron/launchd watchdog, NOT a PreToolUse
+    # claude_hook — so lint_script + a CI consumer (the same p9 workflow runs
+    # `bash -n` + the FORCE_ALERT self-test on it) is the truthful kind.
+    consumer: .github/workflows/p9-cost-breaker.yml
+    note: >
+      P9 G5 dead-man's switch — the SECOND observer that realises the UNBUILT
+      mutual-watch documented in sentinel_meta_watchdog.sh's header. Alerts if the
+      verify_the_verifiers or sentinel_meta_watchdog alive-signal goes stale
+      (governance gone mute). HONEST LIMIT: the dead-man's switch is itself watched
+      only by its own state file + a human reading its last alert — the recursion
+      terminates at a person, not at another machine. Kill-switch
+      COST_BREAKER_DEADMAN_OFF=1.
