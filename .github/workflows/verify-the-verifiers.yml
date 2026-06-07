@@ -35,8 +35,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install pyyaml
-        run: python3 -m pip install --quiet pyyaml
+      - name: Install deps (pyyaml + pytest)
+        run: python3 -m pip install --quiet pyyaml pytest
 
       # R1 — integrity: the meta-verifier must not be silently altered. Recompute
       # the sha256 of script+registry and compare to the committed value. A change
