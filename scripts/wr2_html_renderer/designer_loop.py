@@ -315,8 +315,20 @@ async def run_designer_loop(
     out_dir.mkdir(parents=True, exist_ok=True)
     history: list[dict[str, Any]] = []
     levers_acc: dict[str, Any] = {}
+    # best_png: the highest cheap-legibility-score render — DIAGNOSTIC ONLY. It is
+    # updated BEFORE any vision/brand verification, so it MUST NOT be what the loop
+    # returns as final_png: when the brand verifier blocks a render, best_png may
+    # be that very brand-rejected image (NB-4). It is kept only for the history.
     best_png: Path | None = None
     best_score = -1.0
+    # best_verified_png: the render that final_png returns. It is set ONLY when a
+    # render has passed brand verification (or when no brand_verifier is in play —
+    # cheap-only mode, by design no brand gate there). INVARIANT: final_png is
+    # either a brand-approved render, or None if none was ever produced. This is
+    # what stops the break-and-return-best path from FAILING OPEN — a consumer
+    # that reads final_png while ignoring `converged` can never get a
+    # brand-rejected image (NB-4).
+    best_verified_png: Path | None = None
     escalated = False
 
     for it in range(1, max_iters + 1):
@@ -345,7 +357,10 @@ async def run_designer_loop(
         passes_cheap = geo.passed and leg.passed and ocr.passed
         cheap_levers = geo.levers + leg.levers + ocr.levers
 
-        # track best by the cheap legibility score (higher contrast = better)
+        # track best by the cheap legibility score (higher contrast = better).
+        # DIAGNOSTIC ONLY — this never feeds final_png (NB-4); it is surfaced in the
+        # history so the cheap-score winner is auditable independently of which
+        # render was brand-approved.
         score = leg.score or 0.0
         if score > best_score:
             best_score = score
@@ -357,6 +372,8 @@ async def run_designer_loop(
             "legibility": {"passed": leg.passed, "issues": leg.issues, "score": round(score, 3)},
             "ocr": {"passed": ocr.passed, "issues": ocr.issues, "score": ocr.score},
             "levers_applied_before": dict(levers_acc),
+            "cheap_best_png": str(best_png) if best_png else None,
+            "cheap_best_score": round(best_score, 3),
         }
 
         if not passes_cheap:
@@ -401,9 +418,13 @@ async def run_designer_loop(
                         break
                 iter_record["verdict"] = "PASS (cheap + vision + brand)"
                 history.append(iter_record)
-                best_png = png_path  # vision+brand-approved render is the keeper
+                # Reaching here means EITHER no brand_verifier was configured (no
+                # brand gate by design) OR the brand verifier passed / was OCR-
+                # overridden. Either way this render is brand-approved → it is the
+                # verified keeper that final_png returns (NB-4).
+                best_verified_png = png_path
                 return DesignerResult(
-                    final_png=best_png, iterations=it, converged=True, history=history
+                    final_png=best_verified_png, iterations=it, converged=True, history=history
                 )
             # vision wants changes → only act if at least one is a CSS-applicable
             # (legibility-in-place) lever. Non-CSS proposals (text_anchor,
@@ -439,12 +460,21 @@ async def run_designer_loop(
                 if effective_pass:
                     levers_acc = proposed
                     iter_record["vision_levers_pulled"] = applied
+                    # The trial render passed brand verification (vision wanted the
+                    # change but brand approved it). Capture it as the verified
+                    # keeper so that if the loop later runs out of iterations we
+                    # return a genuinely brand-approved image, never a rejected one
+                    # (NB-4). Vision hasn't converged on it yet, so we still
+                    # continue iterating — this only protects the fallthrough.
+                    best_verified_png = trial_png
                     history.append(iter_record)
                     continue
                 else:
                     iter_record["vision_levers_rejected"] = "brand verifier blocked"
                     # the rejected change isn't kept; if we have no other lead,
-                    # stop (don't re-propose the same blocked lever forever).
+                    # stop (don't re-propose the same blocked lever forever). Do
+                    # NOT touch best_verified_png — the rejected trial must never
+                    # become final_png (NB-4).
                     history.append(iter_record)
                     break
             else:
@@ -454,13 +484,23 @@ async def run_designer_loop(
                 history.append(iter_record)
                 continue
         else:
-            # no vision: cheap tiers passed → done
+            # no vision: cheap tiers passed → done. Cheap-only mode has NO brand
+            # verifier in play (by design — the brand gate is a vision-tier
+            # check), so png_path here is the legitimate verified result: there is
+            # no brand verdict that could have rejected it. (NB-4 invariant clause
+            # b: "a render that passed brand verification OR had no brand_verifier
+            # configured".)
             iter_record["verdict"] = "PASS (cheap only, vision disabled)"
             history.append(iter_record)
             return DesignerResult(final_png=png_path, iterations=it, converged=True, history=history)
 
+    # Fallthrough (max_iters reached, escalated, or a brand-block break). final_png
+    # is best_verified_png — a brand-APPROVED render from some iteration, or None if
+    # the brand verifier blocked EVERY render. NEVER best_png (the cheap-score
+    # render, which may be the brand-rejected image). This is the NB-4 fix: the
+    # break-and-return path no longer fails open.
     return DesignerResult(
-        final_png=best_png,
+        final_png=best_verified_png,
         iterations=len(history),
         converged=False,
         history=history,

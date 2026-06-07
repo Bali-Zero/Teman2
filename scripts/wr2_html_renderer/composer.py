@@ -531,7 +531,19 @@ def make_slide_render_fn(
             produced = Path(res.png_paths[0])
             if produced.is_file():
                 png_path.parent.mkdir(parents=True, exist_ok=True)
-                os.replace(produced, png_path)
+                # Atomic same-filesystem move (the common case: png_path's out_dir
+                # and tmp_root both live under render_root). os.replace is EXDEV-
+                # only: if a caller puts out_dir on a DIFFERENT filesystem than
+                # render_root (e.g. _designer_e2e passes out_dir/"iters" set
+                # independently of slides_dir), os.replace raises OSError(EXDEV).
+                # Fall back to shutil.move, which handles cross-device via
+                # copy+unlink. shutil.move is NOT atomic across devices, but that's
+                # acceptable here: the loop re-checks png_path.is_file() after the
+                # render, so a partial/failed move is caught as a render failure.
+                try:
+                    os.replace(produced, png_path)
+                except OSError:
+                    shutil.move(str(produced), str(png_path))
         finally:
             shutil.rmtree(tmp_root, ignore_errors=True)
 

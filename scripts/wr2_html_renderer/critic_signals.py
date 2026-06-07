@@ -170,7 +170,10 @@ def _background_saliency_map(
         g = img.convert("L").resize((downscale, downscale))
         a = np.asarray(g, dtype=np.float64) / 255.0
 
-    # Base saliency everywhere is pure local variance (band-selection semantics).
+    # Base saliency OUTSIDE the text box stays per-image-normalized: its only job
+    # is band-SELECTION (which band is calmest relative to the others), where
+    # relative is correct. The text box is overwritten below with an ABSOLUTE
+    # score, because that is the value the absolute BUSY_BAND_ABS_FLOOR gate reads.
     score = _local_variance_saliency(a)
 
     rows, cols = a.shape
@@ -187,9 +190,16 @@ def _background_saliency_map(
         glyph_cut = float(np.percentile(box, glyph_luma_pct))
         # 1. flatten the white letters to the dark background level.
         masked = np.where(box >= glyph_cut, bg_level, box)
-        # 2. background variance of the glyph-masked region (re-run locally so the
-        #    flattened letters don't leak variance from the global pass).
-        bg_var = _local_variance_saliency(masked)
+        # 2. ABSOLUTE background variance of the glyph-masked region (normalize=False
+        #    — re-panel #3 fix): per-image normalization would make this term
+        #    invariant to the scrim (the scrim scales numerator AND the per-image
+        #    max by c², they cancel). Raw variance of luminance-in-0..1 lives in
+        #    0..~0.25 and DOES scale with c², so it drops as the scrim darkens.
+        #    ×4 rescales 0..0.25 → 0..1 so it shares the luminance term's range
+        #    (the two halves would otherwise be on different scales and luminance
+        #    would dominate). Both halves now strictly decrease with the scrim AND
+        #    sit on an absolute 0..1 scale comparable to BUSY_BAND_ABS_FLOOR.
+        bg_var = np.clip(4.0 * _local_variance_saliency(masked, normalize=False), 0.0, 1.0)
         # 3. brightness-weighted busyness, scoped to the text box, so the scrim
         #    (which lowers luminance) strictly lowers the metric the gate reads.
         score[by0:by1, bx0:bx1] = 0.5 * bg_var + 0.5 * masked
@@ -197,11 +207,27 @@ def _background_saliency_map(
     return score
 
 
-def _local_variance_saliency(a: np.ndarray) -> np.ndarray:
-    """3x3 local-variance saliency of a luminance grid, normalized 0..1.
+def _local_variance_saliency(a: np.ndarray, *, normalize: bool = True) -> np.ndarray:
+    """3x3 local-variance saliency of a luminance grid.
 
     Extracted from `saliency_map` so the glyph-masked path (NB-1) reuses the exact
     same math instead of duplicating it.
+
+    normalize=True (default, legacy `saliency_map` behavior): divide by the image's
+      own max so the result is 0..1 RELATIVE to this image. Correct for the only
+      thing the legacy path does — compare bands WITHIN one image to pick the
+      calmest. WRONG for any cross-image absolute comparison.
+
+    normalize=False (panel re-panel #3 / NB-1 metric fix): return the RAW local
+      variance of luminance (input `a` is luminance in 0..1, so variance is in an
+      absolute 0..~0.25 scale comparable across images). This is what the
+      background-saliency path needs: the per-max normalization makes variance
+      INVARIANT to the scrim (darkening scales numerator AND denominator by c²,
+      they cancel), so a normalized score can never move when the scrim darkens
+      the background — defeating the whole point of NB-1. Raw variance scales with
+      c² and so DOES drop as the scrim darkens → the gate becomes satisfiable, and
+      an absolute floor (BUSY_BAND_ABS_FLOOR) is meaningful because the value is on
+      an absolute scale, not re-normalized per image.
     """
     pad = np.pad(a, 1, mode="edge")
     acc = np.zeros_like(a)
@@ -214,7 +240,7 @@ def _local_variance_saliency(a: np.ndarray) -> np.ndarray:
     n = 9.0
     local_var = acc_sq / n - (acc / n) ** 2
     local_var = np.clip(local_var, 0, None)
-    if local_var.max() > 0:
+    if normalize and local_var.max() > 0:
         local_var = local_var / local_var.max()
     return local_var
 

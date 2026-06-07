@@ -146,17 +146,25 @@ def test_A_vision_pass_brand_pass_converges(tmp_path: Path) -> None:
 
 
 def test_A_vision_pass_brand_block_does_NOT_converge(tmp_path: Path) -> None:
-    """THE FIX: vision PASS + brand BLOCK (font violation) → NOT converged.
+    """THE FIX (Fix A): vision PASS + brand BLOCK (font violation) → NOT converged.
 
     Before fix A the loop returned converged=True on vc.passed before the brand
     verifier ever ran. Now a brand block on the current render keeps best + stops.
+
+    NB-4 (this fix): final_png must NOT be the brand-rejected render. With the
+    block on the ONLY iteration and no earlier brand-approved render, final_png
+    is None (see test_NB4_* below for the full invariant matrix).
     """
-    res, _ = _run_loop(out_dir=tmp_path / "a3", brand_verifier=_brand_block_font)
+    out_dir = tmp_path / "a3"
+    res, _ = _run_loop(out_dir=out_dir, brand_verifier=_brand_block_font)
     assert res.converged is False
     # the brand_verify result is recorded and it blocked
     assert any(r.get("brand_verify", {}).get("passed") is False for r in res.history)
-    # final_png is still the best render (kept), not None — we don't lose work
-    assert res.final_png is not None
+    # NB-4: the brand-rejected render must NOT be returned as final_png. No earlier
+    # iteration passed brand → final_png is None, never the rejected iter-01.png.
+    assert res.final_png is None
+    rejected_png = out_dir / "iter-01.png"
+    assert res.final_png != rejected_png
 
 
 def test_A_vision_pass_brand_block_text_hallucination_ocr_overrides(tmp_path: Path) -> None:
@@ -205,6 +213,116 @@ def test_A_helper_passed_verifier_not_overridable(tmp_path: Path) -> None:
     overridable, detail = _brand_block_overridable_by_ocr(_brand_pass(), png, COVER_SLIDE, _ocr_legible)
     assert overridable is False
     assert detail == {}
+
+
+# ---------------------------------------------------------------------------
+# NB-4 — the returned final_png must NEVER be a brand-rejected render.
+#
+# Defect (panel #3): best_png tracked the CHEAP legibility score BEFORE any brand
+# verification, and the break-and-return-best path returned it as final_png — so a
+# brand-rejected image could be published by a consumer that reads final_png while
+# ignoring `converged`. The fix tracks a SEPARATE best_verified_png set only after
+# a brand-pass; final_png returns THAT (or None / an earlier verified render).
+# INVARIANT: final_png is (a) a brand-approved render, (b) a render with no
+# brand_verifier in play (cheap-only mode), or (c) None.
+# ---------------------------------------------------------------------------
+
+
+def test_NB4_only_iter_brand_block_final_png_is_None_not_rejected(tmp_path: Path) -> None:
+    """vision PASS + brand BLOCK on the ONLY iteration → final_png is None, NOT
+    the brand-rejected render — even though that render exists on disk (the
+    cheap-score "best"). converged False.
+    """
+    out_dir = tmp_path / "nb4_only"
+    res, _ = _run_loop(out_dir=out_dir, brand_verifier=_brand_block_font)
+    assert res.converged is False
+    # the brand-rejected render WAS produced (proving final_png=None is the fix
+    # rejecting a real image, not merely a missing-render artifact)
+    rejected_png = out_dir / "iter-01.png"
+    assert rejected_png.is_file()
+    # NB-4: it must NOT be returned
+    assert res.final_png is None
+    assert res.final_png != rejected_png
+
+
+def test_NB4_earlier_verified_then_later_block_returns_the_verified(tmp_path: Path) -> None:
+    """An EARLIER iteration passes brand (via a vision-proposed CSS lever whose
+    trial brand-passes), a LATER iteration is reached but brand-BLOCKS → final_png
+    is the EARLIER brand-APPROVED render, NEVER the later rejected one. converged
+    False (the later block stops the loop without convergence).
+    """
+    # iter 1: vision proposes a CSS lever (text_stroke) → a trial is rendered and
+    #         brand PASSES it → best_verified_png = iter-01-trial.png, continue.
+    # iter 2: vision PASSES → brand BLOCKS (font) → break → fallthrough returns
+    #         best_verified_png (the iter-01 trial), not iter-02.png.
+    vision_state = {"n": 0}
+
+    def _vision(png_path: Path, slide: dict[str, Any], ctx: dict[str, Any]) -> Critique:
+        vision_state["n"] += 1
+        if vision_state["n"] == 1:
+            # wants a CSS change (text_stroke is an applicable lever)
+            return Critique(
+                tier="vision", passed=False, issues=["needs crisper text"],
+                levers=[{"lever": "text_stroke", "reason": "test"}], score=0.7,
+            )
+        return Critique(tier="vision", passed=True, issues=[], levers=[], score=0.9)
+
+    brand_state = {"n": 0}
+
+    def _brand(png_path: Path, slide: dict[str, Any], ctx: dict[str, Any]) -> Critique:
+        brand_state["n"] += 1
+        # 1st brand call = the iter-1 trial → PASS; 2nd = iter-2 candidate → BLOCK
+        if brand_state["n"] == 1:
+            return Critique(tier="brand", passed=True, issues=[])
+        return Critique(tier="brand", passed=False, issues=["headline uses a serif font"])
+
+    out_dir = tmp_path / "nb4_earlier"
+    res, _ = _run_loop(
+        out_dir=out_dir,
+        vision_critic=_vision,
+        brand_verifier=_brand,
+        max_iters=3,
+    )
+    assert res.converged is False
+    verified_png = out_dir / "iter-01-trial.png"
+    rejected_png = out_dir / "iter-02.png"
+    # the earlier brand-approved trial is what we return …
+    assert res.final_png == verified_png
+    assert Path(res.final_png).is_file()
+    # … and crucially NOT the later brand-rejected render.
+    assert res.final_png != rejected_png
+    # sanity: the loop really did reach iter 2 and the verifier blocked there
+    assert any(
+        r.get("iter") == 2 and r.get("brand_verify", {}).get("passed") is False
+        for r in res.history
+    )
+
+
+def test_NB4_happy_path_returns_verified_png_converged(tmp_path: Path) -> None:
+    """Regression: vision PASS + brand PASS still returns the verified render +
+    converged True (the fix must not over-block the legitimate converge path).
+    """
+    out_dir = tmp_path / "nb4_happy"
+    res, _ = _run_loop(out_dir=out_dir, brand_verifier=_brand_pass)
+    assert res.converged is True
+    # the converged render is iter-01.png (vision+brand passed on the 1st pass)
+    expected = out_dir / "iter-01.png"
+    assert res.final_png == expected
+    assert Path(res.final_png).is_file()
+    assert any(r.get("verdict", "").startswith("PASS (cheap + vision + brand)") for r in res.history)
+
+
+def test_NB4_cheap_only_mode_returns_png_no_brand_gate(tmp_path: Path) -> None:
+    """Invariant clause (b): cheap-only mode (vision disabled) has NO brand
+    verifier in play, so final_png is its rendered png (not None) + converged.
+    Documents that the None-guarantee applies ONLY when a brand verifier exists.
+    """
+    out_dir = tmp_path / "nb4_cheap"
+    res, _ = _run_loop(out_dir=out_dir, use_vision=False, brand_verifier=None)
+    assert res.converged is True
+    expected = out_dir / "iter-01.png"
+    assert res.final_png == expected
+    assert Path(res.final_png).is_file()
 
 
 # ---------------------------------------------------------------------------
