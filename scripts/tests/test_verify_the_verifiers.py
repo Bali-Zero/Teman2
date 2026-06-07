@@ -263,8 +263,60 @@ def test_evaluate_unknown_kind_is_disarmed() -> None:
 def test_json_schema_stable() -> None:
     rep = VTV.Report(results=[VTV.GateResult("a", "lint_script", VTV.ARMED, "ok")])
     payload = json.loads(VTV.render_json(rep))
-    assert set(payload) == {"ok", "total", "armed", "disarmed", "warn", "gates"}
+    assert set(payload) == {"ok", "total", "armed", "disarmed", "warn", "skipped", "gates"}
     assert set(payload["gates"][0]) == {"id", "kind", "verdict", "detail"}
+
+
+# --------------------------------------------------------------------------- #
+# Scope (repo vs local) — claude_hook gates not verifiable on a CI runner
+# --------------------------------------------------------------------------- #
+
+def test_gate_scope_defaults_by_kind() -> None:
+    assert VTV.gate_scope({"kind": "claude_hook"}) == "local"
+    assert VTV.gate_scope({"kind": "ci_workflow"}) == "repo"
+    assert VTV.gate_scope({"kind": "lint_script"}) == "repo"
+
+
+def test_gate_scope_explicit_override() -> None:
+    assert VTV.gate_scope({"kind": "ci_workflow", "scope": "local"}) == "local"
+
+
+def test_evaluate_repo_scope_skips_local_hooks(tmp_path: Path) -> None:
+    # A claude_hook whose target is absent would be DISARMED in a full check,
+    # but under --scope repo it must be SKIPPED (not DISARMED) — the CI case.
+    registry = {"gates": [
+        {"id": "stop_verify", "kind": "claude_hook",
+         "target": str(tmp_path / "absent.py"), "registered_in": str(tmp_path / "nope.json"),
+         "event": "Stop", "disarm_substring": None},
+    ]}
+    rep = VTV.evaluate(registry, only_scope="repo")
+    assert rep.skipped[0].gate_id == "stop_verify"
+    assert rep.ok is True  # SKIPPED never fails the build
+
+
+def test_evaluate_all_scope_checks_local_hooks(tmp_path: Path) -> None:
+    # Without scope filter, the same missing hook is DISARMED (the local case).
+    registry = {"gates": [
+        {"id": "stop_verify", "kind": "claude_hook",
+         "target": str(tmp_path / "absent.py"), "registered_in": str(tmp_path / "nope.json"),
+         "event": "Stop", "disarm_substring": None},
+    ]}
+    rep = VTV.evaluate(registry, only_scope=None)
+    assert rep.disarmed[0].gate_id == "stop_verify"
+    assert rep.ok is False
+
+
+def test_main_ci_env_auto_scopes_repo(tmp_path: Path, monkeypatch) -> None:
+    # With CI=1 and a missing local hook, main must auto-scope to repo → green.
+    reg = tmp_path / "gates.yaml"
+    reg.write_text(
+        "version: 1\ngates:\n"
+        f"  - id: stop_verify\n    kind: claude_hook\n    target: {tmp_path / 'absent.py'}\n"
+        f"    registered_in: {tmp_path / 'nope.json'}\n    event: Stop\n    disarm_substring: null\n"
+    )
+    monkeypatch.setenv("CI", "1")
+    code = VTV.main(["--registry", str(reg), "--no-signal", "--json"])
+    assert code == 0  # local hook SKIPPED under CI auto-scope, not DISARMED
 
 
 def test_main_exit_code_green(tmp_path: Path, monkeypatch) -> None:

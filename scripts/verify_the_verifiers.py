@@ -44,6 +44,24 @@ STATE_FILE = Path.home() / ".agent" / "decisions" / "state" / "verify_the_verifi
 ARMED = "ARMED"
 DISARMED = "DISARMED"
 WARN = "WARN"
+SKIPPED = "SKIPPED"  # gate not applicable in this environment (e.g. local hook checked in CI)
+
+# Gate scope: where the gate's artifact lives, hence where it can be verified.
+#   repo  — artifact is in the git repo (CI workflows, lint scripts) → verifiable
+#           ANYWHERE (local + CI). These are the immutable, PR-gating checks.
+#   local — artifact is in ~/.claude/ (per-machine hooks) → verifiable ONLY on the
+#           Pro/Mini/M5 boxes, NOT on a CI runner (no ~/.claude there). A local-cron
+#           run of this script (FASE-6, the dead-man's-switch consumer) checks these.
+_KIND_SCOPE = {
+    "claude_hook": "local",
+    "ci_workflow": "repo",
+    "lint_script": "repo",
+}
+
+
+def gate_scope(gate: dict) -> str:
+    """A gate's scope, explicit `scope:` overriding the kind default."""
+    return gate.get("scope") or _KIND_SCOPE.get(gate.get("kind", ""), "repo")
 
 
 @dataclass
@@ -71,8 +89,12 @@ class Report:
         return [r for r in self.results if r.verdict == ARMED]
 
     @property
+    def skipped(self) -> list[GateResult]:
+        return [r for r in self.results if r.verdict == SKIPPED]
+
+    @property
     def ok(self) -> bool:
-        """Green iff zero DISARMED gates. WARN does not fail the build."""
+        """Green iff zero DISARMED gates. WARN/SKIPPED do not fail the build."""
         return len(self.disarmed) == 0
 
 
@@ -216,23 +238,32 @@ _CHECKERS = {
 }
 
 
-def evaluate(registry: dict) -> Report:
+def evaluate(registry: dict, only_scope: str | None = None) -> Report:
+    """Evaluate gates. If only_scope is set (e.g. "repo" in CI), gates of any
+    other scope are marked SKIPPED instead of checked — a local hook in ~/.claude
+    cannot be verified on a CI runner, so it must not be reported DISARMED there.
+    """
     report = Report()
     for gate in registry.get("gates", []):
+        gid = gate.get("id", "?")
         kind = gate.get("kind")
+        if only_scope is not None and gate_scope(gate) != only_scope:
+            report.results.append(
+                GateResult(gid, str(kind), SKIPPED,
+                           f"scope={gate_scope(gate)} not verifiable under --scope {only_scope}")
+            )
+            continue
         checker = _CHECKERS.get(kind)
         if checker is None:
             report.results.append(
-                GateResult(gate.get("id", "?"), str(kind), DISARMED,
-                           f"unknown gate kind: {kind}")
+                GateResult(gid, str(kind), DISARMED, f"unknown gate kind: {kind}")
             )
             continue
         try:
             report.results.append(checker(gate))
         except Exception as exc:  # defensive: a malformed gate must not crash the run
             report.results.append(
-                GateResult(gate.get("id", "?"), str(kind), DISARMED,
-                           f"checker raised: {exc}")
+                GateResult(gid, str(kind), DISARMED, f"checker raised: {exc}")
             )
     return report
 
@@ -287,6 +318,7 @@ def write_alive_signal(report: Report) -> None:
             "gates_armed": len(report.armed),
             "gates_disarmed": len(report.disarmed),
             "gates_warn": len(report.warnings),
+            "gates_skipped": len(report.skipped),
             "disarmed_ids": [r.gate_id for r in report.disarmed],
             "_writer": "verify_the_verifiers",
         }
@@ -302,8 +334,10 @@ def write_alive_signal(report: Report) -> None:
 def render_text(report: Report) -> str:
     lines = []
     total = len(report.results)
+    checked = total - len(report.skipped)
     n_armed = len(report.armed)
-    lines.append(f"meta-verifier: {n_armed}/{total} gates ARMED")
+    suffix = f" ({len(report.skipped)} skipped)" if report.skipped else ""
+    lines.append(f"meta-verifier: {n_armed}/{checked} gates ARMED{suffix}")
     if report.disarmed:
         lines.append("")
         lines.append("DISARMED:")
@@ -314,8 +348,13 @@ def render_text(report: Report) -> str:
         lines.append("WARN:")
         for r in report.warnings:
             lines.append(f"  ! {r.gate_id} [{r.kind}] — {r.detail}")
+    if report.skipped:
+        lines.append("")
+        lines.append("SKIPPED (not verifiable in this environment):")
+        for r in report.skipped:
+            lines.append(f"  · {r.gate_id} [{r.kind}] — {r.detail}")
     lines.append("")
-    lines.append("VERDICT: " + ("GREEN (all gates armed)" if report.ok
+    lines.append("VERDICT: " + ("GREEN (all checked gates armed)" if report.ok
                                  else f"RED ({len(report.disarmed)} gate(s) DISARMED)"))
     return "\n".join(lines)
 
@@ -327,6 +366,7 @@ def render_json(report: Report) -> str:
         "armed": len(report.armed),
         "disarmed": len(report.disarmed),
         "warn": len(report.warnings),
+        "skipped": len(report.skipped),
         "gates": [
             {"id": r.gate_id, "kind": r.kind, "verdict": r.verdict, "detail": r.detail}
             for r in report.results
@@ -343,7 +383,17 @@ def main(argv: list[str] | None = None) -> int:
                         help="run disarm-lever canary self-tests (local only)")
     parser.add_argument("--no-signal", action="store_true",
                         help="do not write the dead-man's-switch alive signal")
+    parser.add_argument("--scope", choices=["repo", "local", "all"], default=None,
+                        help="only verify gates of this scope; others are SKIPPED. "
+                             "Default: 'repo' when env CI is set (a CI runner has no "
+                             "~/.claude hooks), else 'all' (full local check).")
     args = parser.parse_args(argv)
+
+    # Auto-detect: a CI runner cannot see ~/.claude/ local hooks → repo-only.
+    scope = args.scope
+    if scope is None:
+        scope = "repo" if os.environ.get("CI") else "all"
+    only_scope = None if scope == "all" else scope
 
     registry_path = _expand(args.registry)
     if not registry_path.exists():
@@ -358,7 +408,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.canary:
         report = Report(results=[run_canary(g) for g in registry.get("gates", [])])
     else:
-        report = evaluate(registry)
+        report = evaluate(registry, only_scope=only_scope)
 
     if not args.no_signal:
         write_alive_signal(report)
