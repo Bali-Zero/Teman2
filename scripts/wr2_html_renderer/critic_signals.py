@@ -27,7 +27,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -127,6 +126,83 @@ def saliency_map(image_path: Path, downscale: int = 64) -> np.ndarray:
         a = np.asarray(g, dtype=np.float64) / 255.0
 
     # local variance via a simple 3x3 sliding window (numpy, no deps)
+    return _local_variance_saliency(a)
+
+
+def _background_saliency_map(
+    image_path: Path,
+    text_mask_box: tuple[float, float, float, float],
+    downscale: int = 64,
+    glyph_luma_pct: float = 75.0,
+) -> np.ndarray:
+    """Busyness of a slide as seen by the SCRIM lever, with text glyphs removed.
+
+    Panel fix NB-1. The plain `saliency_map` reads the rendered PNG including the
+    white headline burned into the bottom band. White text is a *huge* local
+    luminance variance, so the bottom band always reads as "busy" — and the scrim
+    lever (which darkens the BACKGROUND behind the text, not the letters) can never
+    lower it. Tier-1 then deadlocks: the relative busy-band gate never clears on a
+    genuinely busy hero, so the loop spins the cheap tier and never reaches the
+    paid vision tier.
+
+    The fix makes the text-region score reflect ONLY what the scrim can change.
+    Two coupled steps, both scoped to the text box:
+      1. Neutralize the glyphs: pixels above the box's `glyph_luma_pct` percentile
+         (the white letters) are flattened to the box's dark background level, so
+         their edges stop contributing variance.
+      2. Score the residual background as ``0.5*local_variance + 0.5*luminance``.
+         For WHITE-text legibility a band is hostile if it is textured OR bright;
+         the scrim darkens it on BOTH counts. Crucially this makes the metric
+         strictly MONOTONIC in the scrim: a flat-but-bright background has ~zero
+         variance (so a variance-only score could never move — translation
+         invariance), but its luminance term drops as the scrim darkens it. So
+         "scrim_opacity ↑  ⇒  measured busyness ↓" holds for flat AND textured
+         backgrounds → the lever can always satisfy the gate (coupling restored).
+
+    OUTSIDE the text box the score stays pure local-variance — the "where is the
+    photo calm" meaning used to pick the calmest band is preserved unchanged.
+
+    text_mask_box = (x0, y0, x1, y1) in FRACTIONS of width/height (0..1).
+    """
+    from PIL import Image
+
+    with Image.open(image_path) as img:
+        g = img.convert("L").resize((downscale, downscale))
+        a = np.asarray(g, dtype=np.float64) / 255.0
+
+    # Base saliency everywhere is pure local variance (band-selection semantics).
+    score = _local_variance_saliency(a)
+
+    rows, cols = a.shape
+    bx0 = max(0, min(cols, int(round(text_mask_box[0] * cols))))
+    by0 = max(0, min(rows, int(round(text_mask_box[1] * rows))))
+    bx1 = max(0, min(cols, int(round(text_mask_box[2] * cols))))
+    by1 = max(0, min(rows, int(round(text_mask_box[3] * rows))))
+    if bx1 > bx0 and by1 > by0:
+        box = a[by0:by1, bx0:bx1]
+        # The dark background level inside the box and the glyph cutoff. Using the
+        # box's own percentiles makes this scrim-relative: as the background
+        # darkens, both the cutoff and the fill drop together.
+        bg_level = float(np.percentile(box, 20.0))
+        glyph_cut = float(np.percentile(box, glyph_luma_pct))
+        # 1. flatten the white letters to the dark background level.
+        masked = np.where(box >= glyph_cut, bg_level, box)
+        # 2. background variance of the glyph-masked region (re-run locally so the
+        #    flattened letters don't leak variance from the global pass).
+        bg_var = _local_variance_saliency(masked)
+        # 3. brightness-weighted busyness, scoped to the text box, so the scrim
+        #    (which lowers luminance) strictly lowers the metric the gate reads.
+        score[by0:by1, bx0:bx1] = 0.5 * bg_var + 0.5 * masked
+
+    return score
+
+
+def _local_variance_saliency(a: np.ndarray) -> np.ndarray:
+    """3x3 local-variance saliency of a luminance grid, normalized 0..1.
+
+    Extracted from `saliency_map` so the glyph-masked path (NB-1) reuses the exact
+    same math instead of duplicating it.
+    """
     pad = np.pad(a, 1, mode="edge")
     acc = np.zeros_like(a)
     acc_sq = np.zeros_like(a)
@@ -143,13 +219,28 @@ def saliency_map(image_path: Path, downscale: int = 64) -> np.ndarray:
     return local_var
 
 
-def calmest_band(image_path: Path, n_bands: int = 3) -> tuple[int, list[float]]:
+def calmest_band(
+    image_path: Path,
+    n_bands: int = 3,
+    *,
+    text_mask_box: tuple[float, float, float, float] | None = None,
+) -> tuple[int, list[float]]:
     """Which horizontal band of the image is calmest (least salient).
 
     Returns (best_band_index, per_band_busyness). band 0 = top. Use to decide
     where text should sit: prefer the calmest band for legibility.
+
+    text_mask_box (keyword-only, panel fix NB-1): when given, the busyness of the
+    text region is measured on a BACKGROUND-only saliency map (the burned-in white
+    glyphs inside the box are neutralized) so the scrim lever — which darkens the
+    background, not the letters — can actually move the metric. Omitting it (the
+    default, and what every pre-NB-1 caller does) preserves the original
+    glyph-inclusive behavior exactly.
     """
-    sal = saliency_map(image_path)
+    if text_mask_box is not None:
+        sal = _background_saliency_map(image_path, text_mask_box)
+    else:
+        sal = saliency_map(image_path)
     rows = sal.shape[0]
     band_h = max(1, rows // n_bands)
     busyness = []

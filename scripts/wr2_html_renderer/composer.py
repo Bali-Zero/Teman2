@@ -29,7 +29,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -468,41 +471,69 @@ def make_slide_render_fn(
 
     async def _render_fn(slide_with_levers: dict[str, Any], png_path: Path) -> None:
         # Re-materialize THIS slide's HTML with the loop's accumulated levers.
-        # materialize writes into slides_dir; the renderer expects assets +
-        # the HTML under output_dir/"slides", so we render with
-        # output_dir = slides_dir.parent and let it use slides_dir.
-        render_root = slides_dir.parent
+        # materialize writes into slides_dir (the shared, inspectable copy + the
+        # source for the "re-materialize one slide with new levers" semantics).
         await materialize_slide_html(
             slide_with_levers, slides_dir, index=index, total=total, hero_filename=hero_filename
         )
         html_path = slides_dir / f"{index:02d}.html"
-        # render_html_files writes PNG to (render_root/"slides")/f"{enum_idx:02d}.png"
-        # where enum_idx is the 1-based position in the list → always "01" here.
-        res = await render_html_files(
-            [(html_path, expect_hero_for_index(slide_with_levers, index))],
-            render_root,
-            timeout_ms=timeout_ms,
-            make_pdf=False,
-        )
-        # IDEMPOTENCY (panel fix E): only promote a PNG THIS render actually
-        # produced. res.png_paths is appended by the renderer ONLY for a PNG it
-        # just wrote and dimension-verified for this call — so a non-empty list
-        # is proof of a fresh render. NEVER fall back to a pre-existing
-        # render_root/slides/01.png: that file can be a PREVIOUS iteration's
-        # stale output, and promoting it would make the loop keep the wrong PNG
-        # as "best". On failure we leave png_path absent (do not create it) so
-        # the loop's `if not png_path.is_file(): break` path handles it.
-        if not res.png_paths:
-            logger.warning(
-                "slide %d render produced no PNG (ok=%s failures=%s) — not promoting; "
-                "loop will treat as render failure",
-                index, res.ok, res.failures,
+
+        # NB-2 (race fix): render_html_files writes the PNG to
+        # (render_root/"slides")/f"{enum_idx:02d}.png" where enum_idx is the
+        # 1-based position in the rendered list → ALWAYS "01" here (1-element
+        # list). If two slides share one render_root and render concurrently they
+        # would BOTH target render_root/slides/01.png and clobber each other
+        # before the .replace. So each call renders into its OWN unique temp root
+        # under render_root: collision is impossible, then we atomic-replace the
+        # produced PNG into the caller's png_path. The hero + assets are copied
+        # alongside the HTML so its relative refs (hero.jpg, _base.css, _fonts.css,
+        # logo.png) still resolve under the temp file:// origin.
+        render_root = slides_dir.parent
+        render_root.mkdir(parents=True, exist_ok=True)
+        tmp_root = Path(tempfile.mkdtemp(prefix=f"wr2-render-{index:02d}-", dir=render_root))
+        try:
+            tmp_slides = tmp_root / "slides"
+            _stage_assets(tmp_slides)  # fonts/logo/_base.css co-located with HTML
+            # copy the materialized HTML in as "01.html" (renderer names PNG by
+            # its 1-based list position; a single-element list is "01").
+            shutil.copy2(html_path, tmp_slides / "01.html")
+            # copy the hero (if any) so the <img src="hero_filename"> resolves.
+            if hero_filename:
+                hero_src = slides_dir / hero_filename
+                if hero_src.is_file():
+                    shutil.copy2(hero_src, tmp_slides / hero_filename)
+            res = await render_html_files(
+                [(tmp_slides / "01.html", expect_hero_for_index(slide_with_levers, index))],
+                tmp_root,
+                timeout_ms=timeout_ms,
+                make_pdf=False,
             )
-            return
-        produced = Path(res.png_paths[0])
-        if produced.is_file() and produced.resolve() != png_path.resolve():
-            png_path.parent.mkdir(parents=True, exist_ok=True)
-            produced.replace(png_path)
+
+            # NB-3 (promotion gate): promote ONLY a render that BOTH produced a
+            # dimension-verified PNG (res.png_paths non-empty) AND passed the
+            # anti-Canva contract (res.ok → no failures, every expected hero
+            # actually placed AND visible). The renderer appends png_paths
+            # (renderer.py:285) BEFORE it records hero-visibility failures
+            # (:292-294), so a render that wrote a PNG but FAILED the hero gate
+            # has a non-empty png_paths yet ok=False — gating on png_paths alone
+            # would promote a hero-missing slide and bypass the whole point of
+            # this renderer. On any failure we leave png_path absent so the loop's
+            # `if not png_path.is_file(): break` handles it as a render failure.
+            if not res.ok or not res.png_paths:
+                logger.warning(
+                    "slide %d render not promotable (ok=%s png_paths=%d "
+                    "heroes_placed=%d/%d failures=%s) — not promoting; "
+                    "loop will treat as render failure",
+                    index, res.ok, len(res.png_paths),
+                    res.heroes_placed, res.heroes_expected, res.failures,
+                )
+                return
+            produced = Path(res.png_paths[0])
+            if produced.is_file():
+                png_path.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(produced, png_path)
+        finally:
+            shutil.rmtree(tmp_root, ignore_errors=True)
 
     return _render_fn
 

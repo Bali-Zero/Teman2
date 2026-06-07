@@ -50,6 +50,18 @@ DEFAULT_TEXT_BOX = (0.05, 0.55, 0.95, 0.92)
 # Contrast floor: brand targets AAA (7.0). Below this, a remedy lever fires.
 CONTRAST_FLOOR = WCAG_AAA_NORMAL
 
+# Absolute "calm enough" floor for the text band's (glyph-masked, background)
+# busyness, on the 0..1 saliency scale (NB-1). The busy-band gate is otherwise a
+# PURELY RELATIVE check (bottom > calmest * 1.5); when the photo has a near-zero
+# calmest band, `calmest * 1.5` is ~0 and the relative check can NEVER be
+# satisfied no matter how heavily the scrim darkens the text band — the exact
+# deadlock the re-panel flagged. This floor makes the gate satisfiable: once the
+# scrim brings the text band below it, the band is absolutely calm enough for
+# text and the issue clears even if the photo elsewhere is calmer still. Tuned
+# against rendered samples: a hostile bright/textured band reads ~0.15-0.25; a
+# well-scrimmed band reads ~0.03-0.05; 0.08 sits cleanly between.
+BUSY_BAND_ABS_FLOOR = 0.08
+
 
 @dataclass
 class Critique:
@@ -187,10 +199,28 @@ def critic_legibility(
     # Tier-1 deadlocked and starved the paid vision tier. Measuring the render
     # couples the lever to the metric: a heavier scrim darkens the text band,
     # lowering its luminance variance → the busyness check actually improves.
+    #
+    # NB-1 (re-panel): measuring the glyph-INCLUSIVE render re-introduced the
+    # deadlock by another route — the burned-in WHITE headline dominates the
+    # bottom band's variance, and the scrim darkens the background but cannot
+    # remove the letters, so the bottom band stays "busy" forever. We pass the
+    # text box so calmest_band reads a BACKGROUND-only saliency map (glyphs
+    # neutralized) for the text region: now a heavier scrim genuinely lowers the
+    # bottom-band busyness the gate reads, so the lever can satisfy it.
     if is_hero:
-        best_band, busyness = calmest_band(png_path, n_bands=3)
+        best_band, busyness = calmest_band(png_path, n_bands=3, text_mask_box=text_box)
         bottom_band = len(busyness) - 1
-        if busyness[bottom_band] > min(busyness) * 1.5 and best_band != bottom_band:
+        # Gate is satisfiable ONLY because of the absolute floor: a band that is
+        # absolutely calm enough (< BUSY_BAND_ABS_FLOOR) clears even when another
+        # band is relatively calmer (min→0 makes the relative term unsatisfiable).
+        # So the issue fires only when the text band is BOTH absolutely busy AND
+        # relatively busier than the calmest band — and the scrim lever can drive
+        # it under the floor (NB-1).
+        if (
+            busyness[bottom_band] > BUSY_BAND_ABS_FLOOR
+            and busyness[bottom_band] > min(busyness) * 1.5
+            and best_band != bottom_band
+        ):
             issues.append(
                 f"text band (bottom, busyness {busyness[bottom_band]:.2f}) is busier "
                 f"than calmest band {best_band} ({busyness[best_band]:.2f})"

@@ -358,6 +358,154 @@ def test_B_heavy_scrim_render_scores_better_on_busyness(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# NB-1 (re-panel) — Fix B deadlock: burned-in glyphs dominate bottom-band
+# busyness so the scrim lever could never satisfy the gate. The metric must now
+# read the BACKGROUND (glyphs masked) so a heavier scrim strictly lowers it.
+# ---------------------------------------------------------------------------
+
+# The text box the loop samples (matches designer_loop.DEFAULT_TEXT_BOX).
+_NB1_TEXT_BOX = (0.05, 0.55, 0.95, 0.92)
+
+
+def _write_hero_with_burned_text(
+    png_path: Path, *, bg_behind_text: int, textured_bottom: bool = True, seed: int = 7
+) -> None:
+    """A rendered hero PNG: busy photo on top, a bottom text band that carries the
+    WHITE headline glyphs burned in (as the real renderer produces). `bg_behind_text`
+    is the background level behind the text — LOW simulates a heavy scrim, HIGH a
+    light one. The glyphs are IDENTICAL regardless of bg level (the scrim can't
+    touch them), which is the whole point of the deadlock.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+    import numpy as np
+
+    h, w = 1350, 1080
+    rng = np.random.default_rng(seed)
+    arr = rng.integers(0, 255, size=(h, w, 3), dtype=np.uint8)  # busy photo top
+    y0 = int(0.55 * h)
+    if textured_bottom:
+        base = rng.integers(0, 255, size=(h - y0, w, 3)).astype(np.float64)
+        arr[y0:, :, :] = (base * (bg_behind_text / 255.0)).astype(np.uint8)
+    else:
+        arr[y0:, :, :] = bg_behind_text
+    img = Image.fromarray(arr, "RGB")
+    draw = ImageDraw.Draw(img)
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 90)
+    except Exception:  # noqa: BLE001 — any font; default is fine for the variance signal
+        font = ImageFont.load_default()
+    draw.text((80, int(0.62 * h)), "YOUR KITAP IS VALID", fill=(255, 255, 255), font=font)
+    draw.text((80, int(0.74 * h)), "3 RULES CHANGED NOW", fill=(255, 255, 255), font=font)
+    png_path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(png_path)
+
+
+def test_NB1_scrim_increase_strictly_lowers_gate_busyness(tmp_path: Path) -> None:
+    """Lever ↔ metric coupling: with the SAME burned-in white glyphs, a render
+    whose background-behind-text is darker (heavier scrim) MUST read a strictly
+    lower bottom-band busyness from the gate's metric (calmest_band with the text
+    box masked). On the glyph-INCLUSIVE metric (no mask, the pre-NB-1 behavior)
+    the two are ~identical because the unchanged glyphs dominate — that was the
+    deadlock.
+    """
+    from .critic_signals import calmest_band
+
+    light = tmp_path / "light_scrim.png"   # bright bg behind text
+    heavy = tmp_path / "heavy_scrim.png"   # dark bg behind text (scrim applied)
+    _write_hero_with_burned_text(light, bg_behind_text=150)
+    _write_hero_with_burned_text(heavy, bg_behind_text=8)
+
+    # NEW masked metric (what the gate now reads): strictly decreases with scrim.
+    _, masked_light = calmest_band(light, n_bands=3, text_mask_box=_NB1_TEXT_BOX)
+    _, masked_heavy = calmest_band(heavy, n_bands=3, text_mask_box=_NB1_TEXT_BOX)
+    assert masked_heavy[-1] < masked_light[-1], (
+        f"heavier scrim must lower the gate's bottom-band busyness: "
+        f"heavy={masked_heavy[-1]:.4f} !< light={masked_light[-1]:.4f}"
+    )
+
+    # OLD glyph-inclusive metric (no mask): glyphs dominate → lever can't move it.
+    # We assert the masked metric MOVED MUCH MORE than the unmasked one, proving
+    # the fix is what restores the coupling (not just noise).
+    _, raw_light = calmest_band(light, n_bands=3)
+    _, raw_heavy = calmest_band(heavy, n_bands=3)
+    masked_drop = masked_light[-1] - masked_heavy[-1]
+    raw_drop = raw_light[-1] - raw_heavy[-1]
+    assert masked_drop > 10 * abs(raw_drop), (
+        f"masked metric must respond to the scrim far more than the glyph-inclusive "
+        f"one (masked_drop={masked_drop:.4f}, raw_drop={raw_drop:.4f})"
+    )
+
+
+def test_NB1_masked_busyness_monotonic_even_on_flat_background(tmp_path: Path) -> None:
+    """Edge case: a FLAT (untextured) background behind the text. A pure-variance
+    metric is translation-invariant → darkening a flat fill would NOT change it
+    (the subtle trap). The brightness term in the masked score must still make a
+    heavier scrim strictly lower the busyness.
+    """
+    from .critic_signals import calmest_band
+
+    light = tmp_path / "flat_light.png"
+    heavy = tmp_path / "flat_heavy.png"
+    _write_hero_with_burned_text(light, bg_behind_text=150, textured_bottom=False)
+    _write_hero_with_burned_text(heavy, bg_behind_text=8, textured_bottom=False)
+    _, ml = calmest_band(light, n_bands=3, text_mask_box=_NB1_TEXT_BOX)
+    _, mh = calmest_band(heavy, n_bands=3, text_mask_box=_NB1_TEXT_BOX)
+    assert mh[-1] < ml[-1], (
+        f"on a flat background the scrim must still lower busyness via brightness: "
+        f"heavy={mh[-1]:.4f} !< light={ml[-1]:.4f}"
+    )
+
+
+def test_NB1_busy_hero_reaches_vision_within_3_iters_not_deadspin(tmp_path: Path) -> None:
+    """Behavioral: a genuinely busy hero (bottom text band busier than the calmest
+    band) must converge/escalate to the PAID vision tier within max_iters, NOT
+    dead-spin the cheap tier all 3 iterations.
+
+    render_fn simulates the real renderer: it reads the accumulated scrim_opacity
+    and darkens the background-behind-text accordingly (heavier scrim → darker
+    bottom band), keeping the white glyphs burned in. Under the OLD glyph-inclusive
+    metric the bottom band stayed 'busiest' forever → the loop would pull the cheap
+    scrim lever every iteration and never call the vision critic. Under NB-1 the
+    scrim lowers the masked busyness, the cheap gate clears, and the vision critic
+    runs (here it PASSES → converge).
+    """
+    vision_calls: list[int] = []
+
+    def _vision_pass_counting(png_path: Path, slide: dict[str, Any], ctx: dict[str, Any]) -> Critique:
+        vision_calls.append(ctx.get("iteration", -1))
+        return Critique(tier="vision", passed=True, issues=[], levers=[], score=0.95)
+
+    async def _render_with_scrim(slide_with_levers: dict[str, Any], png_path: Path) -> None:
+        scrim = float((slide_with_levers.get("_levers") or {}).get("scrim_opacity", 0.0))
+        # map scrim 0..~1 → background level behind text 150..6 (heavier = darker).
+        bg = max(6, int(150 - scrim * 160))
+        _write_hero_with_burned_text(png_path, bg_behind_text=bg)
+
+    out_dir = tmp_path / "nb1loop"
+    res = asyncio.run(
+        run_designer_loop(
+            slide=COVER_SLIDE,
+            render_fn=_render_with_scrim,
+            out_dir=out_dir,
+            is_hero=True,            # exercises the saliency/busy-band gate
+            hero_path=None,
+            vision_critic=_vision_pass_counting,
+            brand_verifier=None,
+            ocr_critic=_ocr_legible,
+            max_iters=3,
+            use_vision=True,
+        )
+    )
+    # The fix's whole point: the paid vision tier is REACHED (not starved). On the
+    # pre-NB-1 code the busy-band gate never cleared so vision_calls would be empty.
+    assert vision_calls, (
+        f"busy hero never reached the vision tier in {res.iterations} iters — "
+        f"cheap tier dead-spun (history={res.history})"
+    )
+    assert res.converged is True, f"expected convergence once vision PASSes; got {res.reason}"
+
+
+# ---------------------------------------------------------------------------
 # Fix E — never promote a stale 01.png on a failed render
 # ---------------------------------------------------------------------------
 
@@ -391,8 +539,14 @@ def test_E_failed_render_does_not_promote_stale_png(tmp_path: Path) -> None:
     orig = renderer_mod.render_html_files
     renderer_mod.render_html_files = _fail_render  # type: ignore[assignment]
     try:
-        # also stub materialize so it doesn't need brand layout assets
+        # also stub materialize so it doesn't need brand layout assets, but it
+        # MUST still write the HTML to disk (the real materialize_slide_html
+        # always does — NB-2's temp-dir render copies that file alongside the
+        # staged assets, so it has to exist).
         async def _fake_materialize(*_a, **_k):
+            (slides_dir / "01.html").write_text(
+                "<html><head></head><body>stub</body></html>", encoding="utf-8"
+            )
             return (slides_dir / "01.html", True)
         orig_mat = composer_mod.materialize_slide_html
         composer_mod.materialize_slide_html = _fake_materialize  # type: ignore[assignment]
@@ -412,6 +566,186 @@ def test_E_failed_render_does_not_promote_stale_png(tmp_path: Path) -> None:
             composer_mod.materialize_slide_html = orig_mat  # type: ignore[assignment]
     finally:
         renderer_mod.render_html_files = orig  # type: ignore[assignment]
+
+
+# ---------------------------------------------------------------------------
+# NB-2 (re-panel) — race: every slide rendered to render_root/slides/01.png.
+# Each call must render into a UNIQUE target so concurrent slides on a shared
+# render_root never clobber each other before the atomic replace.
+# ---------------------------------------------------------------------------
+
+def test_NB2_concurrent_renders_same_render_root_do_not_clobber(tmp_path: Path) -> None:
+    """Two _render_fn calls (different indices, SAME render_root) run concurrently.
+    The stubbed renderer writes to the canonical render_root-relative
+    slides/01.png path that the real renderer uses (the collision point). With the
+    fix each call renders inside its OWN temp dir, so the two distinct png_paths
+    each get THEIR OWN content — no cross-contamination.
+    """
+    from .composer import make_slide_render_fn
+    import wr2_html_renderer.composer as composer_mod
+    import wr2_html_renderer.renderer as renderer_mod
+    from .renderer import RenderResult
+
+    out_dir = tmp_path / "nb2"
+    slides_dir = out_dir / "slides"
+    slides_dir.mkdir(parents=True, exist_ok=True)
+
+    # stub materialize: write the per-call marker ("slide N") AS the HTML content
+    # so the temp-dir copy carries it and a clobber would be detectable.
+    async def _fake_materialize(_slide, sdir, *, index, total, hero_filename=None):
+        (sdir / f"{index:02d}.html").write_text(f"slide {index}", encoding="utf-8")
+        return (sdir / f"{index:02d}.html", True)
+
+    # stub render: write the canonical output_dir/slides/01.png (the renderer's
+    # always-"01" name — the collision point) with the marker it was handed, then
+    # YIELD (await) AFTER writing but BEFORE returning. This makes the race
+    # deterministic in single-threaded asyncio: with a SHARED render_root (legacy)
+    # call A writes A's 01.png, yields; call B overwrites the SAME 01.png with B's
+    # content, yields; A resumes and promotes 01.png (now B's content) to A's
+    # png_path → clobber. With the fix each call's output_dir is its OWN temp
+    # render_root, so the two 01.png files are distinct and no clobber occurs.
+    async def _stub_render(html_specs, output_dir, *, timeout_ms=30000, make_pdf=True):
+        import asyncio as _aio
+        html_path = Path(html_specs[0][0])
+        marker = html_path.read_text(encoding="utf-8")  # "slide N"
+        produced = Path(output_dir) / "slides" / "01.png"
+        produced.parent.mkdir(parents=True, exist_ok=True)
+        produced.write_text(marker, encoding="utf-8")  # plain text PNG-stand-in
+        await _aio.sleep(0.02)  # yield AFTER writing → sibling can clobber a shared path
+        return RenderResult(
+            png_paths=[produced], slides_rendered=1, heroes_expected=1, heroes_placed=1
+        )
+
+    orig_mat = composer_mod.materialize_slide_html
+    orig_render = renderer_mod.render_html_files
+    composer_mod.materialize_slide_html = _fake_materialize  # type: ignore[assignment]
+    renderer_mod.render_html_files = _stub_render  # type: ignore[assignment]
+    try:
+        fn1 = make_slide_render_fn(slides_dir=slides_dir, index=1, total=9, hero_filename=None)
+        fn2 = make_slide_render_fn(slides_dir=slides_dir, index=2, total=9, hero_filename=None)
+        p1 = out_dir / "iters" / "iter-01.png"
+        p2 = out_dir / "iters" / "iter-02.png"
+        p1.parent.mkdir(parents=True, exist_ok=True)
+
+        async def _both() -> None:
+            await asyncio.gather(
+                fn1(dict(COVER_SLIDE, _levers={}), p1),
+                fn2(dict(COVER_SLIDE, _levers={}), p2),
+            )
+
+        asyncio.run(_both())
+        assert p1.is_file() and p2.is_file(), "both slides must produce their PNG"
+        # THE FIX: each png_path holds ITS OWN slide's content (no clobber). The
+        # stub wrote the materialized HTML body verbatim ("slide N") as the PNG
+        # stand-in, so a clobber would show up as the wrong slide's text.
+        assert p1.read_text(encoding="utf-8") == "slide 1", p1.read_text(encoding="utf-8")
+        assert p2.read_text(encoding="utf-8") == "slide 2", p2.read_text(encoding="utf-8")
+        # And no temp render dir leaked under render_root.
+        leftover = [d for d in out_dir.iterdir() if d.name.startswith("wr2-render-")]
+        assert not leftover, f"temp render dirs not cleaned up: {leftover}"
+    finally:
+        composer_mod.materialize_slide_html = orig_mat  # type: ignore[assignment]
+        renderer_mod.render_html_files = orig_render  # type: ignore[assignment]
+
+
+# ---------------------------------------------------------------------------
+# NB-3 (re-panel) — promotion must gate on RenderResult.ok, not png_paths alone.
+# A render that wrote a PNG but FAILED the hero-placement gate (heroes_placed !=
+# heroes_expected) has non-empty png_paths yet ok=False → must NOT be promoted.
+# ---------------------------------------------------------------------------
+
+def test_NB3_hero_placement_failure_not_promoted_despite_png(tmp_path: Path) -> None:
+    """ok=False (hero decoded-but-not-visible) with a non-empty png_paths must NOT
+    promote: png_path stays absent so the loop treats it as a render failure.
+    This proves the gate is `not res.ok or not res.png_paths`, not just png_paths.
+    """
+    from .composer import make_slide_render_fn
+    import wr2_html_renderer.composer as composer_mod
+    import wr2_html_renderer.renderer as renderer_mod
+    from .renderer import RenderResult
+
+    out_dir = tmp_path / "nb3"
+    slides_dir = out_dir / "slides"
+    slides_dir.mkdir(parents=True, exist_ok=True)
+
+    async def _fake_materialize(_slide, sdir, *, index, total, hero_filename=None):
+        (sdir / f"{index:02d}.html").write_text("<html><body>x</body></html>", encoding="utf-8")
+        return (sdir / f"{index:02d}.html", True)
+
+    async def _render_hero_missing(html_specs, output_dir, *, timeout_ms=30000, make_pdf=True):
+        # The renderer DID write+dimension-verify a PNG (png_paths non-empty) but
+        # the hero was decoded-yet-not-visible → heroes_placed(0) != expected(1).
+        # failures=[] so ok is False PURELY on the hero count (the cleanest NB-3
+        # case — gating on png_paths alone would wrongly promote this).
+        produced = Path(output_dir) / "slides" / "01.png"
+        produced.parent.mkdir(parents=True, exist_ok=True)
+        _write_clean_png(produced)
+        res = RenderResult(slides_rendered=1, heroes_expected=1, heroes_placed=0)
+        res.png_paths.append(produced)
+        assert res.ok is False  # sanity: this is the failed-hero, non-empty-png case
+        assert res.png_paths      # sanity: png_paths IS non-empty
+        return res
+
+    orig_mat = composer_mod.materialize_slide_html
+    orig_render = renderer_mod.render_html_files
+    composer_mod.materialize_slide_html = _fake_materialize  # type: ignore[assignment]
+    renderer_mod.render_html_files = _render_hero_missing  # type: ignore[assignment]
+    try:
+        fn = make_slide_render_fn(slides_dir=slides_dir, index=1, total=9, hero_filename="hero.jpg")
+        target = out_dir / "iters" / "iter-01.png"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        asyncio.run(fn(dict(COVER_SLIDE, _levers={}), target))
+        # THE FIX: a hero-placement failure (ok=False) is NOT promoted.
+        assert not target.is_file(), (
+            "render with ok=False (hero not placed) must NOT be promoted even though "
+            "it produced a PNG"
+        )
+        leftover = [d for d in out_dir.iterdir() if d.name.startswith("wr2-render-")]
+        assert not leftover, f"temp render dirs not cleaned up: {leftover}"
+    finally:
+        composer_mod.materialize_slide_html = orig_mat  # type: ignore[assignment]
+        renderer_mod.render_html_files = orig_render  # type: ignore[assignment]
+
+
+def test_NB3_ok_render_IS_promoted(tmp_path: Path) -> None:
+    """Positive control for NB-3: a fully OK render (ok=True, hero placed) IS
+    promoted to png_path — the gate must not over-block.
+    """
+    from .composer import make_slide_render_fn
+    import wr2_html_renderer.composer as composer_mod
+    import wr2_html_renderer.renderer as renderer_mod
+    from .renderer import RenderResult
+
+    out_dir = tmp_path / "nb3ok"
+    slides_dir = out_dir / "slides"
+    slides_dir.mkdir(parents=True, exist_ok=True)
+
+    async def _fake_materialize(_slide, sdir, *, index, total, hero_filename=None):
+        (sdir / f"{index:02d}.html").write_text("<html><body>x</body></html>", encoding="utf-8")
+        return (sdir / f"{index:02d}.html", True)
+
+    async def _render_ok(html_specs, output_dir, *, timeout_ms=30000, make_pdf=True):
+        produced = Path(output_dir) / "slides" / "01.png"
+        produced.parent.mkdir(parents=True, exist_ok=True)
+        _write_clean_png(produced)
+        res = RenderResult(slides_rendered=1, heroes_expected=1, heroes_placed=1)
+        res.png_paths.append(produced)
+        assert res.ok is True
+        return res
+
+    orig_mat = composer_mod.materialize_slide_html
+    orig_render = renderer_mod.render_html_files
+    composer_mod.materialize_slide_html = _fake_materialize  # type: ignore[assignment]
+    renderer_mod.render_html_files = _render_ok  # type: ignore[assignment]
+    try:
+        fn = make_slide_render_fn(slides_dir=slides_dir, index=1, total=9, hero_filename="hero.jpg")
+        target = out_dir / "iters" / "iter-01.png"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        asyncio.run(fn(dict(COVER_SLIDE, _levers={}), target))
+        assert target.is_file(), "an OK render (hero placed) MUST be promoted to png_path"
+    finally:
+        composer_mod.materialize_slide_html = orig_mat  # type: ignore[assignment]
+        renderer_mod.render_html_files = orig_render  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------
