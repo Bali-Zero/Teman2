@@ -1,0 +1,31 @@
+# P1 STRATO-0 gate-fragment — deterministic static PreToolUse block.
+# Emitted by worker-p1s0 (FASE-4). The orchestrator serializes this into the
+# central gate-registry; do NOT register it elsewhere.
+- id: guardrails_static
+  kind: claude_hook
+  target: ~/.claude/hooks/guardrails-static.py
+  registered_in: ~/.claude/settings.json
+  event: PreToolUse
+  # The hook is invoked as Tier-2 of ~/.claude/hooks/guardrails-client.sh,
+  # which IS the PreToolUse `*` entry in settings.json (matcher="*"). The
+  # daemon (~/.claude/daemons/guardrails.py) is Tier-1; it is currently ABSENT
+  # on this box, so the static evaluator is the SOLE active deterministic gate.
+  invoked_via: ~/.claude/hooks/guardrails-client.sh
+  disarm_substring: "GUARDRAILS_STATIC_OFF=1"
+  canary:
+    env: { GUARDRAILS_STATIC_OFF: "1" }
+    expect: disarmed  # emits "ALLOW guardrails-static-disarmed"; armed => "BLOCK <reason>"
+  repo_core: scripts/guardrails_static_core.py        # importable is_dangerous()/evaluate()
+  repo_test: scripts/test_guardrails_static.py        # CI-gating, 65 cases, no skip
+  note: >
+    STRATO-0 of the verify-the-verifiers funnel: deterministic, bias-immune,
+    ~0 cost. Blocks known-dangerous tool_use BEFORE execution — destructive
+    Bash (rm -rf on root/$HOME incl. cd+rm and quoted/absolute bypasses, git
+    reset --hard, force-push main/master, fly/gcloud/aws destroy, fork bomb,
+    curl|bash, base64|sh, python/perl/node -e exec, psql/sqlite3 destructive
+    -c), destructive MCP tools/verbs, SQL DDL in MCP input, and Edit/Write to
+    off-limits paths (.env, .mcp.json, zantara_core.py, fly.toml, alembic/env.py)
+    + diff-aware destructive SQL in .sql edits. Fails CLOSED on parse/internal
+    error. The matching logic is now repo-vendored (scripts/guardrails_static_core.py)
+    and CI-tested so it cannot silently rot; the ~/.claude hook imports it with
+    a byte-identical vendored fallback for boxes without the repo checkout.
