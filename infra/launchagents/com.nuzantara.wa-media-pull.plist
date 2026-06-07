@@ -23,11 +23,13 @@
     <string>https://nuzantara-rag.fly.dev</string>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    <!-- Operator must add BRIDGE_API_KEY here OR ensure a shim sources -->
-    <!-- ~/.nuzantara-secrets.env at runtime. NO secret is committed to    -->
-    <!-- this plist (avoids the 2026-04-29 plist-secret-644 scar). The      -->
-    <!-- WhatsApp access token is NOT an env var at all — the worker reads   -->
-    <!-- it from the Pro Keychain (service balizero-whatsapp) per Law 2.     -->
+    <!-- NO secret in this plist (avoids the 2026-04-29 plist-secret-644     -->
+    <!-- scar). Both secrets come from the Pro Keychain (service             -->
+    <!-- balizero-whatsapp): account 'access-token' (WhatsApp token) and     -->
+    <!-- account 'bridge-api-key' (BRIDGE_API_KEY). The worker reads them at -->
+    <!-- runtime via `security find-generic-password`. See runbook           -->
+    <!-- docs/runbooks/wa-media-pull-worker.md.                              -->
+    <!-- (BRIDGE_API_KEY env, if ever set here, takes precedence.)           -->
   </dict>
 
   <!-- Every 5 minutes (cron shim, single-instance via flock in the script). -->

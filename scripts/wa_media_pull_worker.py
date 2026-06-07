@@ -96,10 +96,11 @@ def _save_since(last_id: int) -> None:
     tmp.replace(LAST_ID_FILE)
 
 
-def _read_access_token() -> str:
-    """Read WHATSAPP_ACCESS_TOKEN from the Pro Keychain. Never logged."""
-    service = os.getenv("WA_MEDIA_KEYCHAIN_SERVICE", "balizero-whatsapp")
-    account = os.getenv("WA_MEDIA_KEYCHAIN_ACCOUNT", "access-token")
+def _read_keychain(service: str, account: str) -> str:
+    """Read a generic-password secret from the macOS Keychain. Never logged.
+
+    Returns "" (with a hint logged, never the value) if absent/unreadable.
+    """
     try:
         out = subprocess.run(
             ["security", "find-generic-password", "-s", service, "-a", account, "-w"],
@@ -113,11 +114,27 @@ def _read_access_token() -> str:
     if out.returncode != 0:
         logger.error(
             "[wa_media_pull] Keychain item not found (service=%s account=%s) — "
-            "store it with: security add-generic-password -s %s -a %s -w '<token>'",
+            "store it with: security add-generic-password -s %s -a %s -w '<value>'",
             service, account, service, account,
         )
         return ""
     return out.stdout.strip()
+
+
+def _read_access_token() -> str:
+    """Read WHATSAPP_ACCESS_TOKEN from the Pro Keychain. Never logged."""
+    service = os.getenv("WA_MEDIA_KEYCHAIN_SERVICE", "balizero-whatsapp")
+    account = os.getenv("WA_MEDIA_KEYCHAIN_ACCOUNT", "access-token")
+    return _read_keychain(service, account)
+
+
+def _read_bridge_api_key() -> str:
+    """BRIDGE_API_KEY from env if set, else the Pro Keychain (no secret in plist)."""
+    env_key = os.getenv("BRIDGE_API_KEY", "")
+    if env_key:
+        return env_key
+    service = os.getenv("WA_MEDIA_KEYCHAIN_SERVICE", "balizero-whatsapp")
+    return _read_keychain(service, "bridge-api-key")
 
 
 def _send_telegram_alert(msg: str) -> None:
@@ -186,7 +203,7 @@ async def _ack(http: httpx.AsyncClient, base_url: str, api_key: str, ids: list[i
 
 async def run_one_poll() -> int:
     base_url = os.getenv("FLY_BRIDGE_URL", "https://nuzantara-rag.fly.dev")
-    api_key = os.getenv("BRIDGE_API_KEY", "")
+    api_key = _read_bridge_api_key()
     db_url = os.getenv(
         "LOCAL_DATABASE_URL", "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
     )
@@ -197,7 +214,7 @@ async def run_one_poll() -> int:
     stale_hours = float(os.getenv("WA_MEDIA_STALE_HOURS", "36"))
 
     if not api_key:
-        logger.error("[wa_media_pull] BRIDGE_API_KEY not set, aborting")
+        logger.error("[wa_media_pull] BRIDGE_API_KEY not in env or Keychain, aborting")
         return 1
 
     access_token = _read_access_token()
