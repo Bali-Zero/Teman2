@@ -30,8 +30,8 @@ import logging
 import os
 import re
 import socket
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable
 
 import asyncpg
 
@@ -102,7 +102,7 @@ class WorkerConfig:
     max_backoff_seconds: float = DEFAULT_MAX_BACKOFF_SECONDS
 
     @classmethod
-    def from_env(cls) -> "WorkerConfig":
+    def from_env(cls) -> WorkerConfig:
         return cls(
             lease_ttl_seconds=int(
                 os.getenv("INTAKE_LEASE_TTL_SECONDS", DEFAULT_LEASE_TTL_SECONDS)
@@ -330,7 +330,7 @@ class IntakeWorker:
                 "job %s stage=%s ok %s->%s (%dms)",
                 job_id, stage, inbound, next_status, latency_ms,
             )
-        except Exception as exc:  # noqa: BLE001 — stage handler may raise anything.
+        except Exception as exc:
             latency_ms = int((loop.time() - t0) * 1000)
             try:
                 async with self.pool.acquire() as conn:
@@ -358,7 +358,7 @@ class IntakeWorker:
             await asyncio.sleep(self.config.heartbeat_interval_seconds)
             try:
                 await self._heartbeat(job_id)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("heartbeat failed job %s: %s", job_id, exc)
 
     async def run_once(self) -> bool:
@@ -384,7 +384,7 @@ class IntakeWorker:
         """
         ttl = self.config.lease_ttl_seconds
         row = await conn.fetchrow(
-            f"""
+            """
             WITH claimed AS (
                 SELECT id, status AS inbound_status
                 FROM intake_queue
@@ -442,7 +442,7 @@ class IntakeWorker:
             except asyncio.CancelledError:
                 logger.info("intake worker %s cancelled", self.worker_id)
                 raise
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("unexpected worker loop error")
                 await self._sleep_or_stop(self.config.poll_interval_seconds)
         logger.info("intake worker %s stopped", self.worker_id)
@@ -478,7 +478,23 @@ async def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
     pool = await _build_pool()
-    worker = IntakeWorker(pool, config=WorkerConfig.from_env())
+    # Production entrypoint: wire the REAL FASE-3/4 stage handlers (OCR/classify/
+    # extract/validate/route → creates document_routing_proposal). Without this the
+    # worker would run _stub_stage passthroughs and silently advance rows to 'done'
+    # with NO OCR and NO routing proposal. The stub default on IntakeWorker exists
+    # only for unit tests that inject their own handler. Set INTAKE_WORKER_STUB=1 to
+    # force the stub path (diagnostics / smoke only).
+    if os.getenv("INTAKE_WORKER_STUB", "").strip().lower() in {"1", "true", "yes", "on"}:
+        logger.warning("intake worker: INTAKE_WORKER_STUB set — running STUB stages (no OCR/route)")
+        worker = IntakeWorker(pool, config=WorkerConfig.from_env())
+    else:
+        from backend.services.intake.stages import build_real_stage_handler
+
+        worker = IntakeWorker(
+            pool,
+            config=WorkerConfig.from_env(),
+            stage_handler=build_real_stage_handler(pool),
+        )
     try:
         await worker.run_forever()
     finally:
