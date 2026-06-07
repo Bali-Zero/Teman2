@@ -131,6 +131,32 @@ gates:
     note: >
       Operator notice, not a pass/fail test. Intentionally stays true.
 
+  - id: p3_sandbox_static
+    kind: ci_workflow
+    target: .github/workflows/p3-sandbox-gates.yml
+    step_anchor: "P3 static gates"
+    expected_continue_on_error: false
+    note: >
+      FASE-1 (P3 Tier-1) egress chokepoint — ENFORCING static gate. Validates both
+      compose files parse, the base docker-compose.test.yml is UNTOUCHED (gate G2 by
+      construction — never break the integration suite), the egress proxy compiles +
+      allowlist logic (apex/subdomain match, lookalike denied), and the runtime-gate
+      tests collect. Runs on every GitHub runner, no Docker. If this flips to
+      continue-on-error=true it means the P3 static guarantees stopped blocking PRs.
+
+  - id: p3_sandbox_runtime
+    kind: ci_workflow
+    target: .github/workflows/p3-sandbox-gates.yml
+    step_anchor: "P3 runtime gates"
+    expected_continue_on_error: true
+    note: >
+      Monitor-by-design (same pattern as hot_zone_redis_lease): the real G1/G1-DLP/G4
+      need `docker compose up --build`, which GitHub ephemeral runners cannot run
+      safely → they execute on Pro (workhorse). Intentionally stays true (NOT a
+      disarm). The honest residue: DLP inspects cleartext bodies only; HTTPS CONNECT
+      tunnels are opaque (DLP-over-encrypted-HTTPS = Tier-1.5, deferred). Operator
+      decision 2026-06-07 (option B, DLP onesto-limitato).
+
   - id: lint_migration_numbers
     kind: lint_script
     target: scripts/lint_migration_numbers.py
