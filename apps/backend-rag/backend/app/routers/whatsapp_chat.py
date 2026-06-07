@@ -40,6 +40,10 @@ from backend.services.whatsapp_onboarding_detector import get_onboarding_detecto
 
 logger = logging.getLogger(__name__)
 
+# NB: media downloads do NOT happen on Fly (Law 2 — PII stays on the Pro). The
+# official-line media handoff publishes metadata only to events_outbox; the
+# sovereign Pro worker (scripts/wa_media_pull_worker.py) owns the blob root.
+
 # In-memory conversation history per phone number (fast fallback)
 _conversation_cache: dict[str, list[dict]] = defaultdict(list)
 MAX_HISTORY_MESSAGES = 20
@@ -905,6 +909,73 @@ async def _resolve_webhook_id(conn: Any, wamid: str) -> int | None:
         return None
 
 
+_WA_MEDIA_PENDING_CHANNEL = "whatsapp_media_pending"
+
+
+async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request) -> None:
+    """Background task: hand off official-line media to the sovereign Pro worker.
+
+    PULL architecture (Law 2 — PII never leaves the Pro): Fly does NOT download
+    the media here. It enqueues a *metadata-only* hand-off row into
+    ``events_outbox`` (channel ``whatsapp_media_pending``) — just the Meta
+    ``media_id`` + provenance, never a single byte of the document. A worker on
+    the Pro pulls these rows, downloads from Meta itself, and stores the blob on
+    the Pro's local disk + local intake_queue. Fly ephemeral storage never
+    touches client PII (passports, KTP, akta).
+
+    Runs AFTER the 200 ACK like its sibling, so the webhook is never delayed.
+    Best-effort: failures are logged, never raised (the webhook already ACKed;
+    Meta will not be impacted — the outbox row, if written, is durable and the
+    Pro worker is idempotent on the source_ref it derives).
+    """
+    # Cheap pre-check: only touch the DB if the payload actually carries media
+    # on the official number.
+    from backend.channels.whatsapp.media_webhook_parse import parse_media_webhook
+
+    parsed = parse_media_webhook(raw_payload)
+    official = [m for m in parsed.media if m.phone_number_id == META_INBOX_PHONE_NUMBER_ID]
+    if not official:
+        return
+
+    pool = _get_db_pool(request)
+    if pool is None:
+        logger.warning("meta-inbox media: no db pool, skipping %d media", len(official))
+        return
+
+    from backend.services.events import outbox
+
+    published = 0
+    try:
+        async with pool.acquire() as conn:
+            # One transaction for the whole batch: publish() is atomic with the
+            # caller's tx (INSERT + NOTIFY both vanish on rollback). All-or-nothing
+            # is fine here — the Pro worker reconciles whatever lands.
+            async with conn.transaction():
+                for media in official:
+                    await outbox.publish(
+                        conn,
+                        _WA_MEDIA_PENDING_CHANNEL,
+                        {
+                            "media_id": media.media_id,
+                            "mime_type": media.mime_type,
+                            "message_type": media.message_type,
+                            "filename": media.filename,
+                            "declared_sha256": media.declared_sha256,
+                            "wa_message_id": media.wa_message_id,
+                            "from_phone": media.from_phone,
+                            "phone_number_id": media.phone_number_id,
+                            "sender_name": media.sender_name,
+                        },
+                    )
+                    published += 1
+        logger.info(
+            "meta-inbox media handoff: found=%d published=%d (PULL: no download on Fly)",
+            len(official), published,
+        )
+    except Exception as exc:
+        logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
+
+
 async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
     """Background task: drive the meta-inbox ledger for the target number only.
 
@@ -1103,6 +1174,14 @@ async def whatsapp_webhook(
     if meta_inbox_in_payload:
         background_tasks.add_task(
             process_meta_inbox_payload,
+            raw_payload=raw_payload,
+            request=request,
+        )
+        # Anello 1: pull any media attachments on the official line into the
+        # intake pipeline (download → enqueue). Separate task so a media
+        # download never delays the ledger or the Meta ACK.
+        background_tasks.add_task(
+            _ingest_meta_inbox_media,
             raw_payload=raw_payload,
             request=request,
         )

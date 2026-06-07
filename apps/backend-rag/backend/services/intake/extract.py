@@ -28,13 +28,23 @@ from typing import Any
 
 import httpx
 
+from backend.services.intake.model_roles import resolve_model_role
+
 logger = logging.getLogger("zantara.intake.extract")
 
 # --- Model role (FASE 0 registry: intake_extraction). Env-overridable. ---
-EXTRACTION_MODEL: str = os.getenv(
-    "INTAKE_EXTRACTION_MODEL",
-    "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
-)
+_EXTRACTION_MODEL_DEFAULT = "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m"
+
+
+def _resolve_extraction_model() -> str:
+    """Prefer env override, then FASE-0 registry, then the local SEA-LION default."""
+    override = os.getenv("INTAKE_EXTRACTION_MODEL")
+    if override:
+        return override
+    return resolve_model_role("intake_extraction", _EXTRACTION_MODEL_DEFAULT)
+
+
+EXTRACTION_MODEL: str = _resolve_extraction_model()
 EXTRACTION_MODEL_LABEL: str = "sea-lion"
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
@@ -334,7 +344,7 @@ async def extract_fields(
 
     prompt = _build_prompt(canonical, pages)
     gen = generate_fn or _ollama_generate
-    raw_response = await gen(EXTRACTION_MODEL, prompt)
+    raw_response = await gen(_resolve_extraction_model(), prompt)
     parsed = _parse_response(raw_response)
 
     specs = DOC_TYPE_FIELDS[canonical]

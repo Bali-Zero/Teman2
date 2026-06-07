@@ -732,9 +732,24 @@ print(f'Query: {query}')
         LEVEL="${RAW_CMD#-}"
         [ -z "$LEVEL" ] && LEVEL="l2"  # default to L2
         LEVEL_UPPER=$(echo "$LEVEL" | tr '[:lower:]' '[:upper:]')
+        # Preflight SDD backend (apps/federation/workflows.py) was created by
+        # commit 500fca845 and DELETED by 5c06a2fd5 ("massive repo cleanup —
+        # untrack 739 files"). The thin wrapper survived but its target is gone,
+        # so this command crashed with a cryptic `Errno 2`. Fail honestly instead.
+        PREFLIGHT_BACKEND="apps/federation/workflows.py"
+        if [ ! -f "$PREFLIGHT_BACKEND" ]; then
+            err "Preflight SDD is NOT INSTALLED — backend missing: ${PREFLIGHT_BACKEND}"
+            err "  It was created by commit 500fca845 and DELETED by 5c06a2fd5"
+            err "  (\"massive repo cleanup — untrack 739 files\"); the wrapper survived, the backend did not."
+            err "  No live system depends on this command (verified 2026-06-07: no hook/cron/LaunchAgent/code invokes it)."
+            err "  Until it is rebuilt, run the preflight MANUALLY: the 4-LLM panel in CLAUDE.md §6"
+            err "  (Gemini agy + Codex + DeepSeek + optional NB-1). Restoring the automated gate is a FASE-3 task."
+            audit_log "preflight-${LEVEL}" "$(echo "$TASK" | shasum -a 256 | cut -d' ' -f1)" "0" "127"
+            exit 127
+        fi
         info "Preflight SDD — level ${LEVEL_UPPER} starting for: ${TASK:0:80}"
         start=$(date +%s)
-        PYTHONPATH=. python3 apps/federation/workflows.py run "preflight-${LEVEL}" "$TASK"
+        PYTHONPATH=. python3 "$PREFLIGHT_BACKEND" run "preflight-${LEVEL}" "$TASK"
         ec=$?
         duration=$(( $(date +%s) - start ))
         audit_log "preflight-${LEVEL}" "$(echo "$TASK" | shasum -a 256 | cut -d' ' -f1)" "$duration" "$ec"

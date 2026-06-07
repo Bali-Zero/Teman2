@@ -45,6 +45,18 @@
 /apps/backend-rag/backend/db/migration_manager.py    @Balizero1987
 
 # ---------------------------------------------------------------------------
+# Meta-verifier (P1 §4) — TIER 1 (R1: the gate that checks the gates must be
+# immutable, else it is recursively disarmable — "quis custodiet ipsos custodes?")
+# .github/workflows/ already covers verify-the-verifiers.yml above; these add the
+# script + registry + integrity baseline. An agent cannot weaken the meta-verifier
+# (e.g. drop a gate from the registry, soften a check) without @Balizero1987 review.
+# ---------------------------------------------------------------------------
+/scripts/verify_the_verifiers.py                     @Balizero1987
+/scripts/verify_the_verifiers_gates.yaml             @Balizero1987
+/scripts/tests/test_verify_the_verifiers.py          @Balizero1987
+/.github/verify-the-verifiers.sha256                 @Balizero1987
+
+# ---------------------------------------------------------------------------
 # Auth / security-critical — TIER 1
 # ---------------------------------------------------------------------------
 /apps/backend-rag/backend/app/auth/                  @Balizero1987

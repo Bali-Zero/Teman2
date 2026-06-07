@@ -152,8 +152,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       getNoIndexSlugs(),
     ]);
 
+    // Slugs that must never appear in sitemap regardless of source
+    // (test content, sentinel values injected by CMS/backend).
+    const SITEMAP_BLOCKED_SLUGS = new Set(["test-article"]);
+
     const articlePages = articles
-      .filter((article) => !noIndexSlugs.has(article.slug))
+      .filter((article) => {
+        // Exclude slugs that contain query-string characters (e.g. "foo?bar")
+        if (article.slug.includes("?")) return false;
+        // Exclude explicitly blocked slugs (test content, etc.)
+        if (SITEMAP_BLOCKED_SLUGS.has(article.slug)) return false;
+        // Exclude slugs marked noIndex in MDX frontmatter
+        if (noIndexSlugs.has(article.slug)) return false;
+        return true;
+      })
       .map((article) => {
         // Priority: featured editorial (0.9) > ai-enriched (0.8) > basic (0.6)
         const priority = article.featured
@@ -246,7 +258,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     });
 
-    const sections = getSections().filter((s) => s.codeCount > 0);
+    const sections = getSections().filter(
+      // Exclude sections with no codes AND exclude the sentinel "?" ID that
+      // transformCode() emits when sektor_id is null — avoids /kbli/sectors/?
+      (s) => s.codeCount > 0 && /^[A-Z]$/.test(s.id),
+    );
     const sectorPages = sections.map((s) => ({
       url: `${baseUrl}/kbli/sectors/${s.id}`,
       lastModified: new Date(),
