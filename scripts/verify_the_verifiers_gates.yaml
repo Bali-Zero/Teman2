@@ -81,6 +81,21 @@ gates:
     # No env disarm lever (daemon-or-static-fallback). Armed = registered + file exists.
     disarm_substring: null
 
+  - id: stadio_zero_nudge
+    kind: claude_hook
+    target: ~/.claude/hooks/stadio_zero_nudge.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "STADIO_ZERO_NUDGE_OFF=1"
+    canary:
+      env: { STADIO_ZERO_NUDGE_OFF: "1" }
+      expect: disarmed
+    note: >
+      STADIO-0 STUDY entry-gate nudge (FASE-0 anti-forgetting half). Non-blocking
+      by design (sys.exit(0) always) — a blocking gate on a judgment act invites
+      empty STUDYs to unblock. Registering it here closes the loop: the meta-verifier
+      (the FASE-0 decay-sensor) now observes whether STADIO-0 itself stays armed.
+
   - id: hot_zone_codeowners_self_mod
     kind: ci_workflow
     target: .github/workflows/hot-zone-pr-gate.yml
