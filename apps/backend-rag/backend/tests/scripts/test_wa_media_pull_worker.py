@@ -153,10 +153,17 @@ async def test_poll_downloads_enqueues_and_acks(monkeypatch, tmp_path, pool, cle
     assert rc == 0
 
     # A REAL intake_queue row landed locally, with our sha + source_ref.
+    # mime_type lives on document_instances (the immutable blob registry), not
+    # intake_queue — join to verify the worker recorded it.
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT source, source_ref, blob_hash, mime_type, received_by "
-            "FROM intake_queue WHERE blob_hash = $1",
+            """
+            SELECT iq.source, iq.source_ref, iq.blob_hash, iq.received_by,
+                   di.mime_type
+              FROM intake_queue iq
+              JOIN document_instances di ON di.id = iq.instance_id
+             WHERE iq.blob_hash = $1
+            """,
             sha,
         )
     assert row is not None
