@@ -42,3 +42,8 @@
 
 **Learning:** Small utility widgets that contain text inputs (like FeedbackWidget) often feel "heavy" when they use standard textareas with fixed heights and internal scrollbars. Utilizing the project's standard AutoResizeTextarea component ensures a fluid, consistent input experience across all interface layers. Additionally, secondary widgets must strictly adhere to semantic labeling (htmlFor/id) and ARIA dialog roles to ensure they are not overlooked by screen reader users.
 **Action:** Consistently use AutoResizeTextarea for multi-line inputs in all UI layers. Always associate labels with inputs using semantic IDs and apply aria-labelledby to dialog containers.
+
+## 2026-05-20 - [Consistency in Dynamic AI Status Messages]
+
+**Learning:** Surfacing internal system names (like database collections) or hardcoded localized verbs in dynamic AI reasoning indicators creates a disjointed experience if the rest of the interface is English-first.
+**Action:** Always map internal tool/database identifiers to user-friendly English strings for reasoning indicators, while maintaining personality-driven elements (like interjections) where appropriate for the brand voice.
