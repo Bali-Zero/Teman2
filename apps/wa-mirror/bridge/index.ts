@@ -119,8 +119,15 @@ async function main(): Promise<void> {
     "wa-mirror all sessions launched; reconnect loops own their lifecycle",
   );
 
-  // Keep the process up forever — Baileys event handlers and the reconnect
-  // setTimeout callbacks fire async. SIGINT/SIGTERM handle shutdown.
+  // Keep the process up forever — even if EVERY account terminates (e.g. all
+  // logged out). A bare unresolved Promise is NOT an event-loop handle, so once
+  // the last Baileys socket/timer drains, Node would exit 0 and start-all would
+  // relaunch the process into a fast re-login loop (one logout alert PER
+  // relaunch). An explicit, ref'd heartbeat keeps the process alive and idle so
+  // start-all sees it "already running" and skips it; a re-onboard
+  // (start-one.sh <name> --qr) kills+restarts it cleanly. SIGINT/SIGTERM still
+  // drive graceful shutdown.
+  setInterval(() => undefined, 1 << 30);
   await new Promise<void>(() => undefined);
 }
 
