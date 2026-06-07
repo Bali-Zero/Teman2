@@ -64,7 +64,13 @@ jobs:
           print('allowlist logic OK')
           PY
           echo "== gate tests collect =="
-          cd apps/backend-rag && PYTHONPATH=. python -m pytest tests/integration/test_p3_sandbox_egress.py --collect-only -q
+          # --noconftest: this gate only proves the test file PARSES + COLLECTS.
+          # The shared tests/integration/conftest.py imports pytest_asyncio +
+          # testcontainers (the full async/Docker stack) at module level — none of
+          # which test_p3_sandbox_egress.py uses (it is subprocess-only, with its
+          # own pytestmark skip). Loading that conftest here would force installing
+          # the whole backend test stack just to collect 5 subprocess tests.
+          cd apps/backend-rag && PYTHONPATH=. python -m pytest tests/integration/test_p3_sandbox_egress.py --collect-only -q --noconftest
 
   p3-runtime-gates:
     name: P3 runtime gates G1/G1-DLP/G4 (monitor — runs on Pro)
