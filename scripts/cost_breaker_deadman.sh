@@ -75,8 +75,10 @@ log() {
 }
 
 mtime_epoch() {
-    # BSD stat: -f %m. Returns 0 if file missing.
-    stat -f %m "$1" 2>/dev/null || echo 0
+    # Portable mtime-in-epoch-seconds. BSD/macOS stat uses `-f %m`; GNU/Linux
+    # stat uses `-c %Y`. Try BSD first, fall back to GNU. Returns 0 if both
+    # fail (missing file or unsupported stat) so callers degrade to "stale".
+    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
 }
 
 # classify_file <path> <threshold_sec> [now_epoch]

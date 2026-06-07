@@ -59,7 +59,8 @@ check "missing file is MISSING" "MISSING" "2" -- "$missing_file" 60
 check "injected future now makes fresh file STALE" "STALE" "1" -- "$fresh_file" 100 9999999999
 
 # Injected now == file mtime → age 0 → FRESH (boundary).
-fresh_mtime="$(stat -f %m "$fresh_file")"
+# Portable mtime read: BSD/macOS `stat -f %m`, GNU/Linux `stat -c %Y`.
+fresh_mtime="$(stat -f %m "$fresh_file" 2>/dev/null || stat -c %Y "$fresh_file")"
 check "injected now == mtime is FRESH (age 0)" "FRESH" "0" -- "$fresh_file" 0 "$fresh_mtime"
 
 echo "----"
