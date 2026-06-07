@@ -335,18 +335,16 @@ def test_main_exit_code_green(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_main_exit_code_red(tmp_path: Path) -> None:
+    # A truly disarmed claude_hook (target missing) → RED. Force --scope all so the
+    # test is deterministic regardless of the CI env var (on a CI runner, default
+    # auto-scope=repo would SKIP the claude_hook → false green; --scope all checks it).
     reg = tmp_path / "gates.yaml"
-    reg.write_text(
-        "version: 1\ngates:\n"
-        f"  - id: gone\n    kind: lint_script\n    target: {tmp_path / 'gone.py'}\n    consumer: null\n"
-    )
-    # consumer:null → WARN, not DISARMED → still green. Make it truly disarmed:
     reg.write_text(
         "version: 1\ngates:\n"
         f"  - id: gone\n    kind: claude_hook\n    target: {tmp_path / 'gone.py'}\n"
         f"    registered_in: {tmp_path / 'nope.json'}\n    event: Stop\n    disarm_substring: null\n"
     )
-    code = VTV.main(["--registry", str(reg), "--no-signal"])
+    code = VTV.main(["--registry", str(reg), "--no-signal", "--scope", "all"])
     assert code == 1
 
 
