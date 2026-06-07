@@ -562,6 +562,11 @@ research/marketing/zantara-visual-dataset/
 research/marketing/flow-assets/
 research/crm-exports/
 research/hr/
+# Employee/client PII at rest (KTP, passport, NPWP, akta scans). Belt-and-suspenders:
+# today only the global *.JPG/*.jpg patterns catch the KTP images in data/hr/ — this
+# whole-dir rule guards against a future non-image PII file (PDF, .md, .csv) slipping in.
+# HR identity docs MUST stay local (Symbiosis Law 2 / UU PDP). Never commit.
+data/hr/
 # research/agent-craft: ignore working subdirs, but TRACK proposed-agents/ + S17 frozen index
 research/agent-craft/_assets/
 research/agent-craft/census-raw/
