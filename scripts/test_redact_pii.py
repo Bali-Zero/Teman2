@@ -19,7 +19,6 @@ Run:
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -28,9 +27,11 @@ import pytest
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR.parent))
 
-from scripts._redact_pii import (
+from scripts._redact_pii import (  # noqa: E402  (sys.path.insert must precede this local import)
+    DynamicNameLoadError,
     Redactor,
     RedactionError,
+    _load_pg_names,
     load_config,
 )
 
@@ -386,3 +387,87 @@ def test_kura_kura_btid_dossier_redacted(redactor_no_dynamic):
     assert "[INTERNAL-DOSSIER-REDACTED]" in out
     assert "Padding line 1" in out, "unrelated content before must survive"
     assert "Padding line 4" in out, "unrelated content after must survive"
+
+
+# ─── P2 §7.1 BUG FIXES (FASE-2 confine-PII) ──────────────────────────
+
+
+def test_p2_bug2_lowercase_crm_name_redacted(redactor_with_names):
+    """P2 §7.1 BUG #2: CRM names arrive title-cased from PG but appear
+    LOWERCASE in WhatsApp text. Without re.IGNORECASE the lowercase form
+    bypassed pass4 and leaked to the cloud. Fix = re.IGNORECASE on the
+    dynamic alternation.
+    """
+    # "Sofia Mueller" is in the fixture's CRM names — feed it lowercase.
+    text = (
+        "Padding to keep the gate happy with enough surviving content here. "
+        + "z" * 150
+        + " the client sofia mueller asked about her visa extension today please."
+    )
+    out = redactor_with_names.redact(text)
+    assert "sofia mueller" not in out.lower(), (
+        "lowercase CRM name leaked — re.IGNORECASE regression (P2 BUG #2)"
+    )
+
+
+def test_p2_bug2_mixed_case_crm_name_redacted(redactor_with_names):
+    """Mixed/odd casing ('SoFiA MuElLeR') must also be caught."""
+    text = (
+        "Padding content to satisfy min_remaining_chars gate comfortably here. "
+        + "w" * 150
+        + " note: SoFiA MuElLeR is the registered client for this matter."
+    )
+    out = redactor_with_names.redact(text)
+    assert "mueller" not in out.lower(), "mixed-case CRM name leaked (P2 BUG #2)"
+
+
+def test_p2_bug1_pg_unset_degrades_no_raise(monkeypatch):
+    """P2 §7.1 BUG #1: PG out of scope (no env, no pg_url) → return [],
+    degrade gracefully. This is the legitimate case (LaunchAgent before PG,
+    P3 egress-proxy with REDACT_PG_DISABLED). Must NOT raise.
+    """
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("PGURL", raising=False)
+    assert _load_pg_names("SELECT 1", pg_url=None) == []
+
+
+def test_p2_bug1_pg_expected_but_down_raises(monkeypatch):
+    """P2 §7.1 BUG #1: PG EXPECTED (pg_url set) but unreachable → raise
+    DynamicNameLoadError. Previously returned [] and PROCEEDED = fail-OPEN
+    (CRM names silently NOT redacted, then forwarded to cloud).
+    """
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("PGURL", raising=False)
+    with pytest.raises(DynamicNameLoadError):
+        # Dead port → psql connection refused (or psql missing → also raises).
+        _load_pg_names(
+            "SELECT full_name FROM clients",
+            pg_url="postgresql://x:x@127.0.0.1:5999/nope",
+        )
+
+
+def test_p2_bug1_load_default_fail_closed_when_pg_down(monkeypatch):
+    """load_default() must fail-CLOSED (raise) when DATABASE_URL is set but
+    Postgres is down — never silently build a redactor with no CRM names.
+    """
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x:x@127.0.0.1:5999/nope")
+    with pytest.raises(DynamicNameLoadError):
+        Redactor.load_default()
+
+
+def test_p2_bug1_require_dynamic_names_fail_closed_when_env_unset(monkeypatch):
+    """On the cloud-egress path, require_dynamic_names=True must fail-CLOSED
+    even when PG is merely out of scope (env unset) — because forwarding text
+    that COULD contain un-redacted CRM names is unacceptable there.
+    """
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("PGURL", raising=False)
+    with pytest.raises(DynamicNameLoadError):
+        Redactor.load_default(require_dynamic_names=True)
+
+
+def test_p2_dynamic_name_load_error_is_redaction_error():
+    """DynamicNameLoadError must subclass RedactionError so existing callers
+    that catch RedactionError (e.g. _cli_main) fail-closed automatically.
+    """
+    assert issubclass(DynamicNameLoadError, RedactionError)
