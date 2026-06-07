@@ -97,6 +97,21 @@ if [ -n "$MIG_FILES" ]; then
     fi
 fi
 
+# ── ANTI-REWARD-HACKING test lint (P1 STRATO-1, FASE-3 SOTA meta-dev-loop) ───
+# First-level heuristic (EASILY EVADED — see scripts/lint_test_reward_hacking.py
+# docstring) that flags the lazy test-cheats an agent reaches for to fake a green
+# check: assert-True, self-equal tautology, over-broad pytest.raises(Exception),
+# sys.exit pre-assert, tests that assert nothing. Runs ONLY on staged test files.
+# Spec: research/operations/specs/P1-verify-the-verifiers.md §3 STRATO-1.
+echo "🎯 [P1-STRATO1] Anti-reward-hacking test lint..."
+if ! python3 scripts/lint_test_reward_hacking.py; then
+    echo ""
+    echo "❌ ERROR: test-cheating pattern(s) detected in staged test file(s)."
+    echo "   Fix the test so it asserts real behavior, or justify in review."
+    echo "   (First-level heuristic — not a guarantee. Kill: none; fix the test.)"
+    exit 1
+fi
+
 # Check for print statements in Python files
 echo "🐍 Checking for print() statements in Python files..."
 PY_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.py$' || true)
