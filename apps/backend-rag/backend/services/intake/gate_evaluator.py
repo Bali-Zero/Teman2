@@ -30,6 +30,7 @@ leaves the function.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -45,15 +46,51 @@ _DOC_PENDING_STATUSES = ("review_pending", "review_claimed")
 _LATE_PENDING_STATES = ("AWAITING_REPLY", "REMINDER_SENT", "ESCALATED")
 _DEADLINE_PENDING_STATUSES = ("pending", "sent")
 
+# How old a mirrored doc-count row may be before it is treated as 0 (stale).
+# Protects against a dead Pro pusher leaving a worker permanently gate-1-blocked.
+_MIRROR_STALE_HOURS = 6
+
+
+def _use_mirror() -> bool:
+    """True on Fly (intake PII absent locally) → read the Pro→Fly count mirror.
+
+    Set INTAKE_GATE_USE_MIRROR=1 on the Fly app. Unset on the Pro, where the
+    live intake tables are the source of truth.
+    """
+    return os.getenv("INTAKE_GATE_USE_MIRROR", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+async def _count_documents_mirror(conn: asyncpg.Connection, user_email: str) -> int:
+    """Gate 1 on Fly — read the non-PII mirror pushed by the Pro (migration 219).
+
+    A row older than _MIRROR_STALE_HOURS is treated as 0 (the pusher may be down;
+    do not hard-block a worker on a stale signal — graceful, consistent with F4).
+    """
+    val = await conn.fetchval(
+        """
+        SELECT pending_count
+          FROM intake_gate_doc_counts
+         WHERE lower(user_email) = $1
+           AND updated_at >= now() - ($2 || ' hours')::interval
+        """,
+        user_email,
+        str(_MIRROR_STALE_HOURS),
+    )
+    return int(val or 0)
+
 
 async def _count_documents(conn: asyncpg.Connection, user_email: str) -> int:
     """Gate 1 — documents the user received, still needing disposal.
 
-    Scope = by-receiver (intake_queue.received_by), the Q1-v1 decision. A doc
-    blocks the receiver if it is unclaimed (review_pending) OR claimed by them OR
-    claimed by someone else but the lease has expired (reclaimable, F7). A live
-    foreign claim is excluded (F3).
+    On Fly (INTAKE_GATE_USE_MIRROR) reads the Pro→Fly count mirror; on the Pro it
+    queries the live local intake tables. Scope = by-receiver
+    (intake_queue.received_by), the Q1-v1 decision. A doc blocks the receiver if
+    it is unclaimed (review_pending) OR claimed by them OR claimed by someone else
+    but the lease has expired (reclaimable, F7). A live foreign claim is excluded
+    (F3).
     """
+    if _use_mirror():
+        return await _count_documents_mirror(conn, user_email)
     return int(
         await conn.fetchval(
             """
