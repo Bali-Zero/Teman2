@@ -1,0 +1,59 @@
+name: P7 LEARN Shadow Harvester Gate
+
+# FASE-6 (P7 safe slice) — verifies the LEARN shadow harvester: the proposal
+# artifact is in sync with the scar ledger (idempotent), the kill-switch works,
+# and the gate tests (G1 objective-anchor, G2 no-enforcement, G3 reversibility,
+# G4 recurrence-threshold) pass. Pure-Python, zero network, zero PII, zero LLM.
+#
+# This workflow is the REAL consumer of agent-library/learn/lesson_harvester.py
+# (so the meta-verifier kind=lint_script sees the gate ARMED).
+#
+# SAFETY NOTE: the harvester is SHADOW-MODE — it proposes, it does NOT apply.
+# Nothing in this pipeline activates a rule, edits settings.json, or creates a
+# hook. Promotion of any proposal to enforcement requires a human-gate (P7 §3.4).
+
+on:
+  pull_request:
+    paths:
+      - "agent-library/learn/lesson_harvester.py"
+      - "agent-library/learn/test_lesson_harvester.py"
+      - "agent-library/learn/proposals/**"
+      - ".claude/rules/cicatrix-scars.md"
+      - ".github/workflows/p7-lesson-harvester.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lesson-harvester-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install --quiet pytest
+
+      # Internal G1/G4/G2 assertions (no ledger dependency).
+      - name: lesson_harvester self-test
+        run: python3 agent-library/learn/lesson_harvester.py --self-test
+
+      # The committed shadow report MUST match a fresh generation from the
+      # current scar ledger. If a scar was added but the report not regenerated,
+      # this fails (proposal drift caught at PR time).
+      - name: lesson_harvester --check (idempotence)
+        run: python3 agent-library/learn/lesson_harvester.py --check
+
+      # Falsifiable gate tests (G1 anchor, G2 no-enforce, G3 kill-switch, G4
+      # recurrence).
+      - name: pytest gate (test_lesson_harvester.py)
+        run: PYTHONPATH=agent-library/learn python3 -m pytest agent-library/learn/test_lesson_harvester.py -q
+
+      - name: py_compile harvester + tests
+        run: |
+          python3 -m py_compile agent-library/learn/lesson_harvester.py
+          python3 -m py_compile agent-library/learn/test_lesson_harvester.py
