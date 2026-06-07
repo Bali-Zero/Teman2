@@ -1,0 +1,58 @@
+name: P6 federation parallelize-hypothesis gate
+
+# P6 (FASE-4 worker-p6, PR #1176) — guards the default-SERIAL posture of
+# scripts/federation_orchestrator.py. The parallelize HYPOTHESIS
+# (scripts/federation_parallelize.py) must default serial and only fan out for
+# breadth / role-distinct disjoint work (falsifiable gates G1-G5, mapped 1:1 in
+# scripts/test_federation_parallelize_gate.py).
+#
+# This workflow is the gate's CONSUMER: it is what makes
+# federation_parallelize_gate ARMED in the meta-verifier
+# (scripts/verify_the_verifiers_gates.yaml). The worker honestly shipped the
+# fragment with consumer:null (cicatrix W64 — a lint without a consumer gates
+# nothing → WARN); the orchestrator arms it HERE by running the falsifiable
+# tests on every change. A gate that gates nothing is half a gate.
+#
+# Triggers BOTH pull_request AND push-to-main (W41/W42 cicatrix lesson:
+# pull_request-only gives false safety because L2 autonomous-ops direct-push
+# to main silently SKIPS the gate).
+
+on:
+  pull_request:
+    paths:
+      - "scripts/federation_parallelize.py"
+      - "scripts/federation_orchestrator.py"
+      - "scripts/test_federation_parallelize_gate.py"
+      - ".github/workflows/p6-federation-parallelize.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/federation_parallelize.py"
+      - "scripts/federation_orchestrator.py"
+      - "scripts/test_federation_parallelize_gate.py"
+      - ".github/workflows/p6-federation-parallelize.yml"
+
+concurrency:
+  group: p6-federation-parallelize-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parallelize-gate:
+    name: P6 parallelize-hypothesis falsifiable gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install test deps (pytest)
+        run: pip install pytest
+
+      - name: P6 falsifiable gates (G1-G5 + default-serial invariant)
+        # scripts/ on path for the pure sibling module; apps/backend-rag on path
+        # so the orchestrator's optional observability import resolves.
+        run: PYTHONPATH=apps/backend-rag:scripts python3 -m pytest scripts/test_federation_parallelize_gate.py -q
