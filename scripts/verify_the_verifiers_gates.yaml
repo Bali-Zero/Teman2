@@ -1,0 +1,155 @@
+# verify_the_verifiers_gates.yaml — declarative registry of safety gates
+#
+# The FACTS (which gate, where, how to tell if armed) live HERE, separate from
+# the LOGIC (scripts/verify_the_verifiers.py). This is the meta-verifier of
+# P1 §4 (verify-the-verifiers): it renders OBSERVABLE when a gate is DISARMED.
+#
+# DISCIPLINE (anti-hallucination, cicatrix phantom-citation 2026-06-05):
+#   Every `target` / `registered_in` / `consumer` path below was verified to
+#   exist on disk on 2026-06-07. The P1 spec AND the session handoff both cited
+#   imprecise paths (guardrails-static.py lives in ~/.claude/hooks/ not scripts/;
+#   backend_stability_gate.py in apps/backend-rag/scripts/ not scripts/). Gates
+#   are registered by VERIFIED path, never by spec-name. When adding a gate,
+#   `find`/`ls` the path in THIS turn before adding it.
+#
+# kind:
+#   claude_hook  — a hook registered in ~/.claude/settings.json. Armed = (target
+#                  file exists) AND (its command in settings.json does NOT contain
+#                  the disarm_substring).
+#   ci_workflow  — a GitHub Actions workflow. Armed = each listed step has
+#                  continue-on-error == expected (a deterministic safety check
+#                  must be `false`; a monitor-by-design step stays `true`).
+#   lint_script  — a standalone lint. Armed = (script exists) AND (it has a
+#                  consumer: a CI workflow or .husky hook that runs it).
+#                  consumer: null  → WARN "gate without consumer" (not FAIL).
+#
+# canary (optional, --canary local run only): proves the disarm LEVER works —
+#   sets the env and asserts the gate self-disarms. NOT run in CI (would set
+#   dangerous env). It validates "the gate is disarmable-but-currently-armed".
+
+version: 1
+
+gates:
+  - id: stop_verify
+    kind: claude_hook
+    target: ~/.claude/hooks/stop_verify.py
+    registered_in: ~/.claude/settings.json
+    event: Stop
+    disarm_substring: "STOP_VERIFY_ALLOW_DIRTY=1"
+    canary:
+      env: { STOP_VERIFY_ALLOW_DIRTY: "1" }
+      expect: disarmed
+    note: >
+      Self-demonstrated GAP-1: this hook was disarmed (ALLOW_DIRTY=1 hardcoded
+      in the settings.json command) and nobody knew. Re-armed 2026-06-07.
+
+  - id: worktree_isolation
+    kind: claude_hook
+    target: ~/.claude/hooks/worktree_isolation.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "AGENT_WORKTREE_ENFORCEMENT=false"
+    canary:
+      env: { AGENT_WORKTREE_ENFORCEMENT: "false" }
+      expect: disarmed
+
+  - id: worktree_file_write_check
+    kind: claude_hook
+    target: ~/.claude/hooks/worktree_file_write_check.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "AGENT_WORKTREE_ENFORCEMENT=false"
+    canary:
+      env: { AGENT_WORKTREE_ENFORCEMENT: "false" }
+      expect: disarmed
+
+  - id: orchestrate_gate
+    kind: claude_hook
+    target: ~/.claude/hooks/orchestrate_gate.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "ORCHESTRATE_GATE_OFF=1"
+    canary:
+      env: { ORCHESTRATE_GATE_OFF: "1" }
+      expect: disarmed
+
+  - id: guardrails_client
+    kind: claude_hook
+    target: ~/.claude/hooks/guardrails-client.sh
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    # No env disarm lever (daemon-or-static-fallback). Armed = registered + file exists.
+    disarm_substring: null
+
+  - id: stadio_zero_nudge
+    kind: claude_hook
+    target: ~/.claude/hooks/stadio_zero_nudge.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "STADIO_ZERO_NUDGE_OFF=1"
+    canary:
+      env: { STADIO_ZERO_NUDGE_OFF: "1" }
+      expect: disarmed
+    note: >
+      STADIO-0 STUDY entry-gate nudge (FASE-0 anti-forgetting half). Non-blocking
+      by design (sys.exit(0) always) — a blocking gate on a judgment act invites
+      empty STUDYs to unblock. Registering it here closes the loop: the meta-verifier
+      (the FASE-0 decay-sensor) now observes whether STADIO-0 itself stays armed.
+
+  - id: hot_zone_codeowners_self_mod
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "CODEOWNERS self-mod check"
+    expected_continue_on_error: false
+    note: >
+      Deterministic security gate (anti CI-self-silencing). Flipped true->false
+      by PR #1166 (interruttore 2). Until #1166 merges, main still shows `true`.
+
+  - id: hot_zone_migration_replay
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "lint_migration_numbers"
+    expected_continue_on_error: false
+    note: >
+      Deterministic migration-uniqueness replay (cicatrix W40). Flipped
+      true->false by PR #1166.
+
+  - id: hot_zone_redis_lease
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "lease check"
+    expected_continue_on_error: true
+    note: >
+      Monitor-by-design: no Redis on GitHub ephemeral runners → would false-fail
+      every PR. Intentionally stays true (NOT a disarm).
+
+  - id: hot_zone_launchagent_notice
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "LaunchAgent"
+    expected_continue_on_error: true
+    note: >
+      Operator notice, not a pass/fail test. Intentionally stays true.
+
+  - id: lint_migration_numbers
+    kind: lint_script
+    target: scripts/lint_migration_numbers.py
+    # Real consumer verified 2026-06-07: .husky/pre-commit:83 runs the script
+    # directly. NB: .github/workflows/lint-migration-numbers.yml does NOT run it
+    # (it has its own inline bash dup-detector) — so the husky hook is the wiring
+    # that actually executes THIS script. hot-zone-pr-gate.yml:240 also replays it.
+    consumer: .husky/pre-commit
+
+  - id: lint_symbiosis_promises
+    kind: lint_script
+    target: scripts/lint_symbiosis_promises.py
+    consumer: .github/workflows/symbiosis-lint.yml
+
+  - id: lint_asyncpg_except_completeness
+    kind: lint_script
+    target: scripts/lint_asyncpg_except_completeness.py
+    consumer: null
+    note: >
+      Gate WITHOUT consumer (cicatrix W64). The lint exists and works but no CI
+      workflow / .husky hook runs it → it gates nothing. Emits WARN, not FAIL.
+      Fix (asyncpg-lint.yml) tracked as a separate task.

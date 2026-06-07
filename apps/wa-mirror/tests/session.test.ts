@@ -13,7 +13,11 @@
 import { DisconnectReason } from "@whiskeysockets/baileys";
 import { describe, expect, it } from "vitest";
 
-import { isTerminalCloseCode, mapCloseReason } from "../bridge/session.js";
+import {
+  isTerminalCloseCode,
+  mapCloseReason,
+  SessionLoggedOutError,
+} from "../bridge/session.js";
 
 describe("isTerminalCloseCode", () => {
   it("treats loggedOut (401) as terminal — needs a fresh QR scan", () => {
@@ -41,7 +45,9 @@ describe("isTerminalCloseCode", () => {
   });
 
   it("treats connectionReplaced (440) as NON-terminal", () => {
-    expect(isTerminalCloseCode(DisconnectReason.connectionReplaced)).toBe(false);
+    expect(isTerminalCloseCode(DisconnectReason.connectionReplaced)).toBe(
+      false,
+    );
     expect(isTerminalCloseCode(440)).toBe(false);
   });
 
@@ -61,20 +67,40 @@ describe("isTerminalCloseCode", () => {
   });
 });
 
+describe("SessionLoggedOutError", () => {
+  it("is an Error subclass with a stable name (orchestrator matches on instanceof)", () => {
+    const err = new SessionLoggedOutError(
+      "wa-mirror: session logged out: logged_out",
+    );
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(SessionLoggedOutError);
+    expect(err.name).toBe("SessionLoggedOutError");
+    expect(err.message).toContain("logged out");
+  });
+
+  it("a plain Error is NOT a SessionLoggedOutError — only terminal logout stops retries", () => {
+    // runAccountForever keeps retrying transient crashes (plain Error) and ONLY
+    // stops the loop for SessionLoggedOutError. This boundary must hold.
+    expect(new Error("transient crash") instanceof SessionLoggedOutError).toBe(
+      false,
+    );
+  });
+});
+
 describe("mapCloseReason", () => {
   it("maps the known Baileys codes to stable snake_case strings", () => {
     expect(mapCloseReason(DisconnectReason.loggedOut)).toBe("logged_out");
     expect(mapCloseReason(DisconnectReason.restartRequired)).toBe(
-      "restart_required"
+      "restart_required",
     );
     expect(mapCloseReason(DisconnectReason.connectionLost)).toBe(
-      "connection_lost"
+      "connection_lost",
     );
     expect(mapCloseReason(DisconnectReason.connectionClosed)).toBe(
-      "connection_closed"
+      "connection_closed",
     );
     expect(mapCloseReason(DisconnectReason.connectionReplaced)).toBe(
-      "connection_replaced"
+      "connection_replaced",
     );
     expect(mapCloseReason(DisconnectReason.badSession)).toBe("bad_session");
   });
