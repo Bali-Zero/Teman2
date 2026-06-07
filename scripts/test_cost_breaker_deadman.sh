@@ -59,8 +59,11 @@ check "missing file is MISSING" "MISSING" "2" -- "$missing_file" 60
 check "injected future now makes fresh file STALE" "STALE" "1" -- "$fresh_file" 100 9999999999
 
 # Injected now == file mtime → age 0 → FRESH (boundary).
-# Portable mtime read: BSD/macOS `stat -f %m`, GNU/Linux `stat -c %Y`.
-fresh_mtime="$(stat -f %m "$fresh_file" 2>/dev/null || stat -c %Y "$fresh_file")"
+# Read mtime via Python (stat-flavour-independent — matches mtime_epoch in the
+# script under test). `stat -f` on GNU is the *filesystem* flag and prints
+# garbage rather than failing cleanly, which previously fed a non-numeric
+# `now` into --classify and broke the boundary case on Linux CI.
+fresh_mtime="$(python3 -c 'import os,sys; print(int(os.path.getmtime(sys.argv[1])))' "$fresh_file")"
 check "injected now == mtime is FRESH (age 0)" "FRESH" "0" -- "$fresh_file" 0 "$fresh_mtime"
 
 echo "----"

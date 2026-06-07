@@ -75,10 +75,20 @@ log() {
 }
 
 mtime_epoch() {
-    # Portable mtime-in-epoch-seconds. BSD/macOS stat uses `-f %m`; GNU/Linux
-    # stat uses `-c %Y`. Try BSD first, fall back to GNU. Returns 0 if both
-    # fail (missing file or unsupported stat) so callers degrade to "stale".
-    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+    # Portable mtime-in-epoch-seconds, stat-flavour-independent. macOS stat
+    # uses `-f %m`, GNU/Linux uses `-c %Y`, and `stat -f` on GNU is a DIFFERENT
+    # flag (filesystem) that emits noise/garbage instead of failing cleanly —
+    # so the BSD-first `||` cascade is fragile across runners. Python's
+    # os.path.getmtime is uniform everywhere and is already a P9 dependency.
+    # Guarantees a single integer on stdout (0 on any error) so the caller's
+    # `$((now - mtime))` never sees an empty/non-numeric operand.
+    local mt
+    mt=$(python3 -c 'import os,sys; print(int(os.path.getmtime(sys.argv[1])))' "$1" 2>/dev/null) || mt=""
+    if [[ "$mt" =~ ^[0-9]+$ ]]; then
+        printf '%s\n' "$mt"
+    else
+        printf '0\n'
+    fi
 }
 
 # classify_file <path> <threshold_sec> [now_epoch]
@@ -94,6 +104,11 @@ classify_file() {
     fi
     local mtime age
     mtime=$(mtime_epoch "$path")
+    # Defensive: mtime_epoch already guarantees a bare integer, but guard the
+    # arithmetic so a surprise empty/non-numeric value can never make $((…))
+    # error out (which would print nothing + return 1, masquerading as STALE
+    # with empty output — the exact CI symptom this fix eliminates).
+    [[ "$mtime" =~ ^[0-9]+$ ]] || mtime=0
     age=$((now - mtime))
     if (( age > threshold )); then
         echo "STALE"
