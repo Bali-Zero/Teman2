@@ -224,31 +224,32 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
         return ""
     rules: list[str] = []
 
-    # scrim_opacity: darken behind the text. Brand skeletons use a gradient
-    # overlay (.legibility-armor / .scrim / .overlay). We strengthen it with an
-    # extra bottom-anchored dark gradient layer (the text lives in the bottom
-    # third on every renderable family), so the scrim always lands behind text.
+    # scrim_opacity: darken behind the text. The renderable families place the
+    # hero as an absolutely-positioned element at z-index 0 and a .gradient/
+    # .content stack above it. We STRENGTHEN the existing .gradient overlay in
+    # place — we do NOT add a new positioned layer and we NEVER touch `position`
+    # on any text element (E2E 2026-06-07: setting position:relative on the
+    # [data-zone-type='text'] container — which matches the cover's absolutely-
+    # positioned `.content` — knocked it out of its bottom anchor and slammed the
+    # title to the top edge, clipped. The scrim must be positioning-inert.)
     scrim = levers.get("scrim_opacity")
     if scrim is not None:
         a = max(0.0, min(0.95, float(scrim)))
-        # an additional ::after layer on the slide root, dark at the BOTTOM (text)
+        # Deepen the brand gradient overlay (.gradient / .legibility-armor /
+        # .scrim / .overlay) — these are already correctly positioned by the
+        # skeleton; we only change their paint, not their box.
         rules.append(
-            ".slide::after, .cover::after, body::after {"
-            "content:'';position:absolute;inset:0;z-index:1;pointer-events:none;"
-            f"background:linear-gradient(to bottom, transparent 45%, rgba(13,13,13,{a:.2f}) 100%);"
+            ".gradient,.legibility-armor,.scrim,.overlay,[data-zone-type='overlay']{"
+            f"background:linear-gradient(180deg, rgba(0,0,0,0.0) 30%, rgba(13,13,13,{a:.2f}) 70%, rgba(13,13,13,{min(0.98, a + 0.1):.2f}) 100%) !important;"
             "}"
-        )
-        # make sure text sits above the scrim
-        rules.append(
-            ".headline,.subhead,.subheading,.body,.text,[data-zone-type='text'],"
-            ".cover-text,.slide-text{position:relative;z-index:2;}"
         )
 
     # text_stroke: stronger outline for crispness over residual highlights.
+    # Paint-only (text-shadow + webkit stroke) — does NOT touch position/layout.
     if levers.get("text_stroke"):
         rules.append(
-            ".headline,.subhead,.subheading,.body,.text,[data-zone-type='text'],"
-            ".cover-text,.slide-text{"
+            ".headline,.heading,.subhead,.subheading,.body,.text,"
+            ".cover-text,.slide-text,h1{"
             "text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 1px rgba(0,0,0,0.9);"
             "paint-order:stroke fill;-webkit-text-stroke:0.4px rgba(0,0,0,0.55);"
             "}"
