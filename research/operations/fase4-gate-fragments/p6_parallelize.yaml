@@ -1,0 +1,20 @@
+# fragment consumed by the FASE-4 orchestrator → verify_the_verifiers_gates.yaml
+- id: federation_parallelize_gate
+  kind: lint_script
+  target: scripts/test_federation_parallelize_gate.py
+  consumer: null
+  note: >
+    Guards the P6 default-serial posture of scripts/federation_orchestrator.py:
+    the parallelize HYPOTHESIS (scripts/federation_parallelize.py) must default
+    SERIAL and only fan-out for breadth/role-distinct disjoint work (gates
+    G1-G5). HONEST LIMITATION: no CI consumer exists yet — scripts/test_*.py is
+    NOT run by .github/workflows/tests.yml (which only runs backend/tests/ and
+    the MCP tests/ suite) and there is no pre-commit/husky entry for it. Per the
+    registry's lint_script semantics this surfaces as WARN "gate without
+    consumer", NOT a fake consumer (W64 discipline). To arm it for real, the
+    orchestrator (or a follow-up) should add a CI step running
+    `PYTHONPATH=apps/backend-rag:scripts pytest scripts/test_federation_parallelize_gate.py`
+    and set consumer to that workflow. The gate is also a runtime-revocable
+    HYPOTHESIS (spec §3.2): a static lint cannot prove the runtime monitor
+    actually re-serializes on lease contention — it only verifies the
+    static-estimator half.
