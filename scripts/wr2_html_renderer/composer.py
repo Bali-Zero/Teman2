@@ -484,14 +484,23 @@ def make_slide_render_fn(
             timeout_ms=timeout_ms,
             make_pdf=False,
         )
-        produced: Path | None = None
-        if res.png_paths:
-            produced = Path(res.png_paths[0])
-        else:
-            cand = render_root / "slides" / "01.png"
-            if cand.is_file():
-                produced = cand
-        if produced and produced.is_file() and produced.resolve() != png_path.resolve():
+        # IDEMPOTENCY (panel fix E): only promote a PNG THIS render actually
+        # produced. res.png_paths is appended by the renderer ONLY for a PNG it
+        # just wrote and dimension-verified for this call — so a non-empty list
+        # is proof of a fresh render. NEVER fall back to a pre-existing
+        # render_root/slides/01.png: that file can be a PREVIOUS iteration's
+        # stale output, and promoting it would make the loop keep the wrong PNG
+        # as "best". On failure we leave png_path absent (do not create it) so
+        # the loop's `if not png_path.is_file(): break` path handles it.
+        if not res.png_paths:
+            logger.warning(
+                "slide %d render produced no PNG (ok=%s failures=%s) — not promoting; "
+                "loop will treat as render failure",
+                index, res.ok, res.failures,
+            )
+            return
+        produced = Path(res.png_paths[0])
+        if produced.is_file() and produced.resolve() != png_path.resolve():
             png_path.parent.mkdir(parents=True, exist_ok=True)
             produced.replace(png_path)
 

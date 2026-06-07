@@ -195,12 +195,45 @@ TEXT_CLAIM_KEYWORDS = (
     "non leggibil", "occlud", "occlus", "troncat", "truncat",
 )
 
+# Keywords that mark an issue as NOT a pure text-legibility claim — these are
+# palette/font/logo/typography violations OCR has no authority over. If ANY of
+# these appear, the claim is non-overridable even when it ALSO mentions a text
+# word like "headline" (e.g. "headline uses a serif font instead of Montserrat":
+# a FONT violation, not a legibility one). Panel fix D — without this, a font
+# violation got OCR-overridden and masked.
+NEGATIVE_CLAIM_KEYWORDS = (
+    "font", "serif", "sans", "montserrat", "palette", "colour", "color",
+    "hex", "logo", "weight", "bold", "italic", "kerning", "spacing",
+    "typeface", "emoji",
+)
+
+# Pre-compiled word-boundary patterns. Multi-word phrases (e.g. "cut off") and
+# hyphenated forms are matched as substrings; single tokens use \b boundaries so
+# "title" no longer matches inside "subtitle"/arbitrary substrings spuriously.
+_BOUNDARY_RE = {
+    kw: re.compile(rf"(?<!\w){re.escape(kw)}(?!\w)", flags=re.IGNORECASE)
+    for kw in (*TEXT_CLAIM_KEYWORDS, *NEGATIVE_CLAIM_KEYWORDS)
+}
+
+
+def _matches(issue_low: str, kw: str) -> bool:
+    """Word-boundary match of a keyword within an already-lowercased issue."""
+    return _BOUNDARY_RE[kw].search(issue_low) is not None
+
 
 def is_text_legibility_claim(issue: str) -> bool:
-    """Does this brand-verifier issue assert the headline text is broken?
+    """Does this brand-verifier issue assert the headline TEXT is broken?
 
-    OCR can only override THIS class of claim (it adjudicates text legibility,
-    not palette/font/logo). Palette/font claims stay non-overridable.
+    OCR can only override a PURE text-legibility claim (garbled/clipped/cut/
+    illegible/unreadable). A claim is text-legibility ONLY when:
+      (1) it matches a text-claim keyword on a WORD BOUNDARY, AND
+      (2) it carries NO negative keyword (font/serif/montserrat/palette/colour/
+          hex/logo/weight/bold/italic/kerning/spacing/...).
+    A claim mentioning "headline" but ALSO "serif font" is a FONT violation →
+    NOT overridable (returns False). Palette/font/logo claims stay
+    non-overridable. (Panel fix D.)
     """
     low = issue.lower()
-    return any(k in low for k in TEXT_CLAIM_KEYWORDS)
+    if any(_matches(low, k) for k in NEGATIVE_CLAIM_KEYWORDS):
+        return False
+    return any(_matches(low, k) for k in TEXT_CLAIM_KEYWORDS)

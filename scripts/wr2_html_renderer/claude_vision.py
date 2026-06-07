@@ -18,6 +18,13 @@ Law-5 compliant — NEVER the paid SDK/api_key). The CLI reads the PNG by path
 
 These operate on brand ASSETS (rendered slides), not client PII → cloud Claude
 is permitted (CLAUDE.md cost rule: PII boundary, not a flat cloud ban).
+
+Env flags:
+  WR2_VISION_REQUIRED — when truthy (1/true/yes/on), the design critic fails
+    CLOSED on a CLI outage (returns passed=False) instead of soft-passing. Set
+    this in the LIVE/wired pipeline so a Claude outage can never make the loop
+    accept an unjudged slide. Unset (default) keeps fail-open for offline
+    cheap-tier testing. The brand verifier ALWAYS fails closed regardless.
 """
 
 from __future__ import annotations
@@ -113,6 +120,18 @@ Set brand_ok=true only if ALL hold. List any violations."""
 _CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 
 
+def _vision_required() -> bool:
+    """Whether the design critic must fail CLOSED when the CLI is unavailable.
+
+    Default (unset / "0" / "false") → fail OPEN (today's behavior): a CLI
+    outage soft-passes so the cheap-tier offline tests don't block. When
+    `WR2_VISION_REQUIRED` is truthy (live/wired mode), a CLI down/timeout/
+    non-JSON makes the critic return passed=False ("vision_required") so the
+    loop never accepts a slide just because Claude was down (panel fix C).
+    """
+    return os.environ.get("WR2_VISION_REQUIRED", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 120) -> dict[str, Any] | None:
     """Call the claude CLI with a JSON schema, return the parsed object or None.
 
@@ -131,6 +150,13 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 12
         proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout_s)
     except subprocess.TimeoutExpired:
         logger.warning("claude vision call timed out after %ss", timeout_s)
+        return None
+    except OSError as exc:
+        # CLI binary missing / not executable / launch failure — this IS "CLI
+        # down". Return None so the caller's fail-open/closed policy applies
+        # (fix C: never crash the loop; in vision_required mode this becomes a
+        # fail-closed Critique upstream).
+        logger.warning("claude vision call could not launch (%s): %s", _CLAUDE_BIN, exc)
         return None
     if proc.returncode != 0:
         logger.warning("claude vision call failed rc=%s err=%s", proc.returncode, proc.stderr[:300])
@@ -167,9 +193,18 @@ def claude_design_critic(png_path: Path, slide: dict[str, Any], context: dict[st
     """Claude-vision design critic (Tier 3). Returns a Critique with levers."""
     obj = _run_claude_json(_CRITIC_PROMPT.format(png_path=png_path), _CRITIC_SCHEMA)
     if obj is None:
-        # vision unavailable → don't block the pipeline; treat as soft-pass with a note
+        if _vision_required():
+            # live/wired mode: a CLI outage must NOT soft-pass — fail CLOSED so
+            # the loop never accepts a slide just because Claude was down.
+            return Critique(
+                tier="vision",
+                passed=False,
+                issues=["vision unavailable — failing closed (vision_required)"],
+                levers=[],
+            )
+        # offline/cheap-tier mode: don't block the pipeline; soft-pass with a note
         return Critique(tier="vision", passed=True, issues=["vision unavailable — skipped"], levers=[])
-    levers = [l for l in obj.get("levers", []) if l.get("lever") in _ALLOWED_LEVERS]
+    levers = [lev for lev in obj.get("levers", []) if lev.get("lever") in _ALLOWED_LEVERS]
     issues = list(obj.get("issues", []))
     if not obj.get("readable", True):
         issues.append("vision: text not easily readable")

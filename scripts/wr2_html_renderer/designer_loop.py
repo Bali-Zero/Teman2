@@ -83,6 +83,50 @@ def _default_ocr_critic(png_path: Path, expected: str) -> OcrVerdict:
     return headline_legible(png_path, expected)
 
 
+def _brand_block_overridable_by_ocr(
+    bv: Critique,
+    png_path: Path,
+    slide: dict[str, Any],
+    ocr_critic: OcrCritic | None,
+) -> tuple[bool, dict[str, Any]]:
+    """Adjudicate a brand-verifier BLOCK against OCR (anti-hallucination).
+
+    The brand verifier (a VLM) hallucinates text specifics ("5 RULES" vs
+    "3 RULES", phantom garbling). If the ONLY reasons it blocked are PURE
+    text-legibility claims (garbled/clipped/cut/illegible) AND a deterministic
+    OCR read of `png_path` finds the headline verbatim, the verifier
+    hallucinated → the block is overridable. Palette/font/logo claims (or any
+    claim carrying a negative keyword per `is_text_legibility_claim`) are NOT
+    OCR's domain and are never overridable.
+
+    Returns (overridable, detail) where detail records the adjudication for the
+    iteration history. overridable is False whenever bv actually passed (no
+    block to override), there are non-text claims, no headline, or OCR can't
+    confirm legibility (degraded counts as cannot-confirm → fail closed).
+    """
+    if bv.passed:
+        return False, {}
+    text_claims = [i for i in bv.issues if is_text_legibility_claim(i)]
+    other_claims = [i for i in bv.issues if not is_text_legibility_claim(i)]
+    headline = (slide.get("headline") or slide.get("heading") or "").strip()
+    if not (text_claims and not other_claims and headline and ocr_critic is not None):
+        return False, {}
+    ov = ocr_critic(png_path, headline)
+    detail = {
+        "brand_verify_ocr_adjudication": {
+            "ocr_score": ov.score, "legible": ov.legible,
+            "degraded": ov.degraded, "ocr_text": ov.ocr_text[:80],
+        }
+    }
+    if ov.legible and not ov.degraded:
+        detail["brand_verify_overridden_by_ocr"] = (
+            f"verifier claimed text broken {text_claims} but OCR "
+            f"read headline (score {ov.score:.2f}) — hallucination overridden"
+        )
+        return True, detail
+    return False, detail
+
+
 # ---------------------------------------------------------------------------
 # Tier 0-1: cheap deterministic critics (no model call)
 # ---------------------------------------------------------------------------
@@ -136,8 +180,15 @@ def critic_legibility(
     # the remedy is stronger scrim/stroke (keep text where the template put it
     # but make it survive the busy region); if that's already maxed, it's a
     # composition problem → rerender signal, not a CSS nudge.
-    if is_hero and hero_path and hero_path.is_file():
-        best_band, busyness = calmest_band(hero_path, n_bands=3)
+    #
+    # Measure busyness on the RENDERED png (post-scrim composite), NOT the raw
+    # hero (panel fix B). On the raw hero the bottom band never changes across
+    # iterations, so the scrim/stroke levers could never satisfy the check →
+    # Tier-1 deadlocked and starved the paid vision tier. Measuring the render
+    # couples the lever to the metric: a heavier scrim darkens the text band,
+    # lowering its luminance variance → the busyness check actually improves.
+    if is_hero:
+        best_band, busyness = calmest_band(png_path, n_bands=3)
         bottom_band = len(busyness) - 1
         if busyness[bottom_band] > min(busyness) * 1.5 and best_band != bottom_band:
             issues.append(
@@ -296,9 +347,31 @@ async def run_designer_loop(
             vc = vision_critic(png_path, slide, {"iteration": it})
             iter_record["vision"] = {"passed": vc.passed, "issues": vc.issues, "levers": vc.levers}
             if vc.passed:
-                iter_record["verdict"] = "PASS (cheap + vision)"
+                # A vision-PASS is the CANDIDATE — gate it on the brand verifier
+                # too (the autonomy guardrail must also veto vision-*approved*
+                # slides, not only vision-*proposed changes*). The current render
+                # IS the candidate, so verify png_path directly (no trial).
+                if brand_verifier is not None:
+                    bv = brand_verifier(png_path, slide, {"check": "brand"})
+                    iter_record["brand_verify"] = {"passed": bv.passed, "issues": bv.issues}
+                    effective_pass = bv.passed
+                    if not bv.passed:
+                        # OCR may override ONLY a pure text-legibility hallucination.
+                        overridable, detail = _brand_block_overridable_by_ocr(
+                            bv, png_path, slide, ocr_critic
+                        )
+                        iter_record.update(detail)
+                        effective_pass = overridable
+                    if not effective_pass:
+                        # brand verifier blocked (and OCR did not clear it) →
+                        # treat as a brand block: do NOT converge. Keep the best
+                        # render and stop (don't spin on an unfixable block).
+                        iter_record["verdict"] = "vision PASS but brand verifier blocked — keeping best"
+                        history.append(iter_record)
+                        break
+                iter_record["verdict"] = "PASS (cheap + vision + brand)"
                 history.append(iter_record)
-                best_png = png_path  # vision-approved render is the keeper
+                best_png = png_path  # vision+brand-approved render is the keeper
                 return DesignerResult(
                     final_png=best_png, iterations=it, converged=True, history=history
                 )
@@ -325,27 +398,14 @@ async def run_designer_loop(
                 iter_record["brand_verify"] = {"passed": bv.passed, "issues": bv.issues}
                 effective_pass = bv.passed
                 if not bv.passed:
-                    # ANTI-HALLUCINATION: if the ONLY reasons the verifier blocked
-                    # are text-legibility claims (headline garbled/clipped/cut),
-                    # adjudicate with OCR — a deterministic read of the trial PNG.
-                    # If OCR can read the headline verbatim, the verifier
-                    # hallucinated (it does this: "5 RULES" vs "3 RULES") → override.
-                    # Palette/font/logo claims are NOT overridable (not OCR's domain).
-                    text_claims = [i for i in bv.issues if is_text_legibility_claim(i)]
-                    other_claims = [i for i in bv.issues if not is_text_legibility_claim(i)]
-                    headline = (slide.get("headline") or slide.get("heading") or "").strip()
-                    if text_claims and not other_claims and headline and ocr_critic is not None:
-                        ov = ocr_critic(trial_png, headline)
-                        iter_record["brand_verify_ocr_adjudication"] = {
-                            "ocr_score": ov.score, "legible": ov.legible,
-                            "degraded": ov.degraded, "ocr_text": ov.ocr_text[:80],
-                        }
-                        if ov.legible and not ov.degraded:
-                            effective_pass = True
-                            iter_record["brand_verify_overridden_by_ocr"] = (
-                                f"verifier claimed text broken {text_claims} but OCR "
-                                f"read headline (score {ov.score:.2f}) — hallucination overridden"
-                            )
+                    # ANTI-HALLUCINATION: adjudicate a pure text-legibility block
+                    # against a deterministic OCR read of the trial PNG (shared
+                    # helper). Palette/font/logo claims are NOT overridable.
+                    overridable, detail = _brand_block_overridable_by_ocr(
+                        bv, trial_png, slide, ocr_critic
+                    )
+                    iter_record.update(detail)
+                    effective_pass = overridable
                 if effective_pass:
                     levers_acc = proposed
                     iter_record["vision_levers_pulled"] = applied
