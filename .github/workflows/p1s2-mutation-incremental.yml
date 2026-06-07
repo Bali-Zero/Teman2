@@ -1,0 +1,68 @@
+name: P1 STRATO-2 incremental mutation gate
+
+# P1 verify-the-verifiers §3 STRATO-2 (2026-06-07): the "quality oracle" of the
+# bias-immune layer. Runs scripts/mutation_incremental.py — the INCREMENTAL
+# (AST-diff, changed-lines-only) mutation driver with HIDDEN CANARY MUTANTS
+# (anti-mutation-cheat: the agent under test cannot game the mutation score).
+#
+# TWO things are enforced here, both deterministic / bias-immune:
+#   1. The driver's own test-suite (scripts/test_mutation_incremental.py) must
+#      be green — the canary engine, the diff parser, the survivor gate.
+#   2. The canary SELF-TEST runs against the live driver: if any frozen canary
+#      mutant SURVIVES, the gate FAILS (test suite too weak / gamed).
+#
+# mutmut is installed HERE so the incremental mutmut leg actually runs in CI
+# (on M5/local it is absent and the driver SKIPS that leg honestly — see the
+# driver docstring + gate-fragment). The OPERATOR controls seed/baseline via
+# MUTATION_SEED / --baseline; the agent under test does not.
+#
+# Triggers BOTH pull_request AND push-to-main (W41/W42 cicatrix lesson:
+# pull_request-only gives false safety because L2 autonomous-ops direct-push
+# to main silently SKIPS the gate).
+
+on:
+  pull_request:
+    paths:
+      - "scripts/mutation_incremental.py"
+      - "scripts/test_mutation_incremental.py"
+      - ".github/workflows/p1s2-mutation-incremental.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/mutation_incremental.py"
+      - "scripts/test_mutation_incremental.py"
+      - ".github/workflows/p1s2-mutation-incremental.yml"
+
+concurrency:
+  group: p1s2-mutation-incremental-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation-gate:
+    name: Canary self-test + incremental mutation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so git diff sees the PR changes
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install driver test deps (pytest) + mutmut (CI-provided)
+        run: pip install pytest "mutmut>=2.4,<3"
+
+      - name: Driver self-tests (canary engine, diff parser, survivor gate)
+        run: python3 -m pytest scripts/test_mutation_incremental.py -q
+
+      - name: Print frozen canary integrity hash
+        run: python3 scripts/mutation_incremental.py --print-integrity
+
+      - name: Canary self-test + incremental mutation gate
+        # mutmut IS installed here → the mutmut leg runs on changed lines.
+        # --allow-skip is intentionally NOT passed: if mutmut were somehow
+        # absent in CI we WANT exit 2 (visible SKIP), never a false pass.
+        run: python3 scripts/mutation_incremental.py -v
