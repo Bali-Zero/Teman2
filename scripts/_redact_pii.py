@@ -64,6 +64,17 @@ class RedactionError(RuntimeError):
     """Raised when the redactor refuses to produce output (fail-closed)."""
 
 
+class DynamicNameLoadError(RedactionError):
+    """Raised when dynamic CRM names were EXPECTED but Postgres was unreachable.
+
+    P2 §7.1 BUG #1 fix: distinguishes "PG legitimately out of scope" (env unset →
+    return [] and degrade) from "PG expected but down" (env set + connection/query
+    failed). The latter is a fail-OPEN trap — it would silently skip redacting
+    CRM names and forward un-redacted text to the cloud. When the caller requires
+    dynamic names, this exception forces fail-CLOSED instead.
+    """
+
+
 @dataclass
 class GateConfig:
     min_remaining_chars: int = 100
@@ -189,18 +200,31 @@ def _apply_dynamic_rule(
     # ("Sofia Mueller" before "Sofia").
     escaped.sort(key=len, reverse=True)
     pattern = r"\b(?:" + "|".join(escaped) + r")\b"
-    compiled = re.compile(pattern)
+    # P2 §7.1 BUG #2 fix: case-insensitive. CRM names arrive title-cased from
+    # Postgres ("Budi Santoso") but appear lowercased in WhatsApp text
+    # ("budi santoso"). Without re.IGNORECASE the lowercase form BYPASSED the
+    # filter and the name leaked to the cloud. The static passes carry their own
+    # (?i) inline in the YAML where needed; this dynamic alternation is built at
+    # runtime from re.escape'd names, so the flag must be set here.
+    compiled = re.compile(pattern, re.IGNORECASE)
     return compiled.sub(rule["replace"], text)
 
 
 def _load_pg_names(query: str, pg_url: str | None = None) -> list[str]:
-    """Load a single column from PG. Returns empty list if PG unreachable.
+    """Load a single column from PG.
 
-    Phase 1 design: the redactor is fail-closed on rule-application
-    errors but DEGRADES gracefully when PG is unavailable (LaunchAgent
-    may run before postgresql@18 is started). Empty list → dynamic
-    rule no-ops with a warning. Operator MUST verify PG was reachable
-    by checking the run telemetry.
+    P2 §7.1 BUG #1 fix — two distinct outcomes (NOT one silent []):
+
+    - **PG out of scope** (no DATABASE_URL/PGURL env, no explicit pg_url):
+      return [] and degrade. This is legitimate — the redactor may run where
+      PG is intentionally absent (LaunchAgent before postgresql@18; the P3
+      egress-proxy with REDACT_PG_DISABLED). The static NPWP/KTP/passport
+      passes still run.
+    - **PG expected but unreachable** (env/pg_url set, but psql missing /
+      timeout / connection / query failure): raise DynamicNameLoadError.
+      Previously this returned [] and PROCEEDED → CRM names silently NOT
+      redacted → fail-OPEN masquerading as fail-closed. The caller decides
+      whether to fail-CLOSED (see Redactor.load_default require_dynamic_names).
     """
     # Read DATABASE_URL (canonical name used by wrapper + secrets template),
     # PGURL as legacy fallback. Mismatch was caught by Codex panel R5
@@ -210,7 +234,7 @@ def _load_pg_names(query: str, pg_url: str | None = None) -> list[str]:
     pg_url = pg_url or os.environ.get("DATABASE_URL") or os.environ.get("PGURL")
     if not pg_url:
         logger.warning(
-            "DATABASE_URL/PGURL env not set — skipping dynamic name load."
+            "DATABASE_URL/PGURL env not set — PG out of scope, skipping dynamic name load."
         )
         return []
     try:
@@ -221,16 +245,17 @@ def _load_pg_names(query: str, pg_url: str | None = None) -> list[str]:
             timeout=10,
             check=False,
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        logger.warning("psql unavailable for dynamic name load: %s", e)
-        return []
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+        # PG was EXPECTED (url set) but psql is missing or timed out → fail-CLOSED signal.
+        raise DynamicNameLoadError(
+            f"dynamic CRM-name load expected (pg_url set) but psql unavailable: {e}"
+        ) from e
     if result.returncode != 0:
-        logger.warning(
-            "psql query failed (rc=%d): %s",
-            result.returncode,
-            result.stderr.strip(),
+        # PG was EXPECTED but the query failed (DB down, auth, missing table) → fail-CLOSED signal.
+        raise DynamicNameLoadError(
+            f"dynamic CRM-name load expected (pg_url set) but psql query failed "
+            f"(rc={result.returncode}): {result.stderr.strip()}"
         )
-        return []
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
@@ -259,19 +284,47 @@ class Redactor:
                     self._compiled[rid] = compiled
 
     @classmethod
-    def load_default(cls, pg_url: str | None = None) -> "Redactor":
-        """Load config from the canonical path + populate runtime names."""
+    def load_default(
+        cls, pg_url: str | None = None, require_dynamic_names: bool = False
+    ) -> "Redactor":
+        """Load config from the canonical path + populate runtime names.
+
+        P2 §7.1 BUG #1 fix — `require_dynamic_names` controls the PG-down posture:
+
+        - **False** (default, backward-compatible): PG out of scope (env unset) →
+          dynamic names empty, static passes still run. PG EXPECTED-but-down →
+          still raises DynamicNameLoadError (a set DATABASE_URL means PG was
+          meant to be reachable; silently skipping CRM-name redaction is the
+          fail-OPEN trap). Out-of-scope PG no longer masquerades as a working
+          dynamic pass.
+        - **True**: PG MUST be reachable AND yield names. Any DynamicNameLoadError
+          OR a no-pg-url situation → fail-CLOSED. Use this on the cloud-egress
+          path where un-redacted CRM names leaving the machine is unacceptable.
+        """
         config = load_config()
-        runtime_names = {
-            "__DYNAMIC_CRM_CLIENT_NAMES__": _load_pg_names(
-                "SELECT full_name FROM clients WHERE full_name IS NOT NULL;",
-                pg_url=pg_url,
-            ),
-            "__DYNAMIC_CRM_COMPANY_NAMES__": _load_pg_names(
-                "SELECT name FROM companies WHERE name IS NOT NULL;",
-                pg_url=pg_url,
-            ),
-        }
+        try:
+            runtime_names = {
+                "__DYNAMIC_CRM_CLIENT_NAMES__": _load_pg_names(
+                    "SELECT full_name FROM clients WHERE full_name IS NOT NULL;",
+                    pg_url=pg_url,
+                ),
+                "__DYNAMIC_CRM_COMPANY_NAMES__": _load_pg_names(
+                    "SELECT name FROM companies WHERE name IS NOT NULL;",
+                    pg_url=pg_url,
+                ),
+            }
+        except DynamicNameLoadError:
+            # PG was expected but unreachable. ALWAYS fail-closed here — proceeding
+            # would forward un-redacted CRM names. (require_dynamic_names only
+            # tightens further, below, for the env-unset case.)
+            raise
+
+        if require_dynamic_names and not any(runtime_names.values()):
+            raise DynamicNameLoadError(
+                "require_dynamic_names=True but 0 CRM names loaded "
+                "(PG out of scope or both tables empty) — fail-CLOSED on the "
+                "cloud-egress path to avoid leaking un-redacted CRM names."
+            )
         return cls(config=config, runtime_names=runtime_names)
 
     def _apply_pass(
