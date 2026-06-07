@@ -30,6 +30,7 @@ References:
     research/operations/specs/T1.2-guardrails-hook.md (Iteration 5)
     research/operations/2026-05-29-guardrails-realpath-bypass-patch7.md
 """
+
 from __future__ import annotations
 
 import re
@@ -52,45 +53,106 @@ ROLLBACK_TAG_ALLOWLIST = re.compile(
 # reported on overlap — every pattern is a hard BLOCK.
 BLOCK_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # DA Patch 6 (emergency 2026-05-22 03:10) — require recursive flag
-    (re.compile(r"\brm\s+(-[a-zA-Z]*[rR][a-zA-Z]*\s+)+(/|/\*|\$HOME|~)(\s|$|/[\w\s.-]*/?)", re.IGNORECASE), "rm -rf on root/$HOME/~"),
+    (
+        re.compile(
+            r"\brm\s+(-[a-zA-Z]{0,8}[rR][a-zA-Z]{0,8}\s+){1,4}(/|/\*|\$HOME|~)(\s|$|/[\w\s.-]*/?)",
+            re.IGNORECASE,
+        ),
+        "rm -rf on root/$HOME/~",
+    ),
     # Patch 7 (2026-05-29) — close the `cd <protected> && rm -rf <anything>` bypass.
     # The Patch-6 regex only matches when the rm TARGET is literally /, $HOME, ~.
     # A `cd ~/Projects && rm -rf nuzantara` slipped through (the arg `nuzantara`
     # matches none of the alternatives) — empirically used 3x during the
     # 2026-05-28 cleanup. Block any recursive rm preceded by a `cd` into a
     # protected root in the same command line.
-    (re.compile(r"\bcd\s+(/\s|/$|~\s|~/|~$|\$HOME|\$\{HOME\}|/Users/[\w.-]+/?)\S*\s*(&&|;)\s*.*\brm\s+-[a-zA-Z]*[rR]", re.IGNORECASE), "cd into root/$HOME + rm -rf (relative-path bypass)"),
+    (
+        re.compile(
+            r"\bcd\s+(/\s|~\s|~/|\$HOME|\$\{HOME\}|/Users/[\w.-]+/?)\S*\s*(&&|;)\s*.*\brm\s+-[a-zA-Z]{0,8}[rR]",
+            re.IGNORECASE,
+        ),
+        "cd into root/$HOME + rm -rf (relative-path bypass)",
+    ),
     # Patch 7 — quoted/braced $HOME and pre-expanded absolute home path.
     # Patch-6 only caught the bare `$HOME` token; these forms slipped through:
     #   rm -rf "$HOME"   rm -rf ${HOME}   rm -rf /Users/<username>
-    (re.compile(r"\brm\s+(-[a-zA-Z]*[rR][a-zA-Z]*\s+)+['\"]?(\$\{HOME\}|\$HOME|/Users/[\w.-]+)['\"]?(\s|$|/)", re.IGNORECASE), "rm -rf on quoted/absolute $HOME"),
+    (
+        re.compile(
+            r"\brm\s+(-[a-zA-Z]{0,8}[rR][a-zA-Z]{0,8}\s+){1,4}['\"]?(\$\{HOME\}|\$HOME|/Users/[\w.-]+)['\"]?(\s|$|/)",
+            re.IGNORECASE,
+        ),
+        "rm -rf on quoted/absolute $HOME",
+    ),
     # DA Patch 5 (emergency 2026-05-22 02:55) — anchor git reset to ^
     (re.compile(r"^\s*git\s+reset\s+--hard\b", re.IGNORECASE), "git reset --hard"),
-    (re.compile(r"^\s*git\s+push\s+(--force|-f)\b.*\bmain\b", re.IGNORECASE), "git push --force on main"),
-    (re.compile(r"^\s*git\s+push\s+(--force|-f)\b.*\bmaster\b", re.IGNORECASE), "git push --force on master"),
+    (
+        re.compile(r"^\s*git\s+push\s+(--force|-f)\b.*\bmain\b", re.IGNORECASE),
+        "git push --force on main",
+    ),
+    (
+        re.compile(r"^\s*git\s+push\s+(--force|-f)\b.*\bmaster\b", re.IGNORECASE),
+        "git push --force on master",
+    ),
     (re.compile(SQL_ANCHORED, re.IGNORECASE), "psql/sqlite3 destructive SQL via -c"),
-    (re.compile(r"\bANTHROPIC_API_KEY\s*=\s*['\"]?sk-", re.IGNORECASE), "ANTHROPIC_API_KEY assignment (HARD RULE: OAuth only)"),
-    (re.compile(r"\bANTHROPIC_API_KEY\s*=\s*['\"]?ant-", re.IGNORECASE), "ANTHROPIC_API_KEY assignment (HARD RULE: OAuth only)"),
+    (
+        re.compile(r"\bANTHROPIC_API_KEY\s*=\s*['\"]?sk-", re.IGNORECASE),
+        "ANTHROPIC_API_KEY assignment (HARD RULE: OAuth only)",
+    ),
+    (
+        re.compile(r"\bANTHROPIC_API_KEY\s*=\s*['\"]?ant-", re.IGNORECASE),
+        "ANTHROPIC_API_KEY assignment (HARD RULE: OAuth only)",
+    ),
     (re.compile(r"\baws\s+iam\s+delete-", re.IGNORECASE), "AWS IAM delete"),
     (re.compile(r"\bfly\s+apps?\s+destroy\b", re.IGNORECASE), "fly apps destroy"),
-    (re.compile(r"\bgcloud\s+projects?\s+delete\b", re.IGNORECASE), "gcloud projects delete"),
+    (
+        re.compile(r"\bgcloud\s+projects?\s+delete\b", re.IGNORECASE),
+        "gcloud projects delete",
+    ),
     (re.compile(r"\bdd\s+.*\bof=/dev/[sh]d[a-z]", re.IGNORECASE), "dd to disk device"),
     (re.compile(r">\s*/dev/[sh]d[a-z]", re.IGNORECASE), "redirect to disk device"),
     (re.compile(r":\(\)\s*\{\s*:\|:&\s*\};\s*:", re.IGNORECASE), "fork bomb"),
-    (re.compile(r"\bbase64\b.*\|\s*(bash|sh|zsh|python|perl)\b", re.IGNORECASE), "base64 decode-and-execute"),
-    (re.compile(r"\becho\s+[A-Za-z0-9+/=]{20,}\s*\|\s*base64\s+-d", re.IGNORECASE), "encoded payload base64 decode"),
-    (re.compile(r"\bpython\d?\s+-c\s+['\"].*\b(os\.system|subprocess|exec|eval|os\.remove|shutil\.rmtree)\b", re.IGNORECASE), "Python -c arbitrary exec"),
-    (re.compile(r"\bperl\s+-e\s+['\"].*\bsystem\(", re.IGNORECASE), "Perl -e system() bypass"),
-    (re.compile(r"\bnode\s+-e\s+['\"].*\b(exec|spawn|unlink)\b", re.IGNORECASE), "Node -e arbitrary exec"),
-    (re.compile(r"\bcurl\s+.*\|\s*(bash|sh|zsh)\b", re.IGNORECASE), "curl pipe to shell"),
-    (re.compile(r"\bwget\s+.*\|\s*(bash|sh|zsh)\b", re.IGNORECASE), "wget pipe to shell"),
+    (
+        re.compile(r"\bbase64\b.*\|\s*(bash|sh|zsh|python|perl)\b", re.IGNORECASE),
+        "base64 decode-and-execute",
+    ),
+    (
+        re.compile(r"\becho\s+[A-Za-z0-9+/=]{20,}\s*\|\s*base64\s+-d", re.IGNORECASE),
+        "encoded payload base64 decode",
+    ),
+    (
+        re.compile(
+            r"\bpython\d?\s+-c\s+['\"].*\b(os\.system|subprocess|exec|eval|os\.remove|shutil\.rmtree)\b",
+            re.IGNORECASE,
+        ),
+        "Python -c arbitrary exec",
+    ),
+    (
+        re.compile(r"\bperl\s+-e\s+['\"].*\bsystem\(", re.IGNORECASE),
+        "Perl -e system() bypass",
+    ),
+    (
+        re.compile(r"\bnode\s+-e\s+['\"].*\b(exec|spawn|unlink)\b", re.IGNORECASE),
+        "Node -e arbitrary exec",
+    ),
+    (
+        re.compile(r"\bcurl\s+.*\|\s*(bash|sh|zsh)\b", re.IGNORECASE),
+        "curl pipe to shell",
+    ),
+    (
+        re.compile(r"\bwget\s+.*\|\s*(bash|sh|zsh)\b", re.IGNORECASE),
+        "wget pipe to shell",
+    ),
 ]
 
 MCP_DESTRUCTIVE_TOOLS: set[str] = {
-    "mcp__github__pr_merge", "mcp__github__pr_delete",
-    "mcp__github__pr_create", "mcp__github__pr_update",
-    "mcp__github__issue_delete", "mcp__github__issue_create",
-    "mcp__github__release_delete", "mcp__github__release_create",
+    "mcp__github__pr_merge",
+    "mcp__github__pr_delete",
+    "mcp__github__pr_create",
+    "mcp__github__pr_update",
+    "mcp__github__issue_delete",
+    "mcp__github__issue_create",
+    "mcp__github__release_delete",
+    "mcp__github__release_create",
     "mcp__github__repo_delete",
     "mcp__claude_ai_Vercel__deploy_to_vercel",
     "mcp__claude_ai_Vercel__change_toolbar_thread_resolve_status",
@@ -100,10 +162,16 @@ MCP_DESTRUCTIVE_PATTERN = re.compile(
     r"mcp__.*?__.*?(delete|drop|truncate|destroy|remove|wipe|purge)(?=_|$|[A-Z])",
     re.IGNORECASE,
 )
-PROTECTED_PATH_PATTERNS: list[re.Pattern[str]] = [re.compile(p) for p in (
-    r"\.env(\..*)?$", r"\.mcp\.json$", r"zantara_core\.py$",
-    r"fly\.toml$", r"alembic/env\.py$",
-)]
+PROTECTED_PATH_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p)
+    for p in (
+        r"\.env(\..*)?$",
+        r"\.mcp\.json$",
+        r"zantara_core\.py$",
+        r"fly\.toml$",
+        r"alembic/env\.py$",
+    )
+]
 SQL_FILE_PATTERN = re.compile(r"\.sql$")
 SQL_DESTRUCTIVE_IN_CONTENT = re.compile(
     r"\b(DROP\s+TABLE|TRUNCATE\s+TABLE|TRUNCATE\s+\w+|DROP\s+DATABASE|"
@@ -196,7 +264,10 @@ def _eval_edit(tool_name: str, tool_input: dict[str, Any]) -> tuple[bool, str | 
                 new_s = edit.get("new_string", "") or ""
                 old_s = edit.get("old_string", "") or ""
                 if _new_destructive_introduced(new_s, old_s):
-                    return True, f"SQL destructive introduced in MultiEdit on {file_path}"
+                    return (
+                        True,
+                        f"SQL destructive introduced in MultiEdit on {file_path}",
+                    )
     elif tool_name == "Edit":
         new_s = tool_input.get("new_string", "") or ""
         old_s = tool_input.get("old_string", "") or ""
@@ -209,7 +280,9 @@ def _eval_edit(tool_name: str, tool_input: dict[str, Any]) -> tuple[bool, str | 
             return True, f"SQL destructive introduced in Write to {file_path}"
     else:
         # NotebookEdit on .sql — unusual, fall back to legacy strict
-        content = tool_input.get("content", "") or tool_input.get("new_string", "") or ""
+        content = (
+            tool_input.get("content", "") or tool_input.get("new_string", "") or ""
+        )
         if SQL_DESTRUCTIVE_IN_CONTENT.search(content):
             return True, f"SQL destructive in {file_path}"
     return False, None
