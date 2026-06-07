@@ -79,9 +79,11 @@ def include_routers(api: FastAPI) -> None:
         health,
         hr,  # [NEW] HR/Payroll module
         hr_late_reply,  # [NEW] Late check-in reply form (token-auth, public)
+        hr_my_late_incident,  # [INTAKE-GATE] self-resolve own late incident (gate clear)
         hr_owner_cashout,  # [NEW] Owner-only weekly cashout
         ingest,
         instagram_chat,
+        intake_gate,  # [INTAKE-GATE] login-gate status (Anello 7)
         intake_review,  # [FASE 5A] doc-intake HITL review-queue (read-only + claim)
         intel_lake,
         intel_observability,
@@ -229,7 +231,9 @@ def include_routers(api: FastAPI) -> None:
     # HR/Payroll router
     api.include_router(hr.router)  # [NEW] HR/Payroll module
     api.include_router(hr_late_reply.router)  # [NEW] Late check-in reply form
+    api.include_router(hr_my_late_incident.router)  # [INTAKE-GATE] self-resolve own late incident
     api.include_router(hr_owner_cashout.router)  # [NEW] Owner weekly cashout
+    api.include_router(intake_gate.router)  # [INTAKE-GATE] login-gate status (Anello 7)
 
     # Notification router (Automated email alerts)
     from backend.app.modules.notifications.router import router as notifications_router
@@ -500,6 +504,7 @@ def include_light_routers(api: FastAPI) -> None:
         experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
         feedback,
+        frontend_metrics,
         funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
         funnel_email,  # [4APPS] Drip email scheduler + unsubscribe (homepage apps)
         google_drive,
@@ -508,15 +513,16 @@ def include_light_routers(api: FastAPI) -> None:
         health,
         hr,
         hr_late_reply,
+        hr_my_late_incident,  # [INTAKE-GATE] self-resolve own late incident (gate clear)
         hr_owner_cashout,
         image_generation,
         instagram_chat,
+        intake_gate,  # [INTAKE-GATE] login-gate status (Anello 7)
         intel_lake,
         intel_observability,
         knowledge_activity,
         lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         lkpm,
-        frontend_metrics,
         llm_costs,
         media,
         messaging_identity,
@@ -627,7 +633,9 @@ def include_light_routers(api: FastAPI) -> None:
     # HR/Payroll router
     api.include_router(hr.router)
     api.include_router(hr_late_reply.router)
+    api.include_router(hr_my_late_incident.router)  # [INTAKE-GATE] self-resolve own late incident
     api.include_router(hr_owner_cashout.router)  # [NEW] Owner weekly cashout
+    api.include_router(intake_gate.router)  # [INTAKE-GATE] login-gate status (Anello 7)
 
     # Notifications module router
     from backend.app.modules.notifications.router import router as notifications_router
