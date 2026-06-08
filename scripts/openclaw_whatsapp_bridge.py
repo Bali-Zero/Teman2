@@ -571,6 +571,45 @@ def _guard_property_zoning_reply(
     ):
         return reply
 
+    # Lease-DURATION questions are not zoning/operation questions. The bare
+    # "lease" trigger above also matches "leasehold" (W: villa-zoning-guard,
+    # 2026-06-08): a client asking "how long is a villa leasehold" was getting
+    # the canned Airbnb/zoning answer because a correct duration reply never
+    # contains oss+bkpm, so the escape clause below was unreachable. Let pure
+    # duration questions through unless they also signal Airbnb/short-stay
+    # OPERATION intent (which genuinely needs the zoning guard).
+    _DURATION_TERMS = (
+        "how long",
+        "how many years",
+        "how many year",
+        "duration",
+        "leasehold term",
+        "lease term",
+        "berapa lama",
+        "berapa tahun",
+        "durata",
+        "quanto dura",
+    )
+    _OPERATION_TERMS = (
+        "airbnb",
+        "short stay",
+        "short-stay",
+        "rent out",
+        "rent it out",
+        "operate",
+        "running",
+        "run my",
+        "run it",
+        "sewa harian",
+        "daily rental",
+        "pondok wisata",
+        "business",
+    )
+    if _contains_any(normalized_message, _DURATION_TERMS) and not _contains_any(
+        normalized_message, _OPERATION_TERMS
+    ):
+        return reply
+
     normalized_reply = _normalize_text(reply)
     if not (
         "oss" in normalized_reply
