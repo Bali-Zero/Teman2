@@ -115,13 +115,20 @@ Primitivi di verifica candidati (da decidere, vedi §6):
 - **token-usage linter** — flag su hex hardcoded / valori fuori-palette.
 - **visual-regression contro il renderer Playwright→PNG esistente** — confronto pixel col brand atteso.
 
-## 4. REFUTATO interamente — sub-domanda (4) resta APERTA
+## 4. sub-domanda (4) — ✅ CHIUSA il 2026-06-09 (era APERTA): PARTIAL-YES
 
 «**view-over-app / generated-not-maintained**» (UI rigenerata on-demand dal design-system invece che mantenuta a
-mano) come pattern di internal-tooling per solo-dev: **ZERO evidenza sopravvissuta** alla verifica avversariale.
-I claim erano blog/marketing (getindigo.ai, ink&switch, geoffreylitt, A2UI Google) — nessuno con un **primitivo
-local-first verificato**. **Rimane interamente non-verificato — serve un pass primary-source fresco** se lo vogliamo
-chiudere. (Lo registro come open-question, NON come fatto.)
+mano). Il 2026-06-08 era **ZERO evidenza sopravvissuta** (claim blog/marketing: getindigo.ai, ink&switch,
+geoffreylitt, A2UI Google) → registrato come open-question.
+
+**Chiuso dal pass dedicato 2026-06-09** (deep-research run wf_1168ba50-a79: 20 fonti, 90 claim, 20 confermati / 5
+uccisi). **Esito: PARTIAL → YES.** Il pattern È reale come **primitivo self-hostable local-first** — ma NON come
+prodotto turnkey. Sopravvivono 2 primitivi nuovi LLM-vincolato-a-catalogo (**json-render** Vercel Labs Apache-2.0;
+**OpenUI Lang** thesys MIT, gira local via Ollama) + lo schema-driven deterministico maturo (RJSF, Windmill
+auto-UI). **3-0 REFUTATO** il sospetto del 08-06: il canone malleable-software (Ink&Switch Patchwork) è
+research-prototyping per ammissione degli autori, NON produzione. Il catalogo Zod vincolante = lo stesso "layer
+di conformità proprio" del §2, **incorporato nel render**. Dettaglio completo + 6 finding citati:
+**`2026-06-09-ground-a-buco2-subq4-view-over-app.md`**.
 
 ## 5. CHECKLIST — primitivi local-first adottabili (ordine di leva)
 
@@ -147,8 +154,9 @@ chiudere. (Lo registro come open-question, NON come fatto.)
 3. Qual è il **modello coder locale minimo** su Apple Silicon (Qwen-2.5-Coder 7b/14b/32b) che produce React
    design-system-conforme contro un set token MCP, dato il fail-mode <7b di bolt.diy? Tiene per un brand arbitrario
    vs ShadCN?
-4. «generated-not-maintained / view-over-app» è davvero praticato da qualcuno con un primitivo local-first verificato?
-   (sub-domanda 4 → zero evidenza → serve pass fresco)
+4. ~~«generated-not-maintained / view-over-app» è davvero praticato da qualcuno con un primitivo local-first verificato?~~
+   → ✅ **CHIUSA 2026-06-09 (PARTIAL-YES)**: sì come PRIMITIVO (json-render/OpenUI Lang self-hostable), no come prodotto.
+   Vedi §4 + `2026-06-09-ground-a-buco2-subq4-view-over-app.md`.
 
 ## 7. Caveat trasversali (da non nascondere)
 

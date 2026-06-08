@@ -113,8 +113,13 @@ Verdetto sintetico (fatti 3-0, il dettaglio è nel file dedicato):
 - 🟥 **RISULTATO NEGATIVO load-bearing (3-0)**: un MCP token/prop è un **DATA-PROVIDER, non un CONFORMANCE-ENFORCER**.
   Nessun MCP esaminato verifica l'output → il solo-dev deve costruire il **proprio** layer di lint/verifica
   (CSS-var allowlist + token-linter + visual-regression Playwright-PNG). Filo-2 del verdetto applicato allo stadio DESIGN.
-- ⚠️ **Sub-domanda (4)** «view-over-app / generated-not-maintained» = **ancora REFUTATA per assenza** (zero evidenza,
-  serve pass primary-source fresco). Resta open-question, NON fatto.
+- ✅ **Sub-domanda (4)** «view-over-app / generated-not-maintained» = **CHIUSA 2026-06-09, PARTIAL-YES** (era
+  refutata-per-assenza il 06-06/08). Pass dedicato (run wf_1168ba50-a79): il pattern È reale come **primitivo
+  self-hostable local-first** (json-render Apache-2.0 + OpenUI Lang MIT, LLM-vincolato-a-catalogo Zod, gira local
+  via Ollama; + schema-driven deterministico RJSF/Windmill) ma **NON come prodotto turnkey** — il solo-dev assembla.
+  Il canone malleable-software (Ink&Switch Patchwork) **refutato 3-0**: research-prototyping per ammissione autori,
+  non produzione. Il catalogo Zod vincolante = il "conformance-enforcer" del punto sopra, incorporato nel render.
+  Dettaglio: **`2026-06-09-ground-a-buco2-subq4-view-over-app.md`**. **Era l'ultima open-question aperta di GROUND-A.**
 
 ### 2.3 Stato-prodotto commerciale + sovranità (buco interno #3) — FATTI VERIFICATI
 
@@ -419,7 +424,7 @@ Metriche di stress obbligatorie nel pilota (DeepSeek #12): ≥1 migrazione DB + 
 3. **Costruire il MVL a 7 stadi** come spina dorsale, con verify-the-verifiers (barriere deterministiche +
    meta-verificatore + gate-umano-lista-Codex#11) come cardine — NON la velocità.
 4. ~~Pass di ricerca dedicato sul buco #2 (design/internal-app)~~ — ✅ **FATTO 2026-06-08** → `2026-06-08-ground-a-buco2-design-internal-app.md`.
-   Residuo: solo la sub-domanda (4) «view-over-app / generated-not-maintained» resta refutata-per-assenza (pass fresco se la vogliamo).
+   ~~Residuo: sub-domanda (4) «view-over-app»~~ — ✅ **CHIUSA 2026-06-09 (PARTIAL-YES)** → `2026-06-09-ground-a-buco2-subq4-view-over-app.md`. **GROUND-A ora interamente verificato, zero open-question.**
 5. **Caso pilota "Agent Run Evidence Dashboard"** con le metriche di stress, poi 4-LLM panel sull'architettura.
 
 > **NB anti-hallucination**: questo report cita numeri (microsandbox <100ms, OpenHands ~66%, 15-22pt swing).
