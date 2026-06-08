@@ -10,7 +10,6 @@ import {
   Copy,
   Check,
   ChevronDown,
-  ChevronRight,
   ShieldCheck,
   ShieldAlert,
   Shield,
@@ -194,6 +193,7 @@ function MessageBubbleComponent({
   const bubbleContentRef = React.useRef<HTMLDivElement>(null);
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
   const [showCitations, setShowCitations] = useState(false);
+  const thinkingId = React.useId();
   const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Typewriter Effect State
@@ -414,19 +414,19 @@ function MessageBubbleComponent({
                   onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
                   className="flex items-center gap-2 text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors mb-2 focus-ring rounded"
                   aria-expanded={isThinkingExpanded}
+                  aria-controls={thinkingId}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
                   <span>Thinking Process</span>
-                  {isThinkingExpanded ? (
-                    <ChevronDown className="w-3 h-3" />
-                  ) : (
-                    <ChevronRight className="w-3 h-3" />
-                  )}
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ${isThinkingExpanded ? "rotate-180" : ""}`}
+                  />
                 </button>
 
                 <AnimatePresence>
                   {isThinkingExpanded && (
                     <motion.div
+                      id={thinkingId}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -481,7 +481,7 @@ function MessageBubbleComponent({
                                 </div>
                                 {step.data.message && (
                                   <span className="text-[10px] text-[var(--foreground-muted)] ml-4 italic">
-                                    "{step.data.message}"
+                                    &ldquo;{step.data.message}&rdquo;
                                   </span>
                                 )}
                                 {/* Show details if available (e.g. corrections count) */}
@@ -618,7 +618,7 @@ function MessageBubbleComponent({
               type="button"
               onClick={handleCopy}
               className="transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded opacity-70 hover:opacity-100 focus-ring"
-              aria-label="Copy message"
+              aria-label={copied ? "Message copied" : "Copy message"}
             >
               {copied ? (
                 <Check className="w-3 h-3 text-[var(--success)]" />

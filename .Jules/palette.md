@@ -42,3 +42,8 @@
 
 **Learning:** Small utility widgets that contain text inputs (like FeedbackWidget) often feel "heavy" when they use standard textareas with fixed heights and internal scrollbars. Utilizing the project's standard AutoResizeTextarea component ensures a fluid, consistent input experience across all interface layers. Additionally, secondary widgets must strictly adhere to semantic labeling (htmlFor/id) and ARIA dialog roles to ensure they are not overlooked by screen reader users.
 **Action:** Consistently use AutoResizeTextarea for multi-line inputs in all UI layers. Always associate labels with inputs using semantic IDs and apply aria-labelledby to dialog containers.
+
+## 2026-05-22 - [Dynamic Interaction Feedback]
+
+**Learning:** Icon-only buttons for copy/action feedback benefit from dynamic `aria-label` updates to provide immediate non-visual confirmation.
+**Action:** Update `aria-label` to "Action completed" (e.g., "Message copied") upon success for 2-3 seconds to assist screen reader users.
