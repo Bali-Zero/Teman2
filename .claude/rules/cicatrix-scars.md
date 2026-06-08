@@ -376,6 +376,7 @@ done
 _Discovered: 2026-06-05 while planning P-4 (topic_type_log) off the autopsy report · Severity: P3 (process/trust, not runtime) · Status: REPORTED — the autopsy report stays as-is (it was right about the SUBSTANCE), this scar inoculates future readers against its 3 phantom citations_
 
 **TRAUMA:** `research/operations/2026-06-04-wr2-autopsy-report.md` (the 13-agent autopsy, finding #10 + per-dimension "Anti-monotony") cites, with PRECISE line numbers, three artifacts that DO NOT EXIST:
+
 - `_state-schema.sql:63` (claimed to define a SQLite `topic_type_log` table)
 - `_voyager-curriculum.py:49` (claimed to read it via a LEFT JOIN)
 - `topic_type_log` itself as an existing-but-empty table
@@ -387,6 +388,7 @@ A SECOND autopsy claim was also wrong (caught by an Explore + direct re-verify):
 **ANTIBODY:** When a long multi-agent report (autopsy, deep-research, council synthesis) cites `file:line`, treat those citations as LEADS, not facts — re-run `find`/`grep`/`Read` on each load-bearing one BEFORE building on it. The autopsy was CORRECT about the substance (the variety machine is unplugged; the fact-checker self-references; BRAND_SUFFIX clamps) — verified, and batch-1 fixes shipped on it (PR #1125). But 3 of its specific file refs were hallucinated. The discipline that caught this is the standing anti-hallucination rule (CLAUDE.md §6): "mai citare output di un tool senza averlo eseguito in QUESTO turn". Extended here to: **mai costruire un piano su un file:line di un REPORT senza ri-verificare che il file esista in questo turn.** The P-4 plan (`research/operations/P4-topic-type-log-plan.md` §0) documents the corrections and was built on the verified reality, not the report text.
 
 **GOTCHA:**
+
 - The autopsy is NOT retracted — it remains the authoritative diagnosis of WR2's monotony/fact problems. Only its 3 phantom citations are wrong. Future agents: use it for the WHAT, re-verify every WHERE.
 - The hallucinated `_voyager-curriculum.py` is plausible because a real Voyager-style skill-library evolver DOES exist in this ecosystem (`agent-library` / EvoSkill, see `discovery_s13_evolution_loop_never_closed`). The autopsy likely pattern-matched that into a WR2 curriculum reader that was never built. Plausibility ≠ existence.
 - P-4 (migration 216, shipped 2026-06-05 PR #1133) is the FIRST real `topic_type_log` — it's a Postgres table on the production path, NOT the phantom SQLite one. Anyone grepping `topic_type_log` after 2026-06-05 will find the real one; do not confuse it with the autopsy's phantom.
@@ -490,3 +492,37 @@ _Discovered: 2026-06-04 06:15 WITA while monitoring PR #1101 (a scar_replay-only
 **GOTCHA**: This is a non-mine flake — a scar_replay-only PR (`#1101` touches only `agent-library/scar_replay/scar_replay.py` + `test_scar_replay.py`) was blocked by it. **Diagnostic rule**: when CI Backend Tests fail on a PR that changed NO backend code, check whether the failing test is timestamp/clock-dependent BEFORE assuming regression — verify via `gh pr view <N> --json files -q '.files[].path'` that your diff doesn't touch the failing module. The same test passed clean on `#1104` minutes earlier (same suite) → proof it's nondeterministic, not a real break. Any PR whose `update-branch` re-triggers the full Backend Tests can hit it. Family: **nondeterministic-test-blocks-merge (clock race)**. Related discipline: anti-hallucination rule — verify the failing path is actually yours, don't assume.
 
 **Reference**: CI run 26915762002 job 79404910575 (#1101). Failing test `apps/backend-rag/backend/tests/unit/services/ingestion/test_performance_monitor.py:311`. Source under test `apps/backend-rag/backend/services/ingestion/performance_monitor.py` (alert-id generation). PR #1101 files: scar_replay only.
+
+---
+
+### ⚠️ W67 (P2): sentinel + meta-watchdog OK but 39 jobs DLQ-terminal (21 in 24h), healing=0 — common cause = Air-decommissioned path-drift in backup scripts + sentinel captures no real stderr (blind autopilot) (2026-06-09)
+
+_Discovered: 2026-06-09 ~04:45 WITA during FASE-0 instrumentation re-arm (read-only audit from M5 via ssh pro) · Severity: P2 · Status: **DIAGNOSED — fix deferred to a dedicated session ON Pro (not a thin-client M5 night fix)**_
+
+**TRAUMA**: FASE-0 re-arm went hunting for "disarmed guardians" (per the 9-spec armies verdict). The verdict said `sentinel_meta_watchdog` was "esiste ma non gira" — FALSE: `launchctl list` on Pro shows `com.nuzantara.sentinel-meta-watchdog` LOADED, `LastExitStatus=0`, state file fresh (2 min). The watchdog WORKS. But verifying it surfaced the real wound: `sentinel_status.json` reports `jobs_total=90 jobs_healthy=61 jobs_circuit_terminal=38 dlq_terminal=38 healing_actions_24h=0`. Reading the true source `~/.agent/decisions/dlq.json` → **39 entries, all status=TERMINAL**, age distribution **21 ≤1d / 12 2-7d / 6 8-30d** (oldest 12d, newest 0d). These are NOT stale legacy noise — they are CORE infra jobs dying NOW: `fly_pg_backup`, `qdrant_snapshot`, `fly_qdrant_backup`, `rag_canary`, `garuda_indexer`, `knowledge_graph_builder`, `nlm_nb1_daily_refresh`, `run_nb2_pipeline`, `post_publish_poller`, `mos_sync_memory_to_nlm`, etc. The fleet is shedding jobs into terminal-DLQ and **nobody resuscitates them** (`healing_actions_24h=0`).
+
+Two compounding root causes, found by EXECUTING the real scripts (which the sentinel does not do):
+
+1. **Air-decommissioned path-drift (W50/W51/W52 family)**: `qdrant_snapshot` + `fly_qdrant_backup` fail with `ERROR: /Users/nuzantara/Projects/nuzantara/apps/backend-rag/.env not found` — they look for `.env` in `~/Projects/nuzantara`, the **Air checkout path decommissioned 2026-05-05**. The live path is `~/Desktop/nuzantara`. Hardcoded dead-machine path in the backup scripts.
+2. **`fly_pg_backup` runs but produces a 0-byte dump**: `pg_dump` inside the Fly primary returns empty (`In-machine result:` blank → `WARNING: backup attempt produced only 0 bytes locally`). Different failure, Fly-side, silent.
+
+**META-problem (the load-bearing one)**: the sentinel's `log_tail` field captures **only the retry-wrapper summary** ("exit 1 after 3 attempts"), NOT the job's real stderr/stdout. So every terminal entry has `classification={type:UNKNOWN, subtype:cli_failed, confidence:0.0}`. The autopilot can't diagnose or repair because it never sees the real error → it retries blind 10× (`autopilot_attempts:10`) → gives up → TERMINAL. Observability exists (we KNOW 39 jobs died) but is BLIND on the WHY. This is the exact "instrumentation disarmed" thesis of the 9-spec verdict, made concrete.
+
+Also found: the sentinel-PARENT plist (`com.nuzantara.sentinel`) has `RunAtLoad=true` with NO `StartInterval`/`KeepAlive` → it is a ONE-SHOT that dies by design when its cycle ends. The watchdog reads that as "stale/crashed" and kickstarts it every ~1h (cooldown). It restarts, writes status, re-dies → slow crash-loop masked by the W55 cooldown-suppression pattern. The watchdog is healthy; it's tamping a one-shot that the watchdog assumes is a persistent daemon.
+
+**ANTIBODY (DIAGNOSED, NOT executed — deferred to a session ON Pro):**
+
+1. **Fix the path-drift**: grep all `~/scripts/*backup*.sh` + `*snapshot*.sh` for `Projects/nuzantara` → repoint to `~/Desktop/nuzantara` (or a `$NUZ_REPO_ROOT` env). This alone should resuscitate the qdrant backup pair + likely several of the 21.
+2. **Fix `fly_pg_backup` 0-byte dump**: investigate why `pg_dump` inside the Fly primary returns empty (loopback/superuser path changed? cf. W38 `backend_rag_v2` demotion in flight).
+3. **Make the sentinel capture REAL stderr**: `nuzantara-sentinel.py` must store the job's actual stdout/stderr tail in `log_tail`, not the retry-summary string. Without this, `classification.confidence` stays 0.0 forever and the autopilot repairs blind. This is the highest-leverage fix — it re-arms the WHOLE auto-heal loop.
+4. **Resolve the one-shot vs daemon mismatch**: decide whether `com.nuzantara.sentinel` should be periodic (`StartInterval`) or genuinely one-shot; if one-shot, the watchdog's "stale" threshold must not treat a clean one-shot exit as a crash.
+
+**GOTCHA**:
+
+- The watchdog/sentinel being "alive" (LastExitStatus=0, fresh status file) does NOT mean the fleet is healthy — it means the MONITOR is healthy while the MONITORED is bleeding. Always read `dlq.json` / `jobs_circuit_terminal` + `healing_actions_24h`, not just "is the sentinel running".
+- The 9-spec armies verdict said this watchdog "esiste ma non gira" — WRONG, it runs. Lesson (re-confirmed): re-verify every verdict file:claim with `launchctl list` / disk-state in THIS turn; the verdict was right on the THESIS (instrumentation disarmed) but wrong on the SPECIFIC guardian.
+- `circuit_breakers.json` (phase=T0..TERMINAL per job) is a DIFFERENT source from `dlq.json` (status=TERMINAL entries). The 38/39 "terminal" count comes from `dlq.json` (`dlq_terminal`), NOT from circuit_breakers (which had 0 phase=TERMINAL). Don't conflate them.
+- `log_tail="exit 1 after 3 attempts"` is the sentinel's OWN retry-summary, a false friend — it looks like an error log but carries zero diagnostic signal. The real error only appears by running the implicated script yourself.
+- Family: W50/W51/W52 (HOME-fork / Air-path drift), W55 (cooldown-suppression masks slow failure). The Air decommission (2026-05-05) keeps producing path-drift scars 35 days later — there is no sweep that grepped all scripts for `Projects/nuzantara` after decommission.
+
+**Reference**: discovered during FASE-0 instrumentation re-arm 2026-06-09 (sessione M5). Evidence: `~/.agent/decisions/dlq.json` (39 terminal), `~/.agent/decisions/sentinel_status.json` (jobs_circuit_terminal=38, healing_actions_24h=0), `~/logs/sentinel-meta-watchdog.log` (slow restart loop), live exec of `~/scripts/fly-pg-backup.sh` (0-byte) + `~/logs/qdrant-snapshots.log` (Projects/nuzantara .env not found). Sentinel source `~/scripts/nuzantara-sentinel.py:772-818` (dlq parse, log_tail handling). Related memory: `discovery FASE-0 riarmo strumentazione 2026-06-09`. Pending: triage 39 DLQ jobs + 3 fixes above on a dedicated Pro session.
