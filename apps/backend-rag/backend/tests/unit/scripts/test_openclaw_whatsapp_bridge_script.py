@@ -143,6 +143,36 @@ def test_bridge_guard_keeps_grounded_villa_mapping_reply() -> None:
     assert bridge._guard_villa_kbli_reply("Differenza 55193 vs 55203", reply, "it") == reply
 
 
+def test_b211_guard_allows_correct_definitional_answer() -> None:
+    reply = (
+        "A B211/B211A is a short-stay visit/business visa: it gives no residency and "
+        "no work rights. A KITAS is a limited-stay residency permit, and its work "
+        "variant grants employment. B211 is old wording; the current short-stay "
+        "business route is usually C2 Business, which the team confirms for your case."
+    )
+
+    assert (
+        bridge._guard_legacy_b211_reply(
+            "What's the difference between a B211A visa and a KITAS?", reply, "en"
+        )
+        == reply
+    )
+
+
+def test_b211_guard_still_clobbers_unsafe_current_claim() -> None:
+    unsafe = (
+        "Yes, the B211 is the right visa for you. Apply for it and you can run your "
+        "business meetings in Bali with no problem."
+    )
+
+    guarded = bridge._guard_legacy_b211_reply(
+        "Can I use a B211 to do business in Bali?", unsafe, "en"
+    )
+
+    assert guarded != unsafe
+    assert "C2 Business" in guarded
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(

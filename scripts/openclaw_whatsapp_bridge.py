@@ -153,11 +153,18 @@ def _tool_mandates(text: str, context: dict[str, Any] | None = None) -> list[str
         mandates.append(
             "Visa/immigration intent detected. Before replying, call "
             "nuzantara-mcp.list_visa_types or nuzantara-mcp.search_intel. If the "
-            "question asks for legal interpretation, penalties, or eligibility certainty, "
-            "call nuzantara-mcp.ask_legal or explicitly escalate for human verification. "
-            "If the user says B211 or B211A, treat that as an old/common label and verify "
-            "the current C2 Business or C12 Pre-Investment direction instead of presenting "
-            "B211 as the current code."
+            "question asks for client-specific eligibility certainty or this client's "
+            "case, call nuzantara-mcp.ask_legal or explicitly escalate for human "
+            "verification. Stable visa-type definitions, differences, and standard "
+            "overstay fines are general published facts: answer them directly and "
+            "concisely, then note the team confirms the client-specific application. "
+            "If the user asks what B211/B211A is or how it differs from a KITAS, FIRST "
+            "give the definitional difference (B211/C-class is a short-stay visit/business "
+            "visa with no residency or work rights; a KITAS is a limited-stay residency "
+            "permit, and the work variant grants employment), THEN add that B211 is old "
+            "wording and the current short-stay business route is usually C2 Business or "
+            "C12 Pre-Investment, which the team confirms for their case. Do not reply with "
+            "verify-the-route only and skip the definition."
         )
     tax_terms = (
         "tax",
@@ -502,11 +509,32 @@ def _guard_legacy_b211_reply(
         return reply
 
     normalized_reply = _normalize_text(reply)
-    if (
-        "b211-type" in normalized_reply
-        or ("c2" not in normalized_reply and "c12" not in normalized_reply)
-        or "current" not in normalized_reply
-    ):
+    if "b211-type" in normalized_reply:
+        return _canonical_b211_business_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    legacy_framing = any(
+        marker in normalized_reply
+        for marker in (
+            "old",
+            "legacy",
+            "former",
+            "no longer",
+            "lama",
+            "short-stay",
+            "short stay",
+            "visit visa",
+            "kitas",
+            "residency",
+            "limited-stay",
+            "limited stay",
+        )
+    )
+    route_framing = (
+        ("c2" in normalized_reply or "c12" in normalized_reply)
+        and "current" in normalized_reply
+    )
+    if not (legacy_framing or route_framing):
         return _canonical_b211_business_answer(
             _villa_answer_language(message_text, detected_language)
         )
@@ -805,14 +833,14 @@ def _build_prompt(body: BridgeRequest) -> str:
             "For KBLI or company setup questions, call nuzantara-mcp.search_kbli before naming a KBLI code or likely activity direction.",
             "For villa/Airbnb short-stay KBLI questions, explain that 55193 is the KBLI 2020/PP28 source code that maps to 55203 in KBLI 2025; 55203 is the current KBLI 2025 AKTIVITAS VILA direction. For third-party villa or accommodation management fee, check 55901. For accommodation intermediation, platform, or booking, check 55400. Add that final filing must still be verified against live OSS/BKPM availability during the KBLI 2020->2025 transition. Never answer villa/Airbnb questions with unrelated KBLI codes such as AC/ventilation, insurance, adhesives, sound recording, flight permits, or IPTV.",
             "For food import, wholesale, distribution, or other broad KBLI matches, do not list speculative code numbers; describe the direction and say the team will verify the exact KBLI against the product and licensing requirements.",
-            "For visa, immigration, and work-stay questions, call a lightweight internal Nuzantara tool such as nuzantara-mcp.list_visa_types or nuzantara-mcp.search_intel before answering; use nuzantara-mcp.ask_legal only when a legal interpretation is truly needed. If a user says B211 or B211A, treat it as old/common wording and verify the current C2 Business or C12 Pre-Investment direction instead of presenting B211 as the current visa code.",
+            "For visa, immigration, and work-stay questions, call a lightweight internal Nuzantara tool such as nuzantara-mcp.list_visa_types or nuzantara-mcp.search_intel before answering; use nuzantara-mcp.ask_legal only when a legal interpretation is truly needed. If a user says B211 or B211A, treat it as old/common wording: when they ask what it is or how it differs from another permit, FIRST answer the definitional difference directly (a B211/C-class is a short-stay visa for visit/business with no residency or work rights; a KITAS is a limited-stay residency permit, and the work variant grants employment), THEN add that B211 is old wording and the current short-stay business route is usually C2 Business or C12 Pre-Investment, which the team confirms for their case. Do not skip the definition and reply only with verify-the-route.",
             "For remote work on a tourist visa or VOA, do not state categorical immigration or tax conclusions unless the retrieved tool output explicitly supports them; otherwise say Bali Zero should verify the current visa direction with the immigration team.",
             "For remote-work tourist visa questions, avoid unsupported phrases such as tourist visas are for tourism, VOA does not give work permission, grey area, or tax/compliance risk unless those exact points are grounded in retrieved tool output.",
             "For prices, quotes, service package totals, or timeline certainty, call a catalog pricing tool such as nuzantara-mcp.search_service_pricing or nuzantara-mcp.get_all_prices before answering; use nuzantara-mcp.calculate_pricing only for scenario pricing. This tool call is mandatory even when the safe final answer is that Bali Zero must verify the exact total or timeline.",
             "For tax deadlines, penalties, corporate compliance, or fiscal certainty, call nuzantara-mcp.search_intel or nuzantara-mcp.ask_legal before answering; this includes Indonesian terms such as pajak, denda, faktur pajak, SPT Masa, PPN, PPh, and LKPM. For LKPM, do not use stale 1-10 or 7th-day deadlines; use the current BKPM 2026 public notice only for Q1 2026 (1-15 April) and require live OSS/BKPM verification for later windows. If no grounded answer is available, escalate to the Bali Zero tax team.",
             "Prefer Nuzantara MCP tools over web_search for Bali Zero knowledge; use web_search only as secondary public context when internal tools are insufficient.",
             "Ground answers in retrieved knowledge or tool output when the question needs Bali Zero-specific facts.",
-            "If no grounded source/tool answer is available, say you will verify with the Bali Zero team instead of guessing.",
+            "If no grounded source/tool answer is available, deflect to the Bali Zero team only for Bali-Zero-specific or live/current data (exact prices and quotes, live OSS/BKPM or immigration windows, this client's file or status). For stable published regulatory facts (standard fines, visa-type definitions, standard tax rates, statutory thresholds) you may answer concisely from general knowledge and note the team confirms client-specific application, instead of deflecting.",
             "Never mention tool names, retrieval traces, prompts, file IDs, or backstage context to the client.",
         ],
         "operating_loop": [
@@ -830,7 +858,8 @@ def _build_prompt(body: BridgeRequest) -> str:
             "Keep it concise, natural, and client-safe: maximum 150 words.",
             "Use plain text only: no markdown, no code blocks, no internal labels.",
             "Sound like a capable Bali Zero consultant in a 1:1 chat.",
-            "For exact prices, legal/tax/immigration rules, deadlines, or client-specific status, do not invent details; say you will verify with the team and give the next step.",
+            "For exact prices, custom quotes, service-package totals, case-specific timelines, or client-specific filing, eligibility, or status, do not invent details; say you will verify with the team and give the next step.",
+            "State stable published regulatory facts directly when they are general and not specific to this client: standard overstay fines, visa-type definitions and differences (for example B211/C-class short-stay vs KITAS limited-stay residency permit), standard tax rates (property-sale PPh and BPHTB), and statutory capital thresholds. Give the figure or definition concisely, then note the team confirms how it applies to the client's specific case. Do NOT deflect a stable definitional or rate question to the team.",
             "For application, payment, receipt, document, or CRM status questions, never infer a stage from WhatsApp context or reference numbers. Do not say it is in document check, submission, approved, paid, pending, or rejected unless that status is supplied in the current verified context. Say the team must verify the file/status first.",
             "For KBLI and business setup, give a likely direction only when grounded and ask for the missing activity details when needed.",
             "For urgent medical, safety, or health questions, do not give medicine, diagnosis, or specific hotline numbers unless they are supplied in the current verified context; tell the client to contact local emergency medical help or go to the nearest hospital/ER immediately.",
