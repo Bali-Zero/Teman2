@@ -92,17 +92,29 @@ Scomposto in 11 stadi-mattone (+ 1 trasversale):
   live, gira E2E/integration, e **rimanda i fallimenti all'agente che si corregge e ri-testa**. [3-0]
   **MA richiede Kubernetes** → NON locale. Il *pattern* è il bersaglio; l'infra va riprodotta con microsandbox+Docker.
 
-### 2.2 Design + internal-app dentro il brand (buco interno #2) — NON VERIFICATO
+### 2.2 Design + internal-app dentro il brand (buco interno #2) — ✅ VERIFICATO (pass dedicato 2026-06-08)
 
-> **Onestà del harness**: l'area design-generation (v0/Bolt/Lovable/Cursor brand-aware) ha prodotto
-> **ZERO claim sopravvissuti** alla verifica avversariale. I claim erano deboli/marketing e sono stati
-> filtrati. **Resta un buco aperto** che richiede un pass di ricerca dedicato.
+> **Storia (onestà del harness)**: il 2026-06-06 quest'area produsse **ZERO claim sopravvissuti** — i claim
+> erano deboli/marketing e furono filtrati. Era l'unico dei 3 buchi GROUND-A rimasto non-verificato (cfr. NEXT #4
+> riga 404). **Chiuso dal pass dedicato 2026-06-08** (deep-research run wf_4a6766ac-8f4: 23 fonti, 107 claim,
+> 25 verificati 3-su-3, 6 uccisi). Dettaglio completo + checklist: **`2026-06-08-ground-a-buco2-design-internal-app.md`**.
 
-Segnale grezzo (dai result Search, NON verificato 3-0, da trattare come LEAD non come fatto):
-- **Storybook MCP** + **Figma Dev Mode MCP**: pattern a 2-MCP (intent-source + component-source) per far
-  interrogare all'agente il design-system esistente invece di allucinare UI. Si aggancia concettualmente
-  alla tua decisione di oggi (renderer HTML/CSS + tokens.json + Legibility Armor) MA va verificato a parte.
-- v0 hard-coupled a ShadCN; Bolt/Lovable più amichevoli a design-system arbitrari.
+Verdetto sintetico (fatti 3-0, il dettaglio è nel file dedicato):
+- ✅ **Storybook MCP** (`@storybook/addon-mcp`, `localhost:6006/mcp` sul TUO dev server) = primitivo **genuinamente
+  local-first** per esporre props/stories dei componenti `packages/` reali. È la metà component-source del 2-MCP.
+- ✅ **design-system-as-MCP su token-JSON** (`yajihum/design-system-mcp`: `getTokens`+`getComponentProps` via Style
+  Dictionary) = **blueprint esatto** per esporre il nostro `tokens.json` localmente. Demo-scale ma implementabile.
+- ✅ **Atlassian `@atlaskit/ads-mcp`** = prova-di-produzione del 2-MCP completo, ma **template di packaging** (espone
+  il loro DS), non un modo di puntare a un sistema arbitrario.
+- ❌ **Figma Dev Mode MCP** = REALE ma **cloud-coupled** (file SaaS, seat a pagamento, 4 sub-claim "local" refutati 0-3)
+  → **escluso dallo stack sovrano UU-PDP**.
+- ✅ **bolt.diy** = unico self-hostable (MIT, Ollama/LM Studio) ma **non brand-aware out-of-box** (brand-agent è nel
+  commerciale bolt.NEW; modelli <7b inaffidabili). v0/Lovable non self-hostable.
+- 🟥 **RISULTATO NEGATIVO load-bearing (3-0)**: un MCP token/prop è un **DATA-PROVIDER, non un CONFORMANCE-ENFORCER**.
+  Nessun MCP esaminato verifica l'output → il solo-dev deve costruire il **proprio** layer di lint/verifica
+  (CSS-var allowlist + token-linter + visual-regression Playwright-PNG). Filo-2 del verdetto applicato allo stadio DESIGN.
+- ⚠️ **Sub-domanda (4)** «view-over-app / generated-not-maintained» = **ancora REFUTATA per assenza** (zero evidenza,
+  serve pass primary-source fresco). Resta open-question, NON fatto.
 
 ### 2.3 Stato-prodotto commerciale + sovranità (buco interno #3) — FATTI VERIFICATI
 
@@ -165,7 +177,8 @@ Segnale grezzo (dai result Search, NON verificato 3-0, da trattare come LEAD non
 
 **3 erano buchi anche nella ricerca interna (colmati dal deep-research):**
 7. **TEST-PROD (microVM locale)** — zero copertura interna → microsandbox è la risposta verificata.
-8. **ENRICH (design/internal-app)** — buco ovunque, e il deep-research NON l'ha potuto verificare → resta aperto.
+8. **ENRICH (design/internal-app)** — ✅ chiuso dal pass dedicato 2026-06-08: Storybook-MCP (componenti) +
+   token-JSM-MCP (tokens.json) locali + verificatore-conformità proprio. Vedi `2026-06-08-ground-a-buco2-design-internal-app.md`.
 9. **Stato-prodotto commerciale** — i file citavano i paper ma non il "come chiudono il loop davvero".
 
 ---
@@ -350,10 +363,14 @@ I 3 LLM, indipendentemente, hanno colpito gli **stessi 2 difetti CRITICI**:
       tetto basso; i worker paralleli che NON girano LLM-locali (orchestrazione, I/O) scalano, quelli che
       girano inferenza-locale no (Gemini #4).
 
-### Design/internal-app (buco #2 — APERTO, non verificato)
-- [ ] ❓ **pass di ricerca dedicato** — il deep-research non ha prodotto claim sopravvissuti qui.
-- [ ] ⚠️ Storybook-MCP / Figma-MCP = LEAD non fatto; v0/Bolt/Lovable sono cloud → solo ispirazione-pattern,
-      mai chiamate esterne con design-system che contiene logica business (DeepSeek #10).
+### Design/internal-app (buco #2 — ✅ VERIFICATO 2026-06-08)
+- [x] ✅ **pass di ricerca dedicato FATTO** → `2026-06-08-ground-a-buco2-design-internal-app.md` (23 fonti, 25 claim 3-su-3).
+- [ ] 🟢 **Storybook-MCP** sul dev server `packages/` (props/stories reali) — primitivo genuinamente locale, ADOTTARE.
+- [ ] 🟢 **MCP custom su token-JSON** (pattern yajihum) per esporre `tokens.json` — blueprint da costruire, locale+offline.
+- [ ] 🟡 **layer verifica/conformità proprio** (CSS-var allowlist + token-linter + visual-regression Playwright-PNG) —
+      OBBLIGATORIO: nessun MCP impone conformità, forniscono solo ground-truth (risultato negativo 3-0).
+- [ ] 🔴 **Figma-MCP** ESCLUSO (cloud-coupled, UU-PDP); **v0/Bolt/Lovable** = cloud → solo ispirazione-pattern, mai
+      chiamate esterne con design-system che contiene logica business (DeepSeek #10); bolt.diy self-host opzionale ma non brand-aware out-of-box.
 
 ### Memoria / apprendimento
 - [ ] 🔧 **riparare LEARN (Reflexion/Voyager)** — oggi ROTTO (W50). Pattern: worktree dedicato per l'evolver,
@@ -401,7 +418,8 @@ Metriche di stress obbligatorie nel pilota (DeepSeek #12): ≥1 migrazione DB + 
    quanto burst-cloud serve davvero (chiude CRITICO-2 con un dato tuo, non da leaderboard).
 3. **Costruire il MVL a 7 stadi** come spina dorsale, con verify-the-verifiers (barriere deterministiche +
    meta-verificatore + gate-umano-lista-Codex#11) come cardine — NON la velocità.
-4. **Pass di ricerca dedicato sul buco #2** (design/internal-app) — l'unico rimasto non-verificato dal harness.
+4. ~~Pass di ricerca dedicato sul buco #2 (design/internal-app)~~ — ✅ **FATTO 2026-06-08** → `2026-06-08-ground-a-buco2-design-internal-app.md`.
+   Residuo: solo la sub-domanda (4) «view-over-app / generated-not-maintained» resta refutata-per-assenza (pass fresco se la vogliamo).
 5. **Caso pilota "Agent Run Evidence Dashboard"** con le metriche di stress, poi 4-LLM panel sull'architettura.
 
 > **NB anti-hallucination**: questo report cita numeri (microsandbox <100ms, OpenHands ~66%, 15-22pt swing).
