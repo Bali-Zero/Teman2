@@ -143,6 +143,44 @@ def test_bridge_guard_keeps_grounded_villa_mapping_reply() -> None:
     assert bridge._guard_villa_kbli_reply("Differenza 55193 vs 55203", reply, "it") == reply
 
 
+def test_property_zoning_guard_allows_villa_leasehold_duration() -> None:
+    # Regression (villa-zoning-guard 2026-06-08): a lease-DURATION question
+    # must NOT be clobbered by the Airbnb/zoning canned answer. The bare
+    # "lease" trigger matches "leasehold"; the escape clause (oss+bkpm) is
+    # unreachable for a correct duration reply, so pre-fix this returned the
+    # canned zoning text instead of the real answer.
+    correct = (
+        "A typical villa leasehold in Bali is often around 25 to 30 years, "
+        "sometimes with an option to extend."
+    )
+    assert (
+        bridge._guard_property_zoning_reply(
+            "How long is a typical villa leasehold in Bali?", correct, "en"
+        )
+        == correct
+    )
+
+
+def test_property_zoning_guard_allows_villa_lease_duration_reworded() -> None:
+    correct = "A villa lease in Bali usually runs 25 years with renewal options."
+    assert (
+        bridge._guard_property_zoning_reply(
+            "What is the usual duration of a villa lease in Bali?", correct, "en"
+        )
+        == correct
+    )
+
+
+def test_property_zoning_guard_still_fires_on_airbnb_operation() -> None:
+    # The guard must STILL clobber a genuine Airbnb-in-residential-zone
+    # operation question whose reply lacks the OSS/BKPM grounding.
+    ungrounded = "Sure, just rent your villa on Airbnb, no special permits needed."
+    guarded = bridge._guard_property_zoning_reply(
+        "Can I run my villa as an Airbnb in a residential zone?", ungrounded, "en"
+    )
+    assert guarded != ungrounded  # was replaced by the canned zoning answer
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(
