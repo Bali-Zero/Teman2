@@ -31,7 +31,7 @@ google-cloud-aiplatform>=1.151.0  # Now compatible with OTEL (protobuf 5.x)
 boto3>=1.43.0
 
 # AI/ML - UPGRADED FOR HTTPX 0.28+ COMPATIBILITY
-openai>=2.38.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
+openai>=2.41.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
 anthropic>=0.75.0  # Upgraded for httpx 0.28+ compatibility
 # PyTorch - Explicitly specify compatible version to avoid RuntimeError with sentence-transformers
 # PyTorch 2.2.0+ required for transformers compatibility (register_pytree_node)
@@ -61,7 +61,7 @@ python-magic>=0.4.27  # MIME type detection from file content
 # LangChain Ecosystem
 langgraph>=1.0.0
 langgraph-checkpoint-postgres>=2.0.0  # PostgreSQL checkpointing for stateful workflows
-langchain-core>=1.2.19  # Updated 2026-03-14: patch fixes for streaming + callbacks
+langchain-core>=1.4.1  # Updated 2026-03-14: patch fixes for streaming + callbacks
 langchain-anthropic>=1.4.4  # Required for KG LangGraph orchestrator
 langchain-openai>=1.2.2  # Required for KG LangGraph orchestrator fallback
 langsmith>=0.4.0  # Observability: @traceable on RAG nodes + KG nodes
