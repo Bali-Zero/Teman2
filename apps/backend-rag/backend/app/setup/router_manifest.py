@@ -190,6 +190,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── HR ──
     RouterEntry(name="hr", process_groups=_API, tags=("hr",)),
     RouterEntry(name="hr_late_reply", process_groups=_API, tags=("hr",)),
+    RouterEntry(name="hr_my_late_incident", process_groups=_API, tags=("hr", "gate")),
     RouterEntry(name="hr_owner_cashout", process_groups=_API, tags=("hr",)),
     # ── Image Generation ──
     RouterEntry(name="image_generation", process_groups=_API, tags=("media",)),
@@ -204,6 +205,10 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     ),
     # ── Document-intake HITL review (FASE 5A, RAG process — LOCAL Pro DB only) ──
     RouterEntry(name="intake_review", process_groups=_RAG, tags=("intake", "crm", "hitl")),
+    # ── Intake login gate status probe (API process — frontend-facing on Fly).
+    #    Evaluator queries the local pool; on Fly intake tables are empty so the
+    #    documents count is 0 (graceful) until the Pro→Fly count-mirror lands. ──
+    RouterEntry(name="intake_gate", process_groups=_API, tags=("intake", "gate")),
     # ── Intel (RAG process only — needs /data volume) ──
     RouterEntry(name="intel", process_groups=_RAG, tags=("intel",)),
     RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),

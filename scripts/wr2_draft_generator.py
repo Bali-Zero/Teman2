@@ -394,15 +394,16 @@ def _build_draft_prompt(
 
     PR-1 §C: when an enrichment object is available we hand Claude the full
     structured brief (1400-2000 words across the_facts, bali_zero_take,
-    in_practice, next_steps, faq) instead of a truncated paragraph. This
-    is gated by WR2_USE_FULL_ENRICHED_PROMPT so the legacy path stays
-    available for back-compat / rollback.
+    in_practice, next_steps, faq) instead of a truncated paragraph. This is
+    the default path (WR2_USE_FULL_ENRICHED_PROMPT defaults to "true"); set
+    WR2_USE_FULL_ENRICHED_PROMPT=false to opt out and force the legacy path
+    for back-compat / rollback.
 
     Falls back to summary[:3500] when:
-      - WR2_USE_FULL_ENRICHED_PROMPT != "true" (legacy mode), OR
+      - WR2_USE_FULL_ENRICHED_PROMPT == "false" (legacy opt-out), OR
       - enrichment dict is empty / missing all expected fields.
     """
-    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "false").lower() == "true"
+    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
 
     body = ""
     if use_full_enriched and enrichment:
