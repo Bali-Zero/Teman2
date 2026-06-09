@@ -145,7 +145,7 @@ def resolve_dsn() -> str:
 
 def _redact_dsn(dsn: str) -> str:
     """Return a log-safe DSN with the password masked."""
-    # postgresql://user:PASSWORD@host/... -> postgresql://user:***@host/...
+    # Mask the password segment (between the first ':' and the '@') before logging.
     if "://" not in dsn or "@" not in dsn:
         return "<dsn>"
     scheme, rest = dsn.split("://", 1)
