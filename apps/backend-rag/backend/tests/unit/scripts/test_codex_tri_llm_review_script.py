@@ -211,3 +211,88 @@ def _body_from_cmd(cmd: object) -> str:
     # gh pr comment <n> --repo R --body <BODY>
     idx = cmd.index("--body")
     return cmd[idx + 1]
+
+
+# ── env-fix surfaces: PATH injection + .env.master deepseek key + quota guard ──
+# (cicatrix W64 armed-but-blind: under launchd the CLIs are off a bare PATH, the
+#  DeepSeek key is only in ~/.openclaw/workspace/.env.master, and a quota notice
+#  must read as env-down, not a code RED. Each test asserts the fix AND that it
+#  does not over-fire on a normal input — W68/W72/W73 guard discipline.)
+
+
+def test_cli_path_prepends_known_dirs_and_dedupes() -> None:
+    import os
+
+    out = review._cli_path("/usr/bin:/bin")
+    parts = out.split(os.pathsep)
+    # Known CLI dirs are present and come BEFORE the inherited bare entries.
+    for d in review._CLI_PATH_DIRS:
+        assert d in parts, f"{d} missing from {out}"
+        assert parts.index(d) < parts.index("/usr/bin")
+    # No duplicates.
+    assert len(parts) == len(set(parts))
+
+
+def test_cli_path_handles_empty_existing() -> None:
+    import os
+
+    out = review._cli_path(None)
+    parts = out.split(os.pathsep)
+    assert parts[: len(review._CLI_PATH_DIRS)] == list(review._CLI_PATH_DIRS)
+    assert "" not in parts
+
+
+def test_safe_subprocess_env_puts_cli_dirs_on_path() -> None:
+    import os
+
+    env = review._safe_subprocess_env()
+    path_parts = env["PATH"].split(os.pathsep)
+    for d in review._CLI_PATH_DIRS:
+        assert d in path_parts, f"{d} not injected into subprocess PATH"
+
+
+def test_safe_subprocess_env_still_strips_provider_keys(monkeypatch) -> None:
+    # The PATH injection must not regress the defense-in-depth key strip.
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "should-be-stripped")
+    monkeypatch.setenv("OPENAI_API_KEY", "should-be-stripped")
+    env = review._safe_subprocess_env()
+    assert "ANTHROPIC_API_KEY" not in env
+    assert "OPENAI_API_KEY" not in env
+    assert "PATH" in env
+
+
+def test_parse_verdict_classifies_weekly_limit_as_env_down() -> None:
+    # A quota notice is NOT a code verdict — it must carry error != None so the
+    # quorum excludes it (not counted as a live red over a fixed denominator).
+    v = review.parse_verdict(
+        "claude-opus",
+        "You've hit your weekly limit · resets Jun 12 at 11pm (Asia/Makassar)\n",
+        12.3,
+    )
+    assert v.error == "rate_or_quota_limit"
+    assert v.error is not None  # -> excluded from `live` in compute_outcome
+
+
+def test_parse_verdict_quota_down_reviewer_does_not_block_quorum() -> None:
+    # codex+deepseek green, claude quota-down -> green & eligible (2 live).
+    codex = review.parse_verdict("codex", '{"verdict":"green"}', 1.0)
+    claude = review.parse_verdict(
+        "claude-opus", "You've hit your weekly limit · resets soon", 1.0
+    )
+    deepseek = review.parse_verdict("deepseek", '{"verdict":"green"}', 1.0)
+    outcome, green, eligible = review.compute_outcome([codex, claude, deepseek])
+    assert outcome == "green"
+    assert green == 2
+    assert eligible is True
+
+
+def test_parse_verdict_normal_json_not_misclassified_as_quota() -> None:
+    # W73 over-match discipline: a normal review whose summary happens to mention
+    # "limit" in prose must still parse as a real verdict, not env-down.
+    v = review.parse_verdict(
+        "codex",
+        '{"verdict":"green","summary":"raises the upload size limit safely"}',
+        1.0,
+    )
+    assert v.error is None
+    assert v.verdict == "green"

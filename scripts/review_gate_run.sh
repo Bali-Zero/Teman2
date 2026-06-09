@@ -31,6 +31,15 @@
 
 set -uo pipefail
 
+# ── PATH for a non-interactive launchd shell ─────────────────────────────────
+# launchd gives this wrapper a bare PATH (/usr/bin:/bin:/usr/sbin:/sbin) and
+# never sources ~/.zshrc, so gh (/opt/homebrew/bin), node, codex, python3 and
+# claude (~/.local/bin) are all invisible — the W64 "armed-but-blind" failure
+# (all 3 reviewers FileNotFoundError, gh diff-fetch FileNotFoundError). Prepend
+# the real CLI dirs so every subprocess (gh, git, python3 → codex/claude/node)
+# resolves. No secrets here — only PATH.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 REPO="Balizero1987/Teman2"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_DIR="$HOME/.agent/decisions/state"
