@@ -193,6 +193,7 @@ def create_proxy_router() -> APIRouter:
         include_in_schema=False,
     )
     async def rag_proxy_endpoint(request: Request, full_path: str = "") -> Response:
+        _ = full_path  # Required by FastAPI's catch-all path converter.
         path = request.url.path
         if is_heavy_route(path):
             return await proxy_request(request)
