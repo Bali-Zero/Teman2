@@ -148,14 +148,10 @@ class LabOperationalPlan:
     def to_receipt(self) -> dict[str, Any]:
         return {
             "version": self.version,
-            "governance_pieces": [
-                piece.to_receipt() for piece in self.governance_pieces
-            ],
+            "governance_pieces": [piece.to_receipt() for piece in self.governance_pieces],
             "meta_workflow": [stage.to_receipt() for stage in self.meta_workflow],
             "anchor_jobs": [component.to_receipt() for component in self.anchor_jobs],
-            "missing_components": [
-                component.to_receipt() for component in self.missing_components
-            ],
+            "missing_components": [component.to_receipt() for component in self.missing_components],
             "work_packages": [package.to_receipt() for package in self.work_packages],
             "missing_component_keys": self.missing_component_keys,
             "parallelizable_component_keys": self.parallelizable_component_keys,
@@ -280,10 +276,10 @@ MISSING_V1_COMPONENTS: tuple[LabControlPlaneComponent, ...] = (
     LabControlPlaneComponent(
         key="verification_runner",
         agent_role="verification_runner",
-        responsibility="run allowlisted tests, lint, metrics, and failure analysis",
-        output="verification report",
+        responsibility="claim Pro-only queue work and run allowlisted verification",
+        output="owner-scoped worker transition and receipt-safe verification report",
         gate="empirical_result_recorded",
-        state=ComponentState.PLANNED,
+        state=ComponentState.CONTRACTED,
         depends_on=("worktree_experiment_runner",),
         parallel_group="execution",
     ),

@@ -64,7 +64,8 @@ jobs:
 
       # ---------------------------------------------------------------------
       # Step 1 — Checkout base SHA (NOT branch HEAD; anti pull_request_target trap)
-      # Fetch enough history for `git diff base...head` to enumerate changed files.
+      # Fetch only the base endpoint; the diff step fetches the PR head separately.
+      # git diff base head only needs both endpoint trees, not full repo history.
       # ---------------------------------------------------------------------
       - name: Checkout base ref
         if: steps.kill_switch.outputs.disabled != 'true'
@@ -73,7 +74,7 @@ jobs:
           # For merge_group: github.event.merge_group.base_sha (latest base)
           # For pull_request: github.event.pull_request.base.sha
           ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
-          fetch-depth: 0
+          fetch-depth: 1
 
       # ---------------------------------------------------------------------
       # Step 2 — Enumerate changed files (PR diff)

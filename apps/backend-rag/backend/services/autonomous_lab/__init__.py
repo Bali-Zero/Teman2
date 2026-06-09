@@ -43,6 +43,16 @@ from backend.services.autonomous_lab.reviewer import (
     LabReviewFinding,
     review_lab_run,
 )
+from backend.services.autonomous_lab.runtime_worker import (
+    LabRunStateStore,
+    LabWorkerConfig,
+    LabWorkerStatus,
+    LabWorkerTickResult,
+    VerificationCommandResult,
+    default_worker_id,
+    execute_command_plan,
+    run_worker_once,
+)
 from backend.services.autonomous_lab.state_store import (
     AutonomousLabStateStore,
     LabEventType,
@@ -84,9 +94,13 @@ __all__ = [
     "LabRun",
     "LabRunQueueItem",
     "LabRunRecord",
+    "LabRunStateStore",
     "LabRunStatus",
     "LabRuntimePlacement",
     "LabSafetyGate",
+    "LabWorkerConfig",
+    "LabWorkerStatus",
+    "LabWorkerTickResult",
     "MaterialSourceType",
     "MetaWorkflowStage",
     "NormalizedMaterial",
@@ -99,6 +113,7 @@ __all__ = [
     "ReviewFinding",
     "SimulationPlan",
     "SotaGovernancePiece",
+    "VerificationCommandResult",
     "assert_outbox_consumer_allowed",
     "assert_receipt_persistable",
     "assert_run_queue_item_persistable",
@@ -106,6 +121,9 @@ __all__ = [
     "current_runtime_placement",
     "default_operational_plan",
     "default_pipeline",
+    "default_worker_id",
+    "execute_command_plan",
     "resolve_runtime_placement",
     "review_lab_run",
+    "run_worker_once",
 ]
