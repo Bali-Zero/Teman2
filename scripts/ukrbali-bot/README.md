@@ -59,7 +59,32 @@ launchctl kickstart -k gui/$(id -u)/com.balizero.ukrbali-bot
 tail -f ~/logs/ukrbali-bot.{log,err}
 ```
 
-## Knowledge base & tone of voice
+## Standalone deploy on Railway (no Pro, no Nuzantara)
+
+The bot is fully self-contained: it needs only the bot token, the Google Doc, and
+your own Claude token. `Dockerfile` builds a container (Node + `claude` CLI + Python).
+
+**You need two secrets:**
+1. `UKRBALI_BOT_TOKEN` — from @BotFather.
+2. `CLAUDE_CODE_OAUTH_TOKEN` — your long-lived Claude token. Generate once on any
+   computer that has Claude Code: run `claude setup-token` and copy the value.
+
+**Steps (from the phone):**
+1. Put these files in a GitHub repo you own (e.g. a new repo `ukrbali-bot`):
+   `ukrbali_bot.py`, `Dockerfile`. (Nothing else is required for the container.)
+2. On [railway.app](https://railway.app): New Project → Deploy from GitHub repo → pick your repo.
+   If the files are in a subfolder, set the service **Root Directory** to that folder.
+3. Railway → your service → **Variables** → add:
+   - `UKRBALI_BOT_TOKEN` = `<botfather token>`
+   - `CLAUDE_CODE_OAUTH_TOKEN` = `<your claude setup-token value>`
+   (optional: `UKRBALI_CLAUDE_MODEL=claude-fable-5`, `UKRBALI_USE_RAG=0` — already defaults)
+4. Deploy. Check **Deploy Logs** for `live (brain=catalog, model=claude-fable-5)`.
+5. Message the bot in Telegram to confirm.
+
+Railway keeps the worker running 24/7 and restarts it on crash. Editing the Google
+Doc + redeploy (or restart) refreshes the catalog.
+
+
 
 By default (`UKRBALI_USE_RAG=0`) the bot answers **only** from the Bali Zero
 product catalog (a Google Doc), matching its tone of voice (Ukrainian, friendly,
