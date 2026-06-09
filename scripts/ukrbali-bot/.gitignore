@@ -1,0 +1,3 @@
+# local runtime cache of the Bali Zero catalog (fetched live from Google Docs).
+# Not committed — the bot pulls it from UKRBALI_KNOWLEDGE_DOC_ID at startup.
+knowledge.md

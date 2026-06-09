@@ -30,15 +30,30 @@ RAG_URL = os.environ.get(
     "https://nuzantara-rag.fly.dev/api/v1/visa-oracle/chat",
 )
 CLAUDE_BIN = os.environ.get("UKRBALI_CLAUDE_BIN", "claude")
-# Toggle: "1" -> use Nuzantara visa-oracle RAG; "0" -> claude-only (no Zantara).
-USE_RAG = os.environ.get("UKRBALI_USE_RAG", "1").strip().lower() not in ("0", "false", "no", "off")
+# Toggle: "1" -> use Nuzantara visa-oracle RAG; "0" -> claude-only grounded on the
+# Bali Zero catalog (Google Doc). Default 0: the catalog is the source of truth.
+USE_RAG = os.environ.get("UKRBALI_USE_RAG", "0").strip().lower() not in ("0", "false", "no", "off")
+
+# Bali Zero product catalog (Ukrainian) — knowledge base + tone of voice.
+KNOWLEDGE_DOC_ID = os.environ.get(
+    "UKRBALI_KNOWLEDGE_DOC_ID", "1HYeR-9znPo9-wujfI79cbpmmHz-ROWT_GwmvykRZ_go"
+)
+KNOWLEDGE_URL = f"https://docs.google.com/document/d/{KNOWLEDGE_DOC_ID}/export?format=txt"
+# Local fallback copy next to this script (used if the live fetch fails).
+KNOWLEDGE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge.md")
+KNOWLEDGE = ""  # loaded at startup
 
 PERSONA = (
-    "Ти — UkrBaliVisaAssistant, дружній асистент Bali Zero, що допомагає українцям "
-    "із візами та переїздом на Балі (Індонезія): туристичні візи (eVOA), KITAS, KITAP, "
-    "продовження, бізнес-візи, нерухомість, податки. Відповідай українською, коротко "
-    "і по суті (2-6 речень). На точні ціни чи персональний кейс — кажи, що уточниш із "
-    "командою Bali Zero. Не вигадуй регуляторні факти."
+    "Ти — UkrBaliVisaAssistant, асистент Bali Zero, що допомагає українцям із візами "
+    "на Балі та в Індонезії. ПРАВИЛА:\n"
+    "1. Відповідай ВИКЛЮЧНО на основі КАТАЛОГУ Bali Zero нижче. Не вигадуй цін, термінів "
+    "чи умов — бери лише те, що є в каталозі.\n"
+    "2. Точно дотримуйся ТОНУ каталогу: українська мова, дружній теплий стиль, доречні "
+    "емодзі (📄 💵 ⏱️ ✅ ❗️ 🔁), чіткі марковані списки, ціни у форматі як у каталозі "
+    "(IDR | $ | грн, якщо вказано).\n"
+    "3. Відповідай по суті питання, не вивалюй увесь каталог — лише релевантну візу/послугу.\n"
+    "4. Якщо у каталозі немає відповіді на питання — чесно скажи, що уточниш деталі в "
+    "команді Bali Zero, і запропонуй звернутися до менеджера. Не імпровізуй регуляторні факти."
 )
 
 # --- in-memory per-chat conversation history (survives only while the daemon runs) ---
@@ -50,10 +65,10 @@ HISTORY_MAX_CHATS = 500      # cap distinct chats to bound memory
 HANDOFF = ("Не маю достатньо інформації, щоб відповісти впевнено 🤔\n"
            "Краще напишіть команді Bali Zero — вони допоможуть із вашим конкретним випадком.")
 
-START = ("Вітаю! Я асистент Bali Zero з питань віз та переїзду на Балі 🇮🇩\n"
-         "Відповідаю на основі офіційної бази Bali Zero. Запитайте про візи "
-         "(eVOA, KITAS, KITAP), продовження, бізнес чи нерухомість.\n"
-         "Я памʼятаю контекст розмови — /reset очищає його.")
+START = ("Вітаю! 🌴 Я асистент Bali Zero з питань віз для українців на Балі 🇮🇩\n"
+         "Розкажу про візи (B1 по прильоту, C1, D12, D2, KITAS та ін.), терміни, "
+         "ціни й документи — усе з нашого каталогу.\n"
+         "Запитуйте! Памʼять розмови — /reset очищає її.")
 
 
 def tg(method, **params):
@@ -101,8 +116,35 @@ def to_ukrainian(rag_answer):
         return rag_answer
 
 
+def load_knowledge():
+    """Fetch the Bali Zero catalog from Google Docs; fall back to local copy."""
+    global KNOWLEDGE
+    try:
+        with urllib.request.urlopen(KNOWLEDGE_URL, timeout=30) as r:
+            text = r.read().decode("utf-8", "replace").strip()
+        if text:
+            KNOWLEDGE = text
+            try:  # refresh local fallback cache
+                with open(KNOWLEDGE_FILE, "w", encoding="utf-8") as f:
+                    f.write(text)
+            except Exception:
+                pass
+            print(f"[bot] knowledge loaded from Google Doc ({len(text)} chars)", flush=True)
+            return
+    except Exception as e:
+        print("[bot] knowledge fetch failed:", e, flush=True)
+    # fallback: local file
+    try:
+        with open(KNOWLEDGE_FILE, encoding="utf-8") as f:
+            KNOWLEDGE = f.read().strip()
+        print(f"[bot] knowledge loaded from local file ({len(KNOWLEDGE)} chars)", flush=True)
+    except Exception as e:
+        print("[bot] WARNING: no knowledge available:", e, flush=True)
+        KNOWLEDGE = ""
+
+
 def claude_brain(history, text):
-    """Claude-only answer (no Zantara). Uses persona + recent history."""
+    """Catalog-grounded answer (no Zantara). persona + Bali Zero catalog + history."""
     lines = []
     for m in history[-6:]:
         who = "Клієнт" if m.get("role") == "user" else "Ти"
@@ -110,10 +152,13 @@ def claude_brain(history, text):
     convo_block = ""
     if lines:
         convo_block = "Контекст розмови:\n" + "\n".join(lines) + "\n\n"
+    kb_block = ("=== КАТАЛОГ Bali Zero (єдине джерело правди) ===\n"
+                + KNOWLEDGE + "\n=== кінець каталогу ===\n\n") if KNOWLEDGE else ""
     prompt = (
         PERSONA + "\n\n"
+        + kb_block
         + convo_block
-        + "Клієнт пише: " + text + "\n\nТвоя відповідь українською:"
+        + "Клієнт пише: " + text + "\n\nТвоя відповідь українською (у тоні каталогу):"
     )
     try:
         out = subprocess.run([CLAUDE_BIN, "-p", prompt],
@@ -145,7 +190,9 @@ def handle(chat_id, text):
 
 
 def main():
-    print("[bot] starting (RAG-backed), draining old updates...", flush=True)
+    print("[bot] starting...", flush=True)
+    if not USE_RAG:
+        load_knowledge()
     offset = 0
     try:
         for u in tg("getUpdates", timeout=0).get("result", []):

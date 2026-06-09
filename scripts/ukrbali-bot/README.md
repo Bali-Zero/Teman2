@@ -59,12 +59,26 @@ launchctl kickstart -k gui/$(id -u)/com.balizero.ukrbali-bot
 tail -f ~/logs/ukrbali-bot.{log,err}
 ```
 
-## Notes / caveats
+## Knowledge base & tone of voice
 
-- **Toggle Zantara on/off** with env `UKRBALI_USE_RAG`:
-  - `1` (default) — answers grounded on the Bali Zero visa RAG (+ Ukrainian rewrite).
-  - `0` — claude-only (general knowledge, no Zantara). Set in `~/.ukrbali-bot.env`:
-    `echo 'export UKRBALI_USE_RAG=0' >> ~/.ukrbali-bot.env` then restart.
+By default (`UKRBALI_USE_RAG=0`) the bot answers **only** from the Bali Zero
+product catalog (a Google Doc), matching its tone of voice (Ukrainian, friendly,
+emojis, exact prices). The doc is fetched live at startup from:
+
+- `UKRBALI_KNOWLEDGE_DOC_ID` (default: the Bali Zero catalog doc)
+- export URL: `https://docs.google.com/document/d/<id>/export?format=txt`
+
+Edit the Google Doc → restart the bot → changes take effect. No redeploy, no commit.
+A local cache `knowledge.md` is written next to the script as a fallback (gitignored).
+The doc must be link-accessible ("anyone with the link can view") for the live fetch.
+
+## Modes
+
+- **Catalog** (`UKRBALI_USE_RAG=0`, default) — grounded on the Google Doc catalog + its tone.
+- **Zantara RAG** (`UKRBALI_USE_RAG=1`) — Nuzantara visa-oracle RAG + Ukrainian rewrite.
+
+Set in `~/.ukrbali-bot.env`, e.g. `echo 'export UKRBALI_USE_RAG=0' >> ~/.ukrbali-bot.env`, then restart.
+
 - The bot keeps per-chat conversation memory (last 8 msgs / 500 chats); `/reset` clears it.
 - The visa-oracle backend has no Ukrainian in its language map (ru/en/id/...), so it
   may answer in Russian; `claude` rewrites the result into Ukrainian.
