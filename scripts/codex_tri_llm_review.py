@@ -90,10 +90,14 @@ class PanelDecision:
     diff_sha: str  # sha256[:16] of the diff for traceability
     diff_lines: int
     verdicts: list[ReviewVerdict]
-    panel_outcome: str  # "green" | "yellow" | "red"
+    panel_outcome: str  # "green" | "yellow" | "red" | "inconclusive"
     green_count: int
     auto_merge_eligible: bool
     timestamp: str
+    # diff_complete=False means the reviewers saw a TRUNCATED diff (Codex P0:
+    # never report eligible/green on code the panel did not fully read). When
+    # False, the outcome is forced to "inconclusive" in main_async.
+    diff_complete: bool = True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -515,14 +519,32 @@ async def run_panel(prompt: str) -> list[ReviewVerdict]:
     return list(results)
 
 
+# Minimum number of LIVE reviewers (error is None) required for a binding
+# verdict. With fewer, the panel is "inconclusive" — a env-down reviewer must
+# never be counted as a non-green vote over a fixed denominator (W64: a guardian
+# that reports RED because its own dependency is down is W64 theater, not signal).
+MIN_LIVE_REVIEWERS = 2
+
+
 def compute_outcome(verdicts: list[ReviewVerdict]) -> tuple[str, int, bool]:
-    """Return (panel_outcome, green_count, auto_merge_eligible)."""
-    green_count = sum(1 for v in verdicts if v.verdict == "green")
-    if green_count >= 2:
+    """Return (panel_outcome, green_count, auto_merge_eligible).
+
+    Robust quorum: decide ONLY over reviewers that actually ran (error is None).
+    - <2 live reviewers          -> "inconclusive" (not eligible)
+    - any live reviewer == red    -> "red"          (not eligible)
+    - all live reviewers == green -> "green"         (eligible)
+    - otherwise (mixed)           -> "yellow"        (not eligible)
+    green_count counts green among LIVE reviewers only.
+    """
+    live = [v for v in verdicts if v.error is None]
+    green_count = sum(1 for v in live if v.verdict == "green")
+    if len(live) < MIN_LIVE_REVIEWERS:
+        return "inconclusive", green_count, False
+    if any(v.verdict == "red" for v in live):
+        return "red", green_count, False
+    if green_count == len(live):
         return "green", green_count, True
-    if green_count == 1:
-        return "yellow", green_count, False
-    return "red", green_count, False
+    return "yellow", green_count, False
 
 
 def telegram_notify(decision: PanelDecision) -> None:
@@ -561,6 +583,77 @@ def telegram_notify(decision: PanelDecision) -> None:
         logger.warning("Telegram notify failed: %s", e)
 
 
+def post_pr_comment(decision: PanelDecision) -> bool:
+    """Post the panel verdict as a PR comment (review-only).
+
+    NEVER labels, approves, or merges — the comment is informational. Merging
+    stays the operator's decision (Legge 5). Returns True iff the comment posted.
+    Idempotency (one comment per head_sha) is the WRAPPER's job, not this call.
+    """
+    if decision.pr_number is None:
+        logger.warning("post_pr_comment: no --pr — skipping")
+        return False
+
+    emoji = {
+        "green": "✅", "yellow": "⚠️", "red": "🔴", "inconclusive": "❓",
+    }.get(decision.panel_outcome, "❓")
+    live = [v for v in decision.verdicts if v.error is None]
+    down = [v for v in decision.verdicts if v.error is not None]
+
+    lines = [
+        f"## {emoji} Tri-LLM review: **{decision.panel_outcome.upper()}** "
+        f"({decision.green_count}/{len(live)} live-green)",
+        "",
+        f"`diff_sha={decision.diff_sha}` · {decision.diff_lines} lines · "
+        f"diff_complete={decision.diff_complete}",
+        "",
+    ]
+    if not decision.diff_complete:
+        lines.append(
+            "> ⚠️ **Diff was truncated** — reviewers did not see the full change. "
+            "Verdict forced to `inconclusive`; treat as NOT reviewed."
+        )
+        lines.append("")
+    for v in live:
+        e = {"green": "✅", "yellow": "⚠️", "red": "🔴"}.get(v.verdict, "❓")
+        lines.append(f"- {e} **{v.reviewer}** → `{v.verdict}` — {v.summary or '(no summary)'}")
+        for p0 in v.p0_issues:
+            lines.append(f"    - 🔴 P0: {p0}")
+        for p1 in v.p1_issues:
+            lines.append(f"    - 🟠 P1: {p1}")
+    for v in down:
+        lines.append(f"- ⚪ **{v.reviewer}** → down ({v.error})")
+    lines += [
+        "",
+        "---",
+        "_Automated tri-LLM review (Codex GPT-5.5 · Claude Opus · DeepSeek V4-Pro). "
+        "Review-only — **merge is the operator's decision** (Legge 5). "
+        "This bot never labels, approves, or merges._",
+    ]
+    body = "\n".join(lines)
+
+    try:
+        result = subprocess.run(
+            [
+                "gh", "pr", "comment", str(decision.pr_number),
+                "--repo", "Balizero1987/Teman2",
+                "--body", body,
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=False,
+        )
+        if result.returncode != 0:
+            logger.warning("gh pr comment failed: %s", result.stderr.strip())
+            return False
+        logger.info("Posted review comment on PR #%s", decision.pr_number)
+        return True
+    except Exception as e:
+        logger.warning("post_pr_comment failed: %s", e)
+        return False
+
+
 async def main_async(args: argparse.Namespace) -> int:
     diff_text, files, branch, base = get_diff(args)
     if not diff_text.strip():
@@ -568,11 +661,27 @@ async def main_async(args: argparse.Namespace) -> int:
         return 3
     diff_sha = hashlib.sha256(diff_text.encode()).hexdigest()[:16]
     diff_lines = diff_text.count("\n")
-    logger.info("Diff sha=%s lines=%d files=%d branch=%s base=%s", diff_sha, diff_lines, len(files), branch, base)
+    # Codex P0: the reviewers only ever see diff[:max_diff_chars] (build_prompt).
+    # If the real diff is longer, the panel reviewed a TRUNCATED change — its
+    # verdict cannot speak for the bytes it never saw. Track this and fail-closed.
+    diff_complete = len(diff_text) <= args.max_diff_chars
+    logger.info(
+        "Diff sha=%s lines=%d files=%d branch=%s base=%s complete=%s",
+        diff_sha, diff_lines, len(files), branch, base, diff_complete,
+    )
 
     prompt = build_prompt(diff_text, branch, base, files)
     verdicts = await run_panel(prompt)
     outcome, green_count, auto_merge_eligible = compute_outcome(verdicts)
+
+    # Fail-closed on a truncated diff: force "inconclusive", never eligible —
+    # even a unanimous green over a partial diff is not a verdict on the whole PR.
+    if not diff_complete:
+        logger.warning(
+            "Diff truncated (%d chars > --max-diff-chars %d) — forcing inconclusive",
+            len(diff_text), args.max_diff_chars,
+        )
+        outcome, auto_merge_eligible = "inconclusive", False
 
     decision = PanelDecision(
         pr_number=args.pr,
@@ -584,6 +693,7 @@ async def main_async(args: argparse.Namespace) -> int:
         green_count=green_count,
         auto_merge_eligible=auto_merge_eligible,
         timestamp=time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        diff_complete=diff_complete,
     )
 
     # Persist log entry
@@ -598,6 +708,10 @@ async def main_async(args: argparse.Namespace) -> int:
     if args.notify:
         telegram_notify(decision)
 
+    # PR comment (review-only mode — posts the verdict, NEVER labels or merges).
+    if args.comment:
+        post_pr_comment(decision)
+
     return {"green": 0, "yellow": 1, "red": 2}.get(outcome, 3)
 
 
@@ -610,6 +724,12 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--base", default="main", help="Base branch for --branch mode (default: main)")
     ap.add_argument("--max-diff-chars", type=int, default=80000, help="Truncate diff at N chars (default: 80k)")
     ap.add_argument("--notify", action="store_true", help="Send Telegram notify on completion")
+    ap.add_argument(
+        "--comment",
+        action="store_true",
+        help="Post the panel verdict as a PR comment (review-only; requires --pr; "
+        "NEVER labels or merges — Legge 5)",
+    )
     return ap.parse_args()
 
 

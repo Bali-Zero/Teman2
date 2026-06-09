@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 from collections.abc import AsyncIterator
 
 import asyncpg
@@ -286,9 +287,16 @@ async def test_claim_release_and_race(pool, seed):
         token = r1.json()["claim_token"]
         assert token and r1.json()["status"] == "review_claimed"
 
-        # concurrent 2nd claim → 409 (race protected)
+        # P0#4: a 2nd claim by the SAME caller on a still-live lease is
+        # IDEMPOTENT — it renews the lease and returns a fresh token (200),
+        # NOT a 409. (Re-opening your own claimed document must succeed.)
         r2 = await cl.post(f"/api/intake/review/{pid}/claim")
-        assert r2.status_code == 409, r2.text
+        assert r2.status_code == 200, r2.text
+        token2 = r2.json()["claim_token"]
+        assert token2 and r2.json()["status"] == "review_claimed"
+        # a fresh token is minted on re-claim; the new one supersedes the old.
+        assert token2 != token
+        token = token2  # subsequent release must present the CURRENT token
 
         # release with token → back to review_pending
         r3 = await cl.post(f"/api/intake/review/{pid}/release",
@@ -302,6 +310,103 @@ async def test_claim_release_and_race(pool, seed):
         # cleanup: release again so teardown deletes cleanly
         await cl.post(f"/api/intake/review/{pid}/release",
                       params={"claim_token": r4.json()["claim_token"]})
+
+
+async def test_claim_idempotent_same_user_live_lease(pool, seed):
+    """P0#4: same user re-claiming their OWN live claim -> 200 + fresh token.
+
+    This is the exact live bug: adit opens a doc (claim #1, 200), the page
+    re-claims on re-open (claim #2) -- that must return 200 with a usable token,
+    not 409 'not claimable'. The lease is renewed and the row's claim_token is
+    updated so a subsequent approve/reject with the latest token still validates.
+    """
+    pid = seed["p_nomatch"]  # OWNER's own-chat NO_MATCH proposal
+    app = _make_app(pool, TEAM_OWNER)
+    async with _client(app) as cl:
+        r1 = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert r1.status_code == 200, r1.text
+        tok1 = r1.json()["claim_token"]
+        async with pool.acquire() as conn:
+            exp1 = await conn.fetchval(
+                "SELECT lease_expires_at FROM document_routing_proposal WHERE id=$1", pid)
+
+        # re-open -> re-claim by the SAME user on a LIVE lease -> 200 (was 409)
+        r2 = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert r2.status_code == 200, r2.text
+        tok2 = r2.json()["claim_token"]
+        assert tok2 and r2.json()["lease_owner"] == TEAM_OWNER["email"]
+        assert tok2 != tok1  # a fresh token is minted
+
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT claim_token, lease_expires_at, lease_owner "
+                "FROM document_routing_proposal WHERE id=$1", pid)
+        assert str(row["claim_token"]) == tok2
+        assert row["lease_expires_at"] >= exp1
+        assert row["lease_owner"] == TEAM_OWNER["email"]
+
+        # approve/reject still validate against the LATEST token the page holds
+        ra = await cl.post(f"/api/intake/review/{pid}/approve",
+                           json={"claim_token": tok2})
+        assert ra.status_code == 200, ra.text  # dry-run, P0#5 token accepted
+        # the OLD token is now stale -> reject with tok1 must be rejected
+        rj_old = await cl.post(f"/api/intake/review/{pid}/reject",
+                               json={"claim_token": tok1})
+        assert rj_old.status_code == 403, rj_old.text
+        # cleanup: release with the current token
+        await cl.post(f"/api/intake/review/{pid}/release",
+                      params={"claim_token": tok2})
+
+
+async def test_claim_different_user_live_lease_409(pool, seed):
+    """P0#4 guard: a DIFFERENT user must NOT steal another's live claim -> 409."""
+    pid = seed["p_other"]
+    admin_app = _make_app(pool, ADMIN)
+    async with _client(admin_app) as cl_admin:
+        r1 = await cl_admin.post(f"/api/intake/review/{pid}/claim")
+        assert r1.status_code == 200, r1.text
+        admin_token = r1.json()["claim_token"]
+
+    # TEAM_OTHER owns this chat (received_by=other) so passes RBAC, but the
+    # lease is live and owned by ADMIN -> must NOT steal it.
+    other_app = _make_app(pool, TEAM_OTHER)
+    async with _client(other_app) as cl_other:
+        r2 = await cl_other.post(f"/api/intake/review/{pid}/claim")
+        assert r2.status_code == 409, r2.text
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT lease_owner, claim_token FROM document_routing_proposal WHERE id=$1", pid)
+    assert row["lease_owner"] == ADMIN["email"]
+    assert str(row["claim_token"]) == admin_token
+    async with _client(_make_app(pool, ADMIN)) as cl3:
+        await cl3.post(f"/api/intake/review/{pid}/release",
+                       params={"claim_token": admin_token})
+
+
+async def test_claim_steal_expired_lease(pool, seed):
+    """Expired-lease steal still works after the P0#4 change."""
+    pid = seed["p_other"]
+    admin_app = _make_app(pool, ADMIN)
+    async with _client(admin_app) as cl_admin:
+        r1 = await cl_admin.post(f"/api/intake/review/{pid}/claim")
+        assert r1.status_code == 200, r1.text
+        admin_token = r1.json()["claim_token"]
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET lease_expires_at=$2 WHERE id=$1",
+            pid, datetime.now(timezone.utc) - timedelta(minutes=5))
+
+    other_app = _make_app(pool, TEAM_OTHER)
+    async with _client(other_app) as cl_other:
+        r2 = await cl_other.post(f"/api/intake/review/{pid}/claim")
+        assert r2.status_code == 200, r2.text
+        new_token = r2.json()["claim_token"]
+        assert new_token != admin_token
+        assert r2.json()["lease_owner"] == TEAM_OTHER["email"]
+        await cl_other.post(f"/api/intake/review/{pid}/release",
+                            params={"claim_token": new_token})
 
 
 async def test_release_wrong_token_409(pool, seed):
