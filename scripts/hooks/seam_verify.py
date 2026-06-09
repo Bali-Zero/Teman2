@@ -64,7 +64,7 @@ SEAM_MAP = [
         "apps/backend-rag/tests/test_import_time.py",
     ),
     (
-        "backend/app/router_registration",
+        "backend/app/setup/router_registration",
         "route<->registration (include_router)",
         "apps/backend-rag/backend/tests/setup/test_router_manifest.py "
         "apps/backend-rag/backend/tests/integration/test_endpoints_reachable.py",
@@ -80,7 +80,27 @@ UNDECLARED_WATCH = (
     "backend/channels/",
 )
 
-REPO_MARKER = "Desktop/nuzantara"  # only advise inside the nuzantara checkout
+REPO_MARKER = "Desktop/nuzantara"  # legacy path fallback (see _in_nuzantara_repo)
+
+
+def _in_nuzantara_repo(cwd: str) -> bool:
+    """True iff cwd is inside a git checkout named 'nuzantara'.
+
+    Robust to non-default paths/worktrees (DeepSeek review of #1237 flagged the
+    old hardcoded "Desktop/nuzantara" marker as a silent no-op outside that exact
+    path). Detects the repo via git toplevel basename; falls back to the legacy
+    path marker if git is unavailable. Never raises — defaults to the marker.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return os.path.basename(r.stdout.strip()) == "nuzantara"
+    except Exception:
+        pass
+    return REPO_MARKER in cwd
 
 
 def _is_interactive() -> bool:
@@ -122,7 +142,7 @@ def main() -> None:
         sys.exit(0)
 
     cwd = payload.get("cwd", os.getcwd())
-    if REPO_MARKER not in cwd:
+    if not _in_nuzantara_repo(cwd):
         sys.exit(0)
 
     try:
