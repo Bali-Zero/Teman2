@@ -73,7 +73,9 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         )
         created["clients"] += [cid_owner, cid_other]
 
-        async def mk_proposal(entity_resolution: dict, source: str = "drive") -> int:
+        async def mk_proposal(
+            entity_resolution: dict, source: str = "drive", received_by: str | None = None
+        ) -> int:
             bh = uuid.uuid4().hex + uuid.uuid4().hex  # 64-char
             inst = await conn.fetchval(
                 """INSERT INTO document_instances (blob_hash, pipeline_version, blob_path, first_source)
@@ -85,12 +87,12 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
             qid = await conn.fetchval(
                 """INSERT INTO intake_queue
                    (instance_id, source, source_ref, blob_path, blob_hash, pipeline_version,
-                    status, stage_output, intake_key)
-                   VALUES ($1,$2,$3,$4,$5,$6,'done',$7::jsonb,$8) RETURNING id""",
+                    status, stage_output, intake_key, received_by)
+                   VALUES ($1,$2,$3,$4,$5,$6,'done',$7::jsonb,$8,$9) RETURNING id""",
                 inst, source, f"{tag}-ref", f"/tmp/{tag}.pdf", bh[:64], PIPELINE,
                 json.dumps({"ocr": {"pages": [{"page": 1, "text": "NPWP 09.x"}]},
                             "doc_type": "npwp"}),
-                ikey,
+                ikey, received_by,
             )
             created["queues"].append(qid)
             pid = await conn.fetchval(
@@ -109,18 +111,32 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
             created["proposals"].append(pid)
             return pid
 
+        # RBAC axis is OWN-CHAT (intake_queue.received_by), NOT the client's
+        # assigned_to. Seed received_by independently of the resolved candidate:
+        #   p_owner   → received_by=OWNER  (owner sees)
+        #   p_other   → received_by=OTHER  (owner does NOT see)
+        #   p_nomatch → received_by=OWNER  (NO_MATCH but OWNER's chat → owner sees)
+        #   p_null    → received_by=NULL   (shared business line + Drive → admin-only)
         p_owner = await mk_proposal(
             {"decision": "AUTO_ATTACH", "score": 0.95,
-             "candidates": [{"client_id": cid_owner, "score": 0.95}]})
+             "candidates": [{"client_id": cid_owner, "score": 0.95}]},
+            received_by=TEAM_OWNER["email"])
         p_other = await mk_proposal(
             {"decision": "LINK_CANDIDATE", "score": 0.80,
-             "candidates": [{"client_id": cid_other, "score": 0.80}]})
-        p_nomatch = await mk_proposal({"decision": "NO_MATCH", "candidates": []})
+             "candidates": [{"client_id": cid_other, "score": 0.80}]},
+            received_by=TEAM_OTHER["email"])
+        p_nomatch = await mk_proposal(
+            {"decision": "NO_MATCH", "candidates": []},
+            received_by=TEAM_OWNER["email"])
+        p_null = await mk_proposal(
+            {"decision": "NO_MATCH", "candidates": []},
+            received_by=None)
 
     yield {
         "tag": tag,
         "cid_owner": cid_owner, "cid_other": cid_other,
         "p_owner": p_owner, "p_other": p_other, "p_nomatch": p_nomatch,
+        "p_null": p_null,
         "created": created,
     }
 
@@ -158,24 +174,31 @@ async def _crm_counts(pool: asyncpg.Pool) -> tuple[int, int]:
 
 # --------------------------------------------------------------------------- #
 async def test_queue_admin_sees_all(pool, seed):
+    """Admin sees the ENTIRE queue — every worker's docs, incl. NULL-received_by."""
     app = _make_app(pool, ADMIN)
     async with _client(app) as cl:
         r = await cl.get("/api/intake/review/queue", params={"source": "drive", "limit": 200})
     assert r.status_code == 200, r.text
     ids = {it["proposal_id"] for it in r.json()["items"]}
-    assert {seed["p_owner"], seed["p_other"], seed["p_nomatch"]} <= ids
+    assert {seed["p_owner"], seed["p_other"], seed["p_nomatch"], seed["p_null"]} <= ids
 
 
 async def test_queue_team_rbac_filter(pool, seed):
-    """Owner sees only their assigned proposal; not other's, not NO_MATCH."""
+    """Own-chat axis: owner sees ONLY rows they received (incl. their NO_MATCH).
+
+    received_by=OWNER → p_owner + p_nomatch visible.
+    received_by=OTHER → p_other hidden.
+    received_by=NULL  → p_null hidden (admin-only shared/Drive docs).
+    """
     app = _make_app(pool, TEAM_OWNER)
     async with _client(app) as cl:
         r = await cl.get("/api/intake/review/queue", params={"limit": 200})
     assert r.status_code == 200, r.text
     ids = {it["proposal_id"] for it in r.json()["items"]}
     assert seed["p_owner"] in ids
-    assert seed["p_other"] not in ids
-    assert seed["p_nomatch"] not in ids
+    assert seed["p_nomatch"] in ids  # NO_MATCH from OWNER's own chat → now visible
+    assert seed["p_other"] not in ids  # another worker's chat
+    assert seed["p_null"] not in ids  # NULL received_by → admin-only
 
 
 async def test_queue_decision_filter(pool, seed):
@@ -202,11 +225,56 @@ async def test_detail_admin(pool, seed):
 
 
 async def test_detail_rbac_forbidden(pool, seed):
-    """Team user with no access → 403 on detail."""
+    """Non-admin who did NOT receive the doc → 403 (p_owner is OWNER's chat)."""
     app = _make_app(pool, TEAM_OTHER)
     async with _client(app) as cl:
         r = await cl.get(f"/api/intake/review/{seed['p_owner']}")
     assert r.status_code == 403, r.text
+
+
+async def test_detail_own_chat_nomatch_allowed(pool, seed):
+    """Non-admin CAN open a doc from their own chat — even a NO_MATCH one."""
+    app = _make_app(pool, TEAM_OWNER)
+    async with _client(app) as cl:
+        r = await cl.get(f"/api/intake/review/{seed['p_nomatch']}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["decision"] == "NO_MATCH"
+    assert (body["received_by"] or "").lower() == TEAM_OWNER["email"]
+
+
+async def test_detail_null_received_by_admin_only(pool, seed):
+    """A NULL-received_by doc (shared business line / Drive) is admin-only."""
+    team_app = _make_app(pool, TEAM_OWNER)
+    async with _client(team_app) as cl:
+        r = await cl.get(f"/api/intake/review/{seed['p_null']}")
+    assert r.status_code == 403, r.text
+    admin_app = _make_app(pool, ADMIN)
+    async with _client(admin_app) as cl2:
+        r2 = await cl2.get(f"/api/intake/review/{seed['p_null']}")
+    assert r2.status_code == 200, r2.text
+
+
+async def test_claim_rbac_own_chat(pool, seed):
+    """Non-admin claim is gated by own-chat (received_by), not assigned_to.
+
+    OWNER can claim p_nomatch (their NO_MATCH chat); OWNER cannot claim p_other
+    (another worker's chat) nor p_null (NULL received_by → admin-only) → 403.
+    """
+    owner_app = _make_app(pool, TEAM_OWNER)
+    async with _client(owner_app) as cl:
+        # other worker's doc → 403, never reaches the atomic claim
+        r_other = await cl.post(f"/api/intake/review/{seed['p_other']}/claim")
+        assert r_other.status_code == 403, r_other.text
+        # NULL received_by → admin-only → 403
+        r_null = await cl.post(f"/api/intake/review/{seed['p_null']}/claim")
+        assert r_null.status_code == 403, r_null.text
+        # own NO_MATCH chat → claimable
+        r_ok = await cl.post(f"/api/intake/review/{seed['p_nomatch']}/claim")
+        assert r_ok.status_code == 200, r_ok.text
+        # cleanup: release so teardown deletes cleanly
+        await cl.post(f"/api/intake/review/{seed['p_nomatch']}/release",
+                      params={"claim_token": r_ok.json()["claim_token"]})
 
 
 async def test_claim_release_and_race(pool, seed):
