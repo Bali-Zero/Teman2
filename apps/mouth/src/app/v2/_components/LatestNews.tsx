@@ -75,7 +75,9 @@ export function LatestNews({
             CATEGORY_ACCENT[a.category ?? ""] ?? CATEGORY_ACCENT.news;
           const accent = meta.accent;
           const href = `/${a.category}/${a.slug}`;
-          const cover = a.coverImage || "";
+          // Homepage card uses the tighter 16:10 cardImage variant; fall back to
+          // the 21:9 hero coverImage for legacy articles without a card crop.
+          const cover = a.cardImage || a.coverImage || "";
           const date =
             a.publishedAt instanceof Date
               ? a.publishedAt.toLocaleDateString("en-US", {
