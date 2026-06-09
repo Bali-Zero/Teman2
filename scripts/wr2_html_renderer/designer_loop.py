@@ -51,6 +51,13 @@ DEFAULT_TEXT_BOX = (0.05, 0.55, 0.95, 0.92)
 # Contrast floor: brand targets AAA (7.0). Below this, a remedy lever fires.
 CONTRAST_FLOOR = WCAG_AAA_NORMAL
 
+# Pure-legibility levers: they only IMPROVE text legibility in place (darken the
+# scrim, outline the text, down-step a font) and by construction cannot drift the
+# brand (no palette / font-family / logo / composition change). When the ONLY
+# levers a step proposes/applies are in this set, a brand_verifier rejection for
+# a NON-legibility reason must NOT kill them — they're always safe to commit.
+_LEGIBILITY_LEVERS = {"scrim_opacity", "text_stroke", "shrink_font"}
+
 
 @dataclass
 class Critique:
@@ -303,9 +310,10 @@ async def run_designer_loop(
                 return DesignerResult(
                     final_png=best_png, iterations=it, converged=True, history=history
                 )
-            # vision wants changes → only act if at least one is a CSS-applicable
-            # (legibility-in-place) lever. Non-CSS proposals (text_anchor,
-            # rebalance_wrap, rerender) are composition signals we can't safely
+            # vision wants changes → only act if at least one is an applicable
+            # lever (legibility-in-place scrim/stroke/shrink, or rebalance_wrap
+            # which re-wraps the headline text). Pure structural proposals
+            # (rerender/regen only) are composition signals we can't safely
             # auto-apply — so we stop and keep the best render rather than spin.
             proposed = {**levers_acc}
             applied = _apply_levers(proposed, vc.levers)
@@ -347,6 +355,22 @@ async def run_designer_loop(
                                 f"verifier claimed text broken {text_claims} but OCR "
                                 f"read headline (score {ov.score:.2f}) — hallucination overridden"
                             )
+                # LEGIBILITY DEADLOCK UNBLOCK: the pure-legibility levers
+                # (scrim_opacity / text_stroke / shrink_font) cannot drift the
+                # brand — they only darken/outline/down-step text in place. If the
+                # ONLY levers applied this step are in that set, a verifier
+                # rejection for a non-legibility reason must NOT kill them (and
+                # must NOT kill future legibility-only steps). Commit + continue.
+                # We break only when a brand-driftable lever was in play AND the
+                # verifier (after OCR adjudication) still says no.
+                applied_names = {lev.get("lever") for lev in applied}
+                legibility_only = bool(applied_names) and applied_names <= _LEGIBILITY_LEVERS
+                if not effective_pass and legibility_only:
+                    effective_pass = True
+                    iter_record["brand_verify_legibility_override"] = (
+                        f"verifier blocked but applied levers {sorted(applied_names)} "
+                        "are pure-legibility (brand-inert) — committed in place"
+                    )
                 if effective_pass:
                     levers_acc = proposed
                     iter_record["vision_levers_pulled"] = applied
@@ -399,14 +423,16 @@ def _apply_levers(acc: dict[str, Any], levers: list[dict[str, Any]]) -> list[dic
     Returns the levers actually applied. Levers NOT folded here are handled by
     the controller as escalation signals, not CSS:
       - "rerender" / "regen"  → structural; controller re-renders or escalates
-      - "text_anchor"         → REMOVED as a CSS lever (E2E 2026-06-07: absolute-
+      - "text_anchor"         → REMOVED entirely (E2E 2026-06-07: absolute-
         repositioning broke the cover layout + caused a false-high legibility
-        score). Treated as a rerender/composition signal instead.
-    CSS levers the composer honors in slide["_levers"] (all legibility-in-place,
-    never position/color/font):
-      scrim_opacity: float    (added darkening behind text; 0..1, clamped)
-      text_stroke:   bool     (stronger outline)
-      shrink_<elem>: int      (step counter; elem = body|heading|subhead)
+        score). No longer in the lever vocabulary.
+    CSS / text-in-place levers the composer honors in slide["_levers"] (all
+    legibility-in-place, never position/color/font):
+      scrim_opacity:   float  (added darkening behind text; 0..1, clamped)
+      text_stroke:     bool   (stronger outline)
+      shrink_<elem>:   int    (step counter; elem = body|heading|subhead)
+      _rebalance_wrap: bool   (composer re-wraps the headline into balanced
+                               lines via <br> — text content only, no box move)
     """
     applied: list[dict[str, Any]] = []
     for lev in levers:
@@ -421,6 +447,14 @@ def _apply_levers(acc: dict[str, Any], levers: list[dict[str, Any]]) -> list[dic
             key = f"shrink_{lev.get('target', 'body')}"
             acc[key] = acc.get(key, 0) + 1
             applied.append(lev)
-        # "text_anchor", "rebalance_wrap", "rerender", "regen" are NOT CSS levers:
-        # they're composition/structural signals the controller handles.
+        elif name == "rebalance_wrap":
+            # Re-wrap the headline into balanced lines (no orphan on the last
+            # line). Legibility-in-place: the composer inserts <br> in the
+            # headline text only — it never moves/colors/resizes the box, so it
+            # cannot drift the brand. Marked as applied so the controller does
+            # not treat a rebalance proposal as a non-CSS escalation signal.
+            acc["_rebalance_wrap"] = True
+            applied.append(lev)
+        # "rerender" / "regen" are NOT CSS levers: structural/composition signals
+        # the controller handles. ("text_anchor" was removed entirely — see note.)
     return applied

@@ -39,7 +39,6 @@ _ALLOWED_LEVERS = {
     "scrim_opacity",   # darken behind text (delta)
     "text_stroke",     # stronger outline
     "shrink_font",     # target: heading|body
-    "text_anchor",     # to_band: 0..2
     "rebalance_wrap",  # rewrap title for balanced line lengths
     "rerender",        # structural (controller handles)
 }
@@ -83,7 +82,6 @@ Brand rules you must respect (do NOT propose violating these): anthracite/white/
 If it is publish-quality, set passes=true. Otherwise list concrete issues and propose levers from this exact set:
 - scrim_opacity (delta: +0.1..+0.3) — darken behind text when contrast is weak over a photo
 - text_stroke — add/strengthen outline on text over a photo
-- text_anchor (to_band: 0=top,1=middle,2=bottom) — move the text block to a calmer part of the photo
 - shrink_font (target: heading|body) — when text overflows or is too dense
 - rebalance_wrap — rewrap the title so line lengths are balanced (avoid one long line + one tiny orphan)
 - rerender — structural problem a small tweak can't fix

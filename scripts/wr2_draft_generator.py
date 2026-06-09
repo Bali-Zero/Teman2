@@ -219,7 +219,10 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
 3. Headline is the HOOK, not the topic title. "Sham Investor KITAS: The
    Clock Is Ticking" is good (urgency, stakes). "Field Inspections Are
    Legal" is bad (sounds like a Wikipedia heading). Make headlines READ
-   like a magazine cover line.
+   like a magazine cover line. Write headlines that BALANCE well on two
+   lines: keep them short (≤6 words is ideal) and avoid phrasings that
+   would leave one tiny orphan word alone on the last wrapped line — two
+   even halves or two balanced clauses read best on a slide.
 
 4. Citations: a slide can name ONE law/article, not three. "PP 31/2013
    authorises field inspections" is fine. "Permenkumham 11/2024 Art.

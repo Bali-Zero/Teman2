@@ -286,6 +286,55 @@ def _apply_levers_to_html(html: str, slide: dict[str, Any]) -> str:
     return html + css
 
 
+def _balance_headline(text: str) -> str:
+    """Re-wrap a headline into two balanced lines via a single <br>.
+
+    The `rebalance_wrap` lever's renderer side (FIX 2026-06-09): given a flat
+    headline, insert ONE <br> at the word boundary that best balances the two
+    line lengths, so the title doesn't wrap to "one long line + a single orphan
+    word". Text-only — it inserts a <br> tag into the headline string and never
+    touches position/color/font/box (so it cannot drift the brand).
+
+    Rules:
+      - ≤3 words: leave unchanged (too short to balance; wrap is fine as-is).
+      - otherwise pick the split index k (1..n-1) minimising
+        |len(line1) - len(line2)| (character counts incl. inter-word spaces).
+      - avoid leaving a single word alone on a line: among splits that keep ≥2
+        words on BOTH lines, take the most balanced; only if none exists (n<4)
+        fall back to the overall-best split.
+      - if the text already contains a <br>, assume it's pre-wrapped → no-op.
+    """
+    text = text.strip()
+    if not text or "<br>" in text.lower():
+        return text
+    words = text.split()
+    if len(words) <= 3:
+        return text
+
+    def line_len(seg: list[str]) -> int:
+        return len(" ".join(seg))
+
+    n = len(words)
+    best_k: int | None = None
+    best_cost: int | None = None
+    # Prefer splits that keep >=2 words on each side (no orphan).
+    for require_two in (True, False):
+        for k in range(1, n):
+            left, right = words[:k], words[k:]
+            if require_two and (len(left) < 2 or len(right) < 2):
+                continue
+            cost = abs(line_len(left) - line_len(right))
+            if best_cost is None or cost < best_cost:
+                best_cost = cost
+                best_k = k
+        if best_k is not None:
+            break
+
+    if best_k is None:
+        return text
+    return " ".join(words[:best_k]) + "<br>" + " ".join(words[best_k:])
+
+
 def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str | None) -> str:
     """Fill {{placeholders}} + simple {{#if}} blocks from a slide dict.
 
@@ -294,6 +343,13 @@ def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str |
     {{#if regulation_code}}...{{/if}} renders only if present.
     """
     headline = (slide.get("headline") or "").strip()
+    # rebalance_wrap lever (designer loop): re-wrap the headline into balanced
+    # lines via a <br>. Text-only — applied here BEFORE placeholder substitution
+    # so the skeleton's {{heading}}/{{statement}} carry the <br> verbatim (the
+    # composer uses plain string .replace, no HTML-escaping → <br> renders as a
+    # tag, not literal text). Only when the lever is set in slide["_levers"].
+    if (slide.get("_levers") or {}).get("_rebalance_wrap"):
+        headline = _balance_headline(headline)
     subhead = (slide.get("subhead") or "").strip()
     body = (slide.get("body") or "").strip()
     reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()
