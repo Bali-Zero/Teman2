@@ -19,7 +19,7 @@ RAW_MARKER_PATTERN = re.compile(
     r"\b(?:RAW(?:_[A-Z0-9]+){1,}|[A-Z0-9]+_(?:MUST_NOT_LEAK|SHOULD_NOT_APPEAR))\b"
 )
 SECRET_ASSIGNMENT_PATTERN = re.compile(
-    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{12,}"
+    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[^\s'\"<>,;]{12,}"
 )
 SECRET_QUERY_KEY_PATTERN = re.compile(
     r"(?i)(?:^|[?&])(?:access[_-]?token|api[_-]?key|key|password|secret|signature|sig|token)="
@@ -36,6 +36,16 @@ class MaterialSourceType(str, Enum):
     CHAT_METADATA = "chat_metadata"
     OPERATOR_NOTE = "operator_note"
     OTHER = "other"
+
+
+PRIVATE_RECEIPT_SOURCE_TYPES = frozenset(
+    {
+        MaterialSourceType.CHAT_METADATA,
+        MaterialSourceType.DRIVE_METADATA,
+        MaterialSourceType.OPERATOR_NOTE,
+        MaterialSourceType.OTHER,
+    }
+)
 
 
 class GateSeverity(str, Enum):
@@ -224,10 +234,10 @@ class AutonomousLabPlanner:
     def normalize_material(self, material: ResearchMaterial) -> NormalizedMaterial:
         """Normalize one material envelope without retaining raw text."""
         return NormalizedMaterial(
-            material_id=material.material_id,
+            material_id=_receipt_safe_material_id(material.material_id),
             source_type=material.source_type,
             source_uri=_safe_source_uri(material.source_uri, material.source_type),
-            title=material.title.strip(),
+            title=_receipt_safe_title(material.title),
             captured_at=material.captured_at,
             content_fingerprint=material.content_fingerprint(),
             summary=_summarize(material.text),
@@ -385,9 +395,21 @@ def _receipt_safe_objective(objective: str) -> str:
     return f"objective_fingerprint:{_safe_sha256_fingerprint(objective)}; words:{len(words)}"
 
 
+def _receipt_safe_material_id(material_id: str) -> str:
+    candidate = material_id.strip()
+    if SAFE_COMMAND_ARG_PATTERN.match(candidate) and not _contains_receipt_sensitive_value(candidate):
+        return candidate
+    return f"material_fingerprint:{_safe_sha256_fingerprint(material_id)}"
+
+
+def _receipt_safe_title(title: str) -> str:
+    words = re.findall(r"\w+", title)
+    return f"title_fingerprint:{_safe_sha256_fingerprint(title)}; words:{len(words)}"
+
+
 def _safe_source_uri(source_uri: str, source_type: MaterialSourceType) -> str:
     candidate = source_uri.strip()
-    if source_type in {MaterialSourceType.CHAT_METADATA, MaterialSourceType.DRIVE_METADATA}:
+    if source_type in PRIVATE_RECEIPT_SOURCE_TYPES:
         return f"{source_type.value}:source_fingerprint:{_safe_sha256_fingerprint(candidate)}"
     if _contains_receipt_sensitive_value(candidate):
         return f"{source_type.value}:source_fingerprint:{_safe_sha256_fingerprint(candidate)}"
@@ -429,6 +451,8 @@ def _require_safe_repo_path(value: str, field_name: str) -> str:
         raise ValueError(f"{field_name} must not be a URI")
     if candidate.startswith("~"):
         raise ValueError(f"{field_name} must not be home-relative")
+    if _contains_receipt_sensitive_value(candidate):
+        raise ValueError(f"{field_name} must not contain receipt-sensitive values")
 
     path = PurePosixPath(candidate)
     if path.is_absolute():

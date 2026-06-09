@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -164,6 +165,7 @@ def _assert_receipt_review_persistable(receipt: Mapping[str, Any]) -> None:
         for finding in decision.findings
         if finding.rule_id in _UNPERSISTABLE_REVIEW_RULES
     }
+    blocked_rules.update(_embedded_unpersistable_rules(receipt))
     if blocked_rules:
         raise ValueError(
             "receipt contains unpersistable autonomous lab finding(s): "
@@ -171,23 +173,74 @@ def _assert_receipt_review_persistable(receipt: Mapping[str, Any]) -> None:
         )
 
 
+def _embedded_unpersistable_rules(value: Any) -> set[str]:
+    rules: set[str] = set()
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            key_text = str(key)
+            if key_text in {"code", "rule_id"} and isinstance(child, str):
+                if child in _UNPERSISTABLE_REVIEW_RULES:
+                    rules.add(child)
+            elif key_text in {"blockers", "failed_blockers"} and isinstance(child, list):
+                rules.update(
+                    item
+                    for item in child
+                    if isinstance(item, str) and item in _UNPERSISTABLE_REVIEW_RULES
+                )
+            rules.update(_embedded_unpersistable_rules(child))
+    elif isinstance(value, list):
+        for child in value:
+            rules.update(_embedded_unpersistable_rules(child))
+    return rules
+
+
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    with tmp_path.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, sort_keys=True)
-        handle.write("\n")
-        handle.flush()
-        os.fsync(handle.fileno())
-    tmp_path.replace(path)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(tmp_path, path)
+        except FileExistsError:
+            raise FileExistsError(f"receipt already exists for run_id: {path.stem}") from None
+        _fsync_parent_dir(path.parent)
+    finally:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
-        json.dump(payload, handle, sort_keys=True)
-        handle.write("\n")
-        handle.flush()
-        os.fsync(handle.fileno())
+    line = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
+    fd = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o644)
+    try:
+        written = os.write(fd, line)
+        if written != len(line):
+            raise OSError("short write while appending autonomous lab receipt event")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _fsync_parent_dir(path: Path) -> None:
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 __all__ = ["ReceiptRecord", "ReceiptStore"]
