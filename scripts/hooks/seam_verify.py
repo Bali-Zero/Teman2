@@ -164,7 +164,9 @@ def main() -> None:
         for f in undeclared[:8]:
             lines.append(f"      {f}")
         lines.append("    → verify manually; consider adding it to SEAM_MAP "
-                     "in ~/.claude/hooks/seam_verify.py")
+                     "in scripts/hooks/seam_verify.py (the versioned source — "
+                     "editing the installed ~/.claude/hooks copy is overwritten "
+                     "by install_fase0_governance.sh)")
         lines.append("")
     lines.append("(advisory only — does NOT block. testmon path deferred: "
                  "pytest-testmon not installed.)")
