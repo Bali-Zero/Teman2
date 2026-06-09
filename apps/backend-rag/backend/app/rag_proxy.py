@@ -32,6 +32,8 @@ HEAVY_PREFIXES = (
     "/api/crm/clients",
     "/api/crm/companies",
     "/api/crm/practices",
+    # Pro-local HITL doc-review queue (Law 2 PII) — proxy to RAG like /api/crm/*
+    "/api/intake/review",
     "/api/dashboard",
     "/api/ingest",
     "/api/intel",
@@ -191,6 +193,7 @@ def create_proxy_router() -> APIRouter:
         include_in_schema=False,
     )
     async def rag_proxy_endpoint(request: Request, full_path: str = "") -> Response:
+        _ = full_path  # Required by FastAPI's catch-all path converter.
         path = request.url.path
         if is_heavy_route(path):
             return await proxy_request(request)
