@@ -426,6 +426,42 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
         await main_conn.close()
 
 
+# ── selftest (plumbing-only: prove browser + DB, process NO draft) ──────────────
+async def _selftest() -> int:
+    """Prove the runtime plumbing works WITHOUT touching any draft:
+    (a) launch headless chromium via the renderer's playwright import path,
+    (b) connect to DATABASE_URL and read the kill switch.
+    Prints SELFTEST OK / SELFTEST FAIL <reason> and returns 0/1. Never processes data."""
+    # (a) browser — same lazy import path as wr2_html_renderer/renderer.py
+    try:
+        from playwright.async_api import async_playwright  # lazy import
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            await browser.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"SELFTEST FAIL chromium: {exc}")
+        return 1
+
+    # (b) DB — connect + read kill switch (read-only, no mutation)
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        print("SELFTEST FAIL db: DATABASE_URL not set")
+        return 1
+    try:
+        conn = await asyncpg.connect(dsn, timeout=10)
+        try:
+            enabled = await _pg.is_html_kill_switch_enabled(conn)
+        finally:
+            await conn.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"SELFTEST FAIL db: {exc}")
+        return 1
+
+    print(f"SELFTEST OK (chromium launched; db reachable; kill_switch_enabled={enabled})")
+    return 0
+
+
 # ── run / main ────────────────────────────────────────────────────────────────
 async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
     dsn = os.environ.get("DATABASE_URL")
@@ -475,8 +511,15 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--draft-id", default=None)
+    ap.add_argument(
+        "--selftest",
+        action="store_true",
+        help="prove runtime plumbing (headless chromium + DB kill-switch read); process NO draft",
+    )
     args = ap.parse_args()
     try:
+        if args.selftest:
+            return asyncio.run(_selftest())
         return asyncio.run(run(dry_run=args.dry_run, draft_id=args.draft_id))
     except KeyboardInterrupt:
         return 130

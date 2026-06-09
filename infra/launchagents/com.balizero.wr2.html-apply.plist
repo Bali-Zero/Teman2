@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR2_REPO_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<key>WR2_HTML_VENV_PY</key>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy/.venv-wr2-html/bin/python</string>
+		<key>WR2_VISION_REQUIRED</key>
+		<string>1</string>
+	</dict>
+	<key>Label</key>
+	<string>com.balizero.wr2.html-apply</string>
+	<key>Program</key>
+	<string>/bin/bash</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-c</string>
+		<string>set -euo pipefail; SECRETS="$HOME/.nuzantara-secrets.env"; BACKEND_SECRETS="$HOME/.nuzantara-backend-secrets.env"; if [ -f "$SECRETS" ]; then set -a; . "$SECRETS"; set +a; fi; if [ -f "$BACKEND_SECRETS" ]; then set -a; . "$BACKEND_SECRETS"; set +a; fi; if [ -z "${DATABASE_URL_LOCAL:-}" ]; then echo "[wr2-html-apply] ERROR: DATABASE_URL_LOCAL not set in $SECRETS" 1&gt;&amp;2; exit 74; fi; export DATABASE_URL="$DATABASE_URL_LOCAL"; if ! nc -z 127.0.0.1 15432 2&gt;/dev/null; then echo "[wr2-html-apply] ERROR: 127.0.0.1:15432 unreachable (pg-proxy?)" 1&gt;&amp;2; exit 74; fi; REPO="${WR2_REPO_ROOT:-$HOME/Desktop/nuzantara-deploy}"; PY="${WR2_HTML_VENV_PY:-$REPO/.venv-wr2-html/bin/python}"; cd "$REPO"; exec "$PY" "$REPO/scripts/wr2_html_render_apply.py"</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wr2-html-apply.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wr2-html-apply.log</string>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StartInterval</key>
+	<integer>600</integer>
+</dict>
+</plist>
