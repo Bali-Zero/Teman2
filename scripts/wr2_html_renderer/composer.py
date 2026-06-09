@@ -300,10 +300,14 @@ def _apply_levers_to_html(html: str, slide: dict[str, Any]) -> str:
 
 
 # Default safe line width for the big cover headline. The cover heading uses
-# var(--font-size-headline-cover) (84px on the 1080px canvas), where roughly this
-# many characters fit on one line before the browser re-wraps. Parametrizable so
-# a smaller headline font can pass a larger budget.
-_COVER_MAX_CHARS_PER_LINE = 16
+# var(--font-size-headline-cover) (84px on the 1080px canvas): ~22 chars is the
+# single-line capacity at that size AND it matches what the Claude vision critic
+# asks for — it judges 2 balanced lines as better than 3 lines with a short tail
+# (the iter-2/3 "THE TOP sits alone on line 3" critique fired at the old cap=16,
+# which over-wrapped into 3 lines with a 2-word tail). 22 lets the greedy wrap
+# settle on those 2 even lines. Parametrizable so a smaller headline font can
+# pass a larger budget.
+_COVER_MAX_CHARS_PER_LINE = 22
 
 
 def _balance_headline(text: str, *, max_chars_per_line: int = _COVER_MAX_CHARS_PER_LINE) -> str:
@@ -362,12 +366,23 @@ def _balance_headline(text: str, *, max_chars_per_line: int = _COVER_MAX_CHARS_P
     if len(lines) <= 1:
         return text
 
-    # Kill a single-word orphan on the LAST line by borrowing the previous line's
-    # last word (only if the previous line keeps ≥1 word). Repeat once is enough
-    # for headline-length text, but loop defensively while it stays an orphan and
-    # the move is legal.
-    while len(lines) >= 2 and len(lines[-1]) == 1 and len(lines[-2]) >= 2:
-        lines[-1].insert(0, lines[-2].pop())
+    # Kill ANY single-word orphan line (not just the last): a long title's greedy
+    # pass can strand a lone word on a MIDDLE line too (e.g. "…Scandal Rocks The /
+    # Immigration / Directorate Today"). For each single-word line, borrow the
+    # PREVIOUS line's last word and prepend it — but only when the previous line
+    # keeps ≥2 words AND the merged orphan line stays within budget (never create
+    # an over-wide line just to fix an orphan; a word longer than the budget that
+    # has no legal companion is left on its own line). Front-to-back so a fix on
+    # line i can still be helped by line i-1.
+    for i in range(1, len(lines)):
+        # loop: the line may still be an orphan after one borrow if the moved
+        # word was short; keep borrowing while it is legal and helpful.
+        while (
+            len(lines[i]) == 1
+            and len(lines[i - 1]) >= 2
+            and len(" ".join([lines[i - 1][-1]] + lines[i])) <= budget
+        ):
+            lines[i].insert(0, lines[i - 1].pop())
 
     return "<br>".join(" ".join(line) for line in lines)
 

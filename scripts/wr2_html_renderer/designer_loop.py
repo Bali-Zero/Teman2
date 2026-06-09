@@ -83,11 +83,35 @@ _COMPOSITION_CLAIM_MARKERS = (
 
 # Substrings that mark a vision issue as a HARD defect (legibility OR real brand
 # drift) — these must NEVER be accepted as debt. If ANY residual issue matches
-# one of these, the slide is not publish-ready (gate stays strict).
+# one of these, the slide is not publish-ready (gate stays strict). NOTE:
+# "orphan"/"stub"/"alone on line" are NOT here — they are graded separately
+# (see _orphan_is_hard) because a ≥2-word tail on an already-balanced multi-line
+# wrap is an editorial-rhythm critique, not illegibility.
 _HARD_CLAIM_MARKERS = (
     "readable", "legib", "illegib", "garbl", "clip", "cut off", "cut-off",
-    "overflow", "contrast", "orphan", "wrap", "truncat", "overlap",
+    "overflow", "contrast", "wrap", "truncat", "overlap",
     "palette", "color", "colour", "font", "serif", "logo", "emoji",
+)
+
+# An issue that talks about an orphan / stub / a line "sitting alone".
+_ORPHAN_MARKERS = (
+    "orphan", "stub", "alone on line", "alone on the line", "sits alone",
+    "stranded", "dangling word", "widow",
+)
+
+# A 1-WORD orphan is genuine illegibility (a lone word on its own line) → HARD.
+_ONE_WORD_ORPHAN_MARKERS = (
+    "single word", "single-word", "1 word", "one word", "one-word",
+    "a lone word", "lone word", "just one word", "only one word", "1-word",
+)
+
+# A ≥2-word tail on an already-balanced wrap is an editorial-rhythm critique
+# (the last line is shorter than the ones above) → SOFT, only when the slide
+# already attempted the re-wrap (_rebalance_wrap committed).
+_TAIL_RHYTHM_MARKERS = (
+    "2 words", "two words", "3 words", "vs 3 on", "vs 4 on", "shorter than",
+    "afterthought", "visual rhythm", "reads as truncated", "bottom-heavy",
+    "top-heavy", "uneven line", "ragged",
 )
 
 
@@ -96,7 +120,32 @@ def _is_composition_only_lever(lever_names: set[str]) -> bool:
     return bool(lever_names) and lever_names <= _COMPOSITION_LEVERS
 
 
-def _classify_residual_issues(issues: list[str]) -> tuple[bool, bool]:
+def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
+    """Grade an orphan/stub claim. Returns (is_orphan_claim, is_hard).
+
+    Calibrated STRICT (in doubt → HARD, fail-safe toward the strict gate):
+      - a ONE-WORD orphan (a lone word stranded on its own line) is genuine
+        illegibility → HARD, always.
+      - a ≥2-word short tail on an ALREADY-balanced multi-line wrap (the slide
+        committed _rebalance_wrap) is an editorial-rhythm critique → SOFT.
+      - any other / ambiguous orphan mention → HARD.
+    """
+    if not any(m in low for m in _ORPHAN_MARKERS):
+        return False, False  # not an orphan claim at all
+    # one-word orphan always wins → HARD
+    if any(m in low for m in _ONE_WORD_ORPHAN_MARKERS):
+        return True, True
+    # a 2+word short-tail rhythm complaint, only once we've already re-wrapped,
+    # is composition debt (not illegibility).
+    if rebalance_applied and any(m in low for m in _TAIL_RHYTHM_MARKERS):
+        return True, False
+    # ambiguous orphan → fail-safe HARD
+    return True, True
+
+
+def _classify_residual_issues(
+    issues: list[str], *, rebalance_applied: bool = False
+) -> tuple[bool, bool]:
     """Classify a list of vision issue strings.
 
     Returns (has_hard, all_composition):
@@ -104,17 +153,28 @@ def _classify_residual_issues(issues: list[str]) -> tuple[bool, bool]:
       all_composition  — every issue is a composition/editorial critique (and
                          there is at least one issue).
     A HARD marker always wins (an issue that is both is treated as hard).
+
+    `rebalance_applied` (True when the slide already committed _rebalance_wrap)
+    relaxes the orphan grading: a ≥2-word short tail on an already-balanced wrap
+    is editorial rhythm (SOFT), while a 1-word orphan stays HARD (see
+    _orphan_is_hard). When False (no re-wrap attempted) every orphan claim is
+    treated as HARD.
     """
     has_hard = False
     all_composition = bool(issues)
     for raw in issues:
         low = (raw or "").lower()
-        hard = any(m in low for m in _HARD_CLAIM_MARKERS)
+        is_orphan, orphan_hard = _orphan_is_hard(low, rebalance_applied=rebalance_applied)
+        hard = any(m in low for m in _HARD_CLAIM_MARKERS) or (is_orphan and orphan_hard)
         comp = any(m in low for m in _COMPOSITION_CLAIM_MARKERS)
+        # a soft orphan-rhythm claim counts as composition (editorial debt)
+        soft_orphan = is_orphan and not orphan_hard
         if hard:
             has_hard = True
             all_composition = False
-        elif not comp:
+        elif comp or soft_orphan:
+            continue  # classified as composition/editorial → keep all_composition
+        else:
             # an issue we can't classify as composition is NOT safe to accept
             all_composition = False
     return has_hard, all_composition
@@ -397,7 +457,14 @@ async def run_designer_loop(
                 # NOT debt — it stays a hard reject so FIX#2b must actually fix it.
                 proposed_levers = {lev.get("lever") for lev in vc.levers}
                 non_css = sorted(proposed_levers)
-                has_hard, all_composition = _classify_residual_issues(list(vc.issues))
+                # the slide already attempted the headline re-wrap if a prior
+                # iteration committed _rebalance_wrap into levers_acc — this
+                # relaxes the orphan grading from "any orphan = HARD" to
+                # "1-word orphan = HARD, >=2-word balanced tail = editorial".
+                rebalance_applied = bool(levers_acc.get("_rebalance_wrap"))
+                has_hard, all_composition = _classify_residual_issues(
+                    list(vc.issues), rebalance_applied=rebalance_applied
+                )
                 comp_levers_only = (not vc.levers) or _is_composition_only_lever(proposed_levers)
                 if not has_hard and all_composition and comp_levers_only:
                     debt = list(vc.issues)

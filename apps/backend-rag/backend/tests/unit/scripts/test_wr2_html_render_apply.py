@@ -380,17 +380,19 @@ def test_brand_inert_levers_includes_rebalance_wrap():
 
 
 def test_balance_headline_real_title_multiline_no_orphan():
-    """FIX#2b(a): the real fire-test title wraps to MULTIPLE lines, each within
-    the cover width budget, with NO single-word orphan line ("TOP" eliminated)."""
+    """FIX#2b(a)+FIX A: at the cover default (cap 22) the real fire-test title
+    settles on exactly 2 balanced lines — what the vision critic asks for — each
+    within the budget, with NO single-word orphan ("TOP" eliminated)."""
     from wr2_html_renderer.composer import _COVER_MAX_CHARS_PER_LINE, _balance_headline
 
     out = _balance_headline("The KITAS Bribe Trail Reaches the Top")
     lines = out.split("<br>")
-    assert len(lines) >= 2  # actually wrapped
+    # FIX A: cap 22 yields the 2-line "The KITAS Bribe Trail / Reaches the Top"
+    assert len(lines) == 2, f"expected 2 balanced lines, got {lines!r}"
     # every line stays within the safe width (so the browser won't re-wrap)
     for ln in lines:
         assert len(ln) <= _COVER_MAX_CHARS_PER_LINE, f"line too wide: {ln!r}"
-    # no single-word orphan line anywhere
+    # no single-word orphan line anywhere (last line has >=2 words)
     for ln in lines:
         assert len(ln.split()) >= 2, f"orphan line: {ln!r}"
     # words preserved in order (only <br>s inserted between whole words)
@@ -548,3 +550,118 @@ def test_classify_residual_issues():
     assert _is_composition_only_lever({"rerender"}) is True
     assert _is_composition_only_lever({"rerender", "scrim_opacity"}) is False
     assert _is_composition_only_lever(set()) is False
+
+
+def test_balance_headline_long_title_no_one_word_orphan():
+    """FIX A: a much longer title (10+ words) still wraps with NO single-word
+    orphan line — the larger cap must not re-introduce a lone-word last line."""
+    from wr2_html_renderer.composer import _COVER_MAX_CHARS_PER_LINE, _balance_headline
+
+    title = (
+        "Indonesia Tightens Investor KITAS Rules After A Major Graft Scandal "
+        "Rocks The Immigration Directorate Today"
+    )
+    out = _balance_headline(title)
+    lines = out.split("<br>")
+    assert len(lines) >= 3  # genuinely long → several lines
+    for ln in lines:
+        assert len(ln) <= _COVER_MAX_CHARS_PER_LINE, f"line too wide: {ln!r}"
+        assert len(ln.split()) >= 2, f"single-word orphan line: {ln!r}"
+    assert out.replace("<br>", " ").split() == title.split()  # nothing lost
+
+
+def test_orphan_grading_two_word_tail_soft_one_word_hard():
+    """FIX B: orphan grading is fine-grained.
+
+    - a ≥2-word short tail on an ALREADY-balanced wrap (rebalance committed) is
+      editorial rhythm → NOT hard (acceptable composition debt);
+    - the SAME claim without a re-wrap attempt → HARD (fail-safe);
+    - a genuine 1-word orphan → HARD even with rebalance committed."""
+    from wr2_html_renderer.designer_loop import (
+        _classify_residual_issues,
+        _orphan_is_hard,
+    )
+
+    two_word_tail = "THE TOP sits alone on line 3 — 2 words vs 3 on lines above"
+    one_word = "single-word orphan 'TOP' alone on its own line"
+
+    # 2-word tail + rebalance applied → soft (composition, not hard)
+    has_hard, all_comp = _classify_residual_issues([two_word_tail], rebalance_applied=True)
+    assert has_hard is False, "a 2-word balanced tail must NOT be a hard reject"
+    assert all_comp is True, "it should classify as editorial composition"
+
+    # same claim WITHOUT a re-wrap → fail-safe HARD
+    has_hard_norewrap, _ = _classify_residual_issues([two_word_tail], rebalance_applied=False)
+    assert has_hard_norewrap is True, "without re-wrap any orphan claim stays HARD"
+
+    # 1-word orphan stays HARD even with rebalance applied
+    has_hard_one, _ = _classify_residual_issues([one_word], rebalance_applied=True)
+    assert has_hard_one is True, "a 1-word orphan is illegibility — must stay HARD"
+
+    # _orphan_is_hard direct contract
+    assert _orphan_is_hard(two_word_tail.lower(), rebalance_applied=True) == (True, False)
+    assert _orphan_is_hard(two_word_tail.lower(), rebalance_applied=False) == (True, True)
+    assert _orphan_is_hard(one_word.lower(), rebalance_applied=True) == (True, True)
+    # a non-orphan claim is not graded as an orphan at all
+    assert _orphan_is_hard("hero photo feels generic", rebalance_applied=True) == (False, False)
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_accepts_two_word_tail_after_rewrap(monkeypatch):
+    """FIX A+B end-to-end: after _rebalance_wrap is committed, a residual vision
+    reject whose only complaint is a ≥2-word short tail (editorial rhythm) +
+    rerender-only lever is ACCEPTED as composition debt → converged=True."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    calls = {"vision": 0}
+
+    def vision_critic(png, slide, ctx):
+        calls["vision"] += 1
+        if calls["vision"] == 1:
+            # iter 1: propose rebalance_wrap (brand-inert → committed via override)
+            return dl.Critique(
+                tier="vision", passed=False, issues=["title leaves an orphan word"],
+                levers=[{"lever": "rebalance_wrap", "reason": "orphan"}], score=0.5,
+            )
+        # iter 2: only complaint left is a 2-word short tail (editorial rhythm)
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=["'Reaches the Top' sits alone on line 2 — 2 words vs 4 on the line above, uneven visual rhythm"],
+            levers=[{"lever": "rerender", "reason": "could be tighter"}],
+            score=0.7,
+        )
+
+    def brand_verifier(png, slide, ctx):
+        # brand always clean; the inert override commits the rebalance regardless
+        return dl.Critique(tier="brand", passed=True, issues=[])
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "The KITAS Bribe Trail Reaches the Top"},
+        render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=brand_verifier,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    assert res.converged is True
+    assert res.accepted_with_composition_debt is True
+    assert any("rhythm" in d for d in res.composition_debt)
