@@ -29,6 +29,7 @@ adapted here to WR2 carousel slides + the cheap-signal cascade.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -364,7 +365,20 @@ async def run_designer_loop(
                 history.append(iter_record)
                 continue
         else:
-            # no vision: cheap tiers passed → done
+            # no vision path. Default: cheap tiers passing => converge (historical).
+            # WR2_VISION_REQUIRED=1 (v4 condition E / GO#3 c5): FAIL-CLOSED — if vision
+            # was supposed to run (use_vision) but no vision_critic is wired, or vision
+            # is disabled, the slide must NOT converge on cheap tiers alone.
+            if os.environ.get("WR2_VISION_REQUIRED") == "1" and (not use_vision or vision_critic is None):
+                iter_record["verdict"] = "FAIL (vision required but not available)"
+                history.append(iter_record)
+                return DesignerResult(
+                    final_png=png_path,
+                    iterations=it,
+                    converged=False,
+                    history=history,
+                    reason="vision_required_but_unavailable",
+                )
             iter_record["verdict"] = "PASS (cheap only, vision disabled)"
             history.append(iter_record)
             return DesignerResult(final_png=png_path, iterations=it, converged=True, history=history)

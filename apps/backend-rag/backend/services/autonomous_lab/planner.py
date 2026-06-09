@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -11,19 +10,20 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Any
-from urllib.parse import urlsplit
+
+from backend.services.autonomous_lab.command_policy import (
+    build_worktree_command,
+    require_safe_command_arg,
+    verification_commands_for_paths,
+)
+from backend.services.autonomous_lab.receipt_safety import (
+    contains_receipt_sensitive_value,
+    receipt_safe_source_uri,
+    safe_sha256_fingerprint,
+)
 
 PIPELINE_VERSION = "autonomous-lab-v0"
 SAFE_COMMAND_ARG_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
-RAW_MARKER_PATTERN = re.compile(
-    r"\b(?:RAW(?:_[A-Z0-9]+){1,}|[A-Z0-9]+_(?:MUST_NOT_LEAK|SHOULD_NOT_APPEAR))\b"
-)
-SECRET_ASSIGNMENT_PATTERN = re.compile(
-    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[^\s'\"<>,;]{12,}"
-)
-SECRET_QUERY_KEY_PATTERN = re.compile(
-    r"(?i)(?:^|[?&])(?:access[_-]?token|api[_-]?key|key|password|secret|signature|sig|token)="
-)
 
 
 class MaterialSourceType(str, Enum):
@@ -303,9 +303,7 @@ class AutonomousLabPlanner:
         ]
         safe_lane = _require_safe_command_arg(self.worktree_lane, "worktree_lane")
         safe_task_id = _require_safe_command_arg(task_id, "task_id")
-        worktree_command = (
-            f"python scripts/agent_start.py --lane {safe_lane} --task-id {safe_task_id}"
-        )
+        worktree_command = build_worktree_command(lane=safe_lane, task_id=safe_task_id)
         return SimulationPlan(
             target_paths=safe_paths,
             worktree_lane=safe_lane,
@@ -385,9 +383,7 @@ def _summarize(text: str, max_chars: int = 360) -> str:
 
 def _safe_sha256_fingerprint(value: str, hex_chars: int = 16) -> str:
     """Return a grouped SHA-256 prefix that remains useful without tripping secret scans."""
-    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:hex_chars]
-    grouped = "-".join(digest[index : index + 4] for index in range(0, len(digest), 4))
-    return f"sha256:{grouped}"
+    return safe_sha256_fingerprint(value, hex_chars=hex_chars)
 
 
 def _receipt_safe_objective(objective: str) -> str:
@@ -408,33 +404,19 @@ def _receipt_safe_title(title: str) -> str:
 
 
 def _safe_source_uri(source_uri: str, source_type: MaterialSourceType) -> str:
-    candidate = source_uri.strip()
-    if source_type in PRIVATE_RECEIPT_SOURCE_TYPES:
-        return f"{source_type.value}:source_fingerprint:{_safe_sha256_fingerprint(candidate)}"
-    if _contains_receipt_sensitive_value(candidate):
-        return f"{source_type.value}:source_fingerprint:{_safe_sha256_fingerprint(candidate)}"
-
-    parsed = urlsplit(candidate)
-    if parsed.query or parsed.fragment or len(candidate) > 240:
-        scheme = parsed.scheme or source_type.value
-        host = parsed.netloc or "local"
-        return f"{scheme}://{host}/source_fingerprint:{_safe_sha256_fingerprint(candidate)}"
-    return candidate
-
-
-def _contains_receipt_sensitive_value(value: str) -> bool:
-    return bool(
-        RAW_MARKER_PATTERN.search(value)
-        or SECRET_ASSIGNMENT_PATTERN.search(value)
-        or SECRET_QUERY_KEY_PATTERN.search(value)
+    return receipt_safe_source_uri(
+        source_uri,
+        source_type.value,
+        preserve_public_host=source_type not in PRIVATE_RECEIPT_SOURCE_TYPES,
     )
 
 
+def _contains_receipt_sensitive_value(value: str) -> bool:
+    return contains_receipt_sensitive_value(value)
+
+
 def _require_safe_command_arg(value: str, field_name: str) -> str:
-    candidate = value.strip()
-    if not SAFE_COMMAND_ARG_PATTERN.match(candidate):
-        raise ValueError(f"{field_name} must be a safe slug for planned command receipts")
-    return candidate
+    return require_safe_command_arg(value, field_name)
 
 
 def _require_safe_repo_path(value: str, field_name: str) -> str:
@@ -516,13 +498,4 @@ def _hypotheses(objective: str, materials: list[NormalizedMaterial]) -> list[str
 
 
 def _verification_commands(target_paths: list[str]) -> list[str]:
-    commands: list[str] = []
-    if any(path.startswith("apps/backend-rag/") for path in target_paths):
-        commands.append(
-            "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q"
-        )
-    if any(path.startswith("apps/mouth/") for path in target_paths):
-        commands.append("cd apps/mouth && npm run lint")
-    if any(path.startswith("research/") for path in target_paths):
-        commands.append("git diff --check -- research/operations/autonomous-lab")
-    return commands or ["git diff --check"]
+    return verification_commands_for_paths(target_paths)
