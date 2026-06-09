@@ -144,6 +144,15 @@ def check_claude_hook(gate: dict) -> GateResult:
     # The hook is registered iff some command references the target basename.
     target_name = target.name
     matching = [c for c in commands if target_name in c]
+    # Tier-2 indirection: a hook may run through a wrapper registered in
+    # settings.json (e.g. guardrails-static.py invoked by guardrails-client.sh's
+    # daemon→static fallback). The gate declares this via `invoked_via`; honor it
+    # before declaring DISARMED. The wrapper still must be genuinely registered,
+    # and invoked_via lives in the integrity-hashed registry, so this cannot be
+    # used to fake an armed gate (W71).
+    if not matching and gate.get("invoked_via"):
+        via_name = _expand(gate["invoked_via"]).name
+        matching = [c for c in commands if via_name in c]
     if not matching:
         return GateResult(gid, "claude_hook", DISARMED,
                           f"hook not registered under event '{event}' in settings.json")
