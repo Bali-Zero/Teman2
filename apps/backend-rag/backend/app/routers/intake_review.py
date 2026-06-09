@@ -341,9 +341,11 @@ async def claim_review(
     """Atomically claim a proposal for the current reviewer.
 
     review_pending → review_claimed. Mints a per-claim opaque token (P0#5).
-    A claim succeeds if the proposal is review_pending OR if it is review_claimed
-    by someone whose lease has expired (steal-expired). A live, unexpired claim by
-    another reviewer → 409.
+    A claim succeeds if the proposal is review_pending, OR if it is review_claimed
+    by someone whose lease has expired (steal-expired), OR if it is review_claimed
+    by the SAME caller on a still-live lease (P0#4 — idempotent re-claim: re-opening
+    your own claimed document renews the lease and returns a fresh token instead of
+    409). A live, unexpired claim by a DIFFERENT reviewer → 409.
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
@@ -372,7 +374,9 @@ async def claim_review(
             if received_by != user_email:
                 raise HTTPException(status_code=403, detail="Not authorised for this proposal")
 
-        # Atomic claim: only steal a claim that is unclaimed OR expired.
+        # Atomic claim: steal a claim that is unclaimed OR expired, OR renew
+        # the caller's OWN still-live claim (P0#4 idempotent re-claim). A live
+        # claim owned by a DIFFERENT reviewer never matches → 409 below.
         updated = await conn.fetchrow(
             """
             UPDATE document_routing_proposal
@@ -385,6 +389,7 @@ async def claim_review(
               AND (
                     status = 'review_pending'
                  OR (status = 'review_claimed' AND lease_expires_at < $5)
+                 OR (status = 'review_claimed' AND lease_owner = $2)
               )
             RETURNING id, lease_owner, lease_expires_at, claim_token
             """,
