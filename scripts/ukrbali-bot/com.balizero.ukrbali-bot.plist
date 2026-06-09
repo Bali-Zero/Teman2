@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.ukrbali-bot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/ukrbali-bot/run.sh</string>
+    </array>
+
+    <!-- Long-running daemon: respawn if it ever exits. (cicatrix: only 13% of
+         plists had KeepAlive — this one MUST be a daemon, not a cron.) -->
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/ukrbali-bot.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/ukrbali-bot.err</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara/scripts/ukrbali-bot</string>
+</dict>
+</plist>
