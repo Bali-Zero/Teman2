@@ -113,6 +113,17 @@ def test_planned_only_commands_outside_plan_are_scanned() -> None:
     assert {"push_command", "deploy_command"} <= _rule_ids(decision)
 
 
+def test_planned_only_non_mutating_commands_must_be_allowlisted() -> None:
+    run = _safe_run()
+    receipt = run.to_receipt()
+    receipt["planned_only_commands"] = ["python scripts/unreviewed_helper.py"]
+
+    decision = AutonomousLabReviewer().review(receipt)
+
+    assert decision.blocked is True
+    assert "command_not_allowlisted" in _rule_ids(decision)
+
+
 def test_command_patterns_block_global_options_and_flag_order() -> None:
     run = _safe_run()
     receipt = run.to_receipt()

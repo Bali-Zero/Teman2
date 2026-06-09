@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
+from backend.services.autonomous_lab.command_policy import (
+    ALLOWED_VERIFICATION_COMMANDS,
+    is_allowed_lab_command,
+    is_allowed_verification_command,
+    is_allowed_worktree_command,
+)
 from backend.services.autonomous_lab.planner import GateSeverity, LabRun
+from backend.services.autonomous_lab.receipt_safety import (
+    receipt_safe_evidence,
+    shorten_receipt_value,
+)
 
 DEFAULT_ALLOWED_TARGET_PREFIXES = (
     "apps/backend-rag/backend/services/autonomous_lab/",
@@ -20,13 +29,7 @@ DEFAULT_ALLOWED_TARGET_PATHS = (
     "scripts/autonomous_lab_draft.py",
     "scripts/autonomous_lab_run.py",
 )
-DEFAULT_ALLOWED_VERIFICATION_COMMANDS = frozenset(
-    {
-        "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q",
-        "git diff --check",
-        "git diff --check -- research/operations/autonomous-lab",
-    }
-)
+DEFAULT_ALLOWED_VERIFICATION_COMMANDS = ALLOWED_VERIFICATION_COMMANDS
 
 _RAW_FIELD_NAMES = {"body", "content", "full_text", "raw", "raw_text", "text", "transcript"}
 _RAW_MARKER_RE = re.compile(
@@ -43,10 +46,6 @@ _GOOGLE_WORKSPACE_WRITE_RE = re.compile(
     r".{0,80}\b(?:append|batchupdate|create|delete|insert|patch|update|write)\b"
 )
 _COMMAND_SEGMENT_RE = r"[^\n;&|]*"
-_SAFE_COMMAND_ARG_RE = r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}"
-_SAFE_WORKTREE_COMMAND_RE = re.compile(
-    rf"^python scripts/agent_start\.py --lane {_SAFE_COMMAND_ARG_RE} --task-id {_SAFE_COMMAND_ARG_RE}$"
-)
 _COMMAND_BLOCK_PATTERNS = (
     (
         "deploy_command",
@@ -252,7 +251,11 @@ class AutonomousLabReviewer:
                     )
                 )
                 continue
-            reason = self._invalid_target_path_reason(target_path)
+            reason = invalid_autonomous_lab_target_path_reason(
+                target_path,
+                allowed_target_prefixes=self.allowed_target_prefixes,
+                allowed_target_paths=self.allowed_target_paths,
+            )
             if reason:
                 findings.append(
                     LabReviewFinding(
@@ -282,13 +285,23 @@ class AutonomousLabReviewer:
         for location, command in _command_strings(receipt):
             if (
                 location == "simulation_plan.worktree_command"
-                and not _SAFE_WORKTREE_COMMAND_RE.match(command.strip())
+                and not is_allowed_worktree_command(command)
             ):
                 findings.append(
                     LabReviewFinding(
                         "worktree_command_not_allowlisted",
                         GateSeverity.BLOCKER,
                         "worktree command is not in the autonomous lab allowlist",
+                        location,
+                        _receipt_safe_evidence(command),
+                    )
+                )
+            elif not is_allowed_lab_command(command):
+                findings.append(
+                    LabReviewFinding(
+                        "command_not_allowlisted",
+                        GateSeverity.BLOCKER,
+                        "lab command is not in the autonomous lab allowlist",
                         location,
                         _receipt_safe_evidence(command),
                     )
@@ -377,7 +390,10 @@ class AutonomousLabReviewer:
             if not isinstance(command, str) or not command.strip():
                 continue
             normalized_command = command.strip()
-            if normalized_command not in self.allowed_verification_commands:
+            if (
+                normalized_command not in self.allowed_verification_commands
+                or not is_allowed_verification_command(normalized_command)
+            ):
                 findings.append(
                     LabReviewFinding(
                         "verification_command_not_allowlisted",
@@ -404,35 +420,6 @@ class AutonomousLabReviewer:
             )
         ]
 
-    def _invalid_target_path_reason(self, target_path: str) -> str | None:
-        candidate = target_path.strip()
-        if not candidate:
-            return "target path is empty"
-        if "\x00" in candidate:
-            return "target path contains a null byte"
-        if "\\" in candidate:
-            return "target path must use POSIX separators"
-        if "://" in candidate:
-            return "target path must be repository-relative, not a URI"
-        if candidate.startswith("~"):
-            return "target path must not be home-relative"
-
-        path = PurePosixPath(candidate)
-        if path.is_absolute():
-            return "target path must be repository-relative"
-        if ".." in path.parts:
-            return "target path must not contain path traversal"
-
-        normalized = path.as_posix().lstrip("./")
-        if normalized in self.allowed_target_paths:
-            return None
-        if not any(
-            normalized == prefix.rstrip("/") or normalized.startswith(prefix)
-            for prefix in self.allowed_target_prefixes
-        ):
-            return "target path is outside the autonomous lab write set"
-        return None
-
 
 def review_lab_run(run: LabRun) -> LabReviewDecision:
     return AutonomousLabReviewer().review(run)
@@ -445,6 +432,45 @@ def _normalize_prefix(prefix: str) -> str:
 
 def _normalize_path(target_path: str) -> str:
     return PurePosixPath(target_path.strip()).as_posix().lstrip("./")
+
+
+def invalid_autonomous_lab_target_path_reason(
+    target_path: str,
+    *,
+    allowed_target_prefixes: Iterable[str] = DEFAULT_ALLOWED_TARGET_PREFIXES,
+    allowed_target_paths: Iterable[str] = DEFAULT_ALLOWED_TARGET_PATHS,
+) -> str | None:
+    """Return why a Lab target path is unsafe, or None when it is allowed."""
+    candidate = target_path.strip()
+    if not candidate:
+        return "target path is empty"
+    if "\x00" in candidate:
+        return "target path contains a null byte"
+    if "\\" in candidate:
+        return "target path must use POSIX separators"
+    if "://" in candidate:
+        return "target path must be repository-relative, not a URI"
+    if candidate.startswith("~"):
+        return "target path must not be home-relative"
+
+    path = PurePosixPath(candidate)
+    if path.is_absolute():
+        return "target path must be repository-relative"
+    if ".." in path.parts:
+        return "target path must not contain path traversal"
+
+    normalized = path.as_posix().lstrip("./")
+    allowed_paths = frozenset(_normalize_path(path_value) for path_value in allowed_target_paths)
+    if normalized in allowed_paths:
+        return None
+
+    allowed_prefixes = tuple(_normalize_prefix(prefix) for prefix in allowed_target_prefixes)
+    if not any(
+        normalized == prefix.rstrip("/") or normalized.startswith(prefix)
+        for prefix in allowed_prefixes
+    ):
+        return "target path is outside the autonomous lab write set"
+    return None
 
 
 def _simulation_plan(receipt: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -528,23 +554,7 @@ def _looks_like_raw_text(value: str) -> bool:
 
 
 def _receipt_safe_evidence(value: str, *, force_fingerprint: bool = False) -> str:
-    if force_fingerprint or _contains_sensitive_evidence(value):
-        return f"evidence_fingerprint:{_safe_sha256_fingerprint(value)}; chars:{len(value)}"
-    return _shorten(value)
-
-
-def _contains_sensitive_evidence(value: str) -> bool:
-    return bool(
-        _RAW_MARKER_RE.search(value)
-        or _SECRET_ASSIGNMENT_RE.search(value)
-        or _SECRET_QUERY_KEY_RE.search(value)
-    )
-
-
-def _safe_sha256_fingerprint(value: str, hex_chars: int = 16) -> str:
-    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:hex_chars]
-    grouped = "-".join(digest[index : index + 4] for index in range(0, len(digest), 4))
-    return f"sha256:{grouped}"
+    return receipt_safe_evidence(value, force_fingerprint=force_fingerprint)
 
 
 def _severity_from_value(value: Any) -> GateSeverity:
@@ -565,10 +575,7 @@ def _dedupe_findings(findings: Iterable[LabReviewFinding]) -> Iterator[LabReview
 
 
 def _shorten(value: str, limit: int = 180) -> str:
-    compact = " ".join(value.split())
-    if len(compact) <= limit:
-        return compact
-    return compact[: limit - 3].rstrip() + "..."
+    return shorten_receipt_value(value, limit=limit)
 
 
 __all__ = [
