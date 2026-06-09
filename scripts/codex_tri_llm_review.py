@@ -425,13 +425,23 @@ async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
     start = time.time()
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        # Try sourcing from .nuzantara-secrets.env
-        secrets_path = Path.home() / ".nuzantara-secrets.env"
-        if secrets_path.exists():
+        # Try sourcing from the known secret files, in priority order. The
+        # canonical home for DEEPSEEK_API_KEY is ~/.openclaw/workspace/.env.master
+        # (per CLAUDE.md "External LLM arsenal"); .nuzantara-secrets.env is a
+        # legacy fallback. The original only checked the legacy path, which is why
+        # the panel returned no_api_key on the Pro (cicatrix: env-down reviewer).
+        for secrets_path in (
+            Path.home() / ".openclaw" / "workspace" / ".env.master",
+            Path.home() / ".nuzantara-secrets.env",
+        ):
+            if not secrets_path.exists():
+                continue
             for line in secrets_path.read_text().splitlines():
-                if line.startswith("DEEPSEEK_API_KEY="):
+                if line.strip().startswith("DEEPSEEK_API_KEY="):
                     api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
                     break
+            if api_key:
+                break
     if not api_key:
         return parse_verdict("deepseek", "", time.time() - start, error="no_api_key")
 
@@ -515,14 +525,42 @@ async def run_panel(prompt: str) -> list[ReviewVerdict]:
     return list(results)
 
 
+#: Minimum number of LIVE reviewers (error is None) required for the panel to
+#: render any judgment at all. Below this floor the panel is INCONCLUSIVE — the
+#: environment is broken (quota exhausted, key missing), which is NOT a verdict on
+#: the code. Inconclusive never auto-merges, but it also never falsely BLOCKS as
+#: red — it routes to the operator instead.
+MIN_LIVE_REVIEWERS = 2
+
+
 def compute_outcome(verdicts: list[ReviewVerdict]) -> tuple[str, int, bool]:
-    """Return (panel_outcome, green_count, auto_merge_eligible)."""
-    green_count = sum(1 for v in verdicts if v.verdict == "green")
-    if green_count >= 2:
+    """Return (panel_outcome, green_count, auto_merge_eligible).
+
+    Robust to env-down reviewers (cicatrix W64 / 2026-06-09 dry-run on PR #1237,
+    where Claude hit its weekly quota and DeepSeek's key wasn't loaded — 2/3
+    reviewers died on ENVIRONMENT, not judgment, yet the old logic counted them as
+    non-green and returned a false RED). The fix: decide over LIVE reviewers only.
+
+    Outcomes:
+      - inconclusive : < MIN_LIVE_REVIEWERS actually reviewed (env broken). NOT
+                       red (doesn't block), NOT eligible (doesn't auto-merge) —
+                       routes to the operator. Distinct from a real RED verdict.
+      - green        : >= MIN_LIVE_REVIEWERS live AND all live are green. Eligible.
+      - red          : any live reviewer is red (a real defect found). Blocks.
+      - yellow       : live reviewers split green/yellow, none red. Escalation.
+    """
+    live = [v for v in verdicts if v.error is None]
+    green_count = sum(1 for v in live if v.verdict == "green")
+
+    if len(live) < MIN_LIVE_REVIEWERS:
+        # Environment failure masquerading as a verdict — do not trust it either way.
+        return "inconclusive", green_count, False
+    if any(v.verdict == "red" for v in live):
+        return "red", green_count, False
+    if green_count == len(live):
+        # Unanimous among the reviewers that actually ran.
         return "green", green_count, True
-    if green_count == 1:
-        return "yellow", green_count, False
-    return "red", green_count, False
+    return "yellow", green_count, False
 
 
 def telegram_notify(decision: PanelDecision) -> None:
@@ -541,17 +579,25 @@ def telegram_notify(decision: PanelDecision) -> None:
     try:
         import httpx  # type: ignore[import-not-found]
 
-        emoji = {"green": "✅", "yellow": "⚠️", "red": "🔴"}.get(decision.panel_outcome, "❓")
+        emoji = {"green": "✅", "yellow": "⚠️", "red": "🔴",
+                 "inconclusive": "❔"}.get(decision.panel_outcome, "❓")
         pr_ref = f"PR #{decision.pr_number}" if decision.pr_number else f"branch `{decision.branch}`"
+        live = sum(1 for v in decision.verdicts if v.error is None)
         msg = (
-            f"{emoji} Tri-LLM Panel: {decision.panel_outcome.upper()} ({decision.green_count}/3 green)\n"
+            f"{emoji} Tri-LLM Panel: {decision.panel_outcome.upper()} "
+            f"({decision.green_count}/{live} live-green, {len(decision.verdicts)} invited)\n"
             f"{pr_ref}\n"
-            f"Verdicts: " + " · ".join(f"{v.reviewer}={v.verdict}" for v in decision.verdicts)
+            f"Verdicts: " + " · ".join(
+                f"{v.reviewer}={v.verdict if v.error is None else f'DOWN({v.error})'}"
+                for v in decision.verdicts
+            )
         )
-        if not decision.auto_merge_eligible and decision.green_count >= 1:
-            msg += "\n⏳ Escalation: human review required"
+        if decision.panel_outcome == "inconclusive":
+            msg += "\n❔ Inconclusive: too few live reviewers (env down) — human review required"
         elif decision.panel_outcome == "red":
             msg += "\n🛑 Revert recommended"
+        elif not decision.auto_merge_eligible and decision.green_count >= 1:
+            msg += "\n⏳ Escalation: human review required"
         with httpx.Client(timeout=10.0) as client:
             client.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
@@ -598,7 +644,9 @@ async def main_async(args: argparse.Namespace) -> int:
     if args.notify:
         telegram_notify(decision)
 
-    return {"green": 0, "yellow": 1, "red": 2}.get(outcome, 3)
+    # Exit codes: 0=green (eligible), 1=yellow (escalate), 2=red (revert),
+    # 3=inconclusive/error (env down — do NOT proceed, route to operator).
+    return {"green": 0, "yellow": 1, "red": 2, "inconclusive": 3}.get(outcome, 3)
 
 
 def parse_args() -> argparse.Namespace:
