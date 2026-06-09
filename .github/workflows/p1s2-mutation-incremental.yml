@@ -20,12 +20,16 @@ name: P1 STRATO-2 incremental mutation gate
 # pull_request-only gives false safety because L2 autonomous-ops direct-push
 # to main silently SKIPS the gate).
 
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-09): the top-level
+# pull_request `paths:` filter was REMOVED so this workflow ALWAYS triggers on
+# pull_request and can therefore be a required-status-check WITHOUT the
+# pending-forever trap (a paths-filtered required check never reports on a
+# path-miss PR and blocks merge — W69). The relevant-paths decision now lives
+# in the "Did relevant paths change?" step below, and the expensive WORK steps
+# are gated on its output. On a path-miss PR the job ENDS success (sentinel).
+# The push trigger keeps its paths filter (push only fires when work is needed).
 on:
-  pull_request:
-    paths:
-      - "scripts/mutation_incremental.py"
-      - "scripts/test_mutation_incremental.py"
-      - ".github/workflows/p1s2-mutation-incremental.yml"
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
   push:
     branches:
       - main
@@ -47,21 +51,50 @@ jobs:
         with:
           fetch-depth: 0 # full history so git diff sees the PR changes
 
+      # BUCO #1 sentinel: decide whether this gate's RELEVANT paths changed in
+      # this PR. Dependency-free git diff (no third-party action — TIER-1
+      # anti-injection file). The regex is the EXACT original pull_request
+      # `paths:` list, each anchored ^...$. On a push event (already paths-
+      # filtered at the trigger) or any non-PR event, run=true so the gate never
+      # silently skips real work.
+      - name: Did relevant paths change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full mutation gate"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(scripts/mutation_incremental\.py|scripts/test_mutation_incremental\.py|\.github/workflows/p1s2-mutation-incremental\.yml)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no relevant paths changed — sentinel success"
+          fi
+
       - name: Set up Python
+        if: steps.relevant.outputs.run == 'true'
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Install driver test deps (pytest) + mutmut (CI-provided)
+        if: steps.relevant.outputs.run == 'true'
         run: pip install pytest "mutmut>=2.4,<3"
 
       - name: Driver self-tests (canary engine, diff parser, survivor gate)
+        if: steps.relevant.outputs.run == 'true'
         run: python3 -m pytest scripts/test_mutation_incremental.py -q
 
       - name: Print frozen canary integrity hash
+        if: steps.relevant.outputs.run == 'true'
         run: python3 scripts/mutation_incremental.py --print-integrity
 
       - name: Canary self-test + incremental mutation gate
+        if: steps.relevant.outputs.run == 'true'
         # mutmut IS installed here → the mutmut leg runs on changed lines.
         # --allow-skip is intentionally NOT passed: if mutmut were somehow
         # absent in CI we WANT exit 2 (visible SKIP), never a false pass.
