@@ -1286,3 +1286,79 @@ def test_classifier_conditional_marker_downgrades_legibility():
 
     assert _claim_is_hard("the subhead might be illegible at small sizes") is False
     assert _claim_is_hard("the subhead is illegible at small sizes") is True
+
+
+def test_classifier_synthetic_vision_marker_does_not_block_soft_accept():
+    """UNDER-MATCH FIX (W68/W72/W73 class, 3rd face): the Claude critic appends
+    categorical summary markers ('vision: unbalanced/crammed', 'vision: text not
+    easily readable') derived from its OWN boolean flags. They are meta-labels,
+    not atomic defects. A single such marker must NOT veto an otherwise-SOFT
+    residual: all_composition must stay True so the composition-debt accept can
+    fire (the root cause of the 0/5 convergence rate)."""
+    from wr2_html_renderer.designer_loop import _classify_residual_issues
+
+    soft_atomic = [
+        "hero photo is a generic dark interior, editorially weak for this story",
+        "could breathe more — spacing feels a touch tight",
+    ]
+    # the two synthetic markers that previously fell into the else branch
+    for marker in ("vision: unbalanced/crammed", "vision: text not easily readable"):
+        has_hard, all_comp = _classify_residual_issues(
+            soft_atomic + [marker], rebalance_applied=True
+        )
+        assert has_hard is False, f"{marker!r} must not set has_hard"
+        assert all_comp is True, f"{marker!r} must not block all_composition"
+    # a residual whose ONLY signal is a synthetic 'vision: …' summary is itself
+    # SOFT (the render already passed the cheap legibility tier) → accept as debt
+    only_summary, only_comp = _classify_residual_issues(
+        ["vision: text not easily readable"], rebalance_applied=True
+    )
+    assert only_summary is False
+    assert only_comp is True
+
+
+def test_classifier_synthetic_vision_marker_does_not_save_real_hard_defect():
+    """COUNTER-PROOF: the 'vision: …' neutrality must NOT weaken has_hard. A REAL
+    atomic legibility defect coexisting with a synthetic summary still blocks —
+    the marker is neutral, the atomic claim carries the severity."""
+    from wr2_html_renderer.designer_loop import _classify_residual_issues
+
+    has_hard, all_comp = _classify_residual_issues(
+        ["the subhead is illegible at thumbnail size", "vision: text not easily readable"],
+        rebalance_applied=True,
+    )
+    assert has_hard is True
+    assert all_comp is False
+
+
+def test_classifier_vision_required_failclosed_is_not_skipped():
+    """COUNTER-PROOF: the fail-closed 'vision REQUIRED but unavailable…' string
+    starts with 'vision ' (NO colon) — it is a genuine block, NOT a synthetic
+    summary. It must NOT be skipped: it leaves all_composition=False so the loop
+    does not accept an unverified render as debt."""
+    from wr2_html_renderer.designer_loop import (
+        _classify_residual_issues,
+        _is_vision_summary_marker,
+    )
+
+    failclosed = "vision REQUIRED but unavailable — fail-closed (WR2_VISION_REQUIRED=1)"
+    assert _is_vision_summary_marker(failclosed.lower()) is False
+    has_hard, all_comp = _classify_residual_issues([failclosed], rebalance_applied=True)
+    # not a composition marker, not an orphan, not conditional → falls to else →
+    # all_composition stays False (the render is NOT safe to accept as debt).
+    assert all_comp is False
+
+
+def test_classifier_weak_hierarchy_marker_still_soft():
+    """REGRESSION GUARD: 'vision: weak hierarchy' previously passed by ACCIDENT
+    (it contains 'weak', a composition marker). After the fix it is skipped as a
+    synthetic summary, so it must STILL be SOFT (all_composition True) — the
+    behavior is preserved, now for the right reason."""
+    from wr2_html_renderer.designer_loop import _classify_residual_issues
+
+    has_hard, all_comp = _classify_residual_issues(
+        ["vision: weak hierarchy"], rebalance_applied=True
+    )
+    assert has_hard is False
+    assert all_comp is True
+

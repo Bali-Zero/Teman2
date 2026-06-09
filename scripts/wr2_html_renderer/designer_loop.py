@@ -224,6 +224,28 @@ def _claim_is_hard(low: str) -> bool:
     )
 
 
+# Synthetic categorical summaries appended by the Claude design critic
+# (claude_vision.py: "vision: text not easily readable" / "vision: weak
+# hierarchy" / "vision: unbalanced/crammed"). They are derived from the critic's
+# OWN boolean flags, not atomic defects — the gradeable defects are in the
+# model's free-text issues. Treated as NEUTRAL by the classifier (neither
+# composition-accept nor hard-block) so a single summary marker does not veto an
+# otherwise-SOFT residual (under-match, W68/W72/W73 class). NOTE: the exact
+# prefix is "vision: " WITH a colon — the fail-closed "vision REQUIRED but
+# unavailable…" string has no colon and is NOT skipped (it is a real block).
+_VISION_SUMMARY_PREFIX = "vision: "
+
+
+def _is_vision_summary_marker(low: str) -> bool:
+    """True if a (already-lowercased) issue is a synthetic 'vision: …' summary.
+
+    These are the critic's categorical meta-labels, not atomic defects. Robust
+    to leading whitespace; matches only the colon-prefixed form so the
+    fail-closed 'vision REQUIRED but unavailable…' (no colon) is NOT matched.
+    """
+    return low.lstrip().startswith(_VISION_SUMMARY_PREFIX)
+
+
 def _classify_residual_issues(
     issues: list[str], *, rebalance_applied: bool = False
 ) -> tuple[bool, bool]:
@@ -245,6 +267,12 @@ def _classify_residual_issues(
     all_composition = bool(issues)
     for raw in issues:
         low = (raw or "").lower()
+        # Synthetic 'vision: …' summary markers are the critic's own meta-labels,
+        # not atomic defects → NEUTRAL: skip without touching has_hard or
+        # all_composition. The real severity comes from the atomic claims; if an
+        # atomic legibility/brand defect coexists it still sets has_hard below.
+        if _is_vision_summary_marker(low):
+            continue
         is_orphan, orphan_hard = _orphan_is_hard(low, rebalance_applied=rebalance_applied)
         # ACTUAL hard defect (word-boundary, conditional/suggestion excluded) OR a
         # genuine 1-word orphan.
