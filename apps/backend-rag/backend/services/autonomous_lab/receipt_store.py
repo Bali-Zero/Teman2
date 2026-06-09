@@ -216,13 +216,14 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
         try:
             tmp_path.unlink()
         except FileNotFoundError:
+            # The hard link may have been created and the temp file removed by cleanup.
             pass
 
 
 def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     line = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
-    fd = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o644)
+    fd = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
     try:
         written = os.write(fd, line)
         if written != len(line):
