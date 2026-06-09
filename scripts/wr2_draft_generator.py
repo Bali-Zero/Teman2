@@ -249,6 +249,12 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
 8. The "What This Means For You" type closer (slide 11): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
 
+9. The cover "subhead" MUST be 1-6 words maximum — a short tag/category/
+   kicker (e.g. "VISA UPDATE", "IMMIGRATION", "TAX ALERT"), NOT a full
+   sentence. UPPERCASE. It sits below the headline as a yellow accent
+   label. NEVER write a complete sentence in subhead; if you need to
+   explain, that goes in the body, not the subhead.
+
 OUTPUT FORMAT: valid JSON, no text outside the JSON object, no markdown fences.
 
 Structure:
@@ -262,7 +268,7 @@ Structure:
       "is_cover": true,
       "is_hero_image": true,
       "headline": "...",
-      "subhead": "...",
+      "subhead": "1-6 WORD KICKER",
       "body": "...",
       "image_prompt": "editorial scene, 1-2 sentences",
       "image_mode": "desk-document"
@@ -741,6 +747,37 @@ async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | No
 # ─────────────────────────────────────────────────────────────────────────
 
 
+def _cap_subhead(text: str, max_words: int = 6, max_chars: int = 32) -> str:
+    """Hard-cap the cover subhead to the template contract (1-6 words).
+
+    The cover-photo.md template declares subheading = "1-6 words, UPPERCASE,
+    yellow accent, often a tag/category". A long subhead overflows the
+    rendered box once grow_font enlarges it, so this is the deterministic
+    backstop behind the prompt guidance: take at most ``max_words`` words,
+    then if still longer than ``max_chars`` trim to a word boundary. No
+    ellipsis is appended — a clean shorter kicker beats a truncated one.
+    """
+    words = text.strip().split()
+    if not words:
+        return ""
+    capped = " ".join(words[:max_words])
+    if len(capped) <= max_chars:
+        return capped
+    # Still too long: trim to max_chars on a word boundary (no mid-word cut).
+    trimmed: list[str] = []
+    length = 0
+    for w in capped.split():
+        extra = len(w) + (1 if trimmed else 0)
+        if length + extra > max_chars:
+            break
+        trimmed.append(w)
+        length += extra
+    # Guarantee at least the first word even if it alone exceeds max_chars.
+    if not trimmed:
+        trimmed = [capped.split()[0]]
+    return " ".join(trimmed)
+
+
 def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     register = (parsed.get("register") or "").strip().lower()
     if register not in VALID_TONES:
@@ -771,7 +808,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
             "is_cover": bool(raw.get("is_cover", i == 1)),
             "is_hero_image": bool(raw.get("is_hero_image", False)),
             "headline": (raw.get("headline") or "").strip()[:80],
-            "subhead": (raw.get("subhead") or "").strip()[:120],
+            "subhead": _cap_subhead(raw.get("subhead") or ""),
             "body": (raw.get("body") or "").strip()[:500],
             "image_prompt": (raw.get("image_prompt") or "").strip()[:600],
             "tonal_palette": tonal,
