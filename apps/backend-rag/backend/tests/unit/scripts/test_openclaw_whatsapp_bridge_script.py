@@ -563,3 +563,301 @@ async def test_run_openclaw_uses_env_model_defaults(monkeypatch: pytest.MonkeyPa
     assert reply == "Env defaults ok."
     assert args[args.index("--model") + 1] == "openai/gpt-5.5"
     assert args[args.index("--thinking") + 1] == "high"
+
+
+# ---------------------------------------------------------------------------
+# Guard test-matrix harness (anti-over-match gate — W68/W72/W73 class).
+# For EVERY _guard_* function: one "pass" case (a CORRECT on-topic answer that
+# must survive unchanged) and one "clobber" case (a WRONG answer that must be
+# changed). The META completeness test below makes a newly-added guard with no
+# matrix entry FAIL the suite — that is the gate.
+# ---------------------------------------------------------------------------
+
+# A long, WRONG hak-milik answer (>125 words) so the word-count clobber fires.
+_HAK_MILIK_WRONG_LONG = (
+    "Yes, as a foreigner you can absolutely own Hak Milik land in Bali through "
+    "several creative structures that many expats use successfully every day. "
+) * 6  # 144 words
+
+# A long cafe answer (>115 words) that is cafe-ish so the cafe clobber fires.
+_CAFE_WRONG_LONG = (
+    "Yes a cafe can work under a PT PMA if KBLI, ownership and location are right "
+    "and you check 56303 first for cafe drink house activity and also consider a "
+    "restaurant direction if you serve full meals and the final fit depends on menu "
+    "alcohol takeaway delivery and exact Canggu zoning so send the concept menu and "
+    "pin location to verify everything before you sign or invest in the project "
+    "today right now please. "
+) * 2  # 148 words
+
+GUARD_MATRIX: list[dict[str, Any]] = [
+    # 1. document_status -------------------------------------------------------
+    {
+        "guard": "_guard_document_status_reply",
+        "message": "What is the status of my KITAS application number 12345?",
+        "reply": (
+            "I can't verify or confirm the application status from WhatsApp or the "
+            "reference number alone. I'll pass the reference to the Bali Zero team so "
+            "they can check the real status in the correct system."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_document_status_reply",
+        "message": "What is the status of my KITAS application number 12345?",
+        "reply": "Your KITAS is already approved and ready for collection.",
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 2. legacy_b211 -----------------------------------------------------------
+    {
+        "guard": "_guard_legacy_b211_reply",
+        "message": "Is the B211A still the visa I need for a business meeting in Bali?",
+        "reply": (
+            "Treat B211/B211A as an old/legacy label, not the current code. For business "
+            "meetings the current route is usually C2 Business or C12 Pre-Investment "
+            "depending on activity; the team will verify."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_legacy_b211_reply",
+        "message": "Is the B211A still the visa I need for a business meeting in Bali?",
+        "reply": (
+            "Yes, the B211A is exactly the visa you should apply for to do business in "
+            "Indonesia."
+        ),
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 3. hak_milik (word-count > 125) -----------------------------------------
+    {
+        "guard": "_guard_hak_milik_reply",
+        "message": "Can a foreigner own Hak Milik land in Bali?",
+        "reply": (
+            "No. A foreigner cannot hold Hak Milik directly. Use HGB/Hak Pakai via a PT "
+            "PMA, or a leasehold; the team verifies the route."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_hak_milik_reply",
+        "message": "Can a foreigner own Hak Milik land in Bali?",
+        "reply": _HAK_MILIK_WRONG_LONG,
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 4. lkpm (negative-gating) -----------------------------------------------
+    {
+        "guard": "_guard_lkpm_reply",
+        "message": "What is LKPM and who has to file it?",
+        "reply": (
+            "LKPM is the investment realization report a PT PMA submits to BKPM through "
+            "OSS, usually quarterly for medium and large companies. It reports how much "
+            "of the planned investment has been realized."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_lkpm_reply",
+        "message": "When is the LKPM deadline?",
+        "reply": (
+            "The LKPM deadline is the 10th of July each quarter, so make sure you file "
+            "by then."
+        ),
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 5. property_zoning (duration pass / operation clobber) -------------------
+    {
+        "guard": "_guard_property_zoning_reply",
+        "message": "How long is a typical villa leasehold in Bali?",
+        "reply": (
+            "A villa leasehold in Bali typically runs 25 to 30 years, often with an "
+            "option to extend by negotiation with the landowner."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_property_zoning_reply",
+        "message": "Can I run my villa as an Airbnb short-stay in a residential zone?",
+        "reply": (
+            "Sure, just list it on Airbnb and start taking daily guests, no special "
+            "permit needed for a residential villa."
+        ),
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 6. tax_compliance (APPEND; 'verify' suffix) -----------------------------
+    {
+        "guard": "_guard_tax_compliance_reply",
+        "message": "What is the current VAT rate in Indonesia?",
+        "reply": (
+            "VAT in Indonesia is 11% effective (12% headline under PMK 131/2024); full "
+            "12% applies only to luxury goods subject to PPnBM."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_tax_compliance_reply",
+        "message": "What is the penalty risk if my PT PMA files PPN late?",
+        "reply": "Late PPN filing exposes the company to administrative fines and interest.",
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 7. villa_kbli ------------------------------------------------------------
+    {
+        "guard": "_guard_villa_kbli_reply",
+        "message": "Which KBLI code covers villa short-stay accommodation under KBLI 2025?",
+        "reply": (
+            "For villa/Airbnb short-stay the current KBLI 2025 direction is 55203 "
+            "(AKTIVITAS VILA); 55193 is the KBLI 2020/PP28 source code that maps to it. "
+            "Final filing must be verified against live OSS/BKPM."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_villa_kbli_reply",
+        "message": "Which KBLI code covers villa short-stay accommodation under KBLI 2025?",
+        "reply": (
+            "For your villa rental business you should register under KBLI 59201 for "
+            "sound recording activities."
+        ),
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 8. kbli_label (PREPEND) --------------------------------------------------
+    {
+        "guard": "_guard_kbli_label_reply",
+        "message": "What KBLI applies to a coffee shop PT PMA?",
+        "reply": (
+            "The KBLI to check is 56303 for cafe/drink house activity; final fit depends "
+            "on menu and zoning."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_kbli_label_reply",
+        "message": "What KBLI applies to a coffee shop PT PMA?",
+        "reply": "A coffee shop usually maps to 56303 for cafe/drink house activity.",
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 9. cafe_pma (word-count > 115; message-intent gated) --------------------
+    {
+        "guard": "_guard_cafe_pma_reply",
+        "message": "What's the difference between a PT PMA and a PT lokal?",
+        "reply": (
+            "A PT PMA allows foreign ownership and has a higher capital requirement; a "
+            "PT lokal is fully Indonesian-owned. For example a cafe can use either "
+            "depending on who owns it."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_cafe_pma_reply",
+        "message": "Can I open a cafe in Canggu under a PT PMA?",
+        "reply": _CAFE_WRONG_LONG,
+        "lang": "en",
+        "expect": "clobber",
+    },
+    # 10. nominee (compositional intent) --------------------------------------
+    {
+        "guard": "_guard_nominee_reply",
+        "message": "Can my Indonesian friend hold the land title for me?",
+        "reply": (
+            "No — this is not just risky, it is illegal. A nominee arrangement is void "
+            "under Indonesian agrarian law; the asset can fall to the State and you'd "
+            "have no enforceable claim. The clean route is a PT PMA with HGB/Hak Pakai "
+            "or a proper leasehold."
+        ),
+        "lang": "en",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_nominee_reply",
+        "message": "Can my Indonesian friend hold the land title for me?",
+        "reply": (
+            "That can be a bit risky, but many people do it and it usually works out "
+            "fine in practice."
+        ),
+        "lang": "en",
+        "expect": "clobber",
+    },
+]
+
+
+def _discover_guards() -> set[str]:
+    """Every _guard_* callable in the live bridge module (dynamic)."""
+    return {
+        name
+        for name in dir(bridge)
+        if name.startswith("_guard_") and callable(getattr(bridge, name))
+    }
+
+
+@pytest.mark.parametrize(
+    "case",
+    GUARD_MATRIX,
+    ids=[f"{c['guard']}-{c['expect']}" for c in GUARD_MATRIX],
+)
+def test_guard_matrix_polarity(case: dict[str, Any]) -> None:
+    """pass == reply survives unchanged; clobber == reply is changed.
+
+    For APPEND/PREPEND guards a 'clobber' is still a change; we additionally
+    assert the expected marker so a guard that mutates the WRONG way is caught.
+    """
+    guard = getattr(bridge, case["guard"])
+    out = guard(case["message"], case["reply"], case["lang"])
+
+    if case["expect"] == "pass":
+        assert out == case["reply"], (
+            f"{case['guard']} clobbered a CORRECT answer (over-match): {out!r}"
+        )
+    else:  # clobber
+        assert out != case["reply"], (
+            f"{case['guard']} failed to clobber a WRONG answer: {out!r}"
+        )
+        # Action-specific marker so a wrong-direction mutation still fails.
+        if case["guard"] == "_guard_tax_compliance_reply":  # APPEND
+            assert out.startswith(case["reply"].rstrip())
+            assert "verify" in out.lower()
+        elif case["guard"] == "_guard_kbli_label_reply":  # PREPEND
+            assert out.startswith("KBLI direction to check")
+            assert out.rstrip().endswith(case["reply"].rstrip())
+
+
+def test_guard_matrix_covers_every_guard_both_polarities() -> None:
+    """META gate: every _guard_* must have a 'pass' AND a 'clobber' matrix case.
+
+    A newly-added guard with no entry (or only one polarity) FAILS here — that
+    is the anti-regression gate (W68/W72/W73 class). Discovery is dynamic, so no
+    hand-maintained list can drift out of sync with the module.
+    """
+    discovered = _discover_guards()
+    assert discovered, "no _guard_* functions discovered — loader/module broken"
+
+    polarities: dict[str, set[str]] = {}
+    for case in GUARD_MATRIX:
+        polarities.setdefault(case["guard"], set()).add(case["expect"])
+
+    # Every matrix entry must name a guard that actually exists in the module.
+    unknown = set(polarities) - discovered
+    assert not unknown, f"GUARD_MATRIX names nonexistent guards: {sorted(unknown)}"
+
+    missing_pass = sorted(g for g in discovered if "pass" not in polarities.get(g, set()))
+    missing_clobber = sorted(
+        g for g in discovered if "clobber" not in polarities.get(g, set())
+    )
+    assert not missing_pass and not missing_clobber, (
+        "GUARD_MATRIX incomplete — add cases for these guards "
+        f"(missing pass: {missing_pass}; missing clobber: {missing_clobber})"
+    )
