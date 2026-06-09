@@ -710,48 +710,88 @@ def _grow_subhead_px(css: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
+def _grow_heading_px(css: str) -> int | None:
+    """Pull the absolute .heading font-size (px) out of a lever CSS block."""
+    import re
+
+    m = re.search(r"\.headline,\.heading,h1\{font-size:(\d+)px", css)
+    return int(m.group(1)) if m else None
+
+
 def test_levers_to_css_grow_font_floor_and_cap():
     """grow_font targets the sub-headline with an ABSOLUTE px size: step 1 lands
-    on the legible floor (>=120px → ~17px at thumbnail) and never exceeds the
-    anti-overflow cap."""
+    on the floor and a high step is clamped to the cap, never above."""
     from wr2_html_renderer.composer import _GROW_CLAMP_PX, _levers_to_css
 
     min_px, cap_px = _GROW_CLAMP_PX["subhead"]
     css1 = _levers_to_css({"grow_subhead": 1})
     assert ".subhead" in css1  # targets the sub-headline element
-    assert _grow_subhead_px(css1) == min_px  # step 1 == legible floor
+    assert _grow_subhead_px(css1) == min_px  # step 1 == floor
     # a high step is clamped to the cap, never above
     assert _grow_subhead_px(_levers_to_css({"grow_subhead": 9})) == cap_px
     # no grow lever → no grow CSS at all
     assert _grow_subhead_px(_levers_to_css({"text_stroke": True})) is None
 
 
-def test_grow_font_min_floor_is_thumbnail_legible():
-    """The sub-headline legible floor is >=120px on the 1080px canvas (~17px at a
-    150px IG thumbnail) — the size the vision critic asks for. The 36px _base.css
-    default collapses to ~5px at thumbnail, hence the floor."""
-    from wr2_html_renderer.composer import _GROW_CLAMP_PX
+def test_grow_subhead_never_exceeds_title_no_hierarchy_inversion():
+    """BUG #2 (hierarchy inversion): the sub-headline (kicker) grow must NEVER
+    reach or exceed the cover title font-size — at ANY step. The kicker is an
+    accessory tag; the title must stay the largest element. Measured at the CSS
+    level here; pixel-verified in the E2E probe."""
+    from wr2_html_renderer.composer import (
+        _GROW_CLAMP_PX,
+        _HEADING_BASE_PX,
+        _levers_to_css,
+    )
 
-    min_px, cap_px = _GROW_CLAMP_PX["subhead"]
-    assert min_px >= 120, "sub-headline grow floor must clear thumbnail legibility"
-    assert cap_px > min_px, "cap must be above the floor"
+    sub_min, sub_cap = _GROW_CLAMP_PX["subhead"]
+    # the cap itself is strictly below the cover title base
+    assert sub_cap < _HEADING_BASE_PX, (
+        f"subhead grow cap {sub_cap}px must stay below title {_HEADING_BASE_PX}px"
+    )
+    assert sub_min <= sub_cap
+    # every grow step keeps the subhead below the title
+    for n in (1, 2, 3, 5, 10, 20):
+        px = _grow_subhead_px(_levers_to_css({"grow_subhead": n}))
+        assert px < _HEADING_BASE_PX, f"grow_subhead={n} → {px}px ≥ title (inversion)"
+
+
+def test_grow_heading_grows_title_and_stays_largest():
+    """grow_font target=heading enlarges the TITLE above its base, and even when
+    BOTH grow, the title stays larger than the kicker (hierarchy preserved)."""
+    from wr2_html_renderer.composer import _HEADING_BASE_PX, _levers_to_css
+
+    css = _levers_to_css({"grow_heading": 1})
+    head_px = _grow_heading_px(css)
+    assert head_px is not None and head_px >= _HEADING_BASE_PX
+    # both grown at once: title still dominates the kicker
+    both = _levers_to_css({"grow_heading": 1, "grow_subhead": 9})
+    assert _grow_heading_px(both) > _grow_subhead_px(both)
 
 
 def test_levers_to_css_grow_font_progresses_each_step():
-    """REGRESSION (the (52,64)/calc(1em*) no-op bug): every grow step must yield a
-    MEASURABLY larger font-size until the cap, not a constant value."""
+    """REGRESSION (the (52,64)/calc(1em*) no-op bug): grow steps must RISE
+    (non-decreasing, strictly rising at least once before the cap), never a flat
+    constant. The subhead cap range is small, so it rises then plateaus at cap."""
     from wr2_html_renderer.composer import _GROW_CLAMP_PX, _levers_to_css
 
     min_px, cap_px = _GROW_CLAMP_PX["subhead"]
     sizes = [_grow_subhead_px(_levers_to_css({"grow_subhead": n})) for n in (1, 2, 3, 4)]
-    # step 1 is the floor; intermediate steps strictly increase
-    assert sizes[0] == min_px
-    assert sizes[1] > sizes[0], f"step 2 did not grow: {sizes}"
-    assert sizes[2] > sizes[1], f"step 3 did not grow: {sizes}"
-    # never exceeds the cap
-    assert all(px <= cap_px for px in sizes)
+    assert sizes[0] == min_px  # step 1 is the floor
+    assert sizes == sorted(sizes)  # non-decreasing
+    assert sizes[-1] > sizes[0], f"never grew: {sizes}"  # rose at least once
+    assert all(px <= cap_px for px in sizes)  # never above cap
     # a very high step is exactly the cap
     assert _grow_subhead_px(_levers_to_css({"grow_subhead": 20})) == cap_px
+    # body grow (larger range) rises across consecutive steps too
+    body_sizes = []
+    for n in (1, 2, 3):
+        import re
+
+        css = _levers_to_css({"grow_body": n})
+        m = re.search(r"font-size:(\d+)px", css)
+        body_sizes.append(int(m.group(1)))
+    assert body_sizes[1] > body_sizes[0] and body_sizes[2] > body_sizes[1]
 
 
 @pytest.mark.asyncio
@@ -854,3 +894,25 @@ async def test_designer_loop_never_accepts_illegible_subhead_as_debt(monkeypatch
     )
     assert res.converged is False
     assert res.accepted_with_composition_debt is False
+
+
+def test_fill_placeholders_schema_fallback_old_and_new():
+    """BUG #3: _fill_placeholders reads BOTH schema variants — old Canva drafts
+    (heading/subheading) and new drafts (headline/subhead) — so an old-schema
+    cover is never rendered blank."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    html = "<h1>{{heading}}</h1><div class='subheading'>{{subheading}}</div><p>{{body}}</p>"
+    # OLD schema: heading/subheading/body present, headline/subhead absent
+    out_old = _fill_placeholders(
+        html, {"heading": "OLD TITLE", "subheading": "OLD KICKER", "body": "old body"},
+        hero_filename=None,
+    )
+    assert "OLD TITLE" in out_old and "OLD KICKER" in out_old and "old body" in out_old
+    assert "{{heading}}" not in out_old and "{{subheading}}" not in out_old
+    # NEW schema still works
+    out_new = _fill_placeholders(
+        html, {"headline": "NEW TITLE", "subhead": "NEW KICKER", "body": "new body"},
+        hero_filename=None,
+    )
+    assert "NEW TITLE" in out_new and "NEW KICKER" in out_new and "new body" in out_new

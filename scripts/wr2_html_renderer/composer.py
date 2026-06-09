@@ -224,10 +224,23 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
 # absolute on the canvas. Floors are set to clear ~17px-at-thumbnail and the cap
 # to ~22px-at-thumbnail. Every MIN is ABOVE the element's own 1em base so the
 # progressive step (below) is never pinned by the floor (the old (52,64) bug).
+#
+# BUG #2 (hierarchy inversion, pixel-measured 2026-06-10): a sub-headline grown
+# to a 120-160px "thumbnail-legible" size is LARGER than the 84px cover title
+# (--font-size-headline-cover) → the kicker dominates the title (the vision
+# correctly rejects "HIERARCHY INVERSION — the date dominates"). The kicker is an
+# accessory tag/category by the template contract; it must stay subordinate to
+# the title. So the sub-headline grow is now CAPPED relative to the title
+# (max = title * _SUBHEAD_MAX_FRACTION_OF_TITLE), NOT at a thumbnail-legible
+# floor. If the cover title itself reads too small at thumbnail, the right fix is
+# to grow the TITLE (grow_font target=heading), whose clamp stays the largest.
+_HEADING_BASE_PX = 84  # --font-size-headline-cover in the brand _base.css
+_SUBHEAD_MAX_FRACTION_OF_TITLE = 0.55  # kicker stays <= ~55% of the title size
 _GROW_CLAMP_PX = {
-    "subhead": (120, 160),  # ~16.7px..22px at thumbnail (base 36px → ~5px: unreadable)
+    # subhead capped under the title: (40, 46) with 46 = round(84 * 0.55) < 84.
+    "subhead": (40, round(_HEADING_BASE_PX * _SUBHEAD_MAX_FRACTION_OF_TITLE)),
     "body": (104, 140),     # ~14.4px..19px at thumbnail (base 28-32px)
-    "heading": (100, 150),  # heading base 60-84px; floor above base so a step shows
+    "heading": (100, 150),  # title grows ABOVE its 84px base, stays the largest
 }
 # Per grow step the target steps up FROM the legible floor (not from 1em). Each
 # step adds this fraction of the floor; min() with the cap guards overflow.
@@ -438,7 +451,10 @@ def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str |
       heading, subheading, body, image_url, regulation_code, statement.
     {{#if regulation_code}}...{{/if}} renders only if present.
     """
-    headline = (slide.get("headline") or "").strip()
+    # Schema-field fallback (BUG #3): newer drafts use headline/subhead, older
+    # (Canva) drafts use heading/subheading. Read BOTH so an old-schema draft does
+    # not render a blank cover (vision: "no editorial text").
+    headline = (slide.get("headline") or slide.get("heading") or "").strip()
     # rebalance_wrap lever (designer loop): re-wrap the headline into balanced
     # lines via a <br>. Text-only — applied here BEFORE placeholder substitution
     # so the skeleton's {{heading}}/{{statement}} carry the <br> verbatim (the
@@ -446,8 +462,8 @@ def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str |
     # tag, not literal text). Only when the lever is set in slide["_levers"].
     if (slide.get("_levers") or {}).get("_rebalance_wrap"):
         headline = _balance_headline(headline)
-    subhead = (slide.get("subhead") or "").strip()
-    body = (slide.get("body") or "").strip()
+    subhead = (slide.get("subhead") or slide.get("subheading") or "").strip()
+    body = (slide.get("body") or slide.get("body_text") or "").strip()
     reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()
 
     # {{#if regulation_code}} ... {{/if}}
