@@ -203,26 +203,88 @@ async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: b
 # ── render one carousel (per-slide designer loop, GO#3) ─────────────────────────
 async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Path, vision_required: bool) -> Path:
     """Render the carousel via the HTML engine. Returns the dir containing the slide PNGs.
-    Raises RuntimeError if any slide fails its hero/converge gate (GO#3 c5: ALL slides must
-    converge with a real PNG, else reject the whole carousel)."""
-    from wr2_html_renderer.composer import compose_carousel
+    Raises RuntimeError if any slide fails its hero/converge gate.
 
+    Two modes:
+    - default (vision NOT required): compose_carousel bulk straight-render with the
+      anti-Canva hero gate (result.ok requires heroes_placed == heroes_expected). Fast.
+    - WR2_VISION_REQUIRED=1: per-slide run_designer_loop with the Claude vision critic,
+      requiring converged AND final_png.exists() for EVERY slide (GO#3 c5). The engine's
+      fail-closed patch makes a slide NOT converge when vision was required but unavailable,
+      so this path genuinely enforces vision per hero."""
     out_dir = work / "carousel"
     out_dir.mkdir(parents=True, exist_ok=True)
+    slides_dir = out_dir / "slides"
 
-    # NOTE: compose_carousel is the bulk straight-render path with the anti-Canva
-    # hero gate (result.ok requires heroes_placed == heroes_expected). The per-slide
-    # run_designer_loop vision refinement is wired via WR2_VISION_REQUIRED in the engine;
-    # when vision is required and unavailable the engine (post fail-closed PR) raises.
-    result = await compose_carousel(slides, out_dir, topic="", timeout_ms=30000)
-    if not result.ok:
-        raise RuntimeError(
-            f"carousel render gate failed: slides={result.slides_rendered} "
-            f"heroes={result.heroes_placed}/{result.heroes_expected} failures={result.failures}"
-        )
-    if vision_required and not result.png_paths:
-        raise RuntimeError("vision required but no PNGs produced")
-    return out_dir / "slides"
+    if not vision_required:
+        from wr2_html_renderer.composer import compose_carousel
+
+        result = await compose_carousel(slides, out_dir, topic="", timeout_ms=30000)
+        if not result.ok:
+            raise RuntimeError(
+                f"carousel render gate failed: slides={result.slides_rendered} "
+                f"heroes={result.heroes_placed}/{result.heroes_expected} failures={result.failures}"
+            )
+        return slides_dir
+
+    # --- per-slide designer loop with vision (GO#3 c5) ---
+    from wr2_html_renderer.composer import (
+        _stage_assets,
+        make_slide_render_fn,
+        _download_hero,
+    )
+    from wr2_html_renderer.claude_vision import claude_design_critic
+    from wr2_html_renderer.designer_loop import run_designer_loop
+    import httpx
+
+    _stage_assets(out_dir)
+    slides_dir.mkdir(parents=True, exist_ok=True)
+    _stage_assets(slides_dir)
+
+    total = len(slides)
+    final_pngs: list[Path] = []
+    async with httpx.AsyncClient() as client:
+        for i, slide in enumerate(slides, start=1):
+            is_hero = bool(slide.get("is_hero_image")) or i == 1
+            hero_filename: str | None = None
+            if is_hero:
+                url = (slide.get("image_url") or "").strip()
+                if url:
+                    hero_filename = f"slide-{i:02d}-hero.jpg"
+                    ok = await _download_hero(client, url, slides_dir / hero_filename)
+                    if not ok:
+                        raise RuntimeError(f"slide {i} hero download failed (vision-required path)")
+
+            render_fn = make_slide_render_fn(
+                slides_dir=slides_dir, index=i, total=total,
+                hero_filename=hero_filename, timeout_ms=30000,
+            )
+            res = await run_designer_loop(
+                slide=slide,
+                render_fn=render_fn,
+                out_dir=slides_dir / f"loop-{i:02d}",
+                is_hero=is_hero,
+                hero_path=(slides_dir / hero_filename) if hero_filename else None,
+                vision_critic=claude_design_critic,
+                brand_verifier=claude_design_critic,
+                use_vision=True,
+                max_iters=3,
+            )
+            if not (res.converged and res.final_png and Path(res.final_png).is_file()):
+                raise RuntimeError(
+                    f"slide {i} did not converge (reason={res.reason!r} "
+                    f"final_png={res.final_png}) — GO#3 c5 reject"
+                )
+            # place the converged PNG at the canonical slot
+            dest = slides_dir / f"{i:02d}.png"
+            if Path(res.final_png).resolve() != dest.resolve():
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                Path(res.final_png).replace(dest)
+            final_pngs.append(dest)
+
+    if len(final_pngs) != total:
+        raise RuntimeError(f"per-slide render produced {len(final_pngs)}/{total} slides")
+    return slides_dir
 
 
 # ── heartbeat loop ──────────────────────────────────────────────────────────────
