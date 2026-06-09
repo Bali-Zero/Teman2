@@ -96,6 +96,7 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -162,28 +163,37 @@ _BACKSTOP_PATTERNS: dict[str, re.Pattern[str]] = {
 
 # Collapse a RUN of separator characters that sits BETWEEN TWO DIGITS so an ID
 # or phone pasted from a spreadsheet/copy reduces to its contiguous form before
-# the structured scan. The class is broad on purpose — the 24-agent M5 review
-# reproduced a Law-2 leak where "3171,2345,6789,0123" (comma), and the
-# underscore / slash / NBSP / thin-space / zero-width variants, were NOT in the
-# old `[ .\-]` set, so \b\d{16}\b never matched and the prompt routed CLOUD.
-# `\s` already covers ASCII + Unicode whitespace (space, tab, NBSP U+00A0,
-# thin/narrow spaces); the explicit chars add punctuation + the zero-width code
-# points that are NOT whitespace (U+200B/200C/200D, U+FEFF).
+# the structured scan. The M5 24-agent review reproduced a Law-2 leak where
+# "3171,2345,6789,0123" (comma) + underscore/slash/NBSP/zero-width variants were
+# NOT normalized, so \b\d{16}\b never matched and the prompt routed CLOUD. The
+# follow-up re-panel (DeepSeek+Codex) then proved the dash FAMILY and fullwidth
+# punctuation (autocorrect/CJK paste) still leaked - U+2010 plain hyphen,
+# U+2011/2013/2014 dashes, U+00AD soft-hyphen, U+2060 word-joiner, U+FF0C/FF0E
+# fullwidth comma/period, etc. Rather than enumerate code points (brittle), the
+# separator class is built from Unicode CATEGORIES via the stdlib `unicodedata`
+# (no 3rd-party `regex` dep): every dash (Pd), every format/invisible char (Cf -
+# soft-hyphen, zero-width, word-joiner, BOM), every space (Zs), plus an explicit
+# ASCII + fullwidth punctuation set. Stays current with Unicode automatically.
+#
 # STRICTLY between-digits (lookbehind+lookahead both \d) so it NEVER merges a
-# neighbouring WORD into the digit run — that would destroy the \b boundaries
-# the patterns rely on, AND it leaves alphabetic prose between numbers intact
-# ("4 cats and 8 dogs" is untouched). Letter-then-digit cases (passport
-# "A 1234567") are handled by the separator-tolerant PASSPORT_ID pattern.
-# Applied ONLY to a match-copy — the dispatched prompt is NEVER mutated. Any
-# over-match is safe (routes LOCAL).
-# punctuation/handle separators + the non-whitespace zero-width code points
-# (U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ, U+FEFF ZWNBSP/BOM). `\s` supplies the
-# whitespace family (incl. NBSP/thin/narrow). `\d` on both sides keeps it
-# between-digits only. Non-raw string so the \uXXXX escapes are decoded (the
-# zero-width chars stay readable in source, not pasted invisibly).
-_DIGIT_SEP_RE = re.compile(
-    "(?<=\\d)[\\s.,;:_/|'\\-\u200b\u200c\u200d\ufeff]+(?=\\d)"
-)
+# neighbouring WORD into the digit run (that would destroy the \b boundaries the
+# patterns rely on) and leaves alphabetic prose between numbers intact
+# ("4 cats and 8 dogs"). Letter-then-digit cases (passport "A 1234567") are
+# handled by the separator-tolerant PASSPORT_ID pattern. Applied ONLY to a
+# match-copy - the dispatched prompt is NEVER mutated. Any over-match is safe
+# (routes LOCAL).
+_DIGIT_SEP_EXPLICIT = set("\t .,;:_/|-'，．／：；＿｜−")
+
+
+def _build_digit_separator_class() -> str:
+    chars = set(_DIGIT_SEP_EXPLICIT)
+    for _cp in range(0xA0, 0x10000):
+        if unicodedata.category(chr(_cp)) in ("Zs", "Cf", "Pd"):
+            chars.add(chr(_cp))
+    return "".join(re.escape(c) for c in sorted(chars))
+
+
+_DIGIT_SEP_RE = re.compile("(?<=\\d)[\\s" + _build_digit_separator_class() + "]+(?=\\d)")
 
 
 def _structured_backstop(prompt: str) -> Optional[str]:

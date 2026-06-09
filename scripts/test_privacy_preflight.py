@@ -197,6 +197,34 @@ def test_spreadsheet_separator_ids_route_local():
             assert d.layer == "regex_backstop", (repr(sep), sample)
 
 
+def test_unicode_dash_and_fullwidth_separator_ids_route_local():
+    # Re-panel (DeepSeek+Codex) found the dash family + fullwidth punctuation
+    # (Office/Sheets autocorrect, CJK keyboards) still leaked. Category-based
+    # normalizer (Pd/Cf/Zs) must now catch all of them.
+    seps = [
+        "‐",  # hyphen
+        "‑",  # non-breaking hyphen
+        "–",  # en-dash
+        "—",  # em-dash
+        "­",  # soft hyphen
+        "⁠",  # word joiner
+        "−",  # minus sign
+        "，",  # fullwidth comma
+        "．",  # fullwidth period
+        "／",  # fullwidth solidus
+        "；",  # fullwidth semicolon
+    ]
+    for sep in seps:
+        ktp = sep.join(["3171", "2345", "6789", "0123"])  # 16 digits
+        d = privacy_preflight(
+            f"pasted {ktp} from sheet {PAD}",
+            task_type="SYNTHETIC_TEST",
+            redactor=_CleanRedactor(),
+        )
+        assert d.route is Route.LOCAL, repr(sep)
+        assert d.layer == "regex_backstop", repr(sep)
+
+
 def test_numeric_prose_not_overcollapsed_to_false_local():
     # the broad separator class must NOT merge alphabetic prose between numbers
     # into a false ID (would needlessly route legit tasks LOCAL).
