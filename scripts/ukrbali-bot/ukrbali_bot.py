@@ -30,6 +30,16 @@ RAG_URL = os.environ.get(
     "https://nuzantara-rag.fly.dev/api/v1/visa-oracle/chat",
 )
 CLAUDE_BIN = os.environ.get("UKRBALI_CLAUDE_BIN", "claude")
+# Toggle: "1" -> use Nuzantara visa-oracle RAG; "0" -> claude-only (no Zantara).
+USE_RAG = os.environ.get("UKRBALI_USE_RAG", "1").strip().lower() not in ("0", "false", "no", "off")
+
+PERSONA = (
+    "Ти — UkrBaliVisaAssistant, дружній асистент Bali Zero, що допомагає українцям "
+    "із візами та переїздом на Балі (Індонезія): туристичні візи (eVOA), KITAS, KITAP, "
+    "продовження, бізнес-візи, нерухомість, податки. Відповідай українською, коротко "
+    "і по суті (2-6 речень). На точні ціни чи персональний кейс — кажи, що уточниш із "
+    "командою Bali Zero. Не вигадуй регуляторні факти."
+)
 
 # --- in-memory per-chat conversation history (survives only while the daemon runs) ---
 # chat_id -> list[{"role": "user"|"assistant", "content": str}]
@@ -91,13 +101,39 @@ def to_ukrainian(rag_answer):
         return rag_answer
 
 
+def claude_brain(history, text):
+    """Claude-only answer (no Zantara). Uses persona + recent history."""
+    lines = []
+    for m in history[-6:]:
+        who = "Клієнт" if m.get("role") == "user" else "Ти"
+        lines.append(f"{who}: {m.get('content', '')[:300]}")
+    convo_block = ""
+    if lines:
+        convo_block = "Контекст розмови:\n" + "\n".join(lines) + "\n\n"
+    prompt = (
+        PERSONA + "\n\n"
+        + convo_block
+        + "Клієнт пише: " + text + "\n\nТвоя відповідь українською:"
+    )
+    try:
+        out = subprocess.run([CLAUDE_BIN, "-p", prompt],
+                             capture_output=True, text=True, timeout=120, cwd="/tmp")
+        return (out.stdout or "").strip() or "Вибачте, не вдалося згенерувати відповідь. Спробуйте ще раз."
+    except Exception as e:
+        print("[bot] brain error:", e, flush=True)
+        return "Технічна заминка — спробуйте, будь ласка, ще раз за хвилину."
+
+
 def handle(chat_id, text):
     history = HISTORY.get(chat_id, [])
-    answer, _conf = rag_ask(f"tg-{chat_id}", text, history=history)
-    if answer is None:
-        # don't pollute memory with non-answers
-        return HANDOFF
-    reply = to_ukrainian(answer)
+    if USE_RAG:
+        answer, _conf = rag_ask(f"tg-{chat_id}", text, history=history)
+        if answer is None:
+            # don't pollute memory with non-answers
+            return HANDOFF
+        reply = to_ukrainian(answer)
+    else:
+        reply = claude_brain(history, text)
     # remember this turn (bound size + chat count)
     if chat_id not in HISTORY and len(HISTORY) >= HISTORY_MAX_CHATS:
         HISTORY.pop(next(iter(HISTORY)), None)  # evict oldest chat
@@ -116,7 +152,7 @@ def main():
             offset = max(offset, u["update_id"] + 1)
     except Exception as e:
         print("[bot] drain error:", e, flush=True)
-    print(f"[bot] live (Nuzantara RAG). offset={offset}", flush=True)
+    print(f"[bot] live (brain={'Nuzantara RAG' if USE_RAG else 'claude-only'}). offset={offset}", flush=True)
 
     while True:
         try:

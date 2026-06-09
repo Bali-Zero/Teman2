@@ -61,8 +61,11 @@ tail -f ~/logs/ukrbali-bot.{log,err}
 
 ## Notes / caveats
 
-- The bot answers grounded on the Bali Zero visa knowledge base. On low confidence
-  (ABSTAIN) it does NOT invent — it asks the user to contact the Bali Zero team.
+- **Toggle Zantara on/off** with env `UKRBALI_USE_RAG`:
+  - `1` (default) — answers grounded on the Bali Zero visa RAG (+ Ukrainian rewrite).
+  - `0` — claude-only (general knowledge, no Zantara). Set in `~/.ukrbali-bot.env`:
+    `echo 'export UKRBALI_USE_RAG=0' >> ~/.ukrbali-bot.env` then restart.
+- The bot keeps per-chat conversation memory (last 8 msgs / 500 chats); `/reset` clears it.
 - The visa-oracle backend has no Ukrainian in its language map (ru/en/id/...), so it
   may answer in Russian; `claude` rewrites the result into Ukrainian.
 - **Rotate the token** (`/revoke` in @BotFather) if it was ever pasted in plaintext
