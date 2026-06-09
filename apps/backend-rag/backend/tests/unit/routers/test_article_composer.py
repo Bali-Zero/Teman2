@@ -640,8 +640,16 @@ def test_full_compose_and_publish_flow(
     """Integration test: compose article then publish it (DeepSeek-backed)."""
     mock_call.return_value = mock_llm_response
     mock_publisher.is_configured = True
-    mock_publisher.upload_file = AsyncMock(
-        return_value={"success": True, "commit_sha": "abc123", "path": "test.mdx"},
+    mock_publisher.create_commit_with_files = AsyncMock(
+        return_value={
+            "success": True,
+            "commit_sha": "abc123",
+            "files_count": 1,
+            "branch": "auto-publish/abc123",
+            "pull_request_url": "https://github.com/Balizero1987/Teman2/pull/123",
+            "pull_request_number": 123,
+            "auto_merge_enabled": True,
+        },
     )
 
     compose_request = ComposeRequest(
