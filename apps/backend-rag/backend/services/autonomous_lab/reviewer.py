@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
@@ -32,36 +33,52 @@ _RAW_MARKER_RE = re.compile(
     r"\b(?:RAW(?:_[A-Z0-9]+){1,}|[A-Z0-9]+_(?:MUST_NOT_LEAK|SHOULD_NOT_APPEAR))\b"
 )
 _SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{12,}"
+    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[^\s'\"<>,;]{12,}"
+)
+_SECRET_QUERY_KEY_RE = re.compile(
+    r"(?i)(?:^|[?&])(?:access[_-]?token|api[_-]?key|key|password|secret|signature|sig|token)="
 )
 _GOOGLE_WORKSPACE_WRITE_RE = re.compile(
     r"(?i)\b(?:google\s+(?:workspace|drive|docs|sheets)|gdrive|gam|clasp)\b"
     r".{0,80}\b(?:append|batchupdate|create|delete|insert|patch|update|write)\b"
 )
+_COMMAND_SEGMENT_RE = r"[^\n;&|]*"
+_SAFE_COMMAND_ARG_RE = r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}"
+_SAFE_WORKTREE_COMMAND_RE = re.compile(
+    rf"^python scripts/agent_start\.py --lane {_SAFE_COMMAND_ARG_RE} --task-id {_SAFE_COMMAND_ARG_RE}$"
+)
 _COMMAND_BLOCK_PATTERNS = (
     (
         "deploy_command",
         re.compile(
-            r"(?i)\b(?:fly|flyctl)\s+deploy\b"
-            r"|\bvercel\s+(?:deploy|--prod)\b"
-            r"|\b(?:npm|pnpm|yarn)\s+(?:run\s+)?deploy\b"
-            r"|\bdocker\s+push\b"
-            r"|\bkubectl\s+(?:apply|rollout|set)\b"
-            r"|\bgcloud\s+run\s+deploy\b"
-            r"|\bterraform\s+apply\b"
+            rf"(?i)\b(?:fly|flyctl)\b(?={_COMMAND_SEGMENT_RE}\bdeploy\b)"
+            rf"|\bvercel\b(?={_COMMAND_SEGMENT_RE}(?:\bdeploy\b|--prod\b))"
+            rf"|\b(?:npm|pnpm|yarn)\b(?={_COMMAND_SEGMENT_RE}\bdeploy\b)"
+            rf"|\bdocker\b(?={_COMMAND_SEGMENT_RE}\bpush\b)"
+            rf"|\bkubectl\b(?={_COMMAND_SEGMENT_RE}\b(?:apply|rollout|set)\b)"
+            rf"|\bgcloud\b(?={_COMMAND_SEGMENT_RE}\brun\b{_COMMAND_SEGMENT_RE}\bdeploy\b)"
+            rf"|\bterraform\b(?={_COMMAND_SEGMENT_RE}\bapply\b)"
         ),
         "deployment commands are not allowed in lab receipts",
     ),
-    ("push_command", re.compile(r"(?i)\bgit\s+push\b"), "git push is not allowed"),
+    (
+        "push_command",
+        re.compile(rf"(?i)\bgit\b(?={_COMMAND_SEGMENT_RE}\bpush\b)"),
+        "git push is not allowed",
+    ),
     (
         "merge_command",
-        re.compile(r"(?i)\bgit\s+(?:merge|rebase)\b|\bgh\s+pr\s+merge\b"),
+        re.compile(
+            rf"(?i)\bgit\b(?={_COMMAND_SEGMENT_RE}\b(?:merge|rebase)\b)"
+            rf"|\bgh\b(?={_COMMAND_SEGMENT_RE}\bpr\b{_COMMAND_SEGMENT_RE}\bmerge\b)"
+        ),
         "merge or rebase commands are not allowed",
     ),
     (
         "unsafe_command",
         re.compile(
             r"(?i)\brm\s+-[A-Za-z]*r[A-Za-z]*f\b"
+            r"|\brm\s+-[A-Za-z]*f[A-Za-z]*r\b"
             r"|\bsudo\b"
             r"|\bchmod\s+777\b"
             r"|\bchown\b"
@@ -193,15 +210,16 @@ class AutonomousLabReviewer:
             if gate.get("passed") is not False:
                 continue
             name = str(gate.get("name", "unnamed_gate"))
+            safe_name = _receipt_safe_evidence(name)
             findings.append(
                 LabReviewFinding(
                     "google_workspace_write_request"
                     if name == "google_workspace_write_block"
                     else "failed_planner_gate",
                     _severity_from_value(gate.get("severity")),
-                    f"planner safety gate failed: {name}",
+                    f"planner safety gate failed: {safe_name}",
                     f"safety_gates[{index}]",
-                    _shorten(str(gate.get("detail", ""))),
+                    _receipt_safe_evidence(str(gate.get("detail", ""))),
                 )
             )
         return findings
@@ -249,7 +267,32 @@ class AutonomousLabReviewer:
 
     def _review_commands(self, receipt: Mapping[str, Any]) -> list[LabReviewFinding]:
         findings: list[LabReviewFinding] = []
+        worktree_command = _simulation_plan(receipt).get("worktree_command")
+        if not isinstance(worktree_command, str) or not worktree_command.strip():
+            findings.append(
+                LabReviewFinding(
+                    "missing_worktree_command",
+                    GateSeverity.BLOCKER,
+                    "simulation_plan.worktree_command must be a non-empty string",
+                    "simulation_plan.worktree_command",
+                    type(worktree_command).__name__,
+                )
+            )
+
         for location, command in _command_strings(receipt):
+            if (
+                location == "simulation_plan.worktree_command"
+                and not _SAFE_WORKTREE_COMMAND_RE.match(command.strip())
+            ):
+                findings.append(
+                    LabReviewFinding(
+                        "worktree_command_not_allowlisted",
+                        GateSeverity.BLOCKER,
+                        "worktree command is not in the autonomous lab allowlist",
+                        location,
+                        _receipt_safe_evidence(command),
+                    )
+                )
             for rule_id, pattern, message in _COMMAND_BLOCK_PATTERNS:
                 if pattern.search(command):
                     findings.append(
@@ -258,7 +301,7 @@ class AutonomousLabReviewer:
                             GateSeverity.BLOCKER,
                             message,
                             location,
-                            _shorten(command),
+                            _receipt_safe_evidence(command),
                         )
                     )
         return findings
@@ -273,7 +316,7 @@ class AutonomousLabReviewer:
                         GateSeverity.BLOCKER,
                         "Google Workspace write request is not allowed in lab receipts",
                         location,
-                        _shorten(value),
+                        _receipt_safe_evidence(value),
                     )
                 )
             elif _GOOGLE_WORKSPACE_WRITE_RE.search(value):
@@ -283,7 +326,7 @@ class AutonomousLabReviewer:
                         GateSeverity.BLOCKER,
                         "Google Workspace write request is not allowed in lab receipts",
                         location,
-                        _shorten(value),
+                        _receipt_safe_evidence(value),
                     )
                 )
         return findings
@@ -299,7 +342,7 @@ class AutonomousLabReviewer:
                         GateSeverity.BLOCKER,
                         "receipt contains a raw-text-like field",
                         location,
-                        _shorten(value),
+                        _receipt_safe_evidence(value, force_fingerprint=True),
                     )
                 )
             elif _RAW_MARKER_RE.search(value) or _SECRET_ASSIGNMENT_RE.search(value):
@@ -309,7 +352,7 @@ class AutonomousLabReviewer:
                         GateSeverity.BLOCKER,
                         "receipt contains raw-text-like leakage signal",
                         location,
-                        _shorten(value),
+                        _receipt_safe_evidence(value, force_fingerprint=True),
                     )
                 )
         return findings
@@ -341,7 +384,7 @@ class AutonomousLabReviewer:
                         GateSeverity.BLOCKER,
                         "verification command is not in the autonomous lab allowlist",
                         f"simulation_plan.verification_commands[{index}]",
-                        _shorten(normalized_command),
+                        _receipt_safe_evidence(normalized_command),
                     )
                 )
         if findings:
@@ -421,13 +464,22 @@ def _command_strings(receipt: Mapping[str, Any]) -> Iterator[tuple[str, str]]:
             if isinstance(command, str):
                 yield f"simulation_plan.verification_commands[{index}]", command
 
-    planned_only_commands = receipt.get("planned_only_commands")
+    yield from _extra_command_strings(receipt)
+    run_scope = _run_scope(receipt)
+    if run_scope is not receipt:
+        yield from _extra_command_strings(run_scope, location_prefix="run.")
+
+
+def _extra_command_strings(
+    scope: Mapping[str, Any], *, location_prefix: str = ""
+) -> Iterator[tuple[str, str]]:
+    planned_only_commands = scope.get("planned_only_commands")
     if isinstance(planned_only_commands, list):
         for index, command in enumerate(planned_only_commands):
             if isinstance(command, str):
-                yield f"planned_only_commands[{index}]", command
+                yield f"{location_prefix}planned_only_commands[{index}]", command
 
-    stage_results = receipt.get("stage_results")
+    stage_results = scope.get("stage_results")
     if isinstance(stage_results, list):
         for stage_index, stage in enumerate(stage_results):
             if not isinstance(stage, Mapping):
@@ -438,7 +490,8 @@ def _command_strings(receipt: Mapping[str, Any]) -> Iterator[tuple[str, str]]:
             for command_index, command in enumerate(stage_commands):
                 if isinstance(command, str):
                     yield (
-                        f"stage_results[{stage_index}].planned_only_commands[{command_index}]",
+                        f"{location_prefix}stage_results[{stage_index}]"
+                        f".planned_only_commands[{command_index}]",
                         command,
                     )
 
@@ -472,6 +525,26 @@ def _looks_like_raw_text(value: str) -> bool:
         return True
     words = re.findall(r"\w+", stripped)
     return len(words) >= 24 or stripped.count("\n") >= 2
+
+
+def _receipt_safe_evidence(value: str, *, force_fingerprint: bool = False) -> str:
+    if force_fingerprint or _contains_sensitive_evidence(value):
+        return f"evidence_fingerprint:{_safe_sha256_fingerprint(value)}; chars:{len(value)}"
+    return _shorten(value)
+
+
+def _contains_sensitive_evidence(value: str) -> bool:
+    return bool(
+        _RAW_MARKER_RE.search(value)
+        or _SECRET_ASSIGNMENT_RE.search(value)
+        or _SECRET_QUERY_KEY_RE.search(value)
+    )
+
+
+def _safe_sha256_fingerprint(value: str, hex_chars: int = 16) -> str:
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:hex_chars]
+    grouped = "-".join(digest[index : index + 4] for index in range(0, len(digest), 4))
+    return f"sha256:{grouped}"
 
 
 def _severity_from_value(value: Any) -> GateSeverity:

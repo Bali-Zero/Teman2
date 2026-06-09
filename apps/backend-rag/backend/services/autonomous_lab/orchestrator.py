@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -14,6 +16,13 @@ from backend.services.autonomous_lab.planner import (
     ResearchMaterial,
 )
 from backend.services.autonomous_lab.reviewer import AutonomousLabReviewer
+
+_RECEIPT_RAW_MARKER_RE = re.compile(
+    r"\b(?:RAW(?:_[A-Z0-9]+){1,}|[A-Z0-9]+_(?:MUST_NOT_LEAK|SHOULD_NOT_APPEAR))\b"
+)
+_RECEIPT_SECRET_ASSIGNMENT_RE = re.compile(
+    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{12,}"
+)
 
 
 class FleetStageStatus(str, Enum):
@@ -169,7 +178,7 @@ class LabOrchestrationResult:
         return bool(self.failed_blockers)
 
     def to_receipt(self) -> dict[str, Any]:
-        return {
+        payload = {
             "run": self.run.to_receipt(),
             "agent_fleet": [member.to_receipt() for member in self.fleet],
             "stage_results": [stage.to_receipt() for stage in self.stages],
@@ -180,6 +189,7 @@ class LabOrchestrationResult:
             "blocked": self.blocked,
             "receipt_safe": True,
         }
+        return _redact_receipt_unsafe_values(payload)
 
 
 DEFAULT_AGENT_FLEET: tuple[AgentFleetMember, ...] = (
@@ -287,9 +297,7 @@ class AutonomousLabOrchestrator:
                 summary=f"normalized {len(run.materials)} material envelope(s)",
                 inputs=[material.material_id for material in run.materials],
                 outputs=[material.content_fingerprint for material in run.materials],
-                blockers=["materials_present"]
-                if "materials_present" in failed_blockers
-                else [],
+                blockers=["materials_present"] if "materials_present" in failed_blockers else [],
             ),
             FleetStageResult(
                 order=2,
@@ -395,3 +403,22 @@ class AutonomousLabOrchestrator:
                 )
             )
         return findings
+
+
+def _redact_receipt_unsafe_values(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _redact_receipt_unsafe_values(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_redact_receipt_unsafe_values(child) for child in value]
+    if isinstance(value, str) and _is_receipt_unsafe_value(value):
+        return _redacted_receipt_value(value)
+    return value
+
+
+def _is_receipt_unsafe_value(value: str) -> bool:
+    return bool(_RECEIPT_RAW_MARKER_RE.search(value) or _RECEIPT_SECRET_ASSIGNMENT_RE.search(value))
+
+
+def _redacted_receipt_value(value: str) -> str:
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
+    return f"redacted_receipt_value:{digest}"

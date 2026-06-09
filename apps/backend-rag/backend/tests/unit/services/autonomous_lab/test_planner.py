@@ -119,6 +119,41 @@ def test_receipt_sanitizes_objective_and_sensitive_source_uri() -> None:
     assert "drive_metadata:source_fingerprint:sha256:" in receipt
 
 
+def test_receipt_sanitizes_material_identifiers_and_titles() -> None:
+    raw_material_id = "RAW_MATERIAL_ID_SHOULD_NOT_APPEAR"
+    raw_title_marker = "RAW_TITLE_SHOULD_NOT_APPEAR"
+    raw_title_token = "token=abc.def.ghi.jkl"
+    private_source_uri = "note://local/material-safety"
+    planner = AutonomousLabPlanner(worktree_lane="ops")
+    run = planner.draft_run(
+        objective="test material receipt safety",
+        materials=[
+            ResearchMaterial(
+                material_id=raw_material_id,
+                source_type=MaterialSourceType.OPERATOR_NOTE,
+                source_uri=private_source_uri,
+                title=f"Collected prompt {raw_title_marker} {raw_title_token}",
+                text="Derived facts only for the planner receipt.",
+                captured_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+                metadata={},
+            )
+        ],
+        target_paths=["apps/backend-rag/backend/services/autonomous_lab/planner.py"],
+        task_id="material-receipt-safety",
+        created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+    )
+
+    receipt = json.dumps(run.to_receipt(), sort_keys=True)
+
+    assert raw_material_id not in receipt
+    assert raw_title_marker not in receipt
+    assert raw_title_token not in receipt
+    assert private_source_uri not in receipt
+    assert "material_fingerprint:sha256:" in receipt
+    assert "operator_note:source_fingerprint:sha256:" in receipt
+    assert "title_fingerprint:sha256:" in receipt
+
+
 def test_planner_rejects_unsafe_target_paths() -> None:
     planner = AutonomousLabPlanner(worktree_lane="ops")
 
@@ -128,6 +163,17 @@ def test_planner_rejects_unsafe_target_paths() -> None:
             materials=[_material()],
             target_paths=["../outside.py"],
             task_id="unsafe-path",
+            created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+        )
+
+    with pytest.raises(ValueError, match="receipt-sensitive"):
+        planner.draft_run(
+            objective="test sensitive path",
+            materials=[_material()],
+            target_paths=[
+                "apps/backend-rag/backend/services/autonomous_lab/token=abcdef1234567890.py"
+            ],
+            task_id="sensitive-path",
             created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
         )
 

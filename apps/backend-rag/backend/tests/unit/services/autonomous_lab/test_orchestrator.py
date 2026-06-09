@@ -16,14 +16,16 @@ def _material(
     *,
     material_id: str = "m1",
     source_type: MaterialSourceType = MaterialSourceType.OPERATOR_NOTE,
+    source_uri: str | None = None,
+    title: str = "Bounded orchestration material",
     text: str = "A lab note says experiments need prod-like verification before promotion.",
     metadata: dict[str, str] | None = None,
 ) -> ResearchMaterial:
     return ResearchMaterial(
         material_id=material_id,
         source_type=source_type,
-        source_uri=f"{source_type.value}://example/{material_id}",
-        title="Bounded orchestration material",
+        source_uri=source_uri or f"{source_type.value}://example/{material_id}",
+        title=title,
         text=text,
         captured_at=datetime(2026, 6, 9, tzinfo=timezone.utc),
         metadata=metadata or {},
@@ -33,12 +35,15 @@ def _material(
 def _orchestrate(
     *,
     materials: list[ResearchMaterial] | None = None,
+    target_paths: list[str] | None = None,
 ) -> LabOrchestrationResult:
     orchestrator = AutonomousLabOrchestrator()
     return orchestrator.orchestrate(
         objective="implement bounded autonomous lab orchestration",
         materials=materials if materials is not None else [_material()],
-        target_paths=[
+        target_paths=target_paths
+        if target_paths is not None
+        else [
             "apps/backend-rag/backend/services/autonomous_lab/orchestrator.py",
             "apps/backend-rag/backend/tests/unit/services/autonomous_lab/test_orchestrator.py",
         ],
@@ -89,6 +94,21 @@ def test_orchestration_receipt_omits_raw_material_text() -> None:
     assert all(stage.external_calls == 0 for stage in result.stages)
 
 
+def test_orchestration_receipt_redacts_raw_and_secret_like_material_fields() -> None:
+    raw_phrase = "RAW_STAGE_VALUE_SHOULD_NOT_APPEAR"
+    secret_like_value = "token=abcdef1234567890"
+    result = _orchestrate(materials=[_material(text="Derived body without raw marker.")])
+    result.stages[0].inputs.append(raw_phrase)
+    result.stages[1].outputs.append(secret_like_value)
+
+    receipt_text = json.dumps(result.to_receipt(), sort_keys=True)
+
+    assert raw_phrase not in receipt_text
+    assert secret_like_value not in receipt_text
+    assert "redacted_receipt_value:" in receipt_text
+    assert result.blocked is False
+
+
 def test_planner_blockers_propagate_to_review_and_receipt() -> None:
     result = _orchestrate(
         materials=[
@@ -97,9 +117,7 @@ def test_planner_blockers_propagate_to_review_and_receipt() -> None:
     )
 
     reviewer_stage = next(stage for stage in result.stages if stage.role == "reviewer")
-    verifier_stage = next(
-        stage for stage in result.stages if stage.role == "verification_planner"
-    )
+    verifier_stage = next(stage for stage in result.stages if stage.role == "verification_planner")
     receipt = result.to_receipt()
 
     assert result.blocked is True

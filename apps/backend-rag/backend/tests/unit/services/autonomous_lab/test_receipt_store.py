@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import backend.services.autonomous_lab.receipt_store as receipt_store_module
 from backend.services.autonomous_lab.planner import (
     AutonomousLabPlanner,
     MaterialSourceType,
@@ -99,12 +100,67 @@ def test_receipt_store_rejects_mutating_commands(tmp_path: Path) -> None:
         )
 
 
+def test_receipt_store_rejects_embedded_unpersistable_findings(tmp_path: Path) -> None:
+    store = ReceiptStore(tmp_path)
+
+    with pytest.raises(ValueError, match="raw_text_leakage"):
+        store.write_receipt(
+            {
+                "run": _run().to_receipt(),
+                "blocked": True,
+                "review_findings": [
+                    {
+                        "code": "raw_text_leakage",
+                        "severity": "blocker",
+                        "detail": "redacted unsafe receipt value",
+                    }
+                ],
+                "failed_blockers": ["raw_text_leakage"],
+            }
+        )
+
+
 def test_receipt_store_does_not_overwrite_existing_receipt(tmp_path: Path) -> None:
     store = ReceiptStore(tmp_path)
     store.write_run(_run())
 
     with pytest.raises(FileExistsError, match="receipt already exists"):
         store.write_run(_run())
+
+
+def test_receipt_store_does_not_overwrite_if_receipt_appears_during_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = ReceiptStore(tmp_path)
+    original_write_json_atomic = receipt_store_module._write_json_atomic
+    first_writer_payload = {
+        "run_id": "race-receipt",
+        "summary": "first writer wins",
+        "blocked": False,
+    }
+
+    def simulate_concurrent_writer(path: Path, payload: dict) -> None:
+        path.write_text(json.dumps(first_writer_payload), encoding="utf-8")
+        original_write_json_atomic(path, payload)
+
+    monkeypatch.setattr(
+        receipt_store_module,
+        "_write_json_atomic",
+        simulate_concurrent_writer,
+    )
+
+    with pytest.raises(FileExistsError, match="receipt already exists"):
+        store.write_receipt(
+            {
+                "run_id": "race-receipt",
+                "summary": "second writer must not replace this",
+                "blocked": False,
+            }
+        )
+
+    receipt = json.loads((tmp_path / "race-receipt.json").read_text(encoding="utf-8"))
+    assert receipt == first_writer_payload
 
 
 def test_receipt_store_rejects_unsafe_run_id(tmp_path: Path) -> None:
