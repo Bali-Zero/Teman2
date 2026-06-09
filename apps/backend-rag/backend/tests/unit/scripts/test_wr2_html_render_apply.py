@@ -567,6 +567,233 @@ async def test_designer_loop_does_not_accept_on_real_legibility_residual(monkeyp
     assert res.composition_debt == []
 
 
+@pytest.mark.asyncio
+async def test_designer_loop_idempotent_rebalance_falls_through_to_debt(monkeypatch):
+    """NO-OP LEVER FIX: the vision keeps proposing rebalance_wrap, but the
+    headline is already at its balanced pixel-optimum, so re-applying the lever
+    yields the IDENTICAL render (proposed == levers_acc on iter 2). That no-op
+    must NOT count as progress: with a SOFT (editorial) residual it falls through
+    to accepted_with_composition_debt instead of spinning to max_iters."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    calls = {"n": 0}
+
+    def vision_critic(png, slide, ctx):
+        # Every iteration: reject for a SOFT editorial reason AND re-propose the
+        # SAME rebalance_wrap lever. After iter 1 commits _rebalance_wrap, iter 2
+        # re-proposes it → proposed == levers_acc → no-op.
+        calls["n"] += 1
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=[
+                "hero photo is a generic dark interior, editorially weak for this story",
+            ],
+            levers=[{"lever": "rebalance_wrap", "reason": "balance the headline lines"}],
+            score=0.6,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "The KITAS Bribe Trail Reaches the Very Top of It"},
+        render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    # Iter 1 commits rebalance (progress), iter 2 is a no-op → SOFT residual →
+    # accept as composition debt. Must NOT have spun all 3 iterations.
+    assert res.converged is True
+    assert res.accepted_with_composition_debt is True
+    assert res.reason == "accepted_with_composition_debt"
+    assert any("editorially weak" in d for d in res.composition_debt)
+    # the no-op short-circuit fired before exhausting max_iters
+    assert res.iterations <= 2
+    assert calls["n"] <= 2
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_progressive_rebalance_is_not_premature_debt(monkeypatch):
+    """CAUTION: a rebalance_wrap on a NOT-yet-balanced title is REAL progress
+    (proposed != levers_acc on iter 1) and must NOT be downgraded to no-op. Here
+    the lever lands on iter 1 and the next vision pass converges via PASS — the
+    loop must NOT short-circuit into composition-debt on the very first
+    (progressive) application."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    seq = {"n": 0}
+
+    def vision_critic(png, slide, ctx):
+        seq["n"] += 1
+        if seq["n"] == 1:
+            # first look: title needs a re-wrap → propose the lever (PROGRESS)
+            return dl.Critique(
+                tier="vision", passed=False,
+                issues=["title leaves an awkward two-word tail"],
+                levers=[{"lever": "rebalance_wrap", "reason": "balance the lines"}],
+                score=0.7,
+            )
+        # after the re-wrap applied, the render now passes vision → converge
+        return dl.Critique(tier="vision", passed=True, issues=[], levers=[], score=0.95)
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "A Title That Needs A Rebalance To Read Well"},
+        render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    # converged via a real vision PASS after the progressive rebalance — NOT via
+    # the composition-debt fallback.
+    assert res.converged is True
+    assert res.accepted_with_composition_debt is False
+    assert res.reason != "accepted_with_composition_debt"
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_noop_lever_with_hard_residual_does_not_accept(monkeypatch):
+    """CAUTION: a no-op (idempotent) rebalance does NOT excuse a HARD residual.
+    If the lever is a no-op AND the residual is a real legibility defect (a
+    single-word orphan), the loop must NOT converge — the gate stays strict."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        # always re-propose the SAME rebalance_wrap (becomes a no-op on iter 2)
+        # AND flag a HARD single-word orphan → must NOT be accepted as debt.
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=["single-word orphan 'TOP' stranded alone on the last line — unreadable"],
+            levers=[{"lever": "rebalance_wrap", "reason": "balance the lines"}],
+            score=0.4,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "The Whole KITAS Bribe Trail Reaches The Top"},
+        render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    assert res.converged is False
+    assert res.accepted_with_composition_debt is False
+    assert res.composition_debt == []
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_scrim_lever_is_always_progress_not_noop(monkeypatch):
+    """SANITY: an accumulating lever (scrim_opacity, +delta each step) ALWAYS
+    changes the lever state (proposed != levers_acc), so it must NEVER be
+    misread as a no-op. With a HARD residual and a still-progressing scrim, the
+    loop keeps iterating (and ultimately does not accept-as-debt) — proving the
+    no-op signal isolates only truly-idempotent levers."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    seen_levers_before: list = []
+
+    def vision_critic(png, slide, ctx):
+        # always reject + propose scrim_opacity (accumulates delta → never a no-op)
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=["text a touch low-contrast over the photo"],
+            levers=[{"lever": "scrim_opacity", "delta": 0.1, "reason": "low contrast"}],
+            score=0.5,
+        )
+
+    async def render_fn(slide, png_path):
+        # record the accumulated scrim each render — it must keep climbing
+        seen_levers_before.append(slide.get("_levers", {}).get("scrim_opacity"))
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    # scrim never folds to a no-op → the loop iterated (made_progress stayed True),
+    # so it did NOT short-circuit into composition-debt on iteration 2.
+    assert res.accepted_with_composition_debt is False
+    # the scrim actually accumulated across renders (distinct, climbing values)
+    scrims = [v for v in seen_levers_before if v is not None]
+    assert scrims == sorted(scrims)
+    assert len(set(scrims)) >= 2
+
+
 def test_classify_residual_issues():
     """Unit: the residual-issue classifier separates editorial debt from hard
     legibility/brand defects."""

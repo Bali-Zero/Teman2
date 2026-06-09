@@ -531,16 +531,25 @@ async def run_designer_loop(
             # auto-apply — so we stop and keep the best render rather than spin.
             proposed = {**levers_acc}
             applied = _apply_levers(proposed, vc.levers)
-            if not applied:
-                # No CSS-applicable lever to pull. The cheap tiers (geometry +
-                # legibility + OCR) already PASSED to reach here, so the slide is
-                # LEGIBLE. FIX#4 (operator decision 2026-06-10): if the residual
-                # vision reject is PURELY editorial/composition (weak/generic
-                # hero, awkward spacing, rerender-only) — i.e. no HARD legibility
-                # or brand claim — accept the best render as composition DEBT
-                # instead of spinning out the iterations to a render_failed. A
-                # legibility defect (an orphan word, a clipped/garbled title) is
-                # NOT debt — it stays a hard reject so FIX#2b must actually fix it.
+            # NO-OP DETECTION: a lever that does not change the accumulated lever
+            # state produces the IDENTICAL render (e.g. rebalance_wrap re-proposed
+            # on an already-optimally-wrapped title — _balance_headline is
+            # idempotent). It is NOT progress, so it must not keep the loop
+            # spinning to max_iters. "applied" levers that leave proposed ==
+            # levers_acc are reclassified as non-progressive.
+            made_progress = bool(applied) and proposed != levers_acc
+            if not made_progress:
+                # No render-changing lever to pull (none applicable, OR the
+                # applied levers are idempotent no-ops). The cheap tiers (geometry
+                # + legibility + OCR) already PASSED to reach here, so the slide
+                # is LEGIBLE. FIX#4 (operator decision 2026-06-10): if the
+                # residual vision reject is PURELY editorial/composition (weak/
+                # generic hero, awkward spacing, a no-op rebalance, rerender-only)
+                # — i.e. no HARD legibility or brand claim — accept the best
+                # render as composition DEBT instead of spinning out the
+                # iterations to a render_failed. A legibility defect (an orphan
+                # word, a clipped/garbled title) is NOT debt — it stays a hard
+                # reject so FIX#2b must actually fix it.
                 proposed_levers = {lev.get("lever") for lev in vc.levers}
                 non_css = sorted(proposed_levers)
                 # the slide already attempted the headline re-wrap if a prior
@@ -551,7 +560,19 @@ async def run_designer_loop(
                 has_hard, all_composition = _classify_residual_issues(
                     list(vc.issues), rebalance_applied=rebalance_applied
                 )
-                comp_levers_only = (not vc.levers) or _is_composition_only_lever(proposed_levers)
+                # The render cannot be improved when: no applicable lever, OR the
+                # only proposed levers are composition-only (rerender/regen), OR
+                # the applied levers were idempotent no-ops (already at optimum).
+                no_op_levers = bool(applied) and proposed == levers_acc
+                comp_levers_only = (
+                    (not vc.levers)
+                    or _is_composition_only_lever(proposed_levers)
+                    or no_op_levers
+                )
+                if no_op_levers:
+                    iter_record["noop_levers"] = sorted(
+                        {lev.get("lever") for lev in applied}
+                    )
                 if not has_hard and all_composition and comp_levers_only:
                     debt = list(vc.issues)
                     logger.warning(
