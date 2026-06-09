@@ -167,7 +167,16 @@ def claude_design_critic(png_path: Path, slide: dict[str, Any], context: dict[st
     """Claude-vision design critic (Tier 3). Returns a Critique with levers."""
     obj = _run_claude_json(_CRITIC_PROMPT.format(png_path=png_path), _CRITIC_SCHEMA)
     if obj is None:
-        # vision unavailable → don't block the pipeline; treat as soft-pass with a note
+        # vision unavailable. Default: soft-pass (don't block — historical behavior).
+        # WR2_VISION_REQUIRED=1 (v4 condition E / GO#3 c1): FAIL-CLOSED — a carousel
+        # must NOT be marked rendered when the vision critic could not actually run.
+        if os.environ.get("WR2_VISION_REQUIRED") == "1":
+            return Critique(
+                tier="vision",
+                passed=False,
+                issues=["vision REQUIRED but unavailable — fail-closed (WR2_VISION_REQUIRED=1)"],
+                levers=[],
+            )
         return Critique(tier="vision", passed=True, issues=["vision unavailable — skipped"], levers=[])
     levers = [l for l in obj.get("levers", []) if l.get("lever") in _ALLOWED_LEVERS]
     issues = list(obj.get("issues", []))

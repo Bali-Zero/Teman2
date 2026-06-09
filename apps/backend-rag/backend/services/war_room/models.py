@@ -20,7 +20,10 @@ class DraftStatus(str, Enum):
     RESEARCHED = "researched"
     CONCEPT = "concept"
     DRAFTS = "drafts"
+    RENDERING = "rendering"  # WR2 v4: lease in-progress (legitimized by migration 222)
     RENDERED = "rendered"
+    RENDER_FAILED = "render_failed"  # WR2 v4: circuit-breaker terminal after N failed cycles
+    RENDERED_SHADOW = "rendered_shadow"  # WR2 v4: shadow dry-run terminal, never sent to WhatsApp
     PENDING_REVIEW = "pending_review"
     APPROVED = "approved"
     REJECTED = "rejected"
