@@ -144,3 +144,13 @@ is caught by the canary and undone by the rollback.
 ## Out of scope (still)
 p6/p7/p8/p3/hot-zone are NOT required-safe (failing or never-run). Re-evaluate
 each only after it is green-stable on main with its own sentinel.
+
+---
+
+## EXECUTED 2026-06-09 — BUCO #1 closed
+
+- Sentinel (#1201) merged; both contexts proven SUCCESS on path-HIT (#1204) AND path-MISS (#1205).
+- Main-branch stability confirmed (vtv 4/4, p1s2 2/2 success).
+- `required_status_checks` updated via **PATCH** (NOT PUT — PUT 404s on this sub-resource; the original spec verb was wrong) to 11 contexts: the original 9 + `verify-the-verifiers` + `Canary self-test + incremental mutation`. strict=true preserved.
+- This markdown-only PR is the falsifiable canary: it MUST merge (path-miss → sentinel SUCCESS), proving the new required checks do NOT pending-forever-block doc PRs.
+- Rollback (if ever needed): `gh api -X PATCH .../required_status_checks --input <original-9-snapshot>`.
