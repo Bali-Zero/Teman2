@@ -32,6 +32,8 @@ HEAVY_PREFIXES = (
     "/api/crm/clients",
     "/api/crm/companies",
     "/api/crm/practices",
+    # Pro-local HITL doc-review queue (Law 2 PII) — proxy to RAG like /api/crm/*
+    "/api/intake/review",
     "/api/dashboard",
     "/api/ingest",
     "/api/intel",
