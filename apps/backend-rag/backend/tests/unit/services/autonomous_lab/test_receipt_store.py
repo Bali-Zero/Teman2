@@ -88,6 +88,19 @@ def test_receipt_store_rejects_raw_or_secret_like_values(tmp_path: Path) -> None
         )
 
 
+def test_receipt_store_rejects_short_pii_values(tmp_path: Path) -> None:
+    store = receipt_store_module.ReceiptStore(tmp_path)
+
+    with pytest.raises(ValueError, match="unsafe raw or secret-like value"):
+        store.write_receipt(
+            {
+                "run_id": "unsafe-short-pii",
+                "source_uri": "https://example.com/client/zero@example.com/+62-812-3456-7890",
+                "blocked": False,
+            }
+        )
+
+
 def test_receipt_store_rejects_mutating_commands(tmp_path: Path) -> None:
     store = receipt_store_module.ReceiptStore(tmp_path)
 
@@ -96,6 +109,28 @@ def test_receipt_store_rejects_mutating_commands(tmp_path: Path) -> None:
             {
                 "run_id": "unsafe-command",
                 "planned_only_commands": ["git push origin main"],
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git -C . push origin main",
+        "flyctl -a nuzantara-rag deploy",
+    ],
+)
+def test_receipt_store_rejects_mutating_commands_with_global_options(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    store = receipt_store_module.ReceiptStore(tmp_path)
+
+    with pytest.raises(ValueError, match="mutating command-like value"):
+        store.write_receipt(
+            {
+                "run_id": "unsafe-command-options",
+                "planned_only_commands": [command],
             }
         )
 
@@ -116,6 +151,19 @@ def test_receipt_store_rejects_embedded_unpersistable_findings(tmp_path: Path) -
                     }
                 ],
                 "failed_blockers": ["raw_text_leakage"],
+            }
+        )
+
+
+def test_receipt_store_rejects_non_allowlisted_commands(tmp_path: Path) -> None:
+    store = receipt_store_module.ReceiptStore(tmp_path)
+
+    with pytest.raises(ValueError, match="command_not_allowlisted"):
+        store.write_receipt(
+            {
+                "run_id": "unsafe-extra-command",
+                "planned_only_commands": ["python scripts/unreviewed_helper.py"],
+                "blocked": False,
             }
         )
 
