@@ -588,6 +588,7 @@ def generate_slug(headline: str) -> str:
 def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: str | None) -> str:
     """Generate MDX file content from enriched article"""
     import json as json_module
+    import re
 
     # Map category to URL-friendly format
     category_map = {
@@ -613,8 +614,11 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     expat_steps_json = json_module.dumps(article.next_steps.expat)
     investor_steps_json = json_module.dumps(article.next_steps.investor)
 
-    # Cover image path
+    # Cover image path (21:9 hero) + card variant (16:10 homepage thumbnail).
+    # The post-publish poller renders both: {slug}.jpg + {slug}_card.jpg.
     cover_img = cover_image_path or f"/static/news/{slug}.jpg"
+    _card_match = re.match(r"^(/static/news/.+)\.(jpg|jpeg|png)$", cover_img, re.IGNORECASE)
+    card_img = f"{_card_match.group(1)}_card.{_card_match.group(2)}" if _card_match else cover_img
 
     # Build conditional sections - skip empty Bali Zero Take and Next Steps
     bali_zero_take_section = ""
@@ -693,6 +697,7 @@ title: "{safe_headline}"
 slug: "{slug}"
 excerpt: "{safe_excerpt}"
 coverImage: "{cover_img}"
+cardImage: "{card_img}"
 coverImageAlt: "{safe_headline}"
 category: "{category_slug}"
 tags: [{tags_str}]
