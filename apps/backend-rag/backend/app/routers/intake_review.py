@@ -111,6 +111,63 @@ def _extracted_fields(stage_output: dict[str, Any], routing: dict[str, Any]) -> 
     return {}
 
 
+def _ocr_pages(stage_output: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """Per-page OCR text for human review, normalised to the UI shape.
+
+    The UI (review/page.tsx) renders items as ``{page_number, text}``. OCR text
+    can live in two places depending on pipeline version:
+
+      * ``stage_output.ocr.pages`` — the dedicated FASE-3 OCR stage (older docs).
+      * ``stage_output.classify.ocr_text_per_page`` — the CURRENT pipeline runs
+        OCR inside the *classify* stage; the ``ocr`` stage only writes a marker
+        ``{"deferred_to": "classify"}`` with NO ``pages``. Without this fallback
+        the review text area was empty even though OCR ran (the bug).
+
+    Prefer ``ocr.pages`` when it is a non-empty list; otherwise fall back to
+    ``classify.ocr_text_per_page``. Each source item may be a dict carrying
+    ``text`` (+ an optional ``page``/``page_number``) or a plain string
+    (defensive). ``page_number`` is surfaced 1-based positionally so the human
+    label is consistent across both sources (classify stores a 0-indexed
+    ``page``; ocr.pages stores a 1-based ``page``) and never shows "page 0".
+    Returns ``None`` when neither source has any text — an empty area is correct
+    for a truly OCR-less document.
+    """
+    if not isinstance(stage_output, dict):
+        return None
+
+    def _normalise(items: list[Any]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for item in items:
+            if isinstance(item, str):
+                text = item
+            elif isinstance(item, dict):
+                text = item.get("text")
+            else:
+                continue
+            if not text:
+                continue
+            out.append({"page_number": len(out) + 1, "text": text})
+        return out
+
+    ocr = stage_output.get("ocr")
+    if isinstance(ocr, dict):
+        pages = ocr.get("pages")
+        if isinstance(pages, list) and pages:
+            normalised = _normalise(pages)
+            if normalised:
+                return normalised
+
+    classify = stage_output.get("classify")
+    if isinstance(classify, dict):
+        per_page = classify.get("ocr_text_per_page")
+        if isinstance(per_page, list) and per_page:
+            normalised = _normalise(per_page)
+            if normalised:
+                return normalised
+
+    return None
+
+
 async def _load_candidate_clients(
     conn: asyncpg.Connection, client_ids: list[int]
 ) -> list[dict[str, Any]]:
@@ -299,9 +356,10 @@ async def get_review_detail(
         candidate_ids = _candidate_client_ids(entity_resolution)
         candidates = await _load_candidate_clients(conn, candidate_ids)
 
-        # OCR text per page (if FASE-3 stored it in stage_output) — for human review.
-        ocr = stage_output.get("ocr") if isinstance(stage_output, dict) else None
-        ocr_pages = ocr.get("pages") if isinstance(ocr, dict) else None
+        # OCR text per page — for human review. The current pipeline runs OCR
+        # in the *classify* stage (ocr stage only writes a marker), so the
+        # reader must look in classify.ocr_text_per_page as well as ocr.pages.
+        ocr_pages = _ocr_pages(stage_output)
 
         return {
             "proposal_id": row["proposal_id"],
