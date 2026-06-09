@@ -25,7 +25,11 @@ from pathlib import Path
 from contextlib import contextmanager
 from typing import Any, TypedDict
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # minimal CI env (e.g. p6 workflow installs only pytest)
+    def load_dotenv(*_args: Any, **_kwargs: Any) -> bool:
+        return False
 
 # Load env for TELEGRAM_BOT_TOKEN
 _master_env = Path.home() / "Desktop" / "NUZANTARA_ENV_KEYS.env"
