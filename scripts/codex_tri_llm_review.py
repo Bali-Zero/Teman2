@@ -240,6 +240,24 @@ def parse_verdict(reviewer: str, raw: str, duration_s: float, error: str | None 
             raw_output=raw[:2000],
         )
     text = raw.strip()
+    # A CLI that hit its plan/usage cap prints a human notice (no JSON). That
+    # is an ENVIRONMENT failure, NOT a verdict on the code — surface it as a
+    # distinct error so the PR comment reads "down (rate/quota limit)" instead
+    # of an opaque "no_json", and so compute_outcome (error is not None)
+    # correctly excludes it from the live quorum (W64 armed-but-blind family).
+    _low = text.lower()
+    if any(m in _low for m in (
+        "hit your weekly limit", "hit your usage limit", "usage limit",
+        "weekly limit", "rate limit", "out of extra usage", "quota exceeded",
+    )):
+        return ReviewVerdict(
+            reviewer=reviewer,
+            verdict="red",
+            summary="reviewer environment hit a rate/quota limit (not a code verdict)",
+            duration_s=duration_s,
+            error="rate_or_quota_limit",
+            raw_output=raw[:2000],
+        )
     # Strip markdown fences if present
     if text.startswith("```"):
         lines = text.split("\n")
@@ -298,6 +316,30 @@ _STRIPPED_PROVIDER_KEYS: frozenset[str] = frozenset({
 })
 
 
+# CLI install dirs that a non-interactive launchd shell does NOT have on
+# PATH (it gets a bare /usr/bin:/bin:/usr/sbin:/sbin and never sources
+# ~/.zshrc). Without these prepended, ``claude`` (~/.local/bin), ``codex``
+# and ``node`` (/opt/homebrew/bin) all FileNotFoundError under launchd —
+# the W64 "armed-but-blind" failure this review-gate hit in prod.
+_CLI_PATH_DIRS: tuple[str, ...] = (
+    str(Path.home() / ".local" / "bin"),
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+)
+
+
+def _cli_path(existing: str | None) -> str:
+    """Prepend the known CLI install dirs to ``existing`` PATH, de-duped."""
+    parts: list[str] = []
+    for d in _CLI_PATH_DIRS:
+        if d and d not in parts:
+            parts.append(d)
+    for d in (existing or "").split(os.pathsep):
+        if d and d not in parts:
+            parts.append(d)
+    return os.pathsep.join(parts)
+
+
 def _safe_subprocess_env() -> dict[str, str]:
     """Strip provider API keys before spawning Codex/Claude CLI subprocess.
 
@@ -305,18 +347,30 @@ def _safe_subprocess_env() -> dict[str, str]:
     Neither needs an API key — keep the parent env's embedding-only
     OPENAI_API_KEY scoped to backend-rag and never leak it to a
     subprocess that could open a non-embedding billing path.
+
+    Also guarantees the CLI install dirs are on PATH so the spawned
+    ``claude``/``codex``/``node`` binaries resolve under a bare launchd
+    PATH (cf. _CLI_PATH_DIRS / W64 armed-but-blind).
     """
-    return {k: v for k, v in os.environ.items() if k not in _STRIPPED_PROVIDER_KEYS}
+    env = {k: v for k, v in os.environ.items() if k not in _STRIPPED_PROVIDER_KEYS}
+    env["PATH"] = _cli_path(env.get("PATH"))
+    return env
 
 
 async def review_codex(prompt: str) -> ReviewVerdict:
     start = time.time()
     try:
+        # NOTE: no --profile (there is no [profiles.review] block in
+        # ~/.codex/config.toml — referencing a missing profile errors).
+        # --skip-git-repo-check: the review-gate runs from the deploy
+        # worktree, which is not in codex's trusted [projects.*] list,
+        # so without this flag codex aborts "Not inside a trusted
+        # directory" (W64 armed-but-blind). Global config already sets
+        # approval_policy=never + sandbox_mode, so exec is non-interactive.
         proc = await asyncio.create_subprocess_exec(
             "codex",
-            "--profile",
-            "review",
             "exec",
+            "--skip-git-repo-check",
             prompt,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -396,7 +450,7 @@ async def review_claude_opus(prompt: str) -> ReviewVerdict:
         proc = await asyncio.create_subprocess_exec(
             "claude",
             "--model",
-            "claude-opus-4-7",
+            "claude-opus-4-8",
             "--max-turns",
             "1",
             "--print",
@@ -429,13 +483,27 @@ async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
     start = time.time()
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        # Try sourcing from .nuzantara-secrets.env
-        secrets_path = Path.home() / ".nuzantara-secrets.env"
-        if secrets_path.exists():
+        # Try sourcing from on-disk secret files, in priority order.
+        # ~/.openclaw/workspace/.env.master is where the key actually
+        # lives on the Pro (CLAUDE.md DeepSeek arsenal note); the older
+        # ~/.nuzantara-secrets.env is kept as a fallback. Under launchd
+        # DEEPSEEK_API_KEY is never in the env, so without reading
+        # .env.master the reviewer silently returns no_api_key (W64).
+        for secrets_path in (
+            Path.home() / ".openclaw" / "workspace" / ".env.master",
+            Path.home() / ".nuzantara-secrets.env",
+        ):
+            if not secrets_path.exists():
+                continue
             for line in secrets_path.read_text().splitlines():
-                if line.startswith("DEEPSEEK_API_KEY="):
-                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                stripped = line.strip()
+                if stripped.startswith("export "):
+                    stripped = stripped[len("export "):]
+                if stripped.startswith("DEEPSEEK_API_KEY="):
+                    api_key = stripped.split("=", 1)[1].strip().strip('"').strip("'")
                     break
+            if api_key:
+                break
     if not api_key:
         return parse_verdict("deepseek", "", time.time() - start, error="no_api_key")
 
