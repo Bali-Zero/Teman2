@@ -65,6 +65,18 @@ def test_run_dispatch_allows_clean_prompt(monkeypatch):
     assert len(calls) == 1  # the clean prompt reached the cloud subprocess
 
 
+def test_run_dispatch_blocks_comma_separated_ktp_real_redactor(monkeypatch):
+    # M5 review, BUILT-redactor path: run_dispatch builds the real redactor
+    # (no injection) and STRATO B normalizes the comma-separated KTP BEFORE the
+    # redactor runs → blocked, no cloud call.
+    calls = _patch_subprocess(monkeypatch)
+    out = asyncio.run(
+        fo.run_dispatch("search", f"sheet value 3171,2345,6789,0123 to check {PAD}")
+    )
+    assert out.startswith("[PII-BLOCKED")
+    assert calls == []
+
+
 def test_run_dispatch_blocks_bare_crm_name_with_context(monkeypatch):
     # panel F1 at the chokepoint: a CRM name with PG out of scope (degraded
     # redactor) is still blocked by the STRATO B+ context backstop because the

@@ -160,14 +160,30 @@ _BACKSTOP_PATTERNS: dict[str, re.Pattern[str]] = {
     "WA_JID": re.compile(r"\b\d{8,15}@s\.whatsapp\.net\b"),
 }
 
-# Collapse a space/dot/dash that sits BETWEEN TWO DIGITS so spaced/dashed/dotted
-# IDs and phones ("3171 2345 6789 0123", "+62 812-3456-7890") reduce to their
-# contiguous form before the structured scan. Strictly between-digits so it
-# NEVER merges a neighbouring word into the digit run (which would destroy the
-# \b word boundaries the patterns rely on). Letter-then-digit cases (passport
-# "A 1234567") are handled by a separator-tolerant PASSPORT_ID pattern instead.
-# Used ONLY for matching, so any over-match is safe (routes LOCAL).
-_DIGIT_SEP_RE = re.compile(r"(?<=\d)[ .\-](?=\d)")
+# Collapse a RUN of separator characters that sits BETWEEN TWO DIGITS so an ID
+# or phone pasted from a spreadsheet/copy reduces to its contiguous form before
+# the structured scan. The class is broad on purpose — the 24-agent M5 review
+# reproduced a Law-2 leak where "3171,2345,6789,0123" (comma), and the
+# underscore / slash / NBSP / thin-space / zero-width variants, were NOT in the
+# old `[ .\-]` set, so \b\d{16}\b never matched and the prompt routed CLOUD.
+# `\s` already covers ASCII + Unicode whitespace (space, tab, NBSP U+00A0,
+# thin/narrow spaces); the explicit chars add punctuation + the zero-width code
+# points that are NOT whitespace (U+200B/200C/200D, U+FEFF).
+# STRICTLY between-digits (lookbehind+lookahead both \d) so it NEVER merges a
+# neighbouring WORD into the digit run — that would destroy the \b boundaries
+# the patterns rely on, AND it leaves alphabetic prose between numbers intact
+# ("4 cats and 8 dogs" is untouched). Letter-then-digit cases (passport
+# "A 1234567") are handled by the separator-tolerant PASSPORT_ID pattern.
+# Applied ONLY to a match-copy — the dispatched prompt is NEVER mutated. Any
+# over-match is safe (routes LOCAL).
+# punctuation/handle separators + the non-whitespace zero-width code points
+# (U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ, U+FEFF ZWNBSP/BOM). `\s` supplies the
+# whitespace family (incl. NBSP/thin/narrow). `\d` on both sides keeps it
+# between-digits only. Non-raw string so the \uXXXX escapes are decoded (the
+# zero-width chars stay readable in source, not pasted invisibly).
+_DIGIT_SEP_RE = re.compile(
+    "(?<=\\d)[\\s.,;:_/|'\\-\u200b\u200c\u200d\ufeff]+(?=\\d)"
+)
 
 
 def _structured_backstop(prompt: str) -> Optional[str]:

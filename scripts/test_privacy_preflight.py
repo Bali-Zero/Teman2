@@ -175,6 +175,39 @@ def test_passport_with_space_routes_local():
     assert d.layer == "regex_backstop"
 
 
+def test_spreadsheet_separator_ids_route_local():
+    # M5 24-agent review: a real Law-2 leak — IDs/phones pasted from a
+    # spreadsheet with comma / underscore / slash / NBSP / zero-width separators
+    # were NOT normalized ([ .-] only) so \b\d{16}\b never matched → CLOUD.
+    # Each of these synthetic IDs must now route LOCAL (raw AND with a built
+    # redactor; here a CLEAN redactor proves the structured backstop alone gates
+    # it). KTP=16 digits, NPWP=15 digits, phone=08+10.
+    seps = [",", "_", "/", " ", "​", " ", "﻿"]
+    for sep in seps:
+        ktp = sep.join(["3171", "2345", "6789", "0123"])  # 16 digits
+        npwp = sep.join(["123", "456", "789", "012", "345"])  # 15 digits
+        phone = sep.join(["0812", "3456", "7890"])  # 08 + 10 digits
+        for sample in (ktp, npwp, phone):
+            d = privacy_preflight(
+                f"pasted value {sample} from the sheet {PAD}",
+                task_type="SYNTHETIC_TEST",
+                redactor=_CleanRedactor(),
+            )
+            assert d.route is Route.LOCAL, (repr(sep), sample)
+            assert d.layer == "regex_backstop", (repr(sep), sample)
+
+
+def test_numeric_prose_not_overcollapsed_to_false_local():
+    # the broad separator class must NOT merge alphabetic prose between numbers
+    # into a false ID (would needlessly route legit tasks LOCAL).
+    d = privacy_preflight(
+        f"we processed 4 batches and 8 jobs across 12 nodes with 90 workers {PAD}",
+        task_type="ARCHITECTURE_META",
+        redactor=_CleanRedactor(),
+    )
+    assert d.route is Route.CLOUD
+
+
 # === STRATO B+ — PII-context backstop (panel F1: bare-name leak) ============
 
 
