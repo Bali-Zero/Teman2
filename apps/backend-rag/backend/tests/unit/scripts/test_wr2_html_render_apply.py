@@ -174,20 +174,20 @@ def test_apply_levers_rerender_still_not_folded():
 
 
 def test_balance_headline_inserts_br_no_orphan():
-    """FIX#2c: _balance_headline splits a long headline into two balanced lines
-    via <br>, with no single-word line."""
-    from wr2_html_renderer.composer import _balance_headline
+    """FIX#2b: _balance_headline wraps a long headline into one-or-more lines via
+    <br>, each within the width budget and with no single-word orphan line."""
+    from wr2_html_renderer.composer import _COVER_MAX_CHARS_PER_LINE, _balance_headline
 
     out = _balance_headline("KPK ARRESTS TOP DEPUTY MINISTER ON GRAFT")
     assert "<br>" in out
-    line1, line2 = out.split("<br>")
-    # neither side is a lone orphan word
-    assert len(line1.split()) >= 2
-    assert len(line2.split()) >= 2
-    # round-trips the words (only a <br> was inserted, nothing dropped/reordered)
+    lines = out.split("<br>")
+    assert len(lines) >= 2  # actually wrapped
+    # every line within budget (so the browser won't re-wrap) + no orphan word
+    for ln in lines:
+        assert len(ln) <= _COVER_MAX_CHARS_PER_LINE, f"line too wide: {ln!r}"
+        assert len(ln.split()) >= 2, f"orphan line: {ln!r}"
+    # round-trips the words (only <br>s inserted, nothing dropped/reordered)
     assert out.replace("<br>", " ").split() == "KPK ARRESTS TOP DEPUTY MINISTER ON GRAFT".split()
-    # reasonably balanced (the split minimises the length delta)
-    assert abs(len(line1) - len(line2)) <= len("KPK ARRESTS TOP DEPUTY MINISTER ON GRAFT")
 
 
 def test_balance_headline_short_title_unchanged():
@@ -374,3 +374,177 @@ def test_brand_inert_levers_includes_rebalance_wrap():
 
     assert _BRAND_INERT_LEVERS == _LEGIBILITY_LEVERS | {"rebalance_wrap"}
     assert "rebalance_wrap" in _BRAND_INERT_LEVERS
+
+
+# ── FIX#2b robust multi-line wrap + FIX#4 composition-debt accept (2026-06-10) ─
+
+
+def test_balance_headline_real_title_multiline_no_orphan():
+    """FIX#2b(a): the real fire-test title wraps to MULTIPLE lines, each within
+    the cover width budget, with NO single-word orphan line ("TOP" eliminated)."""
+    from wr2_html_renderer.composer import _COVER_MAX_CHARS_PER_LINE, _balance_headline
+
+    out = _balance_headline("The KITAS Bribe Trail Reaches the Top")
+    lines = out.split("<br>")
+    assert len(lines) >= 2  # actually wrapped
+    # every line stays within the safe width (so the browser won't re-wrap)
+    for ln in lines:
+        assert len(ln) <= _COVER_MAX_CHARS_PER_LINE, f"line too wide: {ln!r}"
+    # no single-word orphan line anywhere
+    for ln in lines:
+        assert len(ln.split()) >= 2, f"orphan line: {ln!r}"
+    # words preserved in order (only <br>s inserted between whole words)
+    assert out.replace("<br>", " ").split() == "The KITAS Bribe Trail Reaches the Top".split()
+
+
+def test_balance_headline_never_splits_a_word():
+    """FIX#2b(a): a <br> is only ever inserted BETWEEN whole words, never inside
+    one — every wrapped segment's tokens are intact words from the input."""
+    from wr2_html_renderer.composer import _balance_headline
+
+    title = "Supercalifragilistic Enforcement Crackdown Begins Now Across Bali"
+    out = _balance_headline(title)
+    in_words = set(title.split())
+    out_words = out.replace("<br>", " ").split()
+    # every emitted token is an original word (nothing was cut at a <br>)
+    for w in out_words:
+        assert w in in_words, f"word fragment produced: {w!r}"
+    assert out_words == title.split()  # order + completeness
+
+
+def test_balance_headline_parametrizable_budget():
+    """The line-width budget is parametrizable (smaller fonts pass a larger one)."""
+    from wr2_html_renderer.composer import _balance_headline
+
+    title = "The KITAS Bribe Trail Reaches the Top"
+    # a generous budget lets the whole title fit on one line → no <br>
+    assert "<br>" not in _balance_headline(title, max_chars_per_line=200)
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_accepts_best_render_on_composition_debt(monkeypatch):
+    """FIX#4: vision rejects for a PURELY editorial reason (weak/generic hero) and
+    proposes only 'rerender' (no CSS lever). The slide is legible + brand-clean,
+    so the loop must ACCEPT the best render (converged=True) and flag the debt."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    # cheap tiers (geometry/legibility/ocr) pass → we reach vision
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        # rejects, but only for editorial composition + a rerender-only lever
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=[
+                "hero photo is a generic dark interior, editorially weak for this story",
+                "could breathe more — spacing feels tight",
+            ],
+            levers=[{"lever": "rerender", "reason": "swap the hero for a stronger image"}],
+            score=0.6,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "The KITAS Bribe Trail Reaches the Top"},
+        render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    assert res.converged is True
+    assert res.accepted_with_composition_debt is True
+    assert res.reason == "accepted_with_composition_debt"
+    # the editorial debt is recorded (visible, not silently dropped)
+    assert any("editorially weak" in d for d in res.composition_debt)
+    assert res.final_png is not None
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_does_not_accept_on_real_legibility_residual(monkeypatch):
+    """FIX#4 counter-proof: a HARD residual (a single-word orphan / unreadable
+    title) is NOT composition debt — the loop must NOT converge (gate strict)."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        # legibility defect (orphan word) + only a rerender lever → must NOT be
+        # accepted as debt.
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=["single-word orphan 'TOP' on line 3 — the title is hard to read"],
+            levers=[{"lever": "rerender", "reason": "structural"}],
+            score=0.4,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=2,
+    )
+    assert res.converged is False
+    assert res.accepted_with_composition_debt is False
+    assert res.composition_debt == []
+
+
+def test_classify_residual_issues():
+    """Unit: the residual-issue classifier separates editorial debt from hard
+    legibility/brand defects."""
+    from wr2_html_renderer.designer_loop import (
+        _classify_residual_issues,
+        _is_composition_only_lever,
+    )
+
+    # pure composition
+    has_hard, all_comp = _classify_residual_issues(["hero photo is generic / editorially weak"])
+    assert has_hard is False and all_comp is True
+    # hard legibility wins even when mixed with composition
+    has_hard, all_comp = _classify_residual_issues(
+        ["hero is weak", "the headline has an orphan word and is hard to read"]
+    )
+    assert has_hard is True and all_comp is False
+    # brand drift is hard
+    has_hard, _ = _classify_residual_issues(["the palette uses an off-brand blue"])
+    assert has_hard is True
+    # empty → not all_composition (nothing to accept)
+    assert _classify_residual_issues([]) == (False, False)
+    # lever classifier
+    assert _is_composition_only_lever({"rerender"}) is True
+    assert _is_composition_only_lever({"rerender", "scrim_opacity"}) is False
+    assert _is_composition_only_lever(set()) is False

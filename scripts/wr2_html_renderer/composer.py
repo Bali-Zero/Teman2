@@ -267,6 +267,19 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
             }[elem]
             rules.append(f"{sel}{{font-size:calc(1em * {factor:.2f});line-height:1.25;}}")
 
+    # rebalance_wrap: the headline already carries explicit <br>s placed by
+    # _balance_headline (each line capped to a safe width). Make the browser
+    # HONOR them — text-wrap:balance keeps lines tidy, overflow-wrap:normal +
+    # white-space:normal stop it from breaking words or collapsing/ignoring the
+    # <br>s. Flow-only on the headline text; never position/color/font-family.
+    if levers.get("_rebalance_wrap"):
+        rules.append(
+            ".headline,.heading,.statement,.cover-text,.slide-text,h1{"
+            "text-wrap:balance;overflow-wrap:normal;white-space:normal;"
+            "word-break:keep-all;"
+            "}"
+        )
+
     # NOTE: text_anchor_band is intentionally NOT honored here (see module note).
 
     if not rules:
@@ -286,22 +299,38 @@ def _apply_levers_to_html(html: str, slide: dict[str, Any]) -> str:
     return html + css
 
 
-def _balance_headline(text: str) -> str:
-    """Re-wrap a headline into two balanced lines via a single <br>.
+# Default safe line width for the big cover headline. The cover heading uses
+# var(--font-size-headline-cover) (84px on the 1080px canvas), where roughly this
+# many characters fit on one line before the browser re-wraps. Parametrizable so
+# a smaller headline font can pass a larger budget.
+_COVER_MAX_CHARS_PER_LINE = 16
 
-    The `rebalance_wrap` lever's renderer side (FIX 2026-06-09): given a flat
-    headline, insert ONE <br> at the word boundary that best balances the two
-    line lengths, so the title doesn't wrap to "one long line + a single orphan
-    word". Text-only — it inserts a <br> tag into the headline string and never
-    touches position/color/font/box (so it cannot drift the brand).
+
+def _balance_headline(text: str, *, max_chars_per_line: int = _COVER_MAX_CHARS_PER_LINE) -> str:
+    """Re-wrap a headline into MULTIPLE balanced lines (explicit <br>s) so that
+    NO line is wide enough for the browser to re-wrap and NO line is a single
+    orphan word.
+
+    The `rebalance_wrap` lever's renderer side (FIX#2b 2026-06-10). The earlier
+    single-<br> split (2026-06-09) failed on long titles: it produced two
+    segments, but the long segment ("Trail Reaches the Top") still exceeded the
+    cover font's line width and the browser re-wrapped it on its own, RE-creating
+    the very "TOP" orphan we were fixing. This greedy word-wrap caps every line
+    at `max_chars_per_line` (≈ the cover font's single-line capacity) so the
+    browser never gets to re-wrap, then rebalances to kill any single-word last
+    line.
+
+    Text-only — it only inserts <br> tags between whole words; it never splits a
+    word and never touches position/color/font/box (so it cannot drift the brand).
 
     Rules:
-      - ≤3 words: leave unchanged (too short to balance; wrap is fine as-is).
-      - otherwise pick the split index k (1..n-1) minimising
-        |len(line1) - len(line2)| (character counts incl. inter-word spaces).
-      - avoid leaving a single word alone on a line: among splits that keep ≥2
-        words on BOTH lines, take the most balanced; only if none exists (n<4)
-        fall back to the overall-best split.
+      - ≤3 words: leave unchanged (too short to wrap; one line is fine).
+      - greedy-fill each line up to `max_chars_per_line` (whole words only); if a
+        single word is longer than the budget it gets its own line (never split).
+      - if the result is a single line (everything fit), leave it flat.
+      - no single-word orphan line: if the last line has 1 word, pull the last
+        word of the previous line down onto it (when that keeps the previous line
+        non-empty); applied to whichever line ends up the lone orphan.
       - if the text already contains a <br>, assume it's pre-wrapped → no-op.
     """
     text = text.strip()
@@ -311,28 +340,36 @@ def _balance_headline(text: str) -> str:
     if len(words) <= 3:
         return text
 
-    def line_len(seg: list[str]) -> int:
-        return len(" ".join(seg))
+    budget = max(1, int(max_chars_per_line))
 
-    n = len(words)
-    best_k: int | None = None
-    best_cost: int | None = None
-    # Prefer splits that keep >=2 words on each side (no orphan).
-    for require_two in (True, False):
-        for k in range(1, n):
-            left, right = words[:k], words[k:]
-            if require_two and (len(left) < 2 or len(right) < 2):
-                continue
-            cost = abs(line_len(left) - line_len(right))
-            if best_cost is None or cost < best_cost:
-                best_cost = cost
-                best_k = k
-        if best_k is not None:
-            break
+    # Greedy fill: start each line, add words while the line stays within budget.
+    lines: list[list[str]] = []
+    cur: list[str] = []
+    for w in words:
+        if not cur:
+            cur = [w]
+            continue
+        candidate = " ".join(cur + [w])
+        if len(candidate) <= budget:
+            cur.append(w)
+        else:
+            lines.append(cur)
+            cur = [w]
+    if cur:
+        lines.append(cur)
 
-    if best_k is None:
+    # Everything fit on one line → nothing to wrap.
+    if len(lines) <= 1:
         return text
-    return " ".join(words[:best_k]) + "<br>" + " ".join(words[best_k:])
+
+    # Kill a single-word orphan on the LAST line by borrowing the previous line's
+    # last word (only if the previous line keeps ≥1 word). Repeat once is enough
+    # for headline-length text, but loop defensively while it stays an orphan and
+    # the move is legal.
+    while len(lines) >= 2 and len(lines[-1]) == 1 and len(lines[-2]) >= 2:
+        lines[-1].insert(0, lines[-2].pop())
+
+    return "<br>".join(" ".join(line) for line in lines)
 
 
 def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str | None) -> str:

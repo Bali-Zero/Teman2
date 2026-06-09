@@ -67,6 +67,58 @@ _LEGIBILITY_LEVERS = {"scrim_opacity", "text_stroke", "shrink_font"}
 # loop — the inert change is always safe to commit + keep iterating.
 _BRAND_INERT_LEVERS = _LEGIBILITY_LEVERS | {"rebalance_wrap"}
 
+# Composition-only levers: structural signals the loop CANNOT auto-apply (it has
+# no rerender/hero-swap actuator). A vision reject whose only proposed lever is
+# one of these is an EDITORIAL/composition debt, not a legibility/brand defect.
+_COMPOSITION_LEVERS = {"rerender", "regen"}
+
+# Substrings that mark a vision issue as a COMPOSITION/EDITORIAL critique (a
+# weak/generic hero photo, awkward whitespace, "editorially weak", etc.) — the
+# kind of thing only a rerender or a human hero-swap fixes, NOT a CSS lever.
+_COMPOSITION_CLAIM_MARKERS = (
+    "photo", "hero", "image", "editorial", "generic", "stock", "weak",
+    "spacing", "whitespace", "white space", "breathe", "composition",
+    "crop", "scene", "imagery", "boring", "bland", "uninspired",
+)
+
+# Substrings that mark a vision issue as a HARD defect (legibility OR real brand
+# drift) — these must NEVER be accepted as debt. If ANY residual issue matches
+# one of these, the slide is not publish-ready (gate stays strict).
+_HARD_CLAIM_MARKERS = (
+    "readable", "legib", "illegib", "garbl", "clip", "cut off", "cut-off",
+    "overflow", "contrast", "orphan", "wrap", "truncat", "overlap",
+    "palette", "color", "colour", "font", "serif", "logo", "emoji",
+)
+
+
+def _is_composition_only_lever(lever_names: set[str]) -> bool:
+    """True iff every proposed lever is a composition-only signal (rerender/regen)."""
+    return bool(lever_names) and lever_names <= _COMPOSITION_LEVERS
+
+
+def _classify_residual_issues(issues: list[str]) -> tuple[bool, bool]:
+    """Classify a list of vision issue strings.
+
+    Returns (has_hard, all_composition):
+      has_hard         — at least one issue is a legibility/brand HARD defect.
+      all_composition  — every issue is a composition/editorial critique (and
+                         there is at least one issue).
+    A HARD marker always wins (an issue that is both is treated as hard).
+    """
+    has_hard = False
+    all_composition = bool(issues)
+    for raw in issues:
+        low = (raw or "").lower()
+        hard = any(m in low for m in _HARD_CLAIM_MARKERS)
+        comp = any(m in low for m in _COMPOSITION_CLAIM_MARKERS)
+        if hard:
+            has_hard = True
+            all_composition = False
+        elif not comp:
+            # an issue we can't classify as composition is NOT safe to accept
+            all_composition = False
+    return has_hard, all_composition
+
 
 @dataclass
 class Critique:
@@ -219,6 +271,13 @@ class DesignerResult:
     history: list[dict[str, Any]] = field(default_factory=list)
     escalated: bool = False
     reason: str = ""
+    # FIX#4: the slide is legible + brand-clean but the vision critic still flags
+    # a purely EDITORIAL/composition residual (weak hero, generic photo, spacing)
+    # that no CSS lever can fix. Per operator decision (2026-06-10) we ACCEPT the
+    # best render rather than burn iterations / fail — the debt is recorded here
+    # (and logged at WARNING) so it stays visible, never silently dropped.
+    accepted_with_composition_debt: bool = False
+    composition_debt: list[str] = field(default_factory=list)
 
 
 async def run_designer_loop(
@@ -327,10 +386,46 @@ async def run_designer_loop(
             proposed = {**levers_acc}
             applied = _apply_levers(proposed, vc.levers)
             if not applied:
-                non_css = sorted({lev.get("lever") for lev in vc.levers})
+                # No CSS-applicable lever to pull. The cheap tiers (geometry +
+                # legibility + OCR) already PASSED to reach here, so the slide is
+                # LEGIBLE. FIX#4 (operator decision 2026-06-10): if the residual
+                # vision reject is PURELY editorial/composition (weak/generic
+                # hero, awkward spacing, rerender-only) — i.e. no HARD legibility
+                # or brand claim — accept the best render as composition DEBT
+                # instead of spinning out the iterations to a render_failed. A
+                # legibility defect (an orphan word, a clipped/garbled title) is
+                # NOT debt — it stays a hard reject so FIX#2b must actually fix it.
+                proposed_levers = {lev.get("lever") for lev in vc.levers}
+                non_css = sorted(proposed_levers)
+                has_hard, all_composition = _classify_residual_issues(list(vc.issues))
+                comp_levers_only = (not vc.levers) or _is_composition_only_lever(proposed_levers)
+                if not has_hard and all_composition and comp_levers_only:
+                    debt = list(vc.issues)
+                    logger.warning(
+                        "designer-loop: accepting best render with composition debt "
+                        "(editorial residual, not CSS-fixable): %s", debt,
+                    )
+                    iter_record["verdict"] = (
+                        "vision flagged EDITORIAL-only residual "
+                        f"(levers {non_css}, issues {debt}) — accepting best render "
+                        "as composition debt (legible + brand-clean)"
+                    )
+                    iter_record["accepted_with_composition_debt"] = debt
+                    history.append(iter_record)
+                    return DesignerResult(
+                        final_png=best_png or png_path,
+                        iterations=it,
+                        converged=True,
+                        history=history,
+                        accepted_with_composition_debt=True,
+                        composition_debt=debt,
+                        reason="accepted_with_composition_debt",
+                    )
+                # Otherwise there is a real (hard) residual we cannot CSS-fix →
+                # keep the best render but do NOT mark converged (gate stays strict).
                 iter_record["verdict"] = (
-                    f"vision flagged but only non-CSS levers {non_css} "
-                    "(composition, not auto-fixable) — keeping best"
+                    f"vision flagged hard residual {non_css} / {list(vc.issues)} "
+                    "(not auto-fixable) — keeping best, not converged"
                 )
                 iter_record["escalated_levers"] = non_css
                 history.append(iter_record)
