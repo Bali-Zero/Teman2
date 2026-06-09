@@ -4,6 +4,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from backend.services.autonomous_lab.planner import (
     AutonomousLabPlanner,
     GateSeverity,
@@ -85,6 +87,69 @@ def test_draft_run_is_source_agnostic_and_omits_raw_text_from_receipt() -> None:
         for command in run.simulation_plan.verification_commands
     )
     assert run.has_blockers() is False
+
+
+def test_receipt_sanitizes_objective_and_sensitive_source_uri() -> None:
+    raw_objective = "Investigate RAW_OBJECTIVE_SHOULD_NOT_APPEAR with token=abcdef1234567890"
+    signed_source_uri = "https://drive.example/file?id=abc&token=abcdef1234567890"
+    planner = AutonomousLabPlanner(worktree_lane="ops")
+    run = planner.draft_run(
+        objective=raw_objective,
+        materials=[
+            ResearchMaterial(
+                material_id="m1",
+                source_type=MaterialSourceType.DRIVE_METADATA,
+                source_uri=signed_source_uri,
+                title="Sensitive provenance",
+                text="Derived facts only for the Lab planner.",
+                captured_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+                metadata={},
+            )
+        ],
+        target_paths=["apps/backend-rag/backend/services/autonomous_lab/planner.py"],
+        task_id="sanitized-receipt",
+        created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+    )
+
+    receipt = json.dumps(run.to_receipt(), sort_keys=True)
+
+    assert "RAW_OBJECTIVE_SHOULD_NOT_APPEAR" not in receipt
+    assert "abcdef1234567890" not in receipt
+    assert "objective_fingerprint:sha256:" in receipt
+    assert "drive_metadata:source_fingerprint:sha256:" in receipt
+
+
+def test_planner_rejects_unsafe_target_paths() -> None:
+    planner = AutonomousLabPlanner(worktree_lane="ops")
+
+    with pytest.raises(ValueError, match="path traversal"):
+        planner.draft_run(
+            objective="test unsafe path",
+            materials=[_material()],
+            target_paths=["../outside.py"],
+            task_id="unsafe-path",
+            created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+        )
+
+
+def test_planner_rejects_unsafe_command_arguments() -> None:
+    with pytest.raises(ValueError, match="worktree_lane"):
+        AutonomousLabPlanner(worktree_lane="ops;fly-deploy").draft_run(
+            objective="test unsafe lane",
+            materials=[_material()],
+            target_paths=["apps/backend-rag/backend/services/autonomous_lab/planner.py"],
+            task_id="safe-task",
+            created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+        )
+
+    with pytest.raises(ValueError, match="task_id"):
+        AutonomousLabPlanner(worktree_lane="ops").draft_run(
+            objective="test unsafe task",
+            materials=[_material()],
+            target_paths=["apps/backend-rag/backend/services/autonomous_lab/planner.py"],
+            task_id="bad;fly-deploy",
+            created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+        )
 
 
 def test_workspace_write_request_is_a_blocker() -> None:
