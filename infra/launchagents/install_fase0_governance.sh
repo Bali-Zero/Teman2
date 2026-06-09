@@ -14,6 +14,11 @@
 #   com.nuzantara.cost-breaker-deadman (600s)  -> cost_breaker_deadman.sh
 #       The G5 second observer: alerts (Telegram, cooldown) if ANY of the three
 #       alive-signals above goes stale > 1800s — i.e. governance went mute.
+#   com.nuzantara.review-gate (600s)           -> review_gate_run.sh
+#       Review-ONLY tri-LLM gate: posts a 3-LLM review COMMENT on each open
+#       agent/* PR whose head SHA is new. NEVER labels/approves/merges (Legge 5).
+#       fcntl.flock single-run; idempotent per (pr, head_sha); per-sweep cap.
+#       Auto-merge is a separate deferred phase (GitHub App check-run).
 #
 # Signal-writers are installed BEFORE the deadman so their signals exist when it
 # first runs. RUNTIME HOME = the deploy worktree (~/Desktop/nuzantara-deploy),
@@ -47,6 +52,7 @@ LABELS=(
     "com.nuzantara.verify-the-verifiers"
     "com.nuzantara.mcp-integrity"
     "com.nuzantara.cost-breaker-deadman"
+    "com.nuzantara.review-gate"
 )
 # Each label's runtime script — install is SKIPPED if it is absent. A case()
 # function, NOT a `declare -A` associative array: macOS /bin/bash is 3.2 and
@@ -56,6 +62,7 @@ runtime_for() {
         com.nuzantara.verify-the-verifiers) echo "$RUNTIME_ROOT/scripts/verify_the_verifiers.py" ;;
         com.nuzantara.mcp-integrity)        echo "$RUNTIME_ROOT/scripts/verify_mcp_integrity.sh" ;;
         com.nuzantara.cost-breaker-deadman) echo "$RUNTIME_ROOT/scripts/cost_breaker_deadman.sh" ;;
+        com.nuzantara.review-gate)          echo "$RUNTIME_ROOT/scripts/review_gate_run.sh" ;;
         *) echo "" ;;
     esac
 }
