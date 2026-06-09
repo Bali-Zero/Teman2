@@ -89,7 +89,7 @@ async def test_queue_routes_to_intake_target(monkeypatch):
     assert isinstance(resp, Response)
     assert resp.status_code == 200
     assert "/api/intake/review/queue" in captured["url"]
-    assert "intake-review.balizero.com" in captured["url"]
+    assert captured["url"].startswith("https://intake-review.balizero.com/")
 
 
 async def test_metrics_sibling_not_routed_to_intake(monkeypatch):
