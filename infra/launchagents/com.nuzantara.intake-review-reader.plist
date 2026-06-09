@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nuzantara.intake-review-reader</string>
+
+  <!-- Fix #1 (Law 2) — Pro-side reader for /api/intake/review/*. Long-lived uvicorn   -->
+  <!-- daemon (KeepAlive=true) on 127.0.0.1:18795. The Fly `api` process proxies the   -->
+  <!-- review subset here over a Cloudflare Tunnel; the intake PII (OCR/names) never    -->
+  <!-- leaves the Pro. NO secret in this plist (avoids the 2026-04-29 plist-secret-644  -->
+  <!-- scar): the wrapper sources a 0600 env-file. Runbook:                            -->
+  <!-- docs/runbooks/intake-review-pro-reader.md                                        -->
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/scripts/intake_review_reader_run.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- All secrets (JWT_SECRET_KEY / API_KEYS / DSN / X-Bridge-Auth) come from the    -->
+    <!-- 0600 env-file ~/.cell-bridge-state/intake-review-reader.env, sourced by the    -->
+    <!-- wrapper at runtime. NONE are set here.                                         -->
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/intake-review-reader.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/intake-review-reader.log</string>
+</dict>
+</plist>

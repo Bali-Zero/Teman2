@@ -170,7 +170,11 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
       }
       const delayMs = Math.min(2_000 * 2 ** Math.min(attempt - 1, 5), 60_000);
       logger.error(
-        { attempt, delayMs },
+        {
+          attempt,
+          delayMs,
+          err: err instanceof Error ? (err.stack ?? err.message) : String(err),
+        },
         "wa-mirror session crashed; restarting with backoff",
       );
       await sendTelegramAlert(
