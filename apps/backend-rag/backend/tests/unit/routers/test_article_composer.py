@@ -582,6 +582,21 @@ def test_generate_mdx_content_cover_image_path(sample_enriched_article):
     assert f'coverImage: "{cover_path}"' in mdx
 
 
+def test_generate_mdx_content_card_image_derived(sample_enriched_article):
+    """News cover paths get a derived 16:10 cardImage (_card suffix)."""
+    slug = "test-article"
+    mdx = generate_mdx_content(sample_enriched_article, slug, "/static/news/custom-image.jpg")
+    assert 'cardImage: "/static/news/custom-image_card.jpg"' in mdx
+
+
+def test_generate_mdx_content_card_image_fallback_non_news(sample_enriched_article):
+    """Non-news cover paths fall back: cardImage == coverImage (no _card suffix)."""
+    slug = "test-article"
+    cover_path = "/static/blog/immigration/x.jpg"
+    mdx = generate_mdx_content(sample_enriched_article, slug, cover_path)
+    assert f'cardImage: "{cover_path}"' in mdx
+
+
 def test_generate_mdx_content_reading_time(sample_enriched_article):
     """Test MDX content calculates reading time"""
     slug = "test-article"
