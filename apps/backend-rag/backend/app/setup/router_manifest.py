@@ -68,6 +68,13 @@ def _is_debug_enabled() -> bool:
     return settings.environment.lower() != "production" or bool(settings.admin_api_key)
 
 
+def _is_autonomous_lab_enabled() -> bool:
+    """Condition for the internal autonomous lab draft API."""
+    from backend.app.core.config import settings
+
+    return settings.autonomous_lab_enabled
+
+
 def _get_api_v1_prefix() -> str:
     from backend.app.core.config import settings
 
@@ -108,6 +115,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="agentic_rag", process_groups=_RAG, tags=("agent", "rag")),
     RouterEntry(name="autonomous_agents", process_groups=_RAG, tags=("agent",)),
     RouterEntry(name="autonomous_execution", process_groups=_RAG, tags=("agent",)),
+    RouterEntry(
+        name="autonomous_lab",
+        process_groups=_API,
+        condition=_is_autonomous_lab_enabled,
+        tags=("autonomous-lab", "internal"),
+    ),
     # ── Analytics ──
     RouterEntry(name="analytics", process_groups=_API, tags=("analytics",)),
     RouterEntry(name="article_composer", process_groups=_API, tags=("blog",)),
@@ -396,18 +409,24 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
 # audio — included separately in app_factory.py
 
 
-def routers_for_group(group: str) -> tuple[RouterEntry, ...]:
+def routers_for_group(group: str, *, include_disabled: bool = False) -> tuple[RouterEntry, ...]:
     """Return all routers declared for a given process group.
 
     Args:
         group: Process group name ("api" or "rag")
+        include_disabled: When True, return entries even if their condition is false.
 
     Returns:
         Tuple of RouterEntry instances for the group
     """
     if group not in PROCESS_GROUPS:
         raise ValueError(f"Unknown process group '{group}'. Valid: {sorted(PROCESS_GROUPS)}")
-    return tuple(r for r in ROUTER_MANIFEST if group in r.process_groups)
+    return tuple(
+        entry
+        for entry in ROUTER_MANIFEST
+        if group in entry.process_groups
+        and (include_disabled or entry.condition is None or entry.condition())
+    )
 
 
 def all_router_names() -> frozenset[str]:

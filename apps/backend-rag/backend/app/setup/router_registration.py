@@ -178,6 +178,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
     api.include_router(autonomous_execution.router)  # Phase 7 POC: Autonomous task execution
+    if settings.autonomous_lab_enabled:
+        from backend.app.routers import autonomous_lab
+
+        api.include_router(autonomous_lab.router)
     api.include_router(agentic_rag.router)
     api.include_router(kg_agentic.router)
 
@@ -500,6 +504,7 @@ def include_light_routers(api: FastAPI) -> None:
         experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
         feedback,
+        frontend_metrics,
         funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
         funnel_email,  # [4APPS] Drip email scheduler + unsubscribe (homepage apps)
         google_drive,
@@ -516,7 +521,6 @@ def include_light_routers(api: FastAPI) -> None:
         knowledge_activity,
         lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         lkpm,
-        frontend_metrics,
         llm_costs,
         media,
         messaging_identity,
@@ -585,6 +589,11 @@ def include_light_routers(api: FastAPI) -> None:
     if settings.environment.lower() != "production" or settings.admin_api_key:
         api.include_router(debug.router)
         api.include_router(debug.v1_router)
+
+    if settings.autonomous_lab_enabled:
+        from backend.app.routers import autonomous_lab
+
+        api.include_router(autonomous_lab.router)
 
     # Conversation & Memory (light subset)
     api.include_router(session.router)
