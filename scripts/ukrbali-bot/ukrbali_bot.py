@@ -30,6 +30,18 @@ RAG_URL = os.environ.get(
     "https://nuzantara-rag.fly.dev/api/v1/visa-oracle/chat",
 )
 CLAUDE_BIN = os.environ.get("UKRBALI_CLAUDE_BIN", "claude")
+# Model for the brain. Default Fable 5; override e.g. UKRBALI_CLAUDE_MODEL=claude-opus-4-8.
+CLAUDE_MODEL = os.environ.get("UKRBALI_CLAUDE_MODEL", "claude-fable-5").strip()
+
+
+def _claude(prompt, timeout=120):
+    """Run the claude CLI with the configured model; return stdout (stripped)."""
+    cmd = [CLAUDE_BIN]
+    if CLAUDE_MODEL:
+        cmd += ["--model", CLAUDE_MODEL]
+    cmd += ["-p", prompt]
+    out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd="/tmp")
+    return (out.stdout or "").strip()
 # Toggle: "1" -> use Nuzantara visa-oracle RAG; "0" -> claude-only grounded on the
 # Bali Zero catalog (Google Doc). Default 0: the catalog is the source of truth.
 USE_RAG = os.environ.get("UKRBALI_USE_RAG", "0").strip().lower() not in ("0", "false", "no", "off")
@@ -108,9 +120,7 @@ def to_ukrainian(rag_answer):
         f"ТЕКСТ:\n{rag_answer}\n\nУкраїнською:"
     )
     try:
-        out = subprocess.run([CLAUDE_BIN, "-p", prompt],
-                             capture_output=True, text=True, timeout=120, cwd="/tmp")
-        return (out.stdout or "").strip() or rag_answer
+        return _claude(prompt) or rag_answer
     except Exception as e:
         print("[bot] rewrite error:", e, flush=True)
         return rag_answer
@@ -161,9 +171,7 @@ def claude_brain(history, text):
         + "Клієнт пише: " + text + "\n\nТвоя відповідь українською (у тоні каталогу):"
     )
     try:
-        out = subprocess.run([CLAUDE_BIN, "-p", prompt],
-                             capture_output=True, text=True, timeout=120, cwd="/tmp")
-        return (out.stdout or "").strip() or "Вибачте, не вдалося згенерувати відповідь. Спробуйте ще раз."
+        return _claude(prompt) or "Вибачте, не вдалося згенерувати відповідь. Спробуйте ще раз."
     except Exception as e:
         print("[bot] brain error:", e, flush=True)
         return "Технічна заминка — спробуйте, будь ласка, ще раз за хвилину."
@@ -199,7 +207,7 @@ def main():
             offset = max(offset, u["update_id"] + 1)
     except Exception as e:
         print("[bot] drain error:", e, flush=True)
-    print(f"[bot] live (brain={'Nuzantara RAG' if USE_RAG else 'claude-only'}). offset={offset}", flush=True)
+    print(f"[bot] live (brain={'Nuzantara RAG' if USE_RAG else 'catalog'}, model={CLAUDE_MODEL}). offset={offset}", flush=True)
 
     while True:
         try:

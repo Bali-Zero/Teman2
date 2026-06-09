@@ -79,6 +79,12 @@ The doc must be link-accessible ("anyone with the link can view") for the live f
 
 Set in `~/.ukrbali-bot.env`, e.g. `echo 'export UKRBALI_USE_RAG=0' >> ~/.ukrbali-bot.env`, then restart.
 
+## Model
+
+The brain runs on **Fable 5** by default (`UKRBALI_CLAUDE_MODEL=claude-fable-5`).
+Override e.g. `export UKRBALI_CLAUDE_MODEL=claude-opus-4-8` in `~/.ukrbali-bot.env`.
+Requires the `claude` CLI on Pro to have access to that model (MAX-plan OAuth).
+
 - The bot keeps per-chat conversation memory (last 8 msgs / 500 chats); `/reset` clears it.
 - The visa-oracle backend has no Ukrainian in its language map (ru/en/id/...), so it
   may answer in Russian; `claude` rewrites the result into Ukrainian.
