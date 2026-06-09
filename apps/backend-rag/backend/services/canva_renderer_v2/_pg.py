@@ -194,3 +194,209 @@ async def reset_stale_leases(
         str(stale_after_minutes),
     )
     return [r["id"] for r in rows]
+
+
+# ── WR2 HTML lane (v4 wiring) ────────────────────────────────────────────────
+# Parallel to the Canva functions above; does NOT touch them. The HTML renderer
+# (scripts/wr2_html_renderer) replaces Canva at the apply chokepoint. Canva stays
+# intact as a clean rollback target. Kill-switch key: wr2_html_renderer_enabled.
+
+HTML_KILL_SWITCH_KEY = "wr2_html_renderer_enabled"
+
+
+async def is_html_kill_switch_enabled(conn: asyncpg.Connection) -> bool:
+    """HTML lane gate — reads system_settings.wr2_html_renderer_enabled.
+
+    Returns False (disabled) unless the row exists AND value == 'true'. A missing
+    row means OFF — the lane no-ops until an operator flips it on after the shadow run.
+    """
+    value = await conn.fetchval(
+        "SELECT value FROM system_settings WHERE key = $1",
+        HTML_KILL_SWITCH_KEY,
+    )
+    return value == "true"
+
+
+async def acquire_html_lease_and_fetch(
+    conn: asyncpg.Connection,
+    *,
+    draft_id: UUID | str,
+    lease_owner: str,
+) -> dict[str, Any] | None:
+    """CAS claim for the HTML lane + return row payload, or None if lost.
+
+    Same gate as the Canva lane (status='drafts_imaged_checked', no active lease) so
+    the two never double-render a row — distinct lease_owner per worker. Sets
+    lease_heartbeat_at=NOW() so the heartbeat-based stale-reset has an initial value.
+    drive_url IS NULL guards against re-claiming an already-delivered HTML draft.
+    """
+    row = await conn.fetchrow(
+        """
+        UPDATE war_room_drafts
+           SET status = 'rendering',
+               lease_owner = $1,
+               lease_acquired_at = NOW(),
+               lease_heartbeat_at = NOW(),
+               updated_at = NOW()
+         WHERE id = $2
+           AND status = 'drafts_imaged_checked'
+           AND drive_url IS NULL
+           AND lease_owner IS NULL
+        RETURNING id, topic, register AS tone, slides_json
+        """,
+        lease_owner,
+        draft_id,
+    )
+    if row is None:
+        logger.info("HTML draft %s lease lost to another process", draft_id)
+    return dict(row) if row else None
+
+
+async def heartbeat_html_lease(
+    conn: asyncpg.Connection,
+    *,
+    draft_id: UUID | str,
+    lease_owner: str,
+) -> bool:
+    """Renew the HTML lease mid-render. Returns False if the lease is no longer ours
+    (status moved off 'rendering' OR lease_owner changed — e.g. stale-reset stole it).
+    The worker MUST abort rendering before any Drive write when this returns False
+    (condition C4: heartbeat loss is fatal, prevents concurrent WR2-{draft_id} folders).
+    """
+    result = await conn.execute(
+        """
+        UPDATE war_room_drafts
+           SET lease_heartbeat_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND lease_owner = $2 AND status = 'rendering'
+        """,
+        draft_id,
+        lease_owner,
+    )
+    # asyncpg returns e.g. "UPDATE 1" / "UPDATE 0"
+    return result.endswith(" 1")
+
+
+async def reset_stale_html_leases(
+    conn: asyncpg.Connection,
+    *,
+    stale_after_minutes: int = 10,
+) -> list[UUID]:
+    """Watchdog for the HTML lane: revert 'rendering' rows whose HEARTBEAT (not start)
+    is older than the window. A live worker heartbeats every ~60s so it is never
+    reclaimed regardless of total render time; only a dead worker is freed.
+    Scoped to HTML-lane rows (drive_url IS NULL) so it never disturbs a Canva lease
+    (Canva rows reach 'rendering' too, but the Canva watchdog keys off lease_acquired_at).
+    """
+    rows = await conn.fetch(
+        """
+        UPDATE war_room_drafts
+           SET status = 'drafts_imaged_checked',
+               lease_owner = NULL,
+               lease_acquired_at = NULL,
+               lease_heartbeat_at = NULL,
+               updated_at = NOW()
+         WHERE status = 'rendering'
+           AND drive_url IS NULL
+           AND lease_heartbeat_at IS NOT NULL
+           AND lease_heartbeat_at < NOW() - ($1 || ' minutes')::interval
+        RETURNING id
+        """,
+        str(stale_after_minutes),
+    )
+    return [r["id"] for r in rows]
+
+
+async def persist_html_result_and_enqueue_notifications(
+    conn: asyncpg.Connection,
+    *,
+    draft_id: UUID | str,
+    lease_owner: str,
+    drive_url: str,
+    recipients: list[str],
+    message_body: str,
+    customer_window_hours: int = 24,
+) -> dict[str, Any]:
+    """Atomic terminal step (condition C1 + C7): in ONE transaction —
+      1. promote the draft to status='rendered' + drive_url, ONLY if WE still own the
+         lease (WHERE lease_owner=$x AND status='rendering'). If 0 rows → lease was
+         stolen mid-render → raise so the worker aborts WITHOUT Drive/outbox side effects
+         already committed (caller must not have written Drive after a failed heartbeat).
+      2. per recipient: upsert meta_inbox_threads(counterpart_phone), insert an OUTBOUND
+         bot message with idempotency_key='wr2:{draft_id}:{recipient}' using the EXACT
+         ON CONFLICT (thread_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+         DO NOTHING shape from wa_inbox.py, then INSERT wa_outbox ONLY when a row was
+         returned (skip-on-conflict). If the 24h window is CLOSED, the row is still
+         enqueued; the existing wa_outbox_worker marks it failed + the caller alerts ops
+         (C6 — never delivered via Telegram; the carousel link lives on Drive regardless).
+
+    Returns a per-recipient report: {recipient: {"enqueued": bool, "window_open": bool}}.
+    Raises RuntimeError("lease_lost") if the promote affected 0 rows.
+    """
+    report: dict[str, Any] = {}
+    async with conn.transaction():
+        promoted = await conn.execute(
+            """
+            UPDATE war_room_drafts
+               SET status = 'rendered',
+                   drive_url = $3,
+                   lease_owner = NULL,
+                   lease_acquired_at = NULL,
+                   lease_heartbeat_at = NULL,
+                   updated_at = NOW()
+             WHERE id = $1 AND lease_owner = $2 AND status = 'rendering'
+            """,
+            draft_id,
+            lease_owner,
+            drive_url,
+        )
+        if not promoted.endswith(" 1"):
+            raise RuntimeError("lease_lost")
+
+        for recipient in recipients:
+            idem = f"wr2:{draft_id}:{recipient}"
+            thread = await conn.fetchrow(
+                """
+                INSERT INTO meta_inbox_threads (counterpart_phone)
+                VALUES ($1)
+                ON CONFLICT (counterpart_phone) DO UPDATE
+                    SET counterpart_phone = EXCLUDED.counterpart_phone
+                RETURNING thread_id,
+                          (last_customer_at IS NOT NULL
+                           AND NOW() - last_customer_at < ($2 * INTERVAL '1 hour')) AS window_open
+                """,
+                recipient,
+                customer_window_hours,
+            )
+            thread_id = thread["thread_id"]
+            window_open = bool(thread["window_open"])
+
+            ledger = await conn.fetchrow(
+                """
+                INSERT INTO meta_inbox_messages (
+                    thread_id, direction, sender_role, body, status, idempotency_key
+                )
+                VALUES ($1, 'outbound', 'bot', $2, 'queued', $3)
+                ON CONFLICT (thread_id, idempotency_key)
+                    WHERE idempotency_key IS NOT NULL DO NOTHING
+                RETURNING id
+                """,
+                thread_id,
+                message_body,
+                idem,
+            )
+            if ledger is None:
+                # Already enqueued for this draft+recipient (idempotent replay) — skip.
+                report[recipient] = {"enqueued": False, "window_open": window_open, "duplicate": True}
+                continue
+
+            await conn.execute(
+                """
+                INSERT INTO wa_outbox (thread_id, message_id, needs_generation, status)
+                VALUES ($1, $2, false, 'pending')
+                ON CONFLICT (message_id) DO NOTHING
+                """,
+                thread_id,
+                ledger["id"],
+            )
+            report[recipient] = {"enqueued": True, "window_open": window_open, "duplicate": False}
+    return report
