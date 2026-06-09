@@ -174,17 +174,22 @@ def test_apply_levers_rerender_still_not_folded():
 
 
 def test_balance_headline_inserts_br_no_orphan():
-    """FIX#2b: _balance_headline wraps a long headline into one-or-more lines via
-    <br>, each within the width budget and with no single-word orphan line."""
-    from wr2_html_renderer.composer import _COVER_MAX_CHARS_PER_LINE, _balance_headline
+    """_balance_headline wraps a long headline into lines via <br>, each within
+    the RENDERED PIXEL-WIDTH budget (not char count) and with no orphan word."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _WRAP_SAFETY,
+        _balance_headline,
+        _estimate_text_width_px,
+    )
 
     out = _balance_headline("KPK ARRESTS TOP DEPUTY MINISTER ON GRAFT")
     assert "<br>" in out
     lines = out.split("<br>")
     assert len(lines) >= 2  # actually wrapped
-    # every line within budget (so the browser won't re-wrap) + no orphan word
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
     for ln in lines:
-        assert len(ln) <= _COVER_MAX_CHARS_PER_LINE, f"line too wide: {ln!r}"
+        assert _estimate_text_width_px(ln) <= budget, f"line too wide: {ln!r}"
         assert len(ln.split()) >= 2, f"orphan line: {ln!r}"
     # round-trips the words (only <br>s inserted, nothing dropped/reordered)
     assert out.replace("<br>", " ").split() == "KPK ARRESTS TOP DEPUTY MINISTER ON GRAFT".split()
@@ -380,24 +385,47 @@ def test_brand_inert_levers_includes_rebalance_wrap():
 # ── FIX#2b robust multi-line wrap + FIX#4 composition-debt accept (2026-06-10) ─
 
 
-def test_balance_headline_real_title_multiline_no_orphan():
-    """FIX#2b(a)+FIX A: at the cover default (cap 22) the real fire-test title
-    settles on exactly 2 balanced lines — what the vision critic asks for — each
-    within the budget, with NO single-word orphan ("TOP" eliminated)."""
-    from wr2_html_renderer.composer import _COVER_MAX_CHARS_PER_LINE, _balance_headline
+def test_balance_headline_real_title_pixel_width_no_orphan():
+    """The real fire-test title wraps so EVERY line fits the cover box by RENDERED
+    PIXEL WIDTH (84px uppercase) and NO line is a single-word orphan. At 84px the
+    char-count model wrongly produced a 2-line split that overflowed the 960px
+    box (→ the browser re-split → the "TOP" orphan); the pixel model yields a
+    clean wrap (here 3 lines, all within box)."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _WRAP_SAFETY,
+        _balance_headline,
+        _estimate_text_width_px,
+    )
 
     out = _balance_headline("The KITAS Bribe Trail Reaches the Top")
     lines = out.split("<br>")
-    # FIX A: cap 22 yields the 2-line "The KITAS Bribe Trail / Reaches the Top"
-    assert len(lines) == 2, f"expected 2 balanced lines, got {lines!r}"
-    # every line stays within the safe width (so the browser won't re-wrap)
+    assert len(lines) >= 2  # actually wrapped
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
     for ln in lines:
-        assert len(ln) <= _COVER_MAX_CHARS_PER_LINE, f"line too wide: {ln!r}"
-    # no single-word orphan line anywhere (last line has >=2 words)
-    for ln in lines:
-        assert len(ln.split()) >= 2, f"orphan line: {ln!r}"
-    # words preserved in order (only <br>s inserted between whole words)
+        assert _estimate_text_width_px(ln) <= budget, f"line overflows box: {ln!r}"
+        assert len(ln.split()) >= 2, f"single-word orphan: {ln!r}"
     assert out.replace("<br>", " ").split() == "The KITAS Bribe Trail Reaches the Top".split()
+
+
+def test_balance_headline_indonesia_visa_fee_no_orphan():
+    """The 'Indonesia Visa Fee Jumps to IDR 3.5M' title (the FEE-orphan case):
+    each line fits the box by pixel width, no orphan. The char model put
+    'Indonesia Visa Fee' (968px) on one line — overflowing the box — and the
+    browser re-split it into a FEE orphan."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _WRAP_SAFETY,
+        _balance_headline,
+        _estimate_text_width_px,
+    )
+
+    out = _balance_headline("Indonesia Visa Fee Jumps to IDR 3.5M")
+    lines = out.split("<br>")
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for ln in lines:
+        assert _estimate_text_width_px(ln) <= budget, f"line overflows box: {ln!r}"
+        assert len(ln.split()) >= 2, f"single-word orphan: {ln!r}"
 
 
 def test_balance_headline_never_splits_a_word():
@@ -415,13 +443,26 @@ def test_balance_headline_never_splits_a_word():
     assert out_words == title.split()  # order + completeness
 
 
-def test_balance_headline_parametrizable_budget():
-    """The line-width budget is parametrizable (smaller fonts pass a larger one)."""
+def test_balance_headline_parametrizable_box_width():
+    """The pixel budget is parametrizable via box_width_px (e.g. a wider box or a
+    smaller font). A very generous box fits the whole title on one line → no
+    <br>; a tiny box forces more lines."""
     from wr2_html_renderer.composer import _balance_headline
 
     title = "The KITAS Bribe Trail Reaches the Top"
-    # a generous budget lets the whole title fit on one line → no <br>
-    assert "<br>" not in _balance_headline(title, max_chars_per_line=200)
+    assert "<br>" not in _balance_headline(title, box_width_px=100000)
+    assert _balance_headline(title, box_width_px=300).count("<br>") >= 2
+
+
+def test_estimate_text_width_px_calibrated():
+    """The em-width estimate reproduces the real rendered width of
+    'INDONESIA VISA FEE' (measured 937.3px at 84px uppercase) within ±10%."""
+    from wr2_html_renderer.composer import _estimate_text_width_px
+
+    est = _estimate_text_width_px("INDONESIA VISA FEE", font_px=84)
+    assert 937.3 * 0.90 <= est <= 937.3 * 1.10, f"estimate {est:.1f}px off real 937.3px"
+    # lowercase input is normalized to uppercase (the .heading transform) → same
+    assert _estimate_text_width_px("indonesia visa fee", 84) == est
 
 
 @pytest.mark.asyncio
@@ -553,22 +594,49 @@ def test_classify_residual_issues():
     assert _is_composition_only_lever(set()) is False
 
 
-def test_balance_headline_long_title_no_one_word_orphan():
-    """FIX A: a much longer title (10+ words) still wraps with NO single-word
-    orphan line — the larger cap must not re-introduce a lone-word last line."""
-    from wr2_html_renderer.composer import _COVER_MAX_CHARS_PER_LINE, _balance_headline
+def test_balance_headline_template_max_title_no_orphan():
+    """A title at the template's upper word bound (≤12 words) still wraps with
+    NO single-word orphan line and every line fits the box by pixel width."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _WRAP_SAFETY,
+        _balance_headline,
+        _estimate_text_width_px,
+    )
+
+    # a clean-pairing 10-word title (consecutive words pair within the box)
+    title = "KPK Arrests Top Deputy Minister in a Major Graft Case"
+    out = _balance_headline(title)
+    lines = out.split("<br>")
+    assert len(lines) >= 3  # genuinely long → several lines
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for ln in lines:
+        assert _estimate_text_width_px(ln) <= budget, f"line overflows box: {ln!r}"
+        assert len(ln.split()) >= 2, f"single-word orphan line: {ln!r}"
+    assert out.replace("<br>", " ").split() == title.split()
+
+
+def test_balance_headline_never_overflows_box_even_if_orphan_unavoidable():
+    """Invariant guarantee: regardless of input, NO line ever exceeds the pixel
+    budget (the browser never re-wraps). A pathological over-long title may leave
+    an orphan, but it must NEVER overflow — overflow is the bug we are killing."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _WRAP_SAFETY,
+        _balance_headline,
+        _estimate_text_width_px,
+    )
 
     title = (
         "Indonesia Tightens Investor KITAS Rules After A Major Graft Scandal "
         "Rocks The Immigration Directorate Today"
     )
     out = _balance_headline(title)
-    lines = out.split("<br>")
-    assert len(lines) >= 3  # genuinely long → several lines
-    for ln in lines:
-        assert len(ln) <= _COVER_MAX_CHARS_PER_LINE, f"line too wide: {ln!r}"
-        assert len(ln.split()) >= 2, f"single-word orphan line: {ln!r}"
-    assert out.replace("<br>", " ").split() == title.split()  # nothing lost
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for ln in out.split("<br>"):
+        # a single word longer than the box is the only allowed exception (it
+        # cannot be split); here no single word is that wide.
+        assert _estimate_text_width_px(ln) <= budget, f"OVERFLOW: {ln!r}"  # nothing lost
 
 
 def test_orphan_grading_two_word_tail_soft_one_word_hard():

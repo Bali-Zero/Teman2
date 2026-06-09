@@ -364,34 +364,80 @@ def _apply_levers_to_html(html: str, slide: dict[str, Any]) -> str:
 # which over-wrapped into 3 lines with a 2-word tail). 22 lets the greedy wrap
 # settle on those 2 even lines. Parametrizable so a smaller headline font can
 # pass a larger budget.
-_COVER_MAX_CHARS_PER_LINE = 22
+# Per-character advance width, in ems, for UPPERCASE Montserrat-bold (the cover
+# .heading is text-transform:uppercase, font-weight:800). MEASURED empirically
+# (playwright, getBoundingClientRect at 84px, staged brand _fonts.css) — the
+# sum-of-chars estimate reproduces real rendered string widths to within ~0.7%.
+# This is the font-aware width model (approach (a)) used by _balance_headline to
+# wrap by RENDERED PIXEL WIDTH, not by character count (the char-count model
+# over-/under-shot because W/M are ~3x wider than I, so an 18-char "INDONESIA
+# VISA FEE" is 937px while an 18-char all-I string would be ~half that).
+_UPPER_EM_WIDTH = {
+    "A": 0.786, "B": 0.769, "C": 0.730, "D": 0.826, "E": 0.672, "F": 0.642,
+    "G": 0.770, "H": 0.806, "I": 0.339, "J": 0.557, "K": 0.752, "L": 0.610,
+    "M": 0.954, "N": 0.806, "O": 0.846, "P": 0.737, "Q": 0.846, "R": 0.740,
+    "S": 0.647, "T": 0.635, "U": 0.786, "V": 0.766, "W": 1.184, "X": 0.737,
+    "Y": 0.693, "Z": 0.679,
+    "0": 0.685, "1": 0.405, "2": 0.599, "3": 0.603, "4": 0.700, "5": 0.607,
+    "6": 0.649, "7": 0.632, "8": 0.669, "9": 0.649,
+    " ": 0.291, ".": 0.283, ",": 0.283, "-": 0.388, "&": 0.752, "$": 0.647,
+    "/": 0.415, "%": 0.897, "+": 0.609, "'": 0.242,
+}
+_EM_WIDTH_DEFAULT = 0.74  # avg uppercase letter (A-Z mean ≈ 0.74em)
+
+# Cover headline box + font (read from the brand layout, kept parametrizable):
+#   --canvas-width 1080px − 2×--spacing-edge-margin 60px = 960px content box
+#   --font-size-headline-cover 84px
+_COVER_BOX_WIDTH_PX = 960
+_COVER_HEADLINE_FONT_PX = 84
+# Safety margin: the sum-of-chars estimate slightly OVER-estimates (ignores
+# negative kerning), which is the safe direction; this extra haircut leaves
+# headroom so the browser never re-wraps a line we sized to fit.
+_WRAP_SAFETY = 0.96
+# Back-compat: a coarse char budget kept for callers/tests that referenced it,
+# derived from the pixel box (≈ box / avg-char-px). NOT the wrap driver anymore.
+_COVER_MAX_CHARS_PER_LINE = int(
+    _COVER_BOX_WIDTH_PX / (_COVER_HEADLINE_FONT_PX * _EM_WIDTH_DEFAULT)
+)
 
 
-def _balance_headline(text: str, *, max_chars_per_line: int = _COVER_MAX_CHARS_PER_LINE) -> str:
-    """Re-wrap a headline into MULTIPLE balanced lines (explicit <br>s) so that
-    NO line is wide enough for the browser to re-wrap and NO line is a single
-    orphan word.
+def _estimate_text_width_px(text: str, font_px: int = _COVER_HEADLINE_FONT_PX) -> float:
+    """Estimate the RENDERED width (px) of `text` as UPPERCASE Montserrat-bold at
+    `font_px`, via the measured per-character em-width table. Uppercase because
+    the cover .heading applies text-transform:uppercase. Accurate to ~1% vs the
+    real browser render (see _UPPER_EM_WIDTH provenance)."""
+    return sum(_UPPER_EM_WIDTH.get(c, _EM_WIDTH_DEFAULT) for c in text.upper()) * font_px
 
-    The `rebalance_wrap` lever's renderer side (FIX#2b 2026-06-10). The earlier
-    single-<br> split (2026-06-09) failed on long titles: it produced two
-    segments, but the long segment ("Trail Reaches the Top") still exceeded the
-    cover font's line width and the browser re-wrapped it on its own, RE-creating
-    the very "TOP" orphan we were fixing. This greedy word-wrap caps every line
-    at `max_chars_per_line` (≈ the cover font's single-line capacity) so the
-    browser never gets to re-wrap, then rebalances to kill any single-word last
-    line.
 
-    Text-only — it only inserts <br> tags between whole words; it never splits a
-    word and never touches position/color/font/box (so it cannot drift the brand).
+def _balance_headline(
+    text: str,
+    *,
+    box_width_px: int = _COVER_BOX_WIDTH_PX,
+    font_px: int = _COVER_HEADLINE_FONT_PX,
+    safety: float = _WRAP_SAFETY,
+) -> str:
+    """Re-wrap a headline into MULTIPLE lines (explicit <br>s) sized by the
+    ESTIMATED RENDERED PIXEL WIDTH of each line, so NO line overflows the cover
+    box (the browser never gets to re-wrap) and NO line is a single orphan word.
+
+    Root-cause fix (2026-06-10): the previous versions wrapped by CHARACTER COUNT
+    (_COVER_MAX_CHARS_PER_LINE). But at 84px uppercase Montserrat-bold, char
+    count is a poor proxy for width — "INDONESIA VISA FEE" (18 chars) renders
+    937px while the 960px box fits only ~that, and a char-budget of 22 let a
+    too-wide line through, which the browser then re-split, RE-creating the
+    "TOP"/"FEE" orphans + unexpected 3rd lines. We now greedily fill each line up
+    to `box_width_px * safety` measured by `_estimate_text_width_px`.
+
+    Text-only — only inserts <br> between whole words; never splits a word and
+    never touches position/color/font/box (so it cannot drift the brand).
 
     Rules:
       - ≤3 words: leave unchanged (too short to wrap; one line is fine).
-      - greedy-fill each line up to `max_chars_per_line` (whole words only); if a
-        single word is longer than the budget it gets its own line (never split).
-      - if the result is a single line (everything fit), leave it flat.
-      - no single-word orphan line: if the last line has 1 word, pull the last
-        word of the previous line down onto it (when that keeps the previous line
-        non-empty); applied to whichever line ends up the lone orphan.
+      - greedy-fill each line up to the pixel budget (whole words only); a single
+        word wider than the budget gets its own line (never split mid-word).
+      - if everything fits on one line, leave it flat (no <br>).
+      - no single-word orphan line: borrow the previous line's last word when the
+        merged line still fits the budget (front-to-back, any line not just last).
       - if the text already contains a <br>, assume it's pre-wrapped → no-op.
     """
     text = text.strip()
@@ -401,17 +447,19 @@ def _balance_headline(text: str, *, max_chars_per_line: int = _COVER_MAX_CHARS_P
     if len(words) <= 3:
         return text
 
-    budget = max(1, int(max_chars_per_line))
+    budget_px = max(1.0, float(box_width_px) * float(safety))
 
-    # Greedy fill: start each line, add words while the line stays within budget.
+    def width(seg: list[str]) -> float:
+        return _estimate_text_width_px(" ".join(seg), font_px)
+
+    # Greedy fill by pixel width: add words while the line stays within budget.
     lines: list[list[str]] = []
     cur: list[str] = []
     for w in words:
         if not cur:
             cur = [w]
             continue
-        candidate = " ".join(cur + [w])
-        if len(candidate) <= budget:
+        if width(cur + [w]) <= budget_px:
             cur.append(w)
         else:
             lines.append(cur)
@@ -423,21 +471,16 @@ def _balance_headline(text: str, *, max_chars_per_line: int = _COVER_MAX_CHARS_P
     if len(lines) <= 1:
         return text
 
-    # Kill ANY single-word orphan line (not just the last): a long title's greedy
-    # pass can strand a lone word on a MIDDLE line too (e.g. "…Scandal Rocks The /
-    # Immigration / Directorate Today"). For each single-word line, borrow the
-    # PREVIOUS line's last word and prepend it — but only when the previous line
-    # keeps ≥2 words AND the merged orphan line stays within budget (never create
-    # an over-wide line just to fix an orphan; a word longer than the budget that
-    # has no legal companion is left on its own line). Front-to-back so a fix on
-    # line i can still be helped by line i-1.
+    # Kill ANY single-word orphan line: borrow the PREVIOUS line's last word and
+    # prepend it, only when the previous line keeps ≥2 words AND the merged orphan
+    # line still fits the pixel budget (never create an over-wide line to fix an
+    # orphan; a word with no legal companion is left on its own line). Front-to-
+    # back so a fix on line i can still be helped by line i-1.
     for i in range(1, len(lines)):
-        # loop: the line may still be an orphan after one borrow if the moved
-        # word was short; keep borrowing while it is legal and helpful.
         while (
             len(lines[i]) == 1
             and len(lines[i - 1]) >= 2
-            and len(" ".join([lines[i - 1][-1]] + lines[i])) <= budget
+            and width([lines[i - 1][-1]] + lines[i]) <= budget_px
         ):
             lines[i].insert(0, lines[i - 1].pop())
 
