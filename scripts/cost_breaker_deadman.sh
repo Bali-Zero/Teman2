@@ -45,9 +45,11 @@ STATE_DIR="$HOME/.agent/decisions/state"
 # thresholds (≈2× the expected emit interval — generous, only fire on a true
 # stall, not a slow tick). verify_the_verifiers + sentinel_meta_watchdog both
 # emit on cron cadences in the 10-15min range, so 1800s (30min) is a safe 2×.
+# mcp_integrity emits every 900s (com.nuzantara.mcp-integrity) — same 2× safety.
 OBSERVED_FILES=(
     "$STATE_DIR/verify_the_verifiers.json"
     "$STATE_DIR/sentinel_meta_watchdog.json"
+    "$STATE_DIR/mcp_integrity.json"
 )
 CRITICAL_THRESHOLD_SEC="${COST_BREAKER_DEADMAN_THRESHOLD_SEC:-1800}"  # 30 min
 COOLDOWN_SEC=3600                                                     # 1 h
