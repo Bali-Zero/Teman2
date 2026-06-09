@@ -376,10 +376,18 @@ async def test_publish_article_with_cover_image(
     sample_enriched_article,
 ):
     """Test publishing article with cover image (base64)"""
-    # Setup mock
+    # Setup mock — publish goes via PR + auto-merge (protected branch path)
     mock_publisher.is_configured = True
     mock_publisher.create_commit_with_files = AsyncMock(
-        return_value={"success": True, "commit_sha": "abc123", "files_count": 2, "branch": "main"},
+        return_value={
+            "success": True,
+            "commit_sha": "abc123",
+            "files_count": 2,
+            "branch": "auto-publish/abc123",
+            "pull_request_url": "https://github.com/Balizero1987/Teman2/pull/42",
+            "pull_request_number": 42,
+            "auto_merge_enabled": True,
+        },
     )
 
     # Create base64 image
@@ -403,10 +411,11 @@ async def test_publish_article_with_cover_image(
     assert data["commit_sha"] == "abc123"
     assert data["image_path"] == "/static/news/test-article.jpg"
 
-    # Verify atomic commit was called
+    # Verify atomic commit was called via the pull-request path
     mock_publisher.create_commit_with_files.assert_called_once()
     call_args = mock_publisher.create_commit_with_files.call_args
     assert len(call_args[1]["files"]) == 2  # MDX + image
+    assert call_args[1]["pull_request"] is True
 
 
 @pytest.mark.asyncio
@@ -416,11 +425,19 @@ async def test_publish_article_without_cover_image(
     test_client,
     sample_enriched_article,
 ):
-    """Test publishing article without cover image"""
-    # Setup mock
+    """Test publishing article without cover image (single MDX file, PR path)"""
+    # Setup mock — even a single file goes via the PR path now
     mock_publisher.is_configured = True
-    mock_publisher.upload_file = AsyncMock(
-        return_value={"success": True, "commit_sha": "def456", "path": "test.mdx"},
+    mock_publisher.create_commit_with_files = AsyncMock(
+        return_value={
+            "success": True,
+            "commit_sha": "def456",
+            "files_count": 1,
+            "branch": "auto-publish/def456",
+            "pull_request_url": "https://github.com/Balizero1987/Teman2/pull/43",
+            "pull_request_number": 43,
+            "auto_merge_enabled": True,
+        },
     )
 
     # Call endpoint
@@ -433,8 +450,11 @@ async def test_publish_article_without_cover_image(
     assert data["success"] is True
     assert data["image_path"] is None
 
-    # Verify single file upload was called
-    mock_publisher.upload_file.assert_called_once()
+    # Verify the commit was made via the pull-request path (single MDX file)
+    mock_publisher.create_commit_with_files.assert_called_once()
+    call_args = mock_publisher.create_commit_with_files.call_args
+    assert len(call_args[1]["files"]) == 1  # MDX only
+    assert call_args[1]["pull_request"] is True
 
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
@@ -462,7 +482,9 @@ async def test_publish_article_github_error(mock_publisher, test_client, sample_
     from backend.services.integrations.github_publisher import GitHubPublisherError
 
     mock_publisher.is_configured = True
-    mock_publisher.upload_file = AsyncMock(side_effect=GitHubPublisherError("GitHub API error"))
+    mock_publisher.create_commit_with_files = AsyncMock(
+        side_effect=GitHubPublisherError("GitHub API error"),
+    )
 
     request = PublishRequest(article=sample_enriched_article)
     response = test_client.post("/api/articles/publish", json=request.model_dump())

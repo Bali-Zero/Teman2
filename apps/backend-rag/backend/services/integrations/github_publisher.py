@@ -299,24 +299,169 @@ class GitHubPublisher:
             "commit_url": result["commit"]["html_url"],
         }
 
+    async def _create_branch_ref(self, branch: str, from_sha: str) -> None:
+        """
+        Create a new branch ref pointing at ``from_sha``.
+
+        Used by the pull-request publish path so the commit lands on a
+        fresh, unprotected branch instead of attempting a direct push to a
+        protected branch (which GitHub rejects with HTTP 422).
+
+        Args:
+            branch: New branch name (without ``refs/heads/`` prefix).
+            from_sha: Commit SHA the new branch should point at.
+
+        Raises:
+            GitHubPublisherError: If the branch ref cannot be created.
+        """
+        client = self._get_client()
+        create_ref_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/refs"
+        response = await client.post(
+            create_ref_url,
+            headers=self._get_headers(),
+            json={"ref": f"refs/heads/{branch}", "sha": from_sha},
+            timeout=30.0,
+        )
+        # 201 Created on success. 422 means the ref already exists — reuse it.
+        if response.status_code == 422 and "already exists" in response.text:
+            logger.warning("Branch '%s' already exists, reusing it", branch)
+            return
+        if response.status_code != 201:
+            logger.error("Failed to create branch ref '%s': %s", branch, response.text)
+            raise GitHubPublisherError(
+                f"Failed to create branch ref '{branch}': {response.text}",
+            )
+
+    async def _create_pull_request(
+        self,
+        head_branch: str,
+        base_branch: str,
+        title: str,
+        body: str,
+    ) -> dict[str, Any]:
+        """
+        Open a pull request from ``head_branch`` into ``base_branch``.
+
+        Args:
+            head_branch: Source branch carrying the new commit.
+            base_branch: Target (protected) branch, e.g. ``main``.
+            title: PR title.
+            body: PR description.
+
+        Returns:
+            Dict with ``number`` (PR number), ``node_id`` (GraphQL id) and
+            ``html_url``.
+
+        Raises:
+            GitHubPublisherError: If the PR cannot be created.
+        """
+        client = self._get_client()
+        pulls_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/pulls"
+        response = await client.post(
+            pulls_url,
+            headers=self._get_headers(),
+            json={
+                "title": title,
+                "body": body,
+                "head": head_branch,
+                "base": base_branch,
+            },
+            timeout=30.0,
+        )
+        if response.status_code != 201:
+            logger.error("Failed to open pull request: %s", response.text)
+            raise GitHubPublisherError(f"Failed to open pull request: {response.text}")
+        data = response.json()
+        return {
+            "number": data["number"],
+            "node_id": data["node_id"],
+            "html_url": data["html_url"],
+        }
+
+    async def _enable_auto_merge(self, pr_node_id: str) -> bool:
+        """
+        Enable auto-merge (squash) on a PR via the GraphQL API.
+
+        Once the branch protection's required status checks pass, GitHub
+        merges the PR automatically — no human intervention. Best-effort:
+        if auto-merge cannot be enabled (e.g. the repo setting is off), the
+        PR is still open and mergeable manually, so we log and return False
+        rather than raising.
+
+        Args:
+            pr_node_id: The PR's GraphQL ``node_id``.
+
+        Returns:
+            True if auto-merge was enabled, False otherwise.
+        """
+        client = self._get_client()
+        graphql_url = f"{self.BASE_URL}/graphql"
+        mutation = (
+            "mutation($id:ID!){enablePullRequestAutoMerge"
+            "(input:{pullRequestId:$id,mergeMethod:SQUASH})"
+            "{pullRequest{autoMergeRequest{enabledAt}}}}"
+        )
+        try:
+            response = await client.post(
+                graphql_url,
+                headers=self._get_headers(),
+                json={"query": mutation, "variables": {"id": pr_node_id}},
+                timeout=30.0,
+            )
+        except httpx.HTTPError as exc:
+            logger.warning("Auto-merge request failed (non-blocking): %s", exc)
+            return False
+        if response.status_code != 200:
+            logger.warning(
+                "Auto-merge not enabled (HTTP %s, non-blocking): %s",
+                response.status_code,
+                response.text,
+            )
+            return False
+        payload = response.json()
+        if payload.get("errors"):
+            logger.warning(
+                "Auto-merge not enabled (GraphQL errors, non-blocking): %s",
+                payload["errors"],
+            )
+            return False
+        return True
+
     async def create_commit_with_files(
         self,
         files: list[dict[str, Any]],
         message: str,
         branch: str = "main",
+        pull_request: bool = False,
+        pr_branch_prefix: str = "auto-publish",
     ) -> dict[str, Any]:
         """
         Create a single commit with multiple files.
 
         Uses the Git Data API for atomic commits with multiple files.
 
+        Two publish modes:
+
+        - ``pull_request=False`` (default): commit is pushed directly to
+          ``branch`` by updating its ref. Works only when ``branch`` is
+          unprotected.
+        - ``pull_request=True``: the commit is placed on a fresh branch
+          (``{pr_branch_prefix}/<short-sha>``), a PR into ``branch`` is
+          opened and auto-merge (squash) is enabled. This is the correct
+          path for protected branches (e.g. ``main`` with required status
+          checks), which reject direct pushes with HTTP 422.
+
         Args:
             files: List of dicts with 'path' and 'content' keys
             message: Commit message
-            branch: Branch name (default: main)
+            branch: Target branch (default: main)
+            pull_request: If True, publish via branch + PR + auto-merge.
+            pr_branch_prefix: Prefix for the temporary PR branch name.
 
         Returns:
-            Commit info
+            Commit info. When ``pull_request=True`` also includes
+            ``pull_request_url``, ``pull_request_number`` and
+            ``auto_merge_enabled``.
         """
         if not self.is_configured:
             raise GitHubPublisherError("GitHub API not configured")
@@ -456,7 +601,51 @@ class GitHubPublisher:
         new_commit_sha = commit_create_response.json()["sha"]
         logger.debug(f"New commit SHA: {new_commit_sha[:7]}")
 
-        # Step 6: Update branch reference
+        if pull_request:
+            # Step 6 (PR path): land the commit on a fresh branch, then open a
+            # PR into `branch` with auto-merge. Required for protected branches
+            # (direct ref update returns HTTP 422).
+            pr_branch = f"{pr_branch_prefix}/{new_commit_sha[:12]}"
+            logger.debug("Step 6/6 (PR): creating branch '%s' + pull request", pr_branch)
+            await self._create_branch_ref(pr_branch, new_commit_sha)
+            pr_title = message.split("\n", 1)[0]
+            pr_body = (
+                f"{message}\n\n"
+                "Auto-opened by Article Composer (News Room publish). "
+                "Auto-merge enabled — merges once required checks pass."
+            )
+            pr = await self._create_pull_request(
+                head_branch=pr_branch,
+                base_branch=branch,
+                title=pr_title,
+                body=pr_body,
+            )
+            auto_merge_enabled = await self._enable_auto_merge(pr["node_id"])
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.info(
+                f"Article PR opened: #{pr['number']} {new_commit_sha[:7]} "
+                f"({len(files)} files, auto_merge={auto_merge_enabled}, {elapsed_ms:.0f}ms)",
+                extra={
+                    "commit_sha": new_commit_sha,
+                    "pull_request_number": pr["number"],
+                    "pr_branch": pr_branch,
+                    "auto_merge_enabled": auto_merge_enabled,
+                    "files_count": len(files),
+                    "elapsed_ms": elapsed_ms,
+                },
+            )
+            return {
+                "success": True,
+                "commit_sha": new_commit_sha,
+                "files_count": len(files),
+                "branch": pr_branch,
+                "pull_request_url": pr["html_url"],
+                "pull_request_number": pr["number"],
+                "auto_merge_enabled": auto_merge_enabled,
+            }
+
+        # Step 6 (direct path): update branch reference (unprotected branches).
         logger.debug("Step 6/6: Updating branch reference")
         update_ref_response = await client.patch(
             ref_url,
