@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import stat
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,7 +13,6 @@ from backend.services.autonomous_lab.planner import (
     MaterialSourceType,
     ResearchMaterial,
 )
-from backend.services.autonomous_lab.receipt_store import ReceiptStore
 
 
 def _run(raw_phrase: str = "RAW_TEXT_MUST_NOT_LEAK"):
@@ -36,7 +36,7 @@ def _run(raw_phrase: str = "RAW_TEXT_MUST_NOT_LEAK"):
 
 def test_receipt_store_writes_receipt_and_event_without_raw_text(tmp_path: Path) -> None:
     raw_phrase = "RAW_TEXT_MUST_NOT_LEAK"
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
 
     record = store.write_run(_run(raw_phrase))
 
@@ -52,7 +52,7 @@ def test_receipt_store_writes_receipt_and_event_without_raw_text(tmp_path: Path)
 
 
 def test_receipt_store_loads_and_lists_run_ids(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
     store.write_run(_run())
 
     assert store.list_run_ids() == ["receipt-store-test"]
@@ -60,7 +60,7 @@ def test_receipt_store_loads_and_lists_run_ids(tmp_path: Path) -> None:
 
 
 def test_receipt_store_accepts_orchestration_receipts(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
 
     record = store.write_receipt({"run": _run().to_receipt(), "blocked": False})
 
@@ -70,14 +70,14 @@ def test_receipt_store_accepts_orchestration_receipts(tmp_path: Path) -> None:
 
 
 def test_receipt_store_rejects_raw_content_keys(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
 
     with pytest.raises(ValueError, match="forbidden raw-content key"):
         store.write_receipt({"run_id": "unsafe-receipt", "materials": [{"text": "raw body"}]})
 
 
 def test_receipt_store_rejects_raw_or_secret_like_values(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
 
     with pytest.raises(ValueError, match="unsafe raw or secret-like value"):
         store.write_receipt(
@@ -89,7 +89,7 @@ def test_receipt_store_rejects_raw_or_secret_like_values(tmp_path: Path) -> None
 
 
 def test_receipt_store_rejects_mutating_commands(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
 
     with pytest.raises(ValueError, match="mutating command-like value"):
         store.write_receipt(
@@ -101,7 +101,7 @@ def test_receipt_store_rejects_mutating_commands(tmp_path: Path) -> None:
 
 
 def test_receipt_store_rejects_embedded_unpersistable_findings(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
 
     with pytest.raises(ValueError, match="raw_text_leakage"):
         store.write_receipt(
@@ -121,7 +121,7 @@ def test_receipt_store_rejects_embedded_unpersistable_findings(tmp_path: Path) -
 
 
 def test_receipt_store_does_not_overwrite_existing_receipt(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
     store.write_run(_run())
 
     with pytest.raises(FileExistsError, match="receipt already exists"):
@@ -132,7 +132,7 @@ def test_receipt_store_does_not_overwrite_if_receipt_appears_during_write(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
     original_write_json_atomic = receipt_store_module._write_json_atomic
     first_writer_payload = {
         "run_id": "race-receipt",
@@ -163,8 +163,19 @@ def test_receipt_store_does_not_overwrite_if_receipt_appears_during_write(
     assert receipt == first_writer_payload
 
 
+def test_receipt_store_uses_private_file_permissions(tmp_path: Path) -> None:
+    store = receipt_store_module.ReceiptStore(tmp_path)
+
+    record = store.write_run(_run())
+
+    receipt_mode = stat.S_IMODE(record.receipt_path.stat().st_mode)
+    event_mode = stat.S_IMODE(record.event_path.stat().st_mode)
+    assert receipt_mode == 0o600
+    assert event_mode == 0o600
+
+
 def test_receipt_store_rejects_unsafe_run_id(tmp_path: Path) -> None:
-    store = ReceiptStore(tmp_path)
+    store = receipt_store_module.ReceiptStore(tmp_path)
 
     with pytest.raises(ValueError, match="run_id"):
         store.write_receipt({"run_id": "../unsafe", "blocked": False})
