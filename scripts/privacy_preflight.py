@@ -268,6 +268,16 @@ def _default_redactor(strict: bool) -> Any:
     return Redactor.load_default(require_dynamic_names=strict)
 
 
+def _redactor_min_chars(redactor_obj: Any) -> int:
+    """The redactor's `gate.min_remaining_chars` floor, or 0 if not exposed
+    (e.g. a duck-typed test redactor). Used to pad the match-copy so a short
+    clean prompt is not mis-routed LOCAL by the length gate."""
+    try:
+        return int(redactor_obj.config.gate.min_remaining_chars)
+    except Exception:
+        return 0
+
+
 def _normalize_task_type(task_type: Optional[str]) -> Optional[str]:
     """Panel F4: a caller-supplied task_type is UNTRUSTED — it could itself be
     a client name. Only echo a recognized, declared type into the audit log;
@@ -357,13 +367,23 @@ def _decide(
             redactor_obj = None
 
     if redactor_obj is not None:
+        # The redactor fails-closed when its output is shorter than
+        # `gate.min_remaining_chars` — but for a SHORT clean prompt that length
+        # check is an INPUT-length artifact, not a PII signal, and it used to
+        # mis-route benign short prompts LOCAL (no leak, just a false-positive).
+        # Pad the match-copy past that floor so the gate can't fire on length
+        # alone; real PII still surfaces as a MODIFICATION of the padded text →
+        # LOCAL (so e.g. a short "bob@acme.com" is still caught, no email hole).
+        # The dispatched prompt is never mutated — only this probe copy.
+        min_chars = _redactor_min_chars(redactor_obj)
+        probe = prompt + (" " * min_chars) if min_chars else prompt
         try:
-            redacted = redactor_obj.redact(prompt)
+            redacted = redactor_obj.redact(probe)
         except Exception as exc:
-            # a redactor that refuses is a strong PII signal → LOCAL, in BOTH
-            # strict and degraded modes.
+            # a redactor that still refuses is a strong PII signal → LOCAL, in
+            # BOTH strict and degraded modes.
             return Decision(Route.LOCAL, "redactor", f"redactor_refused:{type(exc).__name__}")
-        if redacted != prompt:
+        if redacted != probe:
             return Decision(Route.LOCAL, "redactor", "redactor_found_pii")
 
     # all strata passed (or STRATO C degraded with a clean regex result) → CLOUD.

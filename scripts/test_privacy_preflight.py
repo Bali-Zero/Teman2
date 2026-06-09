@@ -480,6 +480,29 @@ def test_real_redactor_clean_prompt_routes_cloud():
     assert d.route is Route.CLOUD
 
 
+def test_short_clean_prompt_not_misrouted_local():
+    # fast-follow: a SHORT clean prompt (well under the redactor's
+    # min_remaining_chars) used to be mis-routed LOCAL by the length gate
+    # (fail-closed, no leak — but a false-positive). NON-padded: it must now
+    # reach CLOUD.
+    real = _real_redactor_with_names([])
+    d = privacy_preflight(
+        "refactor the retry loop", task_type="ARCHITECTURE_META", redactor=real
+    )
+    assert d.route is Route.CLOUD
+
+
+def test_short_prompt_with_email_still_local():
+    # the padding fix must NOT open a hole: a SHORT prompt carrying PII (email)
+    # is still caught by the redactor (it modifies the padded copy) → LOCAL.
+    real = _real_redactor_with_names([])
+    d = privacy_preflight(
+        "ping bob@acme.com", task_type="ARCHITECTURE_META", redactor=real
+    )
+    assert d.route is Route.LOCAL
+    assert d.layer == "redactor"
+
+
 # === fail-closed default posture ==========================================
 
 
