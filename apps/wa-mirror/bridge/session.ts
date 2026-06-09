@@ -536,7 +536,12 @@ async function handleConnectionUpdate(
 
     if (terminal) {
       // Device removed from the phone's Linked Devices — needs a fresh QR.
-      deps.settleReject(new Error(`wa-mirror: session logged out: ${reason}`));
+      // Reject with a TYPED error so the orchestrator (runAccountForever) can
+      // tell a terminal logout apart from a transient crash and STOP retrying:
+      // a logged-out session never recovers by reconnecting — only a QR does.
+      deps.settleReject(
+        new SessionLoggedOutError(`wa-mirror: session logged out: ${reason}`),
+      );
       return;
     }
 
@@ -733,4 +738,22 @@ export function mapCloseReason(code: number): string {
  */
 export function isTerminalCloseCode(code: number): boolean {
   return code === DisconnectReason.loggedOut;
+}
+
+/**
+ * Thrown (via settleReject) when a session closes with a terminal `loggedOut`
+ * (HTTP 401): the linked device was removed/invalidated on the WhatsApp side.
+ * Reconnecting cannot fix this — only a fresh QR re-link can. The orchestrator
+ * matches on `instanceof` to stop the per-account retry loop instead of
+ * hammering WhatsApp every 60s with dead credentials (which also spams Telegram
+ * and raises the anti-automation flag risk).
+ */
+export class SessionLoggedOutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SessionLoggedOutError";
+    // Restore the prototype chain so `instanceof SessionLoggedOutError` holds
+    // even when TS downlevels `extends Error` — the orchestrator relies on it.
+    Object.setPrototypeOf(this, SessionLoggedOutError.prototype);
+  }
 }

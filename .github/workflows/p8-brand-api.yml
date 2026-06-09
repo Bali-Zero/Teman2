@@ -1,0 +1,62 @@
+name: P8 Brand-API Gate
+
+# FASE-5 (P8 safe slice) — verifies the brand-api build-artifact is in sync
+# with the .tsx sources (gate G6) and the token-lint catches hardcoded colors
+# (gate G2). Pure-Python, zero network, zero PII.
+#
+# This workflow is the REAL consumer of scripts/brand_api_gen.py and
+# scripts/brand_token_lint.py — it names them explicitly so the meta-verifier
+# (scripts/verify_the_verifiers.py, kind=lint_script) sees the gate ARMED.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/brand_api_gen.py"
+      - "scripts/brand_token_lint.py"
+      - "scripts/test_brand_api.py"
+      - "packages/core/components/**"
+      - "packages/design-system/brand-api/**"
+      - "docs/design/components-catalog.md"
+      - ".github/workflows/p8-brand-api.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  brand-api-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install --quiet pytest
+
+      # G6 — the committed components.json + catalog MUST match a fresh
+      # generation. If a .tsx changed but brand_api_gen.py was not re-run,
+      # this fails (artifact drift caught at PR time, not at runtime).
+      - name: brand_api_gen --check (G6 idempotence)
+        run: python3 scripts/brand_api_gen.py --check
+
+      # G2 — token-lint self-test + scope scan: no hardcoded color literals
+      # in the generated surface.
+      - name: brand_token_lint self-test (G2)
+        run: python3 scripts/brand_token_lint.py --self-test
+
+      - name: brand_token_lint scope scan (G2)
+        run: python3 scripts/brand_token_lint.py
+
+      # Falsifiable gate tests — exercises brand_api_gen.py + brand_token_lint.py
+      - name: pytest gate (scripts/test_brand_api.py)
+        run: PYTHONPATH=scripts python3 -m pytest scripts/test_brand_api.py -q
+
+      # syntax smoke — fail fast if either script does not even parse.
+      - name: py_compile brand_api_gen.py + brand_token_lint.py
+        run: |
+          python3 -m py_compile scripts/brand_api_gen.py
+          python3 -m py_compile scripts/brand_token_lint.py
+          python3 -m py_compile scripts/test_brand_api.py

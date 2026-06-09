@@ -81,13 +81,36 @@ except Exception:
 ")
 
 # --- 2. Live reachability via `claude mcp list` ----------------------------
-# We strip ANSI, then count state glyphs. claude mcp list has its own timeout;
-# we guard with a background+wait fallback (macOS has no `timeout`).
-
-raw=$(unset ANTHROPIC_API_KEY; claude mcp list 2>&1)
+# REAL timeout guard: `claude mcp list` health-checks every server and CAN HANG
+# in a no-TTY launchd context (empirically 2026-06-09: two stuck procs piled up
+# per cron tick, signal never written → deadman saw it perpetually stale). The
+# old "has its own internal timeout" claim was false here. coreutils
+# timeout/gtimeout is in the plist PATH (/opt/homebrew/bin).
+_to="$(command -v timeout || command -v gtimeout || true)"
+if [[ -n "$_to" ]]; then
+    raw=$(unset ANTHROPIC_API_KEY; "$_to" 60 claude mcp list 2>&1); cl_rc=$?
+else
+    raw=$(unset ANTHROPIC_API_KEY; claude mcp list 2>&1); cl_rc=$?
+fi
+if [[ "$cl_rc" == "124" || "$cl_rc" == "137" ]]; then
+    # Timed out/killed: NEVER hang, NEVER let an empty list cascade into a false
+    # reachable=0 RED. Emit a FRESH alive-signal (keeps the dead-man's switch
+    # satisfied) with a visible YELLOW + reason, then exit 0.
+    log "YELLOW declared=$declared mcp_list_timeout=60s reachability-unverified"
+    echo "[mcp-integrity] YELLOW — declared=$declared | claude mcp list timed out (60s), reachability unverified"
+    python3 -c "
+import json
+json.dump({'ts': '$(date -u +%Y-%m-%dT%H:%M:%SZ)', 'verdict': 'YELLOW',
+           'declared': $declared, 'reachable': -1, 'failed': -1,
+           'reason': 'claude mcp list timed out (60s)',
+           '_writer': 'verify_mcp_integrity'},
+          open('$STATE_DIR/mcp_integrity.json','w'), indent=2)
+" 2>/dev/null || true
+    exit 0
+fi
 clean=$(printf '%s' "$raw" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g')
 
-connected=$(printf '%s\n' "$clean" | grep -c '✓ Connected' || true)
+connected=$(printf '%s\n' "$clean" | grep -cE '✔ Connected|✓ Connected' || true)
 pending=$(printf '%s\n' "$clean" | grep -c '⏸ Pending approval' || true)
 failed=$(printf '%s\n' "$clean" | grep -cE '✗ Failed|✗ Failed to connect|✘' || true)
 warnings=$(printf '%s\n' "$clean" | grep -c '\[Warning\]' || true)
@@ -100,17 +123,27 @@ reachable=$((connected + pending))
 
 baseline_connected=""
 baseline_declared=""
+baseline_failed=""
 if [[ -f "$BASELINE_FILE" ]]; then
     baseline_connected=$(python3 -c "import json;print(json.load(open('$BASELINE_FILE')).get('reachable',''))" 2>/dev/null || echo "")
     baseline_declared=$(python3 -c "import json;print(json.load(open('$BASELINE_FILE')).get('declared',''))" 2>/dev/null || echo "")
+    baseline_failed=$(python3 -c "import json;print(json.load(open('$BASELINE_FILE')).get('failed',''))" 2>/dev/null || echo "")
 fi
 
 verdict="GREEN"
 reason=""
 
-if [[ "$failed" -gt 0 ]]; then
+# RED only on a NEW failure vs baseline (a server that used to be reachable went
+# down) — NOT on any failure: optional/plugin MCP servers (slack/asana/pagerduty/
+# github-copilot/…) are chronically unconfigured and would pin RED forever (W64:
+# armed-but-wrong = noise). First run captures the current failure count as the
+# tolerated baseline.
+if [[ -n "$baseline_failed" && "$failed" -gt "$baseline_failed" ]]; then
     verdict="RED"
-    reason="$failed MCP server(s) FAILED to connect"
+    reason="MCP failures INCREASED vs baseline ($baseline_failed → $failed)"
+elif [[ -z "$baseline_failed" && "$failed" -gt 0 ]]; then
+    verdict="YELLOW"
+    reason="$failed pre-existing MCP failure(s) captured in baseline (optional/plugin servers)"
 elif [[ -n "$baseline_connected" && "$reachable" -lt "$baseline_connected" ]]; then
     # connected dropped vs baseline → could be a regression
     drop=$((baseline_connected - reachable))
@@ -136,7 +169,7 @@ if [[ "$UPDATE_BASELINE" == "1" || ! -f "$BASELINE_FILE" ]]; then
     python3 -c "
 import json
 json.dump({'declared': $declared, 'reachable': $reachable,
-           'connected': $connected, 'pending': $pending,
+           'connected': $connected, 'pending': $pending, 'failed': $failed,
            'ts': '$(date -u +%Y-%m-%dT%H:%M:%SZ)'},
           open('$BASELINE_FILE','w'), indent=2)
 "
@@ -160,6 +193,17 @@ else
 fi
 
 log "$verdict declared=$declared connected=$connected pending=$pending failed=$failed warnings=$warnings ${reason}"
+
+# Per-tick alive-signal (fresh ts EVERY run, distinct from the frozen baseline)
+# so the dead-man's switch (cost_breaker_deadman.sh) can detect when THIS
+# guardian itself goes mute — closing the FASE-0 mutual-watch loop (W69 §G5).
+python3 -c "
+import json
+json.dump({'ts': '$(date -u +%Y-%m-%dT%H:%M:%SZ)', 'verdict': '$verdict',
+           'declared': $declared, 'reachable': $reachable, 'failed': $failed,
+           '_writer': 'verify_mcp_integrity'},
+          open('$STATE_DIR/mcp_integrity.json','w'), indent=2)
+" 2>/dev/null || true
 
 [[ "$verdict" == "RED" ]] && exit 2
 exit 0
