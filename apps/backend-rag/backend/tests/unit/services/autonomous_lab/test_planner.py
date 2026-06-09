@@ -119,6 +119,37 @@ def test_receipt_sanitizes_objective_and_sensitive_source_uri() -> None:
     assert "drive_metadata:source_fingerprint:sha256:" in receipt
 
 
+def test_receipt_sanitizes_public_source_uri_path_and_short_pii() -> None:
+    raw_email = "client.name@example.com"
+    raw_phone = "+62 812-3456-7890"
+    source_uri = f"https://example.com/clients/{raw_email}/wa/{raw_phone}"
+    planner = AutonomousLabPlanner(worktree_lane="ops")
+    run = planner.draft_run(
+        objective="test public URI safety",
+        materials=[
+            ResearchMaterial(
+                material_id="m1",
+                source_type=MaterialSourceType.WEB,
+                source_uri=source_uri,
+                title="Public URI with private path",
+                text="Derived facts only for public URI safety.",
+                captured_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+                metadata={},
+            )
+        ],
+        target_paths=["apps/backend-rag/backend/services/autonomous_lab/planner.py"],
+        task_id="public-uri-safety",
+        created_at=datetime(2026, 5, 31, tzinfo=timezone.utc),
+    )
+
+    receipt = json.dumps(run.to_receipt(), sort_keys=True)
+
+    assert raw_email not in receipt
+    assert raw_phone not in receipt
+    assert "/clients/" not in receipt
+    assert "https://example.com/source_fingerprint:sha256:" in receipt
+
+
 def test_receipt_sanitizes_material_identifiers_and_titles() -> None:
     raw_material_id = "RAW_MATERIAL_ID_SHOULD_NOT_APPEAR"
     raw_title_marker = "RAW_TITLE_SHOULD_NOT_APPEAR"

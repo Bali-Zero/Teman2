@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """Bounded dry-run runner for autonomous lab verification plans."""
+# ruff: noqa: E402, I001
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import re
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -21,30 +19,14 @@ if str(SCRIPT_DIR) not in sys.path:
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from autonomous_lab_draft import build_run, load_input  # noqa: E402
+from autonomous_lab_draft import build_run, load_input
+from backend.services.autonomous_lab.command_policy import (
+    CommandExecutionPlan,
+    plan_for_allowlisted_command as build_allowlisted_command_plan,
+    refusal_reason,
+)
 
-PYTEST_AUTONOMOUS_LAB_COMMAND = (
-    "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q"
-)
-GIT_DIFF_RESEARCH_COMMAND = "git diff --check -- research/operations/autonomous-lab"
-ALLOWED_VERIFICATION_COMMANDS = frozenset(
-    {
-        PYTEST_AUTONOMOUS_LAB_COMMAND,
-        GIT_DIFF_RESEARCH_COMMAND,
-    }
-)
-BLOCKED_COMMAND_VERBS = frozenset({"deploy", "merge", "push"})
 OUTPUT_MAX_CHARS = 12_000
-
-
-@dataclass(frozen=True)
-class CommandPlan:
-    """A shell-free execution plan for one allowlisted planner command."""
-
-    command: str
-    argv: list[str]
-    cwd: Path
-    env: dict[str, str] | None = None
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -106,7 +88,7 @@ def build_verification_summary(
             "command": command,
             "reason": refusal_reason(command),
         }
-        for command, plan in zip(commands, command_plans)
+        for command, plan in zip(commands, command_plans, strict=True)
         if plan is None
     ]
 
@@ -121,7 +103,7 @@ def build_verification_summary(
                     "executed": False,
                     "returncode": None,
                 }
-                for command, plan in zip(commands, command_plans)
+                for command, plan in zip(commands, command_plans, strict=True)
             ],
         }
 
@@ -136,7 +118,7 @@ def build_verification_summary(
                     "executed": False,
                     "returncode": None,
                 }
-                for command, plan in zip(commands, command_plans)
+                for command, plan in zip(commands, command_plans, strict=True)
             ],
         }
 
@@ -183,44 +165,16 @@ def summarize_run(
     }
 
 
-def refusal_reason(command: str) -> str:
-    """Return the refusal reason for a non-allowlisted command."""
-    if _contains_blocked_verb(command):
-        return "blocked_command_verb"
-    return "command_not_allowlisted"
-
-
-def plan_for_allowlisted_command(command: str) -> CommandPlan | None:
+def plan_for_allowlisted_command(command: str) -> CommandExecutionPlan | None:
     """Translate one allowlisted planner command into shell-free argv."""
-    if command == PYTEST_AUTONOMOUS_LAB_COMMAND:
-        env = os.environ.copy()
-        env["PYTHONPATH"] = "."
-        return CommandPlan(
-            command=command,
-            argv=[
-                _pytest_executable(),
-                "backend/tests/unit/services/autonomous_lab",
-                "-q",
-            ],
-            cwd=BACKEND_ROOT,
-            env=env,
-        )
-    if command == GIT_DIFF_RESEARCH_COMMAND:
-        return CommandPlan(
-            command=command,
-            argv=[
-                "git",
-                "diff",
-                "--check",
-                "--",
-                "research/operations/autonomous-lab",
-            ],
-            cwd=REPO_ROOT,
-        )
-    return None
+    return build_allowlisted_command_plan(
+        command,
+        repo_root=REPO_ROOT,
+        backend_root=BACKEND_ROOT,
+    )
 
 
-def execute_command_plan(plan: CommandPlan) -> dict[str, Any]:
+def execute_command_plan(plan: CommandExecutionPlan) -> dict[str, Any]:
     """Execute an allowlisted command plan without a shell."""
     completed = subprocess.run(
         plan.argv,
@@ -240,18 +194,6 @@ def execute_command_plan(plan: CommandPlan) -> dict[str, Any]:
         "stdout": _bounded_output(completed.stdout),
         "stderr": _bounded_output(completed.stderr),
     }
-
-
-def _pytest_executable() -> str:
-    local_pytest = BACKEND_ROOT / ".venv" / "bin" / "pytest"
-    if local_pytest.exists():
-        return str(local_pytest)
-    return "pytest"
-
-
-def _contains_blocked_verb(command: str) -> bool:
-    tokens = {token for token in re.split(r"[^a-zA-Z0-9_-]+", command.lower()) if token}
-    return bool(tokens & BLOCKED_COMMAND_VERBS)
 
 
 def _bounded_output(value: str) -> str:

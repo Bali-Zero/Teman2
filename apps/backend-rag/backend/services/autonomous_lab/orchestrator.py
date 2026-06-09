@@ -2,27 +2,27 @@
 
 from __future__ import annotations
 
-import hashlib
-import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from backend.services.autonomous_lab.operational_plan import (
+    LabOperationalPlan,
+    default_operational_plan,
+)
 from backend.services.autonomous_lab.planner import (
     AutonomousLabPlanner,
     GateSeverity,
     LabRun,
     ResearchMaterial,
 )
+from backend.services.autonomous_lab.receipt_safety import (
+    contains_receipt_sensitive_value,
+    receipt_safe_evidence,
+    redacted_receipt_value,
+)
 from backend.services.autonomous_lab.reviewer import AutonomousLabReviewer
-
-_RECEIPT_RAW_MARKER_RE = re.compile(
-    r"\b(?:RAW(?:_[A-Z0-9]+){1,}|[A-Z0-9]+_(?:MUST_NOT_LEAK|SHOULD_NOT_APPEAR))\b"
-)
-_RECEIPT_SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{12,}"
-)
 
 
 class FleetStageStatus(str, Enum):
@@ -48,6 +48,8 @@ class OrchestrationBounds:
     max_materials: int = 20
     max_target_paths: int = 40
     max_planned_commands: int = 12
+    max_material_text_chars: int = 20_000
+    max_total_material_text_chars: int = 100_000
 
 
 @dataclass(frozen=True)
@@ -151,6 +153,7 @@ class LabOrchestrationResult:
     stages: list[FleetStageResult]
     review_findings: list[ReviewFinding]
     execution_policy: ExecutionPolicy
+    operational_plan: LabOperationalPlan = field(default_factory=default_operational_plan)
 
     @property
     def planned_only_commands(self) -> list[str]:
@@ -184,6 +187,7 @@ class LabOrchestrationResult:
             "stage_results": [stage.to_receipt() for stage in self.stages],
             "review_findings": [finding.to_receipt() for finding in self.review_findings],
             "execution_policy": self.execution_policy.to_receipt(),
+            "operational_plan": self.operational_plan.to_receipt(),
             "planned_only_commands": self.planned_only_commands,
             "failed_blockers": self.failed_blockers,
             "blocked": self.blocked,
@@ -251,6 +255,12 @@ class AutonomousLabOrchestrator:
         created_at: datetime | None = None,
     ) -> LabOrchestrationResult:
         """Draft and review a lab run without executing commands or external calls."""
+        preflight_findings = self._preflight_input_bounds(
+            materials=materials,
+            target_paths=target_paths,
+        )
+        if preflight_findings:
+            raise ValueError("; ".join(finding.detail for finding in preflight_findings))
         run = self._planner.draft_run(
             objective=objective,
             materials=materials,
@@ -267,6 +277,59 @@ class AutonomousLabOrchestrator:
             review_findings=review_findings,
             execution_policy=ExecutionPolicy(),
         )
+
+    def _preflight_input_bounds(
+        self,
+        *,
+        materials: list[ResearchMaterial],
+        target_paths: list[str],
+    ) -> list[ReviewFinding]:
+        findings: list[ReviewFinding] = []
+        if len(materials) > self._bounds.max_materials:
+            findings.append(
+                ReviewFinding(
+                    "material_bound_exceeded",
+                    FindingSeverity.BLOCKER,
+                    f"material count {len(materials)} exceeds {self._bounds.max_materials}",
+                )
+            )
+        if len(target_paths) > self._bounds.max_target_paths:
+            findings.append(
+                ReviewFinding(
+                    "target_path_bound_exceeded",
+                    FindingSeverity.BLOCKER,
+                    f"target path count {len(target_paths)} exceeds {self._bounds.max_target_paths}",
+                )
+            )
+
+        total_text_chars = 0
+        for material in materials:
+            material_text_chars = len(material.text)
+            total_text_chars += material_text_chars
+            if material_text_chars > self._bounds.max_material_text_chars:
+                material_ref = receipt_safe_evidence(material.material_id)
+                findings.append(
+                    ReviewFinding(
+                        "material_text_bound_exceeded",
+                        FindingSeverity.BLOCKER,
+                        (
+                            f"material {material_ref} text length {material_text_chars} "
+                            f"exceeds {self._bounds.max_material_text_chars}"
+                        ),
+                    )
+                )
+        if total_text_chars > self._bounds.max_total_material_text_chars:
+            findings.append(
+                ReviewFinding(
+                    "total_material_text_bound_exceeded",
+                    FindingSeverity.BLOCKER,
+                    (
+                        f"total material text length {total_text_chars} exceeds "
+                        f"{self._bounds.max_total_material_text_chars}"
+                    ),
+                )
+            )
+        return findings
 
     def _run_fleet(
         self,
@@ -416,9 +479,8 @@ def _redact_receipt_unsafe_values(value: Any) -> Any:
 
 
 def _is_receipt_unsafe_value(value: str) -> bool:
-    return bool(_RECEIPT_RAW_MARKER_RE.search(value) or _RECEIPT_SECRET_ASSIGNMENT_RE.search(value))
+    return contains_receipt_sensitive_value(value)
 
 
 def _redacted_receipt_value(value: str) -> str:
-    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
-    return f"redacted_receipt_value:{digest}"
+    return redacted_receipt_value(value)
