@@ -984,3 +984,78 @@ def test_fill_placeholders_schema_fallback_old_and_new():
         hero_filename=None,
     )
     assert "NEW TITLE" in out_new and "NEW KICKER" in out_new and "new body" in out_new
+
+
+# ── classifier word-boundary + soft-exclusion (W68/W72/W73 class) 2026-06-10 ──
+
+
+def test_classifier_editorial_conditional_claims_not_false_hard():
+    """The 4 real verdict claims that the bare-substring classifier false-HARD'd
+    must now classify as SOFT (editorial/conditional) so a correctly-rendered
+    draft can converge. W68/W72/W73 discipline: don't clobber a correct output."""
+    from wr2_html_renderer.designer_loop import _classify_residual_issues
+
+    # "wrap" inside an already-rebalanced 3-line stub complaint → editorial rhythm
+    hh, ac = _classify_residual_issues(
+        ["Title wrap produces a 3-line stub"], rebalance_applied=True
+    )
+    assert hh is False and ac is True
+    # "color" as an accent SUGGESTION → not palette drift
+    hh, ac = _classify_residual_issues(
+        ["Consider popping the datum in a brand accent color"]
+    )
+    assert hh is False and ac is True
+    # "legibility" in a CONDITIONAL claim ("may drop below") → hypothetical
+    hh, ac = _classify_residual_issues(["Logo may drop below legibility on a busy hero"])
+    assert hh is False and ac is True
+    # critic AFFIRMS correct + "may be illegible" hedge → not an actual defect
+    hh, ac = _classify_residual_issues(
+        ["The eyebrow is the correct brand treatment but may be an illegible smear"]
+    )
+    assert hh is False and ac is True
+
+
+def test_classifier_real_defects_stay_hard():
+    """COUNTER-PROOFS: actual, categorical, blocking defects MUST stay HARD — the
+    gate must not go soft. We never publish illegible/clipped/off-palette."""
+    from wr2_html_renderer.designer_loop import _classify_residual_issues
+
+    # categorical illegibility (no may/might) → HARD
+    assert _classify_residual_issues(["subhead is illegible at thumbnail scale"])[0] is True
+    # actual clipping → HARD
+    assert _classify_residual_issues(
+        ["the title is clipped at the right edge, cut off"]
+    )[0] is True
+    # genuine 1-word orphan → HARD (even after a re-wrap)
+    assert _classify_residual_issues(
+        ["single-word orphan TOP alone on line 3"], rebalance_applied=True
+    )[0] is True
+    # real palette drift → HARD
+    assert _classify_residual_issues(["off-brand color, not in palette"])[0] is True
+
+
+def test_classifier_word_boundary_not_bare_substring():
+    """The markers match on WORD BOUNDARY, so they do NOT fire inside longer
+    words (the W73 bare-substring trap): "rewrap"/"discolor"/"legible" must not
+    trip "wrap"/"color"/"illegible"-style HARD matches."""
+    from wr2_html_renderer.designer_loop import _claim_is_hard, _contains_any_word
+
+    # word-boundary helper basics
+    assert _contains_any_word("the title is clipped", ("clipped",)) is True
+    assert _contains_any_word("a rewrap of the line", ("wrap",)) is False
+    assert _contains_any_word("off the edge of frame", ("off the edge",)) is True
+    # _claim_is_hard: "legible" (positive) is NOT illegible → not hard
+    assert _claim_is_hard("the headline is legible and crisp") is False
+    # "discoloration" must not trip a bare "color" hard match
+    assert _claim_is_hard("a faint discoloration in the photo background") is False
+    # but a real categorical defect is hard
+    assert _claim_is_hard("the text is unreadable") is True
+
+
+def test_classifier_conditional_marker_downgrades_legibility():
+    """A 'may/might/could' hedge in front of a legibility word downgrades it from
+    HARD to editorial — but the SAME claim without the hedge stays HARD."""
+    from wr2_html_renderer.designer_loop import _claim_is_hard
+
+    assert _claim_is_hard("the subhead might be illegible at small sizes") is False
+    assert _claim_is_hard("the subhead is illegible at small sizes") is True

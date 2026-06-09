@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -81,37 +82,71 @@ _COMPOSITION_CLAIM_MARKERS = (
     "crop", "scene", "imagery", "boring", "bland", "uninspired",
 )
 
-# Substrings that mark a vision issue as a HARD defect (legibility OR real brand
-# drift) — these must NEVER be accepted as debt. If ANY residual issue matches
-# one of these, the slide is not publish-ready (gate stays strict). NOTE:
-# "orphan"/"stub"/"alone on line" are NOT here — they are graded separately
-# (see _orphan_is_hard) because a ≥2-word tail on an already-balanced multi-line
-# wrap is an editorial-rhythm critique, not illegibility.
-_HARD_CLAIM_MARKERS = (
-    "readable", "legib", "illegib", "garbl", "clip", "cut off", "cut-off",
-    "overflow", "contrast", "wrap", "truncat", "overlap",
-    "palette", "color", "colour", "font", "serif", "logo", "emoji",
+# HARD-defect markers, matched on WORD BOUNDARY (not bare substring) — the
+# W68/W72/W73 guard-over-match class. A claim is HARD only when it names an
+# ACTUAL, CATEGORICAL, blocking defect (illegibility / clipping / real palette
+# drift). NOTE: "wrap"/"stub"/"orphan" are NOT here (graded by _orphan_is_hard —
+# a balanced multi-line wrap with a short tail is editorial rhythm); "color"
+# alone is NOT here (an accent-color SUGGESTION is editorial — real palette drift
+# needs a specific phrase, see _BRAND_DRIFT_MARKERS); legibility markers here are
+# gated by "is this CONDITIONAL?" (see _CONDITIONAL_MARKERS) so a "may be
+# illegible" hypothetical does not count.
+_LEGIBILITY_HARD_MARKERS = (
+    "illegible", "unreadable", "not readable", "cannot read", "can't read",
+    "hard to read", "too small to read", "garbled", "smudged",
+)
+# Actual clipping/overflow of text out of its box (a real render defect).
+_CLIP_HARD_MARKERS = (
+    "clipped", "cut off", "cut-off", "overflows", "overflowing", "overflow",
+    "outside the frame", "off the edge", "off-screen", "truncated", "overlaps",
+    "overlapping",
+)
+# Real brand/palette drift — specific phrases, NOT a bare "color" (an
+# "accent color" suggestion must stay editorial).
+_BRAND_DRIFT_MARKERS = (
+    "off-brand", "off brand", "wrong color", "wrong colour", "not in palette",
+    "off-palette", "clashing", "non-brand color", "unbranded color",
+    "wrong font", "serif font", "script font", "emoji",
 )
 
-# An issue that talks about an orphan / stub / a line "sitting alone".
+# CONDITIONAL / hypothetical language — the defect is NOT actual, it is a risk or
+# a "might". A claim that is ONLY conditional is editorial, never a HARD reject.
+_CONDITIONAL_MARKERS = (
+    "may", "might", "could", "would", "risk of", "at risk", "borderline",
+    "approaching", "verges on", "bordering", "tends to", "in danger of",
+    "potentially", "possibly", "if anything", "slightly",
+)
+# Editorial SUGGESTIONS / refinements (improvements, not defects) → never HARD.
+_SUGGESTION_MARKERS = (
+    "consider", "pop the", "popping", "would benefit", "could add", "could use",
+    "accent color", "accent colour", "brand accent", "nice to", "nice-to-have",
+    "suggest", "recommend", "elevate", "punch up", "punchier", "tighten up",
+    "refine", "polish",
+)
+# A claim that explicitly affirms correctness ("the eyebrow is the CORRECT brand
+# treatment but …") is the critic conceding the element is fine → not a HARD
+# defect about that element.
+_AFFIRMS_CORRECT_MARKERS = (
+    "is correct", "are correct", "is the correct", "correct brand",
+    "correct treatment", "is fine", "looks fine", "is good", "works well",
+    "is solid", "reads well", "is legible",
+)
+
+# An issue that talks about an orphan / stub / wrap-rhythm / a line "sitting
+# alone" / "N-line" complaint. After the pixel-wrap (which guarantees no line
+# overflows), any of these on an ALREADY-re-wrapped slide is an editorial-rhythm
+# critique, not a render defect — graded by _orphan_is_hard (negative-gating).
 _ORPHAN_MARKERS = (
     "orphan", "stub", "alone on line", "alone on the line", "sits alone",
-    "stranded", "dangling word", "widow",
+    "stranded", "dangling word", "widow", "wrap", "rewrap", "re-wrap",
+    "line stub", "3-line", "4-line", "two-line", "three-line", "extra line",
+    "short tail", "short last line", "ragged",
 )
 
 # A 1-WORD orphan is genuine illegibility (a lone word on its own line) → HARD.
 _ONE_WORD_ORPHAN_MARKERS = (
     "single word", "single-word", "1 word", "one word", "one-word",
     "a lone word", "lone word", "just one word", "only one word", "1-word",
-)
-
-# A ≥2-word tail on an already-balanced wrap is an editorial-rhythm critique
-# (the last line is shorter than the ones above) → SOFT, only when the slide
-# already attempted the re-wrap (_rebalance_wrap committed).
-_TAIL_RHYTHM_MARKERS = (
-    "2 words", "two words", "3 words", "vs 3 on", "vs 4 on", "shorter than",
-    "afterthought", "visual rhythm", "reads as truncated", "bottom-heavy",
-    "top-heavy", "uneven line", "ragged",
 )
 
 
@@ -121,26 +156,72 @@ def _is_composition_only_lever(lever_names: set[str]) -> bool:
 
 
 def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
-    """Grade an orphan/stub claim. Returns (is_orphan_claim, is_hard).
+    """Grade an orphan / stub / wrap-rhythm claim. Returns (is_orphan_claim, is_hard).
 
-    Calibrated STRICT (in doubt → HARD, fail-safe toward the strict gate):
-      - a ONE-WORD orphan (a lone word stranded on its own line) is genuine
-        illegibility → HARD, always.
-      - a ≥2-word short tail on an ALREADY-balanced multi-line wrap (the slide
-        committed _rebalance_wrap) is an editorial-rhythm critique → SOFT.
-      - any other / ambiguous orphan mention → HARD.
+    Negative-gating (the W73 lesson) keyed on whether the slide already re-wrapped:
+      - a ONE-WORD orphan (a lone word on its own line) is genuine illegibility
+        → HARD, always (even after a re-wrap; that IS a real defect).
+      - if the slide ALREADY re-wrapped (_rebalance_wrap committed), the pixel
+        wrap guarantees no line overflows, so any remaining orphan/stub/wrap/
+        N-line/short-tail complaint is editorial RHYTHM → SOFT (default-pass).
+      - if NO re-wrap was attempted, an orphan claim is a real unfixed defect
+        → HARD (fail-safe toward the strict gate).
     """
-    if not any(m in low for m in _ORPHAN_MARKERS):
-        return False, False  # not an orphan claim at all
-    # one-word orphan always wins → HARD
-    if any(m in low for m in _ONE_WORD_ORPHAN_MARKERS):
+    if not _contains_any_word(low, _ORPHAN_MARKERS):
+        return False, False  # not an orphan/stub/wrap claim at all
+    # a genuine 1-word orphan is a real defect regardless of re-wrap state.
+    if _contains_any_word(low, _ONE_WORD_ORPHAN_MARKERS):
         return True, True
-    # a 2+word short-tail rhythm complaint, only once we've already re-wrapped,
-    # is composition debt (not illegibility).
-    if rebalance_applied and any(m in low for m in _TAIL_RHYTHM_MARKERS):
+    # already re-wrapped → the remaining complaint is rhythm/editorial → SOFT.
+    if rebalance_applied:
         return True, False
-    # ambiguous orphan → fail-safe HARD
+    # no re-wrap attempted yet → treat as a real, fixable defect → HARD.
     return True, True
+
+
+def _contains_any_word(value: str, terms: tuple[str, ...]) -> bool:
+    """Whole-word containment (mirrors openclaw_whatsapp_bridge._contains_any_word,
+    the W73 word-boundary helper). A short marker like "wrap"/"color"/"legib"
+    only matches on a word boundary, so it does NOT fire inside "rewrap"/
+    "discolor"/"legible". Multi-word terms match as a contiguous phrase."""
+    for term in terms:
+        pattern = r"\b" + r"\s+".join(re.escape(part) for part in term.split())
+        if re.search(pattern, value):
+            return True
+    return False
+
+
+def _is_conditional_or_suggestion(low: str) -> bool:
+    """True if the claim is hypothetical (may/might/could/risk-of/borderline) OR
+    an editorial suggestion (consider/pop/accent-color/would-benefit) OR the
+    critic affirms the element is actually correct. Such a claim is NEVER a HARD
+    defect — it is a refinement/risk, not an actual blocking flaw."""
+    return (
+        _contains_any_word(low, _CONDITIONAL_MARKERS)
+        or _contains_any_word(low, _SUGGESTION_MARKERS)
+        or _contains_any_word(low, _AFFIRMS_CORRECT_MARKERS)
+    )
+
+
+def _claim_is_hard(low: str) -> bool:
+    """True iff a claim names an ACTUAL, CATEGORICAL, blocking defect.
+
+    Negative-gating (the W73 lesson "clobber only on a detectable WRONG signal,
+    default passthrough"): a conditional/suggestion/affirms-correct claim returns
+    False up front; only an unconditional illegibility / clipping / real
+    palette-drift marker (word-boundary matched) returns True. Orphan/wrap claims
+    are graded elsewhere (_orphan_is_hard).
+    """
+    if not low.strip():
+        return False
+    # Conditional or editorial-suggestion → not an actual defect.
+    if _is_conditional_or_suggestion(low):
+        return False
+    return (
+        _contains_any_word(low, _LEGIBILITY_HARD_MARKERS)
+        or _contains_any_word(low, _CLIP_HARD_MARKERS)
+        or _contains_any_word(low, _BRAND_DRIFT_MARKERS)
+    )
 
 
 def _classify_residual_issues(
@@ -165,15 +246,20 @@ def _classify_residual_issues(
     for raw in issues:
         low = (raw or "").lower()
         is_orphan, orphan_hard = _orphan_is_hard(low, rebalance_applied=rebalance_applied)
-        hard = any(m in low for m in _HARD_CLAIM_MARKERS) or (is_orphan and orphan_hard)
+        # ACTUAL hard defect (word-boundary, conditional/suggestion excluded) OR a
+        # genuine 1-word orphan.
+        hard = _claim_is_hard(low) or (is_orphan and orphan_hard)
         comp = any(m in low for m in _COMPOSITION_CLAIM_MARKERS)
-        # a soft orphan-rhythm claim counts as composition (editorial debt)
+        # editorial signals that count as composition (acceptable debt): a soft
+        # orphan-rhythm tail, or a purely conditional/suggestion/affirms-correct
+        # claim (W68/W72/W73: a refinement is not a defect).
         soft_orphan = is_orphan and not orphan_hard
+        editorial = comp or soft_orphan or _is_conditional_or_suggestion(low)
         if hard:
             has_hard = True
             all_composition = False
-        elif comp or soft_orphan:
-            continue  # classified as composition/editorial → keep all_composition
+        elif editorial:
+            continue  # composition/editorial → keep all_composition
         else:
             # an issue we can't classify as composition is NOT safe to accept
             all_composition = False
