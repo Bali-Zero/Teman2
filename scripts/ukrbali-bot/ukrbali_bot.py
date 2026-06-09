@@ -31,12 +31,19 @@ RAG_URL = os.environ.get(
 )
 CLAUDE_BIN = os.environ.get("UKRBALI_CLAUDE_BIN", "claude")
 
+# --- in-memory per-chat conversation history (survives only while the daemon runs) ---
+# chat_id -> list[{"role": "user"|"assistant", "content": str}]
+HISTORY: dict[int, list] = {}
+HISTORY_MAX_TURNS = 8        # keep last 8 messages (4 exchanges) per chat
+HISTORY_MAX_CHATS = 500      # cap distinct chats to bound memory
+
 HANDOFF = ("Не маю достатньо інформації, щоб відповісти впевнено 🤔\n"
            "Краще напишіть команді Bali Zero — вони допоможуть із вашим конкретним випадком.")
 
 START = ("Вітаю! Я асистент Bali Zero з питань віз та переїзду на Балі 🇮🇩\n"
          "Відповідаю на основі офіційної бази Bali Zero. Запитайте про візи "
-         "(eVOA, KITAS, KITAP), продовження, бізнес чи нерухомість.")
+         "(eVOA, KITAS, KITAP), продовження, бізнес чи нерухомість.\n"
+         "Я памʼятаю контекст розмови — /reset очищає його.")
 
 
 def tg(method, **params):
@@ -46,11 +53,12 @@ def tg(method, **params):
         return json.load(r)
 
 
-def rag_ask(session_id, message):
+def rag_ask(session_id, message, history=None):
     payload = json.dumps({
         "session_id": session_id,
         "message": message,
         "language": "uk",
+        "conversation_history": history or [],
     }).encode()
     req = urllib.request.Request(RAG_URL, data=payload,
                                  headers={"Content-Type": "application/json"})
@@ -84,10 +92,20 @@ def to_ukrainian(rag_answer):
 
 
 def handle(chat_id, text):
-    answer, _conf = rag_ask(f"tg-{chat_id}", text)
+    history = HISTORY.get(chat_id, [])
+    answer, _conf = rag_ask(f"tg-{chat_id}", text, history=history)
     if answer is None:
+        # don't pollute memory with non-answers
         return HANDOFF
-    return to_ukrainian(answer)
+    reply = to_ukrainian(answer)
+    # remember this turn (bound size + chat count)
+    if chat_id not in HISTORY and len(HISTORY) >= HISTORY_MAX_CHATS:
+        HISTORY.pop(next(iter(HISTORY)), None)  # evict oldest chat
+    turns = HISTORY.setdefault(chat_id, [])
+    turns.append({"role": "user", "content": text})
+    turns.append({"role": "assistant", "content": reply})
+    del turns[:-HISTORY_MAX_TURNS]  # keep only the last N
+    return reply
 
 
 def main():
@@ -117,8 +135,12 @@ def main():
             if not text:
                 continue
             print(f"[bot] <- {chat_id}: {text!r}", flush=True)
-            if text.strip() in ("/start", "/help"):
+            cmd = text.strip()
+            if cmd in ("/start", "/help"):
                 reply = START
+            elif cmd == "/reset":
+                HISTORY.pop(chat_id, None)
+                reply = "Памʼять діалогу очищено 🧹 Почнімо спочатку — про що запитаєте?"
             else:
                 tg("sendChatAction", chat_id=chat_id, action="typing")
                 reply = handle(chat_id, text)
