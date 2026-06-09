@@ -573,3 +573,48 @@ _Discovered: 2026-06-09 06:54 WITA da M5 (thin-client), audit indipendente post-
 **GOTCHA**: **Nessuno dei 2 buchi è armabile da M5** — entrambi richiedono una sessione SUL Pro (coerente con la nota-pending lasciata dal sibling). `hot-zone-pr-gate` è **GIÀ flipped a enforcing 2026-06-07**: gli step `CODEOWNERS self-mod check` + `Replay lint_migration_numbers` sono `continue-on-error: false` (= bloccano); gli step `Redis lease` + `LaunchAgent notice` restano `continue-on-error: true` ma è **monitor-by-design** (i runner effimeri non hanno Redis né LaunchAgent), **NON disarmo accidentale** — non confonderli con il buco #1.
 
 **Reference**: audit in worktree isolato `.worktrees/ops-fase0-armament-audit` allineato a `origin/main` 8bab25ba5. Branch sibling `agent/air-m5/fase0-instrumentation-rearm` (locale, 2 commit `verify_mcp_integrity.sh` + W67-sentinel) **MAI toccato**. Required-checks letti via `gh api repos/Balizero1987/Teman2/branches/main/protection/required_status_checks`. Family: W64 (`esistere ≠ armato`, asyncpg sibling-fix), il verdetto eserciti `2026-06-07-sota-9-spec-armies-verdict.md §4c` rischio-max "decadimento entropico inosservabile / esiste-ma-disarmato". Fix → sessione-Pro dedicata.
+
+---
+
+### ⚠️ W70 (P2, renumber of m5-branch W67): sentinel + meta-watchdog OK but 39 jobs DLQ-terminal (21 in 24h), healing=0 — common cause = Air-decommissioned path-drift in backup scripts + sentinel captures no real stderr (blind autopilot) (2026-06-09)
+
+_Discovered: 2026-06-09 ~04:45 WITA during FASE-0 instrumentation re-arm (read-only audit from M5 via ssh pro) · Severity: P2 · Status: **DIAGNOSED — fix deferred to a dedicated Pro session**. Renumbered from the m5-branch's "W67" because W67 was independently taken on main by the wa-mirror reconnect-storm scar (2026-06-07); two different scars, same number → this DLQ one becomes W70._
+
+**TRAUMA**: FASE-0 re-arm went hunting for "disarmed guardians" (per the 9-spec armies verdict). The verdict said `sentinel_meta_watchdog` was "esiste ma non gira" — FALSE: `launchctl list` on Pro shows `com.nuzantara.sentinel-meta-watchdog` LOADED, `LastExitStatus=0`, state file fresh. The watchdog WORKS. But verifying it surfaced the real wound: `sentinel_status.json` reports `jobs_circuit_terminal=38 dlq_terminal=38 healing_actions_24h=0`. The true source `~/.agent/decisions/dlq.json` → **39 entries, all status=TERMINAL**, age **21 ≤1d / 12 2-7d / 6 8-30d**. NOT stale legacy noise — CORE infra jobs dying NOW: `fly_pg_backup`, `qdrant_snapshot`, `fly_qdrant_backup`, `rag_canary`, `garuda_indexer`, `knowledge_graph_builder`, `nlm_nb1_daily_refresh`, `post_publish_poller`, etc. The fleet sheds jobs into terminal-DLQ and **nobody resuscitates them** (`healing_actions_24h=0`).
+
+Two compounding root causes (found by EXECUTING the real scripts, which the sentinel does not):
+1. **Air-decommissioned path-drift (W50/W51/W52 family)**: `qdrant_snapshot` + `fly_qdrant_backup` fail with `/Users/nuzantara/Projects/nuzantara/.../.env not found` — the **Air checkout path decommissioned 2026-05-05**. Live path is `~/Desktop/nuzantara`. Hardcoded dead-machine path.
+2. **`fly_pg_backup` runs but produces a 0-byte dump**: `pg_dump` inside the Fly primary returns empty, silent.
+
+**META-problem (load-bearing)**: the sentinel's `log_tail` captures only the retry-wrapper summary ("exit 1 after 3 attempts"), NOT the job's real stderr. So every terminal entry has `classification={type:UNKNOWN, confidence:0.0}` → the autopilot retries blind 10× → gives up → TERMINAL. Observability exists (we KNOW 39 died) but is BLIND on WHY — the exact "instrumentation disarmed" thesis made concrete.
+
+**ANTIBODY (DIAGNOSED, NOT executed — highest-leverage = #3):**
+1. grep `~/scripts/*backup*.sh` + `*snapshot*.sh` for `Projects/nuzantara` → repoint to `~/Desktop/nuzantara` (resuscitates the qdrant pair + several of the 21).
+2. Fix `fly_pg_backup` 0-byte dump (Fly-side pg_dump empty; cf. W38 role demotion in flight).
+3. Make the sentinel capture REAL stderr in `log_tail` (not the retry-summary) — re-arms the WHOLE auto-heal loop.
+4. Resolve `com.nuzantara.sentinel` one-shot-vs-daemon mismatch (RunAtLoad, no StartInterval → one-shot the watchdog tamps every ~1h, W55-masked slow crash-loop).
+
+**GOTCHA**: monitor-alive ≠ fleet-healthy — read `dlq.json` / `jobs_circuit_terminal` + `healing_actions_24h`, not just "is the sentinel running". `log_tail="exit 1 after 3 attempts"` is a false friend (zero diagnostic signal). The Air decommission (2026-05-05) keeps spawning path-drift scars 35 days later — no sweep ever grepped all scripts for `Projects/nuzantara`. Family: W50/W51/W52 (Air-path drift), W55 (cooldown masks slow failure).
+
+**Reference**: `~/.agent/decisions/dlq.json` (39 terminal), `sentinel_status.json`, `~/scripts/nuzantara-sentinel.py` (log_tail handling). Origin: m5 branch `agent/air-m5/fase0-instrumentation-rearm` commit d6ae97e33. Pending: triage 39 DLQ + 3 fixes on a dedicated Pro session.
+
+---
+
+### ✅ W71: FASE-0 governance-liveness ARMED H24 on Pro (W69 BUCO #2 closed) + verify_mcp_integrity.sh shipped-but-untested glyph bug caught (2026-06-09)
+
+_Discovered/Fixed: 2026-06-09 ~08:00-08:30 WITA, dedicated Pro session closing W69 · Severity: P2 → RESOLVED for BUCO #2; BUCO #1 + cost_breaker-ledger deferred · Status: **ARMED (2/3 live) + PR**_
+
+**TRAUMA**: W69 found the FASE-0 governance layer running only per-PR in CI, never H24. Arming it surfaced THREE latent wounds, each an instance of W64 (`esistere ≠ armato`):
+1. **`verify_the_verifiers.json` permanently MISSING on Pro** — the P1 §4 meta-verifier had NO Pro cron, so its alive-signal never existed, which ALSO blinded `cost_breaker_deadman.sh` (it observes that file). At first deadman boot it correctly alerted `verify_the_verifiers=MISSING`.
+2. **`verify_mcp_integrity.sh` (m5 branch) shipped-but-never-run** — it counted the WRONG checkmark glyph (`✓` U+2713) while `claude mcp list` emits `✔` (U+2714) → `connected` parsed as **0** despite ~12 truly connected; and `failed>0 → RED` pinned it perma-RED on chronically-unconfigured optional plugin MCP servers (slack/asana/pagerduty/github-copilot). A guardian that exists, runs, and lies.
+3. **`cost_breaker.py` CLI cannot read the real ledger from the Pro** — its `_check_all` path reads ONLY the JSONL fallback (`${LLM_COST_JSONL_ROOT:-/data}`), but the real ledger is Fly Postgres `llm_cost_events`; on the Pro every provider returns UNKNOWN → fail-closed DEGRADE-log every tick. (G4 fail-closed is CORRECT; it just isn't governing real spend.)
+
+**ANTIBODY (SHIPPED + live-verified):**
+- 3 LaunchAgents authored (`infra/launchagents/com.nuzantara.{verify-the-verifiers,mcp-integrity,cost-breaker-deadman}.plist`) + idempotent installer `install_fase0_governance.sh` (runtime home = deploy worktree; graceful-SKIP a label whose script is absent; `/bin/bash` 3.2-compatible — NO `declare -A`, a `case()` function). 2 armed live (verify-the-verifiers + deadman); mcp-integrity SKIPs until this PR merges + the deploy worktree syncs the fixed script.
+- `verify_mcp_integrity.sh` fixed: glyph `✔|✓`; RED only on failures INCREASING vs a baseline (pre-existing optional-plugin failures tolerated, captured first-run); + a per-tick alive-signal `mcp_integrity.json` (the m5 version wrote only the frozen baseline, useless for staleness).
+- `cost_breaker_deadman.sh` OBSERVED_FILES extended with `mcp_integrity.json` → closes the W69 §G5 mutual-watch (deadman now watches all three governance signals).
+- GATES (live on Pro): verify-the-verifiers `runs≥1`, `verify_the_verifiers.json` now FRESH; deadman exit 0 on fresh signals (zero false alarm) + FORCE_ALERT emits a SELF-TEST Telegram; cost_breaker proven UNKNOWN→DEGRADE, over-budget $25/$20→STOP, known-low→ALLOW; verify_mcp_integrity now YELLOW (was false-RED) with `connected=12`.
+
+**GOTCHA**: arming ≠ value — a cron that runs but reads the wrong glyph / a missing ledger is W64 theater; RUN the guardian and read its verdict before trusting the green light. macOS `/bin/bash` is 3.2 — `declare -A` raises "invalid arithmetic operator" (it failed silently here until run with `/bin/bash` explicitly; `which bash` was 3.2 too). The deadman's first-boot `MISSING` alert is a one-time transient (the signal persists on disk after first write). DEFERRED (not this session): cost_breaker.py real-ledger bridge (Fly PG → Pro), BUCO #1 (P* required-status-checks), and the 2 disarmed claude_hook gates verify_the_verifiers surfaced (`seam_verify` hook file missing, `guardrails_static` not registered in settings.json).
+
+**Reference**: PR (FASE-0 instrumentation rearm) branch `agent/nuzantara/infra/fase0-governance-rearm`. Live state: `~/.agent/decisions/state/{verify_the_verifiers,mcp_integrity,cost_breaker_deadman}.json`. Family: W69 (parent audit), W70 (sibling DLQ), W64 (esistere ≠ armato), W50/W51/W52 (deploy-worktree as runtime home).
