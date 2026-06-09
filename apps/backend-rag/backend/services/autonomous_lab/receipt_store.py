@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.services.autonomous_lab.planner import LabRun
+from backend.services.autonomous_lab.receipt_safety import contains_receipt_sensitive_value
 from backend.services.autonomous_lab.reviewer import AutonomousLabReviewer
 
 _RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -22,23 +23,18 @@ _UNPERSISTABLE_REVIEW_RULES = frozenset(
         "deploy_command",
         "merge_command",
         "push_command",
+        "command_not_allowlisted",
         "raw_text_leakage",
         "unsafe_command",
         "unsafe_target_path",
         "verification_command_not_allowlisted",
     }
 )
-_RAW_MARKER_RE = re.compile(
-    r"\b(?:RAW(?:_[A-Z0-9]+){1,}|[A-Z0-9]+_(?:MUST_NOT_LEAK|SHOULD_NOT_APPEAR))\b"
-)
-_SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{12,}"
-)
 _MUTATING_COMMAND_RE = re.compile(
-    r"(?i)\b(?:fly|flyctl)\s+deploy\b"
+    r"(?i)\b(?:fly|flyctl)(?:\s+(?:--?[A-Za-z0-9-]+)(?:\s+\S+)*)?\s+deploy\b"
     r"|\bvercel\s+(?:deploy|--prod)\b"
     r"|\b(?:npm|pnpm|yarn)\s+(?:run\s+)?deploy\b"
-    r"|\bgit\s+(?:push|merge|rebase)\b"
+    r"|\bgit(?:\s+(?:-C|--git-dir|--work-tree)\s+\S+)*\s+(?:push|merge|rebase)\b"
     r"|\bgh\s+pr\s+merge\b"
     r"|\bdocker\s+push\b"
     r"|\bkubectl\s+(?:apply|rollout|set)\b"
@@ -72,8 +68,7 @@ class ReceiptStore:
         """Persist a receipt payload atomically and append a receipt event."""
         run_id = _receipt_run_id(receipt)
         _validate_run_id(run_id)
-        _assert_receipt_safe(receipt)
-        _assert_receipt_review_persistable(receipt)
+        assert_receipt_persistable(receipt)
 
         self.receipt_dir.mkdir(parents=True, exist_ok=True)
         receipt_path = self.receipt_dir / f"{run_id}.json"
@@ -141,6 +136,12 @@ def _receipt_blocked(receipt: Mapping[str, Any]) -> bool:
     return False
 
 
+def assert_receipt_persistable(receipt: Mapping[str, Any]) -> None:
+    """Raise if a receipt-like payload is unsafe to persist."""
+    _assert_receipt_safe(receipt)
+    _assert_receipt_review_persistable(receipt)
+
+
 def _assert_receipt_safe(value: Any, *, path: str = "$", key: str = "") -> None:
     if isinstance(value, Mapping):
         for key, child in value.items():
@@ -152,7 +153,7 @@ def _assert_receipt_safe(value: Any, *, path: str = "$", key: str = "") -> None:
         for index, child in enumerate(value):
             _assert_receipt_safe(child, path=f"{path}[{index}]", key=key)
     elif isinstance(value, str):
-        if _RAW_MARKER_RE.search(value) or _SECRET_ASSIGNMENT_RE.search(value):
+        if contains_receipt_sensitive_value(value):
             raise ValueError(f"receipt contains unsafe raw or secret-like value at {path}")
         if _MUTATING_COMMAND_RE.search(value):
             raise ValueError(f"receipt contains mutating command-like value at {path}")
@@ -244,4 +245,4 @@ def _fsync_parent_dir(path: Path) -> None:
         os.close(fd)
 
 
-__all__ = ["ReceiptRecord", "ReceiptStore"]
+__all__ = ["ReceiptRecord", "ReceiptStore", "assert_receipt_persistable"]
