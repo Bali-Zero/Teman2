@@ -623,6 +623,16 @@ _Discovered/Fixed: 2026-06-09 ~08:00-08:30 WITA, dedicated Pro session closing W
 
 **Reference**: PR (FASE-0 instrumentation rearm) branch `agent/nuzantara/infra/fase0-governance-rearm`. Live state: `~/.agent/decisions/state/{verify_the_verifiers,mcp_integrity,cost_breaker_deadman}.json`. Family: W69 (parent audit), W70 (sibling DLQ), W64 (esistere ≠ armato), W50/W51/W52 (deploy-worktree as runtime home).
 
+#### W71 UPDATE 2026-06-09 — all three deferrals CLOSED (BUCO #1 + #2 done)
+
+The deferrals in the GOTCHA above are now resolved (same-day follow-up session, PRs #1201/#1203/#1204 + #1211):
+- **cost_breaker real-ledger bridge** (BUCO #2 cost half): PR #1203 shipped `cost_ledger_export.py` (read-only Fly PG `llm_cost_events` → daily JSONL the breaker reads) + `com.nuzantara.cost-breaker` + `com.nuzantara.cost-ledger-export` LaunchAgents. Verified live: breaker reads KNOWN spend per provider (`gemini $0.040 ALLOW`), no longer UNKNOWN→DEGRADE.
+- **2 disarmed claude_hook gates**: PR #1204 dropped the premature `seam_verify` gate (hook file never existed) and taught the meta-verifier to honor `invoked_via` (resolves `guardrails_static`). `verify_the_verifiers.py --scope all` now GREEN, `gates_disarmed=0` (20/21 armed, 1 WARN = W64 asyncpg-lint-no-consumer, pre-existing).
+- **BUCO #1** (P\* required-status-checks): PR #1201 shipped the skip→success sentinel; `required_status_checks` went 9→11 adding `verify-the-verifiers` + `Canary self-test + incremental mutation`. **GOTCHA: the verb is `PATCH`, not `PUT`** — `PUT .../branches/main/protection/required_status_checks` 404s (PUT only exists on the parent `/protection`); the original spec said PUT and failed. Sentinel proven SUCCESS on path-HIT (#1204) AND path-MISS (#1205/#1210) → no pending-forever. Rollback = one `PATCH` with the saved 9-context snapshot.
+- **Bonus** PR #1211: cost-ledger DSN `localhost`→`127.0.0.1` — the fly PG proxy (`com.balizero.wr2.pg-proxy`) binds IPv4 only, so `localhost`→`::1` resolution intermittently failed the exporter (`Connect call failed ('::1', 15432)`). A just-armed guardian should not flap (W64-adjacent).
+
+Net: W69 **fully closed**. 5 governance LaunchAgents live H24 on Pro, all exit 0; 3 mutual-watch signals fresh. Deploy worktree (`~/Desktop/nuzantara-deploy`) is the runtime home, synced past `9b49048a7`.
+
 ---
 
 ### ⚠️ W72: WhatsApp persona over-cautious — deflected STABLE regulatory facts (B211-vs-KITAS etc.) to "verify with team"; root cause was prompt blanket-clause + \_guard_legacy_b211_reply clobbering correct answers (2026-06-08)
