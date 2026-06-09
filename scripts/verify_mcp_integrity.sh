@@ -81,10 +81,33 @@ except Exception:
 ")
 
 # --- 2. Live reachability via `claude mcp list` ----------------------------
-# We strip ANSI, then count state glyphs. claude mcp list has its own timeout;
-# we guard with a background+wait fallback (macOS has no `timeout`).
-
-raw=$(unset ANTHROPIC_API_KEY; claude mcp list 2>&1)
+# REAL timeout guard: `claude mcp list` health-checks every server and CAN HANG
+# in a no-TTY launchd context (empirically 2026-06-09: two stuck procs piled up
+# per cron tick, signal never written → deadman saw it perpetually stale). The
+# old "has its own internal timeout" claim was false here. coreutils
+# timeout/gtimeout is in the plist PATH (/opt/homebrew/bin).
+_to="$(command -v timeout || command -v gtimeout || true)"
+if [[ -n "$_to" ]]; then
+    raw=$(unset ANTHROPIC_API_KEY; "$_to" 60 claude mcp list 2>&1); cl_rc=$?
+else
+    raw=$(unset ANTHROPIC_API_KEY; claude mcp list 2>&1); cl_rc=$?
+fi
+if [[ "$cl_rc" == "124" || "$cl_rc" == "137" ]]; then
+    # Timed out/killed: NEVER hang, NEVER let an empty list cascade into a false
+    # reachable=0 RED. Emit a FRESH alive-signal (keeps the dead-man's switch
+    # satisfied) with a visible YELLOW + reason, then exit 0.
+    log "YELLOW declared=$declared mcp_list_timeout=60s reachability-unverified"
+    echo "[mcp-integrity] YELLOW — declared=$declared | claude mcp list timed out (60s), reachability unverified"
+    python3 -c "
+import json
+json.dump({'ts': '$(date -u +%Y-%m-%dT%H:%M:%SZ)', 'verdict': 'YELLOW',
+           'declared': $declared, 'reachable': -1, 'failed': -1,
+           'reason': 'claude mcp list timed out (60s)',
+           '_writer': 'verify_mcp_integrity'},
+          open('$STATE_DIR/mcp_integrity.json','w'), indent=2)
+" 2>/dev/null || true
+    exit 0
+fi
 clean=$(printf '%s' "$raw" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g')
 
 connected=$(printf '%s\n' "$clean" | grep -cE '✔ Connected|✓ Connected' || true)
