@@ -318,6 +318,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
     main_conn = await asyncpg.connect(pool_conn_dsn, timeout=10)
     hb_conn = await asyncpg.connect(pool_conn_dsn, timeout=10)
     stop = asyncio.Event()
+    hb_task: asyncio.Task | None = None
     try:
         row = await _pg.acquire_html_lease_and_fetch(main_conn, draft_id=draft_id, lease_owner=owner)
         if row is None:
@@ -422,6 +423,12 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             shutil.rmtree(work, ignore_errors=True)
     finally:
         stop.set()
+        if hb_task is not None and not hb_task.done():
+            hb_task.cancel()
+            try:
+                await hb_task
+            except (asyncio.CancelledError, Exception):
+                pass
         await hb_conn.close()
         await main_conn.close()
 
