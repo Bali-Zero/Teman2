@@ -180,6 +180,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
     api.include_router(autonomous_execution.router)  # Phase 7 POC: Autonomous task execution
+    if settings.autonomous_lab_enabled:
+        from backend.app.routers import autonomous_lab
+
+        api.include_router(autonomous_lab.router)
     api.include_router(agentic_rag.router)
     api.include_router(kg_agentic.router)
 
@@ -591,6 +595,11 @@ def include_light_routers(api: FastAPI) -> None:
     if settings.environment.lower() != "production" or settings.admin_api_key:
         api.include_router(debug.router)
         api.include_router(debug.v1_router)
+
+    if settings.autonomous_lab_enabled:
+        from backend.app.routers import autonomous_lab
+
+        api.include_router(autonomous_lab.router)
 
     # Conversation & Memory (light subset)
     api.include_router(session.router)

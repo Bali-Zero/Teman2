@@ -19,7 +19,7 @@ a **terminal logout** rather than a transient disconnect:
 - `no session yet` / no persisted `auth_info` — the account was never linked, or
   the session dir was wiped.
 
-A bridge that is merely *disconnected* (network blip) reconnects on its own and
+A bridge that is merely _disconnected_ (network blip) reconnects on its own and
 does **not** need this — see the W67/W67b scar. Disambiguate by reading the
 account log, never by `status.sh` alone (it reports process-alive, **not**
 WhatsApp-connected). The ghost-row janitor
@@ -28,15 +28,15 @@ WhatsApp-connected). The ghost-row janitor
 
 ## Accounts needing re-link (2026-06-09)
 
-| Name   | E.164          | QR file (after `--qr`)            | Status / reason                         |
-|--------|----------------|----------------------------------|-----------------------------------------|
-| sahira | +628213454723  | `/tmp/qr-628213454723.png`       | `loggedOut` 401 — device removed phone-side |
-| vino   | +628213454727  | `/tmp/qr-628213454727.png`       | no persisted session                    |
-| ari    | +628213454721  | `/tmp/qr-628213454721.png`       | no persisted session (orphan — confirm with operator it should be supervised) |
+| Name   | E.164         | QR file (after `--qr`)     | Status / reason                                                               |
+| ------ | ------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| sahira | +628213454723 | `/tmp/qr-628213454723.png` | `loggedOut` 401 — device removed phone-side                                   |
+| vino   | +628213454727 | `/tmp/qr-628213454727.png` | no persisted session                                                          |
+| ari    | +628213454721 | `/tmp/qr-628213454721.png` | no persisted session (orphan — confirm with operator it should be supervised) |
 
 > **Note on ari/vino**: per the W67c scar these numbers are sequential Bali Zero
 > lines that may NOT be in `WA_MIRROR_SUPERVISED_NAMES`. Confirm with the
-> operator that the account *should* run before re-linking; do not link an
+> operator that the account _should_ run before re-linking; do not link an
 > account that has been dismissed.
 
 ## Procedure (per account)
