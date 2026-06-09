@@ -232,10 +232,11 @@ def test_text_anchor_removed_from_allowed_levers():
 
 
 def test_legibility_levers_constant():
-    """FIX#3: the pure-legibility lever set is exactly scrim/stroke/shrink."""
+    """The pure-legibility lever set: scrim/stroke/shrink + grow (the symmetric
+    grow_font partner added 2026-06-10)."""
     from wr2_html_renderer.designer_loop import _LEGIBILITY_LEVERS
 
-    assert _LEGIBILITY_LEVERS == {"scrim_opacity", "text_stroke", "shrink_font"}
+    assert _LEGIBILITY_LEVERS == {"scrim_opacity", "text_stroke", "shrink_font", "grow_font"}
 
 
 @pytest.mark.asyncio
@@ -665,3 +666,154 @@ async def test_designer_loop_accepts_two_word_tail_after_rewrap(monkeypatch):
     assert res.converged is True
     assert res.accepted_with_composition_debt is True
     assert any("rhythm" in d for d in res.composition_debt)
+
+
+# ── grow_font lever: thumbnail-legible sub-headline min-size (2026-06-10) ──────
+
+
+def test_apply_levers_folds_grow_font():
+    """grow_font is a real, applicable lever, symmetric to shrink_font."""
+    from wr2_html_renderer.designer_loop import _apply_levers
+
+    acc: dict = {}
+    applied = _apply_levers(acc, [{"lever": "grow_font", "target": "subhead", "reason": "tiny"}])
+    assert "grow_font" in [lev.get("lever") for lev in applied]
+    assert acc.get("grow_subhead") == 1
+    # default target is subhead
+    acc2: dict = {}
+    _apply_levers(acc2, [{"lever": "grow_font"}])
+    assert acc2.get("grow_subhead") == 1
+    # accumulates per step
+    _apply_levers(acc2, [{"lever": "grow_font"}])
+    assert acc2.get("grow_subhead") == 2
+
+
+def test_grow_font_in_lever_sets():
+    """grow_font is in the allowed vocabulary AND the brand-inert/legibility sets
+    (growing a too-small text toward legibility cannot drift the brand)."""
+    from wr2_html_renderer.claude_vision import _ALLOWED_LEVERS
+    from wr2_html_renderer.designer_loop import (
+        _BRAND_INERT_LEVERS,
+        _LEGIBILITY_LEVERS,
+    )
+
+    assert "grow_font" in _ALLOWED_LEVERS
+    assert "grow_font" in _LEGIBILITY_LEVERS
+    assert "grow_font" in _BRAND_INERT_LEVERS
+
+
+def test_levers_to_css_grow_font_clamps_to_legible_min_with_cap():
+    """grow_font emits a font-size:clamp(min, grown, cap) on the sub-headline so a
+    single grow already clears the thumbnail-legible floor and never overflows."""
+    from wr2_html_renderer.composer import _GROW_CLAMP_PX, _levers_to_css
+
+    min_px, cap_px = _GROW_CLAMP_PX["subhead"]
+    css = _levers_to_css({"grow_subhead": 1})
+    assert ".subhead" in css  # targets the sub-headline element
+    assert f"clamp({min_px}px" in css  # legible-min floor present
+    assert f"{cap_px}px)" in css       # anti-overflow cap present
+    assert "font-size" in css
+    # no grow lever → no grow CSS
+    assert "clamp(" not in _levers_to_css({"text_stroke": True})
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_grow_font_repairs_small_subhead(monkeypatch):
+    """The repair flow: vision flags an illegible (too-small) sub-headline and
+    proposes grow_font; the loop APPLIES it (brand-clean), re-renders, and on the
+    next pass the text is legible → converges. Illegibility is REPAIRED, not
+    accepted as debt."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    calls = {"vision": 0}
+
+    def vision_critic(png, slide, ctx):
+        calls["vision"] += 1
+        if calls["vision"] == 1:
+            return dl.Critique(
+                tier="vision", passed=False,
+                issues=["sub-headline is illegible at Instagram thumbnail scale"],
+                levers=[{"lever": "grow_font", "target": "subhead", "reason": "too small to read"}],
+                score=0.5,
+            )
+        return dl.Critique(tier="vision", passed=True, issues=[], levers=[], score=0.95)
+
+    def brand_verifier(png, slide, ctx):
+        return dl.Critique(tier="brand", passed=True, issues=[])
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X", "subhead": "tiny sub"}, render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=brand_verifier,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    assert res.converged is True
+    # grow_font was applied, NOT accepted as composition debt
+    assert res.accepted_with_composition_debt is False
+    assert any(rec.get("vision_levers_pulled") for rec in res.history)
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_never_accepts_illegible_subhead_as_debt(monkeypatch):
+    """Counter-proof: an illegible sub-headline with ONLY a rerender lever (no
+    grow available to pull) must NEVER be accepted as composition debt — the gate
+    stays strict (converged=False)."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        # legibility defect but only a structural lever proposed → not CSS-fixable
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=["sub-headline is unreadable / illegible at thumbnail scale"],
+            levers=[{"lever": "rerender", "reason": "structural"}],
+            score=0.3,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X", "subhead": "tiny"}, render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=2,
+    )
+    assert res.converged is False
+    assert res.accepted_with_composition_debt is False

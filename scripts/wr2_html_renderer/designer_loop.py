@@ -56,7 +56,7 @@ CONTRAST_FLOOR = WCAG_AAA_NORMAL
 # brand (no palette / font-family / logo / composition change). When the ONLY
 # levers a step proposes/applies are in this set, a brand_verifier rejection for
 # a NON-legibility reason must NOT kill them — they're always safe to commit.
-_LEGIBILITY_LEVERS = {"scrim_opacity", "text_stroke", "shrink_font"}
+_LEGIBILITY_LEVERS = {"scrim_opacity", "text_stroke", "shrink_font", "grow_font"}
 
 # Brand-inert levers: the legibility set PLUS rebalance_wrap. rebalance_wrap only
 # re-wraps the headline TEXT (inserts a <br> at a balanced word boundary) — it
@@ -603,6 +603,8 @@ def _apply_levers(acc: dict[str, Any], levers: list[dict[str, Any]]) -> list[dic
       scrim_opacity:   float  (added darkening behind text; 0..1, clamped)
       text_stroke:     bool   (stronger outline)
       shrink_<elem>:   int    (step counter; elem = body|heading|subhead)
+      grow_<elem>:     int    (step counter; elem = subhead|body — composer
+                               clamps toward a thumbnail-legible min, capped)
       _rebalance_wrap: bool   (composer re-wraps the headline into balanced
                                lines via <br> — text content only, no box move)
     """
@@ -617,6 +619,14 @@ def _apply_levers(acc: dict[str, Any], levers: list[dict[str, Any]]) -> list[dic
             applied.append(lev)
         elif name == "shrink_font":
             key = f"shrink_{lev.get('target', 'body')}"
+            acc[key] = acc.get(key, 0) + 1
+            applied.append(lev)
+        elif name == "grow_font":
+            # symmetric partner of shrink_font: step up a too-small element toward
+            # a thumbnail-legible minimum. The composer clamps the grown size to a
+            # per-element legible floor + an anti-overflow cap, so this only ever
+            # IMPROVES legibility in place (never palette/font-family/box).
+            key = f"grow_{lev.get('target', 'subhead')}"
             acc[key] = acc.get(key, 0) + 1
             applied.append(lev)
         elif name == "rebalance_wrap":

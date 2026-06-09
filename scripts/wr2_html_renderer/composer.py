@@ -212,6 +212,19 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
 # in place; none can move or clip text.
 
 
+# grow_font clamps: (legible-min px, anti-overflow-cap px) per element on the
+# 1080x1350 render canvas. Declared + parametrizable — the final judge is the
+# vision critic in the E2E (it asks for a thumbnail-legible sub-headline).
+_GROW_CLAMP_PX = {
+    "subhead": (52, 64),   # 36px base → grow to >=52px (≈7.4px at thumbnail), cap 64
+    "body": (44, 56),
+    "heading": (64, 96),   # heading is usually large already; included for symmetry
+}
+# Per grow step the target size steps up; clamp's MIN floor guarantees a single
+# grow lever already reaches the legible minimum, the cap guards overflow.
+_GROW_STEP = 0.12
+
+
 def _levers_to_css(levers: dict[str, Any]) -> str:
     """Build a brand-safe, composition-safe <style> override block from levers.
 
@@ -266,6 +279,26 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
                 "subhead": ".subhead,.subheading",
             }[elem]
             rules.append(f"{sel}{{font-size:calc(1em * {factor:.2f});line-height:1.25;}}")
+
+    # grow_font: symmetric to shrink_font. Step UP a too-small element toward a
+    # thumbnail-legible minimum. We clamp(min_legible, grown, cap): the MIN floor
+    # guarantees one grow lever already clears the legibility threshold, the cap
+    # prevents a long element from overflowing its box. Paint/size-only on the
+    # text — never palette/font-family/position.
+    for elem in ("subhead", "body", "heading"):
+        steps = levers.get(f"grow_{elem}", 0)
+        if steps:
+            factor = min(1.6, 1.0 + _GROW_STEP * int(steps))
+            min_px, cap_px = _GROW_CLAMP_PX[elem]
+            sel = {
+                "body": ".body,.text,[data-zone-type='text']",
+                "heading": ".headline,.heading,h1",
+                "subhead": ".subhead,.subheading",
+            }[elem]
+            rules.append(
+                f"{sel}{{font-size:clamp({min_px}px, calc(1em * {factor:.2f}), {cap_px}px);"
+                "line-height:1.25;}"
+            )
 
     # rebalance_wrap: the headline already carries explicit <br>s placed by
     # _balance_headline (each line capped to a safe width). Make the browser
