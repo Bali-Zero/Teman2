@@ -52,16 +52,22 @@ ACCOUNTS_JSON = Path.home() / ".wa-mirror.accounts.json"
 _STALE_MINUTES = int(os.getenv("WA_JANITOR_STALE_MINUTES", "5"))
 
 
+_LOCK_FD: int | None = None
+
+
 def _acquire_lock_or_exit() -> int:
     STATE_DIR.mkdir(exist_ok=True)
-    fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o644)
+    fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o600)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return fd
     except BlockingIOError:
         logger.info("[wa_janitor] another instance running, skipping this tick")
         os.close(fd)
         sys.exit(0)
+    # Held for the whole process lifetime; released in main()'s finally.
+    global _LOCK_FD
+    _LOCK_FD = fd
+    return fd
 
 
 def _db_url() -> str:
@@ -169,7 +175,11 @@ async def _run() -> None:
 
 def main() -> None:
     _acquire_lock_or_exit()
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+    finally:
+        if _LOCK_FD is not None:
+            os.close(_LOCK_FD)
 
 
 if __name__ == "__main__":
