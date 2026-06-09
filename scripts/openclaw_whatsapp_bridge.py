@@ -48,8 +48,6 @@ _VILLA_TERMS = (
     "akomodasi",
     "alloggio",
     "booking",
-    "ota",
-    "rent",
     "rental",
     "sewa",
     "short stay",
@@ -224,6 +222,22 @@ def _normalize_text(value: str) -> str:
 
 def _contains_any(value: str, terms: tuple[str, ...]) -> bool:
     return any(term in value for term in terms)
+
+
+def _contains_any_word(value: str, terms: tuple[str, ...]) -> bool:
+    """Whole-word containment.
+
+    Unlike :func:`_contains_any` (bare substring), this matches a term only on a
+    word boundary, so a short trigger like "tax"/"lease"/"ota" does NOT fire on
+    "syntax"/"leasehold"/"quota". Multi-word terms (e.g. "short stay") match as a
+    contiguous phrase. Use this for keyword TRIGGERS where a substring false
+    positive would clobber a correct answer (the W68/W72 guard-over-match class).
+    """
+    for term in terms:
+        pattern = r"\b" + r"\s+".join(re.escape(part) for part in term.split())
+        if re.search(pattern, value):
+            return True
+    return False
 
 
 def _reply_word_count(value: str) -> int:
@@ -580,7 +594,44 @@ def _guard_lkpm_reply(
         "tanggal 7",
         "il 7",
     )
-    if any(marker in normalized_reply for marker in stale_markers) or "1 to 15 april" not in normalized_reply:
+    # Negative-gating (W: guard-family, 2026-06-09). The old escape required the
+    # exact English literal "1 to 15 april" to be PRESENT or it clobbered — which
+    # an unreachable bar for a correct DEFINITIONAL answer ("what is LKPM and who
+    # files it"), an Indonesian/Italian answer, or a correctly-phrased "1-15 April"
+    # / "April 1-15". Now: clobber ONLY when the reply (a) carries a stale-deadline
+    # marker, OR (b) asserts a deadline/window that is NOT the correct one. A reply
+    # that mentions no deadline at all (pure definition) is left untouched.
+    if any(marker in normalized_reply for marker in stale_markers):
+        return _canonical_lkpm_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    # Deadline/window SIGNALS only — NOT generic action verbs like "submit"/"lapor"
+    # (a definition "PT PMA must submit LKPM to BKPM" is not a deadline assertion).
+    _LKPM_DEADLINE_TERMS = (
+        "deadline",
+        "due ",
+        "due date",
+        "filed by",
+        "file by",
+        "by the",
+        "no later than",
+        "tenggat",
+        "batas waktu",
+        "jatuh tempo",
+        "scadenza",
+        "entro il",
+    )
+    _LKPM_CORRECT_WINDOW = (
+        "1 to 15 april",
+        "1-15 april",
+        "april 1-15",
+        "april 1 to 15",
+        "1 sampai 15 april",
+        "1-15 aprile",
+    )
+    asserts_deadline = _contains_any(normalized_reply, _LKPM_DEADLINE_TERMS)
+    has_correct_window = _contains_any(normalized_reply, _LKPM_CORRECT_WINDOW)
+    if asserts_deadline and not has_correct_window:
         return _canonical_lkpm_answer(
             _villa_answer_language(message_text, detected_language)
         )
@@ -655,10 +706,46 @@ def _guard_tax_compliance_reply(
     detected_language: Any = None,
 ) -> str:
     normalized_message = _normalize_text(message_text)
-    if not _contains_any(
+    # Whole-word trigger (W: guard-family, 2026-06-09): bare substring "tax"/"spt"
+    # /"ppn"/"pph" matched "syntax"/"transport"/etc. and, worse, this guard's
+    # OSS/BKPM verify-suffix was appended to ANY tax-term answer — including stable
+    # rate/deadline/definition facts ("what is the VAT rate", "when is the SPT
+    # deadline", "what is Coretax"). The suffix is meaningful only for RISK /
+    # PENALTY / EXPOSURE intent, so gate on that, not on bare tax keywords.
+    if not _contains_any_word(
         normalized_message,
         ("lkpm", "coretax", "faktur pajak", "spt", "ppn", "pph", "tax", "pajak"),
     ):
+        return reply
+
+    _RISK_INTENT_TERMS = (
+        "risk",
+        "risiko",
+        "penalty",
+        "penalti",
+        "denda",
+        "sanksi",
+        "sanction",
+        "fine",
+        "late",
+        "terlambat",
+        "overdue",
+        "audit",
+        "pemeriksaan",
+        "compliant",
+        "compliance",
+        "kepatuhan",
+        "violation",
+        "pelanggaran",
+        "exposure",
+        "owe",
+        "liab",
+        "rischio",
+        "multa",
+        "sanzione",
+        "ritardo",
+    )
+    if not _contains_any(normalized_message, _RISK_INTENT_TERMS):
         return reply
 
     normalized_reply = _normalize_text(reply)
@@ -775,6 +862,17 @@ def _guard_cafe_pma_reply(
     normalized_reply = _normalize_text(reply)
     if "pt pma" not in normalized_message:
         return reply
+    # The MESSAGE must itself express cafe intent (W: guard-family, 2026-06-09).
+    # Previously the guard fired on "pt pma" in the message + cafe/coffee merely
+    # mentioned in the REPLY, so a definitional "difference between PT PMA and PT
+    # lokal" answer that happened to name a cafe as an example got clobbered into
+    # the cafe-setup canonical. Require the user to actually be asking about a
+    # cafe before substituting the cafe answer.
+    if not _contains_any(
+        normalized_message,
+        ("cafe", "café", "coffee", "kafe", "kedai", "warung", "rumah minum", "56303"),
+    ):
+        return reply
     if not _contains_any(normalized_reply, ("cafe", "56303", "restaurant", "coffee")):
         return reply
     if _reply_word_count(reply) > 115:
@@ -787,30 +885,109 @@ def _guard_cafe_pma_reply(
 def _canonical_nominee_answer(language: str) -> str:
     if language == "it":
         return (
-            "Non lo consiglio. Una struttura nominee per controllare una societa' senza "
-            "comparire e' un red flag legale in Indonesia e puo' lasciarti senza protezione "
-            "reale in caso di disputa. La strada corretta e' una struttura trasparente, di "
-            "solito PT PMA se c'e' ownership straniera, con shareholder, director, commissioner "
-            "e licenze coerenti. Se il problema e' privacy/controllo, Bali Zero puo' verificare "
-            "opzioni compliant, ma non costruirei il setup su un nominee."
+            "No — e non e' solo rischioso, e' illegale. Una struttura nominee, dove un "
+            "indonesiano intesta a proprio nome un bene (terra o quote) per conto di uno "
+            "straniero, e' nulla per la legge agraria indonesiana: non e' opponibile, e nel "
+            "caso della terra il bene puo' essere devoluto allo Stato e tu resteresti senza "
+            "alcun diritto azionabile. La strada corretta e' trasparente: di solito PT PMA "
+            "con Hak Pakai/HGB per la proprieta', oppure un leasehold regolare, con "
+            "shareholder, director, commissioner e licenze coerenti. Se il tema e' "
+            "privacy/controllo, Bali Zero puo' verificare opzioni compliant, ma non "
+            "costruirei nulla su un nominee."
         )
     if language == "id":
         return (
-            "Saya tidak sarankan. Struktur nominee untuk mengontrol perusahaan tanpa nama "
-            "terlihat adalah red flag hukum di Indonesia dan bisa membuat kamu tidak punya "
-            "perlindungan nyata saat sengketa. Jalur bersih adalah struktur transparan, biasanya "
-            "PT PMA jika ada foreign ownership, dengan shareholder, director, commissioner, dan "
-            "izin yang sesuai. Kalau masalahnya privacy/kontrol, Bali Zero bisa cek opsi compliant, "
-            "tapi jangan bangun setup di atas nominee."
+            "Tidak — ini bukan sekadar berisiko, ini ilegal. Struktur nominee, di mana orang "
+            "Indonesia memegang aset (tanah atau saham) atas namanya untuk kepentingan orang "
+            "asing, batal demi hukum agraria Indonesia: tidak bisa ditegakkan, dan untuk tanah "
+            "asetnya bisa jatuh ke negara sehingga kamu tidak punya hak yang bisa dituntut. "
+            "Jalur yang benar bersifat transparan: biasanya PT PMA dengan Hak Pakai/HGB untuk "
+            "properti, atau leasehold resmi, dengan shareholder, director, commissioner, dan "
+            "izin yang sesuai. Kalau masalahnya privacy/kontrol, Bali Zero bisa cek opsi "
+            "compliant, tapi jangan bangun apa pun di atas nominee."
         )
     return (
-        "I don’t recommend it. A nominee structure used to secretly control a company is a "
-        "serious legal red flag in Indonesia and can leave you without real protection in a "
-        "dispute. The clean route is a transparent structure, usually a PT PMA when foreign "
-        "ownership is involved, with the right shareholder, director, commissioner, and licenses. "
-        "If the concern is privacy or control, Bali Zero can check compliant options, but I would "
-        "not build the setup around a nominee."
+        "No — this is not just risky, it is illegal. A nominee structure, where an Indonesian "
+        "holds an asset (land or shares) in their name for a foreigner’s benefit, is legally "
+        "void under Indonesian agrarian law: it is not enforceable, and for land the asset can "
+        "fall to the State, leaving you with no claim you can act on. The correct route is "
+        "transparent: usually a PT PMA holding Hak Pakai/HGB for property, or a proper "
+        "leasehold, with the right shareholder, director, commissioner, and licenses. If the "
+        "concern is privacy or control, Bali Zero can check compliant options, but I would not "
+        "build anything around a nominee."
     )
+
+
+_NOMINEE_DIRECT_TERMS = (
+    "nominee",
+    "in their name",
+    "under their name",
+    "in his name",
+    "in her name",
+    "'s name",  # "in my friend's name", "in her husband's name", etc.
+    "atas nama",
+    "pinjam nama",
+    "pakai nama",
+    "prestanome",
+    "intestare",
+    "intesta a",
+)
+# Compositional fallback: "<someone Indonesian/a friend> hold(s) the <asset> for me".
+# Phrase lists are too brittle ("hold the title for me" missed "hold the land title
+# for me"), so detect the verb + an asset noun + a for-me / friend signal instead.
+_NOMINEE_HOLD_VERBS = ("hold ", "holds ", "holding ", "keep ", "register ", "put it in")
+_NOMINEE_ASSET_TERMS = ("title", "land", "property", "house", "villa", "certificate", "shares")
+_NOMINEE_PROXY_SIGNALS = (
+    "for me",
+    "for us",
+    "on my behalf",
+    "friend",
+    "wife",
+    "husband",
+    "partner",
+    "spouse",
+    "istri",
+    "suami",
+    "teman",
+)
+
+
+def _is_nominee_intent(normalized_message: str) -> bool:
+    if _contains_any(normalized_message, _NOMINEE_DIRECT_TERMS):
+        return True
+    return (
+        _contains_any(normalized_message, _NOMINEE_HOLD_VERBS)
+        and _contains_any(normalized_message, _NOMINEE_ASSET_TERMS)
+        and _contains_any(normalized_message, _NOMINEE_PROXY_SIGNALS)
+    )
+_DEFINITIONAL_TERMS = (
+    "what is",
+    "what does",
+    "what's a",
+    "what is a",
+    "apa itu",
+    "apa arti",
+    "cosa significa",
+    "che cos",
+    "cosa e",
+    "cos'e",
+)
+_NOMINEE_SAFE_FRAMING = (
+    "illegal",
+    "void",
+    "not enforceable",
+    "unenforceable",
+    "red flag",
+    "risk",
+    "risky",
+    "avoid",
+    "ilegal",
+    "batal",
+    "tidak sah",
+    "illegale",
+    "nullo",
+    "rischio",
+)
 
 
 def _guard_nominee_reply(
@@ -819,8 +996,33 @@ def _guard_nominee_reply(
     detected_language: Any = None,
 ) -> str:
     normalized_message = _normalize_text(message_text)
-    if "nominee" not in normalized_message:
+    # Trigger on nominee INTENT, not just the literal word (W: guard-family,
+    # 2026-06-09). The most common real-world nominee request — "can my Indonesian
+    # friend hold the title for me?" — contains no literal "nominee", so the old
+    # gate never fired on exactly the dangerous question. Use a compositional
+    # detector (verb + asset + proxy-signal) so lexical variants ("hold the land
+    # TITLE for me") don't slip past a fixed phrase list.
+    if not _is_nominee_intent(normalized_message):
         return reply
+    normalized_reply = _normalize_text(reply)
+    is_definitional = _contains_any(normalized_message, _DEFINITIONAL_TERMS)
+    states_illegality = _contains_any(
+        normalized_reply,
+        ("illegal", "void", "not enforceable", "unenforceable",
+         "ilegal", "batal", "tidak sah", "illegale", "nullo"),
+    )
+    # A definitional question with a reply that already frames the risk/illegality
+    # is a CORRECT on-topic answer — do not clobber it purely for being long.
+    if is_definitional and _contains_any(normalized_reply, _NOMINEE_SAFE_FRAMING):
+        return reply
+    # For a real nominee REQUEST ("can my friend hold it for me?"), the answer must
+    # state the illegality, not soften it to "risky". If it doesn't, substitute the
+    # canonical regardless of length — a short "it's risky but doable" is the exact
+    # failure mode (a client could read it as permitted).
+    if not is_definitional and not states_illegality:
+        return _canonical_nominee_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
     if _reply_word_count(reply) > 115:
         return _canonical_nominee_answer(
             _villa_answer_language(message_text, detected_language)
@@ -899,6 +1101,10 @@ def _build_prompt(body: BridgeRequest) -> str:
             "Sound like a capable Bali Zero consultant in a 1:1 chat.",
             "For exact prices, custom quotes, service-package totals, case-specific timelines, or client-specific filing, eligibility, or status, do not invent details; say you will verify with the team and give the next step.",
             "State stable published regulatory facts directly when they are general and not specific to this client: standard overstay fines, visa-type definitions and differences (for example B211/C-class short-stay vs KITAS limited-stay residency permit), standard tax rates (property-sale PPh and BPHTB), and statutory capital thresholds. Give the figure or definition concisely, then note the team confirms how it applies to the client's specific case. Do NOT deflect a stable definitional or rate question to the team.",
+            "Stating a published threshold or figure is fine, but never convert it into a personal eligibility verdict. Do not tell a client 'yes/no you qualify' from the facts they give; state the threshold or rule and let the team confirm the client's specific eligibility.",
+            "You may state plainly, as a stable statutory fact, that working in Indonesia requires a work-authorizing permit (a work KITAS) and that a tourist or visit visa or VOA does not grant the right to work; then defer the specific compliant route to the team. Do not soften this into 'I wouldn't rely on that' — say clearly it is not permitted.",
+            "When asked about Bali Zero's location, state directly that the office is in the Kerobokan area of Bali, Indonesia, and that in-person visits are by appointment; offer to have the team confirm the exact address and a time slot. Do not invent a full street address or map pin.",
+            "When asked the VAT/PPN rate, give the full picture, not a bare number: the headline rate is 12% but the effective rate on most goods and services is 11% (via the DPP Nilai Lain 11/12 mechanism), with the full 12% applying to luxury goods subject to PPnBM. Keep this consistent across languages.",
             "For application, payment, receipt, document, or CRM status questions, never infer a stage from WhatsApp context or reference numbers. Do not say it is in document check, submission, approved, paid, pending, or rejected unless that status is supplied in the current verified context. Say the team must verify the file/status first.",
             "For KBLI and business setup, give a likely direction only when grounded and ask for the missing activity details when needed.",
             "For urgent medical, safety, or health questions, do not give medicine, diagnosis, or specific hotline numbers unless they are supplied in the current verified context; tell the client to contact local emergency medical help or go to the nearest hospital/ER immediately.",

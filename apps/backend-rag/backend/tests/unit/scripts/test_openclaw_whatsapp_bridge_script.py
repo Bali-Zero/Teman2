@@ -209,6 +209,160 @@ def test_b211_guard_still_clobbers_unsafe_current_claim() -> None:
     assert "C2 Business" in guarded
 
 
+def test_contains_any_word_respects_word_boundaries() -> None:
+    # The bare-substring trap that produced W68/W72: short triggers must not
+    # match inside longer words.
+    assert bridge._contains_any_word("what is the tax rate", ("tax",)) is True
+    assert bridge._contains_any_word("explain the syntax please", ("tax",)) is False
+    assert bridge._contains_any_word("how do i file the spt", ("spt",)) is True
+    assert bridge._contains_any_word("short stay accommodation", ("short stay",)) is True
+
+
+def test_villa_terms_no_longer_carry_substring_traps() -> None:
+    # "ota" matched "quota"/"biota"; "rent" matched "different"/"current".
+    assert "ota" not in bridge._VILLA_TERMS
+    assert "rent" not in bridge._VILLA_TERMS
+    # A food-import KBLI question must NOT be treated as a villa query.
+    assert (
+        bridge._is_villa_kbli_query(
+            "Which KBLI code covers the import quota for frozen food distribution?"
+        )
+        is False
+    )
+
+
+def test_lkpm_guard_allows_definitional_answer() -> None:
+    # Pure definition, no deadline asserted → must pass (W: guard-family).
+    correct = (
+        "LKPM is the quarterly investment activity report that PT PMA and other "
+        "investment companies must submit to BKPM through the OSS system."
+    )
+    assert bridge._guard_lkpm_reply("What is LKPM and who has to file it?", correct, "en") == correct
+
+
+def test_lkpm_guard_still_clobbers_stale_deadline() -> None:
+    stale = "You must file LKPM by 10 April every quarter, on the 7th day."
+    guarded = bridge._guard_lkpm_reply("When is the LKPM deadline?", stale, "en")
+    assert guarded != stale
+
+
+def test_tax_guard_does_not_append_on_stable_rate_fact() -> None:
+    # "What is Coretax" is a definition; no OSS/BKPM verify tail should be added.
+    answer = "Coretax is Indonesia's new tax administration system run by the DJP."
+    assert bridge._guard_tax_compliance_reply("What is Coretax?", answer, "en") == answer
+    rate = "The standard VAT rate is 11% effective, 12% headline."
+    assert bridge._guard_tax_compliance_reply("What is the VAT rate?", rate, "en") == rate
+
+
+def test_tax_guard_still_appends_on_penalty_intent() -> None:
+    answer = "Late SPT filing carries an administrative fine."
+    guarded = bridge._guard_tax_compliance_reply(
+        "What is the penalty for late SPT filing and my risk?", answer, "en"
+    )
+    assert guarded != answer
+    assert "verify" in guarded.lower()
+
+
+def test_cafe_guard_does_not_clobber_definitional_pt_pma_answer() -> None:
+    # Message asks PT PMA vs PT lokal; reply happens to mention a cafe as an
+    # example. The guard must NOT substitute the cafe canonical.
+    reply = (
+        "A PT PMA is a foreign-owned company; a PT lokal is fully Indonesian-owned. "
+        "The differences are ownership, minimum capital, eligible business fields, "
+        "and control. For example, a small local cafe is usually a PT lokal, while a "
+        "foreign-funded venture uses a PT PMA with the right KBLI and licensing."
+    )
+    assert (
+        bridge._guard_cafe_pma_reply(
+            "What's the difference between a PT PMA and a PT lokal?", reply, "en"
+        )
+        == reply
+    )
+
+
+def test_cafe_guard_still_fires_on_real_cafe_question() -> None:
+    long_reply = (
+        "Opening a cafe is possible. " + "You will need to think about the concept. " * 20
+    )
+    guarded = bridge._guard_cafe_pma_reply(
+        "Can I open a cafe with a PT PMA in Canggu?", long_reply, "en"
+    )
+    assert guarded != long_reply
+    assert "56303" in guarded
+
+
+def test_nominee_guard_fires_on_natural_phrasing() -> None:
+    # The dangerous question rarely contains the literal word "nominee".
+    # Reply must exceed the 115-word substitution threshold to be clobbered.
+    long_reply = (
+        "Sure, that can work in practice and many people do it this way. " * 15
+    )
+    assert bridge._reply_word_count(long_reply) > 115
+    guarded = bridge._guard_nominee_reply(
+        "My Indonesian friend can hold the title for me, right?", long_reply, "en"
+    )
+    assert guarded != long_reply
+    assert "illegal" in guarded.lower()
+
+
+def test_nominee_intent_detects_lexical_variants() -> None:
+    # The compositional detector must catch phrasings a fixed list misses.
+    assert bridge._is_nominee_intent("my indonesian friend can hold the land title for me")
+    assert bridge._is_nominee_intent("can my wife hold the property for us")
+    assert bridge._is_nominee_intent("just put it in my friend's name")
+    # And NOT fire on an unrelated "hold" sentence with no proxy/asset nominee intent.
+    assert not bridge._is_nominee_intent("how long do i hold a tourist visa")
+
+
+def test_nominee_guard_clobbers_short_risky_only_answer() -> None:
+    # A nominee REQUEST answered with a short "it's risky" (no illegality) must
+    # be substituted regardless of length — the exact live failure mode.
+    short_risky = (
+        "I wouldn't treat that as fully safe. Having your Indonesian friend hold "
+        "the title can create serious legal and practical risk."
+    )
+    assert bridge._reply_word_count(short_risky) <= 115
+    guarded = bridge._guard_nominee_reply(
+        "My Indonesian friend can hold the title for me, right?", short_risky, "en"
+    )
+    assert guarded != short_risky
+    assert "illegal" in guarded.lower()
+
+
+def test_nominee_guard_keeps_short_answer_that_states_illegality() -> None:
+    good_short = (
+        "No — that is illegal. A nominee holding land for a foreigner is void under "
+        "Indonesian law; use a PT PMA or a proper leasehold instead."
+    )
+    assert (
+        bridge._guard_nominee_reply(
+            "My Indonesian friend can hold the title for me, right?", good_short, "en"
+        )
+        == good_short
+    )
+
+
+def test_nominee_canonical_states_illegality() -> None:
+    answer = bridge._canonical_nominee_answer("en")
+    assert "illegal" in answer.lower()
+    assert "void" in answer.lower()
+
+
+def test_nominee_guard_allows_correct_definitional_answer() -> None:
+    # A neutral "what is a nominee" question with a correct, risk-framed long
+    # answer must not be clobbered purely for length.
+    correct = (
+        "A nominee arrangement is when an Indonesian holds an asset in their name "
+        "for a foreigner. It is illegal and void under Indonesian agrarian law, so "
+        "it carries serious legal risk and the proper route is a transparent PT PMA "
+        "or leasehold structure instead. " * 2
+    )
+    assert (
+        bridge._guard_nominee_reply("What is a nominee arrangement?", correct, "en")
+        == correct
+    )
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(
