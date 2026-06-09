@@ -702,19 +702,56 @@ def test_grow_font_in_lever_sets():
     assert "grow_font" in _BRAND_INERT_LEVERS
 
 
-def test_levers_to_css_grow_font_clamps_to_legible_min_with_cap():
-    """grow_font emits a font-size:clamp(min, grown, cap) on the sub-headline so a
-    single grow already clears the thumbnail-legible floor and never overflows."""
+def _grow_subhead_px(css: str) -> int | None:
+    """Pull the absolute .subheading font-size (px) out of a lever CSS block."""
+    import re
+
+    m = re.search(r"\.subhead,\.subheading\{font-size:(\d+)px", css)
+    return int(m.group(1)) if m else None
+
+
+def test_levers_to_css_grow_font_floor_and_cap():
+    """grow_font targets the sub-headline with an ABSOLUTE px size: step 1 lands
+    on the legible floor (>=120px → ~17px at thumbnail) and never exceeds the
+    anti-overflow cap."""
     from wr2_html_renderer.composer import _GROW_CLAMP_PX, _levers_to_css
 
     min_px, cap_px = _GROW_CLAMP_PX["subhead"]
-    css = _levers_to_css({"grow_subhead": 1})
-    assert ".subhead" in css  # targets the sub-headline element
-    assert f"clamp({min_px}px" in css  # legible-min floor present
-    assert f"{cap_px}px)" in css       # anti-overflow cap present
-    assert "font-size" in css
-    # no grow lever → no grow CSS
-    assert "clamp(" not in _levers_to_css({"text_stroke": True})
+    css1 = _levers_to_css({"grow_subhead": 1})
+    assert ".subhead" in css1  # targets the sub-headline element
+    assert _grow_subhead_px(css1) == min_px  # step 1 == legible floor
+    # a high step is clamped to the cap, never above
+    assert _grow_subhead_px(_levers_to_css({"grow_subhead": 9})) == cap_px
+    # no grow lever → no grow CSS at all
+    assert _grow_subhead_px(_levers_to_css({"text_stroke": True})) is None
+
+
+def test_grow_font_min_floor_is_thumbnail_legible():
+    """The sub-headline legible floor is >=120px on the 1080px canvas (~17px at a
+    150px IG thumbnail) — the size the vision critic asks for. The 36px _base.css
+    default collapses to ~5px at thumbnail, hence the floor."""
+    from wr2_html_renderer.composer import _GROW_CLAMP_PX
+
+    min_px, cap_px = _GROW_CLAMP_PX["subhead"]
+    assert min_px >= 120, "sub-headline grow floor must clear thumbnail legibility"
+    assert cap_px > min_px, "cap must be above the floor"
+
+
+def test_levers_to_css_grow_font_progresses_each_step():
+    """REGRESSION (the (52,64)/calc(1em*) no-op bug): every grow step must yield a
+    MEASURABLY larger font-size until the cap, not a constant value."""
+    from wr2_html_renderer.composer import _GROW_CLAMP_PX, _levers_to_css
+
+    min_px, cap_px = _GROW_CLAMP_PX["subhead"]
+    sizes = [_grow_subhead_px(_levers_to_css({"grow_subhead": n})) for n in (1, 2, 3, 4)]
+    # step 1 is the floor; intermediate steps strictly increase
+    assert sizes[0] == min_px
+    assert sizes[1] > sizes[0], f"step 2 did not grow: {sizes}"
+    assert sizes[2] > sizes[1], f"step 3 did not grow: {sizes}"
+    # never exceeds the cap
+    assert all(px <= cap_px for px in sizes)
+    # a very high step is exactly the cap
+    assert _grow_subhead_px(_levers_to_css({"grow_subhead": 20})) == cap_px
 
 
 @pytest.mark.asyncio

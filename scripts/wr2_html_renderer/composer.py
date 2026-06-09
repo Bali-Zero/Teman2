@@ -215,14 +215,23 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
 # grow_font clamps: (legible-min px, anti-overflow-cap px) per element on the
 # 1080x1350 render canvas. Declared + parametrizable — the final judge is the
 # vision critic in the E2E (it asks for a thumbnail-legible sub-headline).
+#
+# Sizing rationale (pixel-measured 2026-06-10): an IG thumbnail is ~150px wide,
+# so the canvas (1080px) downscales ~7.2x. The _base.css bases are subhead 36px,
+# body 28-32px, headline 60-84px — at thumbnail the subhead collapses to ~5px,
+# unreadable. The vision critic asks for ~18-22px-equivalent at thumbnail
+# ("collapses to ~7px tall, unreadable … increase to ~20-22px"), i.e. ~130-160px
+# absolute on the canvas. Floors are set to clear ~17px-at-thumbnail and the cap
+# to ~22px-at-thumbnail. Every MIN is ABOVE the element's own 1em base so the
+# progressive step (below) is never pinned by the floor (the old (52,64) bug).
 _GROW_CLAMP_PX = {
-    "subhead": (52, 64),   # 36px base → grow to >=52px (≈7.4px at thumbnail), cap 64
-    "body": (44, 56),
-    "heading": (64, 96),   # heading is usually large already; included for symmetry
+    "subhead": (120, 160),  # ~16.7px..22px at thumbnail (base 36px → ~5px: unreadable)
+    "body": (104, 140),     # ~14.4px..19px at thumbnail (base 28-32px)
+    "heading": (100, 150),  # heading base 60-84px; floor above base so a step shows
 }
-# Per grow step the target size steps up; clamp's MIN floor guarantees a single
-# grow lever already reaches the legible minimum, the cap guards overflow.
-_GROW_STEP = 0.12
+# Per grow step the target steps up FROM the legible floor (not from 1em). Each
+# step adds this fraction of the floor; min() with the cap guards overflow.
+_GROW_STEP = 0.15
 
 
 def _levers_to_css(levers: dict[str, Any]) -> str:
@@ -288,16 +297,18 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
     for elem in ("subhead", "body", "heading"):
         steps = levers.get(f"grow_{elem}", 0)
         if steps:
-            factor = min(1.6, 1.0 + _GROW_STEP * int(steps))
             min_px, cap_px = _GROW_CLAMP_PX[elem]
+            # progress FROM the legible floor: step 1 == floor, each extra step
+            # adds _GROW_STEP*floor; the cap (min) guards overflow. Absolute px
+            # (NOT calc(1em*…)) so it never gets pinned by a floor above 1em.
+            target_px = min(cap_px, round(min_px * (1.0 + _GROW_STEP * (int(steps) - 1))))
             sel = {
                 "body": ".body,.text,[data-zone-type='text']",
                 "heading": ".headline,.heading,h1",
                 "subhead": ".subhead,.subheading",
             }[elem]
             rules.append(
-                f"{sel}{{font-size:clamp({min_px}px, calc(1em * {factor:.2f}), {cap_px}px);"
-                "line-height:1.25;}"
+                f"{sel}{{font-size:{target_px}px !important;line-height:1.15;}}"
             )
 
     # rebalance_wrap: the headline already carries explicit <br>s placed by
