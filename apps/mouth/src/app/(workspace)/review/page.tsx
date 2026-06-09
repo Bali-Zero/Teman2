@@ -107,7 +107,7 @@ export default function ReviewPage() {
         { component: "ReviewPage", action: "loadQueue" },
         e instanceof Error ? e : new Error(String(e)),
       );
-      setError("Impossibile caricare la coda di revisione.");
+      setError("Could not load the review queue.");
     } finally {
       setLoading(false);
     }
@@ -134,8 +134,8 @@ export default function ReviewPage() {
     } catch (e) {
       const msg =
         e instanceof Error && /409/.test(e.message)
-          ? "Documento già preso in carico da un altro revisore."
-          : "Impossibile aprire il documento.";
+          ? "Already claimed by another reviewer."
+          : "Could not open the document.";
       setError(msg);
       logger.error(
         "review claim/detail failed",
@@ -175,7 +175,7 @@ export default function ReviewPage() {
           );
           if (res.dry_run) {
             setError(
-              "✓ Approvato in modalità prova (dry-run): il documento NON è ancora scritto nel CRM (INTAKE_WRITER_ENABLED spento).",
+              "✓ Approved in dry-run mode: nothing was written to the CRM yet (INTAKE_WRITER_ENABLED is off).",
             );
           }
         } else {
@@ -187,7 +187,7 @@ export default function ReviewPage() {
         setClaimToken(null);
         await loadQueue();
       } catch (e) {
-        setError(`Azione "${action}" fallita. Riprova.`);
+        setError(`Action "${action}" failed. Please retry.`);
         logger.error(
           "review decide failed",
           { component: "ReviewPage", action },
@@ -229,10 +229,10 @@ export default function ReviewPage() {
       )}
 
       {loading ? (
-        <p style={{ color: "var(--bz-text-3)" }}>Caricamento…</p>
-      ) : items.length === 0 ? (
+        <p style={{ color: "var(--bz-text-3)" }}>Loading…</p>
+      ) : !error && items.length === 0 ? (
         <p style={{ color: "var(--bz-success, #2e9e6b)" }}>
-          ✓ Nessun documento da revisionare.
+          ✓ No documents to review.
         </p>
       ) : (
         <ul className="space-y-3">
@@ -251,7 +251,7 @@ export default function ReviewPage() {
                         className="font-medium"
                         style={{ color: "var(--bz-text-1)" }}
                       >
-                        {it.doc_type || "documento"}
+                        {it.doc_type || "document"}
                       </span>
                       <DecisionBadge decision={it.decision} />
                     </div>
@@ -260,8 +260,8 @@ export default function ReviewPage() {
                       style={{ color: "var(--bz-text-2)" }}
                     >
                       {candidate
-                        ? `Cliente proposto: ${candidate.full_name}`
-                        : "Nessun cliente trovato — richiede decisione"}
+                        ? `Proposed client: ${candidate.full_name}`
+                        : "No client matched — needs a decision"}
                     </p>
                   </div>
                   <button
@@ -276,7 +276,7 @@ export default function ReviewPage() {
                       opacity: busy === it.proposal_id ? 0.6 : 1,
                     }}
                   >
-                    {busy === it.proposal_id ? "…" : "Apri"}
+                    {busy === it.proposal_id ? "…" : "Open"}
                   </button>
                 </div>
               </li>
@@ -301,7 +301,7 @@ export default function ReviewPage() {
                 className="text-lg font-medium"
                 style={{ color: "var(--bz-text-1)" }}
               >
-                {detail.doc_type || "documento"}{" "}
+                {detail.doc_type || "document"}{" "}
                 <DecisionBadge decision={detail.decision} />
               </h2>
               <button
@@ -315,8 +315,8 @@ export default function ReviewPage() {
 
             <p className="mb-3 text-sm" style={{ color: "var(--bz-text-2)" }}>
               {detail.entity_candidates?.[0]
-                ? `Cliente proposto: ${detail.entity_candidates[0].full_name}`
-                : "Nessun cliente trovato — richiede decisione manuale."}
+                ? `Proposed client: ${detail.entity_candidates[0].full_name}`
+                : "No client matched — needs a manual decision."}
             </p>
 
             {detail.ocr_pages && detail.ocr_pages.length > 0 && (
@@ -329,7 +329,7 @@ export default function ReviewPage() {
                 }}
               >
                 {detail.ocr_pages
-                  .map((p) => `— pagina ${p.page_number} —\n${p.text}`)
+                  .map((p) => `— page ${p.page_number} —\n${p.text}`)
                   .join("\n\n")}
               </div>
             )}
@@ -345,7 +345,7 @@ export default function ReviewPage() {
                   opacity: busy === detail.proposal_id ? 0.6 : 1,
                 }}
               >
-                Approva
+                Approve
               </button>
               <button
                 type="button"
@@ -357,7 +357,7 @@ export default function ReviewPage() {
                   opacity: busy === detail.proposal_id ? 0.6 : 1,
                 }}
               >
-                Rifiuta
+                Reject
               </button>
             </div>
           </div>
