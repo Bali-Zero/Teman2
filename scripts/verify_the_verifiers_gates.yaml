@@ -96,21 +96,12 @@ gates:
       empty STUDYs to unblock. Registering it here closes the loop: the meta-verifier
       (the FASE-0 decay-sensor) now observes whether STADIO-0 itself stays armed.
 
-  - id: seam_verify
-    kind: claude_hook
-    target: ~/.claude/hooks/seam_verify.py
-    registered_in: ~/.claude/settings.json
-    event: Stop
-    disarm_substring: "SEAM_VERIFY_OFF=1"
-    canary:
-      env: { SEAM_VERIFY_OFF: "1" }
-      expect: disarmed
-    note: >
-      P4 SEAM-VERIFY suggester (FASE-3). At Stop, maps changed files -> known seams
-      (router/auth/mounting/import-chain, all LIVE) and SUGGESTS the seam-test.
-      Non-blocking (sys.exit(0) always) — it cannot know every implicit seam, so a
-      blocking gate would either nag forever or give false assurance. Registered here
-      so the meta-verifier observes whether the seam suggester stays armed.
+  # NOTE: the `seam_verify` gate was REMOVED 2026-06-09 (W71). It registered a
+  # claude_hook for ~/.claude/hooks/seam_verify.py, but that hook was never built
+  # — research/operations/specs/P4-seam-verify.md is an explicit STUDY ("non
+  # implementazione"). A gate for a non-existent artifact pins the meta-verifier
+  # permanently DISARMED (cry-wolf → trains operators to ignore the verdict). When
+  # P4 ships the real seam_verify.py hook, re-add the gate in the SAME PR.
 
   - id: hot_zone_codeowners_self_mod
     kind: ci_workflow
