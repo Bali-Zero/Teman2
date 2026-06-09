@@ -58,6 +58,15 @@ CONTRAST_FLOOR = WCAG_AAA_NORMAL
 # a NON-legibility reason must NOT kill them — they're always safe to commit.
 _LEGIBILITY_LEVERS = {"scrim_opacity", "text_stroke", "shrink_font"}
 
+# Brand-inert levers: the legibility set PLUS rebalance_wrap. rebalance_wrap only
+# re-wraps the headline TEXT (inserts a <br> at a balanced word boundary) — it
+# never touches palette / font-family / logo / composition either, so it is just
+# as brand-inert as the legibility levers. The deadlock override below keys off
+# THIS set: if the only levers applied are brand-inert, a brand_verifier
+# rejection for a non-inert reason (hierarchy/logo/palette) must NOT break the
+# loop — the inert change is always safe to commit + keep iterating.
+_BRAND_INERT_LEVERS = _LEGIBILITY_LEVERS | {"rebalance_wrap"}
+
 
 @dataclass
 class Critique:
@@ -355,21 +364,22 @@ async def run_designer_loop(
                                 f"verifier claimed text broken {text_claims} but OCR "
                                 f"read headline (score {ov.score:.2f}) — hallucination overridden"
                             )
-                # LEGIBILITY DEADLOCK UNBLOCK: the pure-legibility levers
-                # (scrim_opacity / text_stroke / shrink_font) cannot drift the
-                # brand — they only darken/outline/down-step text in place. If the
-                # ONLY levers applied this step are in that set, a verifier
-                # rejection for a non-legibility reason must NOT kill them (and
-                # must NOT kill future legibility-only steps). Commit + continue.
-                # We break only when a brand-driftable lever was in play AND the
-                # verifier (after OCR adjudication) still says no.
+                # BRAND-INERT DEADLOCK UNBLOCK: the brand-inert levers
+                # (scrim_opacity / text_stroke / shrink_font + rebalance_wrap)
+                # cannot drift the brand — legibility-in-place + headline re-wrap
+                # only. If the ONLY levers applied this step are in that set, a
+                # verifier rejection for a non-inert reason (hierarchy/logo/
+                # palette) must NOT kill them (and must NOT kill future inert
+                # steps). Commit + continue. We break only when a brand-driftable
+                # lever was in play AND the verifier (after OCR adjudication)
+                # still says no.
                 applied_names = {lev.get("lever") for lev in applied}
-                legibility_only = bool(applied_names) and applied_names <= _LEGIBILITY_LEVERS
-                if not effective_pass and legibility_only:
+                inert_only = bool(applied_names) and applied_names <= _BRAND_INERT_LEVERS
+                if not effective_pass and inert_only:
                     effective_pass = True
-                    iter_record["brand_verify_legibility_override"] = (
+                    iter_record["brand_verify_inert_override"] = (
                         f"verifier blocked but applied levers {sorted(applied_names)} "
-                        "are pure-legibility (brand-inert) — committed in place"
+                        "are brand-inert (legibility-in-place + re-wrap) — committed in place"
                     )
                 if effective_pass:
                     levers_acc = proposed

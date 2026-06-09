@@ -297,8 +297,80 @@ async def test_designer_loop_legibility_lever_not_killed_by_brand_reject(monkeyp
     # went on to a second iteration where vision passed → converged.
     assert res.converged is True
     assert calls["vision"] >= 2  # did NOT break after the first reject
-    # the committed scrim lever is reflected in the history
+    # the committed scrim lever is reflected in the history (renamed override key)
     assert any(
-        rec.get("brand_verify_legibility_override")
+        rec.get("brand_verify_inert_override")
         for rec in res.history
     )
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_rebalance_wrap_not_killed_by_brand_reject(monkeypatch):
+    """Brand-inert override (fire-test residual): when the verifier rejects for a
+    NON-inert reason (hierarchy/logo) but the only applied levers are
+    {rebalance_wrap, shrink_font} — both brand-inert (text re-wrap + font
+    down-step) — the loop must NOT break. rebalance_wrap is now covered by
+    _BRAND_INERT_LEVERS, not just _LEGIBILITY_LEVERS."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    calls = {"vision": 0, "brand": 0}
+
+    def vision_critic(png, slide, ctx):
+        calls["vision"] += 1
+        if calls["vision"] == 1:
+            # iter 1: proposes the exact pair the fire-test hit (rebalance + shrink)
+            return dl.Critique(
+                tier="vision", passed=False, issues=["title leaves an orphan word"],
+                levers=[
+                    {"lever": "rebalance_wrap", "reason": "orphan word on last line"},
+                    {"lever": "shrink_font", "target": "heading", "reason": "a touch dense"},
+                ],
+                score=0.5,
+            )
+        return dl.Critique(tier="vision", passed=True, issues=[], levers=[], score=0.95)
+
+    def brand_verifier(png, slide, ctx):
+        # rejects for a NON-inert reason (hierarchy/logo) — the brand-inert
+        # override must still commit the rebalance+shrink change.
+        calls["brand"] += 1
+        return dl.Critique(tier="brand", passed=False, issues=["hierarchy unclear; logo too small"])
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "The KITAS Bribe Trail Reaches the Top"},
+        render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=brand_verifier,
+        ocr_critic=None,  # disable OCR adjudication so only the inert override decides
+        use_vision=True, max_iters=3,
+    )
+    assert res.converged is True
+    assert calls["vision"] >= 2  # did NOT break after the first reject
+    assert any(rec.get("brand_verify_inert_override") for rec in res.history)
+
+
+def test_brand_inert_levers_includes_rebalance_wrap():
+    """_BRAND_INERT_LEVERS = legibility levers + rebalance_wrap (text re-wrap)."""
+    from wr2_html_renderer.designer_loop import _BRAND_INERT_LEVERS, _LEGIBILITY_LEVERS
+
+    assert _BRAND_INERT_LEVERS == _LEGIBILITY_LEVERS | {"rebalance_wrap"}
+    assert "rebalance_wrap" in _BRAND_INERT_LEVERS
