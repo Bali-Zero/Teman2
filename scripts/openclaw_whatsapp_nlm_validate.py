@@ -18,7 +18,7 @@ from typing import Any
 LOGGER = logging.getLogger("openclaw_whatsapp_nlm_validate")
 DEFAULT_OUTPUT_DIR = Path(".openclaw-evals")
 DEFAULT_TIMEOUT_SECONDS = 180
-DEFAULT_NLM_PROFILE = "zero"
+DEFAULT_NLM_PROFILE = "default"
 DEFAULT_MAX_CASES_PER_QUERY = 4
 RETRY_ATTEMPTS = 2
 RETRY_BACKOFF_SECONDS = 30
@@ -53,7 +53,7 @@ NLM_DOMAINS: dict[str, NlmDomain] = {
     "company": NlmDomain(
         domain_id="company",
         label="Company setup and KBLI",
-        notebook_id="045f3cdb-ef62-488c-90ba-82594928b671",
+        notebook_id="933509f9-1561-403d-bd44-4a7a67a36df2",
         focus="PT PMA, KBLI, shareholders, nominee risk, activity scope, and company setup next steps",
     ),
     "tax": NlmDomain(
@@ -65,13 +65,13 @@ NLM_DOMAINS: dict[str, NlmDomain] = {
     "property": NlmDomain(
         domain_id="property",
         label="Property and lease due diligence",
-        notebook_id="93314ad3-177e-4d2f-956b-fe4be3e47697",
+        notebook_id="d9438180-5e63-4e2a-a473-6061101f6a8d",
         focus="land certificate, villa lease, contract review, and due-diligence scope",
     ),
     "operations": NlmDomain(
         domain_id="operations",
         label="Bali Zero operations and handoff",
-        notebook_id="7fbf37ed-e290-491a-98f5-677d6371ad62",
+        notebook_id="85207af3-352f-4554-8d2a-18f42cc541ba",
         focus="human handoff, CRM/document status safety, pricing workflow, privacy, leakage, and service scope",
     ),
 }

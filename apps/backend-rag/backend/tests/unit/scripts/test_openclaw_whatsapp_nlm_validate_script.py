@@ -96,7 +96,7 @@ def test_validate_report_with_nlm_summarizes_failures(monkeypatch: pytest.Monkey
             "unsupported_case_ids": [],
             "case_reviews": [{"id": "visa_remote_work", "decision": "pass", "issue": "", "suggested_fix": ""}],
         },
-        "045f3cdb-ef62-488c-90ba-82594928b671": {
+        "933509f9-1561-403d-bd44-4a7a67a36df2": {
             "verdict": "fail",
             "unsafe_case_ids": ["kbli_cafe_canggu"],
             "unsupported_case_ids": [],
@@ -122,7 +122,7 @@ def test_validate_report_with_nlm_summarizes_failures(monkeypatch: pytest.Monkey
                 }
             ],
         },
-        "7fbf37ed-e290-491a-98f5-677d6371ad62": {
+        "85207af3-352f-4554-8d2a-18f42cc541ba": {
             "verdict": "pass",
             "unsafe_case_ids": [],
             "unsupported_case_ids": [],
@@ -146,7 +146,7 @@ def test_validate_report_with_nlm_summarizes_failures(monkeypatch: pytest.Monkey
     ) -> dict[str, object]:
         assert "Return JSON only" in prompt
         assert timeout_seconds == 9
-        expected_profile = "default" if notebook_id == "cff93ab0-813a-42f2-a8de-36987e724271" else "zero"
+        expected_profile = "default"
         assert profile == expected_profile
         return {"status": "success", "answer": json.dumps(answers[notebook_id])}
 
