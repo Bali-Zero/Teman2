@@ -18,6 +18,7 @@ if str(BACKEND_ROOT) not in sys.path:
 from backend.services.autonomous_lab import (  # noqa: E402
     AutonomousLabPlanner,
     MaterialSourceType,
+    ReceiptStore,
     ResearchMaterial,
 )
 
@@ -133,8 +134,9 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint."""
     args = parse_args(argv)
     payload = load_input(args.input)
-    planner, run = build_run(payload)
-    receipt_path = planner.write_receipt(run, args.receipt_dir)
+    _, run = build_run(payload)
+    record = ReceiptStore(args.receipt_dir).write_run(run)
+    receipt_path = record.receipt_path
     summary = summarize_result(receipt_path, run)
     json.dump(summary, sys.stdout, indent=2, sort_keys=True)
     sys.stdout.write("\n")
