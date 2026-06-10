@@ -763,10 +763,12 @@ async def test_designer_loop_scrim_lever_is_always_progress_not_noop(monkeypatch
     seen_levers_before: list = []
 
     def vision_critic(png, slide, ctx):
-        # always reject + propose scrim_opacity (accumulates delta → never a no-op)
+        # always reject + propose scrim_opacity (accumulates delta → never a no-op);
+        # the residual is HARD (categorical illegibility) so the loop stays strict
+        # at max_iters and does NOT accept-as-debt (matches the docstring).
         return dl.Critique(
             tier="vision", passed=False,
-            issues=["text a touch low-contrast over the photo"],
+            issues=["text is unreadable / illegible over the photo"],
             levers=[{"lever": "scrim_opacity", "delta": 0.1, "reason": "low contrast"}],
             score=0.5,
         )
@@ -786,7 +788,8 @@ async def test_designer_loop_scrim_lever_is_always_progress_not_noop(monkeypatch
         ocr_critic=None, use_vision=True, max_iters=3,
     )
     # scrim never folds to a no-op → the loop iterated (made_progress stayed True),
-    # so it did NOT short-circuit into composition-debt on iteration 2.
+    # so it did NOT short-circuit into composition-debt on iteration 2; and the
+    # HARD residual keeps the strict gate at max_iters → no accept-as-debt either.
     assert res.accepted_with_composition_debt is False
     # the scrim actually accumulated across renders (distinct, climbing values)
     scrims = [v for v in seen_levers_before if v is not None]
@@ -1361,4 +1364,156 @@ def test_classifier_weak_hierarchy_marker_still_soft():
     )
     assert has_hard is False
     assert all_comp is True
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_accepts_best_at_max_iters_on_soft_residual(monkeypatch):
+    """ACCEPT-BEST AT MAX_ITERS: the (non-deterministic) vision keeps proposing
+    INCREMENTAL editorial levers every iteration (scrim_opacity +delta →
+    made_progress=True each iter), so the loop never reaches the
+    made_progress=False accept branch and previously exhausted max_iters with a
+    'max_iters reached' REJECT — even though the render is legible + brand-clean
+    and the only residuals are editorial. This is the structural cause of the
+    ~23% coin-flip convergence. After the fix, the loop accepts the best render
+    as composition debt at the iteration-budget exit."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    calls = {"n": 0}
+
+    def vision_critic(png, slide, ctx):
+        # reject EVERY iteration with a SOFT editorial residual + an INCREMENTAL
+        # scrim_opacity lever (accumulates delta → proposed != levers_acc each
+        # time → made_progress=True → commit+continue, never the accept branch).
+        calls["n"] += 1
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=[
+                "hero photo is a generic dark interior, editorially weak for this story",
+                "vision: unbalanced/crammed",
+            ],
+            levers=[{"lever": "scrim_opacity", "delta": 0.1, "reason": "nudge contrast"}],
+            score=0.6,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "The KITAS Bribe Trail Reaches the Very Top of It"},
+        render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    # the loop ran the full budget (incremental lever every iter) but accepted at
+    # the max_iters exit instead of a 'max_iters reached' reject.
+    assert calls["n"] == 3
+    assert res.converged is True
+    assert res.accepted_with_composition_debt is True
+    assert "max_iters" in res.reason
+    assert any("editorially weak" in d for d in res.composition_debt)
+    assert res.final_png is not None
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_does_not_accept_at_max_iters_on_hard_residual(monkeypatch):
+    """COUNTER-PROOF (HARD): if the LAST reject before max_iters carries a REAL
+    HARD residual (categorical illegibility), the strict gate must hold — no
+    accept-as-debt at max_iters, converged stays False. The accept-best is for
+    SOFT residuals only."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        # every reject carries a REAL HARD legibility defect (categorical) AND an
+        # incremental lever → made_progress=True each iter → reaches max_iters
+        # with a HARD residual → must NOT accept.
+        return dl.Critique(
+            tier="vision", passed=False,
+            issues=["the subhead is illegible at thumbnail size"],
+            levers=[{"lever": "scrim_opacity", "delta": 0.1, "reason": "nudge contrast"}],
+            score=0.4,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    assert res.converged is False
+    assert res.accepted_with_composition_debt is False
+    assert res.composition_debt == []
+    assert "max_iters" in res.reason
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_early_converge_unchanged_by_max_iters_accept(monkeypatch):
+    """COUNTER-PROOF (early converge): a vision PASS at iteration 1 still converges
+    normally — the max_iters accept-best must not perturb the pre-budget paths."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        return dl.Critique(tier="vision", passed=True, issues=[], levers=[], score=0.97)
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
+        vision_critic=vision_critic, brand_verifier=None,
+        ocr_critic=None, use_vision=True, max_iters=3,
+    )
+    assert res.converged is True
+    assert res.iterations == 1
+    assert res.accepted_with_composition_debt is False
+    assert "max_iters" not in (res.reason or "")
 

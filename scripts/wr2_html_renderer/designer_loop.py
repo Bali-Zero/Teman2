@@ -487,6 +487,14 @@ async def run_designer_loop(
     best_png: Path | None = None
     best_score = -1.0
     escalated = False
+    # last vision-reject residual that was committed-and-continued (incremental
+    # lever applied). Used ONLY at the max_iters exit: if after exhausting the
+    # iteration budget the remembered residual is all-SOFT, accept the best
+    # render as composition debt instead of a max_iters reject (deterministic
+    # convergence on a healthy render rather than a ~1-in-N coin flip).
+    last_reject_issues: list[str] | None = None
+    last_reject_rebalance_applied = False
+    last_reject_png: Path | None = None
 
     for it in range(1, max_iters + 1):
         png_path = out_dir / f"iter-{it:02d}.png"
@@ -681,6 +689,12 @@ async def run_designer_loop(
                 if effective_pass:
                     levers_acc = proposed
                     iter_record["vision_levers_pulled"] = applied
+                    # remember this reject's residual for a possible max_iters
+                    # accept-as-debt (the vision still rejected; we only applied
+                    # an incremental lever and continued).
+                    last_reject_issues = list(vc.issues)
+                    last_reject_rebalance_applied = bool(proposed.get("_rebalance_wrap"))
+                    last_reject_png = png_path
                     history.append(iter_record)
                     continue
                 else:
@@ -693,6 +707,9 @@ async def run_designer_loop(
                 # no verifier but we have a CSS lever — apply it and re-render
                 levers_acc = proposed
                 iter_record["vision_levers_pulled_unverified"] = applied
+                last_reject_issues = list(vc.issues)
+                last_reject_rebalance_applied = bool(proposed.get("_rebalance_wrap"))
+                last_reject_png = png_path
                 history.append(iter_record)
                 continue
         else:
@@ -713,6 +730,35 @@ async def run_designer_loop(
             iter_record["verdict"] = "PASS (cheap only, vision disabled)"
             history.append(iter_record)
             return DesignerResult(final_png=png_path, iterations=it, converged=True, history=history)
+
+    # ACCEPT-BEST AT MAX_ITERS (operator decision 2026-06-10): the loop exhausted
+    # its iteration budget while the vision kept proposing incremental editorial
+    # levers (made_progress=True every iter), so it never reached the
+    # made_progress=False accept branch. If the LAST committed reject's residual
+    # is all-SOFT (not has_hard AND all_composition), pushing further does not
+    # improve a render that is already legible + brand-clean — accept it as
+    # composition debt. A HARD residual at the last iteration is NOT debt and
+    # falls through to the strict converged=False reject below.
+    if last_reject_issues is not None and not escalated:
+        has_hard, all_composition = _classify_residual_issues(
+            list(last_reject_issues),
+            rebalance_applied=last_reject_rebalance_applied,
+        )
+        if not has_hard and all_composition:
+            debt = list(last_reject_issues)
+            logger.warning(
+                "designer-loop: max_iters reached with all-SOFT residual — accepting "
+                "best render as composition debt (editorial, not CSS-fixable): %s", debt,
+            )
+            return DesignerResult(
+                final_png=best_png or last_reject_png,
+                iterations=len(history),
+                converged=True,
+                history=history,
+                accepted_with_composition_debt=True,
+                composition_debt=debt,
+                reason="accepted_with_composition_debt (max_iters, soft residual)",
+            )
 
     return DesignerResult(
         final_png=best_png,
