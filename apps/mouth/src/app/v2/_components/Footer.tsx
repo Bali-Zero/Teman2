@@ -31,9 +31,9 @@ const NEWS = [
 
 const COMPANY = [
   { label: "About", href: "/v2/company/about" },
-  { label: "Team", href: "/v2/company/about" },
-  { label: "Careers", href: "/v2/company/about" },
-  { label: "Press", href: "/v2/company/about" },
+  { label: "Team", href: "/v2/company/about#team" },
+  { label: "Careers", href: "/v2/company/about#careers" },
+  { label: "Press", href: "/v2/company/about#press" },
 ];
 
 export function Footer() {
