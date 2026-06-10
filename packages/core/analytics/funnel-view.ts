@@ -32,7 +32,6 @@ export const FUNNEL_EVENTS = [
   "property_cta_clicked",
   "property_chat_question",
   "property_whatsapp_cta",
-  "property_cta_click",
   "property_consult_click",
   "property_search_submit",
   "property_suggestion_click",
