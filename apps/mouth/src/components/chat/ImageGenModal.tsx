@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { X, Sparkles } from "lucide-react";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 
 export interface ImageGenModalProps {
   isOpen: boolean;
@@ -55,10 +56,10 @@ export function ImageGenModal({
       onClick={onClose}
     >
       <div
-        className="bg-[#2a2a2a] rounded-2xl border border-white/10 shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        className="bg-[var(--background-elevated)] rounded-2xl border border-[var(--border)] shadow-2xl w-full max-w-md mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -82,13 +83,16 @@ export function ImageGenModal({
           </button>
         </div>
         <div className="p-5">
-          <textarea
+          <label htmlFor="image-prompt" className="sr-only">
+            Image generation prompt
+          </label>
+          <AutoResizeTextarea
+            id="image-prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="e.g. A magical unicorn in an enchanted forest..."
-            aria-label="Image generation prompt"
-            className="w-full h-28 px-4 py-3 bg-[var(--background)] border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none focus-ring"
+            className="w-full min-h-[112px] px-4 py-3 bg-[var(--background)] border border-[var(--border)] rounded-xl text-white placeholder:text-gray-500 focus-ring"
             autoFocus
           />
           <div className="mt-4 flex justify-end gap-3">
