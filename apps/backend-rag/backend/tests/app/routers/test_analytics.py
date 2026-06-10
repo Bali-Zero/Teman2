@@ -92,25 +92,19 @@ async def test_funnel_event_rejects_short_session_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_funnel_event_all_eleven_allowed() -> None:
-    """Verify all 11 whitelisted events are accepted."""
+async def test_funnel_event_every_allowlisted_event_accepted() -> None:
+    """Every event in ALLOWED_EVENTS is accepted end-to-end.
+
+    Driven directly off the router's allowlist (not a hardcoded copy) so it
+    cannot drift; cross-stack parity with funnel-view.ts is enforced by
+    test_analytics_funnel_parity.py.
+    """
+    from backend.app.routers.analytics import ALLOWED_EVENTS
+
     app = make_app()
-    allowed = [
-        "visa_quiz_completed",
-        "visa_result_viewed",
-        "visa_chat_question",
-        "visa_whatsapp_cta",
-        "visa_calling_block",
-        "kbli_code_viewed",
-        "kbli_search",
-        "kbli_chat_question",
-        "tax_dashboard_viewed",
-        "property_cta_clicked",
-        "property_chat_question",
-    ]
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
-        for event in allowed:
+        for event in sorted(ALLOWED_EVENTS):
             r = await c.post(
                 "/api/analytics/funnel-event",
                 json={
