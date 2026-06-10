@@ -63,7 +63,12 @@ export async function trackFunnelEvent(
     payload: args.payload ?? {},
   };
   if (typeof globalThis.gtag === "function") {
-    globalThis.gtag("event", name, body);
+    // GA4 cannot serialize nested objects — stringify payload so it arrives
+    // as a readable string (e.g. '{"trigger":"nav"}') instead of [object Object].
+    globalThis.gtag("event", name, {
+      ...body,
+      payload: JSON.stringify(body.payload),
+    });
   }
   try {
     await fetch("/api/analytics/funnel-event", {
