@@ -33,6 +33,8 @@ export interface Article {
   excerpt: string;
   content: string; // MDX content
   coverImage: string;
+  /** Tighter 16:10 crop for homepage cards/thumbnails. Falls back to coverImage. */
+  cardImage?: string;
   coverImageAlt: string;
   category: ArticleCategory;
   tags: string[];
@@ -97,6 +99,8 @@ export interface ArticleListItem {
   title: string;
   excerpt: string;
   coverImage: string;
+  /** Tighter 16:10 crop for homepage cards/thumbnails. Falls back to coverImage. */
+  cardImage?: string;
   category: ArticleCategory;
   author: Author;
   publishedAt: Date;

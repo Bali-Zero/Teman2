@@ -783,6 +783,34 @@ class Settings(BaseSettings):
         None,
         description="Admin API key for plugin reload and admin endpoints (set via ADMIN_API_KEY env var)",
     )
+    autonomous_lab_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable the internal autonomous lab draft API. Default False; set via "
+            "AUTONOMOUS_LAB_ENABLED env var."
+        ),
+    )
+    autonomous_lab_receipt_dir: str = Field(
+        default="/tmp/autonomous_lab_receipts",
+        description=(
+            "Directory for optional autonomous lab receipt persistence. Set via "
+            "AUTONOMOUS_LAB_RECEIPT_DIR env var."
+        ),
+    )
+    autonomous_lab_persistence_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow the internal autonomous lab API to persist receipts. Default False; set via "
+            "AUTONOMOUS_LAB_PERSISTENCE_ENABLED env var."
+        ),
+    )
+    autonomous_lab_execute_verification_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow autonomous lab verification execution for allowlisted commands only. "
+            "Default False; set via AUTONOMOUS_LAB_EXECUTE_VERIFICATION_ENABLED env var."
+        ),
+    )
 
     admin_emails: str | None = Field(
         default=None,

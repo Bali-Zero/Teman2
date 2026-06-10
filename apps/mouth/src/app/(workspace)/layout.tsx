@@ -331,7 +331,11 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   // INTAKE gate interception (spec §3.2/§5): render the gate INSTEAD of the
   // workspace while blocked and not bypassed. ToastProvider wraps it because
   // GateScreen's action feedback uses useToast.
-  if (gateStatus?.blocked && !gateBypassed) {
+  // The /review page is the ONE workspace route that must remain reachable
+  // while the gate is blocking — it is HOW the reviewer clears the document
+  // queue. Without this exception the gate would loop the reviewer back to
+  // the wall (the original /process deep-link bug).
+  if (gateStatus?.blocked && !gateBypassed && pathname !== "/review") {
     return (
       <I18nProvider>
         <ToastProvider>

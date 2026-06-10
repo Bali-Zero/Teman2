@@ -14,9 +14,16 @@ It is the SAFE half of FASE 5:
 INVARIANTS (06-fase5-hitl-writer-design + CLAUDE.md):
   * ZERO CRM write. Reads clients/practices ONLY to show candidates. Writes ONLY
     document_routing_proposal (claim/release).
-  * RBAC (§6e, P0#4): admins (zero@/asya@/antonellosiano@) see everything; a team
-    member sees ONLY proposals whose resolved candidate client is assigned to them.
-    Proposals with no resolved client (NO_MATCH / AMBIGUOUS) → admin-only.
+  * RBAC (§6e, P0#4): the axis is OWN-CHAT, not client-assignment. Admins
+    (zero@/asya@/antonellosiano@ — is_crm_admin) see the ENTIRE queue (every
+    worker's docs, every decision) for supervision. A non-admin sees ONLY rows
+    whose `intake_queue.received_by` (the receiving employee's email, set by the
+    wa-mirror sweeper) equals the caller's email. This INCLUDES that worker's own
+    NO_MATCH / AMBIGUOUS / null-decision docs — "it's my chat" takes PRECEDENCE
+    over the client-resolution gate, so the receiver (not an admin) reviews them.
+    Docs with `received_by IS NULL` (the shared business-line `whatsapp-live:*`
+    feeds + Drive-sourced docs) are admin-only: a NULL received_by never equals a
+    non-admin's email, so the `received_by = :email` filter excludes them naturally.
   * claim_token (P0#5): claim mints an opaque token; FASE 5C mutations must present
     it. release verifies it to avoid a stale reviewer stealing another's claim.
   * Atomic claim: UPDATE ... WHERE status='review_pending' RETURNING. Concurrent
@@ -104,6 +111,63 @@ def _extracted_fields(stage_output: dict[str, Any], routing: dict[str, Any]) -> 
     return {}
 
 
+def _ocr_pages(stage_output: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """Per-page OCR text for human review, normalised to the UI shape.
+
+    The UI (review/page.tsx) renders items as ``{page_number, text}``. OCR text
+    can live in two places depending on pipeline version:
+
+      * ``stage_output.ocr.pages`` — the dedicated FASE-3 OCR stage (older docs).
+      * ``stage_output.classify.ocr_text_per_page`` — the CURRENT pipeline runs
+        OCR inside the *classify* stage; the ``ocr`` stage only writes a marker
+        ``{"deferred_to": "classify"}`` with NO ``pages``. Without this fallback
+        the review text area was empty even though OCR ran (the bug).
+
+    Prefer ``ocr.pages`` when it is a non-empty list; otherwise fall back to
+    ``classify.ocr_text_per_page``. Each source item may be a dict carrying
+    ``text`` (+ an optional ``page``/``page_number``) or a plain string
+    (defensive). ``page_number`` is surfaced 1-based positionally so the human
+    label is consistent across both sources (classify stores a 0-indexed
+    ``page``; ocr.pages stores a 1-based ``page``) and never shows "page 0".
+    Returns ``None`` when neither source has any text — an empty area is correct
+    for a truly OCR-less document.
+    """
+    if not isinstance(stage_output, dict):
+        return None
+
+    def _normalise(items: list[Any]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for item in items:
+            if isinstance(item, str):
+                text = item
+            elif isinstance(item, dict):
+                text = item.get("text")
+            else:
+                continue
+            if not text:
+                continue
+            out.append({"page_number": len(out) + 1, "text": text})
+        return out
+
+    ocr = stage_output.get("ocr")
+    if isinstance(ocr, dict):
+        pages = ocr.get("pages")
+        if isinstance(pages, list) and pages:
+            normalised = _normalise(pages)
+            if normalised:
+                return normalised
+
+    classify = stage_output.get("classify")
+    if isinstance(classify, dict):
+        per_page = classify.get("ocr_text_per_page")
+        if isinstance(per_page, list) and per_page:
+            normalised = _normalise(per_page)
+            if normalised:
+                return normalised
+
+    return None
+
+
 async def _load_candidate_clients(
     conn: asyncpg.Connection, client_ids: list[int]
 ) -> list[dict[str, Any]]:
@@ -141,9 +205,10 @@ async def list_review_queue(
 ) -> dict[str, Any]:
     """List proposals awaiting review, filtered by the caller's RBAC scope.
 
-    Admins see everything. Team members see only proposals whose resolved
-    candidate client is assigned to them; proposals with no resolved client
-    (NO_MATCH / AMBIGUOUS) are admin-only.
+    Admins see the entire queue. A non-admin sees ONLY rows from their own chats
+    (`intake_queue.received_by == caller`), including their own NO_MATCH /
+    AMBIGUOUS docs. NULL-received_by docs (shared business line + Drive) are
+    admin-only.
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
@@ -164,16 +229,20 @@ async def list_review_queue(
                 p.lease_expires_at,
                 p.created_at,
                 q.source,
+                q.received_by,
                 q.status        AS queue_status,
                 q.stage_output
             FROM document_routing_proposal p
             JOIN intake_queue q ON q.id = p.queue_id
             WHERE p.status = $1
               AND ($2::text IS NULL OR q.source = $2)
+              AND ($3::boolean OR q.received_by = $4)
             ORDER BY p.created_at ASC, p.id ASC
             """,
             status,
             source,
+            admin,
+            user_email,
         )
 
         items: list[dict[str, Any]] = []
@@ -190,14 +259,10 @@ async def list_review_queue(
             candidate_ids = _candidate_client_ids(entity_resolution)
             candidates = await _load_candidate_clients(conn, candidate_ids)
 
-            # RBAC: non-admins only see items assigned to them.
-            if not admin:
-                assigned_set = {
-                    (c.get("assigned_to") or "").lower().strip() for c in candidates
-                }
-                # No resolved client → admin-only. Resolved but not assigned to me → hide.
-                if not candidates or user_email not in assigned_set:
-                    continue
+            # RBAC: the own-chat gate (received_by) is enforced in the SQL WHERE
+            # above — non-admins see ONLY their received docs (incl. NO_MATCH /
+            # AMBIGUOUS); NULL received_by never matches a non-admin's email, so
+            # the shared business-line + Drive docs stay admin-only.
 
             items.append(
                 {
@@ -207,6 +272,7 @@ async def list_review_queue(
                     "status": row["status"],
                     "routing_key": row["routing_key"],
                     "source": row["source"],
+                    "received_by": row["received_by"],
                     "queue_status": row["queue_status"],
                     "decision": row_decision,
                     "doc_type": routing.get("doc_type") or stage_output.get("doc_type"),
@@ -222,8 +288,9 @@ async def list_review_queue(
                 }
             )
 
-    # Pagination AFTER RBAC filtering (the WHERE can't express assigned-to-me
-    # without joining a noisy JSON path; the in-app filter is the safe option).
+    # Pagination AFTER the in-app `decision` filter (the RBAC own-chat gate is
+    # already applied in the SQL WHERE; `decision` lives in a JSONB path so it is
+    # filtered in Python, hence the post-fetch slice).
     total = len(items)
     page = items[offset : offset + limit]
     return {"total": total, "limit": limit, "offset": offset, "items": page}
@@ -259,6 +326,7 @@ async def get_review_detail(
                 p.created_at,
                 q.source,
                 q.source_ref,
+                q.received_by,
                 q.status        AS queue_status,
                 q.blob_path,
                 q.stage_output
@@ -271,6 +339,15 @@ async def get_review_detail(
         if row is None:
             raise HTTPException(status_code=404, detail="Proposal not found")
 
+        # RBAC (own-chat axis): a non-admin may open a proposal ONLY if it came
+        # from their own chat (intake_queue.received_by == caller). NULL
+        # received_by (shared business line + Drive) never matches → admin-only.
+        if not admin:
+            received_by = (row["received_by"] or "").lower().strip()
+            if received_by != user_email:
+                # Hide existence from non-authorised team members.
+                raise HTTPException(status_code=403, detail="Not authorised for this proposal")
+
         entity_resolution = _as_dict(row["entity_resolution"])
         routing = _as_dict(row["routing"])
         commit_gate = _as_dict(row["commit_gate"])
@@ -279,15 +356,10 @@ async def get_review_detail(
         candidate_ids = _candidate_client_ids(entity_resolution)
         candidates = await _load_candidate_clients(conn, candidate_ids)
 
-        if not admin:
-            assigned_set = {(c.get("assigned_to") or "").lower().strip() for c in candidates}
-            if not candidates or user_email not in assigned_set:
-                # Hide existence from non-authorised team members.
-                raise HTTPException(status_code=403, detail="Not authorised for this proposal")
-
-        # OCR text per page (if FASE-3 stored it in stage_output) — for human review.
-        ocr = stage_output.get("ocr") if isinstance(stage_output, dict) else None
-        ocr_pages = ocr.get("pages") if isinstance(ocr, dict) else None
+        # OCR text per page — for human review. The current pipeline runs OCR
+        # in the *classify* stage (ocr stage only writes a marker), so the
+        # reader must look in classify.ocr_text_per_page as well as ocr.pages.
+        ocr_pages = _ocr_pages(stage_output)
 
         return {
             "proposal_id": row["proposal_id"],
@@ -297,6 +369,7 @@ async def get_review_detail(
             "routing_key": row["routing_key"],
             "source": row["source"],
             "source_ref": row["source_ref"],
+            "received_by": row["received_by"],
             "queue_status": row["queue_status"],
             "blob_path": row["blob_path"],
             "decision": entity_resolution.get("decision"),
@@ -326,9 +399,11 @@ async def claim_review(
     """Atomically claim a proposal for the current reviewer.
 
     review_pending → review_claimed. Mints a per-claim opaque token (P0#5).
-    A claim succeeds if the proposal is review_pending OR if it is review_claimed
-    by someone whose lease has expired (steal-expired). A live, unexpired claim by
-    another reviewer → 409.
+    A claim succeeds if the proposal is review_pending, OR if it is review_claimed
+    by someone whose lease has expired (steal-expired), OR if it is review_claimed
+    by the SAME caller on a still-live lease (P0#4 — idempotent re-claim: re-opening
+    your own claimed document renews the lease and returns a fresh token instead of
+    409). A live, unexpired claim by a DIFFERENT reviewer → 409.
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
@@ -337,21 +412,29 @@ async def claim_review(
     expires = now + timedelta(minutes=CLAIM_TTL_MINUTES)
 
     async with pool.acquire() as conn:
-        # RBAC gate up-front (cheap read of the candidate scope).
+        # RBAC gate up-front (own-chat axis): a non-admin may claim ONLY a
+        # proposal that came from their own chat (intake_queue.received_by ==
+        # caller). NULL received_by (shared business line + Drive) never matches
+        # → admin-only.
         if not admin:
             prop = await conn.fetchrow(
-                "SELECT entity_resolution FROM document_routing_proposal WHERE id = $1",
+                """
+                SELECT q.received_by
+                FROM document_routing_proposal p
+                JOIN intake_queue q ON q.id = p.queue_id
+                WHERE p.id = $1
+                """,
                 proposal_id,
             )
             if prop is None:
                 raise HTTPException(status_code=404, detail="Proposal not found")
-            candidate_ids = _candidate_client_ids(_as_dict(prop["entity_resolution"]))
-            candidates = await _load_candidate_clients(conn, candidate_ids)
-            assigned_set = {(c.get("assigned_to") or "").lower().strip() for c in candidates}
-            if not candidates or user_email not in assigned_set:
+            received_by = (prop["received_by"] or "").lower().strip()
+            if received_by != user_email:
                 raise HTTPException(status_code=403, detail="Not authorised for this proposal")
 
-        # Atomic claim: only steal a claim that is unclaimed OR expired.
+        # Atomic claim: steal a claim that is unclaimed OR expired, OR renew
+        # the caller's OWN still-live claim (P0#4 idempotent re-claim). A live
+        # claim owned by a DIFFERENT reviewer never matches → 409 below.
         updated = await conn.fetchrow(
             """
             UPDATE document_routing_proposal
@@ -364,6 +447,7 @@ async def claim_review(
               AND (
                     status = 'review_pending'
                  OR (status = 'review_claimed' AND lease_expires_at < $5)
+                 OR (status = 'review_claimed' AND lease_owner = $2)
               )
             RETURNING id, lease_owner, lease_expires_at, claim_token
             """,
