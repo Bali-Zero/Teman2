@@ -1,3 +1,5 @@
+"use client";
+
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import {
   Mail,
@@ -8,6 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { trackFunnelEvent } from "@balizero/core/analytics";
+import { getOrCreateSessionId } from "@balizero/core/auth";
 
 const SERVICES = [
   { label: "Visa & Immigration", href: "/services/visa" },
@@ -95,6 +99,12 @@ export function Footer() {
                 value="+62 822 6459 9868"
                 accent="#25D366"
                 external
+                onClick={() =>
+                  void trackFunnelEvent("home_whatsapp_cta", {
+                    sessionId: getOrCreateSessionId(),
+                    payload: { trigger: "footer" },
+                  })
+                }
               />
               <ContactLink
                 href="https://t.me/Balizerobot"
@@ -209,6 +219,7 @@ function ContactLink({
   value,
   accent,
   external,
+  onClick,
 }: {
   href: string;
   Icon: LucideIcon;
@@ -216,12 +227,14 @@ function ContactLink({
   value: string;
   accent: string;
   external?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <a
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
+      onClick={onClick}
       className="flex items-center gap-3 group"
     >
       <div
