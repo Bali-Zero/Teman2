@@ -519,7 +519,7 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
                     reclaimed = await _pg.reset_stale_html_leases(scan, stale_after_minutes=10)
                     if reclaimed:
                         logger.info("reclaimed %d stale HTML leases", len(reclaimed))
-                ids = await _pg.fetch_pending_draft_ids(scan, limit=MAX_DRAFTS_PER_RUN)
+                ids = await _pg.fetch_pending_html_draft_ids(scan, limit=MAX_DRAFTS_PER_RUN)
             finally:
                 await scan.close()
         if not ids:
