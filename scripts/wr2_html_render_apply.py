@@ -54,7 +54,7 @@ sys.path.insert(0, str(_REPO / "scripts"))
 import asyncpg  # noqa: E402
 
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
-from wr2_html_renderer.claude_vision import VisionRateLimited  # noqa: E402
+from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 # Silence httpx INFO logs that would otherwise leak the Telegram bot token in the request URL
@@ -459,12 +459,16 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     f"Re-open by having them text +62 821-3465-159, then re-enqueue."
                 )
             return f"rendered report={report}"
-        except VisionRateLimited as exc:
-            # transient quota window (HTTP 429) — NOT a draft defect. Release the
-            # lease WITHOUT touching _html_attempts so the circuit breaker is not
-            # burned; the draft returns to the queue and renders next tick once
-            # quota recovers. (Pre-fix this 429 masqueraded as "vision
-            # unavailable" and killed healthy drafts in 3 attempts.)
+        except VisionTransient as exc:
+            # transient vision-infra failure (HTTP 429 quota window OR endpoint
+            # timeout) — NOT a draft defect. Release the lease WITHOUT touching
+            # _html_attempts so the circuit breaker is not burned; the draft
+            # returns to the queue and renders next tick once the endpoint
+            # recovers. (Pre-fix a 429/timeout masqueraded as "vision unavailable"
+            # and killed healthy drafts in 3 attempts.)
+            # The render may have run long enough to kill main_conn — reconnect so
+            # this release path records its status instead of crashing on a closed
+            # connection and leaving the draft stuck in 'rendering'.
             main_conn = await _ensure_live(main_conn, pool_conn_dsn)
             await main_conn.execute(
                 """
@@ -475,7 +479,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 """,
                 draft_id, owner,
             )
-            logger.warning("draft %s vision rate-limited (429) — transient, no attempt burned: %s", draft_id, exc)
+            logger.warning("draft %s vision transient (%s) — no attempt burned: %s", draft_id, type(exc).__name__, exc)
             return f"rate_limited:{exc}"
         except RuntimeError as exc:
             # transient render/Drive failure -> back to queue unless attempts exhausted.

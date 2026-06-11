@@ -126,6 +126,56 @@ def test_run_claude_json_genuine_failure_returns_none_not_raise(monkeypatch):
     assert claude_vision._run_claude_json("p", {"type": "object"}) is None
 
 
+def test_run_claude_json_timeout_raises_transient(monkeypatch):
+    """A subprocess timeout is endpoint latency, not a defect — must raise the
+    transient VisionTimeout (no burned attempt), NOT return None (which would
+    fail-closed crash a healthy draft)."""
+    import subprocess as _sp
+
+    from wr2_html_renderer import claude_vision
+
+    def _boom(*a, **k):
+        raise _sp.TimeoutExpired(cmd="claude", timeout=180)
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _boom)
+    with pytest.raises(claude_vision.VisionTimeout):
+        claude_vision._run_claude_json("p", {"type": "object"})
+
+
+def test_vision_timeout_is_a_transient(monkeypatch):
+    """VisionTimeout and VisionRateLimited share the VisionTransient base so the
+    worker's single handler covers both."""
+    from wr2_html_renderer import claude_vision
+
+    assert issubclass(claude_vision.VisionTimeout, claude_vision.VisionTransient)
+    assert issubclass(claude_vision.VisionRateLimited, claude_vision.VisionTransient)
+
+
+def test_run_claude_json_timeout_budget_from_env(monkeypatch):
+    """The wall-clock budget defaults to 180s and is overridable via
+    WR2_VISION_TIMEOUT_S (raised from the old hardcoded 120s)."""
+    import subprocess as _sp
+
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(cmd, *a, **k):
+        captured["timeout"] = k.get("timeout")
+        raise _sp.TimeoutExpired(cmd="claude", timeout=k.get("timeout"))
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.delenv("WR2_VISION_TIMEOUT_S", raising=False)
+    with pytest.raises(claude_vision.VisionTimeout):
+        claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["timeout"] == 180
+
+    monkeypatch.setenv("WR2_VISION_TIMEOUT_S", "300")
+    with pytest.raises(claude_vision.VisionTimeout):
+        claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["timeout"] == 300
+
+
 def test_run_claude_json_pins_vision_model(monkeypatch):
     """Default pins claude-sonnet-4-6; WR2_VISION_MODEL overrides. (No --model
     before = CLI default, heavier → 120s timeouts + quota burn.)"""
@@ -192,11 +242,16 @@ async def test_apply_one_rate_limit_does_not_burn_attempt(monkeypatch):
         def __enter__(self): return self
         def __exit__(self, *a): return False
     monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+    from wr2_html_renderer.claude_vision import VisionRateLimited, VisionTimeout
+    # parametrize-free: prove BOTH transient kinds (429 + timeout) take the
+    # no-burn path via the shared VisionTransient base.
     monkeypatch.setattr(
         html, "_render_carousel",
-        AsyncMock(side_effect=html.VisionRateLimited("429 session limit")),
+        AsyncMock(side_effect=VisionTimeout("vision call timed out after 180s")),
     )
     monkeypatch.setenv("WR2_VISION_REQUIRED", "1")
+    assert issubclass(VisionRateLimited, html.VisionTransient)
+    assert issubclass(VisionTimeout, html.VisionTransient)
 
     import uuid as _uuid
     did = _uuid.uuid4()
