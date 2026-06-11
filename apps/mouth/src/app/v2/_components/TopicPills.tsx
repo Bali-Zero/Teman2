@@ -43,7 +43,7 @@ export function TopicPills() {
             <a
               key={t.label}
               href={t.href}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold transition-all"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all"
               style={{
                 background: `color-mix(in srgb, ${t.accent} 10%, transparent)`,
                 border: `1px solid color-mix(in srgb, ${t.accent} 28%, transparent)`,
