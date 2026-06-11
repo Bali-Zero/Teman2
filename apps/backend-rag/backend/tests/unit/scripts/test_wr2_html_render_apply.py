@@ -210,6 +210,106 @@ async def test_apply_one_rate_limit_does_not_burn_attempt(monkeypatch):
     assert "drafts_imaged_checked" in sqls
 
 
+# ── connection-resilience: the ~15 min render kills the idle main_conn; the
+#    terminal write must reconnect (2026-06-12 SCAR: drafts stuck 'rendering'
+#    forever because the post-render write crashed on a closed connection) ──────
+
+
+@pytest.mark.asyncio
+async def test_ensure_live_reconnects_when_closed(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    dead = MagicMock()
+    dead.is_closed = MagicMock(return_value=True)
+    fresh = MagicMock()
+    connect = AsyncMock(return_value=fresh)
+    monkeypatch.setattr(html.asyncpg, "connect", connect)
+
+    out = await html._ensure_live(dead, "postgres://x")
+
+    assert out is fresh
+    connect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ensure_live_keeps_open_connection(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    live = MagicMock()
+    live.is_closed = MagicMock(return_value=False)
+    connect = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", connect)
+
+    out = await html._ensure_live(live, "postgres://x")
+
+    assert out is live
+    connect.assert_not_awaited()  # no needless reconnect on a healthy conn
+
+
+@pytest.mark.asyncio
+async def test_apply_one_reconnects_before_terminal_write(monkeypatch):
+    """INVARIANT: if main_conn died during the long render, the success path
+    reconnects so the carousel reaches status='rendered' instead of crashing on
+    a closed connection (which left it stuck in 'rendering')."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    dead = MagicMock(name="dead")
+    dead.is_closed = MagicMock(return_value=True)   # closed by the proxy mid-render
+    dead.execute = AsyncMock()
+    dead.fetchval = AsyncMock(return_value=0)
+    dead.close = AsyncMock()
+    fresh = MagicMock(name="fresh")
+    fresh.is_closed = MagicMock(return_value=False)
+    fresh.execute = AsyncMock()
+    fresh.fetchval = AsyncMock(return_value=0)
+    fresh.close = AsyncMock()
+
+    # first two connects (main_conn, hb_conn) → dead; any reconnect → fresh
+    conns = [dead, dead, fresh, fresh]
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(side_effect=conns))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": {"slides": [{"headline": "H"}]}}),
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+
+    # render "succeeds": produce a PNG path the worker will glob
+    async def _fake_render(draft_id, slides, work, vision_required):
+        d = work / "carousel" / "slides"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "01.png").write_bytes(b"PNG")
+        return d
+    monkeypatch.setattr(html, "_render_carousel", _fake_render)
+    monkeypatch.setattr(html, "_drive_upload_carousel", AsyncMock(return_value="https://drive/x"))
+    monkeypatch.setattr(
+        html._pg, "persist_html_result_and_enqueue_notifications",
+        AsyncMock(return_value={}),
+    )
+    monkeypatch.setattr(html, "_log_ledger_best_effort", AsyncMock())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+    monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)
+
+    import uuid as _uuid
+    persist = html._pg.persist_html_result_and_enqueue_notifications
+    result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+
+    assert result.startswith("rendered")
+    # the persist (terminal write) ran on the RECONNECTED conn, not the dead one
+    assert persist.await_args.args[0] is fresh
+
+
 @pytest.mark.asyncio
 async def test_designer_loop_converges_default_no_vision(monkeypatch):
     import base64

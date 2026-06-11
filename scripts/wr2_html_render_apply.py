@@ -359,6 +359,23 @@ async def _log_ledger_best_effort(conn: "asyncpg.Connection", draft_id: uuid.UUI
         logger.warning("topic_type_log write failed for %s: %s", draft_id, exc)
 
 
+async def _ensure_live(conn: "asyncpg.Connection", dsn: str) -> "asyncpg.Connection":
+    """Return a live connection: if `conn` was closed while idle, reconnect.
+
+    The render of a full carousel takes ~13-16 min, during which main_conn sits
+    idle between the lease-acquire and the terminal write. The pg-proxy closes
+    idle connections, so the post-render write (success OR failure path) hit
+    `asyncpg.InterfaceError: connection is closed` and crashed before recording
+    a terminal status — leaving the draft stuck in 'rendering' forever (2026-06-12
+    SCAR). The heartbeat survives only because its own conn pings every 60s.
+    Reconnect right before each post-render write.
+    """
+    if conn.is_closed():
+        logger.warning("main_conn closed during long render — reconnecting for terminal write")
+        return await asyncpg.connect(dsn, timeout=10)
+    return conn
+
+
 # ── apply one draft ──────────────────────────────────────────────────────────────
 async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str:
     """Full lifecycle for one draft. Uses a dedicated connection for the heartbeat so it
@@ -406,6 +423,11 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             if stop.is_set():
                 raise RuntimeError("lease_lost_before_drive")
 
+            # the render just took ~15 min — main_conn may have been closed idle
+            # by the pg-proxy; reconnect before the terminal write so a converged
+            # carousel actually reaches status='rendered' (2026-06-12 SCAR).
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+
             web = await _drive_upload_carousel(str(draft_id), png_paths, shadow)
 
             if shadow:
@@ -443,6 +465,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             # burned; the draft returns to the queue and renders next tick once
             # quota recovers. (Pre-fix this 429 masqueraded as "vision
             # unavailable" and killed healthy drafts in 3 attempts.)
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
             await main_conn.execute(
                 """
                 UPDATE war_room_drafts
@@ -455,7 +478,11 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             logger.warning("draft %s vision rate-limited (429) — transient, no attempt burned: %s", draft_id, exc)
             return f"rate_limited:{exc}"
         except RuntimeError as exc:
-            # transient render/Drive failure -> back to queue unless attempts exhausted
+            # transient render/Drive failure -> back to queue unless attempts exhausted.
+            # The render may have run long enough to kill main_conn — reconnect so
+            # this failure path records its terminal status instead of crashing on
+            # a closed connection and leaving the draft stuck in 'rendering'.
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
             attempts = await main_conn.fetchval(
                 "SELECT COALESCE((slides_json->>'_html_attempts')::int, 0) FROM war_room_drafts WHERE id=$1",
                 draft_id,
