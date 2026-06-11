@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.nuzantara.wr2-damar-publish-consumer</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2_damar_publish_consumer_run.sh</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR2_CONSUMER_REPO_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara</string>
+	</dict>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wr2-damar-publish-consumer.launchd.out.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wr2-damar-publish-consumer.launchd.err.log</string>
+	<!-- Poll every 5 min. NO KeepAlive: this is a one-shot poller, not a daemon
+	     (W67: KeepAlive + one-shot = SIGTERM crash-loop). RunAtLoad for an
+	     immediate first pass on (re)load. -->
+	<key>StartInterval</key>
+	<integer>300</integer>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>60</integer>
+</dict>
+</plist>
