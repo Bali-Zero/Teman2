@@ -17,13 +17,12 @@ name: P6 federation parallelize-hypothesis gate
 # pull_request-only gives false safety because L2 autonomous-ops direct-push
 # to main silently SKIPS the gate).
 
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-11): top-level pull_request
+# `paths:` filter REMOVED so this can become a required-status-check without
+# the pending-forever trap (W69). The relevant-paths decision lives in the
+# "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
-  pull_request:
-    paths:
-      - "scripts/federation_parallelize.py"
-      - "scripts/federation_orchestrator.py"
-      - "scripts/test_federation_parallelize_gate.py"
-      - ".github/workflows/p6-federation-parallelize.yml"
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
   push:
     branches:
       - main
@@ -43,16 +42,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so the sentinel git diff sees PR changes
+
+      # BUCO #1 sentinel (pattern: p1s2-mutation-incremental.yml). The regex is
+      # the EXACT original pull_request `paths:` list, each anchored ^...$.
+      - name: Did relevant paths change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full gate"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(scripts/federation_parallelize\.py|scripts/federation_orchestrator\.py|scripts/test_federation_parallelize_gate\.py|\.github/workflows/p6-federation-parallelize\.yml)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no relevant paths changed — sentinel success"
+          fi
 
       - name: Set up Python
+        if: steps.relevant.outputs.run == 'true'
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
-      - name: Install test deps (pytest)
-        run: pip install pytest
+      - name: Install test deps (pytest + orchestrator module-level imports)
+        if: steps.relevant.outputs.run == 'true'
+        # federation_orchestrator.py imports dotenv, httpx AND langgraph at
+        # module level; pytest-only install made this gate chronically red 5/5
+        # (audit 2026-06-11). Versions pinned to the backend venv that passes
+        # the suite locally (24/24): httpx 0.28.x, langgraph 1.1.x.
+        run: pip install pytest python-dotenv "httpx~=0.28" "langgraph~=1.1"
 
       - name: P6 falsifiable gates (G1-G5 + default-serial invariant)
+        if: steps.relevant.outputs.run == 'true'
         # scripts/ on path for the pure sibling module; apps/backend-rag on path
         # so the orchestrator's optional observability import resolves.
         run: PYTHONPATH=apps/backend-rag:scripts python3 -m pytest scripts/test_federation_parallelize_gate.py -q
