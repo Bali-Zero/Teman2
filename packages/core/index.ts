@@ -24,6 +24,7 @@ export {
   CommandPalette,
   type CommandAction,
 } from "./components/CommandPalette";
+export { Money, type MoneyProps } from "./components/Money";
 
 // Font exports
 export { inter } from "./fonts/inter";
