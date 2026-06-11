@@ -6,6 +6,8 @@
  * endpoint + GA4 gtag, so dashboards unify automatically.
  */
 
+import { getOrCreateSessionId } from "../auth";
+
 export type FunnelAppName =
   | "visa_clock"
   | "visa_match"
@@ -13,6 +15,26 @@ export type FunnelAppName =
   | "kbli_builder"
   | "tax_gap"
   | "zoning_check";
+
+/** Finite source-of-truth list of app_* event names (MYTHOS IA-8 app_*
+ * reconciliation). The backend allowlist mirrors FUNNEL_EVENTS ∪ APP_EVENTS —
+ * enforced by test_analytics_funnel_parity.py, which parses this const. */
+export const APP_EVENTS = [
+  "app_viewed",
+  "app_branch_selected",
+  "app_form_started",
+  "app_form_submitted",
+  "app_wizard_step_completed",
+  "app_wizard_abandoned",
+  "app_result_viewed",
+  "app_cta_clicked",
+  "app_whatsapp_handoff",
+  "app_share_clicked",
+  "app_pdf_downloaded",
+  "app_email_subscribed",
+] as const satisfies readonly string[];
+
+export type AppEventType = (typeof APP_EVENTS)[number];
 
 export type FunnelAppEvent =
   | { type: "app_viewed"; app: FunnelAppName }
@@ -62,6 +84,17 @@ export type FunnelAppEvent =
       trigger_type: string;
     };
 
+/** Compile-time parity proof: resolves to `true` only when APP_EVENTS exactly
+ * covers FunnelAppEvent["type"] in BOTH directions. Adding a union variant
+ * without listing it in APP_EVENTS (or vice versa) fails `tsc`. */
+export type AppEventsExactlyCoverUnion =
+  Exclude<FunnelAppEvent["type"], AppEventType> extends never
+    ? Exclude<AppEventType, FunnelAppEvent["type"]> extends never
+      ? true
+      : never
+    : never;
+export const APP_EVENTS_COVER_UNION: AppEventsExactlyCoverUnion = true;
+
 interface EmitOptions {
   /** Suppress network POST, keep only gtag (for dev / testing). */
   local?: boolean;
@@ -84,12 +117,23 @@ export async function emitFunnelAppEvent(
     globalThis.gtag("event", event.type, event);
   }
   if (opts.local) return;
+  // MYTHOS D3/D9 foundation: capture the emitting hostname (SSR-safe).
+  const hostname =
+    typeof window !== "undefined" ? window.location.hostname : undefined;
   try {
     await fetch(ENDPOINT, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event: event.type, payload: event }),
+      // session_id is REQUIRED by the backend FunnelEvent model (min 32
+      // chars) — without it every app_* POST 422s and the "dashboards unify
+      // automatically" promise in the module docstring was silently false.
+      body: JSON.stringify({
+        session_id: getOrCreateSessionId(),
+        event: event.type,
+        payload: event,
+        ...(hostname ? { hostname } : {}),
+      }),
       keepalive: true,
     });
   } catch {

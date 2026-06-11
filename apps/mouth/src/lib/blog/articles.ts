@@ -72,6 +72,18 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
   return CATEGORY_MAP[rawCategory] || "living";
 }
 
+/**
+ * Resolve a requested category param to its canonical category, if known.
+ * Returns null for unknown categories (caller keeps current behavior).
+ * Used by the article page to issue a permanent redirect from alias
+ * categories (e.g. /immigration/X) to the canonical URL (/visas/X).
+ */
+export function resolveCategoryAlias(
+  rawCategory: string,
+): ArticleCategory | null {
+  return CATEGORY_MAP[rawCategory] ?? null;
+}
+
 /** Strip markdown headings and formatting from excerpt text (used for frontmatter/backend strings) */
 function cleanExcerpt(text: string | null): string {
   if (!text) return "";
