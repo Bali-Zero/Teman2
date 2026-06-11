@@ -35,6 +35,7 @@ import {
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { cn } from "@/lib/utils";
 import type { Article, ArticleListItem } from "@/lib/blog/types";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 const Twitter = X;
 const Linkedin = Link2;
@@ -236,9 +237,21 @@ export function ArticleClient({
   }
 
   return (
-    <div className="min-h-screen">
-      {/* NOTE: JSON-LD schemas (Article + BreadcrumbList) are now injected in <head> 
-          by the root layout (apps/mouth/src/app/layout.tsx) for better SEO and 
+    // MYTHOS Stage-B Batch 1: Rumah Putih light long-form reader. RUMAH_VARS
+    // scoped per-page (NEVER on the shared (blog)/layout.tsx); the .rumah-putih
+    // class hooks the scoped re-tint in globals.css for the .mdx-content body,
+    // the markdown fallback, and the article chrome. The cover hero stays a
+    // dark island (FT pattern) — see the scoped CSS. NavShell + Footer stay navy.
+    <div
+      className={`min-h-screen ${RUMAH_CLASS}`}
+      style={{
+        ...RUMAH_VARS,
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+      }}
+    >
+      {/* NOTE: JSON-LD schemas (Article + BreadcrumbList) are now injected in <head>
+          by the root layout (apps/mouth/src/app/layout.tsx) for better SEO and
           Schema.org Validator compatibility */}
 
       {/* Reading progress */}

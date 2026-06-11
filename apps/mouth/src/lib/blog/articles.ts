@@ -877,3 +877,75 @@ export async function searchArticles(
 
   return results.slice(0, limit);
 }
+
+// ─── Homepage layout slug-drift guard ───────────────────────────────────────
+// The homepage curates hero_main..hero_N + latest_1..N (+ insight_*) slugs in
+// content/homepage-layout.json, resolved against getAllArticles() in
+// (marketing)/page.tsx with a silent `.filter(Boolean)`. A deleted/renamed
+// slug therefore silently drops with NO signal — and Next.js notFound() returns
+// HTTP 200, so status-only monitoring also misses it. This guard makes the
+// drift LOUD at build/test time. (Antonello flagged 2026-06-11.)
+
+/** Keys in homepage-layout.json that hold a curated article slug. Non-slug
+ *  metadata keys (anything starting with `_`, e.g. `_comment`) are ignored. */
+function isCuratedSlugKey(key: string): boolean {
+  return !key.startsWith("_");
+}
+
+export interface HomepageLayoutValidation {
+  ok: boolean;
+  /** [layoutKey, slug] pairs whose slug does not resolve to a real article. */
+  missing: { key: string; slug: string }[];
+  checked: number;
+}
+
+/**
+ * Pure validator: assert every curated slug in `layout` resolves to a real
+ * article slug in `knownSlugs`. No I/O — feed it a fixture in tests or the
+ * real MDX slug index (via {@link validateHomepageLayoutFromDisk}) in CI.
+ */
+export function validateHomepageLayout(
+  layout: Record<string, unknown>,
+  knownSlugs: Iterable<string>,
+): HomepageLayoutValidation {
+  const slugSet = new Set(knownSlugs);
+  const missing: { key: string; slug: string }[] = [];
+  let checked = 0;
+
+  for (const [key, value] of Object.entries(layout)) {
+    if (!isCuratedSlugKey(key)) continue;
+    if (typeof value !== "string" || value.length === 0) continue;
+    checked += 1;
+    if (!slugSet.has(value)) {
+      missing.push({ key, slug: value });
+    }
+  }
+
+  return { ok: missing.length === 0, missing, checked };
+}
+
+/**
+ * Offline/deterministic CI helper: validate `layout` against the canonical
+ * MDX slug index on disk (no network, no backend). Throws with a readable
+ * message listing every drifted slug so a build/test fails loudly.
+ */
+export async function validateHomepageLayoutFromDisk(
+  layout: Record<string, unknown>,
+): Promise<HomepageLayoutValidation> {
+  const slugs = await getAllMdxSlugs();
+  const result = validateHomepageLayout(
+    layout,
+    slugs.map((s) => s.slug),
+  );
+  if (!result.ok) {
+    const detail = result.missing
+      .map((m) => `  - ${m.key}: "${m.slug}"`)
+      .join("\n");
+    throw new Error(
+      `homepage-layout.json references ${result.missing.length} ` +
+        `slug(s) that no longer resolve to a real article:\n${detail}\n` +
+        `Fix the slug(s) in apps/mouth/src/content/homepage-layout.json.`,
+    );
+  }
+  return result;
+}
