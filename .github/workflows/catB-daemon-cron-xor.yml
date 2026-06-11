@@ -1,0 +1,93 @@
+# Category-B observability lint — LaunchAgent daemon|cron classification + W67 guard
+# ---------------------------------------------------------------------------------
+# Fable-5 Cat-B audit (question #16, 2026-06-11). NOT a required check — do NOT add
+# it to branch protection. Its job is to make a STRUCTURAL drift LOUD on every PR
+# that touches a committed plist, and to HARD-FAIL only on the one genuinely
+# dangerous regression class (the W67 crash-loop signature), not on the whole
+# ambiguous backlog.
+#
+# Re-grounded facts this lint encodes (verified on the Pro 2026-06-11):
+#   - 52 LIVE plist in ~/Library/LaunchAgents carry BOTH KeepAlive AND a schedule
+#     (StartInterval/StartCalendarInterval) -> daemon-vs-cron is structurally
+#     ambiguous. CI cannot see ~/Library/LaunchAgents (the live home), so it lints
+#     the COMMITTED templates under infra/launchagents + infra/launchd instead
+#     (93 committed, 45 ambiguous, 7 bare KeepAlive=true, 0 W67-class on 2026-06-11).
+#   - W67 (2026-06-07): `exec <one-shot>` (a script that spawns children then
+#     returns 0) under `KeepAlive=true` made launchd SIGTERM-kill the healthy
+#     children every ~22s. The crash-loop SIGNATURE is: bare boolean
+#     `KeepAlive=true` AND a schedule key on the same plist (a cron job wearing a
+#     daemon's restart flag), OR a KeepAlive=true plist whose program is a known
+#     one-shot. A `KeepAlive=<dict>` (e.g. {SuccessfulExit:false}) is a LEGITIMATE
+#     crash-restart daemon and is NOT flagged.
+#
+# Design (mirrors catF/catE/catA): informational NOTICE for the ambiguous backlog,
+# HARD-FAIL only on a NEW W67-class plist (regression gate). The live-home 52
+# cannot be closed from CI — that needs the daemon|cron sweep ON THE PRO (proposed
+# in research/operations/2026-06-11-domande-per-fable5.md #16).
+
+name: "catB: LaunchAgent daemon|cron XOR + W67 crash-loop guard"
+
+on:
+  pull_request:
+    paths:
+      - "infra/launchagents/**.plist"
+      - "infra/launchd/**.plist"
+      - ".github/workflows/catB-daemon-cron-xor.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  daemon-cron-classification:
+    runs-on: macos-latest # PlistBuddy is macOS-only; committed plist are Apple plist
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Live-home blind-spot NOTICE (informational, never fails)
+        run: |
+          echo "::warning title=LaunchAgent live-home blind-spot::The 52 ambiguous (KeepAlive+schedule) plist live in ~/Library/LaunchAgents on the Pro, which CI cannot read. This lint only sees the COMMITTED templates under infra/launchagents + infra/launchd. The real daemon|cron sweep belongs ON THE PRO (Cat-B #16)."
+
+      - name: Classify each committed plist daemon|cron + W67 crash-loop hard-fail
+        run: |
+          set -uo pipefail
+          PB=/usr/libexec/PlistBuddy
+          total=0; ambiguous=0; w67=0
+          W67_LIST=""
+          AMBIG_LIST=""
+
+          for f in infra/launchagents/*.plist infra/launchd/*.plist; do
+            [ -f "$f" ] || continue
+            total=$((total+1))
+            ka=$("$PB" -c "Print :KeepAlive" "$f" 2>/dev/null || true)
+            si=$("$PB" -c "Print :StartInterval" "$f" 2>/dev/null || true)
+            sc=$("$PB" -c "Print :StartCalendarInterval" "$f" 2>/dev/null || true)
+
+            has_sched=""
+            { [ -n "$si" ] || [ -n "$sc" ]; } && has_sched=1
+
+            # Ambiguous = KeepAlive (any form) AND a schedule present.
+            if [ -n "$ka" ] && [ -n "$has_sched" ]; then
+              ambiguous=$((ambiguous+1))
+              AMBIG_LIST="$AMBIG_LIST $(basename "$f")"
+            fi
+
+            # W67 crash-loop class = BARE boolean KeepAlive=true AND a schedule.
+            # (A cron job wearing a daemon's unconditional-restart flag: launchd
+            #  will SIGTERM-kill its spawned children every restart tick.)
+            if echo "$ka" | grep -qiE '^true$' && [ -n "$has_sched" ]; then
+              w67=$((w67+1))
+              W67_LIST="$W67_LIST $(basename "$f")"
+            fi
+          done
+
+          echo "committed plist        : $total"
+          echo "ambiguous (KA+schedule): $ambiguous"
+          echo "W67 crash-loop class   : $w67"
+          [ -n "$AMBIG_LIST" ] && echo "::notice title=daemon|cron ambiguous (informational)::$AMBIG_LIST"
+
+          if [ "$w67" -ne 0 ]; then
+            echo "::error title=W67 crash-loop regression::These committed plist have bare KeepAlive=true AND a schedule — the exact W67 SIGTERM-every-restart signature. Make it a true daemon (KeepAlive only, no schedule) OR a true cron (schedule only, no KeepAlive). Offenders:$W67_LIST"
+            exit 1
+          fi
+          echo "OK: zero W67 crash-loop-class committed plist (KeepAlive=true + schedule). Ambiguous backlog is informational and lives mostly in the live home — sweep on the Pro."

@@ -8,10 +8,9 @@ Covers:
   S9   supervisor maps route to html-apply, never canva-apply, no dead briefed_facted
   S10  watchdog re-key: html flag probe, DB-derived success rate (NO-DATA not 100%),
        ledger-gap probe, pipeline-state freshness off canva_applied_at
-  R1.1 worktree-gc tolerates a missing wr2_carousel_runs table
+  R1   worktree-gc decoupled from Pipeline-A tables (fetch_inflight_carousels gone)
 
-Modules are loaded via importlib (scripts/ has no package __init__), mirroring
-scripts/tests/test_wr2_carousel_orchestrator.py.
+Modules are loaded via importlib (scripts/ has no package __init__).
 """
 from __future__ import annotations
 
@@ -22,7 +21,6 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock
 
-import asyncpg
 import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
@@ -457,17 +455,16 @@ class TestWatchdogRekey:
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# R1.1 — worktree-gc tolerates missing wr2_carousel_runs
+# R1 — worktree-gc no longer references the Pipeline-A table at all
 # ─────────────────────────────────────────────────────────────────────────
 
 
-class TestWorktreeGcTableTolerance:
-    @pytest.mark.asyncio
-    async def test_fetch_inflight_returns_empty_when_table_absent(self):
+class TestWorktreeGcPipelineADecoupled:
+    def test_fetch_inflight_carousels_symbol_gone(self):
+        """R1: the SELECT on wr2_carousel_runs was removed, not feature-gated."""
         gc = _load("wr2_worktree_gc")
-        conn = MagicMock()
-        conn.fetch = AsyncMock(side_effect=asyncpg.UndefinedTableError("relation does not exist"))
+        assert not hasattr(gc, "fetch_inflight_carousels")
 
-        result = await gc.fetch_inflight_carousels(conn)
-
-        assert result == set()
+    def test_module_source_never_mentions_a_table(self):
+        source = (SCRIPTS_DIR / "wr2_worktree_gc.py").read_text(encoding="utf-8")
+        assert "wr2_carousel_runs" not in source
