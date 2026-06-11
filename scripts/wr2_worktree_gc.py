@@ -84,14 +84,23 @@ def list_wr2_run_worktrees() -> list[dict]:
 
 
 async def fetch_inflight_carousels(conn: asyncpg.Connection) -> set[str]:
-    """Return set of carousel_ids currently in-flight (not in terminal state)."""
-    rows = await conn.fetch(
-        """
-        SELECT carousel_id::text FROM wr2_carousel_runs
-         WHERE state IN ('drafted','brief_done','storyboard_done',
-                         'layout_done','critic_pass','rendered','awaiting_approval')
-        """
-    )
+    """Return set of carousel_ids currently in-flight (not in terminal state).
+
+    P-1 R1.1: `wr2_carousel_runs` belongs to the retired Pipeline A and is
+    slated for a drop migration. Tolerate its absence (no in-flight runs can
+    exist without the table) instead of crashing the daily GC — spec metric M10.
+    """
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT carousel_id::text FROM wr2_carousel_runs
+             WHERE state IN ('drafted','brief_done','storyboard_done',
+                             'layout_done','critic_pass','rendered','awaiting_approval')
+            """
+        )
+    except asyncpg.UndefinedTableError:
+        logger.info("wr2_carousel_runs absent (Pipeline A retired) — no in-flight runs")
+        return set()
     return {r["carousel_id"] for r in rows}
 
 

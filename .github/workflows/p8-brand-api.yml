@@ -8,16 +8,12 @@ name: P8 Brand-API Gate
 # scripts/brand_token_lint.py — it names them explicitly so the meta-verifier
 # (scripts/verify_the_verifiers.py, kind=lint_script) sees the gate ARMED.
 
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-11): top-level pull_request
+# `paths:` filter REMOVED so this can become a required-status-check without
+# the pending-forever trap (W69). The relevant-paths decision lives in the
+# "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
-  pull_request:
-    paths:
-      - "scripts/brand_api_gen.py"
-      - "scripts/brand_token_lint.py"
-      - "scripts/test_brand_api.py"
-      - "packages/core/components/**"
-      - "packages/design-system/brand-api/**"
-      - "docs/design/components-catalog.md"
-      - ".github/workflows/p8-brand-api.yml"
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
   workflow_dispatch:
 
 permissions:
@@ -28,34 +24,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the sentinel git diff sees PR changes
+
+      # BUCO #1 sentinel (pattern: p1s2-mutation-incremental.yml). The regex is
+      # the EXACT original pull_request `paths:` list, each anchored ^...$.
+      - name: Did relevant paths change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full gate"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(scripts/brand_api_gen\.py|scripts/brand_token_lint\.py|scripts/test_brand_api\.py|packages/core/components/.*|packages/design-system/brand-api/.*|docs/design/components-catalog\.md|\.github/workflows/p8-brand-api\.yml)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no relevant paths changed — sentinel success"
+          fi
 
       - uses: actions/setup-python@v5
+        if: steps.relevant.outputs.run == 'true'
         with:
           python-version: "3.11"
 
       - name: Install pytest
+        if: steps.relevant.outputs.run == 'true'
         run: pip install --quiet pytest
 
       # G6 — the committed components.json + catalog MUST match a fresh
       # generation. If a .tsx changed but brand_api_gen.py was not re-run,
       # this fails (artifact drift caught at PR time, not at runtime).
       - name: brand_api_gen --check (G6 idempotence)
+        if: steps.relevant.outputs.run == 'true'
         run: python3 scripts/brand_api_gen.py --check
 
       # G2 — token-lint self-test + scope scan: no hardcoded color literals
       # in the generated surface.
       - name: brand_token_lint self-test (G2)
+        if: steps.relevant.outputs.run == 'true'
         run: python3 scripts/brand_token_lint.py --self-test
 
       - name: brand_token_lint scope scan (G2)
+        if: steps.relevant.outputs.run == 'true'
         run: python3 scripts/brand_token_lint.py
 
       # Falsifiable gate tests — exercises brand_api_gen.py + brand_token_lint.py
       - name: pytest gate (scripts/test_brand_api.py)
+        if: steps.relevant.outputs.run == 'true'
         run: PYTHONPATH=scripts python3 -m pytest scripts/test_brand_api.py -q
 
       # syntax smoke — fail fast if either script does not even parse.
       - name: py_compile brand_api_gen.py + brand_token_lint.py
+        if: steps.relevant.outputs.run == 'true'
         run: |
           python3 -m py_compile scripts/brand_api_gen.py
           python3 -m py_compile scripts/brand_token_lint.py

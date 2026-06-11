@@ -44,6 +44,28 @@ async def fetch_pending_draft_ids(conn: asyncpg.Connection, limit: int = 3) -> l
     return [r["id"] for r in rows]
 
 
+async def fetch_pending_html_draft_ids(conn: asyncpg.Connection, limit: int = 3) -> list[UUID]:
+    """HTML-lane fetch: selects on drive_url, NOT canva_edit_url.
+
+    Pre-cutover drafts carry a canva_edit_url from old Canva runs; filtering
+    on it (as the Canva-lane fetch does) starves them forever in
+    drafts_imaged_checked while the supervisor reconcile keeps kicking them.
+    Mirrors the guard already used by acquire_html_lease_and_fetch.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT id FROM war_room_drafts
+         WHERE status = 'drafts_imaged_checked'
+           AND drive_url IS NULL
+           AND lease_owner IS NULL
+         ORDER BY created_at ASC
+         LIMIT $1
+        """,
+        limit,
+    )
+    return [r["id"] for r in rows]
+
+
 async def acquire_lease_and_fetch(
     conn: asyncpg.Connection,
     *,

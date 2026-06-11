@@ -203,4 +203,28 @@ describe("analytics", () => {
       expect.anything(),
     );
   });
+
+  it("dispatches persona door clicks with the door payload (MYTHOS B2)", async () => {
+    const gtag = vi.fn();
+    (window as typeof window & { gtag?: typeof gtag }).gtag = gtag;
+    const { trackPersonaDoor } = await loadAnalytics();
+
+    trackPersonaDoor("company");
+
+    expect(gtag).toHaveBeenCalledWith("event", "persona_door_click", {
+      event_category: "PersonaDoors",
+      door: "company",
+    });
+    expect(trackFunnelEventMock).toHaveBeenCalledWith("persona_door_click", {
+      sessionId: "core-session-id",
+      payload: { door: "company" },
+    });
+
+    // B2R2: the fourth door — tax — is part of the PersonaDoor union.
+    trackPersonaDoor("tax");
+    expect(trackFunnelEventMock).toHaveBeenCalledWith("persona_door_click", {
+      sessionId: "core-session-id",
+      payload: { door: "tax" },
+    });
+  });
 });

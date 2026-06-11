@@ -246,6 +246,104 @@ def test_lkpm_guard_still_clobbers_stale_deadline() -> None:
     assert guarded != stale
 
 
+# --- F11: LKPM dated-fact time-bomb ----------------------------------------
+import datetime as _f11_dt
+
+
+def test_lkpm_window_clause_states_april_while_valid() -> None:
+    # On/before valid_until the published window is quoted as current.
+    clause = bridge._lkpm_window_clause("en", today=_f11_dt.date(2026, 4, 15))
+    assert "1 to 15 april" in clause.lower()
+    assert bridge._lkpm_window_is_current(_f11_dt.date(2026, 4, 30)) is True
+
+
+def test_lkpm_window_clause_degrades_after_expiry() -> None:
+    # After valid_until the bridge must NOT assert the stale April window as
+    # the current rule; it tells the user to verify live instead.
+    clause = bridge._lkpm_window_clause("en", today=_f11_dt.date(2026, 7, 1))
+    assert "april" not in clause.lower()
+    assert "verif" in clause.lower()
+    assert bridge._lkpm_window_is_current(_f11_dt.date(2026, 7, 1)) is False
+
+
+def test_lkpm_guard_does_not_clobber_newer_window_after_expiry(monkeypatch) -> None:
+    # The time-bomb: once the April fact is stale, a CORRECT reply citing the
+    # NEW (e.g. Q2 July) window must NOT be clobbered for omitting "1-15 April".
+    monkeypatch.setattr(bridge, "_lkpm_window_is_current", lambda today=None: False)
+    new_window = (
+        "For Q2 2026, BKPM opened the LKPM window 1-15 July 2026; the deadline "
+        "is no later than 15 July. Verify live on OSS/BKPM."
+    )
+    out = bridge._guard_lkpm_reply("When is the LKPM deadline this quarter?", new_window, "en")
+    assert out == new_window
+
+
+def test_lkpm_guard_still_clobbers_stale_deadline_after_expiry(monkeypatch) -> None:
+    # Degradation keeps the stale-marker safety net even after expiry.
+    monkeypatch.setattr(bridge, "_lkpm_window_is_current", lambda today=None: False)
+    stale = "File LKPM by 10 April, on the 7th of the month."
+    out = bridge._guard_lkpm_reply("LKPM deadline?", stale, "en")
+    assert out != stale
+
+
+def test_lkpm_guard_clobbers_wrong_window_while_valid(monkeypatch) -> None:
+    # While valid, a deadline-asserting reply that omits the correct window is
+    # clobbered (unchanged behaviour, now keyed off the central fact).
+    monkeypatch.setattr(bridge, "_lkpm_window_is_current", lambda today=None: True)
+    wrong = "The LKPM deadline is no later than the 20th of March 2026."
+    out = bridge._guard_lkpm_reply("LKPM deadline?", wrong, "en")
+    assert out != wrong
+
+
+# --- F12: hak_milik content-gating (not length-gating) ----------------------
+def test_hak_milik_guard_clobbers_short_wrong_claim() -> None:
+    # The dangerous case the old length-only guard let through: a SHORT reply
+    # (<125 words) that wrongly says a foreigner can own Hak Milik.
+    wrong = "Yes, as a foreigner you can own Hak Milik land directly through your PMA."
+    out = bridge._guard_hak_milik_reply(
+        "Can a foreigner buy Hak Milik land in Bali?", wrong, "en"
+    )
+    assert out != wrong
+    assert "cannot hold hak milik" in bridge._normalize_text(out)
+
+
+def test_hak_milik_guard_passes_correct_short_answer() -> None:
+    # A correct, concise answer must NOT be clobbered.
+    correct = (
+        "No. A foreigner cannot hold Hak Milik directly. A PT PMA may look at HGB, "
+        "and personal residential use may involve Hak Pakai. The team verifies the route."
+    )
+    assert (
+        bridge._guard_hak_milik_reply(
+            "Can a foreigner own Hak Milik?", correct, "en"
+        )
+        == correct
+    )
+
+
+def test_hak_milik_guard_passes_correct_indonesian_answer() -> None:
+    correct = (
+        "Tidak. Orang asing tidak bisa memegang Hak Milik langsung. PT PMA biasanya "
+        "melihat HGB; tim legal Bali Zero verify rutenya."
+    )
+    assert (
+        bridge._guard_hak_milik_reply(
+            "Orang asing bisa punya Hak Milik?", correct, "id"
+        )
+        == correct
+    )
+
+
+def test_hak_milik_affirmation_detector_polarity() -> None:
+    norm = bridge._normalize_text
+    assert bridge._hak_milik_asserts_foreigner_can_own(
+        norm("a foreigner can own hak milik directly")
+    )
+    assert not bridge._hak_milik_asserts_foreigner_can_own(
+        norm("a foreigner cannot hold hak milik directly")
+    )
+
+
 def test_tax_guard_does_not_append_on_stable_rate_fact() -> None:
     # "What is Coretax" is a definition; no OSS/BKPM verify tail should be added.
     answer = "Coretax is Indonesia's new tax administration system run by the DJP."
@@ -489,6 +587,199 @@ def test_villa_kbli_guard_village_not_clobbered() -> None:
         )
         == correct
     )
+
+
+# ---------------------------------------------------------------------------
+# F39: incidental villa mention (probe T5 2026-06-11) — "kbli"+"villa" keyword
+# conjunction is not villa-business intent (root class W73)
+# ---------------------------------------------------------------------------
+
+def test_villa_kbli_query_incidental_villa_beach_club_passes() -> None:
+    """F39 regression (probe T5): a beach-club KBLI question mentioning a villa
+    bought TO LIVE IN was classified as a villa KBLI query and the multi-part
+    answer (KBLI 56301, foreign ownership, visas) was replaced with the 55203
+    villa canonical.
+    """
+    assert bridge._is_villa_kbli_query(
+        "I want to open a beach club in Canggu with my Australian partner: "
+        "which KBLI codes apply, can it be 100% foreign owned, and what visas "
+        "do we need? We are also thinking of buying a villa to live in."
+    ) is False
+
+
+def test_villa_kbli_query_residential_purchase_passes() -> None:
+    """F39: a residential villa purchase with no rental signal is not a
+    villa-business KBLI query — the right answer is 'no KBLI needed', not
+    the 55203 canonical."""
+    assert bridge._is_villa_kbli_query(
+        "I'm buying a villa in Ubud to live in — do I need a KBLI code for that?"
+    ) is False
+
+
+def test_villa_kbli_guard_beach_club_not_clobbered() -> None:
+    """F39 regression: guard must not clobber a correct beach-club answer."""
+    correct = (
+        "A beach club typically combines KBLI 56301 (bars) and 56101 "
+        "(restaurants); both are open to 100% foreign ownership via PT PMA. "
+        "You and your partner would need investor KITAS. The team verifies "
+        "the exact code mix for your concept."
+    )
+    assert (
+        bridge._guard_villa_kbli_reply(
+            "I want to open a beach club in Canggu with my Australian partner: "
+            "which KBLI codes apply, can it be 100% foreign owned, and what "
+            "visas do we need? We are also thinking of buying a villa to live in.",
+            correct,
+            "en",
+        )
+        == correct
+    )
+
+
+def test_villa_kbli_query_still_fires_on_genuine_rental_intent() -> None:
+    """F39 other polarity: a genuine villa-rental KBLI question still guards,
+    even when another business is mentioned alongside."""
+    assert bridge._is_villa_kbli_query(
+        "Which KBLI code do I need to rent out my villa on Airbnb?"
+    ) is True
+    assert bridge._is_villa_kbli_query(
+        "We run a restaurant and also rent out a villa to guests — "
+        "which KBLI codes apply?"
+    ) is True
+
+
+def test_villa_kbli_query_explicit_codes_not_gated_by_incidental_bailout() -> None:
+    """F39: explicit 55193/55203 codes in the message keep firing the guard
+    regardless of residential/other-business wording."""
+    assert bridge._is_villa_kbli_query(
+        "For my restaurant company, is 55193 or 55203 the right code? "
+        "The villa is just to live in."
+    ) is True
+
+
+# ---------------------------------------------------------------------------
+# F40: WhatsApp formatting calibration (probe round 2026-06-11) — prompt rules
+# + deterministic markdown→WhatsApp normalization net
+# ---------------------------------------------------------------------------
+
+def test_build_prompt_includes_whatsapp_format_rules() -> None:
+    body = bridge.BridgeRequest(
+        phone="+62 812-345",
+        sender_name="Client",
+        message_id="wamid.format",
+        text="How much does the investor KITAS cost?",
+        context={"detected_language": "en"},
+    )
+    rules = "\n".join(json.loads(bridge._build_prompt(body))["reply_rules"])
+
+    assert "direct answer in the first line" in rules
+    assert "900 characters" in rules
+    assert "1500 characters" in rules
+    assert "*single asterisks*" in rules
+    assert "never ** double asterisks" in rules
+    assert "• bullet character" in rules
+
+
+def test_normalize_whatsapp_format_rewrites_markdown() -> None:
+    raw = (
+        "## Investor KITAS\n"
+        "The **2-year investor KITAS** costs:\n"
+        "- Offshore: 17M IDR\n"
+        "* Onshore: 19M IDR\n"
+    )
+    assert bridge._normalize_whatsapp_format(raw) == (
+        "Investor KITAS\n"
+        "The *2-year investor KITAS* costs:\n"
+        "• Offshore: 17M IDR\n"
+        "• Onshore: 19M IDR\n"
+    )
+
+
+def test_normalize_whatsapp_format_keeps_clean_reply_unchanged() -> None:
+    clean = (
+        "The 2-year investor KITAS is 17M IDR offshore.\n\n"
+        "• Documents: passport, company deed\n"
+        "• Timeline: the team confirms\n\n"
+        "Want me to start the checklist?"
+    )
+    assert bridge._normalize_whatsapp_format(clean) == clean
+
+
+def test_normalize_whatsapp_format_bold_line_start_is_not_bullet() -> None:
+    # "*Important:* ..." at line start is WhatsApp bold, not a "* " list marker.
+    text = "*Important:* bring the original passport."
+    assert bridge._normalize_whatsapp_format(text) == text
+
+
+def test_normalize_whatsapp_format_preserves_bullet_indent() -> None:
+    assert bridge._normalize_whatsapp_format("  - nested item") == "  • nested item"
+
+
+# ---------------------------------------------------------------------------
+# Sender identity rules (2026-06-11): backend resolves phone → owner/team/
+# client/unknown; the bridge injects per-role persona rules into the prompt.
+# ---------------------------------------------------------------------------
+
+def test_identity_rules_owner() -> None:
+    rules = "\n".join(bridge._identity_rules({"sender_identity": {"role": "owner"}}))
+    assert "Zero (Antonello)" in rules
+    assert "internal conversation" in rules
+    assert "never say 'the team will contact" in rules
+
+
+def test_identity_rules_team_uses_member_name() -> None:
+    rules = "\n".join(
+        bridge._identity_rules(
+            {"sender_identity": {"role": "team", "team_member": "Sahira"}}
+        )
+    )
+    assert "Sahira" in rules
+    assert "internal colleague" in rules
+
+
+def test_identity_rules_client_known_but_privacy_capped() -> None:
+    rules = "\n".join(
+        bridge._identity_rules(
+            {
+                "sender_identity": {
+                    "role": "client",
+                    "client_id": 42,
+                    "client_name": "Marta Reyes",
+                    "client_status": "active",
+                }
+            }
+        )
+    )
+    assert "Marta Reyes" in rules
+    assert "known client" in rules
+    assert "never reveal information about any other client" in rules
+
+
+def test_identity_rules_unknown_or_missing_is_empty() -> None:
+    assert bridge._identity_rules({"sender_identity": {"role": "unknown"}}) == []
+    assert bridge._identity_rules({}) == []
+    assert bridge._identity_rules(None) == []
+
+
+def test_build_prompt_injects_identity_rules_for_owner_only() -> None:
+    owner_body = bridge.BridgeRequest(
+        phone="+62 822-6459-9868",
+        sender_name="Zero",
+        message_id="wamid.owner",
+        text="Quante pratiche KITAS abbiamo in pipeline questo mese?",
+        context={"detected_language": "it", "sender_identity": {"role": "owner"}},
+    )
+    prompt = json.loads(bridge._build_prompt(owner_body))
+    assert any("Zero (Antonello)" in rule for rule in prompt["sender_identity_rules"])
+
+    anon_body = bridge.BridgeRequest(
+        phone="+62 813-555-0009",
+        sender_name="Client",
+        message_id="wamid.anon",
+        text="How much is a KITAS?",
+        context={"detected_language": "en"},
+    )
+    assert "sender_identity_rules" not in json.loads(bridge._build_prompt(anon_body))
 
 
 def test_run_script_uses_installed_bridge_app_dir() -> None:

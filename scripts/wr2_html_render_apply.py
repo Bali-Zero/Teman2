@@ -307,6 +307,23 @@ async def _heartbeat_loop(conn: asyncpg.Connection, draft_id: str, owner: str, s
             return
 
 
+# ── anti-sameness ledger (P-1 S1) ───────────────────────────────────────────────
+async def _log_ledger_best_effort(conn: "asyncpg.Connection", draft_id: uuid.UUID) -> None:
+    """Write the topic_type_log row for a rendered draft (savepoint-isolated).
+
+    Best-effort: a ledger failure must NEVER fail the render — the draft is
+    already promoted + WA-notified by the time this runs. Gaps are caught by
+    the watchdog ledger-gap probe (S10d) and the row is idempotent on draft_id.
+    """
+    try:
+        import wr2_topic_type_log as ttl
+
+        async with conn.transaction():  # savepoint — isolates the insert
+            await ttl.log_topic_type(conn, draft_id)
+    except Exception as exc:  # noqa: BLE001 — observability, never fail the render
+        logger.warning("topic_type_log write failed for %s: %s", draft_id, exc)
+
+
 # ── apply one draft ──────────────────────────────────────────────────────────────
 async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str:
     """Full lifecycle for one draft. Uses a dedicated connection for the heartbeat so it
@@ -376,6 +393,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 main_conn, draft_id=draft_id, lease_owner=owner, drive_url=web,
                 recipients=recipients, message_body=msg, customer_window_hours=24,
             )
+            await _log_ledger_best_effort(main_conn, draft_id)
             closed = [r for r, info in report.items() if not info.get("window_open")]
             if closed:
                 await _ops_alert(
@@ -479,39 +497,50 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
         return 2
 
     owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}"
-    scan = await asyncpg.connect(dsn, timeout=10)
-    try:
-        if not await _pg.is_html_kill_switch_enabled(scan):
-            logger.info("wr2_html_renderer_enabled is OFF — no-op")
-            return 0
-        # watchdog: reclaim any dead-worker leases first
-        reclaimed = await _pg.reset_stale_html_leases(scan, stale_after_minutes=10)
-        if reclaimed:
-            logger.info("reclaimed %d stale HTML leases", len(reclaimed))
+    # R4.2 drain-loop (P-1): keep fetching batches until the queue is empty so a
+    # supervisor kickstart swallowed while we are busy still gets its draft
+    # processed this run (restores wr2_supervisor.py:20-22 drain assumption).
+    # Capped so a draft bouncing on transient failures cannot loop forever.
+    max_loops = int(os.environ.get("WR2_HTML_DRAIN_MAX_LOOPS", "10"))
 
+    processed = 0
+    successes = 0
+    for loop_n in range(max_loops):
         if draft_id:
-            ids = [uuid.UUID(draft_id)]
+            ids = [uuid.UUID(draft_id)] if loop_n == 0 else []
         else:
-            ids = await _pg.fetch_pending_draft_ids(scan, limit=MAX_DRAFTS_PER_RUN)
+            scan = await asyncpg.connect(dsn, timeout=10)
+            try:
+                if not await _pg.is_html_kill_switch_enabled(scan):
+                    logger.info("wr2_html_renderer_enabled is OFF — no-op")
+                    return 0
+                if loop_n == 0:
+                    # watchdog: reclaim any dead-worker leases first
+                    reclaimed = await _pg.reset_stale_html_leases(scan, stale_after_minutes=10)
+                    if reclaimed:
+                        logger.info("reclaimed %d stale HTML leases", len(reclaimed))
+                ids = await _pg.fetch_pending_html_draft_ids(scan, limit=MAX_DRAFTS_PER_RUN)
+            finally:
+                await scan.close()
         if not ids:
-            logger.info("no pending drafts")
-            return 0
+            if processed == 0:
+                logger.info("no pending drafts")
+            break
         if dry_run:
             logger.info("DRY-RUN would process: %s", ids)
             return 0
-    finally:
-        await scan.close()
-
-    successes = 0
-    for did in ids:
-        try:
-            result = await _apply_one(dsn, did, owner)
-            logger.info("draft %s -> %s", did, result)
-            if result.startswith("rendered") or result == "shadow_done":
-                successes += 1
-        except Exception:
-            logger.exception("draft %s crashed", did)
-    return 0 if successes == len(ids) else 1
+        for did in ids:
+            processed += 1
+            try:
+                result = await _apply_one(dsn, did, owner)
+                logger.info("draft %s -> %s", did, result)
+                if result.startswith("rendered") or result == "shadow_done":
+                    successes += 1
+            except Exception:
+                logger.exception("draft %s crashed", did)
+        if draft_id:
+            break
+    return 0 if successes == processed else 1
 
 
 def main() -> int:
