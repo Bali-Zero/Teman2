@@ -6,7 +6,6 @@ import { SessionInit } from "@/components/funnel/SessionInit";
 import { MobileNav } from "../v2/_components/MobileNav";
 import { HeroBlueprint } from "../v2/_components/HeroBlueprint";
 import { PersonaDoors } from "../v2/_components/PersonaDoors";
-import { FunnelChips } from "../v2/_components/FunnelChips";
 import { NavWhatsAppCTA } from "../v2/_components/NavWhatsAppCTA";
 import { SocialProof } from "../v2/_components/SocialProof";
 import { TopicPills } from "../v2/_components/TopicPills";
@@ -39,7 +38,8 @@ export const metadata: Metadata = {
 const LATEST_NEWS_COUNT = 5;
 
 // In-page anchors preserved: #visa/#kbli/#tax/#property now resolve to the
-// FunnelChips strip (the demoted tool entry points); #news to NewsHero.
+// persona-door cards (B2R2 — the chips strip is gone, tool identities live
+// inside the doors); #news to NewsHero.
 const NAV_ITEMS = [
   { label: "Home", href: "#top" },
   { label: "Visa", href: "#visa" },
@@ -158,10 +158,10 @@ export default async function HomePage() {
       />
       <main id="main-content" style={RUMAH_VARS}>
         <HeroBlueprint />
-        {/* MYTHOS B2: persona doors (IA-1) are the navigation layer;
-            the 4 funnel blocks are demoted to a compact chip strip. */}
+        {/* MYTHOS B2R2: four persona doors (IA-1) are the navigation layer;
+            each door carries its tool identity (ex-FunnelChips, strip
+            removed per Antonello 2026-06-11). */}
         <PersonaDoors />
-        <FunnelChips />
         <SocialProof />
         <NewsHero articles={heroArticles} />
         <TopicPills />

@@ -62,12 +62,15 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
   return (
     <section
       id="news"
-      className="relative h-[88vh] overflow-hidden scroll-mt-20"
+      className="relative md:h-[88vh] overflow-hidden scroll-mt-20"
       style={{ background: "var(--surface-base)" }}
     >
-      <div className="grid grid-cols-[32%_68%] h-full">
+      {/* B2R2 mobile: the 32/68 two-col grid stacks — photo card first
+          (it carries the active title), numbered story list below, both
+          full-width. Desktop (md+) is byte-identical to before. */}
+      <div className="grid grid-cols-1 md:grid-cols-[32%_68%] h-full">
         {/* Left — numbered index */}
-        <div className="flex flex-col justify-center px-12 py-16">
+        <div className="order-2 md:order-1 flex flex-col justify-center px-5 py-10 md:px-12 md:py-16">
           <div
             className="text-[11px] font-semibold uppercase tracking-widest mb-8"
             style={{ color: "var(--text-tertiary)" }}
@@ -145,7 +148,7 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
             the photography stays a deliberate dark island (FT pattern),
             inset + rounded into a photo card via --rp-photo-*; /news + /v2
             keep the flush full-bleed layout (inset 0, radius 0). */}
-        <div className="relative h-full">
+        <div className="order-1 md:order-2 relative h-[55vh] md:h-full">
           <div
             className="absolute overflow-hidden"
             style={{
@@ -184,7 +187,7 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                         "linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.05) 100%)",
                     }}
                   />
-                  <div className="absolute bottom-0 left-0 right-0 p-12 pr-16">
+                  <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 md:pr-16">
                     <div
                       className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest mb-5"
                       style={{
@@ -205,11 +208,12 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                       />
                       {formatCategory(s.category)}
                     </div>
+                    {/* B2R2: 25px on mobile, original clamp from md up —
+                        desktop output is byte-identical. */}
                     <h3
-                      className="font-black leading-[1.05] tracking-tight mb-4 line-clamp-3"
+                      className="font-black leading-[1.05] tracking-tight mb-4 line-clamp-3 text-[25px] md:text-[clamp(30px,3.4vw,52px)]"
                       style={{
                         color: "#ffffff",
-                        fontSize: "clamp(30px, 3.4vw, 52px)",
                         textShadow: "0 4px 24px rgba(0,0,0,0.6)",
                         maxWidth: "22ch",
                       }}
@@ -241,7 +245,7 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
       <button
         onClick={() => setPaused((p) => !p)}
         aria-label={paused ? "Play news carousel" : "Pause news carousel"}
-        className="absolute bottom-8 right-8 z-30 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+        className="absolute top-4 right-4 md:top-auto md:bottom-8 md:right-8 z-30 w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
         style={{
           background: "rgba(255,255,255,0.12)",
           border: "1px solid rgba(255,255,255,0.22)",

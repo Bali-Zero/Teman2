@@ -548,8 +548,9 @@ type HeroCTAEvent = "hero_cta_book_call" | "hero_cta_read_dispatch";
 // Persona Doors (MYTHOS B2, IA-1)
 // ============================================================
 
-/** Which of the three homepage "Start where you are." doors was chosen. */
-export type PersonaDoor = "visa" | "company" | "property";
+/** Which of the four homepage "Start where you are." doors was chosen.
+ * B2R2: "tax" added (third door). */
+export type PersonaDoor = "visa" | "company" | "tax" | "property";
 
 /**
  * Track a homepage persona-door click.

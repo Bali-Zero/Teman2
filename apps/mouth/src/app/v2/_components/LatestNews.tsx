@@ -37,10 +37,10 @@ export function LatestNews({
 
   return (
     <section
-      className="py-20 px-10"
+      className="py-12 px-5 md:py-20 md:px-10"
       style={{ background: "var(--surface-base)" }}
     >
-      <div className="flex items-end justify-between mb-10">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 mb-8 md:mb-10">
         <div>
           <div
             className="text-[11px] font-semibold uppercase tracking-widest mb-2"
@@ -61,17 +61,22 @@ export function LatestNews({
         </div>
         <a
           href="/news"
-          className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest"
+          className="inline-flex items-center gap-2 py-3 -my-3 text-[12px] font-semibold uppercase tracking-widest"
           style={{ color: "var(--text-secondary)" }}
         >
           View all <ArrowUpRight size={14} strokeWidth={2} />
         </a>
       </div>
 
+      {/* B2R2 mobile: the 5-up grid becomes a horizontal snap rail
+          (full-size cards, one-ish per screen) — single-column page length
+          stays sane with 5 stories. Desktop (md+) keeps the original grid;
+          the inline gridTemplateColumns only applies when display:grid. */}
       <div
-        className="grid gap-4"
+        className="flex gap-4 overflow-x-auto snap-x snap-mandatory -mx-5 px-5 pb-2 md:mx-0 md:px-0 md:pb-0 md:grid md:gap-4 md:overflow-visible"
         style={{
           gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0, 1fr))`,
+          scrollbarWidth: "none",
         }}
       >
         {items.map((a) => {
@@ -100,7 +105,7 @@ export function LatestNews({
             <Link
               key={a.id}
               href={href}
-              className="rounded-2xl p-0 overflow-hidden transition-all hover:-translate-y-1 block focus-visible:outline-none focus-visible:ring-2"
+              className="rounded-2xl p-0 overflow-hidden transition-all hover:-translate-y-1 block focus-visible:outline-none focus-visible:ring-2 snap-start shrink-0 w-[80vw] max-w-[340px] md:w-auto md:max-w-none"
               style={{
                 // MYTHOS B2R: flat white card + hairline on the light
                 // homepage (--rp-* hooks); legacy accent glass via the
@@ -110,7 +115,7 @@ export function LatestNews({
                 boxShadow: `var(--rp-card-shadow, 0 10px 40px rgba(0,0,0,0.25), 0 0 30px color-mix(in srgb, ${accent} 15%, transparent))`,
               }}
             >
-              <div className="h-36 relative overflow-hidden">
+              <div className="h-44 md:h-36 relative overflow-hidden">
                 {cover ? (
                   <img
                     src={cover}
@@ -157,13 +162,13 @@ export function LatestNews({
               </div>
               <div className="p-5">
                 <h4
-                  className="text-[14px] font-bold leading-snug tracking-tight mb-2 line-clamp-3"
+                  className="text-[16px] md:text-[14px] font-bold leading-snug tracking-tight mb-2 line-clamp-3"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {a.title}
                 </h4>
                 <p
-                  className="text-[12px] leading-relaxed mb-4 line-clamp-3"
+                  className="text-[13px] md:text-[12px] leading-relaxed mb-4 line-clamp-3"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   {a.excerpt}
@@ -178,7 +183,7 @@ export function LatestNews({
       <div className="flex justify-center mt-10">
         <a
           href="/business"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 px-5 py-3 md:py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:-translate-y-0.5"
           style={{
             background:
               "var(--rp-card-bg, color-mix(in srgb, #f59e0b 10%, transparent))",

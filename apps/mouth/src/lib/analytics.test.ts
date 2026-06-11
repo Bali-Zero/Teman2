@@ -219,5 +219,12 @@ describe("analytics", () => {
       sessionId: "core-session-id",
       payload: { door: "company" },
     });
+
+    // B2R2: the fourth door — tax — is part of the PersonaDoor union.
+    trackPersonaDoor("tax");
+    expect(trackFunnelEventMock).toHaveBeenCalledWith("persona_door_click", {
+      sessionId: "core-session-id",
+      payload: { door: "tax" },
+    });
   });
 });
