@@ -38,6 +38,36 @@ class TestPhoneNormalise:
         assert m.normalise_phone(None) is None
 
 
+class TestParseJsonb:
+    """jsonb columns read through the matcher's codec-less pool.
+
+    Regression for the 2026-06-11 crash: rows INSERTed while the repository
+    json.dumps-ed on top of the app pool's jsonb codec (PR #494) hold a
+    jsonb STRING — _pick_match then exploded on str.get()."""
+
+    def test_dict_passthrough(self):
+        assert m.parse_jsonb({"slug": "x"}, {}) == {"slug": "x"}
+
+    def test_plain_json_text(self):
+        assert m.parse_jsonb('{"slug": "x"}', {}) == {"slug": "x"}
+
+    def test_double_encoded_json_text(self):
+        assert m.parse_jsonb('"{\\"slug\\": \\"verify-filo1\\"}"', {}) == {
+            "slug": "verify-filo1"
+        }
+
+    def test_none_and_null_text_fall_back_to_default(self):
+        assert m.parse_jsonb(None, {}) == {}
+        assert m.parse_jsonb("null", {}) == {}
+        assert m.parse_jsonb(None, None) is None
+
+    def test_invalid_json_falls_back_to_default(self):
+        assert m.parse_jsonb("{not json", {}) == {}
+
+    def test_non_dict_json_falls_back_to_default(self):
+        assert m.parse_jsonb("[1, 2]", {}) == {}
+
+
 class TestPickMatch:
     def _intent(self, *, phone: str | None = None, minutes_ago: int = 2):
         created = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
