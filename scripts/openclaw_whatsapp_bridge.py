@@ -228,13 +228,23 @@ def _contains_any_word(value: str, terms: tuple[str, ...]) -> bool:
     """Whole-word containment.
 
     Unlike :func:`_contains_any` (bare substring), this matches a term only on a
-    word boundary, so a short trigger like "tax"/"lease"/"ota" does NOT fire on
-    "syntax"/"leasehold"/"quota". Multi-word terms (e.g. "short stay") match as a
+    word boundary, so a short trigger like "tax"/"lease"/"villa" does NOT fire on
+    "syntax"/"leasehold"/"village". Multi-word terms (e.g. "short stay") match as a
     contiguous phrase. Use this for keyword TRIGGERS where a substring false
-    positive would clobber a correct answer (the W68/W72 guard-over-match class).
+    positive would clobber a correct answer (the W68/W72/F05/F13 guard-over-match
+    class).
+
+    IMPORTANT: both a leading AND trailing \\b are required. A leading-only \\b
+    allows "villa" to match the start of "village" (since 'v' is at a word
+    boundary after a space); the trailing \\b ensures the entire term is a
+    complete word, not a prefix of a longer word.
     """
     for term in terms:
-        pattern = r"\b" + r"\s+".join(re.escape(part) for part in term.split())
+        pattern = (
+            r"\b"
+            + r"\s+".join(re.escape(part) for part in term.split())
+            + r"\b"
+        )
         if re.search(pattern, value):
             return True
     return False
@@ -256,9 +266,12 @@ def _is_villa_kbli_query(message_text: str) -> bool:
         return True
     if (codes & {"55193", "55203"}) and _contains_any(normalized, _COMPARE_TERMS):
         return True
-    if _contains_any(normalized, _KBLI_TERMS) and _contains_any(normalized, _VILLA_TERMS):
+    # Word-boundary check (F13 2026-06-11): "villa" is a substring of "village",
+    # so a query about "handicrafts in an Ubud village" triggered this guard.
+    # _contains_any_word ensures "village" does not count as a villa term hit.
+    if _contains_any(normalized, _KBLI_TERMS) and _contains_any_word(normalized, _VILLA_TERMS):
         return True
-    return bool(codes & _VILLA_KBLI_CODES and _contains_any(normalized, _VILLA_TERMS))
+    return bool(codes & _VILLA_KBLI_CODES and _contains_any_word(normalized, _VILLA_TERMS))
 
 
 def _reply_explains_villa_mapping(reply: str) -> bool:
@@ -496,7 +509,8 @@ def _guard_document_status_reply(
         return reply
 
     normalized_reply = _normalize_text(reply)
-    unsafe_stage_markers = (
+    # Non-conditional markers: always unsafe when present.
+    unconditional_markers = (
         "may still be in document check",
         "might still be in document check",
         "probably in document check",
@@ -504,9 +518,21 @@ def _guard_document_status_reply(
         "document check or submission",
         "submission stage",
         "already approved",
-        "is approved",
     )
-    if any(marker in normalized_reply for marker in unsafe_stage_markers):
+    if any(marker in normalized_reply for marker in unconditional_markers):
+        return _canonical_document_status_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    # F37 fix (2026-06-11): "is approved" also triggers, but ONLY in an
+    # affirmative-present context (not when it appears after a conditional like
+    # "once/when/after/if ... is approved", which is safe explanatory text).
+    # We detect the conditional preceding window with a regex look-behind.
+    _APPROVED_CONDITIONAL_RE = re.compile(
+        r"\b(?:once|when|after|if|until)\b[^.]{0,40}is approved"
+    )
+    if "is approved" in normalized_reply and not _APPROVED_CONDITIONAL_RE.search(
+        normalized_reply
+    ):
         return _canonical_document_status_answer(
             _villa_answer_language(message_text, detected_language)
         )
@@ -527,14 +553,23 @@ def _guard_legacy_b211_reply(
         return _canonical_b211_business_answer(
             _villa_answer_language(message_text, detected_language)
         )
-    legacy_framing = any(
+    # F14 fix (2026-06-11): word-boundary the escape markers so bare-substring
+    # accidents like "holders" ⊃ "old" and "selama" ⊃ "lama" don't accidentally
+    # pass genuinely-unsafe replies ("B211A holders can work here" contained
+    # "old" inside "holders" and slipped through the escape without being
+    # clobbered).  Multi-word markers use exact phrase matching (already safe).
+    legacy_framing = _contains_any_word(
+        normalized_reply,
+        (
+            "old",
+            "lama",
+        ),
+    ) or any(
         marker in normalized_reply
         for marker in (
-            "old",
             "legacy",
             "former",
             "no longer",
-            "lama",
             "short-stay",
             "short stay",
             "visit visa",
@@ -644,9 +679,13 @@ def _guard_property_zoning_reply(
     detected_language: Any = None,
 ) -> str:
     normalized_message = _normalize_text(message_text)
+    # Word-boundary triggers (F05 2026-06-11): bare substring "lease" matched
+    # "please"/"release"/"leasehold"; "villa" matched "village". Switch to
+    # _contains_any_word so "please" no longer trips the lease arm and "village"
+    # no longer trips the villa arm.
     if not (
-        _contains_any(normalized_message, ("villa", "vila", "airbnb"))
-        and _contains_any(normalized_message, ("zoning", "residential", "zone", "lease"))
+        _contains_any_word(normalized_message, ("villa", "vila", "airbnb"))
+        and _contains_any_word(normalized_message, ("zoning", "residential", "zone", "lease"))
     ):
         return reply
 
@@ -745,7 +784,9 @@ def _guard_tax_compliance_reply(
         "sanzione",
         "ritardo",
     )
-    if not _contains_any(normalized_message, _RISK_INTENT_TERMS):
+    # F36 fix (2026-06-11): switch to word-boundary helper so bare substrings like
+    # "late" ⊂ "translate", "fine" ⊂ "define", "owe" ⊂ "lower" no longer fire.
+    if not _contains_any_word(normalized_message, _RISK_INTENT_TERMS):
         return reply
 
     normalized_reply = _normalize_text(reply)
@@ -789,7 +830,10 @@ def _guard_villa_kbli_reply(
         return _canonical_villa_kbli_answer(
             _villa_answer_language(message_text, detected_language)
         )
-    if _contains_any(_normalize_text(message_text), _VILLA_TERMS) and "55203" not in reply_codes:
+    # Word-boundary check (F13 2026-06-11): same "villa" ⊂ "village" trap as
+    # _is_villa_kbli_query. A KBLI question mentioning "an Ubud village" must
+    # not be substituted with the villa 55203 canonical.
+    if _contains_any_word(_normalize_text(message_text), _VILLA_TERMS) and "55203" not in reply_codes:
         return _canonical_villa_kbli_answer(
             _villa_answer_language(message_text, detected_language)
         )
@@ -805,10 +849,27 @@ def _guard_kbli_label_reply(
     normalized_reply = _normalize_text(reply)
     if "kbli" in normalized_reply or not _kbli_codes(reply):
         return reply
-    if "kbli" not in normalized_message and not _contains_any(
-        normalized_message,
-        ("business activity", "company setup", "pt pma", "cafe", "restaurant", "villa", "vila"),
-    ):
+    # F38 fix (2026-06-11): guard previously prepended "KBLI direction to check:"
+    # to any reply containing \b\d{5}\b — which matches postcodes (e.g. "80361")
+    # and currency amounts (e.g. "12000").  Now we require a positive KBLI-context
+    # signal in the MESSAGE (not just the reply) before treating 5-digit tokens as
+    # KBLI codes.  The existing business-activity keyword list is kept as the
+    # second branch; the bare "kbli not in message" early-exit is removed in
+    # favour of this combined positive gate.
+    _KBLI_CONTEXT_TERMS = (
+        "kbli",
+        "kode",
+        "business activity",
+        "company setup",
+        "pt pma",
+        "cafe",
+        "restaurant",
+        "villa",
+        "vila",
+        "classification",
+        "codice",
+    )
+    if not _contains_any(normalized_message, _KBLI_CONTEXT_TERMS):
         return reply
 
     language = _villa_answer_language(message_text, detected_language)
@@ -924,6 +985,9 @@ _NOMINEE_DIRECT_TERMS = (
     "under their name",
     "in his name",
     "in her name",
+    # NOTE: "'s name" and "atas nama" are kept here but _is_nominee_intent
+    # applies an exclusion check for company/invoice contexts (F06 2026-06-11):
+    # "change my company's name" and "faktur atas nama PT saya" must NOT fire.
     "'s name",  # "in my friend's name", "in her husband's name", etc.
     "atas nama",
     "pinjam nama",
@@ -931,6 +995,28 @@ _NOMINEE_DIRECT_TERMS = (
     "prestanome",
     "intestare",
     "intesta a",
+)
+# Contexts that look like nominee trigger terms but are NOT nominee intent.
+# "company's name" / "company name" → corporate name change (not land holding).
+# "atas nama PT" → invoice / document issued in the name of a company.
+# "faktur" / "invoice" / "ubah nama" (change name) → administrative, not holding.
+_NOMINEE_FALSE_POSITIVE_TERMS = (
+    "company name",
+    "company's name",
+    "change the name",
+    "change my name",
+    "ubah nama",
+    "ganti nama",
+    "nama perusahaan",
+    "nome azienda",
+    "faktur",
+    "invoice",
+    "receipt",
+    "kuitansi",
+    "surat jalan",
+    "atas nama pt",
+    "atas nama cv",
+    "atas nama perusahaan",
 )
 # Compositional fallback: "<someone Indonesian/a friend> hold(s) the <asset> for me".
 # Phrase lists are too brittle ("hold the title for me" missed "hold the land title
@@ -953,6 +1039,12 @@ _NOMINEE_PROXY_SIGNALS = (
 
 
 def _is_nominee_intent(normalized_message: str) -> bool:
+    # Bail early for known false-positive contexts (F06 2026-06-11):
+    # company name changes ("Can I change my company's name?") and invoice
+    # language ("bisa buat faktur atas nama PT saya?") share trigger tokens
+    # with nominee requests but are unrelated.
+    if _contains_any(normalized_message, _NOMINEE_FALSE_POSITIVE_TERMS):
+        return False
     if _contains_any(normalized_message, _NOMINEE_DIRECT_TERMS):
         return True
     return (

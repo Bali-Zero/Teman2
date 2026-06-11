@@ -17,8 +17,10 @@ def _build_client(
     tmp_path: Path,
     *,
     enabled: bool = True,
+    persistence_enabled: bool = False,
 ) -> TestClient:
     monkeypatch.setattr(settings, "autonomous_lab_enabled", enabled)
+    monkeypatch.setattr(settings, "autonomous_lab_persistence_enabled", persistence_enabled)
     monkeypatch.setattr(settings, "autonomous_lab_receipt_dir", str(tmp_path / "receipts"))
 
     app = FastAPI()
@@ -87,7 +89,7 @@ def test_draft_endpoint_can_persist_orchestration_receipt(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    client = _build_client(monkeypatch, tmp_path)
+    client = _build_client(monkeypatch, tmp_path, persistence_enabled=True)
     payload = _payload()
     payload["persist_receipt"] = True
     payload["target_paths"].append("scripts/autonomous_lab_run.py")
@@ -105,6 +107,20 @@ def test_draft_endpoint_can_persist_orchestration_receipt(
         "router-lab-test"
     )
     assert json.loads(event_path.read_text(encoding="utf-8"))["run_id"] == "router-lab-test"
+
+
+def test_draft_endpoint_refuses_persistence_when_flag_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client = _build_client(monkeypatch, tmp_path)
+    payload = _payload()
+    payload["persist_receipt"] = True
+
+    response = client.post("/api/autonomous-lab/drafts", json=payload)
+
+    assert response.status_code == 403
+    assert "persistence is disabled" in response.text
 
 
 def test_draft_endpoint_hides_when_feature_flag_disabled(
@@ -160,6 +176,19 @@ def test_draft_endpoint_rejects_unsafe_task_id(
 
     assert response.status_code == 422
     assert "task_id" in response.text
+
+
+def test_draft_endpoint_rejects_oversized_material_before_orchestration(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client = _build_client(monkeypatch, tmp_path)
+    payload = _payload()
+    payload["materials"][0]["text"] = "x" * 20_001
+
+    response = client.post("/api/autonomous-lab/drafts", json=payload)
+
+    assert response.status_code == 422
 
 
 def test_draft_endpoint_surfaces_workspace_write_blocker(

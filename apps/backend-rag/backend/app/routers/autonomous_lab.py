@@ -16,11 +16,13 @@ from backend.services.autonomous_lab import (
     AutonomousLabPlanner,
     AutonomousLabReviewer,
     MaterialSourceType,
+    OrchestrationBounds,
     ReceiptStore,
     ResearchMaterial,
 )
 
 router = APIRouter(prefix="/api/autonomous-lab", tags=["autonomous-lab", "internal"])
+LAB_BOUNDS = OrchestrationBounds()
 
 
 class LabMaterialPayload(BaseModel):
@@ -30,7 +32,7 @@ class LabMaterialPayload(BaseModel):
     source_type: MaterialSourceType
     source_uri: str = Field(..., min_length=1, max_length=512)
     title: str = Field(..., min_length=1, max_length=240)
-    text: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1, max_length=LAB_BOUNDS.max_material_text_chars)
     captured_at: datetime | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
@@ -40,8 +42,14 @@ class DraftRunRequest(BaseModel):
 
     objective: str = Field(..., min_length=1, max_length=800)
     task_id: str = Field(..., min_length=1, max_length=128)
-    materials: list[LabMaterialPayload] = Field(default_factory=list)
-    target_paths: list[str] = Field(default_factory=list)
+    materials: list[LabMaterialPayload] = Field(
+        default_factory=list,
+        max_length=LAB_BOUNDS.max_materials,
+    )
+    target_paths: list[str] = Field(
+        default_factory=list,
+        max_length=LAB_BOUNDS.max_target_paths,
+    )
     worktree_lane: str = Field(default="ops", min_length=1, max_length=64)
     created_at: datetime | None = None
     persist_receipt: bool = False
@@ -110,6 +118,11 @@ async def create_autonomous_lab_draft(
     receipt_path: str | None = None
     event_path: str | None = None
     if body.persist_receipt:
+        if not settings.autonomous_lab_persistence_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="autonomous lab receipt persistence is disabled",
+            )
         record = ReceiptStore(Path(settings.autonomous_lab_receipt_dir)).write_receipt(receipt)
         receipt_path = str(record.receipt_path)
         event_path = str(record.event_path)

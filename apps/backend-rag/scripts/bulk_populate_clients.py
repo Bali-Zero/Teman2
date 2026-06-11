@@ -146,8 +146,10 @@ async def get_drive_access_token(conn: asyncpg.Connection) -> str:
         return row["access_token"]
 
     # Refresh
-    client_id = "930328104463-d39fpretk5t0lucunkovu7o0g6id5eu2.apps.googleusercontent.com"
-    client_secret = "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"
+    # IMPORTANT: set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET as env vars.
+    # Rotate on Google Cloud Console if these values were previously committed in plaintext.
+    client_id = os.environ["GOOGLE_OAUTH_CLIENT_ID"]
+    client_secret = os.environ["GOOGLE_OAUTH_CLIENT_SECRET"]
 
     async with httpx.AsyncClient() as http:
         resp = await http.post(
@@ -179,10 +181,13 @@ async def get_drive_access_token(conn: asyncpg.Connection) -> str:
 SA_PATH = os.path.expanduser("~/Desktop/nuzantara-9ae2756d7fcc.json")
 
 # OAuth credentials from rclone gdrive remote (antonellosiano@gmail.com)
-# These can access folders owned by all team members
-OAUTH_CLIENT_ID = "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"
-OAUTH_CLIENT_SECRET = "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"
-OAUTH_REFRESH_TOKEN = "1//0gbiun0bBkNVCCgYIARAAGBASNwF-L9IrGvLMkg0QQ7fz0x98C1zyFqsCvzyijl7NjxUXoJ8K_-BAN8t-ZuQyT5uIv2iVJUPSiMA"
+# These can access folders owned by all team members.
+# IMPORTANT: set GOOGLE_OAUTH_CLIENT_ID_RCLONE, GOOGLE_OAUTH_CLIENT_SECRET_RCLONE,
+# and GOOGLE_OAUTH_REFRESH_TOKEN as env vars.
+# Rotate GOCSPX-*** on Google Cloud Console if previously committed in plaintext.
+OAUTH_CLIENT_ID = os.environ["GOOGLE_OAUTH_CLIENT_ID_RCLONE"]
+OAUTH_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET_RCLONE"]
+OAUTH_REFRESH_TOKEN = os.environ["GOOGLE_OAUTH_REFRESH_TOKEN"]
 
 _oauth_access_token: str | None = None
 _oauth_token_expiry: float = 0.0
