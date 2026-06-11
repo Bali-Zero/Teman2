@@ -25,9 +25,9 @@ Design notes
 Usage
 -----
     PYTHONPATH=apps/backend-rag python -m scripts.lead_intent_matcher
-    # or:
-    ~/scripts/cron-agent.sh exec lead_intent_matcher \
-        python /Users/antonellosiano/Projects/nuzantara/scripts/lead_intent_matcher.py
+    # or (Pro, LaunchAgent com.nuzantara.lead-intent-matcher every 5 min):
+    bash scripts/lead_intent_matcher_run.sh
+    # Runbook: docs/runbooks/lead-intent-matcher.md
 """
 
 from __future__ import annotations
@@ -60,6 +60,29 @@ _FETCH_LOOKBACK = timedelta(minutes=35)  # small buffer for cron drift
 # ----------------------------------------------------------------------
 
 _PHONE_RE = re.compile(r"[^\d]")
+
+
+def parse_jsonb(value: Any, default: Any) -> Any:
+    """Decode a jsonb column read through a codec-less asyncpg pool.
+
+    Handles three shapes seen in prod `lead_intents`:
+    - dict/None (pool with codec, or already decoded) → as-is
+    - JSON text ('{"slug": ...}') → one json.loads
+    - double-encoded JSON text ('"{\\"slug\\": ...}"', rows written while the
+      repository json.dumps-ed on top of the pool codec, pre-fix 2026-06-11)
+      → two json.loads
+    Anything else (or invalid JSON) → `default`.
+    """
+    for _ in range(2):
+        if not isinstance(value, str):
+            break
+        try:
+            value = json.loads(value or "null")
+        except ValueError:
+            return default
+    if value is None:
+        return default
+    return value if isinstance(value, dict) else default
 
 
 def normalise_phone(raw: str | None) -> str | None:
@@ -129,8 +152,8 @@ async def _fetch_unmatched_intents(conn: asyncpg.Connection) -> list[dict[str, A
         {
             "id": r["id"],
             "source": r["source"],
-            "context": r["context"] if isinstance(r["context"], dict) else json.loads(r["context"] or "{}"),
-            "utm": r["utm"] if isinstance(r["utm"], (dict, type(None))) else json.loads(r["utm"] or "null"),
+            "context": parse_jsonb(r["context"], {}),
+            "utm": parse_jsonb(r["utm"], None),
             "fingerprint": r["fingerprint"],
             "created_at": r["created_at"],
         }

@@ -91,8 +91,42 @@ class TestDeeplinkBuilder:
         assert url.startswith("https://wa.me/6282264599868?")
 
 
+class TestContentFunnelSources:
+    """ARTICLE + KBLI_NAVIGATOR — the content-funnel sources (2026-06)."""
+
+    def test_kbli_navigator_reference_points_to_code_page(self):
+        url = build_whatsapp_url(
+            source=LeadSource.KBLI_NAVIGATOR,
+            context_lines=[("KBLI", "56303"), ("Business", "Bar")],
+            result_hash="56303",
+            lead_intent_id="li_kbli1",
+            public_host="https://balizero.com",
+        )
+        body = _body_from(url)
+        assert "the KBLI Navigator" in body
+        assert "Reference: https://balizero.com/kbli/56303" in body
+        assert "Lead ID: li_kbli1" in body
+
+    def test_article_source_has_no_reference_line(self):
+        url = build_whatsapp_url(
+            source=LeadSource.ARTICLE,
+            context_lines=[("Article", "Indonesia UMKM tax reforms")],
+            result_hash=None,
+            lead_intent_id="li_art1",
+        )
+        body = _body_from(url)
+        assert "the Insights blog" in body
+        assert "Reference:" not in body
+        assert "• Article: Indonesia UMKM tax reforms" in body
+
+
 class TestSourceEnum:
     def test_all_sources_have_names(self):
         for s in LeadSource:
             assert s.human_name
             assert s.result_url_path.startswith("/")
+
+    def test_content_funnel_values_are_stable(self):
+        # Wire-format values: the mouth frontend sends these literal strings.
+        assert LeadSource.ARTICLE.value == "article"
+        assert LeadSource.KBLI_NAVIGATOR.value == "kbli_navigator"

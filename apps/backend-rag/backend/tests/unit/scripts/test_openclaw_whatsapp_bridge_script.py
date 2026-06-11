@@ -363,6 +363,134 @@ def test_nominee_guard_allows_correct_definitional_answer() -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# F05: property_zoning guard — word-boundary "please"→"lease", "village"→"villa"
+# ---------------------------------------------------------------------------
+
+def test_property_zoning_guard_please_does_not_match_lease() -> None:
+    """F05 regression: 'please' contains 'lease' as a substring.
+
+    'I'm buying a villa, can you please explain the purchase process?' used to
+    trigger the zoning guard (villa + please→lease) and return the canned
+    Airbnb/zoning answer instead of the correct purchase-process reply.
+    """
+    correct = (
+        "Foreigners can buy a villa leasehold or use HGB via PT PMA. "
+        "The purchase process involves due diligence, notary, and AJB signing."
+    )
+    assert (
+        bridge._guard_property_zoning_reply(
+            "I'm buying a villa, can you please explain the purchase process?",
+            correct,
+            "en",
+        )
+        == correct
+    )
+
+
+def test_property_zoning_guard_village_does_not_match_villa() -> None:
+    """F05 regression: 'village' contains 'villa' as a substring.
+
+    A question about a 'traditional village' must not trigger the zoning guard.
+    """
+    correct = (
+        "Traditional Balinese village compounds (desa adat) follow customary "
+        "land rules; they are not subject to the same zoning as tourist villas."
+    )
+    assert (
+        bridge._guard_property_zoning_reply(
+            "What are the zoning rules for a traditional village in Bali?",
+            correct,
+            "en",
+        )
+        == correct
+    )
+
+
+# ---------------------------------------------------------------------------
+# F06: nominee guard — "'s name" / "atas nama" over-match company/invoice context
+# ---------------------------------------------------------------------------
+
+def test_nominee_guard_does_not_fire_on_company_name_change() -> None:
+    """F06 regression: "Can I change my company's name?" hit "'s name" in
+    _NOMINEE_DIRECT_TERMS and was replaced with the illegal-nominee canonical.
+    """
+    correct = (
+        "Yes, you can change your PT PMA's name through a notary deed amendment "
+        "and updated NIB registration. The process takes about 2-4 weeks."
+    )
+    assert bridge._is_nominee_intent("can i change my company's name in indonesia") is False
+    assert (
+        bridge._guard_nominee_reply(
+            "Can I change my company's name in Indonesia?", correct, "en"
+        )
+        == correct
+    )
+
+
+def test_nominee_guard_does_not_fire_on_invoice_atas_nama() -> None:
+    """F06 regression: "bisa buat faktur atas nama PT saya?" hit "atas nama"
+    and returned the illegal-nominee canonical instead of an invoice answer.
+    """
+    correct = (
+        "Ya, faktur pajak bisa diterbitkan atas nama PT Anda selama NPWP PT "
+        "sudah aktif dan terdaftar di Coretax."
+    )
+    assert bridge._is_nominee_intent("bisa buat faktur atas nama pt saya?") is False
+    assert (
+        bridge._guard_nominee_reply("bisa buat faktur atas nama PT saya?", correct, "id")
+        == correct
+    )
+
+
+def test_nominee_guard_still_fires_on_real_nominee_with_atas_nama() -> None:
+    """F06: a REAL nominee request using 'atas nama' (person, not company/invoice)
+    must still be clobbered.
+    """
+    unsafe = (
+        "Kalau atas nama teman Indonesia saya bisa, banyak orang melakukannya "
+        "dan tidak ada masalah biasanya."
+    )
+    guarded = bridge._guard_nominee_reply(
+        "Bisa beli tanah atas nama teman Indonesia saya?", unsafe, "id"
+    )
+    assert guarded != unsafe
+    assert "ilegal" in guarded.lower() or "illegal" in guarded.lower()
+
+
+# ---------------------------------------------------------------------------
+# F13: villa⊂village in _is_villa_kbli_query and _guard_villa_kbli_reply
+# ---------------------------------------------------------------------------
+
+def test_villa_kbli_query_village_is_not_villa() -> None:
+    """F13 regression: 'village' contains 'villa', so a handicraft question
+    mentioning 'in an Ubud village' was classified as a villa KBLI query and
+    the reply was replaced with the 55203 villa canonical.
+    """
+    assert bridge._is_villa_kbli_query(
+        "What KBLI code covers traditional handicraft workshops in an Ubud village?"
+    ) is False
+
+
+def test_villa_kbli_guard_village_not_clobbered() -> None:
+    """F13 regression: guard must not clobber a correct handicraft/KBLI answer
+    just because the word 'village' appears in the question.
+    """
+    correct = (
+        "Traditional handicraft production in Bali typically uses KBLI 32904 "
+        "(other personal goods manufacturing). The team verifies the exact code "
+        "based on the specific product type."
+    )
+    assert (
+        bridge._guard_villa_kbli_reply(
+            "What KBLI code covers traditional handicraft workshops in an Ubud village?",
+            correct,
+            "en",
+        )
+        == correct
+    )
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(
@@ -563,6 +691,122 @@ async def test_run_openclaw_uses_env_model_defaults(monkeypatch: pytest.MonkeyPa
     assert reply == "Env defaults ok."
     assert args[args.index("--model") + 1] == "openai/gpt-5.5"
     assert args[args.index("--thinking") + 1] == "high"
+
+
+# ---------------------------------------------------------------------------
+# F14 — b211 escape word-boundary (2026-06-11)
+# "holders" ⊃ "old", "selama" ⊃ "lama": must NOT escape as legacy framing.
+# ---------------------------------------------------------------------------
+
+
+def test_b211_guard_f14_holders_does_not_escape() -> None:
+    """'B211A holders can work in Indonesia' must be CLOBBERED (not pass-through).
+
+    Before F14 the escape clause matched 'old' inside 'holders', so the unsafe
+    reply slipped through without being replaced.
+    """
+    unsafe = (
+        "B211A holders can work in Indonesia as long as they have their documents."
+    )
+    guarded = bridge._guard_legacy_b211_reply(
+        "Can I use a B211A to work in Indonesia?", unsafe, "en"
+    )
+    assert guarded != unsafe, (
+        "F14 regression: 'holders' ⊃ 'old' escaped the b211 guard — must clobber"
+    )
+
+
+def test_b211_guard_f14_selama_does_not_escape() -> None:
+    """Indonesian 'selama' ⊃ 'lama': must NOT escape as legacy framing."""
+    unsafe = (
+        "B211A adalah visa yang tepat untuk bisnis di Bali, berlaku selama Anda "
+        "punya dokumen yang benar."
+    )
+    guarded = bridge._guard_legacy_b211_reply(
+        "Apakah B211A masih visa yang tepat?", unsafe, "id"
+    )
+    assert guarded != unsafe, (
+        "F14 regression: 'selama' ⊃ 'lama' escaped the b211 guard — must clobber"
+    )
+
+
+# ---------------------------------------------------------------------------
+# F36 — risk-intent word-boundary (2026-06-11)
+# "late" ⊂ "translate", "fine" ⊂ "define", "owe" ⊂ "lower" must NOT fire.
+# ---------------------------------------------------------------------------
+
+
+def test_tax_guard_f36_translate_does_not_fire() -> None:
+    """A message asking to 'translate' a tax form has no risk intent."""
+    reply = "LKPM is the investment realization report companies file with BKPM."
+    original = reply
+    guarded = bridge._guard_tax_compliance_reply(
+        "Can you translate the LKPM form for me?", reply, "en"
+    )
+    assert guarded == original, (
+        "F36 regression: 'late' inside 'translate' incorrectly appended verify-suffix"
+    )
+
+
+# ---------------------------------------------------------------------------
+# F37 — document_status conditional "is approved" (2026-06-11)
+# "once the application is approved" is safe explanatory text; must pass.
+# A bare "is approved" still clobbers.
+# ---------------------------------------------------------------------------
+
+
+def test_document_status_guard_f37_conditional_approved_passes() -> None:
+    """A reply explaining what happens 'once ... is approved' must survive."""
+    reply = (
+        "Once the application is approved by the immigration office, you will "
+        "receive an email notification and can collect the KITAS within three "
+        "working days."
+    )
+    guarded = bridge._guard_document_status_reply(
+        "What happens after my KITAS application is approved?", reply, "en"
+    )
+    assert guarded == reply, (
+        "F37 regression: conditional 'once ... is approved' incorrectly clobbered"
+    )
+
+
+def test_document_status_guard_f37_affirmative_approved_clobbers() -> None:
+    """A bare affirmative 'is approved' claim must still be clobbered."""
+    unsafe = "Your KITAS application is approved and has been processed."
+    guarded = bridge._guard_document_status_reply(
+        "What is the status of my KITAS application?", unsafe, "en"
+    )
+    assert guarded != unsafe, (
+        "F37 regression: bare 'is approved' claim slipped through guard"
+    )
+
+
+# ---------------------------------------------------------------------------
+# F38 — kbli_label postcode / amount false-positive (2026-06-11)
+# A 5-digit postcode or amount in a message without KBLI context must NOT
+# trigger the "KBLI direction to check:" prefix.
+# ---------------------------------------------------------------------------
+
+
+def test_kbli_label_guard_f38_postcode_does_not_fire() -> None:
+    """A reply mentioning a postcode (80361 = Kuta) must NOT get KBLI prefix."""
+    reply = "The Bali Zero office is in the Kerobokan area, postcode 80361, by appointment."
+    guarded = bridge._guard_kbli_label_reply(
+        "What is the Bali Zero office address?", reply, "en"
+    )
+    assert guarded == reply, (
+        "F38 regression: postcode 80361 triggered KBLI prefix on a non-KBLI query"
+    )
+
+
+def test_kbli_label_guard_f38_kbli_context_still_fires() -> None:
+    """A reply with a 5-digit code AND KBLI context in the message must still fire."""
+    reply = "For that activity you'd look at code 56303."
+    guarded = bridge._guard_kbli_label_reply(
+        "What KBLI applies to a coffee shop PT PMA?", reply, "en"
+    )
+    assert guarded != reply, "F38: KBLI-context message should still trigger prefix"
+    assert guarded.startswith("KBLI direction to check")
 
 
 # ---------------------------------------------------------------------------
