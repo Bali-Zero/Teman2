@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { CSSProperties } from "react";
 import { NavShell } from "@balizero/core/components/NavShell";
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { SessionInit } from "@/components/funnel/SessionInit";
@@ -15,6 +14,7 @@ import { Footer } from "../v2/_components/Footer";
 import { ZantaraFAB } from "../v2/_components/ZantaraFAB";
 import { getAllArticles } from "@/lib/blog/articles";
 import homepageLayout from "@/content/homepage-layout.json";
+import { RUMAH_VARS, MASTHEAD_VARS } from "@/lib/theme/rumahVars";
 
 export const dynamic = "force-dynamic";
 
@@ -48,53 +48,6 @@ const NAV_ITEMS = [
   { label: "Property", href: "#property" },
   { label: "News", href: "#news" },
 ];
-
-// MYTHOS P4 masthead: persistent solid-navy band (brand navy #1e3863 =
-// editorial --surface-base-solid) + 3px red rule (NavShell accentBar).
-// NavShell is a DOM child of this wrapper, so the override inherits.
-const MASTHEAD_VARS = {
-  "--nav-bg": "var(--surface-base-solid, #1e3863)",
-} as CSSProperties;
-
-// MYTHOS B2R — "Rumah Putih" route-scoped light theme (Antonello 2026-06-11).
-// The homepage body goes light; masthead + footer stay navy (the permanent
-// dark anchors, Economist pattern); hero + news photography remain dark
-// islands (FT pattern).
-//
-// Scoping mechanism: these CSS custom properties are set inline on <main>
-// ONLY. Custom properties inherit, so every section inside <main> resolves
-// the light values, while NavShell and Footer (DOM siblings of <main>)
-// keep resolving the editorial-dark tokens from html[data-theme=editorial].
-// No file under packages/core/tokens/ changes — blog, /kbli, /visa and the
-// subdomains are untouched. Shared v2 components consume the `--rp-*`
-// hooks with their original dark values as var() fallbacks, so /news and
-// /v2 render byte-identical without this scope.
-const RUMAH_VARS = {
-  // Semantic re-map (Rumah Putih palette — warm paper / ink / navy)
-  "--surface-base": "#f7f6f2",
-  "--surface-raised": "#ffffff",
-  "--text-primary": "#16213a",
-  "--text-secondary": "#475372",
-  "--text-tertiary": "#475372",
-  "--border-subtle": "#e3e1da",
-  "--border-default": "#e3e1da",
-  "--border-strong": "#cfccc2",
-  // Rumah Putih component hooks (chromatic-calm pass — authority via absence)
-  "--rp-heading": "#1e3863",
-  "--rp-accent": "#1e3863",
-  "--rp-card-bg": "#ffffff",
-  "--rp-card-border": "#e3e1da",
-  "--rp-card-shadow": "0 1px 2px rgba(22, 33, 58, 0.05)",
-  "--rp-row-bg": "#f7f6f2",
-  "--rp-badge-bg": "#ffffff",
-  "--rp-list-bg": "transparent",
-  "--rp-list-border": "#e3e1da",
-  "--rp-active-bg": "rgba(30, 56, 99, 0.07)",
-  "--rp-active-border": "rgba(30, 56, 99, 0.35)",
-  "--rp-glow": "none",
-  "--rp-photo-inset": "24px",
-  "--rp-photo-radius": "16px",
-} as CSSProperties;
 
 export default async function HomePage() {
   const { articles } = await getAllArticles({});
