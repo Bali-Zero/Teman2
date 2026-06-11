@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wr2.supervisor-watchdog — Sprint B B3 (2026-05-08).
+
+  Long-running daemon that polls wr2_supervisor_heartbeat every 60s
+  and pages Telegram on tiered alerts:
+    P0 SUPERVISOR_DOWN     heartbeat row > 5 min old
+    P0 PIPELINE_FROZEN     oldest pending > 2h AND no rendered in 24h
+    P1 SUCCESS_RATE_LOW    canva-apply success < 80% over 7-day rolling
+
+  KeepAlive=true so a crash respawns ≤10s. Same wrapper / PATH /
+  cwd as wr2_supervisor (single source of truth via wr2-script-wrapper).
+
+  Install:
+    cp infra/launchagents/com.balizero.wr2.supervisor-watchdog.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.wr2.supervisor-watchdog.plist
+    launchctl print gui/$(id -u)/com.balizero.wr2.supervisor-watchdog | head
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.supervisor-watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
+        <string>scripts/wr2_supervisor_watchdog.py</string>
+    </array>
+
+    <!-- Start at load + respawn on crash. NOT on clean exit (would loop
+         on SIGTERM during launchd stop). -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <!-- Rate-limit respawns: a tight loop on connection failure should
+         pause >=10s between restarts. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2_supervisor_watchdog.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2_supervisor_watchdog.launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
