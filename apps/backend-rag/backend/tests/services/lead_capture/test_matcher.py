@@ -68,6 +68,35 @@ class TestParseJsonb:
         assert m.parse_jsonb("[1, 2]", {}) == {}
 
 
+class TestExtractLeadIds:
+    """Deterministic pass (Filo 2): li_<nanoid> tokens in WA message text."""
+
+    def test_finds_id_in_prefilled_template(self):
+        body = (
+            "Hi Bali Zero — I just used the KBLI Navigator on your site.\n\n"
+            "Context:\n• KBLI: 56303\n\n"
+            "Reference: https://balizero.com/kbli/56303\nLead ID: li_mlrd71elhx"
+        )
+        assert m.extract_lead_ids(body) == ["li_mlrd71elhx"]
+
+    def test_multiple_ids_deduped_in_order(self):
+        body = "li_aaa111bbb2 then li_ccc333ddd4 then li_aaa111bbb2 again"
+        assert m.extract_lead_ids(body) == ["li_aaa111bbb2", "li_ccc333ddd4"]
+
+    def test_ignores_short_fragments_and_uppercase(self):
+        # nanoid alphabet is lowercase a-z0-9, length 10; require >= 6.
+        assert m.extract_lead_ids("li_ab1 e LI_ABCDEF1234") == []
+
+    def test_token_must_be_word_bounded(self):
+        assert m.extract_lead_ids("xli_abcdef1234") == []
+        assert m.extract_lead_ids("(li_abcdef1234)") == ["li_abcdef1234"]
+
+    def test_none_and_empty(self):
+        assert m.extract_lead_ids(None) == []
+        assert m.extract_lead_ids("") == []
+        assert m.extract_lead_ids("no ids here") == []
+
+
 class TestPickMatch:
     def _intent(self, *, phone: str | None = None, minutes_ago: int = 2):
         created = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
