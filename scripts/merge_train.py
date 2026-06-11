@@ -198,6 +198,8 @@ def decide_head(
     is_revert: bool,
     failed_required: list[str],
     rerolled_already: bool,
+    missing_required: list[str] | None = None,
+    update_for_missing_already: bool = False,
 ) -> Decision:
     """The core decision for the queue head. Pure function.
 
@@ -239,6 +241,27 @@ def decide_head(
 
     if state == "BEHIND":
         return Decision("update_branch", pr=n, reason="behind")
+
+    # Head-of-line trap (seen live on #994, 2026-06-12): branch protection
+    # gained new required workflows AFTER this PR's last push, so they never
+    # ran on this head — BLOCKED forever with zero failures. One
+    # update-branch re-triggers everything on a fresh merge commit. Only one
+    # attempt per PR: if contexts are still missing after that, the workflow
+    # name/path-filter itself is broken (W69 trap #1) — human problem.
+    if missing_required and state == "BLOCKED":
+        if not update_for_missing_already:
+            return Decision("update_branch", pr=n, reason="missing_required_contexts",
+                            details={"missing": missing_required})
+        return Decision(
+            "comment_and_skip",
+            pr=n,
+            reason="missing_required_persistent",
+            details={"comment": (
+                "merge-train: required contexts never started on this head even "
+                "after an update-branch — check branch-protection contexts vs "
+                "workflow names/path filters, then push to re-enter the queue."
+            ), "missing": missing_required},
+        )
 
     if state == "UNKNOWN":
         return Decision("wait", pr=n, reason="merge_state_recalculating")
@@ -284,6 +307,17 @@ def failed_required_checks(detail: dict[str, Any], required: set[str]) -> list[s
         if name in required and conclusion == "FAILURE":
             out.append(name)
     return sorted(set(out))
+
+
+def missing_required_contexts(detail: dict[str, Any], required: set[str]) -> list[str]:
+    """Required contexts with NO rollup entry at all on this head (the
+    workflow never started — e.g. protection gained new required checks
+    after the PR's last push). Distinct from failed_required_checks."""
+    present = {
+        c.get("name") or c.get("context") or ""
+        for c in detail.get("statusCheckRollup") or []
+    }
+    return sorted(required - present)
 
 
 def main_suite_green() -> bool:
@@ -415,6 +449,11 @@ def run_tick() -> dict[str, Any]:
     failed = failed_required_checks(detail, required)
     reroll_key = f"reroll:{n}:{detail['headRefOid']}"
     rerolled_already = reroll_key in prev.get("rerolls", {})
+    missing = missing_required_contexts(detail, required)
+    missing_key = f"missing_update:{n}"
+    state["missing_updates"] = prev.get("missing_updates", {})
+    if not missing:
+        state["missing_updates"].pop(missing_key, None)
 
     decision = decide_head(
         detail,
@@ -423,6 +462,8 @@ def run_tick() -> dict[str, Any]:
         is_revert=is_revert,
         failed_required=failed,
         rerolled_already=rerolled_already,
+        missing_required=missing,
+        update_for_missing_already=missing_key in state["missing_updates"],
     )
     state["last_decision"] = {
         "action": decision.action, "pr": decision.pr, "reason": decision.reason,
@@ -440,6 +481,8 @@ def run_tick() -> dict[str, Any]:
             ok = update_branch(n, detail["headRefOid"])
             if ok:
                 state["last_successful_action_ts"] = _iso()
+                if decision.reason == "missing_required_contexts":
+                    state["missing_updates"][missing_key] = {"ts": _now()}
             else:
                 state["last_decision"]["result"] = "head_moved_422_retry"
         elif decision.action == "reroll_failed":
