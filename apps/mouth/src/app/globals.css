@@ -970,3 +970,91 @@ main,
 .rumah-putih .bg-\[\#0a1929\] {
   background: #0f1f33 !important;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   MYTHOS Stage-B Batch 2 — "Rumah Putih" route-scoped LIGHT overrides for the
+   SERVICE pages (services/[slug] detail + the contact channel cards).
+
+   The detail page (services/[slug]/page.tsx + ServicePricing.tsx) is written
+   with hardcoded-dark Tailwind utilities (bg-[#051C2C], bg-[#0a2540], text-white,
+   serif headings) that do NOT read tokens. Scoping by `.rumah-putih` (set on the
+   page wrapper alongside RUMAH_VARS) re-tints ONLY this page family — touching
+   the component source would leak the light theme to /property, /visa, etc.
+
+   The hard-accent islands (orange Free-Consultation sidebar, green WhatsApp CTA,
+   solid accent badges/buttons) are tagged `.rp-dark-island` and KEEP their own
+   accent background + white text — the FT "dark island" pattern. The text-white
+   re-tint from Batch 1 (`.text-white:not(.absolute *)`) must NOT touch them, so
+   the rules below re-assert white inside `.rp-dark-island` at equal/higher
+   specificity, placed AFTER Batch 1's block (later source order wins on ties).
+   WCAG AA: ink #16213a ≈ 13.5:1, soft-ink #475372 ≈ 7.1:1 on paper #f7f6f2;
+   navy headings #1e3863 ≈ 10.8:1; white on orange #d14832 ≈ 4.8:1.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Hardcoded-dark hex surfaces → paper-raised white card + hairline. ── */
+.rumah-putih .bg-\[\#0a2540\]:not(.rp-dark-island):not(.rp-dark-island *),
+.rumah-putih .bg-\[\#051C2C\]:not(.rp-dark-island):not(.rp-dark-island *) {
+  background-color: #ffffff !important;
+  border: 1px solid #e3e1da !important;
+}
+/* The page root paints paper via RUMAH_VARS inline; the Tailwind bg-[#051C2C]
+   class on that same root would otherwise win — neutralize it to paper. */
+.rumah-putih.bg-\[\#051C2C\] {
+  background-color: #f7f6f2 !important;
+}
+
+/* ── Serif section headings + h1/h3 hardcoded text-white → navy (not ink). ── */
+.rumah-putih h1.text-white:not(.rp-dark-island *),
+.rumah-putih h2.text-white:not(.rp-dark-island *),
+.rumah-putih h3.text-white:not(.rp-dark-island *),
+.rumah-putih .font-serif.text-white:not(.rp-dark-island *) {
+  color: #1e3863 !important;
+}
+
+/* ── Accent-blue-editorial popular card wash (dark-glass → faint navy). ── */
+.rumah-putih
+  .bg-accent-blue-editorial\/10:not(.rp-dark-island):not(.rp-dark-island *) {
+  background-color: rgba(30, 56, 99, 0.05) !important;
+}
+
+/* ── Accent tinted package cards (visa orange/sky at /20) → white + accent
+      hairline. These are NOT islands (their text is ink, not white). ── */
+.rumah-putih .bg-orange-500\/20:not(.rp-dark-island),
+.rumah-putih .bg-sky-500\/20:not(.rp-dark-island) {
+  background-color: #ffffff !important;
+}
+.rumah-putih .border-orange-500\/40 {
+  border-color: color-mix(in srgb, #f97316 36%, #e3e1da) !important;
+}
+.rumah-putih .border-sky-500\/40 {
+  border-color: color-mix(in srgb, #0ea5e9 36%, #e3e1da) !important;
+}
+
+/* ── Secondary "outline" buttons used dark border-white/20 + white text →
+      navy hairline + navy ink (they sit on paper, NOT on an island). ── */
+.rumah-putih button.border-white\/20:not(.rp-dark-island *),
+.rumah-putih a.border-white\/20:not(.rp-dark-island *) {
+  border-color: #cfccc2 !important;
+  color: #1e3863 !important;
+}
+.rumah-putih .border-white\/20:not(.rp-dark-island *):hover {
+  background-color: rgba(30, 56, 99, 0.06) !important;
+}
+
+/* ── DARK-ISLAND re-assert: anything tagged .rp-dark-island keeps its accent
+      background and forces its text/icons back to white, overriding Batch 1's
+      text-white re-tint and the ink defaults. ── */
+.rumah-putih .rp-dark-island,
+.rumah-putih .rp-dark-island * {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.rumah-putih .rp-dark-island .text-white,
+.rumah-putih .rp-dark-island.text-white,
+.rumah-putih .rp-dark-island h3,
+.rumah-putih .rp-dark-island span:not([class*="text-"]) {
+  color: #ffffff !important;
+}
+.rumah-putih .rp-dark-island .text-white\/80,
+.rumah-putih .rp-dark-island .text-white\/90 {
+  color: rgba(255, 255, 255, 0.88) !important;
+}

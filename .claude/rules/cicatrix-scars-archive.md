@@ -2373,7 +2373,6 @@ Recovery: `git reset --soft HEAD~1` → `git restore --staged .` (clean slate) �
 
 ---
 
-
 ### 🗄️ Auto-archived 2026-06-07 (archive_cicatrix_scars.py)
 
 _7 entries moved from the active file to keep it under the 40000-char auto-load threshold._

@@ -366,6 +366,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.debug("Checkpointer close skipped: %s", e)
 
+    # Close the intake→CRM push HTTP client (Golden Rule 10 — persistent client)
+    try:
+        from backend.services.intake.crm_push import close_client as close_crm_push_client
+
+        await close_crm_push_client()
+    except Exception as e:
+        logger.debug("CRM push client close skipped: %s", e)
+
     # NOTE: WebSocket Redis Listener, Compliance Monitor, and Autonomous Scheduler
     # shutdown removed — _init_background_services() is disabled (omnichannel stabilization).
     # Re-add shutdown code when _init_background_services() is re-enabled.

@@ -7,9 +7,14 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
+# Merge-train spec §10.2 (2026-06-12): cancel-in-progress must NOT apply to
+# main — back-to-back merges were cancelling the in-flight main run, so
+# commits landed on main UNTESTED and a future auto-revert guardian could
+# not attribute a green→red window to a single commit. PR refs keep
+# cancelling (newest push wins); every main push now runs to completion.
 concurrency:
   group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   backend-tests:

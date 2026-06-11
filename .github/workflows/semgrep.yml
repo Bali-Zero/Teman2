@@ -1,10 +1,28 @@
 name: SAST — Bandit + ESLint Security
 
+# Path-scoped (2026-06-12 CI fan-out reduction): SAST only has work to do on
+# source changes. A docs/content-only PR has no .py/.js/.ts to scan. NOT a
+# required check (the required "Bandit Python Security" comes from security.yml,
+# not this "Bandit SAST (Python)"), so a non-matching PR simply skips it.
 on:
   pull_request:
     branches: [main]
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.jsx"
+      - "**.ts"
+      - "**.tsx"
+      - ".github/workflows/semgrep.yml"
   push:
     branches: [main]
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.jsx"
+      - "**.ts"
+      - "**.tsx"
+      - ".github/workflows/semgrep.yml"
   workflow_dispatch:
 
 concurrency:

@@ -171,6 +171,25 @@ async def _get_revenue_stats(db_pool: asyncpg.Pool) -> dict:
         }
 
 
+async def _get_total_clients(db_pool: asyncpg.Pool) -> int:
+    """
+    Total registered clients for the admin KPI bar.
+
+    Uses the SAME definition as /api/crm/clients/stats/overview (the source of
+    the /clients page total): every non-soft-deleted client, regardless of
+    status. NOT the /api/dashboard/stats definition (status = 'active'), which
+    yields a different number and would make the KPI disagree with /clients.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            return (
+                await conn.fetchval("SELECT COUNT(*) FROM clients WHERE deleted_at IS NULL") or 0
+            )
+    except Exception as e:
+        logger.warning("Failed to get total clients: %s", e)
+        return 0
+
+
 async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
     """
     Calculate revenue growth percentage (current month vs previous month).
@@ -281,6 +300,7 @@ async def get_dashboard_summary(
                         {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0},
                     ),
                     _with_timeout(_calculate_revenue_growth(db_pool), 0.0),
+                    _with_timeout(_get_total_clients(db_pool), 0),
                 ],
             )
 
@@ -310,6 +330,7 @@ async def get_dashboard_summary(
             else {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0}
         )
         revenue_growth = results[7] if is_admin and not isinstance(results[7], Exception) else 0.0
+        total_clients = results[8] if is_admin and not isinstance(results[8], Exception) else 0
 
         # Check system health
         has_failures = any(isinstance(result, Exception) for result in results[:5])
@@ -416,6 +437,11 @@ async def get_dashboard_summary(
         if is_admin:
             response["revenue"] = revenue_stats
             response["revenue_growth"] = revenue_growth
+            # KPI bar counts — total_clients matches the /clients page source
+            # (crm_clients stats/overview: deleted_at IS NULL); total_practices
+            # comes from the practice stats already fetched above.
+            response["total_clients"] = total_clients
+            response["total_practices"] = practice_stats.get("total_practices", 0)
 
         return response
 
