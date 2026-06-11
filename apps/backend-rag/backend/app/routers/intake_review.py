@@ -41,11 +41,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import FileResponse
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
+from backend.services.intake import crm_push as intake_crm_push
 from backend.services.intake import writer as intake_writer
 
 logger = logging.getLogger(__name__)
@@ -807,10 +808,148 @@ async def _require_active_claim(
 
 
 # --------------------------------------------------------------------------- #
+# Post-commit Pro→Fly CRM delivery (Drive folder + Fly documents row)
+# --------------------------------------------------------------------------- #
+async def _deliver_committed_to_crm(
+    *,
+    pool: asyncpg.Pool,
+    request: Request,
+    queue_id: int | None,
+    plan: intake_writer.CommitPlan,
+    result: intake_writer.CommitResult,
+) -> dict[str, Any]:
+    """Best-effort delivery of a COMMITTED document to the Fly CRM.
+
+    Runs AFTER the local commit transaction succeeded (the local Pro Postgres
+    commit stays the source of truth for the approve outcome). Reuses the Fly
+    base64 upload endpoint, authenticated with the reviewer's own bearer JWT
+    (forwarded by the Fly proxy on the incoming request). On success the LOCAL
+    ``documents`` row is enriched with the Drive file_id/file_url; either way
+    the push status is appended to the ``intake_commit_audit.plan`` jsonb of
+    this commit's audit row. NEVER raises — a failed delivery leaves the
+    approve outcome 'committed' and surfaces {status, detail} to the caller.
+    """
+    import json as _json
+
+    if not intake_crm_push.push_enabled():
+        return {"status": "disabled"}
+
+    # Reviewer's bearer JWT — reused for the Pro→Fly call (same RBAC actor).
+    auth_header = request.headers.get("authorization") or ""
+    bearer = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else None
+
+    blob_path: str | None = None
+    mime_type: str | None = None
+    already: asyncpg.Record | None = None
+    async with pool.acquire() as conn:
+        if queue_id is not None:
+            qrow = await conn.fetchrow(
+                """
+                SELECT q.blob_path, di.mime_type
+                FROM intake_queue q
+                LEFT JOIN document_instances di ON di.id = q.instance_id
+                WHERE q.id = $1
+                """,
+                queue_id,
+            )
+            if qrow is not None:
+                blob_path = qrow["blob_path"]
+                mime_type = qrow["mime_type"]
+        # Idempotent re-approve guard: if the local row already carries a Drive
+        # file (previous successful push, or Drive-sourced intake), do NOT
+        # upload again — that would duplicate the file in the client's folder.
+        if result.doc_id is not None:
+            already = await conn.fetchrow(
+                "SELECT file_id, file_url FROM documents WHERE id = $1", result.doc_id
+            )
+
+    payload = plan.payload
+    if already is not None and (already["file_id"] or already["file_url"]):
+        push = intake_crm_push.CrmPushResult(
+            ok=False,
+            status="already_delivered",
+            file_id=already["file_id"],
+            file_url=already["file_url"],
+            detail="local documents row already has a Drive file — skipping re-upload",
+        )
+    elif not blob_path:
+        push = intake_crm_push.CrmPushResult(
+            ok=False, status="missing_blob", detail="no blob_path on intake_queue row"
+        )
+    else:
+        push = await intake_crm_push.push_committed_document(
+            bearer_token=bearer,
+            client_id=int(plan.client_id),  # type: ignore[arg-type]  # committed ⇒ non-None
+            practice_id=plan.practice_id,
+            document_type=payload.get("document_type") or "unknown",
+            document_category=payload.get("document_category"),
+            file_name=payload.get("file_name") or os.path.basename(blob_path),
+            blob_path=blob_path,
+            mime_type=mime_type,
+            expiry_date=payload.get("expiry_date"),
+            notes=payload.get("notes"),
+        )
+
+    crm_info: dict[str, Any] = {
+        "status": push.status,
+        "fly_doc_id": push.fly_doc_id,
+        "file_url": push.file_url,
+    }
+    if push.detail:
+        crm_info["detail"] = push.detail
+
+    # Post-delivery bookkeeping (best-effort, outside the commit TX by design).
+    try:
+        async with pool.acquire() as conn:
+            if push.ok and result.doc_id is not None:
+                await conn.execute(
+                    """
+                    UPDATE documents
+                       SET file_id = COALESCE($2, file_id),
+                           file_url = COALESCE($3, file_url),
+                           google_drive_file_url = COALESCE($3, google_drive_file_url),
+                           storage_type = 'google_drive',
+                           updated_at = NOW()
+                     WHERE id = $1
+                    """,
+                    result.doc_id,
+                    push.file_id,
+                    push.file_url,
+                )
+            if result.audit_id is not None:
+                await conn.execute(
+                    """
+                    UPDATE intake_commit_audit
+                       SET plan = COALESCE(plan, '{}'::jsonb) || $2::jsonb
+                     WHERE id = $1
+                    """,
+                    result.audit_id,
+                    _json.dumps({"crm_push": crm_info}),
+                )
+    except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
+        logger.error(
+            "intake.review.crm_push.bookkeeping_failed proposal=%s err=%s",
+            plan.proposal_id,
+            exc,
+        )
+
+    if not push.ok and push.status not in ("disabled", "already_delivered"):
+        logger.warning(
+            "intake.review.crm_push.failed proposal=%s doc=%s status=%s detail=%s",
+            plan.proposal_id,
+            result.doc_id,
+            push.status,
+            push.detail,
+        )
+    return crm_info
+
+
+# --------------------------------------------------------------------------- #
 # approve (dry-run 5B / real commit 5C) + reject (terminal, queue-management)
 # --------------------------------------------------------------------------- #
 @router.post("/{proposal_id}/approve")
 async def approve_review(
+    request: Request,
     proposal_id: int = Path(..., ge=1),
     body: dict[str, Any] = Body(default_factory=dict),
     user: dict[str, Any] = Depends(get_current_user),
@@ -887,11 +1026,24 @@ async def approve_review(
     # review_claimed (P0#9).
     advanced = result.outcome == "committed"
     response_status = "routed" if advanced else "review_claimed"
+
+    # Pro→Fly CRM delivery — ONLY after a REAL committed write (never dry-run,
+    # never blocked). The local commit above is final regardless of delivery.
+    crm_push_info: dict[str, Any] | None = None
+    if advanced and not result.dry_run:
+        crm_push_info = await _deliver_committed_to_crm(
+            pool=pool,
+            request=request,
+            queue_id=prop["queue_id"],
+            plan=plan,
+            result=result,
+        )
+
     logger.info(
         "intake.review.approve proposal=%s reviewer=%s dry_run=%s outcome=%s status=%s",
         proposal_id, user_email, result.dry_run, result.outcome, response_status,
     )
-    return {
+    response: dict[str, Any] = {
         "proposal_id": proposal_id,
         "dry_run": result.dry_run,
         "status": response_status,
@@ -899,6 +1051,9 @@ async def approve_review(
         "would_commit": plan.to_dict(),
         "result": result.to_dict(),
     }
+    if crm_push_info is not None:
+        response["crm_push"] = crm_push_info
+    return response
 
 
 @router.post("/{proposal_id}/reject")

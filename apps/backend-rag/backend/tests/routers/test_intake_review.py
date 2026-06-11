@@ -643,6 +643,39 @@ async def test_approve_dry_run_after_claim(pool, seed):
     assert after == before
 
 
+async def test_approve_dry_run_never_calls_crm_pusher(pool, seed, monkeypatch):
+    """Dry-run approve (writer OFF) must NOT call the Pro→Fly CRM pusher.
+
+    The Fly delivery leg runs ONLY after a REAL committed write. A sentinel
+    replaces push_committed_document: any call fails the test. The dry-run
+    response also must NOT carry a crm_push key (response unchanged vs 5B).
+    """
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
+    calls: list[dict] = []
+
+    async def _sentinel(**kwargs):
+        calls.append(kwargs)
+        raise AssertionError("CRM pusher must not be called on a dry-run approve")
+
+    from backend.services.intake import crm_push
+    monkeypatch.setattr(crm_push, "push_committed_document", _sentinel)
+
+    app = _make_app(pool, ADMIN)
+    pid = seed["p_owner"]
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert rc.status_code == 200, rc.text
+        ra = await cl.post(
+            f"/api/intake/review/{pid}/approve",
+            json={"claim_token": rc.json()["claim_token"]},
+        )
+    assert ra.status_code == 200, ra.text
+    body = ra.json()
+    assert body["dry_run"] is True
+    assert "crm_push" not in body
+    assert calls == []
+
+
 async def test_zero_crm_write(pool, seed):
     """Full exercise of every endpoint must NOT mutate clients/practices."""
     before = await _crm_counts(pool)
