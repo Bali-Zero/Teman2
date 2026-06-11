@@ -544,6 +544,31 @@ export function trackPropertyCTA(
 
 type HeroCTAEvent = "hero_cta_book_call" | "hero_cta_read_dispatch";
 
+// ============================================================
+// Persona Doors (MYTHOS B2, IA-1)
+// ============================================================
+
+/** Which of the three homepage "Start where you are." doors was chosen. */
+export type PersonaDoor = "visa" | "company" | "property";
+
+/**
+ * Track a homepage persona-door click.
+ * Triple-dispatch: GA4 + internal CRM bus + funnel store.
+ * Event registered in FUNNEL_EVENTS + backend ALLOWED_EVENTS
+ * (parity enforced by test_analytics_funnel_parity.py).
+ */
+export function trackPersonaDoor(door: PersonaDoor): void {
+  sendGA4Event("persona_door_click", {
+    event_category: "PersonaDoors",
+    door,
+  });
+  trackEvent("persona_door_click", { door });
+  void trackFunnelEvent("persona_door_click", {
+    sessionId: getOrCreateSessionId(),
+    payload: { door },
+  });
+}
+
 /**
  * Track a hero section CTA click.
  * Triple-dispatch: GA4 + internal CRM bus + funnel store.

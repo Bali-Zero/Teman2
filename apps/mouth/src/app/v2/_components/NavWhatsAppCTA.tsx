@@ -4,7 +4,21 @@ import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { trackFunnelEvent } from "@balizero/core/analytics";
 import { getOrCreateSessionId } from "@balizero/core/auth";
 
-export function NavWhatsAppCTA() {
+/**
+ * Nav "Get Started via WhatsApp" CTA — #1216 tracking island
+ * (home_whatsapp_cta, trigger: nav).
+ *
+ * MYTHOS B2 (P2): `variant="whatsapp"` renders the channel-green style
+ * (--accent-whatsapp + dark text, 7.5:1 on #25D366 — AA) for the navy
+ * masthead, where red is reserved for the page's single primary.
+ * Default "accent" keeps existing consumers (e.g. /v2) byte-identical.
+ */
+export function NavWhatsAppCTA({
+  variant = "accent",
+}: {
+  variant?: "accent" | "whatsapp";
+}) {
+  const isWhatsApp = variant === "whatsapp";
   return (
     <a
       href={buildWhatsAppLink("home")}
@@ -18,8 +32,10 @@ export function NavWhatsAppCTA() {
       }
       className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
       style={{
-        background: "var(--accent-funnel)",
-        color: "var(--text-on-accent)",
+        background: isWhatsApp
+          ? "var(--accent-whatsapp, #25d366)"
+          : "var(--accent-funnel)",
+        color: isWhatsApp ? "#06301a" : "var(--text-on-accent)",
         textDecoration: "none",
       }}
     >
@@ -29,8 +45,8 @@ export function NavWhatsAppCTA() {
           width: 7,
           height: 7,
           borderRadius: "50%",
-          background: "#25D366",
-          boxShadow: "0 0 6px #25D366",
+          background: isWhatsApp ? "#06301a" : "#25D366",
+          boxShadow: isWhatsApp ? "none" : "0 0 6px #25D366",
           flexShrink: 0,
         }}
       />

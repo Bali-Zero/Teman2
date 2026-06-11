@@ -52,6 +52,7 @@ describe("funnel-view", () => {
       "tax_dashboard_viewed",
       "property_cta_clicked",
       "book_viewed", // MYTHOS IA-3 scaffolding (emission ships in B4)
+      "persona_door_click", // MYTHOS B2 (IA-1) homepage persona doors
     ];
     for (const event of representative) {
       expect(FUNNEL_EVENTS).toContain(event);
