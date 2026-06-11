@@ -25,9 +25,9 @@ Design notes
 Usage
 -----
     PYTHONPATH=apps/backend-rag python -m scripts.lead_intent_matcher
-    # or:
-    ~/scripts/cron-agent.sh exec lead_intent_matcher \
-        python /Users/antonellosiano/Projects/nuzantara/scripts/lead_intent_matcher.py
+    # or (Pro, LaunchAgent com.nuzantara.lead-intent-matcher every 5 min):
+    bash scripts/lead_intent_matcher_run.sh
+    # Runbook: docs/runbooks/lead-intent-matcher.md
 """
 
 from __future__ import annotations
