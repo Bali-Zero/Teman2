@@ -5,30 +5,21 @@ import {
   Users,
   Briefcase,
   Clock,
-  MessageCircle,
-  Mail,
-  BookOpen,
   Star,
-  Zap,
   TrendingUp,
   CheckCircle2,
   DollarSign,
 } from "lucide-react";
 
+// Only metrics with a live data source are rendered. Chat convos/messages,
+// emails in/out and KB views/downloads were zero for every member (their
+// source tables are dead or stale — P0.2 audit 2026-06-11) and were removed.
 export interface TeamMemberStats {
   email: string;
   name: string;
   role: string;
-  department: string;
-  conversations: number;
-  messages: number;
   days_worked: number;
   crm_actions: number;
-  emails_sent: number;
-  emails_received: number;
-  kb_views: number;
-  kb_downloads: number;
-  last_activity: string | null;
   // Practice stats (joined via client.assigned_to)
   practices_completed?: number;
   practices_active?: number;
@@ -36,11 +27,7 @@ export interface TeamMemberStats {
 }
 
 export interface TeamOverview {
-  total_conversations: number;
-  total_messages: number;
-  total_team_members: number;
   active_today: number;
-  messages_today: number;
 }
 
 interface Props {
@@ -255,7 +242,7 @@ function Cell({
   );
 }
 
-const COLS = "190px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr";
+const COLS = "190px 1fr 1fr 1fr 1fr";
 
 export function TeamActivityPanel({ members, overview, isLoading }: Props) {
   const safeMembers = Array.isArray(members) ? members : [];
@@ -267,20 +254,8 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
 
   const maxima = React.useMemo(
     () => ({
-      conversations: Math.max(
-        ...filteredMembers.map((m) => m.conversations),
-        1,
-      ),
-      messages: Math.max(...filteredMembers.map((m) => m.messages), 1),
       days_worked: Math.max(...filteredMembers.map((m) => m.days_worked), 1),
       crm_actions: Math.max(...filteredMembers.map((m) => m.crm_actions), 1),
-      emails_sent: Math.max(...filteredMembers.map((m) => m.emails_sent), 1),
-      emails_received: Math.max(
-        ...filteredMembers.map((m) => m.emails_received),
-        1,
-      ),
-      kb_views: Math.max(...filteredMembers.map((m) => m.kb_views), 1),
-      kb_downloads: Math.max(...filteredMembers.map((m) => m.kb_downloads), 1),
       practices_completed: Math.max(
         ...filteredMembers.map((m) => m.practices_completed ?? 0),
         1,
@@ -324,9 +299,6 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
               />
               {overview.active_today} online
             </span>
-            <span>
-              {overview.total_messages.toLocaleString("en-US")} total messages
-            </span>
             <span>{filteredMembers.length} members</span>
           </div>
         )}
@@ -347,14 +319,8 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
           </span>
         </div>
         {[
-          { icon: MessageCircle, label: "Convos" },
-          { icon: Zap, label: "Messages" },
           { icon: Clock, label: "Days" },
           { icon: Briefcase, label: "CRM" },
-          { icon: Mail, label: "Emails Out" },
-          { icon: Mail, label: "Emails In" },
-          { icon: BookOpen, label: "KB Views" },
-          { icon: BookOpen, label: "KB DL" },
           { icon: CheckCircle2, label: "Done" },
           { icon: DollarSign, label: "Revenue" },
         ].map(({ icon: Icon, label }) => (
@@ -443,17 +409,7 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
                     </div>
                   </div>
 
-                  {/* 9 metric cells */}
-                  <Cell
-                    value={m.conversations}
-                    max={maxima.conversations}
-                    accent={palette.accent}
-                  />
-                  <Cell
-                    value={m.messages}
-                    max={maxima.messages}
-                    accent={palette.accent}
-                  />
+                  {/* 4 metric cells */}
                   <Cell
                     value={m.days_worked}
                     max={maxima.days_worked}
@@ -462,26 +418,6 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
                   <Cell
                     value={m.crm_actions}
                     max={maxima.crm_actions}
-                    accent={palette.accent}
-                  />
-                  <Cell
-                    value={m.emails_sent}
-                    max={maxima.emails_sent}
-                    accent={palette.accent}
-                  />
-                  <Cell
-                    value={m.emails_received}
-                    max={maxima.emails_received}
-                    accent={palette.accent}
-                  />
-                  <Cell
-                    value={m.kb_views}
-                    max={maxima.kb_views}
-                    accent={palette.accent}
-                  />
-                  <Cell
-                    value={m.kb_downloads}
-                    max={maxima.kb_downloads}
                     accent={palette.accent}
                   />
                   <Cell
