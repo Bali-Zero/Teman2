@@ -120,7 +120,7 @@ async def _create_drive_folder_with_observability(
     (2026-05-21: GDRIVE_COMPANIES_FOLDER_ID phantom).
     """
     try:
-        result = await drive_service.create_client_folder(
+        result = await drive_service.ensure_client_folder(
             client_id=client_id,
             client_name=client_name,
             client_type=client_type,
@@ -128,7 +128,7 @@ async def _create_drive_folder_with_observability(
         )
         if not result.get("success"):
             err = RuntimeError(
-                f"create_client_folder returned success=False: {result.get('error')}"
+                f"ensure_client_folder returned success=False: {result.get('error')}"
             )
             logger.error(
                 "Drive folder creation failed for client %s (%s): %s",
@@ -870,8 +870,10 @@ async def ensure_drive_folder(
 
     Behavior:
       - If `clients.google_drive_folder_id` is already set → returns `{"created": False, ...}`.
-      - Otherwise → calls `ServiceAccountDriveService.create_client_folder` (sync, NOT a
-        BackgroundTask) so caller knows the outcome.
+      - Otherwise → calls `ServiceAccountDriveService.ensure_client_folder` (awaited, NOT a
+        BackgroundTask) so caller knows the outcome. The ensure path holds a per-client
+        pg advisory lock and re-checks the column, so a concurrent creator never produces
+        a twin folder.
     """
     async with db_pool.acquire() as conn:
         # RBAC: skip if authenticated via internal key (service-to-service call)
@@ -899,7 +901,7 @@ async def ensure_drive_folder(
 
     drive_service = ServiceAccountDriveService()
     try:
-        result = await drive_service.create_client_folder(
+        result = await drive_service.ensure_client_folder(
             client_id=client_id,
             client_name=row["full_name"] or f"client_{client_id}",
             client_type=row["client_type"] or "individual",
@@ -910,14 +912,14 @@ async def ensure_drive_folder(
         raise HTTPException(status_code=502, detail=f"Drive folder creation failed: {e}") from e
 
     if not result.get("success"):
-        err = RuntimeError(result.get("error") or "create_client_folder returned success=False")
+        err = RuntimeError(result.get("error") or "ensure_client_folder returned success=False")
         _report_drive_folder_failure(client_id, row["full_name"], row["client_type"], err)
         raise HTTPException(status_code=502, detail=str(err))
 
     # F32: ensure-drive-folder was the only mutating endpoint here without invalidation
     await invalidate_cache("zantara:crm_clients_stats:*")
     return {
-        "created": True,
+        "created": result.get("created", True),
         "client_id": client_id,
         "folder_id": result.get("root_folder_id"),
         "folder_url": result.get("root_folder_url"),

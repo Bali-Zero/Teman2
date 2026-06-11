@@ -407,7 +407,14 @@ def register_handlers(
 
 
 async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
-    """Create a Google Drive folder for a new client."""
+    """Ensure a Google Drive folder exists for a new client.
+
+    Delegates to the idempotent `ensure_client_folder` chokepoint (per-client
+    pg advisory lock + canonical `google_drive_folder_id` column). The previous
+    inline version was doubly broken: it called the async `create_folder`
+    without await (so it never created anything) and checked the legacy
+    `drive_folder_id` column that no production path writes.
+    """
     try:
         from backend.services.integrations.service_account_drive_service import (
             ServiceAccountDriveService,
@@ -415,37 +422,30 @@ async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
 
         drive_svc = ServiceAccountDriveService()
 
-        # Fetch client name for folder
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1",
+                "SELECT full_name, client_type, google_drive_folder_id "
+                "FROM clients WHERE id = $1",
                 client_id,
             )
         if not row:
             return
-
-        client_name = row["full_name"]
-        folder_name = f"Individual_{client_name.replace(' ', '_')}"
-
-        # Check if folder already exists (idempotency)
-        async with db_pool.acquire() as conn:
-            existing = await conn.fetchval(
-                "SELECT drive_folder_id FROM clients WHERE id = $1",
-                client_id,
-            )
-        if existing:
+        if row["google_drive_folder_id"]:
             logger.debug("Drive folder already exists for client %s", client_id)
             return
 
-        folder_id = drive_svc.create_folder(folder_name)
-        if folder_id:
-            async with db_pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE clients SET drive_folder_id = $1 WHERE id = $2",
-                    folder_id,
-                    client_id,
-                )
-            logger.info("📁 Drive folder created for client %s: %s", client_id, folder_id)
+        result = await drive_svc.ensure_client_folder(
+            client_id=client_id,
+            client_name=row["full_name"] or f"client_{client_id}",
+            client_type=row["client_type"] or "individual",
+            db_pool=db_pool,
+        )
+        if result.get("created"):
+            logger.info(
+                "📁 Drive folder created for client %s: %s",
+                client_id,
+                result.get("root_folder_id"),
+            )
     except Exception as e:
         logger.error("Drive folder creation failed for client %s: %s", client_id, e)
 
