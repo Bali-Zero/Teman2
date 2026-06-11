@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
   title: "Services · Bali Zero",
@@ -105,9 +106,13 @@ const TRUST_STRIP = [
 
 export default function ServicesPage() {
   return (
+    // MYTHOS Stage-B Batch 2: Rumah Putih light, scoped per-page (NEVER on
+    // the shared (blog)/layout.tsx). NavShell + Footer stay navy anchors
+    // because they read --nav-bg / --footer-bg, not --surface-base.
     <div
-      className="min-h-screen"
+      className={`min-h-screen ${RUMAH_CLASS}`}
       style={{
+        ...RUMAH_VARS,
         background: "var(--surface-base)",
         color: "var(--text-primary)",
       }}
@@ -121,7 +126,9 @@ export default function ServicesPage() {
         <div className="max-w-[1400px] mx-auto">
           <div
             className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
-            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+            style={{
+              color: "var(--rp-accent, var(--accent-funnel-text, #5c8aff))",
+            }}
           >
             Services · AI drafts · Licensed team signs
           </div>
@@ -206,17 +213,18 @@ export default function ServicesPage() {
                 key={s.slug}
                 className="relative rounded-2xl p-6 overflow-hidden"
                 style={{
-                  background: `color-mix(in srgb, ${s.accent} 22%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${s.accent} 60%, transparent)`,
-                  boxShadow: `0 16px 48px color-mix(in srgb, ${s.accent} 32%, transparent), inset 0 1px 0 rgba(255,255,255,0.08)`,
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                  // Rumah Putih: white raised card + accent hairline + a faint
+                  // accent top-wash (replaces the editorial-dark glass block).
+                  background: "var(--rp-card-bg, #ffffff)",
+                  border: `1px solid color-mix(in srgb, ${s.accent} 34%, var(--rp-card-border, #e3e1da))`,
+                  boxShadow:
+                    "var(--rp-card-shadow, 0 1px 2px rgba(22,33,58,0.05))",
                 }}
               >
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background: `radial-gradient(ellipse 70% 50% at 20% 10%, color-mix(in srgb, ${s.accent} 42%, transparent) 0%, transparent 65%)`,
+                    background: `radial-gradient(ellipse 70% 50% at 20% 10%, color-mix(in srgb, ${s.accent} 9%, transparent) 0%, transparent 60%)`,
                   }}
                   aria-hidden="true"
                 />
@@ -311,7 +319,9 @@ export default function ServicesPage() {
           <div className="mb-10">
             <div
               className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-3"
-              style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+              style={{
+                color: "var(--rp-accent, var(--accent-funnel-text, #5c8aff))",
+              }}
             >
               How we work
             </div>
