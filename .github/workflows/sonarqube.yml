@@ -1,12 +1,29 @@
 name: SonarQube Analysis
 
+# Path-scoped (2026-06-12 CI fan-out reduction): advisory code-quality scan
+# (continue-on-error) — no value on docs/content-only PRs. NON-REQUIRED, so a
+# non-matching PR just skips it.
 on:
   push:
     branches:
       - main
       - develop
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.jsx"
+      - "**.ts"
+      - "**.tsx"
+      - ".github/workflows/sonarqube.yml"
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.jsx"
+      - "**.ts"
+      - "**.tsx"
+      - ".github/workflows/sonarqube.yml"
   workflow_dispatch:
 
 concurrency:
