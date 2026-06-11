@@ -505,6 +505,48 @@ def _balance_headline(
     return "<br>".join(" ".join(line) for line in lines)
 
 
+def _deorphan_numbers_in_headline(text: str) -> str:
+    """ALWAYS-ON, deterministic, PIXEL-INDEPENDENT number-orphan correction.
+
+    Distinct from `_balance_headline` (a FULL pixel-rebalance gated behind the
+    designer-loop `_rebalance_wrap` lever): this pass enforces ONLY the safe,
+    text-only typographic rule "a bare numeral must never be stranded at a line
+    end, split from the noun it quantifies" — the load-bearing "3 RULES CHANGED"
+    must never wrap as "...VALID. 3" / "RULES CHANGED".
+
+    It runs ALWAYS at compose time (not gated behind the non-deterministic vision
+    critic) and is PIXEL-INDEPENDENT: instead of guessing where the browser will
+    wrap (the F10 re-shadow proved our pixel estimate disagrees with the real
+    browser wrap, so a pixel-based de-orphan missed the orphan), it GLUES every
+    bare numeral to its immediately-following word with a non-breaking space
+    (&nbsp;). The browser then physically cannot break between them, so the
+    numeral always carries its noun onto whatever line it lands on, regardless of
+    box width or font metrics. The composer substitutes the headline via plain
+    string .replace (no HTML escaping — see _fill_placeholders), so the literal
+    "&nbsp;" entity renders as a real non-breaking space, not as visible text.
+
+    Brand-drift-safe: it ONLY inserts &nbsp; between a numeral and its next word;
+    it changes no other spacing, never reorders/drops words, and is a no-op when
+    the headline contains no bare-numeral-followed-by-word pattern.
+
+    Handles a headline whether flat or already lever-wrapped (with <br>): the
+    glue applies to the textual word sequence either way.
+    """
+    text = text.strip()
+    if not text:
+        return text
+    # Glue a bare integer (optionally with a trailing period, e.g. "3" / "10")
+    # to its IMMEDIATELY FOLLOWING word via &nbsp;. Word boundaries on both sides
+    # so we never touch a number embedded in a token (e.g. "IDR3" or "22/2023"),
+    # and we require a following word so a trailing numeral at the very end is
+    # left alone (nothing to glue it to). A literal regular space (not a <br>)
+    # must separate them — never glue across an existing <br>.
+    return re.sub(
+        r"(?<![\w&;])(\d+\.?)[ ](?=\w)",
+        lambda m: m.group(1) + "&nbsp;",
+        text,
+    )
+
 def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str | None) -> str:
     """Fill {{placeholders}} + simple {{#if}} blocks from a slide dict.
 
@@ -520,9 +562,16 @@ def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str |
     # lines via a <br>. Text-only — applied here BEFORE placeholder substitution
     # so the skeleton's {{heading}}/{{statement}} carry the <br> verbatim (the
     # composer uses plain string .replace, no HTML-escaping → <br> renders as a
-    # tag, not literal text). Only when the lever is set in slide["_levers"].
+    # tag, not literal text). The FULL pixel-rebalance stays lever-gated (it is a
+    # heavier composition change). The number-orphan de-wrap, by contrast, is a
+    # safe, pixel-budget-bounded, text-only typographic rule and runs ALWAYS so a
+    # load-bearing "3 RULES CHANGED" never splits even when the non-deterministic
+    # critic does not request the lever (the F10 re-shadow orphan). Order: full
+    # rebalance first (if levered), then the deterministic number de-orphan over
+    # whatever line structure resulted.
     if (slide.get("_levers") or {}).get("_rebalance_wrap"):
         headline = _balance_headline(headline)
+    headline = _deorphan_numbers_in_headline(headline)
     subhead = (slide.get("subhead") or slide.get("subheading") or "").strip()
     body = (slide.get("body") or slide.get("body_text") or "").strip()
     reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()

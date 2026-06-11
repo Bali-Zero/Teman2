@@ -1819,3 +1819,111 @@ def test_cover_materialize_no_regulation_renders_cleanly():
         assert "{{regulation_code}}" not in html
         assert "{{#if" not in html
         assert "{{/if}}" not in html
+
+
+# ── F10-A2 Option A: ALWAYS-ON deterministic number de-orphan (pixel-independent) ──
+
+def test_deorphan_numbers_glues_bare_numeral_to_following_word():
+    """The always-on de-orphan glues a bare numeral to its following word with a
+    non-breaking space so the browser can NEVER strand it at a line end. This is
+    pixel-independent (the F10 re-shadow proved a pixel-based de-orphan misses the
+    orphan because the real browser wrap disagrees with our estimate)."""
+    from wr2_html_renderer.composer import _deorphan_numbers_in_headline
+
+    out = _deorphan_numbers_in_headline("YOUR KITAP IS VALID. 3 RULES CHANGED.")
+    # "3" must be glued to "RULES" via &nbsp; — un-splittable by the browser
+    assert "3&nbsp;RULES" in out, out
+    # nothing else changed: same words, only the one space became &nbsp;
+    assert out.replace("&nbsp;", " ").split() == "YOUR KITAP IS VALID. 3 RULES CHANGED.".split()
+    # the load-bearing phrase is intact
+    assert "3&nbsp;RULES CHANGED." in out
+
+
+def test_deorphan_numbers_noop_when_no_bare_numeral():
+    """A headline with no bare-numeral-before-word pattern is returned verbatim
+    (no brand drift on the common case)."""
+    from wr2_html_renderer.composer import _deorphan_numbers_in_headline
+
+    for h in [
+        "KPK ARRESTS TOP DEPUTY MINISTER ON GRAFT",   # no digits
+        "Indonesia Visa Fee Jumps to IDR 3.5M",        # 3.5M is not a bare integer word
+        "THE YEAR 2026",                               # trailing numeral, nothing after to glue
+    ]:
+        assert _deorphan_numbers_in_headline(h) == h, h
+
+
+def test_deorphan_numbers_handles_leading_and_mid_numerals():
+    """Leading ("10 NEW...") and mid-headline ("...2026 KITAS...") numerals are
+    glued to their following word."""
+    from wr2_html_renderer.composer import _deorphan_numbers_in_headline
+
+    assert "10&nbsp;NEW" in _deorphan_numbers_in_headline("10 NEW RULES TAKE EFFECT")
+    assert "11&nbsp;PERCENT" in _deorphan_numbers_in_headline("PROPERTY TAX IS 11 PERCENT NOW")
+
+
+def test_deorphan_numbers_does_not_glue_across_a_br():
+    """A numeral immediately followed by a <br> (not a space+word) is left alone —
+    gluing across an explicit line break would be wrong."""
+    from wr2_html_renderer.composer import _deorphan_numbers_in_headline
+
+    out = _deorphan_numbers_in_headline("SOMETHING 3<br>RULES CHANGED")
+    assert "&nbsp;" not in out
+    assert out == "SOMETHING 3<br>RULES CHANGED"
+
+
+def test_deorphan_numbers_composes_with_balance_headline():
+    """When the lever ran first (full pixel rebalance with <br>s), the always-on
+    de-orphan still glues the numeral to its noun on whatever line it landed."""
+    from wr2_html_renderer.composer import _balance_headline, _deorphan_numbers_in_headline
+
+    levered = _balance_headline("YOUR KITAP IS VALID. 3 RULES CHANGED.")
+    out = _deorphan_numbers_in_headline(levered)
+    assert "3&nbsp;RULES" in out
+    # the <br> structure from the rebalance is preserved
+    assert "<br>" in out
+
+
+def test_cover_compose_always_deorphans_number_without_lever():
+    """F10-A2 ROOT FIX: materialize_slide_html must apply the number de-orphan to
+    a cover headline UNCONDITIONALLY — even when NO _rebalance_wrap lever is set
+    (the re-shadow converged at iter 1, so the critic never asked for the lever,
+    and the orphan survived). The rendered HTML must glue "3" to "RULES"."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+
+    COVER_SKELETON = """<!doctype html>
+<html><head><link rel="stylesheet" href="../_base.css"></head>
+<body>
+  <div class="content">
+    <div class="subheading">{{subheading}}</div>
+    <div class="heading">{{heading}}</div>
+  </div>
+</body></html>"""
+
+    # NOTE: no "_levers" key at all -> the lever path is NOT taken.
+    slide = {
+        "index": 1,
+        "is_cover": True,
+        "is_hero_image": True,
+        "headline": "YOUR KITAP IS VALID. 3 RULES CHANGED.",
+        "subhead": "PERMENKUMHAM 22/2023 + 11/2024",
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        slides_dir = Path(tmpdir) / "slides"
+        slides_dir.mkdir()
+        with patch(
+            "wr2_html_renderer.composer._extract_skeleton", return_value=COVER_SKELETON
+        ):
+            from wr2_html_renderer.composer import materialize_slide_html
+
+            html_path, _ = asyncio.run(
+                materialize_slide_html(slide, slides_dir, index=1, total=9)
+            )
+        html = html_path.read_text()
+        # the orphan-killer ran even without the lever
+        assert "3&nbsp;RULES" in html, (
+            f"number de-orphan did NOT run at compose time: {html[:600]}"
+        )
