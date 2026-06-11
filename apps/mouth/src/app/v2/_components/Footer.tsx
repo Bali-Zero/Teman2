@@ -25,11 +25,11 @@ const NEWS = [
   { label: "Living", href: "/v2/news" },
 ];
 
+// Only links with a REAL destination page (Subhi audit F7: Team/Careers/Press
+// all pointed at /v2/company/about). Careers + Press removed — no pages exist.
 const COMPANY = [
   { label: "About", href: "/v2/company/about" },
-  { label: "Team", href: "/v2/company/about" },
-  { label: "Careers", href: "/v2/company/about" },
-  { label: "Press", href: "/v2/company/about" },
+  { label: "Team", href: "/team" },
 ];
 
 export function Footer() {
