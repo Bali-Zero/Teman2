@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Calendar, Clock, ArrowUpRight, type LucideIcon } from "lucide-react";
 import type { ArticleListItem } from "@/lib/blog/types";
+import { InlineNewsCTA } from "./InlineNewsCTA";
 
 const CATEGORY_ACCENT: Record<string, { accent: string; label: string }> = {
   immigration: { accent: "#ff2d4c", label: "Immigration" },
@@ -169,6 +170,8 @@ export function LatestNews({
           );
         })}
       </div>
+
+      <InlineNewsCTA />
 
       <div className="flex justify-center mt-10">
         <a
