@@ -96,9 +96,14 @@ export function generateArticleMetadata(article: Article): Metadata {
     ? article.coverImage
     : `${baseUrl}${article.coverImage || "/static/og-image.jpg"}`;
 
-  // Build keywords from tags and category
+  // Build keywords from tags and category. `article.tags` is normalized to a
+  // string[] at the data-layer boundary (normalizeTags), but spread (`[...x]`)
+  // throws "is not iterable" on any non-array, so guard here too — a malformed
+  // article must never crash metadata generation (which runs in SSR before the
+  // page even renders).
+  const safeTags = Array.isArray(article.tags) ? article.tags : [];
   const keywords = [
-    ...article.tags,
+    ...safeTags,
     article.category,
     "bali",
     "indonesia",
@@ -153,7 +158,7 @@ export function generateArticleMetadata(article: Article): Metadata {
       modifiedTime: article.updatedAt?.toString(),
       authors: [article.author.name],
       section: article.category,
-      tags: article.tags,
+      tags: safeTags,
     },
     twitter: {
       card: "summary_large_image",

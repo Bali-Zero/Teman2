@@ -25,8 +25,9 @@ Status (post phase-3, 2026-05-09):
   bounded.
 
 Reference impl: ``apps/backend-rag/backend/services/bridge/outbox.py``
-(generalised here — bridge_outbox is a different table for Pro/Air
+(generalised here — bridge_outbox is a different table for Pro/Mini
 sync; events_outbox is the universal EventBus durability layer).
+(Air decommissioned 2026-05-05 — historical "Pro/Air" reference scrubbed.)
 """
 
 from __future__ import annotations

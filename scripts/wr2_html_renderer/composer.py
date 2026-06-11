@@ -212,6 +212,41 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
 # in place; none can move or clip text.
 
 
+# grow_font clamps: (legible-min px, anti-overflow-cap px) per element on the
+# 1080x1350 render canvas. Declared + parametrizable — the final judge is the
+# vision critic in the E2E (it asks for a thumbnail-legible sub-headline).
+#
+# Sizing rationale (pixel-measured 2026-06-10): an IG thumbnail is ~150px wide,
+# so the canvas (1080px) downscales ~7.2x. The _base.css bases are subhead 36px,
+# body 28-32px, headline 60-84px — at thumbnail the subhead collapses to ~5px,
+# unreadable. The vision critic asks for ~18-22px-equivalent at thumbnail
+# ("collapses to ~7px tall, unreadable … increase to ~20-22px"), i.e. ~130-160px
+# absolute on the canvas. Floors are set to clear ~17px-at-thumbnail and the cap
+# to ~22px-at-thumbnail. Every MIN is ABOVE the element's own 1em base so the
+# progressive step (below) is never pinned by the floor (the old (52,64) bug).
+#
+# BUG #2 (hierarchy inversion, pixel-measured 2026-06-10): a sub-headline grown
+# to a 120-160px "thumbnail-legible" size is LARGER than the 84px cover title
+# (--font-size-headline-cover) → the kicker dominates the title (the vision
+# correctly rejects "HIERARCHY INVERSION — the date dominates"). The kicker is an
+# accessory tag/category by the template contract; it must stay subordinate to
+# the title. So the sub-headline grow is now CAPPED relative to the title
+# (max = title * _SUBHEAD_MAX_FRACTION_OF_TITLE), NOT at a thumbnail-legible
+# floor. If the cover title itself reads too small at thumbnail, the right fix is
+# to grow the TITLE (grow_font target=heading), whose clamp stays the largest.
+_HEADING_BASE_PX = 84  # --font-size-headline-cover in the brand _base.css
+_SUBHEAD_MAX_FRACTION_OF_TITLE = 0.55  # kicker stays <= ~55% of the title size
+_GROW_CLAMP_PX = {
+    # subhead capped under the title: (40, 46) with 46 = round(84 * 0.55) < 84.
+    "subhead": (40, round(_HEADING_BASE_PX * _SUBHEAD_MAX_FRACTION_OF_TITLE)),
+    "body": (104, 140),     # ~14.4px..19px at thumbnail (base 28-32px)
+    "heading": (100, 150),  # title grows ABOVE its 84px base, stays the largest
+}
+# Per grow step the target steps up FROM the legible floor (not from 1em). Each
+# step adds this fraction of the floor; min() with the cap guards overflow.
+_GROW_STEP = 0.15
+
+
 def _levers_to_css(levers: dict[str, Any]) -> str:
     """Build a brand-safe, composition-safe <style> override block from levers.
 
@@ -267,6 +302,41 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
             }[elem]
             rules.append(f"{sel}{{font-size:calc(1em * {factor:.2f});line-height:1.25;}}")
 
+    # grow_font: symmetric to shrink_font. Step UP a too-small element toward a
+    # thumbnail-legible minimum. We clamp(min_legible, grown, cap): the MIN floor
+    # guarantees one grow lever already clears the legibility threshold, the cap
+    # prevents a long element from overflowing its box. Paint/size-only on the
+    # text — never palette/font-family/position.
+    for elem in ("subhead", "body", "heading"):
+        steps = levers.get(f"grow_{elem}", 0)
+        if steps:
+            min_px, cap_px = _GROW_CLAMP_PX[elem]
+            # progress FROM the legible floor: step 1 == floor, each extra step
+            # adds _GROW_STEP*floor; the cap (min) guards overflow. Absolute px
+            # (NOT calc(1em*…)) so it never gets pinned by a floor above 1em.
+            target_px = min(cap_px, round(min_px * (1.0 + _GROW_STEP * (int(steps) - 1))))
+            sel = {
+                "body": ".body,.text,[data-zone-type='text']",
+                "heading": ".headline,.heading,h1",
+                "subhead": ".subhead,.subheading",
+            }[elem]
+            rules.append(
+                f"{sel}{{font-size:{target_px}px !important;line-height:1.15;}}"
+            )
+
+    # rebalance_wrap: the headline already carries explicit <br>s placed by
+    # _balance_headline (each line capped to a safe width). Make the browser
+    # HONOR them — text-wrap:balance keeps lines tidy, overflow-wrap:normal +
+    # white-space:normal stop it from breaking words or collapsing/ignoring the
+    # <br>s. Flow-only on the headline text; never position/color/font-family.
+    if levers.get("_rebalance_wrap"):
+        rules.append(
+            ".headline,.heading,.statement,.cover-text,.slide-text,h1{"
+            "text-wrap:balance;overflow-wrap:normal;white-space:normal;"
+            "word-break:keep-all;"
+            "}"
+        )
+
     # NOTE: text_anchor_band is intentionally NOT honored here (see module note).
 
     if not rules:
@@ -286,16 +356,372 @@ def _apply_levers_to_html(html: str, slide: dict[str, Any]) -> str:
     return html + css
 
 
-def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str | None) -> str:
+# Default safe line width for the big cover headline. The cover heading uses
+# var(--font-size-headline-cover) (84px on the 1080px canvas): ~22 chars is the
+# single-line capacity at that size AND it matches what the Claude vision critic
+# asks for — it judges 2 balanced lines as better than 3 lines with a short tail
+# (the iter-2/3 "THE TOP sits alone on line 3" critique fired at the old cap=16,
+# which over-wrapped into 3 lines with a 2-word tail). 22 lets the greedy wrap
+# settle on those 2 even lines. Parametrizable so a smaller headline font can
+# pass a larger budget.
+# Per-character advance width, in ems, for UPPERCASE Montserrat-bold (the cover
+# .heading is text-transform:uppercase, font-weight:800). MEASURED empirically
+# (playwright, getBoundingClientRect at 84px, staged brand _fonts.css) — the
+# sum-of-chars estimate reproduces real rendered string widths to within ~0.7%.
+# This is the font-aware width model (approach (a)) used by _balance_headline to
+# wrap by RENDERED PIXEL WIDTH, not by character count (the char-count model
+# over-/under-shot because W/M are ~3x wider than I, so an 18-char "INDONESIA
+# VISA FEE" is 937px while an 18-char all-I string would be ~half that).
+_UPPER_EM_WIDTH = {
+    "A": 0.786, "B": 0.769, "C": 0.730, "D": 0.826, "E": 0.672, "F": 0.642,
+    "G": 0.770, "H": 0.806, "I": 0.339, "J": 0.557, "K": 0.752, "L": 0.610,
+    "M": 0.954, "N": 0.806, "O": 0.846, "P": 0.737, "Q": 0.846, "R": 0.740,
+    "S": 0.647, "T": 0.635, "U": 0.786, "V": 0.766, "W": 1.184, "X": 0.737,
+    "Y": 0.693, "Z": 0.679,
+    "0": 0.685, "1": 0.405, "2": 0.599, "3": 0.603, "4": 0.700, "5": 0.607,
+    "6": 0.649, "7": 0.632, "8": 0.669, "9": 0.649,
+    " ": 0.291, ".": 0.283, ",": 0.283, "-": 0.388, "&": 0.752, "$": 0.647,
+    "/": 0.415, "%": 0.897, "+": 0.609, "'": 0.242,
+}
+_EM_WIDTH_DEFAULT = 0.74  # avg uppercase letter (A-Z mean ≈ 0.74em)
+
+# Cover headline box + font (read from the brand layout, kept parametrizable):
+#   --canvas-width 1080px − 2×--spacing-edge-margin 60px = 960px content box
+#   --font-size-headline-cover 84px
+_COVER_BOX_WIDTH_PX = 960
+_COVER_HEADLINE_FONT_PX = 84
+# Safety margin: the sum-of-chars estimate slightly OVER-estimates (ignores
+# negative kerning), which is the safe direction; this extra haircut leaves
+# headroom so the browser never re-wraps a line we sized to fit.
+_WRAP_SAFETY = 0.96
+# Back-compat: a coarse char budget kept for callers/tests that referenced it,
+# derived from the pixel box (≈ box / avg-char-px). NOT the wrap driver anymore.
+_COVER_MAX_CHARS_PER_LINE = int(
+    _COVER_BOX_WIDTH_PX / (_COVER_HEADLINE_FONT_PX * _EM_WIDTH_DEFAULT)
+)
+
+
+def _estimate_text_width_px(text: str, font_px: int = _COVER_HEADLINE_FONT_PX) -> float:
+    """Estimate the RENDERED width (px) of `text` as UPPERCASE Montserrat-bold at
+    `font_px`, via the measured per-character em-width table. Uppercase because
+    the cover .heading applies text-transform:uppercase. Accurate to ~1% vs the
+    real browser render (see _UPPER_EM_WIDTH provenance).
+
+    Markup-normalized: a literal `&nbsp;` entity counts as ONE space (it renders
+    as a single non-breaking space, not 6 visible chars — without this the
+    de-orphan glue would inflate the estimate ~40% and mis-trip the fit logic);
+    a `<br>` is a zero-width line break and is dropped before measuring (callers
+    that care about per-line width split on `<br>` first)."""
+    measured = text.replace("&nbsp;", " ").replace("<br>", "")
+    return sum(_UPPER_EM_WIDTH.get(c, _EM_WIDTH_DEFAULT) for c in measured.upper()) * font_px
+
+
+def _balance_headline(
+    text: str,
+    *,
+    box_width_px: int = _COVER_BOX_WIDTH_PX,
+    font_px: int = _COVER_HEADLINE_FONT_PX,
+    safety: float = _WRAP_SAFETY,
+) -> str:
+    """Re-wrap a headline into MULTIPLE lines (explicit <br>s) sized by the
+    ESTIMATED RENDERED PIXEL WIDTH of each line, so NO line overflows the cover
+    box (the browser never gets to re-wrap) and NO line is a single orphan word.
+
+    Root-cause fix (2026-06-10): the previous versions wrapped by CHARACTER COUNT
+    (_COVER_MAX_CHARS_PER_LINE). But at 84px uppercase Montserrat-bold, char
+    count is a poor proxy for width — "INDONESIA VISA FEE" (18 chars) renders
+    937px while the 960px box fits only ~that, and a char-budget of 22 let a
+    too-wide line through, which the browser then re-split, RE-creating the
+    "TOP"/"FEE" orphans + unexpected 3rd lines. We now greedily fill each line up
+    to `box_width_px * safety` measured by `_estimate_text_width_px`.
+
+    Text-only — only inserts <br> between whole words; never splits a word and
+    never touches position/color/font/box (so it cannot drift the brand).
+
+    Rules:
+      - ≤3 words: leave unchanged (too short to wrap; one line is fine).
+      - greedy-fill each line up to the pixel budget (whole words only); a single
+        word wider than the budget gets its own line (never split mid-word).
+      - if everything fits on one line, leave it flat (no <br>).
+      - no single-word orphan line: borrow the previous line's last word when the
+        merged line still fits the budget (front-to-back, any line not just last).
+      - if the text already contains a <br>, assume it's pre-wrapped → no-op.
+    """
+    text = text.strip()
+    if not text or "<br>" in text.lower():
+        return text
+    words = text.split()
+    if len(words) <= 3:
+        return text
+
+    budget_px = max(1.0, float(box_width_px) * float(safety))
+
+    def width(seg: list[str]) -> float:
+        return _estimate_text_width_px(" ".join(seg), font_px)
+
+    # Greedy fill by pixel width: add words while the line stays within budget.
+    lines: list[list[str]] = []
+    cur: list[str] = []
+    for w in words:
+        if not cur:
+            cur = [w]
+            continue
+        if width(cur + [w]) <= budget_px:
+            cur.append(w)
+        else:
+            lines.append(cur)
+            cur = [w]
+    if cur:
+        lines.append(cur)
+
+    # Everything fit on one line → nothing to wrap.
+    if len(lines) <= 1:
+        return text
+
+    # Kill ANY single-word orphan line: borrow the PREVIOUS line's last word and
+    # prepend it, only when the previous line keeps ≥2 words AND the merged orphan
+    # line still fits the pixel budget (never create an over-wide line to fix an
+    # orphan; a word with no legal companion is left on its own line). Front-to-
+    # back so a fix on line i can still be helped by line i-1.
+    for i in range(1, len(lines)):
+        while (
+            len(lines[i]) == 1
+            and len(lines[i - 1]) >= 2
+            and width([lines[i - 1][-1]] + lines[i]) <= budget_px
+        ):
+            lines[i].insert(0, lines[i - 1].pop())
+
+    # Number-orphan pass: a line MUST NOT end on a bare numeral token (e.g. "3",
+    # "10") when there is a following line -- the number belongs to the clause
+    # that starts the next line ("3 RULES CHANGED" must not be split as "3" /
+    # "RULES CHANGED"). Move the trailing numeral DOWN to start the next line,
+    # provided the resulting lines still fit the budget. Conservative: only bare
+    # integers (digits only, optional trailing period); never creates an over-wide
+    # line; never moves if the donor line would lose its last remaining word.
+    _bare_numeral_re = re.compile(r"^\d+\.?$")
+    for i in range(len(lines) - 1):
+        if (
+            lines[i]
+            and _bare_numeral_re.match(lines[i][-1])
+            and len(lines[i]) >= 2  # keep >=1 word on the donor line after moving
+            and width([lines[i][-1]] + lines[i + 1]) <= budget_px
+        ):
+            moved = lines[i].pop()
+            lines[i + 1].insert(0, moved)
+
+    return "<br>".join(" ".join(line) for line in lines)
+
+
+def _deorphan_numbers_in_headline(text: str) -> str:
+    """ALWAYS-ON, deterministic, PIXEL-INDEPENDENT number-orphan correction.
+
+    Distinct from `_balance_headline` (a FULL pixel-rebalance gated behind the
+    designer-loop `_rebalance_wrap` lever): this pass enforces ONLY the safe,
+    text-only typographic rule "a bare numeral must never be stranded at a line
+    end, split from the noun it quantifies" — the load-bearing "3 RULES CHANGED"
+    must never wrap as "...VALID. 3" / "RULES CHANGED".
+
+    It runs ALWAYS at compose time (not gated behind the non-deterministic vision
+    critic) and is PIXEL-INDEPENDENT: instead of guessing where the browser will
+    wrap (the F10 re-shadow proved our pixel estimate disagrees with the real
+    browser wrap, so a pixel-based de-orphan missed the orphan), it GLUES every
+    bare numeral to its immediately-following word with a non-breaking space
+    (&nbsp;). The browser then physically cannot break between them, so the
+    numeral always carries its noun onto whatever line it lands on, regardless of
+    box width or font metrics. The composer substitutes the headline via plain
+    string .replace (no HTML escaping — see _fill_placeholders), so the literal
+    "&nbsp;" entity renders as a real non-breaking space, not as visible text.
+
+    Brand-drift-safe: it ONLY inserts &nbsp; between a numeral and its next word;
+    it changes no other spacing, never reorders/drops words, and is a no-op when
+    the headline contains no bare-numeral-followed-by-word pattern.
+
+    Handles a headline whether flat or already lever-wrapped (with <br>): the
+    glue applies to the textual word sequence either way.
+    """
+    text = text.strip()
+    if not text:
+        return text
+    # Glue a bare integer (optionally with a trailing period, e.g. "3" / "10")
+    # to its IMMEDIATELY FOLLOWING word via &nbsp;. Word boundaries on both sides
+    # so we never touch a number embedded in a token (e.g. "IDR3" or "22/2023"),
+    # and we require a following word so a trailing numeral at the very end is
+    # left alone (nothing to glue it to). A literal regular space (not a <br>)
+    # must separate them — never glue across an existing <br>.
+    return re.sub(
+        r"(?<![\w&;])(\d+\.?)[ ](?=\w)",
+        lambda m: m.group(1) + "&nbsp;",
+        text,
+    )
+
+
+# Headline shrink-to-fit floor: 60px = the brand `headline-slide` token (the
+# "regular slide title" size in tokens.json). A principled lower bound — a cover
+# title may shrink toward the regular-slide title size to keep a load-bearing
+# sentence intact on one line, but never below it. Well above the shrink_font
+# lever's absolute 50px (84*0.6) hard minimum.
+_HEADLINE_FIT_FLOOR_PX = 60
+
+# Sentence-boundary splitter: a terminal . ! or ? followed by whitespace (or the
+# end of string), keeping the punctuation attached to the sentence it closes.
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _split_into_sentences(text: str) -> list[str]:
+    """Split a headline into sentence/clause units at terminal . ! ? boundaries,
+    keeping the punctuation with its sentence. A headline with no internal
+    boundary returns a single-element list."""
+    parts = [s.strip() for s in _SENTENCE_SPLIT_RE.split(text.strip()) if s.strip()]
+    return parts or [text.strip()]
+
+
+def _max_fit_font(
+    line: str,
+    *,
+    box_width_px: int = _COVER_BOX_WIDTH_PX,
+    base_font_px: int = _COVER_HEADLINE_FONT_PX,
+    safety: float = _WRAP_SAFETY,
+    floor_px: int = _HEADLINE_FIT_FLOOR_PX,
+) -> int | None:
+    """Largest integer font (base..floor) at which `line` fits the box budget on
+    ONE line. Returns None if it does not fit even at the floor."""
+    budget = box_width_px * safety
+    for f in range(base_font_px, floor_px - 1, -1):
+        if _estimate_text_width_px(line, f) <= budget:
+            return f
+    return None
+
+
+def _wrap_headline_sentence_aware(
+    text: str,
+    *,
+    box_width_px: int = _COVER_BOX_WIDTH_PX,
+    base_font_px: int = _COVER_HEADLINE_FONT_PX,
+    safety: float = _WRAP_SAFETY,
+    floor_px: int = _HEADLINE_FIT_FLOOR_PX,
+) -> tuple[str, int | None]:
+    """ALWAYS-ON, deterministic, MEASURED sentence-aware cover-headline wrap.
+
+    Contract (the ordering is the whole point):
+      1. SENTENCE-BREAK FIRST: split the headline at . ! ? boundaries so each
+         sentence/clause gets its own line(s). The load-bearing sentence
+         ("3 RULES CHANGED.") stays intact instead of the browser re-splitting it.
+      2. BOUNDED FONT-SHRINK SECOND: pick the LARGEST single font (one size for
+         the whole headline — CSS .heading is one element) at which EVERY sentence
+         fits on its own line, shrinking from the 84px base only as far as needed,
+         never below `floor_px` (the brand `headline-slide` 60px floor).
+      3. PIXEL-WRAP FALLBACK LAST: any single sentence that still cannot fit on
+         one line at the floor is wrapped across lines by the existing pixel-greedy
+         `_balance_headline` at the floor font — graceful degradation, never an
+         overflow and never a sub-floor font.
+
+    Returns (headline_html_with_<br>s, font_px). font_px is None when the wrap is
+    a pure no-op at the base size (so the caller injects no font override and the
+    cover renders exactly as today). When font_px is not None the caller must
+    inject `.heading{font-size:<font_px>px}` so the measured fit actually holds.
+
+    Brand-drift-safe: text-only (<br> insertion + a bounded font size); never
+    touches palette/font-family/position/box. A short headline (<=3 words AND no
+    sentence boundary) is returned verbatim with font_px=None.
+    """
+    text = text.strip()
+    if not text or "<br>" in text.lower():
+        # already wrapped upstream (e.g. lever ran) — don't second-guess it
+        return text, None
+
+    sentences = _split_into_sentences(text)
+    single_sentence = len(sentences) == 1
+
+    # No-op for short single-sentence headlines (<=3 words) that ALREADY FIT at
+    # the base font: leave them verbatim+flat (zero brand drift, the common
+    # legacy behavior). A short title that OVERFLOWS at base still falls through
+    # to the fit logic below (bounded shrink / pixel-wrap) — "short" is not a
+    # license to overflow.
+    budget = box_width_px * safety
+    if (
+        single_sentence
+        and len(text.split()) <= 3
+        and _estimate_text_width_px(text, base_font_px) <= budget
+    ):
+        return text, None
+
+    # 1+2: try to keep every sentence on its own line at one shared font >= floor.
+    per_sentence_fonts = [_max_fit_font(s, box_width_px=box_width_px,
+                                        base_font_px=base_font_px, safety=safety,
+                                        floor_px=floor_px) for s in sentences]
+
+    if all(f is not None for f in per_sentence_fonts):
+        # Every sentence fits as a single line at >= floor. Use the SMALLEST
+        # per-sentence max-fit font so all share one size and all fit.
+        chosen = min(f for f in per_sentence_fonts if f is not None)
+        if chosen >= base_font_px:
+            # Everything already fits at the base size.
+            if single_sentence:
+                # A single sentence that fits at base on one line: leave it FLAT
+                # (no <br>, no font override) — zero brand drift, common case.
+                return text, None
+            # Multi-sentence at base: just break between sentences, no shrink.
+            return "<br>".join(sentences), None
+        # A bounded shrink (< base, >= floor) makes all sentences fit one-per-line.
+        return "<br>".join(sentences), chosen
+
+    # 3: at least one sentence cannot fit on one line even at the floor → pixel-
+    # wrap THAT sentence across lines at the floor font; keep the others intact.
+    out_lines: list[str] = []
+    for s, f in zip(sentences, per_sentence_fonts):
+        if f is not None:
+            out_lines.append(s)  # fits as a single line at the shared floor font
+        else:
+            # graceful degradation: pixel-greedy wrap this sentence at the floor.
+            wrapped = _balance_headline(s, box_width_px=box_width_px,
+                                        font_px=floor_px, safety=safety)
+            out_lines.append(wrapped)  # may itself contain <br>s
+    return "<br>".join(out_lines), floor_px
+
+
+def _fill_placeholders(
+    html: str,
+    slide: dict[str, Any],
+    *,
+    hero_filename: str | None,
+    cover_family: bool = False,
+) -> str:
     """Fill {{placeholders}} + simple {{#if}} blocks from a slide dict.
 
     Supported fields map to common skeleton placeholders:
       heading, subheading, body, image_url, regulation_code, statement.
     {{#if regulation_code}}...{{/if}} renders only if present.
     """
-    headline = (slide.get("headline") or "").strip()
-    subhead = (slide.get("subhead") or "").strip()
-    body = (slide.get("body") or "").strip()
+    # Schema-field fallback (BUG #3): newer drafts use headline/subhead, older
+    # (Canva) drafts use heading/subheading. Read BOTH so an old-schema draft does
+    # not render a blank cover (vision: "no editorial text").
+    headline = (slide.get("headline") or slide.get("heading") or "").strip()
+    # rebalance_wrap lever (designer loop): re-wrap the headline into balanced
+    # lines via a <br>. Text-only — applied here BEFORE placeholder substitution
+    # so the skeleton's {{heading}}/{{statement}} carry the <br> verbatim (the
+    # composer uses plain string .replace, no HTML-escaping → <br> renders as a
+    # tag, not literal text). The FULL pixel-rebalance stays lever-gated (it is a
+    # heavier composition change). The number-orphan de-wrap, by contrast, is a
+    # safe, pixel-budget-bounded, text-only typographic rule and runs ALWAYS so a
+    # load-bearing "3 RULES CHANGED" never splits even when the non-deterministic
+    # critic does not request the lever (the F10 re-shadow orphan). Order: full
+    # rebalance first (if levered), then the deterministic number de-orphan over
+    # whatever line structure resulted.
+    headline_font_px: int | None = None
+    if (slide.get("_levers") or {}).get("_rebalance_wrap"):
+        # designer-loop lever: full pixel-rebalance (heavier composition change).
+        headline = _balance_headline(headline)
+    elif cover_family:
+        # ALWAYS-ON sentence-aware wrap (deterministic, measured): break at
+        # sentence boundaries so a load-bearing clause ("3 RULES CHANGED.") stays
+        # on one line; bounded font-shrink to fit; pixel-wrap fallback at the
+        # floor. Returns the single font size (if a shrink was needed) to inject.
+        headline, headline_font_px = _wrap_headline_sentence_aware(headline)
+    # Deterministic number de-orphan (belt-and-suspenders): glue any remaining
+    # bare numeral to its noun so the browser can never strand it.
+    headline = _deorphan_numbers_in_headline(headline)
+    subhead = (slide.get("subhead") or slide.get("subheading") or "").strip()
+    body = (slide.get("body") or slide.get("body_text") or "").strip()
     reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()
 
     # {{#if regulation_code}} ... {{/if}}
@@ -324,6 +750,24 @@ def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str |
         html = html.replace("{{image_url}}", hero_filename)
     else:
         html = html.replace("{{image_url}}", "")
+
+    # Inject the sentence-aware bounded font-shrink (if any). The cover .heading
+    # is one element, so one font size governs all its lines; the wrap above
+    # MEASURED that this size lets every sentence fit. Paint/size-only on the
+    # title — never palette/font-family/position/box. line-height tightened to
+    # match the brand cover tight leading at the smaller size.
+    if headline_font_px is not None:
+        font_css = (
+            "\n<style data-headline-fit=\"1\">\n"
+            f".heading,.headline,.statement,h1{{font-size:{headline_font_px}px !important;"
+            "line-height:1.05;}}\n</style>\n"
+        )
+        if "</head>" in html:
+            html = html.replace("</head>", font_css + "</head>", 1)
+        elif "</body>" in html:
+            html = html.replace("</body>", font_css + "</body>", 1)
+        else:
+            html = html + font_css
 
     return html
 
@@ -388,7 +832,10 @@ async def compose_carousel(
             html = _normalize_skeleton(skeleton)
             if plan.expect_hero and hero_filename:
                 html = _hero_bg_to_img(html, hero_filename)
-            html = _fill_placeholders(html, plan.slide, hero_filename=hero_filename)
+            html = _fill_placeholders(
+                html, plan.slide, hero_filename=hero_filename,
+                cover_family=(plan.family == "cover-photo"),
+            )
             html = _apply_levers_to_html(html, plan.slide)  # designer-loop levers
 
             html_path = slides_dir / f"{plan.index:02d}.html"
@@ -440,7 +887,21 @@ async def materialize_slide_html(
     html = _normalize_skeleton(skeleton)
     if expect_hero and hero_filename:
         html = _hero_bg_to_img(html, hero_filename)
-    html = _fill_placeholders(html, slide, hero_filename=hero_filename)
+    # Cover-photo family already shows the regulation via the yellow subheading
+    # kicker (the {{subheading}} slot). The skeleton also has a top-right corner
+    # badge ({{#if regulation_code}}...{{/if}}). Rendering both is redundant and
+    # the tiny badge is illegible at thumbnail size. Strip the badge block so the
+    # cover renders the regulation exactly once (in the kicker).
+    if family == "cover-photo":
+        html = re.sub(
+            r"\{\{#if regulation_code\}\}.*?\{\{/if\}\}",
+            "",
+            html,
+            flags=re.DOTALL,
+        )
+    html = _fill_placeholders(
+        html, slide, hero_filename=hero_filename, cover_family=(family == "cover-photo")
+    )
     html = _apply_levers_to_html(html, slide)
 
     html_path = slides_dir / f"{index:02d}.html"

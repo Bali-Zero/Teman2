@@ -18,7 +18,7 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
-from backend.services.intake.routing import route_stage
+from backend.services.intake.routing import backfill_received_by, route_stage
 
 _DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -183,6 +183,52 @@ async def test_idempotent_same_queue(pool, seeded):
     async with pool.acquire() as c:
         n = await c.fetchval("SELECT count(*) FROM document_routing_proposal WHERE queue_id=$1", q)
     assert n == 1
+
+
+@pytest.mark.asyncio
+async def test_backfill_received_by(pool, seeded):
+    """backfill_received_by: lowercases assigned_to, never overwrites, skips unassigned.
+
+    Seeded rows are TAG-tagged so the `seeded` fixture teardown removes them
+    (clients via notes=TAG, intake_queue via intake_key LIKE TAG%,
+    document_instances via blob_hash LIKE TAG%).
+    """
+    async with pool.acquire() as c:
+        c_assigned = await c.fetchval(
+            "INSERT INTO clients (full_name, assigned_to, notes) VALUES ($1,$2,$3) RETURNING id",
+            f"{TAG} Backfill Target", "Backfill.Owner@Balizero.com", TAG)
+        c_other = await c.fetchval(
+            "INSERT INTO clients (full_name, assigned_to, notes) VALUES ($1,$2,$3) RETURNING id",
+            f"{TAG} Backfill Other", "Other.Consultant@Balizero.com", TAG)
+        c_unassigned = await c.fetchval(
+            "INSERT INTO clients (full_name, notes) VALUES ($1,$2) RETURNING id",
+            f"{TAG} Backfill Unassigned", TAG)
+    q1 = await _seed_queue(pool, "passport", {"name": f"{TAG} Backfill Doc One"})
+    q2 = await _seed_queue(pool, "passport", {"name": f"{TAG} Backfill Doc Two"})
+
+    async with pool.acquire() as c:
+        # 1) NULL received_by + client with mixed-case assigned_to
+        #    -> backfilled AND lowercased (both return value and stored row).
+        got = await backfill_received_by(c, q1, c_assigned)
+        assert got == "backfill.owner@balizero.com"
+        stored = await c.fetchval("SELECT received_by FROM intake_queue WHERE id=$1", q1)
+        assert stored == "backfill.owner@balizero.com"
+
+        # 2) never-overwrite: a second backfill with a DIFFERENT client is a
+        #    no-op (returns None) and the original received_by survives.
+        got2 = await backfill_received_by(c, q1, c_other)
+        assert got2 is None
+        stored2 = await c.fetchval("SELECT received_by FROM intake_queue WHERE id=$1", q1)
+        assert stored2 == "backfill.owner@balizero.com"
+
+        # 3) client with assigned_to NULL -> nothing written, received_by stays NULL.
+        got3 = await backfill_received_by(c, q2, c_unassigned)
+        assert got3 is None
+        stored3 = await c.fetchval("SELECT received_by FROM intake_queue WHERE id=$1", q2)
+        assert stored3 is None
+
+        # 4) client_id None -> immediate no-op.
+        assert await backfill_received_by(c, q2, None) is None
 
 
 @pytest.mark.asyncio

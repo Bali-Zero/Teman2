@@ -35,12 +35,14 @@ PII: this data lives ONLY on the local Pro Postgres (Law 2 / UU-PDP).
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
+from fastapi.responses import FileResponse
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
@@ -53,24 +55,78 @@ router = APIRouter(prefix="/api/intake/review", tags=["intake-review"])
 # How long a single reviewer holds a proposal before it becomes reclaimable.
 CLAIM_TTL_MINUTES = 15
 
+# MIME types a browser can render inline WITHOUT a script-execution surface.
+# Deliberately excludes image/svg+xml (can embed <script>) and text/html.
+_INLINE_SAFE_MIME = frozenset(
+    {"application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"}
+)
+
+
+# --------------------------------------------------------------------------- #
+# Shared RBAC guard (own-chat axis) — single source of truth
+# --------------------------------------------------------------------------- #
+async def _require_own_chat_or_admin(
+    conn: asyncpg.Connection,
+    proposal_id: int,
+    *,
+    admin: bool,
+    user_email: str,
+) -> asyncpg.Record:
+    """Fetch the proposal's queue context and enforce the own-chat RBAC axis.
+
+    Returns the joined row (proposal + queue context) on success. A non-admin
+    may touch a proposal ONLY if it came from their own chat
+    (``intake_queue.received_by == caller``). NULL received_by (shared business
+    line + Drive, pre-backfill) never matches → admin-only. One helper instead
+    of four hand-rolled copies (detail/claim/blob/queue) so the rule cannot drift.
+    """
+    row = await conn.fetchrow(
+        """
+        SELECT p.id AS proposal_id, q.id AS queue_id, q.received_by,
+               q.blob_path, q.source, q.source_ref,
+               di.mime_type, di.byte_size
+        FROM document_routing_proposal p
+        JOIN intake_queue q ON q.id = p.queue_id
+        LEFT JOIN document_instances di ON di.id = q.instance_id
+        WHERE p.id = $1
+        """,
+        proposal_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    if not admin:
+        received_by = (row["received_by"] or "").lower().strip()
+        if received_by != user_email:
+            # Hide existence from non-authorised team members.
+            raise HTTPException(status_code=403, detail="Not authorised for this proposal")
+    return row
+
 
 
 # --------------------------------------------------------------------------- #
 # Candidate-client extraction (read-only helper)
 # --------------------------------------------------------------------------- #
-def _candidate_client_ids(entity_resolution: dict[str, Any]) -> list[int]:
+def _candidate_client_ids(
+    entity_resolution: dict[str, Any], routing: dict[str, Any] | None = None
+) -> list[int]:
     """Best-effort extraction of candidate client ids from the FASE-4 blob.
 
     FASE 4's entity_resolution shape is still settling; be tolerant. Recognised
     shapes:
       {"candidates": [{"client_id": 412, ...}, ...]}
+      {"candidates": [{"id": 412, "table": "clients", ...}, ...]}   <- LIVE shape
       {"client_id": 412}
       {"resolved_client_id": 412}
+    plus the routing blob's resolved target ({"client_id": 412}) as fallback.
+
+    The ``id``+``table`` variant is what the production resolver actually
+    writes (every live proposal sampled 2026-06-11 used it) — recognising only
+    ``client_id`` left entity_candidates empty and the UI radio list dead.
     Returns a de-duplicated list of ints (empty if nothing resolvable).
     """
     ids: list[int] = []
     if not isinstance(entity_resolution, dict):
-        return ids
+        entity_resolution = {}
 
     for key in ("resolved_client_id", "client_id"):
         val = entity_resolution.get(key)
@@ -80,8 +136,15 @@ def _candidate_client_ids(entity_resolution: dict[str, Any]) -> list[int]:
     candidates = entity_resolution.get("candidates")
     if isinstance(candidates, list):
         for cand in candidates:
-            if isinstance(cand, dict) and isinstance(cand.get("client_id"), int):
+            if not isinstance(cand, dict):
+                continue
+            if isinstance(cand.get("client_id"), int):
                 ids.append(cand["client_id"])
+            elif isinstance(cand.get("id"), int) and cand.get("table") in (None, "clients"):
+                ids.append(cand["id"])
+
+    if isinstance(routing, dict) and isinstance(routing.get("client_id"), int):
+        ids.append(routing["client_id"])
 
     # de-dup preserving order
     seen: set[int] = set()
@@ -109,6 +172,63 @@ def _extracted_fields(stage_output: dict[str, Any], routing: dict[str, Any]) -> 
         if isinstance(route, dict) and isinstance(route.get("fields"), dict):
             return route["fields"]
     return {}
+
+
+def _ocr_pages(stage_output: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """Per-page OCR text for human review, normalised to the UI shape.
+
+    The UI (review/page.tsx) renders items as ``{page_number, text}``. OCR text
+    can live in two places depending on pipeline version:
+
+      * ``stage_output.ocr.pages`` — the dedicated FASE-3 OCR stage (older docs).
+      * ``stage_output.classify.ocr_text_per_page`` — the CURRENT pipeline runs
+        OCR inside the *classify* stage; the ``ocr`` stage only writes a marker
+        ``{"deferred_to": "classify"}`` with NO ``pages``. Without this fallback
+        the review text area was empty even though OCR ran (the bug).
+
+    Prefer ``ocr.pages`` when it is a non-empty list; otherwise fall back to
+    ``classify.ocr_text_per_page``. Each source item may be a dict carrying
+    ``text`` (+ an optional ``page``/``page_number``) or a plain string
+    (defensive). ``page_number`` is surfaced 1-based positionally so the human
+    label is consistent across both sources (classify stores a 0-indexed
+    ``page``; ocr.pages stores a 1-based ``page``) and never shows "page 0".
+    Returns ``None`` when neither source has any text — an empty area is correct
+    for a truly OCR-less document.
+    """
+    if not isinstance(stage_output, dict):
+        return None
+
+    def _normalise(items: list[Any]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for item in items:
+            if isinstance(item, str):
+                text = item
+            elif isinstance(item, dict):
+                text = item.get("text")
+            else:
+                continue
+            if not text:
+                continue
+            out.append({"page_number": len(out) + 1, "text": text})
+        return out
+
+    ocr = stage_output.get("ocr")
+    if isinstance(ocr, dict):
+        pages = ocr.get("pages")
+        if isinstance(pages, list) and pages:
+            normalised = _normalise(pages)
+            if normalised:
+                return normalised
+
+    classify = stage_output.get("classify")
+    if isinstance(classify, dict):
+        per_page = classify.get("ocr_text_per_page")
+        if isinstance(per_page, list) and per_page:
+            normalised = _normalise(per_page)
+            if normalised:
+                return normalised
+
+    return None
 
 
 async def _load_candidate_clients(
@@ -199,7 +319,7 @@ async def list_review_queue(
             if decision is not None and row_decision != decision:
                 continue
 
-            candidate_ids = _candidate_client_ids(entity_resolution)
+            candidate_ids = _candidate_client_ids(entity_resolution, routing)
             candidates = await _load_candidate_clients(conn, candidate_ids)
 
             # RBAC: the own-chat gate (received_by) is enforced in the SQL WHERE
@@ -240,6 +360,140 @@ async def list_review_queue(
 
 
 # --------------------------------------------------------------------------- #
+# Destination pickers (STATIC routes — registered BEFORE /{proposal_id} so the
+# int path-converter never swallows them)
+# --------------------------------------------------------------------------- #
+@router.get("/clients/search")
+async def search_clients(
+    q: str = Query(..., min_length=2, max_length=120, description="Client name fragment"),
+    limit: int = Query(10, ge=1, le=25),
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Name-lookup over local CRM clients for the review destination picker.
+
+    Deliberately MINIMAL projection (id, full_name, assigned_to) — this is a
+    routing affordance, not client access: a reviewer redirecting a NO_MATCH
+    document must be able to find ANY client by name (the doc's subject is
+    rarely one of their own assigned clients). pg_trgm-ranked, ILIKE-gated.
+    READ-ONLY. PII boundary unchanged: runs on the Pro reader, local DB only.
+    """
+    needle = q.strip()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, full_name, assigned_to,
+                   similarity(full_name, $1) AS sim
+            FROM clients
+            WHERE deleted_at IS NULL
+              AND full_name ILIKE '%' || $1 || '%'
+            ORDER BY sim DESC, full_name ASC
+            LIMIT $2
+            """,
+            needle,
+            limit,
+        )
+    return {
+        "items": [
+            {
+                "client_id": r["id"],
+                "full_name": r["full_name"],
+                "assigned_to": r["assigned_to"],
+                "score": round(float(r["sim"] or 0.0), 4),
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/clients/{client_id}/practices")
+async def list_client_practices(
+    client_id: int = Path(..., ge=1),
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Open/recent practices of a client — the practice picker for approve.
+
+    READ-ONLY, minimal projection. Sorted: open practices first, then recency.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, practice_type_code, title, status, created_at
+            FROM practices
+            WHERE client_id = $1
+            ORDER BY (status NOT IN ('completed','cancelled')) DESC,
+                     created_at DESC
+            LIMIT 20
+            """,
+            client_id,
+        )
+    return {
+        "items": [
+            {
+                "practice_id": r["id"],
+                "practice_type_code": r["practice_type_code"],
+                "title": r["title"],
+                "status": r["status"],
+                "created_at": _iso(r["created_at"]),
+            }
+            for r in rows
+        ]
+    }
+
+
+# --------------------------------------------------------------------------- #
+# GET /{proposal_id}/blob — stream the ORIGINAL document for visual review
+# --------------------------------------------------------------------------- #
+@router.get("/{proposal_id}/blob")
+async def get_review_blob(
+    proposal_id: int = Path(..., ge=1),
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> FileResponse:
+    """Stream the original blob (image/PDF) so the reviewer SEES the document.
+
+    OCR text alone is not review-grade: the human must compare the proposal
+    against the actual scan. Same RBAC as detail (own-chat or admin). Served
+    by the Pro reader straight off the local filesystem — the blob never
+    persists anywhere else; ``no-store`` keeps every proxy/browser cache out
+    (Law 2: PII in transit to the authenticated reviewer only).
+    """
+    admin = is_crm_admin(user)
+    user_email = (user.get("email") or "").lower().strip()
+
+    async with pool.acquire() as conn:
+        row = await _require_own_chat_or_admin(
+            conn, proposal_id, admin=admin, user_email=user_email
+        )
+
+    blob_path = row["blob_path"]
+    if not blob_path or not os.path.isfile(blob_path):
+        raise HTTPException(status_code=404, detail="Blob not on disk")
+
+    # XSS hardening: blobs are UNTRUSTED uploads (WhatsApp/Drive). Only types a
+    # browser cannot script render inline (no SVG — it can embed <script>, no
+    # HTML); anything else is rewritten to an opaque octet-stream ATTACHMENT.
+    # nosniff everywhere kills content-sniffing; CSP sandbox guards the
+    # attachment path (not sent on inline PDF — it breaks browser PDF viewers,
+    # and the allowlist already excludes every scriptable type).
+    inline_safe = row["mime_type"] in _INLINE_SAFE_MIME
+    headers = {
+        "Cache-Control": "no-store, private",
+        "X-Content-Type-Options": "nosniff",
+    }
+    if not inline_safe:
+        headers["Content-Security-Policy"] = "sandbox; default-src 'none'"
+    return FileResponse(
+        blob_path,
+        media_type=row["mime_type"] if inline_safe else "application/octet-stream",
+        headers=headers,
+        filename=os.path.basename(blob_path),
+        content_disposition_type="inline" if inline_safe else "attachment",
+    )
+
+
+# --------------------------------------------------------------------------- #
 # GET /{proposal_id} — full detail
 # --------------------------------------------------------------------------- #
 @router.get("/{proposal_id}")
@@ -272,9 +526,12 @@ async def get_review_detail(
                 q.received_by,
                 q.status        AS queue_status,
                 q.blob_path,
-                q.stage_output
+                q.stage_output,
+                di.mime_type,
+                di.byte_size
             FROM document_routing_proposal p
             JOIN intake_queue q ON q.id = p.queue_id
+            LEFT JOIN document_instances di ON di.id = q.instance_id
             WHERE p.id = $1
             """,
             proposal_id,
@@ -296,12 +553,13 @@ async def get_review_detail(
         commit_gate = _as_dict(row["commit_gate"])
         stage_output = _as_dict(row["stage_output"])
 
-        candidate_ids = _candidate_client_ids(entity_resolution)
+        candidate_ids = _candidate_client_ids(entity_resolution, routing)
         candidates = await _load_candidate_clients(conn, candidate_ids)
 
-        # OCR text per page (if FASE-3 stored it in stage_output) — for human review.
-        ocr = stage_output.get("ocr") if isinstance(stage_output, dict) else None
-        ocr_pages = ocr.get("pages") if isinstance(ocr, dict) else None
+        # OCR text per page — for human review. The current pipeline runs OCR
+        # in the *classify* stage (ocr stage only writes a marker), so the
+        # reader must look in classify.ocr_text_per_page as well as ocr.pages.
+        ocr_pages = _ocr_pages(stage_output)
 
         return {
             "proposal_id": row["proposal_id"],
@@ -314,6 +572,8 @@ async def get_review_detail(
             "received_by": row["received_by"],
             "queue_status": row["queue_status"],
             "blob_path": row["blob_path"],
+            "mime_type": row["mime_type"],
+            "byte_size": row["byte_size"],
             "decision": entity_resolution.get("decision"),
             "doc_type": routing.get("doc_type") or stage_output.get("doc_type"),
             "entity_resolution": entity_resolution,
@@ -341,9 +601,11 @@ async def claim_review(
     """Atomically claim a proposal for the current reviewer.
 
     review_pending → review_claimed. Mints a per-claim opaque token (P0#5).
-    A claim succeeds if the proposal is review_pending OR if it is review_claimed
-    by someone whose lease has expired (steal-expired). A live, unexpired claim by
-    another reviewer → 409.
+    A claim succeeds if the proposal is review_pending, OR if it is review_claimed
+    by someone whose lease has expired (steal-expired), OR if it is review_claimed
+    by the SAME caller on a still-live lease (P0#4 — idempotent re-claim: re-opening
+    your own claimed document renews the lease and returns a fresh token instead of
+    409). A live, unexpired claim by a DIFFERENT reviewer → 409.
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
@@ -352,27 +614,15 @@ async def claim_review(
     expires = now + timedelta(minutes=CLAIM_TTL_MINUTES)
 
     async with pool.acquire() as conn:
-        # RBAC gate up-front (own-chat axis): a non-admin may claim ONLY a
-        # proposal that came from their own chat (intake_queue.received_by ==
-        # caller). NULL received_by (shared business line + Drive) never matches
-        # → admin-only.
-        if not admin:
-            prop = await conn.fetchrow(
-                """
-                SELECT q.received_by
-                FROM document_routing_proposal p
-                JOIN intake_queue q ON q.id = p.queue_id
-                WHERE p.id = $1
-                """,
-                proposal_id,
-            )
-            if prop is None:
-                raise HTTPException(status_code=404, detail="Proposal not found")
-            received_by = (prop["received_by"] or "").lower().strip()
-            if received_by != user_email:
-                raise HTTPException(status_code=403, detail="Not authorised for this proposal")
+        # RBAC gate up-front (own-chat axis, shared helper): a non-admin may
+        # claim ONLY a proposal that came from their own chat.
+        await _require_own_chat_or_admin(
+            conn, proposal_id, admin=admin, user_email=user_email
+        )
 
-        # Atomic claim: only steal a claim that is unclaimed OR expired.
+        # Atomic claim: steal a claim that is unclaimed OR expired, OR renew
+        # the caller's OWN still-live claim (P0#4 idempotent re-claim). A live
+        # claim owned by a DIFFERENT reviewer never matches → 409 below.
         updated = await conn.fetchrow(
             """
             UPDATE document_routing_proposal
@@ -385,6 +635,7 @@ async def claim_review(
               AND (
                     status = 'review_pending'
                  OR (status = 'review_claimed' AND lease_expires_at < $5)
+                 OR (status = 'review_claimed' AND lease_owner = $2)
               )
             RETURNING id, lease_owner, lease_expires_at, claim_token
             """,
@@ -587,6 +838,9 @@ async def approve_review(
     user_email = (user.get("email") or "").lower().strip()
     claim_token = body.get("claim_token")
     override_client_id = body.get("client_id")
+    # Practice override distinguishes ABSENT ("use routing's hint") from an
+    # EXPLICIT null ("reviewer chose: archive only, no practice").
+    practice_explicit = "practice_id" in body
     override_practice_id = body.get("practice_id")
     final_fields = body.get("final_fields") if isinstance(body.get("final_fields"), dict) else None
 
@@ -617,6 +871,7 @@ async def approve_review(
                 committed_by=user_email or "system:hitl",
                 override_client_id=override_client_id,
                 override_practice_id=override_practice_id,
+                practice_explicit=practice_explicit,
                 final_fields=final_fields,
             )
             # FASE 5C gate: dry-run UNLESS INTAKE_WRITER_ENABLED is truthy. With the
@@ -661,14 +916,14 @@ async def reject_review(
     must be able to dispose of garbage/NO_MATCH proposals in every phase (5B and 5C),
     exactly like ``claim``/``release`` (which are also un-gated).
 
-    P0#5: identical claim/lease enforcement as ``approve`` (shared helper). No
-    ``intake_commit_audit`` row is written — that table is the CRM-commit forensic
-    log; a rejection is fully recorded by the proposal's own terminal ``status``
-    (and its lease history). Idempotent under concurrency / re-reject: the
-    ``status='review_claimed'`` guard makes a second reject a 409 no-op, never a
-    double-write.
+    P0#5: identical claim/lease enforcement as ``approve`` (shared helper).
+    Writes ONE forensic ``intake_commit_audit(outcome='rejected')`` row (who
+    rejected what + the reviewer's ``reason``, migration 224) — a rejection is a
+    HITL decision and deserves the same audit trail as an approve. Idempotent
+    under concurrency / re-reject: the ``status='review_claimed'`` guard makes a
+    second reject a 409 no-op, never a double-write.
 
-    body: {claim_token?, reason?}  — ``reason`` is logged (truncated), not persisted.
+    body: {claim_token?, reason?}  — ``reason`` is persisted in the audit plan.
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
@@ -679,7 +934,7 @@ async def reject_review(
         async with conn.transaction():
             prop = await conn.fetchrow(
                 """
-                SELECT id, status, lease_owner, lease_expires_at, claim_token
+                SELECT id, queue_id, status, lease_owner, lease_expires_at, claim_token
                 FROM document_routing_proposal
                 WHERE id = $1
                 FOR UPDATE
@@ -710,6 +965,24 @@ async def reject_review(
                 """,
                 proposal_id,
             )
+
+            if updated is not None:
+                # Forensic audit (same TX as the transition): outcome='rejected'
+                # per migration 224. decision stays NULL (chk_ica_decision).
+                import json as _json
+
+                await conn.execute(
+                    """
+                    INSERT INTO intake_commit_audit (
+                        proposal_id, queue_id, committed_by, dry_run,
+                        outcome, plan
+                    ) VALUES ($1, $2, $3, false, 'rejected', $4::jsonb)
+                    """,
+                    proposal_id,
+                    prop["queue_id"],
+                    user_email or "system:hitl",
+                    _json.dumps({"reason": (reason or "")[:500]}),
+                )
 
     if updated is None:
         # Lost the race or already terminal (the guard above passed at SELECT time
