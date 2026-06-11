@@ -7,6 +7,7 @@ import {
 } from "@/lib/kbli-data";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { KBLICard } from "@/components/kbli/KBLICard";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export async function generateStaticParams() {
   return getSections()
@@ -50,7 +51,10 @@ export default async function SectorDetailPage({
   if (codes.length === 0) notFound();
 
   return (
-    <div className="space-y-8">
+    <div
+      className={`space-y-8 kbli-page ${RUMAH_CLASS}`}
+      style={{ ...RUMAH_VARS }}
+    >
       <KBLIBreadcrumb
         items={[
           { label: "KBLI Navigator", href: "/kbli" },

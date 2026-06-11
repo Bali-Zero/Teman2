@@ -27,6 +27,7 @@ import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
 import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
 import { FunnelFrame } from "@balizero/core";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 const ZantaraChat = lazy(() =>
   import("@/components/kbli/ZantaraChat").then((mod) => ({
@@ -137,12 +138,15 @@ export default async function KBLICodePage({
         sessionId="SSR"
         trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
       >
-        <article className="pb-16">
+        <article
+          className={`pb-16 kbli-page ${RUMAH_CLASS}`}
+          style={{ ...RUMAH_VARS }}
+        >
           {/* BREADCRUMB */}
           <KBLIBreadcrumb items={breadcrumbs} />
 
-          {/* HERO ZONE */}
-          <div className="relative -mx-4 mb-10 mt-4 overflow-hidden rounded-2xl sm:-mx-6 lg:-mx-8">
+          {/* HERO ZONE (dark island — cover image/gradient + white title) */}
+          <div className="rp-dark-island relative -mx-4 mb-10 mt-4 overflow-hidden rounded-2xl sm:-mx-6 lg:-mx-8">
             {heroImage ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}

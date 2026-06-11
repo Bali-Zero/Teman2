@@ -253,9 +253,10 @@ export function proxy(request: NextRequest) {
   // === VISA DOMAIN (visa.balizero.com) — LEGACY, redirect to /visa ===
   // The visa funnel was consolidated at balizero.com/visa (see spec
   // 2026-04-21-visa-funnel-fusion.md). This block remaps legacy
-  // Oracle subdomain paths 1:1 to the canonical /visa paths with a
-  // temporary 302 so GSC can propagate the change of address. When
-  // traffic drops to < 1% of peak for 30 days, the DNS record for
+  // Oracle subdomain paths 1:1 to the canonical /visa paths. The
+  // consolidation is permanent, so the redirect is 301 (GSC change-of-
+  // address is registered manually in Search Console). When traffic
+  // drops to < 1% of peak for 30 days, the DNS record for
   // visa.balizero.com is removed entirely.
   if (isVisaDomain) {
     const target = new URL(request.url);
@@ -274,7 +275,7 @@ export function proxy(request: NextRequest) {
     };
     target.pathname = map[legacy] ?? "/visa";
 
-    return NextResponse.redirect(target, 302);
+    return NextResponse.redirect(target, 301);
   }
 
   // === TAX DOMAIN (tax.balizero.com) ===

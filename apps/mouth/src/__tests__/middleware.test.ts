@@ -464,10 +464,11 @@ describe("Middleware - Multi-domain Routing", () => {
     ];
 
     for (const [from, to] of cases) {
-      it(`redirects 302 ${from} → balizero.com${to}`, () => {
+      // 301 permanent — the visa funnel consolidation is final (was 302).
+      it(`redirects 301 ${from} → balizero.com${to}`, () => {
         const req = createRequest(`https://visa.balizero.com${from}`);
         const res = proxy(req);
-        expect(res.status).toBe(302);
+        expect(res.status).toBe(301);
         const location = res.headers.get("location")!;
         const url = new URL(location);
         expect(url.hostname).toBe("balizero.com");

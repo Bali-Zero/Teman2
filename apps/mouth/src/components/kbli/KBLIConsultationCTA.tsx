@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
+import { getKbliCtaPrices } from "@/lib/bali-zero-prices";
 
 const WHATSAPP_BASE = "https://wa.me/6282264599868";
 
@@ -10,18 +11,35 @@ interface KBLIConsultationCTAProps {
   pmaStatus: string;
 }
 
+/**
+ * Normalize a PricingTool price string (e.g. "<amount> IDR") to the CTA's
+ * "IDR <amount>" display order, without altering the figure itself.
+ */
+function toIdrDisplay(price: string | null): string | null {
+  if (!price) return null;
+  const amount = price.replace(/\s*IDR\s*/i, "").trim();
+  return `IDR ${amount}`;
+}
+
 export function KBLIConsultationCTA({
   code,
   titleEn,
   pmaStatus,
 }: KBLIConsultationCTAProps) {
   const isPMAOpen = pmaStatus === "open" || pmaStatus === "restricted";
+  // Prices come from PricingTool (synced catalog), NEVER hardcoded (CLAUDE.md §8.11).
+  const prices = getKbliCtaPrices();
+  const ptPmaPrice = toIdrDisplay(prices.ptPma);
+  const virtualOfficePrice = toIdrDisplay(prices.virtualOffice);
   const waText = encodeURIComponent(
     `Hello Bali Zero! I'm looking at KBLI ${code} (${titleEn}). I need help setting up my company. Can you guide me?`,
   );
 
   return (
-    <section className="mt-12">
+    // Dark island: the promotional card keeps its terracotta→charcoal gradient
+    // (an inline style CSS overrides cannot reach), so it stays a dark island on
+    // the light KBLI detail page (FT pattern) — its --kbli-text-* stay light.
+    <section className="rp-dark-island mt-12">
       <div
         className="rounded-2xl border p-6 sm:p-8"
         style={{
@@ -52,7 +70,7 @@ export function KBLIConsultationCTA({
 
           {/* Service cards */}
           <div className="grid gap-3 sm:grid-cols-2">
-            {isPMAOpen && (
+            {isPMAOpen && ptPmaPrice && (
               <div
                 className="rounded-xl border p-4"
                 style={{
@@ -64,30 +82,32 @@ export function KBLIConsultationCTA({
                   PT PMA Setup
                 </p>
                 <p className="mt-1 text-xl font-bold text-[var(--kbli-text-primary)]">
-                  IDR 20.000.000
+                  {ptPmaPrice}
                 </p>
                 <p className="mt-1 text-xs text-[var(--kbli-text-muted)]">
                   Company registration, KBLI, NIB, domicile
                 </p>
               </div>
             )}
-            <div
-              className="rounded-xl border p-4"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                borderColor: "rgba(255,255,255,0.06)",
-              }}
-            >
-              <p className="text-xs font-medium uppercase tracking-wider text-[var(--kbli-text-muted)]">
-                Virtual Office
-              </p>
-              <p className="mt-1 text-xl font-bold text-[var(--kbli-text-primary)]">
-                IDR 5.000.000
-              </p>
-              <p className="mt-1 text-xs text-[var(--kbli-text-muted)]">
-                Legal address for your PT PMA in Bali
-              </p>
-            </div>
+            {virtualOfficePrice && (
+              <div
+                className="rounded-xl border p-4"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.06)",
+                }}
+              >
+                <p className="text-xs font-medium uppercase tracking-wider text-[var(--kbli-text-muted)]">
+                  Virtual Office
+                </p>
+                <p className="mt-1 text-xl font-bold text-[var(--kbli-text-primary)]">
+                  {virtualOfficePrice}
+                </p>
+                <p className="mt-1 text-xs text-[var(--kbli-text-muted)]">
+                  Legal address for your PT PMA in Bali
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Trust + CTA */}

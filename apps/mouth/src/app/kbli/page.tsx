@@ -6,6 +6,7 @@ import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
 import { FunnelFrame } from "@balizero/core";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
   title: "KBLI 2025 Navigator — Indonesia Business Classification Guide",
@@ -37,9 +38,13 @@ export default async function KBLIHomePage({
       sessionId="SSR"
       trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
     >
-      <div className="space-y-16">
-        {/* ── HERO ── */}
-        <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[#141416]">
+      <div
+        className={`space-y-16 kbli-page ${RUMAH_CLASS}`}
+        style={{ ...RUMAH_VARS }}
+      >
+        {/* ── HERO (dark island — Balinese pattern + flag-title gradient only
+            works on dark) ── */}
+        <div className="rp-dark-island relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[#141416]">
           {/* Balinese ornamental pattern */}
           <div
             className="absolute inset-0 opacity-100"
@@ -200,10 +205,11 @@ export default async function KBLIHomePage({
           ))}
         </div>
 
-        {/* ── SEARCH ── */}
+        {/* ── SEARCH (dark island — the sticky search bar keeps its dark glass
+            so the KBLISearch dropdown + results stay legible) ── */}
         <div
           id="search"
-          className="sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
+          className="rp-dark-island sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
         >
           <KBLISearch autoFocus initialQuery={initialQuery} />
           <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">

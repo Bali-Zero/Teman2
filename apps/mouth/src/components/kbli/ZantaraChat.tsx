@@ -107,7 +107,7 @@ export function ZantaraChat({
   );
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e]/60 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,132,90,0.1)] flex flex-col">
+    <div className="rp-dark-island relative overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e]/60 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,132,90,0.1)] flex flex-col">
       {/* Subtle background glow effect inside the container */}
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-accent-warm/10 blur-[80px] pointer-events-none z-0" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-[#3b82f6]/10 blur-[80px] pointer-events-none z-0" />

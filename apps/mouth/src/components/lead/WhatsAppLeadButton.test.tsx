@@ -55,10 +55,13 @@ describe("WhatsAppLeadButton", () => {
         expect.objectContaining({ method: "POST" }),
       );
     });
-    const body = JSON.parse(
-      (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-        .body as string,
-    );
+    // The button also fires kbli funnel telemetry (POST /api/analytics/...),
+    // so locate the capture call by URL rather than assuming call index 0.
+    const captureCall = (
+      global.fetch as ReturnType<typeof vi.fn>
+    ).mock.calls.find((c) => c[0] === "/api/lead/capture");
+    expect(captureCall).toBeDefined();
+    const body = JSON.parse(captureCall![1].body as string);
     expect(body.source).toBe("kbli_navigator");
     expect(body.result_hash).toBe("56303");
     expect(body.whatsapp_context).toEqual([{ label: "KBLI", value: "56303" }]);

@@ -44,6 +44,8 @@ const nextConfig: NextConfig = {
       "./data/KBLI_2025_FINAL_CLEAN.json",
       "./data/kbli-2025.json",
       "./data/kbli-gold-all.json",
+      // PricingTool-synced company prices read by KBLIConsultationCTA (ISR).
+      "./data/bali-zero-prices.json",
       "./src/content/articles/**/*.mdx",
     ],
   },

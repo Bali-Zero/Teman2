@@ -17,22 +17,37 @@ test.describe("persona doors homepage page Page", () => {
     await page.goto("/");
   });
 
-  test("renders the four persona doors with correct targets", async ({
+  test("real doors (visa·company) navigate; Soon doors (tax·property) do not", async ({
     page,
   }) => {
     const doors = page.getByTestId("persona-doors");
     await expect(doors).toBeVisible();
     await expect(doors.getByText("Start where you are.")).toBeVisible();
 
+    // Visa + KBLI are real tools — keep their navigable links.
     const visa = doors.locator('a[data-door="visa"]');
     const company = doors.locator('a[data-door="company"]');
-    const tax = doors.locator('a[data-door="tax"]');
-    const property = doors.locator('a[data-door="property"]');
-
     await expect(visa).toHaveAttribute("href", "/visa");
     await expect(company).toHaveAttribute("href", "/kbli");
-    await expect(tax).toHaveAttribute("href", "https://tax.balizero.com/");
-    await expect(property).toHaveAttribute("href", "/property");
+
+    // Tax + Property are "Soon" — the door CTA is a non-navigating element
+    // (no <a href>) and the article carries the coming-soon marker + badge.
+    await expect(doors.locator('a[data-door="tax"]')).toHaveCount(0);
+    await expect(doors.locator('a[data-door="property"]')).toHaveCount(0);
+    await expect(doors.locator('[data-door="tax"]')).toHaveCount(1);
+    await expect(doors.locator('[data-door="property"]')).toHaveCount(1);
+    for (const persona of ["tax", "property"]) {
+      const article = doors.locator(
+        `article[data-coming-soon="true"]#${
+          persona === "tax" ? "tax" : "property"
+        }`,
+      );
+      await expect(article).toHaveCount(1);
+      await expect(article.getByText("Soon", { exact: true })).toBeVisible();
+    }
+    // The tool-title line of a Soon door must NOT be a deep-link either.
+    await expect(doors.locator('a[data-tool="tax"]')).toHaveCount(0);
+    await expect(doors.locator('a[data-tool="property"]')).toHaveCount(0);
 
     await expect(doors.getByText("I'm moving to Bali")).toBeVisible();
     await expect(doors.getByText("I'm starting a business")).toBeVisible();
@@ -47,7 +62,7 @@ test.describe("persona doors homepage page Page", () => {
   }) => {
     const order = await page
       .getByTestId("persona-doors")
-      .locator("article a[data-door]")
+      .locator("[data-door]")
       .evaluateAll((els) => els.map((el) => el.getAttribute("data-door")));
     expect(order).toEqual(["visa", "company", "tax", "property"]);
   });
@@ -80,12 +95,20 @@ test.describe("persona doors homepage page Page", () => {
   test("doors band contains no red primary styling", async ({ page }) => {
     const doors = page.getByTestId("persona-doors");
     await expect(doors.locator(".cta-primary")).toHaveCount(0);
-    // Every door CTA is a soft navy link.
-    for (const door of ["visa", "company", "tax", "property"]) {
+    // Real-tool door CTAs are soft navy links ("See how it works").
+    for (const door of ["visa", "company"]) {
       const link = doors.locator(`a[data-door="${door}"]`);
       await expect(link).toContainText("See how it works");
       const color = await link.evaluate((el) => getComputedStyle(el).color);
       expect(color).toBe("rgb(30, 56, 99)"); // brand navy #1e3863
+    }
+    // "Soon" door CTAs are a muted non-navigating "Coming soon" line — never
+    // red, never a link.
+    for (const door of ["tax", "property"]) {
+      const cta = doors.locator(`[data-door="${door}"]`);
+      await expect(cta).toContainText("Coming soon");
+      const color = await cta.evaluate((el) => getComputedStyle(el).color);
+      expect(color).toBe("rgb(71, 83, 114)"); // muted ink #475372
     }
   });
 });

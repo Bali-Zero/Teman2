@@ -9,6 +9,7 @@ import {
   useFunnelApp,
   type WizardStep,
 } from "@balizero/core";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 const NATIONALITIES = [
   { iso: "USA", label: "United States" },
@@ -272,32 +273,37 @@ export default function VisaMatchPage() {
   };
 
   return (
-    <AppFrame
-      funnel="visa"
-      title="Visa Match"
-      subtitle="4 short questions. A visa recommendation with the cost."
-      trustStrip={
-        <AppTrustStrip
-          items={[
-            { value: "24+", label: "visa categories supported" },
-            { value: "4", label: "questions — under a minute" },
-            { value: "0", label: "prices invented (all from PricingTool)" },
-          ]}
+    // Rumah Putih LIGHT — per-page (NEVER on /visa/layout.tsx). AppFrame +
+    // AppWizard are token-driven, so RUMAH_VARS flips the quiz to paper without
+    // touching the wizard/state/router logic.
+    <div className={RUMAH_CLASS} style={{ ...RUMAH_VARS }}>
+      <AppFrame
+        funnel="visa"
+        title="Visa Match"
+        subtitle="4 short questions. A visa recommendation with the cost."
+        trustStrip={
+          <AppTrustStrip
+            items={[
+              { value: "24+", label: "visa categories supported" },
+              { value: "4", label: "questions — under a minute" },
+              { value: "0", label: "prices invented (all from PricingTool)" },
+            ]}
+          />
+        }
+      >
+        <AppWizard
+          steps={steps}
+          persistKey="bz.visa_match.wizard"
+          onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
+          onAbandon={(step) => tracker.wizardAbandoned(step)}
+          onComplete={onComplete}
         />
-      }
-    >
-      <AppWizard
-        steps={steps}
-        persistKey="bz.visa_match.wizard"
-        onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
-        onAbandon={(step) => tracker.wizardAbandoned(step)}
-        onComplete={onComplete}
-      />
-      {submitError ? (
-        <p role="alert" style={{ color: "var(--color-error)", margin: 0 }}>
-          {submitError}
-        </p>
-      ) : null}
-    </AppFrame>
+        {submitError ? (
+          <p role="alert" style={{ color: "var(--color-error)", margin: 0 }}>
+            {submitError}
+          </p>
+        ) : null}
+      </AppFrame>
+    </div>
   );
 }

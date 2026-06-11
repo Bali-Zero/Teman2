@@ -8,6 +8,7 @@ import {
   AppTrustStrip,
   useFunnelApp,
 } from "@balizero/core";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 const VISA_OPTIONS = [
   { code: "B1", label: "B1 Visa on Arrival (VOA)" },
@@ -72,62 +73,67 @@ export default function VisaClockPage() {
   };
 
   return (
-    <AppFrame
-      funnel="visa"
-      title="Your timeline in five checkpoints."
-      subtitle="Fill in the two blanks."
-      trustStrip={
-        <AppTrustStrip
-          items={[
-            { value: "5,021", label: "visas filed since 2019" },
-            { value: "5", label: "checkpoints (D-60 → D-1)" },
-            { value: "4.8h", label: "avg first-reply on WhatsApp" },
-          ]}
+    // Rumah Putih LIGHT — per-page (NEVER on /visa/layout.tsx). AppFrame +
+    // AppHeroForm are token-driven; RUMAH_VARS flips them to paper without
+    // touching the form/state/router logic.
+    <div className={RUMAH_CLASS} style={{ ...RUMAH_VARS }}>
+      <AppFrame
+        funnel="visa"
+        title="Your timeline in five checkpoints."
+        subtitle="Fill in the two blanks."
+        trustStrip={
+          <AppTrustStrip
+            items={[
+              { value: "5,021", label: "visas filed since 2019" },
+              { value: "5", label: "checkpoints (D-60 → D-1)" },
+              { value: "4.8h", label: "avg first-reply on WhatsApp" },
+            ]}
+          />
+        }
+      >
+        <AppHeroForm
+          headline="Two fields. Your expiry timeline."
+          submitLabel="Show my timeline"
+          onSubmit={submit}
+          pending={pending}
+          error={error}
+          sentenceTemplate="I entered on {entry} with a {visa} visa."
+          sentenceFields={{
+            entry: (
+              <input
+                type="date"
+                required
+                value={entryDate}
+                onChange={(e) => {
+                  setEntryDate(e.target.value);
+                  tracker.formStarted("entry_date");
+                }}
+                style={fieldStyle}
+                aria-label="Entry date"
+              />
+            ),
+            visa: (
+              <select
+                required
+                value={visaType}
+                onChange={(e) => {
+                  setVisaType(e.target.value);
+                  tracker.formStarted("visa_type");
+                }}
+                style={fieldStyle}
+                aria-label="Visa type"
+              >
+                <option value="">pick one…</option>
+                {VISA_OPTIONS.map((v) => (
+                  <option key={v.code} value={v.code}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+            ),
+          }}
         />
-      }
-    >
-      <AppHeroForm
-        headline="Two fields. Your expiry timeline."
-        submitLabel="Show my timeline"
-        onSubmit={submit}
-        pending={pending}
-        error={error}
-        sentenceTemplate="I entered on {entry} with a {visa} visa."
-        sentenceFields={{
-          entry: (
-            <input
-              type="date"
-              required
-              value={entryDate}
-              onChange={(e) => {
-                setEntryDate(e.target.value);
-                tracker.formStarted("entry_date");
-              }}
-              style={fieldStyle}
-              aria-label="Entry date"
-            />
-          ),
-          visa: (
-            <select
-              required
-              value={visaType}
-              onChange={(e) => {
-                setVisaType(e.target.value);
-                tracker.formStarted("visa_type");
-              }}
-              style={fieldStyle}
-              aria-label="Visa type"
-            >
-              <option value="">pick one…</option>
-              {VISA_OPTIONS.map((v) => (
-                <option key={v.code} value={v.code}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
-          ),
-        }}
-      />
-    </AppFrame>
+      </AppFrame>
+    </div>
   );
 }

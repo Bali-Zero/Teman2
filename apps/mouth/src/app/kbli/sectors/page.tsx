@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getSections } from "@/lib/kbli-data";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
   title: "KBLI 2025 Sectors — Browse All Business Categories",
@@ -16,7 +17,10 @@ export default function SectorsPage() {
   const sections = getSections().filter((s) => s.codeCount > 0);
 
   return (
-    <div className="space-y-8">
+    <div
+      className={`space-y-8 kbli-page ${RUMAH_CLASS}`}
+      style={{ ...RUMAH_VARS }}
+    >
       <KBLIBreadcrumb
         items={[
           { label: "KBLI Navigator", href: "/kbli" },

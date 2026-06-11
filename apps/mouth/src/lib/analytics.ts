@@ -381,6 +381,36 @@ export function trackKBLIChatQuestion(code: string): void {
   });
 }
 
+/** Track a click on the KBLI consultation CTA (the "register this business" card). */
+export function trackKBLIConsultClick(code: string): void {
+  sendGA4Event("kbli_consult_click", {
+    event_category: "KBLI",
+    kbli_code: code,
+  });
+  trackEvent("kbli_consult_click", { kbli_code: code });
+  void trackFunnelEvent("kbli_consult_click", {
+    sessionId: getOrCreateSessionId(),
+    payload: { kbli_code: code },
+  });
+}
+
+/** Track the WhatsApp CTA on the KBLI Navigator (shown or clicked). */
+export function trackKBLIWhatsAppCTA(
+  action: "shown" | "clicked",
+  code = "",
+): void {
+  sendGA4Event("kbli_whatsapp_cta", {
+    event_category: "KBLI",
+    action,
+    kbli_code: code,
+  });
+  trackEvent("kbli_whatsapp_cta", { action, kbli_code: code });
+  void trackFunnelEvent("kbli_whatsapp_cta", {
+    sessionId: getOrCreateSessionId(),
+    payload: { action, kbli_code: code },
+  });
+}
+
 // --- Tax ---
 
 /** Track tax dashboard viewed */

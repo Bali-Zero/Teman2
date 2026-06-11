@@ -30,14 +30,18 @@ test.describe("door tool links page Page", () => {
     ).toHaveCount(0);
   });
 
-  test("each door carries exactly one tool link (4 total)", async ({
+  test("each door carries exactly one tool identity line (4 total)", async ({
     page,
   }) => {
     const doors = page.getByTestId("persona-doors");
-    await expect(doors.locator("a[data-tool]")).toHaveCount(4);
+    // All four doors render a tool identity line (data-tool), but only the
+    // real tools (visa/kbli) are navigable <a>; the "Soon" tools (tax/property)
+    // render the same line as a non-navigating <span>.
+    await expect(doors.locator("[data-tool]")).toHaveCount(4);
     for (const funnel of ["visa", "kbli", "tax", "property"]) {
-      await expect(doors.locator(`a[data-tool="${funnel}"]`)).toHaveCount(1);
+      await expect(doors.locator(`[data-tool="${funnel}"]`)).toHaveCount(1);
     }
+    await expect(doors.locator("a[data-tool]")).toHaveCount(2); // visa + kbli
   });
 
   test("Visa Oracle tool link points at visa.balizero.com", async ({
@@ -60,25 +64,30 @@ test.describe("door tool links page Page", () => {
     await expect(link).toHaveAttribute("href", "/kbli");
   });
 
-  test("Tax Intelligence tool link points at tax.balizero.com", async ({
+  test("Tax Intelligence tool line is Soon — present but NOT a link", async ({
     page,
   }) => {
-    const link = page
-      .getByTestId("persona-doors")
-      .locator('a[data-tool="tax"]');
-    await expect(link).toContainText("Tax Intelligence");
-    await expect(link).toContainText("deadlines");
-    await expect(link).toHaveAttribute("href", "https://tax.balizero.com/");
+    const doors = page.getByTestId("persona-doors");
+    const line = doors.locator('[data-tool="tax"]');
+    await expect(line).toContainText("Tax Intelligence");
+    await expect(line).toContainText("deadlines");
+    // The stub tool is not reachable from the homepage — no anchor, no href.
+    await expect(doors.locator('a[data-tool="tax"]')).toHaveCount(0);
+    await expect(
+      doors.locator('article#tax[data-coming-soon="true"]'),
+    ).toHaveCount(1);
   });
 
-  test("Property Map tool link points at /property/eligibility", async ({
+  test("Property Map tool line is Soon — present but NOT a link", async ({
     page,
   }) => {
-    const link = page
-      .getByTestId("persona-doors")
-      .locator('a[data-tool="property"]');
-    await expect(link).toContainText("Property Map");
-    await expect(link).toContainText("zoning");
-    await expect(link).toHaveAttribute("href", "/property/eligibility");
+    const doors = page.getByTestId("persona-doors");
+    const line = doors.locator('[data-tool="property"]');
+    await expect(line).toContainText("Property Map");
+    await expect(line).toContainText("zoning");
+    await expect(doors.locator('a[data-tool="property"]')).toHaveCount(0);
+    await expect(
+      doors.locator('article#property[data-coming-soon="true"]'),
+    ).toHaveCount(1);
   });
 });

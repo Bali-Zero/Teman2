@@ -10,7 +10,9 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Visa funnel fusion", () => {
-  test("match happy path: wizard → accordion visible on result", async ({ page }) => {
+  test("match happy path: wizard → accordion visible on result", async ({
+    page,
+  }) => {
     await page.goto("/visa");
     await page.getByRole("link", { name: /no, i'm planning/i }).click();
 
@@ -33,11 +35,15 @@ test.describe("Visa funnel fusion", () => {
     await expect(page.getByText(/your visa:/i)).toBeVisible();
 
     // Accordion is visible (closed by default)
-    const accordion = page.getByRole("button", { name: /ask 3 free questions/i });
+    const accordion = page.getByRole("button", {
+      name: /ask 3 free questions/i,
+    });
     await expect(accordion).toBeVisible();
 
     // WhatsApp CTA is still visible and unaffected
-    await expect(page.getByRole("link", { name: /whatsapp/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /whatsapp/i }).first(),
+    ).toBeVisible();
   });
 
   test("wizard_abstained path: investor + under-50M → HandoffWaLink, no accordion", async ({
@@ -73,7 +79,7 @@ test.describe("Visa funnel fusion", () => {
     expect(decoded).toContain("ITA");
   });
 
-  test("subdomain 302: visa.balizero.com/privacy redirects to /visa/privacy", async ({
+  test("subdomain 301: visa.balizero.com/privacy redirects to /visa/privacy", async ({
     request,
   }) => {
     // Only meaningful against the deployed preview where DNS resolves the
@@ -86,7 +92,8 @@ test.describe("Visa funnel fusion", () => {
     const res = await request.get("https://visa.balizero.com/privacy", {
       maxRedirects: 0,
     });
-    expect(res.status()).toBe(302);
+    // Permanent — the visa funnel consolidation is final (302 → 301).
+    expect(res.status()).toBe(301);
     const location = res.headers()["location"];
     expect(location).toMatch(/balizero\.com\/visa\/privacy$/);
   });

@@ -1058,3 +1058,131 @@ main,
 .rumah-putih .rp-dark-island .text-white\/90 {
   color: rgba(255, 255, 255, 0.88) !important;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   MYTHOS Stage-B Batch 3 — "Rumah Putih" route-scoped LIGHT overrides for the
+   KBLI Navigator tool pages (/kbli, /kbli/[code], /kbli/sectors,
+   /kbli/sectors/[id]).
+
+   LOAD-BEARING: unlike the blog/service pages, the KBLI tool does NOT read the
+   --surface-base/--text-primary tokens that RUMAH_VARS overrides. It reads its
+   OWN token tree, the `--kbli-*` family defined in a global :root in
+   src/styles/kbli-theme.css, which the design-system aliases (--foreground*,
+   --background*, --border, etc.) point at in globals.css. So flipping these
+   pages means re-pointing the `--kbli-*` SURFACE / TEXT / BORDER tokens under
+   `.rumah-putih` — that single re-point cascades to every component that reads
+   the kbli, foreground and background token families (KBLISectorGrid, KBLICard,
+   breadcrumb, LicensingSection, MarkdownClient + .kbli-prose, the [code]
+   editorial body, both
+   sectors pages). RUMAH_VARS + RUMAH_CLASS are still set on each wrapper (the
+   class is the .rumah-putih hook; the vars keep the convention + give the page
+   column a paper surface so the dark <body> never shows through).
+
+   Status/brand --kbli-* tokens (accent terracotta, pma/risk status, amber,
+   zantara, map) are LEFT UNCHANGED — they read fine on light.
+
+   Dark islands (hero covers, sticky search, ZantaraChat, the ConsultationCTA
+   promotional card) are tagged `.rp-dark-island`; the rule below re-asserts the
+   DARK --kbli-* tokens inside them so their hardcoded white text + dark
+   gradients stay legible (FT "dark island" pattern). The Batch-1/2
+   `.rp-dark-island` white-text re-assert (above) still applies to text-white.
+   WCAG AA: ink #16213a ≈ 13.5:1, soft-ink #475372 ≈ 7.1:1 on paper #f7f6f2;
+   navy headings #1e3863 ≈ 10.8:1.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Re-point the KBLI surface/text/border tokens to the Rumah Putih palette.
+      Everything that aliases through --kbli-* / --foreground* / --background*
+      flips with this one block. ── */
+.rumah-putih {
+  --kbli-bg-base: #f7f6f2;
+  --kbli-bg-elevated: #ffffff;
+  --kbli-bg-surface: #f1efe9;
+  --kbli-bg-surface-hover: #e8e6df;
+  --kbli-bg-card: #ffffff;
+  --kbli-bg-card-hover: #faf9f6;
+  --kbli-bg-input: #ffffff;
+  --kbli-bg-primary: #f7f6f2;
+  --kbli-bg-secondary: #ffffff;
+  --kbli-text-primary: #16213a;
+  --kbli-text-secondary: #475372;
+  --kbli-text-muted: #6a7383;
+  --kbli-border: #e3e1da;
+  --kbli-border-hover: #cfccc2;
+}
+
+/* ── The KBLI pages do not own a <main> with a paper bg of their own; give the
+      converted wrapper a light surface so the global dark `body` (which paints
+      var(--kbli-bg-base)) never bleeds through behind/around the column. ── */
+.rumah-putih.kbli-page,
+.rumah-putih .kbli-page {
+  background: #f7f6f2;
+  color: #16213a; /* ink default for any text inheriting from the dark <body> */
+}
+
+/* ── Arbitrary-value translucent-white utilities the existing rumah block does
+      not cover (KBLISectorGrid cards, KBLISearch dropdown, KBLICard). On paper
+      these become near-invisible white tints + ghost borders; repaint them as
+      defined white cards with a hairline. Exclude image overlays + islands. ── */
+.rumah-putih
+  .bg-white\/\[0\.03\]:not(.rp-dark-island):not(.rp-dark-island *):not(
+    .absolute *
+  ),
+.rumah-putih
+  .bg-white\/\[0\.04\]:not(.rp-dark-island):not(.rp-dark-island *):not(
+    .absolute *
+  ),
+.rumah-putih
+  .bg-white\/\[0\.02\]:not(.rp-dark-island):not(.rp-dark-island *):not(
+    .absolute *
+  ),
+.rumah-putih
+  .bg-\[rgba\(255\,255\,255\,0\.03\)\]:not(.rp-dark-island):not(
+    .rp-dark-island *
+  ):not(.absolute *),
+.rumah-putih
+  .bg-\[rgba\(255\,255\,255\,0\.02\)\]:not(.rp-dark-island):not(
+    .rp-dark-island *
+  ):not(.absolute *) {
+  background-color: #ffffff !important;
+}
+.rumah-putih
+  .border-white\/\[0\.08\]:not(.rp-dark-island):not(.rp-dark-island *):not(
+    .absolute *
+  ),
+.rumah-putih
+  .border-white\/\[0\.06\]:not(.rp-dark-island):not(.rp-dark-island *):not(
+    .absolute *
+  ),
+.rumah-putih
+  .border-\[rgba\(255\,255\,255\,0\.06\)\]:not(.rp-dark-island):not(
+    .rp-dark-island *
+  ):not(.absolute *) {
+  border-color: #e3e1da !important;
+}
+
+/* ── zinc text used by KBLISectorGrid / KBLISearch on paper → ink scale. ── */
+.rumah-putih .text-zinc-300:not(.rp-dark-island *):not(.absolute *),
+.rumah-putih .text-zinc-400:not(.rp-dark-island *):not(.absolute *) {
+  color: #475372 !important;
+}
+.rumah-putih .text-zinc-500:not(.rp-dark-island *):not(.absolute *) {
+  color: #6a7383 !important;
+}
+
+/* ── DARK-ISLAND token re-assert: inside an .rp-dark-island the KBLI surface/
+      text/border tokens stay DARK, so hero covers, the sticky search bar, the
+      ZantaraChat card and the ConsultationCTA keep their intended dark look
+      (their white text is already handled by the Batch-1/2 island rule). ── */
+.rumah-putih .rp-dark-island,
+.rumah-putih .rp-dark-island * {
+  --kbli-bg-base: #1d273b;
+  --kbli-bg-elevated: #243047;
+  --kbli-bg-surface: #2a3655;
+  --kbli-bg-surface-hover: #2f3d5e;
+  --kbli-bg-card: rgba(29, 39, 59, 0.85);
+  --kbli-bg-input: rgba(29, 39, 59, 0.8);
+  --kbli-text-primary: #ececec;
+  --kbli-text-secondary: #a8a8a8;
+  --kbli-text-muted: #8a8a8a;
+  --kbli-border: rgba(255, 255, 255, 0.08);
+}

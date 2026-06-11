@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { trackKBLIConsultClick, trackKBLIWhatsAppCTA } from "@/lib/analytics";
+
 /** Bare business wa.me link — no-JS href and fallback when capture fails.
  *  Same number used by the backend deeplink builder default. */
 export const FALLBACK_WA_URL = "https://wa.me/6282264599868";
@@ -49,6 +51,13 @@ export function WhatsAppLeadButton({
   const handoff = async (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     if (pending) return;
+    // Funnel telemetry — fire BEFORE the capture POST so the click is recorded
+    // even if the user navigates away during the request. Scoped to the KBLI
+    // Navigator source (this generic button also serves articles, etc.).
+    if (source === "kbli_navigator") {
+      trackKBLIConsultClick(resultHash ?? "");
+      trackKBLIWhatsAppCTA("clicked", resultHash ?? "");
+    }
     setPending(true);
     try {
       const res = await fetch("/api/lead/capture", {
