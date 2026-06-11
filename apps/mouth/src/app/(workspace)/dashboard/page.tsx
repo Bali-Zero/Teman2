@@ -472,13 +472,13 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="p-2.5 space-y-2">
-        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
         <div className="h-12 rounded-xl bg-white/[0.025] animate-pulse" />
         <div className="grid grid-cols-4 gap-2">
           <div className="col-span-3 h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
           <div className="h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
         </div>
         <div className="h-[320px] rounded-xl bg-white/[0.025] animate-pulse" />
+        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
       </div>
     );
   }
@@ -579,9 +579,6 @@ export default function DashboardPage() {
     <DashboardErrorBoundary>
       <div className="relative dash-liquid-bg">
         <div className="p-2.5 space-y-2">
-          {/* ROW 0: Hero */}
-          <HeroLiveWindow />
-
           {/* ROW 1: Zantara AI portal */}
           <ZantaraPortalCard />
 
@@ -760,6 +757,9 @@ export default function DashboardPage() {
               <RoleWidget role={role} userId={user?.email ?? ""} />
             </div>
           </div>
+
+          {/* ROW 5: Hero news — below the operational rows (audit P0.1: action above the fold) */}
+          <HeroLiveWindow />
         </div>
       </div>
     </DashboardErrorBoundary>
