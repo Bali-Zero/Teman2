@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import Final
@@ -31,6 +32,21 @@ _CLI_CANDIDATES: Final[tuple[Path, ...]] = (
     Path.home() / ".npm-global/bin" / "claude",
     Path("/usr/local/bin/claude"),
 )
+# Pure text-completion never needs tools. Block the destructive/exfil ones
+# defense-in-depth so an OSINT-content prompt-injection (the prompt is built
+# from scraped, untrusted text) can never reach a tool — replaces the unsafe
+# `--permission-mode bypassPermissions` the reference client still carries.
+_DISALLOWED_TOOLS: Final[tuple[str, ...]] = (
+    "Bash",
+    "Edit",
+    "Write",
+    "WebFetch",
+    "WebSearch",
+    "NotebookEdit",
+)
+# Model slug allowlist-by-shape: forwarded to `--model`, so reject anything
+# that isn't a plain slug (blocks argv/flag smuggling via the model field).
+_MODEL_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$")
 
 
 class ClaudeOAuthError(RuntimeError):
@@ -75,11 +91,17 @@ async def complete_oauth(
     """
     if not prompt:
         raise ValueError("prompt must be non-empty")
+    if model is not None and not _MODEL_RE.match(model):
+        raise ValueError(f"invalid model slug: {model!r}")
 
-    cmd: list[str] = [_resolve_cli(), "-p", "--permission-mode", "bypassPermissions"]
+    # No bypassPermissions: tools are explicitly disallowed and the default
+    # permission mode fails-closed on any tool the model still attempts.
+    cmd: list[str] = [_resolve_cli(), "-p", "--disallowedTools", *_DISALLOWED_TOOLS]
     if model:
         cmd.extend(["--model", model])
-    cmd.append(prompt)
+    # `--` sentinel: the untrusted prompt that follows is an operand, never a
+    # flag (argv/flag-smuggling guard).
+    cmd.extend(["--", prompt])
 
     try:
         proc = await asyncio.create_subprocess_exec(
