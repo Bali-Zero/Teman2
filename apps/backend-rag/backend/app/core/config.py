@@ -515,6 +515,13 @@ class Settings(BaseSettings):
     enable_collective_memory: bool = False  # Set via ENABLE_COLLECTIVE_MEMORY env var
     enable_advanced_analytics: bool = False  # Set via ENABLE_ADVANCED_ANALYTICS env var
     enable_tool_execution: bool = False  # Set via ENABLE_TOOL_EXECUTION env var
+    # PII sovereignty (SYMBIOSIS Law 2 / UU PDP Art. 56): OCR of client documents
+    # (passport/KTP/NPWP/akta/visa) must NOT fall back to cloud Vision (Gemini) —
+    # that would send the document image to Google (cross-border). Default FALSE =
+    # local-only OCR; when Ollama is down the OCR degrades locally + alerts instead
+    # of sending PII to the cloud. Set OCR_ALLOW_CLOUD_VISION=true ONLY for
+    # non-PII document flows where cloud OCR is acceptable. Set via env var.
+    ocr_allow_cloud_vision: bool = False  # Set via OCR_ALLOW_CLOUD_VISION env var
 
     # ========================================
     # NOTIFICATION SERVICES
