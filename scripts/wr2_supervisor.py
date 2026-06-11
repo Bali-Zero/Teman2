@@ -86,15 +86,15 @@ logger = logging.getLogger("wr2.supervisor")
 # 2026-05-07 confirmed zero `rendered` outcomes since 25 Apr. Sprint A
 # patched the symptom by routing drafts_imaged → canva-apply directly.
 # Sprint B B-bis builds the missing scripts and restores the full chain.
+# P-1 (2026-06-11): render chokepoint is the HTML lane (PR #1236 cutover) — the
+# checked→render hop targets html-apply, never the flag-OFF canva-apply. Dead
+# `briefed_facted` rows removed (no producer in the live state machine).
 TRANSITIONS: dict[tuple[str | None, str], str | None] = {
     ("*", "briefed"):                                  "com.balizero.wr2.draft-generator",
-    ("briefed", "briefed_facted"):                     "com.balizero.wr2.draft-generator",
     ("briefed", "drafts"):                             "com.balizero.wr2.image-generator",
-    ("briefed_facted", "drafts"):                      "com.balizero.wr2.image-generator",
-    # Sprint B B-bis (RESTORED): drafts_imaged → fact-extractor → fact-checker → canva-apply.
     ("drafts", "drafts_imaged"):                       "com.balizero.wr2.fact-extractor",
     ("drafts_imaged", "drafts_imaged_facted"):         "com.balizero.wr2.fact-checker",
-    ("drafts_imaged_facted", "drafts_imaged_checked"): "com.balizero.wr2.canva-apply",
+    ("drafts_imaged_facted", "drafts_imaged_checked"): "com.balizero.wr2.html-apply",
     ("*", "rendered"):                                 None,  # Telegram only
     ("*", "fact_check_failed"):                        None,  # Telegram only — manual review terminal
     ("*", "rejected"):                                 None,  # log only
@@ -108,11 +108,10 @@ ALERT_STATUSES = {"rendered", "fact_check_failed"}
 # from a partial run (e.g. fact-checker crash mid-batch).
 NONTERMINAL_TO_NEXT_STAGE: dict[str, str] = {
     "briefed":               "com.balizero.wr2.draft-generator",
-    "briefed_facted":        "com.balizero.wr2.draft-generator",
     "drafts":                "com.balizero.wr2.image-generator",
     "drafts_imaged":         "com.balizero.wr2.fact-extractor",
     "drafts_imaged_facted":  "com.balizero.wr2.fact-checker",
-    "drafts_imaged_checked": "com.balizero.wr2.canva-apply",
+    "drafts_imaged_checked": "com.balizero.wr2.html-apply",
 }
 
 RECONCILE_INTERVAL_SEC = int(os.environ.get("WR2_RECONCILE_INTERVAL_SEC", "300"))
