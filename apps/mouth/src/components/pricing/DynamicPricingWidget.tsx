@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PricingResult, CostItem } from "@/lib/api/zantara-sdk/types";
 import { ZantaraSDK } from "@/lib/api/zantara-sdk";
+import { formatIDR } from "@balizero/core/utils";
 
 export interface DynamicPricingWidgetProps {
   sdk: ZantaraSDK;
@@ -47,14 +48,6 @@ export function DynamicPricingWidget({
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
   };
 
   const getCategoryColor = (category: string) => {
@@ -130,7 +123,7 @@ export function DynamicPricingWidget({
                 <span className="text-sm font-medium">Setup Cost</span>
               </div>
               <div className="text-2xl font-bold text-blue-900">
-                {formatCurrency(result.total_setup_cost)}
+                {formatIDR(result.total_setup_cost)}
               </div>
               <p className="text-xs text-blue-700 mt-1">One-time investment</p>
             </div>
@@ -142,7 +135,7 @@ export function DynamicPricingWidget({
                   <span className="text-sm font-medium">Annual Cost</span>
                 </div>
                 <div className="text-2xl font-bold text-green-900">
-                  {formatCurrency(result.total_recurring_cost)}
+                  {formatIDR(result.total_recurring_cost)}
                 </div>
                 <p className="text-xs text-green-700 mt-1">
                   Recurring expenses
@@ -204,9 +197,7 @@ export function DynamicPricingWidget({
                           {percentage}%
                         </span>
                       </div>
-                      <span className="font-semibold">
-                        {formatCurrency(amount)}
-                      </span>
+                      <span className="font-semibold">{formatIDR(amount)}</span>
                     </div>
                   );
                 })}
@@ -245,7 +236,7 @@ export function DynamicPricingWidget({
                     </div>
                     <div className="text-right">
                       <div className="font-semibold">
-                        {formatCurrency(item.amount)}
+                        {formatIDR(item.amount)}
                       </div>
                       {item.frequency && (
                         <div className="text-xs text-muted-foreground">

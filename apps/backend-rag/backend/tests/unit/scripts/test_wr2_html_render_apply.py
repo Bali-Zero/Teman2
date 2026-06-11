@@ -381,6 +381,68 @@ def test_legibility_levers_constant():
     assert _LEGIBILITY_LEVERS == {"scrim_opacity", "text_stroke", "shrink_font", "grow_font"}
 
 
+# ── saliency-placement is SOFT when contrast passes (2026-06-12 SCAR: a busy
+#    background band blocked a legible slide forever — busyness measured on the
+#    raw hero ignores the scrim, and the reposition remedy is disabled) ─────────
+
+
+def _mk_png(tmp):
+    p = Path(tmp) / "iter.png"
+    p.write_bytes(b"PNG")
+    return p
+
+
+def test_legibility_busy_band_is_soft_when_contrast_passes(monkeypatch, tmp_path):
+    """Hero text on a busier-than-calmest band but with PASSING contrast must NOT
+    fail the gate — the text is legible, scrim mitigates the busy bg, and the
+    only real remedy (reposition) is disabled. The note is still surfaced."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 12.6)  # ≫ AAA 7.0
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (0, [0.00, 0.02, 0.05]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is True
+    assert any("busier than calmest" in i for i in c.issues)  # note still visible
+    assert not c.levers  # nothing to pull — contrast is fine, reposition disabled
+
+
+def test_legibility_busy_band_is_hard_when_contrast_fails(monkeypatch, tmp_path):
+    """If contrast ALSO fails, the busy-band note is part of the hard problem and
+    the in-place remedy ladder (scrim+stroke) is proposed; gate fails."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 3.0)  # < AAA 7.0
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (0, [0.00, 0.02, 0.05]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is False
+    assert any("contrast" in i for i in c.issues)
+    assert any(lev["lever"] == "scrim_opacity" for lev in c.levers)
+
+
+def test_legibility_calm_band_passes_clean(monkeypatch, tmp_path):
+    """Calm bottom band + good contrast → pass, no issues, no levers."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 13.0)
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (2, [0.05, 0.04, 0.01]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is True
+    assert c.issues == []
+    assert c.levers == []
+
+
 @pytest.mark.asyncio
 async def test_designer_loop_legibility_lever_not_killed_by_brand_reject(monkeypatch):
     """FIX#3: when the brand verifier rejects for a NON-legibility reason but the

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import * as hrApi from "@/lib/api/hr/hr";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import type { HREmployee, EmployeeCreatePayload, PTKPStatus } from "@/types/hr";
+import { formatIDR } from "@balizero/core/utils";
 
 const PTKP_OPTIONS: PTKPStatus[] = [
   "TK/0",
@@ -17,14 +18,6 @@ const PTKP_OPTIONS: PTKPStatus[] = [
   "K/2",
   "K/3",
 ];
-
-function formatIDR(amount: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("id-ID", {

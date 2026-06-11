@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { formatIDRCompact } from "@balizero/core/utils";
 import {
   FolderKanban,
   Search,
@@ -801,13 +802,7 @@ export default function PratichePage() {
                   title="Click to filter paid practices"
                   aria-label="Filter paid practices"
                 >
-                  {new Intl.NumberFormat("id-ID", {
-                    notation: "compact",
-                    currency: "IDR",
-                    style: "currency",
-                    maximumFractionDigits: 0,
-                  }).format(totalRevenue)}{" "}
-                  paid
+                  {formatIDRCompact(totalRevenue)} paid
                 </button>
               )}
               {unpaidRevenue > 0 && (
@@ -827,13 +822,7 @@ export default function PratichePage() {
                   title="Click to filter unpaid practices"
                   aria-label="Filter unpaid practices"
                 >
-                  {new Intl.NumberFormat("id-ID", {
-                    notation: "compact",
-                    currency: "IDR",
-                    style: "currency",
-                    maximumFractionDigits: 0,
-                  }).format(unpaidRevenue)}{" "}
-                  unpaid
+                  {formatIDRCompact(unpaidRevenue)} unpaid
                 </button>
               )}
               {expiringCount > 0 && (
@@ -1182,7 +1171,9 @@ export default function PratichePage() {
                         : undefined
                     }
                     role={isCompleted ? "button" : undefined}
-                    aria-expanded={isCompleted ? !completedCollapsed : undefined}
+                    aria-expanded={
+                      isCompleted ? !completedCollapsed : undefined
+                    }
                     aria-label={
                       isCompleted
                         ? completedCollapsed
@@ -1237,12 +1228,7 @@ export default function PratichePage() {
                           className="mb-3 text-[10px] font-medium tabular-nums opacity-70"
                           style={{ color: colors.textColor }}
                         >
-                          {new Intl.NumberFormat("id-ID", {
-                            notation: "compact",
-                            currency: "IDR",
-                            style: "currency",
-                            maximumFractionDigits: 1,
-                          }).format(colRevenue)}
+                          {formatIDRCompact(colRevenue)}
                         </div>
                       );
                     })()}
@@ -1295,19 +1281,13 @@ export default function PratichePage() {
                           const teamLeaderLabel = practice.client_lead
                             ? teamMemberOptions.find(
                                 (m) => m.value === practice.client_lead,
-                              )?.label ||
-                              practice.client_lead.split("@")[0]
+                              )?.label || practice.client_lead.split("@")[0]
                             : null;
 
                           const priceValue =
                             practice.actual_price ?? practice.quoted_price ?? 0;
                           const priceStr = priceValue
-                            ? new Intl.NumberFormat("id-ID", {
-                                notation: "compact",
-                                currency: "IDR",
-                                style: "currency",
-                                maximumFractionDigits: 0,
-                              }).format(priceValue)
+                            ? formatIDRCompact(priceValue)
                             : null;
 
                           return (
@@ -1406,7 +1386,9 @@ export default function PratichePage() {
 
                                   <button
                                     className="absolute top-3 right-3 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.08)] opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={(e) => handleMenuClick(e, practice)}
+                                    onClick={(e) =>
+                                      handleMenuClick(e, practice)
+                                    }
                                   >
                                     <MoreVertical className="w-4 h-4" />
                                   </button>
@@ -1454,7 +1436,8 @@ export default function PratichePage() {
                                 )}
 
                                 {/* Meta row: expiry + age chips */}
-                                {(practice.expiry_date || practice.updated_at) && (
+                                {(practice.expiry_date ||
+                                  practice.updated_at) && (
                                   <div className="flex items-center gap-1.5 mt-3">
                                     {practice.expiry_date &&
                                       (() => {
@@ -1910,12 +1893,7 @@ export default function PratichePage() {
                             className="font-medium tabular-nums"
                             style={{ color: "var(--bz-accent)" }}
                           >
-                            {new Intl.NumberFormat("id-ID", {
-                              notation: "compact",
-                              currency: "IDR",
-                              style: "currency",
-                              maximumFractionDigits: 0,
-                            }).format(
+                            {formatIDRCompact(
                               practice.actual_price ||
                                 practice.quoted_price ||
                                 0,

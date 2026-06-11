@@ -27,9 +27,21 @@ import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
 import * as partnersApi from "@/lib/api/partners/partners";
-import type { Partner, PartnerReferral, PartnerCommission, AuditLogEntry } from "@/lib/api/partners/partners";
+import type {
+  Partner,
+  PartnerReferral,
+  PartnerCommission,
+  AuditLogEntry,
+} from "@/lib/api/partners/partners";
+import { formatIDR } from "@balizero/core/utils";
 
-type TabId = "profile" | "fiscal" | "payment" | "referrals" | "commissions" | "audit";
+type TabId =
+  | "profile"
+  | "fiscal"
+  | "payment"
+  | "referrals"
+  | "commissions"
+  | "audit";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <User size={14} /> },
@@ -40,9 +52,16 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "audit", label: "Audit", icon: <FileText size={14} /> },
 ];
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+const STATUS_STYLES: Record<
+  string,
+  { bg: string; text: string; label: string }
+> = {
   // CRIT-8: aligned to backend PartnerStatus enum
-  pending_approval: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Pending Approval" },
+  pending_approval: {
+    bg: "bg-amber-500/20",
+    text: "text-amber-400",
+    label: "Pending Approval",
+  },
   active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active" },
   inactive: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Inactive" },
 };
@@ -61,53 +80,101 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between py-2 border-b border-zinc-800 last:border-0">
       <span className="text-sm text-zinc-500 min-w-36">{label}</span>
-      <span className="text-sm text-zinc-200 text-right">{value || <span className="text-zinc-600 italic">—</span>}</span>
+      <span className="text-sm text-zinc-200 text-right">
+        {value || <span className="text-zinc-600 italic">—</span>}
+      </span>
     </div>
   );
 }
 
-function formatIDR(amount: number): string {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
-}
-
 function ProfileTab({ partner }: { partner: Partner }) {
-  const statusStyle = STATUS_STYLES[partner.onboarding_status] || STATUS_STYLES.inactive;
+  const statusStyle =
+    STATUS_STYLES[partner.onboarding_status] || STATUS_STYLES.inactive;
   return (
     <div className="space-y-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-0">
         <InfoRow label="Full Name" value={partner.full_name} />
-        <InfoRow label="Email" value={<span className="flex items-center gap-1.5"><Mail size={12} className="text-zinc-500" />{partner.email}</span>} />
-        <InfoRow label="Phone" value={partner.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-zinc-500" />{partner.phone}</span>} />
+        <InfoRow
+          label="Email"
+          value={
+            <span className="flex items-center gap-1.5">
+              <Mail size={12} className="text-zinc-500" />
+              {partner.email}
+            </span>
+          }
+        />
+        <InfoRow
+          label="Phone"
+          value={
+            partner.phone && (
+              <span className="flex items-center gap-1.5">
+                <Phone size={12} className="text-zinc-500" />
+                {partner.phone}
+              </span>
+            )
+          }
+        />
         <InfoRow label="WhatsApp" value={partner.whatsapp} />
         <InfoRow label="Nationality" value={partner.nationality} />
         <InfoRow label="Company" value={partner.company_name} />
         <InfoRow label="Work Role" value={partner.work_role} />
-        <InfoRow label="Status" value={
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-            {statusStyle.label}
-          </span>
-        } />
+        <InfoRow
+          label="Status"
+          value={
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
+            >
+              {statusStyle.label}
+            </span>
+          }
+        />
         {partner.commission_tier && (
-          <InfoRow label="Commission Tier" value={<span className="capitalize">{partner.commission_tier}</span>} />
+          <InfoRow
+            label="Commission Tier"
+            value={
+              <span className="capitalize">{partner.commission_tier}</span>
+            }
+          />
         )}
         {partner.default_commission_type && (
           <InfoRow
             label="Commission Policy"
-            value={`${partner.default_commission_value} ${partner.default_commission_type === 'percentage' ? '%' : 'IDR flat'}`}
+            value={`${partner.default_commission_value} ${partner.default_commission_type === "percentage" ? "%" : "IDR flat"}`}
           />
         )}
         <InfoRow label="Assigned To" value={partner.assigned_to} />
-        <InfoRow label="PDP Consent" value={partner.pdp_consent_at ? (
-          <span className="flex items-center gap-1 text-green-400"><CheckCircle size={12} /> Yes ({new Date(partner.pdp_consent_at).toLocaleDateString()})</span>
-        ) : (
-          <span className="flex items-center gap-1 text-red-400"><XCircle size={12} /> No</span>
-        )} />
-        <InfoRow label="Welcome Email" value={partner.welcome_email_sent_at ? new Date(partner.welcome_email_sent_at).toLocaleDateString() : "Not sent"} />
+        <InfoRow
+          label="PDP Consent"
+          value={
+            partner.pdp_consent_at ? (
+              <span className="flex items-center gap-1 text-green-400">
+                <CheckCircle size={12} /> Yes (
+                {new Date(partner.pdp_consent_at).toLocaleDateString()})
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-red-400">
+                <XCircle size={12} /> No
+              </span>
+            )
+          }
+        />
+        <InfoRow
+          label="Welcome Email"
+          value={
+            partner.welcome_email_sent_at
+              ? new Date(partner.welcome_email_sent_at).toLocaleDateString()
+              : "Not sent"
+          }
+        />
       </div>
       {partner.notes && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500 mb-1 uppercase tracking-wide font-medium">Notes</p>
-          <p className="text-sm text-zinc-300 whitespace-pre-wrap">{partner.notes}</p>
+          <p className="text-xs text-zinc-500 mb-1 uppercase tracking-wide font-medium">
+            Notes
+          </p>
+          <p className="text-sm text-zinc-300 whitespace-pre-wrap">
+            {partner.notes}
+          </p>
         </div>
       )}
     </div>
@@ -125,9 +192,18 @@ function FiscalTab({ partner }: { partner: Partner }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-0">
       <InfoRow label="NPWP (Tax ID)" value={partner.npwp} />
-      <InfoRow label="Withholding Category" value={taxLabels[partner.tax_withholding_category] || partner.tax_withholding_category} />
+      <InfoRow
+        label="Withholding Category"
+        value={
+          taxLabels[partner.tax_withholding_category] ||
+          partner.tax_withholding_category
+        }
+      />
       {partner.commission_rate_override != null && (
-        <InfoRow label="Rate Override" value={`${partner.commission_rate_override}%`} />
+        <InfoRow
+          label="Rate Override"
+          value={`${partner.commission_rate_override}%`}
+        />
       )}
       {partner.total_earned != null && (
         <InfoRow label="Total Earned" value={formatIDR(partner.total_earned)} />
@@ -152,43 +228,72 @@ function ReferralsTab({ partnerId }: { partnerId: string }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    partnersApi.listReferrals(partnerId)
+    partnersApi
+      .listReferrals(partnerId)
       .then((d) => setReferrals(d.referrals))
       .catch(() => setReferrals([]))
       .finally(() => setIsLoading(false));
   }, [partnerId]);
 
-  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-amber-400" /></div>;
-  if (referrals.length === 0) return (
-    <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
-      <Handshake size={32} />
-      <p className="text-sm">No referrals yet</p>
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="animate-spin text-amber-400" />
+      </div>
+    );
+  if (referrals.length === 0)
+    return (
+      <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
+        <Handshake size={32} />
+        <p className="text-sm">No referrals yet</p>
+      </div>
+    );
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b border-zinc-800">
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Client</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Practice</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Commission</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Status</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Client
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Practice
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Commission
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Status
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-800">
           {referrals.map((r) => {
-            const cs = COMMISSION_STATUS_STYLES[r.commission_status] || { bg: "bg-gray-500/20", text: "text-gray-400" };
+            const cs = COMMISSION_STATUS_STYLES[r.commission_status] || {
+              bg: "bg-gray-500/20",
+              text: "text-gray-400",
+            };
             return (
               <tr key={r.id}>
-                <td className="px-4 py-3 text-sm text-zinc-300">{r.referred_client_name || (r.referred_client_id ? `Client ${r.referred_client_id.substring(0, 8)}…` : "—")}</td>
-                <td className="px-4 py-3 text-sm text-zinc-400">{r.practice_type_name || "—"}</td>
                 <td className="px-4 py-3 text-sm text-zinc-300">
-                  {r.commission_amount != null ? formatIDR(r.commission_amount) : "—"}
+                  {r.referred_client_name ||
+                    (r.referred_client_id
+                      ? `Client ${r.referred_client_id.substring(0, 8)}…`
+                      : "—")}
+                </td>
+                <td className="px-4 py-3 text-sm text-zinc-400">
+                  {r.practice_type_name || "—"}
+                </td>
+                <td className="px-4 py-3 text-sm text-zinc-300">
+                  {r.commission_amount != null
+                    ? formatIDR(r.commission_amount)
+                    : "—"}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${cs.bg} ${cs.text}`}>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${cs.bg} ${cs.text}`}
+                  >
                     {r.commission_status.replace(/_/g, " ")}
                   </span>
                 </td>
@@ -206,46 +311,79 @@ function CommissionsTab({ partnerId }: { partnerId: string }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    partnersApi.listCommissions(partnerId)
+    partnersApi
+      .listCommissions(partnerId)
       .then((d) => setCommissions(d.commissions))
       .catch(() => setCommissions([]))
       .finally(() => setIsLoading(false));
   }, [partnerId]);
 
-  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-amber-400" /></div>;
-  if (commissions.length === 0) return (
-    <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
-      <BarChart3 size={32} />
-      <p className="text-sm">No commissions yet</p>
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="animate-spin text-amber-400" />
+      </div>
+    );
+  if (commissions.length === 0)
+    return (
+      <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
+        <BarChart3 size={32} />
+        <p className="text-sm">No commissions yet</p>
+      </div>
+    );
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b border-zinc-800">
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Practice</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Gross</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Net</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Status</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Date</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Practice
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Gross
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Net
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Status
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Date
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-800">
           {commissions.map((c) => {
-            const cs = COMMISSION_STATUS_STYLES[c.status] || { bg: "bg-gray-500/20", text: "text-gray-400" };
+            const cs = COMMISSION_STATUS_STYLES[c.status] || {
+              bg: "bg-gray-500/20",
+              text: "text-gray-400",
+            };
             return (
               <tr key={c.id}>
-                <td className="px-4 py-3 text-sm text-zinc-300">{c.practice_type_name || (c.practice_id ? `Practice ${c.practice_id.substring(0, 8)}…` : "—")}</td>
-                <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.gross_amount)}</td>
-                <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.net_amount)}</td>
+                <td className="px-4 py-3 text-sm text-zinc-300">
+                  {c.practice_type_name ||
+                    (c.practice_id
+                      ? `Practice ${c.practice_id.substring(0, 8)}…`
+                      : "—")}
+                </td>
+                <td className="px-4 py-3 text-sm text-zinc-300">
+                  {formatIDR(c.gross_amount)}
+                </td>
+                <td className="px-4 py-3 text-sm text-zinc-300">
+                  {formatIDR(c.net_amount)}
+                </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cs.bg} ${cs.text}`}>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cs.bg} ${cs.text}`}
+                  >
                     {c.status.replace(/_/g, " ")}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-zinc-500">{new Date(c.created_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-sm text-zinc-500">
+                  {new Date(c.created_at).toLocaleDateString()}
+                </td>
               </tr>
             );
           })}
@@ -261,46 +399,72 @@ function AuditTab({ partnerId }: { partnerId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    partnersApi.listAuditLog(partnerId)
+    partnersApi
+      .listAuditLog(partnerId)
       .then((entries) => setAuditEntries(entries))
       .catch(() => setError("Failed to load audit log"))
       .finally(() => setIsLoading(false));
   }, [partnerId]);
 
-  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-amber-400" /></div>;
-  if (error) return (
-    <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
-      <AlertCircle size={16} />
-      <span className="text-sm">{error}</span>
-    </div>
-  );
-  if (auditEntries.length === 0) return (
-    <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
-      <FileText size={32} />
-      <p className="text-sm">No audit log entries yet</p>
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="animate-spin text-amber-400" />
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+        <AlertCircle size={16} />
+        <span className="text-sm">{error}</span>
+      </div>
+    );
+  if (auditEntries.length === 0)
+    return (
+      <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
+        <FileText size={32} />
+        <p className="text-sm">No audit log entries yet</p>
+      </div>
+    );
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b border-zinc-800">
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Action</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">Actor</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Reason</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Date</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Action
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">
+              Actor
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Reason
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+              Date
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-800">
           {auditEntries.map((entry) => (
             <tr key={entry.id}>
-              <td className="px-4 py-3 text-sm font-medium text-zinc-200 capitalize">{entry.action.replace(/_/g, " ")}</td>
-              <td className="px-4 py-3 text-xs text-zinc-500 hidden md:table-cell font-mono">
-                {entry.actor_user_id ? entry.actor_user_id.substring(0, 8) + "…" : "—"}
+              <td className="px-4 py-3 text-sm font-medium text-zinc-200 capitalize">
+                {entry.action.replace(/_/g, " ")}
               </td>
-              <td className="px-4 py-3 text-sm text-zinc-400">{entry.reason || <span className="text-zinc-600 italic">—</span>}</td>
-              <td className="px-4 py-3 text-sm text-zinc-500">{new Date(entry.at).toLocaleString()}</td>
+              <td className="px-4 py-3 text-xs text-zinc-500 hidden md:table-cell font-mono">
+                {entry.actor_user_id
+                  ? entry.actor_user_id.substring(0, 8) + "…"
+                  : "—"}
+              </td>
+              <td className="px-4 py-3 text-sm text-zinc-400">
+                {entry.reason || (
+                  <span className="text-zinc-600 italic">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-sm text-zinc-500">
+                {new Date(entry.at).toLocaleString()}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -329,14 +493,20 @@ export default function PartnerDetailPage() {
       const data = await partnersApi.getPartner(partnerId);
       setPartner(data);
     } catch (err) {
-      logger.error("Failed to load partner", { component: "PartnerDetailPage" }, err as Error);
+      logger.error(
+        "Failed to load partner",
+        { component: "PartnerDetailPage" },
+        err as Error,
+      );
       setError("Failed to load partner. Please try again.");
     } finally {
       setIsLoading(false);
     }
   }, [partnerId]);
 
-  useEffect(() => { loadPartner(); }, [loadPartner]);
+  useEffect(() => {
+    loadPartner();
+  }, [loadPartner]);
 
   const handleActivate = async () => {
     if (!partner) return;
@@ -367,7 +537,9 @@ export default function PartnerDetailPage() {
   };
 
   const handleReassign = async () => {
-    const newUserId = window.prompt("Enter team member user ID (UUID) to assign to:");
+    const newUserId = window.prompt(
+      "Enter team member user ID (UUID) to assign to:",
+    );
     if (!newUserId?.trim()) return;
     const reason = window.prompt("Reason for reassignment (required):");
     if (!reason?.trim()) return;
@@ -399,7 +571,12 @@ export default function PartnerDetailPage() {
       <div className="flex flex-col items-center gap-4 py-16">
         <AlertCircle size={32} className="text-red-400" />
         <p className="text-zinc-400">{error || "Partner not found"}</p>
-        <Button onClick={loadPartner} variant="outline" size="sm" className="border-zinc-700 text-zinc-300">
+        <Button
+          onClick={loadPartner}
+          variant="outline"
+          size="sm"
+          className="border-zinc-700 text-zinc-300"
+        >
           <RefreshCw size={14} className="mr-1" /> Retry
         </Button>
       </div>
@@ -412,13 +589,19 @@ export default function PartnerDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/partners">
-            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-zinc-400 hover:text-zinc-200"
+            >
               <ArrowLeft size={16} className="mr-1" />
               Partners
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-zinc-100">{partner.full_name}</h1>
+            <h1 className="text-xl font-bold text-zinc-100">
+              {partner.full_name}
+            </h1>
             <p className="text-sm text-zinc-500">{partner.email}</p>
           </div>
         </div>
@@ -431,7 +614,11 @@ export default function PartnerDetailPage() {
               onClick={handleActivate}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
-              {isActioning ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} className="mr-1" />}
+              {isActioning ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <CheckCircle size={14} className="mr-1" />
+              )}
               Activate
             </Button>
           )}
@@ -443,7 +630,11 @@ export default function PartnerDetailPage() {
               onClick={handleDeactivate}
               className="border-red-700 text-red-400 hover:bg-red-900/20"
             >
-              {isActioning ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} className="mr-1" />}
+              {isActioning ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <XCircle size={14} className="mr-1" />
+              )}
               Deactivate
             </Button>
           )}
@@ -455,7 +646,11 @@ export default function PartnerDetailPage() {
               onClick={handleReassign}
               className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
             >
-              {isActioning ? <Loader2 size={14} className="animate-spin" /> : <Settings size={14} className="mr-1" />}
+              {isActioning ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Settings size={14} className="mr-1" />
+              )}
               Reassign
             </Button>
           )}

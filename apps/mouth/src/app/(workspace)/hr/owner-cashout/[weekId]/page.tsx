@@ -9,17 +9,10 @@ import type {
   OwnerCashoutRow,
   OwnerCashoutWeekDetail,
 } from "@/types/owner-cashout";
+import { formatIDR } from "@balizero/core/utils";
 
 const SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1OZzgvDLgf3yd9eUh5CyADjHCHLoXmE5nIRoJlut_jBE/edit";
-
-function formatIDR(v: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(v);
-}
 
 function EntityTable({
   title,
@@ -50,9 +43,7 @@ function EntityTable({
             )}
             <th className="text-right px-4 py-3">MBS</th>
             <th className="text-right px-4 py-3">MBZ</th>
-            {showFinalPrice && (
-              <th className="text-right px-4 py-3">Final</th>
-            )}
+            {showFinalPrice && <th className="text-right px-4 py-3">Final</th>}
             <th className="text-left px-4 py-3">Note</th>
           </tr>
         </thead>
