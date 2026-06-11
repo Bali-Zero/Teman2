@@ -831,7 +831,6 @@ def include_heavy_routers(api: FastAPI) -> None:
         dream,
         dynamic_pricing,
         episodic_memory,
-        experience,  # [EXP] Experience Library
         handlers,
         health,
         ingest,
@@ -847,13 +846,11 @@ def include_heavy_routers(api: FastAPI) -> None:
         knowledge_visa,
         lam_memory,
         legal_ingest,
-        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7
         monitoring_rag,
         naga,
         news,
         oracle_ingest,
         oracle_universal,
-        skill,  # [SKILL] Skill Registry
         voice,
         whatsapp_chat,
     )
@@ -877,11 +874,13 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(conversations.router)
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
-    api.include_router(experience.router)  # [EXP] Experience Library
-    api.include_router(skill.router)  # [SKILL] Skill Registry
-    api.include_router(
-        metabolic_health.router
-    )  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
+    # F27: experience / skill / metabolic_health are _API-only per the manifest
+    # (SQLite-local on the api process's /data volume, no RAG deps — scar PR
+    # #54/#55/#60). They were ALSO mounted here in include_heavy_routers(), a
+    # residue of the old rag-only misclassification; on the rag process they have
+    # no /data volume so those routes fail at runtime anyway. Removed from heavy
+    # to match the manifest's documented intent. They remain mounted in
+    # include_light_routers() (the api process), which is correct.
 
     # CRM routers (RAG-heavy)
     api.include_router(crm_clients.router)
