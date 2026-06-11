@@ -261,6 +261,7 @@ async def plan_commit(
     committed_by: str,
     override_client_id: int | None = None,
     override_practice_id: int | None = None,
+    practice_explicit: bool = False,
     final_fields: dict[str, Any] | None = None,
 ) -> CommitPlan:
     """Build the structured write-plan for a proposal — and validate it.
@@ -270,8 +271,10 @@ async def plan_commit(
     lock is part of the plan; in 5B the TX rolls back so nothing persists).
 
     ``override_client_id`` / ``override_practice_id`` let the HITL reviewer redirect
-    the attach (decision-level correction, design §5). ``final_fields`` are the
-    human-edited extracted fields.
+    the attach (decision-level correction, design §5). ``practice_explicit=True``
+    means the reviewer DELIBERATELY chose the practice value — including ``None``
+    ("archive only, no practice"), which must NOT fall back to routing's hint.
+    ``final_fields`` are the human-edited extracted fields.
     """
     p = dict(proposal)
     proposal_id = p["id"]
@@ -303,11 +306,16 @@ async def plan_commit(
     client_id = override_client_id if override_client_id is not None else routing.get(
         "client_id"
     )
-    practice_id = (
-        override_practice_id
-        if override_practice_id is not None
-        else routing.get("practice_id")
-    )
+    if practice_explicit:
+        # The reviewer chose deliberately — honour it even when it is None
+        # ("archive only"): no silent fallback to routing's practice hint.
+        practice_id = override_practice_id
+    else:
+        practice_id = (
+            override_practice_id
+            if override_practice_id is not None
+            else routing.get("practice_id")
+        )
 
     payload = _document_payload(routing, stage_output, source_ref)
     # Persist the resolved practice on the document row itself (documents.practice_id):
