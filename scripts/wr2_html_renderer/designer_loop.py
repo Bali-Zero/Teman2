@@ -363,38 +363,61 @@ def critic_legibility(
     On flat-background (non-hero) slides, contrast is usually fine (white on
     antracite = 13.4); this mostly guards hero slides.
     """
-    issues: list[str] = []
+    # `passed` is decided by HARD issues only (measured contrast — the direct
+    # legibility signal). Saliency-placement is a SOFT note: see why below.
+    hard_issues: list[str] = []
+    soft_issues: list[str] = []
     levers: list[dict[str, Any]] = []
 
     contrast = text_region_contrast(png_path, text_box, fg_rgb)
     if contrast < CONTRAST_FLOOR:
-        issues.append(f"text contrast {contrast:.1f} < AAA {CONTRAST_FLOOR:.0f}")
+        hard_issues.append(f"text contrast {contrast:.1f} < AAA {CONTRAST_FLOOR:.0f}")
         # remedy ladder
         levers.append({"lever": "scrim_opacity", "delta": +0.15, "reason": f"contrast {contrast:.1f}"})
         levers.append({"lever": "text_stroke", "weight": "increase", "reason": "fallback legibility"})
 
     # saliency placement — only meaningful for hero slides with a photo.
     # We DETECT "text sits on the busiest band" but do NOT try to fix it by
-    # repositioning the text (that broke the cover in E2E 2026-06-07). Instead
-    # the remedy is stronger scrim/stroke (keep text where the template put it
-    # but make it survive the busy region); if that's already maxed, it's a
-    # composition problem → rerender signal, not a CSS nudge.
+    # repositioning the text (that broke the cover in E2E 2026-06-07).
+    #
+    # Crucially, busyness is measured on the RAW hero image, BEFORE the scrim
+    # CSS overlay is composited — so stronger scrim does NOT lower the measured
+    # busyness, and the only real remedy (text_anchor reposition) is disabled.
+    # If this were a HARD gate it would loop to render_failed with no applicable
+    # fix even when the text is perfectly legible (2026-06-12 SCAR: slide 3 of
+    # draft 3e2c2923 — contrast ~12.6 ≫ AAA floor 7.0, yet blocked forever).
+    # So: when contrast PASSES, the text IS legible and a busy background band
+    # is a SOFT composition note (logged, visible, never blocking). It only
+    # reinforces the lever ladder when contrast ALSO failed (then it's HARD).
     if is_hero and hero_path and hero_path.is_file():
         best_band, busyness = calmest_band(hero_path, n_bands=3)
         bottom_band = len(busyness) - 1
         if busyness[bottom_band] > min(busyness) * 1.5 and best_band != bottom_band:
-            issues.append(
+            note = (
                 f"text band (bottom, busyness {busyness[bottom_band]:.2f}) is busier "
                 f"than calmest band {best_band} ({busyness[best_band]:.2f})"
             )
-            # remedy IN PLACE: a heavier scrim + stroke so text survives the busy
-            # bottom (no repositioning). Only add if not already proposed above.
-            if not any(lev.get("lever") == "scrim_opacity" for lev in levers):
-                levers.append({"lever": "scrim_opacity", "delta": +0.2, "reason": "text over busy band — darken in place"})
-            if not any(lev.get("lever") == "text_stroke" for lev in levers):
-                levers.append({"lever": "text_stroke", "reason": "text over busy band — outline in place"})
+            if hard_issues:
+                # contrast already failed → this is part of the hard problem;
+                # reinforce the in-place remedy ladder (no repositioning).
+                hard_issues.append(note)
+                if not any(lev.get("lever") == "scrim_opacity" for lev in levers):
+                    levers.append({"lever": "scrim_opacity", "delta": +0.2, "reason": "text over busy band — darken in place"})
+                if not any(lev.get("lever") == "text_stroke" for lev in levers):
+                    levers.append({"lever": "text_stroke", "reason": "text over busy band — outline in place"})
+            else:
+                # contrast PASSES → text is legible → busy background is a soft
+                # composition note (scrim mitigates it at render time; the
+                # measure can't see the scrim, and reposition is disabled).
+                soft_issues.append(note + " (composition note — text legible, scrim mitigates)")
 
-    return Critique(tier="legibility", passed=not issues, issues=issues, levers=levers, score=min(contrast / 21.0, 1.0))
+    return Critique(
+        tier="legibility",
+        passed=not hard_issues,
+        issues=hard_issues + soft_issues,
+        levers=levers,
+        score=min(contrast / 21.0, 1.0),
+    )
 
 
 def critic_ocr(
