@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
-import { serialize } from "next-mdx-remote/serialize";
-import remarkGfm from "remark-gfm";
 import {
   getArticleBySlug,
   getArticleByLocale,
   resolveCategoryAlias,
 } from "@/lib/blog/articles";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
-import { ArticleClient } from "./ArticleClient";
+import { renderMDXBody } from "@/components/blog/MDXContentRSC";
+import {
+  ArticleClient,
+  type SerializedArticleForClient,
+} from "./ArticleClient";
 import {
   ArticleWithFAQJsonLd,
   EnhancedArticleJsonLd,
@@ -200,21 +203,27 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
       }
     : null;
 
-  // Serialize MDX server-side so content is in the initial HTML (SSR)
-  let initialArticle = null;
+  // Render the MDX body SERVER-SIDE for SSR (Google + the e2e see the full
+  // article in the initial HTML). React-19 fix: we render via the RSC MDXRemote
+  // (a server component) instead of serializing for the client <MDXRemote>,
+  // which is hook-based and throws `Cannot read properties of null (reading
+  // 'useState')` during SSR under React 19 — that uncaught throw used to unwind
+  // the whole article subtree, dropping even the .rumah-putih page chrome from
+  // the SSR HTML. See MDXContentRSC for the full rationale.
+  let initialArticle: SerializedArticleForClient | null = null;
+  let mdxBody: ReactNode = null;
   if (article) {
     const cleanContent = stripImports(article.content);
     try {
-      const mdxSource = await serialize(cleanContent, {
-        mdxOptions: {
-          remarkPlugins: [remarkGfm],
-          development: false,
-        },
-      });
-      // Serialize dates to strings for client component
+      // Awaited (NOT bare JSX) so a compile failure is actually caught here and
+      // degrades to the client-fetch fallback instead of crashing the page.
+      mdxBody = await renderMDXBody(cleanContent);
+      // Serialize dates to strings for the client component. mdxSource is no
+      // longer needed for SSR (the body is server-rendered and passed as a
+      // prop); ArticleClient keeps its own client-side fallback path for
+      // articles it fetches in the browser.
       initialArticle = {
         ...article,
-        mdxSource,
         createdAt: article.createdAt.toISOString(),
         updatedAt: article.updatedAt.toISOString(),
         publishedAt: article.publishedAt
@@ -223,11 +232,14 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
       };
     } catch (err) {
       logger.error(
-        "MDX serialization failed in SSR, falling back to client fetch",
+        "MDX server render failed in SSR, falling back to client fetch",
         {},
         err instanceof Error ? err : new Error(String(err)),
       );
-      // initialArticle stays null — ArticleClient will fetch via API
+      // initialArticle/mdxBody stay null — ArticleClient will fetch via API
+      // and render the body client-side (in a real browser, React-19-safe).
+      initialArticle = null;
+      mdxBody = null;
     }
   }
 
@@ -254,6 +266,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
         category={category}
         slug={slug}
         initialArticle={initialArticle}
+        mdxBody={mdxBody}
       />
     </>
   );
