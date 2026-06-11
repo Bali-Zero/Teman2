@@ -105,7 +105,7 @@
       "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
     },
     {
-      "title": "🚨 PENDING APPROVAL (P1 SECURITY): `backend_rag_v2` Postgres role has `rolsuper=t` — demotion spec drafted, awaiting Antonello sign-off (W38, 2026-05-23)",
+      "title": "✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11)",
       "severity": "P1",
       "w_numbers": [
         "W38"
