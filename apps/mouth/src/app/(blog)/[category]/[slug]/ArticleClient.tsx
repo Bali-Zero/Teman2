@@ -32,6 +32,7 @@ import {
   ArticleEngagement,
 } from "@/components/blog";
 // JSON-LD schemas are now injected in <head> by root layout for better SEO
+import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { cn } from "@/lib/utils";
 import type { Article, ArticleListItem } from "@/lib/blog/types";
 
@@ -529,6 +530,34 @@ export function ArticleClient({
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* WhatsApp consultation CTA — tracked lead handoff */}
+              <div className="mt-12 p-6 rounded-2xl bg-[rgba(37,211,102,0.06)] border border-[rgba(37,211,102,0.2)]">
+                <h2 className="font-serif text-xl font-bold text-white">
+                  Questions about how this applies to your case?
+                </h2>
+                <p className="mt-2 text-sm text-white/60">
+                  Bali Zero handles visas, company setup, tax and property
+                  compliance in Indonesia. Ask us directly on WhatsApp.
+                </p>
+                <WhatsAppLeadButton
+                  source="article"
+                  context={{
+                    category: article.category,
+                    slug: article.slug,
+                    title: article.title,
+                  }}
+                  whatsappContext={[
+                    { label: "Article", value: article.title.slice(0, 150) },
+                    { label: "Topic", value: article.category },
+                  ]}
+                  utm={{ page: `/${article.category}/${article.slug}` }}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "#25d366" }}
+                >
+                  Chat with Bali Zero on WhatsApp
+                </WhatsAppLeadButton>
               </div>
 
               {/* Engagement Section - Likes, Comments, Shares */}

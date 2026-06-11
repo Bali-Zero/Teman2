@@ -72,7 +72,7 @@ export default async function HomeV2() {
           <>
             <a
               href="https://kita.balizero.com/"
-              className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
+              className="px-4 py-2 rounded-md text-[13px] font-semibold uppercase tracking-wide"
               style={{
                 background: "transparent",
                 color: "var(--text-secondary)",

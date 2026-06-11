@@ -30,7 +30,7 @@ export function NavWhatsAppCTA({
           payload: { trigger: "nav" },
         })
       }
-      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
+      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-[13px] font-semibold uppercase tracking-wide"
       style={{
         background: isWhatsApp
           ? "var(--accent-whatsapp, #25d366)"

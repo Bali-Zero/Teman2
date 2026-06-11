@@ -219,7 +219,10 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
 3. Headline is the HOOK, not the topic title. "Sham Investor KITAS: The
    Clock Is Ticking" is good (urgency, stakes). "Field Inspections Are
    Legal" is bad (sounds like a Wikipedia heading). Make headlines READ
-   like a magazine cover line.
+   like a magazine cover line. Write headlines that BALANCE well on two
+   lines: keep them short (≤6 words is ideal) and avoid phrasings that
+   would leave one tiny orphan word alone on the last wrapped line — two
+   even halves or two balanced clauses read best on a slide.
 
 4. Citations: a slide can name ONE law/article, not three. "PP 31/2013
    authorises field inspections" is fine. "Permenkumham 11/2024 Art.
@@ -246,6 +249,12 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
 8. The "What This Means For You" type closer (slide 11): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
 
+9. The cover "subhead" MUST be 1-6 words maximum — a short tag/category/
+   kicker (e.g. "VISA UPDATE", "IMMIGRATION", "TAX ALERT"), NOT a full
+   sentence. UPPERCASE. It sits below the headline as a yellow accent
+   label. NEVER write a complete sentence in subhead; if you need to
+   explain, that goes in the body, not the subhead.
+
 OUTPUT FORMAT: valid JSON, no text outside the JSON object, no markdown fences.
 
 Structure:
@@ -259,7 +268,7 @@ Structure:
       "is_cover": true,
       "is_hero_image": true,
       "headline": "...",
-      "subhead": "...",
+      "subhead": "1-6 WORD KICKER",
       "body": "...",
       "image_prompt": "editorial scene, 1-2 sentences",
       "image_mode": "desk-document"
@@ -738,6 +747,37 @@ async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | No
 # ─────────────────────────────────────────────────────────────────────────
 
 
+def _cap_subhead(text: str, max_words: int = 6, max_chars: int = 32) -> str:
+    """Hard-cap the cover subhead to the template contract (1-6 words).
+
+    The cover-photo.md template declares subheading = "1-6 words, UPPERCASE,
+    yellow accent, often a tag/category". A long subhead overflows the
+    rendered box once grow_font enlarges it, so this is the deterministic
+    backstop behind the prompt guidance: take at most ``max_words`` words,
+    then if still longer than ``max_chars`` trim to a word boundary. No
+    ellipsis is appended — a clean shorter kicker beats a truncated one.
+    """
+    words = text.strip().split()
+    if not words:
+        return ""
+    capped = " ".join(words[:max_words])
+    if len(capped) <= max_chars:
+        return capped
+    # Still too long: trim to max_chars on a word boundary (no mid-word cut).
+    trimmed: list[str] = []
+    length = 0
+    for w in capped.split():
+        extra = len(w) + (1 if trimmed else 0)
+        if length + extra > max_chars:
+            break
+        trimmed.append(w)
+        length += extra
+    # Guarantee at least the first word even if it alone exceeds max_chars.
+    if not trimmed:
+        trimmed = [capped.split()[0]]
+    return " ".join(trimmed)
+
+
 def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     register = (parsed.get("register") or "").strip().lower()
     if register not in VALID_TONES:
@@ -768,7 +808,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
             "is_cover": bool(raw.get("is_cover", i == 1)),
             "is_hero_image": bool(raw.get("is_hero_image", False)),
             "headline": (raw.get("headline") or "").strip()[:80],
-            "subhead": (raw.get("subhead") or "").strip()[:120],
+            "subhead": _cap_subhead(raw.get("subhead") or ""),
             "body": (raw.get("body") or "").strip()[:500],
             "image_prompt": (raw.get("image_prompt") or "").strip()[:600],
             "tonal_palette": tonal,
@@ -1067,40 +1107,55 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
         return 2
 
     pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=2, command_timeout=300)
+    # R4.2 drain-loop (P-1): re-fetch until the briefed queue is empty so a
+    # supervisor kickstart swallowed while we are busy still gets its draft
+    # processed this run. Capped against pathological re-queue loops.
+    max_loops = int(os.environ.get("WR2_DRAFT_DRAIN_MAX_LOOPS", "10"))
     try:
         async with pool.acquire() as conn:
-            if draft_id:
-                rows = await conn.fetch(
-                    "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
-                    draft_id,
-                )
-            else:
-                rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
-
-            if not rows:
-                logger.info("No briefed drafts to process")
-                return 1
-
-            if dry_run:
-                logger.info("[DRY-RUN] would process %d drafts:", len(rows))
-                for r in rows:
-                    logger.info("  %s — %s", r["id"], r["topic"][:80])
-                return 0
-
             successes = 0
-            for row in rows:
-                try:
-                    ok = await _process_one(conn, row)
-                    if ok:
-                        successes += 1
-                except Exception as e:
-                    logger.exception("Unhandled error on draft %s: %s", row["id"], e)
-                    try:
-                        await _mark_rejected(conn, row["id"], f"unhandled: {e}")
-                    except Exception:
-                        pass
+            attempted = 0
+            for loop_n in range(max_loops):
+                if draft_id:
+                    rows = (
+                        await conn.fetch(
+                            "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
+                            draft_id,
+                        )
+                        if loop_n == 0
+                        else []
+                    )
+                else:
+                    rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
 
-            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, len(rows))
+                if not rows:
+                    if attempted == 0:
+                        logger.info("No briefed drafts to process")
+                        return 1
+                    break
+
+                if dry_run:
+                    logger.info("[DRY-RUN] would process %d drafts:", len(rows))
+                    for r in rows:
+                        logger.info("  %s — %s", r["id"], r["topic"][:80])
+                    return 0
+
+                for row in rows:
+                    attempted += 1
+                    try:
+                        ok = await _process_one(conn, row)
+                        if ok:
+                            successes += 1
+                    except Exception as e:
+                        logger.exception("Unhandled error on draft %s: %s", row["id"], e)
+                        try:
+                            await _mark_rejected(conn, row["id"], f"unhandled: {e}")
+                        except Exception:
+                            pass
+                if draft_id:
+                    break
+
+            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, attempted)
             return 0 if successes > 0 else 2
     finally:
         await pool.close()
