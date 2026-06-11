@@ -65,6 +65,17 @@ rm ~/Library/LaunchAgents/com.nuzantara.lead-intent-matcher.plist
   Adding KeepAlive recreates the W67 crash-loop signature.
 - The matcher is read-only except the two attribution UPDATEs; safe at 5-min
   cadence, idempotent on retry.
-- Matching is best-effort (phone + time window). Deterministic matching via
-  the `Lead ID: li_…` line embedded in the wa.me message body is a known
-  follow-up: no inbound parser exists yet (checked 2026-06-11).
+- Matching runs in two passes (since Filo 2, 2026-06-11): pass 1 is
+  deterministic — it scans inbound WA text for the `Lead ID: li_…` token the
+  deeplink pre-fills (sources: `meta_inbox_messages` for the Meta business
+  number, `whatsapp_message_context` for the wa-mirror) and matches on the
+  exact key across the full 7-day intent TTL. Pass 2 is the original
+  phone + 30-min-window fallback. `clients.lead_metadata.match_method`
+  records which pass matched ("lead_id" | "phone_window").
+- **Coverage caveat**: the CTA deeplink currently targets the personal
+  number `6282264599868`, whose inbound traffic lands in NO readable table —
+  so pass 1 only sees Lead IDs sent to the Meta business number. Pointing
+  the CTA at the business number (env `WA_BUSINESS_NUMBER` on Fly + the
+  frontend fallback constants) is the pending operator decision that fully
+  unlocks deterministic matching. Also: the wa-mirror sync to this DB is
+  stale since 2026-05-25 (separate issue).

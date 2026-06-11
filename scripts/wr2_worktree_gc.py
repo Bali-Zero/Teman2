@@ -3,21 +3,19 @@
 
 Spec: research/wr2/2026-05-27-wr2-autonomous-workflow-spec.md §10
 
-Cleans up `.worktrees/wr2-run-*` directories created by wr2_carousel_dispatcher
-via scripts/agent_start.py. A successful carousel run leaves artifacts in
-~/.claude/carousels/<carousel_id>/ (canonical); the worktree itself is just
-scratch space that should be pruned post-publish.
+Cleans up `.worktrees/wr2-run-*` directories created by the retired Pipeline-A
+dispatcher (deleted in P-1 R1) via scripts/agent_start.py. A successful carousel
+run leaves artifacts in ~/.claude/carousels/<carousel_id>/ (canonical); the
+worktree itself is just scratch space that should be pruned post-publish.
 
-Policy (Spec §10):
+Policy (Spec §10, simplified per P-1 R1):
     - Delete worktrees with name pattern `wr2-run-*` AND age > 24h
-    - Skip worktrees that match an open `wr2_carousel_runs.state IN ('drafted',
-      'brief_done', 'storyboard_done', 'layout_done', 'critic_pass', 'rendered',
-      'awaiting_approval')` — those are in-flight
+    - Pipeline A is retired: no run can be in-flight, so no worktree is
+      protected by A-runs (the old in-flight DB check is gone, P-1 R1)
     - Run `git worktree remove <path>` AND `git branch -D <branch>` (cleanup)
     - Telegram alert if N>5 deleted in single run (catches loop bug)
 
 Env:
-    DATABASE_URL            — to check in-flight carousels
     WR2_WORKTREE_GC_ENABLED — false to disable without removing plist
     WR2_WORKTREE_GC_MAX_AGE_HOURS — default 24
 
@@ -36,8 +34,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-
-import asyncpg
 
 logger = logging.getLogger("wr2.worktree_gc")
 
@@ -81,27 +77,6 @@ def list_wr2_run_worktrees() -> list[dict]:
             "task_id": entry.name[len(WORKTREE_PREFIX):],
         })
     return out
-
-
-async def fetch_inflight_carousels(conn: asyncpg.Connection) -> set[str]:
-    """Return set of carousel_ids currently in-flight (not in terminal state).
-
-    P-1 R1.1: `wr2_carousel_runs` belongs to the retired Pipeline A and is
-    slated for a drop migration. Tolerate its absence (no in-flight runs can
-    exist without the table) instead of crashing the daily GC — spec metric M10.
-    """
-    try:
-        rows = await conn.fetch(
-            """
-            SELECT carousel_id::text FROM wr2_carousel_runs
-             WHERE state IN ('drafted','brief_done','storyboard_done',
-                             'layout_done','critic_pass','rendered','awaiting_approval')
-            """
-        )
-    except asyncpg.UndefinedTableError:
-        logger.info("wr2_carousel_runs absent (Pipeline A retired) — no in-flight runs")
-        return set()
-    return {r["carousel_id"] for r in rows}
 
 
 def remove_worktree(path: Path, *, apply: bool) -> bool:
@@ -156,32 +131,10 @@ async def main(argv: list[str] | None = None) -> int:
     if not aged:
         return 0
 
-    # Check in-flight via PG
-    dsn = os.environ.get("DATABASE_URL")
-    inflight: set[str] = set()
-    if dsn:
-        try:
-            conn = await asyncpg.connect(dsn, timeout=10)
-            try:
-                inflight = await fetch_inflight_carousels(conn)
-            finally:
-                await conn.close()
-        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, asyncio.TimeoutError) as exc:
-            logger.warning(f"in-flight check failed ({exc}), CONSERVATIVE skip all")
-            # If we can't check, refuse to delete (avoid clobbering active run)
-            return 0
-    else:
-        logger.warning("DATABASE_URL unset, CONSERVATIVE skip all")
-        return 0
-
-    # Filter out in-flight carousels
-    to_delete = [c for c in aged if c["task_id"] not in inflight]
-    skipped = len(aged) - len(to_delete)
-    if skipped:
-        logger.info(f"skipped {skipped} aged worktrees (in-flight)")
-
+    # P-1 R1: Pipeline A is retired — its state table is gone, no run can
+    # be in-flight, so no aged worktree is protected by A-runs. Delete them all.
     deleted = 0
-    for c in to_delete:
+    for c in aged:
         if remove_worktree(c["path"], apply=args.apply):
             deleted += 1
 
@@ -191,7 +144,7 @@ async def main(argv: list[str] | None = None) -> int:
             f"investigate possible loop bug"
         )
 
-    logger.info(f"done: {deleted} deleted, {skipped} skipped (in-flight), apply={args.apply}")
+    logger.info(f"done: {deleted} deleted, apply={args.apply}")
     return 0
 
 

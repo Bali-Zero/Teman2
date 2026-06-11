@@ -794,3 +794,179 @@ main,
     gap: 3rem !important;
   }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   MYTHOS Stage-B Batch 1 — "Rumah Putih" route-scoped LIGHT overrides.
+
+   These rules are scoped to `.rumah-putih` (set per-page alongside RUMAH_VARS,
+   see lib/theme/rumahVars.ts) so they re-tint ONLY the long-form blog reader
+   and the category index — the pages whose source uses hardcoded-dark Tailwind
+   utilities (text-white, bg-white/5, prose-invert, …) that do NOT read tokens.
+   Touching those shared components' source would leak the light theme to pages
+   not in this batch (/services, /property, the /v2/news + dashboard widget);
+   scoping by class keeps the blast radius to the converted wrappers only.
+
+   The cover hero photo and any text painted ON an image overlay (FeaturedCard,
+   the article cover) stay light-on-dark — see the `.absolute` exclusions — the
+   FT "dark island" pattern. Accent buttons (WhatsApp green, etc.) keep their
+   own backgrounds + white text; we never recolor text inside an element with
+   its own non-transparent background.
+   WCAG AA: ink #16213a ≈ 13.5:1, soft-ink #475372 ≈ 7.1:1 on paper #f7f6f2.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Long-form body: MDX renderer (.mdx-content) + markdown fallback (.prose).
+      The `prose prose-invert` classes are NO-OPS here (no typography plugin) —
+      the real colors come from the explicit per-element classes below. ── */
+.rumah-putih .mdx-content,
+.rumah-putih .prose {
+  color: #16213a;
+}
+.rumah-putih .mdx-content h1,
+.rumah-putih .mdx-content h2,
+.rumah-putih .mdx-content h3,
+.rumah-putih .mdx-content h4,
+.rumah-putih .prose h1,
+.rumah-putih .prose h2,
+.rumah-putih .prose h3,
+.rumah-putih .prose h4 {
+  color: #1e3863 !important; /* navy headings */
+}
+.rumah-putih .mdx-content p,
+.rumah-putih .mdx-content li,
+.rumah-putih .mdx-content ul,
+.rumah-putih .mdx-content ol,
+.rumah-putih .prose p,
+.rumah-putih .prose li,
+.rumah-putih .prose ul,
+.rumah-putih .prose ol {
+  color: #1f2a44 !important; /* near-ink body */
+}
+.rumah-putih .mdx-content strong,
+.rumah-putih .prose strong {
+  color: #16213a !important;
+}
+.rumah-putih .mdx-content em,
+.rumah-putih .prose em {
+  color: #1f2a44 !important;
+}
+/* Blockquote — hairline-navy rule on a faint navy wash */
+.rumah-putih .mdx-content blockquote,
+.rumah-putih .prose blockquote {
+  color: #475372 !important;
+  background: rgba(30, 56, 99, 0.045) !important;
+  border-left-color: #1e3863 !important;
+}
+/* Inline code — ink on a faint navy chip (keep the red token for keywords) */
+.rumah-putih .mdx-content :not(pre) > code,
+.rumah-putih .prose :not(pre) > code {
+  background: rgba(30, 56, 99, 0.08) !important;
+  color: #b3261e !important; /* legible red on light */
+}
+/* Code block — keep a dark slab (code reads best dark; FT-style island) */
+.rumah-putih .mdx-content pre,
+.rumah-putih .prose pre {
+  background: #0f1f33 !important;
+  border-color: rgba(30, 56, 99, 0.25) !important;
+}
+.rumah-putih .mdx-content pre code,
+.rumah-putih .prose pre code {
+  color: #e8edf6 !important;
+}
+/* Tables — hairline navy borders, ink text, faint navy header */
+.rumah-putih .mdx-content table,
+.rumah-putih .mdx-content thead,
+.rumah-putih .mdx-content th,
+.rumah-putih .mdx-content td,
+.rumah-putih .mdx-content tr,
+.rumah-putih .prose table,
+.rumah-putih .prose thead,
+.rumah-putih .prose th,
+.rumah-putih .prose td,
+.rumah-putih .prose tr {
+  border-color: #e3e1da !important;
+}
+.rumah-putih .mdx-content thead,
+.rumah-putih .prose thead {
+  background: rgba(30, 56, 99, 0.05) !important;
+}
+.rumah-putih .mdx-content th,
+.rumah-putih .prose th {
+  color: #475372 !important;
+}
+.rumah-putih .mdx-content td,
+.rumah-putih .prose td {
+  color: #1f2a44 !important;
+}
+.rumah-putih .mdx-content hr,
+.rumah-putih .prose hr {
+  border-color: #e3e1da !important;
+}
+.rumah-putih .mdx-content tr:hover,
+.rumah-putih .prose tr:hover {
+  background: rgba(30, 56, 99, 0.04) !important;
+}
+/* Image caption under figures */
+.rumah-putih .mdx-content span.block.text-center,
+.rumah-putih .prose span.block.text-center {
+  color: #475372 !important;
+}
+
+/* ── Article + category chrome: re-tint hardcoded white text that sits ON
+      PAPER. Exclude anything inside an `.absolute` block — that's image-overlay
+      text (cover hero, FeaturedCard) which must stay white. ── */
+.rumah-putih .text-white:not(.absolute *),
+.rumah-putih .text-white\/90:not(.absolute *) {
+  color: #16213a !important;
+}
+.rumah-putih .text-white\/80:not(.absolute *),
+.rumah-putih .text-white\/70:not(.absolute *) {
+  color: #1f2a44 !important;
+}
+.rumah-putih .text-white\/60:not(.absolute *),
+.rumah-putih .text-white\/50:not(.absolute *),
+.rumah-putih .text-white\/40:not(.absolute *) {
+  color: #475372 !important;
+}
+
+/* Hairline rules + faint surfaces that used white-on-dark (on paper). Skip
+   image overlays (`.absolute`). */
+.rumah-putih .border-white\/10:not(.absolute *),
+.rumah-putih .border-white\/5:not(.absolute *) {
+  border-color: #e3e1da !important;
+}
+.rumah-putih .bg-white\/5:not(.absolute *),
+.rumah-putih .bg-white\/10:not(.absolute *) {
+  background-color: #ffffff !important;
+}
+
+/* Article author card + tag chips + engagement border (dark-glass → white card)
+   — these used inline rgba(255,255,255,…) so target them structurally. */
+.rumah-putih article > div.mt-12.p-6.rounded-2xl {
+  background: #ffffff !important;
+  border: 1px solid #e3e1da !important;
+  box-shadow: 0 1px 2px rgba(22, 33, 58, 0.05) !important;
+}
+/* Tag pills */
+.rumah-putih article a[href^="/insights?tag="] {
+  background: rgba(30, 56, 99, 0.06) !important;
+  color: #475372 !important;
+}
+/* Related-articles band (dark wash → paper-raised) */
+.rumah-putih section.bg-\[rgba\(3\,18\,25\,0\.5\)\] {
+  background: #ffffff !important;
+  border-top-color: #e3e1da !important;
+}
+
+/* Category index "Popular in …" sidebar card + icon chip */
+.rumah-putih .bg-white\/5.border.border-white\/10:not(.absolute *) {
+  background: #ffffff !important;
+  border-color: #e3e1da !important;
+}
+
+/* Article markdown inline-code red token used by the ReactMarkdown fallback */
+.rumah-putih .text-\[\#ff6b6b\] {
+  color: #b3261e !important;
+}
+.rumah-putih .bg-\[\#0a1929\] {
+  background: #0f1f33 !important;
+}

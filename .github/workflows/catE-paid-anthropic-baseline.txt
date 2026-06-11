@@ -1,0 +1,16 @@
+# catE-sovereignty-lint #40 baseline — KNOWN paid-Anthropic constructor sites.
+#
+# Each line below is a PRE-EXISTING  Anthropic(api_key=...) / AsyncAnthropic(api_key=...)
+# instantiation (the BANNED paid pay-as-you-go path, CLAUDE.md §5). The catE
+# lint fails only when the live count EXCEEDS the number of uncommented lines
+# here — so a NEW paid path gates at PR time, while these 3 are surfaced (not
+# perpetually red) pending deliberate operator remediation to the sanctioned
+# path: `claude` CLI with CLAUDE_CODE_OAUTH_TOKEN, or SDK Anthropic(auth_token=...).
+#
+# Discovered: 2026-06-11 guardian-of-guardians audit (domande-per-fable5 #40).
+# TODO(remediate): migrate each to OAuth/CLI, then DELETE its line below.
+#
+# --- KNOWN SITES (baseline count = 3) ---
+apps/bali-intel-scraper/backend/services/ai_engine.py   # LIVE: imported by task_queue/classifier/sentiment
+apps/backend-rag/process_batches_2_3.py                 # one-shot batch script, no importers
+apps/backend-rag/scripts/claims_extractor.py            # imported only by its unit test

@@ -5,10 +5,10 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 12,
+    "scars_scanned": 5,
     "mechanical_candidates": 0,
-    "consultive": 8,
-    "rejected_no_anchor": 4
+    "consultive": 4,
+    "rejected_no_anchor": 1
   },
   "recurring_patterns": {
     "w_numbers": {},
@@ -19,52 +19,6 @@
     {
       "title": "ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05)",
       "severity": "P3",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)",
-      "severity": "P1",
-      "w_numbers": [
-        "W1"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams (2026-04-29)",
-      "severity": "P0",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)",
-      "severity": "P1",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: Untracked files lost when sibling automation switches branches mid-session (2026-04-29, twice in 9h)",
-      "severity": "UNKNOWN",
       "w_numbers": [],
       "recurring_via": {
         "w": [],
@@ -105,7 +59,7 @@
       "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
     },
     {
-      "title": "🚨 PENDING APPROVAL (P1 SECURITY): `backend_rag_v2` Postgres role has `rolsuper=t` — demotion spec drafted, awaiting Antonello sign-off (W38, 2026-05-23)",
+      "title": "✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11)",
       "severity": "P1",
       "w_numbers": [
         "W38"
@@ -119,18 +73,6 @@
     }
   ],
   "rejected_no_anchor": [
-    {
-      "title": "⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29)",
-      "reason": "no objective anchor (G1)"
-    },
-    {
-      "title": "⚠️ STRUCTURAL: SQL v2 migrations duplicate numbers `129_*` and `130_*` (2026-04-29)",
-      "reason": "no objective anchor (G1)"
-    },
-    {
-      "title": "⚠️ STRUCTURAL: Unknown agent overwrites loaded LaunchAgent plist files with JSON dump (2026-04-29)",
-      "reason": "no objective anchor (G1)"
-    },
     {
       "title": "🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)",
       "reason": "no objective anchor (G1)"

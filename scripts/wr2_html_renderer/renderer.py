@@ -7,11 +7,11 @@ images were actually placed — see diag_wr2_canva_hero_images_not_placed_weak_g
 
 Reuse provenance (reuse-first, GROUND phase 2026-06-07):
 - The Playwright render core (viewport 1080x1350, dsf=1, fonts.ready gate,
-  screenshot) is adapted from `scripts/wr2_carousel_orchestrator.py::
-  _render_html_to_png` (~95% lifted) — decoupled here from asyncpg / the PG
-  state machine / critic / Telegram so it's a pure function of (slides_json,
-  output_dir) → list[PNG].
-- The PDF compose is adapted from the same file's `_compose_pdf` (PIL).
+  screenshot) was adapted (~95% lifted) from the retired Pipeline-A
+  orchestrator's `_render_html_to_png` (deleted in P-1 R1, 2026-06-11) —
+  decoupled here from asyncpg / the PG state machine / critic / Telegram so
+  it's a pure function of (slides_json, output_dir) → list[PNG].
+- The PDF compose was adapted from the same retired file's `_compose_pdf` (PIL).
 - Brand tokens come from `tokens_to_css.py` (this package), generated from
   `~/.claude/skills/bali-zero-brand/tokens.json` — no drift.
 - Fonts are vendored locally (fonts/_fonts.css + *.woff2) — no network at
