@@ -14,8 +14,11 @@
 
 ## Active level
 
-**Level 2 — active since 2026-04-21**
+**Level 2 — active since 2026-06-11**
 (Level 1 was active earlier same day; promoted to L2 once all activation gates closed.)
+(re-certified 2026-06-11 by Antonello after the Fable-5 system audit F04;
+the SessionStart staleness hook was fixed the same day to read this declared
+date — not the file mtime, which any edit silently reset, masking the lapse.)
 
 If today's date is >30 days after "active since" without a refresh commit,
 Claude falls back to conservative mode and pings the user to re-certify.
