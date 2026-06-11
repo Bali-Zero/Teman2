@@ -612,6 +612,17 @@ class Settings(BaseSettings):
             "Example: '6282264599868' — leave empty to allow everyone."
         ),
     )
+    whatsapp_team_allowlist: str = Field(
+        default="",
+        description=(
+            "Comma-separated list of Bali Zero team/staff phone numbers allowed as "
+            "outbound /api/whatsapp/send recipients WITHOUT a CRM client record. "
+            "Entries are normalized to digits-only before comparison, so "
+            "'+62 878-6187-0777', '6287861870777' and '+6287861870777' all match. "
+            "Set via WHATSAPP_TEAM_ALLOWLIST env var. Leave empty to require CRM "
+            "validation for every recipient (default)."
+        ),
+    )
     whatsapp_openclaw_bridge_url: str | None = Field(
         default=None,
         description=(
