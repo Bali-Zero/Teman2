@@ -5,14 +5,28 @@ echo "🔍 Running pre-push hooks..."
 # false positives from coverage exit codes. Run manually: npm run test:ci
 echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 
-# Run Python tests
+# Run Python tests — gated on a reachable local PostgreSQL.
+# Most backend tests build their schema against DATABASE_URL (default
+# postgresql://test:test@localhost:5432/test). With no local PG the suite
+# emits ~141 "Connect call failed (::1, 5432)" errors and ~2min of noise,
+# then the old `|| { Continuing }` swallowed it — so the gate never gated.
+# F5: keg-only postgresql@17 `pg_isready` is NOT on the PATH of this hook's
+# non-interactive shell; resolve it by absolute path with a `command -v` fallback.
+# F8: with PG present, a genuine test failure must BLOCK the push (exit 1),
+# not print "Continuing". With PG absent, declare a clean SKIP.
 echo "🐍 Running Python tests..."
-# Clear pytest cache to avoid stale import errors after structural changes
-# Use pytest.ini from backend directory for proper configuration
-(cd apps/backend-rag && rm -rf .pytest_cache backend/.pytest_cache && source .venv/bin/activate 2>/dev/null && PYTHONPATH=backend python -m pytest backend/tests/ -v --tb=short -q 2>/dev/null) || {
-    echo "⚠️  Python tests skipped or failed. Continuing..."
-    echo "   To run tests manually: cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=backend pytest backend/tests/"
-}
+PG_ISREADY="$(command -v pg_isready || echo /opt/homebrew/opt/postgresql@17/bin/pg_isready)"
+if "$PG_ISREADY" -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
+    # Clear pytest cache to avoid stale import errors after structural changes.
+    if ! (cd apps/backend-rag && rm -rf .pytest_cache backend/.pytest_cache && source .venv/bin/activate 2>/dev/null && PYTHONPATH=backend python -m pytest backend/tests/ --tb=short -q); then
+        echo "❌ Python tests FAILED — push blocked."
+        echo "   Run locally: cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=backend pytest backend/tests/"
+        exit 1
+    fi
+else
+    echo "⏭️  SKIP Python tests — no local PostgreSQL on 127.0.0.1:5432."
+    echo "   Install per research/operations/specs/2026-06-12-M5-postgres-local-spec.md to enable the gate."
+fi
 # Note: Coverage check removed from pre-push (current coverage ~0.67%, target 80% is long-term goal)
 # To check coverage manually: pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=80
 
