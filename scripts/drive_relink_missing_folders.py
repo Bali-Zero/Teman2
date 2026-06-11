@@ -45,8 +45,12 @@ import time
 from pathlib import Path
 from typing import Any
 
+# Import the helper from THIS script's own directory only. On Fly both files
+# are staged together (e.g. /tmp/drive_relink_missing_folders.py +
+# /tmp/drive_twin_folder_cleanup.py) so the script-dir entry already covers it.
+# Never add a world-writable dir like a bare "/tmp" to sys.path — that lets any
+# process drop a malicious drive_twin_folder_cleanup.py and get it imported.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, "/tmp")  # Fly: helper colocated in /tmp
 
 from drive_twin_folder_cleanup import (  # noqa: E402
     FOLDER_MIME,
