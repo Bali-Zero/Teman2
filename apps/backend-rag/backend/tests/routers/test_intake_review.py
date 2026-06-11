@@ -125,8 +125,12 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
              "candidates": [{"client_id": cid_owner, "score": 0.95}]},
             received_by=TEAM_OWNER["email"])
         p_other = await mk_proposal(
+            # LIVE resolver shape (routing.py): {"table","id","name"} — NOT
+            # "client_id". Regression for the dead radio-list bug: the reader
+            # must resolve this shape into entity_candidates.
             {"decision": "LINK_CANDIDATE", "score": 0.80,
-             "candidates": [{"client_id": cid_other, "score": 0.80}]},
+             "candidates": [{"table": "clients", "id": cid_other,
+                             "name": f"{tag}-other", "score": 0.80}]},
             received_by=TEAM_OTHER["email"])
         p_nomatch = await mk_proposal(
             {"decision": "NO_MATCH", "candidates": []},
@@ -823,3 +827,54 @@ async def test_approve_practice_explicit_archive_only(pool, seed, monkeypatch):
     op_tables = [op["table"] for op in plan["ops"]]
     assert "documents" in op_tables  # the archive (document UPSERT) is planned
     assert "practices.documents[]" not in op_tables  # NO practice-attach op
+
+
+async def test_entity_candidates_resolve_live_resolver_shape(pool, seed):
+    """The radio-list regression: candidates written as {"table","id","name"}
+    (the shape the production resolver in routing.py ACTUALLY writes — every
+    live proposal sampled 2026-06-11 used it) must resolve into a populated
+    entity_candidates list. The reader previously recognised only "client_id"
+    → entity_candidates was always [] and the UI's proposed-client radio list
+    was dead code; the only resolvable proposals were test-seeded ones."""
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        # p_other was seeded with the LIVE shape (id+table, no client_id).
+        r = await cl.get(f"/api/intake/review/{seed['p_other']}")
+        assert r.status_code == 200, r.text
+        cands = r.json()["entity_candidates"]
+        assert len(cands) == 1, f"live-shape candidate not resolved: {cands}"
+        assert cands[0]["client_id"] == seed["cid_other"]
+        assert cands[0]["full_name"] == f"{seed['tag']}-other"
+
+        # p_owner keeps the legacy "client_id" shape — both must work.
+        r = await cl.get(f"/api/intake/review/{seed['p_owner']}")
+        assert r.status_code == 200, r.text
+        cands = r.json()["entity_candidates"]
+        assert len(cands) == 1
+        assert cands[0]["client_id"] == seed["cid_owner"]
+
+
+async def test_candidate_ids_routing_fallback_and_companies_excluded(pool, seed):
+    """routing.client_id is a valid fallback source; companies-table candidate
+    ids must NOT be looked up in the clients table (id collision hazard)."""
+    pid = seed["p_nomatch"]  # seeded with zero candidates
+    async with pool.acquire() as conn:
+        # companies candidate (must be ignored) + routing resolved client.
+        await conn.execute(
+            "UPDATE document_routing_proposal SET "
+            "entity_resolution = entity_resolution || "
+            "  jsonb_build_object('candidates', jsonb_build_array("
+            "    jsonb_build_object('table','companies','id',$2::int,'name','co'))), "
+            "routing = routing || jsonb_build_object('client_id', $3::int) "
+            "WHERE id=$1",
+            pid, seed["cid_other"], seed["cid_owner"])
+
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.get(f"/api/intake/review/{pid}")
+        assert r.status_code == 200, r.text
+        cands = r.json()["entity_candidates"]
+        ids = [c["client_id"] for c in cands]
+        assert seed["cid_owner"] in ids, f"routing.client_id fallback missing: {cands}"
+        assert seed["cid_other"] not in ids, (
+            f"companies-table id leaked into clients lookup: {cands}")
