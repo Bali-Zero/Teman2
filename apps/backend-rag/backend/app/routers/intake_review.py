@@ -235,19 +235,28 @@ def _ocr_pages(stage_output: dict[str, Any]) -> list[dict[str, Any]] | None:
 async def _load_candidate_clients(
     conn: asyncpg.Connection, client_ids: list[int]
 ) -> list[dict[str, Any]]:
-    """READ-ONLY lookup of candidate clients (id, name, assigned_to)."""
+    """READ-ONLY lookup of candidate clients, with the disambiguators a human
+    needs to tell homonyms apart (phone/email/nationality — the "tanti Walter"
+    problem: 10 clients named Walter, distinguishable only by phone)."""
     if not client_ids:
         return []
     rows = await conn.fetch(
         """
-        SELECT id, full_name, assigned_to
+        SELECT id, full_name, assigned_to, email, phone, nationality
         FROM clients
         WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL
         """,
         client_ids,
     )
     return [
-        {"client_id": r["id"], "full_name": r["full_name"], "assigned_to": r["assigned_to"]}
+        {
+            "client_id": r["id"],
+            "full_name": r["full_name"],
+            "assigned_to": r["assigned_to"],
+            "email": r["email"],
+            "phone": r["phone"],
+            "nationality": r["nationality"],
+        }
         for r in rows
     ]
 
@@ -371,23 +380,27 @@ async def search_clients(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Name-lookup over local CRM clients for the review destination picker.
+    """Name/phone/email lookup over local CRM clients for the destination picker.
 
-    Deliberately MINIMAL projection (id, full_name, assigned_to) — this is a
-    routing affordance, not client access: a reviewer redirecting a NO_MATCH
-    document must be able to find ANY client by name (the doc's subject is
-    rarely one of their own assigned clients). pg_trgm-ranked, ILIKE-gated.
-    READ-ONLY. PII boundary unchanged: runs on the Pro reader, local DB only.
+    Projection includes the HUMAN DISAMBIGUATORS (phone/email/nationality):
+    the CRM holds many homonyms (10 bare "Walter"s) distinguishable only by
+    contact data — a name-only list forces blind guessing. Phone matching
+    activates when the query carries >=5 digits. This is a routing affordance,
+    not client access: a reviewer redirecting a NO_MATCH document must find ANY
+    client. pg_trgm-ranked, ILIKE-gated. READ-ONLY, Pro reader, local DB only.
     """
     needle = q.strip()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, full_name, assigned_to,
+            SELECT id, full_name, assigned_to, email, phone, nationality,
                    similarity(full_name, $1) AS sim
             FROM clients
             WHERE deleted_at IS NULL
-              AND full_name ILIKE '%' || $1 || '%'
+              AND (full_name ILIKE '%' || $1 || '%'
+                   OR phone LIKE '%' || regexp_replace($1, '[^0-9+]', '', 'g') || '%'
+                       AND length(regexp_replace($1, '[^0-9]', '', 'g')) >= 5
+                   OR email ILIKE '%' || $1 || '%')
             ORDER BY sim DESC, full_name ASC
             LIMIT $2
             """,
@@ -400,6 +413,9 @@ async def search_clients(
                 "client_id": r["id"],
                 "full_name": r["full_name"],
                 "assigned_to": r["assigned_to"],
+                "email": r["email"],
+                "phone": r["phone"],
+                "nationality": r["nationality"],
                 "score": round(float(r["sim"] or 0.0), 4),
             }
             for r in rows
