@@ -326,7 +326,8 @@
         "actions": "ReactNode",
         "slotBefore": "ReactNode | undefined",
         "slotAfter": "ReactNode | undefined",
-        "children": "ReactNode | undefined"
+        "children": "ReactNode | undefined",
+        "accentBar": "boolean | undefined"
       },
       "useWhen": [
         "navigation",
