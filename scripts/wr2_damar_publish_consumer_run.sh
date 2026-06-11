@@ -34,11 +34,18 @@ if [ -f "$CONFIG" ]; then
 fi
 
 # DSN from the wa-mirror env (carries a password — do not echo it).
-WA_ENV="$REPO_ROOT/apps/wa-mirror/.env"
-if [ -f "$WA_ENV" ]; then
-  # shellcheck disable=SC1090
-  set -a; . "$WA_ENV"; set +a
-fi
+# IMPORTANT: the LIVE wa-mirror bridge reads its DSN from ~/.wa-mirror.env
+# (HOME-fork, W67), which points at the real local Postgres
+# (nuzantara@localhost:5432/nuzantara_dev). The in-repo apps/wa-mirror/.env is
+# STALE (points at a 15432 DSN with a rotated password that fails auth). Prefer
+# the HOME config; fall back to the repo .env only if HOME is absent.
+for WA_ENV in "$HOME/.wa-mirror.env" "$REPO_ROOT/apps/wa-mirror/.env"; do
+  if [ -f "$WA_ENV" ]; then
+    # shellcheck disable=SC1090
+    set -a; . "$WA_ENV"; set +a
+    [ -n "${WA_MIRROR_DATABASE_URL:-}" ] && break
+  fi
+done
 if [ -z "${WA_MIRROR_DATABASE_URL:-}" ]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] FATAL: WA_MIRROR_DATABASE_URL unset — abort" >> "$LOG"
   exit 2
