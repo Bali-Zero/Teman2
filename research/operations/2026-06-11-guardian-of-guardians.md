@@ -125,6 +125,40 @@ gh api -X POST repos/Balizero1987/Teman2/branches/main/protection/required_statu
 # E13 (P3) — codex: remove/reauth the dead embedded MCP server token (invalid_grant) to kill panel hangs
 ```
 
+## Execution log — Antonello approved 1-13 (2026-06-11 ~16:30-17:00 WITA)
+
+All 13 escalations executed same-day after explicit operator approval ("1-13 sì, owner GSC = Mini"):
+
+| Item | Action taken | Verified |
+|---|---|---|
+| E1 | `com.balizero.indexing-sweep.daily` bootout + plist removed (backup 0400 in `~/Library/LaunchAgents/.removed-20260611/`) | no longer in `launchctl list`; twin `com.nuzantara.daily-indexing-sweep` keeps 01:00 |
+| E2 | `~/.claude/settings.json:14` → `"AGENT_WORKTREE_ENFORCEMENT": "true"` | grep confirms |
+| E3 | `~/scripts/regulatory-watcher-run.sh` line 6 `set -euo pipefail` → `set -uo pipefail` + comment | semantics proven (`reached E=1`), `zsh -n` clean, no repo fork of the wrapper |
+| E4 | hot-zone CODEOWNERS `exit 0` → `exit 1`, job renamed "Hot-zone enforcement" | commit 9ab020e71 (this PR) |
+| E5+E6 | p6: `python-dotenv` added + sentinel; p3/p7/p8/p9 sentinel-ized (p1s2 pattern) | commits 9a86a08b5, e6311ec43; YAML-validated |
+| E7 | `launchagent-state-bridge`: KeepAlive dropped → StartInterval 300s | runs reset 10,027→1, lint OK |
+| E8 | new `.github/workflows/asyncpg-lint.yml` blocking + gates yaml consumer flipped | commit ed1260a5a |
+| E9 | Mini: agy 1.0.7 binary installed (`~/.local/bin/agy`); **3 operator-steps remain** (below) | `ssh mini agy --version` → 1.0.7 |
+| E10 | GSC sweep: Pro copy bootout + removed (backup), Mini confirmed owner | Pro grep empty; Mini loaded runs=4 exit 0 |
+| E11 | local: telegram-gate + carousel-dispatcher plists removed, supervisor-watchdog disabled+bootout; repo: 3 sources `git rm` (commit fe81a0e4b) so `wr2_plist_watchdog.sh` stops restoring them | `launchctl list` clean of all 4 |
+| E12 | post-publish-poller → StartInterval 300s; automap-watchdog → 600s (both were RunAtLoad-only, scripts verified one-shot) | both loaded with live PIDs |
+| E13 | `[mcp_servers.tavily]` removed from `~/.codex/config.toml` (backup 0400) | codex ping clean, zero `TokenRefreshFailed` in stderr |
+
+**Operator-steps residui su Mini (auth interattive, non automatizzabili via SSH):**
+1. `claude` login on Mini (Tier 1 — `claude auth status` says `loggedIn: false`)
+2. `codex login` on Mini (Tier 3 — refresh token in `refresh_token_reused` 401 state)
+3. `agy` first login on Mini (Tier 2 — auth lives in macOS Keychain "Antigravity Safe Storage", not transferable; run any `agy -p` and complete the browser OAuth)
+
+**Post-merge of this PR (required-checks arming, run from Pro):**
+```bash
+# after CI green on main, add the now-sentinel-safe contexts:
+gh api -X POST repos/Balizero1987/Teman2/branches/main/protection/required_status_checks/contexts \
+  --input - <<< '["Hot-zone enforcement","asyncpg-lint","P3 static validation (enforcing)","lesson-harvester-gate","brand-api-gate","cost-breaker-tests","P6 parallelize-hypothesis falsifiable gates"]'
+# and after deploy-puller syncs nuzantara-deploy past this merge:
+rm ~/Library/LaunchAgents/com.balizero.wr2.supervisor.plist \
+   ~/Library/LaunchAgents/com.balizero.wr2.supervisor-watchdog.plist
+```
+
 ## Recoveries since the scars were written (give the antibodies their due)
 
 - FASE-0 trio (W71) all ARMED, fresh, truthful; deadman caught a real 2.7h stall on 2026-06-10.
