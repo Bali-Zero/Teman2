@@ -55,6 +55,12 @@ router = APIRouter(prefix="/api/intake/review", tags=["intake-review"])
 # How long a single reviewer holds a proposal before it becomes reclaimable.
 CLAIM_TTL_MINUTES = 15
 
+# MIME types a browser can render inline WITHOUT a script-execution surface.
+# Deliberately excludes image/svg+xml (can embed <script>) and text/html.
+_INLINE_SAFE_MIME = frozenset(
+    {"application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"}
+)
+
 
 # --------------------------------------------------------------------------- #
 # Shared RBAC guard (own-chat axis) — single source of truth
@@ -450,12 +456,25 @@ async def get_review_blob(
     if not blob_path or not os.path.isfile(blob_path):
         raise HTTPException(status_code=404, detail="Blob not on disk")
 
+    # XSS hardening: blobs are UNTRUSTED uploads (WhatsApp/Drive). Only types a
+    # browser cannot script render inline (no SVG — it can embed <script>, no
+    # HTML); anything else is rewritten to an opaque octet-stream ATTACHMENT.
+    # nosniff everywhere kills content-sniffing; CSP sandbox guards the
+    # attachment path (not sent on inline PDF — it breaks browser PDF viewers,
+    # and the allowlist already excludes every scriptable type).
+    inline_safe = row["mime_type"] in _INLINE_SAFE_MIME
+    headers = {
+        "Cache-Control": "no-store, private",
+        "X-Content-Type-Options": "nosniff",
+    }
+    if not inline_safe:
+        headers["Content-Security-Policy"] = "sandbox; default-src 'none'"
     return FileResponse(
         blob_path,
-        media_type=row["mime_type"] or "application/octet-stream",
-        headers={"Cache-Control": "no-store, private"},
+        media_type=row["mime_type"] if inline_safe else "application/octet-stream",
+        headers=headers,
         filename=os.path.basename(blob_path),
-        content_disposition_type="inline",
+        content_disposition_type="inline" if inline_safe else "attachment",
     )
 
 
