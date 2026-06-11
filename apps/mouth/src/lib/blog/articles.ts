@@ -73,6 +73,28 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
 }
 
 /**
+ * Coerce a raw `tags` value (from MDX frontmatter or the backend `ai_tags`
+ * field) into a guaranteed `string[]`. Both sources are untrusted at runtime:
+ *  - MDX frontmatter `tags:` can be mis-indented so gray-matter parses it as an
+ *    object (real bug: bali-ota-purge-2026.mdx had every later field nested
+ *    under `tags`, making it a non-iterable object).
+ *  - The backend `ai_tags` is typed `string[] | null` but can arrive as a JSON
+ *    string, a single string, or null.
+ * Anything that is not an array of strings becomes `[]` (a single string is
+ * wrapped). This is the single boundary where tags become iterable — every
+ * downstream consumer (`.map`, `.length`, `[...tags]`) is then safe.
+ */
+export function normalizeTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((t): t is string => typeof t === "string");
+  }
+  if (typeof raw === "string" && raw.trim().length > 0) {
+    return [raw.trim()];
+  }
+  return [];
+}
+
+/**
  * Resolve a requested category param to its canonical category, if known.
  * Returns null for unknown categories (caller keeps current behavior).
  * Used by the article page to issue a permanent redirect from alias
@@ -282,7 +304,7 @@ function backendToArticle(item: BackendNewsItem): Article {
     cardImage: deriveCardImage(item.image_url),
     coverImageAlt: item.title,
     category: normalizeCategory(item.category),
-    tags: item.ai_tags || [],
+    tags: normalizeTags(item.ai_tags),
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -494,7 +516,7 @@ async function getMdxArticleBySlug(
     coverImageAlt:
       frontmatter.coverImageAlt || frontmatter.image?.alt || frontmatter.title,
     category: normalizeCategory(frontmatter.category || category),
-    tags: frontmatter.tags || [],
+    tags: normalizeTags(frontmatter.tags),
     author,
     createdAt: new Date(frontmatter.publishedAt || Date.now()),
     updatedAt: new Date(
@@ -622,7 +644,7 @@ export async function getArticleByLocale(
           frontmatter.image?.alt ||
           frontmatter.title,
         category: normalizeCategory(frontmatter.category || category),
-        tags: frontmatter.tags || [],
+        tags: normalizeTags(frontmatter.tags),
         author,
         createdAt: new Date(frontmatter.publishedAt || Date.now()),
         updatedAt: new Date(
