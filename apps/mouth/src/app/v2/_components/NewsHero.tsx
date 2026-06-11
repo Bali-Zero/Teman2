@@ -62,12 +62,15 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
   return (
     <section
       id="news"
-      className="relative h-[88vh] overflow-hidden scroll-mt-20"
+      className="relative md:h-[88vh] overflow-hidden scroll-mt-20"
       style={{ background: "var(--surface-base)" }}
     >
-      <div className="grid grid-cols-[32%_68%] h-full">
+      {/* B2R2 mobile: the 32/68 two-col grid stacks — photo card first
+          (it carries the active title), numbered story list below, both
+          full-width. Desktop (md+) is byte-identical to before. */}
+      <div className="grid grid-cols-1 md:grid-cols-[32%_68%] h-full">
         {/* Left — numbered index */}
-        <div className="flex flex-col justify-center px-12 py-16">
+        <div className="order-2 md:order-1 flex flex-col justify-center px-5 py-10 md:px-12 md:py-16">
           <div
             className="text-[11px] font-semibold uppercase tracking-widest mb-8"
             style={{ color: "var(--text-tertiary)" }}
@@ -80,27 +83,33 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
               const accent = CATEGORY_ACCENT[s.category] || "#d4a017";
               return (
                 <li key={s.id}>
+                  {/* MYTHOS B2R: on the light homepage the --rp-* hooks turn
+                      this list ink-on-paper with a single navy active state
+                      (chromatic calm); /news + /v2 keep the per-category
+                      accents + glow via the var() fallbacks. */}
                   <button
                     onClick={() => setActive(i)}
                     className="w-full text-left flex items-start gap-5 p-5 rounded-xl transition-all"
                     style={{
                       background: isActive
-                        ? `color-mix(in srgb, ${accent} 14%, transparent)`
-                        : "rgba(255,255,255,0.02)",
+                        ? `var(--rp-active-bg, color-mix(in srgb, ${accent} 14%, transparent))`
+                        : "var(--rp-list-bg, rgba(255,255,255,0.02))",
                       border: isActive
-                        ? `1px solid color-mix(in srgb, ${accent} 50%, transparent)`
-                        : "1px solid rgba(255,255,255,0.05)",
+                        ? `1px solid var(--rp-active-border, color-mix(in srgb, ${accent} 50%, transparent))`
+                        : "1px solid var(--rp-list-border, rgba(255,255,255,0.05))",
                       boxShadow: isActive
-                        ? `0 0 32px color-mix(in srgb, ${accent} 20%, transparent), inset 0 1px 0 rgba(255,255,255,0.08)`
+                        ? `var(--rp-glow, 0 0 32px color-mix(in srgb, ${accent} 20%, transparent), inset 0 1px 0 rgba(255,255,255,0.08))`
                         : "none",
                     }}
                   >
                     <span
                       className="text-[22px] font-extrabold tabular-nums leading-none pt-0.5 shrink-0"
                       style={{
-                        color: isActive ? accent : "var(--text-tertiary)",
+                        color: isActive
+                          ? `var(--rp-accent, ${accent})`
+                          : "var(--text-tertiary)",
                         textShadow: isActive
-                          ? `0 0 20px color-mix(in srgb, ${accent} 50%, transparent)`
+                          ? `var(--rp-glow, 0 0 20px color-mix(in srgb, ${accent} 50%, transparent))`
                           : "none",
                       }}
                     >
@@ -120,7 +129,9 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                       <span
                         className="text-[10px] font-bold uppercase tracking-[0.18em] block mt-1.5"
                         style={{
-                          color: isActive ? accent : "var(--text-tertiary)",
+                          color: isActive
+                            ? `var(--rp-accent, ${accent})`
+                            : "var(--text-tertiary)",
                         }}
                       >
                         {formatCategory(s.category)}
@@ -133,96 +144,108 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
           </ol>
         </div>
 
-        {/* Right — image + large title */}
-        <div className="relative h-full">
-          {slides.map((s, i) => {
-            const accent = CATEGORY_ACCENT[s.category] || "#d4a017";
-            return (
-              <Link
-                href={`/${s.category}/${s.slug}`}
-                key={s.id}
-                aria-hidden={i !== active}
-                tabIndex={i === active ? 0 : -1}
-                className="absolute inset-0 transition-opacity duration-1000 group"
-                style={{
-                  opacity: i === active ? 1 : 0,
-                  pointerEvents: i === active ? "auto" : "none",
-                }}
-              >
-                <Image
-                  src={s.coverImage as string}
-                  alt={s.title || ""}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 900px"
-                  quality={75}
-                  loading={i === 0 ? "eager" : "lazy"}
-                  priority={i === 0}
-                  className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                />
-                <div
-                  className="absolute inset-0"
+        {/* Right — image + large title. MYTHOS B2R: on the light homepage
+            the photography stays a deliberate dark island (FT pattern),
+            inset + rounded into a photo card via --rp-photo-*; /news + /v2
+            keep the flush full-bleed layout (inset 0, radius 0). */}
+        <div className="order-1 md:order-2 relative h-[55vh] md:h-full">
+          <div
+            className="absolute overflow-hidden"
+            style={{
+              inset: "var(--rp-photo-inset, 0)",
+              borderRadius: "var(--rp-photo-radius, 0)",
+            }}
+          >
+            {slides.map((s, i) => {
+              const accent = CATEGORY_ACCENT[s.category] || "#d4a017";
+              return (
+                <Link
+                  href={`/${s.category}/${s.slug}`}
+                  key={s.id}
+                  aria-hidden={i !== active}
+                  tabIndex={i === active ? 0 : -1}
+                  className="absolute inset-0 transition-opacity duration-1000 group"
                   style={{
-                    background:
-                      "linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.05) 100%)",
+                    opacity: i === active ? 1 : 0,
+                    pointerEvents: i === active ? "auto" : "none",
                   }}
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-12 pr-16">
+                >
+                  <Image
+                    src={s.coverImage as string}
+                    alt={s.title || ""}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 900px"
+                    quality={75}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    priority={i === 0}
+                    className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                  />
                   <div
-                    className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest mb-5"
+                    className="absolute inset-0"
                     style={{
-                      background: `color-mix(in srgb, ${accent} 28%, rgba(0,0,0,0.4))`,
-                      border: `1px solid color-mix(in srgb, ${accent} 60%, transparent)`,
-                      color: "#ffffff",
-                      backdropFilter: "blur(12px)",
-                      WebkitBackdropFilter: "blur(12px)",
-                      boxShadow: `0 0 20px color-mix(in srgb, ${accent} 40%, transparent)`,
+                      background:
+                        "linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.05) 100%)",
                     }}
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 md:pr-16">
+                    <div
+                      className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest mb-5"
                       style={{
-                        background: accent,
-                        boxShadow: `0 0 8px ${accent}`,
-                      }}
-                    />
-                    {formatCategory(s.category)}
-                  </div>
-                  <h3
-                    className="font-black leading-[1.05] tracking-tight mb-4 line-clamp-3"
-                    style={{
-                      color: "#ffffff",
-                      fontSize: "clamp(30px, 3.4vw, 52px)",
-                      textShadow: "0 4px 24px rgba(0,0,0,0.6)",
-                      maxWidth: "22ch",
-                    }}
-                  >
-                    {s.title}
-                  </h3>
-                  {s.excerpt && (
-                    <p
-                      className="text-[15px] leading-relaxed max-w-2xl line-clamp-2"
-                      style={{
-                        color: "rgba(255,255,255,0.82)",
-                        textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+                        background: `color-mix(in srgb, ${accent} 28%, rgba(0,0,0,0.4))`,
+                        border: `1px solid color-mix(in srgb, ${accent} 60%, transparent)`,
+                        color: "#ffffff",
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
+                        boxShadow: `0 0 20px color-mix(in srgb, ${accent} 40%, transparent)`,
                       }}
                     >
-                      {s.excerpt
-                        .replace(/^#+\s*/gm, "")
-                        .replace(/\*\*|__|\*|_/g, "")
-                        .trim()}
-                    </p>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          background: accent,
+                          boxShadow: `0 0 8px ${accent}`,
+                        }}
+                      />
+                      {formatCategory(s.category)}
+                    </div>
+                    {/* B2R2: 25px on mobile, original clamp from md up —
+                        desktop output is byte-identical. */}
+                    <h3
+                      className="font-black leading-[1.05] tracking-tight mb-4 line-clamp-3 text-[25px] md:text-[clamp(30px,3.4vw,52px)]"
+                      style={{
+                        color: "#ffffff",
+                        textShadow: "0 4px 24px rgba(0,0,0,0.6)",
+                        maxWidth: "22ch",
+                      }}
+                    >
+                      {s.title}
+                    </h3>
+                    {s.excerpt && (
+                      <p
+                        className="text-[15px] leading-relaxed max-w-2xl line-clamp-2"
+                        style={{
+                          color: "rgba(255,255,255,0.82)",
+                          textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {s.excerpt
+                          .replace(/^#+\s*/gm, "")
+                          .replace(/\*\*|__|\*|_/g, "")
+                          .trim()}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       <button
         onClick={() => setPaused((p) => !p)}
         aria-label={paused ? "Play news carousel" : "Pause news carousel"}
-        className="absolute bottom-8 right-8 z-30 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+        className="absolute top-4 right-4 md:top-auto md:bottom-8 md:right-8 z-30 w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
         style={{
           background: "rgba(255,255,255,0.12)",
           border: "1px solid rgba(255,255,255,0.22)",

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="_fonts.css" />
+    <link rel="stylesheet" href="_base.css" />
+    <style>
+      /* cover-photo family (minimal test variant) — full-bleed hero + bottom text block.
+     Hero is a REAL <img> (object-fit:cover) so img.decode() can gate on it,
+     which is the anti-Canva guarantee. Legibility Armor gradient over the text. */
+      html,
+      body {
+        background: var(--color-bg-black);
+      }
+      .hero-img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+      }
+      .gradient {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0) 30%,
+          var(--color-overlay-darken-60) 70%,
+          var(--color-bg-black) 100%
+        );
+        z-index: 1;
+      }
+      .content {
+        position: absolute;
+        left: var(--spacing-edge-margin);
+        right: var(--spacing-edge-margin);
+        bottom: 180px;
+        z-index: 2;
+      }
+      .subheading {
+        color: var(--color-accent-yellow);
+        font-family: var(--font-family-primary);
+        font-weight: var(--font-weight-bold);
+        font-size: var(--font-size-subheadline);
+        letter-spacing: var(--letter-spacing-title);
+        line-height: var(--line-height-snug);
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      .heading {
+        color: var(--color-text-white);
+        font-family: var(--font-family-primary);
+        font-weight: var(--font-weight-extrabold);
+        font-size: var(--font-size-headline-cover);
+        letter-spacing: var(--letter-spacing-title);
+        line-height: var(--line-height-tight);
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <img
+      class="hero-img"
+      src="{{HERO_FILE}}"
+      alt=""
+      data-zone-type="hero-photo"
+    />
+    <div class="gradient" data-zone-type="overlay"></div>
+    <div class="content" data-zone-type="text">
+      <div class="subheading">{{SUBHEAD}}</div>
+      <div class="heading">{{HEADLINE}}</div>
+    </div>
+    <div class="logo" data-zone-type="logo">3 ALI ZERO</div>
+  </body>
+</html>

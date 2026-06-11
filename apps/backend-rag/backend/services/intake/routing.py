@@ -1,0 +1,701 @@
+"""Document-intake entity-resolution + routing proposal (FASE 4).
+
+Replaces the FASE-3 ``_route_stage_stub`` with REAL entity-resolution and a
+routing proposal. **READ-ONLY w.r.t. the CRM**: this module reads
+``clients`` / ``companies`` / ``client_company_links`` / ``practices`` to find
+candidate matches for the extracted document, but the ONLY structured write it
+performs is a single ``document_routing_proposal`` row (a *proposal* a human
+approves in FASE-5). It NEVER INSERTs/UPDATEs clients, companies, practices or
+documents — attaching the document to a client is FASE-5 (HITL + writer).
+
+PII / Symbiosis Law 2: all matching runs against the LOCAL Postgres only. Zero
+cloud, zero third-party endpoints.
+
+Reuse (reuse-first discipline)
+------------------------------
+* ``backend.services.crm.client_core.validate_passport`` — passport normaliser
+  (upper-case + format guard), reused so the document identifier is normalised
+  the same way the CRM stores/validates it.
+* The pg_trgm ``%`` / ``similarity()`` fuzzy-name + ambiguity-margin cascade is
+  lifted from the proven ``services/wa_copilot/identity_resolver.py`` (same
+  thresholds: apply >= 0.70, review band 0.40-0.70, ambiguity margin 0.15).
+
+Why not splink
+--------------
+``splink`` (DuckDB probabilistic ER, cited in spec 05e as a reuse candidate) is
+NOT installed and is not warranted here: the document identifiers we match on
+(passport_no, npwp, nib, akta number) are quasi-unique keys — an *exact* lookup
+resolves the AUTO_ATTACH case deterministically, and pg_trgm covers the residual
+fuzzy-name case natively in-DB. Adding a DuckDB-backed ER engine would be a heavy
+new dependency for zero marginal precision on this key-driven problem. If a future
+FASE needs many-field probabilistic linkage (e.g. dedup across noisy CRM rows),
+revisit splink then.
+
+Decision matrix (C4)
+--------------------
+* ``AUTO_ATTACH``    — exactly one candidate via a STRONG identifier
+  (passport / npwp / nib / akta number) → high confidence, no human needed.
+* ``LINK_CANDIDATE`` — a single probable match via fuzzy name only (no strong
+  identifier) → human confirmation recommended.
+* ``AMBIGUOUS``      — >= 2 plausible candidates (homonyms!) or strong-identifier
+  collision → human review mandatory.
+* ``NO_MATCH``       — no candidate at all → potential new client, human review.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import re
+from typing import Any
+
+import asyncpg
+
+logger = logging.getLogger("zantara.intake.routing")
+
+PIPELINE_VERSION_DEFAULT = "v1"
+
+# --- Decision-matrix C4 outcomes ---
+DECISION_AUTO_ATTACH = "AUTO_ATTACH"
+DECISION_LINK_CANDIDATE = "LINK_CANDIDATE"
+DECISION_AMBIGUOUS = "AMBIGUOUS"
+DECISION_NO_MATCH = "NO_MATCH"
+
+# --- Thresholds (mirror wa_copilot/identity_resolver) ---
+FUZZY_APPLY_THRESHOLD = 0.70       # sim >= this on a SINGLE name match → LINK_CANDIDATE
+FUZZY_REVIEW_LOW = 0.40            # below this → ignore the fuzzy candidate entirely
+AMBIGUITY_MARGIN = 0.15            # top1 - top2 < margin → AMBIGUOUS (homonyms)
+
+# Confidence assigned to a strong-identifier exact match.
+CONF_STRONG_EXACT = 0.99
+
+# Doc-types whose subject is a PERSON (match against ``clients``) vs a COMPANY
+# (match against ``companies``). canonical_doc_type() upstream already maps
+# aliases (paspor->passport, akta->akta_pendirian, ...).
+_PERSON_DOC_TYPES = frozenset({"passport", "npwp", "kitas"})
+_COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian"})
+
+# NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
+# match first when the npwp resolves a company row, else fall back to person.
+
+
+# ---------------------------------------------------------------------------
+# Field-value extraction helpers (read the FASE-3 extract payload)
+# ---------------------------------------------------------------------------
+
+def _field_value(fields: dict[str, Any], name: str) -> Any:
+    """Pull a scalar value out of the FASE-3 ``fields`` map.
+
+    extract.py stores each field as ``{"value": v, "confidence": c,
+    "source_page": p}``; older/looser payloads may store a bare scalar. A
+    ``null``/empty value returns ``None``.
+    """
+    raw = fields.get(name)
+    if isinstance(raw, dict):
+        val = raw.get("value")
+    else:
+        val = raw
+    if val is None:
+        return None
+    if isinstance(val, str) and not val.strip():
+        return None
+    return val
+
+
+def _normalize_id(value: Any) -> str | None:
+    """Normalise a quasi-unique identifier for exact comparison.
+
+    Strips spaces / dots / dashes (NPWP is often written ``01.234.567.8-901.000``;
+    NIB may carry spaces) and upper-cases. Returns None for empties.
+    """
+    if value is None:
+        return None
+    s = re.sub(r"[\s.\-/]", "", str(value)).upper()
+    return s or None
+
+
+def _normalize_passport(value):
+    """Normalise a passport number: strip separators + upper-case.
+
+    Mirrors backend.services.crm.client_core ClientValidator.validate_passport
+    (which upper-cases and guards [A-Z0-9]); we additionally strip separators so a
+    document value like "X 123456" matches a stored "X123456".
+    """
+    norm = _normalize_id(value)
+    if not norm:
+        return None
+    return norm
+
+
+def _digits_only(value: Any) -> str | None:
+    """Digits-only projection (for NPWP/NIB numeric comparison)."""
+    if value is None:
+        return None
+    d = re.sub(r"\D", "", str(value))
+    return d or None
+
+
+# ---------------------------------------------------------------------------
+# Entity resolution
+# ---------------------------------------------------------------------------
+
+async def _match_person_strong(
+    conn: asyncpg.Connection, extracted: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Strong-identifier match against ``clients`` (passport / kitas number)."""
+    candidates: list[dict[str, Any]] = []
+
+    passport = _field_value(extracted, "passport_no") or _field_value(extracted, "passport_number")
+    if passport:
+        # Normalise the same way the CRM ClientValidator.validate_passport does
+        # (upper-case + [A-Z0-9] guard), plus strip separators for robust match.
+        norm = _normalize_passport(passport)
+        if norm:
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name
+                FROM clients
+                WHERE deleted_at IS NULL
+                  AND UPPER(REGEXP_REPLACE(passport_number, '[\\s.\\-/]', '', 'g')) = $1
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "clients", "id": r["id"], "name": r["full_name"],
+                    "method": "passport_number", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
+    kitas = _field_value(extracted, "kitas_no") or _field_value(extracted, "kitas_number")
+    if kitas:
+        norm = _normalize_id(kitas)
+        if norm:
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name
+                FROM clients
+                WHERE deleted_at IS NULL
+                  AND UPPER(REGEXP_REPLACE(kitas_number, '[\\s.\\-/]', '', 'g')) = $1
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "clients", "id": r["id"], "name": r["full_name"],
+                    "method": "kitas_number", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
+    return candidates
+
+
+async def _match_company_strong(
+    conn: asyncpg.Connection, extracted: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Strong-identifier match against ``companies`` (nib / npwp_company / akta no)."""
+    candidates: list[dict[str, Any]] = []
+
+    nib = _field_value(extracted, "nib_number") or _field_value(extracted, "nib")
+    if nib:
+        norm = _digits_only(nib)
+        if norm:
+            rows = await conn.fetch(
+                """
+                SELECT id, company_name
+                FROM companies
+                WHERE REGEXP_REPLACE(nib, '\\D', '', 'g') = $1
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "companies", "id": r["id"], "name": r["company_name"],
+                    "method": "nib", "score": CONF_STRONG_EXACT, "matched_value": norm,
+                })
+
+    npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
+    if npwp:
+        norm = _digits_only(npwp)
+        if norm:
+            rows = await conn.fetch(
+                """
+                SELECT id, company_name
+                FROM companies
+                WHERE REGEXP_REPLACE(npwp_company, '\\D', '', 'g') = $1
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "companies", "id": r["id"], "name": r["company_name"],
+                    "method": "npwp_company", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
+    akta = _field_value(extracted, "akta_pendirian_no")
+    if akta:
+        norm = _normalize_id(akta)
+        if norm:
+            rows = await conn.fetch(
+                """
+                SELECT id, company_name
+                FROM companies
+                WHERE UPPER(REGEXP_REPLACE(akta_pendirian_no, '[\\s.\\-/]', '', 'g')) = $1
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "companies", "id": r["id"], "name": r["company_name"],
+                    "method": "akta_pendirian_no", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
+    return candidates
+
+
+async def _match_fuzzy_name(
+    conn: asyncpg.Connection, table: str, name_col: str, name: str
+) -> list[dict[str, Any]]:
+    """pg_trgm fuzzy match on a name column. Returns top-2 with similarity.
+
+    Reuses the wa_copilot/identity_resolver trgm pattern (``%`` operator + LIMIT 2
+    so the caller can apply the ambiguity margin).
+    """
+    if not name or len(name.strip()) < 3:
+        return []
+    rows = await conn.fetch(
+        f"""
+        SELECT id, {name_col} AS name, similarity({name_col}, $1) AS sim
+        FROM {table}
+        WHERE {name_col} %% $1
+        ORDER BY sim DESC
+        LIMIT 2
+        """.replace("%%", "%"),
+        name.strip(),
+    )
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        out.append({
+            "table": table, "id": r["id"], "name": r["name"],
+            "method": f"fuzzy_{name_col}", "score": round(float(r["sim"]), 4),
+            "matched_value": name.strip(),
+        })
+    return out
+
+
+def _classify_decision(
+    strong: list[dict[str, Any]],
+    fuzzy: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
+    """Apply the C4 decision matrix to strong + fuzzy candidate lists.
+
+    Returns ``(decision, candidates, reason)``.
+    """
+    # De-dup strong candidates by (table, id).
+    seen: set[tuple[str, int]] = set()
+    uniq_strong: list[dict[str, Any]] = []
+    for c in strong:
+        key = (c["table"], c["id"])
+        if key not in seen:
+            seen.add(key)
+            uniq_strong.append(c)
+
+    # 1) Strong identifier(s) present.
+    if uniq_strong:
+        if len(uniq_strong) == 1:
+            return DECISION_AUTO_ATTACH, uniq_strong, {
+                "reason": "single strong-identifier match",
+                "method": uniq_strong[0]["method"],
+            }
+        # >1 distinct row sharing the same strong identifier = data collision.
+        return DECISION_AMBIGUOUS, uniq_strong, {
+            "reason": f"{len(uniq_strong)} rows share a strong identifier (collision)",
+        }
+
+    # 2) No strong identifier → consider fuzzy name candidates.
+    usable = [c for c in fuzzy if c["score"] >= FUZZY_REVIEW_LOW]
+    if not usable:
+        return DECISION_NO_MATCH, [], {"reason": "no strong identifier, no fuzzy name >= 0.40"}
+
+    usable.sort(key=lambda c: c["score"], reverse=True)
+    top = usable[0]
+
+    # >= 2 plausible names within the ambiguity margin → homonym ambiguity.
+    if len(usable) >= 2:
+        second = usable[1]
+        if top["score"] - second["score"] < AMBIGUITY_MARGIN:
+            return DECISION_AMBIGUOUS, usable[:2], {
+                "reason": "homonyms: top-2 fuzzy names within ambiguity margin",
+                "top_sim": top["score"], "second_sim": second["score"],
+            }
+
+    # Single clear fuzzy candidate.
+    if top["score"] >= FUZZY_APPLY_THRESHOLD:
+        return DECISION_LINK_CANDIDATE, [top], {
+            "reason": "single fuzzy name match, no strong identifier",
+            "top_sim": top["score"],
+        }
+    # In review band (0.40-0.70) but below apply → still a (weak) candidate to confirm.
+    return DECISION_LINK_CANDIDATE, [top], {
+        "reason": "weak fuzzy name match in review band",
+        "top_sim": top["score"], "review_band": True,
+    }
+
+
+async def resolve_entity(
+    extracted_fields: dict[str, Any],
+    doc_type: str | None,
+    pool: asyncpg.Pool | asyncpg.Connection,
+) -> dict[str, Any]:
+    """Resolve the document subject against existing CRM rows (READ-ONLY).
+
+    Returns a dict::
+
+        {
+          "decision": "AUTO_ATTACH" | "LINK_CANDIDATE" | "AMBIGUOUS" | "NO_MATCH",
+          "candidates": [ {table, id, name, method, score, matched_value}, ... ],
+          "reason": {...},
+          "subject_kind": "person" | "company" | "unknown",
+          "doc_type": <doc_type>,
+        }
+    """
+    dt = (doc_type or "").strip().lower()
+
+    async def _run(conn: asyncpg.Connection) -> dict[str, Any]:
+        strong: list[dict[str, Any]] = []
+        fuzzy: list[dict[str, Any]] = []
+        subject_kind = "unknown"
+
+        # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
+        # doc-type is company-ish OR when a company strong-id is present.
+        if dt in _COMPANY_DOC_TYPES or dt == "npwp":
+            strong += await _match_company_strong(conn, extracted_fields)
+            if strong:
+                subject_kind = "company"
+
+        # PERSON-side identifiers (passport/kitas) — and person npwp fallback.
+        if not strong and (dt in _PERSON_DOC_TYPES or dt == "npwp" or dt == "unknown"):
+            strong += await _match_person_strong(conn, extracted_fields)
+            if strong:
+                subject_kind = "person"
+
+        # If still nothing strong and doc is company-ish, also try person strong
+        # (defensive: a misclassified doc still gets a chance).
+        if not strong and dt in _COMPANY_DOC_TYPES:
+            strong += await _match_person_strong(conn, extracted_fields)
+            if strong:
+                subject_kind = "person"
+
+        # Fuzzy name fallback (only matters when no strong identifier resolved).
+        if not strong:
+            company_name = _field_value(extracted_fields, "company_name")
+            person_name = (
+                _field_value(extracted_fields, "name")
+                or _field_value(extracted_fields, "full_name")
+            )
+            if company_name:
+                fuzzy += await _match_fuzzy_name(conn, "companies", "company_name", str(company_name))
+                if fuzzy:
+                    subject_kind = "company"
+            if person_name:
+                pf = await _match_fuzzy_name(conn, "clients", "full_name", str(person_name))
+                fuzzy += pf
+                if pf and subject_kind == "unknown":
+                    subject_kind = "person"
+
+        decision, candidates, reason = _classify_decision(strong, fuzzy)
+        return {
+            "decision": decision,
+            "candidates": candidates,
+            "reason": reason,
+            "subject_kind": subject_kind,
+            "doc_type": doc_type,
+        }
+
+    if isinstance(pool, asyncpg.Connection):
+        return await _run(pool)
+    async with pool.acquire() as conn:
+        return await _run(conn)
+
+
+# ---------------------------------------------------------------------------
+# Routing target (READ-ONLY lookup of owning client + open practice)
+# ---------------------------------------------------------------------------
+
+async def _resolve_routing_target(
+    conn: asyncpg.Connection, entity: dict[str, Any]
+) -> dict[str, Any]:
+    """From the resolved entity, derive where the doc WOULD go (no write).
+
+    * client doc → client_id directly.
+    * company doc → the company's PRIMARY linked client via client_company_links.
+    Then look up the most recent open practice for that client as a routing hint.
+    """
+    if entity["decision"] not in (DECISION_AUTO_ATTACH, DECISION_LINK_CANDIDATE):
+        return {"client_id": None, "company_id": None, "practice_id": None,
+                "practice_hint": None}
+
+    cand = entity["candidates"][0]
+    client_id: int | None = None
+    company_id: int | None = None
+
+    if cand["table"] == "clients":
+        client_id = cand["id"]
+    elif cand["table"] == "companies":
+        company_id = cand["id"]
+        link = await conn.fetchrow(
+            """
+            SELECT client_id
+            FROM client_company_links
+            WHERE company_id = $1
+            ORDER BY is_primary DESC NULLS LAST, start_date DESC NULLS LAST
+            LIMIT 1
+            """,
+            company_id,
+        )
+        if link:
+            client_id = link["client_id"]
+
+    practice_id = None
+    practice_hint = None
+    if client_id is not None:
+        prow = await conn.fetchrow(
+            """
+            SELECT id, practice_type_code, status
+            FROM practices
+            WHERE client_id = $1
+              AND status NOT IN ('completed')
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            client_id,
+        )
+        if prow:
+            practice_id = prow["id"]
+            practice_hint = {
+                "practice_type_code": prow["practice_type_code"],
+                "status": prow["status"],
+            }
+
+    return {
+        "client_id": client_id,
+        "company_id": company_id,
+        "practice_id": practice_id,
+        "practice_hint": practice_hint,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Proposal builder
+# ---------------------------------------------------------------------------
+
+def _make_routing_key(queue_id: int, doc_index: int, pipeline_version: str) -> str:
+    raw = f"{queue_id}|{doc_index}|{pipeline_version}"
+    return "rk:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:48]
+
+
+async def build_routing_proposal(
+    queue_id: int,
+    extracted: dict[str, Any],
+    doc_type: str | None,
+    pool: asyncpg.Pool | asyncpg.Connection,
+    *,
+    doc_index: int = 0,
+    pipeline_version: str = PIPELINE_VERSION_DEFAULT,
+) -> dict[str, Any]:
+    """Build (but do NOT persist) the routing proposal payload.
+
+    Returns a dict with the four JSONB columns plus routing_key, ready to INSERT
+    into ``document_routing_proposal``.
+    """
+    async def _run(conn: asyncpg.Connection) -> dict[str, Any]:
+        entity = await resolve_entity(extracted, doc_type, conn)
+        target = await _resolve_routing_target(conn, entity)
+
+        decision = entity["decision"]
+        requires_human = decision != DECISION_AUTO_ATTACH
+
+        entity_resolution = {
+            "decision": decision,
+            "subject_kind": entity["subject_kind"],
+            "candidates": entity["candidates"],
+            "reason": entity["reason"],
+            "doc_type": doc_type,
+        }
+        routing = {
+            "client_id": target["client_id"],
+            "company_id": target["company_id"],
+            "practice_id": target["practice_id"],
+            "practice_hint": target["practice_hint"],
+            "doc_type": doc_type,
+        }
+        commit_gate = {
+            "requires_human": requires_human,
+            "decision": decision,
+            "reason": entity["reason"].get("reason"),
+            "auto_attach_eligible": decision == DECISION_AUTO_ATTACH
+            and target["client_id"] is not None,
+            "fase": "4-routing",
+        }
+        return {
+            "routing_key": _make_routing_key(queue_id, doc_index, pipeline_version),
+            "doc_index": doc_index,
+            "pipeline_version": pipeline_version,
+            "entity_resolution": entity_resolution,
+            "routing": routing,
+            "commit_gate": commit_gate,
+        }
+
+    if isinstance(pool, asyncpg.Connection):
+        return await _run(pool)
+    async with pool.acquire() as conn:
+        return await _run(conn)
+
+
+# ---------------------------------------------------------------------------
+# Stage handler (replaces FASE-3 _route_stage_stub)
+# ---------------------------------------------------------------------------
+
+async def _fetch_stage_output(conn: asyncpg.Connection, queue_id: int) -> dict[str, Any]:
+    row = await conn.fetchrow(
+        "SELECT stage_output FROM intake_queue WHERE id = $1", queue_id
+    )
+    if row is None or row["stage_output"] is None:
+        return {}
+    so = row["stage_output"]
+    if isinstance(so, str):
+        try:
+            return json.loads(so)
+        except json.JSONDecodeError:
+            return {}
+    return dict(so)
+
+
+async def backfill_received_by(
+    conn: asyncpg.Connection, queue_id: int, client_id: int | None
+) -> str | None:
+    """Give an owner-less queue row a reviewer: the matched client's consultant.
+
+    Docs from the SHARED business line (``whatsapp-live:*``) and Drive arrive
+    with ``received_by IS NULL`` — nobody's dashboard shows them (admin-only
+    pool). When routing resolves a client, the most natural reviewer is that
+    client's assigned consultant: backfill ``intake_queue.received_by`` with
+    ``clients.assigned_to`` so the document lands on THEIR review feed + login
+    gate, exactly like a doc received on their own mirrored chat.
+
+    Never overwrites an existing received_by (own-chat receiver wins). Returns
+    the backfilled email, or None when nothing was written.
+    """
+    if client_id is None:
+        return None
+    row = await conn.fetchrow(
+        """
+        UPDATE intake_queue q
+           SET received_by = lower(c.assigned_to)
+          FROM clients c
+         WHERE q.id = $1
+           AND q.received_by IS NULL
+           AND c.id = $2
+           AND c.deleted_at IS NULL
+           AND c.assigned_to IS NOT NULL
+           AND c.assigned_to <> ''
+        RETURNING q.received_by
+        """,
+        queue_id,
+        client_id,
+    )
+    return row["received_by"] if row else None
+
+
+async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noqa: ARG001 — StageHandler contract
+    """FASE-4 real ``route`` stage handler.
+
+    Reads the extracted fields from the job's accumulated ``stage_output``,
+    resolves the entity, builds the routing proposal, and INSERTs exactly ONE
+    ``document_routing_proposal`` row (status ``review_pending``). Idempotent via
+    ``ON CONFLICT (routing_key) DO NOTHING``. ZERO CRM writes.
+
+    Owner backfill: when the queue row has no ``received_by`` (shared business
+    line / Drive) and routing resolved a client, the client's assigned
+    consultant becomes the reviewer (:func:`backfill_received_by`) — every
+    matched document lands on a real person's dashboard.
+    """
+    queue_id = job["id"]
+    pipeline_version = job.get("pipeline_version", PIPELINE_VERSION_DEFAULT)
+
+    async with pool.acquire() as conn:
+        so = job.get("stage_output")
+        if not isinstance(so, dict) or not so:
+            so = await _fetch_stage_output(conn, queue_id)
+        classify_out = so.get("classify") or {}
+        extract_out = so.get("extract") or {}
+
+        doc_type = (
+            extract_out.get("doc_type")
+            or classify_out.get("doc_type")
+            or "unknown"
+        )
+        fields = extract_out.get("fields") or {}
+
+        proposal = await build_routing_proposal(
+            queue_id, fields, doc_type, conn,
+            pipeline_version=pipeline_version,
+        )
+
+        proposal_id = await conn.fetchval(
+            """
+            INSERT INTO document_routing_proposal
+                (queue_id, doc_index, pipeline_version, routing_key,
+                 entity_resolution, routing, commit_gate, status)
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, 'review_pending')
+            ON CONFLICT (routing_key) DO NOTHING
+            RETURNING id
+            """,
+            queue_id,
+            proposal["doc_index"],
+            proposal["pipeline_version"],
+            proposal["routing_key"],
+            json.dumps(proposal["entity_resolution"]),
+            json.dumps(proposal["routing"]),
+            json.dumps(proposal["commit_gate"]),
+        )
+
+        if proposal_id is None:
+            # Conflict: proposal already existed (idempotent re-run).
+            existing = await conn.fetchrow(
+                "SELECT id FROM document_routing_proposal WHERE routing_key = $1",
+                proposal["routing_key"],
+            )
+            proposal_id = existing["id"] if existing else None
+            already = True
+        else:
+            already = False
+
+        # Owner backfill: a NULL-received_by doc that matched a client goes to
+        # that client's consultant dashboard (idempotent: never overwrites).
+        backfilled_owner = await backfill_received_by(
+            conn, queue_id, proposal["routing"]["client_id"]
+        )
+
+    decision = proposal["entity_resolution"]["decision"]
+    logger.info(
+        "route(FASE4): job=%s proposal_id=%s decision=%s requires_human=%s "
+        "client_id=%s (0 CRM writes)",
+        queue_id, proposal_id, decision,
+        proposal["commit_gate"]["requires_human"],
+        proposal["routing"]["client_id"],
+    )
+    return {
+        "routed": False,
+        "proposal_id": proposal_id,
+        "routing_key": proposal["routing_key"],
+        "doc_type": doc_type,
+        "decision": decision,
+        "requires_human": proposal["commit_gate"]["requires_human"],
+        "idempotent_skip": already,
+        "received_by_backfilled": backfilled_owner,
+        "_metric": {"model": "entity-resolution-fase4", "confidence": 1.0},
+    }

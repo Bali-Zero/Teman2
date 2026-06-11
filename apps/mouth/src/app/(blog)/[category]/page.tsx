@@ -21,6 +21,7 @@ import {
 import type { ArticleCategory, ArticleListItem } from "@/lib/blog/types";
 import { logger } from "@/lib/logger";
 import { useTranslation } from "@/i18n";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 // Category visual metadata (non-translated)
 const CATEGORY_VISUAL: Record<
@@ -149,7 +150,19 @@ export default function CategoryPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    // MYTHOS Stage-B Batch 1: Rumah Putih light, scoped per-page (NEVER on
+    // the shared (blog)/layout.tsx). The .rumah-putih class hooks the scoped
+    // re-tint in globals.css for this page's hardcoded-dark text + cards.
+    // Paint paper on the wrapper so the translucent hero gradient + skeleton
+    // cards sit on warm paper, not the editorial-dark base behind.
+    <div
+      className={`min-h-screen ${RUMAH_CLASS}`}
+      style={{
+        ...RUMAH_VARS,
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+      }}
+    >
       {/* Hero section */}
       <section
         className={`relative py-16 md:py-20 bg-gradient-to-b ${visual.gradient}`}

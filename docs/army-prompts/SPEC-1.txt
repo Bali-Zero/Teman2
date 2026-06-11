@@ -1,0 +1,57 @@
+# DESC: G4 Agent Observatory — l'occhio su tutte le 241 entità (fondazionale, SUBITO)
+ORCHESTRATORE sessione "g4-observatory". Autonomia piena in loop, no conferme, fino allo
+stop point. Lavori da solo come Grande Generale di questa armata: spawni i subagent che ti
+servono (Explore, general-purpose, backend-verifier) per fan-out, ma TU coordini e committi.
+
+PASSO 0:
+  cd ~/Desktop/nuzantara
+  python scripts/agent_start.py --lane organism --task-id g4-observatory
+  cd .worktrees/organism-g4-observatory
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI ANTI-AUTODISTRUZIONE:
+  1. I worker (subagent) NON comunicano peer-to-peer — coordinano solo via file che TU leggi.
+  2. Ogni worker riceve il brief COMPLETO (mai un frammento ambiguo).
+  3. git single-threaded — SOLO TU committi/pushi, mai un subagent in parallelo.
+
+MISSIONE: costruire la spina dorsale di osservabilità per TUTTE le ~241 entità agentiche
+(34 claude-agent + 169 launchagent + 8 chain + servizi). FONDAZIONALE: senza trace+health
+ogni intervento futuro è alla cieca. Riferimento: dossier §9 G4, Codex FASE2 area-12.
+
+PROBLEMA REALE che deve catturare (dal censimento, verificato sul codice — RI-VERIFICA):
+- organism.supervisor consuma 92k eventi Redis ma attua ZERO (shadow) → "alive-but-idle"
+  è lo stato più insidioso: un daemon che gira ma non produce è DEGRADATO, non healthy.
+- agent-library-evolver generation=0 (mai evoluto), wr3.reflexion morto codesigning.
+- 8 chain MCP code-complete ma 0 auto-invocate.
+
+COSTRUISCI (TDD, test prima):
+1. Trace schema (locale-first, JSONL/SQLite per Law 2 — no PII in cloud):
+   trace_id, agent_id, runtime (launchd|cli|backend|frontend|mcp-chain), task_type,
+   pii_class, tool_calls, approval_checkpoints, output_digest, cost, latency, success,
+   failure_reason, artifact_paths, human_feedback.
+2. Health probes per ogni entità:
+   - launchagent: launchctl active/loaded + log-mtime + import smoke
+   - python venv/interprete esiste (CRITICO: vedi WR3 codesigning)
+   - env richiesto presente SENZA esporre valori-secret
+   - "alive-but-idle" detection: daemon che consuma eventi ma produce 0 azioni/draft/
+     alert = DEGRADATO (questo cattura organism.supervisor 92k/0).
+3. Daily report: agenti rotti, duplicati, costo-per-outcome-accettato, eval-failures,
+   stale/idle quarantinabili.
+4. CI gate (opzionale): scripts/agent_eval_gate.py --changed.
+
+VINCOLI: locale-first (JSONL/SQLite), OpenTelemetry-GenAI-compatible fields per export
+futuro ma NON esportare PII. Embedding FROZEN (text-embedding-3-small/1536) se tocchi RAG.
+Non modificare le 241 entità — solo OSSERVARLE.
+
+STOP POINT: commit atomici → push branch → apri PR DRAFT → STOP pre-merge (NON mergiare su
+main, mai --force). Poi `python scripts/agent_start.py --release --task-id g4-observatory`.
+Anti-hallucination: ogni numero da un tool eseguito IN-TURN, mai da memoria. NEEDS-ANTONELLO
+per qualsiasi cosa tocchi prod/secret/rotazione token.
+
+OUTPUT: apps/<observatory>/ + test + research/operations/G4-observatory-report.md.
+
+GROUND-TRUTH del censimento: git show f153e1c46:research/agent-craft/census-raw/
+phase1-synthesis.md (i macro-gruppi + 15 rotti + duplicati da monitorare).
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE SPEC-1 <numero-PR-o-url>

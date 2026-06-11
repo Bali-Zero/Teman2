@@ -76,6 +76,16 @@ class TestB1_NoUndocumentedPublicRoutes:
                 f"is not recognized as public by middleware"
             )
 
+    def test_lead_capture_is_public(self, middleware):
+        """Regression: /api/lead/capture missing from the registry meant every
+        anonymous WhatsApp-CTA click got 401 in prod (silently masked by the
+        component's bare-wa.me fallback). Pin it as public, exact-match."""
+        req = self._mock_request("/api/lead/capture")
+        assert middleware.is_public_endpoint(req)
+        # Exact match must not open sibling paths.
+        req = self._mock_request("/api/lead/capture/admin")
+        assert not middleware.is_public_endpoint(req)
+
     def test_non_registered_paths_require_auth(self, middleware):
         """A selection of sensitive paths must NOT be public."""
         sensitive = [

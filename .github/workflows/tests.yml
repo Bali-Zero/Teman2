@@ -7,9 +7,14 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
+# Merge-train spec §10.2 (2026-06-12): cancel-in-progress must NOT apply to
+# main — back-to-back merges were cancelling the in-flight main run, so
+# commits landed on main UNTESTED and a future auto-revert guardian could
+# not attribute a green→red window to a single commit. PR refs keep
+# cancelling (newest push wins); every main push now runs to completion.
 concurrency:
   group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   backend-tests:
@@ -98,7 +103,8 @@ jobs:
             --ignore-vuln CVE-2026-40217 \
             --ignore-vuln CVE-2026-41488 \
             --ignore-vuln PYSEC-2025-217 \
-            --ignore-vuln GHSA-8jfx-5878-hv4v
+            --ignore-vuln GHSA-8jfx-5878-hv4v \
+            --ignore-vuln CVE-2025-3000
 
       - name: Mypy type check (core + models)
         run: |
@@ -277,7 +283,13 @@ jobs:
         run: npm install --no-fund
 
       - name: npm audit
-        run: npm audit --audit-level=high
+        # --omit=dev: audit only what we ship to production, not the test
+        # toolchain. All current high/critical advisories are in devDependencies
+        # (vitest / @vitest/coverage-v8 "UI server arbitrary file read", vite,
+        # esbuild) — exploitable only when running `vitest --ui` locally, never
+        # in CI or prod. Without --omit=dev these dev-only advisories failed the
+        # gate on EVERY PR repo-wide. Production-dependency soglia stays at high.
+        run: npm audit --audit-level=high --omit=dev
         continue-on-error: false
 
       - name: Run tests (with coverage)

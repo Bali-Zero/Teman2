@@ -1,4 +1,5 @@
 """Tests for scripts/docs_audit.py classification + inventory generation."""
+
 from __future__ import annotations
 
 import json
@@ -35,7 +36,9 @@ def aged_fixture(tmp_path):
     shutil.copytree(FIXTURE_REPO, tmp_repo)
     _age_file(tmp_repo / "docs" / "ORPHAN_OLD.md", days=120)
     _age_file(tmp_repo / "docs" / "WHITELIST_KEEPER.md", days=120)
-    _age_file(tmp_repo / "docs" / "DUP_V1.md", days=30)  # recent, still STALE via cluster
+    _age_file(
+        tmp_repo / "docs" / "DUP_V1.md", days=30
+    )  # recent, still STALE via cluster
     return tmp_repo
 
 
@@ -174,27 +177,49 @@ def test_inventory_file_written(aged_fixture):
     assert "## Files" in content
 
 
+def test_inventory_has_no_extra_blank_line_at_eof(aged_fixture):
+    _run_audit(
+        aged_fixture,
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+    )
+    inventory = aged_fixture / "docs" / "DOCS_INVENTORY.md"
+    content = inventory.read_text()
+    assert content.endswith("\n")
+    assert not content.endswith("\n\n")
+
+
 def test_idempotent(aged_fixture):
     """Two successive runs produce byte-identical inventory."""
     common = [
-        "--whitelist", "docs/WHITELIST_KEEPER.md",
-        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
     ]
     _run_audit(aged_fixture, *common)
     first = (aged_fixture / "docs" / "DOCS_INVENTORY.md").read_text()
     # Strip timestamp line; body must be identical
-    first_body = "\n".join(line for line in first.splitlines() if "Last run:" not in line)
+    first_body = "\n".join(
+        line for line in first.splitlines() if "Last run:" not in line
+    )
     _run_audit(aged_fixture, *common)
     second = (aged_fixture / "docs" / "DOCS_INVENTORY.md").read_text()
-    second_body = "\n".join(line for line in second.splitlines() if "Last run:" not in line)
+    second_body = "\n".join(
+        line for line in second.splitlines() if "Last run:" not in line
+    )
     assert first_body == second_body
 
 
 def test_check_flag_exit_codes(aged_fixture):
     """--check exits 1 if inventory is stale, 0 if in sync."""
     common = [
-        "--whitelist", "docs/WHITELIST_KEEPER.md",
-        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
     ]
     # First: generate inventory (no --check)
     _run_audit(aged_fixture, *common)
@@ -219,8 +244,10 @@ def test_check_ignores_mtime_days_drift(aged_fixture):
     mtime_days drift on every row even though no doc was actually stale.
     """
     common = [
-        "--whitelist", "docs/WHITELIST_KEEPER.md",
-        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
     ]
     # Generate inventory at the fixture's current "today".
     _run_audit(aged_fixture, *common)
@@ -270,8 +297,10 @@ def test_check_still_catches_real_drift(aged_fixture):
     silently hide actual drift (e.g. a doc going LIVE → STALE).
     """
     common = [
-        "--whitelist", "docs/WHITELIST_KEEPER.md",
-        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
     ]
     _run_audit(aged_fixture, *common)
     inventory = aged_fixture / "docs" / "DOCS_INVENTORY.md"
@@ -305,10 +334,14 @@ def test_git_mtime_beats_stat_mtime(tmp_path):
     # Initialize git, backdate an orphan doc
     env = {
         **os.environ,
-        "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t",
-        "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
     }
-    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp_repo, check=True, env=env)
+    subprocess.run(
+        ["git", "init", "-q", "-b", "main"], cwd=tmp_repo, check=True, env=env
+    )
     subprocess.run(["git", "add", "."], cwd=tmp_repo, check=True, env=env)
     # Commit with a timestamp 200 days in the past
     backdated = time.time() - 200 * 86400
@@ -329,9 +362,12 @@ def test_git_mtime_beats_stat_mtime(tmp_path):
 
     result = _run_audit(
         tmp_repo,
-        "--whitelist", "docs/WHITELIST_KEEPER.md",
-        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
-        "--orphan-days", "90",
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--orphan-days",
+        "90",
         "--json",
     )
     assert result.returncode in (0, 1), result.stderr
@@ -364,8 +400,10 @@ def test_broken_link_inside_code_fence_is_ignored(aged_fixture):
     )
     result = _run_audit(
         aged_fixture,
-        "--whitelist", "docs/WHITELIST_KEEPER.md",
-        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
         "--json",
     )
     stats = json.loads(result.stdout)
@@ -385,10 +423,14 @@ def test_stat_fallback_for_untracked_files(tmp_path):
     shutil.copytree(FIXTURE_REPO, tmp_repo)
     env = {
         **os.environ,
-        "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t",
-        "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
     }
-    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp_repo, check=True, env=env)
+    subprocess.run(
+        ["git", "init", "-q", "-b", "main"], cwd=tmp_repo, check=True, env=env
+    )
     subprocess.run(["git", "add", "."], cwd=tmp_repo, check=True, env=env)
     subprocess.run(
         ["git", "commit", "-q", "-m", "initial"],
@@ -403,9 +445,12 @@ def test_stat_fallback_for_untracked_files(tmp_path):
 
     result = _run_audit(
         tmp_repo,
-        "--whitelist", "docs/WHITELIST_KEEPER.md",
-        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
-        "--orphan-days", "90",
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--orphan-days",
+        "90",
         "--json",
     )
     stats = json.loads(result.stdout)

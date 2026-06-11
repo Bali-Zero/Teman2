@@ -7,6 +7,7 @@
  * - SpeakableSpecification for voice search
  * - Passage-level optimization hints
  * - Citation-worthy structured data for GEO/AEO/LLMO
+ * - TopLevelArticleJsonLd: standalone top-level @type: Article (2026-06-04)
  *
  * Sources: schema.org, Google Search Central, llmstxt.org
  */
@@ -336,6 +337,105 @@ export function HowToJsonLd({
   return (
     <script
       id="howto-jsonld"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
+// ============================================================================
+// Top-Level Article JSON-LD (standalone, NOT inside @graph)
+// Required for Google Rich Results eligibility — audit 2026-06-04
+// ============================================================================
+
+interface TopLevelArticleJsonLdProps {
+  title: string;
+  description?: string;
+  slug: string;
+  category: string;
+  publishedAt: string; // ISO 8601 string
+  updatedAt?: string; // ISO 8601 string
+  image?: string;
+}
+
+/**
+ * Emits a standalone top-level @type: Article JSON-LD block.
+ *
+ * This is the form Google requires for Article rich results eligibility.
+ * Must coexist with (not replace) the @graph-based composite schemas.
+ *
+ * - datetime: ISO 8601 full format with +07:00 (WIB timezone)
+ * - image: falls back to og-default.jpg if null/undefined
+ * - author + publisher: always Bali Zero Organization
+ */
+export function TopLevelArticleJsonLd({
+  title,
+  description,
+  slug,
+  category,
+  publishedAt,
+  updatedAt,
+}: Readonly<TopLevelArticleJsonLdProps>) {
+  const articleUrl = `${baseUrl}/${category}/${slug}`;
+
+  /**
+   * Normalize an ISO string to include the WIB timezone (+07:00).
+   * If the string already carries a timezone offset or 'Z', we strip the
+   * trailing Z/+00:00 and append +07:00 only when no tz is present,
+   * so we never double-apply a timezone.
+   */
+  function toWibIso(isoString: string): string {
+    // Already has a named timezone offset → return as-is
+    if (/[+-]\d{2}:\d{2}$/.test(isoString)) return isoString;
+    // Ends with 'Z' (UTC) → replace with +07:00
+    if (isoString.endsWith("Z")) {
+      return isoString.slice(0, -1) + "+07:00";
+    }
+    // No timezone — assume it's a date-only or datetime without tz, append +07:00
+    // Ensure it has a time component (YYYY-MM-DD → YYYY-MM-DDT00:00:00)
+    const hasTime = /T/.test(isoString);
+    return hasTime ? `${isoString}+07:00` : `${isoString}T00:00:00+07:00`;
+  }
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: title,
+    description: description ?? undefined,
+    url: articleUrl,
+    datePublished: toWibIso(publishedAt),
+    dateModified: toWibIso(updatedAt ?? publishedAt),
+    image: {
+      "@type": "ImageObject",
+      url: `${baseUrl}/og-default.jpg`,
+      width: 1200,
+      height: 630,
+    },
+    author: {
+      "@type": "Organization",
+      name: "Bali Zero",
+      url: baseUrl,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Bali Zero",
+      url: baseUrl,
+      logo: {
+        "@type": "ImageObject",
+        url: `${baseUrl}/static/balizero-logo-clean.png`,
+      },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": articleUrl,
+    },
+    inLanguage: "en-US",
+    isAccessibleForFree: true,
+  };
+
+  return (
+    <script
+      id="top-level-article-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />

@@ -55,12 +55,12 @@ def main() -> int:
     from sqlalchemy import create_engine
     from sqlmodel import SQLModel
 
-    import backend.app.models.feedback  # noqa: F401
-    import backend.app.models.openclaw_message  # noqa: F401
-    import backend.app.modules.crm.company_models  # noqa: F401
-    import backend.app.modules.crm.models  # noqa: F401
-    import backend.app.modules.identity.models  # noqa: F401
-    import backend.services.memory.models  # noqa: F401
+    import backend.app.models.feedback
+    import backend.app.models.openclaw_message
+    import backend.app.modules.crm.company_models
+    import backend.app.modules.crm.models
+    import backend.app.modules.identity.models
+    import backend.services.memory.models  # noqa: F401  (import-for-side-effect: registers SQLModel tables)
 
     table_names = sorted(SQLModel.metadata.tables.keys())
     print(f"[bootstrap] {len(table_names)} tables registered: {', '.join(table_names)}")
@@ -393,6 +393,32 @@ def main() -> int:
             conn.execute(text(stmt))
     print("[bootstrap] clients prod-only columns ensured (drive + deleted_at + timestamp defaults)")
 
+    # documents: prod-only legacy table, hand-created (no SQLModel class, no
+    # migration file creates it). Router code (CRM enhanced documents,
+    # drive poll, document-intake writer) and migration 217
+    # (217_intake_commit_audit.sql) ALTER it — migration 217 is the FIRST
+    # numbered migration to touch `documents`, so without this CREATE the
+    # migrate step dies with `relation "documents" does not exist`. DDL
+    # mirrors tests/integration/app/routers/test_crm_enhanced_integration.py
+    # (the canonical hand-bootstrap shape used by the integration fixtures).
+    # FK on clients(id) — must run AFTER create_all() materialised `clients`.
+    with engine.begin() as conn:
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS documents (
+                id            SERIAL PRIMARY KEY,
+                client_id     INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+                document_type VARCHAR(100),
+                file_name     VARCHAR(255),
+                file_path     VARCHAR(500),
+                status        VARCHAR(50) DEFAULT 'active',
+                uploaded_by   VARCHAR(255),
+                created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] documents prod-only legacy table ensured (FK clients, for migration 217 + intake writer)")
+
     # team_members prod-only divergence.
     #
     # The SQLModel `User` in `backend/app/modules/identity/models.py` maps the
@@ -463,6 +489,63 @@ def main() -> int:
         ):
             conn.execute(text(stmt))
     print("[bootstrap] practice_types prod-only columns ensured (typical_duration_days + is_active + updated_at + active default + created_at default)")
+
+    # companies prod-only divergence.
+    #
+    # SQLModel ``Company`` (backend/app/modules/crm/company_models.py) declares
+    # ``setup_progress: int = Field(default=0)`` and ``created_at``/``updated_at``
+    # via ``default_factory=datetime.utcnow`` -- all Python-side defaults only, so
+    # create_all() emits them as NOT NULL with NO server default. Raw-SQL inserts
+    # (e.g. the FASE-4 routing tests seeding synthetic companies) that don't list
+    # these columns trip the NOT NULL constraint in CI even though prod, which was
+    # hand-bootstrapped, carries server defaults. Mirror prod by giving them DB
+    # defaults. Same fix class as clients/team_members/practice_types above.
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE companies ALTER COLUMN setup_progress SET DEFAULT 0",
+            "ALTER TABLE companies ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE companies ALTER COLUMN updated_at SET DEFAULT NOW()",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] companies prod-only columns ensured (setup_progress + created_at + updated_at defaults)")
+
+    # practices prod-only divergence.
+    #
+    # Prod ``practices`` carries hand-added columns ``practice_type_code`` (text FK
+    # mirror of ``practice_type_id``) and ``title`` that no migration creates -- SQL
+    # v2 migration 157 even guards their use with an IF-EXISTS check. The intake
+    # routing code (backend/services/intake/routing.py) SELECTs ``practice_type_code``
+    # and the FASE-4 routing tests INSERT ``practice_type_code``/``title``. Mirror prod
+    # so both the production query path and the raw-SQL test seeds resolve in CI.
+    # Also give the Python-side-default timestamp/inquiry columns DB defaults so
+    # raw-SQL inserts that omit them don't trip NOT NULL.
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE practices ADD COLUMN IF NOT EXISTS practice_type_code VARCHAR(100)",
+            "ALTER TABLE practices ADD COLUMN IF NOT EXISTS title VARCHAR(500)",
+            "ALTER TABLE practices ALTER COLUMN inquiry_date SET DEFAULT NOW()",
+            "ALTER TABLE practices ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE practices ALTER COLUMN updated_at SET DEFAULT NOW()",
+            "ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] practices prod-only columns ensured (practice_type_code + title + inquiry/created/updated defaults + practice_type_id nullable)")
+
+    # client_company_links prod-only divergence.
+    #
+    # SQLModel ``ClientCompanyLink`` (backend/app/modules/crm/company_models.py)
+    # declares ``created_at``/``updated_at`` via ``default_factory=datetime.utcnow``
+    # -- Python-side only, so create_all() emits them NOT NULL with no server
+    # default. The FASE-4 routing fixture INSERTs links listing only
+    # (client_id, company_id, role, is_primary), tripping NOT NULL on the
+    # timestamps in CI. Mirror prod by giving them DB defaults.
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE client_company_links ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE client_company_links ALTER COLUMN updated_at SET DEFAULT NOW()",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] client_company_links prod-only columns ensured (created_at + updated_at defaults)")
 
     return 0
 

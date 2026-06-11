@@ -583,6 +583,17 @@ class Settings(BaseSettings):
         default=None,
         description="WhatsApp Business Account ID from Meta. Set via WHATSAPP_BUSINESS_ACCOUNT_ID env var.",
     )
+    wa_inbox_api_key: str | None = Field(
+        default=None,
+        description=(
+            "Dedicated least-privilege API key for the WA Meta Inbox local console "
+            "(/api/wa-inbox/*). Set via WA_INBOX_API_KEY env var. The router enforces "
+            "that the X-API-Key header EQUALS this exact value (route-level scoping), "
+            "so a generic admin key cannot read/write the Meta inbox. The key SHOULD "
+            "still contain the substring 'secret' so the HybridAuthMiddleware grants it "
+            "POST capability before the route-level dependency runs."
+        ),
+    )
     whatsapp_personal_contacts: str | None = Field(
         default=None,
         description=(
@@ -599,6 +610,17 @@ class Settings(BaseSettings):
             "If set, messages from numbers NOT in this list are silently ignored (no response sent). "
             "Set via WHATSAPP_ALLOWED_NUMBERS env var. "
             "Example: '6282264599868' — leave empty to allow everyone."
+        ),
+    )
+    whatsapp_team_allowlist: str = Field(
+        default="",
+        description=(
+            "Comma-separated list of Bali Zero team/staff phone numbers allowed as "
+            "outbound /api/whatsapp/send recipients WITHOUT a CRM client record. "
+            "Entries are normalized to digits-only before comparison, so "
+            "'+62 878-6187-0777', '6287861870777' and '+6287861870777' all match. "
+            "Set via WHATSAPP_TEAM_ALLOWLIST env var. Leave empty to require CRM "
+            "validation for every recipient (default)."
         ),
     )
     whatsapp_openclaw_bridge_url: str | None = Field(
@@ -772,6 +794,34 @@ class Settings(BaseSettings):
         None,
         description="Admin API key for plugin reload and admin endpoints (set via ADMIN_API_KEY env var)",
     )
+    autonomous_lab_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable the internal autonomous lab draft API. Default False; set via "
+            "AUTONOMOUS_LAB_ENABLED env var."
+        ),
+    )
+    autonomous_lab_receipt_dir: str = Field(
+        default="/tmp/autonomous_lab_receipts",
+        description=(
+            "Directory for optional autonomous lab receipt persistence. Set via "
+            "AUTONOMOUS_LAB_RECEIPT_DIR env var."
+        ),
+    )
+    autonomous_lab_persistence_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow the internal autonomous lab API to persist receipts. Default False; set via "
+            "AUTONOMOUS_LAB_PERSISTENCE_ENABLED env var."
+        ),
+    )
+    autonomous_lab_execute_verification_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow autonomous lab verification execution for allowlisted commands only. "
+            "Default False; set via AUTONOMOUS_LAB_EXECUTE_VERIFICATION_ENABLED env var."
+        ),
+    )
 
     admin_emails: str | None = Field(
         default=None,
@@ -876,6 +926,15 @@ class Settings(BaseSettings):
     # `get_current_user_or_internal` (crm_clients.py). Rotate via
     # `fly secrets set WA_MIRROR_INTERNAL_KEY=...`. Unset → endpoint requires JWT only.
     wa_mirror_internal_key: str | None = None
+
+    # Scoped service key for POST /api/crm/clients/upsert-by-phone (wa-mirror lead
+    # promotion + strategic_recap write-back to the Fly CRM). DISTINCT from
+    # wa_mirror_internal_key by design (least-privilege: this key authorizes ONLY
+    # phone-keyed lead upsert, not full CRUD). Header: X-CRM-Write-Key. The endpoint
+    # is hard-gated by wa_mirror_crm_write_enabled (default False → 503), a kill-switch.
+    # Rotate via `fly secrets set WA_MIRROR_CRM_WRITE_KEY=...`.
+    wa_mirror_crm_write_key: str | None = None
+    wa_mirror_crm_write_enabled: bool = False
 
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 

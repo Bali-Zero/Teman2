@@ -1,12 +1,12 @@
-# L5.2 Phase 2a — Server-side hot-zone PR gate (monitor-mode)
+# L5.2 Phase 2b — Server-side hot-zone PR gate (partial enforcement)
 #
 # Replicates client-side husky pre-commit lease-check + lint replay on the
 # GitHub Actions side, closing the HUSKY=0 bypass documented in cicatrix W34.
 #
-# Phase 2a posture (this file):
-#   - `continue-on-error: true` on every check step → never blocks merges
-#   - Output goes to job logs + workflow summary for 1-week observation
-#   - NOT yet in required_status_checks.contexts (added in Phase 2b after data)
+# Phase 2b posture (this file):
+#   - ENFORCING (continue-on-error: false): CODEOWNERS self-mod check + migration-number replay
+#   - MONITOR (continue-on-error: true): Redis lease (no Redis on ephemeral runners) + LaunchAgent notice
+#   - Flipped 2026-06-07 after monitor-mode data confirmed clean runs (FASE-0)
 #
 # Phase 2b plan (separate PR, after monitor-mode data):
 #   - Flip continue-on-error: false on the lease + replay steps
@@ -44,7 +44,7 @@ permissions:
 
 jobs:
   hot-zone-gate:
-    name: Hot-zone enforcement (monitor-mode)
+    name: Hot-zone enforcement
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -147,13 +147,13 @@ jobs:
       # Step 3 — Componente 2.5: CODEOWNERS self-modification protection
       #
       # Block + Telegram alert if non-Balizero1987 modifies .github/CODEOWNERS.
-      # In Phase 2a this is monitor-mode: log + alert, no block.
+      # Phase 2b ENFORCING since 2026-06-11: non-owner modification exits 1.
       # ---------------------------------------------------------------------
       - name: CODEOWNERS self-mod check
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.diff.outputs.codeowners_touched == 'true'
-        continue-on-error: true
+        continue-on-error: false
         env:
           ACTOR: ${{ github.actor }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -179,10 +179,10 @@ jobs:
               echo "::warning::Telegram secrets missing — skipping alert"
             fi
 
-            # Phase 2a monitor-mode: log + alert but DO NOT fail
-            # Phase 2b: remove `exit 0` to enforce block
-            echo "Phase 2a monitor-mode: would block in Phase 2b"
-            exit 0
+            # Phase 2b ENFORCING (2026-06-11 guardian-of-guardians audit): the
+            # YAML said enforcing since 2026-06-07 but this branch still exited 0
+            # — the gate claimed to block and physically could not. Now it does.
+            exit 1
           else
             echo "OK: CODEOWNERS modified by owner (Balizero1987)"
           fi
@@ -230,7 +230,7 @@ jobs:
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           contains(steps.diff.outputs.changed_files, 'apps/backend-rag/backend/db/migrations_v2/')
-        continue-on-error: true
+        continue-on-error: false
         run: |
           set -u
           if [[ ! -f scripts/lint_migration_numbers.py ]]; then
@@ -289,7 +289,7 @@ jobs:
             echo "${CHANGED_FILES}"
             echo "\`\`\`"
             echo ""
-            echo "**Mode**: monitor-only. All checks \`continue-on-error: true\`."
+            echo "**Mode**: partial enforcement. CODEOWNERS + migration-replay BLOCK; Redis + LaunchAgent monitor-only."
             echo "**Phase 2b** will flip enforce + add this job to required_status_checks."
             echo ""
             echo "Reference: research/operations/L5.2-phase2-3-4-prompts.md"

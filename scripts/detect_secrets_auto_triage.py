@@ -97,6 +97,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "__tests__/** tree: test fixtures",
     ),
     (
+        # pytest/unittest convention: test_*.py / *_test.py files outside a
+        # tests/ dir (e.g. agent-library/scar_replay/test_*.py,
+        # scripts/test_*.py). Fake credentials in these are fixtures.
+        re.compile(r"(^|/)(test_[^/]+|[^/]+_test)\.(py|ts|tsx|js|jsx)$"),
+        "test_*/_test file: unit-test fixture, not a production secret",
+    ),
+    (
         re.compile(r"\.test\.(py|ts|tsx|js|jsx)$"),
         "*.test.* file: unit test fixture",
     ),
@@ -159,6 +166,20 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"^research/operations/\d{4}-\d{2}-\d{2}-.*audit.*\.json$"),
         "dated operations audit snapshot: Fly machine IDs + git SHAs (public infra identifiers), not credentials",
+    ),
+    # Frozen audit snapshots (e.g. research/operations/2026-05-31-organism-truth-FROZEN.json,
+    # research/operations/S4-broker-FROZEN.json, S5-plist-secrets-FROZEN.json,
+    # S15-symbiosis-FROZEN.json). Same class as the dated audit/baseline rules
+    # above — empirical system-state captures written by audit sessions. The
+    # high-entropy hits are git object SHAs (`git_sha`, `origin_sha`) and the
+    # "Secret Keyword" hits are NAMES of secrets in a rotation checklist
+    # (e.g. {"secret": "GH_TOKEN", "rotate_cmd": ...}) — the document describes
+    # which secrets need rotating, it does NOT contain their values. Never
+    # credentials. Covers both the dated `*-FROZEN.json` and the sprint-prefixed
+    # `S<N>-*-FROZEN.json` audit families.
+    (
+        re.compile(r"^research/operations/.*FROZEN\.json$"),
+        "frozen operations audit snapshot: git SHAs + secret-name rotation checklists (public/structural identifiers), not credentials",
     ),
     (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),

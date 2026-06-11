@@ -72,16 +72,119 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
   return CATEGORY_MAP[rawCategory] || "living";
 }
 
-/** Strip markdown headings and formatting from excerpt text */
+/**
+ * Coerce a raw `tags` value (from MDX frontmatter or the backend `ai_tags`
+ * field) into a guaranteed `string[]`. Both sources are untrusted at runtime:
+ *  - MDX frontmatter `tags:` can be mis-indented so gray-matter parses it as an
+ *    object (real bug: bali-ota-purge-2026.mdx had every later field nested
+ *    under `tags`, making it a non-iterable object).
+ *  - The backend `ai_tags` is typed `string[] | null` but can arrive as a JSON
+ *    string, a single string, or null.
+ * Anything that is not an array of strings becomes `[]` (a single string is
+ * wrapped). This is the single boundary where tags become iterable — every
+ * downstream consumer (`.map`, `.length`, `[...tags]`) is then safe.
+ */
+export function normalizeTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((t): t is string => typeof t === "string");
+  }
+  if (typeof raw === "string" && raw.trim().length > 0) {
+    return [raw.trim()];
+  }
+  return [];
+}
+
+/**
+ * Resolve a requested category param to its canonical category, if known.
+ * Returns null for unknown categories (caller keeps current behavior).
+ * Used by the article page to issue a permanent redirect from alias
+ * categories (e.g. /immigration/X) to the canonical URL (/visas/X).
+ */
+export function resolveCategoryAlias(
+  rawCategory: string,
+): ArticleCategory | null {
+  return CATEGORY_MAP[rawCategory] ?? null;
+}
+
+/** Strip markdown headings and formatting from excerpt text (used for frontmatter/backend strings) */
 function cleanExcerpt(text: string | null): string {
   if (!text) return "";
   return text
-    .replace(/^#{1,6}\s+/gm, "") // ## Headings
+    .replace(/^#{1,6}\s+.*$/gm, "") // remove ## heading lines entirely
     .replace(/\*\*(.*?)\*\*/g, "$1") // **bold**
     .replace(/\*(.*?)\*/g, "$1") // *italic*
     .replace(/\[(.*?)\]\(.*?\)/g, "$1") // [link](url)
     .replace(/`(.*?)`/g, "$1") // `code`
+    .replace(/\n{2,}/g, " ") // collapse blank lines
     .trim();
+}
+
+/**
+ * Extract the first meaningful paragraph from MDX body content.
+ * Skips all heading lines (## ...) and their immediate content blocks,
+ * picks the first paragraph longer than 60 characters.
+ */
+function extractBodyExcerpt(body: string): string {
+  if (!body) return "";
+
+  // Split into lines and process
+  const lines = body.split("\n");
+  let inHeadingBlock = false;
+  const paragraphLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // New heading encountered — reset block accumulator and skip
+    if (/^#{1,6}\s/.test(trimmed)) {
+      // If we already have paragraph lines, stop here (we're past first para)
+      if (paragraphLines.length > 0) break;
+      inHeadingBlock = true;
+      continue;
+    }
+
+    // Blank line after a heading block — heading block ends, but skip blank
+    if (inHeadingBlock && trimmed === "") {
+      inHeadingBlock = false;
+      continue;
+    }
+
+    // Skip JSX/import lines and HTML-ish tags
+    if (/^import\s|^export\s|^<[A-Z]|^<\//.test(trimmed)) continue;
+
+    // Skip lines that are only markdown decorators (hr, list bullets, blockquote markers)
+    if (/^[-*_]{3,}$|^>\s/.test(trimmed)) continue;
+
+    if (trimmed !== "") {
+      paragraphLines.push(trimmed);
+    } else if (paragraphLines.length > 0) {
+      // Blank line = paragraph break; check if accumulated text is long enough
+      const candidate = paragraphLines
+        .join(" ")
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/\*(.*?)\*/g, "$1")
+        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+        .replace(/`(.*?)`/g, "$1")
+        .trim();
+      if (candidate.length > 60) return candidate;
+      // Too short — reset and keep looking
+      paragraphLines.length = 0;
+    }
+  }
+
+  // End of file — check whatever is accumulated
+  if (paragraphLines.length > 0) {
+    const candidate = paragraphLines
+      .join(" ")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+      .replace(/`(.*?)`/g, "$1")
+      .trim();
+    if (candidate.length > 60) return candidate;
+  }
+
+  return "";
 }
 
 /** Default cover images per normalized category (files that actually exist in public/static/blog/) */
@@ -96,6 +199,18 @@ const CATEGORY_COVER_DEFAULTS: Record<string, string> = {
 
 function defaultCoverImage(category: ArticleCategory): string {
   return CATEGORY_COVER_DEFAULTS[category] || "/static/blog/golden-visa.jpg";
+}
+
+/**
+ * Derive the homepage-card (16:10) variant path from a news cover image.
+ * The poller writes `/static/news/{slug}.jpg` (hero) + `/static/news/{slug}_card.jpg`
+ * (card). When an explicit cardImage isn't in frontmatter, derive it only for the
+ * news-cover pattern; otherwise return undefined so consumers fall back to coverImage.
+ */
+function deriveCardImage(coverImage?: string | null): string | undefined {
+  if (!coverImage) return undefined;
+  const m = coverImage.match(/^(\/static\/news\/.+)\.(jpg|jpeg|png)$/i);
+  return m ? `${m[1]}_card.${m[2]}` : undefined;
 }
 
 function isArticleFolderName(value: string): value is ArticleFolderName {
@@ -155,6 +270,7 @@ function backendToArticleListItem(item: BackendNewsItem): ArticleListItem {
     excerpt: cleanExcerpt(item.summary || item.ai_summary),
     coverImage:
       item.image_url || defaultCoverImage(normalizeCategory(item.category)),
+    cardImage: deriveCardImage(item.image_url),
     category: normalizeCategory(item.category),
     author: {
       id: "zantara-ai",
@@ -185,9 +301,10 @@ function backendToArticle(item: BackendNewsItem): Article {
     content: item.content || "",
     coverImage:
       item.image_url || defaultCoverImage(normalizeCategory(item.category)),
+    cardImage: deriveCardImage(item.image_url),
     coverImageAlt: item.title,
     category: normalizeCategory(item.category),
-    tags: item.ai_tags || [],
+    tags: normalizeTags(item.ai_tags),
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -385,16 +502,21 @@ async function getMdxArticleBySlug(
     slug: frontmatter.slug || slug,
     title: frontmatter.title || "Untitled",
     subtitle: frontmatter.subtitle,
-    excerpt: frontmatter.excerpt || "",
+    excerpt: frontmatter.excerpt
+      ? cleanExcerpt(frontmatter.excerpt)
+      : extractBodyExcerpt(content),
     content: content,
     coverImage:
       frontmatter.coverImage ||
       frontmatter.image?.src ||
       `/static/blog/${actualFolderCategory}/${slug}.jpg`,
+    cardImage:
+      frontmatter.cardImage ||
+      deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),
     coverImageAlt:
       frontmatter.coverImageAlt || frontmatter.image?.alt || frontmatter.title,
     category: normalizeCategory(frontmatter.category || category),
-    tags: frontmatter.tags || [],
+    tags: normalizeTags(frontmatter.tags),
     author,
     createdAt: new Date(frontmatter.publishedAt || Date.now()),
     updatedAt: new Date(
@@ -506,18 +628,23 @@ export async function getArticleByLocale(
         slug: frontmatter.slug || slug,
         title: frontmatter.title || "Untitled",
         subtitle: frontmatter.subtitle,
-        excerpt: frontmatter.excerpt || "",
+        excerpt: frontmatter.excerpt
+          ? cleanExcerpt(frontmatter.excerpt)
+          : extractBodyExcerpt(content),
         content,
         coverImage:
           frontmatter.coverImage ||
           frontmatter.image?.src ||
           `/static/blog/${folder}/${slug}.jpg`,
+        cardImage:
+          frontmatter.cardImage ||
+          deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),
         coverImageAlt:
           frontmatter.coverImageAlt ||
           frontmatter.image?.alt ||
           frontmatter.title,
         category: normalizeCategory(frontmatter.category || category),
-        tags: frontmatter.tags || [],
+        tags: normalizeTags(frontmatter.tags),
         author,
         createdAt: new Date(frontmatter.publishedAt || Date.now()),
         updatedAt: new Date(
@@ -771,4 +898,76 @@ export async function searchArticles(
   });
 
   return results.slice(0, limit);
+}
+
+// ─── Homepage layout slug-drift guard ───────────────────────────────────────
+// The homepage curates hero_main..hero_N + latest_1..N (+ insight_*) slugs in
+// content/homepage-layout.json, resolved against getAllArticles() in
+// (marketing)/page.tsx with a silent `.filter(Boolean)`. A deleted/renamed
+// slug therefore silently drops with NO signal — and Next.js notFound() returns
+// HTTP 200, so status-only monitoring also misses it. This guard makes the
+// drift LOUD at build/test time. (Antonello flagged 2026-06-11.)
+
+/** Keys in homepage-layout.json that hold a curated article slug. Non-slug
+ *  metadata keys (anything starting with `_`, e.g. `_comment`) are ignored. */
+function isCuratedSlugKey(key: string): boolean {
+  return !key.startsWith("_");
+}
+
+export interface HomepageLayoutValidation {
+  ok: boolean;
+  /** [layoutKey, slug] pairs whose slug does not resolve to a real article. */
+  missing: { key: string; slug: string }[];
+  checked: number;
+}
+
+/**
+ * Pure validator: assert every curated slug in `layout` resolves to a real
+ * article slug in `knownSlugs`. No I/O — feed it a fixture in tests or the
+ * real MDX slug index (via {@link validateHomepageLayoutFromDisk}) in CI.
+ */
+export function validateHomepageLayout(
+  layout: Record<string, unknown>,
+  knownSlugs: Iterable<string>,
+): HomepageLayoutValidation {
+  const slugSet = new Set(knownSlugs);
+  const missing: { key: string; slug: string }[] = [];
+  let checked = 0;
+
+  for (const [key, value] of Object.entries(layout)) {
+    if (!isCuratedSlugKey(key)) continue;
+    if (typeof value !== "string" || value.length === 0) continue;
+    checked += 1;
+    if (!slugSet.has(value)) {
+      missing.push({ key, slug: value });
+    }
+  }
+
+  return { ok: missing.length === 0, missing, checked };
+}
+
+/**
+ * Offline/deterministic CI helper: validate `layout` against the canonical
+ * MDX slug index on disk (no network, no backend). Throws with a readable
+ * message listing every drifted slug so a build/test fails loudly.
+ */
+export async function validateHomepageLayoutFromDisk(
+  layout: Record<string, unknown>,
+): Promise<HomepageLayoutValidation> {
+  const slugs = await getAllMdxSlugs();
+  const result = validateHomepageLayout(
+    layout,
+    slugs.map((s) => s.slug),
+  );
+  if (!result.ok) {
+    const detail = result.missing
+      .map((m) => `  - ${m.key}: "${m.slug}"`)
+      .join("\n");
+    throw new Error(
+      `homepage-layout.json references ${result.missing.length} ` +
+        `slug(s) that no longer resolve to a real article:\n${detail}\n` +
+        `Fix the slug(s) in apps/mouth/src/content/homepage-layout.json.`,
+    );
+  }
+  return result;
 }

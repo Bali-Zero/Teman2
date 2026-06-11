@@ -1,3 +1,5 @@
+"use client";
+
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import {
   Mail,
@@ -8,6 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { trackFunnelEvent } from "@balizero/core/analytics";
+import { getOrCreateSessionId } from "@balizero/core/auth";
 
 const SERVICES = [
   { label: "Visa & Immigration", href: "/services/visa" },
@@ -25,11 +29,13 @@ const NEWS = [
   { label: "Living", href: "/v2/news" },
 ];
 
+// Only links with a REAL destination (Subhi audit F7). The #team/#careers/
+// #press fragments had no matching id= anchors on the about page (phantom
+// anchors — all four links landed on the same view). Team has a real page
+// at /team; Careers + Press have none, so they are removed, not faked.
 const COMPANY = [
   { label: "About", href: "/v2/company/about" },
-  { label: "Team", href: "/v2/company/about" },
-  { label: "Careers", href: "/v2/company/about" },
-  { label: "Press", href: "/v2/company/about" },
+  { label: "Team", href: "/team" },
 ];
 
 export function Footer() {
@@ -95,6 +101,12 @@ export function Footer() {
                 value="+62 822 6459 9868"
                 accent="#25D366"
                 external
+                onClick={() =>
+                  void trackFunnelEvent("home_whatsapp_cta", {
+                    sessionId: getOrCreateSessionId(),
+                    payload: { trigger: "footer" },
+                  })
+                }
               />
               <ContactLink
                 href="https://t.me/Balizerobot"
@@ -141,7 +153,7 @@ export function Footer() {
           >
             © 2026 Bali Zero. All rights reserved.
           </span>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-x-5 gap-y-2 flex-wrap justify-end">
             <a
               href="/v2/privacy"
               className="text-[11px]"
@@ -209,6 +221,7 @@ function ContactLink({
   value,
   accent,
   external,
+  onClick,
 }: {
   href: string;
   Icon: LucideIcon;
@@ -216,12 +229,14 @@ function ContactLink({
   value: string;
   accent: string;
   external?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <a
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
+      onClick={onClick}
       className="flex items-center gap-3 group"
     >
       <div

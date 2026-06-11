@@ -49,8 +49,15 @@ router = APIRouter(tags=["intel-scraper"])
 async def update_homepage_layout(slug: str, position: str) -> None:
     """
     Update homepage-layout.json in the GitHub repo.
-    Reads current file, updates the position, commits the change.
+
+    Reads the current file, updates the requested position, and commits the
+    change via a pull request with auto-merge. A direct commit to ``main`` is
+    rejected (HTTP 422) because the branch is protected by required status
+    checks, so the change is routed through the shared ``github_publisher``
+    PR path (same mechanism used to publish article MDX).
     """
+    from backend.services.integrations.github_publisher import github_publisher
+
     github_token = os.getenv("GITHUB_TOKEN")
     github_owner = os.getenv("GITHUB_OWNER", "Balizero1987")
     github_repo = os.getenv("GITHUB_REPO", "Teman2")
@@ -67,36 +74,25 @@ async def update_homepage_layout(slug: str, position: str) -> None:
         "Accept": "application/vnd.github.v3+json",
     }
 
+    # Read current layout (read-only GET is allowed on a protected branch).
     async with httpx.AsyncClient(timeout=15.0) as client:
-        # Get current file content + SHA
         url = f"https://api.github.com/repos/{github_owner}/{github_repo}/contents/{file_path}"
         resp = await client.get(url, headers=headers)
         resp.raise_for_status()
         file_data = resp.json()
-        current_sha = file_data["sha"]
-
-        # Decode and parse current layout
         current_content = base64.b64decode(file_data["content"]).decode("utf-8")
-        layout = json.loads(current_content)
 
-        # Update the position
-        layout[position] = slug
+    layout = json.loads(current_content)
+    layout[position] = slug
+    new_content = json.dumps(layout, indent=2) + "\n"
 
-        # Commit the updated layout
-        new_content = json.dumps(layout, indent=2) + "\n"
-        encoded = base64.b64encode(new_content.encode("utf-8")).decode("utf-8")
-
-        update_resp = await client.put(
-            url,
-            headers=headers,
-            json={
-                "message": f"feat(layout): set {position} to {slug}",
-                "content": encoded,
-                "sha": current_sha,
-                "branch": "main",
-            },
-        )
-        update_resp.raise_for_status()
+    # Commit via PR + auto-merge (protected branch safe).
+    await github_publisher.create_commit_with_files(
+        files=[{"path": file_path, "content": new_content}],
+        message=f"feat(layout): set {position} to {slug}",
+        pull_request=True,
+        pr_branch_prefix="auto-layout",
+    )
 
 
 # --- CONVERSION FUNCTIONS ---
@@ -1053,24 +1049,49 @@ async def publish_staging_item(
         except Exception as e:
             logger.warning("Failed to update staging file (non-blocking): %s", e)
 
-        logger.info(
-            "✅ Publish completed successfully",
-            extra={
-                "type": type,
-                "item_id": item_id,
-                "title": title,
-                "published_url": published_url,
-                "github_published": bool(github_commit_sha),
-            },
-        )
+        github_published = bool(github_commit_sha)
+        if github_published:
+            logger.info(
+                "✅ Publish completed (article PR opened, merges after CI passes)",
+                extra={
+                    "type": type,
+                    "item_id": item_id,
+                    "title": title,
+                    "published_url": published_url,
+                    "github_published": True,
+                },
+            )
+            message = (
+                "Article queued for publication — pull request opened, "
+                "will be live on the site after CI checks pass."
+            )
+        else:
+            # The article is in Qdrant but the MDX never reached GitHub, so it
+            # will NOT appear on the website. Surface this honestly to the
+            # News Room instead of reporting a false success.
+            logger.error(
+                "⚠️ Publish incomplete: article ingested to Qdrant but NOT published to "
+                "GitHub (MDX not committed) — it will not appear on the website",
+                extra={
+                    "type": type,
+                    "item_id": item_id,
+                    "title": title,
+                    "github_published": False,
+                },
+            )
+            message = (
+                "Article saved to search index but NOT published to the website "
+                "(GitHub publish failed). Check backend logs and retry."
+            )
 
         await invalidate_cache("zantara:intel_scraper:*")
         return {
-            "success": True,
-            "message": "Article published successfully",
+            "success": github_published,
+            "github_published": github_published,
+            "message": message,
             "id": item_id,
             "title": title,
-            "published_url": published_url,
+            "published_url": published_url if github_published else None,
             "published_at": data["published_at"],
             "collection": "visa_oracle" if type == "visa" else "bali_intel_bali_news",
             "github_commit_sha": github_commit_sha,

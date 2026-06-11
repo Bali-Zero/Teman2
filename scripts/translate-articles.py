@@ -21,7 +21,7 @@ import httpx
 # ── Configuration ──────────────────────────────────────────────────────────
 
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:26b")
+MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:27b")
 ARTICLES_DIR = Path(__file__).resolve().parent.parent / "apps" / "mouth" / "src" / "content" / "articles"
 
 LANG_NAMES = {
@@ -156,7 +156,6 @@ def translate_article(article: dict, lang: str, force: bool, skip_existing: bool
     """Translate one article. Returns True if translation was written."""
     src_path: Path = article["path"]
     slug = article["slug"]
-    cat = article["category"]
     out_path = src_path.parent / f"{slug}.{lang}.mdx"
 
     # Check existing
@@ -230,7 +229,7 @@ def main():
     parser.add_argument("--skip-existing", action="store_true",
                         help="Skip articles that already have translations")
     parser.add_argument("--model", default=None,
-                        help="Override Ollama model (default: gemma4:26b)")
+                        help="Override Ollama model (default: gemma3:27b)")
     args = parser.parse_args()
 
     global MODEL
@@ -295,7 +294,6 @@ def main():
     done = 0
     success = 0
     skipped = 0
-    failed = 0
     t_start = time.time()
 
     for i, art in enumerate(articles, 1):

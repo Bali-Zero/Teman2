@@ -117,16 +117,19 @@ export function DocumentsTab({
 
   if (documents.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
-        <FileText className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
-        <p className="text-[var(--bz-text-2)]">No documents yet</p>
-        <p className="text-sm text-[var(--bz-text-2)] mt-1 mb-4">
-          Upload passport, visa, or company documents
-        </p>
-        <Button size="sm" onClick={onAddClick} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Document
-        </Button>
+      <div className="space-y-4">
+        <AiSummaryCard clientId={clientId} section="documents" />
+        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
+          <FileText className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+          <p className="text-[var(--bz-text-2)]">No documents yet</p>
+          <p className="text-sm text-[var(--bz-text-2)] mt-1 mb-4">
+            Upload passport, visa, or company documents
+          </p>
+          <Button size="sm" onClick={onAddClick} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Document
+          </Button>
+        </div>
       </div>
     );
   }

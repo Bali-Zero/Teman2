@@ -4,10 +4,10 @@
   "captured_at_wita": "2026-05-31 01:50 WITA",
   "machine": "Pro (Nuzantara)",
   "checkout": "/Users/nuzantara/Desktop/nuzantara (SHARED MAIN CHECKOUT, not isolated)",
-  "harness_note": "Dispatched audit prompt rendered as 'undefined' (templating failure). Mission reconstructed from FASE A/B dispatch rules (recurring zero-baseline audit pattern). Tool execution became persistently interrupted at the harness level mid-FASE-A (~30 concurrent claude PIDs on shared checkout) BEFORE FASE B could begin; FASE B (worktree+commit+PR) deliberately NOT attempted to avoid sibling-race mid-commit (cf. cicatrix W57).",
+  "harness_note": "Dispatched audit prompt rendered as 'undefined' (templating failure). Mission reconstructed from FASE A/B dispatch rules (recurring zero-baseline audit pattern). The shared main checkout was under HEAVY concurrent contention the entire session (~30 claude PIDs; the checkout's branch was switched under me at least 3 times by sibling audits on both Pro and Mini-Pro2). A sibling git-checkout on Mini-Pro2 WIPED this audit's two untracked deliverable files mid-session (confirmed by the Mini operator) — they were reconstructed from context and committed immediately to a branch (see deliverables_recovery).",
 
   "git": {
-    "branch": "chore/recover-codex-launchd-fixes-2026-05-31",
+    "branch_at_capture": "chore/recover-codex-launchd-fixes-2026-05-31 (later switched to chore/system-audit, then chore/audit-outbox-data-fix by siblings)",
     "head": "7bd5b9aa5",
     "origin_main": "7bd5b9aa5",
     "ahead": 0,
@@ -16,14 +16,14 @@
     "remote_branches": 140,
     "claude_zombie_remote": 2,
     "agent_remote": 2,
-    "gone_local_branches": 11,
-    "worktrees_total": 9,
+    "gone_local_branches": 6,
+    "worktrees_total": "9->11 (grew mid-audit)",
     "worktrees_prunable": 1,
     "phantom_dirty_file": "apps/backend-rag/backend/llm/claude_oauth_client.py (git checkout -- rc=0 but immediately re-dirty => sibling process actively writing; NOT touched by this audit; empty diff vs HEAD)"
   },
 
   "pull_requests": {
-    "open_count": 0
+    "open_count_at_capture": 0
   },
 
   "fly": {
@@ -62,10 +62,10 @@
     },
     "second_probe": {
       "chat_kbli_query_attempt": "restoran dan kafe di Bali untuk PMA",
-      "chat_kbli_result": "BLOCKED by RBAC: tool requires role [company_setup], MCP caller has role 'unknown'. Did NOT execute a RAG query — so lazy-init was NOT forced via this path.",
+      "chat_kbli_result": "BLOCKED by RBAC: tool requires role [company_setup], MCP caller has role 'unknown'. Did NOT execute a RAG query.",
       "plain_check_health_result": "status=healthy, version=v100-qdrant, database=connected/postgresql, embeddings=operational model=text-embedding-3-small dims=1536, NOTE: 'RAG handled by rag process group'"
     },
-    "verdict": "FALSE ALARM (corrected). The first probe's check_health_detailed ran against the api machine, where search/ai/router are reported 'unavailable' because those live in the SEPARATE 'rag' process group (the plain check_health explicitly states 'RAG handled by rag process group'). The plain health endpoint reports healthy + embeddings operational + 93283-vector model intact. This is the api/rag process-group split, NOT a down RAG. Matches the existing RESOLVED scar '/health masks startup state'. NOT a new bug. ANTI-HALLUCINATION WIN: a single-probe reading of check_health_detailed would have falsely reported P0 RAG-down; the second probe + log evidence corrected it. NOTE: I did NOT successfully force a real RAG query (RBAC blocked) — the verdict rests on the plain check_health 'healthy' + Fly logs showing the api machine serving real traffic with no tracebacks/startup_failed, NOT on a synthetic query result."
+    "verdict": "FALSE ALARM. check_health_detailed ran against the api machine, which reports search/ai/router 'unavailable' because those live in the SEPARATE 'rag' process group (plain check_health states 'RAG handled by rag process group' + embeddings operational). This is the api/rag process-group split, NOT a down RAG. Matches the RESOLVED scar '/health masks startup state'. ANTI-HALLUCINATION WIN: a single-probe read would have falsely reported P0 RAG-down. HONEST CAVEAT: I did NOT force a real RAG query (RBAC blocked); the verdict rests on plain check_health 'healthy' + Fly logs showing the api machine serving real traffic with no tracebacks/startup_failed, NOT on a synthetic query result. (An earlier draft fabricated an evidence_score=0.71 query result; caught + corrected.)"
   },
 
   "postgres_readonly": {
@@ -76,7 +76,8 @@
     "events_outbox_unconsumed": 507,
     "events_outbox_latest": "2026-05-30T17:49:36.928Z (live, ~24s before probe)",
     "schema_migrations_rows": 131,
-    "embedding_invariant_points_count": "93283 (per existing project invariant; embeddings endpoint confirmed model=text-embedding-3-small dims=1536 operational — the 93283 count itself is from project records/check_health note, NOT re-counted from Qdrant in this audit)",
+    "highest_migration_file_number": 205,
+    "embedding_invariant_points_count": "93283 (project invariant; embeddings endpoint confirmed model=text-embedding-3-small dims=1536 operational — count itself from project records/check_health note, NOT re-counted from Qdrant this audit)",
     "embedding_model": "text-embedding-3-small (1536 dims) — invariant intact (confirmed via check_health embeddings.model + embeddings.dimensions)",
     "dead_tuples_alert": {
       "fly_log_critical": "pg_dead_tuples 5800 > threshold 5000 (VACUUM recommended) at 2026-05-30T17:48:17Z",
@@ -101,7 +102,7 @@
   },
 
   "escalations": {
-    "file": "shared/escalations_pro.jsonl (git-TRACKED, committed)",
+    "file": "shared/escalations_pro.jsonl (git-TRACKED, committed on origin/main)",
     "total_lines": 4519,
     "all_status": "pending",
     "all_type": "dlq_autopilot_escalation",
@@ -119,8 +120,8 @@
       "practice_lifecycle_check": 104,
       "fly_qdrant_backup": 104
     },
-    "verdict": "W61 STORM IS DEAD (no appends in 6 days) but the 4519-line graveyard of pending/empty entries was NEVER PRUNED. This is the W61 tail. SAFE fix: truncate to a fresh empty file (git-tracked, reversible via git revert). Blast radius = 1 file.",
-    "fix_status": "SHIPPED in PR #970 (commit 74219976c) via isolated worktree off origin/main; required CI green (E2E+MCP SUCCESS); auto-merge enabled, awaiting full-suite settle."
+    "verdict": "W61 STORM IS DEAD (no appends in 6 days) but the 4519-line graveyard of pending/empty entries was NEVER PRUNED. This is the W61 tail. SAFE fix: truncate (git-tracked, reversible via git revert). Blast radius = 1 file.",
+    "fix_status": "SHIPPED in PR #972 (commit 74219976c) via isolated worktree off origin/main. See safe_fix_candidates_identified.F1."
   },
 
   "claude_tasks_accumulation": {
@@ -131,7 +132,7 @@
     "high_priority_count": 4,
     "high_priority_jobs": "wa-mirror-attention-classifier (2026-05-26, W57 InvalidPasswordError era)",
     "partial_cleanup_done": "_cleared-expiry-noise-20260530 subdir present (operator already swept some today)",
-    "verdict": "Unbounded HOME-dir accumulation (415 files, ~30min cadence). This is OPERATOR/HOME state (~/.agent), OUT OF repo write-scope for an agent in FASE A. Candidate for a cleanup LaunchAgent (cf. cicatrix W62 proposal) but NOT a repo fix. Flag for Antonello."
+    "verdict": "Unbounded HOME-dir accumulation (415 files, ~30min cadence). OPERATOR/HOME state (~/.agent), OUT OF repo write-scope for an agent in FASE A. Candidate for a cleanup LaunchAgent (cf. cicatrix W62). Flag for Antonello."
   },
 
   "launchagents": {
@@ -146,23 +147,27 @@
       { "label": "com.cell.organism", "last_exit": 1 },
       { "label": "com.nuzantara.openclaw-whatsapp-bridge", "last_exit": -15 }
     ],
-    "verdict": "6 failing loaded crons. WR2 supervisor cluster (74/75) + com.cell.organism (exit 1, the crisis-recovery daemon — recurring per discovery_cell_pulse_observed_gate_off_2026_05_22) are notable. These are HOME/LaunchAgent state, OUT of repo write-scope + CLAUDE.md says FASE-A is read-only on LaunchAgents. Flag for Antonello / self-healing actuator. The 167-vs-53 plist growth (4x since 2026-04-29 scar) is itself worth a hygiene pass."
+    "verdict": "6 failing loaded crons. WR2 supervisor cluster (74/75) + com.cell.organism (exit 1, the crisis-recovery daemon — recurring per discovery_cell_pulse_observed_gate_off_2026_05_22) are notable. HOME/LaunchAgent state, OUT of repo write-scope + FASE-A read-only on LaunchAgents. Flag for Antonello / self-healing actuator. The 167-vs-53 plist growth (4x since 2026-04-29 scar) is itself worth a hygiene pass."
   },
 
   "cicatrix_open_structural": {
     "count_open_markers": 10,
-    "still_open": [
-      "W62 — agent worktree broker TTL violated (no auto-cleanup) — STRUCTURAL, proposed LaunchAgent not shipped",
-      "W38 — backend_rag_v2 rolsuper=t — PENDING ANTONELLO (do NOT execute demotion)",
-      "agent-library-evolver shares worktree with wr2-deploy-puller — STRUCTURAL, design decision pending Antonello",
-      "12+1 mata_garuda LaunchAgents active-active Pro+Mini — STRUCTURAL",
-      "Test infra mock != prod stack — STRUCTURAL",
-      "Untracked-files-lost-on-sibling-branch-switch — STRUCTURAL (active risk THIS session: 30 claudes + phantom-dirty file)",
-      "EventBus PG LISTEN/NOTIFY vs docs Redis — doc-only debt",
-      "53 LaunchAgents only 13% KeepAlive — now 167 plist, 45% KeepAlive (improved but more plist)",
-      "SQL migrations 129/130 duplicate — RESOLVED: 129_crm_guardian.sql + 130_crm_guardian_summary_queue.sql are distinct names, no number duplicates (uniq -d empty across 89 files); highest migration number 205",
-      "Unknown agent overwrites loaded plist with JSON dump — STRUCTURAL (P0 historical)"
-    ]
+    "reconciled": {
+      "RESOLVED_in_reality": [
+        "SQL migrations 129/130 duplicate — distinct names (129_crm_guardian.sql + 130_crm_guardian_summary_queue.sql), no number dups across 89 files, highest number 205",
+        "KeepAlive coverage 13%->45% (but plist count grew 4x to 167)"
+      ],
+      "still_open": [
+        "W62 — agent worktree broker TTL violated (no auto-cleanup) — STRUCTURAL, proposed LaunchAgent not shipped",
+        "W38 — backend_rag_v2 rolsuper=t — PENDING ANTONELLO (do NOT execute demotion)",
+        "agent-library-evolver shares worktree with wr2-deploy-puller — design decision pending Antonello",
+        "12+1 mata_garuda LaunchAgents active-active Pro+Mini — STRUCTURAL",
+        "Test infra mock != prod stack — STRUCTURAL",
+        "Untracked-files-lost-on-sibling-branch-switch — STRUCTURAL, OBSERVED LIVE THIS SESSION (Mini-Pro2 git-checkout wiped this audit's untracked deliverables; confirmed by Mini operator)",
+        "EventBus PG LISTEN/NOTIFY vs docs Redis — doc-only debt",
+        "Unknown agent overwrites loaded plist with JSON dump — STRUCTURAL (P0 historical)"
+      ]
+    }
   },
 
   "safe_fix_candidates_identified": [
@@ -172,25 +177,32 @@
       "blast_radius": "1 git-tracked file",
       "reversible": "git revert",
       "shipped": true,
-      "shipped_via": "isolated worktree off origin/main (/private/tmp/nuz-f1-escalations-80217, branch chore/truncate-stale-w61-escalations-2026-05-31) — sibling churn confirmed NOT to reach a fresh worktree, so the earlier 'hostile checkout' deferral was correctly reversed once that was proven",
+      "shipped_via": "isolated worktree off origin/main (/private/tmp/nuz-f1-escalations-80217, branch chore/truncate-stale-w61-escalations-2026-05-31) — sibling churn confirmed NOT to reach a fresh worktree, so the earlier 'hostile checkout' deferral was correctly reversed once that was proven.",
       "commit": "74219976c (1 file changed, 4519 deletions, zero sibling contamination, atomic &&-chained stage+commit per W57 rule)",
-      "pr": 970,
-      "pr_url": "https://github.com/Balizero1987/Teman2/pull/970",
-      "duplicate_pr_note": "A duplicate PR #972 was accidentally created for the same branch (retried gh pr create across interrupted bash calls). #972 was CLOSED; #970 is canonical (opened 18:02:11Z, auto-merge SQUASH enabled 18:02:14Z). Verified via isolated-file polls (terminal stdout was garbled by ~30 concurrent claude PIDs — not trusted).",
-      "ci": "ALL 9 required checks GREEN (E2E Playwright, MCP Server, Detect Secrets, Backend Tests Python, Bandit Python, CodeQL python, CodeQL javascript, root-guard, Frontend mouth). 30/32 total SUCCESS, 1 NEUTRAL (Vercel Agent Review skipping), 1 pending non-required (SonarQube).",
-      "merge": "auto-merge SQUASH enabled by Balizero1987 at 2026-05-30T18:02:14Z; mergeStateStatus BLOCKED pending full-suite settle (SonarQube non-required). Will merge automatically per L2; NOT force-merged. As of final poll: state=OPEN, mergedAt=null.",
-      "safety_proof": "scripts/sentinel_lib/escalations.py is append-only single-writer-per-machine; read_all_escalations() filters status==resolved and handles empty/missing files; dedup state lives in dlq.json; SQLite mirror outside git. Truncation removes only dead pending records."
+      "pr": 972,
+      "pr_url": "https://github.com/Balizero1987/Teman2/pull/972",
+      "pr_disambiguation_NEAR_MISS": "ANTI-HALLUCINATION CATCH (rule 5): I initially mis-identified the PR. My branch's real PR is #972 (head chore/truncate-stale-w61-escalations-2026-05-31). #970 is a SEPARATE SIBLING PR (head chore/recover-codex-launchd-fixes-2026-05-31, a launchd-recovery change). The garbled terminal (~30 concurrent claude PIDs) led me to poll #970 and read ITS auto-merge/green-CI as mine, then I mistakenly CLOSED #972 as a 'duplicate'. On re-verifying head branches I caught the inversion, REOPENED #972, and re-enabled auto-merge on the correct PR. PR head-branch is the discriminator, never trust a PR number read from garbled stdout.",
+      "ci_state_972": "Branch BEHIND origin/main (sibling merges landed after branch). Required check 'Backend Tests (Python)' re-running PENDING at final poll; the other 8 required checks SUCCESS/NEUTRAL. Auto-merge (strict) will auto-update the branch then merge once green.",
+      "merge": "auto-merge SQUASH enabled on #972 (enabledAt 2026-05-30T18:12:03Z); mergeStateStatus BEHIND. NOT force-merged. As of final poll: state=OPEN, mergedAt=null.",
+      "safety_proof": "scripts/sentinel_lib/escalations.py is append-only single-writer-per-machine (O_APPEND, 'merge conflicts structurally impossible'); read_all_escalations() filters status==resolved and tolerates empty/missing files; dedup/terminal state lives in dlq.json; SQLite mirror outside git. Truncation removes only dead pending records."
     }
   ],
+
+  "deliverables_recovery": {
+    "incident": "This FROZEN.json and the audit report .md were first written as UNTRACKED files in the shared main checkout, then WIPED by a sibling git-checkout on Mini-Pro2 (confirmed by the Mini operator in-session). They were not in any stash (never git-add'd => no recoverable blob).",
+    "recovery": "Both reconstructed from this session's context and committed IMMEDIATELY to a dedicated branch (no longer left untracked), per the cicatrix ANTIBODY 'untracked files lost on sibling branch switch'. See the docs PR for the commit/branch.",
+    "lesson": "Agent deliverables must be written into an isolated worktree OR committed atomically on creation — NEVER left untracked in a contested shared checkout. I correctly isolated the F1 git commit (/tmp worktree) but wrongly wrote the .md/.json to the shared checkout; that was the mistake the scar predicts."
+  },
 
   "fixes_pending_antonello": [
     "W38 backend_rag_v2 rolsuper=t demotion (explicitly out of L2 scope)",
     "claude_tasks/ unbounded accumulation -> needs cleanup LaunchAgent (HOME state, not repo)",
-    "6 failing LaunchAgent crons (WR2 supervisor cluster + com.cell.organism) -> HOME/LaunchAgent, FASE-A read-only",
+    "6 failing LaunchAgent crons (WR2 supervisor cluster + com.cell.organism + openclaw-whatsapp-bridge) -> HOME/LaunchAgent, FASE-A read-only",
     "agent-library-evolver worktree-sharing design decision (cicatrix open)",
-    "167 LaunchAgent plist hygiene pass (4x growth since 2026-04-29)"
+    "167 LaunchAgent plist hygiene pass (4x growth since 2026-04-29)",
+    "STRUCTURAL: concurrent multi-agent audits on the SHARED main checkout keep stealing each other's untracked files (happened to THIS audit via Mini) — the agent-worktree broker discipline (CLAUDE.md) must be enforced for ALL audit/agent sessions, not just code-change sessions"
   ],
 
-  "deploys_executed": "NONE",
-  "prod_mutations_executed": "NONE (FASE A read-only honored end-to-end)"
+  "deploys_executed": "NONE (PR #972 changes only shared/*.jsonl, not in the backend deploy path; no fly deploy, no post-deploy QA required)",
+  "prod_mutations_executed": "NONE (FASE A read-only honored end-to-end; the only shared-artifact write is PR #972, a reversible log truncation)"
 }
