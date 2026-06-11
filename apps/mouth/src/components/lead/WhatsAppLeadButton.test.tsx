@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/react";
+
+import { trackLeadWhatsAppCTA } from "@/lib/analytics";
 import { WhatsAppLeadButton, FALLBACK_WA_URL } from "./WhatsAppLeadButton";
+
+vi.mock("@/lib/analytics", () => ({
+  trackLeadWhatsAppCTA: vi.fn(),
+}));
 
 describe("WhatsAppLeadButton", () => {
   const originalFetch = global.fetch;
@@ -82,6 +88,37 @@ describe("WhatsAppLeadButton", () => {
 
     await waitFor(() => {
       expect(window.location.href).toBe(FALLBACK_WA_URL);
+    });
+  });
+
+  it("tracks GA4 lead_whatsapp_cta with the intent id on successful capture", async () => {
+    const { getByRole } = renderButton();
+    fireEvent.click(getByRole("link"));
+
+    await waitFor(() => {
+      expect(trackLeadWhatsAppCTA).toHaveBeenCalledWith("kbli_navigator", {
+        captured: true,
+        lead_intent_id: "li_1",
+        result_ref: "56303",
+      });
+    });
+  });
+
+  it("tracks GA4 lead_whatsapp_cta with captured=false on fallback", async () => {
+    global.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
+
+    const { getByRole } = renderButton();
+    fireEvent.click(getByRole("link"));
+
+    await waitFor(() => {
+      expect(trackLeadWhatsAppCTA).toHaveBeenCalledWith("kbli_navigator", {
+        captured: false,
+        result_ref: "56303",
+      });
     });
   });
 });

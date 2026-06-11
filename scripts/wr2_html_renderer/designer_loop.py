@@ -633,6 +633,14 @@ async def run_designer_loop(
                     )
                 # Otherwise there is a real (hard) residual we cannot CSS-fix →
                 # keep the best render but do NOT mark converged (gate stays strict).
+                # Log it — symmetric to the composition-debt accept above; without
+                # this a render_failed leaves zero trace of WHY the gate rejected.
+                logger.warning(
+                    "designer-loop: HARD residual not auto-fixable (levers %s) — "
+                    "keeping best, NOT converged: %s",
+                    non_css,
+                    list(vc.issues),
+                )
                 iter_record["verdict"] = (
                     f"vision flagged hard residual {non_css} / {list(vc.issues)} "
                     "(not auto-fixable) — keeping best, not converged"

@@ -46,7 +46,7 @@ interface ArticleWithMDX extends Article {
 }
 
 /** Serialized article from server (dates are ISO strings, not Date objects) */
-type SerializedArticle = Omit<
+export type SerializedArticleForClient = Omit<
   ArticleWithMDX,
   "createdAt" | "updatedAt" | "publishedAt"
 > & {
@@ -59,7 +59,15 @@ interface ArticleClientProps {
   category: string;
   slug: string;
   /** Pre-fetched article from server component for SSR — avoids client-side fetch */
-  initialArticle?: SerializedArticle | null;
+  initialArticle?: SerializedArticleForClient | null;
+  /**
+   * The article body pre-rendered on the SERVER as a React node (RSC MDXRemote).
+   * Present only on the SSR path (when initialArticle is set). React-19 fix:
+   * rendering MDX here avoids the client <MDXRemote> useState crash during SSR.
+   * Null on the client-fetch path — then we fall back to the client renderer
+   * (ReactMarkdown / client MDXContent), which is safe in a real browser.
+   */
+  mdxBody?: React.ReactNode;
 }
 
 // Strip JSX components from content for markdown fallback
@@ -110,6 +118,7 @@ export function ArticleClient({
   category,
   slug,
   initialArticle,
+  mdxBody,
 }: ArticleClientProps) {
   const [article, setArticle] = React.useState<ArticleWithMDX | null>(() => {
     if (!initialArticle) return null;
@@ -367,7 +376,13 @@ export function ArticleClient({
                 style={{ fontSize: "1.3rem", lineHeight: "1.8" }}
                 suppressHydrationWarning
               >
-                {article.mdxSource ? (
+                {mdxBody ? (
+                  // SSR path: the body was rendered on the server (RSC) and
+                  // passed in as a node — React-19-safe, full body in the HTML.
+                  mdxBody
+                ) : article.mdxSource ? (
+                  // Client-fetch path only (no SSR body): MDXContent's client
+                  // <MDXRemote> runs in a real browser here, where hooks work.
                   <MDXContent source={article.mdxSource} />
                 ) : (
                   <ReactMarkdown
@@ -493,8 +508,11 @@ export function ArticleClient({
                 )}
               </div>
 
-              {/* Tags */}
-              {article.tags.length > 0 && (
+              {/* Tags — coerce to array at the render boundary: a malformed
+                  article (mis-indented MDX frontmatter / non-array backend
+                  ai_tags) must never crash the reader with "tags is not
+                  iterable". Normalized at the data layer too (normalizeTags). */}
+              {Array.isArray(article.tags) && article.tags.length > 0 && (
                 <div className="mt-12 pt-8 border-t border-white/10">
                   <p className="text-xs font-medium uppercase tracking-wider text-white/60 mb-3">
                     Topics

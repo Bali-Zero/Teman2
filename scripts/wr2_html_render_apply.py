@@ -202,6 +202,39 @@ async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: b
     return web
 
 
+def _dump_designer_history(draft_id: str, slide_index: int, history: list[dict[str, Any]]) -> str:
+    """Persist the designer-loop history JSON for post-mortem and return a short
+    excerpt of the last vision critiques. The render tmp dir is deleted on exit,
+    so without this a render_failed leaves zero trace of WHY the gate rejected
+    (2026-06-11: 3 drafts failed with no recorded critiques)."""
+    issues: list[str] = []
+    for rec in reversed(history):
+        vi = (rec.get("vision") or {}).get("issues") or []
+        if vi:
+            issues = [str(x) for x in vi]
+            break
+    try:
+        import json
+        from datetime import datetime, timezone
+
+        debug_dir = Path(
+            os.environ.get("WR2_HTML_DEBUG_DIR", str(Path.home() / "logs" / "wr2-html-debug"))
+        )
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        path = debug_dir / f"{ts}-{draft_id[:8]}-slide{slide_index:02d}-history.json"
+        path.write_text(
+            json.dumps(
+                {"draft_id": draft_id, "slide": slide_index, "history": history},
+                indent=1,
+                default=str,
+            )
+        )
+    except Exception:
+        logger.exception("failed to persist designer history (non-fatal)")
+    return "; ".join(issues)[:400]
+
+
 # ── render one carousel (per-slide designer loop, GO#3) ─────────────────────────
 async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Path, vision_required: bool) -> Path:
     """Render the carousel via the HTML engine. Returns the dir containing the slide PNGs.
@@ -273,9 +306,10 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
                 max_iters=3,
             )
             if not (res.converged and res.final_png and Path(res.final_png).is_file()):
+                excerpt = _dump_designer_history(draft_id, i, res.history)
                 raise RuntimeError(
                     f"slide {i} did not converge (reason={res.reason!r} "
-                    f"final_png={res.final_png}) — GO#3 c5 reject"
+                    f"critiques=[{excerpt}] final_png={res.final_png}) — GO#3 c5 reject"
                 )
             # place the converged PNG at the canonical slot
             dest = slides_dir / f"{i:02d}.png"

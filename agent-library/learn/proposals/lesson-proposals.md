@@ -6,10 +6,10 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **12**
+- scars scanned: **5**
 - mechanical candidates (recurring ≥3): **0**
-- consultive (single-occurrence): **8**
-- rejected (no objective anchor, G1): **4**
+- consultive (single-occurrence): **4**
+- rejected (no objective anchor, G1): **1**
 
 ## Recurring patterns (the objective recurrence signal, G4)
 
@@ -22,17 +22,10 @@ _(none — no anchored scar is part of a ≥3 recurring pattern)_
 ## Consultive (→ judgment pipeline, NOT a hook)
 
 - ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05) [P3]
-- ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07) [P1]
-- ⚠️ STRUCTURAL: EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams (2026-04-29) [P0]
-- ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain) [P1]
-- ⚠️ STRUCTURAL: Untracked files lost when sibling automation switches branches mid-session (2026-04-29, twice in 9h) [UNKNOWN]
 - ⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28) [P2]
 - ⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25) [P0]
-- 🚨 PENDING APPROVAL (P1 SECURITY): `backend_rag_v2` Postgres role has `rolsuper=t` — demotion spec drafted, awaiting Antonello sign-off (W38, 2026-05-23) [P1]
+- ✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11) [P1]
 
 ## Rejected — no objective anchor (gate G1)
 
-- ⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29) — no objective anchor (G1)
-- ⚠️ STRUCTURAL: SQL v2 migrations duplicate numbers `129_*` and `130_*` (2026-04-29) — no objective anchor (G1)
-- ⚠️ STRUCTURAL: Unknown agent overwrites loaded LaunchAgent plist files with JSON dump (2026-04-29) — no objective anchor (G1)
 - 🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03) — no objective anchor (G1)
