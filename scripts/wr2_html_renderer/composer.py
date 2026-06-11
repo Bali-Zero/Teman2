@@ -679,6 +679,132 @@ def _wrap_headline_sentence_aware(
     return "<br>".join(out_lines), floor_px
 
 
+# ── facts-block body structurer (designer-loop convergence, 2026-06-12) ─────
+# Diagnosis (draft 3e2c2923 slide 2, HARD-reject history 2026-06-11): a "facts"
+# body like "NEW FEE: IDR 3,500,000. OLD FEE: IDR 2,000,000. REGULATION: PMK
+# 47/2026. EFFECTIVE: 1 JUNE 2026. [SOURCE: KEMENKEU, 24 APR 2026]" rendered as
+# ONE monolithic uppercase-bold paragraph. The vision critic HARD-rejects it
+# every iteration (no internal hierarchy, the key number doesn't pop, the
+# [SOURCE:…] attribution glued into the paragraph, the text block floats in
+# dead voids) and its only proposed lever is `rerender` — a structural
+# recomposition that no CSS lever can perform, so the designer loop can NEVER
+# converge on these slides. The fix lives HERE in the composer: detect the
+# label/value structure at compose time and render it as a proper stack.
+# CONSERVATIVE by contract (W68/W72/W73 discipline — never clobber a correct
+# rendering): a body that does not parse as fact pairs renders byte-identical
+# to the legacy paragraph path, and cover slides are completely untouched.
+
+# Trailing `[SOURCE: …]` / `[FONTE: …]` attribution (case-insensitive). Only a
+# TRAILING bracket segment is attribution — a mid-body bracket is content.
+_SOURCE_LINE_RE = re.compile(
+    r"\s*\[\s*((?:SOURCE|FONTE)\s*:\s*[^\]]+?)\s*\]\s*\.?\s*$",
+    re.IGNORECASE,
+)
+
+# A fact segment is `LABEL: value` — label 1-4 words with no internal period
+# (the [^.:] class enforces it), value non-empty.
+_FACT_SEGMENT_RE = re.compile(r"^([^.:]+):\s*(.+)$")
+_FACT_LABEL_MAX_WORDS = 4
+
+# Stack styling, brand-token-pure: label = small muted uppercase, value =
+# larger high-contrast extrabold, lead value (the key number) = the existing
+# brand yellow accent token, source line = subordinate (smaller, reduced
+# opacity, NOT uppercase-bold). `.text-panel{justify-content:center}` centers
+# the whole text stack vertically in its zone (the dead-void critique) — the
+# skeleton's .text-panel is already a flex column, so this is positioning-inert
+# for every other element. Selectors are defensive descendants of the
+# skeleton's .body slot; unused selectors are inert (same approach as levers).
+_FACTS_BLOCK_CSS = (
+    "\n<style data-facts-block=\"1\">\n"
+    ".text-panel{justify-content:center;}\n"
+    ".fact-row{margin-bottom:var(--spacing-list-gap);}\n"
+    ".fact-label{font-size:var(--font-size-body-md);color:var(--color-text-muted);"
+    "font-weight:var(--font-weight-bold);letter-spacing:var(--letter-spacing-title);"
+    "line-height:var(--line-height-snug);}\n"
+    ".fact-value{font-size:var(--font-size-subheadline);color:var(--color-text-white);"
+    "font-weight:var(--font-weight-extrabold);line-height:var(--line-height-snug);}\n"
+    ".fact-value-lead{color:var(--color-accent-yellow);}\n"
+    ".fact-source{margin-top:var(--spacing-section-gap);"
+    "font-size:calc(var(--font-size-body-md) * 0.8);color:var(--color-text-muted);"
+    "font-weight:400;text-transform:none;opacity:0.7;}\n"
+    "</style>\n"
+)
+
+
+def _split_source_line(body: str) -> tuple[str, str | None]:
+    """Extract a trailing `[SOURCE: …]` / `[FONTE: …]` attribution from a body.
+
+    Returns (body_without_source, source_text). source_text keeps the label +
+    citation verbatim (brackets stripped) — e.g. "SOURCE: KEMENKEU, 24 APR
+    2026" — so the attribution renders untouched on its own subordinate line.
+    A body with no trailing source returns (body, None).
+    """
+    m = _SOURCE_LINE_RE.search(body)
+    if not m:
+        return body, None
+    return body[: m.start()].rstrip(), m.group(1).strip()
+
+
+def _parse_fact_pairs(body: str) -> list[tuple[str, str]] | None:
+    """Heuristic LABEL/value parser for "facts" slide bodies.
+
+    Returns the ordered pairs ONLY when the whole (source-stripped) body is a
+    chain of ≥2 `LABEL: value` segments separated by `. ` — label 1-4 words
+    with no internal period, value non-empty. ANY segment that doesn't fit the
+    shape (narrative prose, a single colon-clause, a >4-word label) returns
+    None and the caller falls back to the legacy paragraph rendering
+    UNCHANGED. When in doubt: None — this MUST stay conservative.
+    """
+    text = (body or "").strip()
+    if not text:
+        return None
+    # Split AFTER a period followed by whitespace; each segment keeps its
+    # terminal period (stripped from the value below). Periods inside tokens
+    # (e.g. Indonesian "3.500.000") are not followed by a space → safe.
+    segments = [s.strip() for s in re.split(r"(?<=\.)\s+", text) if s.strip()]
+    if len(segments) < 2:
+        return None
+    pairs: list[tuple[str, str]] = []
+    for seg in segments:
+        m = _FACT_SEGMENT_RE.match(seg)
+        if not m:
+            return None
+        label = m.group(1).strip()
+        value = m.group(2).strip()
+        if value.endswith("."):
+            value = value[:-1].rstrip()  # the segment terminator, not content
+        if not label or not value:
+            return None
+        if len(label.split()) > _FACT_LABEL_MAX_WORDS:
+            return None
+        pairs.append((label, value))
+    return pairs
+
+
+def _facts_block_html(pairs: list[tuple[str, str]], source_text: str | None) -> str:
+    """Render parsed fact pairs as a label/value stack + optional source line.
+
+    Each row = small muted uppercase label + larger high-contrast value; the
+    FIRST row's value (the lead fact, e.g. the new fee) carries the brand
+    yellow accent so the key number pops. The source line sits OUTSIDE the
+    rows, at the bottom of the stack, as a subordinate attribution. Plain
+    string markup (no escaping) — consistent with _fill_placeholders, which
+    substitutes via str.replace.
+    """
+    rows: list[str] = []
+    for i, (label, value) in enumerate(pairs):
+        lead = " fact-value-lead" if i == 0 else ""
+        rows.append(
+            '<div class="fact-row">'
+            f'<div class="fact-label">{label}</div>'
+            f'<div class="fact-value{lead}">{value}</div>'
+            "</div>"
+        )
+    if source_text:
+        rows.append(f'<div class="fact-source">{source_text}</div>')
+    return "\n".join(rows)
+
+
 def _fill_placeholders(
     html: str,
     slide: dict[str, Any],
@@ -724,6 +850,20 @@ def _fill_placeholders(
     body = (slide.get("body") or slide.get("body_text") or "").strip()
     reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()
 
+    # Facts-block body structurer (NON-cover slides only): when the body parses
+    # as a chain of LABEL: value facts, render it as a label/value stack with a
+    # separated subordinate source line instead of one monolithic paragraph.
+    # When it does NOT parse (or on a cover), body_html stays the verbatim body
+    # and NO facts CSS is injected → byte-identical to the legacy rendering.
+    body_html = body
+    facts_block = False
+    if body and not cover_family:
+        body_wo_source, source_text = _split_source_line(body)
+        pairs = _parse_fact_pairs(body_wo_source)
+        if pairs:
+            body_html = _facts_block_html(pairs, source_text)
+            facts_block = True
+
     # {{#if regulation_code}} ... {{/if}}
     if reg:
         html = re.sub(r"\{\{#if regulation_code\}\}(.*?)\{\{/if\}\}", r"\1", html, flags=re.DOTALL)
@@ -737,7 +877,7 @@ def _fill_placeholders(
         "{{heading}}": headline,
         "{{subheading}}": subhead,
         "{{subhead}}": subhead,
-        "{{body}}": body,
+        "{{body}}": body_html,
         "{{regulation_code}}": reg,
         "{{statement}}": statement,
     }
@@ -768,6 +908,16 @@ def _fill_placeholders(
             html = html.replace("</body>", font_css + "</body>", 1)
         else:
             html = html + font_css
+
+    # Inject the facts-block styles ONLY when the stack was rendered, so a
+    # non-parsing body stays byte-identical to the legacy paragraph output.
+    if facts_block:
+        if "</head>" in html:
+            html = html.replace("</head>", _FACTS_BLOCK_CSS + "</head>", 1)
+        elif "</body>" in html:
+            html = html.replace("</body>", _FACTS_BLOCK_CSS + "</body>", 1)
+        else:
+            html = html + _FACTS_BLOCK_CSS
 
     return html
 
