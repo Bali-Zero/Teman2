@@ -12,7 +12,8 @@
 #   API_KEYS=<any non-empty value; settings requires it, reader is JWT-only in practice>
 #   INTAKE_REVIEW_DATABASE_URL=postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev
 #   INTAKE_REVIEW_BRIDGE_SECRET=<shared X-Bridge-Auth secret, added by the Fly proxy>
-# (INTAKE_WRITER_ENABLED is forced to 0 below — approvals stay dry-run.)
+# (INTAKE_WRITER_ENABLED defaults to 0 — dry-run. FASE 5C go-live: set
+#  INTAKE_WRITER_ENABLED=1 in this env-file + kickstart the LaunchAgent.)
 set -euo pipefail
 
 REPO_ROOT="${INTAKE_REVIEW_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
@@ -41,8 +42,13 @@ set -a
 source "${ENV_FILE}"
 set +a
 
-# P2: approvals dry-run regardless of what the env-file says.
-export INTAKE_WRITER_ENABLED=0
+# Writer flag: SAFE-OFF unless the operator explicitly enables it in the
+# 0600 env-file (FASE 5C go-live = add INTAKE_WRITER_ENABLED=1 there + restart;
+# no code change). Anything other than an explicit truthy value stays dry-run.
+export INTAKE_WRITER_ENABLED="${INTAKE_WRITER_ENABLED:-0}"
+if [[ "${INTAKE_WRITER_ENABLED}" == "1" ]]; then
+  echo "[intake-review-reader] WARNING: INTAKE_WRITER_ENABLED=1 — approvals COMMIT to the local CRM (FASE 5C live)" >&2
+fi
 
 cd "${BACKEND_DIR}"
 export PYTHONPATH="${BACKEND_DIR}"
