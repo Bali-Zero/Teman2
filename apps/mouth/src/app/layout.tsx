@@ -8,6 +8,7 @@ import {
   AggregateRatingJsonLd,
   DynamicJsonLd,
 } from "@/components/seo";
+import { RouteChangeTracker } from "@/components/analytics/RouteChangeTracker";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
@@ -272,7 +273,10 @@ export default function RootLayout({
           }}
         />
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+          <>
+            <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+            <RouteChangeTracker />
+          </>
         )}
       </body>
     </html>

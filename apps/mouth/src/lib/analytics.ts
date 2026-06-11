@@ -245,6 +245,32 @@ export function trackChatStarted(channel: string): void {
   trackEvent("chat_started", { channel });
 }
 
+/**
+ * Track the lead-capture WhatsApp handoff (WhatsAppLeadButton — articles +
+ * KBLI Navigator). Fired BEFORE navigating to wa.me; `transport_type:
+ * "beacon"` makes the hit survive the redirect. When capture succeeded,
+ * `lead_intent_id` joins this GA4 session to the lead_intents/CRM
+ * attribution row written by POST /api/lead/capture.
+ */
+export function trackLeadWhatsAppCTA(
+  source: string,
+  params: {
+    captured: boolean;
+    lead_intent_id?: string;
+    result_ref?: string;
+  },
+): void {
+  sendGA4Event("lead_whatsapp_cta", {
+    event_category: "Conversion",
+    source,
+    captured: params.captured,
+    transport_type: "beacon",
+    ...(params.lead_intent_id ? { lead_intent_id: params.lead_intent_id } : {}),
+    ...(params.result_ref ? { result_ref: params.result_ref } : {}),
+  });
+  trackEvent("lead_whatsapp_cta", { source, ...params });
+}
+
 // ============================================================
 // Client Tool Tracking — Visa Oracle, KBLI, Tax, Property
 // ============================================================
