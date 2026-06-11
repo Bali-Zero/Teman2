@@ -1,5 +1,34 @@
 echo "🔍 Running pre-commit hooks..."
 
+# ── CICATRIX AUTO-ARCHIVE (2026-06-07) ───────────────────────────────────────
+# Root cause of the recurring "cicatrix-scars.md over 40k-char limit" warning:
+# /scar APPENDS but nothing PRUNES, and the old check_cicatrix_size.sh only
+# BLOCKED (never archived) and was never even wired here. This auto-REPAIRS:
+# when a commit touches cicatrix-scars.md and it's over the 40k limit, archive
+# old RESOLVED/INFO (+ STRUCTURAL >=15d as fallback) into the archive file and
+# re-stage both — so the file never lands over-limit. Self-healing, not a wall.
+# Kill switch: CICATRIX_ARCHIVE_ENFORCEMENT=false
+if [ "${CICATRIX_ARCHIVE_ENFORCEMENT:-true}" != "false" ]; then
+    CICATRIX_FILE=".claude/rules/cicatrix-scars.md"
+    if git diff --cached --name-only --diff-filter=ACMR | grep -Fxq "$CICATRIX_FILE"; then
+        # Size of the STAGED blob (what would actually be committed).
+        STAGED_SIZE=$(git show ":$CICATRIX_FILE" 2>/dev/null | LC_ALL=C wc -c | tr -d '[:space:]')
+        if [ -n "$STAGED_SIZE" ] && [ "$STAGED_SIZE" -gt "${CICATRIX_SIZE_LIMIT_CHARS:-40000}" ]; then
+            echo "🗄️  [cicatrix] staged scars file is ${STAGED_SIZE} chars (> 40k) — auto-archiving..."
+            if python3 scripts/archive_cicatrix_scars.py; then
+                git add "$CICATRIX_FILE" .claude/rules/cicatrix-scars-archive.md
+                echo "✅ [cicatrix] archived old scars and re-staged (now under 40k)."
+            else
+                echo "❌ [cicatrix] auto-archive could not bring the file under 40k."
+                echo "   Run: python3 scripts/archive_cicatrix_scars.py --dry-run"
+                echo "   Then move scars manually, or lower --structural-age-days."
+                echo "   Override (emergency only): CICATRIX_ARCHIVE_ENFORCEMENT=false git commit ..."
+                exit 1
+            fi
+        fi
+    fi
+fi
+
 # ── OSINT / CLIENT-PII SOVEREIGNTY GATE (Symbiosis Law 2) ────────────────────
 # Added 2026-06-05 (cc-setup self-audit → research/operations/2026-06-05-claude-code-setup-self-audit.md).
 # HARD-BLOCKS committing named-client PII / OSINT research artifacts that
