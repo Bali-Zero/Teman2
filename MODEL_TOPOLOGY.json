@@ -35,7 +35,7 @@
     "translation": "gemma3:27b",
     "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
-    "ocr_vision": "qwen3-vl:8b",
+    "ocr_vision": "qwen2.5vl:7b",
     "intake_extraction": "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
     "reasoning": "deepseek-r1:32b",
     "fast": "qwen3.5:9b",
