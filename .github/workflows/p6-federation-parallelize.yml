@@ -71,11 +71,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install test deps (pytest + python-dotenv)
+      - name: Install test deps (pytest + orchestrator module-level imports)
         if: steps.relevant.outputs.run == 'true'
-        # python-dotenv: federation_orchestrator.py imports dotenv at module
-        # level; its absence made this gate chronically red 5/5 (audit 2026-06-11).
-        run: pip install pytest python-dotenv
+        # federation_orchestrator.py imports dotenv, httpx AND langgraph at
+        # module level; pytest-only install made this gate chronically red 5/5
+        # (audit 2026-06-11). Versions pinned to the backend venv that passes
+        # the suite locally (24/24): httpx 0.28.x, langgraph 1.1.x.
+        run: pip install pytest python-dotenv "httpx~=0.28" "langgraph~=1.1"
 
       - name: P6 falsifiable gates (G1-G5 + default-serial invariant)
         if: steps.relevant.outputs.run == 'true'
