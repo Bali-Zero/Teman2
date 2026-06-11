@@ -241,6 +241,7 @@
   - `slotBefore`: `ReactNode | undefined`
   - `slotAfter`: `ReactNode | undefined`
   - `children`: `ReactNode | undefined`
+  - `accentBar`: `boolean | undefined`
 - **example**: `<NavShell logo={/* ReactNode */} items={/* NavItem[] */} actions={/* ReactNode */} />`
 
 ## `ProgressRing`
