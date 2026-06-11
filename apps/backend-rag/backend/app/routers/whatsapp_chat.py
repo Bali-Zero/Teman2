@@ -390,6 +390,7 @@ async def process_whatsapp_message(
                     "conversation_history": ctx.get("conversation_history"),
                     "detected_language": ctx.get("detected_language"),
                     "is_first_message": ctx.get("is_first_message"),
+                    "sender_identity": ctx.get("sender_identity"),
                     "time_of_day": ctx.get("time_of_day"),
                 },
             )
