@@ -51,6 +51,9 @@ vi.mock("next/link", () => ({
     href: string;
   }) => <a href={href}>{children}</a>,
 }));
+vi.mock("@/components/workspace/HeroLiveWindow", () => ({
+  HeroLiveWindow: () => <div data-testid="hero-live-window">Hero</div>,
+}));
 
 // Mock dashboard components
 vi.mock("@/components/dashboard", () => ({
@@ -299,5 +302,20 @@ describe("DashboardPage - Unit Tests", () => {
     await waitFor(() => {
       expect(screen.getByTestId("zantara-portal-card")).toBeInTheDocument();
     });
+  });
+
+  it("renders the metric bar before the hero news window (P0.1)", async () => {
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    // "My Cases" is the first metric-bar KPI for a non-zero user.
+    const metricLabel = await screen.findByText("My Cases");
+    const hero = screen.getByTestId("hero-live-window");
+
+    // The hero (news) must FOLLOW the metric bar in DOM order — action
+    // above the fold, news below (audit P0.1).
+    expect(
+      metricLabel.compareDocumentPosition(hero) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
