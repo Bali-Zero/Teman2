@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wr2.supervisor — event-driven WR2 pipeline orchestrator.
+
+  Replaces the chained 05:11..05:16 cron plists by listening on the
+  Postgres NOTIFY channel `wr2_status_change` (see migration 138).
+  Long-running daemon: launchd restarts on crash via KeepAlive=Crashed.
+
+  Install:
+    cp infra/launchagents/com.balizero.wr2.supervisor.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.wr2.supervisor.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.supervisor</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
+        <string>scripts/wr2_supervisor.py</string>
+    </array>
+
+    <!-- Start immediately when loaded; restart on crash, NOT on clean exit. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <!-- Rate-limit respawns: if the daemon dies fast (e.g. DB unreachable),
+         wait at least 10 seconds between restarts. Avoids tight CPU loops. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2_supervisor.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2_supervisor.launchd.err.log</string>
+
+    <!-- PATH includes ~/.local/bin (claude CLI), ~/.npm-global/bin (npm),
+         pyenv, homebrew, system. Same hierarchy used by all WR2 plists
+         after the 2026-04-26 PATH fix. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
