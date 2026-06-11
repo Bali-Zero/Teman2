@@ -193,7 +193,7 @@ jobs:
           PYTHONPATH=.:../crm-cell coverage report --fail-under=55
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: apps/backend-rag/coverage.xml
           flags: backend
@@ -307,7 +307,7 @@ jobs:
 
       - name: Upload coverage
         if: matrix.coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: apps/${{ matrix.app }}/coverage/lcov.info
           flags: ${{ matrix.app }}
