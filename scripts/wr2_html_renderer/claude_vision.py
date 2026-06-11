@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,34 @@ from typing import Any
 from .designer_loop import Critique
 
 logger = logging.getLogger("wr2.claude_vision")
+
+
+class VisionRateLimited(Exception):
+    """The vision call hit a transient quota/rate-limit (HTTP 429 / session
+    limit) — NOT a real outage and NOT a defect of the slide. Distinct from the
+    `None`-return "unavailable" path: a rate-limit is recoverable next tick, so
+    the apply-worker must release the draft WITHOUT burning a circuit-breaker
+    attempt. Deliberately NOT a subclass of RuntimeError so the apply-worker's
+    generic `except RuntimeError` (transient render failure, which DOES burn an
+    attempt) cannot swallow it."""
+
+
+# A 429 surfaces either as a JSON envelope with api_error_status==429 / is_error
+# + a session-limit message, or (older CLI paths) as rc!=0 with the limit text
+# on stdout/stderr. Match the human text conservatively.
+_RATE_LIMIT_RE = re.compile(r"session limit|rate.?limit|usage limit", re.IGNORECASE)
+
+
+def _detect_rate_limit(envelope: dict[str, Any] | None, combined_text: str, returncode: int) -> bool:
+    if isinstance(envelope, dict):
+        if envelope.get("api_error_status") == 429:
+            return True
+        if envelope.get("is_error") and _RATE_LIMIT_RE.search(str(envelope.get("result", ""))):
+            return True
+    # only trust the loose text match when the call actually failed
+    if returncode != 0 and _RATE_LIMIT_RE.search(combined_text):
+        return True
+    return False
 
 # The lever vocabulary the critic may return — kept in sync with
 # designer_loop._apply_levers so the loop can act on them.
@@ -121,8 +150,13 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 12
     """
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)
+    # Pin the vision model (default sonnet: vision-capable + solid editorial
+    # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
+    # window nor trips the 120s timeout). Configurable without a code change.
+    model = os.environ.get("WR2_VISION_MODEL", "claude-sonnet-4-6")
     cmd = [
         _CLAUDE_BIN, "--print",
+        "--model", model,
         "--output-format", "json",
         "--json-schema", json.dumps(schema),
         prompt,
@@ -132,15 +166,28 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 12
     except subprocess.TimeoutExpired:
         logger.warning("claude vision call timed out after %ss", timeout_s)
         return None
+    # Parse the stdout envelope up front so a 429 can be told apart from a real
+    # failure even when the CLI exits rc!=0 (it emits the error as JSON on stdout
+    # and a non-zero code with empty stderr).
+    out = proc.stdout.strip()
+    envelope: dict[str, Any] | None = None
+    if out:
+        try:
+            parsed = json.loads(out)
+            if isinstance(parsed, dict):
+                envelope = parsed
+        except json.JSONDecodeError:
+            envelope = None
+    if _detect_rate_limit(envelope, (proc.stdout or "") + (proc.stderr or ""), proc.returncode):
+        raise VisionRateLimited(
+            f"claude vision rate-limited (429/session limit): {str(envelope.get('result', ''))[:160] if envelope else proc.stderr[:160]}"
+        )
     if proc.returncode != 0:
         logger.warning("claude vision call failed rc=%s err=%s", proc.returncode, proc.stderr[:300])
         return None
-    out = proc.stdout.strip()
     if not out:
         return None
-    try:
-        envelope = json.loads(out)
-    except json.JSONDecodeError:
+    if envelope is None:
         logger.warning("claude vision: stdout not JSON: %s", out[:200])
         return None
     # CLI json envelope (verified 2026-06-07): when --json-schema is used the
