@@ -1,0 +1,91 @@
+# Category-F observability lint — WhatsApp bridge HOME-vs-repo drift
+# -----------------------------------------------------------------
+# Fable-5 Cat-F audit (questions #48/#49, 2026-06-11). NOT a required check —
+# do NOT add to branch protection. Its job is to make a STRUCTURAL blind-spot
+# LOUD on every PR that touches the bridge, not to gate merges on it.
+#
+# Re-grounded fact this lint encodes (verified on the Pro 2026-06-11):
+#   - The LIVE bridge runs the NON-git-tracked HOME copy:
+#       launchctl program -> ~/.openclaw/bin/run_openclaw_whatsapp_bridge.sh
+#       -> exec uvicorn --app-dir ~/.openclaw/bin openclaw_whatsapp_bridge:app
+#   - CI / code-review only ever see scripts/openclaw_whatsapp_bridge.py.
+#   - On 2026-06-11 the HOME copy was 1874 lines vs repo 1471 (+403), with 6
+#     guard-helper functions present LIVE but ABSENT from the repo copy. The
+#     "byte-identical double-file discipline" (W50/W51/W52, W68/W72/W73) was
+#     therefore NOT holding. CI structurally cannot diff the HOME copy (it is
+#     not in the repo), so this lint cannot close the drift — it can only:
+#       (a) gate the in-repo INVARIANT that every defined _guard_* is wired
+#           into the response chain and vice-versa (the W68/W72/W73 failure
+#           class: a guard added/renamed without being wired, or wired twice);
+#       (b) print a machine-readable NOTICE on every run that the live copy is
+#           the un-CI-able HOME copy, so the blind-spot is never silent.
+#
+# The real cross-host drift check belongs on the Pro (a drift-check hook on the
+# HOME copy, or making the live bridge run the repo checkout). That is PROPOSED
+# in research/operations/2026-06-11-domande-per-fable5.md #48 — not shippable
+# from CI alone.
+
+name: "catF: WA bridge guard-chain + HOME-fork notice"
+
+on:
+  pull_request:
+    paths:
+      - "scripts/openclaw_whatsapp_bridge.py"
+      - ".github/workflows/catF-wa-bridge-drift.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard-chain-and-drift-notice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: HOME-fork blind-spot NOTICE (informational, never fails)
+        run: |
+          echo "::warning title=WA bridge HOME-fork::The LIVE WhatsApp bridge runs ~/.openclaw/bin/openclaw_whatsapp_bridge.py (NOT git-tracked). CI sees only scripts/openclaw_whatsapp_bridge.py. This lint CANNOT verify the live copy — re-check byte-parity ON THE PRO after merge (see Cat-F #48)."
+
+      - name: Guard-chain invariant — every _guard_* defined is wired, and vice-versa
+        run: |
+          set -euo pipefail
+          BRIDGE="scripts/openclaw_whatsapp_bridge.py"
+          if [[ ! -f "$BRIDGE" ]]; then
+            echo "::error::$BRIDGE missing — bridge moved? update this lint."
+            exit 1
+          fi
+
+          # Names of every defined guard.
+          grep -oE 'def (_guard_[a-z0-9_]+)\(' "$BRIDGE" \
+            | sed -E 's/def (_guard_[a-z0-9_]+)\(/\1/' | sort -u > /tmp/defined.txt
+          # Names of every guard actually invoked in the response chain
+          # (response_text = _guard_xxx(...)).
+          grep -oE 'response_text *= *(_guard_[a-z0-9_]+)\(' "$BRIDGE" \
+            | sed -E 's/response_text *= *(_guard_[a-z0-9_]+)\(/\1/' | sort -u > /tmp/wired.txt
+
+          DEF_COUNT=$(wc -l < /tmp/defined.txt | tr -d ' ')
+          WIRED_COUNT=$(wc -l < /tmp/wired.txt | tr -d ' ')
+          echo "defined _guard_* : $DEF_COUNT"
+          echo "wired   _guard_* : $WIRED_COUNT"
+
+          DEFINED_NOT_WIRED=$(comm -23 /tmp/defined.txt /tmp/wired.txt || true)
+          WIRED_NOT_DEFINED=$(comm -13 /tmp/defined.txt /tmp/wired.txt || true)
+
+          FAIL=0
+          if [[ -n "$DEFINED_NOT_WIRED" ]]; then
+            echo "::error title=Orphan guard::Defined but NEVER wired into the response chain (dead guard / typo):"
+            echo "$DEFINED_NOT_WIRED"
+            FAIL=1
+          fi
+          if [[ -n "$WIRED_NOT_DEFINED" ]]; then
+            echo "::error title=Phantom guard::Wired in the chain but NOT defined (broken import / rename):"
+            echo "$WIRED_NOT_DEFINED"
+            FAIL=1
+          fi
+
+          if [[ "$FAIL" -ne 0 ]]; then
+            echo "Guard-chain invariant violated. Every _guard_* must be both defined AND wired exactly into the response chain (W68/W72/W73 over-match family adds guards here — keep def/wire in lockstep)."
+            exit 1
+          fi
+          echo "OK: $DEF_COUNT guards defined, all wired, no phantoms."
