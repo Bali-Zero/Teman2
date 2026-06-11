@@ -1067,40 +1067,55 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
         return 2
 
     pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=2, command_timeout=300)
+    # R4.2 drain-loop (P-1): re-fetch until the briefed queue is empty so a
+    # supervisor kickstart swallowed while we are busy still gets its draft
+    # processed this run. Capped against pathological re-queue loops.
+    max_loops = int(os.environ.get("WR2_DRAFT_DRAIN_MAX_LOOPS", "10"))
     try:
         async with pool.acquire() as conn:
-            if draft_id:
-                rows = await conn.fetch(
-                    "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
-                    draft_id,
-                )
-            else:
-                rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
-
-            if not rows:
-                logger.info("No briefed drafts to process")
-                return 1
-
-            if dry_run:
-                logger.info("[DRY-RUN] would process %d drafts:", len(rows))
-                for r in rows:
-                    logger.info("  %s — %s", r["id"], r["topic"][:80])
-                return 0
-
             successes = 0
-            for row in rows:
-                try:
-                    ok = await _process_one(conn, row)
-                    if ok:
-                        successes += 1
-                except Exception as e:
-                    logger.exception("Unhandled error on draft %s: %s", row["id"], e)
-                    try:
-                        await _mark_rejected(conn, row["id"], f"unhandled: {e}")
-                    except Exception:
-                        pass
+            attempted = 0
+            for loop_n in range(max_loops):
+                if draft_id:
+                    rows = (
+                        await conn.fetch(
+                            "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
+                            draft_id,
+                        )
+                        if loop_n == 0
+                        else []
+                    )
+                else:
+                    rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
 
-            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, len(rows))
+                if not rows:
+                    if attempted == 0:
+                        logger.info("No briefed drafts to process")
+                        return 1
+                    break
+
+                if dry_run:
+                    logger.info("[DRY-RUN] would process %d drafts:", len(rows))
+                    for r in rows:
+                        logger.info("  %s — %s", r["id"], r["topic"][:80])
+                    return 0
+
+                for row in rows:
+                    attempted += 1
+                    try:
+                        ok = await _process_one(conn, row)
+                        if ok:
+                            successes += 1
+                    except Exception as e:
+                        logger.exception("Unhandled error on draft %s: %s", row["id"], e)
+                        try:
+                            await _mark_rejected(conn, row["id"], f"unhandled: {e}")
+                        except Exception:
+                            pass
+                if draft_id:
+                    break
+
+            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, attempted)
             return 0 if successes > 0 else 2
     finally:
         await pool.close()

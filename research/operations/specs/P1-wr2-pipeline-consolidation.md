@@ -375,8 +375,9 @@ Risks:
 
 **Staging**: slice 1 = S1 (script-side) + S10 watchdog re-key + supervisor both-maps patch +
 R4.2 drain-loop + R1.1 GC patch + unit tests — **code-only, zero launchctl changes, inert
-until R4 enable, behind the existing kill-switch**. Then: panel ✅ (done) → Antonello GO →
-merge slice 1 → Gate 0 → R4 enable → M1/M2/M6 green → R1 → R2 → R3 → table-drop migration.
+until R4 enable, behind the existing kill-switch**. Then: panel ✅ (done) → Antonello GO ✅
+(2026-06-11, slice 1 implemented on this branch, 20 unit tests) → merge slice 1 → Gate 0 →
+R4 enable → M1/M2/M6 green → R1 → R2 → R3 → table-drop migration.
 
 ---
 
