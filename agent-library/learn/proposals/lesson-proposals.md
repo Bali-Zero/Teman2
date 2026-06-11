@@ -28,7 +28,7 @@ _(none — no anchored scar is part of a ≥3 recurring pattern)_
 - ⚠️ STRUCTURAL: Untracked files lost when sibling automation switches branches mid-session (2026-04-29, twice in 9h) [UNKNOWN]
 - ⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28) [P2]
 - ⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25) [P0]
-- 🚨 PENDING APPROVAL (P1 SECURITY): `backend_rag_v2` Postgres role has `rolsuper=t` — demotion spec drafted, awaiting Antonello sign-off (W38, 2026-05-23) [P1]
+- ✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11) [P1]
 
 ## Rejected — no objective anchor (gate G1)
 
