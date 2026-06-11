@@ -38,7 +38,6 @@ NON_ROUTER_FILES: frozenset[str] = frozenset(
         "root_endpoints",  # mounted separately in app_factory
         "audio",  # mounted separately in app_factory
         "system_observability",  # mounted separately in app_factory
-        "crm_migration",  # one-time migration script, not a live router
         "memory_vector",  # orphan router — not registered anywhere (never was)
         # twitter: RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — now in manifest.
         "team_members",  # DISABLED: duplicates team.py (audit 2026-04-03)
