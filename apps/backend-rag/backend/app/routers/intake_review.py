@@ -106,19 +106,27 @@ async def _require_own_chat_or_admin(
 # --------------------------------------------------------------------------- #
 # Candidate-client extraction (read-only helper)
 # --------------------------------------------------------------------------- #
-def _candidate_client_ids(entity_resolution: dict[str, Any]) -> list[int]:
+def _candidate_client_ids(
+    entity_resolution: dict[str, Any], routing: dict[str, Any] | None = None
+) -> list[int]:
     """Best-effort extraction of candidate client ids from the FASE-4 blob.
 
     FASE 4's entity_resolution shape is still settling; be tolerant. Recognised
     shapes:
       {"candidates": [{"client_id": 412, ...}, ...]}
+      {"candidates": [{"id": 412, "table": "clients", ...}, ...]}   <- LIVE shape
       {"client_id": 412}
       {"resolved_client_id": 412}
+    plus the routing blob's resolved target ({"client_id": 412}) as fallback.
+
+    The ``id``+``table`` variant is what the production resolver actually
+    writes (every live proposal sampled 2026-06-11 used it) — recognising only
+    ``client_id`` left entity_candidates empty and the UI radio list dead.
     Returns a de-duplicated list of ints (empty if nothing resolvable).
     """
     ids: list[int] = []
     if not isinstance(entity_resolution, dict):
-        return ids
+        entity_resolution = {}
 
     for key in ("resolved_client_id", "client_id"):
         val = entity_resolution.get(key)
@@ -128,8 +136,15 @@ def _candidate_client_ids(entity_resolution: dict[str, Any]) -> list[int]:
     candidates = entity_resolution.get("candidates")
     if isinstance(candidates, list):
         for cand in candidates:
-            if isinstance(cand, dict) and isinstance(cand.get("client_id"), int):
+            if not isinstance(cand, dict):
+                continue
+            if isinstance(cand.get("client_id"), int):
                 ids.append(cand["client_id"])
+            elif isinstance(cand.get("id"), int) and cand.get("table") in (None, "clients"):
+                ids.append(cand["id"])
+
+    if isinstance(routing, dict) and isinstance(routing.get("client_id"), int):
+        ids.append(routing["client_id"])
 
     # de-dup preserving order
     seen: set[int] = set()
@@ -304,7 +319,7 @@ async def list_review_queue(
             if decision is not None and row_decision != decision:
                 continue
 
-            candidate_ids = _candidate_client_ids(entity_resolution)
+            candidate_ids = _candidate_client_ids(entity_resolution, routing)
             candidates = await _load_candidate_clients(conn, candidate_ids)
 
             # RBAC: the own-chat gate (received_by) is enforced in the SQL WHERE
@@ -538,7 +553,7 @@ async def get_review_detail(
         commit_gate = _as_dict(row["commit_gate"])
         stage_output = _as_dict(row["stage_output"])
 
-        candidate_ids = _candidate_client_ids(entity_resolution)
+        candidate_ids = _candidate_client_ids(entity_resolution, routing)
         candidates = await _load_candidate_clients(conn, candidate_ids)
 
         # OCR text per page — for human review. The current pipeline runs OCR
