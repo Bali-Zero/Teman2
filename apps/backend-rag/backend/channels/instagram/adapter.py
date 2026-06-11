@@ -103,11 +103,12 @@ class InstagramChannelAdapter(BaseChannel):
         headers = {"Authorization": f"Bearer {self.instagram_config.access_token}"}
 
         try:
-            await self.client.post(url, json=payload, headers=headers)
+            response = await self.client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
             logger.info("✅ Sent Instagram message to %s", channel_id)
 
             # Mark message as seen to prevent read-receipt webhook loops
-            seen_url = "https://graph.facebook.com/v18.0/me/messages"
+            seen_url = "https://graph.facebook.com/v22.0/me/messages"
             seen_payload = {
                 "recipient": {"id": channel_id},
                 "sender_action": "mark_seen",
