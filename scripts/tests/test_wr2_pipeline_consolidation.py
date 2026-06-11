@@ -226,7 +226,7 @@ class TestHtmlApplyDrainLoop:
         pg = MagicMock()
         pg.is_html_kill_switch_enabled = AsyncMock(return_value=True)
         pg.reset_stale_html_leases = AsyncMock(return_value=[])
-        pg.fetch_pending_draft_ids = AsyncMock(side_effect=[[id1], [id2], []])
+        pg.fetch_pending_html_draft_ids = AsyncMock(side_effect=[[id1], [id2], []])
         monkeypatch.setattr(html, "_pg", pg)
 
         apply_one = AsyncMock(return_value="rendered report={}")
@@ -236,8 +236,34 @@ class TestHtmlApplyDrainLoop:
 
         assert apply_one.await_count == 2
         assert {c.args[1] for c in apply_one.await_args_list} == {id1, id2}
-        assert pg.fetch_pending_draft_ids.await_count == 3
+        assert pg.fetch_pending_html_draft_ids.await_count == 3
         assert rc == 0
+
+    @pytest.mark.asyncio
+    async def test_run_uses_html_specific_fetch_not_canva_fetch(self, monkeypatch):
+        """The Canva-lane fetch filters canva_edit_url IS NULL, which starves
+        pre-cutover drafts that Canva touched (e.g. 948883c6/3e2c2923 stuck in
+        drafts_imaged_checked while reconcile kept kicking them); the HTML lane
+        must use its own drive_url-based fetch and never the Canva one."""
+        html = _load("wr2_html_render_apply")
+        monkeypatch.setenv("DATABASE_URL", "postgres://x")
+        scan = MagicMock()
+        scan.close = AsyncMock()
+        monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(return_value=scan))
+
+        pg = MagicMock()
+        pg.is_html_kill_switch_enabled = AsyncMock(return_value=True)
+        pg.reset_stale_html_leases = AsyncMock(return_value=[])
+        pg.fetch_pending_html_draft_ids = AsyncMock(return_value=[])
+        pg.fetch_pending_draft_ids = AsyncMock(return_value=[])
+        monkeypatch.setattr(html, "_pg", pg)
+        monkeypatch.setattr(html, "_apply_one", AsyncMock())
+
+        rc = await html.run()
+
+        assert pg.fetch_pending_html_draft_ids.await_count >= 1
+        assert pg.fetch_pending_draft_ids.await_count == 0
+        assert rc == 0  # empty queue = nothing to do = success
 
     @pytest.mark.asyncio
     async def test_run_drain_loop_is_capped(self, monkeypatch):
@@ -252,13 +278,13 @@ class TestHtmlApplyDrainLoop:
         pg.is_html_kill_switch_enabled = AsyncMock(return_value=True)
         pg.reset_stale_html_leases = AsyncMock(return_value=[])
         # queue never drains — a bouncing draft must not loop forever
-        pg.fetch_pending_draft_ids = AsyncMock(return_value=[uuid.uuid4()])
+        pg.fetch_pending_html_draft_ids = AsyncMock(return_value=[uuid.uuid4()])
         monkeypatch.setattr(html, "_pg", pg)
         monkeypatch.setattr(html, "_apply_one", AsyncMock(return_value="retry:1:boom"))
 
         await html.run()
 
-        assert pg.fetch_pending_draft_ids.await_count <= 3
+        assert pg.fetch_pending_html_draft_ids.await_count <= 3
 
 
 # ─────────────────────────────────────────────────────────────────────────

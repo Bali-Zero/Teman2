@@ -7,6 +7,7 @@ import pytest
 from backend.services.canva_renderer_v2._pg import (
     acquire_html_lease_and_fetch,
     acquire_lease_and_fetch,
+    fetch_pending_html_draft_ids,
     heartbeat_html_lease,
     inject_hero_paths,
     is_html_kill_switch_enabled,
@@ -174,6 +175,21 @@ async def test_html_kill_switch_missing_is_false():
     conn = AsyncMock()
     conn.fetchval.return_value = None
     assert await is_html_kill_switch_enabled(conn) is False
+
+
+@pytest.mark.asyncio
+async def test_fetch_pending_html_selects_on_drive_url_not_canva_url():
+    """Pre-cutover drafts carry a canva_edit_url from old Canva runs; the HTML
+    lane must select on drive_url or those drafts starve forever in
+    drafts_imaged_checked while the supervisor reconcile keeps kicking them."""
+    conn = AsyncMock()
+    conn.fetch.return_value = []
+    assert await fetch_pending_html_draft_ids(conn, limit=2) == []
+    sql = conn.fetch.call_args[0][0]
+    assert "drive_url IS NULL" in sql
+    assert "canva_edit_url" not in sql
+    assert "status = 'drafts_imaged_checked'" in sql
+    assert "lease_owner IS NULL" in sql
 
 
 @pytest.mark.asyncio
