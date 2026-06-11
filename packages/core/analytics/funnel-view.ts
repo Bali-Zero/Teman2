@@ -5,6 +5,8 @@ export const FUNNEL_EVENTS = [
   "visa_chat_question",
   "visa_whatsapp_cta",
   "visa_calling_block",
+  // --- Home CTAs ---
+  "home_whatsapp_cta",
   // Funnel home-block CTAs (4 per funnel × 4 funnels = 16)
   "visa_cta_click",
   "visa_consult_click",
@@ -30,7 +32,6 @@ export const FUNNEL_EVENTS = [
   "property_cta_clicked",
   "property_chat_question",
   "property_whatsapp_cta",
-  "property_cta_click",
   "property_consult_click",
   "property_search_submit",
   "property_suggestion_click",

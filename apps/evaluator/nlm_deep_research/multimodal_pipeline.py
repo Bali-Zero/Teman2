@@ -62,7 +62,7 @@ _CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
 
 NOTEBOOKS: dict[str, dict[str, str]] = {
     "nb2": {
-        "id": "271c7159-0c32-49a1-bda8-803c8e0993a6",
+        "id": "cff93ab0-813a-42f2-a8de-36987e724271",
         "label": "Immigration & Visa",
         "domain": "immigration",
     },
@@ -77,12 +77,12 @@ NOTEBOOKS: dict[str, dict[str, str]] = {
         "domain": "tax",
     },
     "nb5": {
-        "id": "93314ad3-177e-4d2f-956b-fe4be3e47697",
+        "id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
         "label": "Property & Real Estate",
         "domain": "property",
     },
     "nb6": {
-        "id": "7fbf37ed-e290-491a-98f5-677d6371ad62",
+        "id": "85207af3-352f-4554-8d2a-18f42cc541ba",
         "label": "Operations & Compliance",
         "domain": "operations",
     },
