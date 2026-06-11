@@ -55,11 +55,8 @@ interface FunnelFeatureProps {
   searchPlaceholder: string;
   searchSuggestions: string[];
   Icon: LucideIcon;
-  // Pricing — absorbed from former ServicesPricing block. Shown as a pill
-  // next to the CTA so the offer is legible without a separate section.
+  // Service label pill shown next to the CTA.
   priceLabel: string; // e.g. "Visa Processing"
-  price: string; // e.g. "$350"
-  priceUnit: string; // e.g. "/ visa"
   location: string; // e.g. "Seminyak, Bali"
   // Editorial background image for the left half of the block.
   bgImage: string; // e.g. "/assets/art/hero-visa.jpg"
@@ -100,8 +97,6 @@ const CONFIGS: Record<
     ],
     Icon: IdCard,
     priceLabel: "Visa Processing",
-    price: "$350",
-    priceUnit: "/ visa",
     location: "Seminyak, Bali",
     bgImage: "/assets/art/hero-visa.jpg",
     bgFit: "cover",
@@ -133,8 +128,6 @@ const CONFIGS: Record<
     ],
     Icon: Building2,
     priceLabel: "Company Setup",
-    price: "$1,850",
-    priceUnit: "/ company",
     location: "Kuta, Bali",
     bgImage: "/assets/art/hero-kbli.jpg",
     bgFit: "cover",
@@ -165,8 +158,6 @@ const CONFIGS: Record<
     ],
     Icon: TrendingUp,
     priceLabel: "Tax & Accounting",
-    price: "$220",
-    priceUnit: "/ month",
     location: "Denpasar, Bali",
     bgImage: "/assets/art/hero-tax.jpeg",
   },
@@ -195,8 +186,6 @@ const CONFIGS: Record<
     ],
     Icon: MapPinned,
     priceLabel: "Property Due Diligence",
-    price: "$850",
-    priceUnit: "/ report",
     location: "Ubud, Bali",
     bgImage: "/assets/art/hero-zoning.jpeg",
   },
