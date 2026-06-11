@@ -101,10 +101,47 @@ python scripts/wr2_queue_writer.py ingest-external https://instagram.com/p/XYZ \
 - Idempotent on the URL: re-ingesting the same post is a no-op
   (`already_present`). A non-IG URL is `invalid_url` and writes nothing.
 
-> To bulk-register Zero's own back-catalogue, run `ingest-external` once per URL
-> (the account is login-walled, so the URLs are pasted by hand or exported from
-> Meta Business Suite — there is no logged-in scraping session on the Pro). The
-> scraper then collects engagement for them on its next ≥24h run.
+> To bulk-register Zero's own back-catalogue by hand, run `ingest-external` once
+> per URL. To do it automatically instead, use STRATO 4 below.
+
+---
+
+## Auto-harvest Zero's own posts (STRATO 4 — Playwright)
+
+Instead of pasting URLs by hand, `scripts/wr2_ig_profile_harvester.py` logs into
+@balizero0 with a persistent Playwright profile, scrolls the grid, collects
+every post URL, and feeds them to STRATO 3. The same profile
+(`~/.chrome-cdp-profile/balizero0-ig`) is what `_ig-metrics-scraper.py` uses, so
+the one-time login also unblocks that scraper.
+
+### One-time login (operator — Zero)
+
+Opens a real browser window; log in to @balizero0 ONCE. The script detects login
+automatically (polling, no Enter needed) and saves the session.
+
+```bash
+apps/backend-rag/.venv/bin/python scripts/wr2_ig_profile_harvester.py login
+```
+
+### Harvest
+
+```bash
+# preview the URLs it finds (writes nothing)
+apps/backend-rag/.venv/bin/python scripts/wr2_ig_profile_harvester.py harvest --collect-only
+
+# collect + register them all via ingest-external (idempotent)
+apps/backend-rag/.venv/bin/python scripts/wr2_ig_profile_harvester.py harvest --ingest
+```
+
+- `harvest` runs headless (reuses the saved profile); if the session expired it
+  says so — re-run `login`.
+- Scrolls until the grid stops yielding new posts (3 stable rounds) or
+  `--max-scrolls` (default 60). Dedups by shortcode, canonicalizes to
+  `https://www.instagram.com/p|reel/<code>/`.
+- `--ingest` is idempotent: re-running only adds posts not already registered.
+
+> Law 2: reads only public @balizero0 post URLs — no client PII. The login
+> session is a Bali Zero account, stored locally in the persistent profile.
 
 ---
 
