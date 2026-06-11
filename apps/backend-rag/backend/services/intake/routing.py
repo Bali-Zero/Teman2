@@ -35,8 +35,9 @@ Decision matrix (C4)
 --------------------
 * ``AUTO_ATTACH``    — exactly one candidate via a STRONG identifier
   (passport / npwp / nib / akta number) → high confidence, no human needed.
-* ``LINK_CANDIDATE`` — a single probable match via fuzzy name only (no strong
-  identifier) → human confirmation recommended.
+* ``LINK_CANDIDATE`` — a single probable match via the sender-phone signal
+  (m225, conf ~0.90 — phones can be shared by spouse/agent so never auto) or
+  via fuzzy name only (no strong identifier) → human confirmation recommended.
 * ``AMBIGUOUS``      — >= 2 plausible candidates (homonyms!) or strong-identifier
   collision → human review mandatory.
 * ``NO_MATCH``       — no candidate at all → potential new client, human review.
@@ -69,6 +70,12 @@ AMBIGUITY_MARGIN = 0.15            # top1 - top2 < margin → AMBIGUOUS (homonym
 
 # Confidence assigned to a strong-identifier exact match.
 CONF_STRONG_EXACT = 0.99
+
+# Sender-phone exact match (m225). High confidence but NEVER auto-attach: a
+# phone can be shared by spouse/agent — the sender is not always the subject.
+CONF_PHONE_MATCH = 0.90
+# Boost applied when sender phone AND fuzzy name agree on the same client.
+PHONE_NAME_AGREE_BOOST = 0.05
 
 # Doc-types whose subject is a PERSON (match against ``clients``) vs a COMPANY
 # (match against ``companies``). canonical_doc_type() upstream already maps
@@ -134,6 +141,32 @@ def _digits_only(value: Any) -> str | None:
         return None
     d = re.sub(r"\D", "", str(value))
     return d or None
+
+
+def normalize_sender_phone(value: Any) -> str | None:
+    """Normalise a sender phone for ``clients.phone_normalized`` matching.
+
+    Digits-only (strips spaces / ``+`` / separators), Indonesian leading ``0``
+    → ``62``, bare ``8…`` → ``62…``, <8 digits rejected. The algorithm MIRRORS
+    ``backend.services.crm.client_core.normalize_phone_e164`` (minus the ``+``
+    prefix, dropped so callers can probe BOTH ``phone_normalized`` storage
+    variants — same dual-form lookup as wa_copilot/identity_resolver).
+
+    Deliberately INLINED, not imported: the client_core import chain pulls
+    ``backend.app.core.config.Settings()`` (requires JWT_SECRET_KEY/API_KEYS
+    env), which would crash the sovereign-local intake worker at import time.
+    Keep in sync with client_core if the E.164 rules ever change.
+    """
+    if value is None:
+        return None
+    digits = re.sub(r"\D", "", str(value))
+    if len(digits) < 8:
+        return None
+    if digits.startswith("0"):
+        digits = "62" + digits[1:]
+    elif digits.startswith("8"):
+        digits = "62" + digits
+    return digits
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +289,42 @@ async def _match_company_strong(
     return candidates
 
 
+async def _match_sender_phone(
+    conn: asyncpg.Connection, sender_phone: str | None
+) -> list[dict[str, Any]]:
+    """Exact match of the transport-layer sender phone against ``clients``.
+
+    Matches ``clients.phone_normalized`` in both storage variants (with and
+    without the leading ``+`` — same dual lookup as wa_copilot's
+    identity_resolver). LIMIT 3: one row is the signal; >1 row means the phone
+    is shared (spouse/agent/office line) and the decision matrix degrades it to
+    AMBIGUOUS rather than guessing.
+    """
+    norm = normalize_sender_phone(sender_phone)
+    if not norm:
+        return []
+    rows = await conn.fetch(
+        """
+        SELECT id, full_name
+        FROM clients
+        WHERE deleted_at IS NULL
+          AND phone_normalized IN ($1, $2)
+        ORDER BY id
+        LIMIT 3
+        """,
+        norm,
+        "+" + norm,
+    )
+    return [
+        {
+            "table": "clients", "id": r["id"], "name": r["full_name"],
+            "method": "sender_phone", "score": CONF_PHONE_MATCH,
+            "matched_value": norm, "basis": "phone",
+        }
+        for r in rows
+    ]
+
+
 async def _match_fuzzy_name(
     conn: asyncpg.Connection, table: str, name_col: str, name: str
 ) -> list[dict[str, Any]]:
@@ -289,11 +358,20 @@ async def _match_fuzzy_name(
 def _classify_decision(
     strong: list[dict[str, Any]],
     fuzzy: list[dict[str, Any]],
+    phone: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
-    """Apply the C4 decision matrix to strong + fuzzy candidate lists.
+    """Apply the C4 decision matrix to strong + phone + fuzzy candidate lists.
+
+    Precedence: strong document identifiers > sender-phone exact match (m225)
+    > fuzzy name. The phone signal NEVER yields AUTO_ATTACH on its own (a phone
+    can be shared by spouse/agent): alone it is a LINK_CANDIDATE; agreeing with
+    the top fuzzy name it is a boosted LINK_CANDIDATE; disagreeing, BOTH are
+    surfaced for review; shared by >1 client it degrades to AMBIGUOUS.
 
     Returns ``(decision, candidates, reason)``.
     """
+    phone = list(phone or [])
+
     # De-dup strong candidates by (table, id).
     seen: set[tuple[str, int]] = set()
     uniq_strong: list[dict[str, Any]] = []
@@ -303,7 +381,8 @@ def _classify_decision(
             seen.add(key)
             uniq_strong.append(c)
 
-    # 1) Strong identifier(s) present.
+    # 1) Strong identifier(s) present — the phone signal is IGNORED here: the
+    #    document identifier describes the SUBJECT, the phone only the SENDER.
     if uniq_strong:
         if len(uniq_strong) == 1:
             return DECISION_AUTO_ATTACH, uniq_strong, {
@@ -315,12 +394,43 @@ def _classify_decision(
             "reason": f"{len(uniq_strong)} rows share a strong identifier (collision)",
         }
 
-    # 2) No strong identifier → consider fuzzy name candidates.
     usable = [c for c in fuzzy if c["score"] >= FUZZY_REVIEW_LOW]
+    usable.sort(key=lambda c: c["score"], reverse=True)
+
+    # 2) Sender-phone signal (no strong identifier resolved).
+    if phone:
+        if len(phone) > 1:
+            return DECISION_AMBIGUOUS, phone, {
+                "reason": f"{len(phone)} clients share the sender phone",
+            }
+        pc = phone[0]
+        if usable:
+            top_f = usable[0]
+            if top_f["table"] == pc["table"] and top_f["id"] == pc["id"]:
+                # Phone + name agree on the same client → boosted candidate.
+                boosted = dict(pc)
+                boosted["score"] = round(
+                    min(CONF_STRONG_EXACT - 0.01, pc["score"] + PHONE_NAME_AGREE_BOOST), 4
+                )
+                boosted["method"] = f"{pc['method']}+{top_f['method']}"
+                return DECISION_LINK_CANDIDATE, [boosted], {
+                    "reason": "sender phone and fuzzy name agree on the same client",
+                    "phone_score": pc["score"], "name_sim": top_f["score"],
+                }
+            # Phone and name point at DIFFERENT rows → surface both for review.
+            return DECISION_LINK_CANDIDATE, [pc, top_f], {
+                "reason": "sender phone and fuzzy name disagree — review both",
+                "phone_score": pc["score"], "name_sim": top_f["score"],
+            }
+        return DECISION_LINK_CANDIDATE, [pc], {
+            "reason": "sender phone exact match (no strong identifier, no fuzzy name)",
+            "phone_score": pc["score"],
+        }
+
+    # 3) No strong identifier, no phone → fuzzy name candidates only.
     if not usable:
         return DECISION_NO_MATCH, [], {"reason": "no strong identifier, no fuzzy name >= 0.40"}
 
-    usable.sort(key=lambda c: c["score"], reverse=True)
     top = usable[0]
 
     # >= 2 plausible names within the ambiguity margin → homonym ambiguity.
@@ -349,8 +459,14 @@ async def resolve_entity(
     extracted_fields: dict[str, Any],
     doc_type: str | None,
     pool: asyncpg.Pool | asyncpg.Connection,
+    *,
+    sender_phone: str | None = None,
 ) -> dict[str, Any]:
     """Resolve the document subject against existing CRM rows (READ-ONLY).
+
+    ``sender_phone`` (m225) is the raw transport-layer sender number; it is
+    consulted only when no strong document identifier matched, as a
+    high-confidence (~0.90) person hint — see :func:`_classify_decision`.
 
     Returns a dict::
 
@@ -367,6 +483,7 @@ async def resolve_entity(
     async def _run(conn: asyncpg.Connection) -> dict[str, Any]:
         strong: list[dict[str, Any]] = []
         fuzzy: list[dict[str, Any]] = []
+        phone: list[dict[str, Any]] = []
         subject_kind = "unknown"
 
         # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
@@ -389,6 +506,14 @@ async def resolve_entity(
             if strong:
                 subject_kind = "person"
 
+        # Sender-phone signal (m225) — the transport layer knows who SENT the
+        # blob. Only consulted when no strong identifier resolved (a strong ID
+        # names the SUBJECT; the phone names the SENDER — document wins).
+        if not strong and sender_phone:
+            phone = await _match_sender_phone(conn, sender_phone)
+            if phone and subject_kind == "unknown":
+                subject_kind = "person"
+
         # Fuzzy name fallback (only matters when no strong identifier resolved).
         if not strong:
             company_name = _field_value(extracted_fields, "company_name")
@@ -406,7 +531,7 @@ async def resolve_entity(
                 if pf and subject_kind == "unknown":
                     subject_kind = "person"
 
-        decision, candidates, reason = _classify_decision(strong, fuzzy)
+        decision, candidates, reason = _classify_decision(strong, fuzzy, phone)
         return {
             "decision": decision,
             "candidates": candidates,
@@ -505,6 +630,7 @@ async def build_routing_proposal(
     *,
     doc_index: int = 0,
     pipeline_version: str = PIPELINE_VERSION_DEFAULT,
+    sender_phone: str | None = None,
 ) -> dict[str, Any]:
     """Build (but do NOT persist) the routing proposal payload.
 
@@ -512,7 +638,7 @@ async def build_routing_proposal(
     into ``document_routing_proposal``.
     """
     async def _run(conn: asyncpg.Connection) -> dict[str, Any]:
-        entity = await resolve_entity(extracted, doc_type, conn)
+        entity = await resolve_entity(extracted, doc_type, conn, sender_phone=sender_phone)
         target = await _resolve_routing_target(conn, entity)
 
         decision = entity["decision"]
@@ -624,7 +750,6 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
     matched document lands on a real person's dashboard.
     """
     queue_id = job["id"]
-    pipeline_version = job.get("pipeline_version", PIPELINE_VERSION_DEFAULT)
 
     async with pool.acquire() as conn:
         so = job.get("stage_output")
@@ -640,9 +765,26 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         )
         fields = extract_out.get("fields") or {}
 
+        # The worker's claim RETURNING carries neither sender_phone (m225) nor
+        # pipeline_version — read BOTH from the queue row. pipeline_version is
+        # LOAD-BEARING for the retroactive reprocess: the bumped value must
+        # reach _make_routing_key, else the old routing_key collides and
+        # ON CONFLICT silently drops the fresh proposal.
+        qrow = await conn.fetchrow(
+            "SELECT sender_phone, pipeline_version FROM intake_queue WHERE id = $1",
+            queue_id,
+        )
+        sender_phone = job.get("sender_phone") or (qrow["sender_phone"] if qrow else None)
+        pipeline_version = (
+            job.get("pipeline_version")
+            or (qrow["pipeline_version"] if qrow else None)
+            or PIPELINE_VERSION_DEFAULT
+        )
+
         proposal = await build_routing_proposal(
             queue_id, fields, doc_type, conn,
             pipeline_version=pipeline_version,
+            sender_phone=sender_phone,
         )
 
         proposal_id = await conn.fetchval(
