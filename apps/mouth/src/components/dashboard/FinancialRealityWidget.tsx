@@ -6,6 +6,7 @@ import {
   CreditCard,
   AlertCircle,
 } from "lucide-react";
+import { formatIDR } from "@balizero/core/utils";
 
 interface FinancialRealityWidgetProps {
   revenue: {
@@ -20,15 +21,6 @@ export function FinancialRealityWidget({
   revenue,
   growth,
 }: Readonly<FinancialRealityWidgetProps>) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const formatPercentage = (value: number) => {
     const sign = value >= 0 ? "+" : "";
     return `${sign}${value.toFixed(1)}%`;
@@ -69,7 +61,7 @@ export function FinancialRealityWidget({
               <span className="text-sm text-white/80">Total Revenue</span>
             </div>
             <span className="text-sm font-semibold text-white">
-              {formatCurrency(revenue.total_revenue)}
+              {formatIDR(revenue.total_revenue)}
             </span>
           </div>
         </div>
@@ -81,7 +73,7 @@ export function FinancialRealityWidget({
               <span className="text-sm text-white/80">Paid</span>
             </div>
             <span className="text-sm font-medium text-green-400">
-              {formatCurrency(revenue.paid_revenue)}
+              {formatIDR(revenue.paid_revenue)}
             </span>
           </div>
           <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden relative">
@@ -103,7 +95,7 @@ export function FinancialRealityWidget({
                 Outstanding
               </p>
               <p className="text-sm font-semibold text-yellow-400">
-                {formatCurrency(revenue.outstanding_revenue)}
+                {formatIDR(revenue.outstanding_revenue)}
               </p>
             </div>
           </div>

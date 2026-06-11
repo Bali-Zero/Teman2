@@ -157,14 +157,8 @@ export const formatPhoneNumber = (phone: string): string => {
   return phone;
 };
 
-// Format currency (IDR)
-export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
+// Format currency (IDR) — canonical formatter, re-exported for existing call sites
+export { formatIDR as formatCurrency } from "@balizero/core/utils";
 
 // Calculate passport validity color based on months until expiry
 // Green: >14 months, Yellow: 9-13 months (13 month alert), Red: <9 months (9 month urgent alert)

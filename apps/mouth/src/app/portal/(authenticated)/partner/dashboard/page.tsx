@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatIDR } from "@balizero/core/utils";
 import {
   getMe,
   getMyReferrals,
@@ -12,11 +13,7 @@ import {
 
 function fmt(n: number | undefined): string {
   if (n == null) return "—";
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(n);
+  return formatIDR(n);
 }
 
 export default function PartnerDashboardPage() {
@@ -53,7 +50,12 @@ export default function PartnerDashboardPage() {
     .filter((c) => c.status === "paid")
     .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
   const totalPending = commissions
-    .filter((c) => c.status === "accrued" || c.status === "approved" || c.status === "pending_approval")
+    .filter(
+      (c) =>
+        c.status === "accrued" ||
+        c.status === "approved" ||
+        c.status === "pending_approval",
+    )
     .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
   const recentReferrals = referrals.slice(0, 5);
   const recentCommissions = commissions.slice(0, 5);
@@ -72,22 +74,36 @@ export default function PartnerDashboardPage() {
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-lg border border-white/10 bg-white/5 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Total Earned</p>
-          <p className="text-2xl font-bold text-white mt-1">{fmt(totalEarned)}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide">
+            Total Earned
+          </p>
+          <p className="text-2xl font-bold text-white mt-1">
+            {fmt(totalEarned)}
+          </p>
         </div>
         <div className="rounded-lg border border-white/10 bg-white/5 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Pending</p>
-          <p className="text-2xl font-bold text-white mt-1">{fmt(totalPending)}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide">
+            Pending
+          </p>
+          <p className="text-2xl font-bold text-white mt-1">
+            {fmt(totalPending)}
+          </p>
         </div>
         <div className="rounded-lg border border-white/10 bg-white/5 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Referral Count</p>
-          <p className="text-2xl font-bold text-white mt-1">{referrals.length}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide">
+            Referral Count
+          </p>
+          <p className="text-2xl font-bold text-white mt-1">
+            {referrals.length}
+          </p>
         </div>
       </div>
 
       {/* Recent referrals */}
       <div>
-        <h2 className="text-lg font-medium text-white mb-3">Recent Referrals</h2>
+        <h2 className="text-lg font-medium text-white mb-3">
+          Recent Referrals
+        </h2>
         {recentReferrals.length === 0 ? (
           <p className="text-gray-400 text-sm">No referrals yet.</p>
         ) : (
@@ -105,10 +121,16 @@ export default function PartnerDashboardPage() {
                 {recentReferrals.map((r) => (
                   <tr key={r.id} className="text-gray-200">
                     <td className="px-4 py-2">{r.client_display ?? "—"}</td>
-                    <td className="px-4 py-2">{r.service_type ?? r.practice_type_name ?? "—"}</td>
-                    <td className="px-4 py-2">{r.process_status ?? r.status}</td>
                     <td className="px-4 py-2">
-                      {new Date(r.referred_at ?? r.created_at).toLocaleDateString("id-ID")}
+                      {r.service_type ?? r.practice_type_name ?? "—"}
+                    </td>
+                    <td className="px-4 py-2">
+                      {r.process_status ?? r.status}
+                    </td>
+                    <td className="px-4 py-2">
+                      {new Date(
+                        r.referred_at ?? r.created_at,
+                      ).toLocaleDateString("id-ID")}
                     </td>
                   </tr>
                 ))}
@@ -120,7 +142,9 @@ export default function PartnerDashboardPage() {
 
       {/* Recent commissions */}
       <div>
-        <h2 className="text-lg font-medium text-white mb-3">Recent Commissions</h2>
+        <h2 className="text-lg font-medium text-white mb-3">
+          Recent Commissions
+        </h2>
         {recentCommissions.length === 0 ? (
           <p className="text-gray-400 text-sm">No commissions yet.</p>
         ) : (
