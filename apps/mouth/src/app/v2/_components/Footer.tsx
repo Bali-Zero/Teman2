@@ -29,11 +29,13 @@ const NEWS = [
   { label: "Living", href: "/v2/news" },
 ];
 
+// Only links with a REAL destination (Subhi audit F7). The #team/#careers/
+// #press fragments had no matching id= anchors on the about page (phantom
+// anchors — all four links landed on the same view). Team has a real page
+// at /team; Careers + Press have none, so they are removed, not faked.
 const COMPANY = [
   { label: "About", href: "/v2/company/about" },
-  { label: "Team", href: "/v2/company/about#team" },
-  { label: "Careers", href: "/v2/company/about#careers" },
-  { label: "Press", href: "/v2/company/about#press" },
+  { label: "Team", href: "/team" },
 ];
 
 export function Footer() {
