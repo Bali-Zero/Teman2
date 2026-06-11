@@ -20,6 +20,7 @@ import httpx
 from googleapiclient.errors import HttpError as GoogleHttpError
 
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_crm_stats
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
 from backend.services.notifications.email_audit import (
@@ -485,6 +486,7 @@ class InvoiceAutomationService:
                 documents,
                 practice_id,
             )
+            await invalidate_crm_stats()  # F32
 
             # ── 3. invoices table write (primary going forward) ───────────────
             if practice_row:
