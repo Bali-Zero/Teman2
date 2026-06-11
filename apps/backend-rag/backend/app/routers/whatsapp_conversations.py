@@ -4,11 +4,14 @@ WhatsApp Conversations API - Final Stabilized Version
 Outbound /send endpoint re-enabled 2026-03-15 with safety gates:
 - Rate limit: max 20 outbound messages per phone per hour
 - CRM validation: recipient must exist in clients table
+  (team/staff numbers in WHATSAPP_TEAM_ALLOWLIST bypass the CRM check
+  without polluting the CRM)
 - Auth required: only authenticated users can send
 """
 
 import json
 import logging
+import re
 import time
 from collections import defaultdict
 from typing import Any
@@ -17,6 +20,7 @@ from asyncpg import Pool
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_optional_database_pool
 from backend.services.integrations.whatsapp_service import whatsapp_service
 
@@ -41,6 +45,27 @@ def _check_rate_limit(phone: str) -> bool:
     # Clean old entries
     _outbound_rate[phone] = [t for t in _outbound_rate[phone] if now - t < _RATE_LIMIT_WINDOW]
     return len(_outbound_rate[phone]) < _RATE_LIMIT_MAX
+
+
+def _normalize_phone(phone: str) -> str:
+    """Strip every non-digit character so formatting variants compare equal."""
+    return re.sub(r"\D", "", phone)
+
+
+def _team_allowlist() -> frozenset[str]:
+    """Parse WHATSAPP_TEAM_ALLOWLIST into normalized (digits-only) phone numbers."""
+    raw = getattr(settings, "whatsapp_team_allowlist", "")
+    if not isinstance(raw, str):
+        return frozenset()
+    return frozenset(
+        normalized for entry in raw.split(",") if (normalized := _normalize_phone(entry))
+    )
+
+
+def _is_team_number(phone: str) -> bool:
+    """True if the phone matches a team-allowlisted number (digits-only comparison)."""
+    normalized = _normalize_phone(phone)
+    return bool(normalized) and normalized in _team_allowlist()
 
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
@@ -216,7 +241,8 @@ async def send_whatsapp_message(
     Safety gates:
     - Auth required (JWT)
     - Rate limit: 20 msgs/phone/hour
-    - CRM validation: recipient must exist in clients table
+    - CRM validation: recipient must exist in clients table, UNLESS the number
+      is in WHATSAPP_TEAM_ALLOWLIST (staff numbers stay out of the CRM)
     """
     phone = body.phone.lstrip("+")
 
@@ -227,8 +253,14 @@ async def send_whatsapp_message(
             detail=f"Rate limit exceeded: max {_RATE_LIMIT_MAX} messages per phone per hour",
         )
 
-    # Gate 2: CRM validation — recipient must be a known client
-    if db:
+    # Gate 2: team allowlist — staff numbers are sendable without a CRM record
+    if _is_team_number(phone):
+        logger.info(
+            "whatsapp send to team-allowlisted number (****%s)",
+            _normalize_phone(phone)[-4:],
+        )
+    # Gate 2b: CRM validation — any other recipient must be a known client
+    elif db:
         async with db.acquire() as conn:
             client_exists = await conn.fetchval(
                 "SELECT EXISTS(SELECT 1 FROM clients WHERE phone LIKE $1 AND deleted_at IS NULL)",
