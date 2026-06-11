@@ -23,8 +23,16 @@ the only field acted on is a public IG URL.
 
 ## How Damar uses it
 
-After publishing a carosello on Instagram, Damar sends ONE WhatsApp message from
-his number (+628213454726) — wording is flexible, three things must appear:
+After publishing a carosello on Instagram, Damar sends ONE WhatsApp message
+**to himself** — the "Message yourself" / "Messaggi a te stesso" chat in
+WhatsApp (the self-note). wa-mirror captures self-notes as `direction=outbound`
+with `team_member_phone=+628213454726` (verified: `message_capture.ts:418` FIX
+1 "self-note outbound is legit"), so the consumer sees it. Sending to himself
+keeps it private and pollutes no real conversation — but the consumer filters
+only on `team_member_phone = Damar` + the command pattern, so a message sent to
+any contact would also be picked up.
+
+Wording is flexible; three things must appear:
 
 ```
 PUBBLICATO WR2-A8274F https://instagram.com/p/XYZ
@@ -78,11 +86,11 @@ The scraper picks the item up on its next daily run, ≥24h after `published_at`
 STRATO 2 is **dormant** until these manual steps (each touches an off-limits /
 hot-zone surface, deliberately left to the operator):
 
-1. **Add Damar to wa-mirror** so his messages are captured. Edit
-   `apps/wa-mirror/.env` (OFF-LIMITS for the agent): add `+628213454726` to
-   `WA_MIRROR_ACCOUNTS`, his name to `WA_MIRROR_ACCOUNT_NAMES`, his email to
-   `WA_MIRROR_ACCOUNT_EMAILS`. Then Damar scans the QR once
-   (`bash ~/scripts/wa-mirror-launcher/start-one.sh damar --qr`).
+1. **Add Damar to wa-mirror** so his messages are captured. ✅ DONE — Damar's
+   bridge (`--employee=damar`, +628213454726) is already running and has 1530+
+   captured rows. (The live DSN is `~/.wa-mirror.env` →
+   `nuzantara@localhost:5432/nuzantara_dev`; the in-repo `apps/wa-mirror/.env`
+   is STALE — the wrapper now prefers the HOME file.)
 
    > NOTE (Law 2): mirroring Damar's number captures his WhatsApp conversations
    > into the OSINT-scoped store. This is Zero's explicit choice for this channel.
@@ -92,9 +100,22 @@ hot-zone surface, deliberately left to the operator):
 2. **Dry-run the consumer once** (no writes) to confirm DB reachability + parsing:
 
    ```bash
-   set -a; . apps/wa-mirror/.env; set +a
+   set -a; . ~/.wa-mirror.env; set +a
    apps/backend-rag/.venv/bin/python scripts/wr2_damar_publish_consumer.py --once --dry-run
    ```
+
+   Verified 2026-06-12: connects to nuzantara_dev, fetches Damar's "publ" rows
+   (Indonesian "republik" etc.), parser correctly rejects all (published=0).
+
+   > **Seed the cursor to skip history.** Damar already has 1530+ messages; a
+   > cold start (cursor=0) would scan them all over several polls (LIMIT 200/run)
+   > before reaching new ones. To start fresh, seed past the current max id:
+   >
+   > ```bash
+   > MAXID=$(apps/backend-rag/.venv/bin/python -c "import asyncio,asyncpg,os; \
+   >   print(asyncio.run(asyncpg.connect(os.environ['WA_MIRROR_DATABASE_URL']).fetchval('SELECT max(id) FROM whatsapp_message_context')))")
+   > echo "{\"last_id\": $MAXID}" > ~/.agent/state/wr2_damar_consumer.json
+   > ```
 
 3. **Install the LaunchAgent** (polls every 5 min):
    ```bash
