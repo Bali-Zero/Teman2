@@ -715,6 +715,73 @@ def test_normalize_whatsapp_format_preserves_bullet_indent() -> None:
     assert bridge._normalize_whatsapp_format("  - nested item") == "  • nested item"
 
 
+# ---------------------------------------------------------------------------
+# Sender identity rules (2026-06-11): backend resolves phone → owner/team/
+# client/unknown; the bridge injects per-role persona rules into the prompt.
+# ---------------------------------------------------------------------------
+
+def test_identity_rules_owner() -> None:
+    rules = "\n".join(bridge._identity_rules({"sender_identity": {"role": "owner"}}))
+    assert "Zero (Antonello)" in rules
+    assert "internal conversation" in rules
+    assert "never say 'the team will contact" in rules
+
+
+def test_identity_rules_team_uses_member_name() -> None:
+    rules = "\n".join(
+        bridge._identity_rules(
+            {"sender_identity": {"role": "team", "team_member": "Sahira"}}
+        )
+    )
+    assert "Sahira" in rules
+    assert "internal colleague" in rules
+
+
+def test_identity_rules_client_known_but_privacy_capped() -> None:
+    rules = "\n".join(
+        bridge._identity_rules(
+            {
+                "sender_identity": {
+                    "role": "client",
+                    "client_id": 42,
+                    "client_name": "Marta Reyes",
+                    "client_status": "active",
+                }
+            }
+        )
+    )
+    assert "Marta Reyes" in rules
+    assert "known client" in rules
+    assert "never reveal information about any other client" in rules
+
+
+def test_identity_rules_unknown_or_missing_is_empty() -> None:
+    assert bridge._identity_rules({"sender_identity": {"role": "unknown"}}) == []
+    assert bridge._identity_rules({}) == []
+    assert bridge._identity_rules(None) == []
+
+
+def test_build_prompt_injects_identity_rules_for_owner_only() -> None:
+    owner_body = bridge.BridgeRequest(
+        phone="+62 822-6459-9868",
+        sender_name="Zero",
+        message_id="wamid.owner",
+        text="Quante pratiche KITAS abbiamo in pipeline questo mese?",
+        context={"detected_language": "it", "sender_identity": {"role": "owner"}},
+    )
+    prompt = json.loads(bridge._build_prompt(owner_body))
+    assert any("Zero (Antonello)" in rule for rule in prompt["sender_identity_rules"])
+
+    anon_body = bridge.BridgeRequest(
+        phone="+62 813-555-0009",
+        sender_name="Client",
+        message_id="wamid.anon",
+        text="How much is a KITAS?",
+        context={"detected_language": "en"},
+    )
+    assert "sender_identity_rules" not in json.loads(bridge._build_prompt(anon_body))
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(
