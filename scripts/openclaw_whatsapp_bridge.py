@@ -670,6 +670,55 @@ def _guard_legacy_b211_reply(
     return reply
 
 
+def _hak_milik_asserts_foreigner_can_own(normalized_reply: str) -> bool:
+    """True when the reply WRONGLY states a foreigner can hold Hak Milik.
+
+    The ground truth (UU Pokok Agraria): a foreigner CANNOT hold Hak Milik
+    directly, even through a PMA. A reply is dangerous when it affirms the
+    opposite. We look for an ownership verb near a permission signal, while NOT
+    tripping on the correct negated form ("cannot hold", "tidak bisa", "non puo'")
+    or on the safe alternative routes (HGB / Hak Pakai).
+    """
+    # Correct negations — if present, the reply is framing the prohibition right.
+    _NEGATIONS = (
+        "cannot hold hak milik",
+        "can not hold hak milik",
+        "cannot own hak milik",
+        "cannot directly hold",
+        "not allowed to hold hak milik",
+        "tidak bisa memegang hak milik",
+        "tidak boleh hak milik",
+        "non puo' detenere hak milik",
+        "non puo' possedere hak milik",
+        "no. a foreigner cannot",
+        "no. orang asing tidak",
+        "no. uno straniero non",
+    )
+    if _contains_any(normalized_reply, _NEGATIONS):
+        return False
+    # Affirmative-ownership signal: a permission/ability verb tied to Hak Milik.
+    _CAN_OWN = (
+        "can hold hak milik",
+        "can own hak milik",
+        "can directly hold",
+        "can directly own",
+        "able to hold hak milik",
+        "allowed to hold hak milik",
+        "allowed to own hak milik",
+        "may hold hak milik",
+        "may own hak milik",
+        "bisa memegang hak milik",
+        "boleh memegang hak milik",
+        "bisa punya hak milik",
+        "puo' detenere hak milik",
+        "puo' possedere hak milik",
+        "puo' avere hak milik",
+        "through a pma you can hold hak milik",
+        "via pma can hold hak milik",
+    )
+    return _contains_any(normalized_reply, _CAN_OWN)
+
+
 def _guard_hak_milik_reply(
     message_text: str,
     reply: str,
@@ -681,6 +730,18 @@ def _guard_hak_milik_reply(
     if not _contains_any(normalized_message, ("foreigner", "foreign", "orang asing", "straniero")):
         return reply
 
+    # F12: the old guard was content-BLIND — it clobbered only on word_count>125,
+    # a pure length proxy. A WRONG but short reply ("yes, a foreigner can own Hak
+    # Milik directly", <125 words) passed intact, while a CORRECT long reply was
+    # clobbered. Gate on the ERROR SIGNAL: clobber whenever the reply affirms a
+    # foreigner can hold Hak Milik (the dangerous claim), regardless of length.
+    normalized_reply = _normalize_text(reply)
+    if _hak_milik_asserts_foreigner_can_own(normalized_reply):
+        return _canonical_hak_milik_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    # Length fallback retained as a secondary net for rambling/hedged replies that
+    # don't trip the explicit affirmation pattern.
     if _reply_word_count(reply) > 125:
         return _canonical_hak_milik_answer(
             _villa_answer_language(message_text, detected_language)
