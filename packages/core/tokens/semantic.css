@@ -60,6 +60,19 @@
   --cta-shadow: 0 8px 32px
     color-mix(in srgb, var(--accent-funnel) 35%, transparent);
 
+  /* ─── CTA color system (MYTHOS P2, B2 2026-06-11) ─────────────
+   * Single-primary discipline made enforceable in tokens (decision pack
+   * §3 rule 4 + P2): brand red is spent on exactly ONE conversion action
+   * per page; everything else is navy-ghost. Green is the WhatsApp
+   * channel accent (never a primary), purple stays --accent-zantara (AI).
+   * Additive: the funnel-tinted --cta-bg/--cta-fg above remain for
+   * per-funnel consumers — these tokens are funnel-agnostic by design. */
+  --cta-primary-bg: var(--color-red-500);
+  --cta-primary-fg: #ffffff;
+  --cta-secondary-fg: #1e3863;
+  --cta-secondary-border: rgba(30, 56, 99, 0.28);
+  --accent-whatsapp: #25d366;
+
   /* ─── State (separate from funnels — "success green" ≠ "Property green") ── */
   --state-success: var(--color-state-success);
   --state-warning: var(--color-state-warning);

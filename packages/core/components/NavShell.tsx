@@ -12,6 +12,13 @@ interface NavShellProps {
   slotBefore?: ReactNode;
   slotAfter?: ReactNode;
   children?: ReactNode;
+  /**
+   * MYTHOS P4 masthead: renders a 3px brand-red rule below the bar
+   * (Economist red-box pattern, BZ-ified). Pair with a solid navy
+   * `--nav-bg` override on the page wrapper. Default off — existing
+   * consumers are byte-identical without it.
+   */
+  accentBar?: boolean;
 }
 
 /**
@@ -33,6 +40,7 @@ export function NavShell({
   slotBefore,
   slotAfter,
   children,
+  accentBar,
 }: NavShellProps) {
   return (
     <nav
@@ -80,6 +88,16 @@ export function NavShell({
       {slotAfter ? <div className="ml-auto md:ml-4">{slotAfter}</div> : null}
 
       <div className="ml-4 hidden md:flex gap-2">{actions}</div>
+
+      {accentBar ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-full h-[3px]"
+          style={{
+            background: "var(--cta-primary-bg, var(--color-red-500))",
+          }}
+        />
+      ) : null}
     </nav>
   );
 }
