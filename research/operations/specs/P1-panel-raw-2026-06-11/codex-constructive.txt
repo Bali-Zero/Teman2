@@ -1,0 +1,51 @@
+[trimmed to final report — full session log in job tmp, not committed]
+
+1. §5 / staging: Make PRE-1 and PRE-2 a hard Gate 0 before R4 enable.
+Concrete change: require fact-extractor launchd auth selftest plus `scripts/wr2_html_render_apply.py` token-log fix and token rotation before supervisor re-enable.
+VERIFIED: `_ops_alert()` builds Telegram URL with token in the path, and active `html-apply` launchd environment exposes the token variable name. Safer because R4 otherwise creates failed churn and may leak secrets while measuring M1.
+
+2. §2 S1: Reuse the existing topic ledger logic instead of rewriting it in `_pg.py`.
+Concrete change: extract `_log_topic_type()` from `scripts/wr2_canva_desktop_apply.py` into `scripts/wr2_topic_type_log.py`; call it best-effort after `_pg.persist_html_result_and_enqueue_notifications()` in `scripts/wr2_html_render_apply.py`.
+VERIFIED: Canva already has idempotent `ON CONFLICT (draft_id) DO NOTHING`; HTML persist currently does not write the ledger. Simpler and avoids a backend module depending on `scripts/` import state.
+
+3. §4 R4: Patch both supervisor maps, not only `TRANSITIONS`.
+Concrete change: update `scripts/wr2_supervisor.py` `TRANSITIONS` and `NONTERMINAL_TO_NEXT_STAGE` from `canva-apply` to `html-apply`; remove `briefed_facted` from both if dead.
+VERIFIED: both maps still target `com.balizero.wr2.canva-apply`. Add a test asserting no supervisor target contains `canva-apply`.
+
+4. §1.4 / §3: Correct the “one motor” story around `html-apply`.
+Concrete change: add R4a/R4b: keep `StartInterval=600` on `infra/launchagents/com.balizero.wr2.html-apply.plist` only as a temporary fallback through first M1 green; then remove it and rebootstrap the plist.
+VERIFIED: `html-apply` has `StartInterval=600` and live launchd shows a 600s run interval. Safer because CAS makes duplicate kicks tolerable short-term, but the target architecture should end with one motor.
+
+5. §2 S10 / §5 M9: Re-key the watchdog fully, not just the kill switch.
+Concrete change: in `scripts/wr2_supervisor_watchdog.py`, replace `wr2_canva_renderer_enabled`, `canva_applied_at`, `wr2_canva_apply_telemetry.jsonl`, and Canva log text with HTML equivalents or DB-derived `status='rendered' AND drive_url IS NOT NULL`.
+VERIFIED: current watchdog is still Canva-keyed. Add tests in `scripts/tests/test_wr2_supervisor_watchdog.py`.
+
+6. §1.4: Resolve the live/disk contradiction on `wr2_status_change` durability.
+Concrete change: before R4, run a live function-body check for `wr2_status_change_notify()` containing `events_outbox`; if absent, repair/apply migration 164 before relying on missed-event replay.
+VERIFIED: disk has `164_wr2_status_change_outbox.sql` and `wr2_supervisor.py` has `_replay_outbox()`, while the spec says live trigger is NOTIFY-only. Safer because the enable plan depends on what production actually has.
+
+7. §4 R1 / §3 Legge 5: Narrow the grep gate.
+Concrete change: replace broad `graph.facebook` grep with IG-publish capability patterns: `IGPublisher|ig_publisher|wr2_publish_attempts|wr2_telegram_publish_gate|media_publish`, excluding tests/docs after deletion.
+VERIFIED: broad `graph.facebook` also hits legitimate WhatsApp/Meta sensors. Safer because Legge 5 forbids software IG publish, not all Graph API use.
+
+8. §4 R1: Include test and docstring cleanup in the deletion PR.
+Concrete change: delete/update `scripts/tests/test_wr2_carousel_orchestrator.py`, `scripts/tests/test_wr2_telegram_publish_gate.py`, `apps/backend-rag/backend/tests/services/publisher/test_ig_publisher.py`, publisher exports, and stale docstrings like `scripts/wr2_html_renderer/renderer.py`.
+VERIFIED: current grep still finds A/IG references in those files. Simpler because the PR can pass its own grep gate without ambiguous “runtime only” exceptions.
+
+9. §4 R1: Separate repo plists from HOME plists.
+Concrete change: R1 should say `rm ~/Library/LaunchAgents/com.balizero.wr2.{carousel-dispatcher,telegram-gate}.plist` after bootout/disable, and only `git rm` versioned files that actually exist, e.g. `infra/launchagents/com.balizero.wr2.carousel-dispatcher.plist.example`.
+VERIFIED: repo does not contain the live telegram-gate plist, but HOME does. Safer because the instructions become executable as written.
+
+10. §5 M1-M3: Make metrics cutover-scoped and timezone-explicit.
+Concrete change: use a captured `:r4_enabled_at_utc` timestamp; filter HTML lane with `status='rendered' AND drive_url IS NOT NULL AND updated_at >= :r4_enabled_at_utc`; compare `topic_type_log` rows by exact draft ids.
+Why safer: avoids counting legacy Canva renders or ambiguous `updated_at > '2026-06-11'` local/UTC boundaries.
+
+11. §4 R2: Don’t delete manual-Canva support under a WR2-lane cleanup label.
+Concrete change: move `scripts/lint_canva_pending.py` to an “Antonello manual Canva decision” list, or keep it and remove only the stale IGPublisher reference.
+VERIFIED: the file is not a renderer daemon but still contains an IG publisher reference. Safer because Canva remains allowed for manual special pieces.
+
+12. §4 R3: Expand worktree subsumption diff paths.
+Concrete change: include `scripts/wr2_html_renderer/`, `scripts/wr2_html_render_apply.py`, `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py`, `apps/backend-rag/backend/tests/unit/`, `scripts/tests/`, `infra/launchagents/`, and migrations in the content-diff.
+Why safer: current pathspec could miss wiring/tests/launchagent changes from squashed branches.
+
+CONSTRUCTIVE_VERDICT: GO-WITH-FIXES
