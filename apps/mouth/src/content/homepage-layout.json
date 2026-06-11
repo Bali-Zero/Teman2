@@ -1,5 +1,5 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
   "hero_main": "indonesia-umkm-tax-reforms-pp-20-2026",
   "hero_2": "indonesia-tightens-pma-rules-what-foreign-investors-must-know",
   "hero_3": "sono-hotels-signs-bali-canggu-property-betting-on-indonesias-luxury-lifestyle-boom",
@@ -13,6 +13,6 @@
   "latest_4": "balis-informal-economy-crackdown-what-tighter-rules-mean-for-expats",
   "latest_5": "indonesia-bets-on-bali-as-the-next-global-hub-for-perfume-and-aromatherapy",
   "insight_1": "indonesias-hajj-pilgrims-arrive-in-saudi-arabia-what-expats-should-know",
-  "insight_2": "indonesias-retirement-kitap-the-permanent-stay-option-most-expats-miss",
+  "insight_2": "bank-indonesia-bali-stays-a-top-investment-destination-despite-global-unrest",
   "insight_3": "indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded"
 }
