@@ -167,9 +167,15 @@ printf '{"job":"%s","status":"%s","exit_code":%d,"attempts":%d,"duration_s":%d,"
 LAST_ERROR_PAYLOAD=""
 if [ "$STATUS" = "failed" ]; then
     if [ $EXIT_CODE -eq 124 ]; then
-        LAST_ERROR_PAYLOAD=",\"last_error\":\"timeout after ${TIMEOUT}s\""
+        # F08 fix 2026-06-11: include actual output so DLQ classifier gets real signal
+        _output_tail=$(echo "$OUTPUT" | tail -50 | tr '"' "'" | tr '\n' '|' | head -c 2000)
+        LAST_ERROR_PAYLOAD=",\"last_error\":\"timeout after ${TIMEOUT}s | ${_output_tail}\""
     else
-        LAST_ERROR_PAYLOAD=",\"last_error\":\"exit ${EXIT_CODE} after ${ATTEMPT} attempts\""
+        # F08 fix 2026-06-11: was "exit N after M attempts" (BLIND); now includes last
+        # 50 lines of stdout+stderr so autopilot classifier gets real signal. JSON-safe:
+        # double-quotes->single-quotes, newlines->|, capped at 2000 chars.
+        _output_tail=$(echo "$OUTPUT" | tail -50 | tr '"' "'" | tr '\n' '|' | head -c 2000)
+        LAST_ERROR_PAYLOAD=",\"last_error\":\"exit ${EXIT_CODE} after ${ATTEMPT} attempts | ${_output_tail}\""
     fi
 fi
 printf '{"job":"%s","ts":%d,"status":"%s","host":"%s","source":"cron-wrapper","duration_ms":%d%s}\n' \
