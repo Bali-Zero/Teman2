@@ -2157,3 +2157,109 @@ def test_non_cover_slide_no_sentence_wrap():
     out = _fill_placeholders(html, slide, hero_filename=None, cover_family=False)
     # no font-fit override, no sentence <br> inserted by the cover-only path
     assert "data-headline-fit" not in out
+
+
+# ── HARD-reject observability (post-mortem of 2026-06-11: 3 drafts render_failed
+#    with zero trace of WHICH critiques rejected them) ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_hard_residual_logs_the_critiques(monkeypatch, caplog):
+    """When the loop keeps best but does NOT converge because of a HARD residual,
+    the critiques MUST reach the WARNING log — symmetric to the composition-debt
+    accept branch which already logs. Without this, a render_failed leaves zero
+    trace of WHY the gate rejected."""
+    import base64
+    import logging
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        return dl.Critique(
+            tier="vision",
+            passed=False,
+            issues=["single-word orphan 'TOP' on line 3 — the title is hard to read"],
+            levers=[{"lever": "rerender", "reason": "structural"}],
+            score=0.4,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
+
+    out = Path(tempfile.mkdtemp())
+    with caplog.at_level(logging.WARNING):
+        res = await dl.run_designer_loop(
+            slide={"headline": "X"},
+            render_fn=render_fn,
+            out_dir=out,
+            vision_critic=vision_critic,
+            brand_verifier=None,
+            ocr_critic=None,
+            use_vision=True,
+            max_iters=2,
+        )
+    assert res.converged is False
+    assert any("single-word orphan" in r.message for r in caplog.records), (
+        "HARD residual critiques never reached the log"
+    )
+
+
+@pytest.mark.asyncio
+async def test_render_carousel_reject_cites_critiques_and_dumps_history(monkeypatch, tmp_path):
+    """On a non-converged slide, _render_carousel must (a) include the last vision
+    critiques in the raised RuntimeError (they reach the apply-log + DB
+    rejection_reason) and (b) persist the full designer history as JSON under
+    WR2_HTML_DEBUG_DIR for post-mortem (the render tmp dir is deleted on exit)."""
+    import json as _json
+
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer import composer as comp
+    from wr2_html_renderer import designer_loop as dl
+
+    hist = [
+        {
+            "iter": 1,
+            "vision": {"passed": False, "issues": ["title clipped at right edge"]},
+            "verdict": "vision flagged hard residual ['rerender'] / ['title clipped at right edge'] (not auto-fixable) — keeping best, not converged",
+        }
+    ]
+
+    async def fake_loop(**kwargs):
+        return dl.DesignerResult(
+            final_png=None, iterations=2, converged=False, history=hist, reason="max_iters"
+        )
+
+    monkeypatch.setattr(dl, "run_designer_loop", fake_loop)
+    monkeypatch.setattr(comp, "_stage_assets", lambda *a, **k: None)
+    monkeypatch.setattr(comp, "make_slide_render_fn", lambda **k: None)
+    debug_dir = tmp_path / "debug"
+    monkeypatch.setenv("WR2_HTML_DEBUG_DIR", str(debug_dir))
+
+    with pytest.raises(RuntimeError) as ei:
+        await html._render_carousel(
+            "draft-test", [{"headline": "T"}], tmp_path / "work", vision_required=True
+        )
+    assert "title clipped at right edge" in str(ei.value)
+
+    dumps = list(debug_dir.glob("*.json"))
+    assert dumps, "designer history JSON was not persisted"
+    payload = _json.loads(dumps[0].read_text())
+    assert payload["draft_id"] == "draft-test"
+    assert payload["history"] == hist
