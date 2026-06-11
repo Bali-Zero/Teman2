@@ -50,7 +50,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install test deps (pytest)
-        run: pip install pytest
+        run: pip install pytest httpx
 
       - name: P6 falsifiable gates (G1-G5 + default-serial invariant)
         # scripts/ on path for the pure sibling module; apps/backend-rag on path
