@@ -56,6 +56,46 @@ const MASTHEAD_VARS = {
   "--nav-bg": "var(--surface-base-solid, #1e3863)",
 } as CSSProperties;
 
+// MYTHOS B2R — "Rumah Putih" route-scoped light theme (Antonello 2026-06-11).
+// The homepage body goes light; masthead + footer stay navy (the permanent
+// dark anchors, Economist pattern); hero + news photography remain dark
+// islands (FT pattern).
+//
+// Scoping mechanism: these CSS custom properties are set inline on <main>
+// ONLY. Custom properties inherit, so every section inside <main> resolves
+// the light values, while NavShell and Footer (DOM siblings of <main>)
+// keep resolving the editorial-dark tokens from html[data-theme=editorial].
+// No file under packages/core/tokens/ changes — blog, /kbli, /visa and the
+// subdomains are untouched. Shared v2 components consume the `--rp-*`
+// hooks with their original dark values as var() fallbacks, so /news and
+// /v2 render byte-identical without this scope.
+const RUMAH_VARS = {
+  // Semantic re-map (Rumah Putih palette — warm paper / ink / navy)
+  "--surface-base": "#f7f6f2",
+  "--surface-raised": "#ffffff",
+  "--text-primary": "#16213a",
+  "--text-secondary": "#475372",
+  "--text-tertiary": "#475372",
+  "--border-subtle": "#e3e1da",
+  "--border-default": "#e3e1da",
+  "--border-strong": "#cfccc2",
+  // Rumah Putih component hooks (chromatic-calm pass — authority via absence)
+  "--rp-heading": "#1e3863",
+  "--rp-accent": "#1e3863",
+  "--rp-card-bg": "#ffffff",
+  "--rp-card-border": "#e3e1da",
+  "--rp-card-shadow": "0 1px 2px rgba(22, 33, 58, 0.05)",
+  "--rp-row-bg": "#f7f6f2",
+  "--rp-badge-bg": "#ffffff",
+  "--rp-list-bg": "transparent",
+  "--rp-list-border": "#e3e1da",
+  "--rp-active-bg": "rgba(30, 56, 99, 0.07)",
+  "--rp-active-border": "rgba(30, 56, 99, 0.35)",
+  "--rp-glow": "none",
+  "--rp-photo-inset": "24px",
+  "--rp-photo-radius": "16px",
+} as CSSProperties;
+
 export default async function HomePage() {
   const { articles } = await getAllArticles({});
   const layout = homepageLayout as Record<string, string>;
@@ -79,7 +119,9 @@ export default async function HomePage() {
     <div
       id="top"
       style={{
-        background: "var(--surface-base)",
+        // Page canvas is Rumah Putih paper — sections paint their own
+        // backgrounds; this guards against dark flashes between them.
+        background: "#f7f6f2",
         color: "var(--text-primary)",
         minHeight: "100vh",
         ...MASTHEAD_VARS,
@@ -114,7 +156,7 @@ export default async function HomePage() {
           </>
         }
       />
-      <main id="main-content">
+      <main id="main-content" style={RUMAH_VARS}>
         <HeroBlueprint />
         {/* MYTHOS B2: persona doors (IA-1) are the navigation layer;
             the 4 funnel blocks are demoted to a compact chip strip. */}
