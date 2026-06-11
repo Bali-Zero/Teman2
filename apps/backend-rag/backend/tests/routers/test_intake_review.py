@@ -572,7 +572,13 @@ async def test_reject_idempotent_noop(pool, seed):
 
 
 async def test_reject_writes_no_crm_rows(pool, seed):
-    """A full claim→reject mutates NO clients/practices and writes NO audit row."""
+    """A full claim→reject mutates NO clients/practices.
+
+    It DOES write exactly one forensic intake_commit_audit row (migration 224
+    added outcome='rejected' for this) — that is an intake-side audit trail,
+    not a CRM write. Detailed audit-row assertions live in
+    test_reject_writes_audit_row.
+    """
     before = await _crm_counts(pool)
     pid = seed["p_owner"]
     app = _make_app(pool, ADMIN)
@@ -586,7 +592,7 @@ async def test_reject_writes_no_crm_rows(pool, seed):
     async with pool.acquire() as conn:
         n_audit = await conn.fetchval(
             "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1", pid)
-    assert n_audit == 0, "reject wrote an intake_commit_audit row (should write none)"
+    assert n_audit == 1, "reject must write exactly ONE forensic audit row (outcome='rejected')"
 
 
 async def test_reject_not_flag_gated(pool, seed, monkeypatch):
@@ -658,3 +664,162 @@ async def test_router_registered_in_full_app(pool):
     paths = {r.path for r in app.routes if hasattr(r, "path")}
     assert "/api/intake/review/queue" in paths
     assert "/api/intake/review/{proposal_id}/claim" in paths
+
+
+async def test_blob_endpoint_rbac_and_content(pool, seed, tmp_path):
+    """GET /{id}/blob: streams the original bytes with no-store; RBAC own-chat;
+    404 when the blob is not on disk."""
+    pid = seed["p_owner"]
+    blob = tmp_path / "doc.pdf"
+    payload = b"%PDF-1.4 test"
+    blob.write_bytes(payload)
+    async with pool.acquire() as conn:
+        qrow = await conn.fetchrow(
+            "SELECT q.id AS qid, q.instance_id FROM intake_queue q "
+            "JOIN document_routing_proposal p ON p.queue_id = q.id WHERE p.id=$1",
+            pid)
+        await conn.execute(
+            "UPDATE intake_queue SET blob_path=$2 WHERE id=$1", qrow["qid"], str(blob))
+        # mime_type lives on document_instances (migration 212) and drives the
+        # FileResponse media_type via the LEFT JOIN in _require_own_chat_or_admin.
+        await conn.execute(
+            "UPDATE document_instances SET mime_type='application/pdf' WHERE id=$1",
+            qrow["instance_id"])
+
+    # Own-chat receiver (non-admin) → 200, exact bytes, no-store, pdf media type.
+    owner_app = _make_app(pool, TEAM_OWNER)
+    async with _client(owner_app) as cl:
+        r = await cl.get(f"/api/intake/review/{pid}/blob")
+    assert r.status_code == 200, r.text
+    assert r.content == payload
+    assert "no-store" in r.headers.get("cache-control", "")
+    assert r.headers["content-type"].startswith("application/pdf")
+
+    # Non-admin who did NOT receive the doc → 403 (_require_own_chat_or_admin).
+    other_app = _make_app(pool, TEAM_OTHER)
+    async with _client(other_app) as cl2:
+        r2 = await cl2.get(f"/api/intake/review/{pid}/blob")
+    assert r2.status_code == 403, r2.text
+
+    # p_nomatch passes RBAC (OWNER's chat) but its seed blob_path /tmp/{tag}.pdf
+    # was never written to disk → 404 "Blob not on disk".
+    async with _client(_make_app(pool, TEAM_OWNER)) as cl3:
+        r3 = await cl3.get(f"/api/intake/review/{seed['p_nomatch']}/blob")
+    assert r3.status_code == 404, r3.text
+
+
+async def test_clients_search_endpoint(pool, seed):
+    """clients/search finds seeded clients by name fragment; a query shorter
+    than min_length=2 is rejected by FastAPI param validation (422)."""
+    app = _make_app(pool, TEAM_OWNER)
+    async with _client(app) as cl:
+        r = await cl.get("/api/intake/review/clients/search",
+                         params={"q": seed["tag"], "limit": 25})
+        assert r.status_code == 200, r.text
+        items = r.json()["items"]
+        ids = {it["client_id"] for it in items}
+        assert seed["cid_owner"] in ids, f"seeded owner client not found: {items}"
+        owner_item = next(it for it in items if it["client_id"] == seed["cid_owner"])
+        assert owner_item["full_name"] == f"{seed['tag']}-owner"
+        assert "assigned_to" in owner_item and "score" in owner_item
+
+        # q="a" violates Query(min_length=2) → 422 validation error (not 400).
+        r_short = await cl.get("/api/intake/review/clients/search", params={"q": "a"})
+        assert r_short.status_code == 422, r_short.text
+
+
+async def test_client_practices_endpoint(pool, seed):
+    """clients/{id}/practices returns a list (empty for a fresh client). The
+    router does no existence check: a nonexistent client id is simply an empty
+    practice list (200), not a 404."""
+    app = _make_app(pool, TEAM_OWNER)
+    async with _client(app) as cl:
+        r = await cl.get(f"/api/intake/review/clients/{seed['cid_owner']}/practices")
+        assert r.status_code == 200, r.text
+        items = r.json()["items"]
+        assert isinstance(items, list)
+        assert items == []  # the seed creates no practices for this client
+
+        r2 = await cl.get("/api/intake/review/clients/999999999/practices")
+        assert r2.status_code == 200, r2.text
+        assert r2.json()["items"] == []
+
+
+async def test_reject_writes_audit_row(pool, seed):
+    """reject writes exactly ONE forensic intake_commit_audit row:
+    outcome='rejected', dry_run=false, committed_by=the rejecting reviewer,
+    and the reviewer's reason inside the plan jsonb.
+
+    No extra cleanup needed: migration 217 FKs audit.proposal_id with
+    ON DELETE CASCADE, so the seed teardown's proposal DELETE removes it.
+    """
+    pid = seed["p_owner"]
+    app = _make_app(pool, TEAM_OWNER)  # own-chat receiver → non-admin claim path
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert rc.status_code == 200, rc.text
+        rr = await cl.post(
+            f"/api/intake/review/{pid}/reject",
+            json={"claim_token": rc.json()["claim_token"], "reason": "wrong client"},
+        )
+    assert rr.status_code == 200, rr.text
+    assert rr.json()["status"] == "rejected"
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT committed_by, dry_run, outcome, plan "
+            "FROM intake_commit_audit WHERE proposal_id=$1", pid)
+    assert len(rows) == 1, f"expected exactly 1 audit row, got {len(rows)}"
+    row = rows[0]
+    assert row["outcome"] == "rejected"
+    assert row["dry_run"] is False
+    assert row["committed_by"] == TEAM_OWNER["email"]
+    plan = row["plan"]
+    if isinstance(plan, str):  # pool has no jsonb codec → raw TEXT
+        plan = json.loads(plan)
+    assert plan == {"reason": "wrong client"}
+
+
+async def test_approve_practice_explicit_archive_only(pool, seed, monkeypatch):
+    """approve with an EXPLICIT practice_id=null is archive-only: the plan must
+    NOT fall back to routing's practice hint (writer.plan_commit honours
+    practice_explicit=True even when the value is None).
+
+    A poison practice hint (a nonexistent practice id) is injected into the
+    proposal's routing jsonb: if practice_explicit were broken and fell back to
+    the hint, P0#3 validation would block the plan ('practice ... does not
+    exist') and outcome would flip to 'blocked' — so outcome=='dry_run' +
+    practice_id None proves the explicit-null path end-to-end.
+    """
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)  # dry-run (5B default)
+    pid = seed["p_owner"]
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal "
+            "SET routing = routing || '{\"practice_id\": 999999999}'::jsonb "
+            "WHERE id=$1", pid)
+
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert rc.status_code == 200, rc.text
+        ra = await cl.post(
+            f"/api/intake/review/{pid}/approve",
+            json={
+                "claim_token": rc.json()["claim_token"],
+                "client_id": seed["cid_owner"],
+                "practice_id": None,  # key PRESENT → practice_explicit=True
+            },
+        )
+    assert ra.status_code == 200, ra.text
+    body = ra.json()
+    assert body["dry_run"] is True
+    assert body["outcome"] == "dry_run", body  # NOT 'blocked' → hint was ignored
+    assert body["status"] == "review_claimed"  # P0#9: dry-run never advances
+    plan = body["would_commit"]
+    assert plan["blocked"] is False, plan["block_reasons"]
+    assert plan["client_id"] == seed["cid_owner"]
+    assert plan["practice_id"] is None  # explicit null honoured: archive-only
+    op_tables = [op["table"] for op in plan["ops"]]
+    assert "documents" in op_tables  # the archive (document UPSERT) is planned
+    assert "practices.documents[]" not in op_tables  # NO practice-attach op
