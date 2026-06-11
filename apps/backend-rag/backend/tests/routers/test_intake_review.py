@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 from collections.abc import AsyncIterator
 
 import asyncpg
@@ -74,7 +75,8 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         created["clients"] += [cid_owner, cid_other]
 
         async def mk_proposal(
-            entity_resolution: dict, source: str = "drive", received_by: str | None = None
+            entity_resolution: dict, source: str = "drive", received_by: str | None = None,
+            stage_output: dict | None = None,
         ) -> int:
             bh = uuid.uuid4().hex + uuid.uuid4().hex  # 64-char
             inst = await conn.fetchval(
@@ -90,7 +92,8 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
                     status, stage_output, intake_key, received_by)
                    VALUES ($1,$2,$3,$4,$5,$6,'done',$7::jsonb,$8,$9) RETURNING id""",
                 inst, source, f"{tag}-ref", f"/tmp/{tag}.pdf", bh[:64], PIPELINE,
-                json.dumps({"ocr": {"pages": [{"page": 1, "text": "NPWP 09.x"}]},
+                json.dumps(stage_output if stage_output is not None else
+                           {"ocr": {"pages": [{"page": 1, "text": "NPWP 09.x"}]},
                             "doc_type": "npwp"}),
                 ikey, received_by,
             )
@@ -131,12 +134,32 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         p_null = await mk_proposal(
             {"decision": "NO_MATCH", "candidates": []},
             received_by=None)
+        # CURRENT pipeline: OCR text lives in classify.ocr_text_per_page; the
+        # ocr stage only writes a marker with NO pages. The detail reader must
+        # still surface the text (regression for the empty-review-area bug).
+        p_classify_ocr = await mk_proposal(
+            {"decision": "NO_MATCH", "candidates": []},
+            received_by=TEAM_OWNER["email"],
+            stage_output={
+                "ocr": {"deferred_to": "classify"},
+                "classify": {"ocr_text_per_page": [
+                    {"via": "response", "page": 0,
+                     "text": "MINISTRY OF LAW AND HUMAN RIGHTS REPUBLIC OF INDONESIA"}]},
+                "doc_type": "kitas"})
+        # A genuinely OCR-less doc: neither ocr.pages nor classify text → None.
+        p_no_ocr = await mk_proposal(
+            {"decision": "NO_MATCH", "candidates": []},
+            received_by=TEAM_OWNER["email"],
+            stage_output={"ocr": {"deferred_to": "classify"},
+                          "classify": {"ocr_text_per_page": []},
+                          "doc_type": "unknown"})
 
     yield {
         "tag": tag,
         "cid_owner": cid_owner, "cid_other": cid_other,
         "p_owner": p_owner, "p_other": p_other, "p_nomatch": p_nomatch,
         "p_null": p_null,
+        "p_classify_ocr": p_classify_ocr, "p_no_ocr": p_no_ocr,
         "created": created,
     }
 
@@ -224,6 +247,30 @@ async def test_detail_admin(pool, seed):
     assert any(c["client_id"] == seed["cid_owner"] for c in body["entity_candidates"])
 
 
+async def test_detail_ocr_from_classify_stage(pool, seed):
+    """OCR ran in the *classify* stage (ocr stage = marker only). The detail
+    reader must fall back to classify.ocr_text_per_page so the review text
+    area is not empty (the empty-review-area bug)."""
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.get(f"/api/intake/review/{seed['p_classify_ocr']}")
+    assert r.status_code == 200, r.text
+    ocr_pages = r.json()["ocr_pages"]
+    assert isinstance(ocr_pages, list) and len(ocr_pages) == 1
+    assert ocr_pages[0]["page_number"] == 1
+    assert "MINISTRY OF LAW" in ocr_pages[0]["text"]
+
+
+async def test_detail_ocr_none_when_no_text(pool, seed):
+    """A genuinely OCR-less doc (no ocr.pages, empty classify list) → ocr_pages
+    stays None; an empty review area is correct here."""
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.get(f"/api/intake/review/{seed['p_no_ocr']}")
+    assert r.status_code == 200, r.text
+    assert r.json()["ocr_pages"] is None
+
+
 async def test_detail_rbac_forbidden(pool, seed):
     """Non-admin who did NOT receive the doc → 403 (p_owner is OWNER's chat)."""
     app = _make_app(pool, TEAM_OTHER)
@@ -286,9 +333,16 @@ async def test_claim_release_and_race(pool, seed):
         token = r1.json()["claim_token"]
         assert token and r1.json()["status"] == "review_claimed"
 
-        # concurrent 2nd claim → 409 (race protected)
+        # P0#4: a 2nd claim by the SAME caller on a still-live lease is
+        # IDEMPOTENT — it renews the lease and returns a fresh token (200),
+        # NOT a 409. (Re-opening your own claimed document must succeed.)
         r2 = await cl.post(f"/api/intake/review/{pid}/claim")
-        assert r2.status_code == 409, r2.text
+        assert r2.status_code == 200, r2.text
+        token2 = r2.json()["claim_token"]
+        assert token2 and r2.json()["status"] == "review_claimed"
+        # a fresh token is minted on re-claim; the new one supersedes the old.
+        assert token2 != token
+        token = token2  # subsequent release must present the CURRENT token
 
         # release with token → back to review_pending
         r3 = await cl.post(f"/api/intake/review/{pid}/release",
@@ -302,6 +356,103 @@ async def test_claim_release_and_race(pool, seed):
         # cleanup: release again so teardown deletes cleanly
         await cl.post(f"/api/intake/review/{pid}/release",
                       params={"claim_token": r4.json()["claim_token"]})
+
+
+async def test_claim_idempotent_same_user_live_lease(pool, seed):
+    """P0#4: same user re-claiming their OWN live claim -> 200 + fresh token.
+
+    This is the exact live bug: adit opens a doc (claim #1, 200), the page
+    re-claims on re-open (claim #2) -- that must return 200 with a usable token,
+    not 409 'not claimable'. The lease is renewed and the row's claim_token is
+    updated so a subsequent approve/reject with the latest token still validates.
+    """
+    pid = seed["p_nomatch"]  # OWNER's own-chat NO_MATCH proposal
+    app = _make_app(pool, TEAM_OWNER)
+    async with _client(app) as cl:
+        r1 = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert r1.status_code == 200, r1.text
+        tok1 = r1.json()["claim_token"]
+        async with pool.acquire() as conn:
+            exp1 = await conn.fetchval(
+                "SELECT lease_expires_at FROM document_routing_proposal WHERE id=$1", pid)
+
+        # re-open -> re-claim by the SAME user on a LIVE lease -> 200 (was 409)
+        r2 = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert r2.status_code == 200, r2.text
+        tok2 = r2.json()["claim_token"]
+        assert tok2 and r2.json()["lease_owner"] == TEAM_OWNER["email"]
+        assert tok2 != tok1  # a fresh token is minted
+
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT claim_token, lease_expires_at, lease_owner "
+                "FROM document_routing_proposal WHERE id=$1", pid)
+        assert str(row["claim_token"]) == tok2
+        assert row["lease_expires_at"] >= exp1
+        assert row["lease_owner"] == TEAM_OWNER["email"]
+
+        # approve/reject still validate against the LATEST token the page holds
+        ra = await cl.post(f"/api/intake/review/{pid}/approve",
+                           json={"claim_token": tok2})
+        assert ra.status_code == 200, ra.text  # dry-run, P0#5 token accepted
+        # the OLD token is now stale -> reject with tok1 must be rejected
+        rj_old = await cl.post(f"/api/intake/review/{pid}/reject",
+                               json={"claim_token": tok1})
+        assert rj_old.status_code == 403, rj_old.text
+        # cleanup: release with the current token
+        await cl.post(f"/api/intake/review/{pid}/release",
+                      params={"claim_token": tok2})
+
+
+async def test_claim_different_user_live_lease_409(pool, seed):
+    """P0#4 guard: a DIFFERENT user must NOT steal another's live claim -> 409."""
+    pid = seed["p_other"]
+    admin_app = _make_app(pool, ADMIN)
+    async with _client(admin_app) as cl_admin:
+        r1 = await cl_admin.post(f"/api/intake/review/{pid}/claim")
+        assert r1.status_code == 200, r1.text
+        admin_token = r1.json()["claim_token"]
+
+    # TEAM_OTHER owns this chat (received_by=other) so passes RBAC, but the
+    # lease is live and owned by ADMIN -> must NOT steal it.
+    other_app = _make_app(pool, TEAM_OTHER)
+    async with _client(other_app) as cl_other:
+        r2 = await cl_other.post(f"/api/intake/review/{pid}/claim")
+        assert r2.status_code == 409, r2.text
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT lease_owner, claim_token FROM document_routing_proposal WHERE id=$1", pid)
+    assert row["lease_owner"] == ADMIN["email"]
+    assert str(row["claim_token"]) == admin_token
+    async with _client(_make_app(pool, ADMIN)) as cl3:
+        await cl3.post(f"/api/intake/review/{pid}/release",
+                       params={"claim_token": admin_token})
+
+
+async def test_claim_steal_expired_lease(pool, seed):
+    """Expired-lease steal still works after the P0#4 change."""
+    pid = seed["p_other"]
+    admin_app = _make_app(pool, ADMIN)
+    async with _client(admin_app) as cl_admin:
+        r1 = await cl_admin.post(f"/api/intake/review/{pid}/claim")
+        assert r1.status_code == 200, r1.text
+        admin_token = r1.json()["claim_token"]
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET lease_expires_at=$2 WHERE id=$1",
+            pid, datetime.now(timezone.utc) - timedelta(minutes=5))
+
+    other_app = _make_app(pool, TEAM_OTHER)
+    async with _client(other_app) as cl_other:
+        r2 = await cl_other.post(f"/api/intake/review/{pid}/claim")
+        assert r2.status_code == 200, r2.text
+        new_token = r2.json()["claim_token"]
+        assert new_token != admin_token
+        assert r2.json()["lease_owner"] == TEAM_OTHER["email"]
+        await cl_other.post(f"/api/intake/review/{pid}/release",
+                            params={"claim_token": new_token})
 
 
 async def test_release_wrong_token_409(pool, seed):
