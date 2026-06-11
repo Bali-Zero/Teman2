@@ -21,6 +21,7 @@ from typing import Any
 import asyncpg
 from googleapiclient.errors import HttpError
 
+from backend.core.cache import invalidate_crm_stats
 from backend.services.crm.document_categorizer import auto_categorize_document
 from backend.services.crm_guardian.summary_queue import (
     enqueue_client,
@@ -544,6 +545,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     subfolder_value,
                     content_hash,
                 )
+            await invalidate_crm_stats()  # F32
 
             # Touch client updated_at so CRM reflects new document
             async with db_pool.acquire() as conn:
