@@ -80,6 +80,25 @@ CLAUDE_CLI_CANDIDATES: Final[tuple[Path, ...]] = (
     Path.home() / ".npm-global/bin" / "claude",
     Path("/usr/local/bin/claude"),
 )
+# Model slug allowlist-by-shape: the value is forwarded to ``--model``, so
+# reject anything that isn't a plain ``claude-*`` slug (blocks argv/flag
+# smuggling via the model field). All current call-site slugs pass:
+# ``claude-sonnet-4-6``, ``claude-haiku-4-5``, ``claude-haiku-4-5-20251001``.
+_ALLOWED_MODEL_RE: Final[re.Pattern[str]] = re.compile(
+    r"^claude-[A-Za-z0-9][A-Za-z0-9._-]{1,63}$"
+)
+# Pure text-completion never needs tools. Block the destructive/exfil ones
+# defense-in-depth so an untrusted prompt (e.g. a raw user query routed
+# through ``surface_router``) can never reach a tool — replaces the unsafe
+# ``--permission-mode bypassPermissions`` this client used to carry.
+_DISALLOWED_TOOLS: Final[tuple[str, ...]] = (
+    "Bash",
+    "Edit",
+    "Write",
+    "WebFetch",
+    "WebSearch",
+    "NotebookEdit",
+)
 
 
 class ClaudeOAuthError(RuntimeError):
@@ -228,14 +247,21 @@ async def complete_async(
     claude_cli = _resolve_claude_cli()
 
     for attempt, (token, label) in enumerate(tokens, start=1):
+        # No bypassPermissions: tools are explicitly disallowed and the
+        # default permission mode fails-closed on any tool the model still
+        # attempts. The `--` sentinel guarantees the (possibly untrusted)
+        # prompt is parsed as an operand, never as a flag.
         cmd: list[str] = [
             claude_cli,
             "-p",
-            "--permission-mode",
-            "bypassPermissions",
+            "--disallowedTools",
+            *_DISALLOWED_TOOLS,
         ]
         if model:
+            if not _ALLOWED_MODEL_RE.match(model):
+                raise ValueError(f"model not allowed: {model!r}")
             cmd.extend(["--model", model])
+        cmd.append("--")
         cmd.append(prompt)
 
         env = _build_env(token)
