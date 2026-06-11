@@ -39,22 +39,26 @@ export function TopicPills() {
           Read the news on
         </span>
         <div className="flex items-center gap-2 flex-wrap flex-1">
+          {/* MYTHOS B2R: on the light homepage the --rp-* hooks collapse the
+              per-topic rainbow into disciplined navy-on-white pills with
+              hairline borders (chromatic-calm pass); dark routes (/v2) keep
+              the legacy accents via the var() fallbacks. Hrefs unchanged. */}
           {TOPICS.map((t) => (
             <a
               key={t.label}
               href={t.href}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all"
               style={{
-                background: `color-mix(in srgb, ${t.accent} 10%, transparent)`,
-                border: `1px solid color-mix(in srgb, ${t.accent} 28%, transparent)`,
-                color: t.accent,
+                background: `var(--rp-card-bg, color-mix(in srgb, ${t.accent} 10%, transparent))`,
+                border: `1px solid var(--rp-card-border, color-mix(in srgb, ${t.accent} 28%, transparent))`,
+                color: `var(--rp-accent, ${t.accent})`,
               }}
             >
               <span
                 className="w-1 h-1 rounded-full"
                 style={{
-                  background: t.accent,
-                  boxShadow: `0 0 6px ${t.accent}`,
+                  background: `var(--rp-accent, ${t.accent})`,
+                  boxShadow: `var(--rp-glow, 0 0 6px ${t.accent})`,
                 }}
               />
               {t.label}
