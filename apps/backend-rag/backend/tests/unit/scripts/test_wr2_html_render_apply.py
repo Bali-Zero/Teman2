@@ -82,6 +82,134 @@ def test_vision_critic_fail_closed_when_required(monkeypatch):
     assert any("vision" in i.lower() for i in c.issues)
 
 
+# ── 429 rate-limit resilience (2026-06-12: a transient quota window masqueraded
+#    as "vision unavailable" and burned 3 attempts → render_failed on a healthy
+#    draft) ──────────────────────────────────────────────────────────────────
+
+
+def _fake_proc(returncode=0, stdout="", stderr=""):
+    from types import SimpleNamespace
+    return SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+def test_run_claude_json_raises_on_429_envelope(monkeypatch):
+    """A CLI error envelope with api_error_status==429 (even rc!=0) is a transient
+    rate-limit, distinct from a real outage — must raise VisionRateLimited."""
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    envelope = _json.dumps({"is_error": True, "api_error_status": 429,
+                            "result": "You've hit your session limit · resets 2:40am"})
+    monkeypatch.setattr(claude_vision.subprocess, "run",
+                        lambda *a, **k: _fake_proc(returncode=1, stdout=envelope))
+    with pytest.raises(claude_vision.VisionRateLimited):
+        claude_vision._run_claude_json("p", {"type": "object"})
+
+
+def test_run_claude_json_raises_on_session_limit_text(monkeypatch):
+    from wr2_html_renderer import claude_vision
+
+    monkeypatch.setattr(claude_vision.subprocess, "run",
+                        lambda *a, **k: _fake_proc(returncode=1, stderr="Error: session limit reached"))
+    with pytest.raises(claude_vision.VisionRateLimited):
+        claude_vision._run_claude_json("p", {"type": "object"})
+
+
+def test_run_claude_json_genuine_failure_returns_none_not_raise(monkeypatch):
+    """A real non-429 failure (rc!=0, no limit text) stays the None/unavailable
+    path — must NOT be reclassified as rate-limit."""
+    from wr2_html_renderer import claude_vision
+
+    monkeypatch.setattr(claude_vision.subprocess, "run",
+                        lambda *a, **k: _fake_proc(returncode=1, stderr="boom: chromium crashed"))
+    assert claude_vision._run_claude_json("p", {"type": "object"}) is None
+
+
+def test_run_claude_json_pins_vision_model(monkeypatch):
+    """Default pins claude-sonnet-4-6; WR2_VISION_MODEL overrides. (No --model
+    before = CLI default, heavier → 120s timeouts + quota burn.)"""
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(cmd, *a, **k):
+        captured["cmd"] = cmd
+        return _fake_proc(returncode=0, stdout=_json.dumps({"structured_output": {"ok": True}}))
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.delenv("WR2_VISION_MODEL", raising=False)
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert "--model" in captured["cmd"]
+    assert "claude-sonnet-4-6" in captured["cmd"]
+
+    monkeypatch.setenv("WR2_VISION_MODEL", "claude-opus-4-8")
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert "claude-opus-4-8" in captured["cmd"]
+
+
+def test_design_critic_propagates_rate_limit_not_fail_closed(monkeypatch):
+    """When the runner signals rate-limit, the critic must propagate it (the
+    apply-worker treats it as transient), NOT collapse to the fail-closed
+    'unavailable' Critique that the circuit breaker would burn an attempt on."""
+    from wr2_html_renderer import claude_vision
+
+    def _raise(*a, **k):
+        raise claude_vision.VisionRateLimited("429")
+
+    monkeypatch.setattr(claude_vision, "_run_claude_json", _raise)
+    monkeypatch.setenv("WR2_VISION_REQUIRED", "1")
+    png = Path(tempfile.mkdtemp()) / "x.png"
+    png.write_bytes(b"PNG")
+    with pytest.raises(claude_vision.VisionRateLimited):
+        claude_vision.claude_design_critic(png, {}, {})
+
+
+@pytest.mark.asyncio
+async def test_apply_one_rate_limit_does_not_burn_attempt(monkeypatch):
+    """INVARIANT: a 429 during render releases the lease back to
+    drafts_imaged_checked WITHOUT writing _html_attempts and WITHOUT
+    render_failed — the draft is retried next tick, no attempt consumed."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=0)
+    conn.close = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(return_value=conn))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": {"slides": [{"headline": "H"}]}}),
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+    monkeypatch.setattr(
+        html, "_render_carousel",
+        AsyncMock(side_effect=html.VisionRateLimited("429 session limit")),
+    )
+    monkeypatch.setenv("WR2_VISION_REQUIRED", "1")
+
+    import uuid as _uuid
+    did = _uuid.uuid4()
+    result = await html._apply_one("postgres://x", did, "owner-1")
+
+    assert result.startswith("rate_limited")
+    # the release UPDATE must NOT touch the attempt counter and must NOT fail it
+    sqls = " ".join(str(c.args[0]) for c in conn.execute.call_args_list)
+    assert "_html_attempts" not in sqls
+    assert "render_failed" not in sqls
+    assert "drafts_imaged_checked" in sqls
+
+
 @pytest.mark.asyncio
 async def test_designer_loop_converges_default_no_vision(monkeypatch):
     import base64
@@ -251,6 +379,68 @@ def test_legibility_levers_constant():
     from wr2_html_renderer.designer_loop import _LEGIBILITY_LEVERS
 
     assert _LEGIBILITY_LEVERS == {"scrim_opacity", "text_stroke", "shrink_font", "grow_font"}
+
+
+# ── saliency-placement is SOFT when contrast passes (2026-06-12 SCAR: a busy
+#    background band blocked a legible slide forever — busyness measured on the
+#    raw hero ignores the scrim, and the reposition remedy is disabled) ─────────
+
+
+def _mk_png(tmp):
+    p = Path(tmp) / "iter.png"
+    p.write_bytes(b"PNG")
+    return p
+
+
+def test_legibility_busy_band_is_soft_when_contrast_passes(monkeypatch, tmp_path):
+    """Hero text on a busier-than-calmest band but with PASSING contrast must NOT
+    fail the gate — the text is legible, scrim mitigates the busy bg, and the
+    only real remedy (reposition) is disabled. The note is still surfaced."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 12.6)  # ≫ AAA 7.0
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (0, [0.00, 0.02, 0.05]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is True
+    assert any("busier than calmest" in i for i in c.issues)  # note still visible
+    assert not c.levers  # nothing to pull — contrast is fine, reposition disabled
+
+
+def test_legibility_busy_band_is_hard_when_contrast_fails(monkeypatch, tmp_path):
+    """If contrast ALSO fails, the busy-band note is part of the hard problem and
+    the in-place remedy ladder (scrim+stroke) is proposed; gate fails."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 3.0)  # < AAA 7.0
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (0, [0.00, 0.02, 0.05]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is False
+    assert any("contrast" in i for i in c.issues)
+    assert any(lev["lever"] == "scrim_opacity" for lev in c.levers)
+
+
+def test_legibility_calm_band_passes_clean(monkeypatch, tmp_path):
+    """Calm bottom band + good contrast → pass, no issues, no levers."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 13.0)
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (2, [0.05, 0.04, 0.01]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is True
+    assert c.issues == []
+    assert c.levers == []
 
 
 @pytest.mark.asyncio

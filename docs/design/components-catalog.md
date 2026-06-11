@@ -3,7 +3,7 @@
 
 > **GENERATED build-artifact.** Do not edit by hand — run `npm run bz:brand:api`. Derived from `packages/core/components/*.tsx`.
 
-**23 components** (schema v1).
+**24 components** (schema v1).
 
 ## `AppBranchSelector`
 
@@ -228,6 +228,17 @@
   - `nextStep`: `string | undefined`
   - `action`: `ReactNode | undefined`
 - **example**: `<MatterCard title={/* string */} type={/* MatterType */} progressPercent={/* number */} />`
+
+## `Money`
+
+- **import**: `@nuzantara/core/components/Money`
+- **source**: `packages/core/components/Money.tsx`
+- **props**:
+  - `value`: `number`
+  - `compact`: `boolean | undefined`
+  - `className`: `string | undefined`
+  - `style`: `React.CSSProperties | undefined`
+- **example**: `<Money value={/* number */} />`
 
 ## `NavShell`
 

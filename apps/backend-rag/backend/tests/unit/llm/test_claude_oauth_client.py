@@ -199,6 +199,48 @@ async def test_complete_async_cli_missing(
         await mod.complete_async("ping")
 
 
+@pytest.mark.asyncio
+async def test_complete_async_argv_is_hardened(
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
+) -> None:
+    """The built argv must drop bypassPermissions, end with a ``--`` sentinel
+    immediately before the prompt, and reject non-allowlisted model slugs."""
+    from backend.llm import claude_oauth_client as mod
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
+
+    captured: dict[str, Any] = {}
+
+    async def fake_create(*args: Any, **kwargs: Any) -> Any:
+        captured["cmd"] = list(args)
+        return _fake_proc(stdout=b"ok", returncode=0)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    # (iv) a valid, allowlisted slug passes and reaches the subprocess.
+    resp = await mod.complete_async("untrusted prompt", model="claude-sonnet-4-6")
+    assert resp.text == "ok"
+
+    cmd = captured["cmd"]
+    # (i) the dangerous permission bypass is gone.
+    assert "bypassPermissions" not in cmd
+    assert "--permission-mode" not in cmd
+    # tools are explicitly disallowed instead.
+    assert "--disallowedTools" in cmd
+    # (ii) the `--` sentinel is present and sits immediately before the prompt.
+    assert "--" in cmd
+    assert cmd[-2] == "--"
+    assert cmd[-1] == "untrusted prompt"
+    # the model slug was forwarded.
+    assert "--model" in cmd
+    assert "claude-sonnet-4-6" in cmd
+
+    # (iii) a non-allowlisted model (flag-shaped) raises before any subprocess.
+    with pytest.raises(ValueError):
+        await mod.complete_async("ping", model="--evil-flag")
+
+
 def test_module_imports_without_anthropic_sdk() -> None:
     """Integrity test: the OAuth client must not import the Anthropic SDK.
 

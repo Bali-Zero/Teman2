@@ -25,6 +25,7 @@
     "./components/FunnelFrame": "./components/FunnelFrame.tsx",
     "./components/MatterCard": "./components/MatterCard.tsx",
     "./components/CommandPalette": "./components/CommandPalette.tsx",
+    "./components/Money": "./components/Money.tsx",
     "./components/ContextPanel": "./components/ContextPanel.tsx",
     "./utils": "./utils/index.ts",
     "./auth": "./auth/index.ts",

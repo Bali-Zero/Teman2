@@ -27,11 +27,25 @@ name: catE-sovereignty-lint
 # it proves stable + zero false-positive (W69 BUCO #1 lesson: arming a check as
 # required without a skip→success sentinel can pend-forever / block innocents).
 
+# Path-scoped (2026-06-12 CI fan-out reduction): every check here inspects
+# Python source (paid-Anthropic ban, Law-5 wr3 publish lint) or .env perms, so
+# a docs/content-only PR (.mdx/.md/.json) has nothing for it to scan — scoping
+# to those paths loses zero coverage. NON-REQUIRED, so a non-matching PR just
+# skips it (no pending-forever; W69 BUCO #1 only bites REQUIRED path-filtered
+# checks lacking a skip→success sentinel).
 on:
   pull_request:
+    paths:
+      - "**.py"
+      - "**/.env*"
+      - ".github/workflows/catE-sovereignty-lint.yml"
   push:
     branches:
       - main
+    paths:
+      - "**.py"
+      - "**/.env*"
+      - ".github/workflows/catE-sovereignty-lint.yml"
 
 permissions:
   contents: read
