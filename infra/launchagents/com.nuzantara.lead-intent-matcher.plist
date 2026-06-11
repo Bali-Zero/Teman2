@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Lead intent → clients matcher (content-funnel Filo 1).
+         One-shot cron via StartInterval — NO KeepAlive (scar W67:
+         exec one-shot + KeepAlive = crash-loop signature).
+         NO inline secrets (scar 2026-04-29): wrapper sources
+         ~/.nuzantara-secrets.env at runtime.
+         Runbook: docs/runbooks/lead-intent-matcher.md -->
+    <key>Label</key>
+    <string>com.nuzantara.lead-intent-matcher</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/lead_intent_matcher_run.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/lead-intent-matcher.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/lead-intent-matcher.launchd.log</string>
+</dict>
+</plist>

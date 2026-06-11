@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -42,10 +43,14 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 # ---------------------------------------------------------------------------
 
 # Kept in strict parity with packages/core/analytics/funnel-view.ts
-# (FUNNEL_EVENTS) — enforced by tests/app/routers/test_analytics_funnel_parity.py.
+# (FUNNEL_EVENTS) and packages/core/analytics/funnel-app.ts (APP_EVENTS) —
+# ALLOWED_EVENTS == FUNNEL_EVENTS ∪ APP_EVENTS, enforced bidirectionally by
+# tests/app/routers/test_analytics_funnel_parity.py.
 # MYTHOS D11: this list used to cover 14 of the 32 emitted events; the other
 # 18 were silently dropped with {"ok": False, "reason": "unknown_event"}.
-ALLOWED_EVENTS: frozenset[str] = frozenset(
+# MYTHOS B1 (IA-8): book_* scaffolding (the /book flow ships in B4) + the
+# app_* tool-funnel taxonomy reconciled into the single backend allowlist.
+FUNNEL_PAGE_EVENTS: frozenset[str] = frozenset(
     {
         # --- Visa Oracle ---
         "visa_quiz_completed",
@@ -77,6 +82,8 @@ ALLOWED_EVENTS: frozenset[str] = frozenset(
         "tax_search_submit",
         "tax_suggestion_click",
         # --- Property Map ---
+        # MYTHOS D5: "property_cta_clicked" is the single canonical property
+        # CTA-click event; there is deliberately NO "property_cta_click".
         "property_cta_clicked",
         "property_chat_question",
         "property_whatsapp_cta",
@@ -86,14 +93,80 @@ ALLOWED_EVENTS: frozenset[str] = frozenset(
         # --- Hero Section CTAs ---
         "hero_cta_book_call",
         "hero_cta_read_dispatch",
+        # --- Persona doors (MYTHOS B2, IA-1; B2R2 adds tax) ---
+        # Homepage "Start where you are." doors;
+        # payload: door = visa|company|tax|property.
+        "persona_door_click",
+        # --- Booked Consultation (MYTHOS IA-3 scaffolding, emission in B4) ---
+        "book_viewed",
+        "book_form_started",
+        "book_form_submitted",
+        "book_call_confirmed",
     }
 )
+
+FUNNEL_APP_EVENTS: frozenset[str] = frozenset(
+    {
+        "app_viewed",
+        "app_branch_selected",
+        "app_form_started",
+        "app_form_submitted",
+        "app_wizard_step_completed",
+        "app_wizard_abandoned",
+        "app_result_viewed",
+        "app_cta_clicked",
+        "app_whatsapp_handoff",
+        "app_share_clicked",
+        "app_pdf_downloaded",
+        "app_email_subscribed",
+    }
+)
+
+ALLOWED_EVENTS: frozenset[str] = FUNNEL_PAGE_EVENTS | FUNNEL_APP_EVENTS
+
+# ---------------------------------------------------------------------------
+# MYTHOS §6 guardrail: PII scrub on funnel payloads before storage.
+# Scrub, don't drop — fail-safe for data, fail-closed for PII.
+# ---------------------------------------------------------------------------
+
+_PII_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# Phone-like: optional +, digit, 6+ of digits/spaces/().-, ending on a digit
+# (e.g. "+62 812 3456 7890") — anchoring the end on a digit keeps trailing
+# whitespace/punctuation out of the redaction.
+_PII_PHONE_RE = re.compile(r"\+?\d[\d\s().-]{6,}\d")
+_PII_REDACTED = "[redacted]"
+
+
+def _scrub_pii_string(value: str) -> str:
+    """Redact email and phone-like substrings; leave the rest intact."""
+    # Email first: an address's digit run could otherwise partially match the
+    # phone pattern and leave a recognizable fragment behind.
+    value = _PII_EMAIL_RE.sub(_PII_REDACTED, value)
+    return _PII_PHONE_RE.sub(_PII_REDACTED, value)
+
+
+def scrub_pii(value: Any) -> Any:
+    """Recursively scrub PII (emails, phone-like numbers) from payload values.
+
+    Strings are scrubbed in place (substring redaction, not dropped);
+    dicts/lists are walked; every other type passes through unchanged.
+    """
+    if isinstance(value, str):
+        return _scrub_pii_string(value)
+    if isinstance(value, dict):
+        return {k: scrub_pii(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [scrub_pii(v) for v in value]
+    return value
 
 
 class FunnelEvent(BaseModel):
     session_id: str = Field(min_length=32, max_length=64)
     event: str
-    payload: dict = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    # MYTHOS D3/D9 foundation: emitting hostname (window.location.hostname),
+    # so denominators can be scoped to public hostnames (B2 reads this).
+    hostname: str | None = Field(default=None, max_length=253)
 
 
 @router.post("/funnel-event")
@@ -103,23 +176,29 @@ async def ingest_funnel_event(
 ) -> dict[str, Any]:
     """
     Ingest a funnel analytics event. Never blocks the UX: unknown events
-    return ok=False instead of raising an error.
+    return ok=False instead of raising an error. Payload values are
+    PII-scrubbed (MYTHOS §6 guardrail) before storage.
     """
     if req.event not in ALLOWED_EVENTS:
         return {"ok": False, "reason": "unknown_event"}
+    scrubbed_payload = scrub_pii(req.payload)
     async with pool.acquire() as conn:
         await conn.execute(
             """
             UPDATE funnel_sessions
             SET step_state = step_state || jsonb_build_object(
                     'last_event', $2::text,
-                    'last_event_at', to_jsonb(NOW())
+                    'last_event_at', to_jsonb(NOW()),
+                    'last_event_payload', $3::jsonb,
+                    'last_hostname', $4::text
                 ),
                 last_touched_at = NOW()
             WHERE session_id = $1
             """,
             req.session_id,
             req.event,
+            json.dumps(scrubbed_payload),
+            req.hostname,
         )
     return {"ok": True}
 

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Phone, ArrowRight } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
   title: "Team · Bali Zero",
@@ -298,9 +299,12 @@ function Section({
 
 export default function TeamPage() {
   return (
+    // MYTHOS Stage-B Batch 1: Rumah Putih light, scoped per-page (NEVER on
+    // the shared (blog)/layout.tsx). NavShell + Footer stay navy anchors.
     <div
-      className="min-h-screen"
+      className={`min-h-screen ${RUMAH_CLASS}`}
       style={{
+        ...RUMAH_VARS,
         background: "var(--surface-base)",
         color: "var(--text-primary)",
       }}
@@ -370,21 +374,22 @@ export default function TeamPage() {
               </div>
             </div>
 
-            {/* Aggregate trust — same as homepage */}
+            {/* Aggregate trust — Rumah Putih: white card + hairline border,
+                navy hairline dividers (was dark-glass on the editorial home). */}
             <div
               className="inline-flex items-center gap-4 px-4 py-2.5 rounded-full flex-wrap"
               style={{
-                background: "rgba(0,0,0,0.28)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.14)",
+                background: "var(--rp-card-bg, rgba(0,0,0,0.28))",
+                boxShadow: "var(--rp-card-shadow, none)",
+                border:
+                  "1px solid var(--rp-card-border, rgba(255,255,255,0.14))",
               }}
             >
               <span
                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                <span style={{ color: "#fbbf24" }}>★★★★★</span>
+                <span style={{ color: "#d4a017" }}>★★★★★</span>
                 <span>4.9</span>
                 <span style={{ color: "var(--text-tertiary)" }}>
                   · 627 Google reviews
@@ -392,7 +397,9 @@ export default function TeamPage() {
               </span>
               <span
                 className="h-3.5 w-px"
-                style={{ background: "rgba(255,255,255,0.18)" }}
+                style={{
+                  background: "var(--border-default, rgba(255,255,255,0.18))",
+                }}
               />
               <span
                 className="text-[12px] font-semibold"
@@ -402,7 +409,9 @@ export default function TeamPage() {
               </span>
               <span
                 className="h-3.5 w-px"
-                style={{ background: "rgba(255,255,255,0.18)" }}
+                style={{
+                  background: "var(--border-default, rgba(255,255,255,0.18))",
+                }}
               />
               <span
                 className="text-[12px] font-semibold"

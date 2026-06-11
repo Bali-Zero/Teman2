@@ -409,6 +409,26 @@ async def invalidate_namespace(namespace: str, cache_service: CacheService | Non
     return await invalidate_cache(f"zantara:{namespace}:*", cache_service=cache_service)
 
 
+async def invalidate_crm_stats(cache_service: CacheService | None = None) -> int:
+    """Invalidate the cached CRM aggregate stats (F32).
+
+    The CRM stats endpoints (``get_clients_stats`` / practice stats) are cached
+    with a 300s TTL keyed on ``zantara:crm_clients_stats:*`` and
+    ``zantara:crm_practices_stats:*``. The HTTP routers invalidate these after
+    every mutation, but several SERVICE-side mutation points (e.g. assignment
+    re-routing ``assigned_to``, client_core updates, intake writer) mutate the
+    same rows WITHOUT invalidating — so per-assignee/aggregate stats stay stale
+    for up to the TTL. Call this from any service that mutates clients/practices
+    aggregate-relevant fields outside the router layer.
+    """
+    total = 0
+    for namespace in ("crm_clients_stats", "crm_practices_stats"):
+        total += await invalidate_cache(
+            f"zantara:{namespace}:*", cache_service=cache_service
+        )
+    return total
+
+
 async def invalidate_all_caches(
     pattern: str = "zantara:*",
     cache_service: CacheService | None = None,

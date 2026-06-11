@@ -172,4 +172,88 @@ describe("analytics", () => {
       lng: 115.22,
     });
   });
+
+  it("dispatches lead_whatsapp_cta with intent join key and beacon transport", async () => {
+    const gtag = vi.fn();
+    (window as typeof window & { gtag?: typeof gtag }).gtag = gtag;
+    const { trackLeadWhatsAppCTA } = await loadAnalytics();
+
+    trackLeadWhatsAppCTA("article", {
+      captured: true,
+      lead_intent_id: "li_abc123",
+      result_ref: "56303",
+    });
+    trackLeadWhatsAppCTA("kbli_navigator", { captured: false });
+
+    expect(gtag).toHaveBeenCalledWith("event", "lead_whatsapp_cta", {
+      event_category: "Conversion",
+      source: "article",
+      captured: true,
+      transport_type: "beacon",
+      lead_intent_id: "li_abc123",
+      result_ref: "56303",
+    });
+    // Fallback polarity: no intent id, captured=false still tracked.
+    expect(gtag).toHaveBeenCalledWith("event", "lead_whatsapp_cta", {
+      event_category: "Conversion",
+      source: "kbli_navigator",
+      captured: false,
+      transport_type: "beacon",
+    });
+  });
+
+  it("canonicalizes property cta_click onto property_cta_clicked (MYTHOS D5)", async () => {
+    const gtag = vi.fn();
+    (window as typeof window & { gtag?: typeof gtag }).gtag = gtag;
+    const { trackFunnelCTA } = await loadAnalytics();
+
+    trackFunnelCTA("property", "cta_click", { source: "home_grid" });
+    trackFunnelCTA("visa", "cta_click");
+
+    // Property: the grid name "property_cta_click" was never allowlisted —
+    // the canonical event with GA4 history is "property_cta_clicked".
+    expect(gtag).toHaveBeenCalledWith("event", "property_cta_clicked", {
+      event_category: "FunnelCTA",
+      funnel: "property",
+      source: "home_grid",
+    });
+    expect(trackFunnelEventMock).toHaveBeenCalledWith("property_cta_clicked", {
+      sessionId: "core-session-id",
+      payload: { funnel: "property", source: "home_grid" },
+    });
+    // The other three funnels keep the grid-derived "<funnel>_cta_click".
+    expect(gtag).toHaveBeenCalledWith("event", "visa_cta_click", {
+      event_category: "FunnelCTA",
+      funnel: "visa",
+    });
+    expect(gtag).not.toHaveBeenCalledWith(
+      "event",
+      "property_cta_click",
+      expect.anything(),
+    );
+  });
+
+  it("dispatches persona door clicks with the door payload (MYTHOS B2)", async () => {
+    const gtag = vi.fn();
+    (window as typeof window & { gtag?: typeof gtag }).gtag = gtag;
+    const { trackPersonaDoor } = await loadAnalytics();
+
+    trackPersonaDoor("company");
+
+    expect(gtag).toHaveBeenCalledWith("event", "persona_door_click", {
+      event_category: "PersonaDoors",
+      door: "company",
+    });
+    expect(trackFunnelEventMock).toHaveBeenCalledWith("persona_door_click", {
+      sessionId: "core-session-id",
+      payload: { door: "company" },
+    });
+
+    // B2R2: the fourth door — tax — is part of the PersonaDoor union.
+    trackPersonaDoor("tax");
+    expect(trackFunnelEventMock).toHaveBeenCalledWith("persona_door_click", {
+      sessionId: "core-session-id",
+      payload: { door: "tax" },
+    });
+  });
 });

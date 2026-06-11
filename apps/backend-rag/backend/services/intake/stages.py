@@ -1,16 +1,19 @@
-"""Real stage-handler dispatcher for the document-intake worker (FASE 3 integration).
+"""Real stage-handler dispatcher for the document-intake worker (FASE 3, v2 machine).
 
-Wires the FASE-2 worker (``services/intake/worker.py``) to the FASE-3 real stage
+Wires the FASE-2 worker (``services/intake/worker.py``) to the real stage
 implementations:
 
-  * ``classify`` / ``ocr`` -> :mod:`backend.services.intake.classify`
-    (preprocess + local OCR via qwen3-vl, then keyword classification).
-  * ``extract``            -> :func:`backend.services.intake.extract.extract_stage`
+  * ``classify`` -> :mod:`backend.services.intake.classify`
+    (preprocess + local OCR via qwen-vl, then keyword classification — OCR and
+    classification happen in this ONE stage; the v1 passthrough ``ocr`` stage
+    was dropped by the v2 machine, migration 224).
+  * ``extract``  -> :func:`backend.services.intake.extract.extract_stage`
     (local SEA-LION field extraction, Maybe pattern).
-  * ``validate``           -> :func:`backend.services.intake.validate_rules.validate_stage`
+  * ``validate`` -> :func:`backend.services.intake.validate_rules.validate_stage`
     (deterministic, no LLM).
-  * ``route``              -> :func:`backend.services.intake.routing.route_stage`
-    (FASE-4: entity-resolution + ONE ``document_routing_proposal`` row, ZERO CRM writes).
+  * ``route``    -> :func:`backend.services.intake.routing.route_stage`
+    (FASE-4: entity-resolution + ONE ``document_routing_proposal`` row +
+    received_by backfill from the matched client, ZERO CRM writes).
 
 Contract (FASE-2 worker, ``worker.py``):
     The worker calls ``stage_handler(job, stage)`` async, and merges the returned
@@ -25,27 +28,19 @@ Contract (FASE-2 worker, ``worker.py``):
     (``ocr_text_per_page`` = list of per-page dicts) into the list[str] that
     :func:`extract_stage` expects.
 
-Stage-machine order note (no worker change required)
-----------------------------------------------------
-The FASE-2 stage machine maps statuses ``pending -> classify``, ``processing ->
-ocr``, ``ocr -> extract`` ... so the stage NAMED ``classify`` runs FIRST and the
-stage NAMED ``ocr`` runs second. That ordering is *semantically fine* because the
-real ``classify`` stage performs the heavy OCR + classification in a single pass
-(re-OCR at the ``ocr`` stage would double the local-VLM cost), and the ``ocr``
-stage is a cheap idempotent passthrough that surfaces the already-computed OCR
-payload. The logical pipeline is therefore OCR(+classify) -> extract -> validate
--> route, achieved WITHOUT renaming any status (the ``chk_iq_status`` CHECK
-constraint stays untouched, no migration needed).
+Transient-infra contract (v2)
+-----------------------------
+A handler failure caused by INFRA being down (local Ollama unreachable, connect
+timeout) is re-raised as :class:`worker.TransientStageError` at this single
+chokepoint, so the worker retries with a fixed backoff WITHOUT burning an
+attempt — a rebooting Ollama must never DLQ good documents. Real stage errors
+(poison-pill) propagate unchanged and burn attempts as before.
 
 Metrics
 -------
-The worker already inserts exactly one ``intake_stage_metrics`` row per stage
-(``model='stub-passthrough'``, generic ok/latency). To avoid DUPLICATE latency
-rows we do NOT write a second metrics row here; instead each handler embeds the
-REAL ``model`` + ``confidence`` into its returned payload (persisted verbatim in
-``stage_output``), so the true model/confidence are auditable per stage. (A future
-worker tweak can lift ``payload['_metric']`` into the metrics row; the convention
-is provided below but the worker is not modified in this FASE.)
+Each handler embeds the REAL ``model`` + ``confidence`` into its returned
+payload under ``_metric``; the v2 worker lifts it into the
+``intake_stage_metrics`` row (no more 'stub-passthrough' placeholder).
 
 PII / Symbiosis Law 2: every model call is to localhost Ollama. ZERO cloud, ZERO
 CRM writes. The only structured side effect is one ``document_routing_proposal``
@@ -56,9 +51,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.services.intake import classify as _classify
 from backend.services.intake.extract import (
@@ -66,8 +63,9 @@ from backend.services.intake.extract import (
     canonical_doc_type,
     extract_stage,
 )
-from backend.services.intake.validate_rules import validate_stage
 from backend.services.intake.routing import route_stage as _route_stage_fase4
+from backend.services.intake.validate_rules import validate_stage
+from backend.services.intake.worker import TransientStageError
 
 logger = logging.getLogger("zantara.intake.stages")
 
@@ -76,6 +74,15 @@ StageHandler = Callable[[dict, str], Awaitable[dict]]
 # Stages whose real handler reads the accumulated stage_output (which the worker
 # does NOT include in the claimed job dict) -> we hydrate it from the DB first.
 _NEEDS_STAGE_OUTPUT: frozenset[str] = frozenset({"extract", "validate"})
+
+# httpx exception classes that mean "the local model endpoint is down", not
+# "this document is poison" — surfaced as TransientStageError (no attempt burn).
+_TRANSIENT_HTTPX_ERRORS: tuple[type[Exception], ...] = (
+    httpx.ConnectError,
+    httpx.ConnectTimeout,
+    httpx.ReadTimeout,
+    httpx.RemoteProtocolError,
+)
 
 
 async def _fetch_stage_output(pool: asyncpg.Pool, queue_id: int) -> dict[str, Any]:
@@ -114,7 +121,7 @@ def _ocr_text_per_page_as_strings(stage_output: dict[str, Any]) -> list[str]:
 
 
 def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
-    """Return a single ``stage_handler(job, stage)`` wired to all real FASE-3 stages.
+    """Return a single ``stage_handler(job, stage)`` wired to all real stages.
 
     Wire into the worker as::
 
@@ -122,23 +129,23 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
 
     Error policy: handlers PROPAGATE exceptions — the FASE-2 worker owns
     retry/backoff/DLQ. We never swallow a failure into a fake success (that would
-    advance the stage machine on a lie).
+    advance the stage machine on a lie). Infra-down httpx failures are translated
+    to TransientStageError (fixed backoff, no attempt burn) at this chokepoint.
     """
     classify_handler = _classify.build_stage_handler(pool)
 
-    async def real_stage_handler(job: dict, stage: str) -> dict:
-        if stage in ("classify", "ocr"):
-            # classify.build_stage_handler owns both: 'classify' does the heavy
-            # preprocess+OCR+classify pass; 'ocr' is its idempotent passthrough.
+    async def _dispatch(job: dict, stage: str) -> dict:
+        if stage == "classify":
+            # classify performs the heavy preprocess+OCR+classify pass in one go
+            # (the v2 machine has no separate ocr stage).
             payload = await classify_handler(job, stage)
-            if stage == "classify":
-                payload.setdefault(
-                    "_metric",
-                    {
-                        "model": payload.get("model", _classify._resolve_ocr_model()),
-                        "confidence": payload.get("type_confidence", 0.0),
-                    },
-                )
+            payload.setdefault(
+                "_metric",
+                {
+                    "model": payload.get("model", _classify._resolve_ocr_model()),
+                    "confidence": payload.get("type_confidence", 0.0),
+                },
+            )
             return payload
 
         if stage in _NEEDS_STAGE_OUTPUT:
@@ -190,12 +197,21 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
             return payload
 
         if stage == "route":
-            # FASE-4: real entity-resolution + routing proposal (was _route_stage_stub).
+            # FASE-4: real entity-resolution + routing proposal + received_by backfill.
             return await _route_stage_fase4(job, stage, pool)
 
         # Unknown stage: do not fabricate. Surface a no-op marker so the worker can
         # advance only if it chooses; an unexpected stage is a wiring bug.
         logger.warning("real_stage_handler: unhandled stage=%s (job=%s)", stage, job.get("id"))
         return {"handled_by": "fase3-dispatcher", "unhandled_stage": stage}
+
+    async def real_stage_handler(job: dict, stage: str) -> dict:
+        try:
+            return await _dispatch(job, stage)
+        except _TRANSIENT_HTTPX_ERRORS as exc:
+            # Local model endpoint down/unreachable: retry later, no attempt burn.
+            raise TransientStageError(
+                f"stage={stage} infra unreachable: {type(exc).__name__}: {exc}"
+            ) from exc
 
     return real_stage_handler

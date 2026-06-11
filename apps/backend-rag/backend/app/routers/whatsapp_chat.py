@@ -357,6 +357,28 @@ async def process_whatsapp_message(
             # Build rich context
             ctx = await build_context(phone, sender_name, message_text, db_pool)
 
+            # Concierge ack: the AI path takes 10-50s wall-clock; on a
+            # non-trivial question tell the user we're on it BEFORE the slow
+            # call. Throttled per phone, kill-switch WHATSAPP_ACK_ENABLED.
+            # Never let the ack break the main path.
+            try:
+                from backend.services.whatsapp_ack import (
+                    ack_text,
+                    mark_acked,
+                    should_send_ack,
+                )
+
+                if should_send_ack(message_text, phone):
+                    await whatsapp_service.send_message(
+                        phone=phone,
+                        text=ack_text(ctx.get("detected_language")),
+                        reply_to_message_id=message_id,
+                    )
+                    mark_acked(phone)
+                    logger.info("Concierge ack sent to %s", phone)
+            except Exception:
+                logger.exception("Concierge ack failed (non-blocking) phone=%s", phone)
+
             openclaw_response = await ask_openclaw_whatsapp(
                 phone=phone,
                 message_text=message_text,
@@ -368,6 +390,7 @@ async def process_whatsapp_message(
                     "conversation_history": ctx.get("conversation_history"),
                     "detected_language": ctx.get("detected_language"),
                     "is_first_message": ctx.get("is_first_message"),
+                    "sender_identity": ctx.get("sender_identity"),
                     "time_of_day": ctx.get("time_of_day"),
                 },
             )

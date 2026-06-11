@@ -119,7 +119,7 @@ def lint(path: Path) -> tuple[list[str], list[str]]:
     if cap != IG_PUBLISH_MAX_ITEMS:
         hard.append(
             f"ig_publish_max_items must be {IG_PUBLISH_MAX_ITEMS}, got {cap!r}. "
-            f"This is a Bali Zero constant tied to apps/backend-rag/backend/services/publisher/ig_publisher.py:106."
+            f"This is a Bali Zero constant (Instagram carousel hard cap of 10 items)."
         )
 
     # 5. Operation types valid + no banned types
