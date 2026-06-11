@@ -310,6 +310,30 @@ def _reply_word_count(value: str) -> int:
     return len([word for word in value.replace("\n", " ").split(" ") if word.strip()])
 
 
+# F40 (2026-06-11): deterministic WhatsApp-format net applied AFTER the guard
+# chain. The prompt asks for WhatsApp formatting, but the model occasionally
+# emits markdown anyway; these rewrites are content-free (no intent detection,
+# no clobber risk — the W68/W73 guard class does not apply).
+_MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+_MD_HEADER_RE = re.compile(r"^#{1,6}[ \t]+", re.MULTILINE)
+_MD_BULLET_RE = re.compile(r"^([ \t]*)[-*][ \t]+", re.MULTILINE)
+
+
+def _normalize_whatsapp_format(reply: str) -> str:
+    """Rewrite markdown leftovers into WhatsApp conventions.
+
+    - ``**bold**`` → ``*bold*`` (WhatsApp bold is single asterisks)
+    - markdown headers (``#``..``######``) at line start are stripped
+    - ``- `` / ``* `` list markers at line start become ``• ``
+      (a line starting with ``*bold*`` has no space after the asterisk and
+      is NOT a list marker)
+    """
+    text = _MD_BOLD_RE.sub(r"*\1*", reply)
+    text = _MD_HEADER_RE.sub("", text)
+    text = _MD_BULLET_RE.sub("\\1• ", text)
+    return text
+
+
 def _kbli_codes(value: str) -> set[str]:
     return set(_KBLI_CODE_RE.findall(value))
 
@@ -1266,8 +1290,10 @@ def _build_prompt(body: BridgeRequest) -> str:
             "Reply as Zantara, the AI assistant of Bali Zero.",
             "Return only the WhatsApp reply text.",
             "Use the same language as the client.",
-            "Keep it concise, natural, and client-safe: maximum 150 words.",
-            "Use plain text only: no markdown, no code blocks, no internal labels.",
+            "Open with the direct answer in the first line; details, caveats, and next steps follow.",
+            "Keep it concise, natural, and client-safe: target under 900 characters for a simple question; a complex multi-part consultation may use up to 1500 characters, never more.",
+            "Format for WhatsApp, not markdown: emphasis uses *single asterisks* (WhatsApp bold), never ** double asterisks; never markdown headers (#, ##), code blocks, tables, or internal labels.",
+            "Structure for a phone screen: short paragraphs of 1-3 sentences separated by blank lines; for lists use the • bullet character, not - or *.",
             "Sound like a capable Bali Zero consultant in a 1:1 chat.",
             "For exact prices, custom quotes, service-package totals, case-specific timelines, or client-specific filing, eligibility, or status, do not invent details; say you will verify with the team and give the next step.",
             "State stable published regulatory facts directly when they are general and not specific to this client: standard overstay fines, visa-type definitions and differences (for example B211/C-class short-stay vs KITAS limited-stay residency permit), standard tax rates (property-sale PPh and BPHTB), and statutory capital thresholds. Give the figure or definition concisely, then note the team confirms how it applies to the client's specific case. Do NOT deflect a stable definitional or rate question to the team.",
@@ -1630,6 +1656,8 @@ async def reply(
             response_text,
             body.context.get("detected_language") if body.context else None,
         )
+        # F40: last step on purpose — normalizes guard canonicals too.
+        response_text = _normalize_whatsapp_format(response_text)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"OpenClaw failed: {exc}") from exc
     return {

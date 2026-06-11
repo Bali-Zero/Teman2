@@ -559,6 +559,64 @@ def test_villa_kbli_query_explicit_codes_not_gated_by_incidental_bailout() -> No
     ) is True
 
 
+# ---------------------------------------------------------------------------
+# F40: WhatsApp formatting calibration (probe round 2026-06-11) — prompt rules
+# + deterministic markdown→WhatsApp normalization net
+# ---------------------------------------------------------------------------
+
+def test_build_prompt_includes_whatsapp_format_rules() -> None:
+    body = bridge.BridgeRequest(
+        phone="+62 812-345",
+        sender_name="Client",
+        message_id="wamid.format",
+        text="How much does the investor KITAS cost?",
+        context={"detected_language": "en"},
+    )
+    rules = "\n".join(json.loads(bridge._build_prompt(body))["reply_rules"])
+
+    assert "direct answer in the first line" in rules
+    assert "900 characters" in rules
+    assert "1500 characters" in rules
+    assert "*single asterisks*" in rules
+    assert "never ** double asterisks" in rules
+    assert "• bullet character" in rules
+
+
+def test_normalize_whatsapp_format_rewrites_markdown() -> None:
+    raw = (
+        "## Investor KITAS\n"
+        "The **2-year investor KITAS** costs:\n"
+        "- Offshore: 17M IDR\n"
+        "* Onshore: 19M IDR\n"
+    )
+    assert bridge._normalize_whatsapp_format(raw) == (
+        "Investor KITAS\n"
+        "The *2-year investor KITAS* costs:\n"
+        "• Offshore: 17M IDR\n"
+        "• Onshore: 19M IDR\n"
+    )
+
+
+def test_normalize_whatsapp_format_keeps_clean_reply_unchanged() -> None:
+    clean = (
+        "The 2-year investor KITAS is 17M IDR offshore.\n\n"
+        "• Documents: passport, company deed\n"
+        "• Timeline: the team confirms\n\n"
+        "Want me to start the checklist?"
+    )
+    assert bridge._normalize_whatsapp_format(clean) == clean
+
+
+def test_normalize_whatsapp_format_bold_line_start_is_not_bullet() -> None:
+    # "*Important:* ..." at line start is WhatsApp bold, not a "* " list marker.
+    text = "*Important:* bring the original passport."
+    assert bridge._normalize_whatsapp_format(text) == text
+
+
+def test_normalize_whatsapp_format_preserves_bullet_indent() -> None:
+    assert bridge._normalize_whatsapp_format("  - nested item") == "  • nested item"
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(
