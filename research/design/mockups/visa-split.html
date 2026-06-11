@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Indonesian visa assessment — Bali Zero</title>
+<!--
+  MYTHOS Visa — SPLIT direction (4-LLM convergent: Gemini "Esploratore Editoriale" + Codex "Dossier Guidato")
+  Fixes the v3 emptiness: left = wizard (sticky), right = live case-file that BUILDS as you answer.
+  The right column fills the void with the REASONING (why this visa / what blocks it / next step),
+  not white air. Theme fixed: paper #f6f4ef, navy #1e3863, ONE red #FF2D4C, Cormorant + Inter.
+-->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f4ef; --paper2:#fbfaf7; --panel:#f1eee7; --ink:#1a1a18; --navy:#1e3863;
+  --line:rgba(30,56,99,.16); --line2:rgba(30,56,99,.28); --graphite:#5a5f66; --red:#FF2D4C;
+  --s1:8px;--s2:16px;--s3:24px;--s4:32px;--s6:48px;--s8:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.ser{font-family:"Cormorant Garamond",Georgia,serif}
+
+/* masthead navy anchors, no red */
+.mast{border-bottom:1px solid var(--line);height:60px;display:flex;align-items:center;padding:0 var(--s4)}
+.mast .brand{font-weight:700;color:var(--navy);font-size:15px;letter-spacing:.02em}
+.mast .brand b{font-weight:800}
+.mast nav{margin-left:auto;display:flex;gap:var(--s3);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--graphite)}
+.mast nav a{color:var(--graphite);text-decoration:none;padding-bottom:3px}
+.mast nav a.on{color:var(--navy);border-bottom:2px solid var(--navy)}
+
+/* SPLIT */
+.split{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 60px)}
+.left{padding:var(--s8) var(--s6);border-right:1px solid var(--line2)}
+.right{padding:var(--s8) var(--s6);background:var(--panel)}
+
+.kick{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--graphite);display:flex;align-items:center;gap:10px;margin-bottom:var(--s4)}
+.kick .n{font-weight:700;color:var(--navy)}
+
+/* LEFT — wizard */
+.stepper{display:flex;gap:6px;margin-bottom:var(--s4)}
+.stepper .seg{height:2px;flex:1;background:var(--line)}
+.stepper .seg.done{background:var(--navy)}
+.stepper .seg.now{background:var(--navy);opacity:.55}
+.priors{margin-bottom:var(--s6);border-left:2px solid var(--line);padding-left:var(--s2)}
+.priors .p{font-size:13px;color:var(--graphite);padding:3px 0}
+.priors .p b{color:var(--navy);font-weight:600}
+.qh{font-size:38px;line-height:1.12;color:var(--navy);font-weight:600;max-width:15ch;letter-spacing:-.01em}
+.qs{margin-top:12px;color:var(--graphite);font-size:15px;max-width:42ch}
+.opts{margin-top:var(--s6);border-top:1px solid var(--line)}
+.opt{display:flex;gap:var(--s2);align-items:flex-start;padding:var(--s3) 2px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .15s}
+.opt:hover{background:var(--paper2)}
+.opt.sel{box-shadow:inset 3px 0 0 var(--navy)}
+.opt .ix{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:21px;color:var(--navy);min-width:26px}
+.opt .ot{font-weight:600;font-size:16px;color:var(--ink)}
+.opt .oc{font-size:13px;color:var(--graphite);margin-top:3px;max-width:46ch}
+.lnav{margin-top:var(--s6);display:flex;align-items:center;gap:var(--s3)}
+.lnav .back{background:none;border:none;color:var(--graphite);font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.lnav .next{background:var(--navy);color:#fff;border:none;border-radius:2px;font-size:14px;font-weight:600;padding:12px 22px;cursor:pointer}
+.lnav .save{margin-left:auto;font-size:13px;color:var(--graphite);text-decoration:underline;text-underline-offset:3px}
+
+/* RIGHT — live case file (sticky) */
+.dossier{position:sticky;top:var(--s8)}
+.dlabel{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--graphite);margin-bottom:6px}
+.dverdict{font-size:34px;line-height:1.1;color:var(--navy);font-weight:600;max-width:16ch}
+.dnote{font-size:14px;color:var(--graphite);margin-top:6px}
+/* tombstone numbers */
+.dnums{display:flex;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);margin:var(--s6) 0}
+.dnums .n{flex:1;padding:var(--s3) var(--s2) var(--s3) 0;border-right:1px solid var(--line)}
+.dnums .n:last-child{border-right:none}
+.dnums .fig{font-family:"Cormorant Garamond",serif;font-size:32px;color:var(--navy);font-weight:600;line-height:1}
+.dnums .lab{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--graphite);margin-top:8px}
+.dnums .src{font-size:11px;color:var(--graphite);margin-top:4px;font-style:italic}
+/* reasoning sections */
+.dsec{border-top:1px solid var(--line);padding:var(--s3) 0}
+.dsec h4{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);font-weight:600;margin-bottom:8px}
+.dsec p{font-size:14px;color:var(--ink);max-width:50ch;line-height:1.5}
+.dsec p b{color:var(--navy)}
+.dsec ul{list-style:none;margin-top:4px}
+.dsec li{font-size:13.5px;color:var(--ink);padding:5px 0 5px 18px;position:relative;border-bottom:1px solid var(--line);max-width:48ch}
+.dsec li:last-child{border-bottom:none}
+.dsec li:before{content:"";position:absolute;left:2px;top:13px;width:9px;height:1px;background:var(--navy)}
+/* primary action — the ONE red */
+.dcta{margin-top:var(--s4);display:inline-flex;align-items:center;gap:9px;background:var(--red);color:#fff;font-weight:600;font-size:15px;padding:14px 24px;border:none;border-radius:2px;text-decoration:none;cursor:pointer}
+.dcta:hover{filter:brightness(.94)}
+.dprov{font-size:12px;color:var(--graphite);margin-top:14px;font-style:italic}
+
+@media(max-width:820px){
+  .split{grid-template-columns:1fr}
+  .left{border-right:none;border-bottom:1px solid var(--line2);padding:var(--s6) var(--s4)}
+  .right{padding:var(--s6) var(--s4)}
+  .qh{font-size:30px}.dverdict{font-size:28px}
+  .dossier{position:static}
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="brand">BALI <b>ZERO</b></div>
+  <nav><a href="#" class="on">Visa</a><a href="#">Company</a><a href="#">Tax</a><a href="#">Contact</a></nav>
+</header>
+
+<div class="split">
+
+  <!-- LEFT: the wizard (you act here) -->
+  <section class="left">
+    <div class="kick"><span class="n">01 /</span><span>Indonesian visa assessment</span></div>
+    <div class="stepper">
+      <span class="seg done"></span><span class="seg done"></span><span class="seg now"></span>
+      <span class="seg"></span><span class="seg"></span><span class="seg"></span>
+    </div>
+    <div class="priors">
+      <div class="p">Length of stay — <b>about 12 months</b></div>
+      <div class="p">Indonesian income — <b>none</b></div>
+    </div>
+    <h2 class="qh ser">What will you be doing while you’re here?</h2>
+    <p class="qs">This single answer changes which visa is correct more than any other.</p>
+
+    <div class="opts">
+      <div class="opt sel">
+        <div class="ix">A</div>
+        <div><div class="ot">Working remotely for a company outside Indonesia</div>
+        <div class="oc">No Indonesian income, no local employer.</div></div>
+      </div>
+      <div class="opt">
+        <div class="ix">B</div>
+        <div><div class="ot">Working for / running an Indonesian company</div>
+        <div class="oc">Local entity, local revenue.</div></div>
+      </div>
+      <div class="opt">
+        <div class="ix">C</div>
+        <div><div class="ot">Long stay — retirement, family, self-funded</div>
+        <div class="oc">Not working in Indonesia.</div></div>
+      </div>
+      <div class="opt">
+        <div class="ix">D</div>
+        <div><div class="ot">Tourism or a short visit</div>
+        <div class="oc">Holiday, scouting, a conference.</div></div>
+      </div>
+    </div>
+
+    <div class="lnav">
+      <button class="back">← Back</button>
+      <button class="next">Continue</button>
+      <a href="#" class="save">Save &amp; resume later</a>
+    </div>
+  </section>
+
+  <!-- RIGHT: the live case file (fills the void with reasoning) -->
+  <section class="right">
+    <div class="dossier">
+      <div class="kick"><span class="n">02 /</span><span>Your case file — updating live</span></div>
+      <div class="dlabel">Recommended so far</div>
+      <div class="dverdict ser">KITAS — Remote Worker (E33G)</div>
+      <div class="dnote">Based on your 3 answers. Refines as you continue.</div>
+
+      <div class="dnums">
+        <div class="n"><div class="fig">IDR 34M</div><div class="lab">All-in cost</div><div class="src">PricingTool · Jun 2026</div></div>
+        <div class="n"><div class="fig">~3 wks</div><div class="lab">Processing</div></div>
+        <div class="n"><div class="fig">1 yr</div><div class="lab">Validity · renewable</div></div>
+      </div>
+
+      <div class="dsec">
+        <h4>Why this visa</h4>
+        <p>You’re <b>working remotely for a foreign employer</b> with <b>no Indonesian income</b>, for <b>about a year</b>. E33G is the residency route built for exactly this — without forcing a local company or work permit you don’t need.</p>
+      </div>
+      <div class="dsec">
+        <h4>What could block the case</h4>
+        <ul>
+          <li>Employer contract not in English or not addressed to you</li>
+          <li>Passport under 18 months’ validity at filing</li>
+          <li>Any sign of Indonesian-sourced income (would push you off E33G)</li>
+        </ul>
+      </div>
+      <div class="dsec">
+        <h4>Next step</h4>
+        <p>The visa desk confirms eligibility against your documents <b>before you pay</b>, then files. One named handler from filing to KITAS stamp.</p>
+      </div>
+
+      <a href="#" class="dcta">Have the visa desk verify this route →</a>
+      <div class="dprov">Route basis: Permenkumham 22/2023 (E33G). Figures from PricingTool, Jun 2026.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

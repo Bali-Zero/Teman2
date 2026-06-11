@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KBLI navigator — Bali Zero</title>
+<!--
+  MYTHOS KBLI — SPLIT direction (4-LLM convergent: Gemini "Tomo Aperto" + Codex "Il Registro")
+  Fixes the v3 emptiness: left = dense editorial REGISTER (rows, not cards), right = Zantara as a
+  PERMANENT structural column (not a bolted-on drawer/widget). The right column fills the void and
+  gives the AI the dignity of a seated consultant. Theme fixed: paper/navy/one-red, Cormorant+Inter.
+-->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f4ef; --paper2:#fbfaf7; --panel:#f1eee7; --sel:#eceae3; --ink:#1a1a18; --navy:#1e3863;
+  --line:rgba(30,56,99,.16); --line2:rgba(30,56,99,.30); --graphite:#5a5f66; --red:#FF2D4C;
+  --s1:8px;--s2:16px;--s3:24px;--s4:32px;--s6:48px;--s8:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.ser{font-family:"Cormorant Garamond",Georgia,serif}
+
+.mast{border-bottom:1px solid var(--line);height:60px;display:flex;align-items:center;padding:0 var(--s4)}
+.mast .brand{font-weight:700;color:var(--navy);font-size:15px;letter-spacing:.02em}
+.mast .brand b{font-weight:800}
+.mast nav{margin-left:auto;display:flex;gap:var(--s3);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--graphite)}
+.mast nav a{color:var(--graphite);text-decoration:none;padding-bottom:3px}
+.mast nav a.on{color:var(--navy);border-bottom:2px solid var(--navy)}
+
+.kick{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--graphite);display:flex;align-items:center;gap:10px;margin-bottom:var(--s3)}
+.kick .n{font-weight:700;color:var(--navy)}
+
+/* SPLIT 62/38 */
+.split{display:grid;grid-template-columns:62fr 38fr;min-height:calc(100vh - 60px)}
+.left{padding:var(--s6) var(--s6);border-right:1px solid var(--line2)}
+.right{background:var(--panel);border-left:1px solid var(--line2)}
+
+/* search */
+.search{border-bottom:2px solid var(--navy);display:flex;align-items:center;gap:10px;padding:10px 2px;margin-bottom:var(--s2)}
+.search .q{font-family:"Cormorant Garamond",serif;font-size:26px;color:var(--ink)}
+.search .q .cur{color:var(--graphite)}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:var(--s6)}
+.chip{font-size:12.5px;color:var(--navy);border:1px solid var(--line);padding:5px 11px;border-radius:2px;background:var(--paper2);cursor:pointer}
+.chip:hover{border-color:var(--navy)}
+
+/* register — column header + rows */
+.rhead{display:grid;grid-template-columns:78px 1fr 92px 110px 70px;gap:var(--s2);
+  font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--graphite);
+  padding:0 2px 8px;border-bottom:1px solid var(--line2)}
+.rrow{display:grid;grid-template-columns:78px 1fr 92px 110px 70px;gap:var(--s2);align-items:baseline;
+  padding:14px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.rrow:hover{background:var(--paper2)}
+.rrow.sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--navy)}
+.rrow .code{font-family:"Cormorant Garamond",serif;font-size:22px;color:var(--navy);font-weight:600}
+.rrow .act{font-size:14.5px;color:var(--ink);font-weight:500}
+.rrow .act small{display:block;font-size:12px;color:var(--graphite);font-weight:400;margin-top:2px}
+.rrow .cell{font-size:13px;color:var(--ink)}
+.rrow .cell b{color:var(--navy);font-weight:600}
+
+/* selected detail expands inline under its row */
+.detail{padding:var(--s4) 2px var(--s2);border-bottom:1px solid var(--line2);background:var(--sel)}
+.detail .dmast{display:flex;align-items:baseline;gap:var(--s3);margin-bottom:var(--s3)}
+.detail .dcode{font-family:"Cormorant Garamond",serif;font-size:46px;color:var(--navy);font-weight:600;line-height:.9}
+.detail .dint{font-size:18px;font-weight:600;color:var(--ink)}
+.drows{border-top:1px solid var(--line)}
+.drow{display:flex;justify-content:space-between;gap:var(--s2);padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.drow .k{color:var(--graphite)}
+.drow .v{color:var(--ink);font-weight:600;text-align:right}
+.drow .v small{display:block;font-weight:400;font-style:italic;color:var(--graphite);font-size:11.5px;margin-top:2px}
+
+/* RIGHT — Zantara permanent consultant column */
+.z{position:sticky;top:0;height:calc(100vh - 60px);display:flex;flex-direction:column}
+.zh{padding:var(--s3) var(--s4) var(--s2);border-bottom:1px solid var(--line)}
+.zh .zt{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);font-weight:600}
+.zh .zc{font-size:12.5px;color:var(--graphite);margin-top:3px}
+.zbody{flex:1;overflow:auto;padding:var(--s3) var(--s4)}
+.qa{margin-bottom:var(--s4)}
+.qa .q{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:18px;color:var(--navy);margin-bottom:7px}
+.qa .a{font-size:14px;color:var(--ink);line-height:1.55}
+.qa .a b{color:var(--navy)}
+.cite{margin-top:9px;border-left:2px solid var(--line);padding-left:11px}
+.cite summary{font-size:11.5px;color:var(--navy);cursor:pointer;list-style:none}
+.cite summary::-webkit-details-marker{display:none}
+.cite summary:before{content:"▸ ";color:var(--graphite)}
+.cite[open] summary:before{content:"▾ "}
+.cite .full{font-size:12.5px;color:var(--graphite);margin-top:6px;line-height:1.5}
+.cite .full b{color:var(--ink)}
+/* structured helpers */
+.zhelp{border-top:1px solid var(--line);padding-top:var(--s2);margin-top:var(--s2)}
+.zhelp .h{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--graphite);margin:var(--s2) 0 6px}
+.zhelp .h:first-child{margin-top:0}
+.zhelp a{display:block;font-size:13px;color:var(--navy);text-decoration:none;padding:4px 0;border-bottom:1px solid var(--line)}
+.zhelp .flag{font-size:12.5px;color:var(--ink);padding:4px 0 4px 16px;position:relative}
+.zhelp .flag:before{content:"";position:absolute;left:0;top:11px;width:8px;height:1px;background:var(--navy)}
+/* input + persistent escalation */
+.zin{border-top:1px solid var(--line);padding:var(--s2) var(--s4);display:flex;gap:9px;align-items:center}
+.zin input{flex:1;border:none;border-bottom:1px solid var(--line);background:transparent;font-size:13.5px;padding:7px 2px;outline:none}
+.zin input:focus{border-bottom-color:var(--navy)}
+.zin .send{background:var(--navy);color:#fff;border:none;border-radius:2px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.zesc{padding:10px var(--s4);border-top:1px solid var(--line);font-size:12.5px;color:var(--graphite)}
+.zesc a{color:var(--red);font-weight:600;text-decoration:none}
+.zesc a:hover{text-decoration:underline}
+
+@media(max-width:820px){
+  .split{grid-template-columns:1fr}
+  .left{border-right:none;padding:var(--s4)}
+  .right{border-left:none;border-top:1px solid var(--line2)}
+  .z{position:static;height:auto}
+  .zbody{overflow:visible}
+  .rhead,.rrow{grid-template-columns:60px 1fr;gap:8px}
+  .rhead .cell,.rrow .cell{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="brand">BALI <b>ZERO</b></div>
+  <nav><a href="#">Visa</a><a href="#" class="on">KBLI</a><a href="#">Tax</a><a href="#">Contact</a></nav>
+</header>
+
+<div class="split">
+
+  <!-- LEFT: the register -->
+  <section class="left">
+    <div class="kick"><span class="n">01 /</span><span>KBLI navigator</span></div>
+    <div class="search"><span class="q">restaurant<span class="cur">|</span></span></div>
+    <div class="chips">
+      <span class="chip">Villa rental</span><span class="chip">Consulting</span>
+      <span class="chip">Import-export</span><span class="chip">Café</span>
+    </div>
+
+    <div class="rhead">
+      <div>Code</div><div>Activity</div><div>Foreign own.</div><div>Min. capital</div><div>Risk</div>
+    </div>
+
+    <!-- selected detail expands right under its row -->
+    <div class="rrow sel">
+      <div class="code ser">56101</div>
+      <div class="act">Restaurants<small>Full-service sit-down dining</small></div>
+      <div class="cell"><b>100%</b></div>
+      <div class="cell"><b>IDR 10B</b></div>
+      <div class="cell">Medium</div>
+    </div>
+    <div class="detail">
+      <div class="dmast"><div class="dcode ser">56101</div><div class="dint">Restaurants</div></div>
+      <div class="drows">
+        <div class="drow"><span class="k">Foreign ownership</span><span class="v">100% allowed (PT PMA)</span></div>
+        <div class="drow"><span class="k">Minimum investment</span><span class="v">IDR 10,000,000,000<small>BKPM Perka 4/2021, Lampiran III · Jun 2026</small></span></div>
+        <div class="drow"><span class="k">OSS risk level</span><span class="v">Medium</span></div>
+        <div class="drow"><span class="k">Bali Zero setup — PT PMA</span><span class="v">IDR 20,000,000<small>from PricingTool · Jun 2026</small></span></div>
+      </div>
+    </div>
+
+    <div class="rrow">
+      <div class="code ser">56102</div>
+      <div class="act">Warung / street-food<small>Small informal eateries</small></div>
+      <div class="cell">Restricted</div>
+      <div class="cell">—</div>
+      <div class="cell">Low</div>
+    </div>
+    <div class="rrow">
+      <div class="code ser">56303</div>
+      <div class="act">Cafés &amp; coffee bars<small>Coffee-led, light food</small></div>
+      <div class="cell"><b>100%</b></div>
+      <div class="cell"><b>IDR 10B</b></div>
+      <div class="cell">Medium</div>
+    </div>
+  </section>
+
+  <!-- RIGHT: Zantara permanent column, contextual to 56101 -->
+  <section class="right">
+    <div class="z">
+      <div class="zh">
+        <div class="zt">Zantara</div>
+        <div class="zc">Reading KBLI 56101 · Restaurants with you</div>
+      </div>
+
+      <div class="zbody">
+        <div class="qa">
+          <div class="q">Can a foreigner own a restaurant under 56101?</div>
+          <div class="a">Yes — 56101 allows <b>100% foreign ownership</b> as a PT PMA, with a minimum investment plan of <b>IDR 10 billion</b> at setup.
+            <details class="cite"><summary>Source</summary>
+              <div class="full"><b>BKPM Perka No. 4/2021</b> — Lampiran III (Positive Investment List). Current Jun 2026. Confidence: high.</div>
+            </details>
+          </div>
+        </div>
+        <div class="qa">
+          <div class="q">Is the IDR 10B cash I must deposit?</div>
+          <div class="a">No — it’s a <b>planned-investment commitment</b> declared at incorporation, not cash on day one. The company desk can show how it’s evidenced for your case.
+            <details class="cite"><summary>Source</summary>
+              <div class="full"><b>BKPM Perka No. 4/2021</b> — Pasal 6, minimum investment value for PMA. Current Jun 2026.</div>
+            </details>
+          </div>
+        </div>
+
+        <div class="zhelp">
+          <div class="h">Useful questions</div>
+          <a href="#">What licences does a restaurant need?</a>
+          <a href="#">Can I run it as a café too?</a>
+          <a href="#">How long does PT PMA setup take?</a>
+          <div class="h">Red flags</div>
+          <div class="flag">Using a nominee to hold the company — illegal &amp; void under Indonesian law</div>
+          <div class="flag">Operating under 56102 (warung) as a foreigner — not permitted</div>
+          <div class="h">Nearby codes</div>
+          <a href="#">56303 — Cafés &amp; coffee bars</a>
+          <a href="#">56301 — Bars serving drinks</a>
+        </div>
+      </div>
+
+      <div class="zin">
+        <input type="text" placeholder="Ask about KBLI 56101…">
+        <button class="send">Send</button>
+      </div>
+      <div class="zesc">Need a person? <a href="#">Talk to the Bali Zero company desk →</a></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
