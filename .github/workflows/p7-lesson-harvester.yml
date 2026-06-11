@@ -12,14 +12,12 @@ name: P7 LEARN Shadow Harvester Gate
 # Nothing in this pipeline activates a rule, edits settings.json, or creates a
 # hook. Promotion of any proposal to enforcement requires a human-gate (P7 §3.4).
 
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-11): top-level pull_request
+# `paths:` filter REMOVED so this can become a required-status-check without
+# the pending-forever trap (W69). The relevant-paths decision lives in the
+# "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
-  pull_request:
-    paths:
-      - "agent-library/learn/lesson_harvester.py"
-      - "agent-library/learn/test_lesson_harvester.py"
-      - "agent-library/learn/proposals/**"
-      - ".claude/rules/cicatrix-scars.md"
-      - ".github/workflows/p7-lesson-harvester.yml"
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
   workflow_dispatch:
 
 permissions:
@@ -30,30 +28,58 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the sentinel git diff sees PR changes
+
+      # BUCO #1 sentinel (pattern: p1s2-mutation-incremental.yml). The regex is
+      # the EXACT original pull_request `paths:` list, each anchored ^...$.
+      - name: Did relevant paths change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full gate"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(agent-library/learn/lesson_harvester\.py|agent-library/learn/test_lesson_harvester\.py|agent-library/learn/proposals/.*|\.claude/rules/cicatrix-scars\.md|\.github/workflows/p7-lesson-harvester\.yml)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no relevant paths changed — sentinel success"
+          fi
 
       - uses: actions/setup-python@v5
+        if: steps.relevant.outputs.run == 'true'
         with:
           python-version: "3.11"
 
       - name: Install pytest
+        if: steps.relevant.outputs.run == 'true'
         run: pip install --quiet pytest
 
       # Internal G1/G4/G2 assertions (no ledger dependency).
       - name: lesson_harvester self-test
+        if: steps.relevant.outputs.run == 'true'
         run: python3 agent-library/learn/lesson_harvester.py --self-test
 
       # The committed shadow report MUST match a fresh generation from the
       # current scar ledger. If a scar was added but the report not regenerated,
       # this fails (proposal drift caught at PR time).
       - name: lesson_harvester --check (idempotence)
+        if: steps.relevant.outputs.run == 'true'
         run: python3 agent-library/learn/lesson_harvester.py --check
 
       # Falsifiable gate tests (G1 anchor, G2 no-enforce, G3 kill-switch, G4
       # recurrence).
       - name: pytest gate (test_lesson_harvester.py)
+        if: steps.relevant.outputs.run == 'true'
         run: PYTHONPATH=agent-library/learn python3 -m pytest agent-library/learn/test_lesson_harvester.py -q
 
       - name: py_compile harvester + tests
+        if: steps.relevant.outputs.run == 'true'
         run: |
           python3 -m py_compile agent-library/learn/lesson_harvester.py
           python3 -m py_compile agent-library/learn/test_lesson_harvester.py
