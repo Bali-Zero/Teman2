@@ -242,3 +242,83 @@ def test_load_queue_tolerates_items_wrapper(tmp_path):
     p.write_text(json.dumps({"items": [_old_schema_item("a")]}))
     loaded = qw.load_queue(p)
     assert isinstance(loaded, list) and qw.item_id_of(loaded[0]) == "a"
+
+
+# ── extract_ig_shortcode / build_external_item ─────────────────────────────
+
+
+@pytest.mark.parametrize("url,code", [
+    ("https://www.instagram.com/p/Cabc123_-/", "Cabc123_-"),
+    ("https://instagram.com/reel/Xyz789/", "Xyz789"),
+    ("http://instagram.com/tv/Abc/?igshid=x", "Abc"),
+])
+def test_extract_ig_shortcode(url, code):
+    assert qw.extract_ig_shortcode(url) == code
+
+
+def test_extract_ig_shortcode_none_on_profile():
+    assert qw.extract_ig_shortcode("https://instagram.com/balizero0") is None
+
+
+def test_build_external_item_scraper_shape():
+    it = qw.build_external_item(VALID_URL, "2026-06-10T00:00:00+00:00", topic="My post")
+    assert it["item_id"] == "ig-Cabc123_-"
+    assert it["state"] == "published"
+    assert it["instagram_post_url"] == VALID_URL
+    assert it["instagram_published_at"] == "2026-06-10T00:00:00+00:00"
+    assert not it["engagement_metrics"]
+    assert it["external"] is True and it["source"] == "manual_external"
+    assert it["topic"] == "My post"
+
+
+def test_build_external_item_auto_topic():
+    it = qw.build_external_item(VALID_URL, "2026-06-10T00:00:00+00:00")
+    assert "Cabc123_-" in it["topic"]
+
+
+# ── ingest_external_post — orchestration ───────────────────────────────────
+
+
+def test_ingest_external_mints_published_item(queue_file):
+    before = len(json.loads(queue_file.read_text()))
+    res = qw.ingest_external_post(queue_file, VALID_URL, topic="Zero's post")
+    assert res.status == "ingested" and res.ok is True
+    items = json.loads(queue_file.read_text())
+    assert len(items) == before + 1
+    new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
+    assert new["state"] == "published" and new["instagram_post_url"] == VALID_URL
+    assert new["topic"] == "Zero's post"
+
+
+def test_ingest_external_default_published_at_is_scraper_eligible(queue_file):
+    # Default published_at must be >24h in the past so the scraper picks it up now.
+    from datetime import datetime, timezone
+    qw.ingest_external_post(queue_file, VALID_URL)
+    items = json.loads(queue_file.read_text())
+    new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
+    pub = datetime.fromisoformat(new["instagram_published_at"])
+    age_hours = (datetime.now(timezone.utc) - pub).total_seconds() / 3600
+    assert age_hours >= 24
+
+
+def test_ingest_external_idempotent_same_url(queue_file):
+    qw.ingest_external_post(queue_file, VALID_URL)
+    n_after_first = len(json.loads(queue_file.read_text()))
+    res = qw.ingest_external_post(queue_file, VALID_URL)
+    assert res.status == "already_present" and res.ok is True
+    assert len(json.loads(queue_file.read_text())) == n_after_first  # no duplicate
+
+
+def test_ingest_external_invalid_url_no_write(queue_file):
+    before = queue_file.read_text()
+    res = qw.ingest_external_post(queue_file, "https://example.com/p/x")
+    assert res.status == "invalid_url" and res.ok is False
+    assert queue_file.read_text() == before
+
+
+def test_ingest_external_explicit_date(queue_file):
+    res = qw.ingest_external_post(queue_file, VALID_URL, published_at="2026-05-01T12:00:00+00:00")
+    assert res.ok
+    items = json.loads(queue_file.read_text())
+    new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
+    assert new["instagram_published_at"] == "2026-05-01T12:00:00+00:00"
