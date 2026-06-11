@@ -56,6 +56,62 @@ _VILLA_TERMS = (
     "vila",
     "ville",
 )
+# F39 (2026-06-11, probe T5): signals that the villa IS the business being
+# asked about (operated/rented as accommodation) vs mentioned in passing.
+_VILLA_RENTAL_SIGNALS = (
+    "accommodation",
+    "affittare",
+    "affitto",
+    "airbnb",
+    "akomodasi",
+    "alloggio",
+    "booking",
+    "disewakan",
+    "guest",
+    "guesthouse",
+    "guests",
+    "homestay",
+    "penginapan",
+    "pondok wisata",
+    "rent",
+    "rental",
+    "sewa",
+    "short stay",
+    "short-stay",
+    "tamu",
+)
+_RESIDENTIAL_INTENT_TERMS = (
+    "ci vivo",
+    "live in",
+    "living in",
+    "my home",
+    "my residence",
+    "per abitarci",
+    "per viverci",
+    "personal residence",
+    "tempat tinggal",
+    "to live",
+    "untuk tinggal",
+)
+_NON_VILLA_BUSINESS_TERMS = (
+    "bar",
+    "beach club",
+    "cafe",
+    "caffe",
+    "gym",
+    "kafe",
+    "kedai",
+    "night club",
+    "nightclub",
+    "restaurant",
+    "restoran",
+    "ristorante",
+    "salon",
+    "shop",
+    "spa",
+    "toko",
+    "warung",
+)
 _KBLI_TERMS = ("kbli", "code", "codes", "codice", "codici", "kode")
 _COMPARE_TERMS = (
     "beda",
@@ -258,6 +314,21 @@ def _kbli_codes(value: str) -> set[str]:
     return set(_KBLI_CODE_RE.findall(value))
 
 
+def _is_incidental_villa_mention(normalized: str) -> bool:
+    """True when the villa is mentioned in passing inside a question about
+    something else (F39 2026-06-11, probe T5): another primary business
+    ("open a beach club ... also buying a villa to live in") or a
+    residential purchase — with NO rental/accommodation-business signal.
+    The keyword conjunction "kbli" + "villa" is not villa-business intent
+    (root class W73). Explicit-code rules are NOT gated by this.
+    """
+    if _contains_any_word(normalized, _VILLA_RENTAL_SIGNALS):
+        return False
+    return _contains_any_word(normalized, _RESIDENTIAL_INTENT_TERMS) or _contains_any_word(
+        normalized, _NON_VILLA_BUSINESS_TERMS
+    )
+
+
 def _is_villa_kbli_query(message_text: str) -> bool:
     normalized = _normalize_text(message_text)
     codes = _kbli_codes(normalized)
@@ -269,7 +340,14 @@ def _is_villa_kbli_query(message_text: str) -> bool:
     # Word-boundary check (F13 2026-06-11): "villa" is a substring of "village",
     # so a query about "handicrafts in an Ubud village" triggered this guard.
     # _contains_any_word ensures "village" does not count as a villa term hit.
-    if _contains_any(normalized, _KBLI_TERMS) and _contains_any_word(normalized, _VILLA_TERMS):
+    # F39 (2026-06-11): the keyword rule additionally bails out when the villa
+    # mention is incidental (other primary business / bought to live in) —
+    # explicit-code rules above keep firing regardless.
+    if (
+        _contains_any(normalized, _KBLI_TERMS)
+        and _contains_any_word(normalized, _VILLA_TERMS)
+        and not _is_incidental_villa_mention(normalized)
+    ):
         return True
     return bool(codes & _VILLA_KBLI_CODES and _contains_any_word(normalized, _VILLA_TERMS))
 

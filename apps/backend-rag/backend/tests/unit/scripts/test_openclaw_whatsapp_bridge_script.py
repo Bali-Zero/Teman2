@@ -491,6 +491,74 @@ def test_villa_kbli_guard_village_not_clobbered() -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# F39: incidental villa mention (probe T5 2026-06-11) — "kbli"+"villa" keyword
+# conjunction is not villa-business intent (root class W73)
+# ---------------------------------------------------------------------------
+
+def test_villa_kbli_query_incidental_villa_beach_club_passes() -> None:
+    """F39 regression (probe T5): a beach-club KBLI question mentioning a villa
+    bought TO LIVE IN was classified as a villa KBLI query and the multi-part
+    answer (KBLI 56301, foreign ownership, visas) was replaced with the 55203
+    villa canonical.
+    """
+    assert bridge._is_villa_kbli_query(
+        "I want to open a beach club in Canggu with my Australian partner: "
+        "which KBLI codes apply, can it be 100% foreign owned, and what visas "
+        "do we need? We are also thinking of buying a villa to live in."
+    ) is False
+
+
+def test_villa_kbli_query_residential_purchase_passes() -> None:
+    """F39: a residential villa purchase with no rental signal is not a
+    villa-business KBLI query — the right answer is 'no KBLI needed', not
+    the 55203 canonical."""
+    assert bridge._is_villa_kbli_query(
+        "I'm buying a villa in Ubud to live in — do I need a KBLI code for that?"
+    ) is False
+
+
+def test_villa_kbli_guard_beach_club_not_clobbered() -> None:
+    """F39 regression: guard must not clobber a correct beach-club answer."""
+    correct = (
+        "A beach club typically combines KBLI 56301 (bars) and 56101 "
+        "(restaurants); both are open to 100% foreign ownership via PT PMA. "
+        "You and your partner would need investor KITAS. The team verifies "
+        "the exact code mix for your concept."
+    )
+    assert (
+        bridge._guard_villa_kbli_reply(
+            "I want to open a beach club in Canggu with my Australian partner: "
+            "which KBLI codes apply, can it be 100% foreign owned, and what "
+            "visas do we need? We are also thinking of buying a villa to live in.",
+            correct,
+            "en",
+        )
+        == correct
+    )
+
+
+def test_villa_kbli_query_still_fires_on_genuine_rental_intent() -> None:
+    """F39 other polarity: a genuine villa-rental KBLI question still guards,
+    even when another business is mentioned alongside."""
+    assert bridge._is_villa_kbli_query(
+        "Which KBLI code do I need to rent out my villa on Airbnb?"
+    ) is True
+    assert bridge._is_villa_kbli_query(
+        "We run a restaurant and also rent out a villa to guests — "
+        "which KBLI codes apply?"
+    ) is True
+
+
+def test_villa_kbli_query_explicit_codes_not_gated_by_incidental_bailout() -> None:
+    """F39: explicit 55193/55203 codes in the message keep firing the guard
+    regardless of residential/other-business wording."""
+    assert bridge._is_villa_kbli_query(
+        "For my restaurant company, is 55193 or 55203 the right code? "
+        "The villa is just to live in."
+    ) is True
+
+
 def test_run_script_uses_installed_bridge_app_dir() -> None:
     repo_root = Path(__file__).resolve().parents[6]
     script = (repo_root / "scripts" / "run_openclaw_whatsapp_bridge.sh").read_text(
