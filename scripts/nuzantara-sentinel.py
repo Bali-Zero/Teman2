@@ -786,6 +786,81 @@ def _infer_files(job_id: str, error_text: str) -> list:
 SENTINEL_STATUS_FILE = os.path.expanduser("~/.agent/decisions/sentinel_status.json")
 MAX_RUN_DURATION_S = 240  # D1.7: abort if single run exceeds 4 minutes
 
+# W70 (2026-06-12): blind heal-loop detector. When dlq_terminal > 0 (jobs are
+# parked dead) but healing_actions_24h == 0 (sentinel did NOTHING to heal them)
+# for several consecutive cycles, the heal-loop is effectively dead and nobody
+# is told. Persist a consecutive-cycle counter next to sentinel_status.json and
+# fire ONE Telegram alert once it crosses the threshold.
+BLIND_LOOP_STATE_FILE = os.path.expanduser("~/.agent/decisions/blind_loop_counter.json")
+BLIND_LOOP_ALERT_CYCLES = int(os.getenv("SENTINEL_BLIND_LOOP_CYCLES", "3"))
+
+
+def _check_blind_heal_loop(status_obj: dict) -> None:
+    """W70: alert when the heal-loop is parked-but-idle for N cycles.
+
+    Condition: dlq_terminal > 0 AND healing_actions_24h == 0. Each cycle that
+    matches increments a persisted counter; the first non-matching cycle resets
+    it. On crossing BLIND_LOOP_ALERT_CYCLES we send ONE Telegram alert (gated by
+    the existing per-job escalation cooldown so it can't storm). Never raises —
+    a counter/IO miss must not break the sentinel run.
+    """
+    try:
+        dlq_terminal = status_obj.get("dlq_terminal", 0) or 0
+        healing_24h = status_obj.get("healing_actions_24h", 0) or 0
+        is_blind = dlq_terminal > 0 and healing_24h == 0
+
+        # Load + update the persisted consecutive-cycle counter.
+        try:
+            counter = json.loads(open(BLIND_LOOP_STATE_FILE).read())
+        except (FileNotFoundError, json.JSONDecodeError):
+            counter = {}
+        consecutive = int(counter.get("consecutive_blind_cycles", 0)) if is_blind else 0
+        if is_blind:
+            consecutive += 1
+        new_state = {
+            "consecutive_blind_cycles": consecutive,
+            "last_ts": time.time(),
+            "dlq_terminal": dlq_terminal,
+            "healing_actions_24h": healing_24h,
+            "_writer": "sentinel",
+        }
+        try:
+            os.makedirs(os.path.dirname(BLIND_LOOP_STATE_FILE), exist_ok=True)
+            _tmp = BLIND_LOOP_STATE_FILE + ".tmp"
+            with open(_tmp, "w") as f:
+                json.dump(new_state, f, indent=2)
+            os.replace(_tmp, BLIND_LOOP_STATE_FILE)
+        except OSError as _e:
+            logger.warning(f"W70 blind-loop: failed to persist counter ({_e})")
+
+        if is_blind and consecutive >= BLIND_LOOP_ALERT_CYCLES:
+            cooldown_key = "blind_heal_loop"
+            if check_escalation_cooldown(cooldown_key):
+                logger.info(
+                    f"W70 blind-loop: {consecutive} consecutive blind cycles "
+                    f"(dlq_terminal={dlq_terminal}, heal=0) — alert on cooldown, suppressed"
+                )
+                return
+            msg = (
+                f"BLIND HEAL-LOOP: {dlq_terminal} TERMINAL job(s) parked in DLQ "
+                f"but ZERO healing actions for {consecutive} consecutive sentinel "
+                f"cycles. The heal-loop is idle — these jobs will never recover "
+                f"on their own. Run: dlq requeue <job_id> after fixing root cause."
+            )
+            if send_alert(msg, level="CRITICAL"):
+                mark_escalation_sent(cooldown_key)
+            logger.warning(
+                f"W70 blind-loop alert fired: dlq_terminal={dlq_terminal}, "
+                f"consecutive={consecutive}"
+            )
+        elif is_blind:
+            logger.info(
+                f"W70 blind-loop: {consecutive}/{BLIND_LOOP_ALERT_CYCLES} blind "
+                f"cycle(s) (dlq_terminal={dlq_terminal}, heal=0)"
+            )
+    except Exception as _e:  # defensive: never break the sentinel run
+        logger.warning(f"W70 blind-loop check failed: {_e}")
+
 
 def run_sentinel() -> None:
     # D0.6: HEALING_DISABLED file flag — safer than env var (works in LaunchAgent)
@@ -940,6 +1015,9 @@ def run_sentinel() -> None:
     os.makedirs(os.path.dirname(SENTINEL_STATUS_FILE), exist_ok=True)
     with open(SENTINEL_STATUS_FILE, "w") as f:
         json.dump(status_obj, f, indent=2)
+
+    # W70: detect a parked-but-idle heal-loop and alert if it persists.
+    _check_blind_heal_loop(status_obj)
 
     logger.info(f"=== Sentinel done: {log_entry['jobs_checked']} checked, "
                 f"{log_entry['healthy']} healthy, {log_entry['escalated']} escalated, "
