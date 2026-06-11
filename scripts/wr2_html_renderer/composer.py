@@ -484,6 +484,24 @@ def _balance_headline(
         ):
             lines[i].insert(0, lines[i - 1].pop())
 
+    # Number-orphan pass: a line MUST NOT end on a bare numeral token (e.g. "3",
+    # "10") when there is a following line -- the number belongs to the clause
+    # that starts the next line ("3 RULES CHANGED" must not be split as "3" /
+    # "RULES CHANGED"). Move the trailing numeral DOWN to start the next line,
+    # provided the resulting lines still fit the budget. Conservative: only bare
+    # integers (digits only, optional trailing period); never creates an over-wide
+    # line; never moves if the donor line would lose its last remaining word.
+    _bare_numeral_re = re.compile(r"^\d+\.?$")
+    for i in range(len(lines) - 1):
+        if (
+            lines[i]
+            and _bare_numeral_re.match(lines[i][-1])
+            and len(lines[i]) >= 2  # keep >=1 word on the donor line after moving
+            and width([lines[i][-1]] + lines[i + 1]) <= budget_px
+        ):
+            moved = lines[i].pop()
+            lines[i + 1].insert(0, moved)
+
     return "<br>".join(" ".join(line) for line in lines)
 
 
@@ -651,6 +669,18 @@ async def materialize_slide_html(
     html = _normalize_skeleton(skeleton)
     if expect_hero and hero_filename:
         html = _hero_bg_to_img(html, hero_filename)
+    # Cover-photo family already shows the regulation via the yellow subheading
+    # kicker (the {{subheading}} slot). The skeleton also has a top-right corner
+    # badge ({{#if regulation_code}}...{{/if}}). Rendering both is redundant and
+    # the tiny badge is illegible at thumbnail size. Strip the badge block so the
+    # cover renders the regulation exactly once (in the kicker).
+    if family == "cover-photo":
+        html = re.sub(
+            r"\{\{#if regulation_code\}\}.*?\{\{/if\}\}",
+            "",
+            html,
+            flags=re.DOTALL,
+        )
     html = _fill_placeholders(html, slide, hero_filename=hero_filename)
     html = _apply_levers_to_html(html, slide)
 

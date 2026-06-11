@@ -7,15 +7,12 @@ tests/unit/services/canva_renderer_v2/test_pg.py.
 
 from __future__ import annotations
 
-import os
 import tempfile
 import urllib.request
 from pathlib import Path
 
 import pytest
-
 from scripts.wr2_html_render_apply import _HeroServer, _normalize_heroes
-
 
 # ── hero normalizer (#13) ────────────────────────────────────────────────────
 
@@ -105,14 +102,20 @@ async def test_designer_loop_converges_default_no_vision(monkeypatch):
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
-        vision_critic=None, use_vision=True, max_iters=2,
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=None,
+        use_vision=True,
+        max_iters=2,
     )
     assert res.converged is True
 
@@ -137,14 +140,20 @@ async def test_designer_loop_fail_closed_when_vision_required(monkeypatch):
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
-        vision_critic=None, use_vision=True, max_iters=2,
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=None,
+        use_vision=True,
+        max_iters=2,
     )
     assert res.converged is False
     assert res.reason == "vision_required_but_unavailable"
@@ -273,7 +282,9 @@ async def test_designer_loop_legibility_lever_not_killed_by_brand_reject(monkeyp
         if calls["vision"] == 1:
             # iter 1: wants a pure-legibility lever (scrim) — applicable
             return dl.Critique(
-                tier="vision", passed=False, issues=["text a touch low-contrast"],
+                tier="vision",
+                passed=False,
+                issues=["text a touch low-contrast"],
                 levers=[{"lever": "scrim_opacity", "delta": 0.15, "reason": "low contrast"}],
                 score=0.5,
             )
@@ -288,26 +299,29 @@ async def test_designer_loop_legibility_lever_not_killed_by_brand_reject(monkeyp
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=brand_verifier,
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=brand_verifier,
         ocr_critic=None,  # disable OCR adjudication so only FIX#3 decides
-        use_vision=True, max_iters=3,
+        use_vision=True,
+        max_iters=3,
     )
     # the legibility change was committed despite the brand reject, and the loop
     # went on to a second iteration where vision passed → converged.
     assert res.converged is True
     assert calls["vision"] >= 2  # did NOT break after the first reject
     # the committed scrim lever is reflected in the history (renamed override key)
-    assert any(
-        rec.get("brand_verify_inert_override")
-        for rec in res.history
-    )
+    assert any(rec.get("brand_verify_inert_override") for rec in res.history)
 
 
 @pytest.mark.asyncio
@@ -340,7 +354,9 @@ async def test_designer_loop_rebalance_wrap_not_killed_by_brand_reject(monkeypat
         if calls["vision"] == 1:
             # iter 1: proposes the exact pair the fire-test hit (rebalance + shrink)
             return dl.Critique(
-                tier="vision", passed=False, issues=["title leaves an orphan word"],
+                tier="vision",
+                passed=False,
+                issues=["title leaves an orphan word"],
                 levers=[
                     {"lever": "rebalance_wrap", "reason": "orphan word on last line"},
                     {"lever": "shrink_font", "target": "heading", "reason": "a touch dense"},
@@ -357,17 +373,22 @@ async def test_designer_loop_rebalance_wrap_not_killed_by_brand_reject(monkeypat
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
         slide={"headline": "The KITAS Bribe Trail Reaches the Top"},
-        render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=brand_verifier,
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=brand_verifier,
         ocr_critic=None,  # disable OCR adjudication so only the inert override decides
-        use_vision=True, max_iters=3,
+        use_vision=True,
+        max_iters=3,
     )
     assert res.converged is True
     assert calls["vision"] >= 2  # did NOT break after the first reject
@@ -490,7 +511,8 @@ async def test_designer_loop_accepts_best_render_on_composition_debt(monkeypatch
     def vision_critic(png, slide, ctx):
         # rejects, but only for editorial composition + a rerender-only lever
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=[
                 "hero photo is a generic dark interior, editorially weak for this story",
                 "could breathe more — spacing feels tight",
@@ -501,16 +523,22 @@ async def test_designer_loop_accepts_best_render_on_composition_debt(monkeypatch
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
         slide={"headline": "The KITAS Bribe Trail Reaches the Top"},
-        render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     assert res.converged is True
     assert res.accepted_with_composition_debt is True
@@ -544,7 +572,8 @@ async def test_designer_loop_does_not_accept_on_real_legibility_residual(monkeyp
         # legibility defect (orphan word) + only a rerender lever → must NOT be
         # accepted as debt.
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=["single-word orphan 'TOP' on line 3 — the title is hard to read"],
             levers=[{"lever": "rerender", "reason": "structural"}],
             score=0.4,
@@ -552,15 +581,22 @@ async def test_designer_loop_does_not_accept_on_real_legibility_residual(monkeyp
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=2,
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=2,
     )
     assert res.converged is False
     assert res.accepted_with_composition_debt is False
@@ -598,7 +634,8 @@ async def test_designer_loop_idempotent_rebalance_falls_through_to_debt(monkeypa
         # re-proposes it → proposed == levers_acc → no-op.
         calls["n"] += 1
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=[
                 "hero photo is a generic dark interior, editorially weak for this story",
             ],
@@ -608,16 +645,22 @@ async def test_designer_loop_idempotent_rebalance_falls_through_to_debt(monkeypa
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
         slide={"headline": "The KITAS Bribe Trail Reaches the Very Top of It"},
-        render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     # Iter 1 commits rebalance (progress), iter 2 is a no-op → SOFT residual →
     # accept as composition debt. Must NOT have spun all 3 iterations.
@@ -660,7 +703,8 @@ async def test_designer_loop_progressive_rebalance_is_not_premature_debt(monkeyp
         if seq["n"] == 1:
             # first look: title needs a re-wrap → propose the lever (PROGRESS)
             return dl.Critique(
-                tier="vision", passed=False,
+                tier="vision",
+                passed=False,
                 issues=["title leaves an awkward two-word tail"],
                 levers=[{"lever": "rebalance_wrap", "reason": "balance the lines"}],
                 score=0.7,
@@ -670,16 +714,22 @@ async def test_designer_loop_progressive_rebalance_is_not_premature_debt(monkeyp
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
         slide={"headline": "A Title That Needs A Rebalance To Read Well"},
-        render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     # converged via a real vision PASS after the progressive rebalance — NOT via
     # the composition-debt fallback.
@@ -713,7 +763,8 @@ async def test_designer_loop_noop_lever_with_hard_residual_does_not_accept(monke
         # always re-propose the SAME rebalance_wrap (becomes a no-op on iter 2)
         # AND flag a HARD single-word orphan → must NOT be accepted as debt.
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=["single-word orphan 'TOP' stranded alone on the last line — unreadable"],
             levers=[{"lever": "rebalance_wrap", "reason": "balance the lines"}],
             score=0.4,
@@ -721,16 +772,22 @@ async def test_designer_loop_noop_lever_with_hard_residual_does_not_accept(monke
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
         slide={"headline": "The Whole KITAS Bribe Trail Reaches The Top"},
-        render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     assert res.converged is False
     assert res.accepted_with_composition_debt is False
@@ -767,7 +824,8 @@ async def test_designer_loop_scrim_lever_is_always_progress_not_noop(monkeypatch
         # the residual is HARD (categorical illegibility) so the loop stays strict
         # at max_iters and does NOT accept-as-debt (matches the docstring).
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=["text is unreadable / illegible over the photo"],
             levers=[{"lever": "scrim_opacity", "delta": 0.1, "reason": "low contrast"}],
             score=0.5,
@@ -777,15 +835,22 @@ async def test_designer_loop_scrim_lever_is_always_progress_not_noop(monkeypatch
         # record the accumulated scrim each render — it must keep climbing
         seen_levers_before.append(slide.get("_levers", {}).get("scrim_opacity"))
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     # scrim never folds to a no-op → the loop iterated (made_progress stayed True),
     # so it did NOT short-circuit into composition-debt on iteration 2; and the
@@ -933,13 +998,19 @@ async def test_designer_loop_accepts_two_word_tail_after_rewrap(monkeypatch):
         if calls["vision"] == 1:
             # iter 1: propose rebalance_wrap (brand-inert → committed via override)
             return dl.Critique(
-                tier="vision", passed=False, issues=["title leaves an orphan word"],
-                levers=[{"lever": "rebalance_wrap", "reason": "orphan"}], score=0.5,
+                tier="vision",
+                passed=False,
+                issues=["title leaves an orphan word"],
+                levers=[{"lever": "rebalance_wrap", "reason": "orphan"}],
+                score=0.5,
             )
         # iter 2: only complaint left is a 2-word short tail (editorial rhythm)
         return dl.Critique(
-            tier="vision", passed=False,
-            issues=["'Reaches the Top' sits alone on line 2 — 2 words vs 4 on the line above, uneven visual rhythm"],
+            tier="vision",
+            passed=False,
+            issues=[
+                "'Reaches the Top' sits alone on line 2 — 2 words vs 4 on the line above, uneven visual rhythm"
+            ],
             levers=[{"lever": "rerender", "reason": "could be tighter"}],
             score=0.7,
         )
@@ -950,16 +1021,22 @@ async def test_designer_loop_accepts_two_word_tail_after_rewrap(monkeypatch):
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
         slide={"headline": "The KITAS Bribe Trail Reaches the Top"},
-        render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=brand_verifier,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=brand_verifier,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     assert res.converged is True
     assert res.accepted_with_composition_debt is True
@@ -1120,7 +1197,8 @@ async def test_designer_loop_grow_font_repairs_small_subhead(monkeypatch):
         calls["vision"] += 1
         if calls["vision"] == 1:
             return dl.Critique(
-                tier="vision", passed=False,
+                tier="vision",
+                passed=False,
                 issues=["sub-headline is illegible at Instagram thumbnail scale"],
                 levers=[{"lever": "grow_font", "target": "subhead", "reason": "too small to read"}],
                 score=0.5,
@@ -1132,15 +1210,22 @@ async def test_designer_loop_grow_font_repairs_small_subhead(monkeypatch):
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X", "subhead": "tiny sub"}, render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=brand_verifier,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        slide={"headline": "X", "subhead": "tiny sub"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=brand_verifier,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     assert res.converged is True
     # grow_font was applied, NOT accepted as composition debt
@@ -1172,7 +1257,8 @@ async def test_designer_loop_never_accepts_illegible_subhead_as_debt(monkeypatch
     def vision_critic(png, slide, ctx):
         # legibility defect but only a structural lever proposed → not CSS-fixable
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=["sub-headline is unreadable / illegible at thumbnail scale"],
             levers=[{"lever": "rerender", "reason": "structural"}],
             score=0.3,
@@ -1180,15 +1266,22 @@ async def test_designer_loop_never_accepts_illegible_subhead_as_debt(monkeypatch
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-        ))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X", "subhead": "tiny"}, render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=2,
+        slide={"headline": "X", "subhead": "tiny"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=2,
     )
     assert res.converged is False
     assert res.accepted_with_composition_debt is False
@@ -1203,14 +1296,16 @@ def test_fill_placeholders_schema_fallback_old_and_new():
     html = "<h1>{{heading}}</h1><div class='subheading'>{{subheading}}</div><p>{{body}}</p>"
     # OLD schema: heading/subheading/body present, headline/subhead absent
     out_old = _fill_placeholders(
-        html, {"heading": "OLD TITLE", "subheading": "OLD KICKER", "body": "old body"},
+        html,
+        {"heading": "OLD TITLE", "subheading": "OLD KICKER", "body": "old body"},
         hero_filename=None,
     )
     assert "OLD TITLE" in out_old and "OLD KICKER" in out_old and "old body" in out_old
     assert "{{heading}}" not in out_old and "{{subheading}}" not in out_old
     # NEW schema still works
     out_new = _fill_placeholders(
-        html, {"headline": "NEW TITLE", "subhead": "NEW KICKER", "body": "new body"},
+        html,
+        {"headline": "NEW TITLE", "subhead": "NEW KICKER", "body": "new body"},
         hero_filename=None,
     )
     assert "NEW TITLE" in out_new and "NEW KICKER" in out_new and "new body" in out_new
@@ -1231,9 +1326,7 @@ def test_classifier_editorial_conditional_claims_not_false_hard():
     )
     assert hh is False and ac is True
     # "color" as an accent SUGGESTION → not palette drift
-    hh, ac = _classify_residual_issues(
-        ["Consider popping the datum in a brand accent color"]
-    )
+    hh, ac = _classify_residual_issues(["Consider popping the datum in a brand accent color"])
     assert hh is False and ac is True
     # "legibility" in a CONDITIONAL claim ("may drop below") → hypothetical
     hh, ac = _classify_residual_issues(["Logo may drop below legibility on a busy hero"])
@@ -1253,13 +1346,14 @@ def test_classifier_real_defects_stay_hard():
     # categorical illegibility (no may/might) → HARD
     assert _classify_residual_issues(["subhead is illegible at thumbnail scale"])[0] is True
     # actual clipping → HARD
-    assert _classify_residual_issues(
-        ["the title is clipped at the right edge, cut off"]
-    )[0] is True
+    assert _classify_residual_issues(["the title is clipped at the right edge, cut off"])[0] is True
     # genuine 1-word orphan → HARD (even after a re-wrap)
-    assert _classify_residual_issues(
-        ["single-word orphan TOP alone on line 3"], rebalance_applied=True
-    )[0] is True
+    assert (
+        _classify_residual_issues(
+            ["single-word orphan TOP alone on line 3"], rebalance_applied=True
+        )[0]
+        is True
+    )
     # real palette drift → HARD
     assert _classify_residual_issues(["off-brand color, not in palette"])[0] is True
 
@@ -1400,7 +1494,8 @@ async def test_designer_loop_accepts_best_at_max_iters_on_soft_residual(monkeypa
         # time → made_progress=True → commit+continue, never the accept branch).
         calls["n"] += 1
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=[
                 "hero photo is a generic dark interior, editorially weak for this story",
                 "vision: unbalanced/crammed",
@@ -1411,14 +1506,22 @@ async def test_designer_loop_accepts_best_at_max_iters_on_soft_residual(monkeypa
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
         slide={"headline": "The KITAS Bribe Trail Reaches the Very Top of It"},
-        render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     # the loop ran the full budget (incremental lever every iter) but accepted at
     # the max_iters exit instead of a 'max_iters reached' reject.
@@ -1457,7 +1560,8 @@ async def test_designer_loop_does_not_accept_at_max_iters_on_hard_residual(monke
         # incremental lever → made_progress=True each iter → reaches max_iters
         # with a HARD residual → must NOT accept.
         return dl.Critique(
-            tier="vision", passed=False,
+            tier="vision",
+            passed=False,
             issues=["the subhead is illegible at thumbnail size"],
             levers=[{"lever": "scrim_opacity", "delta": 0.1, "reason": "nudge contrast"}],
             score=0.4,
@@ -1465,13 +1569,22 @@ async def test_designer_loop_does_not_accept_at_max_iters_on_hard_residual(monke
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     assert res.converged is False
     assert res.accepted_with_composition_debt is False
@@ -1504,16 +1617,205 @@ async def test_designer_loop_early_converge_unchanged_by_max_iters_accept(monkey
 
     async def render_fn(slide, png_path):
         png_path.parent.mkdir(parents=True, exist_ok=True)
-        png_path.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
 
     out = Path(tempfile.mkdtemp())
     res = await dl.run_designer_loop(
-        slide={"headline": "X"}, render_fn=render_fn, out_dir=out,
-        vision_critic=vision_critic, brand_verifier=None,
-        ocr_critic=None, use_vision=True, max_iters=3,
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=None,
+        ocr_critic=None,
+        use_vision=True,
+        max_iters=3,
     )
     assert res.converged is True
     assert res.iterations == 1
     assert res.accepted_with_composition_debt is False
     assert "max_iters" not in (res.reason or "")
 
+
+# ── F10-A2 Defect 1: headline number-orphan wrap ─────────────────────────────
+
+
+def test_balance_headline_number_not_orphaned_at_end_of_line():
+    """F10-A2 Defect 1: _balance_headline must NOT end a line on a bare numeral
+    when there is a following line.  The load-bearing phrase "3 RULES CHANGED"
+    must stay on one line -- splitting as "...VALID. 3" / "RULES CHANGED" breaks
+    the editorial claim and was the concrete failure observed on the shadow cover."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _WRAP_SAFETY,
+        _balance_headline,
+        _estimate_text_width_px,
+    )
+
+    headline = "YOUR KITAP IS VALID. 3 RULES CHANGED."
+    out = _balance_headline(headline)
+    lines = out.split("<br>")
+    # must have wrapped (headline is long enough)
+    assert len(lines) >= 2, f"expected wrap, got single line: {out!r}"
+    # no line may END on a bare numeral when there is a successor line
+    import re
+
+    bare_num = re.compile(r"^\d+\.?$")
+    for i, ln in enumerate(lines[:-1]):  # all except the last
+        last_word = ln.split()[-1] if ln.split() else ""
+        assert not bare_num.match(last_word), (
+            f"line {i} ends on bare numeral {last_word!r}: full wrap={out!r}"
+        )
+    # the phrase "3 RULES CHANGED" must appear together on one line
+    found_together = any("3 RULES CHANGED" in ln.upper() for ln in lines)
+    assert found_together, f'"3 RULES CHANGED" split across lines: {lines!r}'
+    # pixel-budget and no-overflow invariant preserved
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for ln in lines:
+        assert _estimate_text_width_px(ln) <= budget, f"line overflows box: {ln!r}"
+    # words round-trip
+    assert out.replace("<br>", " ").split() == headline.split()
+
+
+def test_balance_headline_number_orphan_not_created_for_other_titles():
+    """Regression guard: existing well-formed titles that happen to contain a
+    digit word elsewhere must NOT be broken by the new numeral-orphan pass."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _WRAP_SAFETY,
+        _balance_headline,
+        _estimate_text_width_px,
+    )
+
+    titles = [
+        "KPK ARRESTS TOP DEPUTY MINISTER ON GRAFT",  # no numeral at all
+        "Indonesia Visa Fee Jumps to IDR 3.5M",  # decimal -> not bare int
+        "THE KITAS BRIBE TRAIL REACHES THE TOP",  # no numeral
+        "BALI ZERO GUIDE 2026 KITAS RULES EXPLAINED FULLY",  # year in mid-title
+    ]
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for title in titles:
+        out = _balance_headline(title)
+        for ln in out.split("<br>"):
+            assert _estimate_text_width_px(ln) <= budget, f"title {title!r}: line overflows: {ln!r}"
+        assert out.replace("<br>", " ").split() == title.split(), (
+            f"words changed for {title!r}: {out!r}"
+        )
+
+
+# ── F10-A2 Defect 2: duplicate regulation citation (corner badge) ─────────────
+
+
+def test_cover_materialize_regulation_rendered_once_not_twice():
+    """F10-A2 Defect 2: materialize_slide_html for the cover-photo family must
+    render regulation_code EXACTLY once (in the yellow subheading kicker slot),
+    NOT also in the top-right corner badge.  The badge is a redundant, thumbnail-
+    illegible duplication of the kicker content."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+
+    # Minimal skeleton that reproduces the dual-citation structure
+    COVER_SKELETON = """<!doctype html>
+<html><head><link rel="stylesheet" href="../_base.css"></head>
+<body>
+  {{#if regulation_code}}<div class="regulation-badge">{{regulation_code}}</div>{{/if}}
+  <div class="content">
+    <div class="subheading">{{subheading}}</div>
+    <div class="heading">{{heading}}</div>
+  </div>
+</body></html>"""
+
+    # subhead and regulation_code carry the SAME textual value (as happens on
+    # the real KITAP cover: both refer to "Permenkumham 22/2023 + 11/2024").
+    reg_value = "Permenkumham 22/2023 + 11/2024"
+    slide = {
+        "index": 1,
+        "slide_type": "cover",
+        "is_cover": True,
+        "is_hero_image": True,
+        "headline": "YOUR KITAP IS VALID. 3 RULES CHANGED.",
+        "subhead": reg_value,  # yellow kicker shows the regulation
+        "regulation_code": reg_value,  # badge MUST be suppressed on cover
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        slides_dir = Path(tmpdir) / "slides"
+        slides_dir.mkdir()
+
+        with (
+            patch("wr2_html_renderer.composer._extract_skeleton", return_value=COVER_SKELETON),
+        ):
+            from wr2_html_renderer.composer import materialize_slide_html
+
+            html_path, expect_hero = asyncio.run(
+                materialize_slide_html(slide, slides_dir, index=1, total=9)
+            )
+
+        html = html_path.read_text()
+        # 1. The badge div must be absent (it was the redundant duplicate)
+        assert "regulation-badge" not in html, (
+            f"regulation-badge div still present in cover HTML: {html[:600]}"
+        )
+        # 2. The {{#if}} template syntax must be fully resolved (no leftover)
+        assert "{{#if" not in html and "{{/if}}" not in html, (
+            "template conditional not fully resolved"
+        )
+        # 3. The regulation value must appear EXACTLY ONCE — via the subheading
+        #    kicker, not duplicated in the now-stripped badge.
+        count = html.count(reg_value)
+        assert count == 1, (
+            f"regulation_code rendered {count} times (expected 1 via kicker only). "
+            f"HTML snippet: {html[:600]}"
+        )
+        # 4. The subheading (kicker) must be present and contain the regulation
+        assert reg_value in html, "subheading kicker missing from cover HTML"
+
+
+def test_cover_materialize_no_regulation_renders_cleanly():
+    """F10-A2 Defect 2 edge case: a cover slide with NO regulation_code must
+    render cleanly (no leftover empty badge element, no template placeholder
+    visible in the output HTML)."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+
+    COVER_SKELETON = """<!doctype html>
+<html><head><link rel="stylesheet" href="../_base.css"></head>
+<body>
+  {{#if regulation_code}}<div class="regulation-badge">{{regulation_code}}</div>{{/if}}
+  <div class="content">
+    <div class="subheading">{{subheading}}</div>
+    <div class="heading">{{heading}}</div>
+  </div>
+</body></html>"""
+
+    slide = {
+        "index": 1,
+        "is_cover": True,
+        "is_hero_image": True,
+        "headline": "BALI ZERO GUIDE 2026",
+        "subhead": "WHAT YOU NEED TO KNOW",
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        slides_dir = Path(tmpdir) / "slides"
+        slides_dir.mkdir()
+
+        with (
+            patch("wr2_html_renderer.composer._extract_skeleton", return_value=COVER_SKELETON),
+        ):
+            from wr2_html_renderer.composer import materialize_slide_html
+
+            html_path, _ = asyncio.run(materialize_slide_html(slide, slides_dir, index=1, total=9))
+
+        html = html_path.read_text()
+        assert "regulation-badge" not in html
+        assert "{{regulation_code}}" not in html
+        assert "{{#if" not in html
+        assert "{{/if}}" not in html
