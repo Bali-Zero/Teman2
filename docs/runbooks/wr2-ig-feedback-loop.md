@@ -79,6 +79,35 @@ The scraper picks the item up on its next daily run, ≥24h after `published_at`
 
 ---
 
+## Externally-published posts (STRATO 3 — posts NOT from the WR2 pipeline)
+
+For IG posts published BY HAND (e.g. by Zero) that never went through the WR2
+pipeline, there is no queue item to advance — so mint a fresh `published` item
+directly from the URL:
+
+```bash
+python scripts/wr2_queue_writer.py ingest-external https://instagram.com/p/XYZ \
+  --topic "What the post is about" \
+  --at 2026-05-20T00:00:00+00:00      # real publication date (optional)
+```
+
+- `--topic` is optional (auto-labelled from the shortcode if omitted).
+- `--at` is the real publication date. **If omitted it defaults to 25h ago**, so
+  the post is IMMEDIATELY eligible for the scraper (these posts are already live;
+  we are not waiting for a fresh-publish window).
+- The minted item id is `ig-<shortcode>`, `external: true`,
+  `source: "manual_external"` — the IG analyst can tell it apart from real WR2
+  caroselli (it lacks the archetype/domain/audience attributes).
+- Idempotent on the URL: re-ingesting the same post is a no-op
+  (`already_present`). A non-IG URL is `invalid_url` and writes nothing.
+
+> To bulk-register Zero's own back-catalogue, run `ingest-external` once per URL
+> (the account is login-walled, so the URLs are pasted by hand or exported from
+> Meta Business Suite — there is no logged-in scraping session on the Pro). The
+> scraper then collects engagement for them on its next ≥24h run.
+
+---
+
 ## Automatic operation (STRATO 2 — requires activation)
 
 ### One-time activation (operator — Antonello)
