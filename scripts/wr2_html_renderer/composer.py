@@ -405,8 +405,15 @@ def _estimate_text_width_px(text: str, font_px: int = _COVER_HEADLINE_FONT_PX) -
     """Estimate the RENDERED width (px) of `text` as UPPERCASE Montserrat-bold at
     `font_px`, via the measured per-character em-width table. Uppercase because
     the cover .heading applies text-transform:uppercase. Accurate to ~1% vs the
-    real browser render (see _UPPER_EM_WIDTH provenance)."""
-    return sum(_UPPER_EM_WIDTH.get(c, _EM_WIDTH_DEFAULT) for c in text.upper()) * font_px
+    real browser render (see _UPPER_EM_WIDTH provenance).
+
+    Markup-normalized: a literal `&nbsp;` entity counts as ONE space (it renders
+    as a single non-breaking space, not 6 visible chars — without this the
+    de-orphan glue would inflate the estimate ~40% and mis-trip the fit logic);
+    a `<br>` is a zero-width line break and is dropped before measuring (callers
+    that care about per-line width split on `<br>` first)."""
+    measured = text.replace("&nbsp;", " ").replace("<br>", "")
+    return sum(_UPPER_EM_WIDTH.get(c, _EM_WIDTH_DEFAULT) for c in measured.upper()) * font_px
 
 
 def _balance_headline(
@@ -547,7 +554,138 @@ def _deorphan_numbers_in_headline(text: str) -> str:
         text,
     )
 
-def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str | None) -> str:
+
+# Headline shrink-to-fit floor: 60px = the brand `headline-slide` token (the
+# "regular slide title" size in tokens.json). A principled lower bound — a cover
+# title may shrink toward the regular-slide title size to keep a load-bearing
+# sentence intact on one line, but never below it. Well above the shrink_font
+# lever's absolute 50px (84*0.6) hard minimum.
+_HEADLINE_FIT_FLOOR_PX = 60
+
+# Sentence-boundary splitter: a terminal . ! or ? followed by whitespace (or the
+# end of string), keeping the punctuation attached to the sentence it closes.
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _split_into_sentences(text: str) -> list[str]:
+    """Split a headline into sentence/clause units at terminal . ! ? boundaries,
+    keeping the punctuation with its sentence. A headline with no internal
+    boundary returns a single-element list."""
+    parts = [s.strip() for s in _SENTENCE_SPLIT_RE.split(text.strip()) if s.strip()]
+    return parts or [text.strip()]
+
+
+def _max_fit_font(
+    line: str,
+    *,
+    box_width_px: int = _COVER_BOX_WIDTH_PX,
+    base_font_px: int = _COVER_HEADLINE_FONT_PX,
+    safety: float = _WRAP_SAFETY,
+    floor_px: int = _HEADLINE_FIT_FLOOR_PX,
+) -> int | None:
+    """Largest integer font (base..floor) at which `line` fits the box budget on
+    ONE line. Returns None if it does not fit even at the floor."""
+    budget = box_width_px * safety
+    for f in range(base_font_px, floor_px - 1, -1):
+        if _estimate_text_width_px(line, f) <= budget:
+            return f
+    return None
+
+
+def _wrap_headline_sentence_aware(
+    text: str,
+    *,
+    box_width_px: int = _COVER_BOX_WIDTH_PX,
+    base_font_px: int = _COVER_HEADLINE_FONT_PX,
+    safety: float = _WRAP_SAFETY,
+    floor_px: int = _HEADLINE_FIT_FLOOR_PX,
+) -> tuple[str, int | None]:
+    """ALWAYS-ON, deterministic, MEASURED sentence-aware cover-headline wrap.
+
+    Contract (the ordering is the whole point):
+      1. SENTENCE-BREAK FIRST: split the headline at . ! ? boundaries so each
+         sentence/clause gets its own line(s). The load-bearing sentence
+         ("3 RULES CHANGED.") stays intact instead of the browser re-splitting it.
+      2. BOUNDED FONT-SHRINK SECOND: pick the LARGEST single font (one size for
+         the whole headline — CSS .heading is one element) at which EVERY sentence
+         fits on its own line, shrinking from the 84px base only as far as needed,
+         never below `floor_px` (the brand `headline-slide` 60px floor).
+      3. PIXEL-WRAP FALLBACK LAST: any single sentence that still cannot fit on
+         one line at the floor is wrapped across lines by the existing pixel-greedy
+         `_balance_headline` at the floor font — graceful degradation, never an
+         overflow and never a sub-floor font.
+
+    Returns (headline_html_with_<br>s, font_px). font_px is None when the wrap is
+    a pure no-op at the base size (so the caller injects no font override and the
+    cover renders exactly as today). When font_px is not None the caller must
+    inject `.heading{font-size:<font_px>px}` so the measured fit actually holds.
+
+    Brand-drift-safe: text-only (<br> insertion + a bounded font size); never
+    touches palette/font-family/position/box. A short headline (<=3 words AND no
+    sentence boundary) is returned verbatim with font_px=None.
+    """
+    text = text.strip()
+    if not text or "<br>" in text.lower():
+        # already wrapped upstream (e.g. lever ran) — don't second-guess it
+        return text, None
+
+    sentences = _split_into_sentences(text)
+    single_sentence = len(sentences) == 1
+
+    # No-op for short single-sentence headlines (<=3 words) that ALREADY FIT at
+    # the base font: leave them verbatim+flat (zero brand drift, the common
+    # legacy behavior). A short title that OVERFLOWS at base still falls through
+    # to the fit logic below (bounded shrink / pixel-wrap) — "short" is not a
+    # license to overflow.
+    budget = box_width_px * safety
+    if (
+        single_sentence
+        and len(text.split()) <= 3
+        and _estimate_text_width_px(text, base_font_px) <= budget
+    ):
+        return text, None
+
+    # 1+2: try to keep every sentence on its own line at one shared font >= floor.
+    per_sentence_fonts = [_max_fit_font(s, box_width_px=box_width_px,
+                                        base_font_px=base_font_px, safety=safety,
+                                        floor_px=floor_px) for s in sentences]
+
+    if all(f is not None for f in per_sentence_fonts):
+        # Every sentence fits as a single line at >= floor. Use the SMALLEST
+        # per-sentence max-fit font so all share one size and all fit.
+        chosen = min(f for f in per_sentence_fonts if f is not None)
+        if chosen >= base_font_px:
+            # Everything already fits at the base size.
+            if single_sentence:
+                # A single sentence that fits at base on one line: leave it FLAT
+                # (no <br>, no font override) — zero brand drift, common case.
+                return text, None
+            # Multi-sentence at base: just break between sentences, no shrink.
+            return "<br>".join(sentences), None
+        # A bounded shrink (< base, >= floor) makes all sentences fit one-per-line.
+        return "<br>".join(sentences), chosen
+
+    # 3: at least one sentence cannot fit on one line even at the floor → pixel-
+    # wrap THAT sentence across lines at the floor font; keep the others intact.
+    out_lines: list[str] = []
+    for s, f in zip(sentences, per_sentence_fonts):
+        if f is not None:
+            out_lines.append(s)  # fits as a single line at the shared floor font
+        else:
+            # graceful degradation: pixel-greedy wrap this sentence at the floor.
+            wrapped = _balance_headline(s, box_width_px=box_width_px,
+                                        font_px=floor_px, safety=safety)
+            out_lines.append(wrapped)  # may itself contain <br>s
+    return "<br>".join(out_lines), floor_px
+
+
+def _fill_placeholders(
+    html: str,
+    slide: dict[str, Any],
+    *,
+    hero_filename: str | None,
+    cover_family: bool = False,
+) -> str:
     """Fill {{placeholders}} + simple {{#if}} blocks from a slide dict.
 
     Supported fields map to common skeleton placeholders:
@@ -569,8 +707,18 @@ def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str |
     # critic does not request the lever (the F10 re-shadow orphan). Order: full
     # rebalance first (if levered), then the deterministic number de-orphan over
     # whatever line structure resulted.
+    headline_font_px: int | None = None
     if (slide.get("_levers") or {}).get("_rebalance_wrap"):
+        # designer-loop lever: full pixel-rebalance (heavier composition change).
         headline = _balance_headline(headline)
+    elif cover_family:
+        # ALWAYS-ON sentence-aware wrap (deterministic, measured): break at
+        # sentence boundaries so a load-bearing clause ("3 RULES CHANGED.") stays
+        # on one line; bounded font-shrink to fit; pixel-wrap fallback at the
+        # floor. Returns the single font size (if a shrink was needed) to inject.
+        headline, headline_font_px = _wrap_headline_sentence_aware(headline)
+    # Deterministic number de-orphan (belt-and-suspenders): glue any remaining
+    # bare numeral to its noun so the browser can never strand it.
     headline = _deorphan_numbers_in_headline(headline)
     subhead = (slide.get("subhead") or slide.get("subheading") or "").strip()
     body = (slide.get("body") or slide.get("body_text") or "").strip()
@@ -602,6 +750,24 @@ def _fill_placeholders(html: str, slide: dict[str, Any], *, hero_filename: str |
         html = html.replace("{{image_url}}", hero_filename)
     else:
         html = html.replace("{{image_url}}", "")
+
+    # Inject the sentence-aware bounded font-shrink (if any). The cover .heading
+    # is one element, so one font size governs all its lines; the wrap above
+    # MEASURED that this size lets every sentence fit. Paint/size-only on the
+    # title — never palette/font-family/position/box. line-height tightened to
+    # match the brand cover tight leading at the smaller size.
+    if headline_font_px is not None:
+        font_css = (
+            "\n<style data-headline-fit=\"1\">\n"
+            f".heading,.headline,.statement,h1{{font-size:{headline_font_px}px !important;"
+            "line-height:1.05;}}\n</style>\n"
+        )
+        if "</head>" in html:
+            html = html.replace("</head>", font_css + "</head>", 1)
+        elif "</body>" in html:
+            html = html.replace("</body>", font_css + "</body>", 1)
+        else:
+            html = html + font_css
 
     return html
 
@@ -666,7 +832,10 @@ async def compose_carousel(
             html = _normalize_skeleton(skeleton)
             if plan.expect_hero and hero_filename:
                 html = _hero_bg_to_img(html, hero_filename)
-            html = _fill_placeholders(html, plan.slide, hero_filename=hero_filename)
+            html = _fill_placeholders(
+                html, plan.slide, hero_filename=hero_filename,
+                cover_family=(plan.family == "cover-photo"),
+            )
             html = _apply_levers_to_html(html, plan.slide)  # designer-loop levers
 
             html_path = slides_dir / f"{plan.index:02d}.html"
@@ -730,7 +899,9 @@ async def materialize_slide_html(
             html,
             flags=re.DOTALL,
         )
-    html = _fill_placeholders(html, slide, hero_filename=hero_filename)
+    html = _fill_placeholders(
+        html, slide, hero_filename=hero_filename, cover_family=(family == "cover-photo")
+    )
     html = _apply_levers_to_html(html, slide)
 
     html_path = slides_dir / f"{index:02d}.html"

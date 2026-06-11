@@ -1927,3 +1927,233 @@ def test_cover_compose_always_deorphans_number_without_lever():
         assert "3&nbsp;RULES" in html, (
             f"number de-orphan did NOT run at compose time: {html[:600]}"
         )
+
+
+# ── F10-A2 Option B: SENTENCE-AWARE cover-headline wrap (measured, multi-title) ──
+
+def _heading_lines(out: str) -> list[str]:
+    """Split a wrapped headline into its rendered lines (strip &nbsp; back to a
+    space so we compare on visible text)."""
+    return [ln.replace("&nbsp;", " ") for ln in out.split("<br>")]
+
+
+def test_sentence_wrap_kitap_keeps_load_bearing_sentence_on_one_line():
+    """THE case: "YOUR KITAP IS VALID. 3 RULES CHANGED." must break at the
+    sentence boundary so "3 RULES CHANGED." sits on ONE line, with a bounded
+    shrink (not below the 60px floor)."""
+    from wr2_html_renderer.composer import (
+        _HEADLINE_FIT_FLOOR_PX,
+        _wrap_headline_sentence_aware,
+    )
+
+    out, font = _wrap_headline_sentence_aware("YOUR KITAP IS VALID. 3 RULES CHANGED.")
+    lines = _heading_lines(out)
+    assert lines == ["YOUR KITAP IS VALID.", "3 RULES CHANGED."], lines
+    assert font is not None and font >= _HEADLINE_FIT_FLOOR_PX, font
+    assert font < 84, f"expected a bounded shrink, got base font {font}"
+
+
+def test_sentence_wrap_single_short_sentence_fits_or_wraps_no_split_above_floor():
+    """A single short sentence that does not fit at base on one line falls back to
+    pixel-wrap at the floor (graceful degradation) — never a sub-floor font."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _HEADLINE_FIT_FLOOR_PX,
+        _WRAP_SAFETY,
+        _estimate_text_width_px,
+        _wrap_headline_sentence_aware,
+    )
+
+    out, font = _wrap_headline_sentence_aware("INDONESIA VISA FEE GOES UP.")
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    measure_font = font if font is not None else 84
+    assert measure_font >= _HEADLINE_FIT_FLOOR_PX, measure_font
+    for ln in _heading_lines(out):
+        assert _estimate_text_width_px(ln, measure_font) <= budget, (ln, measure_font)
+
+
+def test_sentence_wrap_three_short_sentences_one_per_line_at_base():
+    """Three short sentences each fit at base font → one sentence per line, no
+    shrink (font None)."""
+    from wr2_html_renderer.composer import _wrap_headline_sentence_aware
+
+    out, font = _wrap_headline_sentence_aware("PT PMA SETUP. 5 STEPS. 1 MONTH.")
+    lines = _heading_lines(out)
+    assert lines == ["PT PMA SETUP.", "5 STEPS.", "1 MONTH."], lines
+    assert font is None, f"three short sentences should fit at base, got font {font}"
+
+
+def test_sentence_wrap_one_long_sentence_bounded_shrink_or_wrap_never_mid_split_above_floor():
+    """A single long sentence with no internal boundary must NOT be split into
+    fake sentences; it bounded-shrinks then pixel-wraps at the floor — never
+    overflows, never sub-floor."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _HEADLINE_FIT_FLOOR_PX,
+        _WRAP_SAFETY,
+        _estimate_text_width_px,
+        _wrap_headline_sentence_aware,
+    )
+
+    title = "NEW TAX RULE FOR FOREIGN PROPERTY OWNERS IN BALI."
+    out, font = _wrap_headline_sentence_aware(title)
+    measure_font = font if font is not None else 84
+    assert measure_font >= _HEADLINE_FIT_FLOOR_PX, measure_font
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for ln in _heading_lines(out):
+        assert _estimate_text_width_px(ln, measure_font) <= budget, (ln, measure_font)
+    # words round-trip (nothing dropped/reordered)
+    assert " ".join(_heading_lines(out)).split() == title.split()
+
+
+def test_sentence_wrap_short_title_that_fits_is_unchanged():
+    """A short headline with no sentence boundary that ALREADY FITS at base is
+    returned verbatim with no font override (zero brand drift)."""
+    from wr2_html_renderer.composer import _wrap_headline_sentence_aware
+
+    # genuinely short + narrow → fits at 84 → untouched
+    for t in ("TWO WORDS", "VISA RULE", "NEW KITAS"):
+        out, font = _wrap_headline_sentence_aware(t)
+        assert out == t, (t, out)
+        assert font is None, (t, font)
+
+
+def test_sentence_wrap_short_but_wide_title_bounded_shrinks_not_overflow():
+    """A short (<=3-word) headline that OVERFLOWS at base is NOT left to overflow
+    just because it is short — it bounded-shrinks to fit (>= floor), staying on
+    one line (the "KBLI 55130 EXPLAINED" 1020px-at-84 case)."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _HEADLINE_FIT_FLOOR_PX,
+        _WRAP_SAFETY,
+        _estimate_text_width_px,
+        _wrap_headline_sentence_aware,
+    )
+
+    out, font = _wrap_headline_sentence_aware("KBLI 55130 EXPLAINED")
+    assert font is not None and _HEADLINE_FIT_FLOOR_PX <= font < 84, font
+    assert "<br>" not in out  # still one line, just smaller
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    assert _estimate_text_width_px(out, font) <= budget
+
+
+def test_sentence_wrap_very_long_single_sentence_hits_floor_and_pixel_wraps():
+    """Graceful-degradation proof: a very long single sentence cannot fit at the
+    floor on one line → it pixel-wraps at the floor font across multiple lines,
+    every line within budget, font pinned at the floor (never below)."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _HEADLINE_FIT_FLOOR_PX,
+        _WRAP_SAFETY,
+        _estimate_text_width_px,
+        _wrap_headline_sentence_aware,
+    )
+
+    title = (
+        "INDONESIA TIGHTENS INVESTOR KITAS RULES AFTER A MAJOR GRAFT SCANDAL "
+        "ROCKS THE IMMIGRATION DIRECTORATE TODAY."
+    )
+    out, font = _wrap_headline_sentence_aware(title)
+    assert font == _HEADLINE_FIT_FLOOR_PX, f"expected floor pin, got {font}"
+    lines = _heading_lines(out)
+    assert len(lines) >= 3, lines  # genuinely multi-line
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for ln in lines:
+        assert _estimate_text_width_px(ln, _HEADLINE_FIT_FLOOR_PX) <= budget, ln
+    assert " ".join(lines).split() == title.split()
+
+
+def test_sentence_wrap_battery_no_overflow_no_subfloor():
+    """Battery invariant across all shapes: NO line overflows the box budget at
+    the chosen font, and the chosen font is NEVER below the floor."""
+    from wr2_html_renderer.composer import (
+        _COVER_BOX_WIDTH_PX,
+        _HEADLINE_FIT_FLOOR_PX,
+        _WRAP_SAFETY,
+        _estimate_text_width_px,
+        _wrap_headline_sentence_aware,
+    )
+
+    titles = [
+        "YOUR KITAP IS VALID. 3 RULES CHANGED.",
+        "INDONESIA VISA FEE GOES UP.",
+        "PT PMA SETUP. 5 STEPS. 1 MONTH.",
+        "NEW TAX RULE FOR FOREIGN PROPERTY OWNERS IN BALI.",
+        "KBLI 55130 EXPLAINED",
+        "INDONESIA TIGHTENS INVESTOR KITAS RULES AFTER A MAJOR GRAFT SCANDAL "
+        "ROCKS THE IMMIGRATION DIRECTORATE TODAY.",
+    ]
+    budget = _COVER_BOX_WIDTH_PX * _WRAP_SAFETY
+    for t in titles:
+        out, font = _wrap_headline_sentence_aware(t)
+        mf = font if font is not None else 84
+        assert mf >= _HEADLINE_FIT_FLOOR_PX, (t, mf)
+        # The no-overflow-at-font invariant holds for every line the wrap
+        # PRODUCED (i.e. once it inserted at least one <br> OR chose a shrink
+        # font). A title returned verbatim-and-flat (no <br>, font None) is the
+        # "unchanged short title" case: the wrap deliberately defers its wrapping
+        # to the browser (same as the legacy <=3-word _balance_headline no-op), so
+        # the whole-string width is not a single-line constraint here.
+        if "<br>" in out or font is not None:
+            for ln in _heading_lines(out):
+                assert _estimate_text_width_px(ln, mf) <= budget, (t, ln, mf)
+        # never drop/reorder words (always holds)
+        assert " ".join(_heading_lines(out)).split() == t.split(), t
+
+
+def test_cover_compose_injects_headline_font_when_shrunk():
+    """End-to-end through materialize_slide_html: a cover whose sentence-wrap
+    needs a shrink injects a `.heading{font-size:<px>}` override, and the
+    load-bearing sentence sits on its own line."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+
+    COVER_SKELETON = """<!doctype html>
+<html><head><link rel="stylesheet" href="../_base.css"></head>
+<body>
+  <div class="content">
+    <div class="subheading">{{subheading}}</div>
+    <div class="heading">{{heading}}</div>
+  </div>
+</body></html>"""
+
+    slide = {
+        "index": 1, "is_cover": True, "is_hero_image": True,
+        "headline": "YOUR KITAP IS VALID. 3 RULES CHANGED.",
+        "subhead": "PERMENKUMHAM 22/2023 + 11/2024",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        sd = Path(tmp) / "slides"
+        sd.mkdir()
+        with patch(
+            "wr2_html_renderer.composer._extract_skeleton", return_value=COVER_SKELETON
+        ):
+            from wr2_html_renderer.composer import materialize_slide_html
+
+            hp, _ = asyncio.run(materialize_slide_html(slide, sd, index=1, total=9))
+        html = hp.read_text()
+        import re
+
+        # the heading carries the sentence break
+        m = re.search(r'<div class="heading">(.*?)</div>', html, re.DOTALL)
+        assert m is not None
+        lines = [ln.replace("&nbsp;", " ") for ln in m.group(1).split("<br>")]
+        assert lines == ["YOUR KITAP IS VALID.", "3 RULES CHANGED."], lines
+        # a font-fit override was injected, in [floor, 84)
+        fm = re.search(r'data-headline-fit.*?font-size:(\d+)px', html, re.DOTALL)
+        assert fm is not None, "no headline-fit font override injected"
+        assert 60 <= int(fm.group(1)) < 84, fm.group(1)
+
+
+def test_non_cover_slide_no_sentence_wrap():
+    """A non-cover family must NOT get the sentence-aware wrap / font override
+    (the feature is cover-scoped)."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    html = '<html><head></head><body><div class="heading">{{heading}}</div></body></html>'
+    slide = {"headline": "SOME BODY SLIDE TITLE. SECOND SENTENCE HERE."}
+    out = _fill_placeholders(html, slide, hero_filename=None, cover_family=False)
+    # no font-fit override, no sentence <br> inserted by the cover-only path
+    assert "data-headline-fit" not in out
