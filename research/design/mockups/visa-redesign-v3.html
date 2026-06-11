@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Indonesian visa assessment — Bali Zero</title>
+<!--
+  MYTHOS Visa funnel — v3 (post 4-LLM panel, 2026-06-12)
+  Applied 8 convergent + factual fixes (dissent "Visa Oracle"→rename NOT applied, owner kept it):
+   1. one-red-per-viewport: wordmark/rule3/nav are NAVY; red ONLY on final human handoff
+   2. card 2x2 grid -> full-width decision ROWS divided by navy hairline
+   3. step "Continue" is navy/outline, NOT red (red reserved for verified final action)
+   4. Cormorant rationed: hero + verdict + tombstone figures only; option titles & stat labels -> Inter
+   5. bridge screen "Matching you…" reflecting answers back (was missing)
+   6. hero h1 64px (was 76)
+   7. kicker "01 /" present on every zone incl. hero (was starting at 02)
+   8. tombstone separators = navy hairline, NO red ticks
+-->
+<style>
+:root{
+  --paper:#f6f4ef; --paper2:#fbfaf7; --ink:#1a1a18; --navy:#1e3863;
+  --navy-soft:rgba(30,56,99,.14); --navy-line:rgba(30,56,99,.16);
+  --graphite:#5a5f66; --red:#FF2D4C;
+  --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s6:48px; --s8:64px; --s10:96px; --s12:128px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.ser{font-family:"Cormorant Garamond","Cormorant",Georgia,serif}
+.wrap{max-width:980px;margin:0 auto;padding:0 var(--s3)}
+
+/* masthead — NAVY anchors, NO red */
+.mast{border-bottom:1px solid var(--navy-line);background:var(--paper)}
+.mast .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{font-weight:700;letter-spacing:.02em;color:var(--navy);font-size:15px}
+.brand b{font-weight:800}
+.nav{display:flex;gap:var(--s3);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--graphite)}
+.nav a{color:var(--graphite);text-decoration:none;padding-bottom:3px}
+.nav a.on{color:var(--navy);border-bottom:2px solid var(--navy)} /* fix3: navy underline, not red */
+
+/* kicker — numbered spine present everywhere incl. hero (fix7) */
+.kick{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--graphite);
+  display:flex;align-items:center;gap:10px;margin-bottom:var(--s3)}
+.kick .n{font-weight:700;color:var(--navy)}
+
+section{padding:var(--s12) 0}
+.zone{border-top:1px solid var(--navy-line)}
+.zone:first-of-type{border-top:none}
+
+/* HERO — typographic, 64px (fix6), no image, no red until CTA */
+.hero h1{font-size:64px;line-height:1.04;color:var(--navy);font-weight:600;max-width:18ch;letter-spacing:-.01em}
+.hero h1 .em{font-style:italic;color:var(--ink)}
+.hero p.sub{margin-top:var(--s3);font-size:19px;color:var(--graphite);max-width:46ch;line-height:1.5}
+.hero .start{margin-top:var(--s6)}
+/* hero CTA is the ONLY red on this viewport */
+.cta{display:inline-flex;align-items:center;gap:10px;background:var(--red);color:#fff;
+  font-weight:600;font-size:15px;letter-spacing:.01em;padding:15px 26px;border:none;border-radius:2px;
+  text-decoration:none;cursor:pointer}
+.cta:hover{filter:brightness(.94)}
+.hero .startnote{margin-top:var(--s2);font-size:13px;color:var(--graphite)}
+
+/* quiet trust band — Inter footnote, dated+sourced, NOT a SaaS strip (fix gemini/gpt) */
+.trust{border-top:1px solid var(--navy-line);margin-top:var(--s10);padding-top:var(--s4);
+  display:flex;gap:var(--s8);flex-wrap:wrap}
+.trust .t{max-width:22ch}
+.trust .t .h{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--navy);font-weight:600}
+.trust .t .d{font-size:14px;color:var(--graphite);margin-top:4px}
+
+/* QUESTION — one per screen. progress as folio, no SaaS bar. options as ROWS (fix2) */
+.qprogress{font-size:13px;color:var(--graphite);letter-spacing:.04em;margin-bottom:var(--s2);
+  display:flex;align-items:center;gap:14px}
+.qprogress .folio{font-family:"Cormorant Garamond",serif;font-size:22px;color:var(--navy);font-style:italic}
+.qprogress .rule{flex:1;height:1px;background:var(--navy-line)}
+.qprogress .count{font-variant-numeric:tabular-nums}
+.qhead{font-size:34px;line-height:1.15;color:var(--navy);font-weight:600;max-width:20ch}
+.qsub{margin-top:10px;color:var(--graphite);font-size:16px;max-width:50ch}
+.opts{margin-top:var(--s6);border-top:1px solid var(--navy-line)}
+/* fix2: full-width decision ROWS, not 2x2 cards */
+.opt{display:flex;align-items:flex-start;gap:var(--s3);padding:var(--s4) 4px;
+  border-bottom:1px solid var(--navy-line);cursor:pointer;position:relative;transition:background .15s}
+.opt:hover{background:var(--paper2)}
+.opt.sel{box-shadow:inset 3px 0 0 var(--navy)} /* navy left-rule select, no box-shadow depth */
+.opt .ix{font-family:"Cormorant Garamond",serif;font-size:22px;color:var(--navy);min-width:34px;font-style:italic}
+.opt .body .ot{font-weight:600;font-size:17px;color:var(--ink)} /* fix4: option title = Inter, not serif */
+.opt .body .oc{font-size:14px;color:var(--graphite);margin-top:4px;max-width:54ch} /* enriched consequence (fix gpt) */
+.qnav{margin-top:var(--s6);display:flex;align-items:center;gap:var(--s3)}
+/* fix3: step continuation is NAVY outline, NOT red */
+.btn-next{display:inline-flex;align-items:center;gap:8px;background:var(--navy);color:#fff;
+  font-weight:600;font-size:14px;padding:13px 24px;border:none;border-radius:2px;cursor:pointer}
+.btn-back{background:none;border:none;color:var(--graphite);font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.qnav .spacer{flex:1}
+.qnav .save{font-size:13px;color:var(--graphite);text-decoration:underline;text-underline-offset:3px} /* softened, but present */
+
+/* BRIDGE screen — reflects answers back (fix5) */
+.bridge{text-align:left}
+.bridge .ser{font-size:40px;color:var(--navy);font-weight:600;line-height:1.12;max-width:18ch}
+.bridge .echo{margin-top:var(--s6);border-top:1px solid var(--navy-line)}
+.bridge .echo .row{display:flex;justify-content:space-between;gap:var(--s3);
+  padding:14px 4px;border-bottom:1px solid var(--navy-line);font-size:15px}
+.bridge .echo .row .k{color:var(--graphite)}
+.bridge .echo .row .v{color:var(--ink);font-weight:600;text-align:right}
+.bridge .working{margin-top:var(--s4);font-size:14px;color:var(--graphite);display:flex;align-items:center;gap:10px}
+.bridge .working .dot{width:6px;height:6px;border-radius:50%;background:var(--navy);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* RESULT — legal memo, not SaaS receipt. verdict serif, tombstone hairline (fix8) */
+.verdict{font-size:46px;line-height:1.1;color:var(--navy);font-weight:600;max-width:18ch}
+.rationale{margin-top:var(--s3);font-size:18px;color:var(--ink);max-width:54ch;line-height:1.55}
+.rationale b{color:var(--navy)}
+/* tombstone: stacked, navy hairline separators, NO red ticks */
+.tomb{margin-top:var(--s8);display:flex;border-top:1px solid var(--navy-line);border-bottom:1px solid var(--navy-line)}
+.tomb .stat{flex:1;padding:var(--s4) var(--s3) var(--s4) 0;border-right:1px solid var(--navy-line)}
+.tomb .stat:last-child{border-right:none;padding-right:0}
+.tomb .stat .fig{font-family:"Cormorant Garamond",serif;font-size:40px;color:var(--navy);font-weight:600;line-height:1}
+.tomb .stat .lab{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--graphite);margin-top:10px} /* Inter (fix4) */
+.tomb .stat .src{font-size:12px;color:var(--graphite);margin-top:6px;font-style:italic}
+/* final handoff — THIS is the one red on the result viewport (fix1/fix3) */
+.handoff{margin-top:var(--s8)}
+.handoff .lead{font-size:15px;color:var(--graphite);margin-bottom:var(--s2);max-width:48ch}
+.handoff .deliv{margin:var(--s2) 0 var(--s4);font-size:14px;color:var(--ink)}
+.handoff .deliv li{list-style:none;padding:6px 0 6px 22px;position:relative;border-bottom:1px solid var(--navy-line);max-width:46ch}
+.handoff .deliv li:before{content:"";position:absolute;left:2px;top:14px;width:10px;height:1px;background:var(--navy)} /* navy tick, not red */
+.srcband{margin-top:var(--s6);border-top:1px solid var(--navy-line);padding-top:var(--s3);font-size:13px;color:var(--graphite)}
+.srcband b{color:var(--navy)}
+
+footer{background:var(--navy);color:#cfd8e8;padding:var(--s8) 0;margin-top:var(--s12)}
+footer .wrap{display:flex;justify-content:space-between;font-size:13px}
+footer a{color:#fff;text-decoration:none}
+
+@media(max-width:720px){
+  .hero h1{font-size:42px}
+  .verdict{font-size:34px}
+  .bridge .ser{font-size:30px}
+  .tomb{flex-direction:column}
+  .tomb .stat{border-right:none;border-bottom:1px solid var(--navy-line);padding:var(--s3) 0}
+  .tomb .stat:last-child{border-bottom:none}
+  .trust{gap:var(--s4)}
+  section{padding:var(--s8) 0}
+}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD — navy, no red -->
+<header class="mast"><div class="wrap">
+  <div class="brand">BALI <b>ZERO</b></div>
+  <nav class="nav">
+    <a href="#" class="on">Visa</a>
+    <a href="#">Company</a>
+    <a href="#">Tax</a>
+    <a href="#">Contact</a>
+  </nav>
+</div></header>
+
+<!-- 01 — HERO -->
+<section class="zone hero"><div class="wrap">
+  <div class="kick"><span class="n">01 /</span><span>Indonesian visa assessment</span></div>
+  <h1 class="ser">The right Indonesian visa, <span class="em">matched to your stay.</span></h1>
+  <p class="sub">Six questions about your purpose, length of stay and situation. We return the visa route that actually fits — with cost, timeline and the law behind it.</p>
+  <div class="start"><a href="#q" class="cta">Begin the assessment →</a></div>
+  <div class="startnote">~2 minutes · no email required to see your result</div>
+
+  <div class="trust">
+    <div class="t"><div class="h">Licensed</div><div class="d">Bali Zero — registered immigration & company practice, Kerobokan, Bali.</div></div>
+    <div class="t"><div class="h">1,200+ cases</div><div class="d">Visa and KITAS routes handled to date.</div></div>
+    <div class="t"><div class="h">Current as of Jun 2026</div><div class="d">Routes reflect Permenkumham in force this month.</div></div>
+  </div>
+</div></section>
+
+<!-- 02 — QUESTION (one screen shown) -->
+<section class="zone" id="q"><div class="wrap">
+  <div class="kick"><span class="n">02 /</span><span>The assessment</span></div>
+  <div class="qprogress">
+    <span class="folio">III / VI</span>
+    <span class="rule"></span>
+    <span class="count">3 answers captured</span>
+  </div>
+  <h2 class="qhead ser">What will you actually be doing while you’re here?</h2>
+  <p class="qsub">This is the single answer that most changes which visa is correct for you.</p>
+
+  <div class="opts">
+    <div class="opt sel">
+      <div class="ix">A</div>
+      <div class="body">
+        <div class="ot">Working remotely for a company outside Indonesia</div>
+        <div class="oc">No Indonesian income, no local employer. This is what opens the E33G remote-worker route.</div>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="ix">B</div>
+      <div class="body">
+        <div class="ot">Running or building a company based in Indonesia</div>
+        <div class="oc">Local entity, local revenue. Moves you toward an investor or work-KITAS path, not a stay permit.</div>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="ix">C</div>
+      <div class="body">
+        <div class="ot">Staying long-term without working</div>
+        <div class="oc">Retirement, family, or self-funded living. Different route, different proof of funds.</div>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="ix">D</div>
+      <div class="body">
+        <div class="ot">Just visiting — tourism or a short look-around</div>
+        <div class="oc">Holiday, scouting, a conference. Likely a visa-on-arrival or short-stay, not a KITAS.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qnav">
+    <button class="btn-back">← Back</button>
+    <button class="btn-next">Continue</button>
+    <span class="spacer"></span>
+    <a href="#" class="save">Save &amp; resume later</a>
+  </div>
+</div></section>
+
+<!-- 02b — BRIDGE (reflect answers) -->
+<section class="zone"><div class="wrap">
+  <div class="kick"><span class="n">02 /</span><span>Matching your answers</span></div>
+  <div class="bridge">
+    <div class="ser">Reading your situation against the routes in force this month…</div>
+    <div class="echo">
+      <div class="row"><span class="k">Purpose of stay</span><span class="v">Remote work for a non-Indonesian employer</span></div>
+      <div class="row"><span class="k">Length</span><span class="v">12 months, renewable</span></div>
+      <div class="row"><span class="k">Indonesian income</span><span class="v">None</span></div>
+      <div class="row"><span class="k">Dependents</span><span class="v">None travelling with you</span></div>
+    </div>
+    <div class="working"><span class="dot"></span> Matching to the correct Permenkumham route…</div>
+  </div>
+</div></section>
+
+<!-- 03 — RESULT (legal memo) -->
+<section class="zone"><div class="wrap">
+  <div class="kick"><span class="n">03 /</span><span>Your assessment</span></div>
+  <div class="verdict ser">KITAS — Remote Worker (E33G)</div>
+  <p class="rationale">Because you’ll be <b>working remotely for an employer outside Indonesia</b>, earning <b>no Indonesian income</b>, for <b>about a year</b>, the remote-worker KITAS (E33G) is the route built for exactly this. It gives you legal residency without forcing a local entity or work permit you don’t need.</p>
+
+  <div class="tomb">
+    <div class="stat">
+      <div class="fig">IDR 34M</div>
+      <div class="lab">Estimated all-in cost</div>
+      <div class="src">from PricingTool · Jun 2026</div>
+    </div>
+    <div class="stat">
+      <div class="fig">~3 weeks</div>
+      <div class="lab">Typical processing</div>
+      <div class="src">from approval to stamp</div>
+    </div>
+    <div class="stat">
+      <div class="fig">1 year</div>
+      <div class="lab">Validity</div>
+      <div class="src">renewable</div>
+    </div>
+  </div>
+
+  <div class="handoff">
+    <div class="lead">Have the visa desk confirm this route against your documents and start the filing.</div>
+    <ul class="deliv">
+      <li>A document checklist specific to E33G, sent within the day</li>
+      <li>Confirmation your case qualifies before you pay anything</li>
+      <li>One named handler from filing to KITAS stamp</li>
+    </ul>
+    <a href="#" class="cta">Send this to the visa desk on WhatsApp →</a>
+  </div>
+
+  <div class="srcband">
+    Route basis: <b>Permenkumham No. 22/2023</b>, remote-worker stay permit (E33G). Cost figures from Bali Zero PricingTool, current June 2026.
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>BALI ZERO — Kerobokan, Bali · by appointment</div>
+  <div><a href="#">Privacy</a> · <a href="#">Terms</a></div>
+</div></footer>
+
+</body>
+</html>

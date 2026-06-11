@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KBLI navigator — Bali Zero</title>
+<!--
+  MYTHOS KBLI navigator — v3 (post 4-LLM panel, 2026-06-12)
+  Applied convergent + factual fixes:
+   1. one-red-per-viewport: wordmark/rule3/nav NAVY; red ONLY on persistent human-escalation
+   2. results 2x2 cards -> full-width editorial INDEX rows, code as anchor
+   3. Cormorant rationed: hero + detail code only; judul/pills/labels -> Inter
+   4. kicker "01 /" on every zone incl. hero
+   5. chat = contextual DRAWER (owner pick): launcher -> side drawer, typographic Q&A transcript
+      (no bubbles/avatar/container), EXPANDABLE citation (reg+article+date+confidence),
+      persistent "Talk to a human", never auto-open
+   6. IDR 10B citation UNIFIED detail==chat ("BKPM Perka 4/2021, Lampiran III · Jun 2026")
+   7. detail aside box -> margin annotations
+   8. detail code 56101 huge, "Restaurants" as interpretation
+   9. price IDR 20M marked "from PricingTool · Jun 2026" (never hardcoded value as truth)
+-->
+<style>
+:root{
+  --paper:#f6f4ef; --paper2:#fbfaf7; --ink:#1a1a18; --navy:#1e3863;
+  --navy-line:rgba(30,56,99,.16); --graphite:#5a5f66; --red:#FF2D4C;
+  --s1:8px;--s2:16px;--s3:24px;--s4:32px;--s6:48px;--s8:64px;--s10:96px;--s12:128px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.ser{font-family:"Cormorant Garamond","Cormorant",Georgia,serif}
+.wrap{max-width:1020px;margin:0 auto;padding:0 var(--s3)}
+
+.mast{border-bottom:1px solid var(--navy-line);background:var(--paper)}
+.mast .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{font-weight:700;letter-spacing:.02em;color:var(--navy);font-size:15px}
+.brand b{font-weight:800}
+.nav{display:flex;gap:var(--s3);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--graphite)}
+.nav a{color:var(--graphite);text-decoration:none;padding-bottom:3px}
+.nav a.on{color:var(--navy);border-bottom:2px solid var(--navy)}
+
+.kick{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--graphite);display:flex;align-items:center;gap:10px;margin-bottom:var(--s3)}
+.kick .n{font-weight:700;color:var(--navy)}
+section{padding:var(--s12) 0}
+.zone{border-top:1px solid var(--navy-line)}
+.zone:first-of-type{border-top:none}
+
+/* 01 HERO = the search, dominant typographic object (fix gpt) */
+.hero h1{font-size:60px;line-height:1.06;color:var(--navy);font-weight:600;max-width:16ch;letter-spacing:-.01em}
+.hero p.sub{margin-top:var(--s3);font-size:19px;color:var(--graphite);max-width:48ch}
+.search{margin-top:var(--s6);position:relative;max-width:680px}
+.search input{width:100%;font-family:"Cormorant Garamond",serif;font-size:28px;color:var(--ink);
+  background:transparent;border:none;border-bottom:2px solid var(--navy);padding:14px 4px;outline:none}
+.search input::placeholder{color:#9aa0a6;font-style:italic}
+.chips{margin-top:var(--s3);display:flex;gap:14px;flex-wrap:wrap}
+.chip{font-size:13px;color:var(--navy);border:1px solid var(--navy-line);
+  padding:7px 14px;border-radius:2px;cursor:pointer;background:var(--paper2)} /* sharp, not 999px */
+.chip:hover{border-color:var(--navy)}
+.chip .lbl{color:var(--graphite);margin-right:6px}
+
+/* 02 RESULTS = editorial index rows, full width, code as anchor (fix2) */
+.results{border-top:1px solid var(--navy-line);margin-top:var(--s6)}
+.rrow{display:flex;align-items:baseline;gap:var(--s4);padding:var(--s4) 4px;
+  border-bottom:1px solid var(--navy-line);cursor:pointer;transition:background .15s}
+.rrow:hover{background:var(--paper2)}
+.rrow .code{font-family:"Cormorant Garamond",serif;font-size:30px;color:var(--navy);min-width:120px;font-weight:600}
+.rrow .meat{flex:1}
+.rrow .judul{font-weight:600;font-size:17px;color:var(--ink)} /* Inter (fix3) */
+.rrow .plain{font-size:14px;color:var(--graphite);margin-top:4px;max-width:60ch}
+.rrow .tags{display:flex;gap:18px;margin-top:10px;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.rrow .tag{color:var(--graphite)} /* hierarchy by weight, not colored pills (fix gemini) */
+.rrow .tag b{color:var(--navy);font-weight:600}
+
+/* 03 DETAIL = editorial legal document; code huge, judul interpretation (fix8) */
+.dmast{display:flex;align-items:baseline;gap:var(--s4);border-bottom:1px solid var(--navy-line);padding-bottom:var(--s4)}
+.dmast .dcode{font-family:"Cormorant Garamond",serif;font-size:80px;line-height:.9;color:var(--navy);font-weight:600}
+.dmast .dint{font-size:22px;color:var(--ink);font-weight:600;align-self:flex-end;padding-bottom:8px}
+.dbody{display:flex;gap:var(--s8);margin-top:var(--s6)}
+.dbody .main{flex:1}
+.dbody .main h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);font-weight:600;margin:var(--s6) 0 12px;border-bottom:1px solid var(--navy-line);padding-bottom:8px}
+.dbody .main h3:first-child{margin-top:0}
+.dbody .main p{font-size:16px;color:var(--ink);max-width:60ch;margin-bottom:var(--s2)}
+/* aside -> margin annotations, NOT a bordered radius-8 widget (fix7) */
+.dbody .aside{width:240px;flex-shrink:0}
+.dann{border-top:1px solid var(--navy-line);padding:var(--s3) 0}
+.dann .fig{font-family:"Cormorant Garamond",serif;font-size:34px;color:var(--navy);font-weight:600;line-height:1}
+.dann .lab{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--graphite);margin-top:8px} /* Inter */
+.dann .src{font-size:12px;color:var(--graphite);margin-top:5px;font-style:italic}
+
+/* LAUNCHER — page-aware, opens drawer; NOT a red bubble (fix1/fix5) */
+.launcher{position:fixed;right:24px;bottom:24px;background:var(--navy);color:#fff;
+  font-size:14px;font-weight:600;padding:13px 20px;border-radius:2px;cursor:pointer;
+  box-shadow:none;border:1px solid var(--navy);display:flex;align-items:center;gap:10px;z-index:40}
+.launcher .ctx{font-weight:400;color:#aebfd8;font-size:13px}
+
+/* DRAWER — contextual, typographic Q&A transcript, no bubbles/avatar/container (fix5) */
+.drawer{position:fixed;top:0;right:0;height:100vh;width:420px;background:var(--paper2);
+  border-left:1px solid var(--navy-line);z-index:50;display:flex;flex-direction:column;
+  box-shadow:none}
+.drawer .dh{padding:var(--s3);border-bottom:1px solid var(--navy-line);display:flex;align-items:center;justify-content:space-between}
+.drawer .dh .ttl{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);font-weight:600}
+.drawer .dh .ttl small{display:block;text-transform:none;letter-spacing:0;color:var(--graphite);font-weight:400;font-size:12px;margin-top:2px}
+.drawer .dh .x{color:var(--graphite);cursor:pointer;font-size:18px}
+/* persistent human escalation — the ONE red in the drawer (fix1) */
+.escal{padding:11px var(--s3);border-bottom:1px solid var(--navy-line);font-size:13px}
+.escal a{color:var(--red);font-weight:600;text-decoration:none}
+.escal a:hover{text-decoration:underline}
+.transcript{flex:1;overflow:auto;padding:var(--s3)}
+/* Q&A as typographic transcript — speaker as label, text as prose. no bubbles. */
+.qa{margin-bottom:var(--s4)}
+.qa .who{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--graphite);margin-bottom:6px}
+.qa.you .who{color:var(--navy)}
+.qa .txt{font-size:15px;line-height:1.55;color:var(--ink)}
+.qa .txt b{color:var(--navy)}
+/* expandable citation — reg + article + date + confidence (fix9/fix6) */
+.cite{margin-top:10px;border-left:2px solid var(--navy-line);padding-left:12px}
+.cite summary{font-size:12px;color:var(--navy);cursor:pointer;letter-spacing:.02em;list-style:none}
+.cite summary::-webkit-details-marker{display:none}
+.cite summary:before{content:"▸ ";color:var(--graphite)}
+.cite[open] summary:before{content:"▾ "}
+.cite .full{font-size:13px;color:var(--graphite);margin-top:8px;line-height:1.5}
+.cite .full .reg{color:var(--ink);font-weight:600}
+.cite .full .conf{display:inline-block;margin-top:6px;font-size:12px;color:var(--graphite)}
+.qchips{padding:var(--s2) var(--s3);border-top:1px solid var(--navy-line);display:flex;flex-wrap:wrap;gap:10px}
+.qchip{font-size:13px;color:var(--navy);border:1px solid var(--navy-line);padding:6px 12px;border-radius:2px;cursor:pointer}
+.dinput{padding:var(--s2) var(--s3);border-top:1px solid var(--navy-line);display:flex;gap:10px;align-items:center}
+.dinput input{flex:1;border:none;border-bottom:1px solid var(--navy-line);background:transparent;font-size:14px;padding:8px 2px;outline:none}
+.dinput input:focus{border-bottom-color:var(--navy)}
+.dinput .send{background:var(--navy);color:#fff;border:none;border-radius:2px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer} /* navy: red reserved for the persistent human escalation (one red per drawer) */
+
+footer{background:var(--navy);color:#cfd8e8;padding:var(--s8) 0;margin-top:var(--s12)}
+footer .wrap{display:flex;justify-content:space-between;font-size:13px}
+footer a{color:#fff;text-decoration:none}
+
+@media(max-width:820px){
+  .hero h1{font-size:40px}
+  .dmast .dcode{font-size:54px}
+  .dbody{flex-direction:column;gap:var(--s4)}
+  .dbody .aside{width:100%;display:flex;gap:var(--s4)}
+  .dann{flex:1}
+  .rrow{flex-direction:column;gap:8px}
+  .rrow .code{min-width:0}
+  .drawer{width:100%}
+  section{padding:var(--s8) 0}
+}
+</style>
+</head>
+<body>
+
+<header class="mast"><div class="wrap">
+  <div class="brand">BALI <b>ZERO</b></div>
+  <nav class="nav">
+    <a href="#">Visa</a>
+    <a href="#" class="on">KBLI</a>
+    <a href="#">Tax</a>
+    <a href="#">Contact</a>
+  </nav>
+</div></header>
+
+<!-- 01 HERO = SEARCH -->
+<section class="zone hero"><div class="wrap">
+  <div class="kick"><span class="n">01 /</span><span>KBLI navigator</span></div>
+  <h1 class="ser">Find the business classification your activity actually falls under.</h1>
+  <p class="sub">Search by what you do — not by code. We return the KBLI, whether foreigners can own it, the capital floor, and what it costs to set up.</p>
+  <div class="search">
+    <input type="text" placeholder="What will your business do?  e.g. open a restaurant in Canggu" value="restaurant">
+  </div>
+  <div class="chips">
+    <span class="chip"><span class="lbl">Try</span>Restaurant</span>
+    <span class="chip"><span class="lbl">Try</span>Villa rental</span>
+    <span class="chip"><span class="lbl">Try</span>Consulting</span>
+    <span class="chip"><span class="lbl">Try</span>Import-export</span>
+    <span class="chip"><span class="lbl">Try</span>Café</span>
+  </div>
+</div></section>
+
+<!-- 02 RESULTS = editorial index -->
+<section class="zone"><div class="wrap">
+  <div class="kick"><span class="n">02 /</span><span>Matches for “restaurant”</span></div>
+  <div class="results">
+    <div class="rrow">
+      <div class="code ser">56101</div>
+      <div class="meat">
+        <div class="judul">Restaurants</div>
+        <div class="plain">Full-service sit-down dining — the standard code for opening a restaurant.</div>
+        <div class="tags">
+          <span class="tag">Foreign ownership <b>100%</b></span>
+          <span class="tag">Risk <b>Medium</b></span>
+          <span class="tag">Min. capital <b>IDR 10B</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="rrow">
+      <div class="code ser">56102</div>
+      <div class="meat">
+        <div class="judul">Warung / street-food stalls</div>
+        <div class="plain">Small informal eateries — typically not available to foreign-owned PT PMA.</div>
+        <div class="tags">
+          <span class="tag">Foreign ownership <b>Restricted</b></span>
+          <span class="tag">Risk <b>Low</b></span>
+          <span class="tag">PMA <b>No</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="rrow">
+      <div class="code ser">56303</div>
+      <div class="meat">
+        <div class="judul">Cafés &amp; coffee bars</div>
+        <div class="plain">Coffee-led venues with light food — common pick for a Bali café.</div>
+        <div class="tags">
+          <span class="tag">Foreign ownership <b>100%</b></span>
+          <span class="tag">Risk <b>Medium</b></span>
+          <span class="tag">Min. capital <b>IDR 10B</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 03 DETAIL = editorial document -->
+<section class="zone"><div class="wrap">
+  <div class="kick"><span class="n">03 /</span><span>Classification detail</span></div>
+  <div class="dmast">
+    <div class="dcode ser">56101</div>
+    <div class="dint">Restaurants</div>
+  </div>
+  <div class="dbody">
+    <div class="main">
+      <h3>What it covers</h3>
+      <p>Full-service restaurants where customers are seated and served. This is the classification you register a PT PMA under to open and operate a restaurant in Indonesia, including in Bali.</p>
+      <h3>Foreign ownership</h3>
+      <p>A restaurant under 56101 can be <b>100% foreign-owned</b> as a PT PMA, with a minimum investment plan of <b>IDR 10 billion</b> required at setup.</p>
+      <h3>What setting it up involves</h3>
+      <p>PT PMA incorporation, NIB through OSS, the relevant operational licences, and tax registration. The capital figure is a planned-investment commitment, not cash you must deposit on day one.</p>
+    </div>
+    <div class="aside">
+      <div class="dann">
+        <div class="fig">100%</div>
+        <div class="lab">Foreign ownership</div>
+        <div class="src">PT PMA</div>
+      </div>
+      <div class="dann">
+        <div class="fig">IDR 10B</div>
+        <div class="lab">Min. investment plan</div>
+        <div class="src">BKPM Perka 4/2021, Lampiran III · Jun 2026</div>
+      </div>
+      <div class="dann">
+        <div class="fig">Medium</div>
+        <div class="lab">OSS risk level</div>
+      </div>
+      <div class="dann">
+        <div class="fig">IDR 20M</div>
+        <div class="lab">Bali Zero setup — PT PMA</div>
+        <div class="src">from PricingTool · Jun 2026</div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>BALI ZERO — Kerobokan, Bali · by appointment</div>
+  <div><a href="#">Privacy</a> · <a href="#">Terms</a></div>
+</div></footer>
+
+<!-- LAUNCHER (page-aware) — collapsed state -->
+<div class="launcher">Ask Zantara <span class="ctx">about KBLI 56101</span></div>
+
+<!-- DRAWER (shown open for the mockup; in product: hidden until launcher click, never auto-open) -->
+<aside class="drawer">
+  <div class="dh">
+    <div class="ttl">Zantara <small>on KBLI 56101 · Restaurants</small></div>
+    <div class="x">✕</div>
+  </div>
+  <div class="escal">Need a person? <a href="#">Talk to the Bali Zero company desk →</a></div>
+  <div class="transcript">
+    <div class="qa you">
+      <div class="who">You</div>
+      <div class="txt">Can foreigners own a restaurant under this code?</div>
+    </div>
+    <div class="qa">
+      <div class="who">Zantara</div>
+      <div class="txt">Yes. A restaurant under <b>56101</b> can be <b>100% foreign-owned</b> as a PT PMA, with a minimum investment plan of <b>IDR 10 billion</b> at setup.
+        <details class="cite">
+          <summary>Source</summary>
+          <div class="full">
+            <span class="reg">BKPM Perka No. 4/2021</span> — Lampiran III (Positive Investment List), restaurant services classification. Current as of June 2026.
+            <span class="conf">Confidence: high — verbatim from the regulation’s annex.</span>
+          </div>
+        </details>
+      </div>
+    </div>
+    <div class="qa you">
+      <div class="who">You</div>
+      <div class="txt">Is the IDR 10 billion something I have to deposit in cash?</div>
+    </div>
+    <div class="qa">
+      <div class="who">Zantara</div>
+      <div class="txt">No — it’s a <b>planned-investment commitment</b> declared at incorporation, not cash you deposit on day one. The Bali Zero company desk can walk through how it’s evidenced in your case.
+        <details class="cite">
+          <summary>Source</summary>
+          <div class="full">
+            <span class="reg">BKPM Perka No. 4/2021</span> — minimum investment value for PMA, Pasal 6. Current as of June 2026.
+            <span class="conf">Confidence: high on the rule; your specific structuring should be confirmed with the desk.</span>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+  <div class="qchips">
+    <span class="qchip">Minimum capital?</span>
+    <span class="qchip">Related codes</span>
+    <span class="qchip">What does setup cost?</span>
+  </div>
+  <div class="dinput">
+    <input type="text" placeholder="Ask about KBLI 56101…">
+    <button class="send">Send</button>
+  </div>
+</aside>
+
+</body>
+</html>
