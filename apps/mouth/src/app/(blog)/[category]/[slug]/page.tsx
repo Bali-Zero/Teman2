@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { serialize } from "next-mdx-remote/serialize";
 import remarkGfm from "remark-gfm";
-import { getArticleBySlug, getArticleByLocale } from "@/lib/blog/articles";
+import {
+  getArticleBySlug,
+  getArticleByLocale,
+  resolveCategoryAlias,
+} from "@/lib/blog/articles";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
 import { ArticleClient } from "./ArticleClient";
 import {
@@ -147,6 +151,21 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const article = lang
     ? await getArticleByLocale(category, slug, lang)
     : await getArticleBySlug(category, slug);
+
+  // Category-alias canonicalization: the same article is reachable under
+  // alias categories (e.g. /immigration/X and /visas/X). When the requested
+  // category is a KNOWN alias of the article's canonical category, issue a
+  // 308 permanent redirect to the canonical URL instead of serving duplicate
+  // content that relies on the canonical <meta> alone. Unknown categories
+  // keep current behavior (notFound / client 404 per D12).
+  // NOTE: permanentRedirect throws NEXT_REDIRECT — must stay outside try/catch.
+  if (article) {
+    const canonical = resolveCategoryAlias(category);
+    if (canonical && canonical !== category && article.category === canonical) {
+      const langSuffix = lang ? `?lang=${encodeURIComponent(lang)}` : "";
+      permanentRedirect(`/${canonical}/${slug}${langSuffix}`);
+    }
+  }
 
   const breadcrumbItems = [
     { name: "Home", url: "/" },
