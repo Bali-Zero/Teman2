@@ -1,6 +1,6 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
-  "hero_main": "indonesia-umkm-tax-reforms-pp-20-2026",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "hero_main": "indonesia-updates-e30a-student-visa-rules-for-expat-school-children-from-june-8",
   "hero_2": "indonesia-tightens-pma-rules-what-foreign-investors-must-know",
   "hero_3": "sono-hotels-signs-bali-canggu-property-betting-on-indonesias-luxury-lifestyle-boom",
   "hero_4": "inside-komodos-last-village-life-on-the-edge-of-a-world-heritage-zone",
