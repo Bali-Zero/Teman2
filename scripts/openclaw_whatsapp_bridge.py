@@ -509,7 +509,8 @@ def _guard_document_status_reply(
         return reply
 
     normalized_reply = _normalize_text(reply)
-    unsafe_stage_markers = (
+    # Non-conditional markers: always unsafe when present.
+    unconditional_markers = (
         "may still be in document check",
         "might still be in document check",
         "probably in document check",
@@ -517,9 +518,21 @@ def _guard_document_status_reply(
         "document check or submission",
         "submission stage",
         "already approved",
-        "is approved",
     )
-    if any(marker in normalized_reply for marker in unsafe_stage_markers):
+    if any(marker in normalized_reply for marker in unconditional_markers):
+        return _canonical_document_status_answer(
+            _villa_answer_language(message_text, detected_language)
+        )
+    # F37 fix (2026-06-11): "is approved" also triggers, but ONLY in an
+    # affirmative-present context (not when it appears after a conditional like
+    # "once/when/after/if ... is approved", which is safe explanatory text).
+    # We detect the conditional preceding window with a regex look-behind.
+    _APPROVED_CONDITIONAL_RE = re.compile(
+        r"\b(?:once|when|after|if|until)\b[^.]{0,40}is approved"
+    )
+    if "is approved" in normalized_reply and not _APPROVED_CONDITIONAL_RE.search(
+        normalized_reply
+    ):
         return _canonical_document_status_answer(
             _villa_answer_language(message_text, detected_language)
         )
@@ -540,14 +553,23 @@ def _guard_legacy_b211_reply(
         return _canonical_b211_business_answer(
             _villa_answer_language(message_text, detected_language)
         )
-    legacy_framing = any(
+    # F14 fix (2026-06-11): word-boundary the escape markers so bare-substring
+    # accidents like "holders" ⊃ "old" and "selama" ⊃ "lama" don't accidentally
+    # pass genuinely-unsafe replies ("B211A holders can work here" contained
+    # "old" inside "holders" and slipped through the escape without being
+    # clobbered).  Multi-word markers use exact phrase matching (already safe).
+    legacy_framing = _contains_any_word(
+        normalized_reply,
+        (
+            "old",
+            "lama",
+        ),
+    ) or any(
         marker in normalized_reply
         for marker in (
-            "old",
             "legacy",
             "former",
             "no longer",
-            "lama",
             "short-stay",
             "short stay",
             "visit visa",
@@ -762,7 +784,9 @@ def _guard_tax_compliance_reply(
         "sanzione",
         "ritardo",
     )
-    if not _contains_any(normalized_message, _RISK_INTENT_TERMS):
+    # F36 fix (2026-06-11): switch to word-boundary helper so bare substrings like
+    # "late" ⊂ "translate", "fine" ⊂ "define", "owe" ⊂ "lower" no longer fire.
+    if not _contains_any_word(normalized_message, _RISK_INTENT_TERMS):
         return reply
 
     normalized_reply = _normalize_text(reply)
@@ -825,10 +849,27 @@ def _guard_kbli_label_reply(
     normalized_reply = _normalize_text(reply)
     if "kbli" in normalized_reply or not _kbli_codes(reply):
         return reply
-    if "kbli" not in normalized_message and not _contains_any(
-        normalized_message,
-        ("business activity", "company setup", "pt pma", "cafe", "restaurant", "villa", "vila"),
-    ):
+    # F38 fix (2026-06-11): guard previously prepended "KBLI direction to check:"
+    # to any reply containing \b\d{5}\b — which matches postcodes (e.g. "80361")
+    # and currency amounts (e.g. "12000").  Now we require a positive KBLI-context
+    # signal in the MESSAGE (not just the reply) before treating 5-digit tokens as
+    # KBLI codes.  The existing business-activity keyword list is kept as the
+    # second branch; the bare "kbli not in message" early-exit is removed in
+    # favour of this combined positive gate.
+    _KBLI_CONTEXT_TERMS = (
+        "kbli",
+        "kode",
+        "business activity",
+        "company setup",
+        "pt pma",
+        "cafe",
+        "restaurant",
+        "villa",
+        "vila",
+        "classification",
+        "codice",
+    )
+    if not _contains_any(normalized_message, _KBLI_CONTEXT_TERMS):
         return reply
 
     language = _villa_answer_language(message_text, detected_language)

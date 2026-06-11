@@ -54,7 +54,7 @@ AGING_DAYS = 90
 # Per-domain topic checklists for Layer B coverage matrix
 DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
     "immigration": {
-        "notebook_id": "271c7159-0c32-49a1-bda8-803c8e0993a6",
+        "notebook_id": "cff93ab0-813a-42f2-a8de-36987e724271",
         "label": "Immigration & Visa",
         "topics": [
             "KITAS requirements and process 2025",
@@ -96,7 +96,7 @@ DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
         ],
     },
     "property": {
-        "notebook_id": "93314ad3-177e-4d2f-956b-fe4be3e47697",
+        "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
         "label": "Property & Real Estate",
         "topics": [
             "HGB title for foreigners in Indonesia",
@@ -110,7 +110,7 @@ DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
         ],
     },
     "operations": {
-        "notebook_id": "7fbf37ed-e290-491a-98f5-677d6371ad62",
+        "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
         "label": "Operations & Compliance",
         "topics": [
             "UMR/UMK Bali minimum wage 2025",

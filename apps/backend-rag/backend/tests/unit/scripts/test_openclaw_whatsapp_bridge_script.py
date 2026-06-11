@@ -694,6 +694,122 @@ async def test_run_openclaw_uses_env_model_defaults(monkeypatch: pytest.MonkeyPa
 
 
 # ---------------------------------------------------------------------------
+# F14 — b211 escape word-boundary (2026-06-11)
+# "holders" ⊃ "old", "selama" ⊃ "lama": must NOT escape as legacy framing.
+# ---------------------------------------------------------------------------
+
+
+def test_b211_guard_f14_holders_does_not_escape() -> None:
+    """'B211A holders can work in Indonesia' must be CLOBBERED (not pass-through).
+
+    Before F14 the escape clause matched 'old' inside 'holders', so the unsafe
+    reply slipped through without being replaced.
+    """
+    unsafe = (
+        "B211A holders can work in Indonesia as long as they have their documents."
+    )
+    guarded = bridge._guard_legacy_b211_reply(
+        "Can I use a B211A to work in Indonesia?", unsafe, "en"
+    )
+    assert guarded != unsafe, (
+        "F14 regression: 'holders' ⊃ 'old' escaped the b211 guard — must clobber"
+    )
+
+
+def test_b211_guard_f14_selama_does_not_escape() -> None:
+    """Indonesian 'selama' ⊃ 'lama': must NOT escape as legacy framing."""
+    unsafe = (
+        "B211A adalah visa yang tepat untuk bisnis di Bali, berlaku selama Anda "
+        "punya dokumen yang benar."
+    )
+    guarded = bridge._guard_legacy_b211_reply(
+        "Apakah B211A masih visa yang tepat?", unsafe, "id"
+    )
+    assert guarded != unsafe, (
+        "F14 regression: 'selama' ⊃ 'lama' escaped the b211 guard — must clobber"
+    )
+
+
+# ---------------------------------------------------------------------------
+# F36 — risk-intent word-boundary (2026-06-11)
+# "late" ⊂ "translate", "fine" ⊂ "define", "owe" ⊂ "lower" must NOT fire.
+# ---------------------------------------------------------------------------
+
+
+def test_tax_guard_f36_translate_does_not_fire() -> None:
+    """A message asking to 'translate' a tax form has no risk intent."""
+    reply = "LKPM is the investment realization report companies file with BKPM."
+    original = reply
+    guarded = bridge._guard_tax_compliance_reply(
+        "Can you translate the LKPM form for me?", reply, "en"
+    )
+    assert guarded == original, (
+        "F36 regression: 'late' inside 'translate' incorrectly appended verify-suffix"
+    )
+
+
+# ---------------------------------------------------------------------------
+# F37 — document_status conditional "is approved" (2026-06-11)
+# "once the application is approved" is safe explanatory text; must pass.
+# A bare "is approved" still clobbers.
+# ---------------------------------------------------------------------------
+
+
+def test_document_status_guard_f37_conditional_approved_passes() -> None:
+    """A reply explaining what happens 'once ... is approved' must survive."""
+    reply = (
+        "Once the application is approved by the immigration office, you will "
+        "receive an email notification and can collect the KITAS within three "
+        "working days."
+    )
+    guarded = bridge._guard_document_status_reply(
+        "What happens after my KITAS application is approved?", reply, "en"
+    )
+    assert guarded == reply, (
+        "F37 regression: conditional 'once ... is approved' incorrectly clobbered"
+    )
+
+
+def test_document_status_guard_f37_affirmative_approved_clobbers() -> None:
+    """A bare affirmative 'is approved' claim must still be clobbered."""
+    unsafe = "Your KITAS application is approved and has been processed."
+    guarded = bridge._guard_document_status_reply(
+        "What is the status of my KITAS application?", unsafe, "en"
+    )
+    assert guarded != unsafe, (
+        "F37 regression: bare 'is approved' claim slipped through guard"
+    )
+
+
+# ---------------------------------------------------------------------------
+# F38 — kbli_label postcode / amount false-positive (2026-06-11)
+# A 5-digit postcode or amount in a message without KBLI context must NOT
+# trigger the "KBLI direction to check:" prefix.
+# ---------------------------------------------------------------------------
+
+
+def test_kbli_label_guard_f38_postcode_does_not_fire() -> None:
+    """A reply mentioning a postcode (80361 = Kuta) must NOT get KBLI prefix."""
+    reply = "The Bali Zero office is in the Kerobokan area, postcode 80361, by appointment."
+    guarded = bridge._guard_kbli_label_reply(
+        "What is the Bali Zero office address?", reply, "en"
+    )
+    assert guarded == reply, (
+        "F38 regression: postcode 80361 triggered KBLI prefix on a non-KBLI query"
+    )
+
+
+def test_kbli_label_guard_f38_kbli_context_still_fires() -> None:
+    """A reply with a 5-digit code AND KBLI context in the message must still fire."""
+    reply = "For that activity you'd look at code 56303."
+    guarded = bridge._guard_kbli_label_reply(
+        "What KBLI applies to a coffee shop PT PMA?", reply, "en"
+    )
+    assert guarded != reply, "F38: KBLI-context message should still trigger prefix"
+    assert guarded.startswith("KBLI direction to check")
+
+
+# ---------------------------------------------------------------------------
 # Guard test-matrix harness (anti-over-match gate — W68/W72/W73 class).
 # For EVERY _guard_* function: one "pass" case (a CORRECT on-topic answer that
 # must survive unchanged) and one "clobber" case (a WRONG answer that must be
