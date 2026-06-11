@@ -35,14 +35,25 @@ from .designer_loop import Critique
 logger = logging.getLogger("wr2.claude_vision")
 
 
-class VisionRateLimited(Exception):
-    """The vision call hit a transient quota/rate-limit (HTTP 429 / session
-    limit) — NOT a real outage and NOT a defect of the slide. Distinct from the
-    `None`-return "unavailable" path: a rate-limit is recoverable next tick, so
-    the apply-worker must release the draft WITHOUT burning a circuit-breaker
-    attempt. Deliberately NOT a subclass of RuntimeError so the apply-worker's
-    generic `except RuntimeError` (transient render failure, which DOES burn an
-    attempt) cannot swallow it."""
+class VisionTransient(Exception):
+    """A vision call failed for a TRANSIENT infra reason (quota window, endpoint
+    timeout) — NOT a real outage and NOT a defect of the slide. The draft is
+    recoverable next tick, so the apply-worker must release it WITHOUT burning a
+    circuit-breaker attempt. Deliberately NOT a subclass of RuntimeError so the
+    worker's generic `except RuntimeError` (a real transient render failure,
+    which DOES burn an attempt) cannot swallow it."""
+
+
+class VisionRateLimited(VisionTransient):
+    """Transient: HTTP 429 / session limit."""
+
+
+class VisionTimeout(VisionTransient):
+    """Transient: the vision CLI call exceeded its wall-clock budget. A timeout
+    is almost always endpoint latency/overload (verified 2026-06-12: intermittent
+    120s timeouts during an Anthropic congestion window, the SAME run sometimes
+    completing), not a property of the slide — so it must not burn an attempt and
+    fail a healthy draft. The draft retries next tick when latency recovers."""
 
 
 # A 429 surfaces either as a JSON envelope with api_error_status==429 / is_error
@@ -142,12 +153,17 @@ Set brand_ok=true only if ALL hold. List any violations."""
 _CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 
 
-def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 120) -> dict[str, Any] | None:
+def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | None = None) -> dict[str, Any] | None:
     """Call the claude CLI with a JSON schema, return the parsed object or None.
 
     Strips ANTHROPIC_API_KEY from the env (defense-in-depth: force OAuth path,
     never the paid endpoint — CLAUDE.md hard rule).
+
+    Raises VisionTimeout (transient) when the call exceeds the wall-clock budget
+    (default 180s, override WR2_VISION_TIMEOUT_S) and VisionRateLimited on a 429.
     """
+    if timeout_s is None:
+        timeout_s = int(os.environ.get("WR2_VISION_TIMEOUT_S", "180"))
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)
     # Pin the vision model (default sonnet: vision-capable + solid editorial
@@ -164,8 +180,11 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 12
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout_s)
     except subprocess.TimeoutExpired:
-        logger.warning("claude vision call timed out after %ss", timeout_s)
-        return None
+        # A timeout is endpoint latency/overload, not a slide defect — transient,
+        # must NOT burn a render attempt (2026-06-12 SCAR: intermittent 120s
+        # timeouts fail-closed-crashed healthy drafts during a congestion window).
+        logger.warning("claude vision call timed out after %ss — transient", timeout_s)
+        raise VisionTimeout(f"vision call timed out after {timeout_s}s")
     # Parse the stdout envelope up front so a 429 can be told apart from a real
     # failure even when the CLI exits rc!=0 (it emits the error as JSON on stdout
     # and a non-zero code with empty stderr).
