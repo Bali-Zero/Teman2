@@ -2263,3 +2263,237 @@ async def test_render_carousel_reject_cites_critiques_and_dumps_history(monkeypa
     payload = _json.loads(dumps[0].read_text())
     assert payload["draft_id"] == "draft-test"
     assert payload["history"] == hist
+
+
+# ── facts-block body structurer (designer-loop convergence, 2026-06-12) ──────
+# Diagnosis: draft 3e2c2923 slide 2 HARD-rejected every iteration because the
+# body renders as ONE monolithic uppercase-bold paragraph; the vision critic's
+# only lever is `rerender` (structural) which no CSS lever can perform → the
+# loop can never converge. The fix is a deterministic body structurer in the
+# COMPOSER: label/value stack + separated subordinate source line + yellow
+# accent on the lead value. Conservative: non-parsing bodies render
+# byte-identical to the legacy paragraph path; cover slides untouched.
+
+_FACTS_BODY = (
+    "NEW FEE: IDR 3,500,000. OLD FEE: IDR 2,000,000. REGULATION: PMK 47/2026. "
+    "EFFECTIVE: 1 JUNE 2026. [SOURCE: KEMENKEU, 24 APR 2026]"
+)
+_FACTS_BODY_NO_SOURCE = (
+    "NEW FEE: IDR 3,500,000. OLD FEE: IDR 2,000,000. REGULATION: PMK 47/2026. "
+    "EFFECTIVE: 1 JUNE 2026."
+)
+
+
+def test_split_source_line_extracts_trailing_source():
+    """_split_source_line extracts a trailing [SOURCE: …] verbatim (brackets
+    stripped) and returns the body without it."""
+    from wr2_html_renderer.composer import _split_source_line
+
+    body, src = _split_source_line(_FACTS_BODY)
+    assert body == _FACTS_BODY_NO_SOURCE
+    assert src == "SOURCE: KEMENKEU, 24 APR 2026"
+
+
+def test_split_source_line_fonte_and_case_insensitive():
+    from wr2_html_renderer.composer import _split_source_line
+
+    body, src = _split_source_line("BODY TEXT. [Fonte: Kemenkeu, 24 Apr 2026]")
+    assert body == "BODY TEXT."
+    assert src == "Fonte: Kemenkeu, 24 Apr 2026"
+    body, src = _split_source_line("BODY TEXT. [source: imigrasi]")
+    assert body == "BODY TEXT."
+    assert src == "source: imigrasi"
+
+
+def test_split_source_line_no_source_returns_none():
+    from wr2_html_renderer.composer import _split_source_line
+
+    plain = "A NORMAL BODY WITH NO ATTRIBUTION AT ALL."
+    assert _split_source_line(plain) == (plain, None)
+    # a NON-trailing bracket segment is content, not attribution — untouched
+    mid = "[SOURCE: X] FOLLOWED BY MORE TEXT."
+    assert _split_source_line(mid) == (mid, None)
+
+
+def test_parse_fact_pairs_parses_facts_body():
+    """The exact 3e2c2923 slide-2 style body (source-stripped) parses into
+    ordered label/value pairs."""
+    from wr2_html_renderer.composer import _parse_fact_pairs
+
+    pairs = _parse_fact_pairs(_FACTS_BODY_NO_SOURCE)
+    assert pairs == [
+        ("NEW FEE", "IDR 3,500,000"),
+        ("OLD FEE", "IDR 2,000,000"),
+        ("REGULATION", "PMK 47/2026"),
+        ("EFFECTIVE", "1 JUNE 2026"),
+    ]
+
+
+def test_parse_fact_pairs_none_for_prose():
+    """Conservative fallback: anything that is not a clean ≥2-pair chain of
+    `LABEL: value. ` segments returns None (legacy paragraph rendering)."""
+    from wr2_html_renderer.composer import _parse_fact_pairs
+
+    # narrative sentence with one colon → single segment → None
+    assert _parse_fact_pairs(
+        "THE MINISTRY CONFIRMED: FEES WILL RISE SHARPLY IN JUNE 2026."
+    ) is None
+    # plain prose, no colon at all
+    assert _parse_fact_pairs(
+        "YOUR KITAP STAYS VALID. THE RENEWAL WINDOW MOVED TO MARCH."
+    ) is None
+    # mixed: one fact segment + one narrative segment → whole-or-nothing → None
+    assert _parse_fact_pairs(
+        "NEW FEE: IDR 3,500,000. THIS IS WHY IT MATTERS FOR YOUR VISA."
+    ) is None
+    # label longer than 4 words → None
+    assert _parse_fact_pairs(
+        "WHAT YOU NEED TO KNOW NOW: EVERYTHING. ALSO THIS OTHER THING HERE: MORE."
+    ) is None
+    # empty / whitespace
+    assert _parse_fact_pairs("") is None
+    assert _parse_fact_pairs("   ") is None
+
+
+_BODY_SLIDE_HTML = (
+    "<html><head></head><body>"
+    '<div class="text-panel" data-zone-type="text">'
+    '<div class="heading">{{heading}}</div>'
+    '<div class="body">{{body}}</div>'
+    "</div></body></html>"
+)
+
+
+def test_fill_placeholders_facts_body_renders_label_value_stack():
+    """A facts body renders as a label/value stack: one row per pair, the
+    source line present OUTSIDE the rows, yellow accent on the FIRST value
+    only (the lead fact), facts CSS injected."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "VISA FEE UPDATE", "body": _FACTS_BODY},
+        hero_filename=None,
+        cover_family=False,
+    )
+    # 4 label/value rows
+    assert out.count('class="fact-row"') == 4
+    assert '<div class="fact-label">NEW FEE</div>' in out
+    assert '<div class="fact-label">EFFECTIVE</div>' in out
+    # yellow accent on the FIRST value only
+    assert out.count("fact-value-lead") >= 1
+    assert '<div class="fact-value fact-value-lead">IDR 3,500,000</div>' in out
+    assert '<div class="fact-value">IDR 2,000,000</div>' in out
+    assert '<div class="fact-value">PMK 47/2026</div>' in out
+    assert 'fact-value-lead">IDR 2,000,000' not in out
+    # source line present, OUTSIDE the rows, brackets stripped
+    assert '<div class="fact-source">SOURCE: KEMENKEU, 24 APR 2026</div>' in out
+    assert "[SOURCE" not in out
+    last_row = out.rfind('class="fact-row"')
+    assert out.find('class="fact-source"') > last_row
+    # facts CSS injected, accent from the existing brand token (no invented hex)
+    assert 'data-facts-block="1"' in out
+    assert "var(--color-accent-yellow)" in out
+    # the dead-void fix: the text stack centers vertically in its zone
+    assert "justify-content:center" in out
+    assert "{{body}}" not in out
+
+
+def test_fill_placeholders_facts_body_without_source_still_stacks():
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "VISA FEE UPDATE", "body": _FACTS_BODY_NO_SOURCE},
+        hero_filename=None,
+        cover_family=False,
+    )
+    assert out.count('class="fact-row"') == 4
+    assert 'class="fact-source"' not in out
+
+
+def test_fill_placeholders_non_parsing_body_byte_identical():
+    """Regression: a body that does NOT parse as fact pairs renders EXACTLY as
+    before the change — placeholder substituted verbatim, no facts markup, no
+    injected facts CSS."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    prose = "YOUR KITAP STAYS VALID. THE RENEWAL WINDOW MOVED TO MARCH."
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "SHORT TITLE", "body": prose},
+        hero_filename=None,
+        cover_family=False,
+    )
+    # pre-change snapshot semantics: plain placeholder substitution only
+    expected = _BODY_SLIDE_HTML.replace("{{heading}}", "SHORT TITLE").replace(
+        "{{body}}", prose
+    )
+    assert out == expected
+    assert "fact-row" not in out
+    assert "data-facts-block" not in out
+
+
+def test_fill_placeholders_cover_family_facts_body_untouched():
+    """Cover slides are COMPLETELY untouched by the facts structurer — even a
+    body that would parse as pairs renders as the legacy paragraph."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "FEE", "body": _FACTS_BODY},
+        hero_filename=None,
+        cover_family=True,
+    )
+    assert "fact-row" not in out
+    assert "data-facts-block" not in out
+    expected = _BODY_SLIDE_HTML.replace("{{heading}}", "FEE").replace(
+        "{{body}}", _FACTS_BODY
+    )
+    assert out == expected
+
+
+def test_materialize_body_slide_facts_stack_and_centering():
+    """materialize_slide_html on a NON-cover body slide with a facts body emits
+    the stack + the vertical-centering CSS (dead-void critique) into the HTML
+    file the renderer consumes."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+
+    BODY_SKELETON = """<!doctype html>
+<html><head><link rel="stylesheet" href="../_base.css"></head>
+<body>
+  <div class="text-panel" data-zone-type="text">
+    <div class="subheading">{{subheading}}</div>
+    <div class="heading">{{heading}}</div>
+    <div class="body">{{body}}</div>
+  </div>
+</body></html>"""
+
+    slide = {
+        "slide_number": 2,
+        "slide_type": "facts",
+        "headline": "THE NUMBERS",
+        "subhead": "PMK 47/2026",
+        "body": _FACTS_BODY,
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        slides_dir = Path(tmpdir) / "slides"
+        slides_dir.mkdir()
+        with patch(
+            "wr2_html_renderer.composer._extract_skeleton", return_value=BODY_SKELETON
+        ):
+            from wr2_html_renderer.composer import materialize_slide_html
+
+            html_path, expect_hero = asyncio.run(
+                materialize_slide_html(slide, slides_dir, index=2, total=6)
+            )
+        html = html_path.read_text()
+        assert html.count('class="fact-row"') == 4
+        assert '<div class="fact-source">SOURCE: KEMENKEU, 24 APR 2026</div>' in html
+        assert "justify-content:center" in html
+        assert "var(--color-accent-yellow)" in html
+        assert "[SOURCE" not in html
