@@ -124,6 +124,7 @@ async def _insert_wmc(
     media_mime: str,
     team_email: str,
     direction: str = "inbound",
+    sender_phone: str | None = None,
 ) -> int:
     """Insert one synthetic row, return its id (the watermark cursor key)."""
     async with pool.acquire() as conn:
@@ -131,8 +132,8 @@ async def _insert_wmc(
             """
             INSERT INTO whatsapp_message_context
                 (baileys_message_id, media_stored_path, media_type, media_mime,
-                 team_member_email, direction, message_date)
-            VALUES ($1, $2, $3, $4, $5, $6, now())
+                 team_member_email, direction, sender_phone, message_date)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, now())
             RETURNING id
             """,
             baileys_id,
@@ -141,6 +142,7 @@ async def _insert_wmc(
             media_mime,
             team_email,
             direction,
+            sender_phone,
         )
 
 
@@ -172,6 +174,7 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     id_doc = await _insert_wmc(
         pool, baileys_id=bid_doc, blob_path=doc_path, media_type="document",
         media_mime="application/pdf", team_email="ari@balizero.com",
+        sender_phone="+62 812-0000-1111",
     )
     id_img = await _insert_wmc(
         pool, baileys_id=bid_img, blob_path=img_path, media_type="image",
@@ -195,7 +198,8 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     # Both inbound rows enqueued with wa-mirror: source_ref + received_by=email.
     async with pool.acquire() as conn:
         doc_row = await conn.fetchrow(
-            "SELECT source, source_ref, received_by FROM intake_queue WHERE blob_hash=$1",
+            "SELECT source, source_ref, received_by, sender_phone"
+            " FROM intake_queue WHERE blob_hash=$1",
             doc_sha,
         )
         img_row = await conn.fetchrow(
@@ -210,6 +214,8 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     assert doc_row["source"] == "whatsapp"
     assert doc_row["source_ref"] == f"wa-mirror:{bid_doc}"
     assert doc_row["received_by"] == "ari@balizero.com"
+    # m225: the raw transport sender phone is carried onto the queue row.
+    assert doc_row["sender_phone"] == "+62 812-0000-1111"
 
     assert img_row is not None
     assert img_row["source_ref"] == f"wa-mirror:{bid_img}"

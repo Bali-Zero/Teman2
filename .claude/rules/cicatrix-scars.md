@@ -502,12 +502,14 @@ _Discovered: 2026-06-11 by Fable-5 system audit (findings F18/F20/F21), specs dr
 **CROSS-CUTTING:** F20+F21 share one disease and one upstream blocker — `com.balizero.wr3.supervisor` is **FAILED exit=78** with **zero new episodes in 12 days**. Wiring F20's validator into a dead supervisor changes nothing; porting F21's real synthesizer produces a faithful impl that still emits nothing (no input corpus). **The supervisor must be revived FIRST.** F18 is INDEPENDENT (infra healthy, fix is dataset/scheduling).
 
 **ANTIBODY:** **Specs drafted, fixes operator-decided** (DOCS ONLY — no code/SQL/cron change shipped, per operator constraint):
+
 - `research/operations/specs/WR3-F18-evoskill-zero-pressure.md` — fix (a) build a real curriculum from cicatrix scars the base program FAILS (dataset change, no `runner.py` code change) OR (b) suspend the evolver cron until a curriculum exists (Fable-5's own recommendation); optionally lower the 0.8 bar at `runner.py:319`.
 - `research/operations/specs/WR3-F20-manifest-validator-incompatible.md` — fix (a) make `wr3-post-assembler` call `ManifestBuilder.write()` deterministically OR (b) relax the validator to real agent output (+ add "PASS-WITH-NOTES" to allowed verdicts if legit); either way wire `validate_manifest` into the supervisor `assembly_ready→critic_verdict` transition and/or CI.
 - `research/operations/specs/WR3-F21-reflexion-cron-theater.md` — fix: port the WR2 314-line pattern (read last-7d episodes + review-queue → synthesize ≤10 lessons → `wr3/<agent>/lessons.md` + skill drafts → `wr3/_proposed/`, Sonnet→Gemini cascade), version the plist into `infra/launchagents/`. CAVEAT: supervisor exit=78 must be fixed FIRST.
 - Index: `research/operations/specs/WR3-DEBT-INDEX.md` links all three + the cross-cutting dead-supervisor note.
 
 **GOTCHA:**
+
 - **Green cron ≠ working:** the F21 reflexion stub `sys.exit(0)`s and has been green for 12+ Sundays while synthesizing nothing — `LastExitStatus=0` proves the process ran, NOT that it did work. Read the OUTPUT dir (`wr3/_proposed/` empty, no `lessons.md`), not the exit code. Same family as W70 (`log_tail="exit 1 after 3 attempts"` false friend) and W71 (`esistere ≠ armato`).
 - **Two phantom citations AVOIDED** (anti-hallucination discipline, ℹ️ META 13-agent-autopsy family): (1) project memory cites `vendor/evoskill/cli/scorer.py` which is **ENOENT** — the real scorer is `vendor/evoskill/src/cli/shared.py:229`; the F18 spec records this and uses the verified path. (2) The F20 real manifest was re-read this turn to confirm it shares exactly 2 field NAMES (`episode_id`, `critic_verdict`) with the 18-field schema — not assumed from the report. Every cited file:line was re-verified on disk before being written into a spec.
 - **F20/F21 are second-order:** fixing either before reviving `com.balizero.wr3.supervisor` (exit=78) yields green-but-still-empty results. The shared upstream blocker is the load-bearing fact in `WR3-DEBT-INDEX.md`.

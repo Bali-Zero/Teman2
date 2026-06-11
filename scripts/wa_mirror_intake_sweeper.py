@@ -134,7 +134,7 @@ async def run_one_tick() -> int:
             rows = await conn.fetch(
                 """
                 SELECT id, baileys_message_id, media_stored_path, media_mime,
-                       media_type, team_member_email
+                       media_type, team_member_email, sender_phone
                   FROM whatsapp_message_context
                  WHERE media_stored_path IS NOT NULL
                    AND media_type = ANY($1::text[])
@@ -178,6 +178,7 @@ async def run_one_tick() -> int:
                     blob_path=blob_path,
                     mime_type=r["media_mime"],
                     received_by=r["team_member_email"],
+                    sender_phone=r["sender_phone"],
                 )
             except Exception as exc:  # noqa: BLE001 — isolate per-row failure
                 logger.error(
