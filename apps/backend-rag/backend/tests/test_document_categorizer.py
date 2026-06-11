@@ -1,13 +1,13 @@
 """
-Comprehensive Test Suite for CRM Migration Endpoints
+Test suite for the CRM document categorizer service.
 
-Tests all 4 new features:
-1. Google Drive Folder Creation API
-2. Bulk Document Insert
-3. Auto-Categorization Service
-4. Migration Status Tracking
+Renamed from test_crm_migration_endpoints.py (F28/F44): the old name claimed to
+test "CRM migration endpoints" but the orphan crm_migration router was never
+mounted (and has now been removed). This file only ever exercised
+``backend.services.crm.document_categorizer`` — categorization, date/name
+extraction, batch, stats — which is live code. The name now matches the content.
 
-Run with: pytest backend/tests/test_crm_migration_endpoints.py -v
+Run with: pytest backend/tests/test_document_categorizer.py -v
 """
 
 import pytest
