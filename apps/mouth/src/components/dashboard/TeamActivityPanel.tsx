@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { formatIDRCompact } from "@balizero/core/utils";
 import {
   Users,
   Briefcase,
@@ -193,13 +194,6 @@ function MiniBar({
   );
 }
 
-function fmtRp(rp: number): string {
-  if (rp >= 1_000_000_000) return `${(rp / 1_000_000_000).toFixed(1)}B`;
-  if (rp >= 1_000_000) return `${(rp / 1_000_000).toFixed(0)}M`;
-  if (rp >= 1_000) return `${(rp / 1_000).toFixed(0)}K`;
-  return rp > 0 ? `${rp}` : "—";
-}
-
 function RevenueCell({
   value,
   max,
@@ -216,7 +210,7 @@ function RevenueCell({
         className="text-[11px] font-black tabular-nums leading-none"
         style={{ color: dim ? "rgba(255,255,255,0.18)" : accent }}
       >
-        {dim ? "—" : `Rp ${fmtRp(value)}`}
+        {dim ? "—" : formatIDRCompact(value)}
       </span>
       <MiniBar
         value={value}

@@ -33,6 +33,7 @@ import {
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
+import { formatIDR } from "@balizero/core/utils";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
@@ -254,12 +255,7 @@ export default function CaseDetailPage() {
 
   const formatCurrency = (amount?: number) => {
     if (amount === undefined || amount === null) return "Not set";
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+    return formatIDR(amount);
   };
 
   const saveNotes = async () => {

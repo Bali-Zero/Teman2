@@ -5,14 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
 import { getPayslipDetail } from "@/lib/api/hr/hr";
 import type { PayslipDetail, Deduction } from "@/types/hr";
-
-function formatIDR(amount: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+import { formatIDR } from "@balizero/core/utils";
 
 const statusColors: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-700",
