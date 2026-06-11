@@ -93,6 +93,10 @@ FUNNEL_PAGE_EVENTS: frozenset[str] = frozenset(
         # --- Hero Section CTAs ---
         "hero_cta_book_call",
         "hero_cta_read_dispatch",
+        # --- Persona doors (MYTHOS B2, IA-1; B2R2 adds tax) ---
+        # Homepage "Start where you are." doors;
+        # payload: door = visa|company|tax|property.
+        "persona_door_click",
         # --- Booked Consultation (MYTHOS IA-3 scaffolding, emission in B4) ---
         "book_viewed",
         "book_form_started",
