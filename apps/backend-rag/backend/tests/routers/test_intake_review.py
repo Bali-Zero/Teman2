@@ -17,8 +17,8 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
 from collections.abc import AsyncIterator
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 import pytest
