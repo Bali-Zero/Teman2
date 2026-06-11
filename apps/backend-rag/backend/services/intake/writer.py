@@ -53,6 +53,8 @@ from typing import Any
 
 import asyncpg
 
+from backend.core.cache import invalidate_crm_stats
+
 logger = logging.getLogger("zantara.intake.writer")
 
 
@@ -726,6 +728,7 @@ async def _append_practice_document(
         json.dumps(documents),
         plan.practice_id,
     )
+    await invalidate_crm_stats()  # F32
 
 
 # --------------------------------------------------------------------------- #
