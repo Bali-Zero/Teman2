@@ -246,6 +246,104 @@ def test_lkpm_guard_still_clobbers_stale_deadline() -> None:
     assert guarded != stale
 
 
+# --- F11: LKPM dated-fact time-bomb ----------------------------------------
+import datetime as _f11_dt
+
+
+def test_lkpm_window_clause_states_april_while_valid() -> None:
+    # On/before valid_until the published window is quoted as current.
+    clause = bridge._lkpm_window_clause("en", today=_f11_dt.date(2026, 4, 15))
+    assert "1 to 15 april" in clause.lower()
+    assert bridge._lkpm_window_is_current(_f11_dt.date(2026, 4, 30)) is True
+
+
+def test_lkpm_window_clause_degrades_after_expiry() -> None:
+    # After valid_until the bridge must NOT assert the stale April window as
+    # the current rule; it tells the user to verify live instead.
+    clause = bridge._lkpm_window_clause("en", today=_f11_dt.date(2026, 7, 1))
+    assert "april" not in clause.lower()
+    assert "verif" in clause.lower()
+    assert bridge._lkpm_window_is_current(_f11_dt.date(2026, 7, 1)) is False
+
+
+def test_lkpm_guard_does_not_clobber_newer_window_after_expiry(monkeypatch) -> None:
+    # The time-bomb: once the April fact is stale, a CORRECT reply citing the
+    # NEW (e.g. Q2 July) window must NOT be clobbered for omitting "1-15 April".
+    monkeypatch.setattr(bridge, "_lkpm_window_is_current", lambda today=None: False)
+    new_window = (
+        "For Q2 2026, BKPM opened the LKPM window 1-15 July 2026; the deadline "
+        "is no later than 15 July. Verify live on OSS/BKPM."
+    )
+    out = bridge._guard_lkpm_reply("When is the LKPM deadline this quarter?", new_window, "en")
+    assert out == new_window
+
+
+def test_lkpm_guard_still_clobbers_stale_deadline_after_expiry(monkeypatch) -> None:
+    # Degradation keeps the stale-marker safety net even after expiry.
+    monkeypatch.setattr(bridge, "_lkpm_window_is_current", lambda today=None: False)
+    stale = "File LKPM by 10 April, on the 7th of the month."
+    out = bridge._guard_lkpm_reply("LKPM deadline?", stale, "en")
+    assert out != stale
+
+
+def test_lkpm_guard_clobbers_wrong_window_while_valid(monkeypatch) -> None:
+    # While valid, a deadline-asserting reply that omits the correct window is
+    # clobbered (unchanged behaviour, now keyed off the central fact).
+    monkeypatch.setattr(bridge, "_lkpm_window_is_current", lambda today=None: True)
+    wrong = "The LKPM deadline is no later than the 20th of March 2026."
+    out = bridge._guard_lkpm_reply("LKPM deadline?", wrong, "en")
+    assert out != wrong
+
+
+# --- F12: hak_milik content-gating (not length-gating) ----------------------
+def test_hak_milik_guard_clobbers_short_wrong_claim() -> None:
+    # The dangerous case the old length-only guard let through: a SHORT reply
+    # (<125 words) that wrongly says a foreigner can own Hak Milik.
+    wrong = "Yes, as a foreigner you can own Hak Milik land directly through your PMA."
+    out = bridge._guard_hak_milik_reply(
+        "Can a foreigner buy Hak Milik land in Bali?", wrong, "en"
+    )
+    assert out != wrong
+    assert "cannot hold hak milik" in bridge._normalize_text(out)
+
+
+def test_hak_milik_guard_passes_correct_short_answer() -> None:
+    # A correct, concise answer must NOT be clobbered.
+    correct = (
+        "No. A foreigner cannot hold Hak Milik directly. A PT PMA may look at HGB, "
+        "and personal residential use may involve Hak Pakai. The team verifies the route."
+    )
+    assert (
+        bridge._guard_hak_milik_reply(
+            "Can a foreigner own Hak Milik?", correct, "en"
+        )
+        == correct
+    )
+
+
+def test_hak_milik_guard_passes_correct_indonesian_answer() -> None:
+    correct = (
+        "Tidak. Orang asing tidak bisa memegang Hak Milik langsung. PT PMA biasanya "
+        "melihat HGB; tim legal Bali Zero verify rutenya."
+    )
+    assert (
+        bridge._guard_hak_milik_reply(
+            "Orang asing bisa punya Hak Milik?", correct, "id"
+        )
+        == correct
+    )
+
+
+def test_hak_milik_affirmation_detector_polarity() -> None:
+    norm = bridge._normalize_text
+    assert bridge._hak_milik_asserts_foreigner_can_own(
+        norm("a foreigner can own hak milik directly")
+    )
+    assert not bridge._hak_milik_asserts_foreigner_can_own(
+        norm("a foreigner cannot hold hak milik directly")
+    )
+
+
 def test_tax_guard_does_not_append_on_stable_rate_fact() -> None:
     # "What is Coretax" is a definition; no OSS/BKPM verify tail should be added.
     answer = "Coretax is Indonesia's new tax administration system run by the DJP."
