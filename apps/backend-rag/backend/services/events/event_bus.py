@@ -8,8 +8,8 @@ general-purpose event system.  Three layers:
    Used for database-triggered events (row changes via triggers).
 2. **In-process pub/sub** — zero-latency, any payload size.
    Used for application-level events (chain results, service signals).
-3. **Redis pub/sub** (optional) — cross-node (Pro ↔ Air ↔ Fly).
-   Only initialized if Redis is available.
+3. **Redis pub/sub** (optional) — cross-node (Pro ↔ Mini-Pro2 ↔ Fly;
+   Air decommissioned 2026-05-05). Only initialized if Redis is available.
 
 Usage:
     bus = EventBus(db_dsn=DATABASE_URL, db_pool=pool)
