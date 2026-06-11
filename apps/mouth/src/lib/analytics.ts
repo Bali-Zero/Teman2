@@ -405,39 +405,34 @@ export function trackTaxDashboardViewed(
 
 // --- Property ---
 
+/** Single dispatch path for property CTA clicks (MYTHOS D5 consolidation).
+ * "property_cta_clicked" is the canonical event name; the typed `cta_type`
+ * payload param disambiguates the surface (article CTA, map analyze, …). */
+function dispatchPropertyCTAClicked(
+  payload: Record<string, string | number> & { cta_type: string },
+): void {
+  sendGA4Event("property_cta_clicked", {
+    event_category: "Property",
+    ...payload,
+  });
+  trackEvent("property_cta_clicked", payload);
+  void trackFunnelEvent("property_cta_clicked", {
+    sessionId: getOrCreateSessionId(),
+    payload,
+  });
+}
+
 /** Track property article-page CTA interaction (article slug + CTA type) */
 export function trackPropertyArticleCTA(
   articleSlug: string,
   ctaType: string,
 ): void {
-  sendGA4Event("property_cta_clicked", {
-    event_category: "Property",
-    article_slug: articleSlug,
-    cta_type: ctaType,
-  });
-  trackEvent("property_cta_clicked", {
-    article_slug: articleSlug,
-    cta_type: ctaType,
-  });
-  void trackFunnelEvent("property_cta_clicked", {
-    sessionId: getOrCreateSessionId(),
-    payload: { article_slug: articleSlug, cta_type: ctaType },
-  });
+  dispatchPropertyCTAClicked({ article_slug: articleSlug, cta_type: ctaType });
 }
 
 /** Track property analyze button clicked */
 export function trackPropertyAnalyzeCTA(lat: number, lng: number): void {
-  sendGA4Event("property_cta_clicked", {
-    event_category: "Property",
-    cta_type: "analyze",
-    lat,
-    lng,
-  });
-  trackEvent("property_cta_clicked", { cta_type: "analyze", lat, lng });
-  void trackFunnelEvent("property_cta_clicked", {
-    sessionId: getOrCreateSessionId(),
-    payload: { cta_type: "analyze", lat, lng },
-  });
+  dispatchPropertyCTAClicked({ cta_type: "analyze", lat, lng });
 }
 
 /** Track AskZantara question on property article */
@@ -489,13 +484,21 @@ export function trackFunnelCTA(
   action: FunnelCTAAction,
   extra?: Record<string, string | number | boolean>,
 ): void {
-  // Event name: e.g. "visa_cta_click", "kbli_search_submit"
-  const eventName = `${funnel}_${action}` as const;
+  // Event name: e.g. "visa_cta_click", "kbli_search_submit".
+  // MYTHOS D5: property's canonical CTA-click event is "property_cta_clicked"
+  // (pre-existing GA4 history). The grid-derived "property_cta_click" was
+  // never in FUNNEL_EVENTS/ALLOWED_EVENTS, so the backend silently dropped
+  // every property home-block CTA click — canonicalize here instead.
+  const eventName =
+    funnel === "property" && action === "cta_click"
+      ? "property_cta_clicked"
+      : `${funnel}_${action}`;
   const params = { event_category: "FunnelCTA", funnel, ...extra };
   sendGA4Event(eventName, params);
   trackEvent(eventName, { funnel, ...extra });
   void trackFunnelEvent(
-    // Cast is safe: all 16 combinations are in FUNNEL_EVENTS
+    // Cast is safe: every name constructed above is in FUNNEL_EVENTS
+    // (guarded by test_analytics_funnel_parity.py + funnel-view.test.ts).
     eventName as Parameters<typeof trackFunnelEvent>[0],
     { sessionId: getOrCreateSessionId(), payload: { funnel, ...extra } },
   );
@@ -540,6 +543,32 @@ export function trackPropertyCTA(
 // ============================================================
 
 type HeroCTAEvent = "hero_cta_book_call" | "hero_cta_read_dispatch";
+
+// ============================================================
+// Persona Doors (MYTHOS B2, IA-1)
+// ============================================================
+
+/** Which of the four homepage "Start where you are." doors was chosen.
+ * B2R2: "tax" added (third door). */
+export type PersonaDoor = "visa" | "company" | "tax" | "property";
+
+/**
+ * Track a homepage persona-door click.
+ * Triple-dispatch: GA4 + internal CRM bus + funnel store.
+ * Event registered in FUNNEL_EVENTS + backend ALLOWED_EVENTS
+ * (parity enforced by test_analytics_funnel_parity.py).
+ */
+export function trackPersonaDoor(door: PersonaDoor): void {
+  sendGA4Event("persona_door_click", {
+    event_category: "PersonaDoors",
+    door,
+  });
+  trackEvent("persona_door_click", { door });
+  void trackFunnelEvent("persona_door_click", {
+    sessionId: getOrCreateSessionId(),
+    payload: { door },
+  });
+}
 
 /**
  * Track a hero section CTA click.

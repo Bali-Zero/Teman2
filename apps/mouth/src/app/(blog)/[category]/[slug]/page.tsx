@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { serialize } from "next-mdx-remote/serialize";
 import remarkGfm from "remark-gfm";
-import { getArticleBySlug, getArticleByLocale } from "@/lib/blog/articles";
+import {
+  getArticleBySlug,
+  getArticleByLocale,
+  resolveCategoryAlias,
+} from "@/lib/blog/articles";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
 import { ArticleClient } from "./ArticleClient";
 import {
@@ -99,13 +103,18 @@ export async function generateMetadata({
       {},
       err instanceof Error ? err : new Error(String(err)),
     );
+
+    // Genuine lookup error (distinct from "article missing"): keep the page
+    // renderable but never indexable under invented metadata.
+    return {
+      title: "Bali Zero",
+      robots: { index: false, follow: false },
+    };
   }
 
-  // Fallback metadata
-  return {
-    title: `${slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} | Bali Zero`,
-    description: `Learn about ${slug.replace(/-/g, " ")} in Indonesia. Expert guides from Bali Zero.`,
-  };
+  // Article does not exist: render the 404 boundary. Title-casing the slug
+  // here used to fabricate a phantom 200 page for ANY url (soft-404, D12).
+  notFound();
 }
 
 // Category labels for breadcrumbs
@@ -147,6 +156,26 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const article = lang
     ? await getArticleByLocale(category, slug, lang)
     : await getArticleBySlug(category, slug);
+
+  // No article in backend NOR local MDX: hard 404 (D12 soft-404 fix).
+  // getArticleBySlug/getArticleByLocale return null both for "not found";
+  // backend outages degrade to the MDX-on-disk fallback before reaching here.
+  if (!article) {
+    notFound();
+  }
+
+  // Category-alias canonicalization: the same article is reachable under
+  // alias categories (e.g. /immigration/X and /visas/X). When the requested
+  // category is a KNOWN alias of the article's canonical category, issue a
+  // 308 permanent redirect to the canonical URL instead of serving duplicate
+  // content that relies on the canonical <meta> alone. Unknown categories
+  // keep current behavior (notFound per D12 above).
+  // NOTE: permanentRedirect throws NEXT_REDIRECT — must stay outside try/catch.
+  const canonical = resolveCategoryAlias(category);
+  if (canonical && canonical !== category && article.category === canonical) {
+    const langSuffix = lang ? `?lang=${encodeURIComponent(lang)}` : "";
+    permanentRedirect(`/${canonical}/${slug}${langSuffix}`);
+  }
 
   const breadcrumbItems = [
     { name: "Home", url: "/" },

@@ -11,6 +11,7 @@
  */
 
 import { ApiClient } from "./api-client";
+import type { GateStatus, GateSection } from "./api-client";
 import type { UserProfile } from "@/types";
 import type { LoginResponse } from "./auth/auth.types";
 import type {
@@ -68,6 +69,8 @@ export type {
   Interaction,
   PracticeStats,
   InteractionStats,
+  GateStatus,
+  GateSection,
 };
 
 export { TierLevel };

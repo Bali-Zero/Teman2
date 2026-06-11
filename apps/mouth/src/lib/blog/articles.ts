@@ -72,6 +72,18 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
   return CATEGORY_MAP[rawCategory] || "living";
 }
 
+/**
+ * Resolve a requested category param to its canonical category, if known.
+ * Returns null for unknown categories (caller keeps current behavior).
+ * Used by the article page to issue a permanent redirect from alias
+ * categories (e.g. /immigration/X) to the canonical URL (/visas/X).
+ */
+export function resolveCategoryAlias(
+  rawCategory: string,
+): ArticleCategory | null {
+  return CATEGORY_MAP[rawCategory] ?? null;
+}
+
 /** Strip markdown headings and formatting from excerpt text (used for frontmatter/backend strings) */
 function cleanExcerpt(text: string | null): string {
   if (!text) return "";
@@ -167,6 +179,18 @@ function defaultCoverImage(category: ArticleCategory): string {
   return CATEGORY_COVER_DEFAULTS[category] || "/static/blog/golden-visa.jpg";
 }
 
+/**
+ * Derive the homepage-card (16:10) variant path from a news cover image.
+ * The poller writes `/static/news/{slug}.jpg` (hero) + `/static/news/{slug}_card.jpg`
+ * (card). When an explicit cardImage isn't in frontmatter, derive it only for the
+ * news-cover pattern; otherwise return undefined so consumers fall back to coverImage.
+ */
+function deriveCardImage(coverImage?: string | null): string | undefined {
+  if (!coverImage) return undefined;
+  const m = coverImage.match(/^(\/static\/news\/.+)\.(jpg|jpeg|png)$/i);
+  return m ? `${m[1]}_card.${m[2]}` : undefined;
+}
+
 function isArticleFolderName(value: string): value is ArticleFolderName {
   return ARTICLE_FOLDER_SET.has(value);
 }
@@ -224,6 +248,7 @@ function backendToArticleListItem(item: BackendNewsItem): ArticleListItem {
     excerpt: cleanExcerpt(item.summary || item.ai_summary),
     coverImage:
       item.image_url || defaultCoverImage(normalizeCategory(item.category)),
+    cardImage: deriveCardImage(item.image_url),
     category: normalizeCategory(item.category),
     author: {
       id: "zantara-ai",
@@ -254,6 +279,7 @@ function backendToArticle(item: BackendNewsItem): Article {
     content: item.content || "",
     coverImage:
       item.image_url || defaultCoverImage(normalizeCategory(item.category)),
+    cardImage: deriveCardImage(item.image_url),
     coverImageAlt: item.title,
     category: normalizeCategory(item.category),
     tags: item.ai_tags || [],
@@ -462,6 +488,9 @@ async function getMdxArticleBySlug(
       frontmatter.coverImage ||
       frontmatter.image?.src ||
       `/static/blog/${actualFolderCategory}/${slug}.jpg`,
+    cardImage:
+      frontmatter.cardImage ||
+      deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),
     coverImageAlt:
       frontmatter.coverImageAlt || frontmatter.image?.alt || frontmatter.title,
     category: normalizeCategory(frontmatter.category || category),
@@ -585,6 +614,9 @@ export async function getArticleByLocale(
           frontmatter.coverImage ||
           frontmatter.image?.src ||
           `/static/blog/${folder}/${slug}.jpg`,
+        cardImage:
+          frontmatter.cardImage ||
+          deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),
         coverImageAlt:
           frontmatter.coverImageAlt ||
           frontmatter.image?.alt ||

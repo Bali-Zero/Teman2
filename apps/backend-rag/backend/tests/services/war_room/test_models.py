@@ -42,7 +42,10 @@ def test_draft_status_values_match_migration():
         "researched",
         "concept",
         "drafts",
+        "rendering",  # WR2 v4 (migration 222): lease in-progress
         "rendered",
+        "render_failed",  # WR2 v4 (migration 222): circuit-breaker terminal
+        "rendered_shadow",  # WR2 v4 (migration 222): shadow dry-run terminal
         "pending_review",
         "approved",
         "rejected",

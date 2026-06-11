@@ -1,0 +1,18 @@
+# P1 STRATO-2 gate-fragment (FASE-4 worker-p1s2). The orchestrator merges this
+# into scripts/verify_the_verifiers_gates.yaml centrally — do NOT edit that file
+# or the .sha256 here. `kind: lint_script` → armed iff (target exists) AND
+# (consumer runs it). consumer is non-null: a real CI workflow shipped this slice.
+- id: mutation_incremental
+  kind: lint_script
+  target: scripts/mutation_incremental.py
+  consumer: .github/workflows/p1s2-mutation-incremental.yml
+  note: >
+    Incremental AST-diff mutation: mutates ONLY changed executable statement
+    lines (git diff ∩ AST), never the full codebase. HIDDEN CANARY MUTANTS
+    (frozen, hash-pinned, NOT agent-chosen) are the anti-cheat — if a canary
+    survives the test suite the gate FAILS regardless of reported score; the
+    operator owns seed/baseline. Honest limitation: mutmut is OPTIONAL /
+    CI-provided (not a hard repo dep) — absent (e.g. M5) the mutmut leg SKIPs
+    (exit 2, never a false pass) while the pure-Python canary self-test still
+    runs and can still FAIL. Companion test scripts/test_mutation_incremental.py
+    (20 cases, green). Frozen-canary integrity hash printed by --print-integrity.

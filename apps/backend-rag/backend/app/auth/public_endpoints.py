@@ -348,6 +348,14 @@ _PREVIEW = (
 
 _FUNNEL = (
     PublicEndpoint(
+        "/api/lead/capture",
+        Category.FUNNEL,
+        "Anonymous WhatsApp handoff CTA (articles, KBLI Navigator, 4-apps). "
+        "Writes lead_intents (source/context/utm/fingerprint only — no PII); "
+        "payload capped at 8KB by the router. POST-only, exact path.",
+        match="exact",
+    ),
+    PublicEndpoint(
         "/api/funnel/session/touch",
         Category.FUNNEL,
         "Pre-auth lead cookie bz_session touch — anonymous UUID, no PII. "

@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
+from backend.services.autonomous_lab.command_policy import (
+    build_worktree_command,
+    require_safe_command_arg,
+    verification_commands_for_paths,
+)
+from backend.services.autonomous_lab.receipt_safety import (
+    contains_receipt_sensitive_value,
+    receipt_safe_source_uri,
+    safe_sha256_fingerprint,
+)
+
 PIPELINE_VERSION = "autonomous-lab-v0"
+SAFE_COMMAND_ARG_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 
 
 class MaterialSourceType(str, Enum):
@@ -25,6 +36,16 @@ class MaterialSourceType(str, Enum):
     CHAT_METADATA = "chat_metadata"
     OPERATOR_NOTE = "operator_note"
     OTHER = "other"
+
+
+PRIVATE_RECEIPT_SOURCE_TYPES = frozenset(
+    {
+        MaterialSourceType.CHAT_METADATA,
+        MaterialSourceType.DRIVE_METADATA,
+        MaterialSourceType.OPERATOR_NOTE,
+        MaterialSourceType.OTHER,
+    }
+)
 
 
 class GateSeverity(str, Enum):
@@ -213,10 +234,10 @@ class AutonomousLabPlanner:
     def normalize_material(self, material: ResearchMaterial) -> NormalizedMaterial:
         """Normalize one material envelope without retaining raw text."""
         return NormalizedMaterial(
-            material_id=material.material_id,
+            material_id=_receipt_safe_material_id(material.material_id),
             source_type=material.source_type,
-            source_uri=material.source_uri,
-            title=material.title.strip(),
+            source_uri=_safe_source_uri(material.source_uri, material.source_type),
+            title=_receipt_safe_title(material.title),
             captured_at=material.captured_at,
             content_fingerprint=material.content_fingerprint(),
             summary=_summarize(material.text),
@@ -235,17 +256,18 @@ class AutonomousLabPlanner:
         created_at: datetime | None = None,
     ) -> LabRun:
         """Build a lab run draft from arbitrary research materials."""
+        safe_objective = _receipt_safe_objective(objective)
         normalized = [self.normalize_material(material) for material in materials]
         simulation_plan = self._build_simulation_plan(target_paths=target_paths, task_id=task_id)
         gates = self._evaluate_gates(materials=materials, simulation_plan=simulation_plan)
         return LabRun(
             run_id=task_id,
-            objective=objective.strip(),
+            objective=safe_objective,
             created_at=created_at or datetime.now(tz=timezone.utc),
             pipeline_version=PIPELINE_VERSION,
             pipeline=default_pipeline(),
             materials=normalized,
-            hypotheses=_hypotheses(objective, normalized),
+            hypotheses=_hypotheses(safe_objective, normalized),
             simulation_plan=simulation_plan,
             safety_gates=gates,
             decision_grade_outputs=[
@@ -274,13 +296,17 @@ class AutonomousLabPlanner:
         return final_path
 
     def _build_simulation_plan(self, *, target_paths: list[str], task_id: str) -> SimulationPlan:
-        safe_paths = [path for path in target_paths if path.strip()]
-        worktree_command = (
-            f"python scripts/agent_start.py --lane {self.worktree_lane} --task-id {task_id}"
-        )
+        safe_paths = [
+            _require_safe_repo_path(path, f"target_paths[{index}]")
+            for index, path in enumerate(target_paths)
+            if path.strip()
+        ]
+        safe_lane = _require_safe_command_arg(self.worktree_lane, "worktree_lane")
+        safe_task_id = _require_safe_command_arg(task_id, "task_id")
+        worktree_command = build_worktree_command(lane=safe_lane, task_id=safe_task_id)
         return SimulationPlan(
             target_paths=safe_paths,
-            worktree_lane=self.worktree_lane,
+            worktree_lane=safe_lane,
             worktree_command=worktree_command,
             context_reconstruction=[
                 "git head and dirty-state snapshot",
@@ -357,9 +383,65 @@ def _summarize(text: str, max_chars: int = 360) -> str:
 
 def _safe_sha256_fingerprint(value: str, hex_chars: int = 16) -> str:
     """Return a grouped SHA-256 prefix that remains useful without tripping secret scans."""
-    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:hex_chars]
-    grouped = "-".join(digest[index : index + 4] for index in range(0, len(digest), 4))
-    return f"sha256:{grouped}"
+    return safe_sha256_fingerprint(value, hex_chars=hex_chars)
+
+
+def _receipt_safe_objective(objective: str) -> str:
+    words = re.findall(r"\w+", objective)
+    return f"objective_fingerprint:{_safe_sha256_fingerprint(objective)}; words:{len(words)}"
+
+
+def _receipt_safe_material_id(material_id: str) -> str:
+    candidate = material_id.strip()
+    if SAFE_COMMAND_ARG_PATTERN.match(candidate) and not _contains_receipt_sensitive_value(candidate):
+        return candidate
+    return f"material_fingerprint:{_safe_sha256_fingerprint(material_id)}"
+
+
+def _receipt_safe_title(title: str) -> str:
+    words = re.findall(r"\w+", title)
+    return f"title_fingerprint:{_safe_sha256_fingerprint(title)}; words:{len(words)}"
+
+
+def _safe_source_uri(source_uri: str, source_type: MaterialSourceType) -> str:
+    return receipt_safe_source_uri(
+        source_uri,
+        source_type.value,
+        preserve_public_host=source_type not in PRIVATE_RECEIPT_SOURCE_TYPES,
+    )
+
+
+def _contains_receipt_sensitive_value(value: str) -> bool:
+    return contains_receipt_sensitive_value(value)
+
+
+def _require_safe_command_arg(value: str, field_name: str) -> str:
+    return require_safe_command_arg(value, field_name)
+
+
+def _require_safe_repo_path(value: str, field_name: str) -> str:
+    candidate = value.strip()
+    if candidate.startswith("./"):
+        candidate = candidate[2:]
+    if not candidate or candidate == ".":
+        raise ValueError(f"{field_name} must be a non-empty repository-relative path")
+    if "\x00" in candidate:
+        raise ValueError(f"{field_name} must not contain null bytes")
+    if "\\" in candidate:
+        raise ValueError(f"{field_name} must use POSIX separators")
+    if "://" in candidate:
+        raise ValueError(f"{field_name} must not be a URI")
+    if candidate.startswith("~"):
+        raise ValueError(f"{field_name} must not be home-relative")
+    if _contains_receipt_sensitive_value(candidate):
+        raise ValueError(f"{field_name} must not contain receipt-sensitive values")
+
+    path = PurePosixPath(candidate)
+    if path.is_absolute():
+        raise ValueError(f"{field_name} must be repository-relative")
+    if ".." in path.parts:
+        raise ValueError(f"{field_name} must not contain path traversal")
+    return path.as_posix()
 
 
 def _extract_tags(text: str, metadata: dict[str, str]) -> list[str]:
@@ -416,13 +498,4 @@ def _hypotheses(objective: str, materials: list[NormalizedMaterial]) -> list[str
 
 
 def _verification_commands(target_paths: list[str]) -> list[str]:
-    commands: list[str] = []
-    if any(path.startswith("apps/backend-rag/") for path in target_paths):
-        commands.append(
-            "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q"
-        )
-    if any(path.startswith("apps/mouth/") for path in target_paths):
-        commands.append("cd apps/mouth && npm run lint")
-    if any(path.startswith("research/") for path in target_paths):
-        commands.append("git diff --check -- research/operations/autonomous-lab")
-    return commands or ["git diff --check"]
+    return verification_commands_for_paths(target_paths)

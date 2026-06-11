@@ -16,6 +16,9 @@ class LeadSource(str, Enum):
     KBLI_BUILDER = "kbli_builder"
     TAX_GAP = "tax_gap"
     ZONING_CHECK = "zoning_check"
+    # Content-funnel sources (2026-06): blog articles + KBLI Navigator pages.
+    ARTICLE = "article"
+    KBLI_NAVIGATOR = "kbli_navigator"
 
     @property
     def human_name(self) -> str:
@@ -27,6 +30,8 @@ class LeadSource(str, Enum):
             LeadSource.KBLI_BUILDER: "KBLI Builder",
             LeadSource.TAX_GAP: "Tax Gap",
             LeadSource.ZONING_CHECK: "Zoning Check",
+            LeadSource.ARTICLE: "the Insights blog",
+            LeadSource.KBLI_NAVIGATOR: "the KBLI Navigator",
         }[self]
 
     @property
@@ -39,4 +44,8 @@ class LeadSource(str, Enum):
             LeadSource.KBLI_BUILDER: "/kbli/builder",
             LeadSource.TAX_GAP: "/tax/gap",
             LeadSource.ZONING_CHECK: "/zoning",
+            # Articles carry their own URL in context; no hash-based result page.
+            LeadSource.ARTICLE: "/",
+            # KBLI Navigator: result_hash = the KBLI code → /kbli/<code>.
+            LeadSource.KBLI_NAVIGATOR: "/kbli",
         }[self]

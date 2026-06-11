@@ -58,7 +58,7 @@ export function HeroBlueprint() {
         {/* Copy overlay — centered on mobile, left-aligned on desktop */}
         <div className="absolute inset-0 flex items-end md:items-center pb-8 md:pb-0">
           <div className="w-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16">
-            <div className="max-w-[560px]">
+            <div className="max-w-[640px]">
               {/* Dateline */}
               <div
                 className="text-[10px] font-semibold uppercase tracking-[0.28em] mb-2"
@@ -79,20 +79,35 @@ export function HeroBlueprint() {
                 Your Bali, from Zero.
               </div>
 
-              {/* Lede — brand-voice essay opener */}
+              {/* Lede — brand-voice essay opener.
+                  MYTHOS P1 (B2): display scale to 60px desktop, Cormorant
+                  explicit (dual-type discipline — serif carries the display
+                  statement, the sub-lede drops to Inter utility). */}
               <h1
-                className="font-bold tracking-tight mb-5 md:mb-8"
+                className="tracking-tight mb-5 md:mb-8"
                 style={{
                   color: "#ffffff",
-                  fontSize: "clamp(22px, 3.2vw, 48px)",
-                  lineHeight: 1.15,
+                  fontFamily: "var(--font-serif)",
+                  fontWeight: 600,
+                  fontSize: "clamp(26px, 4.2vw, 60px)",
+                  lineHeight: 1.06,
                   textShadow: "0 2px 24px rgba(0,0,0,0.5)",
                 }}
               >
                 Most people moving to Bali pick the wrong visa in the first
                 month.
-                <br />
-                <span style={{ color: "rgba(255,255,255,0.72)" }}>
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: 12,
+                    color: "rgba(255,255,255,0.75)",
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 500,
+                    fontSize: "clamp(14px, 1.3vw, 18px)",
+                    lineHeight: 1.5,
+                    letterSpacing: 0,
+                  }}
+                >
                   Sign a lease that does not hold up under PP 18/2021. Find out
                   only at tax time.
                 </span>

@@ -263,6 +263,17 @@ async def build_context(
         except Exception as e:
             logger.warning("Failed to load context for %s: %s", phone, e)
 
+    # Resolve sender identity (owner / team / CRM client / unknown) so the
+    # reply pipeline can stop treating Zero, the team, and known clients as
+    # cold leads. Fail-safe: resolver errors must never break the reply path.
+    try:
+        from backend.services.whatsapp_identity import resolve_sender_identity
+
+        sender_identity = await resolve_sender_identity(phone, db_pool)
+    except Exception:
+        logger.exception("Sender identity resolution crashed for %s", phone)
+        sender_identity = {"role": "unknown"}
+
     # Detect language from current message + history
     detected_language = detect_language(message_text, conversation_history)
 
@@ -323,6 +334,7 @@ async def build_context(
         "client_profile": client_profile,
         "is_first_message": is_first_message,
         "detected_language": detected_language,
+        "sender_identity": sender_identity,
         "time_of_day": get_time_of_day(),
         # Internal — used by the router for DB operations
         "_wa_user_id": wa_user_id,

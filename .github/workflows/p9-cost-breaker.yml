@@ -1,0 +1,84 @@
+name: P9 Cost Breaker (GOVERN)
+
+# FASE-0.5 / transversal of the SOTA meta-dev-loop. Arms the cost-breaker gate:
+# this workflow is the CONSUMER that verify_the_verifiers_gates.yaml points at
+# for the lint_script gates `cost_breaker` and `cost_breaker_deadman`. Without a
+# consumer those gates would WARN ("gate without consumer", cicatrix W64); this
+# workflow runs the falsifiable test suite so they stay ARMED, not WARN.
+
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-11): top-level pull_request
+# `paths:` filter REMOVED so this can become a required-status-check without
+# the pending-forever trap (W69). The relevant-paths decision lives in the
+# "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
+on:
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/cost_breaker.py"
+      - "scripts/cost_breaker_deadman.sh"
+      - "scripts/test_cost_breaker.py"
+      - "scripts/test_cost_breaker_deadman.sh"
+      - ".github/workflows/p9-cost-breaker.yml"
+
+concurrency:
+  group: p9-cost-breaker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cost-breaker-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so the sentinel git diff sees PR changes
+
+      # BUCO #1 sentinel (pattern: p1s2-mutation-incremental.yml). The regex is
+      # the EXACT original pull_request `paths:` list, each anchored ^...$.
+      - name: Did relevant paths change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full gate"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(scripts/cost_breaker\.py|scripts/cost_breaker_deadman\.sh|scripts/test_cost_breaker\.py|scripts/test_cost_breaker_deadman\.sh|\.github/workflows/p9-cost-breaker\.yml)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no relevant paths changed — sentinel success"
+          fi
+
+      - uses: actions/setup-python@v6
+        if: steps.relevant.outputs.run == 'true'
+        with:
+          python-version: "3.11"
+      - name: Install pytest
+        if: steps.relevant.outputs.run == 'true'
+        run: pip install pytest
+      - name: Run cost-breaker gate tests
+        if: steps.relevant.outputs.run == 'true'
+        # Named explicitly so the verify_the_verifiers lint_script consumer
+        # check (which greps this workflow for the script basename) resolves
+        # for both scripts/cost_breaker.py and scripts/test_cost_breaker.py.
+        run: python -m pytest scripts/test_cost_breaker.py -q
+      - name: Syntax-check the dead-man's switch
+        if: steps.relevant.outputs.run == 'true'
+        # cost_breaker_deadman.sh is a bash watchdog (no pytest surface); a
+        # bash -n parse + self-test (FORCE_ALERT, no creds → swallowed) is its
+        # CI assertion that it stays runnable.
+        run: |
+          bash -n scripts/cost_breaker_deadman.sh
+          FORCE_ALERT=1 bash scripts/cost_breaker_deadman.sh
+      - name: Test the dead-man's stale-detection logic (P2-5)
+        if: steps.relevant.outputs.run == 'true'
+        # FORCE_ALERT short-circuits the real stale logic, so it had ZERO
+        # coverage. The `--classify` mode exposes the pure MISSING/STALE/FRESH
+        # decision (no telegram); assert all three states here so the LOGIC,
+        # not just `bash -n`, is exercised in CI.
+        run: bash scripts/test_cost_breaker_deadman.sh
