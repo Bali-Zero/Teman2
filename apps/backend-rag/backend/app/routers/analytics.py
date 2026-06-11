@@ -3,7 +3,7 @@ Analytics API Router
 Exposes historical analytics endpoints and unified dashboard for founder consumption.
 
 Endpoints:
-- POST /api/analytics/funnel-event           - Ingest funnel event (public, 11 whitelisted events)
+- POST /api/analytics/funnel-event           - Ingest funnel event (public, allowlisted — parity with funnel-view.ts)
 - GET /api/analytics/dashboard               - Unified analytics dashboard (cached)
 - GET /api/analytics/completion-rates
 - GET /api/analytics/response-times
@@ -41,22 +41,51 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 # F-19: Funnel event ingest (public — no auth required)
 # ---------------------------------------------------------------------------
 
+# Kept in strict parity with packages/core/analytics/funnel-view.ts
+# (FUNNEL_EVENTS) — enforced by tests/app/routers/test_analytics_funnel_parity.py.
+# MYTHOS D11: this list used to cover 14 of the 32 emitted events; the other
+# 18 were silently dropped with {"ok": False, "reason": "unknown_event"}.
 ALLOWED_EVENTS: frozenset[str] = frozenset(
     {
+        # --- Visa Oracle ---
         "visa_quiz_completed",
         "visa_result_viewed",
         "visa_chat_question",
         "visa_whatsapp_cta",
         "visa_calling_block",
+        # --- Home CTAs ---
+        "home_whatsapp_cta",
+        # --- Funnel home-block CTAs ---
+        "visa_cta_click",
+        "visa_consult_click",
+        "visa_search_submit",
+        "visa_suggestion_click",
+        # --- KBLI Navigator ---
         "kbli_code_viewed",
         "kbli_search",
         "kbli_chat_question",
         "kbli_whatsapp_cta",
+        "kbli_cta_click",
+        "kbli_consult_click",
+        "kbli_search_submit",
+        "kbli_suggestion_click",
+        # --- Tax Intelligence ---
         "tax_dashboard_viewed",
         "tax_whatsapp_cta",
+        "tax_cta_click",
+        "tax_consult_click",
+        "tax_search_submit",
+        "tax_suggestion_click",
+        # --- Property Map ---
         "property_cta_clicked",
         "property_chat_question",
         "property_whatsapp_cta",
+        "property_consult_click",
+        "property_search_submit",
+        "property_suggestion_click",
+        # --- Hero Section CTAs ---
+        "hero_cta_book_call",
+        "hero_cta_read_dispatch",
     }
 )
 
