@@ -57,7 +57,7 @@ OLLAMA_TIMEOUT = 60
 # Domain keyword registry (mirrors nlm_notebook_registry.py)
 DOMAIN_REGISTRY: dict[str, dict[str, Any]] = {
     "immigration": {
-        "notebook_id": "271c7159-0c32-49a1-bda8-803c8e0993a6",
+        "notebook_id": "cff93ab0-813a-42f2-a8de-36987e724271",
         "label": "Immigration & Visa",
         "keywords": {"visa", "kitas", "kitap", "tka", "immigration", "imigrasi",
                      "work permit", "stay permit", "foreigner", "expat"},
@@ -75,13 +75,13 @@ DOMAIN_REGISTRY: dict[str, dict[str, Any]] = {
                      "coretax", "bpjs", "fiscal", "pajak"},
     },
     "property": {
-        "notebook_id": "93314ad3-177e-4d2f-956b-fe4be3e47697",
+        "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
         "label": "Property & Zoning",
         "keywords": {"property", "zoning", "land", "hgb", "hak pakai",
                      "building", "villa", "real estate", "leasehold"},
     },
     "operations": {
-        "notebook_id": "7fbf37ed-e290-491a-98f5-677d6371ad62",
+        "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
         "label": "Operations",
         "keywords": {"sop", "team", "pricing", "crm", "workflow",
                      "competitor", "bpjs", "umr", "salary"},
