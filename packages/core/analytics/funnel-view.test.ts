@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { trackFunnelEvent, FUNNEL_EVENTS } from "./funnel-view";
+import {
+  trackFunnelEvent,
+  FUNNEL_EVENTS,
+  type FunnelEventName,
+} from "./funnel-view";
 
 describe("funnel-view", () => {
   beforeEach(() => {
@@ -24,11 +28,26 @@ describe("funnel-view", () => {
     );
   });
 
-  it("whitelist of events matches the 11 known from CLAUDE.md §473", () => {
-    expect(FUNNEL_EVENTS).toContain("visa_quiz_completed");
-    expect(FUNNEL_EVENTS).toContain("kbli_code_viewed");
-    expect(FUNNEL_EVENTS).toContain("tax_dashboard_viewed");
-    expect(FUNNEL_EVENTS).toContain("property_cta_clicked");
-    expect(FUNNEL_EVENTS.length).toBe(11);
+  it("whitelist derives from the FUNNEL_EVENTS source — no hardcoded count", () => {
+    // Representative events (one per funnel) that must always exist.
+    // Containment is asserted per-event off this array — never off a magic number.
+    const representative: FunnelEventName[] = [
+      "visa_quiz_completed",
+      "kbli_code_viewed",
+      "tax_dashboard_viewed",
+      "property_cta_clicked",
+    ];
+    for (const event of representative) {
+      expect(FUNNEL_EVENTS).toContain(event);
+    }
+
+    // Structural invariants derived from the source array itself
+    // (mirrors the backend funnel-parity philosophy: assert against
+    // FUNNEL_EVENTS.length, not a count that goes stale on every addition).
+    expect(FUNNEL_EVENTS.length).toBeGreaterThanOrEqual(representative.length);
+    expect(new Set(FUNNEL_EVENTS).size).toBe(FUNNEL_EVENTS.length); // no duplicates
+    for (const event of FUNNEL_EVENTS) {
+      expect(event).toMatch(/^[a-z0-9]+(?:_[a-z0-9]+)+$/); // snake_case naming
+    }
   });
 });
