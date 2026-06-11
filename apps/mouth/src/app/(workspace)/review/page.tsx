@@ -33,6 +33,18 @@ interface EntityCandidate {
   client_id: number;
   full_name: string;
   assigned_to?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  nationality?: string | null;
+}
+
+/** "Walter · +39 339… · IT" — the human disambiguators for homonym-heavy CRM. */
+function clientMeta(c: {
+  phone?: string | null;
+  email?: string | null;
+  nationality?: string | null;
+}): string {
+  return [c.phone, c.email, c.nationality].filter(Boolean).join(" · ");
 }
 
 interface ProposalSummary {
@@ -82,6 +94,9 @@ interface ClientSearchItem {
   client_id: number;
   full_name: string;
   assigned_to?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  nationality?: string | null;
   score: number;
 }
 
@@ -363,7 +378,51 @@ export default function ReviewPage() {
     return `${selectedClient.full_name} → ${practiceLabel}`;
   }, [selectedClient, selectedPractice]);
 
-  const blobUrl = detail ? `/api/intake/review/${detail.proposal_id}/blob` : "";
+  // Authenticated blob preview: an <iframe>/<img> request cannot carry the
+  // Bearer header, so a direct src 401s ("Connessione negata"). Fetch the
+  // blob WITH the token, then preview via a local object URL.
+  const [blobUrl, setBlobUrl] = useState<string>("");
+  useEffect(() => {
+    if (!detail) {
+      setBlobUrl("");
+      return;
+    }
+    let revoked: string | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = api.getToken();
+        const res = await fetch(
+          `/api/intake/review/${detail.proposal_id}/blob`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            credentials: "include",
+          },
+        );
+        if (!res.ok) throw new Error(`blob HTTP ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        revoked = URL.createObjectURL(blob);
+        setBlobUrl(revoked);
+        setPreviewFailed(false);
+      } catch (e) {
+        logger.warn("blob preview fetch failed", {
+          component: "ReviewPage",
+          action: "blobFetch",
+          metadata: { proposalId: detail.proposal_id, error: String(e) },
+        });
+        if (!cancelled) {
+          setBlobUrl("");
+          setPreviewFailed(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (revoked) URL.revokeObjectURL(revoked);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.proposal_id]);
   const mime = detail?.mime_type ?? "";
   const isImage = mime.startsWith("image/");
   const isPdf = mime === "application/pdf";
@@ -509,7 +568,19 @@ export default function ReviewPage() {
             <div className="grid gap-5 md:grid-cols-2">
               {/* ── LEFT: the exact document ──────────────────────────── */}
               <div>
-                {!previewFailed && isImage && (
+                {!previewFailed && !blobUrl && (isImage || isPdf) && (
+                  <div
+                    className="flex w-full items-center justify-center rounded-md border text-xs"
+                    style={{
+                      borderColor: "var(--bz-border)",
+                      color: "var(--bz-text-3)",
+                      height: "60vh",
+                    }}
+                  >
+                    Loading document…
+                  </div>
+                )}
+                {!previewFailed && blobUrl && isImage && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={blobUrl}
@@ -522,7 +593,7 @@ export default function ReviewPage() {
                     onError={() => setPreviewFailed(true)}
                   />
                 )}
-                {!previewFailed && isPdf && (
+                {!previewFailed && blobUrl && isPdf && (
                   <iframe
                     src={blobUrl}
                     title="document preview"
@@ -646,13 +717,23 @@ export default function ReviewPage() {
                               );
                             }}
                           />
-                          <span>{c.full_name}</span>
+                          <span className="min-w-0">
+                            {c.full_name}
+                            {clientMeta(c) && (
+                              <span
+                                className="block truncate text-xs"
+                                style={{ color: "var(--bz-text-3)" }}
+                              >
+                                {clientMeta(c)}
+                              </span>
+                            )}
+                          </span>
                           {c.assigned_to && (
                             <span
-                              className="text-xs"
+                              className="ml-auto text-xs"
                               style={{ color: "var(--bz-text-3)" }}
                             >
-                              · {c.assigned_to}
+                              {c.assigned_to}
                             </span>
                           )}
                         </label>
@@ -675,7 +756,7 @@ export default function ReviewPage() {
                       background: "var(--bz-surface)",
                       color: "var(--bz-text-1)",
                     }}
-                    placeholder="Search another client by name…"
+                    placeholder="Search client by name, phone or email…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -695,22 +776,34 @@ export default function ReviewPage() {
                                 client_id: r.client_id,
                                 full_name: r.full_name,
                                 assigned_to: r.assigned_to,
+                                email: r.email,
+                                phone: r.phone,
+                                nationality: r.nationality,
                               });
                               setSelectedPracticeId("");
                               setSearch("");
                               setSearchResults([]);
                             }}
                           >
-                            {r.full_name}
-                            {r.assigned_to ? (
+                            <span className="flex items-baseline justify-between gap-2">
+                              <span>{r.full_name}</span>
+                              {r.assigned_to ? (
+                                <span
+                                  className="text-xs"
+                                  style={{ color: "var(--bz-text-3)" }}
+                                >
+                                  {r.assigned_to}
+                                </span>
+                              ) : null}
+                            </span>
+                            {clientMeta(r) && (
                               <span
-                                className="text-xs"
+                                className="block truncate text-xs"
                                 style={{ color: "var(--bz-text-3)" }}
                               >
-                                {" "}
-                                · {r.assigned_to}
+                                {clientMeta(r)}
                               </span>
-                            ) : null}
+                            )}
                           </button>
                         </li>
                       ))}

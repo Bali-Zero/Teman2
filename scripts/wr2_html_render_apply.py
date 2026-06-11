@@ -54,6 +54,7 @@ sys.path.insert(0, str(_REPO / "scripts"))
 import asyncpg  # noqa: E402
 
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
+from wr2_html_renderer.claude_vision import VisionRateLimited  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 # Silence httpx INFO logs that would otherwise leak the Telegram bot token in the request URL
@@ -436,6 +437,23 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     f"Re-open by having them text +62 821-3465-159, then re-enqueue."
                 )
             return f"rendered report={report}"
+        except VisionRateLimited as exc:
+            # transient quota window (HTTP 429) — NOT a draft defect. Release the
+            # lease WITHOUT touching _html_attempts so the circuit breaker is not
+            # burned; the draft returns to the queue and renders next tick once
+            # quota recovers. (Pre-fix this 429 masqueraded as "vision
+            # unavailable" and killed healthy drafts in 3 attempts.)
+            await main_conn.execute(
+                """
+                UPDATE war_room_drafts
+                   SET status='drafts_imaged_checked', lease_owner=NULL,
+                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
+                 WHERE id=$1 AND lease_owner=$2 AND status='rendering'
+                """,
+                draft_id, owner,
+            )
+            logger.warning("draft %s vision rate-limited (429) — transient, no attempt burned: %s", draft_id, exc)
+            return f"rate_limited:{exc}"
         except RuntimeError as exc:
             # transient render/Drive failure -> back to queue unless attempts exhausted
             attempts = await main_conn.fetchval(
@@ -539,6 +557,7 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
 
     processed = 0
     successes = 0
+    rate_limited_halt = False
     for loop_n in range(max_loops):
         if draft_id:
             ids = [uuid.UUID(draft_id)] if loop_n == 0 else []
@@ -570,8 +589,17 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
                 logger.info("draft %s -> %s", did, result)
                 if result.startswith("rendered") or result == "shadow_done":
                     successes += 1
+                elif result.startswith("rate_limited"):
+                    # quota is exhausted account-wide — further drafts this run
+                    # would hit the same 429. Stop draining; the draft stays
+                    # queued (no attempt burned) and renders on a later tick.
+                    logger.warning("drain-loop halting early: vision quota rate-limited")
+                    rate_limited_halt = True
+                    break
             except Exception:
                 logger.exception("draft %s crashed", did)
+        if draft_id or rate_limited_halt:
+            break
         if draft_id:
             break
     return 0 if successes == processed else 1

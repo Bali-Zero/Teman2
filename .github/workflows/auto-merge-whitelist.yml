@@ -13,21 +13,27 @@
 
 name: Auto-merge whitelist
 
+# 2026-06-12 CI fan-out reduction: dropped the `check_suite: [completed]`
+# trigger. It fired a job on EVERY check-suite completion of EVERY PR (~20% of
+# all runner traffic measured during the merge-storm) only to re-evaluate
+# arming. Arming is already covered by pull_request_target opened/synchronize
+# for the whitelisted automation branches, and once auto-merge is armed GitHub
+# completes it when checks pass — no re-trigger needed. The merge-train now
+# owns ongoing PR advancement. Revert = re-add the two lines if dependabot/
+# docs-sync PRs stop auto-arming.
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review, labeled]
-  check_suite:
-    types: [completed]
 
 permissions:
-  contents: write          # required for gh pr merge --auto
-  pull-requests: write     # enable auto-merge
+  contents: write # required for gh pr merge --auto
+  pull-requests: write # enable auto-merge
   checks: read
 
 jobs:
   evaluate:
     name: Evaluate auto-merge eligibility
-    if: github.event.pull_request.draft == false || github.event_name == 'check_suite'
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo (read-only for diff inspection)

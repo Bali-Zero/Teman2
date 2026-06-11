@@ -144,6 +144,44 @@ class TestDecideHead:
         assert d.action == "none"
 
 
+class TestMissingRequiredContexts:
+    """Head-of-line trap seen live on #994: protection gained new required
+    workflows after the PR's last push → BLOCKED forever with zero failures."""
+
+    def _head(self, state: str = "BLOCKED") -> dict:
+        return {"number": 994, "mergeStateStatus": state, "headRefOid": "abc"}
+
+    def test_helper_returns_required_minus_present(self):
+        detail = {"statusCheckRollup": [{"name": "Backend Tests (Python)", "conclusion": "SUCCESS"}]}
+        assert train.missing_required_contexts(
+            detail, {"Backend Tests (Python)", "verify-the-verifiers"}
+        ) == ["verify-the-verifiers"]
+
+    def test_blocked_with_missing_required_updates_branch_once(self):
+        d = train.decide_head(
+            self._head(), main_green=True, deploy_in_flight=False,
+            is_revert=False, failed_required=[], rerolled_already=False,
+            missing_required=["verify-the-verifiers"], update_for_missing_already=False,
+        )
+        assert (d.action, d.reason) == ("update_branch", "missing_required_contexts")
+
+    def test_missing_persists_after_update_comments_and_skips(self):
+        d = train.decide_head(
+            self._head(), main_green=True, deploy_in_flight=False,
+            is_revert=False, failed_required=[], rerolled_already=False,
+            missing_required=["verify-the-verifiers"], update_for_missing_already=True,
+        )
+        assert (d.action, d.reason) == ("comment_and_skip", "missing_required_persistent")
+
+    def test_missing_ignored_when_not_blocked(self):
+        d = train.decide_head(
+            self._head("CLEAN"), main_green=True, deploy_in_flight=False,
+            is_revert=False, failed_required=[], rerolled_already=False,
+            missing_required=["verify-the-verifiers"], update_for_missing_already=False,
+        )
+        assert d.action == "none"
+
+
 class TestFailedRequiredChecks:
     def test_only_required_contexts_count(self):
         detail = {

@@ -31,11 +31,23 @@ name: catD-backend-data-invariants
 # it proves stable + zero false-positive (W69 BUCO #1: arming a check as
 # required without a skip→success sentinel can pend-forever / block innocents).
 
+# Path-scoped (2026-06-12 CI fan-out reduction): this guardian only inspects
+# backend-rag data invariants (embedding dim, reachability test), so a PR that
+# touches no backend code has nothing for it to check. NON-REQUIRED, so a
+# non-matching PR simply doesn't run it — no pending-forever (W69 BUCO #1 only
+# bites REQUIRED checks placed behind a path filter without a skip→success
+# sentinel).
 on:
   pull_request:
+    paths:
+      - "apps/backend-rag/**"
+      - ".github/workflows/catD-backend-data-invariants.yml"
   push:
     branches:
       - main
+    paths:
+      - "apps/backend-rag/**"
+      - ".github/workflows/catD-backend-data-invariants.yml"
 
 permissions:
   contents: read
