@@ -22,6 +22,92 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger("openclaw_whatsapp_bridge")
 
 
+# ---------------------------------------------------------------------------
+# Dated regulatory facts (single source of truth) — F11 LKPM time-bomb fix.
+#
+# Hardcoding "Q1 2026 LKPM = 1-15 April" in four places was a time-bomb: when
+# BKPM announces the next quarter's window, every copy would keep asserting the
+# stale April window as the CURRENT rule, AND the LKPM guard's correct-window
+# whitelist would clobber a correct reply that cited the NEW window.
+#
+# Centralise the dated fact here with an explicit validity horizon. While valid,
+# the guard/prompt may state the published window. After `valid_until`, the fact
+# auto-degrades: the bridge stops asserting any specific current window (it tells
+# the user the window must be checked live in OSS/BKPM) and the guard falls back
+# to STALE-MARKERS-ONLY (it still clobbers the old fixed 1-10 / 7th-day deadlines,
+# but no longer requires the April literal — so a reply citing a newer window is
+# not clobbered). To extend coverage to a new quarter, update ONE block below.
+# ---------------------------------------------------------------------------
+import datetime as _dt  # noqa: E402  (kept local to the regulatory-facts block)
+
+# The BKPM public notice that opened Q1 2026 LKPM. `valid_until` is the last day
+# this window may be quoted as the current rule; after it the fact is stale.
+_LKPM_PUBLISHED_WINDOW = {
+    "label_en": "Q1 2026 LKPM ran 1-15 April 2026",
+    "label_id": "LKPM Q1 2026 dibuka 1-15 April 2026",
+    "label_it": "LKPM Q1 2026 aperto dal 1 al 15 aprile 2026",
+    # last date the April window is the *current* published window
+    "valid_until": _dt.date(2026, 4, 30),
+    # literals that prove a reply cited THIS specific window (used only while valid)
+    "window_literals": (
+        "1 to 15 april",
+        "1-15 april",
+        "april 1-15",
+        "april 1 to 15",
+        "1 sampai 15 april",
+        "1-15 aprile",
+    ),
+}
+
+
+def _lkpm_window_is_current(today: _dt.date | None = None) -> bool:
+    """True while the published LKPM window may be quoted as the current rule."""
+    today = today or _dt.date.today()
+    return today <= _LKPM_PUBLISHED_WINDOW["valid_until"]
+
+
+def _lkpm_window_clause(language: str, today: _dt.date | None = None) -> str:
+    """Sentence describing the LKPM window — degrades after `valid_until`.
+
+    While valid: states the published window + 'verify later quarters live'.
+    After expiry: states only that the window must be verified live (no stale
+    April literal), so the bridge never asserts an expired window as current.
+    """
+    current = _lkpm_window_is_current(today)
+    if language == "id":
+        if current:
+            return (
+                "Notice publik BKPM 2026 membuka LKPM Q1 2026 pada 1-15 April; periode "
+                "berikutnya harus diverifikasi live di OSS/BKPM karena window bisa "
+                "diumumkan/diubah."
+            )
+        return (
+            "Window LKPM saat ini harus diverifikasi live di OSS/BKPM (notice per "
+            "kuartal bisa berubah); jangan asumsikan tanggal tetap."
+        )
+    if language == "it":
+        if current:
+            return (
+                "Il notice pubblico BKPM 2026 indica Q1 2026 dal 1 al 15 aprile; i quarter "
+                "successivi vanno verificati live in OSS/BKPM perche' le finestre possono "
+                "essere annunciate o cambiare."
+            )
+        return (
+            "La finestra LKPM attuale va verificata live in OSS/BKPM (il notice cambia "
+            "per trimestre); non assumere date fisse."
+        )
+    if current:
+        return (
+            "BKPM's public 2026 notice opened Q1 2026 LKPM from 1 to 15 April; later "
+            "quarters must be verified live in OSS/BKPM because windows can be announced "
+            "or adjusted."
+        )
+    return (
+        "The current LKPM window must be verified live in OSS/BKPM (the notice changes "
+        "per quarter); do not assume a fixed date."
+    )
+
+
 class BridgeRequest(BaseModel):
     agent: str = Field(default="wa")
     model: str | None = Field(default=None)
@@ -183,9 +269,8 @@ def _tool_mandates(text: str, context: dict[str, Any] | None = None) -> list[str
             "Tax/compliance intent detected. Before replying, call "
             "nuzantara-mcp.search_intel or nuzantara-mcp.ask_legal. Do not invent "
             "current deadlines, fines, or payment/account status. For LKPM, do not use "
-            "old fixed 1-10 or 7th-of-month deadlines as a current rule; recent BKPM 2026 "
-            "public notices show the Q1 2026 LKPM window as 1-15 April 2026, and later "
-            "periods must be verified live in OSS/BKPM."
+            "old fixed 1-10 or 7th-of-month deadlines as a current rule. "
+            + _lkpm_window_clause("en")
         )
     legal_property_terms = (
         "hak milik",
@@ -431,29 +516,24 @@ def _canonical_lkpm_answer(language: str) -> str:
         return (
             "Untuk PT PMA, LKPM adalah laporan realisasi investasi di OSS/BKPM, biasanya "
             "triwulanan untuk usaha menengah/besar. Jangan pakai aturan lama 1-10 atau "
-            "tanggal 7 sebagai deadline tetap. Notice publik BKPM 2026 membuka LKPM Q1 "
-            "2026 pada 1-15 April; periode berikutnya harus diverifikasi live di OSS/BKPM "
-            "karena window bisa diumumkan/diubah. Jika terlambat, submit secepatnya dan "
-            "minta tax/compliance team Bali Zero verify status OSS, KBLI/project, notifikasi, "
-            "dan risiko sanksi administratif."
+            "tanggal 7 sebagai deadline tetap. " + _lkpm_window_clause("id") + " Jika "
+            "terlambat, submit secepatnya dan minta tax/compliance team Bali Zero verify "
+            "status OSS, KBLI/project, notifikasi, dan risiko sanksi administratif."
         )
     if language == "it":
         return (
             "Per una PT PMA, LKPM e' il report di realizzazione investimenti su OSS/BKPM, "
             "di solito trimestrale per societa' medio/grandi. Non usare vecchie deadline "
-            "fisse 1-10 o giorno 7. Il notice pubblico BKPM 2026 indica Q1 2026 dal 1 al "
-            "15 aprile; i quarter successivi vanno verificati live in OSS/BKPM perche' le "
-            "finestre possono essere annunciate o cambiare. Se manca, invia appena possibile "
-            "e fai verificare al tax/compliance team Bali Zero stato OSS, KBLI/project, "
-            "notifiche e rischio sanzioni."
+            "fisse 1-10 o giorno 7. " + _lkpm_window_clause("it") + " Se manca, invia "
+            "appena possibile e fai verificare al tax/compliance team Bali Zero stato OSS, "
+            "KBLI/project, notifiche e rischio sanzioni."
         )
     return (
         "For a PT PMA, LKPM is an OSS/BKPM investment-realization report, usually quarterly "
         "for medium/large companies. Do not use old fixed 1-10 or 7th-day deadlines as the "
-        "current rule. BKPM's public 2026 notice opened Q1 2026 LKPM from 1 to 15 April; "
-        "later quarters must be verified live in OSS/BKPM because windows can be announced "
-        "or adjusted. If missed, submit as soon as possible and have Bali Zero's tax/compliance "
-        "team verify OSS status, KBLI/projects, notices, and administrative sanction risk."
+        "current rule. " + _lkpm_window_clause("en") + " If missed, submit as soon as "
+        "possible and have Bali Zero's tax/compliance team verify OSS status, KBLI/projects, "
+        "notices, and administrative sanction risk."
     )
 
 
@@ -629,6 +709,16 @@ def _guard_lkpm_reply(
         "tanggal 7",
         "il 7",
     )
+    # The old fixed monthly deadline ("the 10th / 7th of <month>") is an
+    # intrinsically-stale pattern — LKPM never has a fixed day-of-month deadline,
+    # so it is clobbered REGARDLESS of whether the published window is still
+    # current (it is a wrong rule, not a stale window). Match the ordinal form
+    # ("10th of july", "7th of the month", "il 10 di", "tanggal 10") that the
+    # bare-substring list above misses.
+    _STALE_FIXED_DAY_RE = re.compile(
+        r"\b(?:7|10)(?:th)?\s+of\s+(?:the\s+month|january|february|march|april|may|june|"
+        r"july|august|september|october|november|december)\b"
+    )
     # Negative-gating (W: guard-family, 2026-06-09). The old escape required the
     # exact English literal "1 to 15 april" to be PRESENT or it clobbered — which
     # an unreachable bar for a correct DEFINITIONAL answer ("what is LKPM and who
@@ -636,7 +726,9 @@ def _guard_lkpm_reply(
     # / "April 1-15". Now: clobber ONLY when the reply (a) carries a stale-deadline
     # marker, OR (b) asserts a deadline/window that is NOT the correct one. A reply
     # that mentions no deadline at all (pure definition) is left untouched.
-    if any(marker in normalized_reply for marker in stale_markers):
+    if any(marker in normalized_reply for marker in stale_markers) or _STALE_FIXED_DAY_RE.search(
+        normalized_reply
+    ):
         return _canonical_lkpm_answer(
             _villa_answer_language(message_text, detected_language)
         )
@@ -656,20 +748,21 @@ def _guard_lkpm_reply(
         "scadenza",
         "entro il",
     )
-    _LKPM_CORRECT_WINDOW = (
-        "1 to 15 april",
-        "1-15 april",
-        "april 1-15",
-        "april 1 to 15",
-        "1 sampai 15 april",
-        "1-15 aprile",
-    )
-    asserts_deadline = _contains_any(normalized_reply, _LKPM_DEADLINE_TERMS)
-    has_correct_window = _contains_any(normalized_reply, _LKPM_CORRECT_WINDOW)
-    if asserts_deadline and not has_correct_window:
-        return _canonical_lkpm_answer(
-            _villa_answer_language(message_text, detected_language)
+    # F11: after the published window's `valid_until`, we no longer know the
+    # current window, so we CANNOT clobber a deadline-asserting reply on the
+    # grounds that it omits the April literal — a reply citing a newer (Q2+)
+    # window would be wrongly clobbered. Degrade to stale-markers-only: the
+    # stale-marker check above still fires (old 1-10 / 7th-day deadlines), but
+    # the window-whitelist gate is skipped once the April fact is stale.
+    if _lkpm_window_is_current():
+        asserts_deadline = _contains_any(normalized_reply, _LKPM_DEADLINE_TERMS)
+        has_correct_window = _contains_any(
+            normalized_reply, _LKPM_PUBLISHED_WINDOW["window_literals"]
         )
+        if asserts_deadline and not has_correct_window:
+            return _canonical_lkpm_answer(
+                _villa_answer_language(message_text, detected_language)
+            )
     return reply
 
 
@@ -1170,7 +1263,9 @@ def _build_prompt(body: BridgeRequest) -> str:
             "For remote work on a tourist visa or VOA, do not state categorical immigration or tax conclusions unless the retrieved tool output explicitly supports them; otherwise say Bali Zero should verify the current visa direction with the immigration team.",
             "For remote-work tourist visa questions, avoid unsupported phrases such as tourist visas are for tourism, VOA does not give work permission, grey area, or tax/compliance risk unless those exact points are grounded in retrieved tool output.",
             "For prices, quotes, service package totals, or timeline certainty, call a catalog pricing tool such as nuzantara-mcp.search_service_pricing or nuzantara-mcp.get_all_prices before answering; use nuzantara-mcp.calculate_pricing only for scenario pricing. This tool call is mandatory even when the safe final answer is that Bali Zero must verify the exact total or timeline.",
-            "For tax deadlines, penalties, corporate compliance, or fiscal certainty, call nuzantara-mcp.search_intel or nuzantara-mcp.ask_legal before answering; this includes Indonesian terms such as pajak, denda, faktur pajak, SPT Masa, PPN, PPh, and LKPM. For LKPM, do not use stale 1-10 or 7th-day deadlines; use the current BKPM 2026 public notice only for Q1 2026 (1-15 April) and require live OSS/BKPM verification for later windows. If no grounded answer is available, escalate to the Bali Zero tax team.",
+            "For tax deadlines, penalties, corporate compliance, or fiscal certainty, call nuzantara-mcp.search_intel or nuzantara-mcp.ask_legal before answering; this includes Indonesian terms such as pajak, denda, faktur pajak, SPT Masa, PPN, PPh, and LKPM. For LKPM, do not use stale 1-10 or 7th-day deadlines; "
+            + _lkpm_window_clause("en")
+            + " Require live OSS/BKPM verification before stating a current window. If no grounded answer is available, escalate to the Bali Zero tax team.",
             "Prefer Nuzantara MCP tools over web_search for Bali Zero knowledge; use web_search only as secondary public context when internal tools are insufficient.",
             "Ground answers in retrieved knowledge or tool output when the question needs Bali Zero-specific facts.",
             "If no grounded source/tool answer is available, deflect to the Bali Zero team only for Bali-Zero-specific or live/current data (exact prices and quotes, live OSS/BKPM or immigration windows, this client's file or status). For stable published regulatory facts (standard fines, visa-type definitions, standard tax rates, statutory thresholds) you may answer concisely from general knowledge and note the team confirms client-specific application, instead of deflecting.",
