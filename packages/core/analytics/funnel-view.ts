@@ -29,6 +29,9 @@ export const FUNNEL_EVENTS = [
   "tax_search_submit",
   "tax_suggestion_click",
   // --- Property Map ---
+  // NOTE (MYTHOS D5): "property_cta_clicked" is the single canonical property
+  // CTA-click event (kept for GA4 continuity). The funnel home-block dispatcher
+  // maps property + cta_click onto it — there is NO separate "property_cta_click".
   "property_cta_clicked",
   "property_chat_question",
   "property_whatsapp_cta",
@@ -38,6 +41,14 @@ export const FUNNEL_EVENTS = [
   // --- Hero Section CTAs ---
   "hero_cta_book_call",
   "hero_cta_read_dispatch",
+  // --- Booked Consultation (MYTHOS IA-3 scaffolding) ---
+  // The /book consultation flow ships in B4; these events are allowlisted
+  // ahead of it so measurement is ready on day one. NO emission sites yet —
+  // the existing /book route is an editorial book reader, unrelated.
+  "book_viewed",
+  "book_form_started",
+  "book_form_submitted",
+  "book_call_confirmed",
 ] as const;
 
 export type FunnelEventName = (typeof FUNNEL_EVENTS)[number];
@@ -56,10 +67,16 @@ export async function trackFunnelEvent(
   name: FunnelEventName,
   args: TrackArgs,
 ): Promise<void> {
+  // MYTHOS D3/D9 foundation: capture the emitting hostname so the backend can
+  // scope denominators to public hostnames (GA4 mixes 7 hostnames + localhost).
+  // SSR-safe: omitted entirely outside the browser.
+  const hostname =
+    typeof window !== "undefined" ? window.location.hostname : undefined;
   const body = {
     session_id: args.sessionId,
     event: name,
     payload: args.payload ?? {},
+    ...(hostname ? { hostname } : {}),
   };
   if (typeof globalThis.gtag === "function") {
     // GA4 cannot serialize nested objects — stringify payload so it arrives

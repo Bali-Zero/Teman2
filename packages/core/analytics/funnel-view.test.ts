@@ -28,6 +28,21 @@ describe("funnel-view", () => {
     );
   });
 
+  it("captures the emitting hostname in the backend POST (D3/D9)", async () => {
+    await trackFunnelEvent("kbli_code_viewed", {
+      sessionId: "abc",
+      payload: { code: "47111" },
+    });
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    // jsdom default location is http://localhost — what matters is that the
+    // field is present and mirrors window.location.hostname.
+    expect(body.hostname).toBe(window.location.hostname);
+    expect(body.session_id).toBe("abc");
+    expect(body.event).toBe("kbli_code_viewed");
+  });
+
   it("whitelist derives from the FUNNEL_EVENTS source — no hardcoded count", () => {
     // Representative events (one per funnel) that must always exist.
     // Containment is asserted per-event off this array — never off a magic number.
@@ -36,6 +51,7 @@ describe("funnel-view", () => {
       "kbli_code_viewed",
       "tax_dashboard_viewed",
       "property_cta_clicked",
+      "book_viewed", // MYTHOS IA-3 scaffolding (emission ships in B4)
     ];
     for (const event of representative) {
       expect(FUNNEL_EVENTS).toContain(event);
