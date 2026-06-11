@@ -125,8 +125,7 @@ def _normalize_passport(value):
     norm = _normalize_id(value)
     if not norm:
         return None
-    import re as _re
-    return norm if _re.match(r'^[A-Z0-9]+$', norm) else norm
+    return norm
 
 
 def _digits_only(value: Any) -> str | None:
@@ -575,13 +574,54 @@ async def _fetch_stage_output(conn: asyncpg.Connection, queue_id: int) -> dict[s
     return dict(so)
 
 
-async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:
+async def backfill_received_by(
+    conn: asyncpg.Connection, queue_id: int, client_id: int | None
+) -> str | None:
+    """Give an owner-less queue row a reviewer: the matched client's consultant.
+
+    Docs from the SHARED business line (``whatsapp-live:*``) and Drive arrive
+    with ``received_by IS NULL`` — nobody's dashboard shows them (admin-only
+    pool). When routing resolves a client, the most natural reviewer is that
+    client's assigned consultant: backfill ``intake_queue.received_by`` with
+    ``clients.assigned_to`` so the document lands on THEIR review feed + login
+    gate, exactly like a doc received on their own mirrored chat.
+
+    Never overwrites an existing received_by (own-chat receiver wins). Returns
+    the backfilled email, or None when nothing was written.
+    """
+    if client_id is None:
+        return None
+    row = await conn.fetchrow(
+        """
+        UPDATE intake_queue q
+           SET received_by = lower(c.assigned_to)
+          FROM clients c
+         WHERE q.id = $1
+           AND q.received_by IS NULL
+           AND c.id = $2
+           AND c.deleted_at IS NULL
+           AND c.assigned_to IS NOT NULL
+           AND c.assigned_to <> ''
+        RETURNING q.received_by
+        """,
+        queue_id,
+        client_id,
+    )
+    return row["received_by"] if row else None
+
+
+async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noqa: ARG001 — StageHandler contract
     """FASE-4 real ``route`` stage handler.
 
     Reads the extracted fields from the job's accumulated ``stage_output``,
     resolves the entity, builds the routing proposal, and INSERTs exactly ONE
     ``document_routing_proposal`` row (status ``review_pending``). Idempotent via
     ``ON CONFLICT (routing_key) DO NOTHING``. ZERO CRM writes.
+
+    Owner backfill: when the queue row has no ``received_by`` (shared business
+    line / Drive) and routing resolved a client, the client's assigned
+    consultant becomes the reviewer (:func:`backfill_received_by`) — every
+    matched document lands on a real person's dashboard.
     """
     queue_id = job["id"]
     pipeline_version = job.get("pipeline_version", PIPELINE_VERSION_DEFAULT)
@@ -634,6 +674,12 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:
         else:
             already = False
 
+        # Owner backfill: a NULL-received_by doc that matched a client goes to
+        # that client's consultant dashboard (idempotent: never overwrites).
+        backfilled_owner = await backfill_received_by(
+            conn, queue_id, proposal["routing"]["client_id"]
+        )
+
     decision = proposal["entity_resolution"]["decision"]
     logger.info(
         "route(FASE4): job=%s proposal_id=%s decision=%s requires_human=%s "
@@ -650,5 +696,6 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:
         "decision": decision,
         "requires_human": proposal["commit_gate"]["requires_human"],
         "idempotent_skip": already,
+        "received_by_backfilled": backfilled_owner,
         "_metric": {"model": "entity-resolution-fase4", "confidence": 1.0},
     }
