@@ -202,6 +202,44 @@ class TestGetRevenueStats:
         assert result["total_revenue"] == 0
 
 
+# ── _get_total_clients ──────────────────────────────────────────────────────
+
+
+class TestGetTotalClients:
+    @pytest.mark.asyncio
+    async def test_returns_count(self):
+        from backend.app.routers.dashboard_summary import _get_total_clients
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchval = AsyncMock(return_value=1481)
+        mock_pool = _make_pool(mock_conn)
+
+        assert await _get_total_clients(mock_pool) == 1481
+        # Same source as /clients: non-soft-deleted, NOT status='active'
+        sql = mock_conn.fetchval.call_args.args[0]
+        assert "deleted_at IS NULL" in sql
+        assert "status" not in sql
+
+    @pytest.mark.asyncio
+    async def test_none_returns_zero(self):
+        from backend.app.routers.dashboard_summary import _get_total_clients
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchval = AsyncMock(return_value=None)
+        mock_pool = _make_pool(mock_conn)
+
+        assert await _get_total_clients(mock_pool) == 0
+
+    @pytest.mark.asyncio
+    async def test_exception_returns_zero(self):
+        from backend.app.routers.dashboard_summary import _get_total_clients
+
+        mock_pool = MagicMock()
+        mock_pool.acquire.side_effect = Exception("fail")
+
+        assert await _get_total_clients(mock_pool) == 0
+
+
 # ── _calculate_revenue_growth ───────────────────────────────────────────────
 
 
