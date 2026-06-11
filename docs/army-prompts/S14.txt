@@ -1,0 +1,28 @@
+# DESC: S14 — NB curation: 64 NB / 3618 source (ONDA 2, Pro obbligatorio)
+ORCHESTRATORE sessione S14 "nb-curation-sweep" — Pro (NB-INTEL = OSINT, Law 2). Autonomia
+piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane intel --task-id s14-nb-curation
+  cd .worktrees/intel-s14-nb-curation
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI. + LEGGE OSINT: NB-INTEL Pro-only, mai cloud, mai team.
+
+MISSIONE: 64 NB attivi, ~3618 source. nb-curator esiste (Mode C dedup/summarize/stale-
+cleanup). NB-INTEL family degradata post UUID-switch 2026-05-18. Health-sweep completo +
+proposta curation.
+
+TOPOLOGIA (nb-curator agent Mode C + agy ingestion):
+- ASSALITORI: per ogni NB — source count, staleness (>90d), dedup cluster, broken source.
+  NB-INTEL: verifica UUID vivi (nb-intel-live-uuids-verified-2026-05-29 in mem) — FIDATI di
+  `nlm query` NON di nb-migration-mapping.json (direzione invertita, trap nota).
+- ANALISTI (bipolar verifier): valida i cluster dedup contro NB ground-truth.
+- MECCANICO (1, serial): research/nb-health/S14-curation-FROZEN.json (64 NB × salute) +
+  proposte curation prioritizzate. commit → push → PR draft → STOP.
+
+VINCOLI: NB curati (NB-0..14) — proposte dedup/summarize, Antonello approva delete. Mai
+delete autonomo di source. OUTPUT: FROZEN + proposte. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S14 <numero-PR-o-url>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { NavShell } from "@balizero/core/components/NavShell";
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { SessionInit } from "@/components/funnel/SessionInit";
-import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { NavWhatsAppCTA } from "./_components/NavWhatsAppCTA";
 import { MobileNav } from "./_components/MobileNav";
 import { HeroBlueprint } from "./_components/HeroBlueprint";
 import { SocialProof } from "./_components/SocialProof";
@@ -72,7 +72,7 @@ export default async function HomeV2() {
           <>
             <a
               href="https://kita.balizero.com/"
-              className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
+              className="px-4 py-2 rounded-md text-[13px] font-semibold uppercase tracking-wide"
               style={{
                 background: "transparent",
                 color: "var(--text-secondary)",
@@ -81,50 +81,7 @@ export default async function HomeV2() {
             >
               Login
             </a>
-            <a
-              href={buildWhatsAppLink("home")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
-              style={{
-                background: "var(--accent-funnel)",
-                color: "var(--text-on-accent)",
-                textDecoration: "none",
-              }}
-            >
-              {/* WhatsApp indicator — green dot signals direct chat */}
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "#25D366",
-                  boxShadow: "0 0 6px #25D366",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  lineHeight: 1.1,
-                }}
-              >
-                <span>Get Started</span>
-                <span
-                  style={{
-                    fontSize: 8,
-                    fontWeight: 500,
-                    opacity: 0.85,
-                    textTransform: "lowercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  via WhatsApp
-                </span>
-              </span>
-            </a>
+            <NavWhatsAppCTA />
           </>
         }
       />

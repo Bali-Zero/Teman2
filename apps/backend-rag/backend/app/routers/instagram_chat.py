@@ -226,8 +226,10 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
         from backend.app.dependencies import get_database
 
         db_pool = get_database(request)
-    except Exception:
-        pass
+    except Exception as e:
+        # F43: silent swallow here meant the P0-6 ack-first persistence antibody
+        # could vanish with no trace. Warn (still non-blocking on the ack).
+        logger.warning("IG Webhook ack-first persistence: get_database unavailable: %s", e)
 
     if db_pool is not None:
         mid = ""

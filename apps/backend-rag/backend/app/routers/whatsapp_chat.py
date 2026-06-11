@@ -19,6 +19,7 @@ import json
 import logging
 import time
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -28,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.app.core.config import settings
 from backend.services.integrations.openclaw_whatsapp_bridge import ask_openclaw_whatsapp
 from backend.services.integrations.telegram_bot_service import telegram_bot
+from backend.services.integrations.wa_outbox_worker import META_INBOX_PHONE_NUMBER_ID
 from backend.services.integrations.whatsapp_service import whatsapp_service
 from backend.services.integrations.whatsapp_triage_service import (
     TriageDecision,
@@ -37,6 +39,10 @@ from backend.services.whatsapp_kbli_guard import sanitize_whatsapp_kbli_reply
 from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
 
 logger = logging.getLogger(__name__)
+
+# NB: media downloads do NOT happen on Fly (Law 2 — PII stays on the Pro). The
+# official-line media handoff publishes metadata only to events_outbox; the
+# sovereign Pro worker (scripts/wa_media_pull_worker.py) owns the blob root.
 
 # In-memory conversation history per phone number (fast fallback)
 _conversation_cache: dict[str, list[dict]] = defaultdict(list)
@@ -351,6 +357,28 @@ async def process_whatsapp_message(
             # Build rich context
             ctx = await build_context(phone, sender_name, message_text, db_pool)
 
+            # Concierge ack: the AI path takes 10-50s wall-clock; on a
+            # non-trivial question tell the user we're on it BEFORE the slow
+            # call. Throttled per phone, kill-switch WHATSAPP_ACK_ENABLED.
+            # Never let the ack break the main path.
+            try:
+                from backend.services.whatsapp_ack import (
+                    ack_text,
+                    mark_acked,
+                    should_send_ack,
+                )
+
+                if should_send_ack(message_text, phone):
+                    await whatsapp_service.send_message(
+                        phone=phone,
+                        text=ack_text(ctx.get("detected_language")),
+                        reply_to_message_id=message_id,
+                    )
+                    mark_acked(phone)
+                    logger.info("Concierge ack sent to %s", phone)
+            except Exception:
+                logger.exception("Concierge ack failed (non-blocking) phone=%s", phone)
+
             openclaw_response = await ask_openclaw_whatsapp(
                 phone=phone,
                 message_text=message_text,
@@ -362,6 +390,7 @@ async def process_whatsapp_message(
                     "conversation_history": ctx.get("conversation_history"),
                     "detected_language": ctx.get("detected_language"),
                     "is_first_message": ctx.get("is_first_message"),
+                    "sender_identity": ctx.get("sender_identity"),
                     "time_of_day": ctx.get("time_of_day"),
                 },
             )
@@ -718,6 +747,305 @@ async def _save_conversation(
         logger.warning("Failed to save conversation for %s: %s", phone, e)
 
 
+# ============================================================
+# WA META INBOX — scoped persistence for phone_number_id=1104946272705747
+# (read/write console; see backend/app/routers/wa_inbox.py + spec
+#  docs/superpowers/specs/2026-06-03-wa-meta-inbox-design.md sezione 3).
+# Only the target Business number flows through this ledger; all other
+# numbers stay on the existing inline triage flow above — untouched.
+# ============================================================
+
+# Map Meta delivery-receipt status → ledger status. Only forward transitions
+# are accepted (sent < delivered < read); failed is terminal and always wins.
+_META_STATUS_RANK = {"sent": 1, "delivered": 2, "read": 3}
+
+
+def _change_phone_number_id(change: WhatsAppChange) -> str | None:
+    """Extract value.metadata.phone_number_id from a webhook change."""
+    metadata = change.value.get("metadata") or {}
+    pnid = metadata.get("phone_number_id")
+    return str(pnid) if pnid is not None else None
+
+
+async def _apply_status_callback(conn: Any, status_obj: dict[str, Any]) -> None:
+    """Apply one Meta status receipt to the ledger (or stage it if orphan).
+
+    NEVER touches last_customer_at — status receipts are not customer activity
+    and must not extend the Meta 24h window (data invariant, spec sezione 2).
+    """
+    wamid = status_obj.get("id")
+    new_status = status_obj.get("status")
+    if not wamid or new_status not in ("sent", "delivered", "read", "failed"):
+        return
+
+    error_text: str | None = None
+    if new_status == "failed":
+        errors = status_obj.get("errors") or []
+        if errors and isinstance(errors[0], dict):
+            error_text = errors[0].get("title") or errors[0].get("message")
+
+    existing = await conn.fetchrow(
+        "SELECT id, status FROM meta_inbox_messages WHERE meta_message_id = $1",
+        wamid,
+    )
+    if existing is None:
+        # Orphan receipt (status raced ahead of the send commit) → stage it.
+        await conn.execute(
+            """
+            INSERT INTO wa_status_pending (meta_message_id, status, error)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (meta_message_id) DO UPDATE
+            SET status = EXCLUDED.status, error = EXCLUDED.error,
+                received_at = NOW()
+            """,
+            wamid,
+            new_status,
+            error_text,
+        )
+        return
+
+    if new_status == "failed":
+        await conn.execute(
+            "UPDATE meta_inbox_messages SET status = 'failed', error = $2 WHERE id = $1",
+            existing["id"],
+            error_text,
+        )
+        return
+
+    # Only advance forward (never regress read → delivered → sent).
+    current_rank = _META_STATUS_RANK.get(existing["status"], 0)
+    if _META_STATUS_RANK[new_status] > current_rank:
+        await conn.execute(
+            "UPDATE meta_inbox_messages SET status = $2 WHERE id = $1",
+            existing["id"],
+            new_status,
+        )
+
+
+async def _handle_meta_inbox_message(
+    conn: Any, msg: dict[str, Any], sender_name: str | None, webhook_id: int | None
+) -> None:
+    """Persist one inbound customer message into the meta-inbox ledger (1 TX).
+
+    Upsert thread (last_customer_at = GREATEST), insert inbound ledger row with
+    ON CONFLICT(meta_message_id) DO NOTHING; only if the row is NEW and the
+    thread is bot-handled, enqueue a bot reply (queued ledger row + wa_outbox
+    needs_generation). The bot text itself is generated by the worker, NOT here.
+    """
+    wamid = msg.get("id")
+    phone = msg.get("from")
+    if not wamid or not phone:
+        return
+
+    body = ""
+    media_type = msg.get("type")
+    if media_type == "text":
+        body = (msg.get("text") or {}).get("body", "")
+
+    # Meta timestamp is unix seconds (string).
+    ts_raw = msg.get("timestamp")
+    try:
+        meta_ts = datetime.fromtimestamp(int(ts_raw), tz=timezone.utc) if ts_raw else None
+    except (TypeError, ValueError):
+        meta_ts = None
+
+    async with conn.transaction():
+        thread = await conn.fetchrow(
+            """
+            INSERT INTO meta_inbox_threads (
+                counterpart_phone, counterpart_name, last_customer_at, last_message_at
+            )
+            VALUES ($1, $2, $3, $3)
+            ON CONFLICT (counterpart_phone) DO UPDATE
+            SET counterpart_name = COALESCE(EXCLUDED.counterpart_name,
+                                            meta_inbox_threads.counterpart_name),
+                last_customer_at = GREATEST(
+                    meta_inbox_threads.last_customer_at,
+                    EXCLUDED.last_customer_at
+                ),
+                last_message_at = GREATEST(
+                    meta_inbox_threads.last_message_at,
+                    EXCLUDED.last_message_at
+                )
+            RETURNING thread_id, human_handling
+            """,
+            phone,
+            sender_name,
+            meta_ts,
+        )
+        thread_id = thread["thread_id"]
+        human_handling = thread["human_handling"]
+
+        inbound = await conn.fetchrow(
+            """
+            INSERT INTO meta_inbox_messages (
+                thread_id, meta_message_id, direction, sender_role, body,
+                media_type, status, webhook_id
+            )
+            VALUES ($1, $2, 'inbound', 'customer', $3, $4, 'received', $5)
+            ON CONFLICT (meta_message_id) WHERE meta_message_id IS NOT NULL
+                DO NOTHING
+            RETURNING id
+            """,
+            thread_id,
+            wamid,
+            body,
+            media_type,
+            webhook_id,
+        )
+
+        # Duplicate inbound (Meta retry) → nothing more to do.
+        if inbound is None:
+            return
+
+        # New inbound AND bot still owns the thread → enqueue a bot reply intent.
+        if not human_handling:
+            bot_row = await conn.fetchrow(
+                """
+                INSERT INTO meta_inbox_messages (
+                    thread_id, direction, sender_role, status
+                )
+                VALUES ($1, 'outbound', 'bot', 'queued')
+                RETURNING id
+                """,
+                thread_id,
+            )
+            await conn.execute(
+                """
+                INSERT INTO wa_outbox (thread_id, message_id, needs_generation, status)
+                VALUES ($1, $2, true, 'pending')
+                ON CONFLICT (message_id) DO NOTHING
+                """,
+                thread_id,
+                bot_row["id"],
+            )
+
+
+async def _resolve_webhook_id(conn: Any, wamid: str) -> int | None:
+    """Best-effort lookup of the inbound_webhooks row id for a wamid."""
+    try:
+        return await conn.fetchval(
+            "SELECT id FROM inbound_webhooks WHERE channel = 'whatsapp' AND dedup_key = $1",
+            wamid,
+        )
+    except Exception:
+        return None
+
+
+_WA_MEDIA_PENDING_CHANNEL = "whatsapp_media_pending"
+
+
+async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request) -> None:
+    """Background task: hand off official-line media to the sovereign Pro worker.
+
+    PULL architecture (Law 2 — PII never leaves the Pro): Fly does NOT download
+    the media here. It enqueues a *metadata-only* hand-off row into
+    ``events_outbox`` (channel ``whatsapp_media_pending``) — just the Meta
+    ``media_id`` + provenance, never a single byte of the document. A worker on
+    the Pro pulls these rows, downloads from Meta itself, and stores the blob on
+    the Pro's local disk + local intake_queue. Fly ephemeral storage never
+    touches client PII (passports, KTP, akta).
+
+    Runs AFTER the 200 ACK like its sibling, so the webhook is never delayed.
+    Best-effort: failures are logged, never raised (the webhook already ACKed;
+    Meta will not be impacted — the outbox row, if written, is durable and the
+    Pro worker is idempotent on the source_ref it derives).
+    """
+    # Cheap pre-check: only touch the DB if the payload actually carries media
+    # on the official number.
+    from backend.channels.whatsapp.media_webhook_parse import parse_media_webhook
+
+    parsed = parse_media_webhook(raw_payload)
+    official = [m for m in parsed.media if m.phone_number_id == META_INBOX_PHONE_NUMBER_ID]
+    if not official:
+        return
+
+    pool = _get_db_pool(request)
+    if pool is None:
+        logger.warning("meta-inbox media: no db pool, skipping %d media", len(official))
+        return
+
+    from backend.services.events import outbox
+
+    published = 0
+    try:
+        async with pool.acquire() as conn:
+            # One transaction for the whole batch: publish() is atomic with the
+            # caller's tx (INSERT + NOTIFY both vanish on rollback). All-or-nothing
+            # is fine here — the Pro worker reconciles whatever lands.
+            async with conn.transaction():
+                for media in official:
+                    await outbox.publish(
+                        conn,
+                        _WA_MEDIA_PENDING_CHANNEL,
+                        {
+                            "media_id": media.media_id,
+                            "mime_type": media.mime_type,
+                            "message_type": media.message_type,
+                            "filename": media.filename,
+                            "declared_sha256": media.declared_sha256,
+                            "wa_message_id": media.wa_message_id,
+                            "from_phone": media.from_phone,
+                            "phone_number_id": media.phone_number_id,
+                            "sender_name": media.sender_name,
+                        },
+                    )
+                    published += 1
+        logger.info(
+            "meta-inbox media handoff: found=%d published=%d (PULL: no download on Fly)",
+            len(official), published,
+        )
+    except Exception as exc:
+        logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
+
+
+async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
+    """Background task: drive the meta-inbox ledger for the target number only.
+
+    Runs AFTER the webhook has persisted to inbound_webhooks and ACKed 200, so
+    it never delays the Meta ACK. Scoped strictly to
+    META_INBOX_PHONE_NUMBER_ID; any other number is ignored here (it stays on
+    the existing inline triage flow).
+    """
+    db_pool = _get_db_pool(request)
+    if db_pool is None:
+        return
+
+    try:
+        webhook = WhatsAppWebhook(**raw_payload)
+    except Exception as exc:
+        logger.warning("meta-inbox: payload parse failed: %s", exc)
+        return
+
+    try:
+        async with db_pool.acquire() as conn:
+            for entry in webhook.entry:
+                for change in entry.changes:
+                    if change.field != "messages":
+                        continue
+                    if _change_phone_number_id(change) != META_INBOX_PHONE_NUMBER_ID:
+                        continue
+
+                    value = change.value
+
+                    # STATUS branch (delivery receipts) — never touches window.
+                    for status_obj in value.get("statuses", []):
+                        await _apply_status_callback(conn, status_obj)
+
+                    # MESSAGE branch (inbound customer messages).
+                    contacts = value.get("contacts", [])
+                    sender_name = None
+                    if contacts:
+                        sender_name = contacts[0].get("profile", {}).get("name")
+
+                    for msg in value.get("messages", []):
+                        wamid = msg.get("id")
+                        webhook_id = await _resolve_webhook_id(conn, wamid) if wamid else None
+                        await _handle_meta_inbox_message(conn, msg, sender_name, webhook_id)
+    except Exception as exc:
+        logger.error("meta-inbox: processing failed: %s", exc, exc_info=True)
+
+
 @router.get("")
 async def verify_webhook(request: Request) -> PlainTextResponse:
     """
@@ -856,10 +1184,40 @@ async def whatsapp_webhook(
                             exc,
                         )
 
+    # WA Meta Inbox: if any change targets the dedicated Business number, run
+    # its ledger persistence in a single background task (after ACK, so the
+    # 200 is never delayed). The target number does NOT use the inline triage
+    # flow below — its bot replies are generated by the wa_outbox worker.
+    meta_inbox_in_payload = any(
+        change.field == "messages"
+        and _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID
+        for entry in webhook.entry
+        for change in entry.changes
+    )
+    if meta_inbox_in_payload:
+        background_tasks.add_task(
+            process_meta_inbox_payload,
+            raw_payload=raw_payload,
+            request=request,
+        )
+        # Anello 1: pull any media attachments on the official line into the
+        # intake pipeline (download → enqueue). Separate task so a media
+        # download never delays the ledger or the Meta ACK.
+        background_tasks.add_task(
+            _ingest_meta_inbox_media,
+            raw_payload=raw_payload,
+            request=request,
+        )
+
     for entry in webhook.entry:
         for change in entry.changes:
             if change.field != "messages":
                 logger.debug(f"Ignoring non-message change: {change.field}")
+                continue
+
+            # Target Business number → handled by the meta-inbox task above.
+            # Do NOT run the inline triage flow for it (would double-reply).
+            if _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID:
                 continue
 
             value = change.value

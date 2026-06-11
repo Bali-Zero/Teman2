@@ -25,8 +25,8 @@ fi
 # Tigris credentials (same as pg backup)
 TIGRIS_ENDPOINT="https://fly.storage.tigris.dev"
 TIGRIS_BUCKET="nuzantara-backups"
-TIGRIS_KEY="${AWS_ACCESS_KEY_ID:-tid_sZQYyrgouAXAdQDuvsfPlLIIUMMvEDNhfMWmzCdeouELsPMn_U}"
-TIGRIS_SECRET="${AWS_SECRET_ACCESS_KEY:-tsec_5knItu7FoHkkv2P5qaEMSRdHxXDNb6ZD0+mgDfLsLF-lLntRwDUgrH4qmzhJX+3OI4XYTc}"
+TIGRIS_KEY="${AWS_ACCESS_KEY_ID:?Missing AWS_ACCESS_KEY_ID - source ~/.nuzantara-secrets.env; Tigris creds are not hardcoded, rotate via Fly Tigris dashboard}"
+TIGRIS_SECRET="${AWS_SECRET_ACCESS_KEY:?Missing AWS_SECRET_ACCESS_KEY - source ~/.nuzantara-secrets.env}"
 
 # Telegram alert (optional)
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"

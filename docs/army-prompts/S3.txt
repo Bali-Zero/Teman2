@@ -1,0 +1,33 @@
+# DESC: S3 — escalations_pro.jsonl 1.17MB + DLQ hygiene (ONDA 2, Codex-heavy)
+ORCHESTRATORE sessione S3 "escalation-debt-cleanup". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane infra --task-id s3-escalation-debt
+  cd .worktrees/infra-s3-escalation-debt
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: shared/escalations_pro.jsonl = 1.17MB / 4519 entry tutte "pending", git-tracked,
+storm STORICA CONTENUTA (ultimo ts reale 2026-05-24, loop morto). Debito dal gap "weekly
+digest/pruning" di W61. RISCHIO: pruning NON è additivo-sicuro (sentinel tooling può
+parsare il file).
+
+TOPOLOGIA (Workflow):
+- ASSALITORI: (a) agente-forense — grep scripts/ + apps/ per OGNI consumer del file (chi
+  legge escalations_pro.jsonl) → mappa chi si rompe se prune; (b) agente-DLQ — verifica
+  stato DLQ (W61 add_to_dlq fix funziona? tutti TERMINAL?).
+- ANALISTI: Codex devils-advocate sul rischio rotation. La rotation è safe SOLO se
+  l'agente-forense prova 0 consumer rompibili O consumer tollera file vuoto.
+- ESECUZIONE: implementa rotation (archive→.jsonl.gz + truncate + sentinel-aware) SOLO se
+  provata safe. Testa su COPIA in /tmp, MAI sul file vero senza prova. + costruisci il
+  "weekly digest suppressed-alerts" mancante (W55 gap).
+- MECCANICO (1, serial): research/operations/S3-escalation-debt-FROZEN.json + rotation
+  script (testato su copia) + PR. Se NON provato safe → spec + NEEDS-ANTONELLO.
+  commit → push → PR draft → STOP.
+
+VINCOLI: MAI truncare il file vero senza prova-forense di sicurezza. OUTPUT: FROZEN +
+script + digest. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S3 <numero-PR-o-url>

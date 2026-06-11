@@ -27,8 +27,6 @@ interface Service {
   icon: typeof IdCard;
   bullets: string[];
   cta: { label: string; href: string };
-  priceLabel: string;
-  priceFrom: string;
 }
 
 const SERVICES: Service[] = [
@@ -47,8 +45,6 @@ const SERVICES: Service[] = [
       "Overstay & obsolete-status recovery",
     ],
     cta: { label: "Open Visa Check", href: "/visa" },
-    priceLabel: "From",
-    priceFrom: "$350 / visa",
   },
   {
     slug: "business",
@@ -65,8 +61,6 @@ const SERVICES: Service[] = [
       "Shareholder structures, nominee-free",
     ],
     cta: { label: "Open KBLI Navigator", href: "/kbli" },
-    priceLabel: "From",
-    priceFrom: "$1,850 / company",
   },
   {
     slug: "tax",
@@ -83,8 +77,6 @@ const SERVICES: Service[] = [
       "Cross-border tax residency analysis",
     ],
     cta: { label: "See Tax Calendar", href: "/tax-calendar" },
-    priceLabel: "From",
-    priceFrom: "$220 / month",
   },
   {
     slug: "property",
@@ -101,8 +93,6 @@ const SERVICES: Service[] = [
       "7-day due diligence turnaround",
     ],
     cta: { label: "Check a plot", href: "/property/eligibility" },
-    priceLabel: "From",
-    priceFrom: "$850 / report",
   },
 ];
 
@@ -290,21 +280,7 @@ export default function ServicesPage() {
                     ))}
                   </ul>
 
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div>
-                      <div
-                        className="text-[10px] font-semibold uppercase tracking-[0.2em]"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        {s.priceLabel}
-                      </div>
-                      <div
-                        className="text-[18px] font-bold"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {s.priceFrom}
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-end gap-4 flex-wrap">
                     <Link
                       href={s.cta.href}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-semibold"

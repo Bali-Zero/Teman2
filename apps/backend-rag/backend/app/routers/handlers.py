@@ -40,6 +40,11 @@ async def list_all_handlers() -> dict[str, Any]:
     This is the master catalog that ZANTARA uses to see all available tools
     """
     # Lazy import to avoid circular dependencies
+    # F29: memory_vector was listed here but its router is NOT mounted on any
+    # process (not in the manifest, never was). Advertising its 8 routes in the
+    # tool catalog made ZANTARA plan calls to endpoints that 404. Removed from the
+    # catalog so the AI no longer sees unreachable tools. (The router file stays on
+    # disk but unadvertised; mount it via the manifest if it is ever wired up.)
     from backend.app.routers import (
         agents,
         conversations,
@@ -49,7 +54,6 @@ async def list_all_handlers() -> dict[str, Any]:
         health,
         ingest,
         intel,
-        memory_vector,
         oracle_universal,
     )
 
@@ -62,7 +66,6 @@ async def list_all_handlers() -> dict[str, Any]:
         health,
         ingest,
         intel,
-        memory_vector,
         oracle_universal,
     ]
 

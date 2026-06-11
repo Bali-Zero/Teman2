@@ -1,0 +1,32 @@
+# DESC: S6 — Ricerca regolatoria deep: domini affamati (ONDA 1, Mini acct2, agy+NB)
+ORCHESTRATORE sessione S6 "regulatory-deep-fill". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane docs --task-id s6-regulatory
+  cd .worktrees/docs-s6-regulatory
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: research/legal/ ha 1 file, property/ 2, tax/ 6 — sotto-documentati per
+un'agenzia immigration/company/tax/property. Riempi i gap con ricerca ground-truth.
+
+TOPOLOGIA MULTI-LLM (pattern deep-researcher, NON Claude-only):
+- ASSALITORI INGESTION (agy Gemini 3.1 Pro 1M context): ingerisci i PDF/fonti regolatori
+  long-context. Fan-out per dominio.
+- GROUND-TRUTH (NotebookLM bipolar verifier): NB-2 visa / NB-3 company/KBLI / NB-4 tax /
+  NB-5 property. Verifica ogni claim contro NB. MAI 4-LLM council su NB (sono autorità).
+- ANALISTI (DeepSeek V4 Pro ESPLICITO, mai -reasoner alias): math/legal-numeric (tax
+  projection, deadline). + devils-advocate su contraddizioni.
+- SINTESI (Claude opus): per OGNI dominio gap, 1 ricerca ≥400 parole + ≥3 fonti.
+  Temi: legal (PT PMA, nominee ban, BKPM), property (Hak Pakai vs HGB vs leasehold,
+  foreigner ownership 2025), tax (estendi PMK 131/2024 PPN già in mem → PPh, withholding,
+  BUT). VERIFICA con NB cosa manca davvero prima di scrivere.
+- MECCANICO (1, serial): file in research/<domain>/2026-06-02-<slug>.md con frontmatter
+  (date/domain/sources). property → push NB-5 via MCP (convenzione §15). Altri domini:
+  NON toccare NB curati. commit → push → PR draft → STOP.
+
+OUTPUT: 4-6 file research + research/operations/S6-regulatory-FROZEN.json (indice). --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S6 <numero-PR-o-url>

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<!--
+  WA Meta Inbox — viewer (Section 5 of 2026-06-03-wa-meta-inbox-design)
+  Single-file vanilla JS. Talks ONLY to the local thin proxy (server.cjs) on
+  the same origin. The proxy attaches the Fly X-API-Key; the key is never here.
+  The CSRF token is injected server-side into the placeholder below and sent
+  on every POST via the X-Local-CSRF header (fail-closed at the proxy).
+  UI language: Italian (operator: Antonello).
+-->
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WA Meta Inbox — BALI ZERO</title>
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --panel: #ffffff;
+    --line: #e3ddd4;
+    --ink: #2a2620;
+    --muted: #8a8377;
+    --accent: #c4622d;       /* terracotta */
+    --bot: #06b6d4;          /* cyan  */
+    --human: #fbbf24;        /* gold  */
+    --in: #ffffff;
+    --out: #dcf2c8;          /* light green outbound */
+    --pending: #f0ead8;
+    --failed: #fce4e2;
+    --shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14px;
+    display: flex; flex-direction: column; height: 100vh;
+  }
+  header {
+    padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  header .conn { margin-left: auto; font-size: 12px; color: var(--muted); }
+  header .conn.bad { color: #b42318; }
+
+  .layout { flex: 1; display: flex; min-height: 0; }
+
+  /* Left: thread list */
+  .threads {
+    width: 320px; min-width: 280px; border-right: 1px solid var(--line);
+    background: var(--panel); overflow-y: auto;
+  }
+  .thread {
+    padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .thread:hover { background: #faf8f4; }
+  .thread.active { background: #f1ebe1; border-left: 3px solid var(--accent); padding-left: 9px; }
+  .thread .top { display: flex; align-items: center; gap: 6px; }
+  .thread .name { font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thread .time { font-size: 11px; color: var(--muted); }
+  .thread .preview { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge {
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 9px;
+    color: #fff; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .badge.bot { background: var(--bot); }
+  .badge.human { background: var(--human); color: #3a2c00; }
+  .badge.closed { background: var(--muted); }
+
+  /* Right: conversation */
+  .conv { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .conv-head {
+    padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .conv-head .title { font-weight: 600; }
+  .conv-head .actions { margin-left: auto; display: flex; gap: 8px; }
+  button {
+    font: inherit; padding: 5px 12px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--panel); cursor: pointer; color: var(--ink);
+  }
+  button:hover:not(:disabled) { background: #f1ebe1; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover:not(:disabled) { background: #ad5526; }
+
+  .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .empty { margin: auto; color: var(--muted); text-align: center; }
+  .msg { max-width: 72%; padding: 7px 11px; border-radius: 10px; box-shadow: var(--shadow); white-space: pre-wrap; word-wrap: break-word; }
+  .msg.inbound { background: var(--in); align-self: flex-start; border: 1px solid var(--line); }
+  .msg.outbound { background: var(--out); align-self: flex-end; }
+  .msg.outbound.pending { background: var(--pending); opacity: 0.85; }
+  .msg.outbound.failed { background: var(--failed); }
+  .msg .meta { font-size: 10px; color: var(--muted); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+  .msg .role { font-weight: 600; }
+  .msg .role.bot { color: var(--bot); }
+  .msg .role.human { color: #9a7400; }
+
+  .banner {
+    background: #fff4e5; color: #8a5a00; border-top: 1px solid #f0d9b0;
+    padding: 8px 14px; font-size: 13px; text-align: center;
+  }
+  .composer { display: flex; gap: 8px; padding: 10px 14px; background: var(--panel); border-top: 1px solid var(--line); }
+  .composer textarea {
+    flex: 1; resize: none; font: inherit; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 8px; height: 40px; max-height: 120px;
+  }
+  .composer textarea:disabled { background: #f2efe9; }
+  .footnote { font-size: 11px; color: var(--muted); padding: 4px 14px 8px; background: var(--panel); }
+</style>
+</head>
+<body>
+<header>
+  <h1>WA Meta Inbox</h1>
+  <span class="sub">BALI ZERO · +62 821-3465-159</span>
+  <span class="conn" id="conn">—</span>
+</header>
+
+<div class="layout">
+  <div class="threads" id="threads"><div class="empty" style="padding:20px">Caricamento…</div></div>
+  <div class="conv">
+    <div class="conv-head">
+      <span class="title" id="convTitle">Seleziona una conversazione</span>
+      <span id="convBadge"></span>
+      <div class="actions">
+        <button id="btnTakeover" disabled>Prendi controllo</button>
+        <button id="btnRelease" disabled>Rilascia al bot</button>
+      </div>
+    </div>
+    <div class="messages" id="messages"><div class="empty">Nessuna conversazione aperta.</div></div>
+    <div id="bannerSlot"></div>
+    <div class="composer">
+      <textarea id="reply" placeholder="Scrivi un messaggio…" disabled></textarea>
+      <button class="primary" id="btnSend" disabled>Invia</button>
+    </div>
+    <div class="footnote">UI locale (127.0.0.1). Il bot risponde di default; prendi il controllo per rispondere a mano.</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// CSRF token injected server-side. If still the placeholder, the page was not
+// served by server.cjs (e.g. opened from disk) → POSTs will be rejected (403).
+const CSRF_TOKEN = "__WA_INBOX_CSRF_TOKEN__";
+
+const state = {
+  threads: [],
+  activeId: null,
+  activeWindowOpen: true,
+  activeHumanHandling: false,
+  // optimistic outbound messages keyed by idempotency_key, merged into the
+  // server view until the next poll reconciles them.
+  pending: new Map(),
+};
+
+const els = {
+  threads: document.getElementById("threads"),
+  messages: document.getElementById("messages"),
+  convTitle: document.getElementById("convTitle"),
+  convBadge: document.getElementById("convBadge"),
+  reply: document.getElementById("reply"),
+  btnSend: document.getElementById("btnSend"),
+  btnTakeover: document.getElementById("btnTakeover"),
+  btnRelease: document.getElementById("btnRelease"),
+  bannerSlot: document.getElementById("bannerSlot"),
+  conn: document.getElementById("conn"),
+};
+
+function setConn(ok, label) {
+  els.conn.textContent = label;
+  els.conn.classList.toggle("bad", !ok);
+}
+
+function fmtTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (isNaN(d)) return "";
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) +
+        " " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ---- POST helper: always carries the CSRF header (fail-closed at proxy) -----
+async function postJson(url, body) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Local-CSRF": CSRF_TOKEN },
+    body: JSON.stringify(body),
+  });
+  let data = null;
+  try { data = await r.json(); } catch { /* non-json error body */ }
+  return { ok: r.ok, status: r.status, data };
+}
+
+// ===========================================================================
+// Thread list polling (every 5s)
+// ===========================================================================
+async function pollThreads() {
+  try {
+    const r = await fetch("/api/threads?limit=50", { headers: { Accept: "application/json" } });
+    if (!r.ok) { setConn(false, "backend " + r.status); return; }
+    const data = await r.json();
+    state.threads = Array.isArray(data) ? data : (data.threads || data.items || []);
+    setConn(true, "connesso");
+    renderThreads();
+  } catch (err) {
+    setConn(false, "offline");
+  }
+}
+
+function threadName(t) {
+  return t.counterpart_name || t.counterpart_phone || ("Thread " + t.thread_id);
+}
+
+function renderThreads() {
+  if (!state.threads.length) {
+    els.threads.innerHTML = '<div class="empty" style="padding:20px">Nessuna conversazione.</div>';
+    return;
+  }
+  els.threads.innerHTML = "";
+  for (const t of state.threads) {
+    const div = document.createElement("div");
+    div.className = "thread" + (String(t.thread_id) === String(state.activeId) ? " active" : "");
+    const human = !!t.human_handling;
+    const badge = human
+      ? '<span class="badge human">human</span>'
+      : '<span class="badge bot">bot</span>';
+    div.innerHTML =
+      '<div class="top">' +
+        '<span class="name">' + esc(threadName(t)) + "</span>" +
+        badge +
+        '<span class="time">' + esc(fmtTime(t.last_message_at)) + "</span>" +
+      "</div>" +
+      '<div class="preview">' + esc(t.last_body || "") + "</div>";
+    div.addEventListener("click", () => openThread(t.thread_id));
+    els.threads.appendChild(div);
+  }
+}
+
+// ===========================================================================
+// Conversation polling (every 3s, ONLY while a thread is open)
+// AbortController cancels stale polls on thread-switch; the no-overlap guard
+// prevents a new poll from starting while the previous is still in flight.
+// ===========================================================================
+let convTimer = null;
+let convAbort = null;
+let convInFlight = false;
+
+function stopConvPolling() {
+  if (convTimer) { clearTimeout(convTimer); convTimer = null; }
+  if (convAbort) { convAbort.abort(); convAbort = null; }
+  convInFlight = false;
+}
+
+async function openThread(id) {
+  if (String(id) === String(state.activeId)) return;
+  stopConvPolling();
+  state.activeId = id;
+  state.pending.clear();
+  els.messages.innerHTML = '<div class="empty">Caricamento…</div>';
+  renderThreads();
+  await pollConv(true);
+  scheduleConvPoll();
+}
+
+function scheduleConvPoll() {
+  convTimer = setTimeout(async () => {
+    await pollConv(false);
+    if (state.activeId != null) scheduleConvPoll();
+  }, 3000);
+}
+
+async function pollConv(initial) {
+  if (state.activeId == null) return;
+  // No-overlap guard: skip this tick if the previous request is still running.
+  if (convInFlight) return;
+  convInFlight = true;
+  const id = state.activeId;
+  convAbort = new AbortController();
+  try {
+    const r = await fetch("/api/threads/" + encodeURIComponent(id), {
+      headers: { Accept: "application/json" },
+      signal: convAbort.signal,
+    });
+    // Thread switched while in flight → discard stale response.
+    if (String(state.activeId) !== String(id)) return;
+    if (!r.ok) { if (initial) els.messages.innerHTML = '<div class="empty">Errore caricamento (' + r.status + ").</div>"; return; }
+    const data = await r.json();
+    renderConv(data);
+  } catch (err) {
+    if (err.name === "AbortError") return; // expected on switch
+    if (initial) els.messages.innerHTML = '<div class="empty">Errore di rete.</div>';
+  } finally {
+    convInFlight = false;
+  }
+}
+
+function renderConv(data) {
+  const thread = data.thread || data;
+  const messages = data.messages || data.items || [];
+  state.activeWindowOpen = thread.window_open !== false;
+  state.activeHumanHandling = !!thread.human_handling;
+
+  els.convTitle.textContent = thread.counterpart_name || thread.counterpart_phone || ("Thread " + state.activeId);
+  els.convBadge.innerHTML = state.activeHumanHandling
+    ? '<span class="badge human">human</span>'
+    : '<span class="badge bot">bot</span>';
+
+  // Reconcile optimistic pending: drop any whose idempotency_key now appears
+  // in the server ledger (backend is authoritative).
+  const serverKeys = new Set(messages.map((mm) => mm.idempotency_key).filter(Boolean));
+  for (const k of [...state.pending.keys()]) {
+    if (serverKeys.has(k)) state.pending.delete(k);
+  }
+
+  const all = messages.slice();
+  for (const p of state.pending.values()) all.push(p);
+
+  if (!all.length) {
+    els.messages.innerHTML = '<div class="empty">Nessun messaggio.</div>';
+  } else {
+    els.messages.innerHTML = "";
+    for (const mm of all) renderMsg(mm);
+    els.messages.scrollTop = els.messages.scrollHeight;
+  }
+
+  // Window 24h + handling drive composer + buttons.
+  applyComposerState();
+}
+
+function renderMsg(mm) {
+  const dir = mm.direction === "outbound" ? "outbound" : "inbound";
+  const status = mm.status || (dir === "outbound" ? "sent" : "received");
+  const div = document.createElement("div");
+  div.className = "msg " + dir + (status === "pending" ? " pending" : status === "failed" ? " failed" : "");
+  const role = mm.sender_role || (dir === "inbound" ? "customer" : "bot");
+  let statusLabel = "";
+  if (dir === "outbound") {
+    const map = {
+      pending: "in invio…", queued: "in coda", generating: "generazione…",
+      sending: "invio…", sent: "inviato", delivered: "consegnato",
+      read: "letto", failed: "fallito",
+    };
+    statusLabel = map[status] || status;
+  }
+  div.innerHTML =
+    esc(mm.body || "") +
+    '<div class="meta">' +
+      '<span class="role ' + esc(role) + '">' + esc(role) + "</span>" +
+      "<span>" + esc(fmtTime(mm.created_at || mm.sent_at)) + "</span>" +
+      (statusLabel ? "<span>· " + esc(statusLabel) + "</span>" : "") +
+    "</div>";
+  els.messages.appendChild(div);
+}
+
+function applyComposerState() {
+  els.bannerSlot.innerHTML = "";
+  els.btnTakeover.disabled = state.activeId == null || state.activeHumanHandling;
+  els.btnRelease.disabled = state.activeId == null || !state.activeHumanHandling;
+
+  if (state.activeId == null) {
+    els.reply.disabled = true; els.btnSend.disabled = true;
+    return;
+  }
+  if (!state.activeWindowOpen) {
+    els.reply.disabled = true; els.btnSend.disabled = true;
+    els.bannerSlot.innerHTML =
+      '<div class="banner">Finestra 24h chiusa — template non supportato</div>';
+    return;
+  }
+  els.reply.disabled = false;
+  els.btnSend.disabled = false;
+}
+
+// ===========================================================================
+// Send (optimistic: only ever 'pending'; backend is authoritative)
+// ===========================================================================
+async function sendReply() {
+  const text = els.reply.value.trim();
+  if (!text || state.activeId == null) return;
+  const idempotencyKey = crypto.randomUUID();
+  const id = state.activeId;
+
+  // Optimistic insert as PENDING (never 'delivered').
+  const optimistic = {
+    direction: "outbound", sender_role: "human", body: text,
+    status: "pending", idempotency_key: idempotencyKey, created_at: new Date().toISOString(),
+  };
+  state.pending.set(idempotencyKey, optimistic);
+  els.reply.value = "";
+  // Re-render current view immediately (cheap re-fetch not needed).
+  renderMsg(optimistic);
+  els.messages.scrollTop = els.messages.scrollHeight;
+
+  const { ok, status } = await postJson("/api/send", {
+    thread_id: id, text, idempotency_key: idempotencyKey,
+  });
+  if (String(state.activeId) !== String(id)) return; // switched away; next poll reconciles
+  if (!ok) {
+    // Mark failed immediately; the next poll will reconcile from the ledger.
+    optimistic.status = "failed";
+    optimistic._err = status;
+    rerenderPendingOnly();
+  }
+  // On success we leave it 'pending' until the poll shows the real status.
+}
+
+function rerenderPendingOnly() {
+  // Cheap path: re-render the whole conv from current DOM is complex; instead
+  // trigger an immediate poll which rebuilds messages + merges pending.
+  pollConv(false);
+}
+
+els.btnSend.addEventListener("click", sendReply);
+els.reply.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); }
+});
+
+els.btnTakeover.addEventListener("click", async () => {
+  if (state.activeId == null) return;
+  const { ok } = await postJson("/api/takeover", { thread_id: state.activeId });
+  if (ok) { state.activeHumanHandling = true; applyComposerState(); pollConv(false); pollThreads(); }
+});
+els.btnRelease.addEventListener("click", async () => {
+  if (state.activeId == null) return;
+  const { ok } = await postJson("/api/release", { thread_id: state.activeId });
+  if (ok) { state.activeHumanHandling = false; applyComposerState(); pollConv(false); pollThreads(); }
+});
+
+// ---- Boot ------------------------------------------------------------------
+pollThreads();
+setInterval(pollThreads, 5000);
+</script>
+</body>
+</html>

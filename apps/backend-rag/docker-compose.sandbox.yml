@@ -1,0 +1,97 @@
+# docker-compose.sandbox.yml — P3 Tier-1 SANDBOX overlay (FASE-1 of the SOTA meta-dev-loop)
+#
+# Spec: research/operations/specs/P3-test-prod-sandbox.md (§3.1, §3.2).
+#
+# This is an OVERLAY, applied ON TOP of docker-compose.test.yml:
+#
+#     docker compose \
+#       -f apps/backend-rag/docker-compose.test.yml \
+#       -f apps/backend-rag/docker-compose.sandbox.yml \
+#       up -d
+#
+# WHY an overlay and not Docker `profiles:` on the same file:
+#   The TEST path (apps/backend-rag/tests/integration/conftest.py via pytest-docker)
+#   uses ONLY docker-compose.test.yml and REQUIRES the datastores on the host
+#   network with published ports (Qdrant 6334, Redis 6380). Putting the datastores
+#   on `internal: true` would break that suite (gate G2 = suite identical). By
+#   keeping the base file BYTE-IDENTICAL and adding confinement here, G2 holds
+#   by construction: the file the CI uses does not change one line.
+#
+# WHAT this overlay adds (spec §3.1):
+#   - two networks: sandbox_internal (internal:true, NO external route) + egress
+#   - the datastores get ALSO attached to sandbox_internal (reachable by the agent)
+#   - sandbox-agent: where the LLM agent runs. ONLY on sandbox_internal -> no
+#     direct egress. All outbound forced through egress-proxy via HTTPS_PROXY.
+#   - egress-proxy: the SOLE container with a route outside. allowlist + DNS-confined
+#     + DLP (hosts scripts/_redact_pii.py at the network chokepoint).
+#
+# The confinement is the Docker network TOPOLOGY (host/daemon-controlled), NOT
+# iptables-in-the-container -> not bypassable by root inside sandbox-agent
+# (spec §3.1, closes Gemini P0 #1 root-bypass).
+
+networks:
+  sandbox_internal:
+    internal: true # no route to the outside world; host-controlled
+  egress: {} # external access — ONLY egress-proxy is attached here
+
+services:
+  # Datastores: keep base definition, ADD the internal network so the agent
+  # can reach them by service name (NO_PROXY covers these). Host ports from the
+  # base file remain for the TEST path / local inspection.
+  postgres-test:
+    networks: [sandbox_internal]
+  qdrant-test:
+    networks: [sandbox_internal]
+  redis-test:
+    networks: [sandbox_internal]
+
+  # The egress chokepoint. The ONLY container bridging sandbox_internal <-> egress.
+  egress-proxy:
+    build:
+      context: ../.. # repo root: needs scripts/_redact_pii.py
+      dockerfile: apps/backend-rag/sandbox/egress-proxy.Dockerfile
+    networks: [sandbox_internal, egress]
+    environment:
+      # Domains the agent legitimately needs (spec §3.2 filtro 1). Measured from
+      # real OAuth path, not guessed — refine against proxy logs before prod.
+      EGRESS_ALLOWLIST: >-
+        api.anthropic.com,github.com,codeload.github.com,pypi.org,
+        files.pythonhosted.org,registry.npmjs.org
+      # DLP fail-closed: if _redact_pii.py changes the body, PII was found -> 403.
+      DLP_ENABLED: "1"
+      # The proxy host has no Postgres; redactor runs with pg_url=None (static
+      # NPWP/KTP/passport passes only, no dynamic CRM-name pass). Documented
+      # limitation: dynamic CRM names are redacted in-app (P2), not at this edge.
+      REDACT_PG_DISABLED: "1"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import socket; socket.create_connection(('127.0.0.1', 8888), 2)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Where the LLM agent runs during active development. ONLY sandbox_internal:
+  # it physically has no route outside. Outbound is forced through the proxy.
+  sandbox-agent:
+    build:
+      context: ../..
+      dockerfile: apps/backend-rag/sandbox/sandbox-agent.Dockerfile
+    depends_on:
+      egress-proxy:
+        condition: service_healthy
+    networks: [sandbox_internal] # NO egress network -> no direct route out
+    environment:
+      HTTP_PROXY: http://egress-proxy:8888
+      HTTPS_PROXY: http://egress-proxy:8888
+      http_proxy: http://egress-proxy:8888
+      https_proxy: http://egress-proxy:8888
+      # Datastores are internal — never proxy them.
+      NO_PROXY: postgres-test,qdrant-test,redis-test,localhost,127.0.0.1
+      no_proxy: postgres-test,qdrant-test,redis-test,localhost,127.0.0.1
+    # Keep the container alive for `docker compose exec` (the gate pytests).
+    command: ["sleep", "infinity"]

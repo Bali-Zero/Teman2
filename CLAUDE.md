@@ -132,7 +132,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 
 - **Embedding model FROZEN**: `text-embedding-3-small` (1536 dims). Changing invalidates 93,283 vectors. NEVER change without re-indexing plan.
 - **KBLI flat payload**: fields `kode_kbli`, `judul`, `content`, `sektor_id`, `pma_status`, `skala_usaha`, `kategori_risiko`. Never nested.
-- **Evidence scoring thresholds**: `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL.
+- **Evidence scoring thresholds**: NOT a single flat 0.15 — the codebase has **two live abstain paths** (verified 2026-06-11, domanda #31). Global default `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL (`constants.py:96 ABSTAIN_THRESHOLD=0.15`, used by `reasoning.py` at ~11 sites). BUT the orchestrator path (`orchestrator_response.py:90`) uses **per-domain** `get_abstain_threshold(query)` from `reasoning_utils.py` — `tax:0.10`, `kbli:0.20`, `default:0.15` (overridable via env `DOMAIN_ABSTAIN_THRESHOLDS`). `reasoning.py` has ZERO refs to the domain fn → same query can abstain differently per path. SSOT consolidation = open (domanda #31).
 - **Vision model**: `qwen2.5vl:7b` ONLY for OCR/vision (qwen3.5 Q4_K_M strips vision weights). API: `"images": [base64]`.
 - **Ollama `think:false`** REQUIRED for Qwen 3.5 client (`backend/llm/ollama_client.py`).
 - **Cache invalidation**: `await invalidate_cache("zantara:namespace:*")` after EVERY mutation. Namespaces: `crm_clients_stats`, `crm_practices`.

@@ -14,6 +14,13 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PAT
 export WHATSAPP_OPENCLAW_BRIDGE_SECRET
 WHATSAPP_OPENCLAW_BRIDGE_SECRET="$(tr -d '\n\r' < "$SECRET_FILE")"
 
+# Army-command sender allowlist (digits-only, comma-separated). Only these
+# WhatsApp numbers may trigger /lancia & friends, which run an autonomous
+# `claude --dangerously-skip-permissions` on the Pro. UNSET in the bridge env
+# = deny-all (feature disabled). Default to the owner number; override by
+# exporting WA_ARMY_OWNERS before launch.
+export WA_ARMY_OWNERS="${WA_ARMY_OWNERS:-6282264599868}"
+
 exec "$UVICORN_BIN" \
   --app-dir "$HOME/.openclaw/bin" \
   openclaw_whatsapp_bridge:app \

@@ -11,6 +11,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import is_crm_admin, verify_client_access
 from backend.services.common.background import spawn
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,12 @@ router = APIRouter(prefix="/api/crm/companies", tags=["CRM Companies"])
 
 
 # ========== HELPER FUNCTIONS ==========
+
+
+def _require_crm_admin(current_user: dict) -> None:
+    """Require CRM admin privileges for company-level mutations."""
+    if not is_crm_admin(current_user):
+        raise HTTPException(status_code=403, detail="CRM admin access required")
 
 
 def company_record_to_dict(record: asyncpg.Record) -> dict:
@@ -116,6 +123,7 @@ async def create_company(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Create a new company"""
+    _require_crm_admin(current_user)
     user_email = current_user.get("email", "system")
 
     query = """
@@ -343,6 +351,7 @@ async def update_company(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Update company details"""
+    _require_crm_admin(current_user)
     user_email = current_user.get("email", "system")
 
     # Build dynamic update query
@@ -405,6 +414,7 @@ async def delete_company(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Delete a company"""
+    _require_crm_admin(current_user)
     async with db.acquire() as conn:
         result = await conn.execute("DELETE FROM companies WHERE id = $1", company_id)
         if result == "DELETE 0":
@@ -472,6 +482,14 @@ async def link_client_to_company(
         if not exists:
             raise HTTPException(status_code=404, detail="Company not found")
 
+        await verify_client_access(
+            client_id,
+            current_user,
+            conn,
+            allow_assigned=True,
+            write=True,
+        )
+
         # Check if link already exists
         existing = await conn.fetchrow(
             "SELECT 1 FROM client_company_links WHERE client_id = $1 AND company_id = $2",
@@ -514,6 +532,14 @@ async def unlink_client_from_company(
 ) -> dict[str, Any]:
     """Remove link between client and company"""
     async with db.acquire() as conn:
+        await verify_client_access(
+            client_id,
+            current_user,
+            conn,
+            allow_assigned=True,
+            write=True,
+        )
+
         result = await conn.execute(
             "DELETE FROM client_company_links WHERE client_id = $1 AND company_id = $2",
             client_id,
@@ -592,6 +618,7 @@ async def create_company_document(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Add a document to a company"""
+    _require_crm_admin(current_user)
     user_email = current_user.get("email", "system")
 
     async with db.acquire() as conn:
@@ -642,6 +669,7 @@ async def delete_company_document(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Delete a company document"""
+    _require_crm_admin(current_user)
     async with db.acquire() as conn:
         result = await conn.execute(
             "DELETE FROM company_documents WHERE id = $1 AND company_id = $2",
@@ -776,6 +804,7 @@ async def sync_company_drive_folder(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
+    _require_crm_admin(current_user)
     Scan the company's Google Drive folder and upsert files into company_documents.
     Files already tracked (by google_drive_file_id) are skipped.
     Returns a summary: {added, skipped, total, docs}.

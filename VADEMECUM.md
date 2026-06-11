@@ -393,7 +393,8 @@ Prima di ogni PR, commit, o deploy, rispondi a queste 5:
 5. **Zero come ultima istanza** — decisioni strutturali via Telegram. L'organismo propone, non decide.
 6. **Sovranità locale** — vive su Pro (48GB) e Air (16GB). Disconnessione internet = stato naturale.
 7. **Numeri prima** — senza metrica non è un miglioramento. Senza before/after non è evoluzione.
-8. **Legge 8 (aggiunta 2026-04-12)** — ogni elemento nuovo deve rispondere alle 5 domande universali prima di esistere.
+
+> **+ Le 5 domande prima di costruire** (NON una legge — è il complemento operativo delle 7 leggi, agg. 2026-04-12): ogni elemento nuovo deve rispondere alle 5 domande universali prima di esistere. SYMBIOSIS.md è la fonte di verità: **7 leggi inviolabili + 5 domande**, non 8 leggi (F44).
 
 ---
 

@@ -1,0 +1,32 @@
+# DESC: S16 — SOTA multi-agent architecture 2026 (ONDA 1, Mini acct2, agy+WebSearch)
+ORCHESTRATORE sessione S16 "sota-multiagent-2026". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane docs --task-id s16-sota
+  cd .worktrees/docs-s16-sota
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI. + numeri prima (Legge 7): ogni tecnica proposta con benchmark/evidenza, non
+"sembra meglio".
+
+MISSIONE: esiste research/operations/2026-05-24-sota-multi-agent-repo-architecture-
+synthesis.md + il fresco 2026-06-02-sota-army-topology.md. Aggiorna allo stato-dell'arte
+2026: cosa c'è di nuovo in orchestration multi-agente oltre il nostro broker+worktree+
+orchestrator-worker? Cosa adottare DI CONCRETO?
+
+TOPOLOGIA:
+- ASSALITORI (deep-research skill + agy long-context per ingerire paper/repo SOTA +
+  WebSearch/WebFetch, fan-out multi-modale): cerca per angolo (topology, failure-mode,
+  coordination-primitive, benchmark agent-count).
+- ANALISTI (adversarial, 2/3 vote): verifica ogni claim — no hype, fonti primarie. Killa
+  le claim non verificabili. NOTA: il workflow deep-research ha un bug nel verify-stage
+  (vota 0-0 abstain) — giudica le claim sul merito-fonte, non sul verdetto automatico.
+- SINTESI (Claude opus): cosa applicare al NOSTRO sistema (federation_orchestrator,
+  agent_start, Workflow patterns). Spec di adozione, non rassegna accademica.
+- MECCANICO (1, serial): research/operations/2026-06-02-sota-multiagent-FROZEN.json +
+  report con top-N tecniche adottabili. commit → push → PR draft → STOP.
+
+OUTPUT: FROZEN + report azionabile. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S16 <numero-PR-o-url>

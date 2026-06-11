@@ -1,0 +1,30 @@
+# DESC: S9 — Client case dossier: i casi aperti (ONDA 3, Codex-heavy)
+ORCHESTRATORE sessione S9 "client-case-dossier". Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane docs --task-id s9-client-cases
+  cd .worktrees/docs-s9-client-cases
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI.
+
+MISSIONE: casi cliente reali in research/visa/clients/ + caso Marc Buckner C5a/E33G barter
+(research/visa/2026-05-31). Dossier completi + quote per i casi attivi.
+
+⚠️ ATTENZIONE scar S3-redteam: client-case-quote-generator ha 6 difetti strutturali
+(STRUCT-1 no PricingTool, STRUCT-2 deepseek-reasoner deprecato→flash silente). QUINDI:
+
+TOPOLOGIA:
+- ASSALITORI: visa-eligibility per caso (NB-2 ground-truth bipolar verifier) + cost
+  (SOLO via PricingTool/calculate_pricing MCP, MAI user-input/DeepSeek) + timeline + risk
+  + deliverable.
+- ANALISTI: math su deepseek-v4-pro ESPLICITO (mai -reasoner alias → flash silente).
+  devils-advocate gate pre-output OBBLIGATORIO.
+- MECCANICO (1, serial): N dossier PDF (bali-zero-brand internal-print-a4) +
+  research/visa/clients/S9-cases-FROZEN.json. commit → push → PR draft → STOP.
+
+VINCOLI: quote NON send-ready senza PricingTool verde + devils-advocate PASS. Se
+PricingTool RBAC-blocca (role unknown) → NEEDS-ANTONELLO. OUTPUT: dossier + FROZEN. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S9 <numero-PR-o-url>

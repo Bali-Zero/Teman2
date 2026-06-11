@@ -133,6 +133,9 @@ google_credentials.json
 
 # AI/dev tooling (local state)
 .cursor/
+# Codex CLI local config: MCP server map + hooks carrying absolute /Users
+# paths and Keychain/secret references — machine-local, never versioned.
+.codex/
 .libs/
 **/.claude/settings.local.json
 **/.claude/locks/
@@ -296,6 +299,17 @@ env.production
 # Existing *.local patterns did NOT cover .local.tsv / .local.jsonl; this closes the leak.
 *.local.*
 research/personal/wa-corpus/
+# Client-PII research artifacts (named-client cases must NEVER reach cloud GitHub/Vercel).
+# Added 2026-06-05 after cc-setup self-audit found research/visa/clients/ un-ignored
+# holding a real client file (marc-buckner) one `git add -A` away from the cloud.
+research/*/clients/
+research/**/*-case.md
+research/**/*-guidance.html
+research/**/*-guidance.pdf
+
+# plist-snapshot DR mirror — lives ONLY on the chore/plist-snapshot-dr branch
+# (force-added there by plist_snapshot_dr.sh); ignored on every working branch.
+infra/launchagents/_snapshot-live/
 
 # ========================================
 # SECURITY FIXES (2026-01-11)
@@ -711,3 +725,14 @@ apps/mouth/scripts/output/
 
 # Generated artifacts from analysis scripts
 apps/mouth/scripts/output/
+
+# Root-level runtime cache (cache/projects.json from WR2 cron) — blocks the
+# deploy worktree ff-only pull when untracked. Root-anchored so it does NOT
+# match vendor/evoskill/src/cache/ (tracked).
+/cache/
+apps/evaluator/.rag-eval-prod.env
+
+# pytest-testmon local coverage→test dependency map (per-machine, never shared).
+# Added 2026-06-09 (scripts/fast-gate.sh, 4-LLM panel ship #1).
+.testmondata
+.testmondata-*

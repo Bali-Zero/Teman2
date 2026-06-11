@@ -1,0 +1,109 @@
+name: Verify the Verifiers (meta-gate)
+
+# P1 §4 meta-verifier: makes it OBSERVABLE when any safety gate is DISARMED.
+# Runs on an ISOLATED GitHub runner (R1, council DeepSeek): the agent cannot
+# disarm this from its local machine. The integrity step (sha256) + CODEOWNERS
+# protection on the three files make the meta-verifier itself tamper-evident —
+# "quis custodiet ipsos custodes?" answered by immutability, not by intelligence.
+
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-09): the top-level
+# pull_request `paths:` filter was REMOVED so this workflow ALWAYS triggers on
+# pull_request and can therefore be a required-status-check WITHOUT the
+# pending-forever trap (a paths-filtered required check never reports on a
+# path-miss PR and blocks merge — W69). The relevant-paths decision now lives
+# in the "Did relevant paths change?" step below, and the expensive WORK steps
+# are gated on its output. On a path-miss PR the job ENDS success (sentinel).
+# The push trigger keeps its paths filter (push only fires when work is needed).
+on:
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_the_verifiers.py"
+      - "scripts/verify_the_verifiers_gates.yaml"
+      - ".github/workflows/hot-zone-pr-gate.yml"
+
+concurrency:
+  group: verify-the-verifiers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-the-verifiers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so the path-diff sees the PR base
+
+      # BUCO #1 sentinel: decide whether the meta-verifier's RELEVANT paths
+      # changed in this PR. Dependency-free git diff (no third-party action — this
+      # is a TIER-1 anti-injection file). The regex is the EXACT original
+      # pull_request `paths:` list, each anchored ^...$. On a push event (already
+      # paths-filtered at the trigger) or any non-PR event, run=true so the gate
+      # never silently skips real work.
+      - name: Did relevant paths change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full meta-verifier"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(scripts/verify_the_verifiers\.py|scripts/verify_the_verifiers_gates\.yaml|\.github/verify-the-verifiers\.sha256|\.github/workflows/verify-the-verifiers\.yml|\.github/workflows/hot-zone-pr-gate\.yml|scripts/tests/test_verify_the_verifiers\.py)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no relevant paths changed — sentinel success"
+          fi
+
+      - uses: actions/setup-python@v6
+        if: steps.relevant.outputs.run == 'true'
+        with:
+          python-version: "3.11"
+
+      - name: Install deps (pyyaml + pytest)
+        if: steps.relevant.outputs.run == 'true'
+        run: python3 -m pip install --quiet pyyaml pytest
+
+      # R1 — integrity: the meta-verifier must not be silently altered. Recompute
+      # the sha256 of script+registry and compare to the committed value. A change
+      # to either file WITHOUT updating the committed hash (which is CODEOWNERS-
+      # protected) fails here. Legit changes update .github/verify-the-verifiers.sha256
+      # in the same PR — which requires @Balizero1987 review.
+      - name: Integrity check (sha256 of meta-verifier files)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          EXPECTED_FILE=".github/verify-the-verifiers.sha256"
+          if [[ ! -f "$EXPECTED_FILE" ]]; then
+            echo "::error::missing $EXPECTED_FILE — meta-verifier integrity baseline absent"
+            exit 1
+          fi
+          # shasum over the two load-bearing files, sorted for determinism.
+          ACTUAL=$(shasum -a 256 \
+            scripts/verify_the_verifiers.py \
+            scripts/verify_the_verifiers_gates.yaml | sort | shasum -a 256 | awk '{print $1}')
+          EXPECTED=$(cat "$EXPECTED_FILE")
+          if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "::error::meta-verifier integrity mismatch."
+            echo "  expected: $EXPECTED"
+            echo "  actual:   $ACTUAL"
+            echo "  If this change is intentional, update $EXPECTED_FILE (requires @Balizero1987 review)."
+            exit 1
+          fi
+          echo "integrity OK: $ACTUAL"
+
+      - name: Run meta-verifier tests
+        if: steps.relevant.outputs.run == 'true'
+        run: python3 -m pytest scripts/tests/test_verify_the_verifiers.py -q
+
+      # --scope repo: a CI runner has no ~/.claude/ hooks, so the local-scope
+      # claude_hook gates are SKIPPED (not DISARMED) here. The repo-scope gates
+      # (CI workflows + lint scripts) ARE in the checkout and fully verified.
+      # Local hooks are verified by the FASE-6 local cron (dead-man's-switch consumer).
+      - name: Run meta-verifier (repo-scope gates must be ARMED)
+        if: steps.relevant.outputs.run == 'true'
+        run: python3 scripts/verify_the_verifiers.py --json --no-signal --scope repo

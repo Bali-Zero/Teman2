@@ -11,12 +11,48 @@ import asyncio
 import hashlib
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 from dateutil import parser as date_parser
+
+# Timezone-safety helpers (fix 2026-06-06, validated by Codex+DeepSeek panel).
+# Root cause of the published_at bug: datetime.now() returns a NAIVE local-WITA
+# timestamp; asyncpg binds it to TIMESTAMPTZ assuming UTC -> every date lands +8h
+# in the future. Rules enforced here:
+#   - scraped_at: always UTC-aware (utc_now_iso()).
+#   - published_at: parse the source date; if it has an offset use it; if it is
+#     naive (date-only / no tz) assume Asia/Makassar (Indonesian local) EXPLICITLY,
+#     never leave it naive; always emit UTC-aware ISO. No source date -> None
+#     (never fall back to scraped_at — "when we saw it" != "when it was published").
+_WITA = ZoneInfo("Asia/Makassar")  # UTC+8, Indonesia has no DST
+
+
+def utc_now_iso() -> str:
+    """Current time as a UTC-aware ISO string (replaces naive datetime.now())."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def normalize_published(raw: str) -> Optional[str]:
+    """Normalize a source publication date to a UTC-aware ISO string, or None.
+
+    Returns None when raw is empty/unparseable so the caller stores NULL rather
+    than masking the absence with scraped_at.
+    """
+    if not raw:
+        return None
+    try:
+        dt = date_parser.parse(raw)
+    except (ValueError, OverflowError, TypeError):
+        return None
+    if dt.tzinfo is None:
+        # Source gave a bare date / local time with no offset -> assume Indonesian
+        # local time explicitly (the publishers we scrape are Indonesian).
+        dt = dt.replace(tzinfo=_WITA)
+    return dt.astimezone(timezone.utc).isoformat()
 
 try:
     import feedparser
@@ -215,7 +251,8 @@ class UnifiedScraper:
                 'source_url': source.get('url', ''),
                 'category': source.get('category', ''),
                 'tier': source.get('tier', 'T3'),
-                'scraped_at': datetime.now().isoformat()
+                'published_at': normalize_published(entry.get('published', '')),
+                'scraped_at': utc_now_iso()
             }
         except Exception as e:
             logger.warning(f'  Feed entry error: {e}')
@@ -263,7 +300,8 @@ class UnifiedScraper:
                             'published': published,
                             'source_name': source.get('name',''), 'source_url': source.get('url',''),
                             'category': source.get('category',''), 'tier': source.get('tier','T3'),
-                            'scraped_at': datetime.now().isoformat(),
+                            'published_at': normalize_published(published),
+                            'scraped_at': utc_now_iso(),
                         }
                 except Exception:
                     pass
@@ -391,7 +429,7 @@ class UnifiedScraper:
                             'source_url': source.get('url', ''),
                             'category': source.get('category', 'social_media'),
                             'tier': source.get('tier', 'T2'),
-                            'scraped_at': datetime.now().isoformat(),
+                            'scraped_at': utc_now_iso(),
                         })
             return res
         except Exception as e:
@@ -417,7 +455,7 @@ class UnifiedScraper:
                         'source_url': source.get('url', ''),
                         'category': source.get('category', 'social_media'),
                         'tier': source.get('tier', 'T3'),
-                        'scraped_at': datetime.now().isoformat(),
+                        'scraped_at': utc_now_iso(),
                     })
             return res
         except Exception as e:
@@ -443,7 +481,7 @@ class UnifiedScraper:
                             'source_url': source.get('url', ''),
                             'category': source.get('category', 'social_media'),
                             'tier': source.get('tier', 'T3'),
-                            'scraped_at': datetime.now().isoformat(),
+                            'scraped_at': utc_now_iso(),
                         })
             return res
         except Exception as e:
