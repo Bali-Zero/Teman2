@@ -914,6 +914,8 @@ async def ensure_drive_folder(
         _report_drive_folder_failure(client_id, row["full_name"], row["client_type"], err)
         raise HTTPException(status_code=502, detail=str(err))
 
+    # F32: ensure-drive-folder was the only mutating endpoint here without invalidation
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {
         "created": True,
         "client_id": client_id,
