@@ -148,14 +148,19 @@ def _salvage_thinking(thinking: str) -> str:
     return stripped if len(stripped) >= 20 else ""
 
 
-async def _ollama_vision(model: str, png_b64: str) -> tuple[str, str | None]:
+async def _ollama_vision(
+    model: str,
+    png_b64: str,
+    prompt: str = _OCR_PROMPT,
+    num_predict: int = OCR_NUM_PREDICT,
+) -> tuple[str, str | None]:
     """Single /api/generate vision call. Returns (response_text, thinking_text)."""
     payload: dict[str, Any] = {
         "model": model,
-        "prompt": _OCR_PROMPT,
+        "prompt": prompt,
         "images": [png_b64],
         "stream": False,
-        "options": {"temperature": 0.0, "num_predict": OCR_NUM_PREDICT},
+        "options": {"temperature": 0.0, "num_predict": num_predict},
         # CLAUDE.md S9: qwen 3.x family needs think:false. qwen3-vl ignores it
         # for vision (empirically still reasons) but qwen2.5vl honours it.
         "think": False,
@@ -275,6 +280,7 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("republic of indonesia", 0.3),
         ("republik indonesia", 0.2),
         ("p<idn", 0.6),  # MRZ line for Indonesian passport
+        ("p<", 0.35),  # generic MRZ TD3 lead-in (any nationality's passport)
         ("date of expiry", 0.2),
         ("nomor paspor", 0.5),
     ],
@@ -285,6 +291,7 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("provinsi", 0.15),
         ("golongan darah", 0.2),
         ("kewarganegaraan", 0.15),
+        ("tempat/tgl lahir", 0.3),  # KTP-specific field label
     ],
     "npwp": [
         ("nomor pokok wajib pajak", 0.6),
@@ -321,6 +328,7 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("kitas", 0.55),
         ("izin tinggal terbatas", 0.6),
         ("kartu izin tinggal", 0.5),
+        ("limited stay permit", 0.55),  # English title printed on the card
         ("itas", 0.2),
         ("imigrasi", 0.2),
     ],
@@ -345,9 +353,81 @@ def _score_types(text: str) -> dict[str, float]:
     return scores
 
 
+# ---------------------------------------------------------------------------
+# Vision classification fallback (keyword score below the unknown floor)
+# ---------------------------------------------------------------------------
+
+# Confidence CAP for a vision-only classification: always in the review band,
+# NEVER enough to auto-commit (the gate needs >= human review on vision alone).
+VISION_CLASSIFY_CONF = 0.55
+
+# One constrained call. qwen2.5vl:7b is used directly (NOT the qwen3-vl
+# primary): the 2026-06-04 empirical finding above shows qwen3-vl buries its
+# answer in `thinking` and returns `response` empty — useless for a
+# single-token contract. qwen2.5vl honours think:false and answers cleanly.
+# Both are local Ollama — 0 bytes to cloud (Law 2).
+_VISION_CLASSIFY_MODEL = _OCR_FALLBACK
+_VISION_CLASSIFY_NUM_PREDICT = 16
+
+_VISION_CLASSIFY_PROMPT = (
+    "You are classifying an Indonesian administrative document image. "
+    "Answer with EXACTLY ONE word from this list: "
+    + ", ".join(DOC_TYPES)
+    + ". If you are not sure, answer: unknown. "
+    "One word only — no punctuation, no explanation."
+)
+
+# Exact-member acceptance: strip surrounding punctuation/whitespace, lowercase.
+_VISION_ANSWER_RE = re.compile(r"[a-z_]+")
+
+
+def _parse_vision_answer(raw: str | None) -> str | None:
+    """Accept ONLY an exact DOC_TYPES member (case-insensitive); else None.
+
+    The contract is a single token; we tolerate surrounding whitespace or a
+    trailing period, but a sentence ("this is a passport") is rejected — the
+    whole cleaned answer must be exactly one type token.
+    """
+    if not raw:
+        return None
+    cleaned = raw.strip().strip(".,:;!\"'`").lower()
+    if not _VISION_ANSWER_RE.fullmatch(cleaned):
+        return None
+    return cleaned if cleaned in DOC_TYPES else None
+
+
+async def _vision_classify_first_page(png_bytes: bytes) -> str | None:
+    """ONE local vision call to type a document the keywords could not.
+
+    Returns a DOC_TYPES member or None. NEVER raises: any error/timeout/
+    non-conforming answer degrades to None (caller keeps "unknown").
+    """
+    try:
+        b64 = base64.b64encode(png_bytes).decode("ascii")
+        resp, thinking = await asyncio.wait_for(
+            _ollama_vision(
+                _VISION_CLASSIFY_MODEL,
+                b64,
+                prompt=_VISION_CLASSIFY_PROMPT,
+                num_predict=_VISION_CLASSIFY_NUM_PREDICT,
+            ),
+            timeout=OCR_PAGE_TIMEOUT_SECONDS,
+        )
+    except Exception as exc:
+        logger.warning("vision classify fallback failed: %s", exc)
+        return None
+    # Prefer the clean response; tolerate a thinking-only model defensively.
+    answer = _parse_vision_answer(resp) or _parse_vision_answer(thinking)
+    if answer:
+        logger.info("vision classify fallback answered type=%s", answer)
+    return answer
+
+
 async def classify_document(
     ocr_text: str | None,
     pages: list[dict[str, Any]] | None = None,
+    *,
+    first_page_png: bytes | None = None,
 ) -> dict[str, Any]:
     """Classify a document from OCR text. Local-only, anti-hallucination.
 
@@ -355,34 +435,40 @@ async def classify_document(
         ocr_text: concatenated OCR text (all pages). If None, derived from pages.
         pages: per-page OCR dicts from ``ocr_pages`` (used to attribute the
                winning evidence to a specific source page).
+        first_page_png: optional raw PNG bytes of the FIRST page. When the
+               keyword score lands below the unknown floor, ONE constrained
+               local vision call (:func:`_vision_classify_first_page`) gets a
+               chance to type the document — confidence capped at
+               ``VISION_CLASSIFY_CONF`` (review band, never auto-commit).
 
     Returns:
         {"type": str, "confidence": float, "source_page": int|None,
          "scores": dict}  -- type is "unknown" with confidence 0.0 when no
-        evidence clears the floor. Never fabricates a type.
+        evidence clears the floor. A vision-typed result additionally carries
+        {"via": "vision_fallback"}. Never fabricates a type.
     """
     pages = pages or []
     if ocr_text is None:
         ocr_text = "\n".join(p.get("text", "") for p in pages)
 
-    if not ocr_text or not ocr_text.strip():
-        return {"type": "unknown", "confidence": 0.0, "source_page": None, "scores": {}}
+    scores = _score_types(ocr_text) if ocr_text and ocr_text.strip() else {}
+    best_type = max(scores, key=scores.get) if scores else None
+    best_score = scores[best_type] if best_type is not None else 0.0
 
-    scores = _score_types(ocr_text)
-    if not scores:
-        return {"type": "unknown", "confidence": 0.0, "source_page": None, "scores": {}}
-
-    best_type = max(scores, key=scores.get)
-    best_score = scores[best_type]
-
-    # Anti-hallucination floor: weak evidence -> unknown, not a guess.
-    if best_score < 0.30:
-        return {
-            "type": "unknown",
-            "confidence": 0.0,
-            "source_page": None,
-            "scores": scores,
-        }
+    # Anti-hallucination floor: weak keyword evidence -> NOT a guess. One local
+    # vision attempt (catalog v2) may still type it — capped in the review band.
+    if best_type is None or best_score < 0.30:
+        if first_page_png is not None:
+            vtype = await _vision_classify_first_page(first_page_png)
+            if vtype and vtype != "unknown":
+                return {
+                    "type": vtype,
+                    "confidence": VISION_CLASSIFY_CONF,
+                    "source_page": pages[0].get("page") if pages else None,
+                    "scores": scores,
+                    "via": "vision_fallback",
+                }
+        return {"type": "unknown", "confidence": 0.0, "source_page": None, "scores": scores}
 
     # Attribute evidence to the page that contains the strongest phrase for the
     # winning type (where the type signal physically appears).
@@ -504,7 +590,8 @@ async def _run_classify_stage(pool: asyncpg.Pool, job: dict) -> dict:
     pre = await _pre.preprocess_blob(blob_path, declared_mime=declared_mime)
     ocr = await ocr_pages(pre.pages)
     full_text = "\n".join(p["text"] for p in ocr)
-    cls = await classify_document(full_text, ocr)
+    first_png = getattr(pre.pages[0], "png_bytes", None) if pre.pages else None
+    cls = await classify_document(full_text, ocr, first_page_png=first_png)
 
     return {
         "doc_type": cls["type"],
@@ -516,4 +603,5 @@ async def _run_classify_stage(pool: asyncpg.Pool, job: dict) -> dict:
         "mime": pre.mime,
         "preprocess_notes": pre.notes,
         "type_scores": cls["scores"],
+        "classified_via": cls.get("via", "keywords"),
     }
