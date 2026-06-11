@@ -12,6 +12,7 @@ Tests:
 import os
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
@@ -186,8 +187,8 @@ class TestInstagramAdapter:
         self,
         adapter: InstagramChannelAdapter,
     ) -> None:
-        # entry is not a list -> IndexError
-        with pytest.raises(Exception):
+        # "entry" is a string not a list of dicts → entry[0] is a char → .get() fails
+        with pytest.raises((AttributeError, IndexError, TypeError)):
             await adapter.receive_message({"entry": "bad"})
 
     async def test_send_response(
@@ -233,6 +234,32 @@ class TestInstagramAdapter:
         # Adapter re-raises exceptions for DLQ routing via send_response_safe()
         with pytest.raises(Exception, match="API down"):
             await adapter.send_response("123", simple_response)
+
+    async def test_send_response_raises_on_meta_4xx(
+        self,
+        adapter: InstagramChannelAdapter,
+        simple_response: ChannelResponse,
+    ) -> None:
+        """F07: Meta 4xx must raise — must NOT log success and silently discard the reply.
+
+        Before the fix, await self.client.post(...) returned without a status
+        check so a 400 was logged as success.  After the fix, raise_for_status()
+        propagates the HTTPStatusError before the success log is reached.
+        """
+        error_response = MagicMock()
+        error_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "400 Bad Request",
+            request=MagicMock(),
+            response=MagicMock(status_code=400),
+        )
+        adapter.client = AsyncMock()
+        adapter.client.post = AsyncMock(return_value=error_response)
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await adapter.send_response("123", simple_response)
+
+        # mark_seen must NOT have been called — exception propagated before it
+        assert adapter.client.post.call_count == 1
 
     async def test_send_status_update_noop(
         self,
