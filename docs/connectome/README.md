@@ -47,9 +47,15 @@ apps/backend-rag/.venv/bin/python scripts/verify_connectome.py --no-ssh   # loca
 apps/backend-rag/.venv/bin/python scripts/verify_connectome.py --json /tmp/connectome.json
 ```
 
-Exit 1 ⇔ at least one REGRESSED edge. Designed for a future cron (NOT installed —
-new cron requires operator authorization per AUTONOMOUS_OPS); recommended cadence:
-daily on Pro, weekly on M5.
+Exit 1 ⇔ at least one REGRESSED edge.
+
+**Cron (authorized by Antonello 2026-06-13):** `com.nuzantara.verify-connectome`
+via `infra/launchagents/install_verify_connectome.sh` —
+daily 07:30 WITA on the Pro (runtime home `~/Desktop/nuzantara-deploy`) and
+weekly Monday 08:30 on M5 (covers m5-local edges the Pro cannot probe).
+Wrapper `scripts/verify_connectome_run.sh` writes the alive-signal
+`~/.agent/decisions/state/verify_connectome.json` (deadman-family convention)
+and sends one Telegram alert per run when any edge is REGRESSED.
 
 ## Maintenance rules
 
