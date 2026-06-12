@@ -139,6 +139,18 @@ def _expand(path: str, via: str) -> str:
     return os.path.expanduser(path) if via == "local" else path
 
 
+def _normalize_via(via: str, this_machine: str) -> str:
+    """An explicit ssh:<alias> that points at THIS machine must run locally.
+
+    The alias only resolves from OTHER machines (e.g. pro-lan exists on M5,
+    not on the Pro itself) — without this, a Pro-side cron self-ssh-fails
+    every pro-edge into a false REGRESSED.
+    """
+    if via.startswith("ssh:") and SSH_HOSTS.get(this_machine) == via.split(":", 1)[1]:
+        return "local"
+    return via
+
+
 def run_probe(edge: dict[str, Any], no_ssh: bool, this_machine: str) -> ProbeResult | None:
     """Return ProbeResult, or None if the edge has no runnable probe."""
     probe = edge.get("probe")
@@ -160,7 +172,7 @@ def run_probe(edge: dict[str, Any], no_ssh: bool, this_machine: str) -> ProbeRes
     if probe is None:
         return None
 
-    via = probe.get("via", "local")
+    via = _normalize_via(probe.get("via", "local"), this_machine)
     ptype = probe.get("type", "cmd")
 
     if ptype == "cmd":
@@ -224,7 +236,8 @@ def run_probe(edge: dict[str, Any], no_ssh: bool, this_machine: str) -> ProbeRes
             r = _run(f"md5 -q {shlex.quote(path)}", pvia, no_ssh)
             return r.detail.split()[0] if r.ok and r.detail else None
 
-        via_a, via_b = probe.get("via_a", via), probe.get("via_b", via)
+        via_a = _normalize_via(probe.get("via_a", via), this_machine)
+        via_b = _normalize_via(probe.get("via_b", via), this_machine)
         ha, hb = _md5(pa, via_a), _md5(pb, via_b)
         if ha is None or hb is None:
             return ProbeResult(False, f"missing copy a={ha is not None} b={hb is not None}")
