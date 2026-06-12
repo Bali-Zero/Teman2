@@ -53,7 +53,7 @@ import re
 import sys
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -117,6 +117,46 @@ def normalize_ref_code(raw: str) -> str:
 def validate_ig_url(url: str) -> bool:
     """True iff `url` looks like a real instagram post/reel/tv permalink."""
     return bool(_IG_URL_RE.match(url.strip()))
+
+
+_IG_SHORTCODE_RE = re.compile(
+    r"instagram\.com/(?:p|reel|tv)/([A-Za-z0-9_-]+)", re.IGNORECASE
+)
+
+
+def extract_ig_shortcode(url: str) -> Optional[str]:
+    """Return the IG shortcode (the /p/<code>/ segment) of a permalink, else None."""
+    m = _IG_SHORTCODE_RE.search(url.strip())
+    return m.group(1) if m else None
+
+
+def build_external_item(
+    ig_url: str, published_at_iso: str, topic: Optional[str] = None
+) -> dict[str, Any]:
+    """Build a fresh, published queue item for an EXTERNALLY-published IG post.
+
+    Used for posts published by hand (e.g. by Zero) that never went through the
+    WR2 pipeline — there is no pre-existing queue item to advance, so we mint
+    one already in the scraper-consumable `published` shape. The id is
+    `ig-<shortcode>` (deterministic from the URL → idempotent). `external=True`
+    and `source="manual_external"` flag it so the IG analyst knows it lacks the
+    full WR2 attributes (archetype/domain/audience).
+    """
+    url = ig_url.strip()
+    shortcode = extract_ig_shortcode(url) or hashlib.sha1(url.encode()).hexdigest()[:8]
+    return {
+        "item_id": f"ig-{shortcode}",
+        "topic": topic or f"(external IG post {shortcode})",
+        "state": "published",
+        "instagram_post_url": url,
+        "instagram_published_at": published_at_iso,
+        "engagement_metrics": None,
+        "damar_action": "published",
+        "damar_action_at": published_at_iso,
+        "external": True,
+        "source": "manual_external",
+        "created_at": published_at_iso,
+    }
 
 
 def find_by_ref_code(
@@ -265,6 +305,52 @@ def mark_published(
     return PublishResult("published", True, ref, iid, f"published at {published_iso}")
 
 
+def ingest_external_post(
+    path: Path,
+    ig_url: str,
+    topic: Optional[str] = None,
+    published_at: Optional[str] = None,
+    now: Optional[datetime] = None,
+) -> PublishResult:
+    """Register an externally-published IG post (no pre-existing queue item).
+
+    For posts published by hand (e.g. by Zero) that bypassed the WR2 pipeline.
+    Mints a fresh `published` item (id `ig-<shortcode>`) so the scraper collects
+    its metrics. Idempotent on the IG URL: re-ingesting the same post is a no-op.
+
+    Default `published_at` is 25h in the past so the post is IMMEDIATELY eligible
+    for the scraper (which skips items <24h old) — these posts are already live,
+    we are not waiting for a fresh-publish window. Pass `--at` with the real
+    publication date when known.
+
+    Returns PublishResult with ref_code = compute_ref_code of the minted id.
+      * invalid_url     — not an IG permalink -> NO write
+      * already_present — a published item with the SAME url already exists -> no-op
+      * ingested        — minted + written atomically -> WRITE
+    """
+    url = ig_url.strip()
+    if not validate_ig_url(url):
+        return PublishResult("invalid_url", False, "", detail=f"not an IG permalink: {ig_url!r}")
+
+    items = load_queue(path)
+    for existing in items:
+        if (existing.get("instagram_post_url") or "").strip() == url:
+            iid = item_id_of(existing)
+            return PublishResult(
+                "already_present", True, compute_ref_code(iid or url), iid,
+                "no-op: this IG URL is already registered",
+            )
+
+    published_iso = published_at or (
+        (now or datetime.now(timezone.utc)) - timedelta(hours=25)
+    ).isoformat()
+    new_item = build_external_item(url, published_iso, topic=topic)
+    items.append(new_item)
+    write_queue_atomic(path, items)
+    iid = new_item["item_id"]
+    return PublishResult("ingested", True, compute_ref_code(iid), iid, f"registered external post {iid}")
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────
 
 
@@ -313,6 +399,13 @@ def _cmd_mark_published(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _cmd_ingest_external(args: argparse.Namespace) -> int:
+    path = _resolve_queue_path(args.queue)
+    result = ingest_external_post(path, args.ig_url, topic=args.topic, published_at=args.at)
+    print(json.dumps(result.as_dict(), ensure_ascii=False))
+    return 0 if result.ok else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="WR2 publish-feedback queue writer")
     p.add_argument("--queue", help="path to human-review-queue.json (default: env WR2_QUEUE_PATH or standard)")
@@ -331,6 +424,15 @@ def build_parser() -> argparse.ArgumentParser:
     mp.add_argument("ig_url")
     mp.add_argument("--at", help="ISO timestamp of publication (default: now UTC)")
     mp.set_defaults(func=_cmd_mark_published)
+
+    ie = sub.add_parser(
+        "ingest-external",
+        help="register an externally-published IG post (no pre-existing queue item)",
+    )
+    ie.add_argument("ig_url")
+    ie.add_argument("--topic", help="human label for the post (default: auto from shortcode)")
+    ie.add_argument("--at", help="ISO publication date (default: 25h ago, so it's immediately scraper-eligible)")
+    ie.set_defaults(func=_cmd_ingest_external)
     return p
 
 

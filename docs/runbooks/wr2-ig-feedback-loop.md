@@ -79,6 +79,72 @@ The scraper picks the item up on its next daily run, ≥24h after `published_at`
 
 ---
 
+## Externally-published posts (STRATO 3 — posts NOT from the WR2 pipeline)
+
+For IG posts published BY HAND (e.g. by Zero) that never went through the WR2
+pipeline, there is no queue item to advance — so mint a fresh `published` item
+directly from the URL:
+
+```bash
+python scripts/wr2_queue_writer.py ingest-external https://instagram.com/p/XYZ \
+  --topic "What the post is about" \
+  --at 2026-05-20T00:00:00+00:00      # real publication date (optional)
+```
+
+- `--topic` is optional (auto-labelled from the shortcode if omitted).
+- `--at` is the real publication date. **If omitted it defaults to 25h ago**, so
+  the post is IMMEDIATELY eligible for the scraper (these posts are already live;
+  we are not waiting for a fresh-publish window).
+- The minted item id is `ig-<shortcode>`, `external: true`,
+  `source: "manual_external"` — the IG analyst can tell it apart from real WR2
+  caroselli (it lacks the archetype/domain/audience attributes).
+- Idempotent on the URL: re-ingesting the same post is a no-op
+  (`already_present`). A non-IG URL is `invalid_url` and writes nothing.
+
+> To bulk-register Zero's own back-catalogue by hand, run `ingest-external` once
+> per URL. To do it automatically instead, use STRATO 4 below.
+
+---
+
+## Auto-harvest Zero's own posts (STRATO 4 — Playwright)
+
+Instead of pasting URLs by hand, `scripts/wr2_ig_profile_harvester.py` logs into
+@balizero0 with a persistent Playwright profile, scrolls the grid, collects
+every post URL, and feeds them to STRATO 3. The same profile
+(`~/.chrome-cdp-profile/balizero0-ig`) is what `_ig-metrics-scraper.py` uses, so
+the one-time login also unblocks that scraper.
+
+### One-time login (operator — Zero)
+
+Opens a real browser window; log in to @balizero0 ONCE. The script detects login
+automatically (polling, no Enter needed) and saves the session.
+
+```bash
+apps/backend-rag/.venv/bin/python scripts/wr2_ig_profile_harvester.py login
+```
+
+### Harvest
+
+```bash
+# preview the URLs it finds (writes nothing)
+apps/backend-rag/.venv/bin/python scripts/wr2_ig_profile_harvester.py harvest --collect-only
+
+# collect + register them all via ingest-external (idempotent)
+apps/backend-rag/.venv/bin/python scripts/wr2_ig_profile_harvester.py harvest --ingest
+```
+
+- `harvest` runs headless (reuses the saved profile); if the session expired it
+  says so — re-run `login`.
+- Scrolls until the grid stops yielding new posts (3 stable rounds) or
+  `--max-scrolls` (default 60). Dedups by shortcode, canonicalizes to
+  `https://www.instagram.com/p|reel/<code>/`.
+- `--ingest` is idempotent: re-running only adds posts not already registered.
+
+> Law 2: reads only public @balizero0 post URLs — no client PII. The login
+> session is a Bali Zero account, stored locally in the persistent profile.
+
+---
+
 ## Automatic operation (STRATO 2 — requires activation)
 
 ### One-time activation (operator — Antonello)
