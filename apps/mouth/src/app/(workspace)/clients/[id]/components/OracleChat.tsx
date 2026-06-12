@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { STRINGS } from "@/lib/strings";
 
 interface Citation {
   source_id: string;
@@ -27,10 +28,10 @@ interface OracleChatProps {
 }
 
 const QUICK_PROMPTS = [
-  { label: "Riassumi il profilo completo", icon: "📋" },
-  { label: "Stato visti e scadenze", icon: "🛂" },
-  { label: "Situazione fiscale e LKPM", icon: "💰" },
-  { label: "Documenti mancanti o in scadenza", icon: "📄" },
+  { label: STRINGS.oracle.promptSummarizeProfile, icon: "📋" },
+  { label: STRINGS.oracle.promptVisaStatus, icon: "🛂" },
+  { label: STRINGS.oracle.promptTaxLkpm, icon: "💰" },
+  { label: STRINGS.oracle.promptMissingDocs, icon: "📄" },
 ] as const;
 
 export function OracleChat({ clientId }: OracleChatProps) {
@@ -100,7 +101,7 @@ export function OracleChat({ clientId }: OracleChatProps) {
         <div className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-amber-400" />
           <h3 className="text-sm font-semibold text-gray-100">
-            🔮 Chiedi all&apos;Oracle
+            {STRINGS.oracle.header}
           </h3>
         </div>
         {isOpen ? (
@@ -135,7 +136,7 @@ export function OracleChat({ clientId }: OracleChatProps) {
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Fai una domanda sul cliente…"
+              placeholder={STRINGS.oracle.inputPlaceholder}
               disabled={loading}
               className="flex-1 rounded-lg border border-gray-700/50 bg-gray-900/60 px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none transition-colors focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 disabled:opacity-50"
             />
@@ -143,7 +144,7 @@ export function OracleChat({ clientId }: OracleChatProps) {
               type="submit"
               disabled={loading || !question.trim()}
               className="flex items-center justify-center rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Invia domanda"
+              title={STRINGS.oracle.sendTitle}
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -157,7 +158,7 @@ export function OracleChat({ clientId }: OracleChatProps) {
           {loading && (
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
-              <span>Consultando l&apos;Oracle…</span>
+              <span>{STRINGS.oracle.consulting}</span>
             </div>
           )}
 
@@ -165,7 +166,7 @@ export function OracleChat({ clientId }: OracleChatProps) {
           {error && (
             <div className="rounded-lg border border-red-700/40 bg-red-950/20 p-3">
               <div className="text-sm font-medium text-red-400">
-                Errore nella richiesta
+                {STRINGS.oracle.requestError}
               </div>
               <div className="mt-1 text-xs text-red-300/70">{error}</div>
             </div>
@@ -186,7 +187,10 @@ export function OracleChat({ clientId }: OracleChatProps) {
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
                     <BookOpen className="h-3 w-3" />
-                    <span>Fonti ({response.citations.length})</span>
+                    <span>
+                      {STRINGS.oracle.sourcesLabel} ({response.citations.length}
+                      )
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {response.citations.map((cit, idx) => (
