@@ -75,7 +75,7 @@ _KEYCHAIN_ACCOUNT: str = "nuzantara_readonly"
 # The local read-only proxy the postgres-nuzantara MCP uses (Fly PG, read-only
 # role). The password is injected from the Keychain — never in this string.
 _DEFAULT_DSN_TEMPLATE: str = (
-    "postgresql://nuzantara_readonly:{password}@localhost:15432/"
+    "postgresql://nuzantara_readonly:{password}@127.0.0.1:15432/"
     "nuzantara_rag?sslmode=disable"
 )
 
