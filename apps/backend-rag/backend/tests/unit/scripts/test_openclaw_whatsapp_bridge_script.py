@@ -1403,6 +1403,500 @@ GUARD_MATRIX: list[dict[str, Any]] = [
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Language-gap sweep (2026-06-13). The original matrix was English-only while
+# every guard gate carries (or lacked) ID/IT markers — the exact W73 class on
+# the language axis. An empirical probe of the live guards found 10 real gaps:
+# wrong ID/IT answers passing unclobbered (document_status "sudah disetujui",
+# LKPM "10 luglio", zoning IT/ID never firing, cafe "caffè" never arming,
+# tax "IVA" never arming, hak-milik accented "può detenere" slipping) and one
+# over-match (a CORRECT Italian B211 "vecchia dicitura" answer clobbered).
+# These cases pin the fixes. The META gate below now requires pass+clobber in
+# ALL THREE languages for every guard, plus a no_trigger probe.
+# ---------------------------------------------------------------------------
+
+_HAK_MILIK_WRONG_LONG_IT = (
+    "Si', certo, uno straniero può tranquillamente comprare e detenere terreno a "
+    "Bali usando una delle tante strutture creative che gli expat usano con "
+    "successo ogni giorno senza alcun problema legale reale. "
+) * 5  # >125 words
+_CAFE_WRONG_LONG_ID = (
+    "Ya kafe bisa jalan lewat PT PMA kalau KBLI ownership dan lokasi cocok dan "
+    "kamu cek 56303 dulu untuk kegiatan kafe rumah minum dan juga pertimbangkan "
+    "arah restoran kalau menjual makanan lengkap dan fit final tergantung menu "
+    "alkohol takeaway delivery dan zona lokasi Canggu jadi kirim konsep menu dan "
+    "pin lokasi untuk verifikasi semuanya sebelum tanda tangan atau investasi "
+    "sekarang juga ya. "
+) * 2  # >115 words
+_CAFE_WRONG_LONG_IT = (
+    "Si', certo, un caffè funziona sempre con PT PMA e dettagli su menu alcol "
+    "takeaway delivery e zona esatta a Canggu vanno verificati con cura prima di "
+    "firmare un lease o investire capitale nella localita' scelta per il progetto "
+    "del locale che vuoi aprire quest'anno. "
+) * 4  # >115 words
+
+GUARD_MATRIX_I18N: list[dict[str, Any]] = [
+    # 1. document_status --------------------------------------------------------
+    {
+        "guard": "_guard_document_status_reply",
+        "message": "Bagaimana status aplikasi KITAS saya, nomor aplikasi 12345?",
+        "reply": (
+            "Saya tidak bisa verifikasi status aplikasi dari WhatsApp saja. Saya "
+            "teruskan referensinya ke team Bali Zero untuk cek status sebenarnya."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_document_status_reply",
+        "message": "Bagaimana status aplikasi KITAS saya, nomor aplikasi 12345?",
+        "reply": "KITAS kamu sudah disetujui dan siap diambil minggu ini.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_document_status_reply",
+        # ID analogue of F37: conditional "setelah ... disetujui" is safe
+        # explanatory text, NOT an affirmative status claim.
+        "message": "Bagaimana status aplikasi KITAS saya nomor 12345?",
+        "reply": (
+            "Saya teruskan referensinya ke team Bali Zero untuk cek status "
+            "sebenarnya. Setelah aplikasi disetujui oleh imigrasi, team akan "
+            "konfirmasi langkah berikutnya."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_document_status_reply",
+        "message": "Qual e' lo stato della mia pratica KITAS, numero pratica 12345?",
+        "reply": (
+            "Non posso verificare lo stato della pratica da WhatsApp. Passo il "
+            "riferimento al team Bali Zero per controllare il file nel sistema."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_document_status_reply",
+        "message": "Qual e' lo stato della mia pratica KITAS, numero pratica 12345?",
+        "reply": "La tua pratica KITAS e' gia' approvata e pronta per il ritiro.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_document_status_reply",
+        # No status/document/receipt term in the message → guard must not arm.
+        "message": "How much is a C1 tourism visa extension?",
+        "reply": "A C1 extension is handled by the team; pricing comes from the catalog.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 2. legacy_b211 ------------------------------------------------------------
+    {
+        "guard": "_guard_legacy_b211_reply",
+        "message": "Apakah B211A masih visa yang benar untuk meeting bisnis di Bali?",
+        "reply": (
+            "Anggap B211/B211A sebagai istilah lama: rute saat ini biasanya C2 "
+            "Business atau C12 Pre-Investment; team akan verifikasi."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_legacy_b211_reply",
+        "message": "Apakah B211A masih visa yang benar untuk meeting bisnis di Bali?",
+        "reply": "Ya, B211A adalah visa yang tepat untuk bisnis di Indonesia, silakan apply.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_legacy_b211_reply",
+        # The over-match found by the 2026-06-13 sweep: a CORRECT Italian
+        # answer framing B211 as "una vecchia dicitura" was clobbered.
+        "message": "Il B211A e' ancora il visto giusto per un meeting di lavoro a Bali?",
+        "reply": (
+            "Il B211/B211A e' una vecchia dicitura: oggi la rotta corrente per "
+            "business meeting e' di solito C2 Business o C12 Pre-Investment; il "
+            "team verifica il caso."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_legacy_b211_reply",
+        "message": "Il B211A e' ancora il visto giusto per un meeting di lavoro a Bali?",
+        "reply": "Si', il B211A e' esattamente il visto da richiedere per fare business in Indonesia.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_legacy_b211_reply",
+        "message": "What visa do I need for a business meeting in Jakarta?",
+        "reply": "For short business meetings the usual route is C2 Business; the team verifies.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 3. hak_milik ----------------------------------------------------------------
+    {
+        "guard": "_guard_hak_milik_reply",
+        "message": "Apakah orang asing bisa punya tanah Hak Milik di Bali?",
+        "reply": (
+            "Tidak. Orang asing tidak bisa memegang Hak Milik langsung; PT PMA "
+            "biasanya pakai HGB, atau Hak Pakai untuk residensial. Team Bali Zero "
+            "bisa cek rutenya."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_hak_milik_reply",
+        "message": "Apakah orang asing bisa punya tanah Hak Milik di Bali?",
+        "reply": "Tentu, orang asing bisa memegang Hak Milik lewat PMA tanpa masalah.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_hak_milik_reply",
+        # Accented Italian negation must be recognized as the CORRECT framing.
+        "message": "Uno straniero può comprare terreno Hak Milik a Bali?",
+        "reply": (
+            "No. Uno straniero non può detenere Hak Milik direttamente; una PT PMA "
+            "guarda a HGB o Hak Pakai. Il legal team Bali Zero verifica la rotta."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_hak_milik_reply",
+        # Accented Italian WRONG claim ("può detenere") slipped before the fix.
+        "message": "Uno straniero può comprare terreno Hak Milik a Bali?",
+        "reply": "Si', uno straniero può detenere Hak Milik tramite una PT PMA senza problemi.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_hak_milik_reply",
+        "message": "Can a foreigner lease land long-term in Bali?",
+        "reply": "Yes, leasehold is a standard route for foreigners; terms run 25-30 years.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 4. lkpm ---------------------------------------------------------------------
+    {
+        "guard": "_guard_lkpm_reply",
+        "message": "Apa itu LKPM?",
+        "reply": (
+            "LKPM adalah laporan realisasi investasi yang disampaikan PT PMA ke "
+            "BKPM lewat OSS, biasanya triwulanan untuk usaha menengah dan besar."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_lkpm_reply",
+        "message": "Kapan deadline LKPM triwulan kedua?",
+        "reply": "Batas waktu LKPM adalah tanggal 10 Juli setiap tahun, pastikan lapor sebelum itu.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_lkpm_reply",
+        "message": "Cos'e' l'LKPM e chi deve presentarlo?",
+        "reply": (
+            "L'LKPM e' il report di realizzazione investimenti che una PT PMA "
+            "presenta a BKPM tramite OSS, di solito trimestrale per societa' "
+            "medio-grandi."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_lkpm_reply",
+        "message": "Quando scade l'LKPM del secondo trimestre?",
+        "reply": "La scadenza LKPM e' il 10 luglio di ogni anno, ricordati di inviarla entro quella data.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_lkpm_reply",
+        # No "lkpm" in the message → a 10-July SPT deadline answer is none of
+        # this guard's business.
+        "message": "When is the corporate SPT Tahunan deadline?",
+        "reply": "The corporate annual SPT is due by the end of the fourth month after fiscal year-end.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 5. property_zoning ----------------------------------------------------------
+    {
+        "guard": "_guard_property_zoning_reply",
+        "message": "Boleh saya sewakan villa saya sebagai Airbnb harian di zona residensial?",
+        "reply": (
+            "Tidak otomatis. Tamu harian biasanya short-stay accommodation, jadi perlu "
+            "cek zoning, lease, izin landlord, dan NIB/OSS; selama transisi KBLI, "
+            "BKPM/OSS harus diverifikasi live."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_property_zoning_reply",
+        "message": "Boleh saya sewakan villa saya sebagai Airbnb harian di zona residensial?",
+        "reply": (
+            "Boleh saja, langsung pasang di Airbnb dan terima tamu harian, tidak perlu "
+            "izin khusus untuk villa residensial."
+        ),
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_property_zoning_reply",
+        "message": "Posso affittare la mia villa come Airbnb in zona residenziale a Canggu?",
+        "reply": (
+            "Non automaticamente. Gli ospiti giornalieri sono short-stay accommodation: "
+            "servono check su zoning, lease, consenso del landlord e NIB/OSS; durante la "
+            "transizione KBLI serve verifica live BKPM/OSS."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_property_zoning_reply",
+        "message": "Posso affittare la mia villa come Airbnb in zona residenziale a Canggu?",
+        "reply": (
+            "Certo, mettila su Airbnb e accetta ospiti giornalieri, non serve nessun "
+            "permesso speciale per una villa residenziale."
+        ),
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_property_zoning_reply",
+        # No villa/airbnb arm in the message → restaurant zoning is out of scope.
+        "message": "What zoning applies to a restaurant in Seminyak?",
+        "reply": "Restaurant zoning in Seminyak depends on the local RDTR; the team can check the pin.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 6. tax_compliance -----------------------------------------------------------
+    {
+        "guard": "_guard_tax_compliance_reply",
+        "message": "Apa risiko kalau PT PMA saya telat lapor PPN?",
+        "reply": "Telat lapor PPN membuka risiko denda administratif dan bunga.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_tax_compliance_reply",
+        "message": "Berapa tarif PPN sekarang?",
+        "reply": (
+            "Tarif headline PPN 12%, tapi tarif efektif kebanyakan barang/jasa 11% "
+            "lewat mekanisme DPP Nilai Lain 11/12; 12% penuh hanya untuk barang "
+            "mewah PPnBM."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_tax_compliance_reply",
+        "message": "Quali rischi corre la mia PT PMA se paga l'IVA in ritardo?",
+        "reply": "Il ritardo nel pagamento espone la societa' a sanzioni amministrative e interessi.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_tax_compliance_reply",
+        "message": "Qual e' l'aliquota IVA attuale in Indonesia?",
+        "reply": (
+            "L'aliquota headline e' 12%, ma l'aliquota effettiva sulla maggior parte di "
+            "beni e servizi e' 11% (meccanismo DPP Nilai Lain 11/12); il 12% pieno vale "
+            "solo per i beni di lusso PPnBM."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_tax_compliance_reply",
+        # F36 class: "translate" must not arm the risk suffix via "late".
+        "message": "Can you translate this rental contract into English?",
+        "reply": "I can summarize the key clauses; for a certified translation the team can help.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 7. villa_kbli ---------------------------------------------------------------
+    {
+        "guard": "_guard_villa_kbli_reply",
+        "message": "Kode KBLI mana yang benar untuk villa short stay, 55193 atau 55203?",
+        "reply": (
+            "Untuk villa/Airbnb short stay, arah KBLI 2025 adalah 55203 (AKTIVITAS "
+            "VILA); 55193 adalah kode sumber KBLI 2020/PP28 yang dipetakan (mapping) "
+            "ke 55203 di KBLI 2025. Finalnya diverifikasi live di OSS/BKPM."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_villa_kbli_reply",
+        "message": "Kode KBLI mana yang benar untuk villa short stay, 55193 atau 55203?",
+        "reply": "Untuk bisnis sewa villa kamu daftar saja di KBLI 59201 untuk aktivitas rekaman suara.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_villa_kbli_reply",
+        "message": "Quale codice KBLI copre una villa short-stay nel KBLI 2025, 55193 o 55203?",
+        "reply": (
+            "Per villa/Airbnb short-stay la direzione KBLI 2025 e' 55203 (AKTIVITAS "
+            "VILA); 55193 e' il codice sorgente KBLI 2020/PP28 che mappa a 55203 nel "
+            "KBLI 2025. Il filing finale va verificato live su OSS/BKPM."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_villa_kbli_reply",
+        "message": "Quale codice KBLI copre una villa short-stay nel KBLI 2025?",
+        "reply": "Per la tua villa in affitto registra il KBLI 59201, attivita' di registrazione sonora.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_villa_kbli_reply",
+        # F13 class, pinned in the matrix: "village" is not "villa".
+        "message": "Which KBLI covers handicraft export from an Ubud village workshop?",
+        "reply": "Handicraft manufacturing and export map to the 16xxx/47xxx families; the team verifies the exact code.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 8. kbli_label ---------------------------------------------------------------
+    {
+        "guard": "_guard_kbli_label_reply",
+        "message": "Kode KBLI apa yang cocok untuk coffee shop PT PMA?",
+        "reply": "Arah yang dicek 56303 untuk kafe/rumah minum; fit final tergantung menu dan zoning. Kode KBLI finalnya diverifikasi team.",
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_kbli_label_reply",
+        "message": "Kode KBLI apa yang cocok untuk coffee shop PT PMA?",
+        "reply": "Coffee shop biasanya masuk 56303 untuk kegiatan kafe/rumah minum.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_kbli_label_reply",
+        "message": "Che codice KBLI serve per una caffetteria con PT PMA?",
+        "reply": "La direzione KBLI da controllare e' la 56303 per cafe/drink house; il fit finale dipende da menu e zoning.",
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_kbli_label_reply",
+        "message": "Che codice KBLI serve per una caffetteria con PT PMA?",
+        "reply": "Una caffetteria di solito rientra nella 56303 per attivita' di caffe'/drink house.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_kbli_label_reply",
+        # F38 class, pinned: a postcode is not a KBLI code.
+        "message": "My address is Jalan Pantai Berawa, Canggu 80361 — can you send documents there?",
+        "reply": "Sure, deliveries to Canggu 80361 are fine; the team will confirm the courier.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 9. cafe_pma -----------------------------------------------------------------
+    {
+        "guard": "_guard_cafe_pma_reply",
+        "message": "Bisakah saya buka kafe di Canggu lewat PT PMA?",
+        "reply": (
+            "Ya, kafe bisa jalan lewat PT PMA kalau KBLI, ownership, dan lokasi cocok; "
+            "arah pertama 56303. Kirim konsep dan pin lokasi, team verifikasi."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_cafe_pma_reply",
+        "message": "Bisakah saya buka kafe di Canggu lewat PT PMA?",
+        "reply": _CAFE_WRONG_LONG_ID,
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_cafe_pma_reply",
+        "message": "Posso aprire un caffè a Canggu con una PT PMA?",
+        "reply": (
+            "Si', un caffè puo' funzionare con PT PMA se KBLI, ownership e location sono "
+            "corretti; prima direzione 56303. Manda concept e pin, il team verifica."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_cafe_pma_reply",
+        "message": "Posso aprire un caffè a Canggu con una PT PMA?",
+        "reply": _CAFE_WRONG_LONG_IT,
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_cafe_pma_reply",
+        # No "pt pma" in the message → the cafe canonical must not be substituted.
+        "message": "Can you recommend a good cafe in Canggu for a meeting?",
+        "reply": "Plenty of options around Batu Bolong; for business meetings quieter spots work better.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+    # 10. nominee -----------------------------------------------------------------
+    {
+        "guard": "_guard_nominee_reply",
+        "message": "Bisakah teman Indonesia saya memegang sertifikat tanah atas nama dia untuk saya?",
+        "reply": (
+            "Tidak — ini bukan sekadar berisiko, ini ilegal. Struktur nominee batal demi "
+            "hukum agraria; tanahnya bisa jatuh ke negara. Jalur benar: PT PMA dengan "
+            "HGB/Hak Pakai atau leasehold resmi."
+        ),
+        "lang": "id",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_nominee_reply",
+        "message": "Bisakah teman Indonesia saya memegang sertifikat tanah atas nama dia untuk saya?",
+        "reply": "Agak berisiko sih, tapi banyak orang melakukannya dan biasanya aman saja.",
+        "lang": "id",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_nominee_reply",
+        "message": "Il mio amico indonesiano puo' intestare a suo nome il terreno per me?",
+        "reply": (
+            "No — non e' solo rischioso, e' illegale: una struttura nominee e' nulla per "
+            "la legge agraria indonesiana e la terra puo' essere devoluta allo Stato. La "
+            "strada corretta e' PT PMA con Hak Pakai/HGB o un leasehold regolare."
+        ),
+        "lang": "it",
+        "expect": "pass",
+    },
+    {
+        "guard": "_guard_nominee_reply",
+        "message": "Il mio amico indonesiano puo' intestare a suo nome il terreno per me?",
+        "reply": "E' un po' rischioso, ma molti lo fanno e di solito funziona senza problemi.",
+        "lang": "it",
+        "expect": "clobber",
+    },
+    {
+        "guard": "_guard_nominee_reply",
+        # Administrative naming (booking) is not nominee intent — F06 class.
+        "message": "Can you book the hotel room under my wife's name?",
+        "reply": "Sure — send her name as on the passport and the team will arrange the booking.",
+        "lang": "en",
+        "expect": "no_trigger",
+    },
+]
+
+GUARD_MATRIX.extend(GUARD_MATRIX_I18N)
+
 
 def _discover_guards() -> set[str]:
     """Every _guard_* callable in the live bridge module (dynamic)."""
@@ -1413,34 +1907,49 @@ def _discover_guards() -> set[str]:
     }
 
 
+# Localized action markers for the APPEND/PREPEND guards (the suffix/prefix is
+# language-routed by _villa_answer_language, so the assertion must be too).
+_TAX_SUFFIX_MARKERS = {"en": "verify", "id": "verifikasi", "it": "verificare"}
+_KBLI_PREFIX_MARKERS = {
+    "en": "KBLI direction to check",
+    "id": "Arah KBLI yang perlu dicek",
+    "it": "Direzione KBLI da verificare",
+}
+
+
 @pytest.mark.parametrize(
     "case",
     GUARD_MATRIX,
-    ids=[f"{c['guard']}-{c['expect']}" for c in GUARD_MATRIX],
+    ids=[f"{c['guard']}-{c['lang']}-{c['expect']}" for c in GUARD_MATRIX],
 )
 def test_guard_matrix_polarity(case: dict[str, Any]) -> None:
-    """pass == reply survives unchanged; clobber == reply is changed.
+    """pass/no_trigger == reply survives unchanged; clobber == reply is changed.
 
-    For APPEND/PREPEND guards a 'clobber' is still a change; we additionally
-    assert the expected marker so a guard that mutates the WRONG way is caught.
+    'pass' is an on-topic CORRECT answer the guard must not destroy;
+    'no_trigger' is an out-of-domain message the guard must not even arm on
+    (the substring-trap class). For APPEND/PREPEND guards a 'clobber' is still
+    a change; we additionally assert the language-routed marker so a guard
+    that mutates the WRONG way (or in the wrong language) still fails.
     """
     guard = getattr(bridge, case["guard"])
     out = guard(case["message"], case["reply"], case["lang"])
 
-    if case["expect"] == "pass":
+    if case["expect"] in ("pass", "no_trigger"):
         assert out == case["reply"], (
-            f"{case['guard']} clobbered a CORRECT answer (over-match): {out!r}"
+            f"{case['guard']} mutated a reply it must leave alone "
+            f"({case['expect']}, lang={case['lang']}): {out!r}"
         )
     else:  # clobber
         assert out != case["reply"], (
-            f"{case['guard']} failed to clobber a WRONG answer: {out!r}"
+            f"{case['guard']} failed to clobber a WRONG answer "
+            f"(lang={case['lang']}): {out!r}"
         )
         # Action-specific marker so a wrong-direction mutation still fails.
         if case["guard"] == "_guard_tax_compliance_reply":  # APPEND
             assert out.startswith(case["reply"].rstrip())
-            assert "verify" in out.lower()
+            assert _TAX_SUFFIX_MARKERS[case["lang"]] in out.lower()
         elif case["guard"] == "_guard_kbli_label_reply":  # PREPEND
-            assert out.startswith("KBLI direction to check")
+            assert out.startswith(_KBLI_PREFIX_MARKERS[case["lang"]])
             assert out.rstrip().endswith(case["reply"].rstrip())
 
 
@@ -1469,4 +1978,108 @@ def test_guard_matrix_covers_every_guard_both_polarities() -> None:
     assert not missing_pass and not missing_clobber, (
         "GUARD_MATRIX incomplete — add cases for these guards "
         f"(missing pass: {missing_pass}; missing clobber: {missing_clobber})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Full-chain integration (2026-06-13). The single-guard matrix above cannot
+# catch ORDERING bugs: an upstream guard clobbering a correct reply before the
+# right guard ever sees it, or two guards double-mutating. _apply_reply_guards
+# is the single source of truth for the production chain (the endpoint calls
+# it), so these tests exercise exactly what ships.
+# ---------------------------------------------------------------------------
+
+
+def test_chain_correct_zoning_reply_survives_whole_chain() -> None:
+    message = "Can I run my villa as an Airbnb short-stay in a residential zone?"
+    reply = (
+        "Not automatically. Daily guests are short-stay accommodation, so you need "
+        "zoning, lease, landlord consent, and NIB/OSS checks; during the KBLI "
+        "transition Bali Zero verifies live OSS/BKPM availability."
+    )
+    assert bridge._apply_reply_guards(message, reply, "en") == reply
+
+
+def test_chain_wrong_nominee_reply_gets_nominee_canonical_not_another() -> None:
+    message = "Can my Indonesian friend hold the land title for me?"
+    reply = "That can be a bit risky, but many people do it and it works out fine."
+    out = bridge._apply_reply_guards(message, reply, "en")
+    assert out == bridge._canonical_nominee_answer("en"), (
+        "the WRONG nominee answer must be replaced by the NOMINEE canonical, "
+        f"not by another guard's: {out!r}"
+    )
+
+
+def test_chain_lkpm_canonical_not_double_mutated_by_tax_guard() -> None:
+    # Message arms BOTH the lkpm guard (stale deadline) and the tax guard
+    # (penalty intent). The LKPM canonical already carries 'verify', so the
+    # tax suffix must NOT be appended on top of the substituted canonical.
+    message = "What is the penalty if I miss the LKPM deadline?"
+    reply = "The LKPM deadline is the 10th of July; missing it brings fines."
+    out = bridge._apply_reply_guards(message, reply, "en")
+    assert out == bridge._canonical_lkpm_answer("en"), (
+        f"expected the clean LKPM canonical, got a double-mutated reply: {out!r}"
+    )
+
+
+def test_chain_italian_cafe_wrong_reply_gets_italian_cafe_canonical() -> None:
+    message = "Posso aprire un caffè a Canggu con una PT PMA?"
+    out = bridge._apply_reply_guards(message, _CAFE_WRONG_LONG_IT, "it")
+    assert out == bridge._canonical_cafe_pma_answer("it")
+
+
+def test_chain_format_net_applies_after_guards() -> None:
+    # A correct reply that passes every guard still gets the WhatsApp format
+    # net (markdown bold → WhatsApp bold) as the LAST step.
+    message = "How long is a typical villa leasehold in Bali?"
+    reply = "A villa leasehold typically runs **25 to 30 years**, extension negotiable."
+    out = bridge._apply_reply_guards(message, reply, "en")
+    assert out == "A villa leasehold typically runs *25 to 30 years*, extension negotiable."
+
+
+def test_chain_endpoint_and_tests_share_the_same_chain() -> None:
+    """The endpoint must call _apply_reply_guards (no inline drift): every
+    guard in the module is in _REPLY_GUARD_CHAIN exactly once."""
+    chain_names = [fn.__name__ for fn in bridge._REPLY_GUARD_CHAIN]
+    assert sorted(chain_names) == sorted(_discover_guards()), (
+        "a _guard_* exists that is NOT wired into _REPLY_GUARD_CHAIN "
+        "(or is wired twice) — the chain and the module drifted"
+    )
+    assert len(chain_names) == len(set(chain_names))
+
+
+def test_guard_matrix_covers_languages_and_no_trigger() -> None:
+    """META gate, language axis (2026-06-13 sweep): every _guard_* must have a
+    'pass' AND a 'clobber' case in EACH of en/id/it, plus at least one
+    'no_trigger' probe (out-of-domain message left untouched).
+
+    The 2026-06-13 empirical sweep found 10 real language gaps (wrong ID/IT
+    answers passing, one correct IT answer clobbered) precisely because the
+    matrix was English-only. A new guard — or a new language path in an
+    existing guard — now fails here until it carries trilingual coverage.
+    """
+    required_langs = ("en", "id", "it")
+    discovered = _discover_guards()
+
+    coverage: dict[str, dict[str, set[str]]] = {}
+    no_trigger: dict[str, int] = {}
+    for case in GUARD_MATRIX:
+        if case["expect"] == "no_trigger":
+            no_trigger[case["guard"]] = no_trigger.get(case["guard"], 0) + 1
+            continue
+        coverage.setdefault(case["guard"], {}).setdefault(case["lang"], set()).add(
+            case["expect"]
+        )
+
+    problems: list[str] = []
+    for guard in sorted(discovered):
+        for lang in required_langs:
+            have = coverage.get(guard, {}).get(lang, set())
+            for polarity in ("pass", "clobber"):
+                if polarity not in have:
+                    problems.append(f"{guard}: missing {polarity} case for lang={lang}")
+        if not no_trigger.get(guard):
+            problems.append(f"{guard}: missing no_trigger probe")
+    assert not problems, "GUARD_MATRIX language coverage incomplete:\n" + "\n".join(
+        problems
     )
