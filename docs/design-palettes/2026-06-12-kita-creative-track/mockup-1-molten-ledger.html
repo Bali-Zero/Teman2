@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      Direction 1 — Molten Ledger · before/after · kita workspace fragment
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ============================================================
+     Direction 1 — MOLTEN LEDGER
+     Same markup twice; only the scoped token block changes.
+     ============================================================ */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        background: #07070a;
+        color: #ddd;
+        padding: 32px 24px 64px;
+      }
+      .intro {
+        max-width: 1080px;
+        margin: 0 auto 28px;
+      }
+      .intro h1 {
+        font-size: 18px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.01em;
+      }
+      .intro p {
+        font-size: 12px;
+        color: #888;
+        margin-top: 6px;
+        max-width: 70ch;
+        line-height: 1.55;
+      }
+      .panel-label {
+        max-width: 1080px;
+        margin: 0 auto;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 18px 0 8px;
+      }
+      .panel-label.before-l {
+        color: #7d8aa5;
+      }
+      .panel-label.after-l {
+        color: #e3b341;
+      }
+
+      /* ── BEFORE: current live tokens (packages/design-system/tokens/bz-tokens.css) ── */
+      .before {
+        --bg: #1d273b;
+        --bg-elevated: #243047;
+        --card: rgba(29, 39, 59, 0.85);
+        --accent: #d4845a;
+        --accent-soft: rgba(212, 132, 90, 0.18);
+        --text-1: #f8fafc;
+        --text-2: #94a3b8;
+        --text-3: #475569; /* the live AA failure: 1.97:1 */
+        --border: rgba(255, 255, 255, 0.08);
+        --st-inquiry: #9ca3af;
+        --st-wait: #b89a40;
+        --st-active: #4a8ec4;
+        --st-done: #5cb88a;
+        --st-danger: #c45c78;
+        --display-font: "Inter", sans-serif;
+        --kpi-weight: 800;
+      }
+
+      /* ── AFTER: Molten Ledger tokens (see tokens-draft.css) ── */
+      .after {
+        --bg: #0e0d0b;
+        --bg-elevated: #161412;
+        --card: rgba(22, 20, 18, 0.92);
+        --accent: #e3b341;
+        --accent-soft: rgba(227, 179, 65, 0.14);
+        --text-1: #f2ede4;
+        --text-2: #a8a096;
+        --text-3: #8a8276; /* fixed: 5.12:1 AA */
+        --border: rgba(255, 255, 255, 0.07);
+        --seam: rgba(227, 179, 65, 0.12);
+        --st-inquiry: #a8a096;
+        --st-wait: #e3b341;
+        --st-active: #6ca9e8;
+        --st-done: #4dbe8a;
+        --st-danger: #e5746a;
+        --display-font: "Cormorant Garamond", ui-serif, Georgia, serif;
+        --kpi-weight: 700;
+      }
+
+      /* ── Shared component CSS — reads only the scoped tokens ── */
+      .frame {
+        max-width: 1080px;
+        margin: 0 auto;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px 26px 26px;
+      }
+      .page-title {
+        font-family: var(--display-font);
+        font-size: 26px;
+        font-weight: 600;
+        color: var(--text-1);
+        letter-spacing: 0.005em;
+      }
+      .page-sub {
+        font-size: 11px;
+        color: var(--text-2);
+        margin-top: 3px;
+      }
+      .seam-rule {
+        height: 1px;
+        margin: 16px 0 18px;
+        background: var(--seam, var(--border));
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+      }
+      .kpi {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 13px 15px;
+        transition: border-color var(--mo, 150ms) ease;
+      }
+      .kpi:hover {
+        border-color: var(--accent-soft);
+      }
+      .kpi .label {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        color: var(--text-2);
+      }
+      .kpi .value {
+        font-size: 24px;
+        font-weight: var(--kpi-weight);
+        line-height: 1.15;
+        margin-top: 5px;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums lining-nums;
+        color: var(--text-1);
+      }
+      .kpi .value.accented {
+        color: var(--accent);
+      }
+      .kpi .sub {
+        font-size: 9.5px;
+        color: var(--text-3);
+        margin-top: 3px;
+      }
+      .kpi .sub.ok {
+        color: var(--st-done);
+      }
+      .kpi .sub.warn {
+        color: var(--st-wait);
+      }
+
+      .pipeline {
+        margin-top: 18px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 6px 6px 8px;
+      }
+      .pipeline-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding: 10px 12px 8px;
+      }
+      .pipeline-head .h {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-2);
+      }
+      .pipeline-head .all {
+        font-size: 10px;
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 110px 1fr 130px 70px;
+        gap: 12px;
+        align-items: center;
+        padding: 9px 12px;
+        border-radius: 7px;
+        text-decoration: none;
+        transition: background var(--mo, 150ms) ease;
+      }
+      .row:hover {
+        background: rgba(255, 255, 255, 0.035);
+      }
+      .row + .row {
+        border-top: 1px solid var(--border);
+      }
+      .code {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 10px;
+        color: var(--text-3);
+        font-variant-numeric: tabular-nums;
+      }
+      .who .client {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-1);
+      }
+      .who .what {
+        font-size: 10.5px;
+        color: var(--text-2);
+        margin-top: 1px;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+      .status .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .due {
+        font-size: 10.5px;
+        font-weight: 600;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: var(--text-3);
+      }
+      .due.urgent {
+        color: var(--st-wait);
+      }
+      .due.danger {
+        color: var(--st-danger);
+      }
+      .due.done {
+        color: var(--st-done);
+      }
+
+      .cta-strip {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 16px;
+      }
+      .cta {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        padding: 9px 18px;
+        border-radius: 8px;
+        text-decoration: none;
+        background: var(--accent);
+        color: var(--cta-fg, #fff);
+        transition: filter var(--mo, 150ms) ease;
+      }
+      .after .cta {
+        --cta-fg: #1a1205;
+      } /* 9.53:1 on gold */
+      .cta:hover {
+        filter: brightness(1.08);
+      }
+
+      .note {
+        max-width: 1080px;
+        margin: 26px auto 0;
+        font-size: 11px;
+        color: #777;
+        line-height: 1.65;
+        max-width: 90ch;
+      }
+      .note strong {
+        color: #aaa;
+      }
+
+      /* Motion restraint: everything off under reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+          animation: none !important;
+        }
+      }
+      @media (max-width: 760px) {
+        .kpis {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .row {
+          grid-template-columns: 1fr 100px;
+        }
+        .code,
+        .due {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="intro">
+      <h1>Direction 1 — Molten Ledger</h1>
+      <p>
+        Same dashboard fragment (KPI row + pipeline card), same markup, two
+        token sets. Before = live <code>bz-tokens.css</code> (anthracite navy +
+        copper). After = warm basalt near-black, one molten-gold signal, serif
+        page title, tabular numerals, mono case codes.
+      </p>
+    </div>
+
+    <div class="panel-label before-l">
+      Before — current live tokens (#1d273b navy · copper #d4845a)
+    </div>
+    <section class="before">
+      <div class="frame">
+        <div class="page-title">Workspace</div>
+        <div class="page-sub">
+          Thursday 12 June — 6 deadlines inside 30 days
+        </div>
+        <div class="seam-rule"></div>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="label">Active cases</div>
+            <div class="value accented">47</div>
+            <div class="sub ok">+3 this week</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Revenue MTD</div>
+            <div class="value">Rp 1.24B</div>
+            <div class="sub">target Rp 1.6B</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Expiring ≤ 30d</div>
+            <div class="value">6</div>
+            <div class="sub warn">2 inside 7 days</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Docs in review</div>
+            <div class="value">12</div>
+            <div class="sub">oldest 2 days</div>
+          </div>
+        </div>
+        <div class="pipeline">
+          <div class="pipeline-head">
+            <span class="h">Pipeline</span
+            ><a class="all" href="#">View all 47 →</a>
+          </div>
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0847</span
+            ><span class="who"
+              ><span class="client">PT Meridian Kopi Nusantara</span><br /><span
+                class="what"
+                >PT PMA setup · KBLI 56301</span
+              ></span
+            ><span class="status" style="color: var(--st-active)"
+              ><span class="dot"></span>In Progress</span
+            ><span class="due">12d</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0851</span
+            ><span class="who"
+              ><span class="client">Henrik Lindqvist</span><br /><span
+                class="what"
+                >E23 Working KITAS renewal</span
+              ></span
+            ><span class="status" style="color: var(--st-wait)"
+              ><span class="dot"></span>Documents</span
+            ><span class="due urgent">3d</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0839</span
+            ><span class="who"
+              ><span class="client">Sari Dewi Villas</span><br /><span
+                class="what"
+                >LKPM Q2 filing</span
+              ></span
+            ><span class="status" style="color: var(--st-wait)"
+              ><span class="dot"></span>Quotation</span
+            ><span class="due">21d</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0812</span
+            ><span class="who"
+              ><span class="client">Marcus Webb</span><br /><span class="what"
+                >E33G Remote Worker KITAS</span
+              ></span
+            ><span class="status" style="color: var(--st-done)"
+              ><span class="dot"></span>Completed</span
+            ><span class="due done">✓</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0858</span
+            ><span class="who"
+              ><span class="client">Atelier Lombok Living</span><br /><span
+                class="what"
+                >NPWP + Coretax registration</span
+              ></span
+            ><span class="status" style="color: var(--st-inquiry)"
+              ><span class="dot"></span>Inquiry</span
+            ><span class="due">28d</span></a
+          >
+        </div>
+        <div class="cta-strip"><a class="cta" href="#">New case</a></div>
+      </div>
+    </section>
+
+    <div class="panel-label after-l">
+      After — Molten Ledger (#0E0D0B basalt · molten gold #E3B341)
+    </div>
+    <section class="after">
+      <div class="frame">
+        <div class="page-title">Workspace</div>
+        <div class="page-sub">
+          Thursday 12 June — 6 deadlines inside 30 days
+        </div>
+        <div class="seam-rule"></div>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="label">Active cases</div>
+            <div class="value accented">47</div>
+            <div class="sub ok">+3 this week</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Revenue MTD</div>
+            <div class="value">Rp 1.24B</div>
+            <div class="sub">target Rp 1.6B</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Expiring ≤ 30d</div>
+            <div class="value">6</div>
+            <div class="sub warn">2 inside 7 days</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Docs in review</div>
+            <div class="value">12</div>
+            <div class="sub">oldest 2 days</div>
+          </div>
+        </div>
+        <div class="pipeline">
+          <div class="pipeline-head">
+            <span class="h">Pipeline</span
+            ><a class="all" href="#">View all 47 →</a>
+          </div>
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0847</span
+            ><span class="who"
+              ><span class="client">PT Meridian Kopi Nusantara</span><br /><span
+                class="what"
+                >PT PMA setup · KBLI 56301</span
+              ></span
+            ><span class="status" style="color: var(--st-active)"
+              ><span class="dot"></span>In Progress</span
+            ><span class="due">12d</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0851</span
+            ><span class="who"
+              ><span class="client">Henrik Lindqvist</span><br /><span
+                class="what"
+                >E23 Working KITAS renewal</span
+              ></span
+            ><span class="status" style="color: var(--st-wait)"
+              ><span class="dot"></span>Documents</span
+            ><span class="due urgent">3d</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0839</span
+            ><span class="who"
+              ><span class="client">Sari Dewi Villas</span><br /><span
+                class="what"
+                >LKPM Q2 filing</span
+              ></span
+            ><span class="status" style="color: var(--st-wait)"
+              ><span class="dot"></span>Quotation</span
+            ><span class="due">21d</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0812</span
+            ><span class="who"
+              ><span class="client">Marcus Webb</span><br /><span class="what"
+                >E33G Remote Worker KITAS</span
+              ></span
+            ><span class="status" style="color: var(--st-done)"
+              ><span class="dot"></span>Completed</span
+            ><span class="due done">✓</span></a
+          >
+          <a class="row" href="#"
+            ><span class="code">BZ-2026-0858</span
+            ><span class="who"
+              ><span class="client">Atelier Lombok Living</span><br /><span
+                class="what"
+                >NPWP + Coretax registration</span
+              ></span
+            ><span class="status" style="color: var(--st-inquiry)"
+              ><span class="dot"></span>Inquiry</span
+            ><span class="due">28d</span></a
+          >
+        </div>
+        <div class="cta-strip"><a class="cta" href="#">New case</a></div>
+      </div>
+    </section>
+
+    <p class="note">
+      <strong>Contrast (WCAG 2.x, computed):</strong> after-text 16.66:1 /
+      7.52:1 / 5.12:1 (primary/secondary/muted on base); gold #E3B341 on base
+      9.98:1; CTA text #1A1205 on gold 9.53:1; states 8.37 / 6.51 / 7.84:1. All
+      AA. Before-muted #475569 is 1.97:1 — a live AA failure, visible above in
+      the KPI sub-lines. <strong>Motion:</strong> hover-only, ≤150ms; fully
+      disabled under <code>prefers-reduced-motion: reduce</code>.
+      <strong>Perf:</strong> no JS, no backdrop-filter, ≤2 net-new font files
+      (Cormorant 600 + Plex Mono 400, both already in the ecosystem).
+    </p>
+  </body>
+</html>

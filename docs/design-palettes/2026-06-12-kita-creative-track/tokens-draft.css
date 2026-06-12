@@ -1,0 +1,242 @@
+/* =====================================================================
+   kita.balizero.com — Creative Track token draft (2026-06-12)
+   PROPOSAL ONLY — not imported anywhere. Owner picks a direction;
+   the chosen block is then appended to
+   packages/design-system/tokens/bz-tokens.css and activated via
+   <html data-theme="..."> (same mechanism as the existing light theme).
+
+   Architecture follows the 3-layer 2026 practice (primitives ->
+   semantic -> theme) already used by packages/core/tokens/.
+   OKLCH given as the canonical primitive with hex fallback first
+   (hex is what ships until the browser-support call is made; the
+   OKLCH comments make the perceptual ramp auditable).
+
+   Every text/background pair below is WCAG-AA verified — ratios in
+   PROPOSAL.md §3/§4/§5. The current --bz-text-muted #475569 FAILS AA
+   (1.97:1) and is corrected in all three directions.
+   ===================================================================== */
+
+/* ─────────────────────────────────────────────────────────────────────
+   Shared primitives (all directions) — stone + gold ramps
+   ──────────────────────────────────────────────────────────────────── */
+:root {
+  /* Basalt stone ramp (warm near-blacks; never pure #000 — halation) */
+  --bz-stone-950: #0e0d0b; /* oklch(0.16 0.005 85)  */
+  --bz-stone-900: #100f0d; /* oklch(0.17 0.005 85)  */
+  --bz-stone-850: #131110; /* oklch(0.18 0.005 70)  */
+  --bz-stone-800: #161412; /* oklch(0.20 0.006 75)  */
+  --bz-stone-750: #181613; /* oklch(0.21 0.007 80)  */
+  --bz-stone-700: #1b1815; /* oklch(0.22 0.008 80)  */
+  --bz-stone-650: #1e1b17; /* oklch(0.23 0.009 82)  */
+  --bz-stone-600: #201d19; /* oklch(0.24 0.009 82)  */
+  --bz-stone-550: #232019; /* oklch(0.25 0.010 85)  */
+
+  /* Molten gold ramp (descended from login-page seam #D4AF37) */
+  --bz-gold-200: #f0d37a; /* oklch(0.87 0.10 90) — seam highlight      */
+  --bz-gold-300: #e3b341; /* oklch(0.79 0.13 88) — D1 signal gold      */
+  --bz-gold-350: #dcb44a; /* oklch(0.78 0.12 89) — D3 text-grade gold  */
+  --bz-gold-400: #d4af37; /* oklch(0.76 0.13 92) — the kintsugi seam   */
+  --bz-gold-700: #8c6a1e; /* oklch(0.52 0.10 88) — seam shadow         */
+
+  /* Warm parchment text ramp */
+  --bz-parchment-50: #f2ede4; /* oklch(0.94 0.012 85) */
+  --bz-parchment-100: #f0ebe2; /* oklch(0.94 0.012 85) */
+  --bz-parchment-150: #efe9de; /* oklch(0.93 0.014 90) */
+  --bz-parchment-300: #d6cfc4; /* oklch(0.85 0.012 85) */
+  --bz-parchment-500: #aba399; /* oklch(0.71 0.012 85) */
+  --bz-parchment-550: #a8a096; /* oklch(0.70 0.012 85) */
+  --bz-parchment-600: #9c948a; /* oklch(0.66 0.012 85) */
+  --bz-parchment-700: #8a8276; /* oklch(0.60 0.013 85) */
+
+  /* Copper (current brand accent, kept for D2) */
+  --bz-copper-450: #d98e62; /* oklch(0.71 0.10 50) — AA-lifted copper */
+
+  /* State set — recalibrated for AA on basalt bases */
+  --bz-state-success-2026: #4dbe8a; /* 8.37:1 on stone-950 */
+  --bz-state-danger-2026: #e5746a; /* 6.51:1 on stone-950 */
+  --bz-state-info-2026: #6ca9e8; /* 7.84:1 on stone-950 */
+  --bz-state-warning-2026: #e3b341; /* = gold-300            */
+
+  /* Category set — tokenized (today hardcoded in dashboard TSX) */
+  --bz-cat-visa: #6fa8d6; /* was #4a8ec4 — 7.52:1 on stone-900 */
+  --bz-cat-business: #6fc59a; /* was #5cb88a — 9.24:1            */
+  --bz-cat-tax: #c8a94e; /* was #b89a40 — 8.43:1            */
+  --bz-cat-property: #ac97e0; /* was #9880d8 — 7.53:1            */
+  --bz-cat-living: #d98e62; /* copper, editorial               */
+  --bz-cat-emerging: #5dbdc9; /* recalibrated cyan               */
+
+  /* Fluid type scale — Minor Third 1.2 (dense operator UI) */
+  --bz-fs-micro: clamp(0.625rem, 0.6rem + 0.1vw, 0.6875rem);
+  --bz-fs-body: clamp(0.8125rem, 0.78rem + 0.15vw, 0.875rem);
+  --bz-fs-title: clamp(1.05rem, 0.95rem + 0.4vw, 1.25rem);
+  --bz-fs-display: clamp(1.5rem, 1.2rem + 1.2vw, 2.1rem);
+
+  /* Motion — semantic, restraint-first (Atlassian/Carbon pattern) */
+  --bz-motion-hover: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --bz-motion-enter: 250ms cubic-bezier(0, 0, 0.2, 1);
+  --bz-motion-seam-shimmer: 8000ms; /* D3 signature only, 1 el/page */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bz-motion-hover: 0ms linear;
+    --bz-motion-enter: 0ms linear;
+    --bz-motion-seam-shimmer: 0ms; /* shimmer dies entirely */
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Direction 1 — MOLTEN LEDGER
+   Terminal-grade density. One gold signal. Tabular numerals.
+   ──────────────────────────────────────────────────────────────────── */
+[data-theme="molten-ledger"] {
+  --bz-bg: var(--bz-stone-950);
+  --bz-bg-elevated: var(--bz-stone-800);
+  --bz-bg-surface: var(--bz-stone-650);
+  --bz-bg-card: rgba(22, 20, 18, 0.92);
+  --bz-bg-card-hover: rgba(30, 27, 23, 0.95);
+  --bz-bg-input: rgba(22, 20, 18, 0.85);
+
+  --bz-text-pure: #ffffff;
+  --bz-text-primary: var(--bz-parchment-50); /* 16.66:1 */
+  --bz-text-secondary: var(--bz-parchment-550); /*  7.52:1 */
+  --bz-text-muted: var(--bz-parchment-700); /*  5.12:1 — fixes #475569 fail */
+
+  --bz-accent: var(--bz-gold-300);
+  --bz-accent-hover: var(--bz-gold-200);
+  --bz-accent-glow: rgba(227, 179, 65, 0.25);
+  --bz-accent-subtle: rgba(227, 179, 65, 0.08);
+  --bz-accent-muted: rgba(227, 179, 65, 0.14);
+  --bz-cta-fg: #1a1205; /* 9.53:1 on gold-300 */
+
+  --bz-border: rgba(255, 255, 255, 0.07);
+  --bz-border-hover: rgba(255, 255, 255, 0.14);
+  --bz-border-accent: rgba(227, 179, 65, 0.28);
+  --bz-border-seam: rgba(
+    227,
+    179,
+    65,
+    0.12
+  ); /* gold hairline, section seams only */
+
+  --bz-success: var(--bz-state-success-2026);
+  --bz-warning: var(--bz-state-warning-2026);
+  --bz-error: var(--bz-state-danger-2026);
+  --bz-info: var(--bz-state-info-2026);
+
+  --bz-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--bz-border);
+  --bz-shadow-card-hover:
+    0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--bz-border-hover);
+  --bz-shadow-glow: 0 0 24px rgba(227, 179, 65, 0.1);
+
+  color-scheme: dark;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Direction 2 — STONE EDITORIAL
+   Boutique-legal calm. Serif headings. Copper rationed. Light = depth.
+   ──────────────────────────────────────────────────────────────────── */
+[data-theme="stone-editorial"] {
+  --bz-bg: var(--bz-stone-850);
+  --bz-bg-elevated: var(--bz-stone-700);
+  --bz-bg-surface: var(--bz-stone-550);
+  --bz-bg-card: rgba(27, 24, 21, 0.94);
+  --bz-bg-card-hover: rgba(35, 32, 25, 0.96);
+  --bz-bg-input: rgba(27, 24, 21, 0.85);
+
+  --bz-text-pure: #ffffff;
+  --bz-text-primary: var(--bz-parchment-150); /* 15.58:1 — display + headings */
+  --bz-text-body: var(--bz-parchment-300); /* 12.18:1 — promoted body tier */
+  --bz-text-secondary: var(--bz-parchment-600); /* 6.29:1 */
+  --bz-text-muted: var(--bz-parchment-600); /* merged tier — fixes AA fail */
+
+  --bz-accent: var(--bz-copper-450); /* 7.17:1 — copper survives, rationed */
+  --bz-accent-hover: #e29d73;
+  --bz-accent-glow: rgba(217, 142, 98, 0.2);
+  --bz-accent-subtle: rgba(217, 142, 98, 0.08);
+  --bz-accent-muted: rgba(217, 142, 98, 0.13);
+  --bz-cta-fg: #201409; /* 6.86:1 on copper-450 */
+  --bz-gold: var(--bz-gold-400); /* hairlines only, non-text (8.95:1 UI) */
+
+  --bz-border: rgba(239, 233, 222, 0.06); /* demoted — elevation by light */
+  --bz-border-hover: rgba(239, 233, 222, 0.12);
+  --bz-border-accent: rgba(217, 142, 98, 0.25);
+
+  --bz-radius-lg: 16px;
+  --bz-shadow-card: 0 2px 12px rgba(0, 0, 0, 0.25); /* single soft ambient */
+  --bz-shadow-card-hover: 0 6px 24px rgba(0, 0, 0, 0.3);
+  --bz-shadow-glow: none;
+
+  --bz-font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
+
+  color-scheme: dark;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Direction 3 — KINTSUGI SEAM  (recommended)
+   Stone slabs joined by gold gradient seams. Gold = seam/focus/one CTA.
+   ──────────────────────────────────────────────────────────────────── */
+[data-theme="kintsugi-seam"] {
+  --bz-bg: var(--bz-stone-900);
+  --bz-bg-elevated: var(--bz-stone-750);
+  --bz-bg-surface: var(--bz-stone-600);
+  --bz-bg-card: rgba(24, 22, 19, 0.93);
+  --bz-bg-card-hover: rgba(32, 29, 25, 0.95);
+  --bz-bg-input: rgba(24, 22, 19, 0.85);
+
+  --bz-text-pure: #ffffff;
+  --bz-text-primary: var(--bz-parchment-100); /* 16.13:1 */
+  --bz-text-secondary: var(--bz-parchment-500); /* 7.69:1 */
+  --bz-text-muted: var(--bz-parchment-500); /* merged — fixes AA fail */
+
+  --bz-accent: var(--bz-gold-350); /* 9.73:1 text-grade gold */
+  --bz-accent-hover: var(--bz-gold-200);
+  --bz-accent-glow: rgba(220, 180, 74, 0.22);
+  --bz-accent-subtle: rgba(220, 180, 74, 0.07);
+  --bz-accent-muted: rgba(220, 180, 74, 0.13);
+  --bz-cta-fg: #1a1205;
+
+  /* THE seam — decorative gradient, 1-2px elements only.
+     Mid-stop #D4AF37 = 9.18:1 vs bg (UI 3:1 passes with 3x headroom). */
+  --bz-seam: linear-gradient(
+    135deg,
+    var(--bz-gold-700),
+    var(--bz-gold-400) 55%,
+    var(--bz-gold-200)
+  );
+
+  --bz-border: rgba(240, 235, 226, 0.07); /* neutral hairline, non-seam edges */
+  --bz-border-hover: rgba(240, 235, 226, 0.14);
+  --bz-border-accent: rgba(220, 180, 74, 0.3);
+
+  --bz-success: var(--bz-state-success-2026);
+  --bz-warning: var(--bz-state-warning-2026);
+  --bz-error: var(--bz-state-danger-2026);
+  --bz-info: var(--bz-state-info-2026);
+
+  /* Category tokens consumed by dashboard/clients after drift cleanup */
+  --bz-cat-1: var(--bz-cat-visa);
+  --bz-cat-2: var(--bz-cat-business);
+  --bz-cat-3: var(--bz-cat-tax);
+  --bz-cat-4: var(--bz-cat-property);
+  --bz-cat-5: var(--bz-cat-living);
+  --bz-cat-6: var(--bz-cat-emerging);
+
+  --bz-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--bz-border);
+  --bz-shadow-card-hover:
+    0 6px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--bz-border-hover);
+  --bz-shadow-glow: 0 0 28px rgba(220, 180, 74, 0.08);
+
+  --bz-font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
+
+  color-scheme: dark;
+}
+
+/* Numeric discipline (any direction — recommend always-on):
+   apply to KPI values, deadlines, money, table figure columns. */
+.bz-figures {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.bz-code {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
