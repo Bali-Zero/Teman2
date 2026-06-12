@@ -18,23 +18,32 @@ from local images and sent ONLY to localhost:11434 (Ollama on the Pro).
 
 Model choice (FASE 0 registry role ``ocr_vision``)
 --------------------------------------------------
-Registry role ``ocr_vision`` -> ``qwen3-vl:8b`` is the PRIMARY OCR model.
+Registry role ``ocr_vision`` -> ``qwen2.5vl:7b`` is the PRIMARY OCR model
+(MODEL_TOPOLOGY.json, flipped by PR #1359 on 2026-06-12; hardcoded default
+aligned by the Antibody Debt #10 fix on 2026-06-13 so a missing/unreadable
+topology can no longer silently resurrect the broken primary).
 
-EMPIRICAL FINDING (2026-06-04, verified on this Pro against a real Indonesian
-LHKPN document, /api/generate + /api/chat, num_predict up to 4096):
-``qwen3-vl:8b`` is a *reasoning* VLM -- it emits its transcription into the
-``thinking`` field and returns ``response`` EMPTY (done_reason="length"),
-burning the whole token budget on chain-of-thought without finalizing. Raw
-probe: response=0 chars, thinking=9353 chars ("Got it, let's transcribe...").
-``qwen2.5vl:7b`` transcribed the SAME page cleanly (1148 verbatim chars).
+HISTORY — why qwen3-vl:8b is NOT the primary anymore. EMPIRICAL FINDING
+(2026-06-04, verified on this Pro against a real Indonesian LHKPN document,
+/api/generate + /api/chat, num_predict up to 4096): ``qwen3-vl:8b`` is a
+*reasoning* VLM -- it emits its transcription into the ``thinking`` field and
+returns ``response`` EMPTY (done_reason="length"), burning the whole token
+budget on chain-of-thought without finalizing. Raw probe: response=0 chars,
+thinking=9353 chars ("Got it, let's transcribe..."). ``qwen2.5vl:7b``
+transcribed the SAME page cleanly (1148 verbatim chars). Under batch load the
+dual model-swap thrash (qwen3-vl <-> qwen2.5vl) drove Ollama into 500s and the
+2026-06-12 backlog run poisoned 782/812 review_pending proposals with empty
+OCR (PR #1359 commit message). This matches the standing CLAUDE.md S9
+invariant: vision = qwen2.5vl:7b ONLY.
 
-So the OCR path is defensive:
-  (a) call qwen3-vl:8b; if ``response`` has text, use it;
-  (b) else salvage the ``thinking`` field (strip the meta-preamble);
-  (c) if still empty, CASCADE to the local qwen2.5vl:7b fallback.
-All three are local Ollama -- the cascade never leaves the Pro. The backend's
-default vision model (qwen2.5vl:7b, CLAUDE.md S9 invariant) is unchanged; the
-new qwen3-vl primary is scoped to this intake stage only.
+The OCR path stays defensive:
+  (a) call the resolved primary; if ``response`` has text, use it;
+  (b) else salvage the ``thinking`` field (no-op for non-reasoning VLMs,
+      kept for any future reasoning-VLM experiment via the topology role);
+  (c) if still empty, CASCADE to ``_OCR_FALLBACK``. With today's topology
+      primary == fallback, so step (c) is a same-model RETRY — kept on
+      purpose: live logs show it rescues pages that returned empty once.
+All calls are local Ollama -- the cascade never leaves the Pro.
 
 Golden Rule #10: persistent httpx client (``_get_client``), never
 ``AsyncClient()`` per call. crm_enhanced violates this with ``async with`` in a
@@ -62,9 +71,13 @@ logger = logging.getLogger("zantara.intake.classify")
 # Models / endpoint
 # ---------------------------------------------------------------------------
 
-# ocr_vision role (FASE 0 registry). Fall back to the same local model if the
-# topology file is unavailable in an isolated worker/test environment.
-_OCR_PRIMARY_DEFAULT = "qwen3-vl:8b"  # ocr_vision role
+# ocr_vision role (FASE 0 registry). Hardcoded default used when the topology
+# file is unavailable in an isolated worker/test environment. MUST stay aligned
+# with the CLAUDE.md S9 vision invariant (qwen2.5vl:7b ONLY): until 2026-06-13
+# this defaulted to qwen3-vl:8b, so a missing topology silently resurrected the
+# documented-broken primary (empty response, Ollama 500 thrash — see HISTORY in
+# the module docstring). Guarded by test_ocr_primary_default_invariant.
+_OCR_PRIMARY_DEFAULT = "qwen2.5vl:7b"  # ocr_vision role
 
 # Local-only fallback (CLAUDE.md S9 default vision model). Used when the primary
 # reasoning VLM returns no usable transcription. Both are Ollama -> 0 cloud.
@@ -209,7 +222,8 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
         via = "empty"
         model_used = primary
 
-        # (a) primary qwen3-vl: prefer response, salvage thinking.
+        # (a) resolved primary: prefer response, salvage thinking (no-op for
+        # non-reasoning VLMs like qwen2.5vl).
         try:
             resp, thinking = await asyncio.wait_for(
                 _ollama_vision(primary, b64), timeout=OCR_PAGE_TIMEOUT_SECONDS
@@ -221,10 +235,18 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                 if salvaged:
                     text, via = salvaged, "thinking"
         except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
-            logger.warning("OCR primary %s failed on page %d: %s", primary, idx, exc)
+            # %r, not %s: a bare ReadTimeout/HTTPError can str() to "" and the
+            # log line carried zero diagnostic signal (W70 blind-log class).
+            logger.warning("OCR primary %s failed on page %d: %r", primary, idx, exc)
 
-        # (b) local cascade to qwen2.5vl when primary yielded nothing usable.
+        # (b) cascade to _OCR_FALLBACK when primary yielded nothing usable.
+        # With today's topology primary == fallback, so this is a same-model
+        # retry — kept deliberately (live logs show a second attempt rescues
+        # pages that returned empty once). ``via`` stays "fallback" for
+        # downstream compatibility.
         if not text:
+            if _OCR_FALLBACK == primary:
+                logger.info("OCR same-model retry (%s) on page %d", _OCR_FALLBACK, idx)
             try:
                 resp, _ = await asyncio.wait_for(
                     _ollama_vision(_OCR_FALLBACK, b64),
@@ -233,7 +255,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                 if resp:
                     text, via, model_used = resp, "fallback", _OCR_FALLBACK
             except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
-                logger.warning("OCR fallback failed on page %d: %s", idx, exc)
+                logger.warning("OCR fallback failed on page %d: %r", idx, exc)
 
         results.append(
             {
