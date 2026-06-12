@@ -31,6 +31,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
+from html import escape as _html_escape
 from pathlib import Path
 from typing import Any
 
@@ -186,12 +187,21 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
         return html
 
     # Fallback: no <div class="hero"> — inject a positioned <img> after <body>.
+    # The image must NOT paint OVER the slide text (statement-bomb etc.): the
+    # existing content is raised above the img (z-index:1) and a legibility
+    # scrim (.hero-scrim) sits between image and text.
     hero_img_css = (
         "\n.hero-img{position:absolute;inset:0;width:100%;height:100%;"
         "object-fit:cover;z-index:0;}\n"
+        ".hero-scrim{position:absolute;inset:0;"
+        "background:rgba(10,10,10,0.55);z-index:0;}\n"
+        "body > *:not(.hero-img):not(.hero-scrim){position:relative;z-index:1;}\n"
     )
     html = html.replace("</style>", hero_img_css + "</style>", 1)
-    img_tag = f'<img class="hero-img" src="{hero_filename}" alt="" data-zone-type="hero-photo">'
+    img_tag = (
+        f'<img class="hero-img" src="{hero_filename}" alt="" data-zone-type="hero-photo">'
+        '<div class="hero-scrim"></div>'
+    )
     html = re.sub(r"(<body[^>]*>)", r"\1\n  " + img_tag, html, count=1)
     return html
 
@@ -873,6 +883,21 @@ def _fill_placeholders(
     # statement-bomb uses {{statement}}; map from headline/body
     statement = (slide.get("statement") or headline or body).strip()
 
+    # statement-bomb's richer placeholder {{statement_html_with_emphasis_span}}
+    # was previously NEVER filled — the raw mustache shipped to the renderer on
+    # every CTA slide. Build it from the statement: HTML-escape the text, then
+    # wrap the LAST word in <span class="emphasis"> (the skeleton's accent).
+    statement_emphasis_html = ""
+    if statement:
+        words = _html_escape(statement).split()
+        if len(words) > 1:
+            statement_emphasis_html = (
+                " ".join(words[:-1])
+                + f' <span class="emphasis">{words[-1]}</span>'
+            )
+        else:
+            statement_emphasis_html = f'<span class="emphasis">{words[0]}</span>'
+
     replacements = {
         "{{heading}}": headline,
         "{{subheading}}": subhead,
@@ -880,6 +905,7 @@ def _fill_placeholders(
         "{{body}}": body_html,
         "{{regulation_code}}": reg,
         "{{statement}}": statement,
+        "{{statement_html_with_emphasis_span}}": statement_emphasis_html,
     }
     for k, v in replacements.items():
         html = html.replace(k, v)

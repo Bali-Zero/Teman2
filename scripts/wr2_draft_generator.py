@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""WR2 Draft Generator — Claude writes 11 English slides, Imagen generates cover only.
+"""WR2 Draft Generator — Claude writes 6-8 English slides, every slide gets a generated image.
 
 Daily cron (05:15 WITA): picks drafts with status='briefed', calls Claude
-OAuth to compose the 11-slide JSON (English content, register in the 7
-Council tones), runs Imagen 4 Ultra for the cover only (body slides keep
-image_url=None and carry image_prompt for manual generation by the team),
+OAuth to compose the 6-8 slide JSON (English content, register in the 7
+Council tones; every slide is is_hero_image=true per the 2026-06-12
+decision), runs Imagen 4 Ultra for the cover only (body slides keep
+image_url=None and carry image_prompt for downstream generation),
 uploads the cover to Tigris, persists slides_json to the draft and flips
 status to 'drafts'.
 
@@ -139,7 +140,7 @@ SYSTEM_INSTRUCTIONS = """You are the Draft Composer of War Room 2.0 for Bali Zer
 
 Bali Zero is an Indonesian business-services agency serving international expats, foreign investors, digital nomads and retirees — primarily English-speaking, from ~50 countries. The Italian community is one slice among many; never default to Italian.
 
-GOAL: produce the 11-slide structure of an Instagram carousel that reads like a NARRATIVE (Wired/The Atlantic editorial), not a legal brief.
+GOAL: produce the 6-8 slide structure (flexible: pick the count the story needs) of an Instagram carousel that reads like a NARRATIVE (Wired/The Atlantic editorial), not a legal brief.
 
 TONE REGISTERS (pick ONE of the 7 based on content):
 - rituale (ritual): symbolic events, cultural anniversaries, turning points
@@ -158,12 +159,12 @@ HARD RULES:
 - Headlines max 60 characters
 - Body max 280 characters
 - Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
-- Slide 11 = CTA to Bali Zero
+- LAST slide = CTA to Bali Zero
 - Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
 
-TONAL PALETTE (per hero slide — drives the photographic look, fights monotony):
-Each `is_hero_image: true` slide MUST include a `tonal_palette` field. Pick ONE
-that fits the slide's mood; do NOT use the same palette for every hero slide,
+TONAL PALETTE (per slide — drives the photographic look, fights monotony):
+EVERY slide MUST include a `tonal_palette` field (all slides are hero). Pick ONE
+that fits the slide's mood; do NOT use the same palette for every slide,
 and vary it across carousels on the same topic (the brand forbids two
 same-domain carousels looking identical):
 - "warm-ochre": warm, intimate, document/interior mood (the house style)
@@ -171,10 +172,9 @@ same-domain carousels looking identical):
 - "monochrome": stark, archival, historical, high-gravity
 - "high-contrast": tense, confrontational, urgent
 - "bleached-daylight": open, hopeful, resolution, "the way out"
-Non-hero slides do not need it.
 
-IMAGE MODE (per hero slide — the SCENE TYPE, drives anti-sameness):
-Each `is_hero_image: true` slide MUST include an `image_mode` field naming the
+IMAGE MODE (per slide — the SCENE TYPE, drives anti-sameness):
+EVERY slide MUST include an `image_mode` field naming the
 KIND of scene. Pick the ONE mode that matches what the photo depicts, and VARY
 it across the slides (two same-domain carousels must not repeat the same dominant
 mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
@@ -187,21 +187,15 @@ mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
 - "calendar-photo": dates, deadlines, time made visible
 - "data-visualization": a chart, graph, map, or numbers as the image
 - "cultural-photo": Indonesian/Balinese culture, ritual, place, daily life
-Use the slug verbatim (e.g. "desk-document"). Non-hero slides may omit it.
+Use the slug verbatim (e.g. "desk-document").
 
-HERO IMAGE SELECTION (MANDATORY):
-You MUST mark exactly 4 slides as `is_hero_image: true`:
-- Slide 1 (cover) — ALWAYS hero
-- Slide 11 (CTA closer) — ALWAYS hero
-- 2 mid-carousel slides at NARRATIVE TURNING POINTS — pick the slides that
-  open a new beat (e.g. "the shift", "the stakes", "fiction vs substance"),
-  not the ones that list facts or numbers.
-
-The remaining 7 slides have `is_hero_image: false` — they keep the
-template's tipografia layout without an image. Hero slides get a
-full-bleed photo as background; non-hero slides are clean text-on-color.
-
-Output exactly 4 slides with `is_hero_image: true`. Not 3, not 5.
+HERO IMAGE SELECTION (MANDATORY — decision 2026-06-12, option A):
+EVERY slide is `is_hero_image: true` — cover, bodies AND the CTA closer.
+Each slide gets its own generated full-bleed photo as background; there
+are NO text-only slides. Therefore EVERY slide MUST carry `image_prompt`,
+`tonal_palette` AND `image_mode`. Vary the image_mode across the slides:
+NEVER let one mode dominate the whole carousel — use at least 4 of the 9
+modes across the 6-8 slides.
 
 STORYTELLING DIRECTIVES (overrides any default factual mode):
 
@@ -242,11 +236,11 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    quoted phrase, or a concrete scene. Then introduce the law later if
    needed.
 
-7. Bali Zero "take" slides (typically slide 2 and slide 11): write as
+7. Bali Zero "take" slides (typically slide 2 and the last slide): write as
    first-person editorial voice ("Our read:", "What we are seeing:"),
    NOT as a third-party legal summary.
 
-8. The "What This Means For You" type closer (slide 11): SHORT, DIRECT,
+8. The "What This Means For You" type closer (the last slide): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
 
 9. The cover "subhead" MUST be 1-6 words maximum — a short tag/category/
@@ -277,32 +271,35 @@ Structure:
       "slide_number": 2,
       "slide_type": "take",
       "is_cover": false,
-      "is_hero_image": false,
+      "is_hero_image": true,
       "headline": "Our read: ...",
       "body": "...",
-      "image_prompt": "editorial scene, 1-2 sentences"
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "tonal_palette": "cool-teal",
+      "image_mode": "event-photo"
     },
-    // ... 7 more slides — 2 of them at narrative turning points must have is_hero_image: true ...
+    // ... 4 more slides, ALL is_hero_image: true ...
     {
-      "slide_number": 11,
+      "slide_number": 7,
       "slide_type": "cta",
       "is_cover": false,
       "is_hero_image": true,
       "headline": "Where this leaves you",
       "body": "One clear consequence, then one concrete next step. Reach Bali Zero when the deadline is yours, not theirs.",
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "tonal_palette": "bleached-daylight",
       "image_mode": "human-silhouette"
     }
   ]
 }
 
-REPEAT (MUST OBEY): every slide object MUST include the `is_hero_image` field
-(true or false). Slide 1 hero=true, slide 11 hero=true, plus exactly 2 more
-slides hero=true at narrative turning points = 4 hero slides total per
-carousel. The other 7 slides have is_hero_image=false. THIS IS NON-NEGOTIABLE.
+REPEAT (MUST OBEY): EVERY slide object MUST have `is_hero_image: true` — no
+exceptions, no text-only slides. Every slide MUST carry `image_prompt`,
+`tonal_palette` and `image_mode`. THIS IS NON-NEGOTIABLE.
 
-ALSO MANDATORY: every is_hero_image=true slide MUST carry an `image_mode` (one
-of the 9 slugs above), and the 4 hero slides should use at least 3 DISTINCT
-modes — do not paint all four with the same scene type.
+ALSO MANDATORY: vary the `image_mode` (one of the 9 slugs above) across the
+slides — use at least 4 DISTINCT modes per carousel; never let one scene type
+dominate the whole carousel.
 """
 
 
@@ -437,7 +434,7 @@ Content:
 
 ---
 
-Produce the full 11-slide JSON NOW. English content. No text outside the JSON object.
+Produce the full 6-8 slide JSON NOW. English content. No text outside the JSON object.
 """
 
 
@@ -786,8 +783,8 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
         )
 
     slides = parsed.get("slides") or []
-    if len(slides) < 6 or len(slides) > 11:
-        raise ValueError(f"Expected 6-11 slides, got {len(slides)}")
+    if len(slides) < 6 or len(slides) > 8:
+        raise ValueError(f"Expected 6-8 slides, got {len(slides)}")
 
     normalised: list[dict[str, Any]] = []
     for i, raw in enumerate(slides, start=1):
@@ -819,27 +816,14 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
 
     if normalised:
         normalised[0]["is_cover"] = True
-        # Slide 1 is ALWAYS hero (cover image). Force-set even if Claude omitted it.
-        normalised[0]["is_hero_image"] = True
         for s in normalised[1:]:
             s["is_cover"] = False
-        # Slide 11 (last, the CTA closer) is ALWAYS hero too.
-        if len(normalised) >= 11:
-            normalised[10]["is_hero_image"] = True
-
-    # Defensive: if Claude produced 0 hero slides (ignoring the prompt),
-    # auto-promote a sensible mid-carousel default so image-generator has
-    # work to do. Pick slides at narrative-turning-point positions.
-    hero_count = sum(1 for s in normalised if s.get("is_hero_image"))
-    if hero_count < 2 and len(normalised) >= 11:
-        # Force-promote slides 3 and 6 (typical turning points) if no
-        # other hero was selected. This is a fallback, not the desired path.
-        normalised[2]["is_hero_image"] = True   # slide 3
-        normalised[5]["is_hero_image"] = True   # slide 6
-        logger.warning(
-            "Claude returned %d hero slides (need >=2 mid). Auto-promoted slides 3 and 6.",
-            hero_count,
-        )
+        # Decisione Antonello 2026-06-12 (option A): EVERY slide carries its
+        # own generated image — force is_hero_image=True on all slides (cover,
+        # bodies, CTA closer) regardless of what the model returned. This
+        # eliminates text-only slides routed to photo layouts without a photo.
+        for s in normalised:
+            s["is_hero_image"] = True
 
     return register, normalised
 
