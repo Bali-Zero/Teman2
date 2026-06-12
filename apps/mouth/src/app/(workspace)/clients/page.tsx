@@ -32,7 +32,9 @@ const PrimeNexusLayout = dynamic(
   () => import("@/components/maps/prime/PrimeNexusLayout"),
   {
     ssr: false,
-    loading: () => <div style={{ padding: 24 }}>Caricamento mappa…</div>,
+    loading: () => (
+      <div style={{ padding: 24 }}>{STRINGS.common.loadingMap}</div>
+    ),
   },
 );
 import { useAutoAnimate } from "@formkit/auto-animate/react";
@@ -56,6 +58,7 @@ import { useCrmClients, useCrmStats } from "@/hooks";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/lib/logger";
+import { STRINGS } from "@/lib/strings";
 
 // Status badge styling
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -1312,7 +1315,7 @@ function ClientsListContent() {
 /**
  * Main page component with error boundary
  */
-export default function ClientiPage() {
+export default function ClientsPage() {
   return (
     <CRMErrorBoundary section="Clients">
       <ClientsListContent />
