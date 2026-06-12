@@ -557,6 +557,80 @@ def test_nominee_guard_still_fires_on_real_nominee_with_atas_nama() -> None:
 
 
 # ---------------------------------------------------------------------------
+# F06 hardening (2026-06-13): "'s name" / "atas nama" are WEAK tokens — they
+# need an asset/proxy co-occurrence and never fire in booking/tiket/rekening
+# naming contexts. Both polarities per the W73 matrix convention.
+# ---------------------------------------------------------------------------
+
+def test_nominee_guard_does_not_fire_on_booking_atas_nama() -> None:
+    """A hotel-booking request 'atas nama saya' is reservation NAMING, not a
+    nominee asset-holding request — it was clobbered with the illegal-nominee
+    canonical before the hardening."""
+    correct = (
+        "Ya, kami bisa bantu booking hotel atas nama Anda. Kirim tanggal "
+        "check-in dan nama lengkap sesuai paspor."
+    )
+    assert bridge._is_nominee_intent("bisa booking hotel atas nama saya?") is False
+    assert (
+        bridge._guard_nominee_reply("Bisa booking hotel atas nama saya?", correct, "id")
+        == correct
+    )
+
+
+def test_nominee_guard_does_not_fire_on_rekening_atas_nama() -> None:
+    """A bank-transfer question about a 'rekening atas nama istri' is account
+    NAMING — the proxy word ('istri') alone must not turn it into nominee
+    intent."""
+    correct = (
+        "Bisa, transfer ke rekening atas nama istri Anda diterima selama "
+        "datanya cocok dengan data pembayaran."
+    )
+    assert (
+        bridge._is_nominee_intent("bisa transfer ke rekening atas nama istri saya?")
+        is False
+    )
+    assert (
+        bridge._guard_nominee_reply(
+            "Bisa transfer ke rekening atas nama istri saya?", correct, "id"
+        )
+        == correct
+    )
+
+
+def test_nominee_guard_does_not_fire_on_plain_possessive_name() -> None:
+    """"'s name" with NO asset/proxy co-occurrence (e.g. asking for the
+    notary's name) is everyday possessive English, not nominee intent."""
+    message = "Can you confirm the notary's name for tomorrow's appointment?"
+    correct = (
+        "The notary for your appointment is confirmed for 10am; the team will "
+        "send the full name and office address shortly."
+    )
+    assert bridge._is_nominee_intent(bridge._normalize_text(message)) is False
+    assert bridge._guard_nominee_reply(message, correct, "en") == correct
+
+
+def test_nominee_guard_still_fires_on_weak_name_with_asset() -> None:
+    """Clobber polarity: "'s name" WITH an asset + proxy co-occurrence is a
+    genuine nominee request — a soft 'usually fine' answer must be replaced
+    with the illegality canonical."""
+    unsafe = "Yes, that is a common approach and usually fine in practice."
+    guarded = bridge._guard_nominee_reply(
+        "Can we put the villa certificate in my wife's name?", unsafe, "en"
+    )
+    assert guarded != unsafe
+    assert "illegal" in guarded.lower()
+
+
+def test_nominee_intent_compositional_beats_admin_token() -> None:
+    """A genuine compositional nominee request must fire even when the message
+    incidentally contains an administrative token (the old exclusion-first
+    ordering returned False here)."""
+    assert bridge._is_nominee_intent(
+        "my indonesian friend will hold the land title for me, then send me the invoice"
+    )
+
+
+# ---------------------------------------------------------------------------
 # F13: villa⊂village in _is_villa_kbli_query and _guard_villa_kbli_reply
 # ---------------------------------------------------------------------------
 
