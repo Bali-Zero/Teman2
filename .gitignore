@@ -736,3 +736,7 @@ apps/evaluator/.rag-eval-prod.env
 # Added 2026-06-09 (scripts/fast-gate.sh, 4-LLM panel ship #1).
 .testmondata
 .testmondata-*
+
+# WR2 manual carousel assets (pre-authored injection batches — delivered to Pro via deploy-puller)
+!docs/wr2/manual-assets/**/*.png
+!docs/wr2/manual-assets/**/*.jpg
