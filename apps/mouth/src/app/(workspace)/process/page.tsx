@@ -64,6 +64,11 @@ import {
   initializeAnalytics,
 } from "@/lib/analytics";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import {
+  PROCESS_VIEW_MODE_KEY,
+  loadViewMode,
+  saveViewMode,
+} from "@/lib/utils/view-mode-storage";
 
 // SIMPLIFIED WORKFLOW (Feb 2026) - 5 Steps:
 // inquiry → waiting_documents → sending_invoice → on_process → completed
@@ -203,7 +208,10 @@ export default function PratichePage() {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  // P2.2: persist the view toggle across navigations (lazy-init + write-through)
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    loadViewMode(PROCESS_VIEW_MODE_KEY, ["kanban", "list"], "kanban"),
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     status: "",
@@ -308,9 +316,10 @@ export default function PratichePage() {
     loadPractices();
   }, [selectedMonth]);
 
-  // Track view mode changes
+  // Track + persist view mode changes
   useEffect(() => {
     trackViewModeChange(viewMode);
+    saveViewMode(PROCESS_VIEW_MODE_KEY, viewMode);
   }, [viewMode]);
 
   // Track filter changes

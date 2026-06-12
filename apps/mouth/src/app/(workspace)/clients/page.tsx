@@ -56,6 +56,11 @@ import { useCrmClients, useCrmStats } from "@/hooks";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/lib/logger";
+import {
+  CLIENTS_VIEW_MODE_KEY,
+  loadViewMode,
+  saveViewMode,
+} from "@/lib/utils/view-mode-storage";
 
 // Status badge styling
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -265,7 +270,17 @@ function ClientsListContent() {
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  // P2.2: persist the view toggle across navigations (lazy-init + write-through)
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    loadViewMode(
+      CLIENTS_VIEW_MODE_KEY,
+      ["list", "kanban", "table", "map"],
+      "list",
+    ),
+  );
+  useEffect(() => {
+    saveViewMode(CLIENTS_VIEW_MODE_KEY, viewMode);
+  }, [viewMode]);
   const [silentFilter, setSilentFilter] = useState<number | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
