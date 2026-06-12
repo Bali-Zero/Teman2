@@ -1286,21 +1286,27 @@ _NOMINEE_DIRECT_TERMS = (
     "under their name",
     "in his name",
     "in her name",
-    # NOTE: "'s name" and "atas nama" are kept here but _is_nominee_intent
-    # applies an exclusion check for company/invoice contexts (F06 2026-06-11):
-    # "change my company's name" and "faktur atas nama PT saya" must NOT fire.
-    "'s name",  # "in my friend's name", "in her husband's name", etc.
-    "atas nama",
     "pinjam nama",
     "pakai nama",
     "prestanome",
     "intestare",
     "intesta a",
 )
+# Weak name-tokens (F06 hardening 2026-06-13): "'s name" / "atas nama" appear in
+# everyday administrative sentences ("the notary's name", "booking atas nama
+# saya"), so ALONE they are not nominee intent. They fire only when the message
+# also carries an asset or proxy co-occurrence, and never in an
+# administrative-naming context (_NOMINEE_FALSE_POSITIVE_TERMS below).
+_NOMINEE_WEAK_NAME_TERMS = (
+    "'s name",  # "in my friend's name", "in her husband's name", etc.
+    "atas nama",
+)
 # Contexts that look like nominee trigger terms but are NOT nominee intent.
 # "company's name" / "company name" → corporate name change (not land holding).
 # "atas nama PT" → invoice / document issued in the name of a company.
 # "faktur" / "invoice" / "ubah nama" (change name) → administrative, not holding.
+# booking / tiket / rekening (F06 hardening) → reservation, ticket, or bank
+# account NAMING ("booking hotel atas nama saya"), not asset holding.
 _NOMINEE_FALSE_POSITIVE_TERMS = (
     "company name",
     "company's name",
@@ -1318,12 +1324,35 @@ _NOMINEE_FALSE_POSITIVE_TERMS = (
     "atas nama pt",
     "atas nama cv",
     "atas nama perusahaan",
+    "booking",
+    "reservation",
+    "reservasi",
+    "ticket",
+    "tiket",
+    "rekening",
+    "bank account",
 )
 # Compositional fallback: "<someone Indonesian/a friend> hold(s) the <asset> for me".
 # Phrase lists are too brittle ("hold the title for me" missed "hold the land title
 # for me"), so detect the verb + an asset noun + a for-me / friend signal instead.
 _NOMINEE_HOLD_VERBS = ("hold ", "holds ", "holding ", "keep ", "register ", "put it in")
-_NOMINEE_ASSET_TERMS = ("title", "land", "property", "house", "villa", "certificate", "shares")
+_NOMINEE_ASSET_TERMS = (
+    "title",
+    "land",
+    "property",
+    "house",
+    "villa",
+    "certificate",
+    "shares",
+    # Indonesian / Italian asset nouns so "atas nama" co-occurrence works in
+    # the languages where it is actually used (F06 hardening).
+    "tanah",
+    "sertifikat",
+    "saham",
+    "rumah",
+    "properti",
+    "terreno",
+)
 _NOMINEE_PROXY_SIGNALS = (
     "for me",
     "for us",
@@ -1340,18 +1369,28 @@ _NOMINEE_PROXY_SIGNALS = (
 
 
 def _is_nominee_intent(normalized_message: str) -> bool:
-    # Bail early for known false-positive contexts (F06 2026-06-11):
-    # company name changes ("Can I change my company's name?") and invoice
-    # language ("bisa buat faktur atas nama PT saya?") share trigger tokens
-    # with nominee requests but are unrelated.
-    if _contains_any(normalized_message, _NOMINEE_FALSE_POSITIVE_TERMS):
-        return False
+    # STRONG signals fire regardless of administrative context: the explicit
+    # nominee vocabulary, or the compositional verb+asset+proxy pattern
+    # ("my Indonesian friend can hold the land title for me").
     if _contains_any(normalized_message, _NOMINEE_DIRECT_TERMS):
         return True
-    return (
+    if (
         _contains_any(normalized_message, _NOMINEE_HOLD_VERBS)
         and _contains_any(normalized_message, _NOMINEE_ASSET_TERMS)
         and _contains_any(normalized_message, _NOMINEE_PROXY_SIGNALS)
+    ):
+        return True
+    # WEAK name-tokens ("'s name" / "atas nama") — F06 2026-06-11 + hardening
+    # 2026-06-13. First bail in administrative-naming contexts (company name
+    # change, faktur/invoice, booking/tiket/rekening naming); then require an
+    # asset or proxy co-occurrence, so "the notary's name" / "booking hotel
+    # atas nama saya" never read as nominee requests while "the villa
+    # certificate in my wife's name" still does.
+    if _contains_any(normalized_message, _NOMINEE_FALSE_POSITIVE_TERMS):
+        return False
+    return _contains_any(normalized_message, _NOMINEE_WEAK_NAME_TERMS) and (
+        _contains_any(normalized_message, _NOMINEE_ASSET_TERMS)
+        or _contains_any(normalized_message, _NOMINEE_PROXY_SIGNALS)
     )
 _DEFINITIONAL_TERMS = (
     "what is",
