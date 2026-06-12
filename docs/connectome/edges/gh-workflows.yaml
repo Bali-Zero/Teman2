@@ -1,0 +1,356 @@
+# Connectome — GitHub Actions edges (Balizero1987/Teman2)
+# Census: 2026-06-13. Required contexts on main at census: 18.
+# GATING = produces a required status check. RUN_ONLY = runs, doesn't block.
+domain: gh-workflows
+census_date: "2026-06-13"
+edges:
+  # ── GATING (merge-blocking) ──
+  - {
+      id: tests.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+      consumer: "4 required contexts: Backend/MCP/Frontend/E2E",
+    }
+  - id: security.yml
+    kind: gh_workflow
+    machine: github
+    status: GATING
+    consumer: "Detect Secrets + Bandit + CodeQL py/js (required)"
+    notes: "ANOMALY A1 at census: required job 'Bandit Python Security' ran bandit with '|| true' — toothless twin required while toothed twin (semgrep.yml) advisory. Fix dispatched 2026-06-13"
+  - {
+      id: hot-zone-pr-gate.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+      consumer: "Hot-zone enforcement (CODEOWNERS self-mod + migration replay blocking; redis-lease + launchagent steps monitor-by-design)",
+      notes: "kill-switch var L5_2_SERVER_ENFORCEMENT_ENABLED does not exist (404) → active; var-write = silent disarm vector",
+    }
+  - {
+      id: verify-the-verifiers.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+      notes: "sentinel skip→success pattern (W69-safe); sha256 integrity teeth real",
+    }
+  - {
+      id: p1s2-mutation-incremental.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+    }
+  - {
+      id: p3-sandbox-gates.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+      notes: "static job blocks; runtime job monitor-by-design (runner can't reach Pro)",
+    }
+  - {
+      id: p6-federation-parallelize.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+      notes: "W69 red ×2 HEALED — last 3 green",
+    }
+  - {
+      id: p7-lesson-harvester.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+    }
+  - { id: p8-brand-api.yml, kind: gh_workflow, machine: github, status: GATING }
+  - {
+      id: p9-cost-breaker.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+      notes: "CI layer; H24 runtime twin = Pro cost-breaker-deadman (complementary)",
+    }
+  - {
+      id: asyncpg-lint.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: GATING,
+      notes: "W64/W35 deferral CLOSED — required since 2026-06-11/12",
+    }
+  - { id: root-guard.yml, kind: gh_workflow, machine: github, status: GATING }
+  # ── deploy edge ──
+  - {
+      id: fly-deploy.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      consumer: "Fly prod deploy + health + auto-rollback + Telegram",
+      notes: "success ≠ machine running (autostop 503-scar caveat)",
+    }
+  # ── RUN_ONLY PR gates (alive, not required) ──
+  - {
+      id: auto-merge-whitelist.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: broker-hygiene.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "dormant 11d — paths rarely touched",
+    }
+  - {
+      id: catA-channel-count-pin.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: catB-daemon-cron-xor.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "W67 crash-loop guard for versioned plists",
+    }
+  - {
+      id: catC-canary-tautology-lint.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: catD-backend-data-invariants.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: catE-sovereignty-lint.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: catF-wa-bridge-drift.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "guard-chain + HOME-fork drift notice (W50/W68/W73 family)",
+    }
+  - {
+      id: contract-tests.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: NEUTRALIZED,
+      notes: "job-level continue-on-error:true — DOCUMENTED advisory with promotion criteria",
+    }
+  - {
+      id: docs-guardian.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RED,
+      notes: "6/6 failures at census; regen fix dispatched 2026-06-13",
+    }
+  - {
+      id: docs-sync.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RED,
+      notes: "DOCSYNC STALE on main 6/6; regen fix dispatched 2026-06-13",
+    }
+  - {
+      id: intel-router-tests.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "dormant 24d (<30d threshold)",
+    }
+  - { id: lighthouse.yml, kind: gh_workflow, machine: github, status: RUN_ONLY }
+  - {
+      id: lint-cross-import.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: lint-golden-rule-10.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: lint-i18n-providers.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: lint-migration-numbers.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "double-covered inside hot-zone gate (deliberate, W40)",
+    }
+  - {
+      id: lint-migration-rollback.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: migration-lint.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "Squawk (PR #306)",
+    }
+  - { id: sbom.yml, kind: gh_workflow, machine: github, status: RUN_ONLY }
+  - {
+      id: semgrep.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "despite the name = Bandit+ESLint WITH teeth (sys.exit 1 on HIGH/CRITICAL) — the toothed twin of security.yml's required job",
+    }
+  - {
+      id: sonarqube.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: NEUTRALIZED,
+      notes: "self-documented advisory",
+    }
+  - {
+      id: symbiosis-lint.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+    }
+  - {
+      id: vercel-build-guard.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "notify-only",
+    }
+  - {
+      id: wr2-master-template-guard.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: RUN_ONLY,
+      notes: "Canva path retired by HTML cutover — decommission-review candidate",
+    }
+  # ── SCHEDULED (cron twins of local jobs flagged in notes) ──
+  - {
+      id: cron-cert-monitor.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "daily 23:00 UTC",
+    }
+  - {
+      id: cron-drive-poll.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "*/5min",
+      notes: "potential ACTIVE_ACTIVE with Pro drive intake watcher when armed (#1364, ~14/06)",
+    }
+  - {
+      id: cron-fly-cost-alert.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "Mon 01:00 UTC",
+      notes: "complementary to Pro cost-breaker (different ledgers)",
+    }
+  - {
+      id: cron-fly-restart-detector.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "*/15min",
+      notes: "503-scar antibody; verify it force-starts not just alerts (behavior unaudited)",
+    }
+  - {
+      id: cron-fly-watcher.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "*/15min",
+      notes: "overlaps restart-detector cadence — consolidation candidate",
+    }
+  - {
+      id: cron-notifiers-all.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "daily 16:00 UTC",
+    }
+  - {
+      id: cron-notifiers-birthday.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "daily 16:05 UTC",
+    }
+  - {
+      id: cron-notifiers-email-health.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "*/30min",
+    }
+  - {
+      id: cron-notifiers-lkpm-deadlines.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "daily 15:00 UTC",
+      notes: "functional overlap with compliance-deadline-sentinel (different channels)",
+    }
+  - {
+      id: cron-notifiers-welcome-pending.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "*/15min",
+    }
+  - {
+      id: cron-practice-auto-create.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "daily 23:30 UTC",
+    }
+  - {
+      id: cron-sentry-quota-check.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "daily 01:00 UTC",
+    }
+  - {
+      id: fly-secrets-check.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_ALIVE,
+      producer: "Mon 09:00 UTC",
+    }
+  - id: restore-drill.yml
+    kind: gh_workflow
+    machine: github
+    status: RED
+    producer: "monthly d1 04:00 UTC"
+    notes: "last SCHEDULED run (2026-06-01) FAILED, rescued by manual dispatch 06-05; with W70 local fly_pg_backup 0-byte history, backup-verify lane failed on BOTH sides. Next unattended proof 2026-07-01"
+  - {
+      id: sprint2-w1-verify.yml,
+      kind: gh_workflow,
+      machine: github,
+      status: SCHEDULED_DEAD,
+      producer: "yearly May 10 (one-shot zombie)",
+      notes: "removal dispatched 2026-06-13",
+    }
+anomalies:
+  - "A1: required Bandit check toothless ('|| true') while toothed twin advisory — fix in flight"
+  - "A4: 7 cron workflows exit-0 silently if Telegram secrets missing — alert-path soft-neutralization (W55 family)"
+  - "A6: hot-zone kill-switch is a nonexistent repo var — variable-write = silent disarm; add var-audit to verify-the-verifiers"
+  - "restore-drill scheduled failure + W70 = backup lane needs its 2026-07-01 unattended proof"

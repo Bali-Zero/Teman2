@@ -1,0 +1,176 @@
+# Connectome — inbound webhooks + outbound HTTP edges (the boundary with the outside world)
+# Census: 2026-06-13 (repo-level reads; no live external probes).
+domain: http-webhooks
+census_date: "2026-06-13"
+edges:
+  # ── inbound ──
+  - {
+      id: webhook-telegram-in,
+      kind: http_webhook,
+      direction: in,
+      machine: fly,
+      status: ALIVE,
+      consumer: "routers/telegram_webhook.py:245 (update_id dedup, ack-first, intel+fad callbacks)",
+    }
+  - id: webhook-whatsapp-in
+    kind: http_webhook
+    direction: in
+    machine: fly
+    status: ALIVE
+    consumer: "channels/whatsapp/adapter.py:74 via ChannelRouter"
+    notes: "Meta X-Hub-Signature verification NOT visible in adapter — verify it lives in middleware/base class, else forged-event surface (census open question)"
+  - {
+      id: webhook-instagram-in,
+      kind: http_webhook,
+      direction: in,
+      machine: fly,
+      status: ALIVE,
+      consumer: "channels/instagram/adapter.py:50 (is_echo + account_id double-check)",
+    }
+  - {
+      id: webhook-openclaw-crm-logging,
+      kind: http_webhook,
+      direction: in,
+      machine: fly,
+      status: ALIVE,
+      consumer: "routers/webhooks.py:44 (HMAC X-OpenClaw-Signature enforced)",
+    }
+  - {
+      id: web-sse-chat,
+      kind: http_webhook,
+      direction: in,
+      machine: fly,
+      status: ALIVE,
+      consumer: "channels/web/adapter.py:150 stream_response (auth via get_current_user)",
+      notes: "send_response is a documented no-op (F41) — router must always use stream path",
+    }
+  # ── outbound: Meta ──
+  - {
+      id: out-whatsapp-graph,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "graph.facebook.com v22.0 (raise_for_status + DLQ path)",
+    }
+  - {
+      id: out-instagram-graph,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "graph.instagram.com v22.0",
+      notes: "raise_for_status present since #1270; GRAPH_API_VERSION constant since #1377 — audit F07 fully closed",
+    }
+  # ── outbound: Telegram (the big sender family — 25+ files) ──
+  - id: out-telegram-bot-api
+    kind: http_webhook
+    direction: out
+    machine: fly
+    status: ALIVE
+    producer: "25+ backend files (adapter, bot_service, federation notifier, canva _telegram, drive_poll, attendance, sota m13, wa_copilot, owner_cashout, review, optimizations DLQ)"
+    consumer: "api.telegram.org (token in URL path — Telegram protocol requirement)"
+    notes: "leak surface = LOGGING the URL, not the URL itself (Bearer header NOT supported by Telegram). F01 sweep (#1271+#1378) silenced httpx/httpcore in the leaking scripts; backend services use urllib (never logs URLs) or guarded httpx. Any NEW Telegram sender must silence its HTTP client logger"
+  # ── outbound: email ──
+  - {
+      id: out-brevo-email,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "api.brevo.com/v3/smtp/email (fallback chain Brevo→SendGrid→Resend)",
+      notes: "hardcoded rule: from=zantara@balizero.com",
+    }
+  # ── outbound: LLM + data ──
+  - {
+      id: out-openai-embeddings,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "text-embedding-3-small 1536d FROZEN (300k token batch discipline)",
+    }
+  - {
+      id: out-deepseek-api,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "api.deepseek.com (deepseek-v4-pro/flash explicit; legacy aliases = silent flash downgrade TRAP)",
+    }
+  - {
+      id: out-gemini-genai,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "Gemini 2.5 Flash primary RAG + 2.0 fallback",
+    }
+  - {
+      id: out-qdrant-cloud,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "Qdrant Cloud (flat payloads only)",
+    }
+  - {
+      id: out-google-drive,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "Drive v3 (OAuth token table, 90d expiry, watchdog 7d-before)",
+    }
+  - {
+      id: out-gsc-indexing,
+      kind: http_webhook,
+      direction: out,
+      machine: pro,
+      status: ALIVE,
+      consumer: "GSC Indexing API (service account)",
+    }
+  - {
+      id: out-ga4,
+      kind: http_webhook,
+      direction: out,
+      machine: fly,
+      status: ALIVE,
+      consumer: "GA4 reporting (service account)",
+    }
+  - {
+      id: out-notebooklm-mcp,
+      kind: http_webhook,
+      direction: out,
+      machine: pro,
+      status: ALIVE,
+      consumer: "NotebookLM via MCP (oracle shadow retrieval + drive backup)",
+    }
+  # ── internal Fly edges ──
+  - id: fly-api-to-rag-internal
+    kind: http_webhook
+    direction: internal
+    machine: fly
+    status: ALIVE
+    consumer: "rag.process.nuzantara-rag.internal:8080 (IPv6 ::, no Fly proxy)"
+    notes: "F27 census note: experience/skill/metabolic_health manifest-declared API-only but included in heavy → potential SQLite split-brain for internal callers (open, audit F27)"
+  - {
+      id: fly-postgres-internal,
+      kind: http_webhook,
+      direction: internal,
+      machine: fly,
+      status: ALIVE,
+      consumer: "nuzantara-postgres (advisory-lock migrations, repmgr HA)",
+    }
+  - {
+      id: fly-redis-optional,
+      kind: http_webhook,
+      direction: internal,
+      machine: fly,
+      status: UNKNOWN,
+      notes: "conditional on REDIS_URL; graceful degradation",
+    }
+anomalies:
+  - "WA/IG webhook signature verification not located in adapters — confirm middleware or close the forged-event hole"
+  - "F27 router parity inverse direction still open (manifest vs include_heavy_routers)"
+  - "F41 web send_response no-op: enforced only by convention — assertion in DLQ retry path recommended"
