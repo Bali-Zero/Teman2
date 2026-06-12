@@ -39,7 +39,9 @@
 #         PROXY_WAIT (default 25 — seconds to wait for a local proxy before pro fallback),
 #         NUZ_APP_DB (override the clients-table DB probe), FLY_PG_PORT (default 5433 —
 #         in-container postgres TCP port), FLY_PGDUMP/FLY_PSQL (default /usr/lib/postgresql/17/bin/*),
-#         FLY_SSH_RETRIES (default 4 — stream retries for the flaky tunnel).
+#         FLY_SSH_RETRIES (default 4 — stream retries for the flaky tunnel),
+#         FLY_SSH_TIMEOUT (default 300 — per-attempt wall-clock watchdog; the tunnel can HANG a
+#         single fly-ssh attempt for ~19min, so each attempt is SIGKILLed past this).
 
 set -euo pipefail
 
@@ -310,18 +312,30 @@ fi
 REMOTE
 )"
 
-    local attempt rc
+    # Per-attempt wall-clock watchdog: the Fly tunnel can HANG an individual `fly ssh console`
+    # mid-stream indefinitely (19-min hang observed 2026-06-12), not just fail fast — a single
+    # stuck attempt would blow the whole retry budget. macOS /bin/bash has no `timeout(1)`, so we
+    # run the console in the background and a watchdog SIGKILLs it after FLY_SSH_TIMEOUT seconds.
+    local FLY_SSH_TIMEOUT="${FLY_SSH_TIMEOUT:-300}"  # 5 min — generous for a ~15M dump, < the 19m hang
+    local attempt rc child wd
     for attempt in $(seq 1 "$FLY_SSH_RETRIES"); do
-        log "fly-ssh mode: dump attempt $attempt/$FLY_SSH_RETRIES (streaming -Fc over ssh-console) ..."
+        log "fly-ssh mode: dump attempt $attempt/$FLY_SSH_RETRIES (streaming -Fc, ${FLY_SSH_TIMEOUT}s watchdog) ..."
         # stdin = ONLY the RO password (consumed by the script's `read`). The script runs via
         # `-C` (bash -c <script>), so a partial/raced handshake can't echo the password as a
         # command — stdin is data, not the script source. stdout = the -Fc dump → $DUMP_FILE.
-        if printf '%s\n' "$RO_PASS" \
+        printf '%s\n' "$RO_PASS" \
             | fly ssh console -a "$FLY_PG_APP" --machine "$MACHINE" --pty=false \
-                -C "/bin/bash -c $(_shq "$remote_script")" >"$DUMP_FILE" 2>/tmp/flyssh.err; then
-            rc=0
-        else
-            rc=$?
+                -C "/bin/bash -c $(_shq "$remote_script")" >"$DUMP_FILE" 2>/tmp/flyssh.err &
+        child=$!
+        # Watchdog: after the timeout, hard-kill the (likely-hung) console child.
+        ( sleep "$FLY_SSH_TIMEOUT"; kill -9 "$child" 2>/dev/null ) &
+        wd=$!
+        if wait "$child"; then rc=0; else rc=$?; fi
+        # Stop the watchdog if the attempt finished on its own.
+        kill "$wd" 2>/dev/null; wait "$wd" 2>/dev/null || true
+        # rc 137 = SIGKILL by the watchdog (timed-out hang) → treat as a retryable failure.
+        if [ "$rc" -eq 137 ]; then
+            log "fly-ssh mode: attempt $attempt HUNG > ${FLY_SSH_TIMEOUT}s — watchdog killed it (tunnel stall)"
         fi
         # Permission error = STOP (never retry into a role escalation, W38)
         if grep -q 'FLYSSH-PERM' /tmp/flyssh.err 2>/dev/null; then
