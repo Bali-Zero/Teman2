@@ -41,6 +41,12 @@ export {
   type StatChip,
   type StatChipsProps,
 } from "./components/StatChips";
+export {
+  SubNav,
+  type SubNavItem,
+  type SubNavProps,
+  type SubNavVariant,
+} from "./components/SubNav";
 
 // Font exports
 export { inter } from "./fonts/inter";

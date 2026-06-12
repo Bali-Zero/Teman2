@@ -30,6 +30,7 @@
     "./components/SearchBox": "./components/SearchBox.tsx",
     "./components/FilterBar": "./components/FilterBar.tsx",
     "./components/StatChips": "./components/StatChips.tsx",
+    "./components/SubNav": "./components/SubNav.tsx",
     "./components/ContextPanel": "./components/ContextPanel.tsx",
     "./utils": "./utils/index.ts",
     "./auth": "./auth/index.ts",

@@ -3,7 +3,7 @@
 
 > **GENERATED build-artifact.** Do not edit by hand — run `npm run bz:brand:api`. Derived from `packages/core/components/*.tsx`.
 
-**28 components** (schema v1).
+**29 components** (schema v1).
 
 ## `AppBranchSelector`
 
@@ -318,6 +318,19 @@
   - `className`: `string | undefined`
   - `chipClassName`: `string | undefined`
 - **example**: `<StatChips />`
+
+## `SubNav`
+
+- **import**: `@nuzantara/core/components/SubNav`
+- **source**: `packages/core/components/SubNav.tsx`
+- **use when**: navigation, shell, layout
+- **props**:
+  - `items`: `SubNavItem[]`
+  - `pathname`: `string | null`
+  - `variant`: `SubNavVariant`
+  - `rootHref`: `string | undefined`
+  - `linkAs`: `ElementType | undefined`
+- **example**: `<SubNav items={/* SubNavItem[] */} pathname={/* string | null */} variant={/* SubNavVariant */} />`
 
 ## `ThemeProvider`
 
