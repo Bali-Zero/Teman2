@@ -1,0 +1,113 @@
+# Connectome — scheduled automation on M5 (primary dev) + Mini-Pro2 (H24 server) + fleet ssh links
+# Census: 2026-06-13. Mini was UNREACHABLE at census (both Tailscale and LAN) — whole section UNKNOWN.
+domain: launchd-m5-mini
+census_date: "2026-06-13"
+edges:
+  - {
+      id: com.balizero.caffeinate,
+      kind: launchd,
+      machine: m5,
+      status: ALIVE,
+      consumer: "/usr/bin/caffeinate -i -m -s",
+    }
+  - id: com.nuzantara.agent-worktree-cleanup.daily-m5
+    kind: launchd
+    machine: m5
+    status: DEAD
+    consumer: "scripts/agent_worktree_cleanup_cron.sh (exists, exec)"
+    notes: "exit 126 EVERY run — macOS TCC: launchd bash lacks Desktop access ('Operation not permitted'). W62 reaper green on ZERO machines (Pro twin exit 1 too)"
+    probe:
+      {
+        type: cmd,
+        cmd: "launchctl list | grep -F com.nuzantara.agent-worktree-cleanup.daily",
+      }
+  - id: com.balizero.nlm-autodownload
+    kind: launchd
+    machine: m5
+    status: BY_DESIGN_OFF
+    notes: "self-unloads after artifacts land on Desktop (log-proven 6×) — not a wound"
+  - {
+      id: homebrew.mxcl.postgresql-17,
+      kind: launchd,
+      machine: m5,
+      status: ALIVE,
+      consumer: "PG17 local (PR #1349)",
+      probe:
+        {
+          type: cmd,
+          cmd: "pg_isready -q -h 127.0.0.1 -p 5432 || /opt/homebrew/opt/postgresql@17/bin/pg_isready -q",
+        },
+    }
+  - id: m5-crontab
+    kind: cron
+    machine: m5
+    status: BY_DESIGN_OFF
+    notes: "no crontab for balizero — all M5 scheduling is launchd (expected)"
+  - id: m5-path-drift-meta
+    kind: meta_check
+    machine: m5
+    status: ALIVE
+    notes: "0 hits for /Users/nuzantara/ across M5 plists+target scripts — 2026-06-09 path-drift fix held"
+    probe:
+      {
+        type: cmd,
+        cmd: "! grep -l '/Users/nuzantara/' ~/Library/LaunchAgents/*.plist 2>/dev/null",
+      }
+  - id: repomap-m5
+    kind: file_sync
+    machine: m5
+    status: DEAD
+    producer: "(never installed)"
+    consumer: "SessionStart repomap inject"
+    notes: "~/.nuzantara-repomap.txt ENOENT on the PRIMARY dev machine — every session pays ~50 extra exploration calls"
+    probe:
+      { type: file_age_max_h, path: "~/.nuzantara-repomap.txt", max_age_h: 1 }
+  # ── fleet ssh links ──
+  - id: m5-tailscale-control-plane
+    kind: ssh_link
+    machine: m5
+    status: DEGRADED
+    notes: "census-time: no network map from coordination server; client/daemon version skew (half-applied update). Fleet survives on LAN mDNS only"
+    probe:
+      {
+        type: cmd,
+        cmd: "/opt/homebrew/bin/tailscale status >/dev/null 2>&1 && ! /opt/homebrew/bin/tailscale status 2>&1 | grep -q 'Unable to connect'",
+      }
+  - id: m5-to-pro-lan
+    kind: ssh_link
+    machine: m5
+    status: ALIVE
+    consumer: "ssh pro-lan (Nuzantara.local)"
+    probe: { type: cmd, cmd: "ssh -o ConnectTimeout=8 pro-lan true" }
+  - id: pro-to-mini
+    kind: ssh_link
+    machine: pro
+    status: DEAD
+    notes: "census-time: timeout on BOTH Tailscale 100.93.236.6 AND LAN 192.168.110.44, ping 100% loss → Mini powered off/asleep ≥1d. H24 server dark with NO alert = monitoring gap"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: "ssh -o ConnectTimeout=5 mini true",
+      }
+  # ── Mini (all UNKNOWN at census — re-census on wake) ──
+  - id: mini-launchd-fleet
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    notes: "unreachable; includes GSC indexing sweep 06:00 WITA + Ollama batch + heavy crons — all silently not running while Mini is down"
+  - id: mini-wa-mirror-bootout
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    notes: "W67c bootout re-verification BLOCKED — on wake: launchctl print gui/501/com.balizero.wa-mirror must be 'not found' + print-disabled lists it"
+  - id: dup-gsc-indexing-pro-mini
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    notes: "Pro com.nuzantara.daily-indexing-sweep loaded TODAY; memory places GSC sweep on Mini → ACTIVE_ACTIVE candidate pending Mini wake (W67c class)"
+anomalies:
+  - "P1: Mini-Pro2 (H24 server) unreachable ≥1d on all routes — no guardian alerted; every Mini cron silently stopped"
+  - "P2: W62 worktree reaper runs green on ZERO machines (M5 TCC exit 126, Pro exit 1)"
+  - "P2: M5 Tailscale control-plane degraded + version skew — fleet on LAN-only"
+  - "P3: repomap never installed on M5 (primary dev machine)"
