@@ -513,6 +513,125 @@ def _worktree_recently_active(
         return True
 
 
+def _worktree_has_live_process(worktree: Path) -> bool:
+    """True if a live OS process has its cwd or an open file inside *worktree*.
+
+    W80 ANTIBODY guard #1. Distinct from `_worktree_recently_active`, which
+    reads FILE mtimes: a session that commits-and-reasons-for-minutes without
+    touching files outlives the mtime threshold yet is plainly alive. The only
+    unambiguous liveness signal is an actual process anchored to the directory,
+    so we ask the kernel via `lsof +D`.
+
+    `lsof +D <dir>` walks the directory tree and lists every process holding a
+    file open under it — crucially this INCLUDES a process whose current working
+    directory (cwd) is the worktree, because lsof reports the cwd fd. A live
+    Claude/codex/agy session cd'd into the worktree therefore shows up even when
+    it has no regular file open.
+
+    FAIL-SAFE TO TRUE: if `lsof` is missing, errors, or times out, we treat the
+    worktree as live (do NOT reap). The cost of a false "alive" is a worktree
+    that lingers one more cleanup tick; the cost of a false "dead" is reaping a
+    worktree out from under an active session (the W80 bug itself). The 24h CI
+    cap (find_stale_worktrees) remains the hard ceiling no heuristic opts out of.
+
+    This is a liveness heuristic, NOT a security control (W62 GOTCHA): an
+    adversary could hold an idle fd open. Its job is only to avoid reaping a
+    genuinely working session.
+    """
+    if not worktree.is_dir():
+        # No directory ⇒ nothing to anchor a process to ⇒ not live. (Already
+        # gone or never created; safe to let cleanup proceed.)
+        return False
+    try:
+        proc = subprocess.run(
+            ["lsof", "+D", str(worktree)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except FileNotFoundError:
+        logger.warning(
+            "lsof not found — treating %s as live (fail-safe, no reap)", worktree
+        )
+        return True
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        logger.warning(
+            "lsof probe failed for %s (%s) — treating as live (fail-safe)",
+            worktree,
+            exc,
+        )
+        return True
+    # Parse STDOUT, do NOT key on the exit code. `lsof +D` mixes two cases into
+    # rc=1: "found nothing" (truly dead) AND "found matches but hit a warning
+    # while descending" (e.g. the linked-worktree `.git` *file* pointer, or a
+    # transient entry it could not stat) — and in the SECOND case it STILL
+    # prints the matching `cwd`/open-file lines to stdout. Keying on rc would
+    # mis-read a live session (cwd anchored) as dead whenever lsof emitted any
+    # descent warning. So: ANY data line beyond the `COMMAND ...` header ⇒ LIVE,
+    # regardless of rc; only a header-only / empty stdout ⇒ dead. (Empirically
+    # verified: a `sleep` child cwd'd into a linked worktree yields rc=1 + one
+    # `cwd DIR` line — must read as LIVE.)
+    data_lines = [
+        ln for ln in proc.stdout.splitlines()
+        if ln.strip() and not ln.startswith("COMMAND")
+    ]
+    return bool(data_lines)
+
+
+def _branch_in_origin_main(worktree: Path) -> bool:
+    """True iff the worktree's HEAD is fully merged into ``origin/main``.
+
+    W80 ANTIBODY guard #2. The reaper must NOT remove a worktree whose work is
+    not yet consolidated upstream — a branch that is pushed-but-not-merged (open
+    PR) carries the only physical checkout the operator may still be iterating on.
+
+    Implementation: ``git -C <wt> merge-base --is-ancestor HEAD origin/main``
+    (exit 0 ⇒ HEAD is an ancestor of origin/main ⇒ every commit is already in
+    main upstream; exit 1 ⇒ HEAD has commits NOT in origin/main).
+
+    Why ``origin/main`` and not local ``main`` or ``@{upstream}`` (the refuter
+    killed both earlier designs):
+      - local ``main`` can lag origin → a truly-merged branch reads unmerged.
+      - ``@{upstream}..HEAD`` (rev-list count) reads 0 for a branch that has
+        already been merged AND its upstream advanced — protecting a zombie
+        forever; and reads >0 for a branch pushed-but-not-merged — which is the
+        bug case, but it ALSO reads >0 for the merge-base check, so we use the
+        unambiguous ancestor test against the integration branch directly.
+
+    FAIL-SAFE TO FALSE ("treat as NOT merged ⇒ do NOT reap") on any git error,
+    missing origin/main, or detached/unknown HEAD. A worktree we cannot prove is
+    merged is protected, never reaped.
+
+    Note: this does not fetch — it tests against the locally-known origin/main
+    ref. The daily cron environment refreshes refs out of band; a stale
+    origin/main only ever makes us MORE conservative (protect, not reap).
+    """
+    if not worktree.is_dir():
+        # Directory already gone — nothing to protect; let cleanup proceed to
+        # prune the stale metadata/pointer.
+        return True
+    proc = _run_git(
+        ["merge-base", "--is-ancestor", "HEAD", "origin/main"],
+        cwd=worktree,
+        check=False,
+    )
+    if proc.returncode == 0:
+        return True
+    if proc.returncode == 1:
+        # HEAD has commits not in origin/main → unmerged work present.
+        return False
+    # rc >= 128 (bad ref, not a git dir, unknown HEAD): fail-safe to protect.
+    logger.warning(
+        "merge-base probe inconclusive for %s (rc=%s) — treating as unmerged "
+        "(fail-safe, no reap): %s",
+        worktree,
+        proc.returncode,
+        (proc.stderr or "").strip(),
+    )
+    return False
+
+
 def _resolve_worktree_gitdir(worktree: Path) -> Path | None:
     """Resolve the real gitdir of a linked worktree (REPO_ROOT/.git/worktrees/
     <name>). For a linked worktree, `worktree/.git` is a file
@@ -704,6 +823,38 @@ def cmd_cleanup(
                 "— live session, will reap when idle"
             )
             continue
+        # W80 guard THIRD (2-AND), on clean + idle worktrees only. A worktree is
+        # auto-reapable ONLY when BOTH hold:
+        #   (1) no live OS process is anchored to it (lsof cwd/open-fd), AND
+        #   (2) its HEAD is fully merged into origin/main.
+        # The W80 bug: committing-everything to satisfy stop_verify makes a
+        # worktree clean + idle-on-mtime → reap-eligible while still being
+        # worked on, and a pushed-but-not-merged branch lost its only checkout.
+        # If EITHER guard says "protect", we skip (not a failure — like the
+        # recent-activity guard, the next idle+merged tick reaps it).
+        if wt.is_dir() and not force:
+            if _worktree_has_live_process(wt):
+                logger.info(
+                    "cleanup skip %s — live process anchored to worktree (W80)",
+                    meta.task_id,
+                )
+                print(
+                    f"skip {meta.task_id} (live process in worktree) "
+                    "— active session, will reap when idle"
+                )
+                continue
+            if not _branch_in_origin_main(wt):
+                logger.warning(
+                    "cleanup skip %s — branch %s has commits not in origin/main "
+                    "(W80: unmerged work, refusing to reap its only checkout)",
+                    meta.task_id,
+                    meta.branch,
+                )
+                print(
+                    f"WARN: skip {meta.task_id} (branch '{meta.branch}' has "
+                    "unmerged commits not in origin/main) — protecting checkout"
+                )
+                continue
         try:
             _remove_worktree(wt, meta.branch, delete_branch=False)
             print(f"removed expired worktree {meta.task_id} ({wt})")
