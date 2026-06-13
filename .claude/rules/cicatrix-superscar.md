@@ -8,7 +8,9 @@
 >
 > **Per il dettaglio di una scar specifica → segui il ponte:** il corpo completo
 > (TRAUMA/ANTIBODY/GOTCHA verbatim) vive in `cicatrix-scars.md` (recenti) + `cicatrix-scars-archive.md`
-> (storiche). Cerca per W-number, oppure — quando la pipeline è viva — `scar query "<tema>"`.
+> (storiche). Cercalo con la CLI **`scar query "<tema>"`** (ricerca lessicale zero-dependency su
+> entrambi i file-corpo — `scar query --list` per l'indice, `scar query --family N` per saltare a un
+> cluster qui), oppure grep per W-number.
 >
 > **Perché esiste:** il blob piatto delle cicatrici pesava ~28k token a ogni sessione (W77:
 > "l'organismo cataloga il trauma ma non lo promuove a struttura"). Questo file È la promozione
