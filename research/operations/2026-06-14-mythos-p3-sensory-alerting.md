@@ -34,6 +34,11 @@ settimane — il tutto invisibile perché l'unico sintomo era un log che cresce 
 è morto** (crontab vivo), e il 400 del watchdog NON è "muto continuo da 3gg" ma intermittente +
 SUPERVISOR_DOWN-specifico + cooldown-suppression.
 
+> **Riconciliazione merge (post-audit)**: malati **5 e 6** sono stati curati **convergentemente da
+> origin/main** durante la finestra d'audit — il watchdog un-mute da una sessione sibling
+> (`W-cicatrix 2026-06-13`, design Markdown+fallback-plain) e il leak-vector dalla cancellazione del
+> dead-Pipeline-A (`#1303`). Le maladie restano curate; cambia solo la mano. Dettaglio in §Terapia.
+
 ## §1 Feeder NLM
 
 ### 1.1 intel-bridge — secret-store drift (famiglia W65)
@@ -94,12 +99,15 @@ classe: `apps/cell/effectors/telegram.py` (Cell, attivo), `wa-audit-bot/bot.py`,
 `federation_orchestrator.py`. Classe separata (env-dump): `codex_automation_lib.sh` esporta
 `TELEGRAM_BOT_TOKEN` nell'env passato a `codex exec`, che lo echeggia nei rollout jsonl.
 
-**Fix (sorgente, perimetro mio)**: nuovo `scripts/_log_redact.py`
-(`install_secret_redaction()`: silenzia httpx/httpcore/telegram + filtro root che scruba pattern
-bot-token), applicato in `wr2_telegram_publish_gate.py` (la sorgente da 26k — plist già
-decommissionato, ma il codice ri-sanguinerebbe se ri-armato). Residuo 48MB del bridge troncato a
-10KB. **Residuo NON mio**: rotazione token (compromesso) = Zero; silenziare httpx negli altri siti
-(Cell = perimetro M*) = sweep coordinato.
+**Fix (post-merge)**: la sorgente da 26k — `wr2_telegram_publish_gate.py` — è stata **cancellata da
+origin/main `#1303`** (rimozione dead-Pipeline-A) durante l'audit, eliminando **convergentemente il
+vettore di leak primario** (niente più httpx-access-log col token nel path su quel plist, già
+decommissionato). L'utility `scripts/_log_redact.py` scritta per quel call-site è quindi droppata in
+fase di merge (sarebbe codice non-cablato = anti-pattern `esistere≠armato`); resta in git history
+`7b4cecd30` per un eventuale sweep più ampio. Residuo 48MB del bridge troncato a 10KB. **Residuo NON
+mio**: rotazione token (compromesso) = Zero; silenziare httpx negli **altri siti §3 ancora vivi**
+(Cell `apps/cell/effectors/telegram.py` = perimetro M*) = sweep coordinato — questo vettore **non** è
+chiuso dalla cancellazione di #1303.
 
 ## §Meta-pattern — perché i tubi della freschezza muoiono in silenzio
 
@@ -132,9 +140,19 @@ originali. Questo avrebbe preso 1, 2 e 4 al giorno 1, non al giorno 33. Famiglia
 
 ## §Terapia eseguita (verificata live)
 
-- **PR repo** (3 commit, worktree `infra-mythos-p3-sensory`): preflight fail-loud feeder (+2 test);
-  un-mute watchdog (+4 test, +fix debito test W46); helper redazione + silence httpx (+5 test).
-  Tutti i test verdi (mata-garuda 38 passed; watchdog+redact 25 passed).
+- **PR repo #1419** (worktree `infra-mythos-p3-sensory`, mergiata con origin/main + 166 commit):
+  durante la finestra d'audit **origin/main ha convergentemente curato 2 dei 3 fix sui canali
+  d'allarme** → in fase di merge ho accettato le versioni di main e tenuto solo il deliverable unico:
+  - **Feeder preflight fail-loud** (`run_nlm_feeder_stream.py` + test, **2 passed** live) — UNICO mio,
+    assente su main; chiude la maschera `0/0/0 = sano` (malato 2).
+  - **Watchdog un-mute** (malato 5) — `W-cicatrix 2026-06-13` su main ha già un-mutato lo stesso 400
+    (design Markdown+fallback-plain, corpi già aggiornati al pipeline html-apply). Accettata la
+    versione main (`--theirs`), mia variante plain-text droppata per non ri-litigare un fix mergiato
+    (Mythos tratto #5). Canale **resta curato**.
+  - **Redazione token** (malato 6) — call-site `wr2_telegram_publish_gate.py` **cancellato da #1303**
+    (rimozione dead-Pipeline-A), che ha **rimosso anche il vettore di leak primario**. `_log_redact.py`
+    droppato (non-cablato); in git history `7b4cecd30`.
+  - Merge-commit `227de3a8c`: PR ora `MERGEABLE` + auto-merge armato; il conflitto DIRTY è risolto.
 - **Wrapper HOME** (fuori repo, live): `matagaruda-bridge.sh` (sorgia cell-bridge-state),
   `matagaruda-nlm-feeder-stream.sh` (fallback localhost), `matagaruda-gap-consumer.sh` (PATH).
 - **Verifiche live**: bridge `fetched=50 published=50`; feeder `fed 11 source`, lag 22→2 / 3144→3124;
@@ -155,3 +173,10 @@ originali. Questo avrebbe preso 1, 2 e 4 al giorno 1, non al giorno 33. Famiglia
    `apps/cell/effectors/telegram.py` (bleeder attivo) + gli altri siti §3; fix `codex_automation_lib.sh`
    env-dump; troncare i log residui.
 5. **Dead-man's switch feeder** (§Meta-pattern) — design proposto, da implementare.
+6. **Finding collaterale (lane WR2/html-apply, NON mio)** — il merge ha rivelato che su origin/main
+   `scripts/tests/test_wr2_supervisor_watchdog.py` è **stale**: chiama `_probe_success_rate_telemetry`
+   (rimosso nel refactor success-rate telemetry→DB, ora `_probe_success_rate_db`) → **5 test rossi**
+   (3 `AttributeError` + 2 `assert False` su success-rate/pipeline-frozen). NON è nel path dei required
+   Backend Tests → **rosso silenzioso** su main. Non attribuibile a me (diff PR vs main = 0 su quel
+   file). Fix = retargettare i test a `_probe_success_rate_db` con mock conn DB. Owner = chi ha fatto
+   il cutover html-apply. (Istanza viva del §Meta-pattern #2: telemetria/test write-only non letti.)
