@@ -114,12 +114,58 @@ DDOF_RE = re.compile(r"\bdd\b[^|;&]*?\bof=([^\s|;&)]+)")
 CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:\s+(?:-\S+|[^\s|;&)]+))+)")
 
 
+def _strip_noise(cmd: str) -> str:
+    """Neutralize regions where a `>` or a path-like token is NOT a real write target.
+
+    Removes (in order):
+      1. heredoc BODIES — everything from `<<[-]?WORD` (or quoted 'WORD') up to a line
+         that is exactly WORD. The body is free text (commit messages, file content)
+         and routinely contains `>` and bare words that look like relative paths.
+      2. single-quoted strings  '...'   → emptied
+      3. double-quoted strings  "..."   → emptied
+    What remains is shell *structure*, where a `>` is far more likely a real redirect.
+    This is the load-bearing false-positive killer (DeepSeek recipe, W79 follow-up):
+    `git commit -m "...> x..."` and `cat > /tmp/f <<'EOF' ...body... EOF` no longer
+    leak their text into the redirect scan.
+    """
+    # 1) heredoc bodies
+    def _drop_heredocs(s: str) -> str:
+        lines = s.split("\n")
+        out = []
+        i = 0
+        hd_re = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+        while i < len(lines):
+            line = lines[i]
+            m = hd_re.search(line)
+            out.append(line)
+            if m:
+                word = m.group(2)
+                i += 1
+                # consume body until a line == word (allow leading tabs for <<-)
+                while i < len(lines) and lines[i].strip() != word:
+                    i += 1
+                # drop the terminator line too (it's not a command)
+                i += 1
+                continue
+            i += 1
+        return "\n".join(out)
+
+    s = _drop_heredocs(cmd)
+    # 2/3) empty quoted strings (single then double; simple state-free pass is enough
+    #      because we only need to remove their CONTENT, not parse nesting perfectly)
+    s = re.sub(r"'[^']*'", "''", s)
+    s = re.sub(r'"[^"]*"', '""', s)
+    return s
+
+
 def _extract_write_targets(cmd: str) -> list[str]:
     """Best-effort list of file-write destination paths in a shell command.
 
     Conservative by design: a target we cannot resolve is simply not returned
     (→ command is ALLOWED). We only want HIGH-CONFIDENCE writes into the repo.
+    Runs on the NOISE-STRIPPED command (heredoc bodies + quoted strings removed).
     """
+    cmd = _strip_noise(cmd)
     targets: list[str] = []
     for m in REDIR_RE.finditer(cmd):
         targets.append(m.group(1))
