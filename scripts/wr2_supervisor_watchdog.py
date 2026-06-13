@@ -131,18 +131,30 @@ def _alert_due(key: str, now_epoch: int, cooldown: int = ALERT_COOLDOWN_SEC) -> 
 # Telegram
 # ─────────────────────────────────────────────────────────────────────────
 
-def _send_telegram(text: str) -> None:
+def _send_telegram(text: str) -> bool:
+    """Send a plain-text Telegram alert. Returns True iff delivered.
+
+    Plain text only, no Markdown formatting (Mythos-P3, 2026-06-14): a
+    Markdown payload containing an unbalanced underscore — e.g. the
+    literal "wr2_supervisor" in the SUPERVISOR_DOWN body — makes Telegram
+    return HTTP 400 "can't parse entities", and the alert is silently
+    dropped. This muted the most-severe P0 on EVERY send for weeks. Plain
+    text always parses; the `*`/`` ` `` emphasis chars are stripped so the
+    body stays clean. The bool return lets callers arm the cooldown ONLY
+    on a confirmed delivery, so a failed send retries next tick instead of
+    being suppressed for 24h.
+    """
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
     if not token:
         logger.info("Telegram skipped (no TELEGRAM_BOT_TOKEN)")
-        return
+        return False
+    plain = text.replace("*", "").replace("`", "")
     try:
         data = urllib.parse.urlencode(
             {
                 "chat_id": chat_id,
-                "text": text,
-                "parse_mode": "Markdown",
+                "text": plain,
                 "disable_web_page_preview": "true",
             }
         ).encode()
@@ -151,8 +163,10 @@ def _send_telegram(text: str) -> None:
             data,
             timeout=10,
         )
+        return True
     except Exception as e:  # noqa: BLE001 — alert delivery is best-effort
-        logger.warning("Telegram POST failed: %s", e)
+        logger.warning("Telegram POST failed: %s", type(e).__name__)
+        return False
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -339,9 +353,12 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
                 "Check `launchctl print gui/$(id -u)/com.balizero.wr2.supervisor` "
                 "and `tail ~/logs/wr2_supervisor.launchd.err.log`."
             )
-            _send_telegram(msg)
-            _state_set("last_alert_supervisor_down", now_epoch)
-            logger.warning("ALERT P0 supervisor_down age=%.0fs", age)
+            delivered = _send_telegram(msg)
+            if delivered:
+                _state_set("last_alert_supervisor_down", now_epoch)
+            logger.warning(
+                "ALERT P0 supervisor_down age=%.0fs delivered=%s", age, delivered
+            )
         else:
             logger.info("supervisor_down stale but cooldown active (age=%.0fs)", age)
     else:
@@ -378,12 +395,14 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
                 "input has stopped. Check `~/logs/wr2_canva_apply.log` and "
                 "`~/logs/wr2_canva_apply_telemetry.jsonl`."
             )
-            _send_telegram(msg)
-            _state_set("last_alert_pipeline_frozen", now_epoch)
+            delivered = _send_telegram(msg)
+            if delivered:
+                _state_set("last_alert_pipeline_frozen", now_epoch)
             logger.warning(
-                "ALERT P0 pipeline_frozen oldest=%.1fh rendered=%d",
+                "ALERT P0 pipeline_frozen oldest=%.1fh rendered=%d delivered=%s",
                 pipeline["oldest_pending_hours"],
                 pipeline["rendered_recent"],
+                delivered,
             )
         else:
             logger.info("pipeline_frozen detected but cooldown active")
@@ -416,12 +435,14 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
                 "check the OAuth watchdog state file: "
                 "`cat ~/.agent/decisions/state/wr2_canva_oauth.state`."
             )
-            _send_telegram(msg)
-            _state_set("last_alert_success_rate_low", now_epoch)
+            delivered = _send_telegram(msg)
+            if delivered:
+                _state_set("last_alert_success_rate_low", now_epoch)
             logger.warning(
-                "ALERT P1 success_rate_low rate=%.1f%% attempts=%d",
+                "ALERT P1 success_rate_low rate=%.1f%% attempts=%d delivered=%s",
                 sr["rate_pct"],
                 sr["attempted"],
+                delivered,
             )
         else:
             logger.info(
