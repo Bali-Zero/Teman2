@@ -90,6 +90,19 @@ class TestEnrichLastError:
         mod, _ = sentinel
         assert mod._enrich_last_error_from_cron_log("no_such_job_xyz", "exit 1") == "exit 1"
 
+    def test_large_log_is_tail_bounded_not_fully_loaded(self, sentinel):
+        # Adversary-found OOM: readlines() on a multi-MB log would bloat memory.
+        # The enricher must read only the tail and still surface the real error.
+        mod, home = sentinel
+        log = home / "logs" / "cron-tmp" / "big-job.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with open(log, "w") as fh:
+            fh.write("noise line\n" * 400_000)          # ~4.4 MB of noise
+            fh.write("FATAL: real tail error here\n")
+        out = mod._enrich_last_error_from_cron_log("big_job", "exit 1")
+        assert "FATAL: real tail error here" in out
+        assert len(out) < 20_000  # bounded output, not the whole 4.4 MB file
+
     def test_exit_127_matches_bare_pattern(self, sentinel):
         mod, home = sentinel
         log = home / "logs" / "cron-tmp" / "zantara-vision-warmup.log"
