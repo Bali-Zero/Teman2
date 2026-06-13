@@ -110,10 +110,10 @@ def map_slide_to_family(slide: dict[str, Any], index: int, total: int) -> str:
     if slide.get("is_hero_image"):
         return "photo-headline-yellow-sub"
     # non-hero: route to a TEXT-ONLY family (never the photo layout with an empty
-    # image → void-trap). A punchy editorial "take" reads best as a statement;
-    # everything else as clean prose-on-color.
-    if st in {"take"}:
-        return "statement-bomb"
+    # image → void-trap). All non-hero prose — including an editorial "take" —
+    # goes to editorial-text: statement-bomb is for a 3-15 word punch, NOT a
+    # 35-word take (E2E 2026-06-13: a take routed to statement-bomb crammed; on
+    # editorial-text the same copy reads cleanly, like the other prose slides).
     return "editorial-text"  # text-only prose family
 
 

@@ -123,11 +123,13 @@ def test_routing_mid_hero_photo_headline() -> None:
     assert fam == "photo-headline-yellow-sub"
 
 
-def test_routing_non_hero_take_statement_bomb() -> None:
+def test_routing_non_hero_take_editorial_text() -> None:
+    # A non-hero editorial "take" is prose (often 25-40 words) → editorial-text,
+    # NOT statement-bomb (which is for a 3-15 word punch). E2E 2026-06-13.
     fam = map_slide_to_family(
         {"slide_type": "take", "is_hero_image": False}, 3, 8
     )
-    assert fam == "statement-bomb"
+    assert fam == "editorial-text"
 
 
 def test_routing_non_hero_body_editorial_text() -> None:
