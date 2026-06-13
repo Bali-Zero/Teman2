@@ -71,7 +71,9 @@ TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
 # Settings() which requires JWT_SECRET_KEY etc. — unacceptable for a cron entry.
 BRAND_SUFFIX: str = (
     "Editorial style, high resolution, no stock imagery, "
-    "no handshakes, no generic passports, cinematic lighting"
+    "no handshakes, no generic passports, "
+    "NO documents or pens on a desk, NO paperwork close-ups, "
+    "cinematic lighting"
 )
 _DEFAULT_STYLE_MODIFIERS: tuple[str, ...] = (
     "macrografia editoriale",
@@ -82,7 +84,13 @@ _DEFAULT_STYLE_MODIFIERS: tuple[str, ...] = (
 NEGATIVE_PROMPT: str = (
     "hands holding objects, passport close-ups, generic handshake, "
     "stock photo aesthetic, text overlays, watermark, logo, "
-    "deformed hands, extra fingers, distorted faces, illegible text"
+    "deformed hands, extra fingers, distorted faces, illegible text, "
+    # 2026-06-13 (Antonello): the document-and-pen-on-a-desk cliché is the
+    # single most off-brand image WR2 keeps producing. Ban it explicitly.
+    "document on a desk, contract on a table, land deed on a desk, "
+    "fountain pen, signing pen, pen resting on paper, hand signing, "
+    "official seal close-up, stack of papers, paperwork on a desk, "
+    "notary scene, clipboard, ballpoint pen, desk with documents"
 )
 
 
@@ -164,13 +172,21 @@ HARD RULES:
 - Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
 - LAST slide = CTA to Bali Zero
 - HERO slides must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups (text-only slides do NOT need image_prompt)
+- BANNED IMAGE CLICHÉ (HARD — Antonello 2026-06-13): NEVER a document / deed /
+  contract / form lying on a desk or table with a pen (especially a fountain
+  pen) resting on or beside it, NEVER paperwork close-ups, NEVER a hand signing,
+  NEVER an official seal close-up. This "papers + pen on a desk" image is the
+  single most off-brand stock cliché — the brand rejects it outright. Show the
+  HUMAN and PLACE reality behind the rule instead: people in a real moment, a
+  Balinese/Indonesian place or building, an architectural detail, a tense
+  street/landscape scene — never the lawyer's-desk still life.
 
 TONAL PALETTE (per HERO slide — drives the photographic look, fights monotony):
 Each HERO slide MUST include a `tonal_palette` field. Pick ONE
 that fits the slide's mood; do NOT use the same palette for every hero slide,
 and vary it across carousels on the same topic (the brand forbids two
 same-domain carousels looking identical):
-- "warm-ochre": warm, intimate, document/interior mood (the house style)
+- "warm-ochre": warm, intimate, lived-in interior/place mood
 - "cool-teal": detached, analytical, institutional, data-heavy
 - "monochrome": stark, archival, historical, high-gravity
 - "high-contrast": tense, confrontational, urgent
@@ -181,7 +197,9 @@ Each HERO slide MUST include an `image_mode` field naming the
 KIND of scene. Pick the ONE mode that matches what the photo depicts, and VARY
 it across the hero slides (two same-domain carousels must not repeat the same
 dominant mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
-- "desk-document": papers, forms, a desk, a document close enough to read
+- "desk-document": USE SPARINGLY and only for a genuinely novel documentary
+  detail — NEVER the banned "document + pen on a desk" still life (see HARD
+  rule above). Prefer a different mode whenever possible.
 - "event-photo": a real moment/scene with people doing something
 - "architecture-or-texture": buildings, surfaces, materials, no people
 - "provocation-photo": a tense or confrontational image that unsettles
@@ -190,7 +208,7 @@ dominant mode — the brand forbids monotony). Choose from EXACTLY these 9 modes
 - "calendar-photo": dates, deadlines, time made visible
 - "data-visualization": a chart, graph, map, or numbers as the image
 - "cultural-photo": Indonesian/Balinese culture, ritual, place, daily life
-Use the slug verbatim (e.g. "desk-document").
+Use the slug verbatim (e.g. "cultural-photo").
 
 HERO IMAGE SELECTION (SMART — decision 2026-06-13):
 Choose 6-11 slides as the story needs. Mark `is_hero_image: true` ONLY on
@@ -272,7 +290,7 @@ Structure:
       "subhead": "1-6 WORD KICKER",
       "body": "...",
       "image_prompt": "editorial scene, 1-2 sentences",
-      "image_mode": "desk-document"
+      "image_mode": "architecture-or-texture"
     },
     {
       "slide_number": 2,
