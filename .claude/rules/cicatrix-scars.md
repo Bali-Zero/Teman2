@@ -83,13 +83,27 @@ _Discovered: 2026-06-13 da un panel asimmetrico 4-LLM (Gemini 3.1 Pro + 3.5 Flas
 
 ---
 
+### ⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)
+
+_Discovered: 2026-06-13 da Opus durante la sessione W79, quando `git -C .../.worktrees/docs-system-shapes-agent-4llm` ha dato `No such file` a metà lavoro · Severity: P2 STRUCTURAL · Status: **DIAGNOSED** — antibody proposto, non ancora shippato_
+
+**TRAUMA:** Il worktree attivo `docs-system-shapes-agent-4llm` è scomparso sotto i piedi a metà sessione. La diagnosi iniziale ("colpa del cron cleanup") era SBAGLIATA: il log `~/logs/agent-worktree-cleanup.log` prova che il cron `com.nuzantara.agent-worktree-cleanup.daily` (gira 00:15, ma quel giorno alle 22:08 locale) ha CORRETTAMENTE SALTATO il worktree (`WARN: skip system-shapes-agent-4llm — uncommitted WIP present`). Il WIP-guard (W62 antibody #1) ha funzionato. La causa REALE è un'interazione perversa tra due guardrail: `stop_verify.py` blocca lo Stop su git dirty → spinge a **committare tutto in continuazione**; ma `scripts/agent_start.py --cleanup` reap-a i worktree scaduti che sono **puliti** (`cmd_cleanup` ~L671: controlla solo `is_expired` TTL + `_worktree_has_wip` + `_worktree_recently_active` su FILE). Quindi: **nel momento esatto in cui committi tutto per soddisfare lo stop-hook, il tuo worktree diventa reap-eligibile** — e se un cleanup parte in quella finestra (o lo scateni tu/un subagent durante operazioni di cleanup), te lo porta via mentre ci stai ancora lavorando. Più sei disciplinato coi commit, più il worktree è vulnerabile. (In questo caso il danno è stato ZERO — branch + commit erano su origin + PR — ma è stato fortuna, non design.)
+
+**ANTIBODY (proposto, NON shippato):** Il reap non deve guardare solo "pulito + scaduto + file-inattivo". Aggiungere un guard: **non reapare un worktree il cui branch ha commit non ancora su `origin/main`** (branch ahead-of-upstream / con PR aperta). Concretamente in `cmd_cleanup`: prima del `git worktree remove`, controlla `git -C <wt> rev-list --count @{upstream}..HEAD` (o l'esistenza di una PR aperta per quel branch) → se >0, SKIP con WARN "branch has unmerged commits". Così un worktree pulito ma con lavoro non-ancora-in-main è protetto quanto uno sporco. In alternativa/aggiunta: la soglia `recently_active` deve includere l'attività della SESSIONE (transcript mtime), non solo i file del worktree — una sessione che committa-e-ragiona-a-lungo non tocca file ma è viva.
+
+**GOTCHA:** (a) La diagnosi "è il cron" è il falso-amico qui — RUN il log del cron e leggi `skip ... WIP` prima di accusarlo (come per W70 `log_tail` false friend). (b) Il `recently_active` guard misura mtime dei FILE del worktree, non la vita della sessione — un agente che passa minuti su risposte/panel senza scrivere file supera la soglia pur essendo vivo. (c) Il danno è mascherato dal fatto che il branch sopravvive su origin: perdi solo il checkout fisico, non il lavoro — il che rende il bug subdolo (non rompe nulla di visibile, solo `No such file` improvviso). (d) Famiglia: W62 (worktree broker TTL — questo è il rovescio: lì i worktree NON venivano puliti, qui vengono puliti TROPPO presto), W70 (false-friend diagnostico), e l'interazione-tra-guardrail (come phase-aware §9: due hook che si ostacolano).
+
+**Reference:** `~/logs/agent-worktree-cleanup.log` (prova dello skip-WIP corretto), `scripts/agent_start.py` `cmd_cleanup` (~L638-700: i 3 guard is_expired/WIP/recent-active, NESSUN guard unmerged-commits), LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily`. Sessione W79 (PR #1399). Famiglia: W62, W70, phase-aware-guardrails §9 (interazione tra guardrail).
+
+---
+
 ## Archived
 
 Resolved scars moved to [`cicatrix-scars-archive.md`](./cicatrix-scars-archive.md) (not auto-loaded per session). Currently archived:
 
-**Archived 2026-06-13 sweep (15 scars, RESOLVED/stable — oversize remediation to land the W78 commit <40k char, rebased on main+W77):**
+**Archived 2026-06-13 sweep+W68 (16 scars, RESOLVED/stable — oversize remediation to land the W78 commit <40k char, rebased on main+W77):**
 
-- W62, agent-library-evolver, W38, live-503+CORRECTION, W64, W65, W67, P3-flaky-clock-race, W69, W71, W72 (subsumed by live W73), M5-dev-env-path-drift, W74, W76. Full TRAUMA/ANTIBODY/GOTCHA in archive — grep by W-number.
+- W62, agent-library-evolver, W38, live-503+CORRECTION, W64, W65, W67, W68 (subsumed by live W73/W77), P3-flaky-clock-race, W69, W71, W72 (subsumed by live W73), M5-dev-env-path-drift, W74, W76. Full TRAUMA/ANTIBODY/GOTCHA in archive — grep by W-number.
 
 **Archived 2026-05-27 sweep (~36 scars, RESOLVED/INFO/STRUCTURAL ≤2026-05-23 — W31–W57 series, T0.2/T3.2/Wave 1/3/4 spec runs, mata-garuda consumer-group + NER worker repairs, CRM-Guardian Phase 1.5 OCR layer, P0 SECURITY postgres password rotation, Cell `.env` quoting trap, KG-linker dead-upstream, claude mcp list stale-status, canva-renderer flycast DNS wrapper):**
 
@@ -114,20 +128,6 @@ Resolved scars moved to [`cicatrix-scars-archive.md`](./cicatrix-scars-archive.m
 - ✅ RESOLVED: SQL v2 migrations apply on OLD image, not the freshly-built one (2026-04-26 → 2026-04-29)
 - ✅ RESOLVED: Deploy crash before health check went unalerted (Air A3, 2026-04-18)
 - ✅ RESOLVED: Dockerfile cell-core missing (PR #56 → PR #62 → monorepo workspace promotion)
-
----
-
-### 🐛 W68: WhatsApp `_guard_property_zoning_reply` over-broad on "lease" → clobbered every villa-leasehold-DURATION answer with a canned Airbnb/zoning lecture (2026-06-08)
-
-_Discovered: 2026-06-08 by the WhatsApp quality-loop test session (31 Q across visa/tax/property/adversarial) · property batch Q4 · Severity: P1 (silent wrong-answer to real clients) · Status: **FIXED** PR #1195 (`d1823ea9d`), verified live 5/5 + 3 regression tests_
-
-**TRAUMA:** Zantara WhatsApp answered "How long is a typical villa leasehold in Bali?" with an unrelated **Airbnb/short-stay zoning lecture** (KBLI 55203, OSS, etc.) — never the ~25-30yr duration. NOT a knowledge gap (KB was correct) and NOT a cache: a post-LLM guard `_guard_property_zoning_reply` (scripts/openclaw_whatsapp_bridge.py) **overwrote** the correct answer with a hardcoded canned text (`_canonical_property_zoning_answer`). The guard fires on `("villa"|"vila"|"airbnb") AND ("zoning"|"residential"|"zone"|"lease")`. The bare `"lease"` token is a substring of `"leasehold"`, so any "villa leasehold" / "villa lease" question tripped it. Its escape clause requires the reply to contain oss+bkpm AND ≤125 words — which a correct lease-DURATION reply never satisfies → the guard **always** clobbered a correct answer. Reproduced live 5/5: "villa leasehold"/"villa lease" broken; "property leasehold" (no "villa") and "villa rental" (no "lease") correct — the asymmetry that pinpointed the trigger. Deterministic, message-keyed (NOT phone-keyed — reproduced on fresh phones), so it hit EVERY client asking villa lease duration.
-
-**ANTIBODY:** Bail out of the guard for pure lease-DURATION intent (how long / how many years / duration / berapa lama / durata / quanto dura …) UNLESS the message also signals Airbnb/short-stay OPERATION intent (airbnb / short-stay / rent out / operate / sewa harian / pondok wisata / business). Genuine "can I run my villa as Airbnb in a residential zone" still gets guarded. 3 regression tests added (`test_property_zoning_guard_allows_villa_leasehold_duration`, `_reworded`, `_still_fires_on_airbnb_operation`). 22/22 bridge tests pass. PR #1195.
-
-**GOTCHA:** The bridge lives in TWO byte-identical copies — `scripts/openclaw_whatsapp_bridge.py` (repo, git-tracked) and `~/.openclaw/bin/openclaw_whatsapp_bridge.py` (HOME, deployed, NOT git-tracked). The fix was applied to BOTH and the HOME bridge restarted (`launchctl kickstart -k gui/501/com.nuzantara.openclaw-whatsapp-bridge`) so it's live NOW — but if a deploy script re-syncs repo→HOME or they drift, re-verify both carry the fix (HOME-fork drift class, cf. W50/W51/W52). The guard family (`_guard_property_zoning_reply`, `_guard_villa_kbli_reply`, `_guard_tax_compliance_reply`, `_guard_lkpm_reply`) is a curated anti-hallucination layer (intro `be06d86ba` #969) — useful but keyword-triggered, so EVERY guard is a candidate for the same over-match class (substring traps, unreachable escape clauses). When adding/auditing a guard: test that it does NOT clobber a correct on-topic answer, not just that it catches the bad one. The broader pattern the quality-loop found: Zantara is **over-cautious** (hides stable facts behind "verify with team") — but this specific case was worse, an active wrong-answer, because a guard _substituted_ text rather than just hedging.
-
-**Reference:** PR #1195, commit `d1823ea9d`, branch `agent/nuzantara/cicatrix-fix/villa-zoning-guard`. Guard `_guard_property_zoning_reply` scripts/openclaw_whatsapp_bridge.py. Tests `apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py`. Discovered during WA quality-loop (memory `decision_zantara_wa_live_test_protocol_2026_06_07`). Family: HOME-fork drift (W50/W51/W52), over-cautious-persona pattern (same session, visa Q3/Q8 + tax property-sale).
 
 ---
 
