@@ -239,7 +239,16 @@ ANTI_CLICHE_SUFFIX = (
     "Strictly NO palm trees, NO laptops on beaches, NO digital nomad cliches, "
     "NO infinity pools, NO neon lights. NO Balinese temples, religious offerings, "
     "or traditional dancers. NO AI-art fingerprints: no hyperrealistic faces, "
-    "no glowing edges, no fantasy elements."
+    "no glowing edges, no fantasy elements. "
+    # 2026-06-13 (Antonello): the document/deed/contract-on-a-desk-with-a-pen
+    # still life is the single most off-brand cliché WR2 keeps rendering — it
+    # was reaching the image model because the draft-generator's NEGATIVE_PROMPT
+    # only steers the LLM that writes the prompt, never the image backend. Ban
+    # it here too, in the one anti-cliché string every backend actually sees.
+    "Strictly NO documents, deeds, contracts, or forms lying on a desk or "
+    "table, NO fountain pen or signing pen, NO pen resting on paper, NO hand "
+    "signing, NO official seal close-up, NO stack of papers or paperwork "
+    "close-up, NO notary-desk still life."
 )
 
 GEMINI_PROMPT_PREFIX = "Please generate a photograph for an editorial magazine carousel. Describe the image based on this concept:\n\n"
