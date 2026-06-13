@@ -53,11 +53,10 @@ from typing import Any
 # ---------------------------------------------------------------------------
 WHITELIST: dict[str, dict[str, str]] = {
     "nb-intel-regulation": {
-        # Phase-A default: smallest (~41 sources) and most on-point for the Guardian.
-        # NB-INTEL Regulation. ID must be filled from the live NLM account on first run
-        # via --discover (see below) — left as a sentinel so we NEVER crawl a guessed UUID.
-        "notebook_id": "FILL_FROM_DISCOVER",
-        "note": "NB-INTEL Regulation (~41 sources). Phase-A spike target.",
+        # Phase-A default: smallest (41 sources) and most on-point for the Guardian.
+        # id verified 2026-06-14 via --discover on the Pro (live NLM auth).
+        "notebook_id": "a17f134e-b9ab-42d9-bfc2-5bbc45165c76",
+        "note": "NB-INTEL Regulation — Daily Regulatory Intelligence (41 sources).",
     },
     "nb4-tax-backend": {
         "notebook_id": "837b620b-2aca-43ab-812e-97ca92bdad1d",
@@ -65,7 +64,13 @@ WHITELIST: dict[str, dict[str, str]] = {
     },
     "nb5-property-backend": {
         "notebook_id": "568ec624-ceb8-47d1-a2a2-5b2f793ea7ed",
-        "note": "NB-5 Property — backend-client registry id.",
+        "note": "NB-5 Property — backend-client registry id (divergent from curated NB-5).",
+    },
+    "nb5-property-curated": {
+        # The CURATED property NB (145 sources, verified 2026-06-14 via --discover).
+        # This is the real authored corpus, distinct from the backend-client id above.
+        "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
+        "note": "NB-5 Property & Real Estate Indonesia 2025 — curated (145 sources).",
     },
     # NB-2 immigration / NB-3 company: add their backend-registry ids here after
     # reading apps/backend-rag/.../nlm_notebook_registry.py on the Pro. Left out
@@ -89,15 +94,30 @@ def _now() -> str:
 
 
 def _load_client():
-    """Import the NLM client. Fails loudly on M5 (no auth) — by design."""
+    """Build a warm NLM client from cached tokens — same pattern as the live
+    nlm-bridge (apps/nlm-bridge/main.py:70-77). Fails loudly on M5 (no auth) or
+    when no cached tokens exist (run `nlm login` on the Pro first) — by design.
+    """
     try:
         from notebooklm_tools import NotebookLMClient  # type: ignore
+        from notebooklm_tools.core.auth import load_cached_tokens  # type: ignore
     except ImportError:
         sys.exit(
             "FATAL: notebooklm_tools not importable. Run inside "
             "apps/nlm-bridge/.venv on the Pro/Mini (the M5 has no NLM auth)."
         )
-    return NotebookLMClient()
+    tokens = load_cached_tokens()
+    if not tokens or not tokens.cookies:
+        sys.exit(
+            "FATAL: no cached NLM tokens (run 'nlm login' on the Pro first). "
+            "The export needs a warm authenticated session."
+        )
+    return NotebookLMClient(
+        cookies=tokens.cookies,
+        csrf_token=tokens.csrf_token or "",
+        session_id=getattr(tokens, "session_id", "") or "",
+        build_label=getattr(tokens, "build_label", "") or "",
+    )
 
 
 def _assert_not_pii(key: str, notebook_id: str) -> None:
