@@ -184,6 +184,10 @@ benchmark_results/
 carousel-bali-traffic/output/
 carousel-bali-traffic/images/
 
+# Local/generated research outputs
+outputs/
+apps/evaluator/nlm_deep_research/output/
+
 # Large/local datasets (keep out of git)
 nuzantara_laws/apps/scraper/data/raw_laws_local/Unified_Knowledge_Base/
 
