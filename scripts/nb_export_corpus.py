@@ -69,12 +69,27 @@ WHITELIST: dict[str, dict[str, str]] = {
     "nb5-property-curated": {
         # The CURATED property NB (145 sources, verified 2026-06-14 via --discover).
         # This is the real authored corpus, distinct from the backend-client id above.
+        # ALREADY EXPORTED 2026-06-14: 3.7M chars, 102/145 substantive. Re-run = no-op (resumable).
         "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
-        "note": "NB-5 Property & Real Estate Indonesia 2025 — curated (145 sources).",
+        "note": "NB-5 Property & Real Estate Indonesia 2025 — curated (145 sources). DONE.",
     },
-    # NB-2 immigration / NB-3 company: add their backend-registry ids here after
-    # reading apps/backend-rag/.../nlm_notebook_registry.py on the Pro. Left out
-    # deliberately rather than guessed (anti-hallucination: no invented UUIDs).
+    # The remaining curated regulatory NBs — ids verified 2026-06-14 via --discover
+    # on the live NLM account (Pro). These are the real Guardian corpus (~650 more
+    # sources). NB-INTEL family deliberately EXCLUDED (Phase-A proved it's feed-stub noise).
+    "nb3-company-curated": {
+        "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
+        "note": "NB-3 Company Setup — Indonesia 2025 — curated (283 sources).",
+    },
+    "nb6-operations-curated": {
+        "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
+        "note": "NB-6 Operations & Compliance Indonesia 2025 — curated (201 sources).",
+    },
+    "nb4-tax-curated": {
+        # The PIPELINE/curated tax NB (165 sources). NOTE: the backend-client id
+        # 837b620b… (nb4-tax-backend above) DIVERGES — itself a coherence smell.
+        "notebook_id": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",
+        "note": "NB-4 Tax & Fiscal Indonesia — curated/pipeline id (165 sources).",
+    },
 }
 
 # Hard deny-list mirror — a second barrier. If any of these substrings appears in a
