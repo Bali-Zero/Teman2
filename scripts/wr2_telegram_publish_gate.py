@@ -407,6 +407,17 @@ async def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         stream=sys.stderr,
     )
+    # Mythos-P3 (2026-06-14): the Telegram bot token rides in the request
+    # URL path, and httpx access-logs that URL at INFO → 26,410 token lines
+    # leaked into wr2-telegram-gate.error.log (amplified by a 409-Conflict
+    # fast-spin poll). Silence the httpx/httpcore access logs + install a
+    # belt-and-suspenders root scrub filter so the token never hits disk.
+    try:
+        from _log_redact import install_secret_redaction
+    except ImportError:  # run as module: python -m scripts.wr2_telegram_publish_gate
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from _log_redact import install_secret_redaction
+    install_secret_redaction()
 
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
