@@ -5,9 +5,9 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 3,
+    "scars_scanned": 4,
     "mechanical_candidates": 0,
-    "consultive": 2,
+    "consultive": 3,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
@@ -36,6 +36,25 @@
         "W65",
         "W71",
         "W78"
+      ],
+      "recurring_via": {
+        "w": [],
+        "family": []
+      },
+      "pipeline": "consultive",
+      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
+    },
+    {
+      "title": "⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)",
+      "severity": "P2",
+      "w_numbers": [
+        "W62",
+        "W64",
+        "W70",
+        "W75",
+        "W78",
+        "W79",
+        "W80"
       ],
       "recurring_via": {
         "w": [],
