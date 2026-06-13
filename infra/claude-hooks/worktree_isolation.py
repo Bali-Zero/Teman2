@@ -234,6 +234,15 @@ def _is_path_in_allowed_worktree(path_str: str) -> bool:
     # Filter out main checkout itself
     allowed = [w for w in worktrees if w != repo_real]
 
+    # W79: any path under REPO_ROOT/.worktrees/<anything> is the convention scratch
+    # area — allowed even if not (yet) a git-registered worktree. Without this, a
+    # write into a freshly-created or unregistered worktree dir is mis-classified
+    # as a main-checkout write and blocked (false positive that breaks normal work).
+    _repo_esc = re.escape(str(repo_real))
+    worktrees_dir_re = re.compile(r"^" + _repo_esc + r"/\.worktrees/[^/]+(?:/|$)")
+    if worktrees_dir_re.match(str(path_real)):
+        return True
+
     # Also accept external worktree convention paths
     _base = re.escape(os.path.dirname(REPO_ROOT))
     external_patterns = [
