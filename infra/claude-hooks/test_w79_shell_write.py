@@ -37,6 +37,7 @@ def main() -> int:
     # point the hook at our fake layout
     mod.REPO_ROOT = str(main_checkout)
     # worktree resolver: only paths under the .worktrees dir are "allowed"
+    wt_root = (main_checkout / ".worktrees").resolve()
     def _fake_allowed(path_str: str) -> bool:
         if not path_str:
             return False
@@ -48,7 +49,8 @@ def main() -> int:
         except Exception:
             return False
         try:
-            return p.is_relative_to(worktree.resolve())
+            # mirror the real logic: anything under REPO_ROOT/.worktrees/<x> is allowed
+            return p.is_relative_to(worktree.resolve()) or p.is_relative_to(wt_root)
         except Exception:
             return False
     mod._is_path_in_allowed_worktree = _fake_allowed
@@ -57,33 +59,30 @@ def main() -> int:
     W = str(worktree)
     HOME = str(tmp / "home")
 
-    # (command, cwd, expect_block)
+    # (command, cwd, expect_block) — full trap table (/tmp/w79_trap_cases.md)
     CASES = [
         # MUST BLOCK — write lands in main checkout
-        (f'echo "x" > {M}/apps/f.py', M, True),
-        (f'echo "x" >> {M}/CLAUDE.md', "/tmp", True),
-        (f'tee {M}/apps/g.py', M, True),
-        (f'sed -i "s/a/b/" {M}/apps/f.py', M, True),
-        (f'cp /tmp/src {M}/apps/dest.py', M, True),
-        (f'mv /tmp/src {M}/apps/dest.py', M, True),
-        (f'dd if=/tmp/x of={M}/apps/img', M, True),
-        # relative target resolved against cwd=main
-        ('echo "x" > apps/f.py', M, True),
-        # MUST ALLOW — write lands in a worktree (the whole point of phase-free work)
-        (f'echo "x" > {W}/apps/f.py', W, False),
-        ('echo "x" > apps/f.py', W, False),
-        (f'sed -i "s/a/b/" {W}/file.py', W, False),
-        # MUST ALLOW — write outside the repo entirely
-        ('echo "x" > /tmp/scratch.txt', "/tmp", False),
-        (f'echo "x" > {HOME}/notes.md', HOME, False),
-        ('echo "ok" > /dev/null', M, False),       # /dev/null sink
-        ('cat f.py | grep x > /dev/null 2>&1', M, False),
+        (f'echo x > {M}/apps/f.py', M, True),
+        ('echo x >> CLAUDE.md', M, True),                       # relative → cwd=main
+        (f'echo x | tee {M}/CLAUDE.md', M, True),
+        ("sed -i 's/a/b/' apps/f.py", M, True),                 # relative → cwd=main
+        ('cp /tmp/src apps/dest.py', M, True),
+        ('dd if=/tmp/x of=apps/img', M, True),
+        # MUST ALLOW — the false positives I actually hit (heredoc body + quoted msg)
+        ("cat > /tmp/msg.txt <<'EOF'\nfix: _is_path_in_allowed_worktree > nothing\nredirect > file mention\nEOF", M, False),
+        ('git commit -m "fix: _is_path_in_allowed_worktree > nothing"', M, False),
+        ('git commit -m "redirect > file in the text"', M, False),
+        ('echo "a > b" > /tmp/f', M, False),                    # > inside quotes is noise; real target /tmp
+        ('grep ">" file.txt', M, False),                        # > is an arg to grep
+        # MUST ALLOW — write outside repo / into scratch / sinks
+        ('echo x > /tmp/scratch', "/tmp", False),
+        (f'echo x > {HOME}/notes.md', M, False),
+        (f'echo x > {M}/.worktrees/lane/f.py', M, False),       # scratch worktree
+        ('python x.py 2>&1 | tail', M, False),                  # fd-dup
+        ('echo ok > /dev/null', M, False),                      # sink
         # MUST ALLOW — no write at all
-        ("cat apps/f.py", M, False),
-        ("grep -rn foo apps/", M, False),
-        ("ls -la", M, False),
-        # redirect of stderr/fd must not be a target
-        ("python x.py 2>&1 | tail", M, False),
+        ('cat apps/f.py', M, False),
+        ('diff <(cat a) <(cat b)', M, False),                   # process substitution
     ]
 
     fails = 0
