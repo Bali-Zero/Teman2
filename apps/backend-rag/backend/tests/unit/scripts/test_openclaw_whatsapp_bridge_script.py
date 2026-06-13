@@ -1916,6 +1916,25 @@ _KBLI_PREFIX_MARKERS = {
     "it": "Direzione KBLI da verificare",
 }
 
+# Mythos M2 (2026-06-14): the 8 SUBSTITUTION guards (those that REPLACE a wrong
+# reply with a canned canonical, as opposed to the 2 APPEND/PREPEND guards). For
+# these, asserting only `out != reply` on a clobber is too weak — a guard that
+# clobbers with the WRONG canonical (cross-guard contamination, the W73 #1
+# "villa-eats-food-import" class) would still pass. The matrix-polarity test now
+# asserts the clobber lands on THIS guard's own canonical, in the case's language.
+# Map: guard name -> the _canonical_*_answer(language) builder it must produce.
+# Single source of truth so a new substitution guard is wired here once.
+_SUBSTITUTION_CANONICAL = {
+    "_guard_document_status_reply": "_canonical_document_status_answer",
+    "_guard_legacy_b211_reply": "_canonical_b211_business_answer",
+    "_guard_hak_milik_reply": "_canonical_hak_milik_answer",
+    "_guard_lkpm_reply": "_canonical_lkpm_answer",
+    "_guard_property_zoning_reply": "_canonical_property_zoning_answer",
+    "_guard_villa_kbli_reply": "_canonical_villa_kbli_answer",
+    "_guard_cafe_pma_reply": "_canonical_cafe_pma_answer",
+    "_guard_nominee_reply": "_canonical_nominee_answer",
+}
+
 
 @pytest.mark.parametrize(
     "case",
@@ -1951,6 +1970,16 @@ def test_guard_matrix_polarity(case: dict[str, Any]) -> None:
         elif case["guard"] == "_guard_kbli_label_reply":  # PREPEND
             assert out.startswith(_KBLI_PREFIX_MARKERS[case["lang"]])
             assert out.rstrip().endswith(case["reply"].rstrip())
+        elif case["guard"] in _SUBSTITUTION_CANONICAL:
+            # SUBSTITUTION guard: the clobber must land on THIS guard's OWN
+            # canonical (cross-guard contamination guard, Mythos M2 2026-06-14).
+            builder = getattr(bridge, _SUBSTITUTION_CANONICAL[case["guard"]])
+            expected = builder(case["lang"])
+            assert out == expected, (
+                f"{case['guard']} clobbered to the WRONG canonical "
+                f"(lang={case['lang']}): expected its own "
+                f"{_SUBSTITUTION_CANONICAL[case['guard']]}, got {out!r}"
+            )
 
 
 def test_guard_matrix_covers_every_guard_both_polarities() -> None:
@@ -2046,6 +2075,44 @@ def test_chain_endpoint_and_tests_share_the_same_chain() -> None:
         "(or is wired twice) — the chain and the module drifted"
     )
     assert len(chain_names) == len(set(chain_names))
+
+
+def test_substitution_canonical_map_does_not_drift_from_module() -> None:
+    """META gate (Mythos M2 2026-06-14): every guard that returns a
+    `_canonical_*_answer` (a SUBSTITUTION guard) must be wired into
+    `_SUBSTITUTION_CANONICAL` so the strict cross-contamination assertion in
+    `test_guard_matrix_polarity` actually covers it.
+
+    Discovery is dynamic — read each guard's source for `return _canonical_…`.
+    A new substitution guard that forgets its entry here FAILS, exactly the way
+    `_discover_guards()` gates per-guard matrix coverage. This is the structural
+    antibody: the strict assertion can never silently stop covering a guard.
+    """
+    import inspect
+    import re
+
+    returns_canonical: dict[str, set[str]] = {}
+    for name in _discover_guards():
+        src = inspect.getsource(getattr(bridge, name))
+        canonicals = set(re.findall(r"return (_canonical_[a-z0-9_]+_answer)", src))
+        if canonicals:
+            returns_canonical[name] = canonicals
+
+    # 1. Every substitution guard is mapped.
+    unmapped = sorted(set(returns_canonical) - set(_SUBSTITUTION_CANONICAL))
+    assert not unmapped, (
+        "substitution guard(s) missing from _SUBSTITUTION_CANONICAL — the strict "
+        f"clobber-canonical assertion does not cover them: {unmapped}"
+    )
+    # 2. No stale entries naming a guard that no longer substitutes.
+    stale = sorted(set(_SUBSTITUTION_CANONICAL) - set(returns_canonical))
+    assert not stale, f"_SUBSTITUTION_CANONICAL names non-substitution guard(s): {stale}"
+    # 3. The mapped canonical is one the guard actually returns (no wrong target).
+    for guard, expected in _SUBSTITUTION_CANONICAL.items():
+        assert expected in returns_canonical[guard], (
+            f"{guard} is mapped to {expected} but its body returns "
+            f"{sorted(returns_canonical[guard])}"
+        )
 
 
 def test_guard_matrix_covers_languages_and_no_trigger() -> None:
