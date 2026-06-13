@@ -210,17 +210,33 @@ dominant mode — the brand forbids monotony). Choose from EXACTLY these 9 modes
 - "cultural-photo": Indonesian/Balinese culture, ritual, place, daily life
 Use the slug verbatim (e.g. "cultural-photo").
 
-HERO IMAGE SELECTION (SMART — decision 2026-06-13):
-Choose 6-11 slides as the story needs. Mark `is_hero_image: true` ONLY on
-slides with real visual value — the cover (ALWAYS), the CTA closer (usually),
-and mid slides that show a SCENE, a turning point, or a provocation. Mark
-`is_hero_image: false` on slides that live on TEXT — dense lists, stacked
-facts, verbatim citations, pure editorial "take" statements: these read better
-as clean text-on-color, NOT as text floating over a decorative photo.
-Typically 4-8 of N slides are hero. Each HERO slide MUST carry `image_prompt`,
-`tonal_palette` AND `image_mode` (vary the modes — never let one dominate; use
-at least 4 of the 9 modes across the hero slides). Non-hero slides do NOT need
-`image_prompt`, `tonal_palette` or `image_mode`.
+HERO IMAGE SELECTION (SMART + ANTI-BANALITY — decision 2026-06-13):
+An image must EARN its place. The enemy is the banal filler photo — an image
+generated "tanto per", just so the slide has a picture. A decorative or
+generic image is WORSE than no image: it cheapens the whole carousel.
+
+DEFAULT = TEXT-ONLY (`is_hero_image: false`). Mark `is_hero_image: true` ONLY
+when a photograph adds meaning the words cannot — a specific real SCENE, a
+human face of the story, a charged place, a turning point, a provocation. The
+cover is ALWAYS hero. Beyond that, be STINGY: usually only 1-3 mid slides plus
+(optionally) the CTA truly deserve a photo. If the best image you can imagine
+for a slide is a GENERIC illustration of the topic — a nondescript office, a
+generic building, a stock chart, a calendar, a desk, "a person looking at a
+laptop", anything that just visualises the concept rather than telling THIS
+story — then it is filler: mark the slide text-only instead. When in doubt,
+text-only.
+
+The image_prompt for a hero slide must describe a SPECIFIC, concrete,
+photographable moment ("a half-built villa fenced off at dusk, one security
+lamp on") — never a generic concept ("real estate in Bali", "tax compliance",
+"a business meeting"). If you cannot name a specific scene, the slide is
+text-only.
+
+Each HERO slide MUST carry `image_prompt`, `tonal_palette` AND `image_mode`
+(vary the modes — never let one dominate, and never reach for the generic
+"data-visualization"/"calendar-photo"/"object-comparison" modes just to
+justify an image; those are the usual filler traps). Non-hero slides do NOT
+need `image_prompt`, `tonal_palette` or `image_mode`.
 
 STORYTELLING DIRECTIVES (overrides any default factual mode):
 
