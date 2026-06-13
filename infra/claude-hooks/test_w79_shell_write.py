@@ -93,10 +93,27 @@ def main() -> int:
         if got != expect:
             fails += 1
             print(f"  [{status}] block={got!s:5} expect={expect!s:5}  cwd={cwd[:18]:18}  {cmd}")
+
+    # --- W79 path-allowlist: the REAL _is_path_in_allowed_worktree (NOT monkeypatched)
+    # must allow REPO_ROOT/.worktrees/<x> even if not a git-registered worktree.
+    mod2 = _load_mod()
+    mod2.REPO_ROOT = str(main_checkout)
+    wt_path = f"{main_checkout}/.worktrees/lane-y/apps/f.py"
+    main_path = f"{main_checkout}/apps/f.py"
+    REAL_CASES = [
+        ("real-allowlist .worktrees", mod2._is_path_in_allowed_worktree(wt_path), True),
+        ("real-allowlist main file",  mod2._is_path_in_allowed_worktree(main_path), False),
+    ]
+    for name, got, expect in REAL_CASES:
+        if got != expect:
+            fails += 1
+            print(f"  [FAIL] got={got!s:5} expect={expect!s:5}  {name}")
+
+    total = len(CASES) + len(REAL_CASES)
     if fails:
-        print(f"\n=== {fails}/{len(CASES)} FAIL ===")
+        print(f"\n=== {fails}/{total} FAIL ===")
         return 1
-    print(f"=== ALL {len(CASES)} PASS ===")
+    print(f"=== ALL {total} PASS ===")
     return 0
 
 
