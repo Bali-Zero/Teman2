@@ -42,10 +42,13 @@ logger = logging.getLogger("wr2.composer")
 _BRAND = Path.home() / ".claude" / "skills" / "bali-zero-brand"
 _LAYOUTS = _BRAND / "layouts"
 
-# The 9 layout families that have real HTML/CSS skeletons (GROUND phase verified).
+# The layout families that have real HTML/CSS skeletons (GROUND phase verified).
+# `editorial-text` added 2026-06-13: a text-only prose family for non-hero slides
+# (smart-hero decision) — full antracite canvas, no photo, heading+sub+body.
 RENDERABLE_FAMILIES = {
     "cover-photo",
     "photo-headline-yellow-sub",
+    "editorial-text",
     "qa-dialogue",
     "timeline-pinboard",
     "dark-status-list",
@@ -82,31 +85,36 @@ def map_slide_to_family(slide: dict[str, Any], index: int, total: int) -> str:
       slide_number, slide_type, is_cover, is_hero_image, headline, subhead,
       body, image_prompt, image_url.
 
-    Mapping rules (conservative — only the 9 renderable families):
+    Mapping rules (smart-hero, 2026-06-13 — only RENDERABLE families):
       - slide 1 / is_cover            -> cover-photo            (Art 9.3 hard rule)
-      - last slide / slide_type cta   -> statement-bomb         (Art 9.5 hard rule)
-      - is_hero_image (mid)           -> photo-headline-yellow-sub (hero + text)
-      - has explicit list structure   -> evidence-carved        (facts) [future]
-      - default body                  -> photo-headline-yellow-sub if image_url
-                                         else dark-status-list-ish text slide
+      - last slide / cta/closing/stmt -> statement-bomb         (Art 9.5 hard rule)
+      - is_hero_image (mid)           -> photo-headline-yellow-sub (hero photo + text)
+      - non-hero "take"               -> statement-bomb         (punchy text-only)
+      - non-hero default              -> editorial-text         (text-only prose)
+
+    A NON-hero slide NEVER routes to photo-headline-yellow-sub: that layout has a
+    full-bleed hero photo, so an empty/missing image would leave a visual void
+    (the "void-trap"). Non-hero slides go to a TEXT-ONLY family instead.
+
+    We deliberately do NOT auto-route to dark-status-list / evidence-carved /
+    source-citation: those need structured items/facts/citations the generator
+    does not produce, so a blind mapping would break their fill.
 
     Returns a family in RENDERABLE_FAMILIES. Never returns an UNDEFINED one.
     """
-    st = (slide.get("slide_type") or "").lower()
-
     if index == 1 or slide.get("is_cover"):
         return "cover-photo"
+    st = (slide.get("slide_type") or "").lower()
     if index == total or st in {"cta", "closing", "statement"}:
         return "statement-bomb"
     if slide.get("is_hero_image"):
         return "photo-headline-yellow-sub"
-    # text-forward body slide: if it has an image use the photo layout, else a
-    # text layout. (dark-status-list expects label/value items; without that
-    # structure we keep it on the photo layout with image, or a plain text
-    # variant. For now, default to photo-headline if image present.)
-    if slide.get("image_url"):
-        return "photo-headline-yellow-sub"
-    return "photo-headline-yellow-sub"  # safe default (renders heading+sub+body)
+    # non-hero: route to a TEXT-ONLY family (never the photo layout with an empty
+    # image → void-trap). A punchy editorial "take" reads best as a statement;
+    # everything else as clean prose-on-color.
+    if st in {"take"}:
+        return "statement-bomb"
+    return "editorial-text"  # text-only prose family
 
 
 def _extract_skeleton(family: str) -> str:
