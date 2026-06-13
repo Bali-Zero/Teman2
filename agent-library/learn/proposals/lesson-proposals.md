@@ -6,9 +6,9 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **5**
+- scars scanned: **3**
 - mechanical candidates (recurring ≥3): **0**
-- consultive (single-occurrence): **4**
+- consultive (single-occurrence): **2**
 - rejected (no objective anchor, G1): **1**
 
 ## Recurring patterns (the objective recurrence signal, G4)
@@ -22,9 +22,7 @@ _(none — no anchored scar is part of a ≥3 recurring pattern)_
 ## Consultive (→ judgment pipeline, NOT a hook)
 
 - ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05) [P3]
-- ⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28) [P2]
-- ⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25) [P0]
-- ✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11) [P1]
+- ⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13) [P2]
 
 ## Rejected — no objective anchor (gate G1)
 

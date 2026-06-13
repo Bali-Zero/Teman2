@@ -5,9 +5,9 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 5,
+    "scars_scanned": 3,
     "mechanical_candidates": 0,
-    "consultive": 4,
+    "consultive": 2,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
@@ -28,41 +28,14 @@
       "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
     },
     {
-      "title": "⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28)",
+      "title": "⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13)",
       "severity": "P2",
       "w_numbers": [
-        "W59",
-        "W62",
-        "W63"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25)",
-      "severity": "P0",
-      "w_numbers": [
-        "W50",
-        "W51",
-        "W52",
-        "W55"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11)",
-      "severity": "P1",
-      "w_numbers": [
-        "W38"
+        "W55",
+        "W64",
+        "W65",
+        "W71",
+        "W78"
       ],
       "recurring_via": {
         "w": [],
