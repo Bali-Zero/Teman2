@@ -114,6 +114,26 @@ connected=$(printf '%s\n' "$clean" | grep -cE '✔ Connected|✓ Connected' || t
 pending=$(printf '%s\n' "$clean" | grep -c '⏸ Pending approval' || true)
 failed=$(printf '%s\n' "$clean" | grep -cE '✗ Failed|✗ Failed to connect|✘' || true)
 warnings=$(printf '%s\n' "$clean" | grep -c '\[Warning\]' || true)
+failed_servers_json=$(printf '%s\n' "$clean" | python3 -c '
+import json
+import re
+import sys
+
+names = []
+for raw_line in sys.stdin:
+    line = raw_line.strip()
+    if not re.search(r"(✗ Failed|✗ Failed to connect|✘)", line):
+        continue
+    prefix = re.split(r"\s+-\s+(?:✗ Failed|✗ Failed to connect|✘)", line, maxsplit=1)[0].strip()
+    if ": " in prefix:
+        name = prefix.rsplit(": ", 1)[0].strip()
+    else:
+        name = prefix.split()[0] if prefix.split() else ""
+    if name and name not in names:
+        names.append(name)
+print(json.dumps(names))
+')
+failed_servers_csv=$(python3 -c 'import json,sys; print(",".join(json.loads(sys.argv[1])))' "$failed_servers_json")
 
 # reachable = connected + pending (pending = config-valid, just needs approval;
 # NOT a failure). failed = the real problem.
@@ -170,6 +190,7 @@ if [[ "$UPDATE_BASELINE" == "1" || ! -f "$BASELINE_FILE" ]]; then
 import json
 json.dump({'declared': $declared, 'reachable': $reachable,
            'connected': $connected, 'pending': $pending, 'failed': $failed,
+           'failed_servers': $failed_servers_json,
            'ts': '$(date -u +%Y-%m-%dT%H:%M:%SZ)'},
           open('$BASELINE_FILE','w'), indent=2)
 "
@@ -186,13 +207,14 @@ import json
 print(json.dumps({'verdict':'$verdict','reason':'''$reason''',
   'declared':$declared,'reachable':$reachable,'connected':$connected,
   'pending':$pending,'failed':$failed,'warnings':$warnings,
+  'failed_servers':$failed_servers_json,
   'baseline_reachable':'$baseline_connected','baseline_declared':'$baseline_declared'}))
 "
 else
-    echo "[mcp-integrity] $verdict — declared=$declared connected=$connected pending=$pending failed=$failed warnings=$warnings${reason:+ | $reason}"
+    echo "[mcp-integrity] $verdict — declared=$declared connected=$connected pending=$pending failed=$failed warnings=$warnings failed_servers=${failed_servers_csv:-none}${reason:+ | $reason}"
 fi
 
-log "$verdict declared=$declared connected=$connected pending=$pending failed=$failed warnings=$warnings ${reason}"
+log "$verdict declared=$declared connected=$connected pending=$pending failed=$failed warnings=$warnings failed_servers=${failed_servers_csv:-none} ${reason}"
 
 # Per-tick alive-signal (fresh ts EVERY run, distinct from the frozen baseline)
 # so the dead-man's switch (cost_breaker_deadman.sh) can detect when THIS
@@ -201,6 +223,7 @@ python3 -c "
 import json
 json.dump({'ts': '$(date -u +%Y-%m-%dT%H:%M:%SZ)', 'verdict': '$verdict',
            'declared': $declared, 'reachable': $reachable, 'failed': $failed,
+           'failed_servers': $failed_servers_json,
            '_writer': 'verify_mcp_integrity'},
           open('$STATE_DIR/mcp_integrity.json','w'), indent=2)
 " 2>/dev/null || true
