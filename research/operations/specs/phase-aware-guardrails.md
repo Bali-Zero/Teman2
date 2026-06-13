@@ -123,42 +123,44 @@ Panel: Gemini 3.1 Pro + DeepSeek V4 Pro (refuter) + Codex GPT-5.5. **Convergenza
 
 ---
 
-## 10. STATO IMPLEMENTAZIONE (aggiornato 2026-06-14, verificato su disco)
+## 10. STATO IMPLEMENTAZIONE (aggiornato 2026-06-14, verificato su disco — FEATURE LIVE)
 
-Il panel (§9) ha fissato l'ordine NON negoziabile: **prereq 🔴 PRIMA → validazione §6 → relax 🟢 DOPO.** Stato dei tre prerequisiti, ri-verificato su disco oggi (M5):
+Il panel (§9) ha fissato l'ordine NON negoziabile: **prereq 🔴 PRIMA → validazione §6 → relax 🟢 DOPO.** Tutti e tre i prerequisiti sono ora chiusi e il relax è installato su M5. Stato ri-verificato su disco oggi (M5):
 
-| # | Prerequisito | Stato spec (13/06) | **Stato OGGI (verificato 14/06)** |
-|---|---|---|---|
-| 1 | §9-B `main_write_via_bash` (blocco scrittura main via Bash) | fatto-non-installato | ✅ **DONE + LIVE** — W79, PR #1399 MERGED, hook installato M5+Pro (`grep _strip_noise ~/.claude/hooks/worktree_isolation.py` = 6 match), E2E 5/5. Solo Mini pending (offline ~2gg, memory `unresolved_w79_mini_propagation_2026_06_13`). |
-| 2 | §9-A `host_boundary` (protezione `~/.claude/`+`~/.ssh`+secrets) | DA CREARE | ❌ **ANCORA BUCO** — grep 14/06 conferma: nessun hook protegge `~/.claude/` (l'unico match è un commento dentro `guardrails-static.py`). Auto-bypass-risk per `_phase.py` ancora reale. |
-| 3 | §6 probe `permissionMode` sullo stdin del PreToolUse | indiziato | ❌ **MAI PROVATO** — il campo ESISTE nei transcript (grep 14/06: `plan` 12× / `default` 30× / `bypassPermissions` 4628×) ma il transcript ≠ lo stdin dell'hook; il probe `/tmp/nuz_payload_capture.jsonl` non è mai stato eseguito. |
-| 4 | Relax dei 4 gate 🟢 (`orchestrate_gate`/`dispatch_nudge`/`stadio_zero`/`worktree-on-scratch`) | bloccato dai prereq | ⏸ **NON iniziato** — gated da #2 e #3. |
+| # | Prerequisito | **Stato OGGI (verificato 14/06)** |
+|---|---|---|
+| 1 | §9-B `main_write_via_bash` (blocco scrittura main via Bash) | ✅ **DONE + LIVE** — W79, PR #1399 MERGED, hook installato M5+Pro (`grep _strip_noise ~/.claude/hooks/worktree_isolation.py` = 6 match), E2E 5/5. Solo Mini pending (offline ~2gg, memory `unresolved_w79_mini_propagation_2026_06_13`). |
+| 2 | §9-A `host_boundary` (protezione `~/.claude/`+`~/.ssh`+secrets) | ✅ **DONE + LIVE** — `infra/claude-hooks/host_boundary.py` (riusa la logica W79 `_strip_noise`/`_extract_write_targets`/`_resolve_target`/regex), trap-table 28 casi verde, installato in `~/.claude/hooks/` + registrato in cima a PreToolUse (`matcher Bash\|Edit\|Write\|MultiEdit`). **Live-provato**: ha BLOCCATO un mio Edit di `orchestrate_gate.py` in `~/.claude/hooks/` (exit 2) durante questa stessa sessione — W64 armato E funziona. Policy: block-hard (exit 2) su scrittura mutativa, WARN su lettura secret. Kill-switch `HOST_BOUNDARY_OFF=1`. |
+| 3 | §6 probe `permission_mode` sullo stdin del PreToolUse | ✅ **RISOLTO — esito A** — probe `/tmp/nuz_payload_probe.py` ha catturato lo stdin reale in plan-mode (`/tmp/nuz_payload_capture.jsonl`): il campo top-level **`permission_mode`** (snake_case, NON `permissionMode`) arriva con valori `plan` (24×) / `bypassPermissions` (20×), cambia con la fase. **Correzione load-bearing (classe W78):** il transcript usa camelCase `permissionMode`, lo stdin dell'hook usa snake_case `permission_mode`. `_phase.py` legge snake_case primario + camelCase fallback. |
+| 4 | Relax dei gate 🟢 | ✅ **3 SU 4 fatti + live-provati** — `orchestrate_gate`/`dispatch_nudge`/`stadio_zero_nudge` rilassati (`if is_plan_phase(payload): sys.exit(0)` dopo il parse del payload). **`orchestrate_gate` live-provato**: stesso payload-bloccante → in `default` BLOCK exit 2, in `plan` PASS exit 0. **`worktree_isolation` deliberatamente NON rilassato** — vedi correzione sotto. |
 
-**Progresso netto dal 13/06:** 1 prereq su 3 chiuso — il più delicato (blast-radius globale, scrittura-main-via-Bash). Lo switch resta NON implementabile finché #2 e #3 non sono chiusi.
+### ⚠️ Correzione di design (load-bearing): solo 3 gate su 4 — `worktree_isolation` NON si rilassa
 
-## 11. I DUE BLOCCHI RIMASTI — roadmap d'implementazione
+Lo spec originale (§9, tabella §file-toccati) elencava 4 gate verdi da rilassare, incluso il ramo scratch-worktree di `worktree_isolation.py`. **In implementazione ho rilassato `worktree_isolation` e poi ho RIMOSSO chirurgicamente la patch**, per una ragione che lo spec a tavolino non aveva colto:
 
-> Ordine NON negoziabile (verdetto panel §9): prima i due blocchi sotto, POI il relax 🟢. Mai disarmare un gate verde prima.
+- `worktree_isolation.py` non ha un solo ramo "scratch git-op": il guard di fase, inserito dopo il parse del payload, si applicava all'INTERO hook — incluso il blocco git-su-main. Risultato: in plan-mode passava `git reset --hard HEAD~1` **su main**. Questo viola direttamente §9 ("il blocco git-su-main NON si rilassa, resta 🔴 in ogni fase").
+- Le operazioni scratch-git che il relax avrebbe dovuto sbloccare sono **già permesse senza plan-mode** (l'hook le consente di base nei worktree autorizzati). Quindi rilassarlo non sblocca nulla di utile e apre solo il buco git-su-main.
+- **Decisione:** `worktree_isolation` resta integralmente 🔴 (gestito da W79, non phase-relaxed). I gate verdi rilassati sono SOLO i 3 soft-gate (`orchestrate_gate`, `dispatch_nudge`, `stadio_zero_nudge`) — quelli che tassano l'esplorazione (dispatch-nudge / orchestrate / stadio-zero) senza proteggere alcun confine fisico. Un futuro agente NON deve "completare" il 4° gate: ricreerebbe il buco.
 
-### BLOCCO #1 — `host_boundary` 🔴 (gate nuovo, prerequisito di `_phase.py`)
+**Progresso netto:** feature COMPLETA su M5. host_boundary 🔴 + _phase + 3 soft-gate rilassati, tutti live-provati (RUN il gate, non solo `python -c` — W64). Resta: propagazione Pro+Mini via `infra/claude-hooks/install_phase_aware.sh`, e il `/hooks` reload perché Claude Code rilegga settings.json in questa sessione.
 
-- **Cosa:** un PreToolUse hook (o estensione di `worktree_file_write_check.py`) che blocca scrittura mutativa (Edit/Write/MultiEdit **e** Bash `>`/`tee`/`sed -i`/`cp`/`mv`/`dd of=`/`rm`) su path sensibili FUORI dai worktree autorizzati: `~/.claude/` (hook+settings+`_phase.py`), `~/.ssh`, `~/.aws`, `~/.nuzantara-secrets.env`, `~/.zshenv`/`~/.zshrc`. Lettura di secrets: almeno WARN.
-- **Perché PRIMA:** la spec introduce `~/.claude/hooks/_phase.py`; se quel file è scrivibile da un agente (+ "Yes" distratto in plan-mode, §9 Q3), un agente può **disarmare lo switch di fase** riscrivendo `_phase.py` → auto-bypass di tutti i gate verdi. Il guardiano va blindato PRIMA di esistere.
-- **Riuso:** W79 ha già `_strip_noise`/`_write_hits_main`/`WRITE_HINT_RE` in `worktree_isolation.py` — la logica di estrazione-target-da-Bash (incl. la trappola `lsof`/heredoc/quoting) è scritta e testata; `host_boundary` la riusa cambiando solo l'allowlist (da "dentro worktree" a "fuori path-sensibili").
-- **Test:** trap-table come W79 (`infra/claude-hooks/test_*`): BLOCK `echo x > ~/.claude/hooks/_phase.py`, `sed -i ~/.claude/settings.json`, `cp x ~/.ssh/`; ALLOW scrittura dentro worktree, lettura repo, `> /tmp`.
-- **Decisione operatore:** L1 hook, blast-radius globale (3 macchine) → richiede ok Antonello prima dell'install in `~/.claude/hooks/` (stesso protocollo di W79).
+## 11. COSA È STATO COSTRUITO (record d'implementazione — per propagazione + audit)
 
-### BLOCCO #2 — probe `permissionMode` sullo stdin (validazione §6, anti-W64)
+> I "due blocchi rimasti" della revisione precedente sono entrambi chiusi (§10). Questa sezione registra cosa esiste su disco, per la propagazione Pro+Mini e per un futuro audit anti-W64.
 
-- **Cosa:** provare EMPIRICAMENTE che `permissionMode == "plan"` arriva sullo **stdin del PreToolUse hook** (non solo nel transcript). Probe: matcher PreToolUse `/tmp/nuz_payload_probe.py` che dumpa lo stdin in `/tmp/nuz_payload_capture.jsonl`; `/hooks` reload; Shift+Tab → plan; esegui 1 Bash; leggi il dump.
-- **Perché:** claim load-bearing non provato (W64: esistere≠armato — qui "documentato≠provato"). Se il campo NON arriva sullo stdin, lo switch automatico via Shift+Tab è impossibile e degrada al solo `NUZ_PHASE=plan` manuale.
-- **Chi:** richiede sessione interattiva owner (Shift+Tab è un gesto UI; un subagent NON può entrare in plan-mode) → **azione Antonello**, o sessione interattiva guidata.
-- **Esito A** (campo presente, grafia X): si procede al relax 🟢 leggendo grafia X.
-- **Esito B** (campo assente): lo switch ricade su `NUZ_PHASE=plan` env manuale → l'idea "automatico e naturale via Shift+Tab" NON è realizzabile su questa versione di Claude Code; si rivaluta.
+**File nuovi (source-of-truth in repo, `infra/claude-hooks/`):**
+- `host_boundary.py` 🔴 + `test_host_boundary.py` (28 casi). PROTECTED_DIRS = `~/.claude`, `~/.ssh`, `~/.aws`, `~/.agent/decisions`; PROTECTED_FILES = `~/.nuzantara-secrets.env`, `~/.zshenv`, `~/.zshrc`. Copre Bash + Edit/Write/MultiEdit. Block-hard su scrittura, WARN su lettura secret. Kill-switch `HOST_BOUNDARY_OFF=1`.
+- `_phase.py` + `test_phase.py` (11 casi). `is_plan_phase(payload)`: legge `permission_mode` (snake_case primario, provato dal probe) → `permissionMode` (camelCase fallback) → `NUZ_PHASE=plan` (env manuale per brainstorm fuori UI). Fail-safe: campo assente → False (gate ON). Kill-switch `NUZ_PHASE_AWARE_OFF=1` vince su tutto.
+- `orchestrate_gate.py` / `dispatch_nudge.py` / `stadio_zero_nudge.py` — mirror HOME-fork dei 3 soft-gate rilassati (W50/W51/W52: vivevano SOLO in `~/.claude/hooks/`, ora versionati qui così un re-sync non perde il relax). Ognuno: import path-safe di `_phase` + `if is_plan_phase(payload): sys.exit(0)` dopo il parse del payload.
+- `install_phase_aware.sh` — installer idempotente: copia i 5 file in `~/.claude/hooks/` (backup `.bak-pre-phaseaware-<ts>` di ogni overwrite, chmod 700), registra host_boundary in cima a PreToolUse. **NON installa `worktree_isolation`** (W79-managed, non phase-relaxed — vedi §10 correzione).
 
-### DOPO i due blocchi — relax dei 4 gate 🟢
+**Installato + live-provato su M5 in questa sessione** (W64 — RUN il gate, non solo `bash -n`):
+- host_boundary: ha BLOCCATO un mio Edit di `orchestrate_gate.py` in `~/.claude/hooks/` (exit 2) — la prova che è armato E funziona, non solo registrato.
+- orchestrate_gate: stesso payload-bloccante → `default` BLOCK exit 2, `plan` PASS exit 0.
 
-Solo a #1 chiuso (host_boundary live) + #2 esito A: aggiungere le 2 righe `if is_plan_phase(payload): sys.exit(0)` ai 4 gate verdi, un gate per commit, con la trap-table che prova "in plan → off, in default → on". Kill-switch `NUZ_PHASE_AWARE_OFF=1` come rete.
+**Propagazione (W79 protocol):** install su Pro+Mini via `bash infra/claude-hooks/install_phase_aware.sh` dopo il merge di questa PR. Mini offline ~2gg (memory `unresolved_w79_mini_propagation_2026_06_13`) — propagare al rientro.
+
+**Nota `/hooks` reload:** host_boundary + gate rilassati sono su disco e in settings.json, ma Claude Code rilegge gli hook solo a `/hooks` reload o restart di sessione — sono LIVE per uno smoke da shell (provato) ma non ancora applicati alla sessione corrente finché non si ricarica.
 
 ---
 
