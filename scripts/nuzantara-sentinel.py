@@ -535,12 +535,21 @@ def _enrich_last_error_from_cron_log(job_id: str, last_error: str) -> str:
         base = os.path.expanduser(d)
         for name in (f"{job_id}.log", f"{dash}.log"):
             path = os.path.join(base, name)
+            # Bounded tail read: seek to the last 16 KiB only. readlines() on a
+            # multi-MB cron log would bloat the sentinel's memory (these logs are
+            # append-only and can grow large) — cap it regardless of file size.
             try:
-                with open(path, "r", errors="replace") as fh:
-                    lines = fh.readlines()
+                with open(path, "rb") as fh:
+                    fh.seek(0, os.SEEK_END)
+                    size = fh.tell()
+                    fh.seek(max(0, size - 16384))
+                    chunk = fh.read().decode("utf-8", errors="replace")
             except OSError:
                 continue
-            tail = [ln.rstrip("\n") for ln in lines[-40:] if ln.strip()]
+            lines = chunk.splitlines()
+            if size > 16384 and lines:
+                lines = lines[1:]  # drop the partial first line from the mid-line seek
+            tail = [ln.rstrip() for ln in lines[-40:] if ln.strip()]
             if tail:
                 prefix = last_error or "(no exit summary)"
                 return f"{prefix}\n--- cron log tail ({name}) ---\n" + "\n".join(tail)
@@ -608,6 +617,10 @@ def process_job(job_id: str, state: dict, registry: dict,
         # never re-checks live state, so without this the entry stays forever
         # (pre-fix: 19 of 33 DLQ-TERMINAL entries were already-healthy corpses).
         # Clearing it is the missing edge that closes the heal-loop.
+        # KNOWN LIMIT (flapping-mask): a job that fails 90% / succeeds 10% will
+        # clear its corpse on each lucky run. The INFO log below keeps it visible;
+        # a resurrection-rate counter is a follow-up (not blocking — net win is the
+        # 19 stable corpses cleared, and a re-failure re-enters the DLQ fresh).
         if job_id in dlq_terminal_set:
             try:
                 clear_dlq_entry(job_id)
