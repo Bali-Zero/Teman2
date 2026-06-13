@@ -42,3 +42,8 @@
 
 **Learning:** Small utility widgets that contain text inputs (like FeedbackWidget) often feel "heavy" when they use standard textareas with fixed heights and internal scrollbars. Utilizing the project's standard AutoResizeTextarea component ensures a fluid, consistent input experience across all interface layers. Additionally, secondary widgets must strictly adhere to semantic labeling (htmlFor/id) and ARIA dialog roles to ensure they are not overlooked by screen reader users.
 **Action:** Consistently use AutoResizeTextarea for multi-line inputs in all UI layers. Always associate labels with inputs using semantic IDs and apply aria-labelledby to dialog containers.
+
+## 2026-05-20 - [Context-Aware AI Reasoning Statuses]
+
+**Learning:** Users benefit from specific, context-aware feedback during AI "thinking" phases (e.g., knowing *what* is being searched and *where*) rather than generic labels like "Searching Knowledge Base". Providing these dynamic details makes the AI's operations more transparent and the wait feel shorter. Additionally, keeping hardcoded strings in reasoning components breaks the app's English-first consistency.
+**Action:** Implement dynamic status generators like `getDynamicToolMessage` that utilize tool arguments for granular feedback. Always target specific files for formatting/linting in restricted PR environments to avoid massive, unrelated diffs.
