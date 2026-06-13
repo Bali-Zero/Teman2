@@ -265,6 +265,163 @@ async def test_apply_one_rate_limit_does_not_burn_attempt(monkeypatch):
     assert "drafts_imaged_checked" in sqls
 
 
+# ── render-failure circuit breaker: the attempt counter must INCREMENT and
+#    eventually reach render_failed (2026-06-13 SCAR: the counter was stored in
+#    slides_json — a JSONB ARRAY — so the read silently returned 0 and the
+#    jsonb_set WRITE raised InvalidTextRepresentationError, crashing the
+#    retry-release before the draft could be parked → reconciliation re-kicked it
+#    forever. Fixed by a dedicated INTEGER column html_render_attempts, mig 228) ─
+
+
+class _InvalidTextRepresentationError(Exception):
+    """Stand-in for asyncpg.exceptions.InvalidTextRepresentationError — raised by
+    the fake conn to reproduce the exact Postgres error the OLD jsonb_set-on-array
+    write triggered (`path element at position 1 is not an integer`)."""
+
+
+class _FakeRenderFailDB:
+    """A minimal fake DB connection that emulates JUST enough Postgres semantics
+    to make the BUGGY form crash and the FIXED form work:
+
+      * a row with slides_json as a JSONB ARRAY (the real shape) + an integer
+        html_render_attempts column (migration 228).
+      * fetchval on the OLD read (slides_json->>'_html_attempts') would return
+        NULL on an array; on the NEW read it returns the integer column.
+      * execute on the OLD write (jsonb_set(slides_json, '{_html_attempts}', ...))
+        RAISES (array path element is not an integer); on the NEW write it sets
+        the integer column. A render_failed UPDATE flips the status.
+
+    This is a true regression guard: revert _apply_one to the jsonb_set/array
+    form and the retry-path execute raises here exactly as it did in prod.
+    """
+
+    def __init__(self, attempts: int = 0):
+        self.attempts = attempts          # the html_render_attempts column value
+        self.status = "rendering"
+        self.executed: list[str] = []
+
+    def is_closed(self):
+        return False
+
+    async def close(self):
+        return None
+
+    async def fetchval(self, sql, *args):
+        s = " ".join(sql.split())
+        if "html_render_attempts" in s:
+            return self.attempts          # the fixed read
+        if "_html_attempts" in s:
+            # the OLD read against a JSONB ARRAY: ->> 'text-key' yields NULL
+            return None
+        return 0
+
+    async def execute(self, sql, *args):
+        s = " ".join(sql.split())
+        self.executed.append(s)
+        if "jsonb_set" in s and "_html_attempts" in s:
+            # the OLD buggy write — Postgres rejects a non-integer array path
+            raise _InvalidTextRepresentationError(
+                'path element at position 1 is not an integer: "_html_attempts"'
+            )
+        if "html_render_attempts" in s:
+            # the fixed write: SET html_render_attempts = $3
+            self.attempts = args[2]
+            self.status = "drafts_imaged_checked"
+            return "UPDATE 1"
+        if "render_failed" in s:
+            self.status = "render_failed"
+            return "UPDATE 1"
+        return "UPDATE 1"
+
+
+async def _run_apply_one_with_render_failure(monkeypatch, fake_conn, max_attempts="3"):
+    """Drive _apply_one so the render raises a RuntimeError (the designer-loop
+    convergence-failure path), using the supplied fake_conn for main_conn."""
+    from unittest.mock import AsyncMock
+
+    import scripts.wr2_html_render_apply as html
+
+    # main_conn = fake_conn; hb_conn = throwaway mock (heartbeat is stubbed out)
+    hb = AsyncMock()
+    hb.close = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(side_effect=[fake_conn, hb]))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": [{"headline": "H"}]}),  # ARRAY, the real shape
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+    # the render fails the convergence gate -> RuntimeError (transient render path)
+    monkeypatch.setattr(
+        html, "_render_carousel",
+        AsyncMock(side_effect=RuntimeError("designer loop did not converge")),
+    )
+    monkeypatch.setattr(html, "_ops_alert", AsyncMock())
+    monkeypatch.setenv("WR2_HTML_MAX_ATTEMPTS", max_attempts)
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+    monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)
+
+    import uuid as _uuid
+    return await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+
+
+@pytest.mark.asyncio
+async def test_apply_one_render_failure_increments_attempt_without_jsonb_crash(monkeypatch):
+    """REGRESSION (2026-06-13): the retry-release UPDATE must execute WITHOUT
+    raising InvalidTextRepresentationError, and must increment the dedicated
+    INTEGER counter (not jsonb_set the slides_json array). The bug crashed this
+    path and left the draft looping forever."""
+    fake = _FakeRenderFailDB(attempts=0)
+    result = await _run_apply_one_with_render_failure(monkeypatch, fake)
+
+    # first failure of 3 → back to the queue for retry (NOT render_failed yet)
+    assert result.startswith("retry:1:")
+    assert fake.status == "drafts_imaged_checked"
+    assert fake.attempts == 1  # counter actually incremented + persisted
+
+    sqls = " ".join(fake.executed)
+    # the fixed write uses the integer column; the buggy array form is gone
+    assert "html_render_attempts" in sqls
+    assert "jsonb_set" not in sqls
+    assert "_html_attempts" not in sqls
+
+
+@pytest.mark.asyncio
+async def test_apply_one_attempt_counter_accumulates_to_render_failed(monkeypatch):
+    """REGRESSION: across successive failures the counter accumulates (1→2→3) and
+    at max_attempts the draft transitions to render_failed instead of looping
+    forever. Pre-fix the read always returned 0 (array ->> text-key = NULL) so
+    the draft NEVER reached the breaker."""
+    # attempt 1: counter 0 → 1, retry
+    f1 = _FakeRenderFailDB(attempts=0)
+    r1 = await _run_apply_one_with_render_failure(monkeypatch, f1)
+    assert r1.startswith("retry:1:") and f1.attempts == 1 and f1.status == "drafts_imaged_checked"
+
+    # attempt 2: counter 1 → 2, still retry (max=3)
+    f2 = _FakeRenderFailDB(attempts=1)
+    r2 = await _run_apply_one_with_render_failure(monkeypatch, f2)
+    assert r2.startswith("retry:2:") and f2.attempts == 2 and f2.status == "drafts_imaged_checked"
+
+    # attempt 3: counter 1→... reaches max=3 → render_failed (terminal)
+    f3 = _FakeRenderFailDB(attempts=2)
+    r3 = await _run_apply_one_with_render_failure(monkeypatch, f3)
+    assert r3.startswith("render_failed:")
+    assert f3.status == "render_failed"
+    # the terminal path does NOT touch the integer counter (just flips status)
+    sqls = " ".join(f3.executed)
+    assert "render_failed" in sqls
+    assert "jsonb_set" not in sqls
+
+
 # ── connection-resilience: the ~15 min render kills the idle main_conn; the
 #    terminal write must reconnect (2026-06-12 SCAR: drafts stuck 'rendering'
 #    forever because the post-render write crashed on a closed connection) ──────
