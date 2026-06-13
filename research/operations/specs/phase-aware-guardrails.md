@@ -52,7 +52,7 @@ I gate 🔴 **non importano `_phase`** — restano identici a oggi.
 
 ## 3. Cosa si rilassa in PLAN — e perché è sicuro (🟢)
 
-In plan-mode l'agente è read-only by design (non scrive comunque); rilassare questi gate non aggiunge rischio, toglie solo attrito al pensiero.
+⚠️ **CORREZIONE post-panel:** plan-mode NON è read-only fisico (vedi §9 Q3). È *user-in-the-loop*: i tool mutativi restano disponibili, Claude Code chiede approvazione manuale. Quindi rilassare questi gate è sicuro SOLO perché i gate 🔴 di §4 (rivisti) coprono il danno reale indipendentemente dalla fase — non perché "in plan non si scrive".
 
 | Gate | Blocca oggi | In plan | Razionale |
 |---|---|---|---|
@@ -67,7 +67,9 @@ Questi non toccano la libertà di ragionare: toccano l'integrità del mondo real
 
 | Gate | Protegge | Perché immutabile |
 |---|---|---|
-| `worktree_file_write_check.py` | vieta Edit/Write nel **main checkout** `~/Desktop/nuzantara` | "pensare libero" ≠ "scrivere sul reale". Plan è read-only; questa è la cintura ridondante |
+| `worktree_file_write_check.py` | vieta Edit/Write nel **main checkout** `~/Desktop/nuzantara` | "pensare libero" ≠ "scrivere sul reale". Copre i tool Edit/Write — MA vedi buco §9-B (non copre Bash) |
+| 🆕 **`main_write_via_bash` (DA CREARE)** | blocca scrittura sul main via **Bash** (`echo >`, `tee`, `sed -i`, `cp/mv`, `rm` con target sotto `~/Desktop/nuzantara` ESCLUSI i `.worktrees/`) | **buco esistente OGGI** (§9-B): `worktree_isolation` blocca solo `git`, `worktree_file_write_check` solo Edit/Write → un `echo > ~/Desktop/nuzantara/x.py` passa indisturbato. Gemini+DeepSeek convergono |
+| 🆕 **`host_boundary` (DA CREARE)** | blocca scrittura mutativa fuori dai worktree autorizzati — in particolare `~/.claude/` (hook, settings, `_phase.py`), `~/.ssh`, `~/.aws`, secrets | **buco §9-A (Gemini):** la mia spec introduce `_phase.py`; se non protetto, modificarlo DISARMA lo switch stesso (auto-bypass). Va blindato PRIMA di introdurlo |
 | `worktree_isolation.py` — parte git-distruttivi su **MAIN** | `git reset/merge/rebase/pull/commit -a` sul main | cancella lavoro di sessioni sibling (W59/W62), danno irreversibile cross-agente |
 | `guardrails-static.py` | pattern MCP distruttivi (`drop_*`,`delete_*`,`truncate_*`,`wipe_*`) | distruggono dati clienti; nessuna ragione di pianificazione li richiede |
 | PII boundary (SYMBIOSIS Law 2) | nessun dato cliente verso cloud/paid API | sovranità (UU PDP); un brief con un KTP dentro è violazione anche "mentre pianifichi" |
@@ -98,3 +100,23 @@ Ogni gate 🟢 modificato è ripristinabile rimuovendo le 2 righe `if is_plan_ph
 2. Il fail-safe (missing → guardrail ON) è la scelta giusta, o introduce un buco se `permissionMode` arriva vuoto per un bug Claude Code?
 3. C'è un modo di confondere lo switch (es. un agente che resta in `permissionMode:plan` ma di fatto scrive)? Plan-mode è davvero read-only enforced lato Claude Code, o è solo un suggerimento?
 4. Manca un gate 🔴 dall'elenco (qualcosa che protegge il reale e che ho dimenticato)?
+
+## 9. VERDETTO PANEL 4-LLM (2026-06-13) — la spec NON procede senza i 2 gate nuovi
+
+Panel: Gemini 3.1 Pro + DeepSeek V4 Pro (refuter) + Codex GPT-5.5. **Convergenza forte su 2 buchi**, uno dei quali **esiste già oggi indipendentemente da questa spec** e verificato su disco dall'orchestratore (regola W65).
+
+**Q1 (classificazione 🟢/🔴):** ✅ confermata da entrambi. Forzare delega/nudge in esplorazione amputa la chain-of-thought; in plan l'agente deve leggere/analizzare senza attrito.
+
+**Q2 (fail-safe missing→ON):** ✅ confermato. Principio fail-closed / deny-by-default. Degrado funzionale innocuo, nessun buco.
+
+**Q3 (plan-mode read-only?):** ⚠️ **NO — non è una sandbox fisica.** Gemini: *"enforced tramite User-in-the-Loop, non bloccato dal motore. `permissionMode:plan` non inibisce Write/Edit/Bash, forza l'approvazione manuale per ogni azione mutativa. Se l'utente preme Yes per distrazione, l'agente PUÒ scrivere o eseguire comandi distruttivi."* → l'assunzione originale "in plan non si scrive" è FALSA. Il single-point-of-failure è il "Yes" umano. Quindi i gate 🔴 devono coprire il danno **a prescindere dalla fase**.
+
+**Q4 (gate 🔴 mancante) — DUE buchi:**
+
+- **§9-A (Gemini) — Host Boundary mancante.** `worktree_file_write_check` difende il main checkout di nuzantara ma NON protegge l'esterno: un agente (+ "Yes" distratto) può scrivere `~/.claude/hooks/_phase.py` (→ **disarma la logica di fase stessa**, auto-bypass), `~/.claude/settings.json`, o leggere `~/.ssh`/`~/.aws`. → serve **`host_boundary` 🔴**. Aggravante: questa spec INTRODUCE `_phase.py`, quindi crea un nuovo bersaglio — va blindato PRIMA di introdurlo.
+
+- **§9-B (DeepSeek + Gemini, VERIFICATO su disco) — scrittura sul main via Bash non bloccata, OGGI.** `worktree_isolation.py` `BLOCKED_SUBCMD_RE` matcha SOLO `git checkout|switch|stash|reset|merge|rebase|pull|commit -a|add -A`. NESSUN pattern per `echo >`, `tee`, `sed -i`, `cp/mv`, `rm`. `worktree_file_write_check.py` copre solo i tool Edit/Write/MultiEdit. → **`echo "x" > ~/Desktop/nuzantara/apps/.../f.py` via Bash scrive sul main SENZA che nessun hook lo fermi, già adesso.** Buco indipendente dalla spec → serve **`main_write_via_bash` 🔴** comunque.
+
+**Conseguenza decisionale (DeepSeek, secco):** *"La spec non deve procedere senza prova inconfutabile del read-only forzato e un blocco scrittura totalitario sul main."* Tradotto: i 2 gate 🔴 nuovi (§9-A/§9-B) sono **prerequisito**, non opzione. Si shippa nell'ordine: (1) `main_write_via_bash` + `host_boundary` 🔴 PRIMA, (2) validazione §6 di `permissionMode`, (3) solo DOPO il rilassamento dei 4 gate 🟢.
+
+**Codex:** ❌ DERAGLIATO — invece di rispondere alle Q1-Q4 ha letto il worktree dirty (stop-hook bloccato), confuso il contesto, e suggerito comandi `git commit`/`stash` per sbloccare lo Stop. Zero contenuto sulla spec. Scartato (anti-hallucination: NON lo si conta come consenso che non ha dato). Panel effettivo = 2 voci reali (Gemini + DeepSeek) **convergenti** + §9-B verificato su disco dall'orchestratore → solidità sufficiente, ma il consenso a 3 NON c'è stato.
