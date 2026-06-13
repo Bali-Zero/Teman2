@@ -401,17 +401,19 @@ class SurfaceRouter:
     async def _classify_with_haiku(self, query: str) -> SurfaceDecision | None:
         """Classify with Claude Haiku. Returns None on any failure."""
         try:
-            from backend.llm.claude_oauth_client import ClaudeOAuthClient
+            from backend.llm.claude_oauth_client import complete_async
 
-            client = ClaudeOAuthClient(
-                model="claude-haiku-4-5-20251001", timeout_s=int(HAIKU_TIMEOUT_S)
-            )
             prompt = f"{_HAIKU_SYSTEM}\n\nUser query: {query}"
-            text = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(None, lambda: client.complete(prompt)),
+            response = await asyncio.wait_for(
+                complete_async(
+                    prompt,
+                    model="claude-haiku-4-5-20251001",
+                    timeout_s=int(HAIKU_TIMEOUT_S),
+                    endpoint="surface_router.haiku",
+                ),
                 timeout=HAIKU_TIMEOUT_S,
             )
-            data = json.loads(text.strip())
+            data = json.loads(response.text.strip())
             domain: str = data.get("domain", "visa")
             haiku_confidence: float = float(data.get("confidence", 0.5))
 

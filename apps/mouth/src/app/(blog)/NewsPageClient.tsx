@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowRight, Search, Newspaper } from "lucide-react";
 import type { ArticleListItem } from "@/lib/blog/types";
 import { NewsHero } from "@/app/v2/_components/NewsHero";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 interface NewsPageClientProps {
   articles: ArticleListItem[];
@@ -117,9 +118,13 @@ export default function NewsPageClient({
   const gridArticles = filtered.slice(5, 17);
 
   return (
+    // MYTHOS Stage-B Batch 1: Rumah Putih light, scoped per-page on this
+    // wrapper (NEVER on the shared (blog)/layout.tsx). NavShell + Footer
+    // read --nav-bg / --footer-bg, not these vars, so they stay navy.
     <div
-      className="min-h-screen"
+      className={`min-h-screen ${RUMAH_CLASS}`}
       style={{
+        ...RUMAH_VARS,
         background: "var(--surface-base)",
         color: "var(--text-primary)",
       }}

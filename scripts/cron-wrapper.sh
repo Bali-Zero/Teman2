@@ -166,11 +166,48 @@ printf '{"job":"%s","status":"%s","exit_code":%d,"attempts":%d,"duration_s":%d,"
 # the Cell flags them all as failed (false-positive flood since 2026-04-13).
 LAST_ERROR_PAYLOAD=""
 if [ "$STATUS" = "failed" ]; then
+    # W70 fix 2026-06-12: capture the REAL stderr so the DLQ classifier stops
+    # heal-looping blind. The pre-W70 path (F08 2026-06-11) used
+    #   tr '"' "'" | tr '\n' '|'
+    # which only neutralised double-quotes and newlines — a job whose output
+    # contained a backslash (Windows path, Python traceback repr, regex), a
+    # tab, a carriage return, or any other control char produced INVALID JSON.
+    # That broke the sentinel .last.json parse, which silently zeroes the
+    # classifier signal — the exact blind-loop W70 is about.
+    #
+    # Fix: build a one-line human summary, then JSON-escape the last ~2000
+    # chars of $OUTPUT with python3's json.dumps (handles ", \, \n, \t, \r and
+    # all control chars correctly). json.dumps returns a fully-quoted JSON
+    # string value, so we substitute it verbatim as the field value.
     if [ $EXIT_CODE -eq 124 ]; then
-        LAST_ERROR_PAYLOAD=",\"last_error\":\"timeout after ${TIMEOUT}s\""
+        _err_summary="timeout after ${TIMEOUT}s"
     else
-        LAST_ERROR_PAYLOAD=",\"last_error\":\"exit ${EXIT_CODE} after ${ATTEMPT} attempts\""
+        _err_summary="exit ${EXIT_CODE} after ${ATTEMPT} attempts"
     fi
+
+    # Tail to last 50 lines then cap at 2000 chars — keep the most recent signal.
+    _output_tail=$(printf '%s' "$OUTPUT" | tail -50 | tail -c 2000)
+
+    _last_error_json=""
+    if [ -n "$_output_tail" ]; then
+        # Compose "<summary> | <real stderr>" and let python emit a safe JSON
+        # string (quotes included). SUMMARY and TAIL passed via argv to avoid
+        # any shell re-quoting of the captured output.
+        if command -v python3 &>/dev/null; then
+            _last_error_json=$(SUMMARY="$_err_summary" TAIL="$_output_tail" \
+                python3 -c 'import json,os;print(json.dumps((os.environ["SUMMARY"]+" | "+os.environ["TAIL"])[:2000]))' 2>/dev/null || echo "")
+        fi
+        if [ -z "$_last_error_json" ]; then
+            # python3 absent or failed — degrade to the legacy tr-escape so the
+            # field is still (mostly) JSON-safe. Never leave last_error unset.
+            _legacy_tail=$(printf '%s' "$_output_tail" | tr '"' "'" | tr '\n' '|' | tr -d '\r\t\\')
+            _last_error_json="\"${_err_summary} | ${_legacy_tail}\""
+        fi
+    else
+        # $OUTPUT empty (e.g. job killed before any output) — summary fallback.
+        _last_error_json="\"${_err_summary}\""
+    fi
+    LAST_ERROR_PAYLOAD=",\"last_error\":${_last_error_json}"
 fi
 printf '{"job":"%s","ts":%d,"status":"%s","host":"%s","source":"cron-wrapper","duration_ms":%d%s}\n' \
     "$SENTINEL_JOB_KEY" "$END_TS" "$STATUS" "$HOSTNAME_SHORT" "$((DURATION * 1000))" "$LAST_ERROR_PAYLOAD" \

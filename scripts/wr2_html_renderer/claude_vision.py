@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -33,13 +34,52 @@ from .designer_loop import Critique
 
 logger = logging.getLogger("wr2.claude_vision")
 
+
+class VisionTransient(Exception):
+    """A vision call failed for a TRANSIENT infra reason (quota window, endpoint
+    timeout) — NOT a real outage and NOT a defect of the slide. The draft is
+    recoverable next tick, so the apply-worker must release it WITHOUT burning a
+    circuit-breaker attempt. Deliberately NOT a subclass of RuntimeError so the
+    worker's generic `except RuntimeError` (a real transient render failure,
+    which DOES burn an attempt) cannot swallow it."""
+
+
+class VisionRateLimited(VisionTransient):
+    """Transient: HTTP 429 / session limit."""
+
+
+class VisionTimeout(VisionTransient):
+    """Transient: the vision CLI call exceeded its wall-clock budget. A timeout
+    is almost always endpoint latency/overload (verified 2026-06-12: intermittent
+    120s timeouts during an Anthropic congestion window, the SAME run sometimes
+    completing), not a property of the slide — so it must not burn an attempt and
+    fail a healthy draft. The draft retries next tick when latency recovers."""
+
+
+# A 429 surfaces either as a JSON envelope with api_error_status==429 / is_error
+# + a session-limit message, or (older CLI paths) as rc!=0 with the limit text
+# on stdout/stderr. Match the human text conservatively.
+_RATE_LIMIT_RE = re.compile(r"session limit|rate.?limit|usage limit", re.IGNORECASE)
+
+
+def _detect_rate_limit(envelope: dict[str, Any] | None, combined_text: str, returncode: int) -> bool:
+    if isinstance(envelope, dict):
+        if envelope.get("api_error_status") == 429:
+            return True
+        if envelope.get("is_error") and _RATE_LIMIT_RE.search(str(envelope.get("result", ""))):
+            return True
+    # only trust the loose text match when the call actually failed
+    if returncode != 0 and _RATE_LIMIT_RE.search(combined_text):
+        return True
+    return False
+
 # The lever vocabulary the critic may return — kept in sync with
 # designer_loop._apply_levers so the loop can act on them.
 _ALLOWED_LEVERS = {
     "scrim_opacity",   # darken behind text (delta)
     "text_stroke",     # stronger outline
-    "shrink_font",     # target: heading|body
-    "text_anchor",     # to_band: 0..2
+    "shrink_font",     # target: heading|body|subhead
+    "grow_font",       # target: subhead|body — toward a thumbnail-legible min
     "rebalance_wrap",  # rewrap title for balanced line lengths
     "rerender",        # structural (controller handles)
 }
@@ -73,18 +113,29 @@ _CRITIC_SCHEMA = {
 
 _CRITIC_PROMPT = """You are a senior editorial designer reviewing ONE Instagram carousel slide for Bali Zero (a regulatory/legal-info brand). Look at the image at: {png_path}
 
-Judge it like a designer who cares about clarity and restraint (think NYT/FT/Bloomberg editorial, NOT generic marketing):
-1. READABLE: is every word easy to read — including when shrunk to a phone thumbnail? Text over a photo must stay crisp.
+Judge it like a designer who cares about clarity and restraint (think NYT/FT/Bloomberg editorial, NOT generic marketing).
+
+VIEWING CONTEXT (critical — judge legibility at the RIGHT scale): an Instagram
+carousel is READ at full size (~1080px) once the viewer opens it. Only the
+HEADLINE/hook needs to survive the small grid thumbnail (~110px) to earn the
+tap. The kicker/eyebrow, sub-headline and body are SECONDARY context read after
+the open — judge them at full resolution, NOT at thumbnail scale. Do NOT fail a
+slide because a kicker/subhead/body would be small at 110px: only fail if it is
+unreadable at full open size, or if the dominant HEADLINE itself is illegible.
+
+1. READABLE: at full open size, is every word easy to read (crisp contrast over
+   any photo)? Separately: does the HEADLINE still read at thumbnail scale?
+   (Secondary text is NOT required to read at thumbnail.)
 2. HIERARCHY: does the title dominate, with sub-headline and body clearly subordinate? Do key numbers stand out?
-3. BALANCED: does it breathe, or is text crammed/floating awkwardly? Is the photo (if any) used well — does it dominate the cover?
+3. BALANCED: does it breathe, or is text crammed/floating awkwardly? Is the photo (if any) used well — does it dominate the cover? A 3-line title with a slightly shorter last line is acceptable if it reads cleanly; only flag wrap as a problem when it produces a true one-word orphan or a jarring shape.
 
 Brand rules you must respect (do NOT propose violating these): anthracite/white/yellow/red palette only, Montserrat font, logo present, no emoji, regulatory citations verbatim.
 
 If it is publish-quality, set passes=true. Otherwise list concrete issues and propose levers from this exact set:
 - scrim_opacity (delta: +0.1..+0.3) — darken behind text when contrast is weak over a photo
 - text_stroke — add/strengthen outline on text over a photo
-- text_anchor (to_band: 0=top,1=middle,2=bottom) — move the text block to a calmer part of the photo
 - shrink_font (target: heading|body) — when text overflows or is too dense
+- grow_font (target: subhead|body) — increase the font size of a text element when it is too small to read AT FULL OPEN SIZE (not merely small at thumbnail scale; does NOT change palette/logo/layout)
 - rebalance_wrap — rewrap the title so line lengths are balanced (avoid one long line + one tiny orphan)
 - rerender — structural problem a small tweak can't fix
 
@@ -113,16 +164,26 @@ Set brand_ok=true only if ALL hold. List any violations."""
 _CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 
 
-def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 120) -> dict[str, Any] | None:
+def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | None = None) -> dict[str, Any] | None:
     """Call the claude CLI with a JSON schema, return the parsed object or None.
 
     Strips ANTHROPIC_API_KEY from the env (defense-in-depth: force OAuth path,
     never the paid endpoint — CLAUDE.md hard rule).
+
+    Raises VisionTimeout (transient) when the call exceeds the wall-clock budget
+    (default 180s, override WR2_VISION_TIMEOUT_S) and VisionRateLimited on a 429.
     """
+    if timeout_s is None:
+        timeout_s = int(os.environ.get("WR2_VISION_TIMEOUT_S", "180"))
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)
+    # Pin the vision model (default sonnet: vision-capable + solid editorial
+    # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
+    # window nor trips the 120s timeout). Configurable without a code change.
+    model = os.environ.get("WR2_VISION_MODEL", "claude-sonnet-4-6")
     cmd = [
         _CLAUDE_BIN, "--print",
+        "--model", model,
         "--output-format", "json",
         "--json-schema", json.dumps(schema),
         prompt,
@@ -130,17 +191,33 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int = 12
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout_s)
     except subprocess.TimeoutExpired:
-        logger.warning("claude vision call timed out after %ss", timeout_s)
-        return None
+        # A timeout is endpoint latency/overload, not a slide defect — transient,
+        # must NOT burn a render attempt (2026-06-12 SCAR: intermittent 120s
+        # timeouts fail-closed-crashed healthy drafts during a congestion window).
+        logger.warning("claude vision call timed out after %ss — transient", timeout_s)
+        raise VisionTimeout(f"vision call timed out after {timeout_s}s")
+    # Parse the stdout envelope up front so a 429 can be told apart from a real
+    # failure even when the CLI exits rc!=0 (it emits the error as JSON on stdout
+    # and a non-zero code with empty stderr).
+    out = proc.stdout.strip()
+    envelope: dict[str, Any] | None = None
+    if out:
+        try:
+            parsed = json.loads(out)
+            if isinstance(parsed, dict):
+                envelope = parsed
+        except json.JSONDecodeError:
+            envelope = None
+    if _detect_rate_limit(envelope, (proc.stdout or "") + (proc.stderr or ""), proc.returncode):
+        raise VisionRateLimited(
+            f"claude vision rate-limited (429/session limit): {str(envelope.get('result', ''))[:160] if envelope else proc.stderr[:160]}"
+        )
     if proc.returncode != 0:
         logger.warning("claude vision call failed rc=%s err=%s", proc.returncode, proc.stderr[:300])
         return None
-    out = proc.stdout.strip()
     if not out:
         return None
-    try:
-        envelope = json.loads(out)
-    except json.JSONDecodeError:
+    if envelope is None:
         logger.warning("claude vision: stdout not JSON: %s", out[:200])
         return None
     # CLI json envelope (verified 2026-06-07): when --json-schema is used the

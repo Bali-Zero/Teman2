@@ -73,7 +73,9 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 ## 5. Agent/LLM Routing & Bans
 
-**Anthropic SDK BANNED.** Never `from anthropic import Anthropic` or `ANTHROPIC_API_KEY`. Sole path: shell out to `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (MAX-plan quota). Refuse any new tool/MCP/cron requiring `ANTHROPIC_API_KEY`. Other paid APIs OK (DeepSeek $0.01/q, ChatGPT Pro Codex unlimited). Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
+**Anthropic SDK BANNED.** Never `from anthropic import Anthropic` or `ANTHROPIC_API_KEY`. Sole path: shell out to `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (MAX-plan quota). Refuse any new tool/MCP/cron requiring `ANTHROPIC_API_KEY`. Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
+
+**Other paid per-token APIs (OpenRouter, OpenAI direct, Together, Fireworks, etc.) — require Zero's explicit authorization** (rule changed 2026-06-04, see `~/.claude/CLAUDE.md §Cost constraint`). Free-first by default (local Ollama → OAuth → free tier). Never install a paid key autonomously "to test" — surface to Antonello with cost + rationale, wait for explicit yes. **PII boundary absolute even when authorized**: no client PII (KTP/passport/NPWP/akta/credentials/OSINT) to any third-party paid endpoint (SYMBIOSIS Law 2 / UU PDP overrides cost). Pre-authorized non-PII: DeepSeek V4 Pro ($0.01/q), ChatGPT Pro Codex (unlimited).
 
 **MCP servers**: see `.mcp.json` for inventory. Default browser MCP: `mcp__claude-in-chrome__*` (NEVER `mcp__playwright__*` unless ordered). Text-first: `get_page_text`/`find`/`javascript_tool` before screenshot.
 
@@ -130,7 +132,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 
 - **Embedding model FROZEN**: `text-embedding-3-small` (1536 dims). Changing invalidates 93,283 vectors. NEVER change without re-indexing plan.
 - **KBLI flat payload**: fields `kode_kbli`, `judul`, `content`, `sektor_id`, `pma_status`, `skala_usaha`, `kategori_risiko`. Never nested.
-- **Evidence scoring thresholds**: `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL.
+- **Evidence scoring thresholds**: NOT a single flat 0.15 — the codebase has **two live abstain paths** (verified 2026-06-11, domanda #31). Global default `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL (`constants.py:96 ABSTAIN_THRESHOLD=0.15`, used by `reasoning.py` at ~11 sites). BUT the orchestrator path (`orchestrator_response.py:90`) uses **per-domain** `get_abstain_threshold(query)` from `reasoning_utils.py` — `tax:0.10`, `kbli:0.20`, `default:0.15` (overridable via env `DOMAIN_ABSTAIN_THRESHOLDS`). `reasoning.py` has ZERO refs to the domain fn → same query can abstain differently per path. SSOT consolidation = open (domanda #31).
 - **Vision model**: `qwen2.5vl:7b` ONLY for OCR/vision (qwen3.5 Q4_K_M strips vision weights). API: `"images": [base64]`.
 - **Ollama `think:false`** REQUIRED for Qwen 3.5 client (`backend/llm/ollama_client.py`).
 - **Cache invalidation**: `await invalidate_cache("zantara:namespace:*")` after EVERY mutation. Namespaces: `crm_clients_stats`, `crm_practices`.
@@ -141,7 +143,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 
 ## 11. Deploy Lifecycle
 
-**Fly.io 2 apps**: `nuzantara-rag` (shared-2x, 2GB, always-on, EventBus) + `nuzantara-postgres` (Stolon HA, backup → Tigris daily). Frontend on Vercel (auto-deploy on `git push origin main`).
+**Fly.io 2 apps**: `nuzantara-rag` (shared-2x, 2GB, always-on, EventBus) + `nuzantara-postgres` (postgres-flex 17.2, `repmgr` HA — NOT Stolon; doc-drift corrected 2026-06-12 G3, backup → Tigris daily). Frontend on Vercel (auto-deploy on `git push origin main`).
 
 **Pre-deploy** (run sequentially):
 ```bash

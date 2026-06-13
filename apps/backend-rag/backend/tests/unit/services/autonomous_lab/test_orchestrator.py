@@ -8,6 +8,7 @@ from backend.services.autonomous_lab.orchestrator import (
     AutonomousLabOrchestrator,
     FleetStageStatus,
     LabOrchestrationResult,
+    OrchestrationBounds,
 )
 from backend.services.autonomous_lab.planner import MaterialSourceType, ResearchMaterial
 
@@ -70,6 +71,47 @@ def test_orchestrator_runs_ordered_agent_fleet_stages() -> None:
         "verification_planner",
     ]
     assert result.blocked is False
+
+
+def test_orchestration_receipt_declares_v1_control_plane_and_parallel_work() -> None:
+    result = _orchestrate()
+    operational_plan = result.to_receipt()["operational_plan"]
+
+    assert operational_plan["version"] == "autonomous-lab-v1-control-plane"
+    assert [piece["key"] for piece in operational_plan["governance_pieces"]] == [
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5",
+        "P6",
+        "P7",
+        "P8",
+        "P9",
+    ]
+    assert operational_plan["anchor_jobs"][0]["key"] == "lab_intake_sweeper"
+    assert operational_plan["missing_component_keys"] == [
+        "operational_queue",
+        "events_outbox",
+        "source_adapters",
+        "composer",
+        "prod_like_context_builder",
+        "worktree_experiment_runner",
+        "verification_runner",
+        "curator_decision_gate",
+        "scheduler_daemon",
+        "dashboard_api",
+    ]
+    assert "scheduler_daemon" in operational_plan["blocked_component_keys"]
+    assert {
+        "source_adapters",
+        "composer",
+        "prod_like_context_builder",
+        "worktree_experiment_runner",
+        "verification_runner",
+        "curator_decision_gate",
+        "dashboard_api",
+    } <= set(operational_plan["parallelizable_component_keys"])
 
 
 def test_orchestration_receipt_omits_raw_material_text() -> None:
@@ -172,3 +214,22 @@ def test_orchestrator_never_executes_shell_deploy_merge_or_external_calls() -> N
         for command in result.planned_only_commands
         for marker in unsafe_markers
     )
+
+
+def test_orchestrator_rejects_oversized_material_before_receipt() -> None:
+    orchestrator = AutonomousLabOrchestrator(
+        bounds=OrchestrationBounds(max_material_text_chars=20)
+    )
+
+    try:
+        orchestrator.orchestrate(
+            objective="oversized material",
+            materials=[_material(text="x" * 21)],
+            target_paths=["apps/backend-rag/backend/services/autonomous_lab/orchestrator.py"],
+            task_id="oversized-material",
+            created_at=datetime(2026, 6, 9, tzinfo=timezone.utc),
+        )
+    except ValueError as exc:
+        assert "text length 21 exceeds 20" in str(exc)
+    else:
+        raise AssertionError("oversized material should fail before orchestration")

@@ -85,8 +85,11 @@ def include_routers(api: FastAPI) -> None:
         instagram_chat,
         intake_gate,  # [INTAKE-GATE] login-gate status (Anello 7)
         intake_review,  # [FASE 5A] doc-intake HITL review-queue (read-only + claim)
+        intel,  # [PARITY 2026-06-13] rag-group in prod; monolithic app = full union
+        intel_analytics,
         intel_lake,
         intel_observability,
+        intel_scraper,
         kbli_notebook,
         kbli_notebook_chat,
         kg_agentic,
@@ -327,6 +330,12 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
+    # [PARITY 2026-06-13] intel trio is rag-group in prod (needs /data volume on
+    # the rag process) but the monolithic app is the full union of both groups —
+    # it was missing ONLY these 3 (caught by test_manifest_registration_parity).
+    api.include_router(intel.router)
+    api.include_router(intel_scraper.router)
+    api.include_router(intel_analytics.router)
     api.include_router(intel_observability.router)  # Intel Lake + WR2 pipeline health
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
@@ -534,6 +543,7 @@ def include_light_routers(api: FastAPI) -> None:
         newsletter,
         nusantara_health,
         observed_shell,  # [OBSERVED-SHELL] Sprint 1 PR-1.2 — cell-core observability bridge
+        olympus,  # [PARITY 2026-06-13] manifest declares internal_router on api group
         omnichannel,
         partners,  # [PARTNERS] CRM Partners module v1 (PR #141 + follow-ups)
         performance,
@@ -587,6 +597,11 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(auth.router)
     api.include_router(health.router)
     api.include_router(nusantara_health.router)
+    # [PARITY 2026-06-13] /internal/olympus/* — declared api-group in the
+    # manifest but was mounted only in the monolithic app: on the main_api
+    # prod process these paths returned 404 (scar #54/#55/#60 class, caught
+    # by test_manifest_registration_parity on its first run).
+    api.include_router(olympus.internal_router)
     api.include_router(handlers.router)
 
     # Debug router (dev/staging always, production only if ADMIN_API_KEY is set)
@@ -831,7 +846,6 @@ def include_heavy_routers(api: FastAPI) -> None:
         dream,
         dynamic_pricing,
         episodic_memory,
-        experience,  # [EXP] Experience Library
         handlers,
         health,
         ingest,
@@ -847,13 +861,11 @@ def include_heavy_routers(api: FastAPI) -> None:
         knowledge_visa,
         lam_memory,
         legal_ingest,
-        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7
         monitoring_rag,
         naga,
         news,
         oracle_ingest,
         oracle_universal,
-        skill,  # [SKILL] Skill Registry
         voice,
         whatsapp_chat,
     )
@@ -877,11 +889,13 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(conversations.router)
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
-    api.include_router(experience.router)  # [EXP] Experience Library
-    api.include_router(skill.router)  # [SKILL] Skill Registry
-    api.include_router(
-        metabolic_health.router
-    )  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
+    # F27: experience / skill / metabolic_health are _API-only per the manifest
+    # (SQLite-local on the api process's /data volume, no RAG deps — scar PR
+    # #54/#55/#60). They were ALSO mounted here in include_heavy_routers(), a
+    # residue of the old rag-only misclassification; on the rag process they have
+    # no /data volume so those routes fail at runtime anyway. Removed from heavy
+    # to match the manifest's documented intent. They remain mounted in
+    # include_light_routers() (the api process), which is correct.
 
     # CRM routers (RAG-heavy)
     api.include_router(crm_clients.router)

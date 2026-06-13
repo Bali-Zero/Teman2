@@ -13,6 +13,7 @@ import glob
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -506,6 +507,46 @@ def _process_openclaw_job(
 
 # ─── Main job processor ───────────────────────────────────────────────────────
 
+# W70 (2026-06-14): the cron wrappers (cron-state.sh / cron-runner.sh) write a
+# bare last_error="exit N" to the state file — zero diagnostic signal, so
+# classify() returns UNKNOWN and the autopilot/sentinel act blind (33 jobs piled
+# into DLQ-TERMINAL, all classification=UNKNOWN c=0.0). The job's REAL stderr is
+# in its own cron log (cron redirects stdout+stderr there). This bridges the gap.
+_BARE_FAILURE_SUMMARY = re.compile(
+    r"^\s*(?:exit\s+\d+(?:\s*\([^)]*\))?(?:\s+after\s+\d+\s+attempts)?"
+    r"|timeout(?:\s+after\s+\d+s)?)?\s*$",
+    re.IGNORECASE,
+)
+# Real cron-log locations, in priority order. The 2026-06-13 orphan attempt read
+# only ~/logs/cron (empty for these jobs) with a regex that required
+# "exit N after M attempts" — the wrapper never emits that, so it never fired.
+_CRON_LOG_DIRS = ("~/logs/cron-tmp", "~/logs", "~/logs/cron", "~/logs/cron-agent-python")
+
+
+def _enrich_last_error_from_cron_log(job_id: str, last_error: str) -> str:
+    """Append the tail of the job's real cron log when last_error carries no
+    diagnostic signal (bare 'exit N' / empty), so classify(), _infer_files and
+    the DLQ log_tail see the actual stderr instead of a useless exit code.
+    A last_error that already contains a real message is returned unchanged."""
+    if last_error and not _BARE_FAILURE_SUMMARY.match(last_error.strip()):
+        return last_error
+    dash = job_id.replace("_", "-")
+    for d in _CRON_LOG_DIRS:
+        base = os.path.expanduser(d)
+        for name in (f"{job_id}.log", f"{dash}.log"):
+            path = os.path.join(base, name)
+            try:
+                with open(path, "r", errors="replace") as fh:
+                    lines = fh.readlines()
+            except OSError:
+                continue
+            tail = [ln.rstrip("\n") for ln in lines[-40:] if ln.strip()]
+            if tail:
+                prefix = last_error or "(no exit summary)"
+                return f"{prefix}\n--- cron log tail ({name}) ---\n" + "\n".join(tail)
+    return last_error
+
+
 def process_job(job_id: str, state: dict, registry: dict,
                 openclaw_is_down: bool = False,
                 dlq_terminal_set: set | None = None) -> dict:
@@ -549,6 +590,7 @@ def process_job(job_id: str, state: dict, registry: dict,
             logger.warning(f"{job_id}: state ts has unparseable type/value {_raw_ts!r}, treating as never-run")
             last_ts = 0.0
     last_error = state.get("last_error", "") or ""
+    last_error = _enrich_last_error_from_cron_log(job_id, last_error)  # W70: real stderr
     retry_attempt = state.get("retry_attempt", 0)
 
     # Staleness check
@@ -559,6 +601,20 @@ def process_job(job_id: str, state: dict, registry: dict,
 
     if status == "ok":
         record_success(job_id)
+        # W70-resurrect (2026-06-14): a job parked TERMINAL in the DLQ that has
+        # since recovered (current state=ok and FRESH — the staleness downgrade
+        # above already turned ok→stale for old timestamps, so we only reach here
+        # for genuine recoveries) is a corpse. dlq_autopilot's TERMINAL guard
+        # never re-checks live state, so without this the entry stays forever
+        # (pre-fix: 19 of 33 DLQ-TERMINAL entries were already-healthy corpses).
+        # Clearing it is the missing edge that closes the heal-loop.
+        if job_id in dlq_terminal_set:
+            try:
+                clear_dlq_entry(job_id)
+                logger.info(f"{job_id}: recovered while DLQ-TERMINAL — resurrected (corpse cleared)")
+                return {"action": "resurrected_terminal", "tier": 0, "success": True}
+            except Exception as exc:  # never let a clear failure break the cycle
+                logger.warning(f"{job_id}: resurrection clear failed: {exc}")
         return {"action": "healthy", "tier": 0, "success": True}
 
     if status == "running":
@@ -786,6 +842,81 @@ def _infer_files(job_id: str, error_text: str) -> list:
 SENTINEL_STATUS_FILE = os.path.expanduser("~/.agent/decisions/sentinel_status.json")
 MAX_RUN_DURATION_S = 240  # D1.7: abort if single run exceeds 4 minutes
 
+# W70 (2026-06-12): blind heal-loop detector. When dlq_terminal > 0 (jobs are
+# parked dead) but healing_actions_24h == 0 (sentinel did NOTHING to heal them)
+# for several consecutive cycles, the heal-loop is effectively dead and nobody
+# is told. Persist a consecutive-cycle counter next to sentinel_status.json and
+# fire ONE Telegram alert once it crosses the threshold.
+BLIND_LOOP_STATE_FILE = os.path.expanduser("~/.agent/decisions/blind_loop_counter.json")
+BLIND_LOOP_ALERT_CYCLES = int(os.getenv("SENTINEL_BLIND_LOOP_CYCLES", "3"))
+
+
+def _check_blind_heal_loop(status_obj: dict) -> None:
+    """W70: alert when the heal-loop is parked-but-idle for N cycles.
+
+    Condition: dlq_terminal > 0 AND healing_actions_24h == 0. Each cycle that
+    matches increments a persisted counter; the first non-matching cycle resets
+    it. On crossing BLIND_LOOP_ALERT_CYCLES we send ONE Telegram alert (gated by
+    the existing per-job escalation cooldown so it can't storm). Never raises —
+    a counter/IO miss must not break the sentinel run.
+    """
+    try:
+        dlq_terminal = status_obj.get("dlq_terminal", 0) or 0
+        healing_24h = status_obj.get("healing_actions_24h", 0) or 0
+        is_blind = dlq_terminal > 0 and healing_24h == 0
+
+        # Load + update the persisted consecutive-cycle counter.
+        try:
+            counter = json.loads(open(BLIND_LOOP_STATE_FILE).read())
+        except (FileNotFoundError, json.JSONDecodeError):
+            counter = {}
+        consecutive = int(counter.get("consecutive_blind_cycles", 0)) if is_blind else 0
+        if is_blind:
+            consecutive += 1
+        new_state = {
+            "consecutive_blind_cycles": consecutive,
+            "last_ts": time.time(),
+            "dlq_terminal": dlq_terminal,
+            "healing_actions_24h": healing_24h,
+            "_writer": "sentinel",
+        }
+        try:
+            os.makedirs(os.path.dirname(BLIND_LOOP_STATE_FILE), exist_ok=True)
+            _tmp = BLIND_LOOP_STATE_FILE + ".tmp"
+            with open(_tmp, "w") as f:
+                json.dump(new_state, f, indent=2)
+            os.replace(_tmp, BLIND_LOOP_STATE_FILE)
+        except OSError as _e:
+            logger.warning(f"W70 blind-loop: failed to persist counter ({_e})")
+
+        if is_blind and consecutive >= BLIND_LOOP_ALERT_CYCLES:
+            cooldown_key = "blind_heal_loop"
+            if check_escalation_cooldown(cooldown_key):
+                logger.info(
+                    f"W70 blind-loop: {consecutive} consecutive blind cycles "
+                    f"(dlq_terminal={dlq_terminal}, heal=0) — alert on cooldown, suppressed"
+                )
+                return
+            msg = (
+                f"BLIND HEAL-LOOP: {dlq_terminal} TERMINAL job(s) parked in DLQ "
+                f"but ZERO healing actions for {consecutive} consecutive sentinel "
+                f"cycles. The heal-loop is idle — these jobs will never recover "
+                f"on their own. Run: dlq requeue <job_id> after fixing root cause."
+            )
+            if send_alert(msg, level="CRITICAL"):
+                mark_escalation_sent(cooldown_key)
+            logger.warning(
+                f"W70 blind-loop alert fired: dlq_terminal={dlq_terminal}, "
+                f"consecutive={consecutive}"
+            )
+        elif is_blind:
+            logger.info(
+                f"W70 blind-loop: {consecutive}/{BLIND_LOOP_ALERT_CYCLES} blind "
+                f"cycle(s) (dlq_terminal={dlq_terminal}, heal=0)"
+            )
+    except Exception as _e:  # defensive: never break the sentinel run
+        logger.warning(f"W70 blind-loop check failed: {_e}")
+
 
 def run_sentinel() -> None:
     # D0.6: HEALING_DISABLED file flag — safer than env var (works in LaunchAgent)
@@ -879,6 +1010,7 @@ def run_sentinel() -> None:
         "jobs_checked": len(results),
         "healthy": sum(1 for r in results.values() if r.get("action") == "healthy"),
         "retried": sum(1 for r in results.values() if "retried" in r.get("action", "")),
+        "resurrected": sum(1 for r in results.values() if r.get("action") == "resurrected_terminal"),
         "escalated": sum(1 for r in results.values() if "escalated" in r.get("action", "")),
         "suppressed": sum(1 for r in results.values() if r.get("action") == "suppressed_gateway_down"),
         "openclaw_down": openclaw_is_down,
@@ -926,12 +1058,12 @@ def run_sentinel() -> None:
         "jobs_healthy": log_entry["healthy"],
         "jobs_circuit_open": sum(1 for v in circuit_states.values() if v.get("state") == "OPEN"),
         "jobs_circuit_terminal": dlq_terminal,
-        "jobs_healing": log_entry["retried"],
+        "jobs_healing": log_entry["retried"] + log_entry.get("resurrected", 0),
         "jobs_suppressed": log_entry["suppressed"],
         "dlq_entries": dlq_entries,
         "dlq_terminal": dlq_terminal,
         "dlq_phase_distribution": dlq_phase_distribution,  # D4.3
-        "healing_actions_24h": log_entry["retried"],  # current cycle; full 24h requires log scan
+        "healing_actions_24h": log_entry["retried"] + log_entry.get("resurrected", 0),  # retried+resurrected this cycle; full 24h requires log scan
         "openclaw_gateway": "down" if openclaw_is_down else "healthy",
         "last_sentinel_duration_s": round(duration, 2),
         "timed_out": timed_out,
@@ -940,6 +1072,9 @@ def run_sentinel() -> None:
     os.makedirs(os.path.dirname(SENTINEL_STATUS_FILE), exist_ok=True)
     with open(SENTINEL_STATUS_FILE, "w") as f:
         json.dump(status_obj, f, indent=2)
+
+    # W70: detect a parked-but-idle heal-loop and alert if it persists.
+    _check_blind_heal_loop(status_obj)
 
     logger.info(f"=== Sentinel done: {log_entry['jobs_checked']} checked, "
                 f"{log_entry['healthy']} healthy, {log_entry['escalated']} escalated, "

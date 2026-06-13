@@ -1,0 +1,160 @@
+I will list the current permissions to see what paths I can access.
+I will run a command to see where we are currently located and check the git status to find out if we are inside a repository.
+I will inspect the deploy worktree directory `~/Desktop/nuzantara-deploy` to see if the files mentioned in the spec exist there.
+I will inspect `wr2_supervisor.py` to check the status flow, transition logic, and how it handles kickstarting launchd agents.
+I will read the top part of `wr2_supervisor.py` to inspect the `TRANSITIONS` dictionary, state-handling logic, and reconciliation loops.
+I will read the top portion of the `TRANSITIONS` dictionary in `wr2_supervisor.py` to see if `(None, "briefed")` or `("*", "briefed")` transitions exist.
+I will list the lines 60 to 120 of `wr2_supervisor.py` to see the actual content of the `TRANSITIONS` dictionary.
+I will search for plist files in `~/Desktop/nuzantara-deploy` to verify the exact names of the LaunchAgents.
+I will inspect `wr2_supervisor_watchdog.py` to see what checks it performs and how it handles pipeline freezes or failures.
+I will view the top part of `wr2_supervisor_watchdog.py` to examine the query, thresholds, and variables check logic.
+I will check `wr2_html_render_apply.py` for references to telemetry or output files to see how telemetry is collected for the HTML renderer.
+I will search for `def _probe_success_rate_telemetry` in `wr2_supervisor_watchdog.py` to see how it parses telemetry and how it behaves if the file is missing or contains stale data.
+I will view the portion of `wr2_html_render_apply.py` that handles persisting results to see what it writes to the database.
+I will find the file `_pg.py` to examine the `persist_html_result_and_enqueue_notifications` function and check where `topic_type_log` writes should be placed.
+I will inspect the function `persist_html_result_and_enqueue_notifications` in `_pg.py` to see the transaction structure and the context of the HTML render persistence.
+I will grep for `topic_type_log` in `wr2_canva_desktop_apply.py` to inspect the exact SQL insert statement used by the Canva pipeline.
+I will search for `sys.path` references in `apps/backend-rag` to see if the backend application includes the `scripts/` folder in its search path.
+I will grep for `_on_notification` in `wr2_supervisor.py` to see how notifications are received and processed by the supervisor.
+I will search for `_handle_payload` in `wr2_supervisor.py` to understand the event handling logic and look for race conditions.
+I will read lines 320 to 350 of `wr2_supervisor.py` to see the rest of `_handle_payload`.
+I will find and read `_current_status` in `wr2_supervisor.py` to see if it acquires the connection lock internally.
+I will search for `_reconcile_loop` in `wr2_supervisor.py` to see if it correctly acquires `_conn_lock` before executing queries.
+I will search for `_reconcile_once` in `wr2_supervisor.py` to see if it acquires `_conn_lock` for its database query.
+I will print lines 400 to 425 of `wr2_supervisor.py` to see how `_reconcile_once` processes the rows and if it holds the connection lock during kickstart.
+I will check how `MAX_DRAFTS_PER_RUN` is used in `wr2_html_render_apply.py` to see if it exits after processing one draft.
+I will search for `fetch_pending` or `MAX_DRAFTS` in the `scripts/` folder to see if other worker scripts also process only one draft at a time and suffer from the same launchd/kickstart race condition.
+I will search for status queries in `wr2_draft_generator.py` to see how it fetches pending work.
+I will grep for calls to `_fetch_briefed_drafts` to see what limits are configured for the draft generator.
+I will grep for `MAX_DRAFTS_PER_RUN` in `wr2_draft_generator.py` to see what limit it uses.
+I will search for imports of `canva_renderer_v2` or `_pg` in the backend codebase to determine if modifying `_pg.py` with an import of `wr2_topic_type` will crash the backend on startup.
+I will search for `events_outbox` in the codebase to see how it is used and check if there are any issues with its schema or cleanup.
+I will run a command to list the loaded `wr2` LaunchAgents to see if the stages (such as `html-apply`) are currently loaded and enabled in the launchd session.
+I will view the log of the `events_outbox` grep task to see the results.
+I will grep for the `_replay_outbox` function in `wr2_supervisor.py` to examine how it handles missed status change events.
+I will search for `wr2_status_change_trg` in the migrations to see if it writes to `events_outbox`.
+I will run a grep search for `IGPublisher` in the entire repository to verify that deleting it does not break any other active publishing flows or admin interfaces.
+I will search for the migration file that defines the `topic_type_log` table (migration 216) to inspect its schema.
+I will view the migration SQL file `216_wr2_topic_type_log.sql` to check the schema of `topic_type_log`.
+I will view the log file of `task-75` to check the results of the `IGPublisher` grep search.
+I will run a grep search for `IGPublisher` specifically within the `apps/backend-rag/backend` directory to see if there are other references to it there.
+I will run a grep search for `wr2_publish_attempts` and `wr2_carousel_runs` to verify that there are no active database queries in the backend or elsewhere that depend on them.
+I will check the status of the background task searching for retired table references.
+I will search the repository for other references to `kickstart` to see if there is another supervisor or watchdog process that is automatically triggering the launchd agents.
+I will view the log of `task-85` to see if there are any remaining references to the retired tables in the codebase.
+I will run a command to list the task logs directory to see if the files are there and check their contents.
+I will view the log of `task-89` (kickstart references in the repo).
+I will search for `meta_dispatcher.py` to see if it triggers any other WR2 stage plists directly.
+I will read the plist file for `fact-extractor` to verify if it has any automatic calendar or interval triggers configured.
+I will search for `acquire_html_lease_and_fetch` in `_pg.py` to examine the CAS lease implementation and find potential races.
+I will run a grep command to see if there are references to the retired tables in the code, limiting the output or redirecting it.
+I will view the log of `task-105` to check for any references to retired tables in the codebase.
+I will run a command to list the task logs directory to verify if `task-105.log` is present.
+I will view `task-75.log` to see the details of the `IGPublisher` search.
+I will check if `task-105.log` is generated and cat its content to see the grep results for the retired tables `wr2_publish_attempts` and `wr2_carousel_runs`.
+I will list the task logs directory to check if the file was written under a slightly different task ID or is now present.
+I will search for `wr2_publish_attempts` and `wr2_carousel_runs` synchronously to see if they are referenced in the codebase.
+I will search for references to `wr2_carousel_runs` in `backend/` to see if there are any active usages.
+Here is the adversarial red-team review of the pipeline consolidation architectural spec.
+
+### Numbered Findings
+
+1. **SEVERITY: BLOCKER** | **Section Ref: §1.4 & §4 R4**
+   **Defect**: The stage workers (e.g., `wr2_html_render_apply.py` and `wr2_draft_generator.py`) enforce a strict batch limit per execution (`MAX_DRAFTS_PER_RUN = 1` or `2`). The supervisor uses `launchctl kickstart` to trigger these transient agents upon receiving a PostgreSQL `wr2_status_change` notification. If a new draft transitions status while its corresponding agent is already running, the supervisor's `kickstart` call returns `rc=113` ("service is busy") because launchd refuses to spawn concurrent instances of the same LaunchAgent label. The running agent then exits after processing its current single draft without checking the database again.
+   **Why it breaks**: The new draft is left stuck in its transition status (e.g., `drafts_imaged_checked` or `briefed`) and will not progress automatically. It remains stuck until the supervisor's periodic reconciliation loop runs (every 5 minutes) AND the draft's staleness exceeds `RECONCILE_STALE_MIN` (30 minutes). This introduces a severe throughput bottleneck where concurrent draft batches stall for hours.
+
+2. **SEVERITY: HIGH** | **Section Ref: §2 S10 & §5 M9**
+   **Defect**: The watchdog script `wr2_supervisor_watchdog.py` monitors the pipeline success rate by reading from `TELEMETRY_PATH = Path.home() / "logs" / "wr2_canva_apply_telemetry.jsonl"`. The consolidation spec updates the watchdog to gate checks on the `wr2_html_renderer_enabled` kill-switch instead of Canva. However, the HTML renderer script `wr2_html_render_apply.py` does not output any telemetry files, nor does it write to the Canva telemetry log.
+   **Why it breaks**: Since no new telemetry entries are appended by the HTML lane, the attempts in the 7-day rolling window will drop to 0 after 7 days of Canva retirement. The watchdog function `_probe_success_rate_telemetry()` returns a default 100% success rate when attempts are 0. As a result, the watchdog will become completely blind to HTML rendering failures, failing to alert even if the HTML renderer experiences a 100% crash rate.
+
+3. **SEVERITY: HIGH** | **Section Ref: §2 S1 & §3 Property 3**
+   **Defect**: The spec proposes moving the `topic_type_log` insert (S1) directly into the database transaction of `_pg.persist_html_result_and_enqueue_notifications`, which resides in the backend application code (`apps/backend-rag/backend/services/canva_renderer_v2/_pg.py`). To perform this log write, `_pg.py` must derive the domain, register, and dominant mode by importing the root-level script `wr2_topic_type` (from `scripts/wr2_topic_type.py`).
+   **Why it breaks**: The root-level `scripts/` directory is outside the package boundaries of `apps/backend-rag/backend/` and is not included in the Python path of the FastAPI backend application in production or during unit tests. Attempting to import `wr2_topic_type` in `_pg.py` will raise a `ModuleNotFoundError`, causing the backend application to crash on startup and fail the entire pytest suite.
+
+4. **SEVERITY: MEDIUM** | **Section Ref: §1.4 & §3 Property 3**
+   **Defect**: The PostgreSQL trigger `wr2_status_change_trg` inserts durable rows into `events_outbox` for each status change. The supervisor's startup connection loop (`_replay_outbox`) correctly updates these rows to `consumed_at = NOW()` after processing. However, the supervisor's live event listener pathway (`_on_notification` -> `_handle_payload`) never executes an UPDATE on `events_outbox`.
+   **Why it breaks**: Every live event successfully handled by the running supervisor remains unacknowledged (`consumed_at IS NULL`) in the database. This causes unbounded table bloat in `events_outbox`. Upon any supervisor restart, the supervisor will load and replay the last 500 unconsumed status changes, creating duplicate `launchctl kickstart` calls and unnecessary database/process load.
+
+5. **SEVERITY: MEDIUM** | **Section Ref: §1.3 & §3**
+   **Defect**: The B-lane status flow executes `image_generator` (which calls the expensive Codex `$imagegen` API to generate a hero image and uploads it to Tigris) *before* `fact_extractor` and `fact_checker` are executed.
+   **Why it breaks**: If a draft fails fact-checking (transitioning to the terminal `fact_check_failed` state), it is discarded or queued for manual review. However, the system has already expended expensive API tokens and network bandwidth on hero image generation. By not running fact verification before image generation, the pipeline leaks API credits.
+
+6. **SEVERITY: LOW** | **Section Ref: §5 M6**
+   **Defect**: Metric M6 ("Motor") claims to measure that "stages advance only manually" with the assertion "0 manual kickstarts needed for a full draft->rendered run" verified via `SELECT max(...) FROM wr2_supervisor_heartbeat` + launchd log.
+   **Why it breaks**: The launchd daemon logs do not record or distinguish the caller of a `launchctl kickstart` command (e.g. whether it was triggered by a developer typing it in the terminal or the supervisor daemon executing it). The metric is therefore programmatically unfalsifiable and relies on subjective manual QA tracking.
+
+---
+
+REDTEAM_VERDICT: NO-GO
+Based on the new evidence from the background task search (referencing the supervisor's internal comments and `VADEMECUM.md`), I have updated and reinforced the findings—particularly **Finding 1**—which reveals a direct contradiction between the supervisor's design assumptions and the actual worker implementations.
+
+### Numbered Findings
+
+1. **SEVERITY: BLOCKER** | **Section Ref: §1.4, §4 R4 & wr2_supervisor.py:173-180**
+   **Defect**: The supervisor's kickstart function (`_kickstart` in `wr2_supervisor.py:173`) deliberately avoids the `-k` (kill) flag based on the documented assumption that *"workers always drain ALL pending drafts in one bulk SELECT, so a kickstart while busy just means 'this draft will be picked up on the next iteration'."* However, this assumption is completely violated by the HTML renderer worker (`wr2_html_render_apply.py:63` / `limit=MAX_DRAFTS_PER_RUN` where `MAX_DRAFTS_PER_RUN = 1`) and the draft generator worker (`wr2_draft_generator.py:50` where `MAX_DRAFTS_PER_RUN = 2`). If a new draft transitions status while a worker is busy, the supervisor's kickstart returns `rc=113` (service busy) and is treated as a benign no-op, but the worker will exit after processing only its single draft.
+   **Why it breaks**: The newly transitioned draft is left stuck in its intermediate state (e.g., `drafts_imaged_checked`) and will not progress automatically. It remains starved until the supervisor's periodic reconciliation loop runs (every 5 minutes) and the draft's staleness exceeds `RECONCILE_STALE_MIN` (30 minutes). This forces a severe throughput bottleneck of 1 draft per 30 minutes for any concurrent batch.
+
+2. **SEVERITY: HIGH** | **Section Ref: §2 S10 & §5 M9**
+   **Defect**: The watchdog script `wr2_supervisor_watchdog.py` monitors the pipeline success rate by reading from `TELEMETRY_PATH = Path.home() / "logs" / "wr2_canva_apply_telemetry.jsonl"`. The consolidation spec updates the watchdog to gate checks on the `wr2_html_renderer_enabled` kill-switch instead of Canva. However, the HTML renderer script `wr2_html_render_apply.py` does not output any telemetry files, nor does it write to the Canva telemetry log.
+   **Why it breaks**: Since no new telemetry entries are appended by the HTML lane, the attempts in the 7-day rolling window will drop to 0 after 7 days of Canva retirement. The watchdog function `_probe_success_rate_telemetry()` returns a default 100% success rate when attempts are 0. As a result, the watchdog will become completely blind to HTML rendering failures, failing to alert even if the HTML renderer experiences a 100% crash rate.
+
+3. **SEVERITY: HIGH** | **Section Ref: §2 S1 & §3 Property 3**
+   **Defect**: The spec proposes moving the `topic_type_log` insert (S1) directly into the database transaction of `_pg.persist_html_result_and_enqueue_notifications`, which resides in the backend application code (`apps/backend-rag/backend/services/canva_renderer_v2/_pg.py`). To perform this log write, `_pg.py` must derive the domain, register, and dominant mode by importing the root-level script `wr2_topic_type` (from `scripts/wr2_topic_type.py`).
+   **Why it breaks**: The root-level `scripts/` directory is outside the package boundaries of `apps/backend-rag/backend/` and is not included in the Python path of the FastAPI backend application in production or during unit tests. Attempting to import `wr2_topic_type` in `_pg.py` will raise a `ModuleNotFoundError`, causing the backend application to crash on startup and fail the entire pytest suite.
+
+4. **SEVERITY: MEDIUM** | **Section Ref: §1.4 & §3 Property 3**
+   **Defect**: The PostgreSQL trigger `wr2_status_change_trg` inserts durable rows into `events_outbox` for each status change. The supervisor's startup connection loop (`_replay_outbox`) correctly updates these rows to `consumed_at = NOW()` after processing. However, the supervisor's live event listener pathway (`_on_notification` -> `_handle_payload`) never executes an UPDATE on `events_outbox`.
+   **Why it breaks**: Every live event successfully handled by the running supervisor remains unacknowledged (`consumed_at IS NULL`) in the database. This causes unbounded table bloat in `events_outbox`. Upon any supervisor restart, the supervisor will load and replay the last 500 unconsumed status changes, creating duplicate `launchctl kickstart` calls and unnecessary database/process load.
+
+5. **SEVERITY: MEDIUM** | **Section Ref: §1.3 & §3**
+   **Defect**: The B-lane status flow executes `image_generator` (which calls the expensive Codex `$imagegen` API to generate a hero image and uploads it to Tigris) *before* `fact_extractor` and `fact_checker` are executed.
+   **Why it breaks**: If a draft fails fact-checking (transitioning to the terminal `fact_check_failed` state), it is discarded or queued for manual review. However, the system has already expended expensive API tokens and network bandwidth on hero image generation. By not running fact verification before image generation, the pipeline leaks API credits.
+
+6. **SEVERITY: LOW** | **Section Ref: §5 M6**
+   **Defect**: Metric M6 ("Motor") claims to measure that "stages advance only manually" with the assertion "0 manual kickstarts needed for a full draft->rendered run" via `SELECT max(...) FROM wr2_supervisor_heartbeat` + launchd log.
+   **Why it breaks**: The launchd daemon logs do not record or distinguish the caller of a `launchctl kickstart` command (e.g. whether it was triggered by a developer typing it in the terminal or the supervisor daemon executing it). The metric is therefore programmatically unfalsifiable and relies on subjective manual QA tracking.
+
+---
+
+REDTEAM_VERDICT: NO-GO
+I will check the contents of `scripts/wr2_worktree_gc.py` around line 90 to see how it references `wr2_carousel_runs` and verify the defect.
+Based on the search results for `wr2_carousel_runs` in `task-85`, we have identified a critical defect matching **Hunt 2** (retirement steps that orphan a live consumer) and **Hunt 8** (salvage table dropping something load-bearing). I have added this as **Finding 2** and adjusted the subsequent findings accordingly.
+
+### Numbered Findings
+
+1. **SEVERITY: BLOCKER** | **Section Ref: §1.4, §4 R4 & wr2_supervisor.py:173-180**
+   **Defect**: The supervisor's kickstart function (`_kickstart` in `wr2_supervisor.py:173`) avoids the `-k` (kill) flag because of the documented assumption that *"workers always drain ALL pending drafts in one bulk SELECT, so a kickstart while busy just means 'this draft will be picked up on the next iteration'."* However, this is completely violated by the HTML renderer worker (`wr2_html_render_apply.py:63` / `limit=MAX_DRAFTS_PER_RUN` where `MAX_DRAFTS_PER_RUN = 1`) and the draft generator worker (`wr2_draft_generator.py:50` where `MAX_DRAFTS_PER_RUN = 2`). If a new draft transitions status while a worker is busy, the supervisor's kickstart returns `rc=113` (service busy) and is treated as a benign no-op, but the worker will exit after processing only its single draft.
+   **Why it breaks**: The newly transitioned draft is left stuck in its intermediate state (e.g., `drafts_imaged_checked`) and will not progress automatically. It remains starved until the supervisor's periodic reconciliation loop runs (every 5 minutes) and the draft's staleness exceeds `RECONCILE_STALE_MIN` (30 minutes). This forces a severe throughput bottleneck of 1 draft per 30 minutes for any concurrent batch.
+
+2. **SEVERITY: HIGH** | **Section Ref: §4 R1.5 & wr2_worktree_gc.py:90**
+   **Defect**: The spec's retirement plan in §4 R1.5 schedules the absolute deletion of the `wr2_carousel_runs` table via a database migration after a 30-day observation window, assuming it is dead and unused. However, the active daily garbage collector script `scripts/wr2_worktree_gc.py` (which runs under `com.balizero.wr2.worktree-gc.daily` on the macOS host) calls `fetch_inflight_carousels`, which directly executes `SELECT carousel_id::text FROM wr2_carousel_runs` at line 90 to prevent the deletion of in-flight worktree environments.
+   **Why it breaks**: Dropping the `wr2_carousel_runs` table will cause the daily garbage collector to immediately crash with an `UndefinedTableError` (PostgreSQL error `42P01`). Stale Git worktrees will accumulate indefinitely in the workspace without cleanup, eventually exhausting macOS disk capacity and triggering disk-space watchdogs.
+
+3. **SEVERITY: HIGH** | **Section Ref: §2 S10 & §5 M9**
+   **Defect**: The watchdog script `wr2_supervisor_watchdog.py` monitors the pipeline success rate by reading from `TELEMETRY_PATH = Path.home() / "logs" / "wr2_canva_apply_telemetry.jsonl"`. The consolidation spec updates the watchdog to gate checks on the `wr2_html_renderer_enabled` kill-switch instead of Canva. However, the HTML renderer script `wr2_html_render_apply.py` does not output any telemetry files, nor does it write to the Canva telemetry log.
+   **Why it breaks**: Since no new telemetry entries are appended by the HTML lane, the attempts in the 7-day rolling window will drop to 0 after 7 days of Canva retirement. The watchdog function `_probe_success_rate_telemetry()` returns a default 100% success rate when attempts are 0. As a result, the watchdog will become completely blind to HTML rendering failures, failing to alert even if the HTML renderer experiences a 100% crash rate.
+
+4. **SEVERITY: HIGH** | **Section Ref: §2 S1 & §3 Property 3**
+   **Defect**: The spec proposes moving the `topic_type_log` insert (S1) directly into the database transaction of `_pg.persist_html_result_and_enqueue_notifications`, which resides in the backend application code (`apps/backend-rag/backend/services/canva_renderer_v2/_pg.py`). To perform this log write, `_pg.py` must derive the domain, register, and dominant mode by importing the root-level script `wr2_topic_type` (from `scripts/wr2_topic_type.py`).
+   **Why it breaks**: The root-level `scripts/` directory is outside the package boundaries of `apps/backend-rag/backend/` and is not included in the Python path of the FastAPI backend application in production or during unit tests. Attempting to import `wr2_topic_type` in `_pg.py` will raise a `ModuleNotFoundError`, causing the backend application to crash on startup and fail the entire pytest suite.
+
+5. **SEVERITY: MEDIUM** | **Section Ref: §1.4 & §3 Property 3**
+   **Defect**: The PostgreSQL trigger `wr2_status_change_trg` inserts durable rows into `events_outbox` for each status change. The supervisor's startup connection loop (`_replay_outbox`) correctly updates these rows to `consumed_at = NOW()` after processing. However, the supervisor's live event listener pathway (`_on_notification` -> `_handle_payload`) never executes an UPDATE on `events_outbox`.
+   **Why it breaks**: Every live event successfully handled by the running supervisor remains unacknowledged (`consumed_at IS NULL`) in the database. This causes unbounded table bloat in `events_outbox`. Upon any supervisor restart, the supervisor will load and replay the last 500 unconsumed status changes, creating duplicate `launchctl kickstart` calls and unnecessary database/process load.
+
+6. **SEVERITY: MEDIUM** | **Section Ref: §1.3 & §3**
+   **Defect**: The B-lane status flow executes `image_generator` (which calls the expensive Codex `$imagegen` API to generate a hero image and uploads it to Tigris) *before* `fact_extractor` and `fact_checker` are executed.
+   **Why it breaks**: If a draft fails fact-checking (transitioning to the terminal `fact_check_failed` state), it is discarded or queued for manual review. However, the system has already expended expensive API tokens and network bandwidth on hero image generation. By not running fact verification before image generation, the pipeline leaks API credits.
+
+7. **SEVERITY: LOW** | **Section Ref: §5 M6**
+   **Defect**: Metric M6 ("Motor") claims to measure that "stages advance only manually" with the assertion "0 manual kickstarts needed for a full draft->rendered run" verified via `SELECT max(...) FROM wr2_supervisor_heartbeat` + launchd log.
+   **Why it breaks**: The launchd logs do not record or distinguish the caller of a `launchctl kickstart` command (e.g. whether it was triggered by a developer typing it in the terminal or the supervisor daemon executing it). The metric is therefore programmatically unfalsifiable and relies on subjective manual QA tracking.
+
+---
+
+REDTEAM_VERDICT: NO-GO
+The final grep results from `task-105` confirm the finding regarding `wr2_carousel_runs` and the garbage collector script. Specifically, `scripts/wr2_worktree_gc.py` actively queries `wr2_carousel_runs` in the function `fetch_inflight_carousels` to protect active worktree environments from deletion.
+
+My previous response contains the finalized, complete list of findings and the overall verdict, which remains:
+
+**REDTEAM_VERDICT: NO-GO**

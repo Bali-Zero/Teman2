@@ -38,6 +38,65 @@ class TestPhoneNormalise:
         assert m.normalise_phone(None) is None
 
 
+class TestParseJsonb:
+    """jsonb columns read through the matcher's codec-less pool.
+
+    Regression for the 2026-06-11 crash: rows INSERTed while the repository
+    json.dumps-ed on top of the app pool's jsonb codec (PR #494) hold a
+    jsonb STRING — _pick_match then exploded on str.get()."""
+
+    def test_dict_passthrough(self):
+        assert m.parse_jsonb({"slug": "x"}, {}) == {"slug": "x"}
+
+    def test_plain_json_text(self):
+        assert m.parse_jsonb('{"slug": "x"}', {}) == {"slug": "x"}
+
+    def test_double_encoded_json_text(self):
+        assert m.parse_jsonb('"{\\"slug\\": \\"verify-filo1\\"}"', {}) == {
+            "slug": "verify-filo1"
+        }
+
+    def test_none_and_null_text_fall_back_to_default(self):
+        assert m.parse_jsonb(None, {}) == {}
+        assert m.parse_jsonb("null", {}) == {}
+        assert m.parse_jsonb(None, None) is None
+
+    def test_invalid_json_falls_back_to_default(self):
+        assert m.parse_jsonb("{not json", {}) == {}
+
+    def test_non_dict_json_falls_back_to_default(self):
+        assert m.parse_jsonb("[1, 2]", {}) == {}
+
+
+class TestExtractLeadIds:
+    """Deterministic pass (Filo 2): li_<nanoid> tokens in WA message text."""
+
+    def test_finds_id_in_prefilled_template(self):
+        body = (
+            "Hi Bali Zero — I just used the KBLI Navigator on your site.\n\n"
+            "Context:\n• KBLI: 56303\n\n"
+            "Reference: https://balizero.com/kbli/56303\nLead ID: li_mlrd71elhx"
+        )
+        assert m.extract_lead_ids(body) == ["li_mlrd71elhx"]
+
+    def test_multiple_ids_deduped_in_order(self):
+        body = "li_aaa111bbb2 then li_ccc333ddd4 then li_aaa111bbb2 again"
+        assert m.extract_lead_ids(body) == ["li_aaa111bbb2", "li_ccc333ddd4"]
+
+    def test_ignores_short_fragments_and_uppercase(self):
+        # nanoid alphabet is lowercase a-z0-9, length 10; require >= 6.
+        assert m.extract_lead_ids("li_ab1 e LI_ABCDEF1234") == []
+
+    def test_token_must_be_word_bounded(self):
+        assert m.extract_lead_ids("xli_abcdef1234") == []
+        assert m.extract_lead_ids("(li_abcdef1234)") == ["li_abcdef1234"]
+
+    def test_none_and_empty(self):
+        assert m.extract_lead_ids(None) == []
+        assert m.extract_lead_ids("") == []
+        assert m.extract_lead_ids("no ids here") == []
+
+
 class TestPickMatch:
     def _intent(self, *, phone: str | None = None, minutes_ago: int = 2):
         created = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)

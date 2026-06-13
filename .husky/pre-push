@@ -5,14 +5,63 @@ echo "🔍 Running pre-push hooks..."
 # false positives from coverage exit codes. Run manually: npm run test:ci
 echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 
-# Run Python tests
+# Run Python tests — gated on a PROVISIONED local PostgreSQL (CI-parity).
+#
+# Most backend tests build their schema against DATABASE_URL. With no local PG the
+# suite emitted ~141 "Connect call failed (::1, 5432)" errors + ~2min of noise, and
+# the old `|| { Continuing }` swallowed it — the gate never gated.
+#
+# Three gate states (in order):
+#   1. PG absent on 127.0.0.1:5432 → clean SKIP (dev without local PG; CI has its own
+#      service container so this branch never runs in CI).
+#   2. PG present but NOT provisioned (db `nuzantara_test` missing the migrated schema)
+#      → SKIP with a "run the one-time bootstrap" pointer. We do NOT block here: a bare
+#      `brew services start postgresql@17` must not wedge every push.
+#   3. PG present AND provisioned → run the REAL suite with CI-parity env, and a genuine
+#      failure BLOCKS the push (exit 1).
+#
+# CI-parity env (mirrors .github/workflows/tests.yml): DATABASE_URL + TEST_DATABASE_URL
+# both point at test:test@localhost:5432/nuzantara_test. This override is load-bearing —
+# the db conftest default is `postgresql://nuzantara@localhost/nuzantara_dev` (role
+# `nuzantara`, which does NOT exist locally); CI redirects it via these two env vars and
+# so must this hook, else every push fails with `role "nuzantara" does not exist`.
+# PYTHONPATH=.:../crm-cell also matches CI (crm-cell is a sibling package).
+#
+# F5: keg-only postgresql@17 `pg_isready`/`psql` are NOT on the PATH of this hook's
+# non-interactive shell; resolve by absolute path with a `command -v` fallback.
+# F8: with PG provisioned, a genuine test failure must BLOCK (exit 1), not "Continuing".
 echo "🐍 Running Python tests..."
-# Clear pytest cache to avoid stale import errors after structural changes
-# Use pytest.ini from backend directory for proper configuration
-(cd apps/backend-rag && rm -rf .pytest_cache backend/.pytest_cache && source .venv/bin/activate 2>/dev/null && PYTHONPATH=backend python -m pytest backend/tests/ -v --tb=short -q 2>/dev/null) || {
-    echo "⚠️  Python tests skipped or failed. Continuing..."
-    echo "   To run tests manually: cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=backend pytest backend/tests/"
-}
+PG_BIN="/opt/homebrew/opt/postgresql@17/bin"
+PG_ISREADY="$(command -v pg_isready || echo "$PG_BIN/pg_isready")"
+PSQL="$(command -v psql || echo "$PG_BIN/psql")"
+PRE_PUSH_DB="${PRE_PUSH_TEST_DB:-nuzantara_test}"
+if ! "$PG_ISREADY" -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
+    echo "⏭️  SKIP Python tests — no local PostgreSQL on 127.0.0.1:5432."
+    echo "   Install per research/operations/specs/2026-06-12-M5-postgres-local-spec.md to enable the gate."
+elif [ "$("$PSQL" -h 127.0.0.1 -p 5432 -d "$PRE_PUSH_DB" -tAc "SELECT to_regclass('public.clients') IS NOT NULL;" 2>/dev/null)" != "t" ]; then
+    echo "⏭️  SKIP Python tests — local PG up but '$PRE_PUSH_DB' not provisioned (no migrated schema)."
+    echo "   One-time bootstrap: cd apps/backend-rag && source .venv/bin/activate && \\"
+    echo "     DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
+    echo "     PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py && \\"
+    echo "     PYTHONPATH=.:../crm-cell python -m backend.db.migrate apply-all"
+    echo "   (see research/operations/specs/2026-06-12-M5-postgres-local-spec.md §AC2)"
+else
+    if ! ( cd apps/backend-rag \
+        && rm -rf .pytest_cache backend/.pytest_cache \
+        && source .venv/bin/activate 2>/dev/null \
+        && DATABASE_URL="postgresql://test:test@localhost:5432/$PRE_PUSH_DB" \
+           TEST_DATABASE_URL="postgresql://test:test@localhost:5432/$PRE_PUSH_DB" \
+           JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
+           API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
+           PYTHONPATH=.:../crm-cell python -m pytest backend/tests/ --tb=short -q ); then
+        echo "❌ Python tests FAILED — push blocked."
+        echo "   Reproduce: cd apps/backend-rag && source .venv/bin/activate && \\"
+        echo "     DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
+        echo "     TEST_DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
+        echo "     PYTHONPATH=.:../crm-cell pytest backend/tests/"
+        exit 1
+    fi
+fi
 # Note: Coverage check removed from pre-push (current coverage ~0.67%, target 80% is long-term goal)
 # To check coverage manually: pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=80
 

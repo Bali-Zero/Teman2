@@ -18,6 +18,7 @@ import type {
   LKPMDraft,
   LKPMValidationAlert,
 } from "@/lib/api/portal/portal.types";
+import { formatIDR } from "@balizero/core/utils";
 
 export default function LKPMReviewPage() {
   const params = useParams();
@@ -68,13 +69,6 @@ export default function LKPMReviewPage() {
       setIsApproving(false);
     }
   };
-
-  const formatIDR = (amount: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
 
   if (isLoading) {
     return (

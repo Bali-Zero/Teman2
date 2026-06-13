@@ -32,27 +32,34 @@ Cooldown:
   ~/.agent/decisions/state/wr2_supervisor_watchdog.state with one
   `last_alert_<key>=<epoch>` line per fired alert.
 
+  P2 LEDGER_GAP (P-1 S10d, 2026-06-11)
+      A draft reached `rendered` (drive_url set) more than 24h ago but has
+      no `topic_type_log` row — the anti-sameness ledger write (best-effort
+      in wr2_html_render_apply) silently failed. Closes spec metric M2.
+
 Dependencies:
   - `wr2_supervisor_heartbeat` table (migration 161)
-  - `war_room_drafts` (status, updated_at, canva_applied_at)
+  - `war_room_drafts` (status, updated_at, drive_url)
+  - `topic_type_log` (migration 216) for the ledger-gap probe
   - DATABASE_URL (Fly Postgres tunnel via wr2-script-wrapper.sh)
   - TELEGRAM_BOT_TOKEN / TELEGRAM_OWNER_CHAT_ID for alerts (optional;
     when missing, alerts are logged but no Telegram POST is made).
 
-Telemetry source for the success rate is the JSONL the canva-apply
-worker appends to ~/logs/wr2_canva_apply_telemetry.jsonl (PR #516,
-B0 instrumentation). Reading the JSONL avoids a second DB round-trip
-and counts at-attempt resolution (post-fix #521 ensures the
-"success" rows truly persisted to DB).
+P-1 re-key (2026-06-11, spec S10): the watchdog was Canva-keyed (flag
+wr2_canva_renderer_enabled, freshness canva_applied_at, success rate from
+~/logs/wr2_canva_apply_telemetry.jsonl with a degrade-open 100% on empty
+file). After the 2026-06-09 HTML cutover all three sources went blind. Now:
+flag = wr2_html_renderer_enabled, freshness = drive_url/updated_at, success
+rate = DB-derived over war_room_drafts (0 attempts → NO-DATA, never 100%).
 """
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 import signal
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -76,7 +83,11 @@ SUCCESS_THRESHOLD_PCT = float(os.environ.get("WR2_WATCHDOG_SUCCESS_THRESHOLD_PCT
 ALERT_COOLDOWN_SEC = int(os.environ.get("WR2_WATCHDOG_ALERT_COOLDOWN_SEC", "86400"))  # 24h
 
 STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "wr2_supervisor_watchdog.state"
-TELEMETRY_PATH = Path.home() / "logs" / "wr2_canva_apply_telemetry.jsonl"
+# Ledger-gap probe lower bound: only drafts rendered AFTER S1 shipped count as
+# gaps (the 39 Canva-era rendered rows legitimately predate the HTML ledger hook).
+LEDGER_GAP_SINCE = datetime.fromisoformat(
+    os.environ.get("WR2_WATCHDOG_LEDGER_SINCE", "2026-06-11T00:00:00+00:00")
+)
 
 # ─────────────────────────────────────────────────────────────────────────
 # State (cooldown tracking)
@@ -131,42 +142,45 @@ def _alert_due(key: str, now_epoch: int, cooldown: int = ALERT_COOLDOWN_SEC) -> 
 # Telegram
 # ─────────────────────────────────────────────────────────────────────────
 
-def _send_telegram(text: str) -> bool:
-    """Send a plain-text Telegram alert. Returns True iff delivered.
+def _post_telegram(token: str, payload: dict) -> None:
+    data = urllib.parse.urlencode(payload).encode()
+    urllib.request.urlopen(  # noqa: S310 — known URL
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        data,
+        timeout=10,
+    )
 
-    Plain text only, no Markdown formatting (Mythos-P3, 2026-06-14): a
-    Markdown payload containing an unbalanced underscore — e.g. the
-    literal "wr2_supervisor" in the SUPERVISOR_DOWN body — makes Telegram
-    return HTTP 400 "can't parse entities", and the alert is silently
-    dropped. This muted the most-severe P0 on EVERY send for weeks. Plain
-    text always parses; the `*`/`` ` `` emphasis chars are stripped so the
-    body stays clean. The bool return lets callers arm the cooldown ONLY
-    on a confirmed delivery, so a failed send retries next tick instead of
-    being suppressed for 24h.
-    """
+
+def _send_telegram(text: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
     if not token:
         logger.info("Telegram skipped (no TELEGRAM_BOT_TOKEN)")
-        return False
-    plain = text.replace("*", "").replace("`", "")
+        return
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": "true",
+    }
     try:
-        data = urllib.parse.urlencode(
-            {
-                "chat_id": chat_id,
-                "text": plain,
-                "disable_web_page_preview": "true",
-            }
-        ).encode()
-        urllib.request.urlopen(  # noqa: S310 — known URL
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data,
-            timeout=10,
-        )
-        return True
+        _post_telegram(token, payload)
+    except urllib.error.HTTPError as e:
+        # HTTP 400 = Markdown entity parse failure (unbalanced * / _ in job
+        # names or paths). The alert was being silently DROPPED once per
+        # cooldown window (observed daily 2026-06-10..12). Resend as plain
+        # text: delivery beats formatting for a P0/P1 alert channel.
+        if e.code == 400:
+            plain = {k: v for k, v in payload.items() if k != "parse_mode"}
+            try:
+                _post_telegram(token, plain)
+                logger.warning("Telegram Markdown rejected (400) — delivered as plain text")
+            except Exception as e2:  # noqa: BLE001 — alert delivery is best-effort
+                logger.warning("Telegram POST failed (plain-text retry): %s", e2)
+        else:
+            logger.warning("Telegram POST failed: %s", e)
     except Exception as e:  # noqa: BLE001 — alert delivery is best-effort
-        logger.warning("Telegram POST failed: %s", type(e).__name__)
-        return False
+        logger.warning("Telegram POST failed: %s", e)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -198,26 +212,23 @@ async def _probe_heartbeat_age(conn: asyncpg.Connection) -> float | None:
     return float(age)
 
 
-async def _probe_canva_renderer_enabled(conn: asyncpg.Connection) -> bool:
-    """W46 (2026-05-23): kill-switch awareness.
+async def _probe_renderer_enabled(conn: asyncpg.Connection) -> bool:
+    """Kill-switch awareness (W46 pattern, re-keyed to the HTML lane by P-1 S10).
 
-    Reads `system_settings.wr2_canva_renderer_enabled`. Defaults to True
-    when the row is missing (degrade-OPEN: assume feature is on, fire
-    alerts as before — safer than silent suppression on fresh prod).
+    Reads `system_settings.wr2_html_renderer_enabled` — the live chokepoint
+    flag since the 2026-06-09 cutover (PR #1236). Defaults to True when the
+    row is missing (degrade-OPEN: assume feature is on, fire alerts as
+    before — safer than silent suppression on fresh prod).
 
     Pipeline_frozen + success_rate_low alerts are gated on this flag at
-    their respective sites — when the canva-apply worker is deliberately
-    disabled (cicatrix 2026-05-13 + 2026-05-15 kill switch ON), the
-    pipeline being "frozen" is the EXPECTED state, not an incident.
-
-    W46 root finding: this alert fired daily for 7 days (last canva render
-    2026-05-15) because the watchdog was unaware of the operator-controlled
-    kill switch. Fixed at the probe level so all callers benefit.
+    their respective sites — when the render worker is deliberately
+    disabled, the pipeline being "frozen" is the EXPECTED state, not an
+    incident (W46 root finding, 2026-05-23).
     """
     try:
         row = await conn.fetchval(
             "SELECT value FROM system_settings WHERE key = $1",
-            "wr2_canva_renderer_enabled",
+            "wr2_html_renderer_enabled",
         )
     except asyncpg.UndefinedTableError:
         logger.debug("system_settings table missing — degrade-open (assume enabled)")
@@ -230,17 +241,17 @@ async def _probe_canva_renderer_enabled(conn: asyncpg.Connection) -> bool:
 async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
     """Snapshot for PIPELINE_FROZEN: oldest pending + recent renders.
 
-    Returns `{"canva_disabled": True, ...}` early when the canva-apply
-    worker is killed via system_settings.wr2_canva_renderer_enabled=false
-    (W46 2026-05-23). Caller sees `canva_disabled=True` and skips the
+    Returns `{"renderer_disabled": True, ...}` early when the HTML render
+    worker is killed via system_settings.wr2_html_renderer_enabled=false
+    (W46 pattern). Caller sees `renderer_disabled=True` and skips the
     pipeline_frozen alert — pipeline naturally backs up while feature is
     off, which is by design.
     """
-    if not await _probe_canva_renderer_enabled(conn):
+    if not await _probe_renderer_enabled(conn):
         return {
             "oldest_pending_hours": 0.0,
             "rendered_recent": 0,
-            "canva_disabled": True,
+            "renderer_disabled": True,
         }
     # Non-terminal statuses are everything that NeedsToProgress; the
     # supervisor reconcile uses the same list (cf. NONTERMINAL_TO_NEXT_STAGE).
@@ -263,75 +274,83 @@ async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
         SELECT COUNT(*)
           FROM war_room_drafts
          WHERE status = 'rendered'
-           AND canva_applied_at > NOW() - $1::interval
+           AND drive_url IS NOT NULL
+           AND updated_at > NOW() - $1::interval
         """,
         timedelta(hours=RENDERED_24H_HOURS),
     )
     return {
         "oldest_pending_hours": float(oldest_pending) if oldest_pending else 0.0,
         "rendered_recent": int(rendered_recent or 0),
-        "canva_disabled": False,
+        "renderer_disabled": False,
     }
 
 
-def _probe_success_rate_telemetry() -> dict[str, Any]:
-    """7-day success rate from canva-apply telemetry JSONL.
+async def _probe_success_rate_db(conn: asyncpg.Connection) -> dict[str, Any]:
+    """7-day render success rate, DB-derived (P-1 S10b).
 
-    Reads ~/logs/wr2_canva_apply_telemetry.jsonl (PR #516); returns:
-      {"window_days": 7, "attempted": N, "succeeded": M, "rate_pct": float}
+    Replaces the Canva telemetry JSONL: the old probe returned a degrade-open
+    100% on an empty/missing file, which goes permanently blind once the file
+    stops being written (red-team finding 2026-06-11). DB outcomes cannot
+    drift from reality: attempted = rendered|render_failed in the window,
+    succeeded = rendered with drive_url.
 
-    Empty/missing file → attempted=0, rate=100.0 (degrade-open: silence
-    is golden until enough datapoints accumulate).
+    0 attempts → {"no_data": True, "rate_pct": None} — the caller logs
+    NO-DATA and skips the alert; it must NEVER read as a healthy 100%.
     """
-    if not TELEMETRY_PATH.is_file():
-        return {"window_days": SUCCESS_WINDOW_DAYS, "attempted": 0, "succeeded": 0, "rate_pct": 100.0}
-
-    cutoff_epoch = (
-        datetime.now(timezone.utc).timestamp() - SUCCESS_WINDOW_DAYS * 86400
+    row = await conn.fetchrow(
+        """
+        SELECT COUNT(*) AS attempted,
+               COUNT(*) FILTER (WHERE status = 'rendered' AND drive_url IS NOT NULL) AS succeeded
+          FROM war_room_drafts
+         WHERE status IN ('rendered', 'render_failed')
+           AND updated_at > NOW() - $1::interval
+        """,
+        timedelta(days=SUCCESS_WINDOW_DAYS),
     )
-    attempted = 0
-    succeeded = 0
-    try:
-        with open(TELEMETRY_PATH) as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                ts_str = rec.get("ts")
-                if not ts_str:
-                    continue
-                try:
-                    ts = datetime.fromisoformat(ts_str).timestamp()
-                except ValueError:
-                    continue
-                if ts < cutoff_epoch:
-                    continue
-                outcome = rec.get("outcome")
-                # Count only attempt-1 rows; cold→retry-success is also
-                # counted via attempt=2 success but it's the same draft.
-                # Simpler: count every row as one attempt; success is
-                # any row with outcome=='success'.
-                attempted += 1
-                if outcome == "success":
-                    succeeded += 1
-    except OSError as e:
-        logger.warning("telemetry read failed: %s", e)
-        return {"window_days": SUCCESS_WINDOW_DAYS, "attempted": 0, "succeeded": 0, "rate_pct": 100.0}
-
+    attempted = int(row["attempted"] or 0) if row else 0
+    succeeded = int(row["succeeded"] or 0) if row else 0
     if attempted == 0:
-        rate = 100.0
-    else:
-        rate = (succeeded / attempted) * 100.0
+        return {
+            "window_days": SUCCESS_WINDOW_DAYS,
+            "attempted": 0,
+            "succeeded": 0,
+            "rate_pct": None,
+            "no_data": True,
+        }
     return {
         "window_days": SUCCESS_WINDOW_DAYS,
         "attempted": attempted,
         "succeeded": succeeded,
-        "rate_pct": round(rate, 1),
+        "rate_pct": round((succeeded / attempted) * 100.0, 1),
+        "no_data": False,
     }
+
+
+async def _probe_ledger_gap(conn: asyncpg.Connection) -> int:
+    """Count rendered drafts (>24h old, post-S1) missing their topic_type_log
+    row (P-1 S10d — closes spec metric M2 against the best-effort write).
+
+    Bounded below by LEDGER_GAP_SINCE so Canva-era renders never count.
+    """
+    try:
+        gap = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+              FROM war_room_drafts d
+              LEFT JOIN topic_type_log t ON t.draft_id = d.id
+             WHERE d.status = 'rendered'
+               AND d.drive_url IS NOT NULL
+               AND d.updated_at >= $1
+               AND d.updated_at < NOW() - INTERVAL '24 hours'
+               AND t.draft_id IS NULL
+            """,
+            LEDGER_GAP_SINCE,
+        )
+    except asyncpg.UndefinedTableError:
+        logger.debug("topic_type_log table missing — degrade-open")
+        return 0
+    return int(gap or 0)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -353,26 +372,23 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
                 "Check `launchctl print gui/$(id -u)/com.balizero.wr2.supervisor` "
                 "and `tail ~/logs/wr2_supervisor.launchd.err.log`."
             )
-            delivered = _send_telegram(msg)
-            if delivered:
-                _state_set("last_alert_supervisor_down", now_epoch)
-            logger.warning(
-                "ALERT P0 supervisor_down age=%.0fs delivered=%s", age, delivered
-            )
+            _send_telegram(msg)
+            _state_set("last_alert_supervisor_down", now_epoch)
+            logger.warning("ALERT P0 supervisor_down age=%.0fs", age)
         else:
             logger.info("supervisor_down stale but cooldown active (age=%.0fs)", age)
     else:
         logger.debug("heartbeat ok (age=%s)", age)
 
-    # P0 — PIPELINE_FROZEN (W46: skip when canva-apply is kill-switched OFF)
+    # P0 — PIPELINE_FROZEN (W46: skip when the render worker is kill-switched OFF)
     pipeline = await _probe_pipeline_state(conn)
-    if pipeline.get("canva_disabled"):
-        # Operator deliberately disabled canva-apply via
-        # system_settings.wr2_canva_renderer_enabled=false. Pipeline being
+    if pipeline.get("renderer_disabled"):
+        # Operator deliberately disabled the render worker via
+        # system_settings.wr2_html_renderer_enabled=false. Pipeline being
         # "frozen" while feature is off is the expected state, not an
         # incident. Skip the alert + reset cooldown so the next genuine
         # incident fires immediately when feature is re-enabled.
-        logger.info("pipeline_frozen check skipped (canva-renderer kill switch OFF)")
+        logger.info("pipeline_frozen check skipped (html-renderer kill switch OFF)")
         # Clear stale cooldown so re-enabling the feature gets a fresh alert
         # window if the pipeline is still actually frozen.
         STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -391,18 +407,16 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
                 "🚨 *WR2 Pipeline FROZEN*\n"
                 f"Oldest pending draft: *{pipeline['oldest_pending_hours']:.1f}h*\n"
                 f"Drafts rendered in last {int(RENDERED_24H_HOURS)}h: *{pipeline['rendered_recent']}*\n"
-                "Either the canva-apply worker is failing every run, or "
-                "input has stopped. Check `~/logs/wr2_canva_apply.log` and "
-                "`~/logs/wr2_canva_apply_telemetry.jsonl`."
+                "Either the html-apply worker is failing every run, or "
+                "input has stopped. Check `~/logs/wr2-html-apply.log` and "
+                "`launchctl print gui/$(id -u)/com.balizero.wr2.html-apply`."
             )
-            delivered = _send_telegram(msg)
-            if delivered:
-                _state_set("last_alert_pipeline_frozen", now_epoch)
+            _send_telegram(msg)
+            _state_set("last_alert_pipeline_frozen", now_epoch)
             logger.warning(
-                "ALERT P0 pipeline_frozen oldest=%.1fh rendered=%d delivered=%s",
+                "ALERT P0 pipeline_frozen oldest=%.1fh rendered=%d",
                 pipeline["oldest_pending_hours"],
                 pipeline["rendered_recent"],
-                delivered,
             )
         else:
             logger.info("pipeline_frozen detected but cooldown active")
@@ -413,36 +427,34 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
             pipeline["rendered_recent"],
         )
 
-    # P1 — SUCCESS_RATE_LOW (7-day rolling, W46: skip when canva-apply OFF —
-    # no work attempted = telemetry trivially shows "low rate", false-alert)
-    if pipeline.get("canva_disabled"):
-        logger.info("success_rate_low check skipped (canva-renderer kill switch OFF)")
+    # P1 — SUCCESS_RATE_LOW (7-day rolling, W46: skip when the renderer is OFF —
+    # no work attempted = trivially "low rate", false-alert)
+    if pipeline.get("renderer_disabled"):
+        logger.info("success_rate_low check skipped (html-renderer kill switch OFF)")
         return
-    sr = _probe_success_rate_telemetry()
+    sr = await _probe_success_rate_db(conn)
     # Need a minimum sample size to avoid first-day flutter.
     MIN_ATTEMPTS = 5
-    if (
+    if sr["no_data"]:
+        logger.info("success rate NO-DATA (0 render attempts in %dd window)", sr["window_days"])
+    elif (
         sr["attempted"] >= MIN_ATTEMPTS
         and sr["rate_pct"] < SUCCESS_THRESHOLD_PCT
     ):
         if _alert_due("success_rate_low", now_epoch):
             msg = (
-                "⚠️ *WR2 Canva success rate LOW*\n"
+                "⚠️ *WR2 render success rate LOW*\n"
                 f"Last {sr['window_days']}d: *{sr['succeeded']}/{sr['attempted']}* successful "
                 f"({sr['rate_pct']}%, threshold {SUCCESS_THRESHOLD_PCT}%).\n"
-                "Review canva-apply telemetry for the dominant failure outcome.\n"
-                "If the failure mode is `cold_sentinel`/`other` related to MCP, "
-                "check the OAuth watchdog state file: "
-                "`cat ~/.agent/decisions/state/wr2_canva_oauth.state`."
+                "Review `~/logs/wr2-html-apply.log` for the dominant failure "
+                "(designer-loop convergence, Drive upload, lease loss)."
             )
-            delivered = _send_telegram(msg)
-            if delivered:
-                _state_set("last_alert_success_rate_low", now_epoch)
+            _send_telegram(msg)
+            _state_set("last_alert_success_rate_low", now_epoch)
             logger.warning(
-                "ALERT P1 success_rate_low rate=%.1f%% attempts=%d delivered=%s",
+                "ALERT P1 success_rate_low rate=%.1f%% attempts=%d",
                 sr["rate_pct"],
                 sr["attempted"],
-                delivered,
             )
         else:
             logger.info(
@@ -451,8 +463,29 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
             )
     else:
         logger.debug(
-            "success rate ok (rate=%.1f%% attempts=%d)", sr["rate_pct"], sr["attempted"]
+            "success rate ok (rate=%s%% attempts=%d)", sr["rate_pct"], sr["attempted"]
         )
+
+    # P2 — LEDGER_GAP (P-1 S10d): rendered >24h without a topic_type_log row
+    # means the best-effort S1 write failed silently; the variety machine
+    # starves without it (spec metric M2).
+    gap = await _probe_ledger_gap(conn)
+    if gap > 0:
+        if _alert_due("ledger_gap", now_epoch):
+            msg = (
+                "⚠️ *WR2 topic_type_log GAP*\n"
+                f"*{gap}* rendered draft(s) older than 24h have no anti-sameness "
+                "ledger row. The S1 best-effort write in wr2_html_render_apply is "
+                "failing — check `~/logs/wr2-html-apply.log` for "
+                "`topic_type_log write failed`."
+            )
+            _send_telegram(msg)
+            _state_set("last_alert_ledger_gap", now_epoch)
+            logger.warning("ALERT P2 ledger_gap count=%d", gap)
+        else:
+            logger.info("ledger_gap detected but cooldown active (count=%d)", gap)
+    else:
+        logger.debug("ledger ok (no gaps)")
 
 
 # ─────────────────────────────────────────────────────────────────────────

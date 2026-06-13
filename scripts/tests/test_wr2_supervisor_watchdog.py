@@ -129,24 +129,11 @@ def test_success_rate_handles_malformed_lines(wd):
 # evaluate_once tiered alerts
 # ─────────────────────────────────────────────────────────────────────────
 
-def _make_conn(heartbeat_age, oldest_pending_hours, rendered_recent, canva_enabled="true"):
-    """Build a mock asyncpg.Connection with the fetchval responses.
-
-    fetchval call order in _evaluate_once (W46 added the canva flag at #2):
-      1. heartbeat_age          (_probe_heartbeat_age)
-      2. canva-renderer-enabled (_probe_canva_renderer_enabled, W46 2026-05-23)
-      3. oldest_pending_hours   (_probe_pipeline_state)
-      4. rendered_recent        (_probe_pipeline_state)
-
-    Before this fix the stub supplied only 3 values, so the canva flag
-    consumed `oldest_pending_hours` (a float → not in the enabled set →
-    read as DISABLED), which silently skipped both pipeline_frozen and
-    success_rate_low → 2 pre-existing test failures (Mythos-P3 2026-06-14).
-    """
+def _make_conn(heartbeat_age, oldest_pending_hours, rendered_recent):
+    """Build a mock asyncpg.Connection with the 3 fetchval responses."""
     conn = MagicMock()
     conn.fetchval = AsyncMock(side_effect=[
         heartbeat_age,
-        canva_enabled,
         oldest_pending_hours,
         rendered_recent,
     ])
@@ -157,7 +144,7 @@ def test_evaluate_p0_supervisor_down_fires_when_heartbeat_stale(wd):
     """Heartbeat row > 5 min old → P0 SUPERVISOR_DOWN."""
     conn = _make_conn(heartbeat_age=400, oldest_pending_hours=0.1, rendered_recent=3)
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn))
     assert any("Supervisor DOWN" in m for m in sent)
     # Cooldown timestamp recorded.
@@ -171,7 +158,7 @@ def test_evaluate_p0_supervisor_down_silenced_within_cooldown(wd):
     wd._state_set("last_alert_supervisor_down", int(_time.time()) - 3600)
     conn = _make_conn(heartbeat_age=400, oldest_pending_hours=0.1, rendered_recent=3)
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn))
     assert not any("Supervisor DOWN" in m for m in sent)
 
@@ -182,14 +169,14 @@ def test_evaluate_pipeline_frozen_requires_both_conditions(wd):
     # Only oldest_pending high, but rendered_recent > 0 → no alert.
     conn1 = _make_conn(heartbeat_age=10, oldest_pending_hours=5.0, rendered_recent=2)
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn1))
     assert not any("Pipeline FROZEN" in m for m in sent)
 
     # Both conditions met → alert.
     sent.clear()
     conn2 = _make_conn(heartbeat_age=10, oldest_pending_hours=5.0, rendered_recent=0)
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn2))
     assert any("Pipeline FROZEN" in m for m in sent)
 
@@ -206,7 +193,7 @@ def test_evaluate_p1_success_rate_below_threshold(wd):
     _write_telemetry(wd.TELEMETRY_PATH, rows)
     conn = _make_conn(heartbeat_age=10, oldest_pending_hours=0.1, rendered_recent=3)
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn))
     assert any("success rate LOW" in m for m in sent)
 
@@ -220,7 +207,7 @@ def test_evaluate_p1_silent_with_min_attempts_below_threshold(wd):
     _write_telemetry(wd.TELEMETRY_PATH, rows)
     conn = _make_conn(heartbeat_age=10, oldest_pending_hours=0.1, rendered_recent=3)
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn))
     assert not any("success rate LOW" in m for m in sent)
 
@@ -234,7 +221,7 @@ def test_evaluate_silent_when_all_healthy(wd):
     _write_telemetry(wd.TELEMETRY_PATH, rows)
     conn = _make_conn(heartbeat_age=30, oldest_pending_hours=0.1, rendered_recent=3)
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn))
     assert sent == []
     assert wd._state_get("last_alert_supervisor_down") is None
@@ -254,7 +241,7 @@ def test_evaluate_degrades_open_on_missing_heartbeat_table(wd):
         3,  # rendered_recent
     ])
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text) or True):
+    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_once(conn))
     assert not any("Supervisor DOWN" in m for m in sent)
 
@@ -271,44 +258,43 @@ def test_success_rate_window_uses_7_days_not_24h():
     assert 'WR2_WATCHDOG_SUCCESS_THRESHOLD_PCT", "80"' in src
 
 
-# ─────────────────────────────────────────────────────────────────────────
-# _send_telegram — Mythos-P3 un-mute: no parse_mode (HTTP 400 fix) + bool return
-# ─────────────────────────────────────────────────────────────────────────
+def test_send_telegram_falls_back_to_plain_on_markdown_400(wd, monkeypatch):
+    """W-cicatrix 2026-06-13: parse_mode=Markdown made Telegram reject the
+    alert with HTTP 400 (unbalanced * / _ entities in job names) and the
+    watchdog DROPPED it — the WR2 alert channel was mute for 3 days. The
+    fix must resend as plain text: delivery beats formatting."""
+    import urllib.error
 
-def test_send_telegram_no_parse_mode_in_source():
-    """Regression guard: parse_mode=Markdown made every SUPERVISOR_DOWN
-    POST 400 (unbalanced '_' in 'wr2_supervisor'). It must NOT come back.
-    """
-    src = WATCHDOG_PATH.read_text()
-    assert "parse_mode" not in src
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    calls: list[dict] = []
 
+    def fake_post(token, payload):
+        calls.append(dict(payload))
+        if "parse_mode" in payload:
+            raise urllib.error.HTTPError("u", 400, "Bad Request", None, None)
 
-def test_send_telegram_returns_false_without_token(wd, monkeypatch):
-    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
-    assert wd._send_telegram("hi") is False
+    with patch.object(wd, "_post_telegram", fake_post):
+        wd._send_telegram("🚨 *WR2* unbalanced_entity_name")
 
-
-def test_send_telegram_success_returns_true_and_omits_parse_mode(wd, monkeypatch):
-    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123456:fake")
-    captured = {}
-
-    def _fake_urlopen(url, data=None, timeout=None):  # noqa: ARG001
-        captured["data"] = data.decode() if data else ""
-        return MagicMock()
-
-    monkeypatch.setattr(wd.urllib.request, "urlopen", _fake_urlopen)
-    ok = wd._send_telegram("🚨 *WR2 Supervisor DOWN* wr2_supervisor wedged")
-    assert ok is True
-    # The fix: plain text, no parse_mode, emphasis chars stripped.
-    assert "parse_mode" not in captured["data"]
-    assert "%2A" not in captured["data"]  # url-encoded '*' must be gone
+    assert len(calls) == 2, "must retry exactly once after Markdown 400"
+    assert "parse_mode" in calls[0]
+    assert "parse_mode" not in calls[1], "retry must be plain text"
+    assert calls[1]["text"] == "🚨 *WR2* unbalanced_entity_name"
 
 
-def test_send_telegram_returns_false_on_post_failure(wd, monkeypatch):
-    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123456:fake")
+def test_send_telegram_no_plain_retry_on_non_400(wd, monkeypatch):
+    """A 500/502 from Telegram is transient infra, not a formatting issue —
+    no plain-text resend, just the best-effort warning."""
+    import urllib.error
 
-    def _boom(url, data=None, timeout=None):  # noqa: ARG001
-        raise OSError("network down")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    calls: list[dict] = []
 
-    monkeypatch.setattr(wd.urllib.request, "urlopen", _boom)
-    assert wd._send_telegram("hi") is False
+    def fake_post(token, payload):
+        calls.append(dict(payload))
+        raise urllib.error.HTTPError("u", 502, "Bad Gateway", None, None)
+
+    with patch.object(wd, "_post_telegram", fake_post):
+        wd._send_telegram("hello")  # must not raise
+
+    assert len(calls) == 1

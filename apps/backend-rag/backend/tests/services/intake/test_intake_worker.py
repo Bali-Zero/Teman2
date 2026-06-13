@@ -27,9 +27,11 @@ import pytest_asyncio
 
 from backend.services.intake.enqueue import enqueue
 from backend.services.intake.worker import (
+    STAGE_TRANSITIONS,
     IntakeWorker,
     WorkerConfig,
-    STAGE_TRANSITIONS,
+    reap_expired_review_claims,
+    remap_legacy_statuses,
 )
 
 _DB_URL = os.environ.get(
@@ -165,7 +167,8 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
                            poll_interval_seconds=0.05)
         dead_worker = IntakeWorker(pool, config=cfg, worker_id="dead")
 
-        # Claim (takes lease, flips to 'processing') but DO NOT process -> sim crash.
+        # Claim (takes the LEASE ONLY — v2 never touches status at claim time,
+        # so a crash here can never strand the stage cursor) -> sim crash.
         async with pool.acquire() as conn:
             job = await dead_worker._claim_with_inbound(conn)
         assert job is not None and job["id"] == qid
@@ -174,7 +177,7 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
             row = await conn.fetchrow(
                 "SELECT status, lease_owner, lease_expires_at > now() AS leased "
                 "FROM intake_queue WHERE id=$1", qid)
-        assert row["status"] == "processing"
+        assert row["status"] == "pending"  # v2: claim is lease-only, status untouched
         assert row["lease_owner"] == "dead"
         assert row["leased"] is True
         print(f"\n[reclaim] job {qid} claimed by dead worker, lease held: {dict(row)}")
@@ -184,7 +187,7 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
         async with pool.acquire() as conn:
             stolen = await live._claim_with_inbound(conn)
         assert stolen is None, "lease not respected: live worker stole a held job"
-        print(f"[reclaim] live worker correctly BLOCKED while lease valid")
+        print("[reclaim] live worker correctly BLOCKED while lease valid")
 
         # Wait out the lease, then the live worker reclaims + completes.
         await asyncio.sleep(lease_ttl + 0.5)
@@ -221,7 +224,7 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
         # Inject a stage handler that always crashes.
         async def crash(job, stage):  # noqa: ANN001
             raise RuntimeError(
-                "poison stage=%s leak test@x.com KTP 1234567890123456" % stage
+                f"poison stage={stage} leak test@x.com KTP 1234567890123456"
             )
         w.stage_handler = crash
 
@@ -255,6 +258,142 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
         print(f"\n[poison] dead after attempts={row['attempts']}/{row['max_attempts']}, "
               f"iters={iters}, alerts={len(alerts)}, last_error={row['last_error']!r}")
     finally:
+        await _cleanup(pool, qids)
+
+
+@pytest.mark.asyncio
+async def test_remap_legacy_statuses_stage_aware(pool, tmp_path):
+    """v1 -> v2 boot remap: stage-aware status mapping + ghost-lease release.
+
+    The ``stage`` column holds the last COMPLETED stage, so every v1 name maps
+    deterministically:
+      ('processing','classify') -> ocr_done    ('ocr','ocr')          -> ocr_done
+      ('processing','extract')  -> extracted   ('classified','extract')-> extracted
+      ('processing','validate') -> validated   ('extracted','validate')-> validated
+    A genuine v2 row ('extracted', stage='extract') must NOT be touched.
+    NOTE: we never assert on the returned count — the live dev DB may carry
+    other legacy rows that the (idempotent, boot-time) remap also touches.
+    """
+    qids = await _make_jobs(pool, tmp_path, 6, "remap")
+    extra: list[int] = []
+    try:
+        v1_shapes = [
+            ("processing", "classify", "ocr_done"),
+            ("processing", "extract", "extracted"),
+            ("processing", "validate", "validated"),
+            ("ocr", "ocr", "ocr_done"),
+            ("classified", "extract", "extracted"),
+            ("extracted", "validate", "validated"),
+        ]
+        async with pool.acquire() as conn:
+            for qid, (v1_status, v1_stage, _) in zip(qids, v1_shapes, strict=True):
+                await conn.execute(
+                    "UPDATE intake_queue SET status=$2, stage=$3, "
+                    "lease_owner='ghost', lease_expires_at=now() + interval '1 hour' "
+                    "WHERE id=$1",
+                    qid, v1_status, v1_stage)
+
+        await remap_legacy_statuses(pool)
+
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, status, lease_owner, next_visible_at <= now() AS visible "
+                "FROM intake_queue WHERE id = ANY($1)", qids)
+        by_id = {r["id"]: r for r in rows}
+        for qid, (v1_status, v1_stage, expected) in zip(qids, v1_shapes, strict=True):
+            row = by_id[qid]
+            assert row["status"] == expected, (
+                f"({v1_status},{v1_stage}) remapped to {row['status']!r}, "
+                f"expected {expected!r}")
+            assert row["lease_owner"] is None, (
+                f"ghost lease NOT released for ({v1_status},{v1_stage})")
+            assert row["visible"] is True, (
+                f"next_visible_at not reset to now() for ({v1_status},{v1_stage})")
+
+        # 7th check: a genuine v2 row (extract done -> status='extracted',
+        # stage='extract') is OUTSIDE the remap WHERE and must stay untouched.
+        extra = await _make_jobs(pool, tmp_path, 1, "remap-v2")
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE intake_queue SET status='extracted', stage='extract' WHERE id=$1",
+                extra[0])
+        await remap_legacy_statuses(pool)
+        async with pool.acquire() as conn:
+            v2_status = await conn.fetchval(
+                "SELECT status FROM intake_queue WHERE id=$1", extra[0])
+        assert v2_status == "extracted", (
+            "v2 row (status='extracted', stage='extract') was wrongly remapped "
+            f"to {v2_status!r}")
+        print(f"\n[remap] 6 v1 shapes remapped stage-aware, leases released; "
+              f"v2 row untouched ({v2_status})")
+    finally:
+        await _cleanup(pool, qids + extra)
+
+
+@pytest.mark.asyncio
+async def test_reap_expired_review_claims(pool, tmp_path):
+    """Expired review_claimed proposals return to review_pending; live ones don't.
+
+    The reaper must clear ALL four lease columns (lease_owner, claim_token,
+    claimed_at, lease_expires_at) on the expired claim and leave a still-live
+    claim fully intact. No count assertion (live DB may have other stale claims).
+    """
+    qids = await _make_jobs(pool, tmp_path, 2, "reap")
+    pids: list[int] = []
+    try:
+        async with pool.acquire() as conn:
+            p_expired = await conn.fetchval(
+                """
+                INSERT INTO document_routing_proposal
+                    (queue_id, doc_index, pipeline_version, routing_key,
+                     entity_resolution, routing, commit_gate, status,
+                     lease_owner, lease_expires_at, claim_token, claimed_at)
+                VALUES ($1, 0, 'v1', $2, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
+                        'review_claimed', 'x', now() - interval '1 minute', $3, now())
+                RETURNING id
+                """,
+                qids[0], f"reap-exp-{uuid.uuid4().hex[:8]}", uuid.uuid4())
+            p_live = await conn.fetchval(
+                """
+                INSERT INTO document_routing_proposal
+                    (queue_id, doc_index, pipeline_version, routing_key,
+                     entity_resolution, routing, commit_gate, status,
+                     lease_owner, lease_expires_at, claim_token, claimed_at)
+                VALUES ($1, 0, 'v1', $2, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
+                        'review_claimed', 'y', now() + interval '10 minutes', $3, now())
+                RETURNING id
+                """,
+                qids[1], f"reap-live-{uuid.uuid4().hex[:8]}", uuid.uuid4())
+            pids += [p_expired, p_live]
+
+        await reap_expired_review_claims(pool)
+
+        async with pool.acquire() as conn:
+            exp = await conn.fetchrow(
+                "SELECT status, lease_owner, claim_token, claimed_at, lease_expires_at "
+                "FROM document_routing_proposal WHERE id=$1", p_expired)
+            live = await conn.fetchrow(
+                "SELECT status, lease_owner, claim_token, claimed_at, lease_expires_at "
+                "FROM document_routing_proposal WHERE id=$1", p_live)
+
+        assert exp["status"] == "review_pending", f"expired claim not reaped: {dict(exp)}"
+        assert exp["lease_owner"] is None
+        assert exp["claim_token"] is None
+        assert exp["claimed_at"] is None
+        assert exp["lease_expires_at"] is None
+
+        assert live["status"] == "review_claimed", f"live claim wrongly reaped: {dict(live)}"
+        assert live["lease_owner"] == "y"
+        assert live["claim_token"] is not None
+        assert live["claimed_at"] is not None
+        assert live["lease_expires_at"] is not None
+        print(f"\n[reap] expired claim {p_expired} -> review_pending (lease cleared); "
+              f"live claim {p_live} intact")
+    finally:
+        async with pool.acquire() as conn:
+            for pid in pids:
+                await conn.execute(
+                    "DELETE FROM document_routing_proposal WHERE id=$1", pid)
         await _cleanup(pool, qids)
 
 
