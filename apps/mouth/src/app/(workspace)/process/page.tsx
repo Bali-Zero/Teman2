@@ -37,6 +37,7 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -64,6 +65,11 @@ import {
   initializeAnalytics,
 } from "@/lib/analytics";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import {
+  PROCESS_VIEW_MODE_KEY,
+  loadViewMode,
+  saveViewMode,
+} from "@/lib/utils/view-mode-storage";
 
 // SIMPLIFIED WORKFLOW (Feb 2026) - 5 Steps:
 // inquiry → waiting_documents → sending_invoice → on_process → completed
@@ -203,7 +209,10 @@ export default function PratichePage() {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  // P2.2: persist the view toggle across navigations (lazy-init + write-through)
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    loadViewMode(PROCESS_VIEW_MODE_KEY, ["kanban", "list"], "kanban"),
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     status: "",
@@ -308,9 +317,10 @@ export default function PratichePage() {
     loadPractices();
   }, [selectedMonth]);
 
-  // Track view mode changes
+  // Track + persist view mode changes
   useEffect(() => {
     trackViewModeChange(viewMode);
+    saveViewMode(PROCESS_VIEW_MODE_KEY, viewMode);
   }, [viewMode]);
 
   // Track filter changes
@@ -1548,9 +1558,29 @@ export default function PratichePage() {
               <h3 className="text-lg font-semibold text-[var(--bz-text-1)] mb-2">
                 No process found
               </h3>
-              <p className="text-sm text-[var(--bz-text-2)] max-w-md">
-                Try adjusting your search or filters to find process.
+              <p className="text-sm text-[var(--bz-text-2)] max-w-md mb-6">
+                {activeFiltersCount > 0
+                  ? "No processes match the selected filters."
+                  : searchQuery
+                    ? "No processes match your search. Try different keywords."
+                    : "Get started by creating your first process."}
               </p>
+              {/* P2.3: empty state offers a way out (mirrors clients page) */}
+              {activeFiltersCount > 0 ? (
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  className="gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Filters
+                </Button>
+              ) : (
+                <Button onClick={handleNewCase} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  New Process
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
