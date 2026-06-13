@@ -6,9 +6,9 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **3**
+- scars scanned: **4**
 - mechanical candidates (recurring ≥3): **0**
-- consultive (single-occurrence): **2**
+- consultive (single-occurrence): **3**
 - rejected (no objective anchor, G1): **1**
 
 ## Recurring patterns (the objective recurrence signal, G4)
@@ -23,6 +23,7 @@ _(none — no anchored scar is part of a ≥3 recurring pattern)_
 
 - ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05) [P3]
 - ⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13) [P2]
+- ⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13) [P2]
 
 ## Rejected — no objective anchor (gate G1)
 
