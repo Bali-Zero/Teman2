@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""WR2 Draft Generator — Claude writes 6-8 English slides, every slide gets a generated image.
+"""WR2 Draft Generator — Claude writes 6-11 English slides with SMART hero selection.
 
 Daily cron (05:15 WITA): picks drafts with status='briefed', calls Claude
-OAuth to compose the 6-8 slide JSON (English content, register in the 7
-Council tones; every slide is is_hero_image=true per the 2026-06-12
-decision), runs Imagen 4 Ultra for the cover only (body slides keep
-image_url=None and carry image_prompt for downstream generation),
-uploads the cover to Tigris, persists slides_json to the draft and flips
-status to 'drafts'.
+OAuth to compose the slide JSON (English content, register in the 7
+Council tones). Slide count is FLEXIBLE (6-11) and the model decides which
+slides deserve a full-bleed photo (is_hero_image=true) based on the story —
+the cover is always hero; text-heavy slides (dense lists, citations, pure
+editorial takes) stay text-only and render as clean text-on-color (decision
+2026-06-13, superseding the 2026-06-12 "every slide hero" rule). Runs Imagen 4
+Ultra for the cover only (other hero slides keep image_url=None and carry
+image_prompt for downstream generation), uploads the cover to Tigris, persists
+slides_json to the draft and flips status to 'drafts'.
 
 Env:
     DATABASE_URL           — localhost form
@@ -160,11 +163,11 @@ HARD RULES:
 - Body max 280 characters
 - Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
 - LAST slide = CTA to Bali Zero
-- Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
+- HERO slides must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups (text-only slides do NOT need image_prompt)
 
-TONAL PALETTE (per slide — drives the photographic look, fights monotony):
-EVERY slide MUST include a `tonal_palette` field (all slides are hero). Pick ONE
-that fits the slide's mood; do NOT use the same palette for every slide,
+TONAL PALETTE (per HERO slide — drives the photographic look, fights monotony):
+Each HERO slide MUST include a `tonal_palette` field. Pick ONE
+that fits the slide's mood; do NOT use the same palette for every hero slide,
 and vary it across carousels on the same topic (the brand forbids two
 same-domain carousels looking identical):
 - "warm-ochre": warm, intimate, document/interior mood (the house style)
@@ -173,11 +176,11 @@ same-domain carousels looking identical):
 - "high-contrast": tense, confrontational, urgent
 - "bleached-daylight": open, hopeful, resolution, "the way out"
 
-IMAGE MODE (per slide — the SCENE TYPE, drives anti-sameness):
-EVERY slide MUST include an `image_mode` field naming the
+IMAGE MODE (per HERO slide — the SCENE TYPE, drives anti-sameness):
+Each HERO slide MUST include an `image_mode` field naming the
 KIND of scene. Pick the ONE mode that matches what the photo depicts, and VARY
-it across the slides (two same-domain carousels must not repeat the same dominant
-mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
+it across the hero slides (two same-domain carousels must not repeat the same
+dominant mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
 - "desk-document": papers, forms, a desk, a document close enough to read
 - "event-photo": a real moment/scene with people doing something
 - "architecture-or-texture": buildings, surfaces, materials, no people
@@ -189,13 +192,17 @@ mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
 - "cultural-photo": Indonesian/Balinese culture, ritual, place, daily life
 Use the slug verbatim (e.g. "desk-document").
 
-HERO IMAGE SELECTION (MANDATORY — decision 2026-06-12, option A):
-EVERY slide is `is_hero_image: true` — cover, bodies AND the CTA closer.
-Each slide gets its own generated full-bleed photo as background; there
-are NO text-only slides. Therefore EVERY slide MUST carry `image_prompt`,
-`tonal_palette` AND `image_mode`. Vary the image_mode across the slides:
-NEVER let one mode dominate the whole carousel — use at least 4 of the 9
-modes across the 6-8 slides.
+HERO IMAGE SELECTION (SMART — decision 2026-06-13):
+Choose 6-11 slides as the story needs. Mark `is_hero_image: true` ONLY on
+slides with real visual value — the cover (ALWAYS), the CTA closer (usually),
+and mid slides that show a SCENE, a turning point, or a provocation. Mark
+`is_hero_image: false` on slides that live on TEXT — dense lists, stacked
+facts, verbatim citations, pure editorial "take" statements: these read better
+as clean text-on-color, NOT as text floating over a decorative photo.
+Typically 4-8 of N slides are hero. Each HERO slide MUST carry `image_prompt`,
+`tonal_palette` AND `image_mode` (vary the modes — never let one dominate; use
+at least 4 of the 9 modes across the hero slides). Non-hero slides do NOT need
+`image_prompt`, `tonal_palette` or `image_mode`.
 
 STORYTELLING DIRECTIVES (overrides any default factual mode):
 
@@ -271,14 +278,31 @@ Structure:
       "slide_number": 2,
       "slide_type": "take",
       "is_cover": false,
-      "is_hero_image": true,
+      "is_hero_image": false,
       "headline": "Our read: ...",
-      "body": "...",
+      "body": "First-person editorial take — reads as clean text-on-color, no photo needed."
+    },
+    {
+      "slide_number": 3,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "The turning point",
+      "body": "A scene worth a photo — a moment, a place, a provocation.",
       "image_prompt": "editorial scene, 1-2 sentences",
       "tonal_palette": "cool-teal",
       "image_mode": "event-photo"
     },
-    // ... 4 more slides, ALL is_hero_image: true ...
+    {
+      "slide_number": 4,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "What changes",
+      "body": "A dense list or stacked facts — lives on text, NO image_prompt."
+    },
+    // ... more slides; mix hero (with image_prompt/tonal_palette/image_mode)
+    //     and non-hero (text-only) as the story needs ...
     {
       "slide_number": 7,
       "slide_type": "cta",
@@ -293,13 +317,15 @@ Structure:
   ]
 }
 
-REPEAT (MUST OBEY): EVERY slide object MUST have `is_hero_image: true` — no
-exceptions, no text-only slides. Every slide MUST carry `image_prompt`,
-`tonal_palette` and `image_mode`. THIS IS NON-NEGOTIABLE.
+REPEAT (MUST OBEY): the cover (slide 1) MUST have `is_hero_image: true`. For
+every OTHER slide, set `is_hero_image` SMARTLY based on whether it carries real
+visual value (true) or lives on text (false). EVERY hero slide MUST carry
+`image_prompt`, `tonal_palette` and `image_mode`; non-hero slides need none of
+those. Typically 4-8 of N slides are hero — never all, never just the cover.
 
 ALSO MANDATORY: vary the `image_mode` (one of the 9 slugs above) across the
-slides — use at least 4 DISTINCT modes per carousel; never let one scene type
-dominate the whole carousel.
+HERO slides — use at least 4 DISTINCT modes per carousel; never let one scene
+type dominate the whole carousel.
 """
 
 
@@ -783,8 +809,8 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
         )
 
     slides = parsed.get("slides") or []
-    if len(slides) < 6 or len(slides) > 8:
-        raise ValueError(f"Expected 6-8 slides, got {len(slides)}")
+    if len(slides) < 6 or len(slides) > 11:
+        raise ValueError(f"Expected 6-11 slides, got {len(slides)}")
 
     normalised: list[dict[str, Any]] = []
     for i, raw in enumerate(slides, start=1):
@@ -818,12 +844,18 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
         normalised[0]["is_cover"] = True
         for s in normalised[1:]:
             s["is_cover"] = False
-        # Decisione Antonello 2026-06-12 (option A): EVERY slide carries its
-        # own generated image — force is_hero_image=True on all slides (cover,
-        # bodies, CTA closer) regardless of what the model returned. This
-        # eliminates text-only slides routed to photo layouts without a photo.
-        for s in normalised:
-            s["is_hero_image"] = True
+        # SMART hero (decision Antonello 2026-06-13, supersedes 2026-06-12
+        # option A): the MODEL decides which slides deserve a photo. Minimal
+        # defensive rules only:
+        #   - the cover (slide 1) is ALWAYS hero (a carousel needs at least one
+        #     hero image; the cover is the natural minimum);
+        #   - every other slide PRESERVES the model's is_hero_image flag verbatim
+        #     (already set above from raw.get(...)) — we do NOT force-promote.
+        # If the model marked zero heroes beyond the cover, that is left as-is:
+        # the cover alone is hero enough, and text-only slides route to a
+        # text-only layout family downstream (composer.map_slide_to_family),
+        # never to a photo layout with an empty hero.
+        normalised[0]["is_hero_image"] = True
 
     return register, normalised
 
