@@ -1,54 +1,81 @@
-import { COLLECTION_NAMES } from "./constants";
+import { COLLECTION_NAMES, TOOL_ICONS, DEFAULT_TOOL } from "./constants";
+import { GenericStep, Activity } from "./types";
 
 /**
- * Generates a dynamic, context-aware status message for a tool being used.
- * Falls back to generic labels if specific info is missing.
+ * Generate dynamic status message based on tool and arguments
  */
 export function getDynamicToolMessage(
   toolName: string,
-  args: any,
-  defaultLabel: string
+  args: Record<string, unknown>,
 ): string {
-  try {
-    switch (toolName) {
-      case "vector_search":
-      case "knowledge_graph_search":
-        const query = args?.query || args?.q || "";
-        const collection = args?.collection_name || "";
-        const collectionDisplay = COLLECTION_NAMES[collection] || collection;
+  const query = typeof args?.query === "string" ? args.query : "";
+  const collection =
+    typeof args?.collection === "string" ? args.collection : "";
+  const shortQuery = query.length > 40 ? query.slice(0, 40) + "..." : query;
 
-        if (query && collectionDisplay) {
-          return `Searching for "${query}" in ${collectionDisplay}...`;
-        }
-        if (query) {
-          return `Searching for "${query}"...`;
-        }
-        if (collectionDisplay) {
-          return `Searching ${collectionDisplay}...`;
-        }
-        return "Searching knowledge base...";
-
-      case "get_pricing":
-        const service = args?.service_name || args?.query || "";
-        return service
-          ? `Retrieving price for "${service}"...`
-          : "Fetching pricing information...";
-
-      case "database_query":
-        const docId = args?.document_id || "";
-        return docId ? `Reading document ${docId}...` : "Reading full document...";
-
-      case "web_search":
-        const webQuery = args?.query || args?.q || "";
-        return webQuery ? `Searching web for "${webQuery}"...` : "Searching the web...";
-
-      case "generate_image":
-        return "Generating image...";
-
-      default:
-        return defaultLabel;
+  switch (toolName) {
+    case "vector_search": {
+      if (collection && COLLECTION_NAMES[collection]) {
+        return `Searching for "${shortQuery}" in ${COLLECTION_NAMES[collection]}...`;
+      }
+      return `Searching for "${shortQuery}" in knowledge base...`;
     }
-  } catch (e) {
-    return defaultLabel;
+    case "knowledge_graph_search": {
+      const entity =
+        typeof args?.entity_name === "string" ? args.entity_name : query;
+      return `Exploring connections for "${entity}"...`;
+    }
+    case "calculator": {
+      const expr = typeof args?.expression === "string" ? args.expression : "";
+      return `Calculating: ${expr.slice(0, 30)}${expr.length > 30 ? "..." : ""}`;
+    }
+    case "get_pricing": {
+      const service =
+        typeof args?.service_name === "string" ? args.service_name : "service";
+      return `Retrieving price for "${service}"...`;
+    }
+    case "team_knowledge":
+    case "search_team_member":
+    case "get_team_members_list": {
+      return "Consulting Bali Zero team...";
+    }
+    case "web_search": {
+      return `Searching the web for: "${shortQuery}"...`;
+    }
+    case "generate_image": {
+      return "Generating image...";
+    }
+    default:
+      return `Processing with ${toolName}...`;
   }
+}
+
+/**
+ * Build activity list from steps with dynamic messages
+ */
+export function buildActivities(
+  toolCalls: GenericStep[],
+  toolEnds: GenericStep[],
+): Activity[] {
+  return toolCalls
+    .map((step, idx) => {
+      const stepData = step.data as Record<string, unknown> | undefined;
+      const toolName =
+        (stepData?.tool as string) || (stepData?.name as string) || "unknown";
+      const toolArgs = (stepData?.args as Record<string, unknown>) || {};
+      const icon = TOOL_ICONS[toolName] || DEFAULT_TOOL.icon;
+      const dynamicLabel = getDynamicToolMessage(toolName, toolArgs);
+      const isCompleted = idx < toolEnds.length;
+      const isCurrent = idx === toolCalls.length - 1 && !isCompleted;
+
+      return {
+        key: `${toolName}-${idx}`,
+        icon,
+        label: dynamicLabel,
+        toolName,
+        isCompleted,
+        isCurrent,
+      };
+    })
+    .filter(Boolean);
 }
