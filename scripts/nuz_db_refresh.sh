@@ -11,14 +11,18 @@
 # dumps dir is 700 / files 600. In Pro-side mode the dump transits the Pro (also a
 # Zero machine, Law 6 OK) and is removed from the Pro after scp.
 #
-# TWO DUMP MODES (the `fly proxy` wireguard tunnel from M5 to Fly `sin` is unreliable —
-# 40s timeouts — while from the Pro it comes up in ~5s; empirically verified 2026-06-12):
-#   - local  : open `fly proxy` on THIS machine, pg_dump locally. Needs a working M5→Fly
-#              wireguard tunnel. Fast when it works.
+# DUMP MODES (the `fly proxy` wireguard tunnel from M5 to Fly `sin` is unreliable —
+# 40s timeouts, drops mid-dump — while from the Pro it comes up in ~5s; verified 2026-06-12):
+#   - fly-ssh : run pg_dump INSIDE the Fly PG machine and stream the -Fc dump over the
+#               `fly ssh console` stdout pipe. The tunnel only has to survive ONE stdout
+#               stream (pg_dump's work is server-side), so it does NOT drop mid-dump like
+#               `local`. No Pro dependency. Retries the stream (tunnel handshake is flaky).
+#               PG listens TCP 127.0.0.1:5433 in-container (no unix socket); readonly role.
+#   - local   : open `fly proxy` on THIS machine, pg_dump locally. Needs a working M5→Fly
+#               wireguard tunnel. Drops mid-dump on large DBs (the original AC4 blocker).
 #   - pro     : ssh to the Pro, open the proxy + pg_dump THERE (stable Fly net, Pro keychain,
-#              Pro pg_dump@17), then scp the .dump back to M5. The restore is ALWAYS local.
-#   - auto    : try `local` first; if the proxy doesn't come up within PROXY_WAIT s, fall
-#              back to `pro`. (default)
+#               Pro pg_dump@17), then scp the .dump back to M5. The restore is ALWAYS local.
+#   - auto    : try `fly-ssh` → `local` → `pro` in order. (default)
 #
 # Panel fixes folded in (2026-06-12, §0-bis): F2 (-h 127.0.0.1, NOT localhost→::1),
 # F3 (keychain read to a shell var, never on argv / never echoed). §7 gotchas:
@@ -30,9 +34,14 @@
 # Usage:  bash scripts/nuz_db_refresh.sh
 # Env:    PG17_BIN (default /opt/homebrew/opt/postgresql@17/bin), PROXY_PORT (default 15432),
 #         FLY_PG_APP (default nuzantara-postgres), DUMP_DIR (default ~/.nuzantara-db-snapshots),
-#         KEEP_DUMPS (default 3), DUMP_MODE (auto|local|pro, default auto),
+#         KEEP_DUMPS (default 3), DUMP_MODE (auto|local|pro|fly-ssh, default auto),
 #         PRO_SSH (default pro), PRO_PG17_BIN (default /opt/homebrew/opt/postgresql@17/bin),
-#         PROXY_WAIT (default 25 — seconds to wait for a local proxy before pro fallback).
+#         PROXY_WAIT (default 25 — seconds to wait for a local proxy before pro fallback),
+#         NUZ_APP_DB (override the clients-table DB probe), FLY_PG_PORT (default 5433 —
+#         in-container postgres TCP port), FLY_PGDUMP/FLY_PSQL (default /usr/lib/postgresql/17/bin/*),
+#         FLY_SSH_RETRIES (default 4 — stream retries for the flaky tunnel),
+#         FLY_SSH_TIMEOUT (default 300 — per-attempt wall-clock watchdog; the tunnel can HANG a
+#         single fly-ssh attempt for ~19min, so each attempt is SIGKILLed past this).
 
 set -euo pipefail
 
@@ -54,6 +63,11 @@ export PATH="$PG17_BIN:$PATH"
 
 log() { printf '[nuz-db-refresh] %s\n' "$*"; }
 die() { printf '[nuz-db-refresh] ERROR: %s\n' "$*" >&2; exit 1; }
+
+# POSIX single-quote shell-escape: wrap in '...' and replace each ' with '\''.
+# Used to pass the multi-line remote script as ONE safe arg to `bash -c` over `fly ssh`
+# (so stdin stays free for the password — see dump_fly_ssh W65 note). Contains no secret.
+_shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
 # --- preflight (local restore side — always needed) ------------------------
 command -v pg_dump >/dev/null 2>&1 || die "pg_dump not found ($PG17_BIN) — is postgresql@17 installed?"
@@ -219,16 +233,149 @@ REMOTE
     return 0
 }
 
+dump_fly_ssh() {
+    # Container-side dump: run pg_dump INSIDE the Fly Postgres machine and stream the
+    # custom-format dump over the `fly ssh console` stdout pipe to $DUMP_FILE on M5.
+    #
+    # Why this beats `local`/`pro`: the M5→Fly wireguard tunnel only has to survive ONE
+    # long-lived stdout stream — pg_dump's actual work happens server-side, in-container,
+    # never byte-by-byte across the tunnel (which is what made `local` drop mid-dump:
+    # `server closed connection unexpectedly … EXECUTE dumpFunc`). Empirically the tunnel
+    # is intermittent (~1-in-3 console handshakes), so we retry the whole stream.
+    #
+    # Constraints honored: readonly role nuzantara_readonly (NEVER the in-container
+    # superuser `connect` helper — that's postgres:$OPERATOR_PASSWORD, a W38 escalation);
+    # RO password read from the M5 Keychain into a var, piped to the remote `bash -c` via
+    # stdin (NEVER on argv → never in the container's `ps`/argv, W65); pg_dump @ PG17 in the
+    # container (/usr/lib/postgresql/17/bin) matches local PG17 → clean pg_restore.
+    #
+    # The Fly postgres-flex 17.2 image has NO unix socket (unix_socket_directories empty);
+    # postgres listens on TCP 127.0.0.1:5433 (5432 is haproxy/flycast). So -h 127.0.0.1 -p 5433.
+    command -v fly >/dev/null 2>&1 || { log "fly-ssh mode: flyctl not on PATH"; return 1; }
+    fly auth whoami >/dev/null 2>&1 || { log "fly-ssh mode: flyctl not authenticated"; return 1; }
+
+    local FLY_PG_PORT="${FLY_PG_PORT:-5433}"
+    local FLY_PGDUMP="${FLY_PGDUMP:-/usr/lib/postgresql/17/bin/pg_dump}"
+    local FLY_PSQL="${FLY_PSQL:-/usr/lib/postgresql/17/bin/psql}"
+    local FLY_SSH_RETRIES="${FLY_SSH_RETRIES:-4}"
+
+    local RO_PASS
+    RO_PASS="$(security find-generic-password -s "$KEYCHAIN_SERVICE" -w 2>/dev/null)" || {
+        log "fly-ssh mode: Keychain entry '$KEYCHAIN_SERVICE' not found on M5"; return 1; }
+    [ -n "$RO_PASS" ] || { log "fly-ssh mode: Keychain entry empty"; return 1; }
+
+    # Discover the PRIMARY machine id (repmgr primary). Machine ids change on redeploy, so
+    # never hardcode. `fly status` lists machines; the role column marks the primary.
+    local MACHINE
+    MACHINE="$(fly status -a "$FLY_PG_APP" 2>/dev/null \
+        | awk 'tolower($0) ~ /primary/ {print $1; exit}')"
+    if [ -z "$MACHINE" ]; then
+        log "fly-ssh mode: could not find primary machine id via 'fly status -a $FLY_PG_APP'"; RO_PASS=""; return 1
+    fi
+    log "fly-ssh mode: primary machine = $MACHINE (port $FLY_PG_PORT, role $RO_ROLE)"
+
+    # Remote script: carried in the `-C` command arg (it holds NO secret — only the dump
+    # logic). The RO password is the SOLE thing on stdin; the script's `read` consumes it.
+    #
+    # CRITICAL (W65 fix, 2026-06-12): do NOT pipe "password\n + script" into `bash -s`.
+    # With `bash -s`, STDIN *is* the script source, so line 1 (the password) would be parsed
+    # as a bash command → `command not found: <password>` → leak to remote stderr (observed
+    # empirically on handshake-race rc=0 attempts). The fix: script goes in `-C`, stdin
+    # carries ONLY the password → the script reads it, it never reaches a command position.
+    # The script body is config-templated (unquoted heredoc) but contains no credential.
+    local remote_script
+    remote_script="$(cat <<REMOTE
+set -uo pipefail
+IFS= read -r RO_PASS_IN || { echo "FLYSSH-ERR: no password on stdin" >&2; exit 7; }
+[ -n "\$RO_PASS_IN" ] || { echo "FLYSSH-ERR: empty password on stdin" >&2; exit 7; }
+export PGPASSWORD="\$RO_PASS_IN"; RO_PASS_IN=""
+H=127.0.0.1; P=$FLY_PG_PORT; RO='$RO_ROLE'
+PGD='$FLY_PGDUMP'; PSQL='$FLY_PSQL'
+DB="\${NUZ_APP_DB:-}"
+if [ -z "\$DB" ]; then
+  for cand in \$("\$PSQL" -h "\$H" -p "\$P" -U "\$RO" -d postgres -tAc \
+      "SELECT datname FROM pg_database WHERE datistemplate=false AND datname NOT IN ('postgres','repmgr') ORDER BY datname;" 2>/dev/null); do
+    has="\$("\$PSQL" -h "\$H" -p "\$P" -U "\$RO" -d "\$cand" -tAc "SELECT to_regclass('public.clients') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')"
+    [ "\$has" = t ] && { DB="\$cand"; break; }
+  done
+fi
+[ -n "\$DB" ] || { echo "FLYSSH-ERR: no non-template DB has public.clients via readonly role" >&2; exit 5; }
+echo "FLYSSH: dumping DB=\$DB" >&2
+"\$PGD" -h "\$H" -p "\$P" -U "\$RO" -d "\$DB" -Fc --no-owner --no-acl \
+  --exclude-table-data='events_outbox' --exclude-table-data='olympus_heartbeats*' 2>/tmp/flyssh-dump.err
+rc=\$?
+if [ "\$rc" -ne 0 ]; then
+  sed 's/^/FLYSSH-ERR: /' /tmp/flyssh-dump.err >&2
+  grep -qiE 'permission denied|must be (owner|superuser)' /tmp/flyssh-dump.err && echo "FLYSSH-PERM: do NOT escalate role (W38)" >&2
+  exit 6
+fi
+REMOTE
+)"
+
+    # Per-attempt wall-clock watchdog: the Fly tunnel can HANG an individual `fly ssh console`
+    # mid-stream indefinitely (19-min hang observed 2026-06-12), not just fail fast — a single
+    # stuck attempt would blow the whole retry budget. macOS /bin/bash has no `timeout(1)`, so we
+    # run the console in the background and a watchdog SIGKILLs it after FLY_SSH_TIMEOUT seconds.
+    local FLY_SSH_TIMEOUT="${FLY_SSH_TIMEOUT:-300}"  # 5 min — generous for a ~15M dump, < the 19m hang
+    local attempt rc child wd
+    for attempt in $(seq 1 "$FLY_SSH_RETRIES"); do
+        log "fly-ssh mode: dump attempt $attempt/$FLY_SSH_RETRIES (streaming -Fc, ${FLY_SSH_TIMEOUT}s watchdog) ..."
+        # stdin = ONLY the RO password (consumed by the script's `read`). The script runs via
+        # `-C` (bash -c <script>), so a partial/raced handshake can't echo the password as a
+        # command — stdin is data, not the script source. stdout = the -Fc dump → $DUMP_FILE.
+        printf '%s\n' "$RO_PASS" \
+            | fly ssh console -a "$FLY_PG_APP" --machine "$MACHINE" --pty=false \
+                -C "/bin/bash -c $(_shq "$remote_script")" >"$DUMP_FILE" 2>/tmp/flyssh.err &
+        child=$!
+        # Watchdog: after the timeout, hard-kill the (likely-hung) console child.
+        ( sleep "$FLY_SSH_TIMEOUT"; kill -9 "$child" 2>/dev/null ) &
+        wd=$!
+        if wait "$child"; then rc=0; else rc=$?; fi
+        # Stop the watchdog if the attempt finished on its own.
+        kill "$wd" 2>/dev/null; wait "$wd" 2>/dev/null || true
+        # rc 137 = SIGKILL by the watchdog (timed-out hang) → treat as a retryable failure.
+        if [ "$rc" -eq 137 ]; then
+            log "fly-ssh mode: attempt $attempt HUNG > ${FLY_SSH_TIMEOUT}s — watchdog killed it (tunnel stall)"
+        fi
+        # Permission error = STOP (never retry into a role escalation, W38)
+        if grep -q 'FLYSSH-PERM' /tmp/flyssh.err 2>/dev/null; then
+            RO_PASS=""; unset PGPASSWORD 2>/dev/null || true
+            sed 's/^/    /' /tmp/flyssh.err >&2
+            die "readonly role hit a permission error mid-dump — STOP, surface to Antonello (do NOT escalate role)"
+        fi
+        # Success = rc 0 AND a non-trivial custom-format dump (header magic 'PGDMP', > 1KB)
+        if [ "$rc" -eq 0 ] && [ -s "$DUMP_FILE" ] \
+            && [ "$(wc -c <"$DUMP_FILE")" -gt 1024 ] \
+            && head -c 5 "$DUMP_FILE" | grep -q 'PGDMP'; then
+            RO_PASS=""; unset PGPASSWORD 2>/dev/null || true
+            log "fly-ssh mode: dump streamed OK ($(du -h "$DUMP_FILE" | cut -f1))"
+            return 0
+        fi
+        log "fly-ssh mode: attempt $attempt failed (rc=$rc, size=$(wc -c <"$DUMP_FILE" 2>/dev/null || echo 0)B). Remote stderr:"
+        sed 's/^/    /' /tmp/flyssh.err >&2 2>/dev/null || true
+        rm -f "$DUMP_FILE"
+        [ "$attempt" -lt "$FLY_SSH_RETRIES" ] && sleep 5
+    done
+    RO_PASS=""; unset PGPASSWORD 2>/dev/null || true
+    log "fly-ssh mode: all $FLY_SSH_RETRIES attempts failed (tunnel intermittent — retry later)"
+    return 1
+}
+
 case "$DUMP_MODE" in
-    local) dump_local || die "local dump failed (DUMP_MODE=local)";;
-    pro)   dump_pro;;
+    local)   dump_local || die "local dump failed (DUMP_MODE=local)";;
+    pro)     dump_pro;;
+    fly-ssh) dump_fly_ssh || die "fly-ssh dump failed (DUMP_MODE=fly-ssh)";;
     auto)
-        if dump_local; then :; else
-            log "auto: local dump unavailable → falling back to Pro-side dump"
+        # Order: fly-ssh (most robust — tunnel survives one stream, no Pro dependency) →
+        # local (M5 proxy, drops mid-dump) → pro (needs Pro reachable).
+        if dump_fly_ssh; then :
+        elif dump_local; then :
+        else
+            log "auto: fly-ssh + local both unavailable → falling back to Pro-side dump"
             dump_pro
         fi
         ;;
-    *) die "unknown DUMP_MODE='$DUMP_MODE' (use auto|local|pro)";;
+    *) die "unknown DUMP_MODE='$DUMP_MODE' (use auto|local|pro|fly-ssh)";;
 esac
 
 [ -s "$DUMP_FILE" ] || die "no dump produced"

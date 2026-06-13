@@ -737,6 +737,12 @@ def _guard_document_status_reply(
 
     normalized_reply = _normalize_text(reply)
     # Non-conditional markers: always unsafe when present.
+    # ID/IT affirmative-present forms added 2026-06-13 (lang-gap sweep): the
+    # markers were English-only, so "KITAS kamu sudah disetujui" / "la pratica
+    # e' gia' approvata" reached clients unclobbered. "sudah/telah disetujui"
+    # and "gia' approvat-" are affirmative by construction (the adverb), so
+    # they are safe as unconditional markers — unlike bare "disetujui" /
+    # "approvata", which appear inside conditionals ("setelah disetujui").
     unconditional_markers = (
         "may still be in document check",
         "might still be in document check",
@@ -745,6 +751,13 @@ def _guard_document_status_reply(
         "document check or submission",
         "submission stage",
         "already approved",
+        "sudah disetujui",
+        "telah disetujui",
+        "siap diambil",
+        "gia' approvat",
+        "già approvat",
+        "pronta per il ritiro",
+        "pronto per il ritiro",
     )
     if any(marker in normalized_reply for marker in unconditional_markers):
         return _canonical_document_status_answer(
@@ -785,11 +798,17 @@ def _guard_legacy_b211_reply(
     # pass genuinely-unsafe replies ("B211A holders can work here" contained
     # "old" inside "holders" and slipped through the escape without being
     # clobbered).  Multi-word markers use exact phrase matching (already safe).
+    # "vecchia/vecchio" + "non piu'" / "tidak lagi" added 2026-06-13 (lang-gap
+    # sweep): a CORRECT Italian answer framing B211 as "una vecchia dicitura"
+    # carried none of the English escape markers and was clobbered (over-match,
+    # W68/W72 class — correct answer destroyed).
     legacy_framing = _contains_any_word(
         normalized_reply,
         (
             "old",
             "lama",
+            "vecchia",
+            "vecchio",
         ),
     ) or any(
         marker in normalized_reply
@@ -797,6 +816,9 @@ def _guard_legacy_b211_reply(
             "legacy",
             "former",
             "no longer",
+            "non piu",
+            "non più",
+            "tidak lagi",
             "short-stay",
             "short stay",
             "visit visa",
@@ -806,9 +828,8 @@ def _guard_legacy_b211_reply(
             "limited stay",
         )
     )
-    route_framing = (
-        ("c2" in normalized_reply or "c12" in normalized_reply)
-        and "current" in normalized_reply
+    route_framing = ("c2" in normalized_reply or "c12" in normalized_reply) and _contains_any(
+        normalized_reply, ("current", "corrente", "attuale", "saat ini")
     )
     if not (legacy_framing or route_framing):
         return _canonical_b211_business_answer(
@@ -837,6 +858,11 @@ def _hak_milik_asserts_foreigner_can_own(normalized_reply: str) -> bool:
         "tidak boleh hak milik",
         "non puo' detenere hak milik",
         "non puo' possedere hak milik",
+        # Accented Italian variants (2026-06-13 lang-gap sweep): _normalize_text
+        # rewrites curly apostrophes but does NOT strip accents, so the model's
+        # natural "non può detenere" never matched the "puo'" spellings.
+        "non può detenere hak milik",
+        "non può possedere hak milik",
         "no. a foreigner cannot",
         "no. orang asing tidak",
         "no. uno straniero non",
@@ -860,6 +886,11 @@ def _hak_milik_asserts_foreigner_can_own(normalized_reply: str) -> bool:
         "puo' detenere hak milik",
         "puo' possedere hak milik",
         "puo' avere hak milik",
+        # Accented variants — a WRONG Italian "può detenere Hak Milik" reply
+        # slipped past the apostrophe-only spellings (2026-06-13 lang-gap sweep).
+        "può detenere hak milik",
+        "può possedere hak milik",
+        "può avere hak milik",
         "through a pma you can hold hak milik",
         "via pma can hold hak milik",
     )
@@ -905,6 +936,10 @@ def _guard_lkpm_reply(
         return reply
 
     normalized_reply = _normalize_text(reply)
+    # ID/IT month names added 2026-06-13 (lang-gap sweep): "10 july" never
+    # matched "10 luglio" / "tanggal 10 juli", so the abrogated fixed-day
+    # deadline reached ID/IT clients unclobbered. ("10 april" already covers
+    # both EN and ID april, and is a prefix of the Italian "10 aprile".)
     stale_markers = (
         "10 april",
         "10 july",
@@ -914,7 +949,20 @@ def _guard_lkpm_reply(
         "7 july",
         "7 october",
         "7 january",
+        "10 juli",
+        "10 oktober",
+        "10 januari",
+        "7 juli",
+        "7 oktober",
+        "7 januari",
+        "10 luglio",
+        "10 ottobre",
+        "10 gennaio",
+        "7 luglio",
+        "7 ottobre",
+        "7 gennaio",
         "tanggal 7",
+        "tanggal 10",
         "il 7",
     )
     # The old fixed monthly deadline ("the 10th / 7th of <month>") is an
@@ -984,9 +1032,16 @@ def _guard_property_zoning_reply(
     # "please"/"release"/"leasehold"; "villa" matched "village". Switch to
     # _contains_any_word so "please" no longer trips the lease arm and "village"
     # no longer trips the villa arm.
+    # "zona"/"residenziale"/"residensial" added 2026-06-13 (lang-gap sweep):
+    # the second arm was English-only, so the guard simply never FIRED on an
+    # Italian/Indonesian zoning question ("villa ... in zona residenziale") and
+    # a wrong no-permit-needed reply reached the client untouched.
     if not (
         _contains_any_word(normalized_message, ("villa", "vila", "airbnb"))
-        and _contains_any_word(normalized_message, ("zoning", "residential", "zone", "lease"))
+        and _contains_any_word(
+            normalized_message,
+            ("zoning", "residential", "zone", "lease", "zona", "residenziale", "residensial"),
+        )
     ):
         return reply
 
@@ -1052,9 +1107,12 @@ def _guard_tax_compliance_reply(
     # rate/deadline/definition facts ("what is the VAT rate", "when is the SPT
     # deadline", "what is Coretax"). The suffix is meaningful only for RISK /
     # PENALTY / EXPOSURE intent, so gate on that, not on bare tax keywords.
+    # "iva"/"tasse" added 2026-06-13 (lang-gap sweep): an Italian risk question
+    # ("rischi se pago l'IVA in ritardo") carried no English/Indonesian tax
+    # keyword, so the verify-suffix never applied to Italian tax-risk answers.
     if not _contains_any_word(
         normalized_message,
-        ("lkpm", "coretax", "faktur pajak", "spt", "ppn", "pph", "tax", "pajak"),
+        ("lkpm", "coretax", "faktur pajak", "spt", "ppn", "pph", "tax", "pajak", "iva", "tasse"),
     ):
         return reply
 
@@ -1230,12 +1288,31 @@ def _guard_cafe_pma_reply(
     # lokal" answer that happened to name a cafe as an example got clobbered into
     # the cafe-setup canonical. Require the user to actually be asking about a
     # cafe before substituting the cafe answer.
+    # "caffè/caffe/caffetteria" added 2026-06-13 (lang-gap sweep): the Italian
+    # double-f spelling contains neither "cafe" nor "café" as a substring, so
+    # an Italian cafe question never armed the guard. _normalize_text does not
+    # strip accents — both spellings are listed.
     if not _contains_any(
         normalized_message,
-        ("cafe", "café", "coffee", "kafe", "kedai", "warung", "rumah minum", "56303"),
+        (
+            "cafe",
+            "café",
+            "caffè",
+            "caffe",
+            "caffetteria",
+            "coffee",
+            "kafe",
+            "kedai",
+            "warung",
+            "rumah minum",
+            "56303",
+        ),
     ):
         return reply
-    if not _contains_any(normalized_reply, ("cafe", "56303", "restaurant", "coffee")):
+    if not _contains_any(
+        normalized_reply,
+        ("cafe", "caffè", "caffe", "56303", "restaurant", "ristorante", "coffee", "kafe", "kedai"),
+    ):
         return reply
     if _reply_word_count(reply) > 115:
         return _canonical_cafe_pma_answer(
@@ -1286,21 +1363,27 @@ _NOMINEE_DIRECT_TERMS = (
     "under their name",
     "in his name",
     "in her name",
-    # NOTE: "'s name" and "atas nama" are kept here but _is_nominee_intent
-    # applies an exclusion check for company/invoice contexts (F06 2026-06-11):
-    # "change my company's name" and "faktur atas nama PT saya" must NOT fire.
-    "'s name",  # "in my friend's name", "in her husband's name", etc.
-    "atas nama",
     "pinjam nama",
     "pakai nama",
     "prestanome",
     "intestare",
     "intesta a",
 )
+# Weak name-tokens (F06 hardening 2026-06-13): "'s name" / "atas nama" appear in
+# everyday administrative sentences ("the notary's name", "booking atas nama
+# saya"), so ALONE they are not nominee intent. They fire only when the message
+# also carries an asset or proxy co-occurrence, and never in an
+# administrative-naming context (_NOMINEE_FALSE_POSITIVE_TERMS below).
+_NOMINEE_WEAK_NAME_TERMS = (
+    "'s name",  # "in my friend's name", "in her husband's name", etc.
+    "atas nama",
+)
 # Contexts that look like nominee trigger terms but are NOT nominee intent.
 # "company's name" / "company name" → corporate name change (not land holding).
 # "atas nama PT" → invoice / document issued in the name of a company.
 # "faktur" / "invoice" / "ubah nama" (change name) → administrative, not holding.
+# booking / tiket / rekening (F06 hardening) → reservation, ticket, or bank
+# account NAMING ("booking hotel atas nama saya"), not asset holding.
 _NOMINEE_FALSE_POSITIVE_TERMS = (
     "company name",
     "company's name",
@@ -1318,12 +1401,43 @@ _NOMINEE_FALSE_POSITIVE_TERMS = (
     "atas nama pt",
     "atas nama cv",
     "atas nama perusahaan",
+    "booking",
+    # Verb form + venue (2026-06-13 lang-gap sweep): "can you BOOK the HOTEL
+    # under my wife's name" carried the weak "'s name" token + a proxy signal
+    # but only the gerund "booking" was listed, so a plain reservation request
+    # was clobbered with the nominee-illegality lecture.
+    "book the",
+    "book a",
+    "book me",
+    "hotel",
+    "reservation",
+    "reservasi",
+    "ticket",
+    "tiket",
+    "rekening",
+    "bank account",
 )
 # Compositional fallback: "<someone Indonesian/a friend> hold(s) the <asset> for me".
 # Phrase lists are too brittle ("hold the title for me" missed "hold the land title
 # for me"), so detect the verb + an asset noun + a for-me / friend signal instead.
 _NOMINEE_HOLD_VERBS = ("hold ", "holds ", "holding ", "keep ", "register ", "put it in")
-_NOMINEE_ASSET_TERMS = ("title", "land", "property", "house", "villa", "certificate", "shares")
+_NOMINEE_ASSET_TERMS = (
+    "title",
+    "land",
+    "property",
+    "house",
+    "villa",
+    "certificate",
+    "shares",
+    # Indonesian / Italian asset nouns so "atas nama" co-occurrence works in
+    # the languages where it is actually used (F06 hardening).
+    "tanah",
+    "sertifikat",
+    "saham",
+    "rumah",
+    "properti",
+    "terreno",
+)
 _NOMINEE_PROXY_SIGNALS = (
     "for me",
     "for us",
@@ -1340,18 +1454,28 @@ _NOMINEE_PROXY_SIGNALS = (
 
 
 def _is_nominee_intent(normalized_message: str) -> bool:
-    # Bail early for known false-positive contexts (F06 2026-06-11):
-    # company name changes ("Can I change my company's name?") and invoice
-    # language ("bisa buat faktur atas nama PT saya?") share trigger tokens
-    # with nominee requests but are unrelated.
-    if _contains_any(normalized_message, _NOMINEE_FALSE_POSITIVE_TERMS):
-        return False
+    # STRONG signals fire regardless of administrative context: the explicit
+    # nominee vocabulary, or the compositional verb+asset+proxy pattern
+    # ("my Indonesian friend can hold the land title for me").
     if _contains_any(normalized_message, _NOMINEE_DIRECT_TERMS):
         return True
-    return (
+    if (
         _contains_any(normalized_message, _NOMINEE_HOLD_VERBS)
         and _contains_any(normalized_message, _NOMINEE_ASSET_TERMS)
         and _contains_any(normalized_message, _NOMINEE_PROXY_SIGNALS)
+    ):
+        return True
+    # WEAK name-tokens ("'s name" / "atas nama") — F06 2026-06-11 + hardening
+    # 2026-06-13. First bail in administrative-naming contexts (company name
+    # change, faktur/invoice, booking/tiket/rekening naming); then require an
+    # asset or proxy co-occurrence, so "the notary's name" / "booking hotel
+    # atas nama saya" never read as nominee requests while "the villa
+    # certificate in my wife's name" still does.
+    if _contains_any(normalized_message, _NOMINEE_FALSE_POSITIVE_TERMS):
+        return False
+    return _contains_any(normalized_message, _NOMINEE_WEAK_NAME_TERMS) and (
+        _contains_any(normalized_message, _NOMINEE_ASSET_TERMS)
+        or _contains_any(normalized_message, _NOMINEE_PROXY_SIGNALS)
     )
 _DEFINITIONAL_TERMS = (
     "what is",
@@ -1421,6 +1545,36 @@ def _guard_nominee_reply(
             _villa_answer_language(message_text, detected_language)
         )
     return reply
+
+
+_REPLY_GUARD_CHAIN = (
+    _guard_villa_kbli_reply,
+    _guard_kbli_label_reply,
+    _guard_cafe_pma_reply,
+    _guard_nominee_reply,
+    _guard_legacy_b211_reply,
+    _guard_property_zoning_reply,
+    _guard_hak_milik_reply,
+    _guard_document_status_reply,
+    _guard_lkpm_reply,
+    _guard_tax_compliance_reply,
+)
+
+
+def _apply_reply_guards(
+    message_text: str,
+    reply: str,
+    detected_language: Any = None,
+) -> str:
+    """Run the FULL production guard chain, in production order, then the
+    WhatsApp format net (F40 — last on purpose, so guard canonicals are
+    normalized too). Single source of truth for the chain: the endpoint and
+    the full-chain tests both call this, so ordering can never drift between
+    what ships and what is tested.
+    """
+    for guard in _REPLY_GUARD_CHAIN:
+        reply = guard(message_text, reply, detected_language)
+    return _normalize_whatsapp_format(reply)
 
 
 def _expected_secret() -> str:
@@ -1811,58 +1965,11 @@ async def reply(
             body.model,
             body.thinking,
         )
-        response_text = _guard_villa_kbli_reply(
+        response_text = _apply_reply_guards(
             body.text,
             response_text,
             body.context.get("detected_language") if body.context else None,
         )
-        response_text = _guard_kbli_label_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_cafe_pma_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_nominee_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_legacy_b211_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_property_zoning_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_hak_milik_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_document_status_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_lkpm_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        response_text = _guard_tax_compliance_reply(
-            body.text,
-            response_text,
-            body.context.get("detected_language") if body.context else None,
-        )
-        # F40: last step on purpose — normalizes guard canonicals too.
-        response_text = _normalize_whatsapp_format(response_text)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"OpenClaw failed: {exc}") from exc
     return {

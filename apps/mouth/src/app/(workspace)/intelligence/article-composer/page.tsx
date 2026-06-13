@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/articles.api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
+import { STRINGS } from "@/lib/strings";
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { renderMiniMarkdown, fileToBase64 } from "@/lib/utils";
 import { safeMiniMarkdown } from "@/lib/utils/safe-html";
@@ -428,7 +429,7 @@ export default function ArticleComposerPage() {
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Es. New KITAS Rules..."
+                placeholder={STRINGS.articleComposer.titlePlaceholder}
                 className={inputClass}
                 style={getInputStyle("title")}
                 onFocus={() => setFocusedInput("title")}
@@ -447,7 +448,7 @@ export default function ArticleComposerPage() {
               <AutoResizeTextarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Incolla contenuto..."
+                placeholder={STRINGS.articleComposer.contentPlaceholder}
                 className={`${inputClass} min-h-[140px] resize-none`}
                 style={getInputStyle("content")}
                 onFocus={() => setFocusedInput("content")}

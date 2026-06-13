@@ -1,0 +1,83 @@
+{
+  "topic": "PP 20/2026 — who keeps the 0.5% UMKM tax and who loses it",
+  "register": "pedagogico",
+  "slides": [
+    {
+      "slide_number": 1,
+      "slide_type": "cover",
+      "is_cover": true,
+      "is_hero_image": true,
+      "headline": "The 0.5% tax just changed owners",
+      "subhead": "PP 20/2026",
+      "body": "Indonesia rewrote its most popular small-business tax in April 2026. Individuals win. Companies get a deadline.",
+      "regulation_code": "PP 20/2026",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-pp20-tax/slide-01.png",
+      "tonal_palette": "warm-ochre"
+    },
+    {
+      "slide_number": 2,
+      "slide_type": "take",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "Not dead. Re-assigned.",
+      "subhead": "WHAT ACTUALLY HAPPENED",
+      "body": "The 0.5% final tax (PPh Final UMKM) survives — but its audience changed. Individual entrepreneurs keep it with NO time limit. Regular companies can no longer enter the scheme.",
+      "regulation_code": "PP 20/2026",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-pp20-tax/slide-02.png",
+      "tonal_palette": "warm-ochre"
+    },
+    {
+      "slide_number": 3,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "Who keeps it, who loses it",
+      "subhead": "THE NEW SPLIT",
+      "body": "KEEPS: individuals (permanent, first IDR 500M tax-free) · PT Perorangan · koperasi. LOSES going forward: multi-shareholder PT · CV · Firma · BUMDes.",
+      "regulation_code": "PP 55/2022 jo. PP 20/2026",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-pp20-tax/slide-03.png",
+      "tonal_palette": "warm-ochre"
+    },
+    {
+      "slide_number": 4,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "Already inside? You're grandfathered",
+      "subhead": "YOUR WINDOW",
+      "body": "Registered before PP 20/2026? You finish your original window: PT = 3 fiscal years, CV/Firma = 4, counted from registration. A 2026 PT runs to 2028. A 2024 PT exits at the end of 2026. One date decides everything: your NPWP registration.",
+      "regulation_code": "PP 20/2026",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-pp20-tax/slide-04.png",
+      "tonal_palette": "warm-ochre"
+    },
+    {
+      "slide_number": 5,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "The math nobody shows you",
+      "subhead": "0.5% VS 11%",
+      "body": "The 0.5% taxes REVENUE. The normal regime taxes PROFIT — at ~11% effective for small companies (Art 31E discount). Margin under ~4.5%? The normal regime is CHEAPER. Loss year? You pay zero, not 0.5% of everything.",
+      "regulation_code": "UU PPh Pasal 31E",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-pp20-tax/slide-05.png",
+      "tonal_palette": "warm-ochre"
+    },
+    {
+      "slide_number": 6,
+      "slide_type": "cta",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "Find your exit year before it finds you",
+      "statement": "One registration date decides your tax for the next three years. Bali Zero runs the full check — window, margin math, transition calendar.",
+      "body": "Bali Zero · Tax & Compliance Desk",
+      "image_url": null,
+      "hero_image_path": null,
+      "tonal_palette": "warm-ochre"
+    }
+  ]
+}

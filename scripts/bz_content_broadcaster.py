@@ -22,6 +22,10 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+# Silence httpx/httpcore INFO logs — httpx at INFO logs the full request URL,
+# which leaks the Telegram bot token in api.telegram.org/bot<token>/... calls (F01).
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Paths

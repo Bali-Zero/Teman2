@@ -1,0 +1,83 @@
+{
+  "topic": "June 2026 double deadline — KBLI 2025 (Jun 18) + annual RUPS report (Jun 30)",
+  "register": "pedagogico",
+  "slides": [
+    {
+      "slide_number": 1,
+      "slide_type": "cover",
+      "is_cover": true,
+      "is_hero_image": true,
+      "headline": "Two deadlines. One month.",
+      "subhead": "JUNE 2026",
+      "body": "June 18: the KBLI 2025 transition closes. June 30: your annual report is due — and for the first time it must be filed with the government.",
+      "regulation_code": "BPS 7/2025 · Permenkum 49/2025",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-june-deadlines/slide-01.png",
+      "tonal_palette": "cool-teal"
+    },
+    {
+      "slide_number": 2,
+      "slide_type": "take",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "KBLI 2025: mostly automatic",
+      "subhead": "JUNE 18 — VERIFY, DON'T PANIC",
+      "body": "OSS and AHU convert your business codes automatically. Your NIB stays valid. Your licenses stay valid. No new akta for a pure renumber. But 'automatic' is not 'correct' — open OSS and check what you got.",
+      "regulation_code": "SE Bersama 4.S/2026",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-june-deadlines/slide-02.png",
+      "tonal_palette": "cool-teal"
+    },
+    {
+      "slide_number": 3,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "When KBLI needs YOU",
+      "subhead": "THREE CASES",
+      "body": "1. Your old code was SPLIT into several new ones — someone must choose. 2. A new code falls outside your deed's purpose clause — akta amendment. 3. PT PMA with multiple codes — each 5-digit code carries the >IDR 10B logic. Prune what you don't use.",
+      "regulation_code": "KBLI 2025",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-june-deadlines/slide-03.png",
+      "tonal_palette": "cool-teal"
+    },
+    {
+      "slide_number": 4,
+      "slide_type": "take",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "Your annual report went public",
+      "subhead": "JUNE 30 — RUPS + NOTARY",
+      "body": "Shareholders must approve the 2025 annual report by June 30 (UU 40/2007). NEW this year: the approval must be a notarial deed, filed into SABH within 30 days (Permenkum 49/2025). The internal-formality era is over. Dormant PTs included.",
+      "regulation_code": "Permenkum 49/2025",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-june-deadlines/slide-04.png",
+      "tonal_palette": "cool-teal"
+    },
+    {
+      "slide_number": 5,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "Skip it and your PT freezes",
+      "subhead": "THE SANCTION",
+      "body": "Written warning, then SABH access BLOCKED: no director changes, no share transfers, no deed amendments — and the freeze ripples into KITAS renewals and OSS updates. You discover it mid-transaction, at the worst moment.",
+      "regulation_code": "Permenkum 49/2025",
+      "image_url": null,
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara-deploy/docs/wr2/manual-assets/2026-06-13-june-deadlines/slide-05.png",
+      "tonal_palette": "cool-teal"
+    },
+    {
+      "slide_number": 6,
+      "slide_type": "cta",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "Book the notary before everyone else does",
+      "statement": "Every PT in Indonesia needs one this month. KBLI check + RUPS + notarized SABH filing — handled end to end.",
+      "body": "Bali Zero · Corporate Compliance Desk",
+      "image_url": null,
+      "hero_image_path": null,
+      "tonal_palette": "cool-teal"
+    }
+  ]
+}

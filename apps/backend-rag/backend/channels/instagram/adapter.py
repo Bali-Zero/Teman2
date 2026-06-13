@@ -12,6 +12,11 @@ from backend.channels.instagram.formatter import InstagramMessageFormatter
 
 logger = logging.getLogger(__name__)
 
+# Single source of truth for the Meta Graph API version used by this adapter.
+# F07 follow-up: send and mark-seen previously drifted (v22.0 vs v18.0) because
+# the version was inlined per-URL. Bump here, never per-call-site.
+GRAPH_API_VERSION = "v22.0"
+
 
 class InstagramChannelAdapter(BaseChannel):
     """Instagram Business API adapter."""
@@ -98,7 +103,7 @@ class InstagramChannelAdapter(BaseChannel):
             )
 
         account_id = self.instagram_config.instagram_account_id
-        url = f"https://graph.instagram.com/v22.0/{account_id}/messages"
+        url = f"https://graph.instagram.com/{GRAPH_API_VERSION}/{account_id}/messages"
         payload = {"recipient": {"id": channel_id}, "message": {"text": formatted_text}}
         headers = {"Authorization": f"Bearer {self.instagram_config.access_token}"}
 
@@ -108,7 +113,7 @@ class InstagramChannelAdapter(BaseChannel):
             logger.info("✅ Sent Instagram message to %s", channel_id)
 
             # Mark message as seen to prevent read-receipt webhook loops
-            seen_url = "https://graph.facebook.com/v22.0/me/messages"
+            seen_url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/me/messages"
             seen_payload = {
                 "recipient": {"id": channel_id},
                 "sender_action": "mark_seen",

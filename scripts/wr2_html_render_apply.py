@@ -57,8 +57,9 @@ from backend.services.canva_renderer_v2 import _pg  # noqa: E402
 from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-# Silence httpx INFO logs that would otherwise leak the Telegram bot token in the request URL
+# Silence httpx/httpcore INFO logs that would otherwise leak the Telegram bot token in the request URL
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("wr2_html_apply")
 
 MAX_DRAFTS_PER_RUN = 1

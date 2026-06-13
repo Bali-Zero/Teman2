@@ -32,7 +32,9 @@ const PrimeNexusLayout = dynamic(
   () => import("@/components/maps/prime/PrimeNexusLayout"),
   {
     ssr: false,
-    loading: () => <div style={{ padding: 24 }}>Caricamento mappa…</div>,
+    loading: () => (
+      <div style={{ padding: 24 }}>{STRINGS.common.loadingMap}</div>
+    ),
   },
 );
 import { useAutoAnimate } from "@formkit/auto-animate/react";
@@ -61,6 +63,7 @@ import {
   loadViewMode,
   saveViewMode,
 } from "@/lib/utils/view-mode-storage";
+import { STRINGS } from "@/lib/strings";
 
 // Status badge styling
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -1327,7 +1330,7 @@ function ClientsListContent() {
 /**
  * Main page component with error boundary
  */
-export default function ClientiPage() {
+export default function ClientsPage() {
   return (
     <CRMErrorBoundary section="Clients">
       <ClientsListContent />
