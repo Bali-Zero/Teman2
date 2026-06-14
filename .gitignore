@@ -638,6 +638,9 @@ scripts/.rag_canary/
 .ai-dispatch-cache/
 
 # Data exports and snapshots
+/outputs/
+apps/evaluator/nlm_deep_research/output/multimodal/
+research/coherence-corpus/
 data/exports/
 data/kbli_2025_export/
 data/scraping/
