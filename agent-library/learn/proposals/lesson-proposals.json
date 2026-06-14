@@ -5,28 +5,18 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 4,
-    "mechanical_candidates": 0,
-    "consultive": 3,
+    "scars_scanned": 5,
+    "mechanical_candidates": 3,
+    "consultive": 1,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
-    "w_numbers": {},
+    "w_numbers": {
+      "W64": 3
+    },
     "families": {}
   },
-  "mechanical_candidates": [],
-  "consultive": [
-    {
-      "title": "ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05)",
-      "severity": "P3",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
+  "mechanical_candidates": [
     {
       "title": "⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13)",
       "severity": "P2",
@@ -38,11 +28,13 @@
         "W78"
       ],
       "recurring_via": {
-        "w": [],
+        "w": [
+          "W64"
+        ],
         "family": []
       },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     },
     {
       "title": "⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)",
@@ -56,6 +48,39 @@
         "W79",
         "W80"
       ],
+      "recurring_via": {
+        "w": [
+          "W64"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "✅ W81 (FIXED): i 3 loop di apprendimento WR3 erano \"verdi ma vuoti\" — malattia-madre \"Omeostasi Tautologica\" (telemetria-verde ≠ delta-di-stato); F20+F21 curati come codice+test, F18 escalato (2026-06-14)",
+      "severity": "P2",
+      "w_numbers": [
+        "W64",
+        "W71",
+        "W74",
+        "W81"
+      ],
+      "recurring_via": {
+        "w": [
+          "W64"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    }
+  ],
+  "consultive": [
+    {
+      "title": "ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05)",
+      "severity": "P3",
+      "w_numbers": [],
       "recurring_via": {
         "w": [],
         "family": []
