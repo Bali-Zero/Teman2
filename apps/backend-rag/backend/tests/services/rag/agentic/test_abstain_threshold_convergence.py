@@ -144,3 +144,48 @@ def test_abstain_policy_type_is_named_contract():
         "confidence_high",
     ):
         assert hasattr(pol, field)
+
+
+class TestThreeSitesAreWiredToTheSSOT:
+    """Static guard: the three decision sites read from build_abstain_policy.
+
+    Source-level assertions (not runtime) so they cannot be dodged by mocking.
+    If a future edit re-hardcodes a literal at one of these sites, the wiring
+    assertion here breaks — the SSOT stops being the single source.
+    """
+
+    import pathlib
+
+    _AGENTIC = (
+        pathlib.Path(__file__).resolve().parents[5]
+        / "backend"
+        / "services"
+        / "rag"
+        / "agentic"
+    )
+
+    def _src(self, name: str) -> str:
+        return (self._AGENTIC / name).read_text(encoding="utf-8")
+
+    def test_reasoning_uses_generation_threshold_from_policy(self):
+        src = self._src("reasoning.py")
+        assert "build_abstain_policy(query).generation_threshold" in src
+        # The decision branches must compare against the policy-derived var,
+        # not a re-hardcoded constant. Both pipelines (sync + streaming) wired.
+        assert src.count("build_abstain_policy(query).generation_threshold") == 2
+        assert "evidence_score < generation_threshold" in src
+
+    def test_orchestrator_response_uses_label_threshold_from_policy(self):
+        src = self._src("orchestrator_response.py")
+        assert "build_abstain_policy(query_str)" in src
+        assert "policy.label_threshold" in src
+        # The bare get_abstain_threshold call was replaced by the policy.
+        assert "abstain_threshold = get_abstain_threshold(" not in src
+
+    def test_streaming_uses_confidence_zone_from_policy(self):
+        src = self._src("orchestrator_streaming_core.py")
+        assert "build_abstain_policy(" in src
+        assert "policy.confidence_zone(" in src
+        # The old hardcoded zone literals must be gone from the decision.
+        assert "if evidence_score < 0.15:" not in src
+        assert "evidence_score <= 0.60 and not trusted" not in src
