@@ -104,6 +104,24 @@ Pergub) clarified, GPS auto-reject KEPT and scoped to integrated-RDTR.
 M5 at audit time — infra, not code). The DB `visa_types` E33E row mislabel
 (P0-6) is **M4/operator perimeter** and was not in scope to mutate; flagged.
 
+### P0-6 LIVE-VERIFICATION FINDING — the kitas page is an ORPHAN (not published)
+
+Live-verifying on Vercel post-merge surfaced a structural fact the audit did not:
+**`apps/mouth/src/content/visa/kitas/page.mdx` is not routed to any public URL.**
+The blog loader (`src/lib/blog/articles.ts:16`) globs ONLY `src/content/articles`;
+nothing in `src/app/` reads `content/visa/*/page.mdx`; `/visa/kitas` returns HTTP
+200 but serves the marketing fallback, and "Silver Hair" does not appear in its
+SSR HTML. So the P0-6 fix is **correct on disk and guarded by the sentinel
+(which scans `content/visa`), but NOT live** — the page is unpublished.
+
+This is not isolated: **all four `content/visa/*/page.mdx` pages**
+(`kitas`, `procedures`, `comparisons`, `expat-life`) are orphans by the same
+logic — a small dead sub-organ of the site. Whether to publish them (move into
+`content/articles/` or add a route) is an **editorial/architecture decision**
+(there may be a reason they are orphaned) → operator, §5. The honest status of
+P0-6: **fixed-on-disk + regression-guarded, NOT live-verified.** The other four
+P0s (P0-4, P0-5, P0-7, P0-8) ARE verified live on balizero.com (see §recap).
+
 ### (f) The missing freshness mechanism — BUILT
 
 See §Therapy. This was the point of the whole organ.
@@ -178,6 +196,12 @@ corrected value post-deploy.
    them the ledger ages like everything else. P* infra perimeter.
 5. **Business campaigns at deadline** (from the 13/06 audit, still open): KBLI
    18/06, RUPS 30/06, PP 20/2026 tax outreach. Editorial/strategic.
+7. **The 4 orphan `content/visa/*/page.mdx` pages** (kitas, procedures,
+   comparisons, expat-life) are written but unrouted/unpublished. Decide: publish
+   them (move to `content/articles/` + route) or delete them. The P0-6 retirement
+   fix only reaches clients once the kitas page is actually published. Editorial
+   /architecture call — and a meta-pattern in its own right (content that exists
+   but was never wired to a URL is decay too).
 6. Pricing on public pages: any number must come from PricingTool, never
    hardcoded. (Not touched this session.)
 
