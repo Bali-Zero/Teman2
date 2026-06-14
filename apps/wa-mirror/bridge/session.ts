@@ -336,7 +336,11 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
           if (isDeafQuietHourWITA()) {
             // Benign nighttime silence — log at debug, do NOT force reconnect.
             logger.debug(
-              { sessionId: ctx.sessionId, silentMs, quietWindow: DEAF_QUIET_WINDOW },
+              {
+                sessionId: ctx.sessionId,
+                silentMs,
+                quietWindow: DEAF_QUIET_WINDOW,
+              },
               "wa-mirror deaf-session timer hit during quiet hours WITA — suppressing forced reconnect (W77)",
             );
             return;
