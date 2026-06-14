@@ -13,6 +13,7 @@ import glob
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -506,6 +507,55 @@ def _process_openclaw_job(
 
 # ─── Main job processor ───────────────────────────────────────────────────────
 
+# W70 (2026-06-14): the cron wrappers (cron-state.sh / cron-runner.sh) write a
+# bare last_error="exit N" to the state file — zero diagnostic signal, so
+# classify() returns UNKNOWN and the autopilot/sentinel act blind (33 jobs piled
+# into DLQ-TERMINAL, all classification=UNKNOWN c=0.0). The job's REAL stderr is
+# in its own cron log (cron redirects stdout+stderr there). This bridges the gap.
+_BARE_FAILURE_SUMMARY = re.compile(
+    r"^\s*(?:exit\s+\d+(?:\s*\([^)]*\))?(?:\s+after\s+\d+\s+attempts)?"
+    r"|timeout(?:\s+after\s+\d+s)?)?\s*$",
+    re.IGNORECASE,
+)
+# Real cron-log locations, in priority order. The 2026-06-13 orphan attempt read
+# only ~/logs/cron (empty for these jobs) with a regex that required
+# "exit N after M attempts" — the wrapper never emits that, so it never fired.
+_CRON_LOG_DIRS = ("~/logs/cron-tmp", "~/logs", "~/logs/cron", "~/logs/cron-agent-python")
+
+
+def _enrich_last_error_from_cron_log(job_id: str, last_error: str) -> str:
+    """Append the tail of the job's real cron log when last_error carries no
+    diagnostic signal (bare 'exit N' / empty), so classify(), _infer_files and
+    the DLQ log_tail see the actual stderr instead of a useless exit code.
+    A last_error that already contains a real message is returned unchanged."""
+    if last_error and not _BARE_FAILURE_SUMMARY.match(last_error.strip()):
+        return last_error
+    dash = job_id.replace("_", "-")
+    for d in _CRON_LOG_DIRS:
+        base = os.path.expanduser(d)
+        for name in (f"{job_id}.log", f"{dash}.log"):
+            path = os.path.join(base, name)
+            # Bounded tail read: seek to the last 16 KiB only. readlines() on a
+            # multi-MB cron log would bloat the sentinel's memory (these logs are
+            # append-only and can grow large) — cap it regardless of file size.
+            try:
+                with open(path, "rb") as fh:
+                    fh.seek(0, os.SEEK_END)
+                    size = fh.tell()
+                    fh.seek(max(0, size - 16384))
+                    chunk = fh.read().decode("utf-8", errors="replace")
+            except OSError:
+                continue
+            lines = chunk.splitlines()
+            if size > 16384 and lines:
+                lines = lines[1:]  # drop the partial first line from the mid-line seek
+            tail = [ln.rstrip() for ln in lines[-40:] if ln.strip()]
+            if tail:
+                prefix = last_error or "(no exit summary)"
+                return f"{prefix}\n--- cron log tail ({name}) ---\n" + "\n".join(tail)
+    return last_error
+
+
 def process_job(job_id: str, state: dict, registry: dict,
                 openclaw_is_down: bool = False,
                 dlq_terminal_set: set | None = None) -> dict:
@@ -549,6 +599,7 @@ def process_job(job_id: str, state: dict, registry: dict,
             logger.warning(f"{job_id}: state ts has unparseable type/value {_raw_ts!r}, treating as never-run")
             last_ts = 0.0
     last_error = state.get("last_error", "") or ""
+    last_error = _enrich_last_error_from_cron_log(job_id, last_error)  # W70: real stderr
     retry_attempt = state.get("retry_attempt", 0)
 
     # Staleness check
@@ -559,6 +610,24 @@ def process_job(job_id: str, state: dict, registry: dict,
 
     if status == "ok":
         record_success(job_id)
+        # W70-resurrect (2026-06-14): a job parked TERMINAL in the DLQ that has
+        # since recovered (current state=ok and FRESH — the staleness downgrade
+        # above already turned ok→stale for old timestamps, so we only reach here
+        # for genuine recoveries) is a corpse. dlq_autopilot's TERMINAL guard
+        # never re-checks live state, so without this the entry stays forever
+        # (pre-fix: 19 of 33 DLQ-TERMINAL entries were already-healthy corpses).
+        # Clearing it is the missing edge that closes the heal-loop.
+        # KNOWN LIMIT (flapping-mask): a job that fails 90% / succeeds 10% will
+        # clear its corpse on each lucky run. The INFO log below keeps it visible;
+        # a resurrection-rate counter is a follow-up (not blocking — net win is the
+        # 19 stable corpses cleared, and a re-failure re-enters the DLQ fresh).
+        if job_id in dlq_terminal_set:
+            try:
+                clear_dlq_entry(job_id)
+                logger.info(f"{job_id}: recovered while DLQ-TERMINAL — resurrected (corpse cleared)")
+                return {"action": "resurrected_terminal", "tier": 0, "success": True}
+            except Exception as exc:  # never let a clear failure break the cycle
+                logger.warning(f"{job_id}: resurrection clear failed: {exc}")
         return {"action": "healthy", "tier": 0, "success": True}
 
     if status == "running":
@@ -954,6 +1023,7 @@ def run_sentinel() -> None:
         "jobs_checked": len(results),
         "healthy": sum(1 for r in results.values() if r.get("action") == "healthy"),
         "retried": sum(1 for r in results.values() if "retried" in r.get("action", "")),
+        "resurrected": sum(1 for r in results.values() if r.get("action") == "resurrected_terminal"),
         "escalated": sum(1 for r in results.values() if "escalated" in r.get("action", "")),
         "suppressed": sum(1 for r in results.values() if r.get("action") == "suppressed_gateway_down"),
         "openclaw_down": openclaw_is_down,
@@ -1001,12 +1071,12 @@ def run_sentinel() -> None:
         "jobs_healthy": log_entry["healthy"],
         "jobs_circuit_open": sum(1 for v in circuit_states.values() if v.get("state") == "OPEN"),
         "jobs_circuit_terminal": dlq_terminal,
-        "jobs_healing": log_entry["retried"],
+        "jobs_healing": log_entry["retried"] + log_entry.get("resurrected", 0),
         "jobs_suppressed": log_entry["suppressed"],
         "dlq_entries": dlq_entries,
         "dlq_terminal": dlq_terminal,
         "dlq_phase_distribution": dlq_phase_distribution,  # D4.3
-        "healing_actions_24h": log_entry["retried"],  # current cycle; full 24h requires log scan
+        "healing_actions_24h": log_entry["retried"] + log_entry.get("resurrected", 0),  # retried+resurrected this cycle; full 24h requires log scan
         "openclaw_gateway": "down" if openclaw_is_down else "healthy",
         "last_sentinel_duration_s": round(duration, 2),
         "timed_out": timed_out,

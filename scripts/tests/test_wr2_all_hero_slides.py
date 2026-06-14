@@ -1,16 +1,22 @@
 """
-Locks down the 2026-06-12 Antonello decision (option A): every WR2 carousel
-slide carries its own generated image — 6-8 slides, 6-8 images, flexible.
+Updated 2026-06-13 for the SMART-HERO contract (supersedes the 2026-06-12
+"every slide is hero" option-A decision, PR #1374). The model now decides how
+many slides (6-11) and which deserve a photo; only the cover is guaranteed hero.
 
-Three contract points:
-  1. wr2_draft_generator._normalise_slides forces is_hero_image=True on EVERY
-     slide (cover, bodies, CTA closer) regardless of what the model returned.
+This file historically locked "all slides forced hero, 6-8". The all-hero
+assertions are now updated to the smart-hero contract (NOT weakened: each
+assertion still proves a concrete behavior). The statement-bomb emphasis-fill
+and the _hero_bg_to_img fallback-scrim tests are UNCHANGED — those behaviors
+(filling {{statement_html_with_emphasis_span}}, raising content above the hero
+img with a legibility scrim) remain valid regardless of hero selection.
+
+Contract points still locked here:
+  1. _normalise_slides: cover always hero, the model's is_hero_image preserved
+     for the rest (no force-promote), slide count 6-11.
   2. composer._fill_placeholders fills statement-bomb's
-     {{statement_html_with_emphasis_span}} (previously NEVER filled -> raw
-     mustache shipped to the renderer on every CTA slide).
-  3. composer._hero_bg_to_img fallback inject (layouts with no .hero div,
-     i.e. statement-bomb) must NOT paint the image OVER the text: content is
-     raised above the img and a legibility scrim sits between them.
+     {{statement_html_with_emphasis_span}}.
+  3. composer._hero_bg_to_img fallback inject (layouts with no .hero div, i.e.
+     statement-bomb) must NOT paint the image OVER the text.
 """
 from __future__ import annotations
 
@@ -51,16 +57,30 @@ def _parsed(num_slides: int, heroes: set[int] | None = None) -> dict:
     }
 
 
-def test_all_slides_forced_hero_even_when_model_marks_none() -> None:
-    _, slides = _normalise_slides(_parsed(7))
+def test_cover_always_hero_others_preserve_model_choice() -> None:
+    # Model marks heroes {3, 5}; the cover is promoted to hero as the minimum,
+    # the marked ones stay hero, and the unmarked ones are NOT force-promoted.
+    _, slides = _normalise_slides(_parsed(7, heroes={3, 5}))
     assert len(slides) == 7
-    assert all(s["is_hero_image"] for s in slides)
+    assert slides[0]["is_hero_image"] is True            # cover minimum
+    assert slides[2]["is_hero_image"] is True            # slide 3 (model)
+    assert slides[4]["is_hero_image"] is True            # slide 5 (model)
+    assert [s["is_hero_image"] for s in slides] == [
+        True, False, True, False, True, False, False
+    ]
 
 
-def test_all_slides_hero_on_short_and_long_carousels() -> None:
-    for n in (6, 8):
+def test_smart_hero_preserved_across_short_and_long_carousels() -> None:
+    # 6, 8, 11 slides all accepted; only cover + model-marked heroes are hero.
+    for n in (6, 8, 11):
         _, slides = _normalise_slides(_parsed(n, heroes={1, 3}))
-        assert all(s["is_hero_image"] for s in slides), f"n={n}"
+        assert len(slides) == n, f"n={n}"
+        assert slides[0]["is_hero_image"] is True, f"n={n} cover"
+        assert slides[2]["is_hero_image"] is True, f"n={n} slide3"
+        # everything else stays non-hero (no force-promote)
+        non_hero = [i for i, s in enumerate(slides, start=1)
+                    if not s["is_hero_image"]]
+        assert non_hero == [i for i in range(2, n + 1) if i != 3], f"n={n}"
 
 
 def test_cover_flags_preserved() -> None:
@@ -118,10 +138,19 @@ def test_hero_div_path_unchanged() -> None:
     assert "hero-scrim" not in html
 
 
-def test_routing_cover_mid_cta_with_all_hero() -> None:
-    _, slides = _normalise_slides(_parsed(7))
+def test_routing_smart_hero_mix() -> None:
+    # 7 slides, model heroes {1, 3}: cover->cover-photo, last->statement-bomb,
+    # slide 3 (hero)->photo-headline-yellow-sub, the non-hero bodies (2,4,5,6)
+    # ->editorial-text (text-only), NEVER the empty-photo layout.
+    _, slides = _normalise_slides(_parsed(7, heroes={1, 3}))
     total = len(slides)
     fams = [map_slide_to_family(s, i, total) for i, s in enumerate(slides, start=1)]
     assert fams[0] == "cover-photo"
     assert fams[-1] == "statement-bomb"
-    assert all(f == "photo-headline-yellow-sub" for f in fams[1:-1])
+    assert fams[2] == "photo-headline-yellow-sub"  # slide 3 = model hero
+    for idx in (1, 3, 4, 5):  # slides 2,4,5,6 (non-hero body)
+        assert fams[idx] == "editorial-text", f"slide {idx + 1} -> {fams[idx]}"
+    # no non-hero mid slide ever lands on the photo (void-trap) layout
+    for i, s in enumerate(slides, start=1):
+        if not s["is_hero_image"] and 1 < i < total:
+            assert fams[i - 1] != "photo-headline-yellow-sub"
