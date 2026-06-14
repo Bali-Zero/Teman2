@@ -377,30 +377,57 @@ class TestGetPropertyRequirements:
 
 
 class TestSynthesizePropertyWorkflow:
+    # NOTE (2026-06-14): these tests previously mocked
+    # calculate_subgraph_confidence with a return_value of {"final_score": ...}
+    # (a dict). That mock HID a real bug — the production call passed
+    # chains=/entities=/query= (wrong signature → TypeError) and read
+    # breakdown.get("final_score") (ConfidenceBreakdown is a dataclass, no
+    # .get). Both were masked because the mock swallowed the bad kwargs and
+    # the dict happened to support .get(). The tests below now exercise the
+    # REAL confidence function (no mock) so the call contract is enforced.
+
     @pytest.mark.asyncio
-    async def test_with_error(self, base_state):
+    async def test_with_error_uses_real_confidence(self, base_state):
         base_state["zoning_info"] = {"error": "No data"}
         base_state["workflow_steps"] = ["Step 1", "Step 2"]
 
-        with patch(
-            "backend.services.rag.confidence.calculate_subgraph_confidence",
-            return_value={"final_score": 0.4},
-        ):
-            result = await synthesize_property_workflow(base_state, {})
+        # No mock: if the call signature regresses, this raises TypeError.
+        result = await synthesize_property_workflow(base_state, {})
         assert "couldn't retrieve" in result["final_analysis"].lower()
+        # Dynamic confidence is a real float in [0, 1], not the hardcoded
+        # fallback that the old TypeError path produced.
+        assert isinstance(result["confidence_score"], float)
+        assert 0.0 <= result["confidence_score"] <= 1.0
 
     @pytest.mark.asyncio
-    async def test_with_valid_zoning(self, base_state):
+    async def test_with_valid_zoning_uses_real_confidence(self, base_state):
         base_state["zoning_info"] = {"zoning_type": "R-1", "district_name": "Badung"}
         base_state["workflow_steps"] = ["Req 1", "Req 2"]
 
-        with patch(
-            "backend.services.rag.confidence.calculate_subgraph_confidence",
-            return_value={"final_score": 0.85},
-        ):
-            result = await synthesize_property_workflow(base_state, {})
+        result = await synthesize_property_workflow(base_state, {})
         assert "R-1" in result["final_analysis"]
-        assert result["confidence_score"] > 0
+        assert isinstance(result["confidence_score"], float)
+        assert 0.0 < result["confidence_score"] <= 1.0
+
+    @pytest.mark.asyncio
+    async def test_confidence_reflects_db_validation(self, base_state):
+        """has_db_validation flips on real zoning → higher entity_conf → score
+        differs from the error case. Proves the value is DYNAMIC, not the old
+        hardcoded 0.85/0.4 fallback."""
+        base_state["workflow_steps"] = ["Req 1", "Req 2"]
+
+        base_state["zoning_info"] = {"zoning_type": "R-1", "district_name": "Badung"}
+        valid = (await synthesize_property_workflow(base_state, {}))["confidence_score"]
+
+        base_state["zoning_info"] = {"error": "No data"}
+        errored = (await synthesize_property_workflow(base_state, {}))["confidence_score"]
+
+        # Valid zoning has has_db_validation=True → entity_conf 0.8 vs 0.5,
+        # so the dynamic score must be strictly higher. If both were the old
+        # hardcoded fallback this would still differ (0.85 vs 0.4) — so also
+        # assert neither equals those exact legacy constants.
+        assert valid > errored
+        assert valid != 0.85 and errored != 0.4
 
 
 # ============================================================================
