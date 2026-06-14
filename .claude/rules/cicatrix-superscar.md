@@ -38,7 +38,8 @@ tra macchine.
 
 **MEMBRI:** W50/W51/W52 (madre — wrapper/plist/script fork) · W68/W72/W73 (bridge `~/.openclaw/bin/`) ·
 W70 (path-drift `Projects/nuzantara` Air) · W76 (repomap cron su checkout stale) · M5-dev-env (venv+marketplace
-copiati con path `/Users/nuzantara/`) · TAC wa-mirror 2026-06-14 (HOME-fork 510+ righe non promosse).
+copiati con path `/Users/nuzantara/`) · TAC wa-mirror 2026-06-14 (HOME-fork 510+ righe non promosse) ·
+W81 (deploy worktree `~/Desktop/nuzantara-deploy` sparito → ~20 cron critici armati a vuoto su host morto, 2026-06-15).
 **→ dettaglio:** archive (W50/51/52) + cicatrix-scars.md (W68/W70/W76/M5-dev-env) · `scar query "home-fork"`
 
 ---
@@ -55,11 +56,16 @@ output vuota; `log_tail="exit 1 after 3 attempts"` (false friend, zero diagnosti
 **ANTIDOTO:** monitora l'**esito reale / heartbeat end-to-end nel DB**, non il PID/exit-code. RUN il
 guardiano e leggi il suo verdetto prima di fidarti del verde. Falla visibile + allarme proattivo se non
 ci sono prove-di-vita. _(Regola madre: «green ≠ working — leggi l'OUTPUT, non l'exit code».)_
+**W81 estende:** leggi anche lo **STATO DI ATTIVAZIONE** — costruito≠attivato. Un artefatto/cron/PR/fix che
+esiste ma non è merged/installed/propagated/armed/committed è **sospeso, non vivo**. Antidoto della famiglia
+"Armamento Sospeso": un _reconciliation-report_ (segnalatore, non auto-attuatore) che allarma su
+"costruito-ma-non-attivato >48h", distinguendo il firebreak legittimo (publish/Legge-5/business) dal debito tecnico.
 
 **MEMBRI:** W74 (reflexion cron-theater F21 + evoskill 0-pressure F18) · W69 (decadimento entropico
 inosservabile / required-checks disarmati) · W64/W34 (asyncpg silent-death, manca `InterfaceError`) ·
 W71 (verify_mcp_integrity glyph-bug: gira e mente) · W32 (pg-bridge morto silenzioso) · 503-RAG
-(health=200 ma RAG worker stoppato) · W70 (sentinel log_tail cieco).
+(health=200 ma RAG worker stoppato) · W70 (sentinel log_tail cieco) · W81 (Armamento Sospeso: ~20 cron
+"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato).
 **→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503) + archive (W34/W32) · `scar query "esiste non armato"`
 
 ---
