@@ -203,6 +203,7 @@ async def _render_one(
     *,
     expect_hero: bool,
     timeout_ms: int,
+    family: str | None = None,
 ) -> tuple[bool, bool, str | None]:
     """Render one HTML file to PNG. Returns (rendered_ok, hero_placed, error).
 
@@ -240,16 +241,31 @@ async def _render_one(
     return (True, False, None)
 
 
+def _unpack_spec(spec: tuple) -> tuple[Path, bool, str | None]:
+    """Normalize an html_spec to (html_path, expect_hero, family).
+
+    Back-compat: a 2-tuple (html_path, expect_hero) yields family=None, which the
+    visibility gate treats as the legacy top-third sampling.
+    """
+    if len(spec) >= 3:
+        return spec[0], bool(spec[1]), spec[2]
+    return spec[0], bool(spec[1]), None
+
+
 async def render_html_files(
-    html_specs: list[tuple[Path, bool]],
+    html_specs: list[tuple[Path, bool] | tuple[Path, bool, str | None]],
     output_dir: Path,
     *,
     timeout_ms: int = 30000,
     make_pdf: bool = True,
 ) -> RenderResult:
-    """Render a list of (html_path, expect_hero) to PNGs in output_dir/slides.
+    """Render a list of html_specs to PNGs in output_dir/slides.
 
-    html_specs: ordered list; each is (path-to-html, whether-this-slide-has-a-hero).
+    html_specs: ordered list; each is (html_path, expect_hero) OR
+    (html_path, expect_hero, family). `family` is the brand layout family, used
+    by the visibility gate to sample where the photo is EXPOSED for that layout
+    (top-third for default/None, lower band for photo-fullbleed-top, middle band
+    for photo-fullbleed-split). A 2-tuple → family=None → top-third (back-compat).
     Assets (fonts, logo, _base.css) must already be staged in output_dir by the
     caller (or call render_slides_json which stages them).
 
@@ -258,7 +274,8 @@ async def render_html_files(
     """
     from playwright.async_api import async_playwright  # lazy import
 
-    result = RenderResult(heroes_expected=sum(1 for _, h in html_specs if h))
+    specs = [_unpack_spec(s) for s in html_specs]
+    result = RenderResult(heroes_expected=sum(1 for _, h, _ in specs if h))
     slides_out = output_dir / "slides"
     slides_out.mkdir(parents=True, exist_ok=True)
 
@@ -272,10 +289,11 @@ async def render_html_files(
             page = await context.new_page()
             page.set_default_timeout(timeout_ms)
 
-            for idx, (html_path, expect_hero) in enumerate(html_specs, start=1):
+            for idx, (html_path, expect_hero, family) in enumerate(specs, start=1):
                 png_path = slides_out / f"{idx:02d}.png"
                 rendered_ok, hero_placed, error = await _render_one(
-                    page, html_path, png_path, expect_hero=expect_hero, timeout_ms=timeout_ms
+                    page, html_path, png_path,
+                    expect_hero=expect_hero, timeout_ms=timeout_ms, family=family,
                 )
                 if rendered_ok and png_path.is_file():
                     # verify dimensions
@@ -288,12 +306,14 @@ async def render_html_files(
                         # Second gate (anti false-positive): decode() proved the
                         # bytes loaded; now prove the hero is VISIBLE on canvas
                         # (not covered/painted-over — the 2026-06-07 cover bug).
-                        if _hero_visible_in_png(png_path):
+                        # Layout-aware: sample where THIS family exposes the photo.
+                        if _hero_visible_in_png(png_path, family):
                             result.heroes_placed += 1
                         else:
                             result.failures.append(
                                 f"{png_path.name}: HERO DECODED BUT NOT VISIBLE — "
-                                f"top region is flat/empty (covered or mis-layered); "
+                                f"photo band (family={family or 'top-third'}) is "
+                                f"flat/empty (covered or mis-layered); "
                                 f"not counting as placed"
                             )
                 if error:
@@ -319,27 +339,46 @@ def _verify_png_dims(png_path: Path) -> bool:
         return img.size == (CANVAS_W, CANVAS_H)
 
 
-def _hero_visible_in_png(png_path: Path) -> bool:
-    """Pixel-level check that a hero photo is actually VISIBLE in the top region.
+def _hero_visible_in_png(png_path: Path, family: str | None = None) -> bool:
+    """Pixel-level check that a hero photo is actually VISIBLE on the canvas.
 
     Defends against the decode-but-covered false positive found 2026-06-07 (the
     cover slide: the hero <img> decoded fine — gate said placed — but a sibling
     .hero div with background-color painted over it, so the rendered top was flat
     black). `img.decode()` proves the bytes loaded; THIS proves they reached the
-    canvas. A real photo has color variance in the top third; a covered/missing
+    canvas. A real photo has color variance where it is exposed; a covered/missing
     hero is near-uniform (flat black or flat antracite).
 
-    Returns True if the top third shows enough non-background, varied pixels.
+    LAYOUT-AWARE sampling (Antonello 2026-06-13): the top-third assumption breaks
+    any layout whose scrim+text covers the top. We sample where the PHOTO is
+    EXPOSED for the given family:
+      - cover-photo / photo-headline-yellow-sub / photo-fullbleed / default/None/
+        unknown: TOP THIRD (~8%-33%) — text sits on the BOTTOM scrim. UNCHANGED.
+      - photo-fullbleed-top:  LOWER band (~55%-85%) — top is scrim+text, photo
+        is exposed below.
+      - photo-fullbleed-split: MIDDLE band (~40%-60%) — the clear photo band
+        between the top title and the bottom body.
+
+    family=None → top-third behavior (back-compat with the 1-arg caller).
+    Returns True if the sampled band shows enough non-background, varied pixels.
     """
     from PIL import Image  # lazy
 
     with Image.open(png_path) as img:
         img = img.convert("RGB")
         w, h = img.size
-        # Sample the TOP THIRD (hero photo dominates above the gradient+text
-        # block which sits in the bottom ~180px+).
+        # Family-aware vertical band: sample where this layout EXPOSES the photo.
+        if family == "photo-fullbleed-top":
+            # ~55%-85%: photo exposed below the top text block.
+            ys = range(11 * h // 20, 17 * h // 20, 30)
+        elif family == "photo-fullbleed-split":
+            # ~40%-60%: the clear photo band between top title and bottom body.
+            ys = range(2 * h // 5, 3 * h // 5, 30)
+        else:
+            # TOP THIRD (~8%-33%) for cover-photo / photo-headline-yellow-sub /
+            # photo-fullbleed and any default/unknown/None family. UNCHANGED.
+            ys = range(h // 12, h // 3, 30)
         xs = range(w // 8, 7 * w // 8, 30)
-        ys = range(h // 12, h // 3, 30)
         samples = []
         for y in ys:
             for x in xs:
