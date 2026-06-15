@@ -1,34 +1,17 @@
 "use client";
 
-import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
-import { trackFunnelEvent } from "@balizero/core/analytics";
-import { getOrCreateSessionId } from "@balizero/core/auth";
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-declare const gtag: ((...args: any[]) => void) | undefined;
+import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 
 export function InlineNewsCTA() {
-  const href = buildWhatsAppLink("home");
-
-  const handleClick = () => {
-    if (typeof gtag !== "undefined") {
-      gtag("event", "home_whatsapp_cta", {
-        funnel: "home",
-        placement: "news_grid_inline",
-      });
-    }
-    void trackFunnelEvent("home_whatsapp_cta", {
-      sessionId: getOrCreateSessionId(),
-      payload: { trigger: "news_inline" },
-    });
-  };
-
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={handleClick}
+    <WhatsAppLeadButton
+      source="article"
+      context={{ section: "inline_news_cta", page: "home" }}
+      whatsappContext={[
+        { label: "Source", value: "Homepage Inline CTA" },
+        { label: "Section", value: "Latest News" },
+      ]}
+      utm={{ page: "/" }}
       style={{
         display: "flex",
         alignItems: "center",
@@ -86,6 +69,6 @@ export function InlineNewsCTA() {
       >
         WhatsApp Us →
       </span>
-    </a>
+    </WhatsAppLeadButton>
   );
 }
