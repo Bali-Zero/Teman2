@@ -15,7 +15,11 @@ import httpx
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.zoho_email_service import ZohoEmailService
-from backend.services.notifications.email_branding import logo_header_html, team_email_html
+from backend.services.notifications.email_branding import (
+    logo_header_html,
+    resolve_consultant_avatar,
+    team_email_html,
+)
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -218,6 +222,9 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
         subject = f"[TEAM] 🚀 Let's Go! Payment Confirmed - {client_name}"
 
         practice_id = practice_data["id"]
+        consultant_photo, consultant_name = await resolve_consultant_avatar(
+            self.db_pool, team_leader_email
+        )
         body = team_email_html(
             title=f"🚀 Payment Confirmed — {client_name}",
             intro=f"Asya has confirmed the payment for {client_name}'s {practice_type}. This one is yours — let's go!",
@@ -238,7 +245,9 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
             ),
             cta_label="Open practice in CRM",
             cta_url=f"https://kita.balizero.com/process/{practice_id}",
-            signature="Zantara CRM",
+            signature=consultant_name or "Zantara CRM",
+            consultant_photo_url=consultant_photo,
+            consultant_name=consultant_name,
         )
 
         await self._send_with_brevo_fallback(team_leader_email, subject, body, prebuilt_html=True)
