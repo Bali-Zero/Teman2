@@ -150,6 +150,7 @@ export const TEAM_ROSTER: RosterMember[] = [
     role: "Junior Consultant",
     dept: "setup",
     email: "vino@balizero.com",
+    photo: "/static/team/vino.jpg",
   },
 
   // ── Tax ─────────────────────────────────────────────────────────────────
