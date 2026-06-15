@@ -29,7 +29,7 @@
 set -uo pipefail
 
 REPO="${NUZ_REPO_ROOT:-$HOME/Desktop/nuzantara}"
-ORPHAN_PR1430="a03b928fe"
+ORPHAN_PR1430="a03b928fe"  # git commit SHA of the redundant orphan merge (PR #1430), not a secret  # pragma: allowlist secret
 export AGENT_WORKTREE_ENFORCEMENT=false  # so git ops in main are permitted for THIS authorized reconcile
 
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$*"; }
