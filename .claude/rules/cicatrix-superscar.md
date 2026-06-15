@@ -65,7 +65,7 @@ esiste ma non è merged/installed/propagated/armed/committed è **sospeso, non v
 inosservabile / required-checks disarmati) · W64/W34 (asyncpg silent-death, manca `InterfaceError`) ·
 W71 (verify_mcp_integrity glyph-bug: gira e mente) · W32 (pg-bridge morto silenzioso) · 503-RAG
 (health=200 ma RAG worker stoppato) · W70 (sentinel log_tail cieco) · W81 (Armamento Sospeso: ~20 cron
-"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato).
+"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok).
 **→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503) + archive (W34/W32) · `scar query "esiste non armato"`
 
 ---
