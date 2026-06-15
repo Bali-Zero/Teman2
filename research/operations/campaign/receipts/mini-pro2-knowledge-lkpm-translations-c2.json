@@ -1,0 +1,29 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-KNOWLEDGE",
+  "task_id": "lkpm-translations-c2",
+  "cycle": 2,
+  "account": "antonellosiano@",
+  "git_sha_before": "9ea89635c",
+  "git_sha_after": "d0972cad5",
+  "files_touched": [
+    "apps/mouth/src/content/articles/business/pt-pma-first-year-compliance.it.mdx",
+    "apps/mouth/src/content/articles/business/pt-pma-first-year-compliance.ru.mdx",
+    "apps/mouth/src/content/articles/business/pt-pma-first-year-compliance.fr.mdx"
+  ],
+  "artifact_proof": "branch agent/mini-pro2/mouth/lkpm-id-freshness extended (commit d0972cad5); 13 stale LKPM '10th' assertions in it/ru/fr corrected to the 1st-15th window (PerBKPM 5/2025); each replacement asserted exactly-once before write; BPJS/PPh-21 '10th' deadlines preserved. The article is now correct across all 4 localized languages (id+it+ru+fr, 17 total fixes this campaign).",
+  "cause_command": "grep -cE '<lkpm-10-deadline-patterns>' pt-pma-first-year-compliance.{it,ru,fr}.mdx",
+  "cause_before": "it=4 ru=4 fr=5 (13 total)",
+  "cause_after": "it=0 ru=0 fr=0 (CLEAN)",
+  "cause_exitcode": 0,
+  "refuter_id": "EN-canonical-diff (objective on-disk) + cycle-1 ground-truth carryover",
+  "refuter_verdict": "PASS. Fact (LKPM=15th, PerBKPM 5/2025) already adversarially verified in cycle 1 (DeepSeek false-refute adjudicated via W65 + 4 IDN legal web sources). Cycle-2 is faithful PROPAGATION of that verified fact; faithfulness checked by diff of each corrected localized line against the verified-correct EN canonical reference (not delegated — the father's own check, W65). Re-running DeepSeek on the identical fact would reproduce the same post-cutoff false-refute, adding no information.",
+  "ground_truth_source": "claim-ledger LKPM-DEADLINE-10TH (NB-2/3/5, verified_on 2026-06-14) + EN canonical .mdx reference",
+  "leads_resolved": {
+    "C312": "NOT translation-lag (EN canonical identical, all 5 locales 2xC312/8xE23); domain question touching EN canonical -> P1 escalation, needs live NLM",
+    "55110": "NOT translation-lag (EN canonical lists 55110 as current hotel code, all 5 locales identical); ledger says 55101-55105 -> P1, multi-code restructure needs live NLM"
+  },
+  "meta_pattern_refined": "guardiano della frase non del fatto — sentinel stale_patterns are literal strings matching one phrasing; the same fact in table cells / other contexts / translations (and even the EN canonical) goes unguarded",
+  "lease_held": [],
+  "ts": "2026-06-15T22:07:54Z"
+}
