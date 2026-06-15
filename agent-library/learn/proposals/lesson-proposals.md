@@ -6,9 +6,9 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **5**
+- scars scanned: **4**
 - mechanical candidates (recurring ≥3): **3**
-- consultive (single-occurrence): **1**
+- consultive (single-occurrence): **0**
 - rejected (no objective anchor, G1): **1**
 
 ## Recurring patterns (the objective recurrence signal, G4)
@@ -24,7 +24,7 @@
 
 ## Consultive (→ judgment pipeline, NOT a hook)
 
-- ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05) [P3]
+_(none)_
 
 ## Rejected — no objective anchor (gate G1)
 
