@@ -1054,6 +1054,14 @@ async def approve_review(
             plan=plan,
             result=result,
         )
+        # Visibility (intake message-journey TAC 2026-06-15): the local commit
+        # is final but the Fly/Drive delivery leg is best-effort and NEVER
+        # raises. A failed delivery means the document exists in the Pro DB but
+        # is ABSENT from kita.balizero (Drive + Fly CRM) — a silent
+        # config↔reality divergence (superscar #2 "green ≠ working"). Surface it
+        # in the top-level status so the operator/front-end knows the doc did
+        # NOT land in kita, instead of seeing a success "routed".
+        response_status = _delivery_aware_status(response_status, crm_push_info)
 
     logger.info(
         "intake.review.approve proposal=%s reviewer=%s dry_run=%s outcome=%s status=%s",
@@ -1187,3 +1195,36 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if isinstance(value, datetime) else None
+
+
+# CrmPushResult.status values that do NOT mean "the document failed to reach
+# kita". `pushed` = delivered to Fly+Drive; `disabled` = push leg intentionally
+# off (writer/push OFF by design); `already_delivered` = the local row already
+# carries a Drive file (re-upload skipped). Every other status (`unreachable`,
+# `server_error`, `denied_rbac`, `rejected`, `too_large`, `no_token`,
+# `missing_blob`, `error`) means: committed in the Pro DB but ABSENT from
+# kita.balizero — a divergence the operator must see.
+_DELIVERY_OK_OR_NEUTRAL: frozenset[str] = frozenset(
+    {"pushed", "disabled", "already_delivered"}
+)
+
+DELIVERY_FAILED_STATUS = "committed_local_delivery_failed"
+
+
+def _delivery_aware_status(
+    base_status: str, crm_push_info: dict[str, Any] | None
+) -> str:
+    """Downgrade a 'routed' approve to a delivery-failure status when the
+    Pro→Fly/Drive push did not actually deliver the committed document.
+
+    Pure function (no I/O) so it is unit-testable across the full CrmPushResult
+    status space. Only rewrites the success case: a non-'routed' base status
+    (e.g. 'review_claimed' for a dry-run/blocked plan) is returned untouched,
+    and a missing/None push_info (delivery leg never ran) is left as-is.
+    """
+    if base_status != "routed" or not crm_push_info:
+        return base_status
+    push_status = crm_push_info.get("status")
+    if push_status in _DELIVERY_OK_OR_NEUTRAL:
+        return base_status
+    return DELIVERY_FAILED_STATUS
