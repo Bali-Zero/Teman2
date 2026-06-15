@@ -117,26 +117,29 @@ class TestLogAlert:
         from backend.services.monitoring.alert_service import AlertLevel
 
         svc = _make_service()
-        # Should not raise
-        svc._log_alert("Title", "Message", AlertLevel.CRITICAL, {"key": "val"})
+        result = svc._log_alert("Title", "Message", AlertLevel.CRITICAL, {"key": "val"})
+        assert result is None  # void; no exception = log was written
 
     def test_log_error(self):
         from backend.services.monitoring.alert_service import AlertLevel
 
         svc = _make_service()
-        svc._log_alert("Title", "Message", AlertLevel.ERROR)
+        result = svc._log_alert("Title", "Message", AlertLevel.ERROR)
+        assert result is None
 
     def test_log_warning(self):
         from backend.services.monitoring.alert_service import AlertLevel
 
         svc = _make_service()
-        svc._log_alert("Title", "Message", AlertLevel.WARNING)
+        result = svc._log_alert("Title", "Message", AlertLevel.WARNING)
+        assert result is None
 
     def test_log_info(self):
         from backend.services.monitoring.alert_service import AlertLevel
 
         svc = _make_service()
-        svc._log_alert("Title", "Message", AlertLevel.INFO)
+        result = svc._log_alert("Title", "Message", AlertLevel.INFO)
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -475,3 +478,63 @@ class TestGetAlertService:
             mock_cls.return_value = MagicMock()
             svc = mod.get_alert_service()
             assert svc is not None
+
+
+# ---------------------------------------------------------------------------
+# Escalating backoff for persistent alerts (anti-flood)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestEscalatingBackoff:
+    @staticmethod
+    def _mock_telegram(svc):
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post.return_value = mock_resp
+        svc._client = mock_client
+        return mock_client
+
+    async def test_persistent_alert_cooldown_doubles(self, monkeypatch):
+        svc = _make_service(telegram=True)
+        self._mock_telegram(svc)
+        clock = {"t": 0.0}
+        monkeypatch.setattr(
+            "backend.services.monitoring.alert_service.time.monotonic",
+            lambda: clock["t"],
+        )
+        base = svc._alert_cooldown_seconds
+
+        clock["t"] = 0.0
+        assert (await svc.send_alert("Stuck", "m", dedup_key="k"))["telegram"] is True
+        clock["t"] = base - 1
+        assert (await svc.send_alert("Stuck", "m", dedup_key="k"))["telegram"] is False
+        clock["t"] = base
+        assert (await svc.send_alert("Stuck", "m", dedup_key="k"))["telegram"] is True
+        clock["t"] = base + 2 * base - 1
+        assert (await svc.send_alert("Stuck", "m", dedup_key="k"))["telegram"] is False
+        clock["t"] = base + 2 * base
+        assert (await svc.send_alert("Stuck", "m", dedup_key="k"))["telegram"] is True
+
+    async def test_backoff_resets_after_long_silence(self, monkeypatch):
+        svc = _make_service(telegram=True)
+        self._mock_telegram(svc)
+        clock = {"t": 0.0}
+        monkeypatch.setattr(
+            "backend.services.monitoring.alert_service.time.monotonic",
+            lambda: clock["t"],
+        )
+        clock["t"] = 0.0
+        assert (await svc.send_alert("Flap", "m", dedup_key="k"))["telegram"] is True
+        clock["t"] = svc._alert_backoff_max_seconds * 4
+        assert (await svc.send_alert("Flap", "m", dedup_key="k"))["telegram"] is True
+
+    async def test_resource_alert_uses_stable_dedup_key(self):
+        svc = _make_service(telegram=False)
+        svc.send_alert = AsyncMock()
+        await svc.send_resource_alert("pg_dead_tuples", 17000.0, 10000.0, " dead tuples")
+        await svc.send_resource_alert("pg_dead_tuples", 18000.0, 10000.0, " dead tuples")
+        keys = [c.kwargs["dedup_key"] for c in svc.send_alert.call_args_list]
+        assert keys == ["resource:pg_dead_tuples", "resource:pg_dead_tuples"]
