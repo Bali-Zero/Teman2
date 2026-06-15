@@ -1,4 +1,4 @@
--- 230_autologout_idempotency_guard.sql
+-- 231_autologout_idempotency_guard.sql
 --
 -- Fix the auto-logout cron loop that wrote 174 duplicate clock_out rows for a
 -- single team member (damar@balizero.com, 2026-06-15). Root cause:
