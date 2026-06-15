@@ -34,3 +34,17 @@ Usato una volta: 803→693 (+ rimossi 2 secret embeddati: 1 JWT, 1 QDRANT_KEY).
 ## Residuo operatore (§Solo-operatore, by design)
 - **15 PGPASSWORD** + **QDRANT_KEY `d0e745ad…`** + **1 JWT** sono stati in chiaro storicamente → **considerarli compromessi, ruotare** (Fly secrets / Qdrant). Ordine: ruota PRIMA, poi il GC pulisce il file.
 - I ~600 pattern residui sono regole sane; collassarli ulteriormente = revisione manuale (rischio buco se troppo larghi).
+
+---
+
+## `mem_recall.py` — memoria semantica (richiamo PER SIGNIFICATO)
+
+Risolve "MEMORY.md leggi-dall'alto" → richiamo neurale. 100% on-M5, no Qdrant, no Mini-SSH (post-refuter).
+
+- `mem_recall.py index` — (ri)costruisce l'indice (incrementale per mtime). 485 file → ~1-2min primo run (scarica bge-small ~130MB), poi solo i cambiati.
+- `mem_recall.py recall "<situazione>"` — top-5 ricordi pertinenti. Hybrid: BM25 (rank_bm25 MIT) + semantic rerank (bge-small, sentence-transformers Apache).
+- Venv dedicato: `~/.claude/venvs/mem-semantic/`. Cache: `~/.claude/memory.db` (il .db prima a 0 byte, ora armato).
+
+**Provato live (2026-06-16)**: "scadenze RUPS società indonesiane" → `fact_permenkum_49_2025_rups_sabh` @1.0 ✓ · "dispatch multi-AI" → `decision_opus_mythos_model` @0.994 ✓.
+
+**TODO operatore (GO build completato, resta integrazione)**: wire `mem recall` come alias nella `mem` CLI (host-boundary); opzionale cron `index` post-mem-save per freschezza; valuta caricare il modello una volta (server-mode) se la latenza ~1s/query dà fastidio.
