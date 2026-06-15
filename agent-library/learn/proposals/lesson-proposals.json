@@ -5,9 +5,9 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 5,
+    "scars_scanned": 4,
     "mechanical_candidates": 3,
-    "consultive": 1,
+    "consultive": 0,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
@@ -76,19 +76,7 @@
       "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     }
   ],
-  "consultive": [
-    {
-      "title": "ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05)",
-      "severity": "P3",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    }
-  ],
+  "consultive": [],
   "rejected_no_anchor": [
     {
       "title": "🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)",
