@@ -6,9 +6,9 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **4**
+- scars scanned: **5**
 - mechanical candidates (recurring ≥3): **3**
-- consultive (single-occurrence): **0**
+- consultive (single-occurrence): **1**
 - rejected (no objective anchor, G1): **1**
 
 ## Recurring patterns (the objective recurrence signal, G4)
@@ -24,7 +24,7 @@
 
 ## Consultive (→ judgment pipeline, NOT a hook)
 
-_(none)_
+- ⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16) [P1]
 
 ## Rejected — no objective anchor (gate G1)
 
