@@ -1,0 +1,26 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-KNOWLEDGE",
+  "task_id": "lkpm-id-freshness",
+  "account": "antonellosiano@",
+  "git_sha_before": "69a72e6ff",
+  "git_sha_after": "9ea89635c",
+  "files_touched": [
+    "apps/mouth/src/content/articles/business/pt-pma-first-year-compliance.id.mdx"
+  ],
+  "artifact_proof": "branch agent/mini-pro2/mouth/lkpm-id-freshness pushed to origin; 4 stale LKPM 'tanggal 10 / 10-of-month' deadlines corrected to the 1st-15th window (PerBKPM 5/2025) at L46, L262, L282, L343; BPJS/PPh-21 '10th' deadlines deliberately preserved",
+  "cause_command": "grep -nE '10 (April|Juli|Oktober|Januari)|jatuh tempo 10 Januari' apps/mouth/src/content/articles/business/pt-pma-first-year-compliance.id.mdx",
+  "cause_before": "4 hits",
+  "cause_after": "0 hits (CLEAN)",
+  "cause_exitcode": 0,
+  "refuter_id": "deepseek-v4-pro",
+  "refuter_verdict": "REFUTED — adjudicated FALSE-REFUTE (W65). DeepSeek claimed PerBKPM 5/2025 hallucinated + the 10th still live; overridden by 3 concordant on-disk NB-verified artifacts (claim-ledger LKPM-DEADLINE-10TH, shipped English canonical sibling, Fable5 memory) + 4 independent IDN legal web sources (SmartLegal.id, Prolegal, Permitindo, Golaw). DeepSeek's point (3) — leave BPJS/PPh unchanged — accepted.",
+  "ground_truth_source": "claim-ledger LKPM-DEADLINE-10TH (NotebookLM NB-2/NB-3/NB-5, verified_on 2026-06-14) + web cross-check",
+  "lease_held": [],
+  "firebreaks_surfaced": [
+    "open PR (gh token not collaborator on Mini)",
+    "Mini NLM login + agy(Gemini) login (interactive OAuth)",
+    "translation-freshness guard design decision"
+  ],
+  "ts": "2026-06-15T21:31:49Z"
+}
