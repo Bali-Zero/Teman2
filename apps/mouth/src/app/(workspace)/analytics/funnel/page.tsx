@@ -6,6 +6,7 @@ import {
   analyticsApi,
   type FunnelViewResponse,
 } from "@/lib/api/workspace/analytics.api";
+import { STRINGS } from "@/lib/strings";
 
 const FunnelChart = dynamic(
   () => import("@/components/analytics/FunnelChart"),
@@ -84,10 +85,10 @@ export default function FunnelAnalyticsPage() {
       </header>
 
       {loading ? (
-        <p>Caricamento…</p>
+        <p>{STRINGS.common.loading}</p>
       ) : error ? (
         <p role="alert" style={{ color: "var(--color-danger, #dc2626)" }}>
-          Errore: {error}
+          {STRINGS.common.errorPrefix}: {error}
         </p>
       ) : (
         <>
@@ -99,15 +100,15 @@ export default function FunnelAnalyticsPage() {
             }}
           >
             <Kpi
-              label="Sessioni totali"
+              label={STRINGS.funnel.totalSessionsLabel}
               value={totals.sessions.toLocaleString()}
             />
             <Kpi
-              label="Conversioni"
+              label={STRINGS.funnel.conversionsLabel}
               value={totals.conversions.toLocaleString()}
             />
             <Kpi
-              label="Tasso conversione"
+              label={STRINGS.funnel.conversionRateLabel}
               value={`${totals.rate.toFixed(2)}%`}
             />
           </div>
@@ -122,11 +123,11 @@ export default function FunnelAnalyticsPage() {
             }}
           >
             <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>
-              Sessioni vs conversioni per funnel
+              {STRINGS.funnel.chartTitle}
             </h2>
             {merged.length === 0 ? (
               <p style={{ color: "var(--color-text-secondary, #9ca3af)" }}>
-                Nessun dato disponibile.
+                {STRINGS.common.noData}
               </p>
             ) : (
               <FunnelChart data={merged} />

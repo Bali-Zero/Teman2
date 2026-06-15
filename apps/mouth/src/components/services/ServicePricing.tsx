@@ -89,7 +89,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                 >
                   {pkg.popular && (
                     <span
-                      className={`inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
+                      className={`rp-dark-island inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
                         slug === "visa" && visaColors
                           ? visaColors.badge
                           : "bg-accent-blue-editorial"
@@ -135,9 +135,9 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                   <button
                     className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
                       slug === "visa" && visaColors
-                        ? `${visaColors.badge} text-white hover:opacity-90`
+                        ? `rp-dark-island ${visaColors.badge} text-white hover:opacity-90`
                         : pkg.popular
-                          ? "bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
+                          ? "rp-dark-island bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
                           : "border border-white/20 text-white hover:bg-white/10"
                     }`}
                   >
@@ -162,7 +162,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
           onClick={() => setSelectedPackage(null)}
         >
           <div
-            className="relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="rp-dark-island relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}

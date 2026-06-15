@@ -5,6 +5,7 @@ import { Loader2, ArrowLeft, Printer, CheckCircle, Upload } from "lucide-react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
+import { formatIDR } from "@balizero/core/utils";
 import { logger } from "@/lib/logger";
 import { lkpmApi } from "@/lib/api/workspace/lkpm.api";
 import type { LKPMReadyPack } from "@/lib/api/portal/portal.types";
@@ -302,11 +303,7 @@ export default function LKPMReadyPackPage() {
             >
               <p>
                 <span className="font-medium">Grand Total:</span>{" "}
-                {new Intl.NumberFormat("id-ID", {
-                  style: "currency",
-                  currency: "IDR",
-                  minimumFractionDigits: 0,
-                }).format(pack.realized.grand_total)}
+                {formatIDR(pack.realized.grand_total)}
               </p>
               <p>
                 <span className="font-medium">Employees:</span>{" "}

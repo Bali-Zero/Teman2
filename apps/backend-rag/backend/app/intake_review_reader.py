@@ -138,6 +138,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        # The reader is the process that actually runs the CRM pusher in
+        # production (the Fly-mounted router is bypassed by the proxy) — close
+        # its persistent httpx client here, not just in the app factory.
+        from backend.services.intake import crm_push
+
+        await crm_push.close_client()
         await pool.close()
         app.state.db_pool = None
         logger.info("intake_review_reader: db pool closed")

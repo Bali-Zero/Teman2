@@ -14,7 +14,6 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers.crm_enhanced import (
     DocumentCreate,
@@ -606,38 +605,22 @@ async def upload_document_base64(
 
             drive_service = ServiceAccountDriveService()
 
-            # Ensure Root Folder Exists
+            # Ensure Root Folder Exists — MUST go through the idempotent
+            # chokepoint. The old inline create raced against the POST
+            # /api/clients background task (passport upload lands ~15-25s
+            # after creation, while the 16 subfolders are still being built)
+            # and produced a twin "{id}_{name}" root folder on every new
+            # client created with a passport scan.
             root_folder_id = client["google_drive_folder_id"]
             if not root_folder_id:
-                # Create root folder logic
-                parent_id = settings.google_drive_root_folder_id
-
-                # If specific settings exist for types, use them (simplified from crm_drive_folders)
-                # But to avoid circular imports or config issues, we fall back to root or simple logic
-                if client["client_type"] == "individual" and hasattr(
-                    settings,
-                    "gdrive_individuals_folder_id",
-                ):
-                    parent_id = settings.gdrive_individuals_folder_id or parent_id
-                elif client["client_type"] == "company" and hasattr(
-                    settings,
-                    "gdrive_companies_folder_id",
-                ):
-                    parent_id = settings.gdrive_companies_folder_id or parent_id
-
                 try:
-                    folder_data = await drive_service.create_folder(
-                        name=f"{client['id']}_{client['full_name']}",
-                        parent_id=parent_id,
+                    ensure_result = await drive_service.ensure_client_folder(
+                        client_id=client["id"],
+                        client_name=client["full_name"],
+                        client_type=client["client_type"] or "individual",
+                        db_pool=pool,
                     )
-                    root_folder_id = folder_data["id"]
-
-                    # Update client
-                    await conn.execute(
-                        "UPDATE clients SET google_drive_folder_id = $1 WHERE id = $2",
-                        root_folder_id,
-                        client_id,
-                    )
+                    root_folder_id = ensure_result["root_folder_id"]
                 except Exception as e:
                     logger.error("Failed to create root folder: %s", e)
                     raise HTTPException(

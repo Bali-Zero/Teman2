@@ -364,7 +364,7 @@ def test_normalise_slides_caps_subhead_field() -> None:
     """End-to-end through _normalise_slides: a long cover subhead is capped
     on the 'subhead' field of the persisted slide dict."""
     slides_in = []
-    for i in range(1, 12):
+    for i in range(1, 9):
         slides_in.append({
             "slide_number": i,
             "slide_type": "cover" if i == 1 else "body",

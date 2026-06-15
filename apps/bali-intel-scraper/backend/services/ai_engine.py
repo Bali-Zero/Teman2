@@ -187,35 +187,38 @@ class AIBatchProcessor:
         )
 
     async def _call_anthropic(self, request: AIRequest) -> AIResponse:
-        """Call Anthropic API."""
-        import anthropic
+        """Call Claude via Max-plan OAuth (``claude`` CLI), never the paid API.
+
+        CLAUDE.md §5 / Golden Rule #13: ``ANTHROPIC_API_KEY`` is banned.
+        The OAuth CLI has no separate system slot, no token metadata and no
+        max_tokens/temperature knobs — so the system prompt is inlined and
+        usage is estimated (``len // 4``, industry rule-of-thumb).
+        """
+        from backend.services.claude_oauth import complete_oauth
 
         await limit_ai_request("anthropic")
 
-        client = anthropic.AsyncAnthropic(api_key=settings.ai.anthropic_api_key)
+        # settings.ai.anthropic_model defaults to a legacy slug the CLI
+        # rejects (claude-3-opus-20240229); force a current default unless
+        # the caller passes an explicit model.
+        model = request.model or "claude-sonnet-4-6"
+        prompt = f"{self._get_system_prompt(request.task_type)}\n\n{request.content}"
 
         start_time = asyncio.get_event_loop().time()
-
-        response = await client.messages.create(
-            model=request.model or settings.ai.anthropic_model,
-            max_tokens=request.max_tokens,
-            temperature=request.temperature,
-            system=self._get_system_prompt(request.task_type),
-            messages=[{"role": "user", "content": request.content}],
-        )
-
+        text = await complete_oauth(prompt, model=model)
         latency = (asyncio.get_event_loop().time() - start_time) * 1000
 
+        prompt_tokens = max(1, len(prompt) // 4)
+        completion_tokens = max(1, len(text) // 4)
         return AIResponse(
-            content=response.content[0].text,
+            content=text,
             usage={
-                "prompt_tokens": response.usage.input_tokens,
-                "completion_tokens": response.usage.output_tokens,
-                "total_tokens": response.usage.input_tokens
-                + response.usage.output_tokens,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
             },
-            model=response.model,
-            finish_reason=response.stop_reason,
+            model=model,
+            finish_reason="stop",
             latency_ms=latency,
         )
 

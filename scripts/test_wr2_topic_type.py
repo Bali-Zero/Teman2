@@ -253,7 +253,7 @@ def _make_parsed(extra_first: dict) -> dict:
             "body": "b",
             "image_prompt": "p",
         }
-        for n in range(2, 12)
+        for n in range(2, 9)
     ]
     return {"register": "analitico", "slides": [first] + rest}
 

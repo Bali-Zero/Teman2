@@ -190,7 +190,20 @@ class PDFVisionService:
             return None
 
     async def _analyze_via_gemini(self, prompt: str, image_base64: str) -> str | None:
-        """Fallback: Analyze image using Gemini Vision API."""
+        """Fallback: Analyze image using Gemini Vision API.
+
+        PII-sovereignty gated: this sends the document image to Google (cross-border,
+        UU PDP Art. 56 / SYMBIOSIS Law 2). Blocked unless OCR_ALLOW_CLOUD_VISION=true
+        (default false). When blocked, returns None so the caller degrades locally.
+        """
+        from backend.services.multimodal.cloud_vision_gate import (
+            cloud_vision_allowed,
+            note_cloud_ocr_blocked,
+        )
+
+        if not cloud_vision_allowed():
+            note_cloud_ocr_blocked("pdf_vision_service._analyze_via_gemini")
+            return None
         try:
             client = self._get_genai_client()
             if not client or not client.is_available:

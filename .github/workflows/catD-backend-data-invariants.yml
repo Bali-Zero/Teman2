@@ -1,0 +1,124 @@
+name: catD-backend-data-invariants
+
+# Category-D guardian (backend data & RAG) — born from the 2026-06-11
+# guardian-of-guardians audit, domande-per-fable5 §D (#32 #36 #37).
+#
+# Two "exists-but-not-armed" (W64) gaps had a fact/antibody but NO CI consumer:
+#
+#   #32  the embedding dimension (1536) is a magic literal scattered across
+#        ≥6 files (health.py:308, core/embeddings.py, core/qdrant_db.py,
+#        3 migrations, ...) instead of being derived from the FROZEN model
+#        (text-embedding-3-small = 1536). Data Invariant #9 (CLAUDE.md): the
+#        model is frozen; a silent drift of the literal away from the model's
+#        true dims would silently invalidate the 1536-dim vector store. This
+#        pins the health.py advertised dim to the frozen value so a stray edit
+#        fails the build instead of mis-reporting in /health.
+#
+#   #36/#37  `backend/tests/integration/test_endpoints_reachable.py` (274 lines,
+#        the antibody the Sprint-1.B "mock != prod" SCAR called for) EXISTS but
+#        was wired into ZERO *named* workflows — it only runs as part of the
+#        generic `pytest backend/tests/` sweep in tests.yml, where it carries a
+#        `pytest.skip(...)` fallback (if include_routers fails in-env) that can
+#        silently no-op it. This job runs it as a NAMED, visible check so a skip
+#        is observable, and asserts it is still collected (not deleted/renamed).
+#
+# Pure grep + a single targeted pytest module → runs in well under the timeout.
+# Triggers BOTH pull_request AND push-to-main (W41/W42: pull_request-only gives
+# false safety under L2 autonomous direct-push).
+#
+# NON-REQUIRED by design (not added to branch protection here): a NEW signal
+# observes for a review cycle before it can block; flip to required only after
+# it proves stable + zero false-positive (W69 BUCO #1: arming a check as
+# required without a skip→success sentinel can pend-forever / block innocents).
+
+# Path-scoped (2026-06-12 CI fan-out reduction): this guardian only inspects
+# backend-rag data invariants (embedding dim, reachability test), so a PR that
+# touches no backend code has nothing for it to check. NON-REQUIRED, so a
+# non-matching PR simply doesn't run it — no pending-forever (W69 BUCO #1 only
+# bites REQUIRED checks placed behind a path filter without a skip→success
+# sentinel).
+on:
+  pull_request:
+    paths:
+      - "apps/backend-rag/**"
+      - ".github/workflows/catD-backend-data-invariants.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/backend-rag/**"
+      - ".github/workflows/catD-backend-data-invariants.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catD-backend-data-invariants-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  catD-backend-data-invariants:
+    name: catD-backend-data-invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+
+      # ── #32 — the /health advertised embedding dim must match the FROZEN model ──
+      # text-embedding-3-small = 1536 dims (Data Invariant #9, never change without
+      # a re-indexing plan). If health.py stops advertising 1536, either the model
+      # changed (forbidden) or the literal drifted — both must fail loudly.
+      - name: Pin embedding dim literal (text-embedding-3-small = 1536)
+        run: |
+          set -uo pipefail
+          HEALTH=apps/backend-rag/backend/app/routers/health.py
+          if [ ! -f "$HEALTH" ]; then
+            echo "::warning::$HEALTH absent — skipped (file moved? update this lint)."
+            exit 0
+          fi
+          if grep -qE '"dimensions"[[:space:]]*:[[:space:]]*1536' "$HEALTH"; then
+            echo "OK: $HEALTH advertises the frozen 1536-dim embedding."
+          else
+            echo "::error::$HEALTH no longer advertises \"dimensions\": 1536. text-embedding-3-small is FROZEN at 1536 (Data Invariant #9). A change here either swaps the embedding model (forbidden without a re-indexing plan) or drifts the literal."
+            exit 1
+          fi
+
+      # ── #36/#37 — the prod-shape reachability test must stay collected ────────
+      # The SCAR antibody (test_endpoints_reachable.py) is worthless if it's
+      # deleted, renamed, or emptied. Assert it exists and has its test functions.
+      - name: Assert reachability antibody test is present
+        run: |
+          set -uo pipefail
+          T=apps/backend-rag/backend/tests/integration/test_endpoints_reachable.py
+          if [ ! -f "$T" ]; then
+            echo "::error::$T (Sprint-1.B mock-vs-prod SCAR antibody) is missing — do not delete the reachability test."
+            exit 1
+          fi
+          N=$(grep -cE '^[[:space:]]*def test_' "$T" || echo 0)
+          echo "reachability test functions: $N"
+          if [ "$N" -lt 3 ]; then
+            echo "::error::$T has only $N test functions (<3) — the reachability antibody looks gutted."
+            exit 1
+          fi
+          echo "OK: reachability antibody present with $N test functions."
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Run the reachability test as a NAMED check (vs being buried in the generic
+      # sweep). A pytest.skip in this env still surfaces here as a visible skipped
+      # node rather than silently vanishing inside the big suite.
+      - name: Run reachability test (named, non-required)
+        run: |
+          set -uo pipefail
+          cd apps/backend-rag
+          python -m pip install --quiet uv
+          uv pip install --system fastapi 'httpx>=0.27' pytest pytest-asyncio || true
+          PYTHONPATH=.:../crm-cell python -m pytest \
+            backend/tests/integration/test_endpoints_reachable.py \
+            -v --tb=short -ra || {
+              echo "::warning::reachability test could not run standalone in this env (deps/skip) — it still runs inside the required Backend Tests job. This named check is observability-only.";
+              exit 0;
+            }

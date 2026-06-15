@@ -5,16 +5,77 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 12,
-    "mechanical_candidates": 0,
-    "consultive": 8,
-    "rejected_no_anchor": 4
+    "scars_scanned": 5,
+    "mechanical_candidates": 3,
+    "consultive": 1,
+    "rejected_no_anchor": 1
   },
   "recurring_patterns": {
-    "w_numbers": {},
+    "w_numbers": {
+      "W64": 3
+    },
     "families": {}
   },
-  "mechanical_candidates": [],
+  "mechanical_candidates": [
+    {
+      "title": "⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13)",
+      "severity": "P2",
+      "w_numbers": [
+        "W55",
+        "W64",
+        "W65",
+        "W71",
+        "W78"
+      ],
+      "recurring_via": {
+        "w": [
+          "W64"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)",
+      "severity": "P2",
+      "w_numbers": [
+        "W62",
+        "W64",
+        "W70",
+        "W75",
+        "W78",
+        "W79",
+        "W80"
+      ],
+      "recurring_via": {
+        "w": [
+          "W64"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "✅ W81 (FIXED): i 3 loop di apprendimento WR3 erano \"verdi ma vuoti\" — malattia-madre \"Omeostasi Tautologica\" (telemetria-verde ≠ delta-di-stato); F20+F21 curati come codice+test, F18 escalato (2026-06-14)",
+      "severity": "P2",
+      "w_numbers": [
+        "W64",
+        "W71",
+        "W74",
+        "W81"
+      ],
+      "recurring_via": {
+        "w": [
+          "W64"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    }
+  ],
   "consultive": [
     {
       "title": "ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05)",
@@ -26,111 +87,9 @@
       },
       "pipeline": "consultive",
       "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)",
-      "severity": "P1",
-      "w_numbers": [
-        "W1"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams (2026-04-29)",
-      "severity": "P0",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)",
-      "severity": "P1",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: Untracked files lost when sibling automation switches branches mid-session (2026-04-29, twice in 9h)",
-      "severity": "UNKNOWN",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28)",
-      "severity": "P2",
-      "w_numbers": [
-        "W59",
-        "W62",
-        "W63"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25)",
-      "severity": "P0",
-      "w_numbers": [
-        "W50",
-        "W51",
-        "W52",
-        "W55"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "🚨 PENDING APPROVAL (P1 SECURITY): `backend_rag_v2` Postgres role has `rolsuper=t` — demotion spec drafted, awaiting Antonello sign-off (W38, 2026-05-23)",
-      "severity": "P1",
-      "w_numbers": [
-        "W38"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
     }
   ],
   "rejected_no_anchor": [
-    {
-      "title": "⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29)",
-      "reason": "no objective anchor (G1)"
-    },
-    {
-      "title": "⚠️ STRUCTURAL: SQL v2 migrations duplicate numbers `129_*` and `130_*` (2026-04-29)",
-      "reason": "no objective anchor (G1)"
-    },
-    {
-      "title": "⚠️ STRUCTURAL: Unknown agent overwrites loaded LaunchAgent plist files with JSON dump (2026-04-29)",
-      "reason": "no objective anchor (G1)"
-    },
     {
       "title": "🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)",
       "reason": "no objective anchor (G1)"

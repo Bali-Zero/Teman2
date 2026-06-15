@@ -13,7 +13,7 @@ cloud, zero third-party endpoints.
 
 Reuse (reuse-first discipline)
 ------------------------------
-* ``backend.services.crm.client_core.validate_passport`` — passport normaliser
+* ``backend.services.crm.client_core.validate_passport`` — passport-number normaliser
   (upper-case + format guard), reused so the document identifier is normalised
   the same way the CRM stores/validates it.
 * The pg_trgm ``%`` / ``similarity()`` fuzzy-name + ambiguity-margin cascade is
@@ -35,8 +35,9 @@ Decision matrix (C4)
 --------------------
 * ``AUTO_ATTACH``    — exactly one candidate via a STRONG identifier
   (passport / npwp / nib / akta number) → high confidence, no human needed.
-* ``LINK_CANDIDATE`` — a single probable match via fuzzy name only (no strong
-  identifier) → human confirmation recommended.
+* ``LINK_CANDIDATE`` — a single probable match via the sender-phone signal
+  (m225, conf ~0.90 — phones can be shared by spouse/agent so never auto) or
+  via fuzzy name only (no strong identifier) → human confirmation recommended.
 * ``AMBIGUOUS``      — >= 2 plausible candidates (homonyms!) or strong-identifier
   collision → human review mandatory.
 * ``NO_MATCH``       — no candidate at all → potential new client, human review.
@@ -69,6 +70,18 @@ AMBIGUITY_MARGIN = 0.15            # top1 - top2 < margin → AMBIGUOUS (homonym
 
 # Confidence assigned to a strong-identifier exact match.
 CONF_STRONG_EXACT = 0.99
+
+# Sender-phone exact match (m225). High confidence but NEVER auto-attach: a
+# phone can be shared by spouse/agent — the sender is not always the subject.
+CONF_PHONE_MATCH = 0.90
+# Boost applied when sender phone AND fuzzy name agree on the same client.
+PHONE_NAME_AGREE_BOOST = 0.05
+
+# Folder-name match (m227). Drive-intake blobs arrive under a per-client folder
+# (Dropbox-Intake/<Client Name>/...): the transport layer knows WHICH FOLDER the
+# blob came from, like the phone knows who sent it. Human-typed and shared-folder
+# prone → slightly below the phone signal and NEVER auto-attach alone.
+CONF_FOLDER_MATCH = 0.85
 
 # Doc-types whose subject is a PERSON (match against ``clients``) vs a COMPANY
 # (match against ``companies``). canonical_doc_type() upstream already maps
@@ -125,8 +138,7 @@ def _normalize_passport(value):
     norm = _normalize_id(value)
     if not norm:
         return None
-    import re as _re
-    return norm if _re.match(r'^[A-Z0-9]+$', norm) else norm
+    return norm
 
 
 def _digits_only(value: Any) -> str | None:
@@ -135,6 +147,32 @@ def _digits_only(value: Any) -> str | None:
         return None
     d = re.sub(r"\D", "", str(value))
     return d or None
+
+
+def normalize_sender_phone(value: Any) -> str | None:
+    """Normalise a sender phone for ``clients.phone_normalized`` matching.
+
+    Digits-only (strips spaces / ``+`` / separators), Indonesian leading ``0``
+    → ``62``, bare ``8…`` → ``62…``, <8 digits rejected. The algorithm MIRRORS
+    ``backend.services.crm.client_core.normalize_phone_e164`` (minus the ``+``
+    prefix, dropped so callers can probe BOTH ``phone_normalized`` storage
+    variants — same dual-form lookup as wa_copilot/identity_resolver).
+
+    Deliberately INLINED, not imported: the client_core import chain pulls
+    ``backend.app.core.config.Settings()`` (requires JWT_SECRET_KEY/API_KEYS
+    env), which would crash the sovereign-local intake worker at import time.
+    Keep in sync with client_core if the E.164 rules ever change.
+    """
+    if value is None:
+        return None
+    digits = re.sub(r"\D", "", str(value))
+    if len(digits) < 8:
+        return None
+    if digits.startswith("0"):
+        digits = "62" + digits[1:]
+    elif digits.startswith("8"):
+        digits = "62" + digits
+    return digits
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +295,94 @@ async def _match_company_strong(
     return candidates
 
 
+async def _match_sender_phone(
+    conn: asyncpg.Connection, sender_phone: str | None
+) -> list[dict[str, Any]]:
+    """Exact match of the transport-layer sender phone against ``clients``.
+
+    Matches ``clients.phone_normalized`` in both storage variants (with and
+    without the leading ``+`` — same dual lookup as wa_copilot's
+    identity_resolver). LIMIT 3: one row is the signal; >1 row means the phone
+    is shared (spouse/agent/office line) and the decision matrix degrades it to
+    AMBIGUOUS rather than guessing.
+    """
+    norm = normalize_sender_phone(sender_phone)
+    if not norm:
+        return []
+    rows = await conn.fetch(
+        """
+        SELECT id, full_name
+        FROM clients
+        WHERE deleted_at IS NULL
+          AND phone_normalized IN ($1, $2)
+        ORDER BY id
+        LIMIT 3
+        """,
+        norm,
+        "+" + norm,
+    )
+    return [
+        {
+            "table": "clients", "id": r["id"], "name": r["full_name"],
+            "method": "sender_phone", "score": CONF_PHONE_MATCH,
+            "matched_value": norm, "basis": "phone",
+        }
+        for r in rows
+    ]
+
+
+def _clean_folder_segment(value: Any) -> str | None:
+    """Normalise the first path segment of ``source_path`` into a name to match.
+
+    Real Dropbox folders carry human decorations — ``###PERPANJANGAN KITAS
+    JOHN DOE###``, ``@arsip Cetak (2027)`` — so strip non-name punctuation and
+    parenthetical suffixes, collapse whitespace, reject <3 chars.
+    """
+    if value is None:
+        return None
+    seg = str(value).split("/", 1)[0]
+    seg = re.sub(r"\([^)]*\)", " ", seg)        # drop parenthetical suffixes
+    seg = re.sub(r"[#@_*\[\]{}!]+", " ", seg)   # drop decoration characters
+    seg = re.sub(r"\s+", " ", seg).strip()
+    if len(seg) < 3:
+        return None
+    return seg
+
+
+async def _match_folder_name(
+    conn: asyncpg.Connection, source_path: str | None
+) -> list[dict[str, Any]]:
+    """Folder-name match (m227): first ``source_path`` segment vs CRM names.
+
+    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name``;
+    only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport hint (a weak
+    folder sim is noise — unlike the OCR-name fuzzy, which has its own review
+    band). One clear winner → a single CONF_FOLDER_MATCH candidate; top-2 inside
+    the ambiguity margin → both returned so the decision matrix degrades to
+    AMBIGUOUS rather than guessing.
+    """
+    name = _clean_folder_segment(source_path)
+    if not name:
+        return []
+    merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
+    merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
+    usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
+    usable.sort(key=lambda c: c["score"], reverse=True)
+    if not usable:
+        return []
+
+    def _as_hint(c: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "table": c["table"], "id": c["id"], "name": c["name"],
+            "method": "folder_name", "score": CONF_FOLDER_MATCH,
+            "matched_value": name, "basis": "folder", "folder_sim": c["score"],
+        }
+
+    if len(usable) >= 2 and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN:
+        return [_as_hint(usable[0]), _as_hint(usable[1])]
+    return [_as_hint(usable[0])]
+
+
 async def _match_fuzzy_name(
     conn: asyncpg.Connection, table: str, name_col: str, name: str
 ) -> list[dict[str, Any]]:
@@ -290,11 +416,27 @@ async def _match_fuzzy_name(
 def _classify_decision(
     strong: list[dict[str, Any]],
     fuzzy: list[dict[str, Any]],
+    phone: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
-    """Apply the C4 decision matrix to strong + fuzzy candidate lists.
+    """Apply the C4 decision matrix to strong + transport-hint + fuzzy lists.
+
+    ``phone`` carries the transport-layer hint candidates — sender-phone (m225)
+    or folder-name (m227); each candidate self-describes via its ``basis`` key.
+    Precedence: strong document identifiers > transport hint > fuzzy name. The
+    hint NEVER yields AUTO_ATTACH on its own (a phone can be shared by
+    spouse/agent; a folder can hold a family's documents): alone it is a
+    LINK_CANDIDATE; agreeing with the top fuzzy name it is a boosted
+    LINK_CANDIDATE; disagreeing, BOTH are surfaced for review; matching >1 row
+    it degrades to AMBIGUOUS.
 
     Returns ``(decision, candidates, reason)``.
     """
+    phone = list(phone or [])
+    hint_label = (
+        "folder name" if phone and phone[0].get("basis") == "folder" else "sender phone"
+    )
+    hint_score_key = "folder_score" if hint_label == "folder name" else "phone_score"
+
     # De-dup strong candidates by (table, id).
     seen: set[tuple[str, int]] = set()
     uniq_strong: list[dict[str, Any]] = []
@@ -304,7 +446,8 @@ def _classify_decision(
             seen.add(key)
             uniq_strong.append(c)
 
-    # 1) Strong identifier(s) present.
+    # 1) Strong identifier(s) present — the phone signal is IGNORED here: the
+    #    document identifier describes the SUBJECT, the phone only the SENDER.
     if uniq_strong:
         if len(uniq_strong) == 1:
             return DECISION_AUTO_ATTACH, uniq_strong, {
@@ -316,12 +459,43 @@ def _classify_decision(
             "reason": f"{len(uniq_strong)} rows share a strong identifier (collision)",
         }
 
-    # 2) No strong identifier → consider fuzzy name candidates.
     usable = [c for c in fuzzy if c["score"] >= FUZZY_REVIEW_LOW]
+    usable.sort(key=lambda c: c["score"], reverse=True)
+
+    # 2) Transport-hint signal — sender phone / folder name (no strong id).
+    if phone:
+        if len(phone) > 1:
+            return DECISION_AMBIGUOUS, phone, {
+                "reason": f"{len(phone)} clients share the {hint_label}",
+            }
+        pc = phone[0]
+        if usable:
+            top_f = usable[0]
+            if top_f["table"] == pc["table"] and top_f["id"] == pc["id"]:
+                # Hint + name agree on the same client → boosted candidate.
+                boosted = dict(pc)
+                boosted["score"] = round(
+                    min(CONF_STRONG_EXACT - 0.01, pc["score"] + PHONE_NAME_AGREE_BOOST), 4
+                )
+                boosted["method"] = f"{pc['method']}+{top_f['method']}"
+                return DECISION_LINK_CANDIDATE, [boosted], {
+                    "reason": f"{hint_label} and fuzzy name agree on the same client",
+                    hint_score_key: pc["score"], "name_sim": top_f["score"],
+                }
+            # Hint and name point at DIFFERENT rows → surface both for review.
+            return DECISION_LINK_CANDIDATE, [pc, top_f], {
+                "reason": f"{hint_label} and fuzzy name disagree — review both",
+                hint_score_key: pc["score"], "name_sim": top_f["score"],
+            }
+        return DECISION_LINK_CANDIDATE, [pc], {
+            "reason": f"{hint_label} match (no strong identifier, no fuzzy name)",
+            hint_score_key: pc["score"],
+        }
+
+    # 3) No strong identifier, no transport hint → fuzzy name candidates only.
     if not usable:
         return DECISION_NO_MATCH, [], {"reason": "no strong identifier, no fuzzy name >= 0.40"}
 
-    usable.sort(key=lambda c: c["score"], reverse=True)
     top = usable[0]
 
     # >= 2 plausible names within the ambiguity margin → homonym ambiguity.
@@ -350,8 +524,18 @@ async def resolve_entity(
     extracted_fields: dict[str, Any],
     doc_type: str | None,
     pool: asyncpg.Pool | asyncpg.Connection,
+    *,
+    sender_phone: str | None = None,
+    source_path: str | None = None,
 ) -> dict[str, Any]:
     """Resolve the document subject against existing CRM rows (READ-ONLY).
+
+    ``sender_phone`` (m225) is the raw transport-layer sender number; it is
+    consulted only when no strong document identifier matched, as a
+    high-confidence (~0.90) person hint — see :func:`_classify_decision`.
+    ``source_path`` (m227) is the Drive-intake folder path relative to the
+    watched root (``<Client Name>/file.pdf``); its first segment is consulted
+    only when neither a strong identifier nor the phone resolved (~0.85 hint).
 
     Returns a dict::
 
@@ -368,6 +552,7 @@ async def resolve_entity(
     async def _run(conn: asyncpg.Connection) -> dict[str, Any]:
         strong: list[dict[str, Any]] = []
         fuzzy: list[dict[str, Any]] = []
+        phone: list[dict[str, Any]] = []
         subject_kind = "unknown"
 
         # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
@@ -390,6 +575,22 @@ async def resolve_entity(
             if strong:
                 subject_kind = "person"
 
+        # Sender-phone signal (m225) — the transport layer knows who SENT the
+        # blob. Only consulted when no strong identifier resolved (a strong ID
+        # names the SUBJECT; the phone names the SENDER — document wins).
+        if not strong and sender_phone:
+            phone = await _match_sender_phone(conn, sender_phone)
+            if phone and subject_kind == "unknown":
+                subject_kind = "person"
+
+        # Folder-name signal (m227) — Drive intake knows WHICH FOLDER the blob
+        # arrived in (Dropbox-Intake/<Client Name>/...). Consulted only when
+        # neither a strong identifier nor the sender phone resolved.
+        if not strong and not phone and source_path:
+            phone = await _match_folder_name(conn, source_path)
+            if phone and subject_kind == "unknown":
+                subject_kind = "person" if phone[0]["table"] == "clients" else "company"
+
         # Fuzzy name fallback (only matters when no strong identifier resolved).
         if not strong:
             company_name = _field_value(extracted_fields, "company_name")
@@ -407,7 +608,7 @@ async def resolve_entity(
                 if pf and subject_kind == "unknown":
                     subject_kind = "person"
 
-        decision, candidates, reason = _classify_decision(strong, fuzzy)
+        decision, candidates, reason = _classify_decision(strong, fuzzy, phone)
         return {
             "decision": decision,
             "candidates": candidates,
@@ -506,6 +707,8 @@ async def build_routing_proposal(
     *,
     doc_index: int = 0,
     pipeline_version: str = PIPELINE_VERSION_DEFAULT,
+    sender_phone: str | None = None,
+    source_path: str | None = None,
 ) -> dict[str, Any]:
     """Build (but do NOT persist) the routing proposal payload.
 
@@ -513,7 +716,10 @@ async def build_routing_proposal(
     into ``document_routing_proposal``.
     """
     async def _run(conn: asyncpg.Connection) -> dict[str, Any]:
-        entity = await resolve_entity(extracted, doc_type, conn)
+        entity = await resolve_entity(
+            extracted, doc_type, conn,
+            sender_phone=sender_phone, source_path=source_path,
+        )
         target = await _resolve_routing_target(conn, entity)
 
         decision = entity["decision"]
@@ -575,16 +781,56 @@ async def _fetch_stage_output(conn: asyncpg.Connection, queue_id: int) -> dict[s
     return dict(so)
 
 
-async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:
+async def backfill_received_by(
+    conn: asyncpg.Connection, queue_id: int, client_id: int | None
+) -> str | None:
+    """Give an owner-less queue row a reviewer: the matched client's consultant.
+
+    Docs from the SHARED business line (``whatsapp-live:*``) and Drive arrive
+    with ``received_by IS NULL`` — nobody's dashboard shows them (admin-only
+    pool). When routing resolves a client, the most natural reviewer is that
+    client's assigned consultant: backfill ``intake_queue.received_by`` with
+    ``clients.assigned_to`` so the document lands on THEIR review feed + login
+    gate, exactly like a doc received on their own mirrored chat.
+
+    Never overwrites an existing received_by (own-chat receiver wins). Returns
+    the backfilled email, or None when nothing was written.
+    """
+    if client_id is None:
+        return None
+    row = await conn.fetchrow(
+        """
+        UPDATE intake_queue q
+           SET received_by = lower(c.assigned_to)
+          FROM clients c
+         WHERE q.id = $1
+           AND q.received_by IS NULL
+           AND c.id = $2
+           AND c.deleted_at IS NULL
+           AND c.assigned_to IS NOT NULL
+           AND c.assigned_to <> ''
+        RETURNING q.received_by
+        """,
+        queue_id,
+        client_id,
+    )
+    return row["received_by"] if row else None
+
+
+async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noqa: ARG001 — StageHandler contract
     """FASE-4 real ``route`` stage handler.
 
     Reads the extracted fields from the job's accumulated ``stage_output``,
     resolves the entity, builds the routing proposal, and INSERTs exactly ONE
     ``document_routing_proposal`` row (status ``review_pending``). Idempotent via
     ``ON CONFLICT (routing_key) DO NOTHING``. ZERO CRM writes.
+
+    Owner backfill: when the queue row has no ``received_by`` (shared business
+    line / Drive) and routing resolved a client, the client's assigned
+    consultant becomes the reviewer (:func:`backfill_received_by`) — every
+    matched document lands on a real person's dashboard.
     """
     queue_id = job["id"]
-    pipeline_version = job.get("pipeline_version", PIPELINE_VERSION_DEFAULT)
 
     async with pool.acquire() as conn:
         so = job.get("stage_output")
@@ -600,9 +846,29 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:
         )
         fields = extract_out.get("fields") or {}
 
+        # The worker's claim RETURNING carries neither sender_phone (m225) nor
+        # pipeline_version — read BOTH from the queue row. pipeline_version is
+        # LOAD-BEARING for the retroactive reprocess: the bumped value must
+        # reach _make_routing_key, else the old routing_key collides and
+        # ON CONFLICT silently drops the fresh proposal.
+        qrow = await conn.fetchrow(
+            "SELECT sender_phone, source_path, pipeline_version"
+            " FROM intake_queue WHERE id = $1",
+            queue_id,
+        )
+        sender_phone = job.get("sender_phone") or (qrow["sender_phone"] if qrow else None)
+        source_path = job.get("source_path") or (qrow["source_path"] if qrow else None)
+        pipeline_version = (
+            job.get("pipeline_version")
+            or (qrow["pipeline_version"] if qrow else None)
+            or PIPELINE_VERSION_DEFAULT
+        )
+
         proposal = await build_routing_proposal(
             queue_id, fields, doc_type, conn,
             pipeline_version=pipeline_version,
+            sender_phone=sender_phone,
+            source_path=source_path,
         )
 
         proposal_id = await conn.fetchval(
@@ -634,6 +900,12 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:
         else:
             already = False
 
+        # Owner backfill: a NULL-received_by doc that matched a client goes to
+        # that client's consultant dashboard (idempotent: never overwrites).
+        backfilled_owner = await backfill_received_by(
+            conn, queue_id, proposal["routing"]["client_id"]
+        )
+
     decision = proposal["entity_resolution"]["decision"]
     logger.info(
         "route(FASE4): job=%s proposal_id=%s decision=%s requires_human=%s "
@@ -650,5 +922,6 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:
         "decision": decision,
         "requires_human": proposal["commit_gate"]["requires_human"],
         "idempotent_skip": already,
+        "received_by_backfilled": backfilled_owner,
         "_metric": {"model": "entity-resolution-fase4", "confidence": 1.0},
     }

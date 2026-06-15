@@ -15,11 +15,9 @@ import {
 import { api } from "@/lib/api";
 import { isHRAdmin } from "@/lib/hr/admin";
 import { isOwner } from "@/lib/auth/owner";
+import { SubNav, type SubNavItem } from "@balizero/core";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: typeof LayoutDashboard;
+type NavItem = SubNavItem & {
   adminOnly: boolean;
   ownerOnly?: boolean;
 };
@@ -31,7 +29,13 @@ const allNavItems: NavItem[] = [
   { href: "/hr/payroll", label: "Payroll", icon: Banknote, adminOnly: false },
   { href: "/hr/leave", label: "Leave", icon: Calendar, adminOnly: false },
   { href: "/hr/settings", label: "Settings", icon: Settings, adminOnly: true },
-  { href: "/hr/owner-cashout", label: "Owner Cashout", icon: Lock, adminOnly: false, ownerOnly: true },
+  {
+    href: "/hr/owner-cashout",
+    label: "Owner Cashout",
+    icon: Lock,
+    adminOnly: false,
+    ownerOnly: true,
+  },
 ];
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
@@ -59,6 +63,8 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       })
     : allNavItems.filter((item) => !item.adminOnly && !item.ownerOnly);
 
+  const subNav = { items: navItems, pathname, rootHref: "/hr", linkAs: Link };
+
   return (
     <div className="flex flex-col md:flex-row h-full">
       {/* Desktop sidebar */}
@@ -66,50 +72,12 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 px-3">
           HR / Payroll
         </h2>
-        {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/hr" && pathname?.startsWith(item.href));
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-              }`}
-            >
-              <Icon size={18} />
-              {item.label}
-            </Link>
-          );
-        })}
+        <SubNav {...subNav} variant="sidebar" />
       </nav>
 
       {/* Mobile navigation */}
       <nav className="md:hidden flex gap-1 overflow-x-auto px-4 py-2 border-b border-zinc-800 bg-zinc-950/50 flex-shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/hr" && pathname?.startsWith(item.href));
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                isActive
-                  ? "bg-[var(--bz-accent)]/15 text-[var(--bz-accent)] border border-[var(--bz-accent)]/30"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 border border-transparent"
-              }`}
-            >
-              <Icon size={14} />
-              {item.label}
-            </Link>
-          );
-        })}
+        <SubNav {...subNav} variant="chips" />
       </nav>
 
       {/* Main Content */}

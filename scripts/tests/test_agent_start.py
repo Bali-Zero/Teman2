@@ -88,6 +88,20 @@ def fake_repo(tmp_path, fake_home, monkeypatch):
     git("add", "README.md")
     git("commit", "-m", "seed")
 
+    # Model production reality: an `origin` remote with `main` pushed. The W80
+    # reap-guard (`_branch_in_origin_main`) tests HEAD against `origin/main`, so
+    # a fixture without a remote would make EVERY worktree read as "unmerged" —
+    # masking real behaviour. A bare origin + pushed main is the minimal honest
+    # model (a branch with no commits beyond what's pushed is an ancestor of
+    # origin/main → reap-eligible; a branch with un-pushed commits → protected).
+    origin = tmp_path / "origin.git"
+    subprocess.run(
+        ["git", "init", "--bare", "-b", "main", str(origin)],
+        check=True, capture_output=True, text=True, env=env,
+    )
+    git("remote", "add", "origin", str(origin))
+    git("push", "-u", "origin", "main")
+
     mod = _load_module(repo)
     # Patch the module's subprocess git wrapper cwd default to point at our repo.
     return mod, repo
@@ -273,6 +287,38 @@ def _backdate_worktree_mtime(worktree: Path, minutes: int) -> None:
         pass
 
 
+def _merge_worktree_branch_to_origin_main(worktree: Path, mod) -> None:
+    """Fast-forward origin/main to the worktree's branch tip so the W80 guard
+    (`_branch_in_origin_main`) sees HEAD as an ancestor of origin/main — i.e.
+    the work is consolidated upstream and the worktree is genuinely reapable.
+
+    Done from the MAIN repo (REPO_ROOT) to avoid touching the linked worktree's
+    checked-out branch: update local main to the branch commit, then push."""
+    env = dict(os.environ)
+    env.update(
+        GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
+        GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com",
+    )
+    # The worktree's HEAD commit.
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=worktree, check=True,
+        capture_output=True, text=True, env=env,
+    ).stdout.strip()
+    repo = mod.REPO_ROOT
+    # Move local main to the branch tip (main is checked out in the main repo,
+    # but `branch -f` on the *currently checked-out* branch is refused; main is
+    # NOT checked out here because the test repo's working copy stays on main —
+    # so update via update-ref which bypasses the checkout guard, then push).
+    subprocess.run(
+        ["git", "update-ref", "refs/heads/main", head], cwd=repo, check=True,
+        capture_output=True, text=True, env=env,
+    )
+    subprocess.run(
+        ["git", "push", "origin", "main"], cwd=repo, check=True,
+        capture_output=True, text=True, env=env,
+    )
+
+
 def test_cleanup_removes_expired_clean_worktree(fake_repo, capsys):
     mod, repo = fake_repo
     wt = mod.cmd_create("wr2", "expired-001", ttl_minutes=5)
@@ -372,15 +418,154 @@ def test_cleanup_recent_AND_dirty_reports_wip_not_silent_skip(fake_repo, capsys)
 
 def test_cleanup_skip_recent_disabled_with_zero(fake_repo):
     """skip_recent_minutes=0 disables the recent-activity guard (operator
-    escape for a forced sweep of even just-touched worktrees)."""
+    escape for a forced sweep of even just-touched worktrees).
+
+    The branch must be merged into origin/main for the W80 guard to allow the
+    reap — so we land its commit on main upstream first. (skip_recent=0
+    disables only the recent-activity guard; the W80 unmerged-protection is
+    independent and still binds.)"""
     mod, _ = fake_repo
     wt = mod.cmd_create("wr2", "recent-002", ttl_minutes=5)
     _backdate_metadata(wt, mod, minutes=120)
     (wt / "fresh.txt").write_text("just now\n")
     _commit_in_worktree(wt, mod, "fresh.txt", "fresh")
+    _merge_worktree_branch_to_origin_main(wt, mod)  # consolidate upstream
     rc = mod.cmd_cleanup(skip_recent_minutes=0)
     assert rc == 0
     assert not wt.exists()
+
+
+# ---------------------------------------------------------------------------
+# cleanup — W80 2-AND guard (no-live-process AND merged-into-origin/main)
+# ---------------------------------------------------------------------------
+
+
+def test_cleanup_skips_worktree_with_live_process(fake_repo, capsys, monkeypatch):
+    """W80 case (1): an expired, CLEAN, mtime-IDLE worktree that still has a live
+    OS process anchored to it (a session that commits-and-reasons without
+    touching files) must NOT be reaped. The mtime-based recent-activity guard
+    misses it (files are old); the lsof-based live-process guard catches it."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "live-proc", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    # Merge upstream so guard #2 (merged) would PASS — isolating that it's the
+    # live-process guard #1 (not the unmerged guard) that protects it.
+    _merge_worktree_branch_to_origin_main(wt, mod)
+    _backdate_worktree_mtime(wt, minutes=120)  # mtime idle: recent-guard won't fire
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: True)
+    rc = mod.cmd_cleanup()
+    assert rc == 0  # protection, not a failure
+    assert wt.exists()
+    out = capsys.readouterr().out
+    assert "live-proc" in out
+    assert "live process" in out.lower()
+
+
+def test_cleanup_skips_branch_not_in_origin_main(fake_repo, capsys, monkeypatch):
+    """W80 case (2) — THE BUG: an expired, CLEAN, idle, no-live-process worktree
+    whose branch has commits NOT in origin/main (pushed-but-not-merged, open PR)
+    must NOT be reaped — it carries the only checkout of unmerged work.
+
+    This is the real scenario that vanished the W79 worktree: commit-everything
+    to satisfy stop_verify → clean+idle → reap-eligible by the OLD logic, but
+    the branch was never merged."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "unmerged", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    # Real commit that is NOT pushed to origin/main → genuinely unmerged.
+    (wt / "work.txt").write_text("unmerged work\n")
+    _commit_in_worktree(wt, mod, "work.txt", "feature commit")
+    _backdate_worktree_mtime(wt, minutes=120)  # idle on mtime
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    rc = mod.cmd_cleanup()
+    assert rc == 0  # protection, not a failure (operator decides via PR merge)
+    assert wt.exists()
+    out = capsys.readouterr().out
+    assert "unmerged" in out
+    assert "origin/main" in out
+
+
+def test_cleanup_reaps_when_no_process_and_merged(fake_repo, monkeypatch):
+    """W80 case (3): the ONLY auto-reapable state — expired + clean + idle +
+    NO live process AND branch merged into origin/main. Both W80 guards pass,
+    so the worktree is removed."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "reapable", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "done.txt").write_text("shipped work\n")
+    _commit_in_worktree(wt, mod, "done.txt", "shipped")
+    _merge_worktree_branch_to_origin_main(wt, mod)  # consolidated upstream
+    _backdate_worktree_mtime(wt, minutes=120)  # idle
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert not wt.exists()  # reaped — both guards cleared
+
+
+def test_worktree_has_live_process_real_lsof(fake_repo):
+    """Empirical (no-mock) test of `_worktree_has_live_process` against the REAL
+    `lsof` (W64: prove the guard with the actual kernel call, not just bash -n).
+
+    Spawns a child whose CWD is the worktree → lsof must report it LIVE; after
+    the child dies → not live; a ghost dir → not live. Skips if lsof is absent
+    (the guard fail-safes to True there, which we cannot assert as 'dead')."""
+    import shutil
+
+    if shutil.which("lsof") is None:
+        pytest.skip("lsof not available on this host")
+
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "lsof-real", ttl_minutes=5)
+
+    # No process anchored yet → not live.
+    assert mod._worktree_has_live_process(wt) is False
+
+    # Child with cwd = worktree → lsof reports the cwd fd → LIVE.
+    child = subprocess.Popen(["sleep", "30"], cwd=str(wt))
+    try:
+        time.sleep(0.3)
+        assert mod._worktree_has_live_process(wt) is True
+    finally:
+        child.terminate()
+        child.wait()
+
+    # After the child is gone → not live again.
+    time.sleep(0.3)
+    assert mod._worktree_has_live_process(wt) is False
+
+    # Non-existent directory → not live (nothing to anchor a process to).
+    assert mod._worktree_has_live_process(mod.WORKTREES_DIR / "ghost") is False
+
+
+def test_branch_in_origin_main_real_resolver(fake_repo):
+    """Load-bearing direct test of `_branch_in_origin_main` against a REAL git
+    repo (the refuter-killed logic): it must use origin/main, return True only
+    when HEAD is an ancestor of origin/main, and protect pushed-but-not-merged.
+
+    This is the no-monkeypatch proof that the chosen `merge-base --is-ancestor
+    HEAD origin/main` test discriminates merged from unmerged correctly."""
+    mod, _ = fake_repo
+
+    # Worktree with no commits beyond pushed main → ancestor of origin/main.
+    wt_merged = mod.cmd_create("wr2", "rr-merged", ttl_minutes=5)
+    assert mod._branch_in_origin_main(wt_merged) is True
+
+    # Worktree with a local commit NOT pushed → NOT an ancestor of origin/main.
+    wt_unmerged = mod.cmd_create("wr2", "rr-unmerged", ttl_minutes=5)
+    (wt_unmerged / "x.txt").write_text("local only\n")
+    _commit_in_worktree(wt_unmerged, mod, "x.txt", "local commit")
+    assert mod._branch_in_origin_main(wt_unmerged) is False
+
+    # After landing that commit on origin/main → now an ancestor → merged.
+    _merge_worktree_branch_to_origin_main(wt_unmerged, mod)
+    assert mod._branch_in_origin_main(wt_unmerged) is True
+
+    # Missing/invalid origin ref → fail-safe FALSE (protect, never reap blind).
+    missing = mod.WORKTREES_DIR / "does-not-exist"
+    # A non-existent worktree dir short-circuits to True (nothing to protect);
+    # the inconclusive-ref path is covered by the unmerged case above where
+    # origin/main exists. Assert the directory-gone contract explicitly:
+    assert mod._branch_in_origin_main(missing) is True
 
 
 # ---------------------------------------------------------------------------

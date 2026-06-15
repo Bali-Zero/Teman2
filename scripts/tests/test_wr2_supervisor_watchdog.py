@@ -256,3 +256,45 @@ def test_success_rate_window_uses_7_days_not_24h():
     assert 'WR2_WATCHDOG_SUCCESS_WINDOW_DAYS", "7"' in src
     # And the 80% threshold confirmed by the review.
     assert 'WR2_WATCHDOG_SUCCESS_THRESHOLD_PCT", "80"' in src
+
+
+def test_send_telegram_falls_back_to_plain_on_markdown_400(wd, monkeypatch):
+    """W-cicatrix 2026-06-13: parse_mode=Markdown made Telegram reject the
+    alert with HTTP 400 (unbalanced * / _ entities in job names) and the
+    watchdog DROPPED it — the WR2 alert channel was mute for 3 days. The
+    fix must resend as plain text: delivery beats formatting."""
+    import urllib.error
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    calls: list[dict] = []
+
+    def fake_post(token, payload):
+        calls.append(dict(payload))
+        if "parse_mode" in payload:
+            raise urllib.error.HTTPError("u", 400, "Bad Request", None, None)
+
+    with patch.object(wd, "_post_telegram", fake_post):
+        wd._send_telegram("🚨 *WR2* unbalanced_entity_name")
+
+    assert len(calls) == 2, "must retry exactly once after Markdown 400"
+    assert "parse_mode" in calls[0]
+    assert "parse_mode" not in calls[1], "retry must be plain text"
+    assert calls[1]["text"] == "🚨 *WR2* unbalanced_entity_name"
+
+
+def test_send_telegram_no_plain_retry_on_non_400(wd, monkeypatch):
+    """A 500/502 from Telegram is transient infra, not a formatting issue —
+    no plain-text resend, just the best-effort warning."""
+    import urllib.error
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    calls: list[dict] = []
+
+    def fake_post(token, payload):
+        calls.append(dict(payload))
+        raise urllib.error.HTTPError("u", 502, "Bad Gateway", None, None)
+
+    with patch.object(wd, "_post_telegram", fake_post):
+        wd._send_telegram("hello")  # must not raise
+
+    assert len(calls) == 1

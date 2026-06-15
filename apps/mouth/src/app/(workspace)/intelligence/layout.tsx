@@ -2,24 +2,24 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { SubNav } from "@balizero/core";
 import { Shield, Newspaper, PenTool } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { logger } from "@/lib/logger";
 
 const tabs = [
   {
-    name: "Visa Oracle",
+    label: "Visa Oracle",
     href: "/intelligence/visa-oracle",
     icon: Shield,
   },
   {
-    name: "News Room",
+    label: "News Room",
     href: "/intelligence/news-room",
     icon: Newspaper,
   },
   {
-    name: "Article Composer",
+    label: "Article Composer",
     href: "/intelligence/article-composer",
     icon: PenTool,
   },
@@ -70,33 +70,12 @@ export default function IntelligenceLayout({
               border: "1px solid rgba(255,255,255,0.07)",
             }}
           >
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = pathname?.startsWith(tab.href);
-              return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium transition-all duration-150",
-                    isActive ? "shadow-sm" : "hover:bg-white/[0.04]",
-                  )}
-                  style={
-                    isActive
-                      ? {
-                          background: "rgba(212,132,90,0.12)",
-                          color: "var(--bz-accent)",
-                          border: "1px solid rgba(212,132,90,0.2)",
-                        }
-                      : { color: "var(--bz-text-2)" }
-                  }
-                >
-                  <Icon size={13} className="flex-shrink-0" />
-                  {tab.name}
-                </Link>
-              );
-            })}
+            <SubNav
+              items={tabs}
+              pathname={pathname}
+              variant="tabs"
+              linkAs={Link}
+            />
           </div>
 
           {/* Status indicator */}
@@ -125,7 +104,10 @@ export default function IntelligenceLayout({
           onError={(error, errorInfo) => {
             logger.error(
               "[Intelligence] Error caught: " + error.message,
-              { component: "IntelligenceLayout", note: errorInfo.componentStack || undefined },
+              {
+                component: "IntelligenceLayout",
+                note: errorInfo.componentStack || undefined,
+              },
               error,
             );
           }}

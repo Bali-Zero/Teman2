@@ -53,6 +53,7 @@ class ChannelRouter:
         self.adapters: dict[str, BaseChannel] = {}
         self._thread_manager: ThreadManager | None = None
         self._identity_resolver: Any = None
+        self._persist_failures = 0  # F40: count silently-dropped history writes
         logger.info("✅ ChannelRouter initialized")
 
     def register_adapter(self, channel_name: str, adapter: BaseChannel) -> None:
@@ -254,7 +255,17 @@ class ChannelRouter:
                 json.dumps(metadata or {}),
             )
         except Exception as e:
-            logger.debug("[PERSIST] Could not save message: %s", e)
+            # F40: a failed persist silently holes the conversation history.
+            # Surface at WARNING (was DEBUG = invisible in prod) + count so the
+            # gap is observable instead of vanishing.
+            self._persist_failures += 1
+            logger.warning(
+                "[PERSIST] Could not save %s message for client=%s (total failures=%d): %s",
+                channel,
+                client_id,
+                self._persist_failures,
+                e,
+            )
 
     async def _enrich_with_routing(self, message: ChannelMessage, channel: str) -> None:
         """Resolve client identity, classify intent, and create/join thread.

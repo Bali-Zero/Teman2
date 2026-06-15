@@ -19,6 +19,7 @@ import type {
   LKPMDeadline,
   LKPMReceipt,
 } from "@/lib/api/portal/portal.types";
+import { formatIDR } from "@balizero/core/utils";
 
 export default function LKPMPage() {
   const { error } = useToast();
@@ -136,13 +137,6 @@ export default function LKPMPage() {
       </div>
     );
   }
-
-  const formatIDR = (amount: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
 
   const nextDeadline = deadlines.find((d) => !d.is_overdue);
 

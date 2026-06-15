@@ -120,4 +120,4 @@ Questo file è **mantenuto manualmente**. Si aggiorna quando:
 - Un nuovo pattern di riferimento emerge
 - Una sezione diventa obsoleta
 
-Le metriche quantitative (router count, vector count, etc.) vivono invece in CLAUDE.md tra marker `<!-- DOCSYNC:* -->` e sono auto-sincronizzate da `scripts/docs_sync.py`.
+Le metriche quantitative (router count, vector count, etc.) vivono tra marker `<!-- DOCSYNC:* -->` in `README.md` (più `docs/AI_ONBOARDING.md`, `docs/DOCS_INVENTORY.md`, ecc.) — NON più in CLAUDE.md, da cui i marker sono stati rimossi (F44) — e sono auto-sincronizzate da `scripts/docs_sync.py`.

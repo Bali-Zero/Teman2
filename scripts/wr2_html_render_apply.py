@@ -54,10 +54,12 @@ sys.path.insert(0, str(_REPO / "scripts"))
 import asyncpg  # noqa: E402
 
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
+from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-# Silence httpx INFO logs that would otherwise leak the Telegram bot token in the request URL
+# Silence httpx/httpcore INFO logs that would otherwise leak the Telegram bot token in the request URL
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("wr2_html_apply")
 
 MAX_DRAFTS_PER_RUN = 1
@@ -202,6 +204,39 @@ async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: b
     return web
 
 
+def _dump_designer_history(draft_id: str, slide_index: int, history: list[dict[str, Any]]) -> str:
+    """Persist the designer-loop history JSON for post-mortem and return a short
+    excerpt of the last vision critiques. The render tmp dir is deleted on exit,
+    so without this a render_failed leaves zero trace of WHY the gate rejected
+    (2026-06-11: 3 drafts failed with no recorded critiques)."""
+    issues: list[str] = []
+    for rec in reversed(history):
+        vi = (rec.get("vision") or {}).get("issues") or []
+        if vi:
+            issues = [str(x) for x in vi]
+            break
+    try:
+        import json
+        from datetime import datetime, timezone
+
+        debug_dir = Path(
+            os.environ.get("WR2_HTML_DEBUG_DIR", str(Path.home() / "logs" / "wr2-html-debug"))
+        )
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        path = debug_dir / f"{ts}-{draft_id[:8]}-slide{slide_index:02d}-history.json"
+        path.write_text(
+            json.dumps(
+                {"draft_id": draft_id, "slide": slide_index, "history": history},
+                indent=1,
+                default=str,
+            )
+        )
+    except Exception:
+        logger.exception("failed to persist designer history (non-fatal)")
+    return "; ".join(issues)[:400]
+
+
 # ── render one carousel (per-slide designer loop, GO#3) ─────────────────────────
 async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Path, vision_required: bool) -> Path:
     """Render the carousel via the HTML engine. Returns the dir containing the slide PNGs.
@@ -273,9 +308,10 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
                 max_iters=3,
             )
             if not (res.converged and res.final_png and Path(res.final_png).is_file()):
+                excerpt = _dump_designer_history(draft_id, i, res.history)
                 raise RuntimeError(
                     f"slide {i} did not converge (reason={res.reason!r} "
-                    f"final_png={res.final_png}) — GO#3 c5 reject"
+                    f"critiques=[{excerpt}] final_png={res.final_png}) — GO#3 c5 reject"
                 )
             # place the converged PNG at the canonical slot
             dest = slides_dir / f"{i:02d}.png"
@@ -305,6 +341,40 @@ async def _heartbeat_loop(conn: asyncpg.Connection, draft_id: str, owner: str, s
             logger.error("heartbeat lost for draft %s — signalling abort", draft_id)
             stop.set()
             return
+
+
+# ── anti-sameness ledger (P-1 S1) ───────────────────────────────────────────────
+async def _log_ledger_best_effort(conn: "asyncpg.Connection", draft_id: uuid.UUID) -> None:
+    """Write the topic_type_log row for a rendered draft (savepoint-isolated).
+
+    Best-effort: a ledger failure must NEVER fail the render — the draft is
+    already promoted + WA-notified by the time this runs. Gaps are caught by
+    the watchdog ledger-gap probe (S10d) and the row is idempotent on draft_id.
+    """
+    try:
+        import wr2_topic_type_log as ttl
+
+        async with conn.transaction():  # savepoint — isolates the insert
+            await ttl.log_topic_type(conn, draft_id)
+    except Exception as exc:  # noqa: BLE001 — observability, never fail the render
+        logger.warning("topic_type_log write failed for %s: %s", draft_id, exc)
+
+
+async def _ensure_live(conn: "asyncpg.Connection", dsn: str) -> "asyncpg.Connection":
+    """Return a live connection: if `conn` was closed while idle, reconnect.
+
+    The render of a full carousel takes ~13-16 min, during which main_conn sits
+    idle between the lease-acquire and the terminal write. The pg-proxy closes
+    idle connections, so the post-render write (success OR failure path) hit
+    `asyncpg.InterfaceError: connection is closed` and crashed before recording
+    a terminal status — leaving the draft stuck in 'rendering' forever (2026-06-12
+    SCAR). The heartbeat survives only because its own conn pings every 60s.
+    Reconnect right before each post-render write.
+    """
+    if conn.is_closed():
+        logger.warning("main_conn closed during long render — reconnecting for terminal write")
+        return await asyncpg.connect(dsn, timeout=10)
+    return conn
 
 
 # ── apply one draft ──────────────────────────────────────────────────────────────
@@ -354,6 +424,11 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             if stop.is_set():
                 raise RuntimeError("lease_lost_before_drive")
 
+            # the render just took ~15 min — main_conn may have been closed idle
+            # by the pg-proxy; reconnect before the terminal write so a converged
+            # carousel actually reaches status='rendered' (2026-06-12 SCAR).
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+
             web = await _drive_upload_carousel(str(draft_id), png_paths, shadow)
 
             if shadow:
@@ -376,6 +451,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 main_conn, draft_id=draft_id, lease_owner=owner, drive_url=web,
                 recipients=recipients, message_body=msg, customer_window_hours=24,
             )
+            await _log_ledger_best_effort(main_conn, draft_id)
             closed = [r for r, info in report.items() if not info.get("window_open")]
             if closed:
                 await _ops_alert(
@@ -384,10 +460,43 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     f"Re-open by having them text +62 821-3465-159, then re-enqueue."
                 )
             return f"rendered report={report}"
+        except VisionTransient as exc:
+            # transient vision-infra failure (HTTP 429 quota window OR endpoint
+            # timeout) — NOT a draft defect. Release the lease WITHOUT touching
+            # html_render_attempts so the circuit breaker is not burned; the draft
+            # returns to the queue and renders next tick once the endpoint
+            # recovers. (Pre-fix a 429/timeout masqueraded as "vision unavailable"
+            # and killed healthy drafts in 3 attempts.)
+            # The render may have run long enough to kill main_conn — reconnect so
+            # this release path records its status instead of crashing on a closed
+            # connection and leaving the draft stuck in 'rendering'.
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+            await main_conn.execute(
+                """
+                UPDATE war_room_drafts
+                   SET status='drafts_imaged_checked', lease_owner=NULL,
+                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
+                 WHERE id=$1 AND lease_owner=$2 AND status='rendering'
+                """,
+                draft_id, owner,
+            )
+            logger.warning("draft %s vision transient (%s) — no attempt burned: %s", draft_id, type(exc).__name__, exc)
+            return f"rate_limited:{exc}"
         except RuntimeError as exc:
-            # transient render/Drive failure -> back to queue unless attempts exhausted
+            # transient render/Drive failure -> back to queue unless attempts exhausted.
+            # The render may have run long enough to kill main_conn — reconnect so
+            # this failure path records its terminal status instead of crashing on
+            # a closed connection and leaving the draft stuck in 'rendering'.
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+            # Counter lives in a dedicated INTEGER column (migration 228). The old
+            # path read/wrote slides_json->>'_html_attempts', but slides_json is a
+            # JSONB ARRAY: the read silently returned 0 (so the counter never
+            # accumulated) and the write raised InvalidTextRepresentationError
+            # (`path element at position 1 is not an integer`), crashing the
+            # retry-release before the draft could be parked → reconciliation
+            # re-kicked it forever (2026-06-13 SCAR).
             attempts = await main_conn.fetchval(
-                "SELECT COALESCE((slides_json->>'_html_attempts')::int, 0) FROM war_room_drafts WHERE id=$1",
+                "SELECT COALESCE(html_render_attempts, 0) FROM war_room_drafts WHERE id=$1",
                 draft_id,
             ) or 0
             attempts += 1
@@ -406,7 +515,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             await main_conn.execute(
                 """
                 UPDATE war_room_drafts
-                   SET slides_json = jsonb_set(slides_json, '{_html_attempts}', to_jsonb($3::int)),
+                   SET html_render_attempts = $3::int,
                        status='drafts_imaged_checked', lease_owner=NULL,
                        lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
                  WHERE id=$1 AND lease_owner=$2 AND status='rendering'
@@ -479,39 +588,60 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
         return 2
 
     owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}"
-    scan = await asyncpg.connect(dsn, timeout=10)
-    try:
-        if not await _pg.is_html_kill_switch_enabled(scan):
-            logger.info("wr2_html_renderer_enabled is OFF — no-op")
-            return 0
-        # watchdog: reclaim any dead-worker leases first
-        reclaimed = await _pg.reset_stale_html_leases(scan, stale_after_minutes=10)
-        if reclaimed:
-            logger.info("reclaimed %d stale HTML leases", len(reclaimed))
+    # R4.2 drain-loop (P-1): keep fetching batches until the queue is empty so a
+    # supervisor kickstart swallowed while we are busy still gets its draft
+    # processed this run (restores wr2_supervisor.py:20-22 drain assumption).
+    # Capped so a draft bouncing on transient failures cannot loop forever.
+    max_loops = int(os.environ.get("WR2_HTML_DRAIN_MAX_LOOPS", "10"))
 
+    processed = 0
+    successes = 0
+    rate_limited_halt = False
+    for loop_n in range(max_loops):
         if draft_id:
-            ids = [uuid.UUID(draft_id)]
+            ids = [uuid.UUID(draft_id)] if loop_n == 0 else []
         else:
-            ids = await _pg.fetch_pending_draft_ids(scan, limit=MAX_DRAFTS_PER_RUN)
+            scan = await asyncpg.connect(dsn, timeout=10)
+            try:
+                if not await _pg.is_html_kill_switch_enabled(scan):
+                    logger.info("wr2_html_renderer_enabled is OFF — no-op")
+                    return 0
+                if loop_n == 0:
+                    # watchdog: reclaim any dead-worker leases first
+                    reclaimed = await _pg.reset_stale_html_leases(scan, stale_after_minutes=10)
+                    if reclaimed:
+                        logger.info("reclaimed %d stale HTML leases", len(reclaimed))
+                ids = await _pg.fetch_pending_html_draft_ids(scan, limit=MAX_DRAFTS_PER_RUN)
+            finally:
+                await scan.close()
         if not ids:
-            logger.info("no pending drafts")
-            return 0
+            if processed == 0:
+                logger.info("no pending drafts")
+            break
         if dry_run:
             logger.info("DRY-RUN would process: %s", ids)
             return 0
-    finally:
-        await scan.close()
-
-    successes = 0
-    for did in ids:
-        try:
-            result = await _apply_one(dsn, did, owner)
-            logger.info("draft %s -> %s", did, result)
-            if result.startswith("rendered") or result == "shadow_done":
-                successes += 1
-        except Exception:
-            logger.exception("draft %s crashed", did)
-    return 0 if successes == len(ids) else 1
+        for did in ids:
+            processed += 1
+            try:
+                result = await _apply_one(dsn, did, owner)
+                logger.info("draft %s -> %s", did, result)
+                if result.startswith("rendered") or result == "shadow_done":
+                    successes += 1
+                elif result.startswith("rate_limited"):
+                    # quota is exhausted account-wide — further drafts this run
+                    # would hit the same 429. Stop draining; the draft stays
+                    # queued (no attempt burned) and renders on a later tick.
+                    logger.warning("drain-loop halting early: vision quota rate-limited")
+                    rate_limited_halt = True
+                    break
+            except Exception:
+                logger.exception("draft %s crashed", did)
+        if draft_id or rate_limited_halt:
+            break
+        if draft_id:
+            break
+    return 0 if successes == processed else 1
 
 
 def main() -> int:

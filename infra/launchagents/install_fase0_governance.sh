@@ -69,6 +69,54 @@ runtime_for() {
 
 MODE="${1:-install}"
 
+# The P4 seam-verify Stop-hook, versioned in-repo. Installed to ~/.claude/hooks and
+# registered in settings.json so the verify-the-verifiers gate (id: seam_verify) sees
+# it ARMED. Idempotent; advisory-only (never blocks). No secrets involved.
+HOOK_SRC="$REPO_ROOT/scripts/hooks/seam_verify.py"
+HOOK_DEST="$HOME/.claude/hooks/seam_verify.py"
+SETTINGS_JSON="$HOME/.claude/settings.json"
+
+install_seam_verify_hook() {
+    if [[ ! -f "$HOOK_SRC" ]]; then
+        echo "[install] SKIP seam_verify hook — source absent: $HOOK_SRC"
+        return 0
+    fi
+    mkdir -p "$(dirname "$HOOK_DEST")"
+    cp "$HOOK_SRC" "$HOOK_DEST"
+    chmod +x "$HOOK_DEST"
+    echo "[install] seam_verify hook -> $HOOK_DEST"
+    # Register under Stop in settings.json if not already present (idempotent).
+    if [[ -f "$SETTINGS_JSON" ]]; then
+        python3 - "$SETTINGS_JSON" <<'PYREG'
+import json, os, sys
+p = sys.argv[1]
+try:
+    d = json.load(open(p))
+except Exception as e:
+    print(f"[install]   settings.json unreadable, skip register: {e}")
+    sys.exit(0)
+stop = d.setdefault("hooks", {}).setdefault("Stop", [])
+already = any(
+    "seam_verify.py" in (h.get("command", ""))
+    for grp in stop if isinstance(grp, dict)
+    for h in grp.get("hooks", [])
+)
+if already:
+    print("[install]   seam_verify already registered in settings.json")
+    sys.exit(0)
+stop.append({"hooks": [{"type": "command",
+                        "command": "python3 ~/.claude/hooks/seam_verify.py",
+                        "timeout": 15000}]})
+tmp = p + ".tmp"
+json.dump(d, open(tmp, "w"), indent=2, ensure_ascii=False)
+os.replace(tmp, p)
+print("[install]   registered seam_verify under Stop in settings.json")
+PYREG
+    else
+        echo "[install]   no settings.json — hook copied but not registered"
+    fi
+}
+
 mkdir -p "$PLIST_DEST_DIR" "$LOG_DIR" "$STATE_DIR"
 
 bootout() {
@@ -115,11 +163,15 @@ case "$MODE" in
             launchctl bootstrap "gui/$UID_VAL" "$dest"
             installed=$((installed + 1))
         done
+        # The seam-verify Stop-hook is orthogonal to the LaunchAgents (it lives in
+        # ~/.claude/hooks, not launchd) — install it regardless of how many agents
+        # were installed, so it arms even where the deploy worktree isn't present.
+        install_seam_verify_hook
         if [[ "$installed" == "0" ]]; then
-            echo "[install] FATAL: nothing installed — no runtime script present at $RUNTIME_ROOT/scripts" >&2
-            exit 1
+            echo "[install] WARN: no LaunchAgent installed — no runtime script at $RUNTIME_ROOT/scripts" >&2
+            echo "[install]   (seam_verify hook was still handled above)"
         fi
-        echo "[install] done ($installed agent(s)). Verify with: bash $0 --verify"
+        echo "[install] done ($installed agent(s) + seam_verify hook). Verify with: bash $0 --verify"
         ;;
     --uninstall)
         for label in "${LABELS[@]}"; do
@@ -131,6 +183,10 @@ case "$MODE" in
                 echo "[install] removed $dest"
             fi
         done
+        if [[ -f "$HOOK_DEST" ]]; then
+            rm -f "$HOOK_DEST"
+            echo "[install] removed $HOOK_DEST (settings.json registration left intact — harmless if file absent)"
+        fi
         echo "[install] uninstalled."
         ;;
     --verify)
@@ -148,6 +204,17 @@ case "$MODE" in
                 echo "  $f  MISSING"
             fi
         done
+        echo "--- seam_verify hook ---"
+        if [[ -f "$HOOK_DEST" ]]; then
+            echo "  installed: $HOOK_DEST"
+            if grep -q "seam_verify.py" "$SETTINGS_JSON" 2>/dev/null; then
+                echo "  registered in settings.json: yes"
+            else
+                echo "  registered in settings.json: NO (run install)"
+            fi
+        else
+            echo "  NOT installed (run install)"
+        fi
         ;;
     *)
         echo "Usage: $0 [install|--uninstall|--verify]" >&2

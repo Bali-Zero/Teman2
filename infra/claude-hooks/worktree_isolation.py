@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse hook (Bash) — block dangerous git ops in main checkout.
+"""PreToolUse hook (Bash) — block dangerous git ops AND shell file-writes in main checkout.
 
 L5.1 SOTA wave 2026-05-25. Closes Gap G1 (adoption enforcement) from
 research/operations/2026-05-25-sota-workflow-gap-analysis-and-l5-spec.md.
@@ -11,26 +11,28 @@ Post-4-LLM-panel amendments (research/operations/specs/L5.1-panel-synthesis-2026
 - A5: Probe-mode logging for empirical sub-agent inheritance test
 - A6: Cached alive-agent count (zero subprocess on hot path)
 
-Blocked patterns (only when effective git target is REPO_ROOT):
-- git checkout / switch (branch op)
-- git stash (sibling-orphan creator)
-- git reset --hard
-- git merge / rebase / pull
-- git commit -a / git add -A / git add .
+W79 (§9-B of research/operations/specs/phase-aware-guardrails.md, 4-LLM panel
+2026-06-13 Gemini 3.1 Pro + DeepSeek, verified on disk):
+- B1: ALSO block shell file-WRITES into the main checkout via Bash (`> file`,
+  `>> file`, `tee file`, `sed -i ... file`, `cp/mv ... dest`, `dd of=`). Closes the
+  pre-existing hole: worktree_file_write_check covered only Edit/Write/MultiEdit tools,
+  worktree_isolation covered only `git` — so `echo "x" > $REPO_ROOT/f.py` via Bash
+  used to write the main checkout with NO hook stopping it.
 
-Allow:
-- git status/log/diff/show/branch -l/worktree list (read-only)
-- git -C <worktree> ... where <worktree> resolves under allowed
-- git add <specific-file>
-- git commit -m "..." (no -a)
-- git push <branch>
+Blocked (only when effective target resolves INTO main checkout, NOT a worktree):
+- git checkout / switch / stash / reset / merge / rebase / pull / commit -a / add -A / add .
+- shell writes: `> file`, `>> file`, `tee file`, `sed -i ... file`, `cp/mv ... dest`, `dd of=`
+
+Allow (defense conservative — a global L1 hook on 3 machines must NOT false-positive):
+- git read-only; git -C <worktree>; git add <file>; git commit -m; git push
+- ANY write whose target is a worktree, /tmp, $HOME outside the repo, or unclassifiable
 
 Escape: AGENT_WORKTREE_ENFORCEMENT=false (env var set in session, NOT inline cmd prefix).
 
 Exit code 2 + stderr = block tool call.
 Exit code 0 + no stderr = allow.
 
-Reference cicatrix: 2026-04-29 #1+#2, W50/W51/W52, 32+ sibling-orphan-2026-05-25.
+Reference cicatrix: 2026-04-29 #1+#2, W50/W51/W52, 32+ sibling-orphan-2026-05-25, W79 (this).
 """
 from __future__ import annotations
 
@@ -96,6 +98,133 @@ GIT_C_RE = re.compile(r"\bgit\s+(?:-c\s+\S+\s+)*-C\s+(\S+)")
 # Extract `cd <path> && git ...` target.
 CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
 
+# --- W79 B1: shell file-WRITE detection ----------------------------------------
+# Quick gate: does the command contain anything that could write a file?
+WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
+# Extractors for write TARGETS. Each yields candidate destination path(s).
+# Redirect:  ... > path   or  ... >> path   (NOT >&, NOT >/dev/null handled by classifier)
+REDIR_RE = re.compile(r"(?<![0-9>&])>>?\s*([^\s|;&)]+)")
+# tee [-a] path...   (path before next pipe/redirect)
+TEE_RE = re.compile(r"\btee\s+(?:-a\s+)?([^\s|;&)]+)")
+# sed -i ... LAST-non-flag-token is the file (best-effort: take tokens after the script)
+SEDI_RE = re.compile(r"\bsed\b[^|;&]*?-i\S*\s+(?:-e\s+\S+\s+|'[^']*'\s+|\"[^\"]*\"\s+|\S+\s+)([^\s|;&)]+)")
+# dd of=path
+DDOF_RE = re.compile(r"\bdd\b[^|;&]*?\bof=([^\s|;&)]+)")
+# cp/mv/install SRC... DEST  → DEST is the last non-flag token before pipe/sep
+CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:\s+(?:-\S+|[^\s|;&)]+))+)")
+
+
+def _strip_noise(cmd: str) -> str:
+    """Neutralize regions where a `>` or a path-like token is NOT a real write target.
+
+    Removes (in order):
+      1. heredoc BODIES — everything from `<<[-]?WORD` (or quoted 'WORD') up to a line
+         that is exactly WORD. The body is free text (commit messages, file content)
+         and routinely contains `>` and bare words that look like relative paths.
+      2. single-quoted strings  '...'   → emptied
+      3. double-quoted strings  "..."   → emptied
+    What remains is shell *structure*, where a `>` is far more likely a real redirect.
+    This is the load-bearing false-positive killer (DeepSeek recipe, W79 follow-up):
+    `git commit -m "...> x..."` and `cat > /tmp/f <<'EOF' ...body... EOF` no longer
+    leak their text into the redirect scan.
+    """
+    # 1) heredoc bodies
+    def _drop_heredocs(s: str) -> str:
+        lines = s.split("\n")
+        out = []
+        i = 0
+        hd_re = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+        while i < len(lines):
+            line = lines[i]
+            m = hd_re.search(line)
+            out.append(line)
+            if m:
+                word = m.group(2)
+                i += 1
+                # consume body until a line == word (allow leading tabs for <<-)
+                while i < len(lines) and lines[i].strip() != word:
+                    i += 1
+                # drop the terminator line too (it's not a command)
+                i += 1
+                continue
+            i += 1
+        return "\n".join(out)
+
+    s = _drop_heredocs(cmd)
+    # 2/3) empty quoted strings (single then double; simple state-free pass is enough
+    #      because we only need to remove their CONTENT, not parse nesting perfectly)
+    s = re.sub(r"'[^']*'", "''", s)
+    s = re.sub(r'"[^"]*"', '""', s)
+    return s
+
+
+def _extract_write_targets(cmd: str) -> list[str]:
+    """Best-effort list of file-write destination paths in a shell command.
+
+    Conservative by design: a target we cannot resolve is simply not returned
+    (→ command is ALLOWED). We only want HIGH-CONFIDENCE writes into the repo.
+    Runs on the NOISE-STRIPPED command (heredoc bodies + quoted strings removed).
+    """
+    cmd = _strip_noise(cmd)
+    targets: list[str] = []
+    for m in REDIR_RE.finditer(cmd):
+        targets.append(m.group(1))
+    for m in TEE_RE.finditer(cmd):
+        targets.append(m.group(1))
+    for m in SEDI_RE.finditer(cmd):
+        targets.append(m.group(1))
+    for m in DDOF_RE.finditer(cmd):
+        targets.append(m.group(1))
+    for m in CPMV_RE.finditer(cmd):
+        toks = [t for t in m.group(1).split() if not t.startswith("-")]
+        if toks:
+            targets.append(toks[-1])  # destination is the last positional arg
+    # strip quotes; drop obvious non-file sinks
+    cleaned = []
+    for t in targets:
+        t = t.strip().strip("'\"")
+        if not t or t.startswith("/dev/") or t in {"&1", "&2"} or t.startswith("$("):
+            continue
+        cleaned.append(t)
+    return cleaned
+
+
+def _resolve_target(path_str: str, cwd: str) -> pathlib.Path | None:
+    """Resolve a possibly-relative write target against cwd. None on failure."""
+    try:
+        p = pathlib.Path(os.path.expanduser(path_str))
+        if not p.is_absolute() and cwd:
+            p = pathlib.Path(cwd) / p
+        return p.resolve()
+    except Exception:
+        return None
+
+
+def _write_hits_main(cmd: str, cwd: str) -> pathlib.Path | None:
+    """Return the offending path if a shell write lands INSIDE main checkout
+    (and NOT inside an allowed worktree). None = no main-write detected → allow."""
+    if not WRITE_HINT_RE.search(cmd):
+        return None
+    repo_real = pathlib.Path(REPO_ROOT).resolve()
+    for raw in _extract_write_targets(cmd):
+        # allowed-worktree check reuses the git path logic (same resolver)
+        if _is_path_in_allowed_worktree(raw):
+            continue
+        resolved = _resolve_target(raw, cwd)
+        if resolved is None:
+            continue  # unclassifiable → conservative allow
+        try:
+            inside_main = resolved == repo_real or resolved.is_relative_to(repo_real)
+        except AttributeError:
+            try:
+                resolved.relative_to(repo_real)
+                inside_main = True
+            except ValueError:
+                inside_main = False
+        if inside_main and not _is_path_in_allowed_worktree(str(resolved)):
+            return resolved
+    return None
+
 ALIVE_COUNT_CACHE = "/tmp/nuz_alive_count"
 BLOCK_COUNT_FILE = "/tmp/nuz_l5_1_blocks"
 PROBE_LOG = pathlib.Path.home() / ".claude" / "l5_1_hook_probe.jsonl"
@@ -150,6 +279,15 @@ def _is_path_in_allowed_worktree(path_str: str) -> bool:
     worktrees = _git_worktree_list()
     # Filter out main checkout itself
     allowed = [w for w in worktrees if w != repo_real]
+
+    # W79: any path under REPO_ROOT/.worktrees/<anything> is the convention scratch
+    # area — allowed even if not (yet) a git-registered worktree. Without this, a
+    # write into a freshly-created or unregistered worktree dir is mis-classified
+    # as a main-checkout write and blocked (false positive that breaks normal work).
+    _repo_esc = re.escape(str(repo_real))
+    worktrees_dir_re = re.compile(r"^" + _repo_esc + r"/\.worktrees/[^/]+(?:/|$)")
+    if worktrees_dir_re.match(str(path_real)):
+        return True
 
     # Also accept external worktree convention paths
     _base = re.escape(os.path.dirname(REPO_ROOT))
@@ -244,6 +382,24 @@ def main():
 
     cmd = payload.get("tool_input", {}).get("command", "")
     cwd = payload.get("cwd", "")
+
+    # --- W79 B1: shell file-WRITE into main checkout (independent of git) ---
+    offending = _write_hits_main(cmd, cwd)
+    if offending is not None:
+        _increment_block_counter()
+        _probe_log(payload, "block_shell_write_main")
+        sys.stderr.write(
+            f"WORKTREE ISOLATION VIOLATION (Bash file-write into main checkout)\n"
+            f"  cwd: {cwd}\n"
+            f"  write target: {offending}\n"
+            f"  command: {cmd[:200]}\n\n"
+            f"Reason: writing a file into the MAIN checkout via shell would race with\n"
+            f"other agents and bypass the worktree discipline (W79 / phase-aware-guardrails §9-B).\n\n"
+            f"Resolution: write into your worktree instead, or use\n"
+            f"  python scripts/agent_start.py --lane <lane> --task-id <task-id>\n\n"
+            f"Emergency escape: AGENT_WORKTREE_ENFORCEMENT=false (env var set in shell)\n"
+        )
+        sys.exit(2)
 
     # Quick exit: cmd doesn't look git-mutating
     if "git" not in cmd:

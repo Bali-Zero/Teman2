@@ -235,7 +235,20 @@ Output JSON:
             return None
 
     async def _vision_via_gemini(self, prompt: str, image_base64: str) -> str | None:
-        """Fallback: Analyze image using Gemini Vision API."""
+        """Fallback: Analyze image using Gemini Vision API.
+
+        PII-sovereignty gated (SYMBIOSIS Law 2 / UU PDP Art. 56): blocked unless
+        OCR_ALLOW_CLOUD_VISION=true; returns None when blocked so the caller
+        degrades locally.
+        """
+        from backend.services.multimodal.cloud_vision_gate import (
+            cloud_vision_allowed,
+            note_cloud_ocr_blocked,
+        )
+
+        if not cloud_vision_allowed():
+            note_cloud_ocr_blocked("rag.vision_rag.VisionRAG._vision_via_gemini")
+            return None
         try:
             client = self._get_genai_client()
             if not client or not client.is_available:
@@ -359,6 +372,22 @@ Output JSON:
         prompt_parts.append("\n\nProvide a comprehensive answer using all available information:")
 
         # 4. Query Gemini Vision
+        # PII sovereignty gate (SYMBIOSIS Law 2 / UU PDP Art. 56): rendered document
+        # pages (may contain passport/visa/NPWP) must NOT go to Google unless
+        # OCR_ALLOW_CLOUD_VISION=true.
+        from backend.services.multimodal.cloud_vision_gate import (
+            cloud_vision_allowed,
+            note_cloud_ocr_blocked,
+        )
+
+        if not cloud_vision_allowed():
+            note_cloud_ocr_blocked("rag.vision_rag.VisionRAG.query_with_vision")
+            return {
+                "answer": "Vision service unavailable (cloud fallback blocked for PII sovereignty)",
+                "visuals_used": [],
+                "text_context_length": 0,
+            }
+
         client = self._get_genai_client()
         if not client or not client.is_available:
             return {
