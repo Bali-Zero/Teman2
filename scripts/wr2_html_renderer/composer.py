@@ -48,6 +48,9 @@ _LAYOUTS = _BRAND / "layouts"
 RENDERABLE_FAMILIES = {
     "cover-photo",
     "photo-headline-yellow-sub",
+    "photo-fullbleed",
+    "photo-fullbleed-top",
+    "photo-fullbleed-split",
     "editorial-text",
     "qa-dialogue",
     "timeline-pinboard",
@@ -102,6 +105,16 @@ def map_slide_to_family(slide: dict[str, Any], index: int, total: int) -> str:
 
     Returns a family in RENDERABLE_FAMILIES. Never returns an UNDEFINED one.
     """
+    # Per-slide explicit override (manual full-bleed-photo carousels, 2026-06-13):
+    # a slides.json may pin `layout_family` directly to opt a slide into a
+    # specific renderable family (e.g. "photo-fullbleed" for the foto-a-tutta-slide
+    # treatment). Honoured ONLY when it names a RENDERABLE family — a typo or an
+    # UNDEFINED value falls through to auto-routing so we never emit a blank
+    # skeleton. This intentionally lets a manual author bypass the Art 9.3/9.5
+    # cover/CTA hard rules for a fully-photographic carousel.
+    explicit = (slide.get("layout_family") or "").strip()
+    if explicit in RENDERABLE_FAMILIES:
+        return explicit
     if index == 1 or slide.get("is_cover"):
         return "cover-photo"
     st = (slide.get("slide_type") or "").lower()
@@ -996,7 +1009,7 @@ async def compose_carousel(
         plans.append(SlidePlan(index=i, family=family, slide=slide, expect_hero=expect_hero))
 
     # Download heroes + materialize HTML per slide
-    html_specs: list[tuple[Path, bool]] = []
+    html_specs: list[tuple[Path, bool, str]] = []
     async with httpx.AsyncClient() as client:
         for plan in plans:
             hero_filename: str | None = None
@@ -1024,7 +1037,9 @@ async def compose_carousel(
 
             html_path = slides_dir / f"{plan.index:02d}.html"
             html_path.write_text(html, encoding="utf-8")
-            html_specs.append((html_path, plan.expect_hero))
+            # 3-tuple: thread the layout family so the renderer's hero-visibility
+            # gate samples where THIS family exposes the photo (top/lower/middle).
+            html_specs.append((html_path, plan.expect_hero, plan.family))
 
     result = await render_html_files(html_specs, output_dir, timeout_ms=timeout_ms, make_pdf=True)
 
@@ -1123,8 +1138,13 @@ def make_slide_render_fn(
         html_path = slides_dir / f"{index:02d}.html"
         # render_html_files writes PNG to (render_root/"slides")/f"{enum_idx:02d}.png"
         # where enum_idx is the 1-based position in the list → always "01" here.
+        # Thread the layout family (same derivation materialize_slide_html used)
+        # so the hero-visibility gate samples the right band for this layout.
+        family = map_slide_to_family(slide_with_levers, index, total)
+        if family in UNDEFINED_FAMILIES:
+            family = "photo-headline-yellow-sub"
         res = await render_html_files(
-            [(html_path, expect_hero_for_index(slide_with_levers, index))],
+            [(html_path, expect_hero_for_index(slide_with_levers, index), family)],
             render_root,
             timeout_ms=timeout_ms,
             make_pdf=False,
