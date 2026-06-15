@@ -1,0 +1,20 @@
+# Skill Coach — OpenClaw cron configuration
+# Deploy on Pro only:
+#   cp /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/config/openclaw_skill_coach_cron.yaml \
+#      ~/.openclaw/crons/skill_coach.yaml
+# Or symlink:
+#   ln -s /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/config/openclaw_skill_coach_cron.yaml \
+#      ~/.openclaw/crons/skill_coach.yaml
+
+jobs:
+  # Daily Skill Coach: 02:20 WITA (UTC+8) = 18:20 UTC
+  - name: skill-coach-daily
+    schedule: "20 18 * * *" # UTC — 02:20 WITA
+    command: >
+      cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag &&
+      source .venv/bin/activate &&
+      PYTHONPATH=. python -m backend.scripts.skill_coach_openclaw_runner
+    timeout: 900 # 15 minutes max
+    on_failure: telegram
+    description: "Skill Coach daily learning loop — Genome trajectories to redacted evidence cards"
+    enabled: true
