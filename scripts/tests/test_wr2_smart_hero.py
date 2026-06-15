@@ -178,3 +178,64 @@ def test_editorial_text_skeleton_is_text_only() -> None:
     assert "{{image_url}}" not in skel
     # logo present per brand convention
     assert "logo" in skel
+
+
+# ── 5. photo-fullbleed: per-slide layout_family override + full-bleed skeleton ─
+
+
+def test_routing_layout_family_override_honored_on_mid_hero() -> None:
+    # An explicit layout_family pins the family even for a mid hero slide that
+    # would otherwise auto-route to photo-headline-yellow-sub.
+    fam = map_slide_to_family(
+        {"slide_type": "body", "is_hero_image": True,
+         "layout_family": "photo-fullbleed"}, 4, 8
+    )
+    assert fam == "photo-fullbleed"
+
+
+def test_routing_layout_family_override_beats_cover_and_cta_hard_rules() -> None:
+    # The override bypasses the Art 9.3 cover (index==1) and Art 9.5 CTA/last
+    # (index==total) hard rules — required for a fully-photographic carousel.
+    cover = map_slide_to_family(
+        {"is_cover": True, "layout_family": "photo-fullbleed"}, 1, 8
+    )
+    cta = map_slide_to_family(
+        {"slide_type": "cta", "layout_family": "photo-fullbleed"}, 8, 8
+    )
+    assert cover == "photo-fullbleed"
+    assert cta == "photo-fullbleed"
+
+
+def test_routing_layout_family_typo_falls_through_to_auto() -> None:
+    # A typo / undefined layout_family is ignored (never emit a blank skeleton):
+    # routing falls through to the normal auto rules.
+    fam = map_slide_to_family(
+        {"slide_type": "body", "is_hero_image": False,
+         "layout_family": "photo-fulbleed"}, 4, 8  # intentional typo
+    )
+    assert fam == "editorial-text"
+    # an UNDEFINED (named-but-no-skeleton) family is also ignored
+    fam2 = map_slide_to_family(
+        {"slide_type": "body", "is_hero_image": True,
+         "layout_family": "stat-card-hero"}, 4, 8
+    )
+    assert fam2 == "photo-headline-yellow-sub"
+
+
+def test_photo_fullbleed_in_renderable_families() -> None:
+    from wr2_html_renderer.composer import RENDERABLE_FAMILIES  # noqa: E402
+    assert "photo-fullbleed" in RENDERABLE_FAMILIES
+
+
+def test_photo_fullbleed_skeleton_is_full_bleed_photo_with_body() -> None:
+    skel = _extract_skeleton("photo-fullbleed")
+    # full-bleed background photo bound to image_url (NOT a text-only family)
+    assert ".hero" in skel
+    assert "{{image_url}}" in skel
+    # carries heading + body overlaid (unlike cover-photo which has no body)
+    assert "{{heading}}" in skel
+    assert "{{body}}" in skel
+    # reinforced scrim layer for text legibility over the photo
+    assert ".scrim" in skel
+    # logo present per brand convention
+    assert "logo" in skel
