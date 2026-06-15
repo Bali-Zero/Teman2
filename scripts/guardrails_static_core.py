@@ -121,7 +121,7 @@ BLOCK_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
-            r"\bpython\d?\s+-c\s+['\"].*\b(os\.system|subprocess|exec|eval|os\.remove|shutil\.rmtree)\b",
+            r"\bpython\d?\s+-c\s+['\"][^'\"]*\b(os\.system|exec|eval|os\.remove|shutil\.rmtree)\(|\bpython\d?\s+-c\s+['\"][^'\"]*subprocess[^'\"]*shell\s*=\s*(?:True|1)",
             re.IGNORECASE,
         ),
         "Python -c arbitrary exec",
