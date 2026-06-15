@@ -131,3 +131,107 @@ class DriveOperationsManager:
         response.raise_for_status()
 
         return response.json()
+
+    async def _token(self, user_email: str) -> str:
+        token = await self.auth_manager.get_access_token(user_email)
+        if not token:
+            raise PermissionError(f"Impossibile ottenere un token di accesso per {user_email}")
+        return token
+
+    @drive_operation("delete_file")
+    async def delete_file(
+        self, user_email: str, file_id: str, permanent: bool = False
+    ) -> dict[str, Any]:
+        """Trash (default) or permanently delete a file via Drive API v3.
+
+        ``permanent=False`` → ``PATCH {trashed:true}`` (recoverable from the bin).
+        ``permanent=True``  → ``DELETE`` (irreversible). Mirrors the httpx pattern of
+        the read methods above. Returns a small status dict the router surfaces.
+        """
+        token = await self._token(user_email)
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
+
+        if permanent:
+            response = await self.http_client.delete(url, headers=headers)
+            response.raise_for_status()  # 204 No Content on success
+            return {"id": file_id, "deleted": True, "permanent": True}
+
+        response = await self.http_client.patch(
+            url,
+            headers={**headers, "Content-Type": "application/json"},
+            params={"fields": "id, trashed"},
+            json={"trashed": True},
+        )
+        response.raise_for_status()
+        return {"id": file_id, "trashed": True, "permanent": False}
+
+    @drive_operation("move_file")
+    async def move_file(
+        self,
+        user_email: str,
+        file_id: str,
+        new_parent_id: str,
+        old_parent_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Move a file by re-parenting it (Drive API v3 addParents/removeParents).
+
+        When ``old_parent_id`` is omitted the current parent is looked up first so the
+        file is not left multi-homed (Drive allows multiple parents; we keep exactly one).
+        """
+        token = await self._token(user_email)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        remove_parent = old_parent_id
+        if remove_parent is None:
+            meta = await self.http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                headers=headers,
+                params={"fields": "parents"},
+            )
+            meta.raise_for_status()
+            parents = meta.json().get("parents") or []
+            remove_parent = parents[0] if parents else None
+
+        params: dict[str, Any] = {
+            "addParents": new_parent_id,
+            "fields": "id, name, parents, mimeType, modifiedTime, webViewLink",
+        }
+        if remove_parent:
+            params["removeParents"] = remove_parent
+
+        response = await self.http_client.patch(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            headers={**headers, "Content-Type": "application/json"},
+            params=params,
+            json={},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    @drive_operation("copy_file")
+    async def copy_file(
+        self,
+        user_email: str,
+        file_id: str,
+        new_name: str | None = None,
+        parent_folder_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Copy a file (Drive API v3 files.copy). Optionally rename + place in a folder."""
+        token = await self._token(user_email)
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+        body: dict[str, Any] = {}
+        if new_name:
+            body["name"] = new_name
+        if parent_folder_id:
+            body["parents"] = [parent_folder_id]
+
+        response = await self.http_client.post(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}/copy",
+            headers=headers,
+            params={"fields": "id, name, parents, mimeType, modifiedTime, webViewLink"},
+            json=body,
+        )
+        response.raise_for_status()
+        return response.json()

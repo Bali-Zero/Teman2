@@ -747,6 +747,7 @@ async def move_file(
 
     try:
         result = await drive.move_file(
+            user_email=user_email,
             file_id=file_id,
             new_parent_id=request.new_parent_id,
             old_parent_id=request.old_parent_id,
@@ -785,6 +786,7 @@ async def copy_file(
 
     try:
         result = await drive.copy_file(
+            user_email=user_email,
             file_id=file_id,
             new_name=request.new_name,
             parent_folder_id=request.parent_id,
