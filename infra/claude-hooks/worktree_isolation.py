@@ -103,7 +103,7 @@ CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
 WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
 # Extractors for write TARGETS. Each yields candidate destination path(s).
 # Redirect:  ... > path   or  ... >> path   (NOT >&, NOT >/dev/null handled by classifier)
-REDIR_RE = re.compile(r"(?<![0-9>&])>>?\s*([^\s|;&)]+)")
+REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?\s*([^\s|;&)]+)")  # stdout/stderr/combined redirects
 # tee [-a] path...   (path before next pipe/redirect)
 TEE_RE = re.compile(r"\btee\s+(?:-a\s+)?([^\s|;&)]+)")
 # sed -i ... LAST-non-flag-token is the file (best-effort: take tokens after the script)
@@ -175,8 +175,14 @@ def _extract_write_targets(cmd: str) -> list[str]:
         targets.append(m.group(1))
     for m in DDOF_RE.finditer(cmd):
         targets.append(m.group(1))
+    _PKG_MGR = ("npm ", "pip ", "pip3 ", "brew ", "apt ", "apt-get ", "cargo ", "gem ", "yarn ", "pnpm ", "go ")
     for m in CPMV_RE.finditer(cmd):
-        toks = [t for t in m.group(1).split() if not t.startswith("-")]
+        # skip `install` that belongs to a package manager (npm/pip/brew install ...), not coreutils install
+        pre = cmd[max(0, m.start() - 12):m.start()]
+        if m.group(0).lstrip().startswith("install") and any(pre.rstrip().endswith(k.strip()) for k in _PKG_MGR):
+            continue
+        toks = [t for t in m.group(1).split()
+                if not t.startswith("-") and ">" not in t and "<" not in t]  # drop flags + redirects
         if toks:
             targets.append(toks[-1])  # destination is the last positional arg
     # strip quotes; drop obvious non-file sinks
