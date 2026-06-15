@@ -12,16 +12,27 @@
 # M5-ONLY: the proxy + Keychain RO secret live on M5 (Law 6 / PII boundary). The Pro has its
 # own stable Fly net and does not need this. Refuses to install on any other host.
 #
-# Re-run after script changes: bootout+bootstraps cleanly.
+# TCC NOTE: launchd cannot exec scripts under ~/Desktop on M5 (macOS TCC → status 126
+# "Operation not permitted"). The installer therefore STAGES the supervisor into ~/.fly/bin/
+# (outside the protected tree) and points the LaunchAgent there. Verified 2026-06-15.
+#
+# Re-run after script changes: re-stages + bootout+bootstraps cleanly.
 # /bin/bash 3.2-compatible.
 set -uo pipefail
 
 LABEL="com.nuzantara.fly-pg-tunnel"
 DEST="$HOME/Library/LaunchAgents/$LABEL.plist"
 REPO_ROOT="$HOME/Desktop/nuzantara"
-RUNNER="$REPO_ROOT/scripts/fly_pg_tunnel_supervisor.sh"
+SRC_RUNNER="$REPO_ROOT/scripts/fly_pg_tunnel_supervisor.sh"
+# TCC: launchd CANNOT execute files under ~/Desktop on M5 (macOS TCC blocks it →
+# the agent crashes with status 126 "Operation not permitted"). So we STAGE a copy
+# of the supervisor outside the protected tree and point the LaunchAgent there. The
+# script is self-contained (absolute paths only, never reads the repo), so the staged
+# copy runs identically. Re-running this installer re-stages the latest version.
+STAGE_DIR="$HOME/.fly/bin"
+RUNNER="$STAGE_DIR/fly_pg_tunnel_supervisor.sh"
 LOG_DIR="$HOME/.fly/logs"
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" "$STAGE_DIR"
 
 # ── Guard: M5 only ──────────────────────────────────────────────────────────
 if [[ "$(whoami)" != "balizero" ]]; then
@@ -29,10 +40,12 @@ if [[ "$(whoami)" != "balizero" ]]; then
     exit 0
 fi
 
-if [[ ! -f "$RUNNER" ]]; then
-    echo "[install] SKIP: supervisor not found at $RUNNER" >&2
+if [[ ! -f "$SRC_RUNNER" ]]; then
+    echo "[install] SKIP: supervisor not found at $SRC_RUNNER" >&2
     exit 0
 fi
+# Stage outside ~/Desktop (TCC) so launchd can actually exec it.
+cp "$SRC_RUNNER" "$RUNNER"
 chmod 0755 "$RUNNER"
 
 # ── Preflight (warn, don't block — supervisor degrades gracefully) ───────────
