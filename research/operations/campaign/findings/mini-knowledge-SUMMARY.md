@@ -37,6 +37,42 @@ too, sentinel-green). A robust guard must check the FACT, not a string literal. 
 
 ---
 
+## ⟐ CYCLE 3 ADDENDUM (2026-06-16 ~06:30 WITA) — sweep + LOOP TERMINATION
+
+**KN-4 [P0, FIXED]** — Permenkum 49/2025 sanction corrected from "immediate **NIB suspension**" to the real
+"written warning → **SABH/AHU access block** (not NIB suspension)" in the registration-guide compliance
+InfoCard, **EN + FR + RU** (`pt-pma-registration-guide.{mdx,fr,ru}.mdx`, commit `83349d9a0`, same branch).
+Stale on the **EN canonical itself** — sentinel missed it because its ledger pattern is "automatic NIB
+suspension" but the text said "immediate" (guard-of-phrasing-not-fact, confirmed a 3rd time). Safe to fix
+despite touching EN: the correct fact was already on disk in the 2 sibling articles the InfoCard *links to*
+(`indonesia-corporate-reporting-mandate-regulation-49-2025`, `june-2026-deadlines...`) + ledger + 6 IDN legal
+web sources (CPT, ILA, Peterson, AP Law, ET-Consultant). it/id did not carry the stale InfoCard.
+
+**Remaining ledger claims — systematic sweep → NONE safely auto-fixable without live NLM:**
+| Claim | Finding | Verdict |
+|---|---|---|
+| CAPITAL-PAIDUP-10B | 2.5B correct in llms.txt + KBLI data (cycle 1) | ✅ clean |
+| VISA-E33G investor | 0 "E33G investor" in any surface | ✅ clean |
+| RETIRE two-track | E33E+E33F co-present in 50 files | ✅ likely clean |
+| KBLI-VILLA-55193 | mostly "55193→55203" migration context | ✅ mostly clean |
+| PONDOK-WISATA-FOREIGN | property articles imply a foreigner may use a Pondok Wisata license (ledger: WNI-only); stale in EN too, multi-article | ⛔ P1 NLM |
+| MORATORIUM-SARBAGITA | hospitality guide presents "Sarbagita moratorium" as current (ledger: inverted / cancelled proposal) | ⛔ P1 NLM |
+| KBLI-VILLA-55120 | article table maps 55120→55204 "Kondominium Hotel"; fr/ru consulting call 55120 "Villa/Homestay" — **the ledger itself disagrees** (55120=Hotel Melati→55106) | ⛔ P1 NLM (ledger-vs-article conflict) |
+| VISA-B211A-60 | B211A presented as a current 60-day visa (ledger: superseded by C1/180); a "C6" Second-Home code also appears | ⛔ P1 NLM |
+| VISA-C312 / KBLI-HOTEL-55110 | (cycle 2) stale in EN too, domain-uncertain replacement | ⛔ P1 NLM |
+
+**Why autonomous scope is EXHAUSTED:** LKPM and SABH-NIB were uniquely fixable because batch-1 had already
+established the correct fact in a sibling on-disk surface — the fix was internal-consistency *propagation*.
+**Every other stale claim's correct replacement is domain-contested** (the ledger and the article tables even
+disagree on what KBLI 55120 *is*) → fixing by reasoning would risk NEW errors (the C312/55110 lesson, W65).
+These need the live NLM bipolar-verifier — firebreak-blocked on Mini.
+
+**Cycle-3 verdict: 1 P0 fixed (SABH-NIB, 3 langs) · 8 remaining claims classified (4 clean, 4→P1-NLM) · autonomous scope EXHAUSTED → LOOP TERMINATED. Residual = firebreak (NLM/agy login) + operator (PR-open, guard-design, 4 P1-NLM fixes).**
+
+---
+
+---
+
 ---
 
 ## §0 Executive
