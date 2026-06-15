@@ -137,11 +137,26 @@ async def enrich_client_from_extracted_fields(
         return {}
     fields = extracted_fields if isinstance(extracted_fields, dict) else {}
 
+    # Schema-drift guard: only write columns that ACTUALLY exist on this database's
+    # `clients` table. nuzantara_dev (Pro) and the Fly prod DB diverge (dev lacks
+    # npwp/nib/tax_id/kitas_expiry_date as of 2026-06-16); an UPDATE naming a missing
+    # column would raise UndefinedColumnError and roll back the WHOLE document commit.
+    # Enrichment is best-effort metadata — it must never take down the file write.
+    existing_cols = {
+        r["column_name"]
+        for r in await conn.fetch(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'clients' AND table_schema = current_schema()"
+        )
+    }
+
     written: dict[str, Any] = {}
     set_parts: list[str] = []
     params: list[Any] = []
     idx = 1
     for extract_key, column, coerce in mapping:
+        if column not in existing_cols:
+            continue  # column not present on this DB — skip silently (schema drift)
         raw = _unwrap(fields.get(extract_key))
         if raw is None:
             continue
