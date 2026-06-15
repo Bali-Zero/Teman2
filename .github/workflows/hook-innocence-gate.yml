@@ -32,6 +32,7 @@ on:
       - "infra/claude-hooks/**"
       - "scripts/hooks/**"
       - "scripts/guardrails_static_core.py"
+      - "scripts/test_guardrails_overmatch.py"
       - "scripts/test_guardrails_core_overmatch.py"
       - ".github/workflows/hook-innocence-gate.yml"
 
@@ -62,7 +63,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(infra/claude-hooks/|scripts/hooks/|scripts/guardrails_static_core\.py|scripts/test_guardrails_core_overmatch\.py|\.github/workflows/hook-innocence-gate\.yml)'; then
+            '^(infra/claude-hooks/|scripts/hooks/|scripts/guardrails_static_core\.py|scripts/test_guardrails_overmatch\.py|scripts/test_guardrails_core_overmatch\.py|\.github/workflows/hook-innocence-gate\.yml)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -93,6 +94,7 @@ jobs:
             infra/claude-hooks/test_host_boundary.py \
             infra/claude-hooks/test_phase.py \
             infra/claude-hooks/test_w79_shell_write.py \
+            scripts/test_guardrails_overmatch.py \
             scripts/test_guardrails_core_overmatch.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"

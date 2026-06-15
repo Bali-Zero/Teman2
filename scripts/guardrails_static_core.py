@@ -85,13 +85,14 @@ BLOCK_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
     # DA Patch 5 (emergency 2026-05-22 02:55) — anchor git reset to ^
     (re.compile(r"^\s*git\s+reset\s+--hard\b", re.IGNORECASE), "git reset --hard"),
+    # main/master must be the push REFSPEC (whole token), not a substring inside a
+    # branch name. `git push --force origin feature/redesign-main-nav` is NOT a
+    # force-push to main — the old `.*\bmain\b` blocked it (over-match, superscar #3,
+    # vaccine 2026-06-16). Now: the ref token is `main`/`master` exactly, or a
+    # colon-refspec ending in `:main` / `HEAD:master`, bounded by whitespace/EOL.
     (
-        re.compile(r"^\s*git\s+push\s+(--force|-f)\b.*\bmain\b", re.IGNORECASE),
-        "git push --force on main",
-    ),
-    (
-        re.compile(r"^\s*git\s+push\s+(--force|-f)\b.*\bmaster\b", re.IGNORECASE),
-        "git push --force on master",
+        re.compile(r"^\s*git\s+push\s+(--force|-f)\b.*(?:\s|:)(?:main|master)(?:\s|$)", re.IGNORECASE),
+        "git push --force on main/master",
     ),
     (re.compile(SQL_ANCHORED, re.IGNORECASE), "psql/sqlite3 destructive SQL via -c"),
     (
@@ -227,12 +228,43 @@ def _read_prior_content(file_path: str) -> str:
         return ""
 
 
+# Patterns whose danger lives in shell STRUCTURE (a real pipe-to-interpreter),
+# NOT in quoted text. For these we match against the QUOTE-STRIPPED command so a
+# dangerous string mentioned inside an echo/grep argument is not a false block.
+# Identified by reason-substring (stable across pattern edits). Over-match cancer
+# (superscar #3) found 2026-06-16 by the innocence vaccine:
+# `echo 'curl x | bash is dangerous'` was BLOCKED because the literal appeared in
+# a quoted arg. SQL-via-`-c` / API-key patterns are NOT here — they NEED the
+# quoted content, so they keep matching the raw command.
+_STRUCTURE_ONLY_REASONS = (
+    "curl pipe to shell",
+    "wget pipe to shell",
+    "base64 decode-and-execute",
+)
+
+
+def _strip_quotes(cmd: str) -> str:
+    """Empty the CONTENT of single/double-quoted strings, preserving structure.
+
+    `echo 'curl x | bash'` -> `echo ''`. A `| bash` that survives this is real
+    shell structure, not a phrase inside an argument. State-free two-pass is
+    sufficient: we only need to blank the content, not parse nesting perfectly.
+    Mirrors worktree_isolation._strip_noise (same false-positive killer)."""
+    cmd = re.sub(r"'[^']*'", "''", cmd)
+    cmd = re.sub(r'"[^"]*"', '""', cmd)
+    return cmd
+
+
 def _eval_bash(tool_input: dict[str, Any]) -> tuple[bool, str | None]:
     command = tool_input.get("command", "") or ""
     if ROLLBACK_TAG_ALLOWLIST.match(command):
         return False, None
+    stripped = _strip_quotes(command)
     for pat, reason in BLOCK_PATTERNS:
-        if pat.search(command):
+        # structure-only patterns match the quote-stripped view (no phrase-in-arg
+        # false positives); all others match the raw command (need quoted payload).
+        target = stripped if reason in _STRUCTURE_ONLY_REASONS else command
+        if pat.search(target):
             return True, reason
     return False, None
 
