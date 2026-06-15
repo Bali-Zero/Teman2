@@ -156,21 +156,45 @@ async def test_ocr_pages_salvages_thinking_when_response_empty(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_ocr_pages_cascades_to_fallback(monkeypatch):
+async def test_ocr_pages_same_model_retry_rescues_page(monkeypatch):
+    """Antibody #10 (2026-06-13): with primary == fallback (today's topology)
+    the cascade is a same-model RETRY — kept deliberately because live logs
+    show a second attempt rescues pages that returned empty once. Distinguish
+    by call COUNT, not model name."""
     calls = []
 
     async def fake_vision(model, b64):
         calls.append(model)
-        if model == cls._OCR_PRIMARY_DEFAULT:
-            return ("", "")  # primary yields nothing usable
-        return ("KEMENTERIAN KEUANGAN", "")  # fallback succeeds
+        if len(calls) == 1:
+            return ("", "")  # first attempt yields nothing usable
+        return ("KEMENTERIAN KEUANGAN", "")  # retry succeeds
 
-    monkeypatch.setattr(cls, "_resolve_ocr_model", lambda: cls._OCR_PRIMARY_DEFAULT)
+    monkeypatch.setattr(cls, "_resolve_ocr_model", lambda: cls._OCR_FALLBACK)
     monkeypatch.setattr(cls, "_ollama_vision", fake_vision)
     out = await cls.ocr_pages([_FakePage(0, b"x")])
     assert out[0]["via"] == "fallback"
     assert out[0]["model"] == cls._OCR_FALLBACK
-    assert calls == [cls._OCR_PRIMARY_DEFAULT, cls._OCR_FALLBACK]
+    assert calls == [cls._OCR_FALLBACK, cls._OCR_FALLBACK]
+
+
+@pytest.mark.asyncio
+async def test_ocr_pages_cascades_to_fallback_across_models(monkeypatch):
+    """Cross-model cascade still works when the topology points the primary
+    at a different (e.g. experimental reasoning) VLM."""
+    calls = []
+
+    async def fake_vision(model, b64):
+        calls.append(model)
+        if model == "experimental-vlm:test":
+            return ("", "")  # primary yields nothing usable
+        return ("KEMENTERIAN KEUANGAN", "")  # fallback succeeds
+
+    monkeypatch.setattr(cls, "_resolve_ocr_model", lambda: "experimental-vlm:test")
+    monkeypatch.setattr(cls, "_ollama_vision", fake_vision)
+    out = await cls.ocr_pages([_FakePage(0, b"x")])
+    assert out[0]["via"] == "fallback"
+    assert out[0]["model"] == cls._OCR_FALLBACK
+    assert calls == ["experimental-vlm:test", cls._OCR_FALLBACK]
 
 
 @pytest.mark.asyncio
@@ -236,3 +260,27 @@ def test_no_cloud_path_in_source():
     # Also assert the literal upper-case marker the spec greps for.
     for f in _SOURCE_FILES:
         assert "CROSS-BORDER" not in f.read_text()
+
+
+# ---------------------------------------------------------------------------
+# Antibody Debt #10 (2026-06-13) -- OCR primary model invariants
+# ---------------------------------------------------------------------------
+
+
+def test_ocr_primary_default_invariant():
+    """CLAUDE.md S9: vision = qwen2.5vl:7b ONLY. Until 2026-06-13 the
+    hardcoded default was qwen3-vl:8b, so a missing/unreadable
+    MODEL_TOPOLOGY.json silently resurrected the documented-broken primary
+    (empty response, thinking-leak; the 2026-06-12 backlog run poisoned
+    782/812 review_pending proposals -- PR #1359). Do NOT flip this back
+    without re-reading the HISTORY section in classify.py."""
+    assert cls._OCR_PRIMARY_DEFAULT == "qwen2.5vl:7b"
+    assert cls._OCR_FALLBACK == "qwen2.5vl:7b"
+
+
+def test_topology_ocr_vision_role_matches_invariant():
+    """MODEL_TOPOLOGY.json (the runtime source for the ocr_vision role) must
+    agree with the S9 invariant -- guards a config-side regression that the
+    hardcoded-default test above cannot see."""
+    topo = json.loads(model_roles._topology_path().read_text())
+    assert topo["roles"]["ocr_vision"] == "qwen2.5vl:7b"

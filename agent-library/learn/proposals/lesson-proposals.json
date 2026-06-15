@@ -5,73 +5,78 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 5,
-    "mechanical_candidates": 0,
-    "consultive": 4,
+    "scars_scanned": 4,
+    "mechanical_candidates": 3,
+    "consultive": 0,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
-    "w_numbers": {},
+    "w_numbers": {
+      "W64": 3
+    },
     "families": {}
   },
-  "mechanical_candidates": [],
-  "consultive": [
+  "mechanical_candidates": [
     {
-      "title": "ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05)",
-      "severity": "P3",
-      "w_numbers": [],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28)",
+      "title": "⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13)",
       "severity": "P2",
       "w_numbers": [
-        "W59",
+        "W55",
+        "W64",
+        "W65",
+        "W71",
+        "W78"
+      ],
+      "recurring_via": {
+        "w": [
+          "W64"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)",
+      "severity": "P2",
+      "w_numbers": [
         "W62",
-        "W63"
+        "W64",
+        "W70",
+        "W75",
+        "W78",
+        "W79",
+        "W80"
       ],
       "recurring_via": {
-        "w": [],
+        "w": [
+          "W64"
+        ],
         "family": []
       },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     },
     {
-      "title": "⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25)",
-      "severity": "P0",
+      "title": "✅ W81 (FIXED): i 3 loop di apprendimento WR3 erano \"verdi ma vuoti\" — malattia-madre \"Omeostasi Tautologica\" (telemetria-verde ≠ delta-di-stato); F20+F21 curati come codice+test, F18 escalato (2026-06-14)",
+      "severity": "P2",
       "w_numbers": [
-        "W50",
-        "W51",
-        "W52",
-        "W55"
+        "W64",
+        "W71",
+        "W74",
+        "W81"
       ],
       "recurring_via": {
-        "w": [],
+        "w": [
+          "W64"
+        ],
         "family": []
       },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
-    },
-    {
-      "title": "✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11)",
-      "severity": "P1",
-      "w_numbers": [
-        "W38"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     }
   ],
+  "consultive": [],
   "rejected_no_anchor": [
     {
       "title": "🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)",
