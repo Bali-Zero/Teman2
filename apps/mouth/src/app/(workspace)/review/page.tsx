@@ -15,9 +15,10 @@
  *   4. reads the destination summary ("→ Client · Practice") and Approves,
  *      or Rejects with an optional reason (audited server-side).
  *
- * Approve sends {client_id, practice_id, final_fields} — the backend writer
- * (INTAKE_WRITER_ENABLED-gated) commits atomically or records a dry-run audit;
- * the page surfaces dry-run explicitly so nobody is misled.
+ * Approve sends {client_id, practice_id, document_category, document_subtype,
+ * final_fields} — the backend writer (INTAKE_WRITER_ENABLED-gated) commits
+ * atomically or records a dry-run audit; the page surfaces dry-run explicitly
+ * so nobody is misled.
  *
  * Auth + transport reuse the shared `api` client (httpOnly cookie + bearer).
  * The <img>/<iframe> preview rides the same-origin SSO cookie.
@@ -28,6 +29,17 @@ import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+
+import {
+  categoriesForGroup,
+  categoryGroups,
+  driveFolderLabel,
+  formatOperator,
+  formatPracticeOption,
+  groupLabel,
+  inferDestinationFromDocType,
+  type DocumentCategory,
+} from "./destination";
 
 interface EntityCandidate {
   client_id: number;
@@ -107,6 +119,10 @@ interface PracticeItem {
   status: string;
 }
 
+interface DocumentCategoriesResponse {
+  items?: DocumentCategory[];
+}
+
 const CARD = {
   borderColor: "var(--bz-border)",
   background: "var(--bz-card, var(--bz-surface))",
@@ -162,6 +178,9 @@ export default function ReviewPage() {
   const [fieldEdits, setFieldEdits] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<ClientSearchItem[]>([]);
+  const [categories, setCategories] = useState<DocumentCategory[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState("other");
+  const [selectedCategoryCode, setSelectedCategoryCode] = useState("");
   const [showOcr, setShowOcr] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
 
@@ -189,59 +208,99 @@ export default function ReviewPage() {
     void loadQueue();
   }, [loadQueue]);
 
-  // ── Open: claim + detail + seed the decision panel ──────────────────────
-  const openDetail = useCallback(async (proposalId: number) => {
-    setBusy(proposalId);
-    setError(null);
-    setNotice(null);
+  const loadCategories = useCallback(async () => {
     try {
-      // Claim first (15-min lease) so approve/reject have a valid token.
-      const claim = await api.post<ClaimResponse>(
-        `/api/intake/review/${proposalId}/claim`,
-        {},
-      );
-      setClaimToken(claim.claim_token);
-      const d = await api.get<ProposalDetail>(
-        `/api/intake/review/${proposalId}`,
-      );
-      setDetail(d);
-      setPreviewFailed(false);
-      setShowOcr(false);
-      setSearch("");
-      setSearchResults([]);
-      setFieldEdits({});
-      // Seed destination: routing's resolved client, else the first candidate.
-      const routedId = d.routing?.client_id ?? null;
-      const seed =
-        d.entity_candidates?.find((c) => c.client_id === routedId) ??
-        d.entity_candidates?.[0] ??
-        null;
-      setSelectedClient(seed);
-      setSelectedPracticeId(
-        seed && routedId === seed.client_id && d.routing?.practice_id
-          ? d.routing.practice_id
-          : "",
-      );
+      const res = await api.get<
+        DocumentCategoriesResponse | DocumentCategory[]
+      >("/api/intake/review/document-categories");
+      setCategories(Array.isArray(res) ? res : (res.items ?? []));
     } catch (e) {
-      const msg =
-        e instanceof Error && /409/.test(e.message)
-          ? "Already claimed by another reviewer."
-          : "Could not open the document.";
-      setError(msg);
-      logger.error(
-        "review claim/detail failed",
-        { component: "ReviewPage", action: "openDetail" },
-        e instanceof Error ? e : new Error(String(e)),
-      );
-    } finally {
-      setBusy(null);
+      setCategories([]);
+      logger.warn("document categories load failed", {
+        component: "ReviewPage",
+        action: "loadCategories",
+        metadata: { error: String(e) },
+      });
     }
   }, []);
+
+  useEffect(() => {
+    void loadCategories();
+  }, [loadCategories]);
+
+  // ── Open: claim + detail + seed the decision panel ──────────────────────
+  const openDetail = useCallback(
+    async (proposalId: number) => {
+      setBusy(proposalId);
+      setError(null);
+      setNotice(null);
+      try {
+        // Claim first (15-min lease) so approve/reject have a valid token.
+        const claim = await api.post<ClaimResponse>(
+          `/api/intake/review/${proposalId}/claim`,
+          {},
+        );
+        setClaimToken(claim.claim_token);
+        const d = await api.get<ProposalDetail>(
+          `/api/intake/review/${proposalId}`,
+        );
+        setDetail(d);
+        setPreviewFailed(false);
+        setShowOcr(false);
+        setSearch("");
+        setSearchResults([]);
+        setFieldEdits({});
+        const inferredDestination = inferDestinationFromDocType(
+          d.doc_type,
+          categories,
+        );
+        setSelectedGroup(inferredDestination.group);
+        setSelectedCategoryCode(inferredDestination.categoryCode);
+        // Seed destination: routing's resolved client, else the first candidate.
+        const routedId = d.routing?.client_id ?? null;
+        const seed =
+          d.entity_candidates?.find((c) => c.client_id === routedId) ??
+          d.entity_candidates?.[0] ??
+          null;
+        setSelectedClient(seed);
+        setSelectedPracticeId(
+          seed && routedId === seed.client_id && d.routing?.practice_id
+            ? d.routing.practice_id
+            : "",
+        );
+      } catch (e) {
+        const msg =
+          e instanceof Error && /409/.test(e.message)
+            ? "Already claimed by another reviewer."
+            : "Could not open the document.";
+        setError(msg);
+        logger.error(
+          "review claim/detail failed",
+          { component: "ReviewPage", action: "openDetail" },
+          e instanceof Error ? e : new Error(String(e)),
+        );
+      } finally {
+        setBusy(null);
+      }
+    },
+    [categories],
+  );
+
+  useEffect(() => {
+    if (!detail || categories.length === 0 || selectedCategoryCode) return;
+    const inferredDestination = inferDestinationFromDocType(
+      detail.doc_type,
+      categories,
+    );
+    setSelectedGroup(inferredDestination.group);
+    setSelectedCategoryCode(inferredDestination.categoryCode);
+  }, [categories, detail, selectedCategoryCode]);
 
   // ── Practice list follows the selected client ───────────────────────────
   useEffect(() => {
     if (!selectedClient) {
       setPractices([]);
+      setSelectedPracticeId("");
       return;
     }
     let cancelled = false;
@@ -250,9 +309,18 @@ export default function ReviewPage() {
         const res = await api.get<{ items: PracticeItem[] }>(
           `/api/intake/review/clients/${selectedClient.client_id}/practices`,
         );
-        if (!cancelled) setPractices(res.items ?? []);
+        if (!cancelled) {
+          const nextPractices = res.items ?? [];
+          setPractices(nextPractices);
+          setSelectedPracticeId((current) =>
+            nextPractices.some((p) => p.practice_id === current) ? current : "",
+          );
+        }
       } catch {
-        if (!cancelled) setPractices([]);
+        if (!cancelled) {
+          setPractices([]);
+          setSelectedPracticeId("");
+        }
       }
     })();
     return () => {
@@ -298,6 +366,8 @@ export default function ReviewPage() {
     setSelectedClient(null);
     setPractices([]);
     setSelectedPracticeId("");
+    setSelectedGroup("other");
+    setSelectedCategoryCode("");
     setFieldEdits({});
   }, [detail, claimToken]);
 
@@ -315,6 +385,9 @@ export default function ReviewPage() {
           // "archive only" and must not fall back to routing's hint server-side.
           body.practice_id =
             selectedPracticeId === "" ? null : selectedPracticeId;
+          body.document_category = selectedGroup;
+          if (selectedCategoryCode)
+            body.document_subtype = selectedCategoryCode;
           if (Object.keys(fieldEdits).length > 0)
             body.final_fields = fieldEdits;
           const res = await api.post<ApproveResponse>(
@@ -360,6 +433,8 @@ export default function ReviewPage() {
       claimToken,
       selectedClient,
       selectedPracticeId,
+      selectedGroup,
+      selectedCategoryCode,
       fieldEdits,
       loadQueue,
     ],
@@ -370,13 +445,28 @@ export default function ReviewPage() {
     () => practices.find((p) => p.practice_id === selectedPracticeId) ?? null,
     [practices, selectedPracticeId],
   );
+  const groupOptions = useMemo(() => categoryGroups(categories), [categories]);
+  const groupCategories = useMemo(
+    () => categoriesForGroup(categories, selectedGroup),
+    [categories, selectedGroup],
+  );
+  const selectedCategory = useMemo(
+    () =>
+      groupCategories.find(
+        (category) => category.code === selectedCategoryCode,
+      ) ?? null,
+    [groupCategories, selectedCategoryCode],
+  );
   const destinationLabel = useMemo(() => {
     if (!selectedClient) return "No destination — pick a client (or Reject)";
+    const categoryLabel = selectedCategory
+      ? selectedCategory.name
+      : "no category selected";
     const practiceLabel = selectedPractice
-      ? `${selectedPractice.practice_type_code}${selectedPractice.title ? ` · ${selectedPractice.title}` : ""}`
-      : "document archive (no practice)";
-    return `${selectedClient.full_name} → ${practiceLabel}`;
-  }, [selectedClient, selectedPractice]);
+      ? formatPracticeOption(selectedPractice)
+      : "client document archive";
+    return `${selectedClient.full_name} → ${groupLabel(selectedGroup)} / ${categoryLabel} → ${practiceLabel}`;
+  }, [selectedCategory, selectedClient, selectedGroup, selectedPractice]);
 
   // Authenticated blob preview: an <iframe>/<img> request cannot carry the
   // Bearer header, so a direct src 401s ("Connessione negata"). Fetch the
@@ -514,6 +604,12 @@ export default function ReviewPage() {
                       {candidate
                         ? `Proposed client: ${candidate.full_name}`
                         : "No client matched — needs a decision"}
+                    </p>
+                    <p
+                      className="mt-1 text-xs"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
+                      Operator: {formatOperator(it.received_by)}
                     </p>
                   </div>
                   <button
@@ -811,8 +907,81 @@ export default function ReviewPage() {
                   )}
                 </div>
 
+                {/* Destination category */}
+                <div>
+                  <h3
+                    className="mb-1 text-sm font-medium"
+                    style={{ color: "var(--bz-text-1)" }}
+                  >
+                    Destination
+                  </h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label
+                      className="text-xs"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
+                      Profile group
+                      <select
+                        className="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                        style={{
+                          borderColor: "var(--bz-border)",
+                          background: "var(--bz-surface)",
+                          color: "var(--bz-text-1)",
+                        }}
+                        value={selectedGroup}
+                        onChange={(e) => {
+                          setSelectedGroup(e.target.value);
+                          setSelectedCategoryCode("");
+                        }}
+                      >
+                        {groupOptions.map((group) => (
+                          <option key={group} value={group}>
+                            {groupLabel(group)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label
+                      className="text-xs"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
+                      Category
+                      <select
+                        className="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                        style={{
+                          borderColor: "var(--bz-border)",
+                          background: "var(--bz-surface)",
+                          color: "var(--bz-text-1)",
+                        }}
+                        value={selectedCategoryCode}
+                        disabled={groupCategories.length === 0}
+                        onChange={(e) =>
+                          setSelectedCategoryCode(e.target.value)
+                        }
+                      >
+                        <option value="">
+                          {groupCategories.length === 0
+                            ? "No categories available"
+                            : "Select category"}
+                        </option>
+                        {groupCategories.map((category) => (
+                          <option key={category.code} value={category.code}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <p
+                    className="mt-1 text-xs"
+                    style={{ color: "var(--bz-text-3)" }}
+                  >
+                    Drive folder: {driveFolderLabel(selectedGroup)}
+                  </p>
+                </div>
+
                 {/* Practice picker */}
-                {selectedClient && (
+                {selectedClient && practices.length > 0 && (
                   <div>
                     <h3
                       className="mb-1 text-sm font-medium"
@@ -839,8 +1008,7 @@ export default function ReviewPage() {
                       </option>
                       {practices.map((p) => (
                         <option key={p.practice_id} value={p.practice_id}>
-                          {p.practice_type_code}
-                          {p.title ? ` — ${p.title}` : ""} ({p.status})
+                          {formatPracticeOption(p)}
                         </option>
                       ))}
                     </select>
