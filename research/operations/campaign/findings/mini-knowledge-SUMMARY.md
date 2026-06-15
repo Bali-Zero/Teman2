@@ -8,6 +8,37 @@
 
 ---
 
+## ⟐ CYCLE 2 ADDENDUM (2026-06-16 ~05:58 WITA)
+
+**KN-3 [P0, FIXED]** — LKPM "10th→15th" propagated to the **it/ru/fr** translations of the same article
+(`pt-pma-first-year-compliance.{it,ru,fr}.mdx`). The English canonical was fixed in batch-1 but the 3
+translations lagged in 13 spots: quarterly summary table, Q4 prose, the quarterly prose list, and the
+**embedded English FAQ snippet never regenerated from the corrected source**. Fixed (commit `d0972cad5`,
+same branch `agent/mini-pro2/mouth/lkpm-id-freshness` — now covers all 4 localized languages, 17 total
+fixes). Each replacement asserted exactly-once; verify grep 13→0; BPJS/PPh-21 "10th" preserved.
+
+**KN-2 leads RESOLVED → escalate P1, NOT autonomously fixable** (cycle-1 framing corrected):
+- `C312` — the EN canonical itself says "C312 Limited Stay Visa" (kitas-transfer-change-sponsor.mdx:228/230);
+  FR/RU/IT/ID are **faithful translations** (all 5 locales: 2×C312 + 8×E23, identical). **NOT translation-lag.**
+  Whether C312 is stale-vs-E23 here is a domain question touching the EN canonical → needs live NLM (firebreak).
+- `55110` — the EN canonical property table itself lists `55110 | Hotel accommodation` (line 131), no
+  migration note; all 5 locales identical (1×55110, 0×55101-105). **NOT translation-lag.** Per ledger
+  `KBLI-HOTEL-55110` it should be 55101-55105 (5 star-rated codes); fixing = multi-code KBLI table restructure
+  + 55120/55106 disambiguation → needs live NLM ground-truth (firebreak), not a reasoning guess.
+
+**Meta-pattern REFINED → "il guardiano della frase, non del fatto" (guard of the phrasing, not the fact):**
+cycle-1's "monolingual guard" is one instance; cycle-2 shows the deeper cause — the sentinel's `stale_pattern`s
+are **literal strings matching the ONE phrasing the auditor saw** ("hotels (55110)", "C312 retirement"), so the
+SAME fact in a table cell ("55110 | Hotel accommodation"), a different sentence context ("C312 Limited Stay
+Visa"), or a translation goes unseen — **even on the English canonical** (the C312/55110 staleness sits in EN
+too, sentinel-green). A robust guard must check the FACT, not a string literal. → architectural decision (operator).
+
+**Cycle-2 verdict: 1 P0 propagated (13 fixes, same PR) · 2 leads resolved→P1 escalation · meta-pattern refined · no new autonomous fix is safe without live NLM (firebreak).**
+
+---
+
+---
+
 ## §0 Executive
 
 The Fable5 audit (13/06) correctly diagnosed knowledge-decay and built the right antibody — a
