@@ -6,6 +6,15 @@ Usage:
 
 REFACTORED 2026-05-09 per Gemini W1 review (P0): replaced redis-cli subprocess
 with native redis-py to fix ARG_MAX limit, parser fragility, throughput ceiling.
+
+HARDENED 2026-06-15 (superscar #8 network-flap): the pool targets Redis on
+Mini-Pro2 over Tailscale (BZ_REDIS_HOST). Tailscale flaps caused
+"Timeout connecting to server" and the publish was lost with no retry. Added
+retry_on_timeout + ExponentialBackoff(3 attempts) + health_check_interval so a
+brief flap is ridden out instead of dropping the event (and the WR2 real-time
+trigger it carries). The regulatory *data* is already durable via the Intel Lake
+SQLite outbox; this protects the real-time eventbus trigger. Covers both the
+publisher and the subscriber (subscriber.py reuses _client()).
 """
 from __future__ import annotations
 import os
@@ -15,6 +24,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 import redis
+from redis.backoff import ExponentialBackoff
+from redis.retry import Retry
+from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
 
 from .schema import EVENT_TYPES, MAXLEN, validate_payload, generate_event_id
 
@@ -24,13 +36,31 @@ STREAM_PREFIX = "bz:"
 
 log = logging.getLogger("eventbus.publisher")
 
-# Singleton connection pool, reused across publish() calls
+# Retry transient connection/timeout errors with exponential backoff (cap ~1s,
+# 3 retries) so a brief Tailscale flap to Mini-Pro2 is ridden out, not dropped.
+# NOTE (verified empirically on redis-py 7.4.0, 2026-06-15): the Retry must live
+# on the ConnectionPool, NOT on the Redis() client — a `retry=` passed to
+# Redis(connection_pool=shared_pool) is IGNORED (0 retries fired in test); only a
+# pool-level retry actually re-attempts (3 retries / ~4s on an unreachable host).
+_RETRY = Retry(
+    backoff=ExponentialBackoff(cap=1.0, base=0.1),
+    retries=3,
+    supported_errors=(RedisConnectionError, RedisTimeoutError),
+)
+
+# Singleton connection pool, reused across publish() calls. Retry/backoff live
+# HERE (pool-level) so they actually fire — see NOTE above.
 _pool = redis.ConnectionPool(
     host=REDIS_HOST,
     port=REDIS_PORT,
     decode_responses=True,
     socket_timeout=65,
     socket_connect_timeout=5,
+    socket_keepalive=True,
+    health_check_interval=30,
+    retry_on_timeout=True,
+    retry=_RETRY,
+    retry_on_error=[RedisConnectionError, RedisTimeoutError],
     max_connections=10,
 )
 
