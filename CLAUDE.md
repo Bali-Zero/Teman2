@@ -12,11 +12,12 @@
 
 | Machine | User | Hostname | Role | RAM |
 |---|---|---|---|---|
-| **Pro** | `nuzantara` | `Nuzantara` | Dev primario, interactive Claude Code | 48GB M4 Pro |
+| **Air-M5** | `balizero` | `Air-M5` | Dev workstation PRINCIPALE interattiva, leggera — no daemon/cron/Ollama H24 | 24GB M5 |
+| **Pro** | `nuzantara` | `Nuzantara` | Dev primario, interactive Claude Code; workhorse H24 (176 daemon, modelli 32B) | 48GB M4 Pro |
 | **Mini-Pro2** | `nuzantara` | `Mini-Pro2` | Server H24, Ollama dedicato, cron pesanti | 24GB M4 Pro |
 
-- `whoami=nuzantara` on both; distinguish via `hostname`. SSH alias `ssh pro` / `ssh mini` (Tailscale `100.93.236.6` for Mini, `100.107.22.111` for Pro from Mini).
-- First-response prefix: `[Pro]` or `[Mini]`.
+- `whoami=nuzantara` su Pro/Mini, `balizero` su M5 (home `/Users/balizero/` — path-aware scripts mandatory); distinguish via `hostname`. SSH alias `ssh pro` / `ssh mini` / `ssh air` (Tailscale `100.93.236.6` for Mini, `100.107.22.111` for Pro from Mini).
+- First-response prefix: `[Pro]`, `[Mini]`, or `[Air]`.
 - **Air decommissioned 2026-05-05** — handed off to Ari/Bali Zero. Historical references in code/scripts are archaeology, NOT active.
 
 ## Agent Worktree Discipline (2026-05-24)
