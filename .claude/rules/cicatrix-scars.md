@@ -5,6 +5,35 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16)
+
+_Discovered: 2026-06-16 dalla lane L-KNOWLEDGE della Connectome Campaign (Mini, ciclo 1→2), confermata su disco dal Super-Osservatore leggendo `content-freshness-sentinel.test.ts` riga per riga · Severity: **P1 STRUCTURAL** (il guardiano anti-knowledge-decay ha un buco strutturale: verde mentre il sito è marcio) · Status: **REPORTED + scar promossa per decisione operatore (Antonello, 2026-06-16) — fix = guardiano fact-based, spec+PR mai armata senza OK**_
+
+**Famiglia: superscar #3 (Guard-over-match) — variante UNDER-match.** #3 nasce con guardie che *sopra*-matchano (clobberano risposte corrette). W82 è il gemello speculare: una guardia che *sotto*-matcha (lascia passare fatti marci). Stessa malattia di fondo — **il match è sulla forma testuale, non sull'intento/entità** — segno opposto.
+
+**TRAUMA:** `apps/mouth/src/content/content-freshness-sentinel.test.ts` (nato 2026-06-14, Mythos M3) è il "dead-man's switch" tra contenuto pubblicato e ground-truth regolatorio: legge `_regulatory-claim-ledger.json` (15 `stale_pattern` literal) e FALLISCE se un pattern stale ricompare in MDX pubblicato. **Ma il match è puro substring-letterale** (`staleHits`, riga 125: `lines[i].toLowerCase().includes(needle)`). Tre buchi strutturali, tutti verificati nel codice:
+
+1. **Substring, non fatto** (riga 119-132): cerca la *frase esatta* `"hotels (55110)"`. Lo **stesso codice KBLI 55110** dentro una cella-tabella, o riformulato (`"perhotelan 55110"`, `"55110 (hotel)"`), o citato senza la parola "hotels", **NON matcha** → test verde. Prova viva: C312 (retirement) e 55110 (hotels) sono stale **anche nel canonico EN**, e il sentinel è **verde** su entrambi.
+2. **Scope strutturalmente cieco alle traduzioni** (riga 21-22, 35-36, `TRANSLATION_SUFFIX`): *"English canonical .mdx only — translations audited separately"*. Il sentinel **non guarda mai** `.it/.id/.ru/.fr/.de/.es/.nl`. Questa è **letteralmente la causa-radice del bug KN-3** che il ciclo 2 ha dovuto fixare a mano (LKPM 10th→15th era stale in it/ru/fr mentre il sentinel era verde) — by-design non poteva vederlo. "Audited separately" = audited **mai**, finché un umano/agente non passa.
+3. **Anche l'escape-clause è literal** (`MIGRATION_CONTEXT`, riga 58-97): la lista di frasi che "scusano" un pattern stale (`"superseded"`, `"old kbli 2020"`, `"moved to the 15th"`...) è essa stessa una lista di stringhe → fragile e da manutenere a mano; una correzione fraseggiata diversamente o non-EN non viene riconosciuta come legittima.
+
+**ANTIBODY (PROGETTATO, NON armato — firebreak operatore):** guardiano **fact-based**, non string-based. La spec (vedi Reference) propone:
+1. **Match per ENTITÀ normativa, non per frase**: ogni claim del ledger porta un `fact_key` strutturato (codice KBLI / sigla visto / numero-norma / soglia) + `fact_anchor` regex tolleranti a contesto-tabella e punteggiatura, NON una singola `stale_pattern` letterale. Il test fallisce se l'*entità* ricompare con il valore-stale, ovunque appaia.
+2. **Scope multilingua**: rimuovere `TRANSLATION_SUFFIX` dallo skip per i `fact_key` numerici/codici (un codice KBLI è language-invariant: `55110` è `55110` in ogni lingua). Le traduzioni rientrano nel guardiano per i fatti-codice; restano fuori solo per il fact-in-prosa che richiede NLM.
+3. **Test di INNOCENZA obbligatorio** (regola madre #3): ogni nuovo `fact_anchor` deve dimostrare di NON scattare su un caso legittimo limitrofo (es. `55110` dentro una nota "old KBLI 2020"), oltre al test di colpevolezza. Mai mergiare una guardia senza prova d'innocenza.
+4. **Stale-anche-in-EN → escalation NLM, non auto-fix**: i claim marci nel canonico (C312, 55110) NON si indovinano — si verificano contro NotebookLM ground-truth (no-guess rule). Solo i `traduzione-lag-puliti` (EN corretto come riferimento) sono auto-fixabili.
+
+**GOTCHA:**
+
+- Il test **già si auto-accusa**: il suo stesso commento (riga 8-12) cita *"the malattia-delle-malattie: the SAME stale code reappears across many files and silently rots"* — ma poi lo combatte con substring-match, che è proprio il vettore del "silently rots". L'intento era giusto, l'implementazione resta alla forma.
+- "Verde non prova che il sito sia perfetto, prova solo che i known-stale non sono regrediti" (riga 16-18) — vero, ma **understated**: verde non prova nemmeno *quello*, perché un known-stale riformulato/in-tabella/in-traduzione regredisce SENZA far diventare rosso il test. È #2 (Esiste≠Armato) applicato a un guardiano: gira e si dichiara verde mentre il fatto che dovrebbe presidiare è marcio.
+- Confine #3-vs-W82: stessa famiglia, NON unire. #3 = guardia che NUOCE (clobbera il corretto, falso-positivo). W82 = guardia che NON PROTEGGE (lascia passare il marcio, falso-negativo). L'antidoto comune è identico: **match su entità/intento, non su substring** + test di innocenza E di colpevolezza.
+- Scope reale della classe: 15 entry nel ledger oggi, ognuna una superficie di evasione × N lingue × (tabella|prosa|FAQ-embed). Il numero di "fatti potenzialmente marci ma verdi" è 15 × molteplicità, non 15.
+
+**Reference**: scoperta in `research/operations/campaign/findings/mini-knowledge-SUMMARY.md` (lane L-KNOWLEDGE, ciclo 1-2). Code-fix del sintomo KN-3 in PR #1500 (LKPM it/ru/fr). Artefatti in PR #1501. Spec del guardiano fact-based: `research/operations/campaign/findings/W82-fact-based-sentinel-spec.md` (da redigere, lane KNOWLEDGE o META). Bridge superscar: aggiunto a `#3 — Guard-over-match` come membro under-match. NO valore-secret in questa scar (non applicabile).
+
+---
+
 ### 🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)
 
 _Discovered: 2026-06-03 ~20:30 WITA during the organism TAC (read-only diagnosis), when `ssh pro 'cat ~/Desktop/nuzantara/apps/cell/.env'` printed the secret into the session transcript · Severity: **P0 SECURITY** · Status: **REPORTED — rotation + chmod deferred to deliberate operator decision (Antonello)**_
