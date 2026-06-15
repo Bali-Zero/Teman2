@@ -200,6 +200,11 @@ TONAL_PALETTES: dict[str, str] = {
         "bright bleached daylight, airy high-exposure palette of bone whites "
         "and pale sand, gentle haze, minimal shadow."
     ),
+    "vivid": (
+        "bright natural daylight, vivid saturated colours, rich warm tones, "
+        "punchy contrast and lively energy, full of life and motion — NOT "
+        "desaturated, NOT muted, NOT low-key."
+    ),
 }
 DEFAULT_TONAL_KEY = "default"
 
