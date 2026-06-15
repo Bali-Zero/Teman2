@@ -31,6 +31,7 @@ Kill switch:
 Logs:
     ~/logs/agent-broker.log     Rotating (RotatingFileHandler 1MB x 5).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,6 +40,7 @@ import logging
 import logging.handlers
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -58,6 +60,7 @@ TASK_METADATA_FILENAME = ".agent-task.json"
 # Broker-generated files that must NOT count as user WIP (otherwise every
 # freshly created worktree reads as dirty and is never cleanup-eligible).
 BROKER_GENERATED_FILES = frozenset({".agent-task.json", ".env.worktree"})
+LSOF_FALLBACK_PATHS: tuple[Path, ...] = (Path("/usr/sbin/lsof"),)
 
 # Lanes documented in CLAUDE.md + research synthesis.
 # This is an ALLOW-list for create; --list/--cleanup/--release accept any lane
@@ -407,9 +410,7 @@ def cmd_create(
         base_branch=base_branch,
         worktree_path=str(worktree),
     )
-    (worktree / TASK_METADATA_FILENAME).write_text(
-        metadata.to_json(), encoding="utf-8"
-    )
+    (worktree / TASK_METADATA_FILENAME).write_text(metadata.to_json(), encoding="utf-8")
 
     # W59 auto-export (cicatrix 2026-05-27): write .env.worktree with BRANCH_EXPECTED
     # for opt-in adoption of W59 hook (PR #899). Operator/agent sources via:
@@ -456,9 +457,7 @@ def _iter_metadata(worktrees_dir: Path | None = None) -> Iterable[TaskMetadata]:
 
 def _worktree_has_wip(worktree: Path) -> bool:
     """True if the worktree has uncommitted changes (tracked or untracked)."""
-    proc = _run_git(
-        ["status", "--porcelain"], cwd=worktree, check=False
-    )
+    proc = _run_git(["status", "--porcelain"], cwd=worktree, check=False)
     if proc.returncode != 0:
         # If git can't read the worktree (corrupt) treat as WIP to be safe.
         return True
@@ -513,6 +512,17 @@ def _worktree_recently_active(
         return True
 
 
+def _resolve_lsof_path() -> str | None:
+    """Return an executable lsof path, including macOS launchd's usual fallback."""
+    resolved = shutil.which("lsof")
+    if resolved:
+        return resolved
+    for candidate in LSOF_FALLBACK_PATHS:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
 def _worktree_has_live_process(worktree: Path) -> bool:
     """True if a live OS process has its cwd or an open file inside *worktree*.
 
@@ -542,19 +552,20 @@ def _worktree_has_live_process(worktree: Path) -> bool:
         # No directory ⇒ nothing to anchor a process to ⇒ not live. (Already
         # gone or never created; safe to let cleanup proceed.)
         return False
+    lsof_path = _resolve_lsof_path()
+    if lsof_path is None:
+        logger.warning(
+            "lsof not found — treating %s as live (fail-safe, no reap)", worktree
+        )
+        return True
     try:
         proc = subprocess.run(
-            ["lsof", "+D", str(worktree)],
+            [lsof_path, "+D", str(worktree)],
             check=False,
             capture_output=True,
             text=True,
             timeout=20,
         )
-    except FileNotFoundError:
-        logger.warning(
-            "lsof not found — treating %s as live (fail-safe, no reap)", worktree
-        )
-        return True
     except (subprocess.TimeoutExpired, OSError) as exc:
         logger.warning(
             "lsof probe failed for %s (%s) — treating as live (fail-safe)",
@@ -573,7 +584,8 @@ def _worktree_has_live_process(worktree: Path) -> bool:
     # verified: a `sleep` child cwd'd into a linked worktree yields rc=1 + one
     # `cwd DIR` line — must read as LIVE.)
     data_lines = [
-        ln for ln in proc.stdout.splitlines()
+        ln
+        for ln in proc.stdout.splitlines()
         if ln.strip() and not ln.startswith("COMMAND")
     ]
     return bool(data_lines)
@@ -726,8 +738,10 @@ def cmd_list() -> int:
     now = datetime.now(timezone.utc)
     orphan_count = 0
     for meta in rows:
-        wt = Path(meta.worktree_path) if meta.worktree_path else _worktree_path(
-            meta.lane, meta.task_id
+        wt = (
+            Path(meta.worktree_path)
+            if meta.worktree_path
+            else _worktree_path(meta.lane, meta.task_id)
         )
         wip_flag = "yes" if wt.is_dir() and _worktree_has_wip(wt) else "no"
         age = meta.age_minutes(now=now)
@@ -789,8 +803,10 @@ def cmd_cleanup(
     for meta in rows:
         if not meta.is_expired(now=now):
             continue
-        wt = Path(meta.worktree_path) if meta.worktree_path else _worktree_path(
-            meta.lane, meta.task_id
+        wt = (
+            Path(meta.worktree_path)
+            if meta.worktree_path
+            else _worktree_path(meta.lane, meta.task_id)
         )
         # WIP guard FIRST: a dirty worktree is always a failure to clean,
         # even if it was touched recently (codex P2: recent+dirty must not
@@ -874,9 +890,7 @@ def cmd_cleanup(
 
 def _branch_is_merged(branch: str, base: str = "main") -> bool:
     """True if every commit on branch is reachable from base."""
-    proc = _run_git(
-        ["rev-list", "--count", f"{base}..{branch}"], check=False
-    )
+    proc = _run_git(["rev-list", "--count", f"{base}..{branch}"], check=False)
     if proc.returncode != 0:
         return False
     try:
@@ -914,15 +928,16 @@ def cmd_release(task_id: str, *, force: bool = False) -> int:
             "pass full path manually"
         )
     meta = matches[0]
-    wt = Path(meta.worktree_path) if meta.worktree_path else _worktree_path(
-        meta.lane, meta.task_id
+    wt = (
+        Path(meta.worktree_path)
+        if meta.worktree_path
+        else _worktree_path(meta.lane, meta.task_id)
     )
     base = meta.base_branch or "main"
 
     if wt.is_dir() and _worktree_has_wip(wt) and not force:
         raise SystemExit(
-            f"ERROR: worktree {wt} has uncommitted WIP. "
-            "Commit, push, or pass --force."
+            f"ERROR: worktree {wt} has uncommitted WIP. Commit, push, or pass --force."
         )
 
     merged = _branch_is_merged(meta.branch, base=base)
