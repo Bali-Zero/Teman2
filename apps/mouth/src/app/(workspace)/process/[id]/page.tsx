@@ -37,6 +37,7 @@ import { formatIDR } from "@balizero/core/utils";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { initialsOf } from "@/data/team-roster";
+import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 
 // Status mapping for display — use static classes for Tailwind JIT compatibility
 const STATUS_INFO: Record<
@@ -1208,20 +1209,18 @@ export default function CaseDetailPage() {
                         Assigned To
                       </label>
                       <div className="flex items-center gap-2">
-                        {assignedAvatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={assignedAvatar}
-                            alt={assignedName}
-                            className="w-7 h-7 rounded-full object-cover ring-1 ring-[rgba(255,255,255,0.15)]"
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.15)] flex items-center justify-center">
-                            <span className="text-[9px] font-bold uppercase text-[var(--bz-text-2)]">
-                              {initialsOf(assignedName)}
-                            </span>
-                          </div>
-                        )}
+                        <AvatarWithFallback
+                          src={assignedAvatar}
+                          alt={assignedName}
+                          className="w-7 h-7 rounded-full object-cover ring-1 ring-[rgba(255,255,255,0.15)]"
+                          fallback={
+                            <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.15)] flex items-center justify-center">
+                              <span className="text-[9px] font-bold uppercase text-[var(--bz-text-2)]">
+                                {initialsOf(assignedName)}
+                              </span>
+                            </div>
+                          }
+                        />
                         <p
                           className="font-medium"
                           style={{ color: "var(--bz-text-1)" }}
