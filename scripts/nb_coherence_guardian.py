@@ -30,25 +30,35 @@ Antonello's explicit choice for this guardian: Gemini 3.5 Flash.
 
 GUARDRAILS (inherited from Phase A/B — CLAUDE.md §5/§14, SYMBIOSIS Law 2)
 ------------------------------------------------------------------------
-1. PII boundary: this script reads ONLY research/coherence-corpus/ (already a
-   whitelisted, PII-safe export). A defense-in-depth PII_DENY check refuses any
-   nb-key directory whose name trips the deny-list, so a stray PII export under
-   that root is never shipped to the LLM.
-2. Resumable: each dimension's verdict is checkpointed; re-running skips a
-   dimension already done this run-date unless --force.
+1. PII/OSINT boundary: this script reads ONLY research/coherence-corpus/ (already
+   a whitelisted, PII-safe export). A defense-in-depth PII_DENY check skips (in
+   discovery) or refuses (on direct load) any nb-key directory whose name trips
+   the deny-list, so a stray PII/OSINT export under that root is never shipped to
+   the LLM. Two legal bases: client PII → CLAUDE.md §5 / UU PDP; OSINT →
+   SYMBIOSIS Law 2 (line 179, unchanged since 2026-04-10, verified on disk).
+2. Resumable: each (run-date, dimension) verdict is written to a per-dimension
+   checkpoint under _reports/_checkpoints/. Re-running SKIPS a dimension already
+   completed today unless --force is passed. A long agy sweep WILL be interrupted;
+   --all is designed to resume where it stopped.
 3. Gentle / fail-loud: corpus missing → hard exit with a clear message. agy
-   missing or erroring → that dimension is recorded as [error], the run survives.
+   missing or erroring → that dimension is recorded as [error] (NOT checkpointed,
+   so it retries next run), and the run survives.
+4. Context-safe: vs_regulatory and cross_nb compare the WHOLE corpus, which can
+   exceed the model context. Sources are chunked (CHUNK_CHARS) across multiple agy
+   calls and findings are merged — no silent context overflow.
 
 RUN (on Pro/Mini, where the corpus lives — corpus is NOT on M5):
     cd ~/Desktop/nuzantara
     python scripts/nb_coherence_guardian.py --list           # show corpus on disk, no LLM
     python scripts/nb_coherence_guardian.py --dimension internal_nlm
-    python scripts/nb_coherence_guardian.py --all            # all 4 dimensions
+    python scripts/nb_coherence_guardian.py --all            # all 4 dimensions (resumes)
+    python scripts/nb_coherence_guardian.py --all --force    # ignore today's checkpoints
     python scripts/nb_coherence_guardian.py --all --dry-run  # build prompts, skip agy
 
-Output:
-    research/coherence-corpus/_reports/<YYYY-MM-DD>-coherence.md
-    research/coherence-corpus/_reports/<YYYY-MM-DD>-coherence.json
+Output (timestamped, never clobbered):
+    research/coherence-corpus/_reports/<YYYY-MM-DD>-<HHMMSS>-coherence.md
+    research/coherence-corpus/_reports/<YYYY-MM-DD>-<HHMMSS>-coherence.json
+    research/coherence-corpus/_reports/_checkpoints/<YYYY-MM-DD>-<dimension>.json
 """
 
 from __future__ import annotations
@@ -68,6 +78,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CORPUS_ROOT = REPO_ROOT / "research" / "coherence-corpus"
 REPORT_DIR = CORPUS_ROOT / "_reports"
+CHECKPOINT_DIR = REPORT_DIR / "_checkpoints"
 REGULATORY_DIR = REPO_ROOT / "research" / "regulatory"
 
 # Defense-in-depth: refuse any corpus dir whose key trips a PII token. The export
@@ -84,6 +95,12 @@ AGY_TIMEOUT_S = 600  # a corpus-wide pass is long-context; be patient.
 SOURCE_HEAD_CHARS = 6000
 MAX_SOURCES_PER_NB_IN_PROMPT = 60  # logged when it bites (no silent truncation)
 
+# Corpus-wide dimensions (vs_regulatory, cross_nb) can exceed the model context
+# window. We pack NB blocks into chunks no larger than this and make one agy call
+# per chunk, then merge findings. ~280k chars ≈ ~70k tokens — comfortably inside
+# Gemini 3.5 Flash's window with room for the regulatory-delta block + reply.
+CHUNK_CHARS = 280_000
+
 VALID_DIMENSIONS = ("internal_nlm", "vs_regulatory", "vs_public", "cross_nb")
 
 
@@ -96,6 +113,40 @@ def _now() -> str:
 
 def _today() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _stamp() -> str:
+    """Filename-safe UTC timestamp, second resolution — for non-clobbering reports."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M%S")
+
+
+# --------------------------------------------------------------------------- #
+# Checkpoints — make the "resumable" promise real (not just a docstring claim).
+# One file per (today, dimension); its presence means that dimension finished
+# today. --force ignores them. agy-errored dimensions are NOT checkpointed so
+# they retry next run.
+# --------------------------------------------------------------------------- #
+def _checkpoint_path(dim: str) -> Path:
+    return CHECKPOINT_DIR / f"{_today()}-{dim}.json"
+
+
+def _checkpoint_done(dim: str) -> bool:
+    return _checkpoint_path(dim).exists()
+
+
+def _load_checkpoint(dim: str) -> dict[str, Any] | None:
+    p = _checkpoint_path(dim)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None  # corrupt checkpoint → treat as not-done, re-run
+
+
+def _save_checkpoint(dim: str, result: dict[str, Any]) -> None:
+    CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    _checkpoint_path(dim).write_text(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 def _pii_token(nb_key: str) -> str | None:
@@ -200,6 +251,35 @@ def _nb_block(nb: dict[str, Any]) -> str:
     return f"### NOTEBOOK {nb['nb_key']} ({len(capped)} of {len(srcs)} sources)\n{body}"
 
 
+def _chunk_nb_blocks(nbs: list[dict[str, Any]]) -> list[str]:
+    """Pack NB blocks into chunks ≤ CHUNK_CHARS so a corpus-wide prompt never
+    overflows the model context. Returns a list of corpus-text chunks (≥1).
+
+    A single NB block larger than CHUNK_CHARS becomes its own (over-size) chunk —
+    we never split mid-NB (that would sever a source from its siblings and defeat
+    the coherence check). This is logged so an over-size NB is visible, not silent.
+    """
+    blocks = [_nb_block(nb) for nb in nbs]
+    chunks: list[str] = []
+    cur: list[str] = []
+    cur_len = 0
+    for blk in blocks:
+        if cur and cur_len + len(blk) > CHUNK_CHARS:
+            chunks.append("\n".join(cur))
+            cur, cur_len = [], 0
+        if len(blk) > CHUNK_CHARS:
+            print(
+                f"  NOTE: one NB block is {len(blk)} chars (> CHUNK_CHARS "
+                f"{CHUNK_CHARS}); sent as its own oversize chunk.",
+                file=sys.stderr,
+            )
+        cur.append(blk)
+        cur_len += len(blk)
+    if cur:
+        chunks.append("\n".join(cur))
+    return chunks or [""]
+
+
 # --------------------------------------------------------------------------- #
 # Regulatory deltas (for vs_regulatory)
 # --------------------------------------------------------------------------- #
@@ -256,18 +336,25 @@ def _prompt_internal_nlm(nb: dict[str, Any]) -> str:
     )
 
 
-def _prompt_vs_regulatory(nbs: list[dict[str, Any]]) -> str:
-    corpus = "\n".join(_nb_block(nb) for nb in nbs)
+def _prompt_vs_regulatory(nbs: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """One (label, prompt) per corpus chunk. The regulatory-delta block is
+    repeated in each chunk so every KB slice is checked against the same deltas."""
     deltas = _load_regulatory_deltas()
-    return (
-        "You are a regulatory drift auditor. Below is (1) the knowledge-base "
-        "corpus and (2) recent Indonesian regulatory deltas detected by a daily "
-        "watcher. Find KB statements that are now OUTDATED or CONTRADICTED by the "
-        "regulatory deltas (e.g. a changed LKPM cadence, modal disetor minimum, "
-        "PPN rate, izin validity). Each such drift is a finding.\n\n"
-        f"=== KNOWLEDGE BASE CORPUS ===\n{corpus}\n\n"
-        f"=== RECENT REGULATORY DELTAS ===\n{deltas}\n{_JSON_CONTRACT}"
-    )
+    chunks = _chunk_nb_blocks(nbs)
+    out = []
+    for i, corpus in enumerate(chunks, 1):
+        label = "__corpus__" if len(chunks) == 1 else f"__corpus__{i}of{len(chunks)}"
+        out.append((label, (
+            "You are a regulatory drift auditor. Below is (1) a slice of the "
+            "knowledge-base corpus and (2) recent Indonesian regulatory deltas "
+            "detected by a daily watcher. Find KB statements that are now OUTDATED "
+            "or CONTRADICTED by the regulatory deltas (e.g. a changed LKPM cadence, "
+            "modal disetor minimum, PPN rate, izin validity). Each such drift is a "
+            "finding.\n\n"
+            f"=== KNOWLEDGE BASE CORPUS ===\n{corpus}\n\n"
+            f"=== RECENT REGULATORY DELTAS ===\n{deltas}\n{_JSON_CONTRACT}"
+        )))
+    return out
 
 
 def _prompt_vs_public(nbs: list[dict[str, Any]]) -> str:
@@ -299,16 +386,38 @@ def _prompt_vs_public(nbs: list[dict[str, Any]]) -> str:
     )
 
 
-def _prompt_cross_nb(nbs: list[dict[str, Any]]) -> str:
-    corpus = "\n".join(_nb_block(nb) for nb in nbs)
-    return (
-        "You are a cross-notebook consistency auditor. Below are MULTIPLE "
-        "notebooks covering different domains (company, tax, property, "
-        "operations). Find the SAME entity — a specific KBLI code, a visa/KITAS "
-        "type, a statutory threshold, a fee — described DIFFERENTLY across two "
-        "different notebooks. Same entity, divergent description = finding.\n\n"
-        f"{corpus}\n{_JSON_CONTRACT}"
-    )
+def _prompt_cross_nb(nbs: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """One (label, prompt) per corpus chunk. cross_nb is strongest when every NB
+    is in one prompt; when the corpus is chunked, each call sees only a subset, so
+    a cross-NB divergence split across chunks can be missed. We SAY SO in the
+    prompt and log it (no silent weakening) — the right fix if it bites in prod is
+    a larger CHUNK_CHARS or a 3.1-Pro pass over NB summaries."""
+    chunks = _chunk_nb_blocks(nbs)
+    multi = len(chunks) > 1
+    if multi:
+        print(
+            f"  NOTE: cross_nb corpus split into {len(chunks)} chunks; a divergence "
+            f"spanning two chunks may be missed (see prompt caveat).",
+            file=sys.stderr,
+        )
+    out = []
+    for i, corpus in enumerate(chunks, 1):
+        label = "__corpus__" if not multi else f"__corpus__{i}of{len(chunks)}"
+        caveat = (
+            "\n\nNOTE: this is a PARTIAL slice of the notebook set; only flag "
+            "divergences visible within the notebooks shown here."
+            if multi else ""
+        )
+        out.append((label, (
+            "You are a cross-notebook consistency auditor. Below are MULTIPLE "
+            "notebooks covering different domains (company, tax, property, "
+            "operations). Find the SAME entity — a specific KBLI code, a visa/KITAS "
+            "type, a statutory threshold, a fee — described DIFFERENTLY across two "
+            "different notebooks. Same entity, divergent description = finding."
+            f"{caveat}\n\n"
+            f"{corpus}\n{_JSON_CONTRACT}"
+        )))
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -365,7 +474,7 @@ def run_dimension(
     if dim == "internal_nlm":
         prompts = [(nb["nb_key"], _prompt_internal_nlm(nb)) for nb in nbs]
     elif dim == "vs_regulatory":
-        prompts = [("__corpus__", _prompt_vs_regulatory(nbs))]
+        prompts = _prompt_vs_regulatory(nbs)
     elif dim == "vs_public":
         p = _prompt_vs_public(nbs)
         if not p:
@@ -373,7 +482,7 @@ def run_dimension(
             return result
         prompts = [("__pairs__", p)]
     elif dim == "cross_nb":
-        prompts = [("__corpus__", _prompt_cross_nb(nbs))]
+        prompts = _prompt_cross_nb(nbs)
     else:
         result["errors"].append(f"unknown dimension {dim}")
         return result
@@ -401,7 +510,11 @@ def run_dimension(
             continue
         found = parsed.get("findings", [])
         for f in found:
-            f.setdefault("dimension", dim)
+            # The LLM sometimes echoes the domain-pair label (e.g. "nb4-tax") into
+            # "dimension"; force the TRUE guardian dimension so the report can be
+            # trusted to say which of the 4 checks produced each finding.
+            f["dimension"] = dim
+            f.setdefault("chunk", label)  # provenance: which prompt/chunk found it
         result["findings"].extend(found)
         print(f"    {len(found)} finding(s)")
     return result
@@ -415,9 +528,10 @@ _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 def _write_reports(run: dict[str, Any]) -> tuple[Path, Path]:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    day = _today()
-    json_path = REPORT_DIR / f"{day}-coherence.json"
-    md_path = REPORT_DIR / f"{day}-coherence.md"
+    # Timestamped, second-resolution: two runs in one day never clobber each other.
+    stamp = run.get("stamp") or _stamp()
+    json_path = REPORT_DIR / f"{stamp}-coherence.json"
+    md_path = REPORT_DIR / f"{stamp}-coherence.md"
 
     json_path.write_text(json.dumps(run, ensure_ascii=False, indent=2))
 
@@ -428,7 +542,7 @@ def _write_reports(run: dict[str, Any]) -> tuple[Path, Path]:
         sev_counts[f.get("severity", "low")] = sev_counts.get(f.get("severity", "low"), 0) + 1
 
     lines = [
-        f"# Coherence Guardian Report — {day}",
+        f"# Coherence Guardian Report — {stamp}",
         "",
         f"- Generated: {run['generated_at']}",
         f"- Engine: {AGY_MODEL} (via agy)",
@@ -473,6 +587,8 @@ def main() -> None:
     g.add_argument("--list", action="store_true", help="show corpus on disk, no LLM")
     ap.add_argument("--dry-run", action="store_true",
                     help="build prompts + write report, but do not call agy")
+    ap.add_argument("--force", action="store_true",
+                    help="ignore today's checkpoints and re-run every dimension")
     args = ap.parse_args()
 
     nbs = _discover_corpus()
@@ -487,10 +603,11 @@ def main() -> None:
 
     dims = list(VALID_DIMENSIONS) if args.all else [args.dimension]
     print(f"[{_now()}] Coherence Guardian: {len(nbs)} NBs / {total_sources} sources "
-          f"/ dimensions={dims} / dry_run={args.dry_run}")
+          f"/ dimensions={dims} / dry_run={args.dry_run} / force={args.force}")
 
     run: dict[str, Any] = {
         "generated_at": _now(),
+        "stamp": _stamp(),
         "engine": AGY_MODEL,
         "corpus_nb_count": len(nbs),
         "corpus_source_count": total_sources,
@@ -499,7 +616,23 @@ def main() -> None:
     }
     for dim in dims:
         print(f"\n=== dimension: {dim} ===")
-        run["dimensions"].append(run_dimension(dim, nbs, args.dry_run))
+        # Resume: skip a dimension already completed today, unless --force.
+        # (Checkpoints are real reports from a prior partial run — load & reuse so
+        #  the merged report is complete. Dry-run never reads/writes checkpoints.)
+        if not args.dry_run and not args.force and _checkpoint_done(dim):
+            cached = _load_checkpoint(dim)
+            if cached is not None:
+                print(f"  RESUME: {dim} already done today "
+                      f"({len(cached.get('findings', []))} findings) — skipping "
+                      f"(use --force to redo).")
+                run["dimensions"].append(cached)
+                continue
+        result = run_dimension(dim, nbs, args.dry_run)
+        run["dimensions"].append(result)
+        # Checkpoint ONLY a clean completion: a dimension with errors must retry
+        # next run, so we never freeze a half-failed result as "done" (W74 guard).
+        if not args.dry_run and not result["errors"]:
+            _save_checkpoint(dim, result)
 
     md_path, json_path = _write_reports(run)
     total = sum(len(d["findings"]) for d in run["dimensions"])
