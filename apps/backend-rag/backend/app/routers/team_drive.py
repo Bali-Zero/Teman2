@@ -709,6 +709,7 @@ async def delete_file(
 
     try:
         await drive.delete_file(
+            user_email=user_email,
             file_id=file_id,
             permanent=permanent,
         )
