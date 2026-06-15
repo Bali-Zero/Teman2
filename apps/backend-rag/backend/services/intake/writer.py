@@ -224,12 +224,17 @@ def _document_payload(
             fields = {}
 
     # map intake doc_type → CRM document_category (folder) — mirrors create_document.
+    # NOTE: the canonical company category is "pma" (→ CATEGORY_TO_FOLDER["pma"] = "02_Company"),
+    # NOT "company": the latter is absent from document_categorizer.CATEGORY_TO_FOLDER, so it would
+    # silently fall through to the "99_Misc" default at crm_enhanced_documents.py and file NIB/akta
+    # into the Misc folder instead of 02_Company. Canonical value verified by
+    # tests/unit/app/services/portal/test_documents_mixin.py:45.
     category_map = {
         "passport": "immigration",
         "kitas": "immigration",
         "npwp": "tax",
-        "nib": "company",
-        "akta_pendirian": "company",
+        "nib": "pma",
+        "akta_pendirian": "pma",
     }
     category = category_map.get(doc_type)
 
