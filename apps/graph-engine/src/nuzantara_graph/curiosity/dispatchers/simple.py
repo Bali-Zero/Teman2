@@ -2,14 +2,32 @@
 
 # Organo: graph-engine/curiosity/dispatchers → produce ResearchEvidence
 
-Uses Ollama qwen3.5:9b to generate evidence for well-defined regulatory gaps.
-Falls back to template-based evidence summary when Ollama is unavailable.
-Graceful degradation: returns empty evidence list on any failure.
+Uses a local SEA-trained Ollama model to generate evidence for well-defined
+regulatory gaps. Falls back to template-based evidence summary when Ollama is
+unavailable. Graceful degradation: returns empty evidence list on any failure.
+
+Model + timeout chosen from a live benchmark on the Pro (2026-06-16). The
+previous default (qwen3.5:9b, 60s timeout) timed out on EVERY gap — the
+regulatory-research + JSON task takes ~100-120s on the Pro (a loaded H24
+workhorse), so the 60s cap meant the cron ran for 10 days producing only
+template placeholders, never real research. Three locally-present models on
+the real prompt:
+  - qwen3.5:9b   104s, cites a stale framework (Negative Investment List,
+                 superseded by the Positive List / Perpres 10/2021)
+  - gemma3:27b   194s, hallucinated a non-existent "Law 6/2023" for PT PMA
+  - SEA-LION-32B 121s, correct Indonesian terminology (BKPM, MoJ, UU 11/2020) —
+                 AI Singapore's model is trained on Southeast-Asian context,
+                 best accuracy for the Indonesian regulatory domain.
+SEA-LION wins on accuracy at +17s vs qwen — irrelevant for a once-nightly cron.
+Timeout 180s gives headroom over the measured 121s incl. cold-start variance.
+Model/URL/timeout are env-overridable so the Pro and Mini can diverge without
+a code change (the Mini only has <=9B models).
 """
 from __future__ import annotations
 
 import json
 import logging
+import os
 import urllib.request
 from typing import Any
 
@@ -17,9 +35,16 @@ from nuzantara_graph.curiosity.models import ResearchEvidence
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "qwen3.5:9b"
-OLLAMA_TIMEOUT = 60
+OLLAMA_URL = os.environ.get("CURIOSITY_OLLAMA_URL", "http://localhost:11434/api/chat")
+# SEA-LION v4 32B (AI Singapore) — best Indonesian-regulatory accuracy in the
+# 2026-06-16 Pro benchmark. Override per host via CURIOSITY_OLLAMA_MODEL.
+OLLAMA_MODEL = os.environ.get(
+    "CURIOSITY_OLLAMA_MODEL", "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m"
+)
+# Live E2E on the Pro measured 103s and 170s on two real gaps — the second
+# brushed a 180s cap, so 240s gives genuine cold-start headroom. A once-nightly
+# cron can well afford it. Override via env.
+OLLAMA_TIMEOUT = int(os.environ.get("CURIOSITY_OLLAMA_TIMEOUT", "240"))
 
 RESEARCH_PROMPT = """You are a regulatory research assistant for Indonesian business services.
 
