@@ -498,3 +498,44 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
             )
     assert res2.outcome == "rolled_back"
     assert res2.doc_id is None, "second rollback should find nothing to undo"
+
+
+# --------------------------------------------------------------------------- #
+# Company-document folder routing (regression: NIB/akta were filed to 99_Misc)
+# Pure unit — no DB. Falsifies the company→folder mismatch end to end.
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "doc_type, expected_category, expected_folder",
+    [
+        ("nib", "pma", "02_Company"),
+        ("akta_pendirian", "pma", "02_Company"),
+        ("passport", "immigration", "01_Immigration"),
+        ("npwp", "tax", "03_Tax"),
+    ],
+)
+def test_company_doc_category_maps_to_company_folder(
+    doc_type, expected_category, expected_folder
+):
+    """Intake-derived category must be the CANONICAL one that resolves to the
+    right Drive folder. Before the fix, nib/akta produced category='company',
+    which is absent from CATEGORY_TO_FOLDER → fell through to '99_Misc' (Drive
+    'Misc' instead of '02_Company'). This test fails if either side drifts:
+    the intake category map, OR the folder map.
+    """
+    from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER
+
+    payload = intake_writer._document_payload(
+        routing={"doc_type": doc_type},
+        stage_output={},
+        source_ref="test-ref",
+    )
+    category = payload["document_category"]
+    assert category == expected_category, (
+        f"{doc_type}: intake produced category={category!r}, "
+        f"expected canonical {expected_category!r}"
+    )
+    # The category MUST be a real key (not a silent 99_Misc fallthrough).
+    assert category in CATEGORY_TO_FOLDER, (
+        f"category {category!r} missing from CATEGORY_TO_FOLDER → would file to 99_Misc"
+    )
+    assert CATEGORY_TO_FOLDER[category] == expected_folder
