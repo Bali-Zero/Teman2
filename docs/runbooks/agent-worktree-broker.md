@@ -66,6 +66,19 @@ tail -f ~/logs/agent-worktree-cleanup.log
 bash infra/launchagents/install_agent_worktree_cleanup.sh --uninstall
 ```
 
+Exit semantics:
+
+- `scripts/agent_start.py --cleanup` can still return `1` when WIP worktrees are
+  skipped. That is the broker protecting uncommitted work.
+- `scripts/agent_worktree_cleanup_cron.sh` maps that WIP-skip `rc=1` to process
+  exit `0` for launchd and emits heartbeat/log status `warn`.
+- A healthy WIP-skip cron run on an updated checkout ends like
+  `done (broker rc=1, exit 0)`.
+- If launchd still reports `last exit code = 1` and the log says
+  `done (exit 1)`, the LaunchAgent is probably running a stale main-checkout
+  copy of the wrapper. Preserve dirty main work first, then fast-forward main;
+  do not copy scripts in from an unrelated worktree.
+
 GOTCHA: il cron usa SEMPRE il main checkout (`~/Desktop/nuzantara/scripts/agent_start.py`). Il broker risolve `WORKTREES_DIR` da `parents[1]` dello script — invocarlo da un worktree scansiona `.worktrees/<wt>/.worktrees/` (inesistente) → no-op silenzioso.
 
 ### Orphan detection — W62 ANTIBODY #2
@@ -139,6 +152,35 @@ Comportamento corretto: protegge dal perdere lavoro non-merged. Soluzioni:
 ### 5. Symlink mancanti dentro il worktree
 
 Il broker crea symlink solo se il target esiste in main. Se `apps/backend-rag/.venv` non è creato, il symlink viene skippato. Crea il venv nel main checkout una volta, poi ricrea il worktree.
+
+### 6. `agent-worktree-cleanup.daily` mostra `last exit code = 1`
+
+Prima verifica il log:
+
+```bash
+tail -n 80 ~/logs/agent-worktree-cleanup.log
+```
+
+Se vedi solo `WARN: skip ... (WIP)` e una chiusura `done (exit 1)`, il broker
+sta probabilmente proteggendo WIP ma il main checkout sta ancora usando il
+wrapper pre-fix. La versione aggiornata del wrapper deve chiudere con
+`done (broker rc=1, exit 0)` in questo caso.
+
+Se invece worktree clean/expired non vengono mai rimossi e il log cita `lsof not
+found`, verifica di essere su una versione del broker che risolve anche
+`/usr/sbin/lsof`. Su macOS `launchd` spesso usa PATH
+`/opt/homebrew/bin:/usr/bin:/bin`, quindi `command -v lsof` puo' fallire anche
+quando `/usr/sbin/lsof` esiste.
+
+Procedura sicura:
+
+1. Non fare `reset --hard` e non copiare lo script da un worktree.
+2. In `~/Desktop/nuzantara`, preserva o assegna il WIP con commit/stash
+   descrittivi.
+3. Fast-forwarda il main checkout a `origin/main`.
+4. Valida `bash -n scripts/agent_worktree_cleanup_cron.sh`.
+5. Valida `python -m pytest scripts/tests/test_agent_start.py -q` dalla venv.
+6. Fai ripartire o attendi il job e ricontrolla `launchctl print`.
 
 ## Per Claude (agent) — quick start
 

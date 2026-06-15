@@ -59,10 +59,13 @@ jobs:
           # Names of every defined guard.
           grep -oE 'def (_guard_[a-z0-9_]+)\(' "$BRIDGE" \
             | sed -E 's/def (_guard_[a-z0-9_]+)\(/\1/' | sort -u > /tmp/defined.txt
-          # Names of every guard actually invoked in the response chain
-          # (response_text = _guard_xxx(...)).
-          grep -oE 'response_text *= *(_guard_[a-z0-9_]+)\(' "$BRIDGE" \
-            | sed -E 's/response_text *= *(_guard_[a-z0-9_]+)\(/\1/' | sort -u > /tmp/wired.txt
+          # Names of every guard actually wired into the response chain.
+          # Since W77 the chain is the _REPLY_GUARD_CHAIN tuple consumed by
+          # _apply_reply_guards() (the endpoint and the tests share it), so a
+          # wired guard is a bare "_guard_xxx," member line of that tuple —
+          # not an inline "response_text = _guard_xxx(...)" call anymore.
+          sed -n '/_REPLY_GUARD_CHAIN = (/,/^)/p' "$BRIDGE" \
+            | grep -oE '_guard_[a-z0-9_]+' | sort -u > /tmp/wired.txt
 
           DEF_COUNT=$(wc -l < /tmp/defined.txt | tr -d ' ')
           WIRED_COUNT=$(wc -l < /tmp/wired.txt | tr -d ' ')
