@@ -539,3 +539,91 @@ def test_company_doc_category_maps_to_company_folder(
         f"category {category!r} missing from CATEGORY_TO_FOLDER → would file to 99_Misc"
     )
     assert CATEGORY_TO_FOLDER[category] == expected_folder
+
+
+# --------------------------------------------------------------------------- #
+# Difetto 3 — client-card enrichment from extracted document fields
+# (passport_number/expiry/dob/nationality feed the client profile on approve).
+# --------------------------------------------------------------------------- #
+async def _set_passport_proposal(conn: asyncpg.Pool, proposal_id: int, client_id: int) -> None:
+    """Rewrite a seeded proposal to a passport doc with nested {value} fields,
+    mirroring the real FASE-3 extract shape (extract.py:252)."""
+    routing = {
+        "client_id": client_id, "company_id": None, "practice_id": None,
+        "doc_type": "passport",
+        "fields": {
+            "passport_no": {"value": "YC0000001", "confidence": 0.99, "source_page": 1},
+            "expiry": {"value": "2034-06-19", "confidence": 0.98, "source_page": 1},
+            "dob": {"value": "1987-07-01", "confidence": 0.97, "source_page": 1},
+            "nationality": {"value": "ITALIANA", "confidence": 0.95, "source_page": 1},
+        },
+    }
+    entity = {"decision": "AUTO_ATTACH", "candidates": [{"table": "clients", "id": client_id}]}
+    await conn.execute(
+        "UPDATE document_routing_proposal SET routing=$1::jsonb, entity_resolution=$2::jsonb WHERE id=$3",
+        json.dumps(routing), json.dumps(entity), proposal_id,
+    )
+    await conn.execute(
+        "UPDATE intake_queue SET stage_output=$1::jsonb WHERE id="
+        "(SELECT queue_id FROM document_routing_proposal WHERE id=$2)",
+        json.dumps({"doc_type": "passport", "file_id": "drive-passport-enrich"}),
+        proposal_id,
+    )
+
+
+async def test_approve_enriches_client_card_passport(pool, seed, monkeypatch):
+    """Flag ON: approving a passport writes passport_number/expiry/dob/nationality
+    onto the client card, atomically with the document — Difetto 3 fix."""
+    from datetime import date
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    async with pool.acquire() as conn:
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"])
+        # baseline: card is empty for these identity columns
+        before = await conn.fetchrow(
+            "SELECT passport_number, passport_expiry, date_of_birth, nationality "
+            "FROM clients WHERE id=$1", seed["cid_a"])
+    assert before["passport_number"] is None
+    assert before["passport_expiry"] is None
+
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["outcome"] == "committed"
+
+    async with pool.acquire() as conn:
+        after = await conn.fetchrow(
+            "SELECT passport_number, passport_expiry, date_of_birth, nationality "
+            "FROM clients WHERE id=$1", seed["cid_a"])
+    assert after["passport_number"] == "YC0000001"
+    assert after["passport_expiry"] == date(2034, 6, 19)
+    assert after["date_of_birth"] == date(1987, 7, 1)
+    assert after["nationality"] == "ITALIANA"
+
+
+async def test_enrichment_skips_archive_only_no_client(pool, seed, monkeypatch):
+    """Innocence test: archive-only (client_id None) must NOT attempt any client UPDATE."""
+    from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+    async with pool.acquire() as conn:
+        written = await enrich_client_from_extracted_fields(
+            conn, None, "passport",
+            {"passport_no": {"value": "X"}, "expiry": {"value": "2030-01-01"}},
+        )
+    assert written == {}  # no-op, no exception
+
+
+async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeypatch):
+    """Innocence test: unknown doc_type → no-op; a garbage date → that field skipped,
+    others still written (never raises, never rolls back the document)."""
+    from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+    async with pool.acquire() as conn:
+        # unknown doc_type → nothing
+        assert await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "akta_pendirian", {"x": {"value": "y"}}) == {}
+        # passport with a garbage expiry → expiry skipped, passport_number still written
+        written = await enrich_client_from_extracted_fields(
+            conn, seed["cid_a"], "passport",
+            {"passport_no": {"value": "YC9999999"}, "expiry": {"value": "not-a-date"}})
+    assert written.get("passport_number") == "YC9999999"
+    assert "passport_expiry" not in written

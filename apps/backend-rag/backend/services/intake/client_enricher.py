@@ -1,0 +1,168 @@
+"""Client-card enrichment from intake-extracted document fields.
+
+When the HITL reviewer approves an intake document (passport/KITAS/NPWP/NIB), the
+*file* is filed as a `documents` row — but the document also carries **structured
+identity data** that belongs on the client's record (passport number + expiry feed
+the renewal-alert clock; date_of_birth/nationality fill the profile). Before this
+module the intake commit path filed the file and **threw the extracted fields away**
+(see ``writer._document_payload`` — every column the CRM card needs was left unset).
+
+This module mirrors the enrichment the manual CRM endpoints already do
+(``crm_clients_documents.py::extract-passport-enhanced`` / ``extract-npwp`` /
+``extract-nib``), but driven by the *intake extract schema* key names (``passport_no``,
+``dob``, ``expiry`` — NOT ``passport_number``/``date_of_birth``/``expiry_date`` which
+are the manual-endpoint's own renamed keys). It runs **inside the same atomic
+transaction** as the document write in ``execute_commit`` (FASE 5C), so the file and
+the card update commit or roll back together.
+
+Reuse over duplication: a single declarative map (doc_type → [(extract_key, column,
+coercion)]) is the source of truth, so adding a doc_type is a one-line change.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+from datetime import date, datetime
+from typing import Any, Callable
+
+import asyncpg
+
+logger = logging.getLogger("zantara.intake.client_enricher")
+
+
+def _to_date(value: Any) -> date | None:
+    """Coerce an extracted date string to a ``date``.
+
+    The extractor is asked to "prefer YYYY-MM-DD" but is not guaranteed to comply,
+    so accept the common variants and give up (return None → field skipped) rather
+    than raise: a bad date must never roll back the whole document commit.
+    """
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    s = str(value).strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    logger.warning("client_enricher: unparseable date %r — skipping field", s)
+    return None
+
+
+def _digits_only(value: Any) -> str | None:
+    """Strip all non-digits (NPWP/NIB are stored canonical, no dots/dashes)."""
+    if value is None:
+        return None
+    cleaned = re.sub(r"\D", "", str(value))
+    return cleaned or None
+
+
+def _clean_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    s = str(value).strip()
+    return s or None
+
+
+def _unwrap(raw: Any) -> Any:
+    """Pull the scalar out of an intake-extract field.
+
+    FASE-3 stores each extracted field as ``{"value": X, "confidence": .., "source_page": ..}``
+    (extract.py:252), NOT a flat scalar. The HITL ``final_fields`` override path, by
+    contrast, may pass flat scalars. Accept both shapes so this enricher works whether
+    the values come straight from the pipeline or from a reviewer edit.
+    """
+    if isinstance(raw, dict) and "value" in raw:
+        return raw["value"]
+    return raw
+
+
+# doc_type → list of (extract_field_key, clients_column, coercion_fn).
+# Keys are the INTAKE EXTRACT SCHEMA names (backend/services/intake/extract.py),
+# NOT the manual CRM endpoint's renamed keys. Columns verified to exist on the
+# `clients` table (migration 041/042). Mirrors the UPDATE clients SET ... blocks in
+# crm_clients_documents.py (passport 420-469, npwp 697-703, nib 834-840) and extends
+# them with KITAS (columns exist; no manual endpoint enriched them before).
+ENRICHMENT_MAP: dict[str, list[tuple[str, str, Callable[[Any], Any]]]] = {
+    "passport": [
+        ("passport_no", "passport_number", _clean_str),
+        ("expiry", "passport_expiry", _to_date),
+        ("dob", "date_of_birth", _to_date),
+        ("nationality", "nationality", _clean_str),
+    ],
+    "kitas": [
+        ("kitas_no", "kitas_number", _clean_str),
+        ("expiry", "kitas_expiry_date", _to_date),
+    ],
+    "npwp": [
+        ("npwp_number", "npwp", _digits_only),
+    ],
+    "nib": [
+        ("nib_number", "nib", _digits_only),
+    ],
+}
+
+
+async def enrich_client_from_extracted_fields(
+    conn: asyncpg.Connection,
+    client_id: int | None,
+    doc_type: str | None,
+    extracted_fields: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Write intake-extracted identity fields onto the client's card.
+
+    Pure-DB, single ``UPDATE clients`` (or a no-op skip). MUST be called inside the
+    caller's transaction so it commits/rolls back atomically with the document write.
+
+    Conservative by design:
+    * unknown ``doc_type`` → no-op (returns ``{}``)
+    * ``client_id is None`` (archive-only / no client) → no-op
+    * a field absent or empty in ``extracted_fields`` → that column is left untouched
+      (never overwrite an existing card value with NULL)
+    * a value that fails coercion (e.g. garbage date) → that one field is skipped,
+      the rest still apply; the document commit is never jeopardised by a bad field.
+
+    Returns a ``{column: value}`` dict of what was written (for audit/response), or an
+    empty dict if nothing was updated.
+    """
+    if client_id is None or not doc_type:
+        return {}
+    mapping = ENRICHMENT_MAP.get(doc_type)
+    if not mapping:
+        return {}
+    fields = extracted_fields if isinstance(extracted_fields, dict) else {}
+
+    written: dict[str, Any] = {}
+    set_parts: list[str] = []
+    params: list[Any] = []
+    idx = 1
+    for extract_key, column, coerce in mapping:
+        raw = _unwrap(fields.get(extract_key))
+        if raw is None:
+            continue
+        value = coerce(raw)
+        if value is None:
+            continue
+        set_parts.append(f"{column} = ${idx}")
+        params.append(value)
+        written[column] = value
+        idx += 1
+
+    if not set_parts:
+        return {}
+
+    params.append(client_id)
+    sql = f"UPDATE clients SET {', '.join(set_parts)}, updated_at = NOW() WHERE id = ${idx}"
+    await conn.execute(sql, *params)
+    logger.info(
+        "intake.client_enricher: client=%s doc_type=%s enriched columns=%s",
+        client_id,
+        doc_type,
+        sorted(written.keys()),
+    )
+    return written
