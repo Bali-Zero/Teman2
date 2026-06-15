@@ -13,6 +13,7 @@ Coverage matrix:
 Tests use a temporary git repo + temporary HOME via monkeypatch, so they never
 touch the real ~/Desktop/nuzantara checkout or ~/logs/.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -97,7 +98,10 @@ def fake_repo(tmp_path, fake_home, monkeypatch):
     origin = tmp_path / "origin.git"
     subprocess.run(
         ["git", "init", "--bare", "-b", "main", str(origin)],
-        check=True, capture_output=True, text=True, env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
     )
     git("remote", "add", "origin", str(origin))
     git("push", "-u", "origin", "main")
@@ -251,8 +255,12 @@ def _commit_in_worktree(worktree: Path, mod, rel_path: str, msg: str) -> None:
     )
     for args in (["add", rel_path], ["commit", "-m", msg]):
         subprocess.run(
-            ["git", *args], cwd=worktree, check=True,
-            capture_output=True, text=True, env=env,
+            ["git", *args],
+            cwd=worktree,
+            check=True,
+            capture_output=True,
+            text=True,
+            env=env,
         )
 
 
@@ -296,13 +304,19 @@ def _merge_worktree_branch_to_origin_main(worktree: Path, mod) -> None:
     checked-out branch: update local main to the branch commit, then push."""
     env = dict(os.environ)
     env.update(
-        GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
-        GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com",
+        GIT_AUTHOR_NAME="Test",
+        GIT_AUTHOR_EMAIL="test@example.com",
+        GIT_COMMITTER_NAME="Test",
+        GIT_COMMITTER_EMAIL="test@example.com",
     )
     # The worktree's HEAD commit.
     head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=worktree, check=True,
-        capture_output=True, text=True, env=env,
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
     ).stdout.strip()
     repo = mod.REPO_ROOT
     # Move local main to the branch tip (main is checked out in the main repo,
@@ -310,12 +324,20 @@ def _merge_worktree_branch_to_origin_main(worktree: Path, mod) -> None:
     # NOT checked out here because the test repo's working copy stays on main —
     # so update via update-ref which bypasses the checkout guard, then push).
     subprocess.run(
-        ["git", "update-ref", "refs/heads/main", head], cwd=repo, check=True,
-        capture_output=True, text=True, env=env,
+        ["git", "update-ref", "refs/heads/main", head],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
     )
     subprocess.run(
-        ["git", "push", "origin", "main"], cwd=repo, check=True,
-        capture_output=True, text=True, env=env,
+        ["git", "push", "origin", "main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
     )
 
 
@@ -535,6 +557,21 @@ def test_worktree_has_live_process_real_lsof(fake_repo):
 
     # Non-existent directory → not live (nothing to anchor a process to).
     assert mod._worktree_has_live_process(mod.WORKTREES_DIR / "ghost") is False
+
+
+def test_worktree_has_live_process_resolves_macos_lsof_outside_path(
+    fake_repo, monkeypatch
+):
+    """launchd PATH omits /usr/sbin on macOS; the broker must still find lsof."""
+    mod, _ = fake_repo
+    if not Path("/usr/sbin/lsof").exists():
+        pytest.skip("/usr/sbin/lsof not available on this host")
+
+    monkeypatch.setenv("PATH", "/opt/homebrew/bin:/usr/bin:/bin")
+    wt = mod.cmd_create("wr2", "lsof-path", ttl_minutes=5)
+
+    assert mod._resolve_lsof_path() == "/usr/sbin/lsof"
+    assert mod._worktree_has_live_process(wt) is False
 
 
 def test_branch_in_origin_main_real_resolver(fake_repo):
