@@ -30,12 +30,17 @@ Antonello's explicit choice for this guardian: Gemini 3.5 Flash.
 
 GUARDRAILS (inherited from Phase A/B — CLAUDE.md §5/§14, SYMBIOSIS Law 2)
 ------------------------------------------------------------------------
-1. PII/OSINT boundary: this script reads ONLY research/coherence-corpus/ (already
-   a whitelisted, PII-safe export). A defense-in-depth PII_DENY check skips (in
-   discovery) or refuses (on direct load) any nb-key directory whose name trips
-   the deny-list, so a stray PII/OSINT export under that root is never shipped to
-   the LLM. Two legal bases: client PII → CLAUDE.md §5 / UU PDP; OSINT →
-   SYMBIOSIS Law 2 (line 179, unchanged since 2026-04-10, verified on disk).
+1. PII/OSINT boundary (CLAUDE.md §5/§14, refined 2026-06-15): the rule is not
+   "no LLM sees operational context" — it is that no OUTPUT, report, log, or
+   shared artifact transcribes client PII/OSINT in cleartext. This guardian
+   satisfies it two ways: (a) it reads ONLY research/coherence-corpus/, a
+   whitelisted PII-safe export of regulatory NBs; a defense-in-depth PII_DENY
+   check skips (in discovery) or refuses (on direct load) any nb-key dir whose
+   name trips the deny-list, so a stray PII/OSINT corpus is never shipped to the
+   LLM; (b) the report it writes only ever quotes regulatory facts and source_ids
+   from that non-PII corpus — no client identifiers can enter it. Two legal bases:
+   client PII → §5 / UU PDP; OSINT → SYMBIOSIS Law 2 (line 179, unchanged since
+   2026-04-10, verified on disk).
 2. Resumable: each (run-date, dimension) verdict is written to a per-dimension
    checkpoint under _reports/_checkpoints/. Re-running SKIPS a dimension already
    completed today unless --force is passed. A long agy sweep WILL be interrupted;
