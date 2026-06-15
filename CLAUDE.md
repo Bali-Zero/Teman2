@@ -126,7 +126,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 9. **Verify Sources** — Never presume, verify against actual data.
 10. **Async HTTP Clients** — NEVER `httpx.AsyncClient()` in methods/loops. Persistent `_get_client`, close in `lifespan`.
 11. **PricingTool Only** — All prices from `PricingTool`. Never hardcode.
-12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`. Never `--no-verify`/`--amend` on pushed.
+12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`. Never `--no-verify`/`--amend` on pushed.
 
 ## 9. Data Invariants (NEVER VIOLATE)
 
