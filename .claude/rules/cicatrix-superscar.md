@@ -94,8 +94,9 @@ numero-norma, language-invariant) con anchor tolleranti a contesto-tabella [unde
 
 **MEMBRI:** W68 (villa-leasehold zoning) · W72 (B211/KITAS deflesso) · W73 (5 over-match in un colpo +
 asse linguistico) · W77 (wa-mirror, stessa classe) · W68b (`_guard_property_zoning` "lease") ·
-**W82 (UNDER-match — content-freshness-sentinel: substring + cieco alle traduzioni → fatto stale resta verde)**.
-**→ dettaglio:** cicatrix-scars.md (W68/W72/W73/**W82**) · `scar query "guard over-match"`
+**W82 (UNDER-match — content-freshness-sentinel: substring + cieco alle traduzioni → fatto stale resta verde)** ·
+**W83 (OVER-match su guard di COMANDO — worktree-isolation hook: `ssh host git pull` / `cd <wt> && git` / git-verb-in-quote falsi-block; fix = `_strip_noise` pre-scan + dispatcher segment-anchored)**.
+**→ dettaglio:** cicatrix-scars.md (W68/W72/W73/**W82**/**W83**) · `scar query "guard over-match"`
 
 ---
 
