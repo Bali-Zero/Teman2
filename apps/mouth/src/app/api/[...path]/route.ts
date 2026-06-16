@@ -311,7 +311,10 @@ async function proxy(req: NextRequest): Promise<Response> {
                 /\s+/g,
                 "",
               );
-          const maxAge = 86400; // 24h
+          // Follow the backend token lifetime (expiresIn = JWT_ACCESS_TOKEN_EXPIRE_HOURS*3600)
+          // so the cookie never outlives or under-lives the JWT. Mirrors
+          // app/api/auth/login/route.ts. Fallback 86400 only if expiresIn is absent.
+          const maxAge = bodyJson?.data?.expiresIn || 86400;
           // CRITICAL: Strip upstream Set-Cookie headers — they carry SameSite=none
           // which Chrome 130+ rejects without Partitioned. We re-set cookies manually
           // using raw header strings to bypass Vercel Edge Runtime restrictions.
