@@ -3,9 +3,9 @@ WhatsApp Conversations API - Final Stabilized Version
 
 Outbound /send endpoint re-enabled 2026-03-15 with safety gates:
 - Rate limit: max 20 outbound messages per phone per hour
-- CRM validation: recipient must exist in clients table
-  (team/staff numbers in WHATSAPP_TEAM_ALLOWLIST bypass the CRM check
-  without polluting the CRM)
+- Recipient validation: must be a known CRM client OR a Bali Zero team member
+  (team_members.whatsapp). Team/staff numbers in WHATSAPP_TEAM_ALLOWLIST also
+  bypass the check via env config, without polluting the CRM.
 - Auth required: only authenticated users can send
 """
 
@@ -241,8 +241,9 @@ async def send_whatsapp_message(
     Safety gates:
     - Auth required (JWT)
     - Rate limit: 20 msgs/phone/hour
-    - CRM validation: recipient must exist in clients table, UNLESS the number
-      is in WHATSAPP_TEAM_ALLOWLIST (staff numbers stay out of the CRM)
+    - Recipient validation: must be a known CRM client (clients.phone) OR a
+      Bali Zero team member (team_members.whatsapp). Numbers in
+      WHATSAPP_TEAM_ALLOWLIST also bypass via env config (staff stay out of CRM)
     """
     phone = body.phone.lstrip("+")
 
@@ -259,17 +260,34 @@ async def send_whatsapp_message(
             "whatsapp send to team-allowlisted number (****%s)",
             _normalize_phone(phone)[-4:],
         )
-    # Gate 2b: CRM validation — any other recipient must be a known client
+    # Gate 2b: recipient validation — accept a known CRM client OR a Bali Zero
+    # team member. Team-member numbers live in team_members.whatsapp (the HR
+    # source of truth) and are NOT mirrored into the clients table, so a
+    # clients-only check rejected staff as "unknown contacts" (e.g. Surya,
+    # whose number sits in team_members.whatsapp but not in clients). This DB
+    # check is the durable backstop to the env-var allowlist above: it works
+    # even when WHATSAPP_TEAM_ALLOWLIST is empty or stale.
     elif db:
         async with db.acquire() as conn:
-            client_exists = await conn.fetchval(
-                "SELECT EXISTS(SELECT 1 FROM clients WHERE phone LIKE $1 AND deleted_at IS NULL)",
+            recipient_known = await conn.fetchval(
+                """
+                SELECT EXISTS(
+                    SELECT 1 FROM clients
+                    WHERE phone LIKE $1 AND deleted_at IS NULL
+                    UNION ALL
+                    SELECT 1 FROM team_members
+                    WHERE whatsapp LIKE $1 AND COALESCE(active, true) = true
+                )
+                """,
                 f"%{phone[-10:]}%",
             )
-            if not client_exists:
+            if not recipient_known:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Phone {body.phone} not found in CRM. Cannot send to unknown contacts.",
+                    detail=(
+                        f"Phone {body.phone} not found in CRM or team directory. "
+                        "Cannot send to unknown contacts."
+                    ),
                 )
 
     # Send via Meta WhatsApp Cloud API
