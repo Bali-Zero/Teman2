@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""Auto-archive resolved/info/old cicatrix scars to keep the active file under
-the 40k-char agent auto-load threshold.
+"""Auto-archive resolved/info/old cicatrix scars (DORMANT optional cleanup).
+
+LIMIT RAISED 40k→10M (decision 2026-06-16)
+------------------------------------------
+The original 40k-char limit was decided in error. `cicatrix-scars.md` (the scar
+MAGAZZINO) is NOT loaded into agent context — only the ponte cicatrix-superscar.md
+(~16k, the 10 superscar families + one-line members) is. So the magazzino body has
+no practical size limit and a scar must NEVER be archived/sacrificed just to fit a
+threshold. The limit is now 10M; this archiver is left in place but dormant, kept
+for OPTIONAL manual cleanup only.
 
 WHY THIS EXISTS
 ---------------
 `cicatrix-scars.md` grows monotonically: the `/scar` skill APPENDS new entries,
 but nothing ever PRUNES. Past size-control was done by hand ("Archived YYYY-MM-DD
 sweep" notes in the file) and a checker (`check_cicatrix_size.sh`) that only
-BLOCKS at commit time and was never even wired into the pre-commit hook. Result:
-the file repeatedly blows past 40k and the Claude Code harness warns
-"... is over the 40.0k-char limit · /memory to free up context".
+BLOCKS at commit time and was never even wired into the pre-commit hook. The limit
+has since been raised to 10M (magazzino is non-context, no practical size limit),
+so this loop now only runs as an optional manual cleanup, never as a wall.
 
 This script closes the loop: append (by /scar) + auto-archive (by this) =
 bounded size.
@@ -54,10 +62,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ACTIVE = REPO_ROOT / ".claude" / "rules" / "cicatrix-scars.md"
 ARCHIVE = REPO_ROOT / ".claude" / "rules" / "cicatrix-scars-archive.md"
 
-# Hard ceiling the harness enforces. We archive down to TARGET (< LIMIT) so a
-# fresh /scar append doesn't immediately re-cross the line.
-LIMIT_CHARS = 40_000
-DEFAULT_TARGET_CHARS = 32_000
+# Limit raised 40k→10M (decision 2026-06-16): the magazzino is NOT loaded into
+# agent context (only the ponte cicatrix-superscar.md is), so there is no practical
+# size limit. We archive down to TARGET (< LIMIT) only when run manually.
+LIMIT_CHARS = 10_000_000
+DEFAULT_TARGET_CHARS = 9_000_000
 DEFAULT_RESOLVED_AGE_DAYS = 14
 # Antonello 2026-06-07: file mass is OPEN ⚠️ STRUCTURAL ~30-39d old; a 60d
 # fallback could never bring it under 40k. 15d makes old-but-open structural
