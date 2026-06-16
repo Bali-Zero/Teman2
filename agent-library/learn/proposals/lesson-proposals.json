@@ -5,9 +5,9 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 5,
+    "scars_scanned": 6,
     "mechanical_candidates": 3,
-    "consultive": 1,
+    "consultive": 2,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
@@ -82,6 +82,25 @@
       "severity": "P1",
       "w_numbers": [
         "W82"
+      ],
+      "recurring_via": {
+        "w": [],
+        "family": []
+      },
+      "pipeline": "consultive",
+      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
+    },
+    {
+      "title": "🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)",
+      "severity": "P2",
+      "w_numbers": [
+        "W68",
+        "W72",
+        "W73",
+        "W77",
+        "W79",
+        "W82",
+        "W83"
       ],
       "recurring_via": {
         "w": [],

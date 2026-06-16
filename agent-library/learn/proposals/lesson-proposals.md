@@ -6,9 +6,9 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **5**
+- scars scanned: **6**
 - mechanical candidates (recurring ≥3): **3**
-- consultive (single-occurrence): **1**
+- consultive (single-occurrence): **2**
 - rejected (no objective anchor, G1): **1**
 
 ## Recurring patterns (the objective recurrence signal, G4)
@@ -25,6 +25,7 @@
 ## Consultive (→ judgment pipeline, NOT a hook)
 
 - ⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16) [P1]
+- 🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16) [P2]
 
 ## Rejected — no objective anchor (gate G1)
 
