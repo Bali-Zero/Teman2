@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.curiosity-loop.daily</string>
+
+    <!-- Runs the REPO wrapper (not a HOME-fork). The wrapper picks a >=3.11
+         Python, sources ~/.nuzantara-secrets.env, and runs gap_fill_autonomous.py
+         which researches knowledge gaps (SEA-LION + Exa web-verify) and writes
+         propose-only rows to kg_proposals for Zero to approve. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO__/scripts/curiosity_loop.sh</string>
+    </array>
+
+    <!-- Daily 04:30 WITA (Asia/Makassar UTC+8), per the wrapper header. Off-peak,
+         well clear of the Sunday 20:00 curiosity_batch weekly. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/logs/curiosity-loop-launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/logs/curiosity-loop-launchd.log</string>
+
+    <!-- one-shot cron, NOT a daemon: no KeepAlive (avoids restart-storm,
+         superscar #7), no RunAtLoad. -->
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
