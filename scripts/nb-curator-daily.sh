@@ -114,7 +114,7 @@ else
     REPORT_PATH="$OUTPUT_DIR/${DATE_STR}-health.md"
 fi
 
-MODE_PROMPT="Run nb-curator daily pass. Follow your spec in ~/.claude/agents/nb-curator.md exactly. Today is $DATE_STR.
+MODE_PROMPT="Run nb-curator daily pass. FIRST read your full operating spec at ~/.claude/agents/nb-curator.md (use your file-read tool) and follow it exactly. You have shell + file tools: use them to run 'nlm' and to write the report file. Today is $DATE_STR.
 
 PART 1 — Mode B health check (ALL notebooks):
 1. Read inventory from ~/.claude/projects/-Users-nuzantara/memory/reference_notebooklm_arsenal_full.md
@@ -136,14 +136,40 @@ OUTPUT:
 
 Hard rules: read-only on NB content. NEVER call 'nlm source add/delete' or any mutating command. Propose only (Article 1)."
 
-log "Mode B+C ($C_SCOPE). Report: $REPORT_PATH"
+log "Mode B+C ($C_SCOPE) via brain=${NB_CURATOR_BRAIN:-agy}. Report: $REPORT_PATH"
 
+# ── Brain: agy Gemini 3.5 Flash primary, claude-cascade --agent fallback ──────
+# The brain is PROPOSE-ONLY now that every deletion is deterministic (Step 1 +
+# Step 1c), so Flash is sufficient — and it frees Claude MAX quota. It is also a
+# REAL fallback: the old path (claude-cascade --agent) made tier3-5 self-skip
+# whenever --agent was set ("neither CLI loads Claude Code agents"), so a
+# quota-exhausted nb-curator simply died (ALL TIERS FAILED). agy in print mode
+# with --dangerously-skip-permissions executes nlm + writes files autonomously
+# (verified 2026-06-16). Override with NB_CURATOR_BRAIN=claude.
+export PATH="$HOME/.local/bin:$PATH"   # ensure the brain (agy/claude) finds nlm
 TMPOUT=$(mktemp)
-"$HOME/scripts/claude-cascade.sh" "$MODE_PROMPT" \
-    --model claude-sonnet-4-6 \
-    --agent nb-curator \
-    > "$TMPOUT" 2>> "$LOG"
-EXIT=$?
+AGY_BIN="$HOME/.local/bin/agy"
+BRAIN_USED=""; EXIT=1
+if [ "${NB_CURATOR_BRAIN:-agy}" = "agy" ] && [ -x "$AGY_BIN" ]; then
+    printf '%s' "$MODE_PROMPT" | "$AGY_BIN" --dangerously-skip-permissions \
+        --model "Gemini 3.5 Flash (Medium)" -p --print-timeout 20m \
+        > "$TMPOUT" 2>> "$LOG"
+    EXIT=$?
+    if [ "$EXIT" -eq 0 ] && grep -qE 'SUMMARY:' "$TMPOUT"; then
+        BRAIN_USED="agy-flash"
+    else
+        log "agy brain failed (exit=$EXIT or no SUMMARY line) — falling back to claude-cascade"
+    fi
+fi
+if [ -z "$BRAIN_USED" ]; then
+    "$HOME/scripts/claude-cascade.sh" "$MODE_PROMPT" \
+        --model claude-sonnet-4-6 \
+        --agent nb-curator \
+        > "$TMPOUT" 2>> "$LOG"
+    EXIT=$?
+    BRAIN_USED="claude-cascade"
+fi
+log "brain used: $BRAIN_USED (exit=$EXIT)"
 cat "$TMPOUT" >> "$LOG"
 
 # ── Step 4: Telegram digest ONLY if action/anomaly ────────────────────────────
