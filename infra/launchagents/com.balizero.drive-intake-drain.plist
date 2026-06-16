@@ -10,13 +10,19 @@
         <string>__HOME__</string>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>INTAKE_REPO_ROOT</key>
+        <string>__REPO_ROOT__</string>
+        <key>INTAKE_VENV_PYTHON</key>
+        <string>__VENV_PYTHON__</string>
+        <key>INTAKE_SA_FILE</key>
+        <string>__SA_FILE__</string>
         <key>INTAKE_DRIVE_SCOPE_FOLDER_ID</key>
         <string>__SCOPE_FOLDER_ID__</string>
     </dict>
     <key>ProgramArguments</key>
     <array>
-        <string>__VENV_PYTHON__</string>
-        <string>__REPO_ROOT__/scripts/drive_intake_drain.py</string>
+        <string>/bin/bash</string>
+        <string>__REPO_ROOT__/scripts/drive-intake-drain-run.sh</string>
     </array>
     <key>StartInterval</key>
     <integer>600</integer>
