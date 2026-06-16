@@ -289,11 +289,14 @@ def _chunk_nb_blocks(nbs: list[dict[str, Any]]) -> list[str]:
     """Pack NB blocks into chunks ≤ CHUNK_CHARS so a corpus-wide prompt never
     overflows the model context. Returns a list of corpus-text chunks (≥1).
 
-    A single NB block larger than CHUNK_CHARS becomes its own (over-size) chunk —
-    we never split mid-NB (that would sever a source from its siblings and defeat
-    the coherence check). This is logged so an over-size NB is visible, not silent.
+    CRITICAL: since the per-NB source cap was removed, a single NB can be 1.6M
+    chars — far past any context. So we DON'T emit one block per whole NB; we
+    reuse _chunk_one_nb to split each NB into ≤CHUNK_CHARS sub-blocks first, then
+    bin-pack those sub-blocks. Every emitted chunk is therefore ≤ ~CHUNK_CHARS.
+    (Run #3 caught the old version shipping a 1.6M-char vs_regulatory chunk.)
     """
-    blocks = [_nb_block(nb) for nb in nbs]
+    # Flatten: every NB → its ≤CHUNK_CHARS sub-blocks.
+    blocks: list[str] = [b for nb in nbs for b in _chunk_one_nb(nb)]
     chunks: list[str] = []
     cur: list[str] = []
     cur_len = 0
@@ -301,12 +304,6 @@ def _chunk_nb_blocks(nbs: list[dict[str, Any]]) -> list[str]:
         if cur and cur_len + len(blk) > CHUNK_CHARS:
             chunks.append("\n".join(cur))
             cur, cur_len = [], 0
-        if len(blk) > CHUNK_CHARS:
-            print(
-                f"  NOTE: one NB block is {len(blk)} chars (> CHUNK_CHARS "
-                f"{CHUNK_CHARS}); sent as its own oversize chunk.",
-                file=sys.stderr,
-            )
         cur.append(blk)
         cur_len += len(blk)
     if cur:
