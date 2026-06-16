@@ -5,14 +5,16 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 6,
-    "mechanical_candidates": 3,
-    "consultive": 2,
+    "scars_scanned": 7,
+    "mechanical_candidates": 6,
+    "consultive": 0,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
     "w_numbers": {
-      "W64": 3
+      "W64": 3,
+      "W79": 3,
+      "W82": 3
     },
     "families": {}
   },
@@ -50,7 +52,23 @@
       ],
       "recurring_via": {
         "w": [
-          "W64"
+          "W64",
+          "W79"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16)",
+      "severity": "P1",
+      "w_numbers": [
+        "W82"
+      ],
+      "recurring_via": {
+        "w": [
+          "W82"
         ],
         "family": []
       },
@@ -74,21 +92,6 @@
       },
       "pipeline": "mechanical",
       "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
-    }
-  ],
-  "consultive": [
-    {
-      "title": "⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16)",
-      "severity": "P1",
-      "w_numbers": [
-        "W82"
-      ],
-      "recurring_via": {
-        "w": [],
-        "family": []
-      },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
     },
     {
       "title": "🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)",
@@ -103,13 +106,40 @@
         "W83"
       ],
       "recurring_via": {
-        "w": [],
+        "w": [
+          "W79",
+          "W82"
+        ],
         "family": []
       },
-      "pipeline": "consultive",
-      "note": "Single-occurrence (count<3). Routed to the judgment pipeline as a consultive checklist item, NOT a hook (G4)."
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "🐛 W84 (P2 STRUCTURAL): `_strip_noise` del worktree-isolation hook usa `[^q]*` che MATCHA i newline → in un comando multi-riga una quota orfana (apostrofo IT / apertura `ssh '...'`) si accoppia cross-line, fonde i comandi e fa leakare i pattern grep nello scan redirect → phantom write-target (2026-06-16)",
+      "severity": "P2",
+      "w_numbers": [
+        "W68",
+        "W72",
+        "W73",
+        "W77",
+        "W79",
+        "W82",
+        "W83",
+        "W84"
+      ],
+      "recurring_via": {
+        "w": [
+          "W79",
+          "W82"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     }
   ],
+  "consultive": [],
   "rejected_no_anchor": [
     {
       "title": "🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)",
