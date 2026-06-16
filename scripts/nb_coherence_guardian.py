@@ -98,7 +98,10 @@ AGY_TIMEOUT_S = 600  # a corpus-wide pass is long-context; be patient.
 # NB cannot blow the context. Coherence smells live in the head of a source
 # (claims, numbers, definitions); we keep the lead and note the truncation.
 SOURCE_HEAD_CHARS = 6000
-MAX_SOURCES_PER_NB_IN_PROMPT = 60  # logged when it bites (no silent truncation)
+# NB: there is deliberately NO per-NB source CAP. The first real run showed a
+# cap of 60 silently dropped 567/852 sources (~67% of the KB). Coverage is the
+# whole point of a coherence guardian, so instead of capping we CHUNK every NB
+# across as many agy calls as needed (see _chunk_one_nb / _chunk_nb_blocks).
 
 # Corpus-wide dimensions (vs_regulatory, cross_nb) can exceed the model context
 # window. We pack NB blocks into chunks no larger than this and make one agy call
@@ -241,19 +244,39 @@ def _source_blurb(src: dict[str, Any]) -> str:
     )
 
 
-def _nb_block(nb: dict[str, Any]) -> str:
-    """All (capped) sources of one NB as a single prompt block."""
+def _nb_block(nb: dict[str, Any], sources: list[dict[str, Any]] | None = None) -> str:
+    """Render the given sources of one NB as a prompt block. Defaults to ALL
+    sources — no cap. Callers that must respect a context budget chunk the source
+    list themselves (_chunk_one_nb / _chunk_nb_blocks) and pass a slice here.
+    A guardian that silently dropped 2/3 of the KB (the old MAX cap) is not a
+    guardian — it's a sampler. Coverage is the whole point."""
+    srcs = nb["sources"] if sources is None else sources
+    total = len(nb["sources"])
+    body = "\n".join(_source_blurb(s) for s in srcs)
+    return f"### NOTEBOOK {nb['nb_key']} ({len(srcs)} of {total} sources)\n{body}"
+
+
+def _chunk_one_nb(nb: dict[str, Any]) -> list[str]:
+    """Split ONE NB's sources into prompt blocks each ≤ CHUNK_CHARS, so a large
+    NB (e.g. 284 sources) is covered ACROSS several agy calls instead of capped.
+    A single source larger than CHUNK_CHARS becomes its own block (logged)."""
     srcs = nb["sources"]
-    capped = srcs[:MAX_SOURCES_PER_NB_IN_PROMPT]
-    if len(srcs) > MAX_SOURCES_PER_NB_IN_PROMPT:
-        # No silent truncation — say what was dropped (cicatrix superscar #2 rule).
-        print(
-            f"  NOTE: {nb['nb_key']} has {len(srcs)} sources; prompt caps at "
-            f"{MAX_SOURCES_PER_NB_IN_PROMPT} (dropped {len(srcs) - MAX_SOURCES_PER_NB_IN_PROMPT}).",
-            file=sys.stderr,
-        )
-    body = "\n".join(_source_blurb(s) for s in capped)
-    return f"### NOTEBOOK {nb['nb_key']} ({len(capped)} of {len(srcs)} sources)\n{body}"
+    blocks: list[str] = []
+    cur: list[dict[str, Any]] = []
+    cur_len = 0
+    for s in srcs:
+        blurb_len = min(len(s.get("content") or ""), SOURCE_HEAD_CHARS) + 200
+        if cur and cur_len + blurb_len > CHUNK_CHARS:
+            blocks.append(_nb_block(nb, cur))
+            cur, cur_len = [], 0
+        cur.append(s)
+        cur_len += blurb_len
+    if cur:
+        blocks.append(_nb_block(nb, cur))
+    if len(blocks) > 1:
+        print(f"  NOTE: {nb['nb_key']} ({len(srcs)} sources) split into {len(blocks)} "
+              f"internal_nlm chunks (full coverage, no drop).", file=sys.stderr)
+    return blocks or [_nb_block(nb, [])]
 
 
 def _chunk_nb_blocks(nbs: list[dict[str, Any]]) -> list[str]:
@@ -329,16 +352,30 @@ amounts, dates) are the highest-value targets: a divergent number is a finding.
 """
 
 
-def _prompt_internal_nlm(nb: dict[str, Any]) -> str:
-    return (
-        "You are a regulatory-knowledge coherence auditor for an Indonesian "
-        "immigration/company/tax/property consultancy. Examine the sources of "
-        "ONE NotebookLM notebook below and find places where they CONTRADICT each "
-        "other, duplicate the same fact divergently, or are clearly STALE "
-        "(superseded numbers/rules). Focus on numbers, thresholds, legal article "
-        "references, and dates.\n\n"
-        f"{_nb_block(nb)}\n{_JSON_CONTRACT}"
-    )
+def _prompt_internal_nlm(nb: dict[str, Any]) -> list[tuple[str, str]]:
+    """One (label, prompt) per chunk of THIS NB — full source coverage, no cap.
+    A big NB yields several chunks; each is audited for internal contradictions."""
+    blocks = _chunk_one_nb(nb)
+    multi = len(blocks) > 1
+    out = []
+    for i, block in enumerate(blocks, 1):
+        label = nb["nb_key"] if not multi else f"{nb['nb_key']}#{i}of{len(blocks)}"
+        caveat = (
+            "\n\nNOTE: this is a PARTIAL slice of the notebook; flag only "
+            "contradictions visible among the sources shown here."
+            if multi else ""
+        )
+        out.append((label, (
+            "You are a regulatory-knowledge coherence auditor for an Indonesian "
+            "immigration/company/tax/property consultancy. Examine the sources of "
+            "ONE NotebookLM notebook below and find places where they CONTRADICT "
+            "each other, duplicate the same fact divergently, or are clearly STALE "
+            "(superseded numbers/rules). Focus on numbers, thresholds, legal "
+            "article references, and dates."
+            f"{caveat}\n\n"
+            f"{block}\n{_JSON_CONTRACT}"
+        )))
+    return out
 
 
 def _prompt_vs_regulatory(nbs: list[dict[str, Any]]) -> list[tuple[str, str]]:
@@ -477,7 +514,7 @@ def run_dimension(
     result: dict[str, Any] = {"dimension": dim, "findings": [], "errors": []}
 
     if dim == "internal_nlm":
-        prompts = [(nb["nb_key"], _prompt_internal_nlm(nb)) for nb in nbs]
+        prompts = [lp for nb in nbs for lp in _prompt_internal_nlm(nb)]
     elif dim == "vs_regulatory":
         prompts = _prompt_vs_regulatory(nbs)
     elif dim == "vs_public":
