@@ -97,6 +97,9 @@ done
 START=$(date +%s)
 log "run start: $SRC -> $DST (bwlimit=$BWLIMIT tpslimit=$TPSLIMIT checkers=$CHECKERS) log=$RUN_LOG"
 
+# Skip Dropbox junk that clogs the queue head (alphabetically first), wastes
+# Drive quota, and pollutes the CRM intake: "(Selective Sync Conflict)" duplicate
+# folders, a stray cracked-software archive, and a Driver dump. (junk-exclude 2026-06-16)
 rclone copy "$SRC" "$DST" \
   --log-level INFO --log-file "$RUN_LOG" \
   --transfers "$TRANSFERS" --checkers "$CHECKERS" \
@@ -105,7 +108,10 @@ rclone copy "$SRC" "$DST" \
   --fast-list \
   --bwlimit "$BWLIMIT" \
   --drive-stop-on-upload-limit \
-  --exclude ".DS_Store" --exclude "/.dropbox.cache/**"
+  --exclude ".DS_Store" --exclude "/.dropbox.cache/**" \
+  --exclude "*(Selective Sync Conflict)*/**" \
+  --exclude "Adobe CS4*/**" \
+  --exclude "Driver/**"
 RC=$?
 ELAPSED=$(( $(date +%s) - START ))
 
