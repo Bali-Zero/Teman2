@@ -97,8 +97,9 @@ numero-norma, language-invariant) con anchor tolleranti a contesto-tabella [unde
 asse linguistico) · W77 (wa-mirror, stessa classe) · W68b (`_guard_property_zoning` "lease") ·
 **W82 (UNDER-match — content-freshness-sentinel: substring + cieco alle traduzioni → fatto stale resta verde)** ·
 **W83 (OVER-match su guard di COMANDO — worktree-isolation hook: `ssh host git pull` / `cd <wt> && git` / git-verb-in-quote falsi-block; fix = `_strip_noise` pre-scan + dispatcher segment-anchored)** ·
-**W84 (OVER-match — lo `_strip_noise` di W83 usava `[^q]*` che matcha i newline → quota orfana cross-line (apostrofo IT / `ssh '...'`) fonde i comandi → phantom write-target; fix = char-class senza `\n` + classifier scarta `\`/`|`. Un fix che partorisce il bug gemello)**.
-**→ dettaglio:** cicatrix-scars.md (W68/W72/W73/**W82**/**W83**/**W84**) · `scar query "guard over-match"`
+**W84 (OVER-match — lo `_strip_noise` di W83 usava `[^q]*` che matcha i newline → quota orfana cross-line (apostrofo IT / `ssh '...'`) fonde i comandi → phantom write-target; fix = char-class senza `\n` + classifier scarta `\`/`|`. Un fix che partorisce il bug gemello)** ·
+**W85 (OVER-match — `BLOCKED_SUBCMD_RE` ha `stash` nudo → `git stash list`/`show` read-only bloccati come `stash push`/`pop`; fix = enumerare i mutanti `stash (push|pop|apply|drop|...)` o allow-list `stash (list|show)`. TERZO over-match consecutivo della STESSA guardia in 2 giorni — la #3 sul worktree-isolation non si chiude con un fix puntuale)**.
+**→ dettaglio:** cicatrix-scars.md (W68/W72/W73/**W82**/**W83**/**W84**/**W85**) · `scar query "guard over-match"`
 
 ---
 
