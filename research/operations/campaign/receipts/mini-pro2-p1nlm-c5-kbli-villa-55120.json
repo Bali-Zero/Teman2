@@ -1,0 +1,25 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-P1NLM",
+  "cycle": "c5-nlm-live",
+  "claim_id": "KBLI-VILLA-55120",
+  "domain": "company",
+  "account": "antonellosiano@",
+  "nb_queried": { "id": "933509f9-1561-403d-bd44-4a7a67a36df2", "name": "NB-3 Company Setup (curated, ledger ground-truth source)" },
+  "nb_query": "In the KBLI 2025 BPS conversion table, what does old code 55120 correspond to (villa, Hotel Melati, or other), and what does it convert to? Separately, what is the current KBLI 2025 code for a Villa, and what did old 55193 convert to?",
+  "ledger_current_fact_candidate": "Villa is KBLI 55203 in KBLI 2025 (recoded from old 55193); 55120 was 'Hotel Melati', NOT villa (-> 55106).",
+  "nb_citation_verbatim": "The old KBLI 2020 code 55120 specifically corresponded to Hotel Melati (budget/non-star hotels), not villa accommodation ... recoded to 55106: '55120 Hotel Melati 55106 Aktivitas Hotel Nonbintang Recoding/Pindah Kode'. ... The old villa code was 55193; current KBLI 2025 villa code is 55203: '55193 Villa 55203 Aktivitas Vila Recoding/Pindah Kode'. (Apartemen Hotel 55194 -> 55204.)",
+  "verdict": "CONFIRM",
+  "verdict_rationale": "Live NB-3/BPS verbatim resolves the ledger-vs-article conflict in favour of the ledger: 55120 = Hotel Melati (-> 55106), NOT villa, NOT 'Kondominium Hotel'; the -> 55204 mapping belongs to old 55194 (Apartemen Hotel). Villa is 55193 -> 55203.",
+  "fix_applied": {
+    "files": ["apps/mouth/src/content/articles/business/kbli-2025-hospitality-villa-hotel-bali-investment-guide.mdx"],
+    "change": "Migration table L389 '55120 | Kondominium Hotel | 55204 | Migrate to aparthotel code' -> '55120 | Hotel Melati (non-star) | 55106 | Recode to Hotel Nonbintang (55106)'. (The genuine ->55204 aparthotel mapping belongs to 55194, already documented elsewhere in the article at L96/L298.)",
+    "cause_command": "grep -nE '55120.*Kondominium|Hotel Melati.*55106' kbli-2025-hospitality-villa-hotel-bali-investment-guide.mdx",
+    "cause_before": "L389 '55120 | Kondominium Hotel | 55204'",
+    "cause_after": "L389 '55120 | Hotel Melati (non-star) | 55106' (CLEAN)"
+  },
+  "scope_note": "Other low-confidence 55120 mislabels exist (kbli-2025-consulting-professional-services.mdx:175 '55120 (Villa/Homestay)'; kbli-2025-tourism-travel-services.mdx:196 '55120 (Budget Hotel)' = semantically OK on meaning, stale on renumbering). NOT swept (superscar #3). The 55193='Pondok Wisata' mislabel in the SAME flagship article (FAQ L50, table L391) is the SEPARATE P1 KBLI-VILLA-55193 naming issue, left untouched (out of the 6 scope).",
+  "refuter_note": "BPS gazette table verbatim; no reasoning-refuter override. Father re-grepped.",
+  "ground_truth_source": "NB-3 933509f9 LIVE query 2026-06-16 (Peraturan BPS 7/2025 Tabel Konversi rows 55120->55106, 55193->55203, 55194->55204)",
+  "ts": "2026-06-16T04:15:55Z"
+}
