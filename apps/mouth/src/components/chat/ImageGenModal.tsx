@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useId } from "react";
 import { X, Sparkles } from "lucide-react";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 
 export interface ImageGenModalProps {
   isOpen: boolean;
@@ -44,6 +45,8 @@ export function ImageGenModal({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
+  const textareaId = useId();
+
   if (!isOpen) return null;
 
   return (
@@ -82,13 +85,16 @@ export function ImageGenModal({
           </button>
         </div>
         <div className="p-5">
-          <textarea
+          <label htmlFor={textareaId} className="sr-only">
+            Image generation prompt
+          </label>
+          <AutoResizeTextarea
+            id={textareaId}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="e.g. A magical unicorn in an enchanted forest..."
-            aria-label="Image generation prompt"
-            className="w-full h-28 px-4 py-3 bg-[var(--background)] border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none focus-ring"
+            className="w-full min-h-28 px-4 py-3 bg-[var(--background)] border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus-ring"
             autoFocus
           />
           <div className="mt-4 flex justify-end gap-3">
