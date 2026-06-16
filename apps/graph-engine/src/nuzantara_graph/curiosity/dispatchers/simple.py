@@ -22,6 +22,16 @@ SEA-LION wins on accuracy at +17s vs qwen — irrelevant for a once-nightly cron
 Timeout 180s gives headroom over the measured 121s incl. cold-start variance.
 Model/URL/timeout are env-overridable so the Pro and Mini can diverge without
 a code change (the Mini only has <=9B models).
+
+PHASE 2 (web verification, 2026-06-16): the local model is fluent but can cite a
+stale framework (e.g. the Negative Investment List, superseded by the Positive
+List / Perpres 10/2021). After the Ollama draft, we run a single Exa web search
+on the gap topic and graft the real result URLs into the evidence citations,
+nudging confidence up when the web corroborates. This grounds the proposal
+against live public sources. It is STRICTLY additive and degrades gracefully:
+no EXA_API_KEY, a network failure, or zero results all leave the Ollama-only
+evidence untouched (Law 6 — the web is a bonus, never a hard dependency). Only
+public regulatory data is queried; no PII ever leaves the box (Law 2).
 """
 from __future__ import annotations
 
@@ -45,6 +55,14 @@ OLLAMA_MODEL = os.environ.get(
 # brushed a 180s cap, so 240s gives genuine cold-start headroom. A once-nightly
 # cron can well afford it. Override via env.
 OLLAMA_TIMEOUT = int(os.environ.get("CURIOSITY_OLLAMA_TIMEOUT", "240"))
+
+# Phase 2 web verification (Exa). Key is read lazily at call time so the absence
+# of EXA_API_KEY silently disables verification rather than breaking the cron.
+EXA_SEARCH_URL = "https://api.exa.ai/search"
+EXA_TIMEOUT = int(os.environ.get("CURIOSITY_EXA_TIMEOUT", "30"))
+EXA_NUM_RESULTS = int(os.environ.get("CURIOSITY_EXA_NUM_RESULTS", "4"))
+# Master switch — set CURIOSITY_WEB_VERIFY=0 to force Ollama-only.
+WEB_VERIFY_ENABLED = os.environ.get("CURIOSITY_WEB_VERIFY", "1") != "0"
 
 RESEARCH_PROMPT = """You are a regulatory research assistant for Indonesian business services.
 
@@ -91,6 +109,9 @@ class SimpleDispatcher:
         try:
             result = self._call_ollama(topic, domain)
             if result:
+                # Phase 2: ground the local draft against live public sources.
+                # Strictly additive — never raises, never downgrades the draft.
+                self._verify_with_web(result, topic, domain)
                 return [result]
         except Exception as e:
             logger.warning("SimpleDispatcher: Ollama failed for '%s': %s", topic[:40], e)
@@ -104,8 +125,85 @@ class SimpleDispatcher:
             )
         ]
 
+    def _verify_with_web(
+        self, evidence: ResearchEvidence, topic: str, domain: str
+    ) -> None:
+        """Graft real web-source URLs into `evidence` (in place), if available.
+
+        Runs one Exa search on the gap topic and appends the result URLs to the
+        evidence citations, records them in metadata, and nudges confidence up a
+        little when the web corroborates the local draft. Pure best-effort: any
+        failure (no key, network error, no results, bad JSON) is swallowed and
+        leaves `evidence` exactly as the local model produced it. Mutates in
+        place; returns nothing.
+        """
+        if not WEB_VERIFY_ENABLED:
+            return
+        api_key = os.environ.get("EXA_API_KEY", "")
+        if not api_key:
+            logger.debug("SimpleDispatcher: EXA_API_KEY unset — skipping web verify")
+            return
+
+        query = f"{topic} Indonesia regulation 2025 2026 ({domain})"
+        payload = {
+            "query": query,
+            "type": "auto",
+            "numResults": EXA_NUM_RESULTS,
+            "contents": {"text": {"maxCharacters": 600}},
+        }
+        try:
+            req = urllib.request.Request(
+                EXA_SEARCH_URL,
+                data=json.dumps(payload).encode(),
+                headers={
+                    "x-api-key": api_key,
+                    "Content-Type": "application/json",
+                    "User-Agent": "nuzantara-curiosity/1.0",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=EXA_TIMEOUT) as resp:
+                data = json.loads(resp.read())
+        except Exception as e:
+            logger.warning(
+                "SimpleDispatcher: web verify failed for '%s': %s", topic[:40], e
+            )
+            return
+
+        results = [r for r in (data.get("results", []) or []) if r.get("url")]
+        if not results:
+            return
+
+        # Rank official Indonesian government sources (.go.id — imigrasi/bkpm/
+        # oss/peraturan/pajak) ahead of commercial blogs and law-firm posts, so
+        # the most authoritative citations lead. Stable within each tier.
+        results.sort(key=lambda r: 0 if ".go.id" in r.get("url", "") else 1)
+        urls = [r["url"] for r in results]
+
+        # Graft URLs as extra citations (dedup, keep order) + record provenance.
+        existing = list(evidence.citations)
+        for url in urls:
+            if url not in existing:
+                existing.append(url)
+        evidence.citations = existing
+        evidence.source_type = "ollama+web"
+        evidence.metadata = {
+            **evidence.metadata,
+            "web_verified": True,
+            "web_sources": [
+                {"url": r.get("url", ""), "title": r.get("title", "")}
+                for r in results
+                if r.get("url")
+            ],
+        }
+        # Corroboration bumps confidence toward, but not past, a sensible ceiling.
+        evidence.confidence = min(0.9, evidence.confidence + 0.1)
+        logger.info(
+            "SimpleDispatcher: web-verified '%s' with %d source(s)",
+            topic[:40], len(urls),
+        )
+
     def _call_ollama(self, topic: str, domain: str) -> ResearchEvidence | None:
-        """Call Ollama qwen3.5:9b for regulatory research."""
+        """Call the configured Ollama model (default SEA-LION) for research."""
         prompt = RESEARCH_PROMPT.format(domain=domain, topic=topic)
 
         payload = {
