@@ -103,11 +103,17 @@ SOURCE_HEAD_CHARS = 6000
 # whole point of a coherence guardian, so instead of capping we CHUNK every NB
 # across as many agy calls as needed (see _chunk_one_nb / _chunk_nb_blocks).
 
-# Corpus-wide dimensions (vs_regulatory, cross_nb) can exceed the model context
-# window. We pack NB blocks into chunks no larger than this and make one agy call
-# per chunk, then merge findings. ~280k chars ≈ ~70k tokens — comfortably inside
-# Gemini 3.5 Flash's window with room for the regulatory-delta block + reply.
-CHUNK_CHARS = 280_000
+# Chunk size for every multi-call dimension. Two real-run lessons set this:
+#   1. It is NOT the context window — Gemini 3.5 Flash swallowed 280k fine.
+#   2. For this audit task the model answers in markdown PROSE, not JSON,
+#      REGARDLESS of chunk size (even 60k chunks came back as prose). Fighting
+#      that with ever-smaller chunks is a losing battle (more calls, same prose)
+#      — matches lessons_workflow_structured_output_skip.
+# So we DON'T shrink to force JSON. We keep chunks large (fewer calls) and treat
+# prose as the norm: _run_agy_json runs a tiny prose→JSON salvage pass that
+# reliably converts each prose reply into the schema (verified: 4/4 findings
+# recovered). 200k stays well inside context with margin for the delta block.
+CHUNK_CHARS = 200_000
 
 VALID_DIMENSIONS = ("internal_nlm", "vs_regulatory", "vs_public", "cross_nb")
 
@@ -504,6 +510,40 @@ def _extract_json(text: str) -> dict[str, Any] | None:
         return None
 
 
+def _salvage_prose_to_json(prose: str) -> dict[str, Any] | None:
+    """Last-resort: a big prompt sometimes makes Gemini answer in markdown prose
+    instead of JSON (it drops the trailing contract). The findings are REAL and
+    must not be thrown away — ask agy to convert ONLY that prose into our schema.
+    The conversion prompt is tiny, so the JSON contract reliably holds this time."""
+    if not prose.strip():
+        return None
+    conv = (
+        "Convert the following coherence-audit notes into JSON. Output ONLY the "
+        "JSON object, nothing else.\n" + _JSON_CONTRACT + "\n=== NOTES ===\n" + prose
+    )
+    out, err = _run_agy(conv)
+    if err:
+        return None
+    return _extract_json(out)
+
+
+def _run_agy_json(prompt: str) -> tuple[dict[str, Any] | None, str | None, bool]:
+    """Call agy and return (parsed, error, salvaged). Tries direct JSON; on
+    failure (prose reply) runs ONE prose→JSON salvage pass before giving up, so a
+    big-prompt prose answer still yields its findings instead of being dropped."""
+    out, err = _run_agy(prompt)
+    if err:
+        return None, err, False
+    parsed = _extract_json(out)
+    if parsed is not None:
+        return parsed, None, False
+    # Prose fallback — the reply had content but no parseable JSON.
+    salvaged = _salvage_prose_to_json(out)
+    if salvaged is not None:
+        return salvaged, None, True
+    return None, f"unparseable agy reply ({len(out)} chars), salvage failed", False
+
+
 # --------------------------------------------------------------------------- #
 # Per-dimension runner
 # --------------------------------------------------------------------------- #
@@ -540,15 +580,10 @@ def run_dimension(
             )
             continue
         print(f"  [{dim}/{label}] calling agy ({len(prompt)} chars) …")
-        out, err = _run_agy(prompt)
+        parsed, err, salvaged = _run_agy_json(prompt)
         if err:
             result["errors"].append(f"{label}: {err}")
             print(f"    ERROR: {err}", file=sys.stderr)
-            continue
-        parsed = _extract_json(out)
-        if parsed is None:
-            result["errors"].append(f"{label}: agy returned no parseable JSON")
-            print(f"    WARN: unparseable agy reply ({len(out)} chars)", file=sys.stderr)
             continue
         found = parsed.get("findings", [])
         for f in found:
@@ -557,8 +592,11 @@ def run_dimension(
             # trusted to say which of the 4 checks produced each finding.
             f["dimension"] = dim
             f.setdefault("chunk", label)  # provenance: which prompt/chunk found it
+            if salvaged:
+                f["salvaged_from_prose"] = True  # provenance: came via prose fallback
         result["findings"].extend(found)
-        print(f"    {len(found)} finding(s)")
+        tag = " (salvaged from prose)" if salvaged else ""
+        print(f"    {len(found)} finding(s){tag}")
     return result
 
 
