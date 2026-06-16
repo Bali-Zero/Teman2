@@ -19,6 +19,19 @@ W79 (§9-B of research/operations/specs/phase-aware-guardrails.md, 4-LLM panel
   worktree_isolation covered only `git` — so `echo "x" > $REPO_ROOT/f.py` via Bash
   used to write the main checkout with NO hook stopping it.
 
+W83 (over-match fix, 2026-06-16, superscar #3 guard-over-match): the BLOCKED_SUBCMD_RE
+matched `git ... pull` ANYWHERE in the command string — including inside a quoted
+literal (`grep "git pull"`) and inside a REMOTE `ssh host '... git pull ...'` payload
+(a git op on ANOTHER machine, which never touches this checkout). The `cd <path> && git`
+target-resolver also failed on the nested-quoting of an ssh payload, so the effective
+target fell back to the LOCAL cwd → false BLOCK. Three live false-positives in one
+session (remote `git pull` on the Pro x3). Fix, in order:
+  1. Strip noise (heredocs + quoted strings) BEFORE the git scan too — a `git pull`
+     inside quotes is text, not a command (reuses the W79 _strip_noise recipe).
+  2. If the (noise-stripped) command is a REMOTE dispatch (`ssh`/`scp`/`rsync ... host:`),
+     the git op runs off-box → ALLOW (this checkout is untouched). Innocence-tested:
+     a LOCAL `git pull` must still block; only the ssh-wrapped one is exempt.
+
 Blocked (only when effective target resolves INTO main checkout, NOT a worktree):
 - git checkout / switch / stash / reset / merge / rebase / pull / commit -a / add -A / add .
 - shell writes: `> file`, `>> file`, `tee file`, `sed -i ... file`, `cp/mv ... dest`, `dd of=`
@@ -26,13 +39,15 @@ Blocked (only when effective target resolves INTO main checkout, NOT a worktree)
 Allow (defense conservative — a global L1 hook on 3 machines must NOT false-positive):
 - git read-only; git -C <worktree>; git add <file>; git commit -m; git push
 - ANY write whose target is a worktree, /tmp, $HOME outside the repo, or unclassifiable
+- a git op carried by a remote ssh/scp/rsync dispatch (runs on another host) [W83]
+- a git verb appearing only inside a quoted string / heredoc body (not a real command) [W83]
 
 Escape: AGENT_WORKTREE_ENFORCEMENT=false (env var set in session, NOT inline cmd prefix).
 
 Exit code 2 + stderr = block tool call.
 Exit code 0 + no stderr = allow.
 
-Reference cicatrix: 2026-04-29 #1+#2, W50/W51/W52, 32+ sibling-orphan-2026-05-25, W79 (this).
+Reference cicatrix: 2026-04-29 #1+#2, W50/W51/W52, 32+ sibling-orphan-2026-05-25, W79, W83 (this).
 """
 from __future__ import annotations
 
@@ -98,6 +113,16 @@ GIT_C_RE = re.compile(r"\bgit\s+(?:-c\s+\S+\s+)*-C\s+(\S+)")
 # Extract `cd <path> && git ...` target.
 CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
 
+# W83: a remote dispatch carries the git op to ANOTHER host — this checkout is
+# never touched. The dispatcher must be the FIRST real token of a command
+# SEGMENT (start of line, or right after a segment separator && || ; |). This is
+# deliberately strict: `echo ssh ... && git reset` must NOT be exempted just
+# because the word "ssh" appears as an echo argument — only a segment that
+# actually STARTS with ssh/scp/rsync carries work off-box. Anchoring to a
+# segment boundary (not a bare word anywhere) is itself the superscar-#3
+# antidote: match the command's intent, not a substring.
+REMOTE_DISPATCH_RE = re.compile(r"(?:^|(?:&&|\|\||;|\|)\s*)\s*(?:ssh|scp|rsync)\b")
+
 # --- W79 B1: shell file-WRITE detection ----------------------------------------
 # Quick gate: does the command contain anything that could write a file?
 WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
@@ -156,6 +181,18 @@ def _strip_noise(cmd: str) -> str:
     s = re.sub(r"'[^']*'", "''", s)
     s = re.sub(r'"[^"]*"', '""', s)
     return s
+
+
+def _is_remote_dispatch(cmd_stripped: str) -> bool:
+    """True if the (noise-stripped) command runs the work on ANOTHER host.
+
+    W83: a git op inside `ssh host '...'` / `scp ... host:` / `rsync ... host:`
+    executes off-box, so it can never touch THIS checkout — the worktree brake
+    must not apply. We test the noise-stripped command so a literal `ssh` inside
+    a quoted string does not falsely exempt a real local git op. Word-boundary
+    match (not bare substring) to avoid matching e.g. `gosship`.
+    """
+    return bool(REMOTE_DISPATCH_RE.search(cmd_stripped))
 
 
 def _extract_write_targets(cmd: str) -> list[str]:
@@ -411,11 +448,23 @@ def main():
     if "git" not in cmd:
         sys.exit(0)
 
-    if not BLOCKED_SUBCMD_RE.search(cmd):
+    # W83: strip heredoc bodies + quoted strings BEFORE the git scan, so a git verb
+    # that lives only inside a quoted literal (e.g. grep "git pull") is not seen as a
+    # real command. The git scan + target resolution all run on the stripped form.
+    cmd_scan = _strip_noise(cmd)
+
+    if not BLOCKED_SUBCMD_RE.search(cmd_scan):
         sys.exit(0)
 
-    # Compute effective target
-    target = _effective_git_target(cmd, cwd)
+    # W83: a git op carried by a remote ssh/scp/rsync dispatch runs on ANOTHER
+    # host and can never touch this checkout → allow. (Innocence: a LOCAL git op
+    # has no ssh/scp/rsync dispatcher token, so it still falls through to block.)
+    if _is_remote_dispatch(cmd_scan):
+        _probe_log(payload, "allow_remote_dispatch")
+        sys.exit(0)
+
+    # Compute effective target (on the stripped command, for the same reason).
+    target = _effective_git_target(cmd_scan, cwd)
 
     # If effective target is in an allowed worktree → permit
     if _is_path_in_allowed_worktree(target):

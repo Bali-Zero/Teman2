@@ -726,9 +726,10 @@ async def upload_document_base64(
                         if prev_folder_id:
                             try:
                                 await drive_service.move_file(
+                                    user_email=current_user.get("email", ""),
                                     file_id=existing_actual["file_id"],
-                                    from_parent_id=target_subfolder_id,
-                                    to_parent_id=prev_folder_id,
+                                    new_parent_id=prev_folder_id,
+                                    old_parent_id=target_subfolder_id,
                                 )
                                 await conn.execute(
                                     "UPDATE documents SET subfolder = 'Previous Visa', updated_at = NOW() WHERE id = $1",

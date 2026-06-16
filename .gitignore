@@ -749,3 +749,4 @@ research/compliance/*passport*.csv
 apps/backend-rag/scripts/output/*campaign*.csv
 **/dq_clients*.csv
 **/dq_orphan_clients*.csv
+research/nb-health/nb-inventory-live.json

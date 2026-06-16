@@ -1,0 +1,25 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-P1NLM",
+  "cycle": "c5-nlm-live",
+  "claim_id": "MORATORIUM-SARBAGITA-FREEZE",
+  "domain": "property",
+  "account": "antonellosiano@",
+  "nb_queried": { "id": "d9438180-5e63-4e2a-a473-6061101f6a8d", "name": "NB-5 Property & Real Estate (curated, ledger ground-truth source)" },
+  "nb_query": "What is the current 2026 status of the Bali construction moratorium? Does the formal 2026 ban apply to the four Sarbagita regencies (Denpasar, Badung, Gianyar, Tabanan), or a different set of districts? Was the 'Sarbagita' Sept-2024 proposal adopted or cancelled/reversed? Which districts does the formal 2026 ban actually cover, and which are EXCLUDED?",
+  "ledger_current_fact_candidate": "INVERTED: the 2026 formal ban covers 6 LESS-developed districts (Tabanan, Jembrana, Buleleng, Bangli, Karangasem, Klungkung) and EXCLUDES the tourist core (Badung/Gianyar/Denpasar). A separate province-wide ban applies only to agricultural-land conversion. 'Sarbagita' was the cancelled Sept-2024 proposal.",
+  "nb_citation_verbatim": "the original September 2024 proposal targeted the opposite geography — the Sarbagita area (Denpasar, Badung, Gianyar, Tabanan) ... The actual 2026 policy reversed this focus, protecting less-developed districts instead. ... [Jan 9-17 2025] Governor Koster explicitly cancels moratorium. ... The formal 6-district construction ban covers Tabanan, Jembrana, Buleleng, Bangli, Karangasem, and Klungkung — notably excluding the main tourist zones of Badung, Gianyar, and Denpasar. Separately, a province-wide ban on converting productive agricultural land into commercial developments applies everywhere.",
+  "verdict": "CONFIRM",
+  "verdict_rationale": "Live NB-5 confirms the inversion verbatim with a dated event table: Sarbagita = cancelled Sept-2024 proposal (Koster cancelled Jan 2025); actual 2026 formal ban = 6 less-developed districts, tourist core EXCLUDED; separate province-wide agricultural-land ban. The on-disk sibling kbli-2025-real-estate-property-investment-bali-2026.mdx:119 already carries this correct version (internal-consistency anchor).",
+  "fix_applied": {
+    "files": ["apps/mouth/src/content/articles/business/kbli-2025-hospitality-villa-hotel-bali-investment-guide.mdx"],
+    "change": "FAQ answer + '## The Sarbagita Construction Moratorium' section (heading, What-It-Is para, How-It-Works bullets, item 3) + due-diligence checklist rewritten from the INVERTED geography (freeze in Denpasar/Badung/Gianyar/Tabanan as current) to the NLM-confirmed reality: Sarbagita = cancelled 2024 proposal; 2026 ban = Tabanan/Jembrana/Buleleng/Bangli/Karangasem/Klungkung, tourist core excluded; province-wide agricultural-land ban everywhere.",
+    "cause_command": "grep -c 'construction freeze applicable to four regencies' && grep -c 'cancelled by Governor Koster in January 2025'",
+    "cause_before": "stale 'freeze in four regencies: Denpasar...' present; 0 corrected",
+    "cause_after": "0 stale 'freeze applicable to four regencies'; 2 corrected (cancelled-proposal + 6-district)"
+  },
+  "scope_note": "EN canonical fixed (flagship guide). The 5 locale translations of this article + other articles naming 'Sarbagita moratorium' in frontmatter/keywords were NOT swept (substantive prose, locale propagation = known meta-pattern follow-on). Frontmatter/SEO 'Sarbagita moratorium' keyword left (it IS a real historical proposal); body claims corrected.",
+  "refuter_note": "NB-5 dated event-table is the ground-truth; a reasoning-refuter without 2024-2026 Bali policy data would false-refute. Father re-grepped the corrected file.",
+  "ground_truth_source": "NB-5 d9438180 LIVE query 2026-06-16 (Koster executive directives Sept 2025, formal 6-district ban late-2025/Jan-2026; SK Menko Marves / Perda Bali context)",
+  "ts": "2026-06-16T04:15:55Z"
+}

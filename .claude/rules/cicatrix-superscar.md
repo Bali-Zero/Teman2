@@ -70,24 +70,33 @@ W71 (verify_mcp_integrity glyph-bug: gira e mente) · W32 (pg-bridge morto silen
 
 ---
 
-## #3 — Guard-over-match (substring trapping)
+## #3 — Guard-over-match (substring trapping) — **E il gemello UNDER-match (W82)**
 
-**MALATTIA:** layer di guardia anti-allucinazione (`_guard_*`) con trigger a sotto-stringa clobberano
-risposte CORRETTE, perché il match è troppo ampio o l'escape-clause è irraggiungibile.
+**MALATTIA:** una guardia decide su **substring testuale**, non su entità/intento. Due segni opposti, stessa
+radice: **OVER-match** = layer anti-allucinazione (`_guard_*`) con trigger a sotto-stringa che clobberano
+risposte CORRETTE (match troppo ampio / escape-clause irraggiungibile). **UNDER-match (W82)** = guardia che
+sorveglia una frase-letterale e lascia passare il FATTO marcio se riformulato, in tabella, o in altra lingua →
+resta VERDE mentre il sito mente. Falso-positivo (over) e falso-negativo (under) sono lo stesso bug a segno
+invertito: il match è sulla forma, non sul fatto.
 
-**SEGNALE-PRECOCE:** guardia definita con `if "keyword" in testo:` (substring, non word-boundary né
-intento semantico); escape-clause che tiene la risposta solo se contiene UNA frase esatta
-(positive-gating irraggiungibile); trigger corti (`lease`/`ota`/`rent`/`tax`) che matchano dentro
-parole più lunghe.
+**SEGNALE-PRECOCE:** guardia definita con `if "keyword" in testo:` o `.includes(needle)` (substring, non
+word-boundary né entità); escape-clause che tiene/scusa solo su UNA frase esatta (gating irraggiungibile o
+lista-di-frasi fragile); trigger corti (`lease`/`ota`/`rent`/`tax`) che matchano dentro parole più lunghe;
+**[under]** un guardiano di freschezza/integrità che cerca `stale_pattern` literal e si dichiara verde mentre
+lo stesso codice/norma è marcio altrove; scope che salta strutturalmente una superficie ("translations audited
+separately" = audited mai).
 
-**ANTIDOTO:** nessuna `_guard_*` mergiata senza un test di **innocenza** (deve dimostrare di NON scattare
-su un caso legittimo limitrofo), oltre al test di colpevolezza. Trigger su word-boundary
-(`_contains_any_word`) o intento compositivo, mai bare-substring. Escape negative-gating (clobbera solo
-su un segnale WRONG rilevabile, default passthrough).
+**ANTIDOTO:** nessuna guardia mergiata senza un test di **innocenza** (NON scatta su un caso legittimo
+limitrofo) **E** di colpevolezza. Match su **entità/intento**, mai bare-substring: word-boundary
+(`_contains_any_word`) o intento compositivo [over]; **fact-key strutturato** (codice KBLI / sigla visto /
+numero-norma, language-invariant) con anchor tolleranti a contesto-tabella [under]. Escape negative-gating
+(default passthrough). Nessuna superficie esclusa "per dopo" senza un secondo guardiano che la copra.
 
 **MEMBRI:** W68 (villa-leasehold zoning) · W72 (B211/KITAS deflesso) · W73 (5 over-match in un colpo +
-asse linguistico) · W77 (wa-mirror, stessa classe) · W68b (`_guard_property_zoning` "lease").
-**→ dettaglio:** cicatrix-scars.md (W68/W72/W73) · `scar query "guard over-match"`
+asse linguistico) · W77 (wa-mirror, stessa classe) · W68b (`_guard_property_zoning` "lease") ·
+**W82 (UNDER-match — content-freshness-sentinel: substring + cieco alle traduzioni → fatto stale resta verde)** ·
+**W83 (OVER-match su guard di COMANDO — worktree-isolation hook: `ssh host git pull` / `cd <wt> && git` / git-verb-in-quote falsi-block; fix = `_strip_noise` pre-scan + dispatcher segment-anchored)**.
+**→ dettaglio:** cicatrix-scars.md (W68/W72/W73/**W82**/**W83**) · `scar query "guard over-match"`
 
 ---
 
