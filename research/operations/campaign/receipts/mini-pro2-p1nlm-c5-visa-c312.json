@@ -1,0 +1,30 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-P1NLM",
+  "cycle": "c5-nlm-live",
+  "claim_id": "VISA-C312",
+  "domain": "visa",
+  "account": "antonellosiano@",
+  "nb_queried": { "id": "cff93ab0-813a-42f2-a8de-36987e724271", "name": "NB-2 Immigration & Visa (curated, ledger ground-truth source)" },
+  "nb_query": "In the current Indonesian immigration framework (Permenkumham 22/2023, 11/2024), what is visa/permit code C312? Is C312 still in use or has it been replaced? What is the current KITAS index code for a foreign worker (TKA) work permit, and which codes are used for retirement stay permits?",
+  "ledger_current_fact_candidate": "C312 is a retired pre-2024 code; it was the foreign-worker (TKA) code, now E23. Retirement is E33E/E33F.",
+  "nb_citation_verbatim": "L'indice precedente C312 è obsoleto dal 2023 e non deve più essere citato. ... Il KITAS ... per lavoratori stranieri (TKA) è oggi emesso sotto l'indice E23, codice introdotto da Kepmenkumham M.HH-02.GR.01.04 Tahun 2023 in attuazione del Permenkumham 22/2023. ... E33E (Silver Hair / 5yr, no sponsor, deposito BUMN ~USD 50k) e E33F (pensionato 1yr, agenzia sponsor obbligatoria).",
+  "verdict": "CONFIRM",
+  "verdict_rationale": "Live NB-2 ground-truth fully reproduces the ledger fact: C312 obsolete since 2023, TKA work KITAS now E23 (Permenkumham 22/2023 + Kepmenkumham M.HH-02.GR.01.04/2023); retirement is E33E/E33F. No drift vs ledger verified_on 2026-06-14.",
+  "fix_applied": {
+    "files": [
+      "apps/mouth/src/content/articles/immigration/kitas-transfer-change-sponsor.mdx",
+      "apps/mouth/src/content/articles/immigration/kitas-transfer-change-sponsor.fr.mdx",
+      "apps/mouth/src/content/articles/immigration/kitas-transfer-change-sponsor.it.mdx",
+      "apps/mouth/src/content/articles/immigration/kitas-transfer-change-sponsor.ru.mdx",
+      "apps/mouth/src/content/articles/immigration/kitas-transfer-change-sponsor.id.mdx"
+    ],
+    "change": "Step 6 'New Sponsor Applies for KITAS (C312 Limited Stay Visa)' heading + prose: C312 -> E23 in all 5 locales (internal-consistency: the same article already uses E23 for the employee work KITAS at L82/L283-292/L350).",
+    "cause_command": "grep -c 'C312' kitas-transfer-change-sponsor.{mdx,fr,ru,it,id}.mdx",
+    "cause_before": "2 per file (10 total)",
+    "cause_after": "0 per file (CLEAN); E23 Limited Stay Visa present at Step 6"
+  },
+  "refuter_note": "DeepSeek refuter NOT re-run: live curated-NB ground-truth is itself the strongest authority for a 2023+ Indonesian visa-index fact; a reasoning model with pre-2025 cutoff would false-refute (W65, proven in c1). The father's own on-disk grep is the final gate.",
+  "ground_truth_source": "NB-2 cff93ab0 LIVE query 2026-06-16 (Kepmenkumham M.HH-02.GR.01.04/2023, Permenkumham 22/2023)",
+  "ts": "2026-06-16T04:15:55Z"
+}
