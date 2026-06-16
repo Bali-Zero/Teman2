@@ -373,6 +373,29 @@ async def list_review_queue(
 # Destination pickers (STATIC routes — registered BEFORE /{proposal_id} so the
 # int path-converter never swallows them)
 # --------------------------------------------------------------------------- #
+@router.get("/document-categories")
+async def list_document_categories(
+    _user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Active CRM document categories for the two-level review destination picker.
+
+    The review UI needs the canonical ``document_categories`` table, not a
+    hardcoded copy, so the reviewer can choose both the folder-level group and
+    the precise CRM document subtype before approve.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT code, name, category_group, description, has_expiry
+            FROM document_categories
+            WHERE active = true
+            ORDER BY sort_order, name
+            """
+        )
+    return {"items": [dict(row) for row in rows]}
+
+
 @router.get("/clients/search")
 async def search_clients(
     q: str = Query(..., min_length=2, max_length=120, description="Client name fragment"),
@@ -963,6 +986,47 @@ async def _deliver_committed_to_crm(
 # --------------------------------------------------------------------------- #
 # approve (dry-run 5B / real commit 5C) + reject (terminal, queue-management)
 # --------------------------------------------------------------------------- #
+def _clean_destination_value(value: Any) -> str | None:
+    """Normalise an optional destination override value from the approve body."""
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip().lower()
+    return cleaned or None
+
+
+def _apply_document_destination_override(
+    plan: intake_writer.CommitPlan,
+    *,
+    document_category: Any,
+    document_subtype: Any,
+) -> None:
+    """Apply reviewer-selected destination to payload and planned write ops.
+
+    ``plan_commit`` derives a best-effort document category from the intake
+    doc_type. The review UI can now override both the folder-level category
+    (``documents.document_category``) and exact subtype
+    (``documents.document_type``). Mutating the plan here keeps dry-run audit
+    output and real writes aligned without touching the shared writer module.
+    """
+    category = _clean_destination_value(document_category)
+    subtype = _clean_destination_value(document_subtype)
+
+    if category:
+        plan.payload["document_category"] = category
+    if subtype:
+        plan.payload["document_type"] = subtype
+        plan.doc_type = subtype
+
+    for op in plan.ops:
+        if op.table == "documents":
+            if category:
+                op.values["document_category"] = category
+            if subtype:
+                op.values["document_type"] = subtype
+        elif op.table == "practices.documents[]" and subtype:
+            op.values["name"] = subtype
+
+
 @router.post("/{proposal_id}/approve")
 async def approve_review(
     request: Request,
@@ -987,7 +1051,8 @@ async def approve_review(
     P0#5: the caller must hold the active claim — non-admins must present the
     matching ``claim_token`` on a non-expired lease.
 
-    body: {client_id?, practice_id?, final_fields?, claim_token?}
+    body: {client_id?, practice_id?, document_category?, document_subtype?,
+           final_fields?, claim_token?}
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
@@ -1028,6 +1093,11 @@ async def approve_review(
                 override_practice_id=override_practice_id,
                 practice_explicit=practice_explicit,
                 final_fields=final_fields,
+            )
+            _apply_document_destination_override(
+                plan,
+                document_category=body.get("document_category"),
+                document_subtype=body.get("document_subtype"),
             )
             # FASE 5C gate: dry-run UNLESS INTAKE_WRITER_ENABLED is truthy. With the
             # flag OFF (default) this stays True → simulate + audit-only, exactly as
