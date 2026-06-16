@@ -41,6 +41,7 @@ W70 (path-drift `Projects/nuzantara` Air) · W76 (repomap cron su checkout stale
 copiati con path `/Users/nuzantara/`) · TAC wa-mirror 2026-06-14 (HOME-fork 510+ righe non promosse) ·
 W81 (deploy worktree `~/Desktop/nuzantara-deploy` sparito → ~20 cron critici armati a vuoto su host morto, 2026-06-15).
 **→ dettaglio:** archive (W50/51/52) + cicatrix-scars.md (W68/W70/W76/M5-dev-env) · `scar query "home-fork"`
+> _Nota cross-famiglia:_ **W84** (TCC-dead launchd cron, vedi #2) è imparentata: il wrapper vive sotto `~/Desktop` (path-HOME TCC-protetto) ed è quella collocazione a renderlo decertificabile. Antidoto HOME-fork applicabile: rilocare i wrapper fuori da `~/Desktop` (come fanno i 2 cron sani).
 
 ---
 
@@ -65,8 +66,8 @@ esiste ma non è merged/installed/propagated/armed/committed è **sospeso, non v
 inosservabile / required-checks disarmati) · W64/W34 (asyncpg silent-death, manca `InterfaceError`) ·
 W71 (verify_mcp_integrity glyph-bug: gira e mente) · W32 (pg-bridge morto silenzioso) · 503-RAG
 (health=200 ma RAG worker stoppato) · W70 (sentinel log_tail cieco) · W81 (Armamento Sospeso: ~20 cron
-"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok).
-**→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503) + archive (W34/W32) · `scar query "esiste non armato"`
+"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok) · W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desktop` — incl. `verify-connectome` il guardiano-dei-guardiani — con `LastExitStatus=0` VERDE mentre il log dice `Operation not permitted`; il contesto **launchd ha perso il grant TCC/Full-Disk-Access** verso `~/Desktop` SENZA cambiare codice/plist/permessi — **vettore nuovo: lo stato-di-attivazione TCC è un principal separato da iTerm**; prova che il verde mente: STESSO plist su Pro dà exit 1 onesto. Antidoto: `launchd_liveness_detector.py` PR #1518 incrocia exit-code col CONTENUTO del log; cura=solo-operatore. La W81-estensione si estende ancora: leggi anche lo stato-di-attivazione **TCC**, non solo merge/install).
+**→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503/W84) + archive (W34/W32) · `scar query "esiste non armato"`
 
 ---
 
