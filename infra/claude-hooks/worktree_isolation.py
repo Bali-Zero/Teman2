@@ -177,9 +177,17 @@ def _strip_noise(cmd: str) -> str:
 
     s = _drop_heredocs(cmd)
     # 2/3) empty quoted strings (single then double; simple state-free pass is enough
-    #      because we only need to remove their CONTENT, not parse nesting perfectly)
-    s = re.sub(r"'[^']*'", "''", s)
-    s = re.sub(r'"[^"]*"', '""', s)
+    #      because we only need to remove their CONTENT, not parse nesting perfectly).
+    #      W84: the char-class MUST exclude newline — `[^']*`/`[^"]*` otherwise span
+    #      across lines, so a stray quote on line A (an apostrophe in a comment, or the
+    #      opening quote of an `ssh '...'` payload) pairs with a quote on line C,
+    #      collapsing several commands into one mangled string and leaking grep
+    #      patterns (`grep "a\|b" 2>&1`) into the redirect scan → a phantom
+    #      write-target like `warm_models_extra\`. A shell quote never legitimately
+    #      spans a newline here, so confining the match to one line is correct + the
+    #      false-positive killer (lived 3x in the 2026-06-16 session, sibling of W83).
+    s = re.sub(r"'[^'\n]*'", "''", s)
+    s = re.sub(r'"[^"\n]*"', '""', s)
     return s
 
 
@@ -227,6 +235,11 @@ def _extract_write_targets(cmd: str) -> list[str]:
     for t in targets:
         t = t.strip().strip("'\"")
         if not t or t.startswith("/dev/") or t in {"&1", "&2"} or t.startswith("$("):
+            continue
+        # W84 defense-in-depth: a real write target never carries a backslash
+        # (line-continuation / escape residue) nor a grep-alternation pipe; such a
+        # token is noise that survived quote-stripping, not a path.
+        if "\\" in t or "|" in t:
             continue
         cleaned.append(t)
     return cleaned
