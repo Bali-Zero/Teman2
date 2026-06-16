@@ -5,16 +5,21 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 7,
-    "mechanical_candidates": 6,
+    "scars_scanned": 8,
+    "mechanical_candidates": 7,
     "consultive": 0,
     "rejected_no_anchor": 1
   },
   "recurring_patterns": {
     "w_numbers": {
       "W64": 3,
+      "W68": 3,
+      "W72": 3,
+      "W73": 3,
+      "W77": 3,
       "W79": 3,
-      "W82": 3
+      "W82": 4,
+      "W83": 3
     },
     "families": {}
   },
@@ -107,8 +112,13 @@
       ],
       "recurring_via": {
         "w": [
+          "W68",
+          "W72",
+          "W73",
+          "W77",
           "W79",
-          "W82"
+          "W82",
+          "W83"
         ],
         "family": []
       },
@@ -130,8 +140,40 @@
       ],
       "recurring_via": {
         "w": [
+          "W68",
+          "W72",
+          "W73",
+          "W77",
           "W79",
-          "W82"
+          "W82",
+          "W83"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "🐛 W85 (P3 STRUCTURAL): il worktree-isolation hook ha `stash` in `BLOCKED_SUBCMD_RE` senza distinguere il sottocomando → `git stash list` / `git stash show` (read-only) bloccati come se fossero `stash push`/`pop` (2026-06-17)",
+      "severity": "P3",
+      "w_numbers": [
+        "W68",
+        "W72",
+        "W73",
+        "W77",
+        "W82",
+        "W83",
+        "W84",
+        "W85"
+      ],
+      "recurring_via": {
+        "w": [
+          "W68",
+          "W72",
+          "W73",
+          "W77",
+          "W82",
+          "W83"
         ],
         "family": []
       },
