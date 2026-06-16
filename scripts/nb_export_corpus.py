@@ -175,9 +175,23 @@ def export_notebook(nb_key: str, client) -> None:
     _assert_not_pii(nb_key, notebook_id)
 
     print(f"[{_now()}] Listing sources for {nb_key} ({notebook_id}) …")
-    sources = client.get_notebook_sources_with_types(notebook_id)
+    # The listing call was OUTSIDE the try/retry below, so one bad NB (stale id,
+    # RPCError "code 5: unknown" = NOT_FOUND, transient 5xx) killed the WHOLE
+    # --all crawl and skipped every remaining NB. A single failing NB must NOT
+    # abort the batch — record it and move on (the docstring's "crawl must survive
+    # any single failure" promise applies to listing too, not just per-source).
+    try:
+        sources = client.get_notebook_sources_with_types(notebook_id)
+    except Exception as exc:  # noqa: BLE001 — batch survives any single NB failure
+        print(f"  ERROR listing {nb_key} ({notebook_id}): {str(exc)[:200]} — "
+              f"skipping this NB, continuing with the rest.")
+        ckpt = _load_checkpoint(nb_key)
+        ckpt["errors"].append({"stage": "listing", "notebook_id": notebook_id,
+                               "reason": str(exc)[:300], "at": _now()})
+        _save_checkpoint(nb_key, ckpt)
+        return
     if not sources:
-        print(f"  WARN: 0 sources returned. Auth expired or empty NB? Aborting {nb_key}.")
+        print(f"  WARN: 0 sources returned. Auth expired or empty NB? Skipping {nb_key}.")
         return
     print(f"  {len(sources)} sources found.")
 
