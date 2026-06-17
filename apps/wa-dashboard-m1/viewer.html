@@ -410,17 +410,238 @@
   .m-delta.down { color: #08820a; }
   .metrics-legend { margin-top: 14px; font-size: 12px; color: var(--wa-text-3); line-height: 1.7; }
   .metrics-legend b { color: var(--wa-text-2); font-weight: 600; }
+  .status-banner {
+    background: #fff7d6; border: 1px solid #f4d47b; color: #6f5200;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 14px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .status-banner.error { background: #fff0f1; border-color: #f4b8bd; color: #8a1f2b; }
+  .captain-view {
+    height: calc(100vh - 60px); overflow-y: auto;
+    background: var(--wa-bg); padding: 24px 32px;
+  }
+  .captain-header h2 { font-size: 20px; font-weight: 650; color: var(--wa-text); margin: 0 0 4px; }
+  .captain-sub { font-size: 13px; color: var(--wa-text-2); margin-bottom: 18px; }
+  .captain-hero {
+    display: grid; grid-template-columns: 1.15fr 0.85fr;
+    gap: 12px; margin-bottom: 14px;
+  }
+  .captain-panel {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 16px;
+  }
+  .captain-panel h3 {
+    margin: 0 0 10px; color: var(--wa-text); font-size: 15px; font-weight: 650;
+  }
+  .captain-panel p, .captain-panel li {
+    color: var(--wa-text-2); font-size: 13px; line-height: 1.45;
+  }
+  .captain-panel p { margin: 0; }
+  .captain-panel ul { margin: 0; padding-left: 18px; }
+  .captain-focus {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+  }
+  .captain-focus span {
+    background: var(--wa-panel-3); color: var(--wa-text-2);
+    border-radius: 999px; padding: 4px 9px; font-size: 12px;
+  }
+  .captain-flow {
+    display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr));
+    gap: 10px; margin: 14px 0;
+  }
+  .captain-step {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 13px; min-height: 122px;
+  }
+  .captain-step .kicker {
+    color: var(--wa-accent); font-size: 11px; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 7px;
+  }
+  .captain-step .title { color: var(--wa-text); font-weight: 650; margin-bottom: 5px; }
+  .captain-step .copy { color: var(--wa-text-2); font-size: 12px; line-height: 1.4; }
+  .captain-case-grid {
+    display: grid; grid-template-columns: 0.95fr 1.05fr 1fr;
+    gap: 12px; margin: 14px 0;
+  }
+  .case-captain-card {
+    margin: 12px 8% 0;
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-left: 4px solid var(--wa-accent);
+    border-radius: 8px; padding: 12px 14px;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.08);
+  }
+  .case-captain-card .case-title,
+  .captain-case-title {
+    font-weight: 650; color: var(--wa-text); margin-bottom: 7px;
+  }
+  .case-captain-card .case-grid-mini {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .case-mini {
+    background: var(--wa-panel-3); border-radius: 8px; padding: 9px;
+  }
+  .case-mini .label {
+    color: var(--wa-text-3); font-size: 10px; text-transform: uppercase; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .case-mini .value {
+    color: var(--wa-text); font-size: 12px; line-height: 1.35;
+  }
+  .captain-action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .captain-action-row button {
+    background: var(--wa-accent); color: #fff; border: 1px solid var(--wa-accent);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; font-family: inherit; font-size: 13px;
+  }
+  .captain-action-row button.secondary {
+    background: var(--wa-panel); color: var(--wa-text-2); border-color: var(--wa-border);
+  }
+  .captain-table-note {
+    color: var(--wa-text-3); font-size: 12px; margin-top: 10px; line-height: 1.5;
+  }
+  .training-top {
+    display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr));
+    gap: 10px; margin: 18px 0;
+  }
+  .training-card {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 12px; min-height: 78px;
+  }
+  .training-card .label { color: var(--wa-text-2); font-size: 11px; text-transform: uppercase; font-weight: 600; }
+  .training-card .value { color: var(--wa-text); font-size: 24px; font-weight: 600; margin-top: 6px; }
+  .training-card .sub { color: var(--wa-text-3); font-size: 12px; margin-top: 2px; }
+  .training-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .training-actions button {
+    background: var(--wa-accent); color: #fff; border: 1px solid var(--wa-accent);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; font-family: inherit; font-size: 13px;
+  }
+  .training-actions button.secondary { background: var(--wa-panel); color: var(--wa-text-2); border-color: var(--wa-border); }
+  .human-strip {
+    display: grid; grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 10px; margin: 18px 0;
+  }
+  .human-card {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 14px; min-height: 108px;
+  }
+  .human-card h3 { margin: 0 0 8px; font-size: 14px; color: var(--wa-text); }
+  .human-card p { margin: 0; color: var(--wa-text-2); line-height: 1.45; font-size: 13px; }
+  .human-card strong { color: var(--wa-text); font-weight: 600; }
+  .learning-flow {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 8px; margin-bottom: 18px;
+  }
+  .flow-step {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 12px; min-height: 100px;
+  }
+  .flow-step .num {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--wa-accent);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; margin-bottom: 8px;
+  }
+  .flow-step .title { font-weight: 600; color: var(--wa-text); margin-bottom: 4px; }
+  .flow-step .copy { color: var(--wa-text-2); font-size: 12px; line-height: 1.4; }
+  .training-filterbar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 12px;
+  }
+  .training-filterbar input {
+    background: var(--wa-panel); border: 1px solid var(--wa-border);
+    border-radius: 8px; padding: 8px 10px; min-width: 260px;
+    font: inherit; color: var(--wa-text); outline: none;
+  }
+  .filter-chip {
+    border: 1px solid var(--wa-border); background: var(--wa-panel); color: var(--wa-text-2);
+    border-radius: 999px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 12px;
+  }
+  .filter-chip.active { background: var(--wa-accent); color: #fff; border-color: var(--wa-accent); }
+  .training-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 10px; margin-bottom: 18px;
+  }
+  .training-category {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-left: 4px solid var(--wa-accent); border-radius: 8px; padding: 12px;
+  }
+  .training-category.blue { border-left-color: #3b82f6; }
+  .training-category.cyan { border-left-color: #06b6d4; }
+  .training-category.gold { border-left-color: #fbbf24; }
+  .training-category.violet { border-left-color: #a855f7; }
+  .training-category.orange { border-left-color: #f59e0b; }
+  .training-category.slate { border-left-color: #64748b; }
+  .training-category .title { font-weight: 600; color: var(--wa-text); font-size: 14px; }
+  .training-category .meta { color: var(--wa-text-3); font-size: 12px; margin-top: 4px; }
+  .training-kv { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .training-kv span {
+    background: var(--wa-panel-3); color: var(--wa-text-2); border-radius: 10px;
+    padding: 2px 7px; font-size: 11px;
+  }
+  .training-table td.path { color: var(--wa-text-3); font-size: 12px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+  .training-table-wrap { overflow-x: auto; }
+  .training-table { table-layout: fixed; min-width: 980px; }
+  .training-table th, .training-table td {
+    text-align: left; white-space: normal; vertical-align: top;
+  }
+  .training-table th:nth-child(1) { width: 24%; }
+  .training-table th:nth-child(2) { width: 16%; }
+  .training-table th:nth-child(3) { width: 12%; }
+  .training-table th:nth-child(4) { width: 28%; }
+  .training-table th:nth-child(5) { width: 20%; }
+  .training-table td.path {
+    max-width: none; overflow: visible; text-overflow: clip; word-break: break-word;
+  }
+  .training-table .metric-chip {
+    display: inline-block; background: var(--wa-panel-3); color: var(--wa-text-2);
+    border-radius: 10px; padding: 2px 7px; margin: 1px; font-size: 11px;
+  }
+  @media (max-width: 1200px) {
+    main { grid-template-columns: 220px 340px 1fr; }
+    .captain-flow { grid-template-columns: repeat(3, 1fr); }
+    .captain-case-grid { grid-template-columns: 1fr; }
+    .training-top { grid-template-columns: repeat(3, 1fr); }
+    .training-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  }
+  @media (max-width: 860px) {
+    header { gap: 10px; padding: 10px 12px; height: auto; flex-wrap: wrap; }
+    .view-tabs { order: 3; width: 100%; justify-content: flex-start; }
+    .metrics-view, .captain-view { padding: 18px 14px; }
+    .captain-hero { grid-template-columns: 1fr; }
+    .captain-flow { grid-template-columns: 1fr; }
+    .case-captain-card { margin: 10px 12px 0; }
+    .case-captain-card .case-grid-mini { grid-template-columns: 1fr; }
+    .training-top { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+    .training-grid { grid-template-columns: 1fr; }
+    .human-strip { grid-template-columns: 1fr; }
+    .learning-flow { grid-template-columns: repeat(2, 1fr); }
+    .training-filterbar input { min-width: 100%; }
+    .training-table { min-width: 0; }
+    .training-table thead { display: none; }
+    .training-table tbody, .training-table tr, .training-table td { display: block; width: 100%; box-sizing: border-box; }
+    .training-table tr { border-bottom: 1px solid var(--wa-divider); padding: 10px 12px; }
+    .training-table td {
+      border-bottom: 0; padding: 5px 0 5px 96px; min-height: 26px;
+      text-align: left; white-space: normal; position: relative;
+    }
+    .training-table td::before {
+      content: attr(data-label); position: absolute; left: 0; top: 5px; width: 84px;
+      color: var(--wa-text-3); font-size: 11px; text-transform: uppercase; font-weight: 600;
+    }
+    .training-table td.path {
+      max-width: none; overflow: visible; text-overflow: clip; word-break: break-word;
+    }
+  }
 </style>
 </head>
 <body>
 <header>
   <div class="brand">
     <div class="brand-icon">BZ</div>
-    <span>WhatsApp Dashboard</span>
+    <span>Zantara Case Captain</span>
   </div>
   <div class="view-tabs">
-    <button class="view-tab active" data-view="convs">Conversazioni</button>
-    <button class="view-tab" data-view="metrics">Qualità Team</button>
+    <button class="view-tab active" data-view="convs">Conversazioni live</button>
+    <button class="view-tab" data-view="captain">Zantara risolve</button>
+    <button class="view-tab" data-view="training">Training academy</button>
+    <button class="view-tab" data-view="metrics">Team</button>
   </div>
   <div class="meta">
     <span id="health-pill" class="badge">read-only</span>
@@ -430,21 +651,30 @@
 </header>
 <main id="view-convs">
   <div class="col" id="col-teams">
-    <div class="col-header">Team</div>
+    <div class="col-header">1 · Team</div>
     <div class="loader">Caricamento team…</div>
   </div>
   <div class="col" id="col-convs">
-    <div class="col-header">Conversazioni</div>
+    <div class="col-header">2 · Conversazioni live</div>
     <div class="empty">Seleziona un team member</div>
   </div>
   <div class="col" id="col-thread">
     <div class="empty-wa">
-      <div class="icon">💬</div>
-      <div class="text">BZ WhatsApp Dashboard</div>
-      <div class="sub">Seleziona una conversazione per leggere i messaggi.</div>
+      <div class="icon">Z</div>
+      <div class="text">Conversazioni live</div>
+      <div class="sub">Team a sinistra, conversazioni al centro, messaggi qui.</div>
     </div>
   </div>
 </main>
+<section id="view-captain" class="captain-view" style="display:none">
+  <div class="captain-header">
+    <h2>Zantara risolve il caso</h2>
+    <div class="captain-sub" id="c-sub">Shadow mode: diagnosi, piano, bozza e controllo umano. Nessun invio WhatsApp, nessuna scrittura CRM.</div>
+  </div>
+  <div id="c-root">
+    <div class="loader">Caricamento ragionamento…</div>
+  </div>
+</section>
 <section id="view-metrics" class="metrics-view" style="display:none">
   <div class="metrics-header">
     <h2>Qualità conversazioni — ultimi <span id="m-window">30</span> giorni</h2>
@@ -455,6 +685,19 @@
   </div>
   <div class="metrics-legend" id="m-legend"></div>
 </section>
+<section id="view-training" class="metrics-view" style="display:none">
+  <div class="metrics-header">
+    <h2>Zantara training locale</h2>
+    <div class="metrics-sub" id="t-sub">Caricamento…</div>
+    <div class="training-actions">
+      <button id="t-refresh">Aggiorna</button>
+      <button id="t-open-corpus" class="secondary">Corpus locale</button>
+    </div>
+  </div>
+  <div id="t-root">
+    <div class="loader">Caricamento training…</div>
+  </div>
+</section>
 <script>
 let DATA = null;
 let SELECTED_TEAM = null;
@@ -462,6 +705,9 @@ let SELECTED_CONV = null;
 let THREAD_SEARCH = "";
 let THREAD_CACHE = null;
 let THREAD_CACHE_KEY = null;
+let TRAINING = null;
+let TRAINING_FILTER = "all";
+let TRAINING_QUERY = "";
 const KITA_BASE = "https://kita.balizero.com";
 
 const colTeams = document.getElementById("col-teams");
@@ -480,6 +726,24 @@ function fmtTime(iso) {
   const y = new Date(now); y.setDate(y.getDate()-1);
   if (d.toDateString() === y.toDateString()) return "ieri " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
   return d.toLocaleDateString("it-IT", { day:"2-digit", month:"2-digit" }) + " " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("it-IT", { day:"2-digit", month:"2-digit", year:"2-digit" })
+    + " " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+}
+
+function compactMetricLabel(label) {
+  return String(label || "")
+    .replace("Human Approval Required", "Approval")
+    .replace("Awaiting Owner Decision", "Owner wait")
+    .replace("Training Examples", "Examples")
+    .replace("Replay Scenarios", "Replays")
+    .replace("Whatsapp Sends", "WA sends")
+    .replace("Crm Mutations", "CRM writes");
 }
 
 function fmtPreview(c) {
@@ -513,6 +777,200 @@ function companyBadgeLabel(m) {
   return "BZ";
 }
 
+function currentCaseContext() {
+  if (!DATA || !SELECTED_TEAM) return { member: null, pd: null, conv: null };
+  const member = DATA.team.find((m) => m.phone === SELECTED_TEAM) || null;
+  const pd = DATA.by_phone[SELECTED_TEAM] || null;
+  const conv = pd && SELECTED_CONV ? pd.convs.find((c) => c.counterpart === SELECTED_CONV) || null : null;
+  return { member, pd, conv };
+}
+
+function caseKindLabel(conv) {
+  if (!conv) return "Nessun caso";
+  if (conv.kind === "group") return conv.crm_match ? "Gruppo cliente" : "Gruppo operativo";
+  if (conv.tag === "internal") return "Thread interno";
+  if (conv.crm_match) return "Cliente CRM";
+  return "Prospect / lead";
+}
+
+function caseUrgencyLabel(conv) {
+  if (!conv) return "—";
+  if (conv.attention_priority === "HIGH") return "Alta: richiede gestione prima delle code normali";
+  if (conv.attention_priority === "MEDIUM") return "Media: va chiarita o sbloccata";
+  if (conv.unread_count) return "Aperta: ci sono messaggi non ancora chiusi";
+  return "Monitor: nessun segnale urgente dal mirror";
+}
+
+function zantaraCaseDiagnosis(conv, pd) {
+  if (!conv) {
+    return {
+      state: "Nessuna conversazione selezionata",
+      reasoning: "Zantara resta in attesa di un caso live.",
+      next: "Aprire una conversazione per costruire diagnosi e piano di chiusura.",
+      draft: "Nessuna bozza generata.",
+      gate: "Shadow mode attivo.",
+      signals: ["0 invii WhatsApp", "0 scritture CRM", "approval umano richiesto"],
+    };
+  }
+
+  const signals = [];
+  if (conv.crm_match) signals.push(`Aggancio CRM #${conv.client_id || "presente"}`);
+  else signals.push("Nessun aggancio CRM: qualificazione lead/prospect");
+  if (conv.assigned_to) signals.push(`Owner operativo: ${conv.assigned_to.replace("@balizero.com", "")}`);
+  if (conv.tax_consultant) signals.push(`Tax: ${conv.tax_consultant}`);
+  if (conv.unread_count) signals.push(`${conv.unread_count} messaggi da chiudere`);
+  if (conv.attention_priority) signals.push(`Priorità ${conv.attention_priority}`);
+  if (conv.kind === "group") signals.push("Thread gruppo: serve sintesi decisionale");
+  if (pd?.team?.name) signals.push(`Operatore: ${pd.team.name}`);
+
+  if (conv.tag === "internal") {
+    return {
+      state: "Coordinamento interno",
+      reasoning: "Zantara non risponde al cliente: separa task interno, decisione richiesta e operatore responsabile.",
+      next: "Creare pacchetto operativo: richiesta, owner, deadline, blocco, prossimo controllo.",
+      draft: "Chiarire cosa manca, chi decide e quando va richiuso.",
+      gate: "Non esce su WhatsApp cliente.",
+      signals,
+    };
+  }
+
+  if (conv.kind === "group") {
+    return {
+      state: conv.crm_match ? "Caso cliente in gruppo" : "Gruppo da classificare",
+      reasoning: "Zantara isola la richiesta reale dentro il gruppo, distingue update, domanda, urgenza e decisione mancante.",
+      next: conv.attention_priority ? "Produrre owner brief e risposta controllata." : "Preparare sintesi breve e prossima azione verificabile.",
+      draft: "Riepilogo stato, punto bloccante, chi deve rispondere, prossimo step.",
+      gate: "Invio solo dopo approvazione operatore/owner.",
+      signals,
+    };
+  }
+
+  if (!conv.crm_match) {
+    return {
+      state: "Lead da qualificare",
+      reasoning: "Zantara ricostruisce bisogno, timing, servizio richiesto, urgenza e dati mancanti prima di assegnare o quotare.",
+      next: "Qualificare servizio, scadenza, paese/passaporto, budget e disponibilità documenti; poi proporre owner.",
+      draft: "Domanda corta, chiara, orientata a chiudere il requisito mancante.",
+      gate: "Nessuna creazione CRM automatica.",
+      signals,
+    };
+  }
+
+  return {
+    state: "Cliente CRM da chiudere",
+    reasoning: "Zantara collega chat e pratica CRM, controlla ultimo messaggio, scadenze, documenti mancanti e responsabilità.",
+    next: conv.attention_priority ? "Aprire owner brief: rischio, cosa manca, risposta consigliata." : "Preparare update cliente con stato pratica e prossimo passaggio.",
+    draft: "Conferma ricezione, stato, documento o decisione richiesta, prossima data.",
+    gate: "Invio e CRM write restano manuali.",
+    signals,
+  };
+}
+
+function renderCaseCaptainCard(conv, pd, messageCount) {
+  const d = zantaraCaseDiagnosis(conv, pd);
+  const type = caseKindLabel(conv);
+  const urgency = caseUrgencyLabel(conv);
+  return `<div class="case-captain-card">
+    <div class="case-title">Zantara shadow su questo caso</div>
+    <div class="case-grid-mini">
+      <div class="case-mini"><div class="label">Conversazione</div><div class="value">${escapeHtml(type)} · ${messageCount || conv.n || 0} messaggi</div></div>
+      <div class="case-mini"><div class="label">Diagnosi</div><div class="value">${escapeHtml(d.state)} · ${escapeHtml(urgency)}</div></div>
+      <div class="case-mini"><div class="label">Prossima azione</div><div class="value">${escapeHtml(d.next)}</div></div>
+    </div>
+  </div>`;
+}
+
+function renderCaptainFlow() {
+  const steps = [
+    ["1", "Conversazione", "Legge il thread live e separa cliente, gruppo, prospect o interno."],
+    ["2", "Contesto", "Aggancia CRM, owner, priorità, non letti e recap strategico se esiste."],
+    ["3", "Diagnosi", "Capisce cosa blocca il caso: requisito mancante, decisione, rischio o update."],
+    ["4", "Piano", "Produce prossima azione, owner brief e bozza shadow."],
+    ["5", "Chiusura", "Passa da umano: invio WA e CRM write restano a zero finché approvati."],
+  ];
+  return `<div class="captain-flow">${steps.map((s) => `
+    <div class="captain-step">
+      <div class="kicker">Step ${escapeHtml(s[0])}</div>
+      <div class="title">${escapeHtml(s[1])}</div>
+      <div class="copy">${escapeHtml(s[2])}</div>
+    </div>`).join("")}</div>`;
+}
+
+function renderCaptainPanel() {
+  const root = document.getElementById("c-root");
+  const subEl = document.getElementById("c-sub");
+  if (!root || !subEl) return;
+  const { member, pd, conv } = currentCaseContext();
+  const d = zantaraCaseDiagnosis(conv, pd);
+  const trainingCards = TRAINING?.total_cards || {
+    training_examples: "—", replay_scenarios: "—", shadow_drafts: "—",
+    owner_queue: "—", whatsapp_sends: "0", crm_mutations: "0",
+  };
+  const caseName = conv ? conv.display_name : "Nessun caso selezionato";
+  const caseMeta = conv
+    ? `${caseKindLabel(conv)} · ${member?.name || "team"} · ${conv.n || 0} messaggi · ${caseUrgencyLabel(conv)}`
+    : "Apri Conversazioni live, scegli team e thread: qui appare la diagnosi del caso.";
+
+  subEl.textContent = `${caseName} — ${caseMeta}`;
+  root.innerHTML = `
+    <div class="captain-hero">
+      <div class="captain-panel">
+        <h3>Dal messaggio alla chiusura</h3>
+        <p>Zantara non è una lista di chat: è un processo shadow. Prende una conversazione, ricostruisce contesto e blocco, propone la prossima azione, poi lascia invio e CRM all'umano.</p>
+        <div class="captain-focus">
+          <span>${escapeHtml(trainingCards.training_examples)} esempi</span>
+          <span>${escapeHtml(trainingCards.shadow_drafts)} shadow draft</span>
+          <span>${escapeHtml(trainingCards.owner_queue)} segnali owner</span>
+          <span>${escapeHtml(trainingCards.whatsapp_sends)} WA sends</span>
+          <span>${escapeHtml(trainingCards.crm_mutations)} CRM writes</span>
+        </div>
+        <div class="captain-action-row">
+          <button data-view-jump="convs">Conversazioni live</button>
+          <button class="secondary" data-view-jump="training">Training academy</button>
+        </div>
+      </div>
+      <div class="captain-panel">
+        <h3>Caso selezionato</h3>
+        <p><strong>${escapeHtml(caseName)}</strong></p>
+        <div class="captain-focus">
+          <span>${escapeHtml(caseKindLabel(conv))}</span>
+          <span>${escapeHtml(d.state)}</span>
+          <span>${escapeHtml(d.gate)}</span>
+        </div>
+      </div>
+    </div>
+    ${renderCaptainFlow()}
+    <div class="captain-case-grid">
+      <div class="captain-panel">
+        <h3>Segnali letti</h3>
+        <ul>${d.signals.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+      </div>
+      <div class="captain-panel">
+        <h3>Come ragiona</h3>
+        <p>${escapeHtml(d.reasoning)}</p>
+        <div class="captain-table-note">Non mostra chain-of-thought interna: espone diagnosi operativa verificabile.</div>
+      </div>
+      <div class="captain-panel">
+        <h3>Come risolve</h3>
+        <p><strong>Next best action:</strong> ${escapeHtml(d.next)}</p>
+        <p style="margin-top:10px"><strong>Bozza shadow:</strong> ${escapeHtml(d.draft)}</p>
+      </div>
+    </div>
+    <div class="status-banner">Contratto: shadow mode locale. La webapp legge mirror e summary, non invia messaggi, non scrive CRM e non sostituisce l'approvazione owner.</div>`;
+}
+
+async function renderCaptain() {
+  const root = document.getElementById("c-root");
+  if (!root) return;
+  if (!TRAINING) {
+    try {
+      const r = await fetch("/training.json");
+      if (r.ok) TRAINING = await r.json();
+    } catch {}
+  }
+  renderCaptainPanel();
+}
+
 function renderTeams() {
   if (!DATA) return;
   // 2026-05-26 sort: ZERO first, then Bali Zero, then Bayu Santera (company hierarchy)
@@ -520,7 +978,7 @@ function renderTeams() {
     const rank = (m) => m.contact_kind === "zero" ? 0 : m.contact_kind === "team_bayu" ? 2 : 1;
     return rank(a) - rank(b);
   });
-  let html = `<div class="col-header">Team · ${DATA.team.length}</div>`;
+  let html = `<div class="col-header">1 · Team · ${DATA.team.length}</div>`;
   for (const m of teamOrder) {
     const pd = DATA.by_phone[m.phone] || { total:0, direct_count:0, group_count:0, crm_count:0, attention:{high:0,medium:0} };
     const selected = SELECTED_TEAM === m.phone ? " selected" : "";
@@ -560,9 +1018,17 @@ function renderTeams() {
 }
 
 function renderConvs() {
+  if (DATA && DATA.degraded) {
+    colConvs.innerHTML = `<div class="col-header">2 · Conversazioni live</div>
+      <div class="empty">
+        DB locale non raggiungibile.<br/>
+        ${escapeHtml(DATA.error || "Le conversazioni sono temporaneamente offline.")}
+      </div>`;
+    return;
+  }
   const pd = SELECTED_TEAM ? DATA.by_phone[SELECTED_TEAM] : null;
   if (!pd) {
-    colConvs.innerHTML = `<div class="col-header">Conversazioni</div><div class="empty">Seleziona un team member</div>`;
+    colConvs.innerHTML = `<div class="col-header">2 · Conversazioni live</div><div class="empty">Seleziona un team member</div>`;
     return;
   }
   // Sort: HIGH always first, then strictly by last_at DESC (most recent wins, regardless of MEDIUM tag)
@@ -576,7 +1042,7 @@ function renderConvs() {
   const headerExtra = pd.attention.high || pd.attention.medium
     ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} HIGH</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} MED</span>` : ""}`
     : "";
-  let html = `<div class="col-header">${convs.length} conversazioni${headerExtra}</div>`;
+  let html = `<div class="col-header">2 · ${convs.length} conversazioni${headerExtra}</div>`;
   if (!convs.length) {
     html += `<div class="empty">Nessuna conversazione</div>`;
   } else {
@@ -662,8 +1128,17 @@ function highlightMatch(text, query) {
 }
 
 async function renderThread() {
+  if (DATA && DATA.degraded) {
+    colThread.innerHTML = `<div class="empty-wa">
+      <div class="icon">DB</div>
+      <div class="text">Database offline</div>
+      <div class="sub">La webapp resta attiva; Training e salute servizio sono ancora disponibili.</div>
+    </div>`;
+    THREAD_CACHE = null; THREAD_CACHE_KEY = null;
+    return;
+  }
   if (!SELECTED_TEAM || !SELECTED_CONV) {
-    colThread.innerHTML = `<div class="col-header">Messaggi</div><div class="empty">Seleziona una conversazione</div>`;
+    colThread.innerHTML = `<div class="col-header">3 · Messaggi + Zantara</div><div class="empty">Seleziona una conversazione</div>`;
     THREAD_CACHE = null; THREAD_CACHE_KEY = null;
     return;
   }
@@ -704,6 +1179,7 @@ async function renderThread() {
 
   const convDisplay = conv ? conv.display_name : SELECTED_CONV;
   const headerAvatarClass = conv?.kind === "group" ? "group" : conv?.tag === "crm" ? "crm" : conv?.tag === "prospect" ? "prospect" : "";
+  const captainHtml = conv ? renderCaseCaptainCard(conv, pd, payload.count) : "";
 
   // Filter messages by search query (case-insensitive, matches body + sender)
   const q = THREAD_SEARCH.trim().toLowerCase();
@@ -731,6 +1207,7 @@ async function renderThread() {
         ${q ? `<button id="thread-search-clear" title="Esc per pulire" style="background:transparent;border:none;color:var(--wa-text-3);cursor:pointer;font-size:14px">✕</button>` : ""}
       </div>
     </div>
+    ${captainHtml}
     ${recapHtml}
     <div class="thread-body">`;
   let lastDay = "";
@@ -792,20 +1269,24 @@ function selectTeam(phone) {
   THREAD_SEARCH = "";
   THREAD_CACHE = null; THREAD_CACHE_KEY = null;
   renderTeams(); renderConvs(); renderThread();
+  if (CURRENT_VIEW === "captain") renderCaptain();
 }
 function selectConv(conv) {
   SELECTED_CONV = conv;
   THREAD_SEARCH = "";
   renderConvs(); renderThread();
+  if (CURRENT_VIEW === "captain") renderCaptain();
 }
 
 async function refresh() {
   try {
     const r = await fetch("/data.json");
+    if (!r.ok) throw new Error(`data ${r.status}`);
     DATA = await r.json();
     document.getElementById("last-refresh").textContent = "refresh: " + new Date(DATA.generated_at).toLocaleTimeString("it-IT");
     if (!SELECTED_TEAM && DATA.team.length) SELECTED_TEAM = DATA.team[0].phone;
     renderTeams(); renderConvs(); renderThread();
+    if (CURRENT_VIEW === "captain") renderCaptain();
   } catch (err) {
     colTeams.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
   }
@@ -814,11 +1295,18 @@ async function refresh() {
 async function checkHealth() {
   try {
     const r = await fetch("/health.json");
+    if (!r.ok) throw new Error(`health ${r.status}`);
     const h = await r.json();
-    if (h.ok) {
-      document.getElementById("db-host").textContent = "DB: " + h.db_url_host;
-      document.getElementById("health-pill").style.background = "rgba(90,212,138,0.18)";
-      document.getElementById("health-pill").style.color = "var(--bz-success)";
+    const pill = document.getElementById("health-pill");
+    document.getElementById("db-host").textContent = "DB: " + (h.db_url_host || "unknown");
+    if (h.db_ok) {
+      pill.textContent = "read-only";
+      pill.style.background = "rgba(90,212,138,0.18)";
+      pill.style.color = "var(--bz-success)";
+    } else {
+      pill.textContent = "degraded";
+      pill.style.background = "rgba(240,170,0,0.18)";
+      pill.style.color = "var(--wa-warning)";
     }
   } catch {}
 }
@@ -830,9 +1318,13 @@ let CURRENT_VIEW = "convs";
 function switchView(view) {
   CURRENT_VIEW = view;
   document.getElementById("view-convs").style.display = view === "convs" ? "" : "none";
+  document.getElementById("view-captain").style.display = view === "captain" ? "" : "none";
   document.getElementById("view-metrics").style.display = view === "metrics" ? "" : "none";
+  document.getElementById("view-training").style.display = view === "training" ? "" : "none";
   for (const b of document.querySelectorAll(".view-tab")) b.classList.toggle("active", b.dataset.view === view);
+  if (view === "captain") renderCaptain();
   if (view === "metrics") renderMetrics();
+  if (view === "training") renderTraining();
 }
 
 function mFmt(v, suffix) { return v == null ? "—" : v + (suffix || ""); }
@@ -903,13 +1395,204 @@ async function renderMetrics() {
   }
 }
 
+function trainingCard(label, value, sub) {
+  return `<div class="training-card">
+    <div class="label">${escapeHtml(label)}</div>
+    <div class="value">${escapeHtml(value)}</div>
+    <div class="sub">${escapeHtml(sub || "")}</div>
+  </div>`;
+}
+
+function renderTrainingCategory(c) {
+  const kv = Object.entries(c.top_metrics || {})
+    .slice(0, 4)
+    .map(([key, value]) => `<span>${escapeHtml(key.replace(/_/g, " "))}: ${escapeHtml(value)}</span>`)
+    .join("");
+  return `<div class="training-category ${escapeHtml(c.tone || "slate")}">
+    <div class="title">${escapeHtml(c.label)}</div>
+    <div class="meta">${c.count} summary · latest ${escapeHtml(fmtDateTime(c.latest_generated_at || c.latest_mtime))}</div>
+    ${kv ? `<div class="training-kv">${kv}</div>` : ""}
+  </div>`;
+}
+
+function renderTrainingTable(artifacts) {
+  if (!artifacts.length) {
+    return `<div class="metrics-table-wrap training-table-wrap"><table class="metrics-table training-table">
+      <tbody><tr><td class="op">Nessun summary trovato nel corpus locale.</td></tr></tbody>
+    </table></div>`;
+  }
+  let html = `<div class="metrics-table-wrap training-table-wrap"><table class="metrics-table training-table">
+    <thead><tr>
+      <th class="op">Artifact</th><th>Tipo</th><th>Generato</th><th>Metriche</th><th class="op">Path</th>
+    </tr></thead><tbody>`;
+  for (const a of artifacts) {
+    const chips = (a.key_metrics || []).slice(0, 6)
+      .map((m) => `<span class="metric-chip">${escapeHtml(compactMetricLabel(m.label))}: ${escapeHtml(m.display_value)}</span>`)
+      .join("");
+    html += `<tr>
+      <td class="op" data-label="Artifact">${escapeHtml(a.title)}</td>
+      <td data-label="Tipo">${escapeHtml(a.category_label)}</td>
+      <td data-label="Generato">${escapeHtml(fmtDateTime(a.generated_at || a.mtime))}</td>
+      <td data-label="Metriche">${chips || "—"}</td>
+      <td class="op path" data-label="Path" title="${escapeHtml(a.relative_path)}">${escapeHtml(a.relative_path)}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function filteredTrainingArtifacts() {
+  const all = TRAINING?.artifacts || [];
+  const q = TRAINING_QUERY.trim().toLowerCase();
+  return all.filter((a) => {
+    if (TRAINING_FILTER !== "all" && a.category_id !== TRAINING_FILTER) return false;
+    if (!q) return true;
+    const haystack = `${a.title} ${a.category_label} ${a.relative_path}`.toLowerCase();
+    return haystack.includes(q);
+  });
+}
+
+function renderLearningFlow(t) {
+  const cards = [
+    ["1", "Raccoglie", `${t.artifact_count || 0} summary locali già prodotti dal corpus WhatsApp/Drive.`],
+    ["2", "Trasforma", `${t.total_cards.training_examples} esempi e ${t.total_cards.replay_scenarios} replay diventano palestra operativa.`],
+    ["3", "Lavora in shadow", `${t.total_cards.shadow_drafts} bozze/diagnosi senza inviare messaggi.`],
+    ["4", "Porta all'owner", `${t.total_cards.owner_queue} segnali owner restano in coda finché l'umano non approva.`],
+    ["5", "Resta sicura", `${t.total_cards.whatsapp_sends} invii WA e ${t.total_cards.crm_mutations} scritture CRM dagli artifact.`],
+  ];
+  return `<div class="learning-flow">${cards.map((c) => `
+    <div class="flow-step">
+      <div class="num">${escapeHtml(c[0])}</div>
+      <div class="title">${escapeHtml(c[1])}</div>
+      <div class="copy">${escapeHtml(c[2])}</div>
+    </div>`).join("")}</div>`;
+}
+
+function renderHumanStrip(t) {
+  const examples = t.total_cards.training_examples;
+  const shadow = t.total_cards.shadow_drafts;
+  const ownerQueue = t.total_cards.owner_queue;
+  return `<div class="human-strip">
+    <div class="human-card">
+      <h3>Cosa sta imparando</h3>
+      <p>Zantara non sta leggendo a caso: sta convertendo casi passati in <strong>pattern di diagnosi, priorità, prossima azione e replay</strong>. Il training resta locale e nasce dai summary sicuri.</p>
+    </div>
+    <div class="human-card">
+      <h3>Quanto è pronta</h3>
+      <p><strong>${escapeHtml(examples)}</strong> esempi academy, <strong>${escapeHtml(shadow)}</strong> shadow draft e <strong>${escapeHtml(ownerQueue)}</strong> segnali owner aggregati. Questo indica capacità di triage, non autonomia di invio.</p>
+    </div>
+    <div class="human-card">
+      <h3>Cosa non fa da sola</h3>
+      <p>Gli artifact devono restare a <strong>0 invii WhatsApp</strong> e <strong>0 mutazioni CRM</strong>. La macchina prepara, spiega e mette in coda; la chiusura esterna resta approvata da un umano.</p>
+    </div>
+  </div>`;
+}
+
+function renderTrainingFilters() {
+  const categories = TRAINING?.categories || [];
+  const chips = [{ id: "all", label: "Tutto", count: TRAINING?.artifact_count || 0 }, ...categories.map((c) => ({ id: c.id, label: c.label, count: c.count }))];
+  return `<div class="training-filterbar">
+    <input id="t-search" type="search" placeholder="Cerca summary, owner, shadow, replay…" value="${escapeHtml(TRAINING_QUERY)}" />
+    ${chips.map((c) => `<button class="filter-chip ${TRAINING_FILTER === c.id ? "active" : ""}" data-filter="${escapeHtml(c.id)}">${escapeHtml(c.label)} · ${c.count}</button>`).join("")}
+  </div>`;
+}
+
+function wireTrainingControls() {
+  const search = document.getElementById("t-search");
+  if (search) {
+    search.addEventListener("input", (e) => {
+      TRAINING_QUERY = e.target.value;
+      renderTrainingPanel();
+      requestAnimationFrame(() => {
+        const el = document.getElementById("t-search");
+        if (el) { el.focus(); el.setSelectionRange(TRAINING_QUERY.length, TRAINING_QUERY.length); }
+      });
+    });
+  }
+  for (const chip of document.querySelectorAll(".filter-chip")) {
+    chip.addEventListener("click", () => {
+      TRAINING_FILTER = chip.dataset.filter || "all";
+      renderTrainingPanel();
+    });
+  }
+}
+
+function renderTrainingPanel() {
+  const root = document.getElementById("t-root");
+  const subEl = document.getElementById("t-sub");
+  if (!root || !subEl || !TRAINING) return;
+  const filtered = filteredTrainingArtifacts();
+  const cards = [
+    trainingCard("Summary", String(TRAINING.artifact_count || 0), "artifact locali"),
+    trainingCard("Training examples", TRAINING.total_cards.training_examples, "academy"),
+    trainingCard("Replay scenarios", TRAINING.total_cards.replay_scenarios, "valutazione"),
+    trainingCard("Shadow drafts", TRAINING.total_cards.shadow_drafts, "bozze zero-send"),
+    trainingCard("Owner signals", TRAINING.total_cards.owner_queue, "approval items"),
+    trainingCard("WA / CRM writes", `${TRAINING.total_cards.whatsapp_sends} / ${TRAINING.total_cards.crm_mutations}`, "devono restare 0"),
+  ].join("");
+  const bannerClass = TRAINING.exists ? "status-banner" : "status-banner error";
+  const bannerText = TRAINING.exists
+    ? `Indice locale read-only: legge solo Markdown summary, non JSONL/SQLite/raw chat. Ultimo aggiornamento ${fmtDateTime(TRAINING.generated_at)}.`
+    : `Corpus non trovato: ${TRAINING.base_dir}`;
+  const categories = (TRAINING.categories || []).map(renderTrainingCategory).join("");
+  root.innerHTML = `
+    <div class="${bannerClass}">${escapeHtml(bannerText)}</div>
+    ${renderHumanStrip(TRAINING)}
+    <div class="training-top">${cards}</div>
+    ${renderLearningFlow(TRAINING)}
+    <div class="training-grid">${categories}</div>
+    ${renderTrainingFilters()}
+    ${renderTrainingTable(filtered)}
+    <div class="metrics-legend">
+      <b>Contratto</b>: locale, read-only, no raw artifact exposure. I training futuri compaiono qui appena producono un nuovo <code>*_summary.md</code>.
+    </div>`;
+  subEl.textContent = `${filtered.length} di ${TRAINING.artifact_count || 0} summary · ${TRAINING.categories.length || 0} categorie · ${TRAINING.base_dir}`;
+  wireTrainingControls();
+}
+
+async function renderTraining(force) {
+  const root = document.getElementById("t-root");
+  const subEl = document.getElementById("t-sub");
+  if (!root || !subEl) return;
+  if (!TRAINING || force) root.innerHTML = `<div class="loader">Caricamento training…</div>`;
+  try {
+    const r = await fetch("/training.json");
+    if (!r.ok) throw new Error(`training ${r.status}`);
+    TRAINING = await r.json();
+    renderTrainingPanel();
+  } catch (err) {
+    root.innerHTML = `<div class="status-banner error">Errore Training: ${escapeHtml(err.message)}</div>`;
+    subEl.textContent = "Errore";
+  }
+}
+
 for (const b of document.querySelectorAll(".view-tab")) {
   b.addEventListener("click", () => switchView(b.dataset.view));
+}
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-view-jump]");
+  if (!button) return;
+  switchView(button.dataset.viewJump);
+});
+
+const trainingRefresh = document.getElementById("t-refresh");
+if (trainingRefresh) trainingRefresh.addEventListener("click", () => renderTraining(true));
+const corpusButton = document.getElementById("t-open-corpus");
+if (corpusButton) {
+  corpusButton.addEventListener("click", async () => {
+    if (!TRAINING?.base_dir || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(TRAINING.base_dir);
+    corpusButton.textContent = "Path copiato";
+    setTimeout(() => { corpusButton.textContent = "Corpus locale"; }, 1400);
+  });
 }
 
 checkHealth();
 refresh();
 setInterval(refresh, 10000);
+setInterval(() => { if (CURRENT_VIEW === "captain") renderCaptain(); }, 30000);
+setInterval(() => { if (CURRENT_VIEW === "training") renderTraining(false); }, 30000);
 </script>
 </body>
 </html>
