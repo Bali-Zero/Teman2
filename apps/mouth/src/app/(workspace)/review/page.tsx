@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import type { CreateClientParams } from "@/lib/api/crm/crm.types";
 
 import {
   categoriesForGroup,
@@ -160,6 +161,45 @@ function fieldToString(v: unknown): string {
 }
 
 /**
+ * Build a pre-filled new-client form from the document's OCR-extracted fields.
+ *
+ * The intake extract schema keys (``name`` / ``company_name`` / ``passport_no`` /
+ * ``dob`` / ``expiry`` / ``nationality``) are NOT the CRM column names — this is the
+ * exact translation the backend enricher applies
+ * (``backend/services/intake/client_enricher.py::ENRICHMENT_MAP``). We mirror it on
+ * the client so a reviewer never has to retype what the document already says.
+ * Values may be wrapped as ``{value: ...}`` (confidence envelope); ``fieldToString``
+ * unwraps that. Nothing is invented: a missing key stays an empty, editable field.
+ */
+function prefillFromExtractedFields(
+  fields: Record<string, unknown>,
+): CreateClientParams {
+  const pick = (...keys: string[]): string => {
+    for (const key of keys) {
+      if (key in fields) {
+        const s = fieldToString(fields[key]).trim();
+        if (s) return s;
+      }
+    }
+    return "";
+  };
+  const companyName = pick("company_name");
+  const personName = pick("name", "full_name", "holder_name");
+  return {
+    // Prefer the person's name; fall back to the company name so the form is never blank.
+    full_name: personName || companyName,
+    nationality: pick("nationality"),
+    passport_number: pick("passport_no", "passport_number", "kitas_no"),
+    passport_expiry: pick("expiry", "passport_expiry"),
+    date_of_birth: pick("dob", "date_of_birth"),
+    company_name: companyName || undefined,
+    client_type: companyName && !personName ? "company" : "individual",
+    phone: "",
+    email: "",
+  };
+}
+
+/**
  * Detect the "the proposal already left the claimable state" 409, so a retry
  * after a transient blip (whose write already committed) is shown as an
  * informational refresh, NOT a red "action failed" error.
@@ -210,6 +250,12 @@ export default function ReviewPage() {
   const [selectedCategoryCode, setSelectedCategoryCode] = useState("");
   const [showOcr, setShowOcr] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
+  // ── "Create new client" inline form (NO_MATCH leads with this) ──────────
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateClientParams>({
+    full_name: "",
+  });
+  const [createBusy, setCreateBusy] = useState(false);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -280,6 +326,10 @@ export default function ReviewPage() {
         setSearch("");
         setSearchResults([]);
         setFieldEdits({});
+        // Lead with the create form ONLY when nothing matched; with a candidate
+        // (even a weak one) the reviewer can still open it as a secondary option.
+        setShowCreateForm((d.entity_candidates?.length ?? 0) === 0);
+        setCreateForm(prefillFromExtractedFields(d.extracted_fields ?? {}));
         const inferredDestination = inferDestinationFromDocType(
           d.doc_type,
           categories,
@@ -404,18 +454,23 @@ export default function ReviewPage() {
     setSelectedGroup("other");
     setSelectedCategoryCode("");
     setFieldEdits({});
+    setShowCreateForm(false);
+    setCreateForm({ full_name: "" });
   }, [detail, claimToken]);
 
   const decide = useCallback(
-    async (action: "approve" | "reject") => {
+    async (action: "approve" | "reject", clientOverride?: EntityCandidate) => {
       if (!detail || !claimToken) return;
+      // A just-created client is passed explicitly: React state (selectedClient)
+      // has not flushed yet, so the approve body must read the override.
+      const approveClient = clientOverride ?? selectedClient;
       setBusy(detail.proposal_id);
       setError(null);
       setNotice(null);
       try {
         if (action === "approve") {
           const body: Record<string, unknown> = { claim_token: claimToken };
-          if (selectedClient) body.client_id = selectedClient.client_id;
+          if (approveClient) body.client_id = approveClient.client_id;
           // practice_id key is ALWAYS sent on approve: an explicit null means
           // "archive only" and must not fall back to routing's hint server-side.
           body.practice_id =
@@ -435,7 +490,7 @@ export default function ReviewPage() {
             );
           } else if (res.outcome === "committed") {
             setNotice(
-              `✓ Document filed to ${selectedClient?.full_name ?? "client"}.`,
+              `✓ Document filed to ${approveClient?.full_name ?? "client"}.`,
             );
           } else {
             setNotice(`Approve outcome: ${res.outcome}.`);
@@ -493,6 +548,70 @@ export default function ReviewPage() {
       loadQueue,
     ],
   );
+
+  // ── Create a NEW client from the document, then file the doc to it ───────
+  // Reuses the canonical create path (`api.crm.createClient`, same as
+  // clients/new) and the SAME approve flow — no parallel writer.
+  const createAndApprove = useCallback(async () => {
+    if (!detail || !claimToken) return;
+    const name = (createForm.full_name ?? "").trim();
+    if (name.length < 2) {
+      setError(
+        "Enter the client's name (at least 2 characters) before creating.",
+      );
+      return;
+    }
+    setCreateBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const user = await api.getProfile();
+      if (!user?.email) {
+        setError("Could not identify you — please re-login, then retry.");
+        return;
+      }
+      // Drop empty optional fields so the backend keeps them NULL, not "".
+      const payload: CreateClientParams = { full_name: name };
+      const opt: (keyof CreateClientParams)[] = [
+        "nationality",
+        "passport_number",
+        "passport_expiry",
+        "date_of_birth",
+        "phone",
+        "email",
+        "company_name",
+      ];
+      for (const k of opt) {
+        const v = createForm[k];
+        if (typeof v === "string" && v.trim())
+          (payload as unknown as Record<string, unknown>)[k] = v.trim();
+      }
+      payload.client_type = createForm.client_type ?? "individual";
+      payload.lead_source = "whatsapp";
+      const created = await api.crm.createClient(payload, user.email);
+      const newClient: EntityCandidate = {
+        client_id: created.id,
+        full_name: created.full_name,
+        email: created.email ?? null,
+        phone: created.phone ?? null,
+        nationality: created.nationality ?? null,
+        assigned_to: created.assigned_to ?? user.email,
+      };
+      setSelectedClient(newClient);
+      setShowCreateForm(false);
+      // File the document to the brand-new client via the existing approve path.
+      await decide("approve", newClient);
+    } catch (e) {
+      setError("Could not create the client. Please retry.");
+      logger.error(
+        "review create-client failed",
+        { component: "ReviewPage", action: "createAndApprove" },
+        e instanceof Error ? e : new Error(String(e)),
+      );
+    } finally {
+      setCreateBusy(false);
+    }
+  }, [detail, claimToken, createForm, decide]);
 
   // ── Destination summary (the "exact flow" line) ──────────────────────────
   const selectedPractice = useMemo(
@@ -831,13 +950,106 @@ export default function ReviewPage() {
                   </div>
                 )}
 
+                {/* Create-new-client lead — primary action for NO_MATCH.
+                    "Help, don't dump the decision": when nothing matched we lead
+                    with a prefilled create form instead of an error. */}
+                {(showCreateForm ||
+                  (detail.entity_candidates?.length ?? 0) === 0) && (
+                  <div
+                    className="rounded-md border p-3"
+                    style={{
+                      borderColor: "var(--bz-accent, #d4845a)",
+                      background: "var(--bz-surface)",
+                    }}
+                  >
+                    <h3
+                      className="mb-1 text-sm font-semibold"
+                      style={{ color: "var(--bz-text-1)" }}
+                    >
+                      ➕ New client
+                    </h3>
+                    <p
+                      className="mb-2 text-xs"
+                      style={{ color: "var(--bz-text-2)" }}
+                    >
+                      No existing client matched — is this a new client? Create
+                      one from the document data:
+                    </p>
+                    <div className="space-y-1.5">
+                      {(
+                        [
+                          ["full_name", "Name"],
+                          ["nationality", "Nationality"],
+                          ["passport_number", "Passport / KITAS no."],
+                          ["date_of_birth", "Date of birth"],
+                          ["passport_expiry", "Expiry"],
+                          ["phone", "Phone"],
+                          ["email", "Email"],
+                        ] as [keyof CreateClientParams, string][]
+                      ).map(([key, label]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <span
+                            className="w-36 shrink-0 truncate text-xs"
+                            style={{ color: "var(--bz-text-3)" }}
+                          >
+                            {label}
+                          </span>
+                          <input
+                            className="w-full rounded border px-2 py-1 text-xs"
+                            style={{
+                              borderColor: "var(--bz-border)",
+                              background: "var(--bz-surface)",
+                              color: "var(--bz-text-1)",
+                            }}
+                            placeholder={
+                              key === "full_name" ? "required" : "optional"
+                            }
+                            value={(createForm[key] as string) ?? ""}
+                            onChange={(e) =>
+                              setCreateForm((prev) => ({
+                                ...prev,
+                                [key]: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={
+                        createBusy ||
+                        busy === detail.proposal_id ||
+                        (createForm.full_name ?? "").trim().length < 2
+                      }
+                      onClick={() => void createAndApprove()}
+                      className="mt-3 w-full rounded-md px-4 py-2 text-sm font-medium text-white"
+                      style={{
+                        background: "var(--bz-accent, #d4845a)",
+                        opacity:
+                          createBusy ||
+                          busy === detail.proposal_id ||
+                          (createForm.full_name ?? "").trim().length < 2
+                            ? 0.5
+                            : 1,
+                      }}
+                    >
+                      {createBusy
+                        ? "Creating…"
+                        : "➕ Create new client + file this document"}
+                    </button>
+                  </div>
+                )}
+
                 {/* Candidate clients */}
                 <div>
                   <h3
                     className="mb-1 text-sm font-medium"
                     style={{ color: "var(--bz-text-1)" }}
                   >
-                    Client
+                    {(detail.entity_candidates?.length ?? 0) === 0
+                      ? "Or attach to an existing client"
+                      : "Client"}
                   </h3>
                   {detail.entity_candidates?.length ? (
                     <div className="space-y-1">
@@ -959,6 +1171,20 @@ export default function ReviewPage() {
                       ))}
                     </ul>
                   )}
+
+                  {/* Secondary "create new" affordance when candidates exist
+                      (the homonym case: "or create new"). */}
+                  {(detail.entity_candidates?.length ?? 0) > 0 &&
+                    !showCreateForm && (
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateForm(true)}
+                        className="mt-2 text-xs underline"
+                        style={{ color: "var(--bz-accent, #d4845a)" }}
+                      >
+                        ➕ None of these — create a new client
+                      </button>
+                    )}
                 </div>
 
                 {/* Destination category */}
