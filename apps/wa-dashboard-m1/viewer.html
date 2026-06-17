@@ -474,6 +474,15 @@
   .captain-case-title {
     font-weight: 650; color: var(--wa-text); margin-bottom: 7px;
   }
+  .case-title-row {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; margin-bottom: 9px;
+  }
+  .case-title-row .case-title { margin-bottom: 0; }
+  .case-shadow-pill {
+    color: #246455; background: #e8f5f1; border: 1px solid #b7ded1;
+    border-radius: 999px; padding: 3px 8px; font-size: 11px; white-space: nowrap;
+  }
   .case-captain-card .case-grid-mini {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
   }
@@ -499,6 +508,22 @@
     color: var(--wa-text); font-size: 12.5px; line-height: 1.4;
     white-space: pre-wrap; max-height: 86px; overflow: hidden;
   }
+  .case-reasoning-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
+  }
+  .case-reasoning-grid .case-local-context { margin-top: 0; }
+  .case-reasoning-grid .case-local-context .value {
+    max-height: 132px; overflow: auto;
+  }
+  .case-local-context.case-ideal {
+    background: #e8f5f1; border-color: #b7ded1;
+  }
+  .case-local-context.case-ideal .value { max-height: 132px; }
+  .case-signal-list {
+    margin: 0; padding-left: 17px; color: var(--wa-text); font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .case-signal-list li { margin: 2px 0; }
   .local-mode-banner {
     background: #e8f5f1; border: 1px solid #b7ded1; color: #246455;
     padding: 10px 12px; border-radius: 8px; margin-bottom: 14px;
@@ -622,6 +647,7 @@
     main { grid-template-columns: 220px 340px 1fr; }
     .captain-flow { grid-template-columns: repeat(3, 1fr); }
     .captain-case-grid { grid-template-columns: 1fr; }
+    .case-reasoning-grid { grid-template-columns: 1fr; }
     .training-top { grid-template-columns: repeat(3, 1fr); }
     .training-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
   }
@@ -871,13 +897,47 @@ function messageTextForEvidence(message) {
   return "";
 }
 
+function textLooksLikeThanks(text) {
+  return /\b(thank you|thanks|thx|appreciate|terima kasih|makasih|makasi|suksma|grazie)\b/i.test(String(text || ""));
+}
+
+function textLooksLikeQuestion(text) {
+  return /[?¿]|\b(can|could|should|when|what|how|where|why|is it|are you|bisa|apakah|kapan|dimana|di mana|berapa|bagaimana|quando|come|dove|quanto|posso|puoi)\b/i.test(String(text || ""));
+}
+
+function detectReplyLanguage(text) {
+  const t = String(text || "").toLowerCase();
+  if (/\b(grazie|ciao|buongiorno|buonasera|posso|puoi|quando|come|quanto)\b/.test(t)) return "it";
+  if (/\b(terima kasih|makasih|baik|bisa|apakah|kapan|berapa|pak|bu|mohon)\b/.test(t)) return "id";
+  return "en";
+}
+
+function caseFirstName(conv) {
+  const clean = String(conv?.display_name || "").trim();
+  if (!clean) return "";
+  return clean.split(/\s+/)[0].replace(/[^\p{L}\p{N}'-]/gu, "");
+}
+
 function deriveThreadEvidence(payload, conv) {
   const messages = payload?.messages || [];
+  const recentMessages = messages.slice(-12);
   const lastInbound = [...messages].reverse().find((m) => m.direction !== "outbound" && messageTextForEvidence(m));
   const lastOutbound = [...messages].reverse().find((m) => m.direction === "outbound" && messageTextForEvidence(m));
   const lastAny = [...messages].reverse().find((m) => messageTextForEvidence(m));
   const lastInboundAt = lastInbound?.message_date ? new Date(lastInbound.message_date).getTime() : 0;
   const lastOutboundAt = lastOutbound?.message_date ? new Date(lastOutbound.message_date).getTime() : 0;
+  const recentInboundTexts = recentMessages
+    .filter((m) => m.direction !== "outbound")
+    .map(messageTextForEvidence)
+    .filter(Boolean);
+  const recentOutboundTexts = recentMessages
+    .filter((m) => m.direction === "outbound")
+    .map(messageTextForEvidence)
+    .filter(Boolean);
+  const mediaTypes = [...new Set(messages.filter((m) => MEDIA_TYPES.has(m.media_type)).map((m) => m.media_type))];
+  const recentMediaTypes = [...new Set(recentMessages.filter((m) => MEDIA_TYPES.has(m.media_type)).map((m) => m.media_type))];
+  const lastInboundText = messageTextForEvidence(lastInbound);
+  const lastOutboundText = messageTextForEvidence(lastOutbound);
   return {
     count: payload?.count || conv?.n || 0,
     latest_direction: lastAny?.direction || null,
@@ -886,9 +946,117 @@ function deriveThreadEvidence(payload, conv) {
     last_outbound_at: lastOutbound?.message_date || null,
     last_inbound_sender: lastInbound?.sender_display || lastInbound?.sender_phone || "",
     last_outbound_sender: lastOutbound?.sender_display || lastOutbound?.sender_phone || "",
-    last_inbound: messageSnippet(messageTextForEvidence(lastInbound), 360),
-    last_outbound: messageSnippet(messageTextForEvidence(lastOutbound), 260),
+    last_inbound: messageSnippet(lastInboundText, 360),
+    last_outbound: messageSnippet(lastOutboundText, 260),
+    recent_inbound: messageSnippet(recentInboundTexts.join(" · "), 520),
+    recent_outbound: messageSnippet(recentOutboundTexts.join(" · "), 420),
+    media_types: mediaTypes,
+    recent_media_types: recentMediaTypes,
+    has_question: recentInboundTexts.some(textLooksLikeQuestion) || textLooksLikeQuestion(lastInboundText),
+    has_thanks: textLooksLikeThanks(lastInboundText),
     needs_reply: Boolean(conv?.unread_count) || (lastInboundAt > lastOutboundAt),
+  };
+}
+
+function buildIdealReply(conv, evidence, intent) {
+  const lang = detectReplyLanguage(evidence.last_inbound || evidence.recent_inbound);
+  const name = caseFirstName(conv);
+  const hi = name ? ` ${name}` : "";
+  const lastInfo = messageSnippet(evidence.last_inbound, 120);
+  const hasMedia = Boolean(evidence.recent_media_types?.length || evidence.media_types?.length);
+  const mediaLabel = lang === "id"
+    ? (hasMedia ? "file/foto yang kamu kirim" : "ini")
+    : lang === "it"
+      ? (hasMedia ? "il file/la foto che hai inviato" : "questo")
+      : (hasMedia ? "the file/photo you sent" : "this");
+
+  if (intent === "thanks") {
+    if (lang === "id") return `Sama-sama${hi}. Sudah kami terima. Kami monitor case ini dan akan update di sini kalau ada yang perlu dilengkapi.`;
+    if (lang === "it") return `Figurati${hi}. Abbiamo ricevuto tutto. Teniamo monitorato il caso e ti aggiorniamo qui se serve altro.`;
+    return `You're welcome${hi}. We received it. We'll keep this case monitored and update you here if anything else is needed.`;
+  }
+  if (intent === "question") {
+    if (lang === "id") return `Terima kasih${hi}. Saya cek dulu dengan case kamu, lalu saya konfirmasi next step yang tepat di sini.`;
+    if (lang === "it") return `Grazie${hi}. Verifico questo punto sulla tua pratica e ti confermo qui il prossimo passaggio corretto.`;
+    return `Thanks${hi}. I'll check this against your case and confirm the correct next step here.`;
+  }
+  if (intent === "info") {
+    if (lang === "id") return `Terima kasih${hi}, saya catat: "${lastInfo}". Kami pakai info ini untuk case kamu dan update next step di sini.`;
+    if (lang === "it") return `Grazie${hi}, ho segnato: "${lastInfo}". Usiamo questa informazione sulla pratica e ti aggiorniamo qui sul prossimo passaggio.`;
+    return `Thanks${hi}, noted: "${lastInfo}". We'll use this for your case and update you here with the next step.`;
+  }
+  if (intent === "media") {
+    if (lang === "id") return `Terima kasih${hi}, ${mediaLabel} sudah kami terima. Kami cek dulu, lalu update next step di sini.`;
+    if (lang === "it") return `Grazie${hi}, abbiamo ricevuto ${mediaLabel}. Lo controlliamo e ti aggiorniamo qui sul prossimo passaggio.`;
+    return `Thanks${hi}, we received ${mediaLabel}. We'll check it and update you here with the next step.`;
+  }
+  if (intent === "internal") {
+    return "Owner: confirm who decides this. Blocker: name the missing item. Next check: set one time and update the thread.";
+  }
+  if (intent === "already_replied") {
+    return "No new message needed right now. Keep monitoring; reply only if the client asks again or the promised next step changes.";
+  }
+  if (lang === "id") return `Terima kasih${hi}. Kami sedang cek statusnya dan akan update di sini dengan next step yang jelas.`;
+  if (lang === "it") return `Grazie${hi}. Stiamo verificando lo stato e ti aggiorniamo qui con il prossimo passaggio chiaro.`;
+  return `Thanks${hi}. We're checking the status and will update you here with the clear next step.`;
+}
+
+function buildSpecificCaseAnalysis(conv, evidence) {
+  const media = evidence.recent_media_types?.length ? evidence.recent_media_types : evidence.media_types || [];
+  const mediaLabel = media.length ? media.join(", ") : "";
+  const specificSignals = [];
+  if (evidence.last_inbound) specificSignals.push(`Ultimo inbound: "${messageSnippet(evidence.last_inbound, 92)}"`);
+  if (evidence.last_outbound) specificSignals.push(`Ultimo outbound team: "${messageSnippet(evidence.last_outbound, 92)}"`);
+  if (mediaLabel) specificSignals.push(`Media nel thread: ${mediaLabel}`);
+  if (evidence.has_question) specificSignals.push("C'è una domanda nel blocco recente");
+  if (evidence.has_thanks) specificSignals.push("L'ultimo inbound è un ringraziamento/conferma");
+  specificSignals.push(evidence.needs_reply ? "Palla al team: ultimo inbound/non letto da chiudere" : "Team già intervenuto dopo l'ultimo inbound");
+
+  let intent = "status";
+  if (conv?.tag === "internal") intent = "internal";
+  else if (evidence.has_thanks) intent = "thanks";
+  else if (evidence.has_question) intent = "question";
+  else if (evidence.last_inbound && !/^\[[a-z]+\]$/i.test(evidence.last_inbound)) intent = "info";
+  else if (media.length) intent = "media";
+  else if (!evidence.needs_reply) intent = "already_replied";
+
+  const stateByIntent = {
+    thanks: "Ringraziamento ricevuto: chiusura morbida",
+    question: "Domanda cliente aperta: risposta puntuale",
+    info: "Dato operativo ricevuto: integrare nel caso",
+    media: "Documento/media ricevuto: verifica e next step",
+    internal: "Coordinamento interno: owner e blocco",
+    already_replied: "Già risposto: monitoraggio",
+    status: conv?.crm_match ? "Cliente CRM: update da chiarire" : "Lead/prospect: qualificazione",
+  };
+  const reasoningByIntent = {
+    thanks: `Zantara non legge questo come una nuova richiesta: l'ultimo inbound è un ringraziamento${mediaLabel ? ` e nel thread ci sono media (${mediaLabel})` : ""}. La risposta ideale è breve, conferma ricezione e lascia aperto l'update se serve.`,
+    question: `Zantara vede una domanda nel blocco recente e quindi non deve chiudere con un messaggio generico: deve verificare la pratica e rispondere al punto preciso.`,
+    info: `Zantara vede che l'ultimo inbound contiene un dato operativo concreto, non solo cortesia o allegato. Deve confermare che il dato è stato annotato e collegarlo al prossimo passaggio della pratica.`,
+    media: `Zantara vede media/documenti nel thread (${mediaLabel}). Il passaggio corretto è confermare ricezione, controllare il contenuto e promettere un next step verificabile.`,
+    internal: "Zantara tratta questa chat come coordinamento interno: non risposta cliente, ma owner, blocco, decisione richiesta e prossimo controllo.",
+    already_replied: "Zantara vede che il team è già intervenuto dopo l'ultimo inbound: non deve spingere un nuovo messaggio, deve monitorare fino a nuova domanda o scadenza.",
+    status: evidence.needs_reply
+      ? "Zantara vede una palla aperta sul team: serve un update concreto, non una frase generica."
+      : "Zantara vede una conversazione stabile: serve solo monitoraggio o un update programmato.",
+  };
+  const nextByIntent = {
+    thanks: "Rispondere con acknowledgement breve; niente escalation.",
+    question: "Verificare la pratica e rispondere alla domanda, con prossimo step chiaro.",
+    info: "Confermare il dato ricevuto e spiegare che verrà usato nel caso.",
+    media: "Confermare ricezione del media/documento e dire quando arriva l'update.",
+    internal: "Scrivere owner brief: richiesta, blocco, decisione, prossimo controllo.",
+    already_replied: "Non inviare ora; monitorare e riaprire solo se cambia lo stato.",
+    status: evidence.needs_reply ? "Preparare update cliente con stato, blocco e prossimo passaggio." : "Tenere in monitoraggio e aggiornare solo se serve.",
+  };
+
+  return {
+    state: stateByIntent[intent],
+    reasoning: reasoningByIntent[intent],
+    next: nextByIntent[intent],
+    ideal_reply: buildIdealReply(conv, evidence, intent),
+    intent,
+    specificSignals,
   };
 }
 
@@ -899,8 +1067,10 @@ function zantaraCaseDiagnosis(conv, pd, evidence = {}) {
       reasoning: "Zantara resta in attesa di un caso live.",
       next: "Aprire una conversazione per costruire diagnosi e piano di chiusura.",
       draft: "Nessuna bozza generata.",
+      ideal_reply: "Nessuna bozza generata.",
       gate: "Shadow mode attivo.",
       signals: ["0 invii WhatsApp", "0 scritture CRM", "approval umano richiesto"],
+      specificSignals: [],
     };
   }
 
@@ -915,63 +1085,57 @@ function zantaraCaseDiagnosis(conv, pd, evidence = {}) {
   if (pd?.team?.name) signals.push(`Operatore: ${pd.team.name}`);
   if (evidence.last_inbound) signals.push("Ultimo inbound letto nel thread locale");
   if (evidence.needs_reply) signals.push("Probabile palla al team: serve risposta o update");
+  const specific = buildSpecificCaseAnalysis(conv, evidence);
+  const mergedSignals = [...specific.specificSignals, ...signals].slice(0, 9);
 
   if (conv.tag === "internal") {
     return {
-      state: "Coordinamento interno",
-      reasoning: evidence.last_inbound
-        ? "Zantara legge il messaggio interno più recente, separa richiesta, blocco, owner e scadenza operativa."
-        : "Zantara non risponde al cliente: separa task interno, decisione richiesta e operatore responsabile.",
-      next: evidence.needs_reply
-        ? "Rispondere internamente con owner, decisione richiesta e orario del prossimo controllo."
-        : "Creare pacchetto operativo: richiesta, owner, deadline, blocco, prossimo controllo.",
-      draft: "Owner, blocco, prossima verifica: scrivere una riga chiara per chi deve decidere.",
+      state: specific.state,
+      reasoning: specific.reasoning,
+      next: specific.next,
+      draft: specific.ideal_reply,
+      ideal_reply: specific.ideal_reply,
       gate: "Non esce su WhatsApp cliente.",
-      signals,
+      signals: mergedSignals,
+      specificSignals: specific.specificSignals,
     };
   }
 
   if (conv.kind === "group") {
     return {
-      state: conv.crm_match ? "Caso cliente in gruppo" : "Gruppo da classificare",
-      reasoning: evidence.last_inbound
-        ? "Zantara legge l'ultimo messaggio del gruppo, isola la richiesta reale e la trasforma in owner brief."
-        : "Zantara isola la richiesta reale dentro il gruppo, distingue update, domanda, urgenza e decisione mancante.",
-      next: conv.attention_priority || evidence.needs_reply
-        ? "Produrre owner brief e risposta controllata nel gruppo."
-        : "Preparare sintesi breve e prossima azione verificabile.",
-      draft: "Riepilogo breve: stato, blocco, responsabile, prossimo step e data promessa.",
+      state: conv.crm_match ? `Gruppo cliente: ${specific.state}` : `Gruppo operativo: ${specific.state}`,
+      reasoning: specific.reasoning,
+      next: specific.next,
+      draft: specific.ideal_reply,
+      ideal_reply: specific.ideal_reply,
       gate: "Invio solo dopo approvazione operatore/owner.",
-      signals,
+      signals: mergedSignals,
+      specificSignals: specific.specificSignals,
     };
   }
 
   if (!conv.crm_match) {
     return {
-      state: "Lead da qualificare",
-      reasoning: evidence.last_inbound
-        ? "Zantara usa l'ultimo messaggio del lead per capire servizio, timing e dato mancante prima di spingere una risposta."
-        : "Zantara ricostruisce bisogno, timing, servizio richiesto, urgenza e dati mancanti prima di assegnare o quotare.",
-      next: evidence.needs_reply
-        ? "Fare una domanda di qualificazione e portare il lead a un requisito verificabile."
-        : "Qualificare servizio, scadenza, paese/passaporto, budget e disponibilità documenti; poi proporre owner.",
-      draft: "Risposta breve: confermare che abbiamo capito la richiesta e chiedere il dato mancante più importante.",
+      state: specific.state,
+      reasoning: specific.reasoning,
+      next: specific.next,
+      draft: specific.ideal_reply,
+      ideal_reply: specific.ideal_reply,
       gate: "Nessuna creazione CRM automatica.",
-      signals,
+      signals: mergedSignals,
+      specificSignals: specific.specificSignals,
     };
   }
 
   return {
-    state: "Cliente CRM da chiudere",
-    reasoning: evidence.last_inbound
-      ? "Zantara collega chat e pratica CRM, poi usa l'ultimo inbound per capire se serve update, documento, decisione o escalation."
-      : "Zantara collega chat e pratica CRM, controlla ultimo messaggio, scadenze, documenti mancanti e responsabilità.",
-    next: conv.attention_priority || evidence.needs_reply
-      ? "Preparare risposta cliente o owner brief con stato, blocco e prossimo passaggio."
-      : "Preparare update cliente con stato pratica e prossimo passaggio.",
-    draft: "Update cliente: stato attuale, cosa manca o cosa stiamo verificando, prossimo passaggio e quando torniamo da lui.",
+    state: specific.state,
+    reasoning: specific.reasoning,
+    next: specific.next,
+    draft: specific.ideal_reply,
+    ideal_reply: specific.ideal_reply,
     gate: "Invio e CRM write restano manuali.",
-    signals,
+    signals: mergedSignals,
+    specificSignals: specific.specificSignals,
   };
 }
 
@@ -980,17 +1144,31 @@ function renderCaseCaptainCard(conv, pd, payload) {
   const d = zantaraCaseDiagnosis(conv, pd, evidence);
   const type = caseKindLabel(conv);
   const urgency = caseUrgencyLabel(conv);
+  const signals = (d.specificSignals?.length ? d.specificSignals : d.signals || []).slice(0, 6);
   return `<div class="case-captain-card">
-    <div class="case-title">Zantara shadow su questo caso</div>
+    <div class="case-title-row">
+      <div class="case-title">Zantara legge questa conversazione</div>
+      <div class="case-shadow-pill">bozza non inviata</div>
+    </div>
     <div class="case-grid-mini">
       <div class="case-mini"><div class="label">Conversazione</div><div class="value">${escapeHtml(type)} · ${evidence.count || conv.n || 0} messaggi</div></div>
-      <div class="case-mini"><div class="label">Diagnosi</div><div class="value">${escapeHtml(d.state)} · ${escapeHtml(urgency)}</div></div>
-      <div class="case-mini"><div class="label">Prossima azione</div><div class="value">${escapeHtml(d.next)}</div></div>
+      <div class="case-mini"><div class="label">Stato Zantara</div><div class="value">${escapeHtml(d.state)} · ${escapeHtml(urgency)}</div></div>
+      <div class="case-mini"><div class="label">Prossima mossa</div><div class="value">${escapeHtml(d.next)}</div></div>
     </div>
-    ${evidence.last_inbound ? `<div class="case-local-context">
-      <div class="label">Ultimo inbound letto localmente</div>
-      <div class="value">${escapeHtml(evidence.last_inbound)}</div>
-    </div>` : ""}
+    <div class="case-reasoning-grid">
+      <div class="case-local-context">
+        <div class="label">Perché lo pensa su questa chat</div>
+        <div class="value">${escapeHtml(d.reasoning)}</div>
+      </div>
+      <div class="case-local-context case-ideal">
+        <div class="label">Risposta ideale shadow</div>
+        <div class="value">${escapeHtml(d.ideal_reply || d.draft)}</div>
+      </div>
+    </div>
+    <div class="case-local-context">
+      <div class="label">Segnali specifici letti</div>
+      <ul class="case-signal-list">${signals.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+    </div>
   </div>`;
 }
 
@@ -1082,7 +1260,7 @@ function renderCaptainPanel(threadPayload) {
       <div class="captain-panel">
         <h3>Come risolve</h3>
         <p><strong>Next best action:</strong> ${escapeHtml(d.next)}</p>
-        <p style="margin-top:10px"><strong>Bozza shadow:</strong> ${escapeHtml(d.draft)}</p>
+        <p style="margin-top:10px"><strong>Risposta ideale shadow:</strong> ${escapeHtml(d.ideal_reply || d.draft)}</p>
       </div>
     </div>
     <div class="status-banner">Contratto: shadow mode locale. La webapp legge mirror e summary, non invia messaggi, non scrive CRM e non sostituisce l'approvazione owner.</div>`;
