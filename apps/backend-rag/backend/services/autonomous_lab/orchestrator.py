@@ -199,30 +199,36 @@ class LabOrchestrationResult:
 DEFAULT_AGENT_FLEET: tuple[AgentFleetMember, ...] = (
     AgentFleetMember(
         1,
+        "watch",
+        "frontier_watchtower",
+        "screen AI/software novelty signals for Nuzantara implementation fit",
+    ),
+    AgentFleetMember(
+        2,
         "intake",
         "intake_normalizer",
         "derive receipt-safe material summaries and fingerprints",
     ),
     AgentFleetMember(
-        2,
+        3,
         "compose",
         "hypothesis_composer",
         "compose deterministic hypotheses from normalized evidence",
     ),
     AgentFleetMember(
-        3,
+        4,
         "context",
         "context_builder",
         "build an isolated prod-like simulation plan without executing it",
     ),
     AgentFleetMember(
-        4,
+        5,
         "review",
         "reviewer",
         "propagate blockers and reject unsafe planned commands",
     ),
     AgentFleetMember(
-        5,
+        6,
         "verify",
         "verification_planner",
         "surface verification commands as planned-only receipts",
@@ -352,6 +358,28 @@ class AutonomousLabOrchestrator:
         return [
             FleetStageResult(
                 order=1,
+                stage="watch",
+                role="frontier_watchtower",
+                status=FleetStageStatus.BLOCKED
+                if "materials_present" in failed_blockers
+                else FleetStageStatus.COMPLETED,
+                summary=(
+                    f"screened {len(run.materials)} material envelope(s) for "
+                    "AI/software implementation signals using "
+                    f"{len(run.research_notebooks)} NotebookLM route(s)"
+                ),
+                inputs=[material.material_id for material in run.materials],
+                outputs=[
+                    *sorted({tag for material in run.materials for tag in material.tags}),
+                    *[
+                        f"notebook:{notebook.key}"
+                        for notebook in run.research_notebooks
+                    ],
+                ],
+                blockers=["materials_present"] if "materials_present" in failed_blockers else [],
+            ),
+            FleetStageResult(
+                order=2,
                 stage="intake",
                 role="intake_normalizer",
                 status=FleetStageStatus.BLOCKED
@@ -363,7 +391,7 @@ class AutonomousLabOrchestrator:
                 blockers=["materials_present"] if "materials_present" in failed_blockers else [],
             ),
             FleetStageResult(
-                order=2,
+                order=3,
                 stage="compose",
                 role="hypothesis_composer",
                 status=FleetStageStatus.COMPLETED,
@@ -372,7 +400,7 @@ class AutonomousLabOrchestrator:
                 outputs=[f"hypothesis:{index + 1}" for index, _ in enumerate(run.hypotheses)],
             ),
             FleetStageResult(
-                order=3,
+                order=4,
                 stage="context",
                 role="context_builder",
                 status=FleetStageStatus.PLANNED,
@@ -385,7 +413,7 @@ class AutonomousLabOrchestrator:
                 planned_only_commands=[run.simulation_plan.worktree_command],
             ),
             FleetStageResult(
-                order=4,
+                order=5,
                 stage="review",
                 role="reviewer",
                 status=FleetStageStatus.BLOCKED if blocked else FleetStageStatus.COMPLETED,
@@ -395,7 +423,7 @@ class AutonomousLabOrchestrator:
                 blockers=blocked,
             ),
             FleetStageResult(
-                order=5,
+                order=6,
                 stage="verify",
                 role="verification_planner",
                 status=FleetStageStatus.BLOCKED if blocked else FleetStageStatus.PLANNED,
