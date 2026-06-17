@@ -294,6 +294,52 @@ async def send_pending_alerts(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+_BALIZERO_FALLBACK_CC = "zero@balizero.com"
+
+
+def _enforce_balizero_cc(
+    to: str,
+    cc_list: list[str] | None,
+    bcc_list: list[str] | None,
+) -> list[str] | None:
+    """Guarantee at least one @balizero.com address is in the loop.
+
+    HARD RULE (Antonello 2026-06-17): a client must never receive an
+    email without a Bali Zero address copied in. This is the structural
+    enforcement of that rule at the single send choke-point.
+
+    Logic:
+    - If the recipient (``to``) is itself ``@balizero.com`` → intra-team
+      mail, nothing to add.
+    - If any existing cc/bcc is ``@balizero.com`` → already compliant.
+    - Otherwise (external recipient, no balizero in cc/bcc) → append
+      ``zero@balizero.com`` to CC and log it.
+
+    Returns the (possibly augmented) cc_list. Matching is on the
+    ``@balizero.com`` domain suffix (case-insensitive), never a bare
+    substring (superscar #3 — match the entity, not the text).
+    """
+
+    def _is_balizero(addr: str) -> bool:
+        return addr.strip().lower().endswith("@balizero.com")
+
+    if _is_balizero(to):
+        return cc_list
+    existing = (cc_list or []) + (bcc_list or [])
+    if any(_is_balizero(a) for a in existing):
+        return cc_list
+
+    augmented = list(cc_list or [])
+    augmented.append(_BALIZERO_FALLBACK_CC)
+    logger.warning(
+        "send-email: no @balizero.com in to/cc/bcc for external recipient %s "
+        "— forcing %s into CC (hard rule)",
+        to,
+        _BALIZERO_FALLBACK_CC,
+    )
+    return augmented
+
+
 @router.post("/send-email", response_model=SendEmailResponse)
 async def send_direct_email(
     request: SendEmailRequest,
@@ -312,6 +358,13 @@ async def send_direct_email(
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
     bcc_list = [b.strip() for b in request.bcc.split(",")] if request.bcc else None
     attachments = [a.model_dump() for a in request.attachments] if request.attachments else None
+
+    # HARD RULE (Antonello 2026-06-17): a client never receives an email
+    # without at least one @balizero.com address in the loop. If the
+    # recipient is external and no balizero address is present in
+    # to/cc/bcc, force zero@balizero.com into CC. Enforced here — the
+    # single send choke-point — so no caller can bypass it.
+    cc_list = _enforce_balizero_cc(request.to, cc_list, bcc_list)
 
     # Provider chain (NB-E 2026-04-29):
     #   intra-domain (@balizero.com): Zoho SMTP → Brevo
