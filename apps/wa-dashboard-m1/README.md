@@ -62,16 +62,20 @@ scrive CRM, non muta training artifacts e non espone dati raw.
 
 La vista "Zantara risolve" non chiama un modello e non inventa una soluzione:
 traduce i segnali già presenti nella conversazione selezionata in una diagnosi
-operativa leggibile. Per ogni caso mostra:
+operativa leggibile. In local Pro mode può mostrare PII dentro la UI locale
+perché non lascia la macchina. Per ogni caso mostra:
 
 - tipo conversazione: cliente CRM, prospect/lead, gruppo cliente o thread interno;
 - segnali disponibili: CRM match, owner operativo, priorità, unread, gruppo;
+- contesto reale locale: ultimo inbound/outbound del thread caricato;
 - ragionamento operativo: contesto, blocco probabile, decisione richiesta;
 - prossima azione e bozza shadow;
 - gate umano: invio WhatsApp e scritture CRM restano manuali.
 
 La stessa carta appare anche sopra il thread nella tab "Conversazioni live", così
 messaggi e ragionamento restano nello stesso punto di lavoro.
+La PII resta ammessa nella UI locale, non nei commit, PR, report condivisi, log
+lunghi o chiamate cloud.
 
 ## Modalità degradata
 

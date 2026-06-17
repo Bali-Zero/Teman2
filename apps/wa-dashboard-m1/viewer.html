@@ -487,6 +487,31 @@
   .case-mini .value {
     color: var(--wa-text); font-size: 12px; line-height: 1.35;
   }
+  .case-local-context {
+    margin-top: 10px; background: #f7f8f8; border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 10px;
+  }
+  .case-local-context .label {
+    color: var(--wa-text-3); font-size: 10px; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 4px;
+  }
+  .case-local-context .value {
+    color: var(--wa-text); font-size: 12.5px; line-height: 1.4;
+    white-space: pre-wrap; max-height: 86px; overflow: hidden;
+  }
+  .local-mode-banner {
+    background: #e8f5f1; border: 1px solid #b7ded1; color: #246455;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 14px;
+    font-size: 13px; line-height: 1.45;
+  }
+  .captain-evidence {
+    display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px;
+  }
+  .captain-evidence .quote {
+    background: var(--wa-panel-3); border-radius: 8px; padding: 9px;
+    color: var(--wa-text); font-size: 12.5px; line-height: 1.4;
+    white-space: pre-wrap; max-height: 120px; overflow: auto;
+  }
   .captain-action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .captain-action-row button {
     background: var(--wa-accent); color: #fff; border: 1px solid var(--wa-accent);
@@ -801,7 +826,41 @@ function caseUrgencyLabel(conv) {
   return "Monitor: nessun segnale urgente dal mirror";
 }
 
-function zantaraCaseDiagnosis(conv, pd) {
+function messageSnippet(text, max = 260) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  return clean.length > max ? clean.slice(0, max - 1) + "…" : clean;
+}
+
+function messageTextForEvidence(message) {
+  if (!message) return "";
+  if (message.body && message.body.trim()) return message.body;
+  if (message.media_type && MEDIA_TYPES.has(message.media_type)) return `[${message.media_type}]`;
+  return "";
+}
+
+function deriveThreadEvidence(payload, conv) {
+  const messages = payload?.messages || [];
+  const lastInbound = [...messages].reverse().find((m) => m.direction !== "outbound" && messageTextForEvidence(m));
+  const lastOutbound = [...messages].reverse().find((m) => m.direction === "outbound" && messageTextForEvidence(m));
+  const lastAny = [...messages].reverse().find((m) => messageTextForEvidence(m));
+  const lastInboundAt = lastInbound?.message_date ? new Date(lastInbound.message_date).getTime() : 0;
+  const lastOutboundAt = lastOutbound?.message_date ? new Date(lastOutbound.message_date).getTime() : 0;
+  return {
+    count: payload?.count || conv?.n || 0,
+    latest_direction: lastAny?.direction || null,
+    latest_at: lastAny?.message_date || conv?.last_at || null,
+    last_inbound_at: lastInbound?.message_date || null,
+    last_outbound_at: lastOutbound?.message_date || null,
+    last_inbound_sender: lastInbound?.sender_display || lastInbound?.sender_phone || "",
+    last_outbound_sender: lastOutbound?.sender_display || lastOutbound?.sender_phone || "",
+    last_inbound: messageSnippet(messageTextForEvidence(lastInbound), 360),
+    last_outbound: messageSnippet(messageTextForEvidence(lastOutbound), 260),
+    needs_reply: Boolean(conv?.unread_count) || (lastInboundAt > lastOutboundAt),
+  };
+}
+
+function zantaraCaseDiagnosis(conv, pd, evidence = {}) {
   if (!conv) {
     return {
       state: "Nessuna conversazione selezionata",
@@ -822,13 +881,19 @@ function zantaraCaseDiagnosis(conv, pd) {
   if (conv.attention_priority) signals.push(`Priorità ${conv.attention_priority}`);
   if (conv.kind === "group") signals.push("Thread gruppo: serve sintesi decisionale");
   if (pd?.team?.name) signals.push(`Operatore: ${pd.team.name}`);
+  if (evidence.last_inbound) signals.push("Ultimo inbound letto nel thread locale");
+  if (evidence.needs_reply) signals.push("Probabile palla al team: serve risposta o update");
 
   if (conv.tag === "internal") {
     return {
       state: "Coordinamento interno",
-      reasoning: "Zantara non risponde al cliente: separa task interno, decisione richiesta e operatore responsabile.",
-      next: "Creare pacchetto operativo: richiesta, owner, deadline, blocco, prossimo controllo.",
-      draft: "Chiarire cosa manca, chi decide e quando va richiuso.",
+      reasoning: evidence.last_inbound
+        ? "Zantara legge il messaggio interno più recente, separa richiesta, blocco, owner e scadenza operativa."
+        : "Zantara non risponde al cliente: separa task interno, decisione richiesta e operatore responsabile.",
+      next: evidence.needs_reply
+        ? "Rispondere internamente con owner, decisione richiesta e orario del prossimo controllo."
+        : "Creare pacchetto operativo: richiesta, owner, deadline, blocco, prossimo controllo.",
+      draft: "Owner, blocco, prossima verifica: scrivere una riga chiara per chi deve decidere.",
       gate: "Non esce su WhatsApp cliente.",
       signals,
     };
@@ -837,9 +902,13 @@ function zantaraCaseDiagnosis(conv, pd) {
   if (conv.kind === "group") {
     return {
       state: conv.crm_match ? "Caso cliente in gruppo" : "Gruppo da classificare",
-      reasoning: "Zantara isola la richiesta reale dentro il gruppo, distingue update, domanda, urgenza e decisione mancante.",
-      next: conv.attention_priority ? "Produrre owner brief e risposta controllata." : "Preparare sintesi breve e prossima azione verificabile.",
-      draft: "Riepilogo stato, punto bloccante, chi deve rispondere, prossimo step.",
+      reasoning: evidence.last_inbound
+        ? "Zantara legge l'ultimo messaggio del gruppo, isola la richiesta reale e la trasforma in owner brief."
+        : "Zantara isola la richiesta reale dentro il gruppo, distingue update, domanda, urgenza e decisione mancante.",
+      next: conv.attention_priority || evidence.needs_reply
+        ? "Produrre owner brief e risposta controllata nel gruppo."
+        : "Preparare sintesi breve e prossima azione verificabile.",
+      draft: "Riepilogo breve: stato, blocco, responsabile, prossimo step e data promessa.",
       gate: "Invio solo dopo approvazione operatore/owner.",
       signals,
     };
@@ -848,9 +917,13 @@ function zantaraCaseDiagnosis(conv, pd) {
   if (!conv.crm_match) {
     return {
       state: "Lead da qualificare",
-      reasoning: "Zantara ricostruisce bisogno, timing, servizio richiesto, urgenza e dati mancanti prima di assegnare o quotare.",
-      next: "Qualificare servizio, scadenza, paese/passaporto, budget e disponibilità documenti; poi proporre owner.",
-      draft: "Domanda corta, chiara, orientata a chiudere il requisito mancante.",
+      reasoning: evidence.last_inbound
+        ? "Zantara usa l'ultimo messaggio del lead per capire servizio, timing e dato mancante prima di spingere una risposta."
+        : "Zantara ricostruisce bisogno, timing, servizio richiesto, urgenza e dati mancanti prima di assegnare o quotare.",
+      next: evidence.needs_reply
+        ? "Fare una domanda di qualificazione e portare il lead a un requisito verificabile."
+        : "Qualificare servizio, scadenza, paese/passaporto, budget e disponibilità documenti; poi proporre owner.",
+      draft: "Risposta breve: confermare che abbiamo capito la richiesta e chiedere il dato mancante più importante.",
       gate: "Nessuna creazione CRM automatica.",
       signals,
     };
@@ -858,25 +931,34 @@ function zantaraCaseDiagnosis(conv, pd) {
 
   return {
     state: "Cliente CRM da chiudere",
-    reasoning: "Zantara collega chat e pratica CRM, controlla ultimo messaggio, scadenze, documenti mancanti e responsabilità.",
-    next: conv.attention_priority ? "Aprire owner brief: rischio, cosa manca, risposta consigliata." : "Preparare update cliente con stato pratica e prossimo passaggio.",
-    draft: "Conferma ricezione, stato, documento o decisione richiesta, prossima data.",
+    reasoning: evidence.last_inbound
+      ? "Zantara collega chat e pratica CRM, poi usa l'ultimo inbound per capire se serve update, documento, decisione o escalation."
+      : "Zantara collega chat e pratica CRM, controlla ultimo messaggio, scadenze, documenti mancanti e responsabilità.",
+    next: conv.attention_priority || evidence.needs_reply
+      ? "Preparare risposta cliente o owner brief con stato, blocco e prossimo passaggio."
+      : "Preparare update cliente con stato pratica e prossimo passaggio.",
+    draft: "Update cliente: stato attuale, cosa manca o cosa stiamo verificando, prossimo passaggio e quando torniamo da lui.",
     gate: "Invio e CRM write restano manuali.",
     signals,
   };
 }
 
-function renderCaseCaptainCard(conv, pd, messageCount) {
-  const d = zantaraCaseDiagnosis(conv, pd);
+function renderCaseCaptainCard(conv, pd, payload) {
+  const evidence = deriveThreadEvidence(payload, conv);
+  const d = zantaraCaseDiagnosis(conv, pd, evidence);
   const type = caseKindLabel(conv);
   const urgency = caseUrgencyLabel(conv);
   return `<div class="case-captain-card">
     <div class="case-title">Zantara shadow su questo caso</div>
     <div class="case-grid-mini">
-      <div class="case-mini"><div class="label">Conversazione</div><div class="value">${escapeHtml(type)} · ${messageCount || conv.n || 0} messaggi</div></div>
+      <div class="case-mini"><div class="label">Conversazione</div><div class="value">${escapeHtml(type)} · ${evidence.count || conv.n || 0} messaggi</div></div>
       <div class="case-mini"><div class="label">Diagnosi</div><div class="value">${escapeHtml(d.state)} · ${escapeHtml(urgency)}</div></div>
       <div class="case-mini"><div class="label">Prossima azione</div><div class="value">${escapeHtml(d.next)}</div></div>
     </div>
+    ${evidence.last_inbound ? `<div class="case-local-context">
+      <div class="label">Ultimo inbound letto localmente</div>
+      <div class="value">${escapeHtml(evidence.last_inbound)}</div>
+    </div>` : ""}
   </div>`;
 }
 
@@ -896,12 +978,13 @@ function renderCaptainFlow() {
     </div>`).join("")}</div>`;
 }
 
-function renderCaptainPanel() {
+function renderCaptainPanel(threadPayload) {
   const root = document.getElementById("c-root");
   const subEl = document.getElementById("c-sub");
   if (!root || !subEl) return;
   const { member, pd, conv } = currentCaseContext();
-  const d = zantaraCaseDiagnosis(conv, pd);
+  const evidence = deriveThreadEvidence(threadPayload, conv);
+  const d = zantaraCaseDiagnosis(conv, pd, evidence);
   const trainingCards = TRAINING?.total_cards || {
     training_examples: "—", replay_scenarios: "—", shadow_drafts: "—",
     owner_queue: "—", whatsapp_sends: "0", crm_mutations: "0",
@@ -913,6 +996,7 @@ function renderCaptainPanel() {
 
   subEl.textContent = `${caseName} — ${caseMeta}`;
   root.innerHTML = `
+    <div class="local-mode-banner">Local Pro mode: qui la PII è visibile perché resta dentro la webapp locale. Non viene copiata in PR, report, log lunghi o chiamate cloud.</div>
     <div class="captain-hero">
       <div class="captain-panel">
         <h3>Dal messaggio alla chiusura</h3>
@@ -946,6 +1030,19 @@ function renderCaptainPanel() {
         <ul>${d.signals.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
       </div>
       <div class="captain-panel">
+        <h3>Contesto reale locale</h3>
+        <div class="captain-evidence">
+          <div>
+            <p><strong>Ultimo inbound</strong>${evidence.last_inbound_sender ? ` · ${escapeHtml(evidence.last_inbound_sender)}` : ""}</p>
+            <div class="quote">${escapeHtml(evidence.last_inbound || "Nessun inbound testuale disponibile nel thread caricato.")}</div>
+          </div>
+          <div>
+            <p><strong>Ultimo outbound</strong>${evidence.last_outbound_sender ? ` · ${escapeHtml(evidence.last_outbound_sender)}` : ""}</p>
+            <div class="quote">${escapeHtml(evidence.last_outbound || "Nessun outbound testuale disponibile nel thread caricato.")}</div>
+          </div>
+        </div>
+      </div>
+      <div class="captain-panel">
         <h3>Come ragiona</h3>
         <p>${escapeHtml(d.reasoning)}</p>
         <div class="captain-table-note">Non mostra chain-of-thought interna: espone diagnosi operativa verificabile.</div>
@@ -959,6 +1056,18 @@ function renderCaptainPanel() {
     <div class="status-banner">Contratto: shadow mode locale. La webapp legge mirror e summary, non invia messaggi, non scrive CRM e non sostituisce l'approvazione owner.</div>`;
 }
 
+async function ensureCurrentThreadPayload() {
+  if (!SELECTED_TEAM || !SELECTED_CONV) return null;
+  const cacheKey = `${SELECTED_TEAM}|${SELECTED_CONV}`;
+  if (THREAD_CACHE_KEY === cacheKey && THREAD_CACHE) return THREAD_CACHE;
+  const r = await fetch(`/thread.json?member=${encodeURIComponent(SELECTED_TEAM)}&conv=${encodeURIComponent(SELECTED_CONV)}`);
+  if (!r.ok) throw new Error(`thread ${r.status}`);
+  const payload = await r.json();
+  THREAD_CACHE = payload;
+  THREAD_CACHE_KEY = cacheKey;
+  return payload;
+}
+
 async function renderCaptain() {
   const root = document.getElementById("c-root");
   if (!root) return;
@@ -968,7 +1077,14 @@ async function renderCaptain() {
       if (r.ok) TRAINING = await r.json();
     } catch {}
   }
-  renderCaptainPanel();
+  let threadPayload = null;
+  try {
+    threadPayload = await ensureCurrentThreadPayload();
+  } catch (err) {
+    root.innerHTML = `<div class="status-banner error">Thread non leggibile: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
+  renderCaptainPanel(threadPayload);
 }
 
 function renderTeams() {
@@ -1179,7 +1295,7 @@ async function renderThread() {
 
   const convDisplay = conv ? conv.display_name : SELECTED_CONV;
   const headerAvatarClass = conv?.kind === "group" ? "group" : conv?.tag === "crm" ? "crm" : conv?.tag === "prospect" ? "prospect" : "";
-  const captainHtml = conv ? renderCaseCaptainCard(conv, pd, payload.count) : "";
+  const captainHtml = conv ? renderCaseCaptainCard(conv, pd, payload) : "";
 
   // Filter messages by search query (case-insensitive, matches body + sender)
   const q = THREAD_SEARCH.trim().toLowerCase();
