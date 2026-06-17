@@ -201,12 +201,38 @@ async def _crm_counts(pool: asyncpg.Pool) -> tuple[int, int]:
 
 # --------------------------------------------------------------------------- #
 async def test_queue_admin_sees_all(pool, seed):
-    """Admin sees the ENTIRE queue — every worker's docs, incl. NULL-received_by."""
+    """Admin sees the ENTIRE queue — every worker's docs, incl. NULL-received_by.
+
+    Robust to nuzantara_dev size: the queue endpoint orders by ``created_at ASC``
+    and caps ``limit`` at 200, so the freshly-seeded (newest) rows live at the
+    TAIL of a live DB that holds thousands of real ``review_pending`` drive rows.
+    A single ``limit=200, offset=0`` window returns the 200 OLDEST and would miss
+    the seeds deterministically once the table outgrows 200 rows. We therefore
+    page through the WHOLE ``source=drive`` queue (the endpoint reports ``total``)
+    and assert the seeds appear SOMEWHERE in the admin's view — verifying the
+    RBAC scope (admin sees every worker's docs incl. NULL received_by) without
+    depending on the seeds being in the first N rows.
+    """
     app = _make_app(pool, ADMIN)
+    ids: set[int] = set()
     async with _client(app) as cl:
-        r = await cl.get("/api/intake/review/queue", params={"source": "drive", "limit": 200})
-    assert r.status_code == 200, r.text
-    ids = {it["proposal_id"] for it in r.json()["items"]}
+        offset = 0
+        page_size = 200
+        while True:
+            r = await cl.get(
+                "/api/intake/review/queue",
+                params={"source": "drive", "limit": page_size, "offset": offset},
+            )
+            assert r.status_code == 200, r.text
+            body = r.json()
+            items = body["items"]
+            ids.update(it["proposal_id"] for it in items)
+            offset += page_size
+            # Stop when this page was the last (fewer than a full page returned)
+            # or we have covered the reported total. ``total`` is the full count
+            # BEFORE pagination, so it is the authoritative stop condition.
+            if len(items) < page_size or offset >= body["total"]:
+                break
     assert {seed["p_owner"], seed["p_other"], seed["p_nomatch"], seed["p_null"]} <= ids
 
 
