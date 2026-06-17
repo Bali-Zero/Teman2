@@ -63,7 +63,7 @@ DOMAIN_REGISTRY: dict[str, dict[str, Any]] = {
                      "work permit", "stay permit", "foreigner", "expat"},
     },
     "company": {
-        "notebook_id": "045f3cdb-ef62-488c-90ba-82594928b671",
+        "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
         "label": "Company & Licensing",
         "keywords": {"company", "kbli", "pma", "oss", "licensing", "nib",
                      "investment", "business", "pt ", "perseroan"},
@@ -87,13 +87,13 @@ DOMAIN_REGISTRY: dict[str, dict[str, Any]] = {
                      "competitor", "bpjs", "umr", "salary"},
     },
     "editorial": {
-        "notebook_id": "42687fcb-87fc-40b1-8af8-8a2ff91f9c4c",
+        "notebook_id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",
         "label": "Editorial & Market",
         "keywords": {"seo", "content", "market", "intel", "trends",
                      "news", "article", "editorial"},
     },
     "lifestyle": {
-        "notebook_id": "aa9ac5d7-5090-46c7-9d09-89cec4ba13de",
+        "notebook_id": "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c",
         "label": "Expat Life",
         "keywords": {"lifestyle", "expat", "healthcare", "cost of living",
                      "culture", "digital nomad", "education", "school"},

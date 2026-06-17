@@ -65,7 +65,7 @@ REGULATORY_DOMAINS = [
         "name": "OSS (Business Registration)",
         "query": "site:oss.go.id OR site:bkpm.go.id perubahan terbaru izin usaha NIB investasi PMA Indonesia 2025 2026",
         "notebook_domain": "company",
-        "notebook_id": "045f3cdb-ef62-488c-90ba-82594928b671",
+        "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
     },
     {
         "name": "DJP (Tax Authority)",
