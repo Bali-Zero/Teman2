@@ -1,0 +1,86 @@
+{
+  "run_at": "2026-06-14T07:00:00+08:00",
+  "today": "2026-06-14",
+  "yesterday_seen_count": 20,
+  "new_today_count": 3,
+  "partial": true,
+  "nb_query_errors": [],
+  "nb_notes": "Tutti e 4 i NB-INTEL (Regulation, Press, Immigration, Tax) hanno risposto nessuna novita per il periodo 24-48h.",
+  "unreachable_sources": [
+    "hukumonline.com (403 Cloudflare)",
+    "muc.co.id (403 Forbidden)"
+  ],
+  "deltas": [
+    {
+      "citation": "KBLI 2025 (implementasi AHU Online dan OSS, effettivo 15 Juni 2026)",
+      "title_id": "KBLI 2025 Mulai Diterapkan di Sistem AHU Online dan OSS Mulai 15 Juni",
+      "title_en": "KBLI 2025 Classification Codes Go Live on AHU Online and OSS from 15 June 2026",
+      "service_line": [
+        "company"
+      ],
+      "severity": "high",
+      "confidence": "medium",
+      "impact_note": "All new PT PMA company registrations and amendments via AHU Online and OSS from 15 June 2026 must use KBLI 2025 codes — old codes no longer accepted; pending submissions must be verified against new classification before tomorrow.",
+      "summary": "From 15 June 2026 AHU Online (Kemenkumham company registry) and OSS (Online Single Submission) enforce KBLI 2025 classification codes for all new company registrations and amendments. OSS system was under scheduled maintenance 13-14 June 2026 and relaunches 15 June with new KBLI 2025 structure. Bali Zero clients with pending PT PMA setup or OSS licensing must verify selected KBLI codes against 2025 classification before submission.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1820061/kbli-2025-mulai-diterapkan-di-sistem-ahu-online-dan-oss-mulai-15-juni",
+      "verbatim_excerpt": "KBLI 2025 Mulai Diterapkan di Sistem AHU Online dan OSS Mulai 15 Juni — OSS system under maintenance 13-14 June relaunches 15 June with new classification. From 15 June 2026 all new company registrations and amendments via AHU Online and OSS must use KBLI 2025 codes.",
+      "first_seen_at": "2026-06-14T07:00:00+08:00"
+    },
+    {
+      "citation": "PER-19/PJ/2025",
+      "title_id": "Ingat, Tak Laporkan SPT Bisa Berujung Penonaktifan Akses Faktur",
+      "title_en": "Reminder: Failure to File SPT Can Lead to Deactivation of e-Faktur Access",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "PT PMA clients with PKP status on Bali Zero tax retainer risk e-faktur deactivation if they miss 3 consecutive monthly VAT returns or 6 periods in the same calendar year — verify June SPT compliance for all active PKP clients.",
+      "summary": "DJP reminder (13 June 2026, DDTC) under PER-19/PJ/2025: a PKP (Pengusaha Kena Pajak) that fails to file annual SPT or monthly VAT returns for 3 consecutive months or 6 periods in a calendar year faces deactivation of e-faktur (electronic invoice) access. Affected PKPs have 5 working days to submit a clarification letter to their local KPP (tax office) to restore access.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1820063/ingat-tak-laporkan-spt-bisa-berujung-penonaktifan-akses-faktur",
+      "verbatim_excerpt": "DJP dapat menonaktifkan akses faktur PKP yang tidak melaporkan SPT Tahunan atau SPT Masa PPN selama 3 masa pajak berturut-turut atau 6 masa pajak dalam satu tahun kalender. PKP yang dinonaktifkan memiliki 5 hari kerja untuk menyampaikan klarifikasi ke KPP setempat.",
+      "first_seen_at": "2026-06-14T07:00:00+08:00"
+    },
+    {
+      "citation": "PMK 6/2026",
+      "title_id": "Kemenaker dan BNSP Siapkan Sertifikasi Magang Nasional — peserta NPWP bebas PPh Pasal 21",
+      "title_en": "Kemenaker + BNSP National Internship Certification; Internship Stipends PPh Pasal 21 Exempt for NPWP Holders (PMK 6/2026)",
+      "service_line": [
+        "tax",
+        "regulatory"
+      ],
+      "severity": "low",
+      "confidence": "medium",
+      "impact_note": "PT PMA clients employing Indonesian interns under MagangHub national program: internship stipends are PPh Pasal 21 exempt for participants holding NPWP — verify payroll configuration.",
+      "summary": "DDTC reported (13 June 2026) that Kemenaker and BNSP are preparing 15 certification schemes for MagangHub national internship program graduates. The article confirmed that under PMK 6/2026, internship participants holding NPWP are exempt from PPh Pasal 21 on stipend payments.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1820066/kemenaker-dan-bnsp-siapkan-sertifikasi-untuk-lulusan-magang-nasional",
+      "verbatim_excerpt": "peserta magang yang memiliki NPWP dibebaskan dari PPh Pasal 21 atas uang saku yang diterima dalam program MagangHub",
+      "first_seen_at": "2026-06-14T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistema amministrativo perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV tidak termasuk penerima fasilitas PPh Final UMKM 0,5%)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025 from NPPN to PPh Final UMKM 0.5%)",
+    "22/MK/EF.2/2026 (nilai kurs — routine, low relevance for Bali Zero service lines)",
+    "PP 20/2026; Pasal 31E ayat (1) UU PPh s.t.d.d UU HPP (PT dan CV tarif PPh 11% via Pasal 31E(1), June 13 2026)",
+    "KBLI 2025 (implementasi AHU Online dan OSS, effettivo 15 Juni 2026)",
+    "PER-19/PJ/2025",
+    "PMK 6/2026"
+  ]
+}

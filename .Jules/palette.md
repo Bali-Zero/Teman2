@@ -42,3 +42,11 @@
 
 **Learning:** Small utility widgets that contain text inputs (like FeedbackWidget) often feel "heavy" when they use standard textareas with fixed heights and internal scrollbars. Utilizing the project's standard AutoResizeTextarea component ensures a fluid, consistent input experience across all interface layers. Additionally, secondary widgets must strictly adhere to semantic labeling (htmlFor/id) and ARIA dialog roles to ensure they are not overlooked by screen reader users.
 **Action:** Consistently use AutoResizeTextarea for multi-line inputs in all UI layers. Always associate labels with inputs using semantic IDs and apply aria-labelledby to dialog containers.
+
+## 2026-06-14 - [A11y for Disclosure Widgets and Semantic Action Lists]
+**Learning:** Disclosure widgets (collapsible panels) require explicit programmatic relationships using `aria-controls` and `useId` to ensure screen readers can announce the expanded content. Additionally, refactoring groups of interactive elements (like quick actions or citation lists) from `div` to semantic `ul`/`li` containers provides a clearer document structure and navigation context for assistive technologies.
+**Action:** Always use `useId` to link toggle buttons to their content via `aria-controls`. Prefer semantic list structures (`ul`/`li`) for collections of actions or items even when visual styling removes bullets/padding.
+
+## 2026-06-15 - [Proper Nesting in Semantic Lists and Standard Iconography]
+**Learning:** Refactoring generic containers to semantic lists must be done with care to avoid invalid HTML (e.g., nesting an `<li>` directly inside another `<li>`). Additionally, micro-UX improvements should adhere to established iconography patterns—such as using `ChevronRight` for collapsed and `ChevronDown` for expanded states—to maintain an intuitive visual language across the application.
+**Action:** Double-check HTML structure for valid nesting when using `ul`/`li`. Follow project-standard icon orientations for collapsible components to ensure a predictable user experience.

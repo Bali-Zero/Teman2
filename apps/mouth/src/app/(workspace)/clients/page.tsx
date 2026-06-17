@@ -15,7 +15,6 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   Users,
-  Search,
   Filter,
   UserPlus,
   LayoutGrid,
@@ -33,13 +32,22 @@ const PrimeNexusLayout = dynamic(
   () => import("@/components/maps/prime/PrimeNexusLayout"),
   {
     ssr: false,
-    loading: () => <div style={{ padding: 24 }}>Caricamento mappa…</div>,
+    loading: () => (
+      <div style={{ padding: 24 }}>{STRINGS.common.loadingMap}</div>
+    ),
   },
 );
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { formatIDRCompact } from "@balizero/core/utils";
+import {
+  FilterBar,
+  FilterSelect,
+  ListPageHeader,
+  SearchBox,
+  StatChips,
+} from "@balizero/core";
 import { api } from "@/lib/api";
 import type { Client } from "@/lib/api/crm/crm.types";
 import { CLIENT_STATUSES, COMMON_NATIONALITIES } from "@/lib/api/crm/crm.types";
@@ -49,8 +57,13 @@ import { CRMErrorBoundary, CRMSkeleton } from "@/components/crm";
 import { useCrmClients, useCrmStats } from "@/hooks";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { useQuery } from "@tanstack/react-query";
-import { useDebounce } from "@/lib/hooks/optimized/useDebounce";
 import { logger } from "@/lib/logger";
+import {
+  CLIENTS_VIEW_MODE_KEY,
+  loadViewMode,
+  saveViewMode,
+} from "@/lib/utils/view-mode-storage";
+import { STRINGS } from "@/lib/strings";
 
 // Status badge styling
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -82,6 +95,12 @@ const PAGE_SIZE = 50;
 const ESTIMATED_CARD_HEIGHT = 200;
 const VIRTUALIZATION_THRESHOLD = 30;
 const SEARCH_DEBOUNCE_MS = 300;
+
+const FILTER_SELECT_STYLE: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.05)",
+  background: "rgba(19, 19, 21, 0.5)",
+  color: "var(--bz-text-1)",
+};
 
 /**
  * Virtualized client grid for better performance with large lists
@@ -148,6 +167,30 @@ function VirtualizedClientGrid({
     }
   }, [virtualizer, shouldVirtualize]);
 
+  // Identical footer on both render paths (only one mounts per render).
+  const loadMoreFooter = (
+    <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+      {isLoadingMore && (
+        <div
+          className="flex items-center gap-2 text-sm"
+          style={{ color: "var(--bz-text-2)" }}
+        >
+          <div
+            className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+            style={{ borderColor: "var(--bz-accent)" }}
+          />
+          Loading more clients...
+        </div>
+      )}
+      {!hasMore && totalClients > PAGE_SIZE && (
+        <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+          All {isMounted ? totalClients.toLocaleString("en-US") : totalClients}{" "}
+          clients loaded
+        </span>
+      )}
+    </div>
+  );
+
   if (!shouldVirtualize) {
     return (
       <>
@@ -156,30 +199,7 @@ function VirtualizedClientGrid({
             <ClientCard key={client.id} client={client} />
           ))}
         </div>
-        <div
-          ref={loadMoreRef}
-          className="h-10 flex items-center justify-center"
-        >
-          {isLoadingMore && (
-            <div
-              className="flex items-center gap-2 text-sm"
-              style={{ color: "var(--bz-text-2)" }}
-            >
-              <div
-                className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
-                style={{ borderColor: "var(--bz-accent)" }}
-              />
-              Loading more clients...
-            </div>
-          )}
-          {!hasMore && totalClients > PAGE_SIZE && (
-            <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
-              All{" "}
-              {isMounted ? totalClients.toLocaleString("en-US") : totalClients}{" "}
-              clients loaded
-            </span>
-          )}
-        </div>
+        {loadMoreFooter}
       </>
     );
   }
@@ -229,27 +249,7 @@ function VirtualizedClientGrid({
           );
         })}
       </div>
-      <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
-        {isLoadingMore && (
-          <div
-            className="flex items-center gap-2 text-sm"
-            style={{ color: "var(--bz-text-2)" }}
-          >
-            <div
-              className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
-              style={{ borderColor: "var(--bz-accent)" }}
-            />
-            Loading more clients...
-          </div>
-        )}
-        {!hasMore && totalClients > PAGE_SIZE && (
-          <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
-            All{" "}
-            {isMounted ? totalClients.toLocaleString("en-US") : totalClients}{" "}
-            clients loaded
-          </span>
-        )}
-      </div>
+      {loadMoreFooter}
     </div>
   );
 }
@@ -261,7 +261,7 @@ function ClientsListContent() {
   const router = useRouter();
   const [listParent] = useAutoAnimate();
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     status: "",
@@ -273,33 +273,19 @@ function ClientsListContent() {
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  // P2.2: persist the view toggle across navigations (lazy-init + write-through)
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    loadViewMode(
+      CLIENTS_VIEW_MODE_KEY,
+      ["list", "kanban", "table", "map"],
+      "list",
+    ),
+  );
+  useEffect(() => {
+    saveViewMode(CLIENTS_VIEW_MODE_KEY, viewMode);
+  }, [viewMode]);
   const [silentFilter, setSilentFilter] = useState<number | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Keyboard shortcut: '/' to focus search, Escape to clear
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isEditing =
-        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-      if (e.key === "/" && !isEditing) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-      if (
-        e.key === "Escape" &&
-        document.activeElement === searchInputRef.current
-      ) {
-        searchInputRef.current?.blur();
-        setSearchQuery("");
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
 
   // Load current user profile
   useEffect(() => {
@@ -526,16 +512,10 @@ function ClientsListContent() {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: "var(--bz-text-1)" }}
-          >
-            Clients
-          </h1>
-          <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+      <ListPageHeader
+        title="Clients"
+        subtitle={
+          <>
             {isMounted
               ? filteredClients.length.toLocaleString("en-US")
               : filteredClients.length}{" "}
@@ -547,107 +527,90 @@ function ClientsListContent() {
             {stats && (
               <span className="ml-2 text-xs">• {stats.totalClients} total</span>
             )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* View Toggle */}
-          <div
-            className="p-1 rounded-lg flex shadow-md backdrop-blur-md"
-            style={{
-              background: "rgba(35, 35, 40, 0.45)",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <button
-              onClick={() => setViewMode("list")}
-              className="p-2 rounded-md transition-all"
-              style={
-                viewMode === "list"
-                  ? {
-                      background: "rgba(255, 255, 255, 0.1)",
-                      color: "var(--bz-text-1)",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    }
-                  : { color: "var(--bz-text-2)" }
-              }
-              title="List View"
-              aria-label="Switch to list view"
+          </>
+        }
+        actions={
+          <>
+            {/* View Toggle */}
+            <div
+              className="p-1 rounded-lg flex shadow-md backdrop-blur-md"
+              style={{
+                background: "rgba(35, 35, 40, 0.45)",
+                border: "1px solid rgba(255,255,255,0.05)",
+              }}
             >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("kanban")}
-              className="p-2 rounded-md transition-all"
-              style={
-                viewMode === "kanban"
-                  ? {
-                      background: "rgba(255, 255, 255, 0.1)",
-                      color: "var(--bz-text-1)",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    }
-                  : { color: "var(--bz-text-2)" }
-              }
-              title="Kanban Board"
-              aria-label="Switch to kanban board view"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className="p-2 rounded-md transition-all"
-              style={
-                viewMode === "table"
-                  ? {
-                      background: "rgba(255, 255, 255, 0.1)",
-                      color: "var(--bz-text-1)",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    }
-                  : { color: "var(--bz-text-2)" }
-              }
-              title="Table View"
-              aria-label="Switch to table view"
-            >
-              <Table2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className="p-2 rounded-md transition-all"
-              style={
-                viewMode === "map"
-                  ? {
-                      background: "rgba(255, 255, 255, 0.1)",
-                      color: "var(--bz-text-1)",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    }
-                  : { color: "var(--bz-text-2)" }
-              }
-              title="Map View (Prime 3D)"
-              aria-label="Switch to map view"
-            >
-              <MapIcon className="w-4 h-4" />
-            </button>
-          </div>
+              {(
+                [
+                  {
+                    mode: "list",
+                    icon: List,
+                    title: "List View",
+                    aria: "Switch to list view",
+                  },
+                  {
+                    mode: "kanban",
+                    icon: LayoutGrid,
+                    title: "Kanban Board",
+                    aria: "Switch to kanban board view",
+                  },
+                  {
+                    mode: "table",
+                    icon: Table2,
+                    title: "Table View",
+                    aria: "Switch to table view",
+                  },
+                  {
+                    mode: "map",
+                    icon: MapIcon,
+                    title: "Map View (Prime 3D)",
+                    aria: "Switch to map view",
+                  },
+                ] as const
+              ).map(({ mode, icon: Icon, title, aria }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className="p-2 rounded-md transition-all"
+                  style={
+                    viewMode === mode
+                      ? {
+                          background: "rgba(255, 255, 255, 0.1)",
+                          color: "var(--bz-text-1)",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        }
+                      : { color: "var(--bz-text-2)" }
+                  }
+                  title={title}
+                  aria-label={aria}
+                >
+                  <Icon className="w-4 h-4" />
+                </button>
+              ))}
+            </div>
 
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => router.push("/clients/analytics")}
-          >
-            <BarChart3 className="w-4 h-4" />
-            Analytics
-          </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => router.push("/clients/analytics")}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </Button>
 
-          <Button className="gap-2" onClick={handleNewClient}>
-            <UserPlus className="w-4 h-4" />
-            New Client
-          </Button>
-        </div>
-      </div>
+            <Button className="gap-2" onClick={handleNewClient}>
+              <UserPlus className="w-4 h-4" />
+              New Client
+            </Button>
+          </>
+        }
+      />
 
       {/* Revenue Stats Ribbon */}
       {stats && isMounted && (
-        <div className="flex flex-wrap gap-3 text-xs">
-          {[
+        <StatChips
+          className="flex flex-wrap gap-3 text-xs"
+          chipClassName="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+          items={[
             {
               label: "Total Clients",
               value: stats.totalClients.toLocaleString("en-US"),
@@ -682,22 +645,22 @@ function ClientsListContent() {
               bg: "rgba(74,222,128,0.08)",
               border: "rgba(74,222,128,0.15)",
             },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-              style={{ background: s.bg, border: `1px solid ${s.border}` }}
-            >
-              <span style={{ color: "var(--bz-text-2)" }}>{s.label}</span>
-              <span
-                className="font-semibold tabular-nums"
-                style={{ color: s.color }}
-              >
-                {s.value}
-              </span>
-            </div>
-          ))}
-        </div>
+          ].map((s) => ({
+            key: s.label,
+            style: { background: s.bg, border: `1px solid ${s.border}` },
+            content: (
+              <>
+                <span style={{ color: "var(--bz-text-2)" }}>{s.label}</span>
+                <span
+                  className="font-semibold tabular-nums"
+                  style={{ color: s.color }}
+                >
+                  {s.value}
+                </span>
+              </>
+            ),
+          }))}
+        />
       )}
 
       {/* Health Awareness Bar — global counts from backend stats */}
@@ -760,42 +723,27 @@ function ClientsListContent() {
       {/* Controls Row */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-              style={{ color: "var(--bz-text-2)" }}
-            />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search clients… (press / to focus)"
-              aria-label="Search clients"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              title="Press / to focus, Escape to clear"
-              className="w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 transition-all duration-300 shadow-sm hover:shadow-md"
-              style={
-                {
-                  border: "1px solid rgba(255, 255, 255, 0.05)",
-                  background: "rgba(35, 35, 40, 0.45)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  color: "var(--bz-text-1)",
-                  "--tw-ring-color": "rgba(212,132,90,0.5)",
-                } as React.CSSProperties
-              }
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                style={{ color: "var(--bz-text-2)" }}
-                aria-label="Clear search"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          <SearchBox
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+            onDebouncedChange={setDebouncedSearch}
+            debounceMs={SEARCH_DEBOUNCE_MS}
+            placeholder="Search clients… (press / to focus)"
+            ariaLabel="Search clients"
+            title="Press / to focus, Escape to clear"
+            clearable
+            className="focus:ring-2 transition-all duration-300 shadow-sm hover:shadow-md"
+            style={
+              {
+                border: "1px solid rgba(255, 255, 255, 0.05)",
+                background: "rgba(35, 35, 40, 0.45)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                color: "var(--bz-text-1)",
+                "--tw-ring-color": "rgba(212,132,90,0.5)",
+              } as React.CSSProperties
+            }
+          />
           {currentUserEmail && (
             <button
               onClick={() =>
@@ -863,197 +811,131 @@ function ClientsListContent() {
           </Button>
         </div>
 
-        {/* Expanded Filters Panel */}
         {showFilters && (
-          <div
-            className="p-4 rounded-xl space-y-4 shadow-xl backdrop-blur-xl transition-all duration-300"
+          <FilterBar
+            activeCount={activeFiltersCount}
+            onClearAll={clearFilters}
+            className="rounded-xl shadow-xl backdrop-blur-xl transition-all duration-300"
             style={{
               border: "1px solid rgba(255, 255, 255, 0.05)",
               background: "rgba(32, 32, 36, 0.65)",
             }}
+            clearLabel={
+              <>
+                <X className="w-3 h-3" />
+                Clear all
+              </>
+            }
           >
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium" style={{ color: "var(--bz-text-1)" }}>
-                Filters
-              </h3>
-              {activeFiltersCount > 0 && (
-                <button
-                  onClick={clearFilters}
-                  className="text-sm hover:underline flex items-center gap-1"
-                  style={{ color: "var(--bz-accent)" }}
-                >
-                  <X className="w-3 h-3" />
-                  Clear all
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label
-                  className="block text-sm font-medium mb-1.5"
-                  style={{ color: "var(--bz-text-2)" }}
-                >
-                  Status
-                </label>
-                <select
-                  value={filters.status}
-                  onChange={(e) =>
-                    setFilters({ ...filters, status: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    background: "rgba(19, 19, 21, 0.5)",
-                    color: "var(--bz-text-1)",
-                  }}
-                >
-                  <option value="">All statuses</option>
-                  {CLIENT_STATUSES.map(({ value, label }) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label
-                  className="block text-sm font-medium mb-1.5"
-                  style={{ color: "var(--bz-text-2)" }}
-                >
-                  Nationality
-                </label>
-                <select
-                  value={filters.nationality}
-                  onChange={(e) =>
-                    setFilters({ ...filters, nationality: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    background: "rgba(19, 19, 21, 0.5)",
-                    color: "var(--bz-text-1)",
-                  }}
-                >
-                  <option value="">All nationalities</option>
-                  {COMMON_NATIONALITIES.map((nat) => (
-                    <option key={nat} value={nat}>
-                      {nat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    style={{ color: "var(--bz-text-2)" }}
+            <FilterSelect
+              label="Status"
+              value={filters.status}
+              onChange={(v) => setFilters({ ...filters, status: v })}
+              selectClassName="transition-all duration-300"
+              selectStyle={FILTER_SELECT_STYLE}
+            >
+              <option value="">All statuses</option>
+              {CLIENT_STATUSES.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect
+              label="Nationality"
+              value={filters.nationality}
+              onChange={(v) => setFilters({ ...filters, nationality: v })}
+              selectClassName="transition-all duration-300"
+              selectStyle={FILTER_SELECT_STYLE}
+            >
+              <option value="">All nationalities</option>
+              {COMMON_NATIONALITIES.map((nat) => (
+                <option key={nat} value={nat}>
+                  {nat}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect
+              label="Assigned To"
+              labelExtra={
+                currentUserEmail ? (
+                  <button
+                    onClick={() =>
+                      setFilters({
+                        ...filters,
+                        assigned_to:
+                          filters.assigned_to === currentUserEmail
+                            ? ""
+                            : currentUserEmail,
+                      })
+                    }
+                    className="text-xs px-2 py-0.5 rounded-full transition-colors"
+                    style={{
+                      background:
+                        filters.assigned_to === currentUserEmail
+                          ? "var(--bz-accent)"
+                          : "rgba(255,255,255,0.08)",
+                      color:
+                        filters.assigned_to === currentUserEmail
+                          ? "#fff"
+                          : "var(--bz-text-2)",
+                    }}
                   >
-                    Assigned To
-                  </label>
-                  {currentUserEmail && (
-                    <button
-                      onClick={() =>
-                        setFilters({
-                          ...filters,
-                          assigned_to:
-                            filters.assigned_to === currentUserEmail
-                              ? ""
-                              : currentUserEmail,
-                        })
-                      }
-                      className="text-xs px-2 py-0.5 rounded-full transition-colors"
-                      style={{
-                        background:
-                          filters.assigned_to === currentUserEmail
-                            ? "var(--bz-accent)"
-                            : "rgba(255,255,255,0.08)",
-                        color:
-                          filters.assigned_to === currentUserEmail
-                            ? "#fff"
-                            : "var(--bz-text-2)",
-                      }}
-                    >
-                      My Clients
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={filters.assigned_to}
-                  onChange={(e) =>
-                    setFilters({ ...filters, assigned_to: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    background: "rgba(19, 19, 21, 0.5)",
-                    color: "var(--bz-text-1)",
-                  }}
-                >
-                  <option value="">All team members</option>
-                  {currentUserEmail &&
-                    !uniqueAssignees.includes(currentUserEmail) && (
-                      <option value={currentUserEmail}>
-                        {teamMemberOptions.find(
-                          (m) => m.value === currentUserEmail,
-                        )?.label || currentUserEmail.split("@")[0]}{" "}
-                        (me)
-                      </option>
-                    )}
-                  {uniqueAssignees.map((assignee) => {
-                    const member = teamMemberOptions.find(
-                      (m) => m.value === assignee,
-                    );
-                    const displayName =
-                      member?.label || assignee?.split("@")[0];
-                    return (
-                      <option key={assignee} value={assignee}>
-                        {displayName}
-                        {assignee === currentUserEmail ? " (me)" : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-              <div>
-                <label
-                  className="block text-sm font-medium mb-1.5"
-                  style={{ color: "var(--bz-text-2)" }}
-                >
-                  Passport Expiry
-                </label>
-                <select
-                  value={
-                    filters.passport_expiring_days === undefined
-                      ? ""
-                      : String(filters.passport_expiring_days)
-                  }
-                  onChange={(e) =>
-                    setFilters({
-                      ...filters,
-                      passport_expiring_days:
-                        e.target.value === ""
-                          ? undefined
-                          : Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    background: "rgba(19, 19, 21, 0.5)",
-                    color: "var(--bz-text-1)",
-                  }}
-                >
-                  <option value="">Any</option>
-                  <option value="0">Already expired</option>
-                  <option value="30">Expiring in 30 days</option>
-                  <option value="90">Expiring in 90 days</option>
-                  <option value="180">Expiring in 180 days</option>
-                  <option value="365">Expiring in 1 year</option>
-                </select>
-              </div>
-            </div>
-          </div>
+                    My Clients
+                  </button>
+                ) : undefined
+              }
+              value={filters.assigned_to}
+              onChange={(v) => setFilters({ ...filters, assigned_to: v })}
+              selectClassName="transition-all duration-300"
+              selectStyle={FILTER_SELECT_STYLE}
+            >
+              <option value="">All team members</option>
+              {currentUserEmail &&
+                !uniqueAssignees.includes(currentUserEmail) && (
+                  <option value={currentUserEmail}>
+                    {teamMemberOptions.find((m) => m.value === currentUserEmail)
+                      ?.label || currentUserEmail.split("@")[0]}{" "}
+                    (me)
+                  </option>
+                )}
+              {uniqueAssignees.map((assignee) => {
+                const member = teamMemberOptions.find(
+                  (m) => m.value === assignee,
+                );
+                const displayName = member?.label || assignee?.split("@")[0];
+                return (
+                  <option key={assignee} value={assignee}>
+                    {displayName}
+                    {assignee === currentUserEmail ? " (me)" : ""}
+                  </option>
+                );
+              })}
+            </FilterSelect>
+            <FilterSelect
+              label="Passport Expiry"
+              value={
+                filters.passport_expiring_days === undefined
+                  ? ""
+                  : String(filters.passport_expiring_days)
+              }
+              onChange={(v) =>
+                setFilters({
+                  ...filters,
+                  passport_expiring_days: v === "" ? undefined : Number(v),
+                })
+              }
+              selectClassName="transition-all duration-300"
+              selectStyle={FILTER_SELECT_STYLE}
+            >
+              <option value="">Any</option>
+              <option value="0">Already expired</option>
+              <option value="30">Expiring in 30 days</option>
+              <option value="90">Expiring in 90 days</option>
+              <option value="180">Expiring in 180 days</option>
+              <option value="365">Expiring in 1 year</option>
+            </FilterSelect>
+          </FilterBar>
         )}
       </div>
 
@@ -1448,7 +1330,7 @@ function ClientsListContent() {
 /**
  * Main page component with error boundary
  */
-export default function ClientiPage() {
+export default function ClientsPage() {
   return (
     <CRMErrorBoundary section="Clients">
       <ClientsListContent />

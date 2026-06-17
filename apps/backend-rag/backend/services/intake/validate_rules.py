@@ -43,8 +43,6 @@ _EXPIRY_PAST_GRACE_DAYS = 3650  # 10y — older than this in the past = malforme
 
 # --- KBLI dynamic source (Qdrant). ---
 _KBLI_COLLECTION = os.getenv("INTAKE_KBLI_COLLECTION", "kbli_2025_final")
-_QDRANT_URL = os.getenv("QDRANT_URL", "")
-_QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 _KBLI_FETCH_TIMEOUT = float(os.getenv("INTAKE_KBLI_FETCH_TIMEOUT", "30"))
 
 # Process-wide cache of the valid KBLI code set (public data; cheap to cache).
@@ -82,13 +80,15 @@ async def _fetch_kbli_codes_from_qdrant() -> frozenset[str]:
     (no payload index), so we scroll the whole collection once (~1.5k codes,
     ~12s) and cache the result. Read-only; public reference data.
     """
-    if not _QDRANT_URL or not _QDRANT_API_KEY:
+    qdrant_url = os.getenv("QDRANT_URL", "")
+    qdrant_api_key = os.getenv("QDRANT_API_KEY", "")
+    if not qdrant_url or not qdrant_api_key:
         raise RuntimeError("QDRANT_URL / QDRANT_API_KEY not set; cannot validate KBLI")
 
     codes: set[str] = set()
     offset: Any = None
-    headers = {"api-key": _QDRANT_API_KEY, "Content-Type": "application/json"}
-    url = f"{_QDRANT_URL.rstrip('/')}/collections/{_KBLI_COLLECTION}/points/scroll"
+    headers = {"api-key": qdrant_api_key, "Content-Type": "application/json"}
+    url = f"{qdrant_url.rstrip('/')}/collections/{_KBLI_COLLECTION}/points/scroll"
     async with httpx.AsyncClient(timeout=_KBLI_FETCH_TIMEOUT) as client:
         while True:
             body: dict[str, Any] = {

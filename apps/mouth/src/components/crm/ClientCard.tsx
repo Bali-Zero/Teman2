@@ -38,6 +38,7 @@ const SENTIMENT_BG = {
 
 import { getCountryFlag } from "@/lib/utils/nationality-flags";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 
 export const ClientCard = React.memo(
   ({ client, isDragging }: ClientCardProps) => {
@@ -234,7 +235,9 @@ export const ClientCard = React.memo(
                       }`}
                       title={[
                         aiArchetype ? `AI archetype: ${aiArchetype}` : null,
-                        aiConfidence !== null ? `Confidence: ${aiConfidence}%` : null,
+                        aiConfidence !== null
+                          ? `Confidence: ${aiConfidence}%`
+                          : null,
                         aiSummaryFreshness !== null
                           ? `Generated ${aiSummaryFreshness === 0 ? "today" : `${aiSummaryFreshness}d ago`}`
                           : null,
@@ -268,19 +271,18 @@ export const ClientCard = React.memo(
             {/* Assigned team member avatar */}
             {assignedName && (
               <div className="shrink-0" title={`Assigned: ${assignedName}`}>
-                {assignedAvatar ? (
-                  <img
-                    src={assignedAvatar}
-                    alt={assignedName}
-                    className="w-7 h-7 rounded-full object-cover ring-1 ring-[rgba(255,255,255,0.15)]"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.15)] flex items-center justify-center">
-                    <span className="text-[9px] font-bold text-[var(--tx-secondary)] uppercase">
-                      {assignedName.slice(0, 2)}
-                    </span>
-                  </div>
-                )}
+                <AvatarWithFallback
+                  src={assignedAvatar}
+                  alt={assignedName}
+                  className="w-7 h-7 rounded-full object-cover ring-1 ring-[rgba(255,255,255,0.15)]"
+                  fallback={
+                    <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.15)] flex items-center justify-center">
+                      <span className="text-[9px] font-bold text-[var(--tx-secondary)] uppercase">
+                        {assignedName.slice(0, 2)}
+                      </span>
+                    </div>
+                  }
+                />
               </div>
             )}
           </div>

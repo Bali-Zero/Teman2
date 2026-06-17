@@ -104,7 +104,7 @@ La conoscenza raggiunge chi ne ha bisogno attraverso tre livelli:
 
 - Gli stream esistenti (`garuda:raw`, `nexus:gaps`) sono i primi canali. Altri nasceranno (`olympus:insights`, `canary:alerts`)
 - La condivisione ha un filtro di rilevanza — non broadcast. Ogni agente dichiara i propri interessi
-- Le skill e gli insight condivisi contengono conoscenza operativa, mai dati OSINT
+- Le skill e gli insight condivisi contengono conoscenza operativa, mai PII/OSINT in chiaro
 
 ### Pilastro 4: Confronto
 
@@ -176,7 +176,7 @@ L'autonomia non e' mai totale. Le decisioni strutturali (architettura, dati sens
 Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 
 1. **CLI-only per LLM.** `claude --print`, `gemini --print`, subprocess. Mai API HTTP Anthropic/Google/OpenAI. DeepSeek API e' l'unica eccezione.
-2. **OSINT blindato.** I dati intelligence non escono mai dal Pro. Mai frontend, mai cloud, mai team. Le skill e gli insight condivisi contengono conoscenza operativa, non dati.
+2. **PII/OSINT non trascritti in chiaro.** La frontiera non e' "un LLM non puo' vedere contesto operativo": la frontiera e' che nessun LLM, agente, skill, memoria, report, log, alert, HGT payload, notebook, artefatto pubblico o output condiviso deve trascrivere o persistere in chiaro dati cliente o OSINT (nomi, telefoni, email, passport/KTP/NPWP, chat private, credenziali, raw intelligence). Il processing autorizzato puo' usare contesto operativo quando serve; l'output deve parlare in forma astratta, redatta o referenziata (`client_id`, hash, placeholder). Il mirror OSINT/WhatsApp resta Pro-bound: niente copie, repliche o dataset raw fuori dal Pro.
 3. **Event-driven, durabilità per canale.** Nessun polling, nessun orchestratore centrale. Ogni canale evento ha la propria strategia di durabilità, scelta in base al consumer:
 
    | Canale                                                                                                                                                                                                                                                                                          | Implementazione                                                                                                        | Durabilità (claim)                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Test                                                                                                                                                                                                                                                   |

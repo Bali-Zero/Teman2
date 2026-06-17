@@ -24,16 +24,65 @@ TARGET_DIR="${HOME}/Library/LaunchAgents"
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
 
 if [[ -f "${SECRETS_FILE}" ]]; then
-    # shellcheck disable=SC1090
     set -a
+    # shellcheck disable=SC1090
     source "${SECRETS_FILE}"
     set +a
 fi
 
 UID_VAL="$(id -u)"
 DOMAIN="gui/${UID_VAL}"
+LAUNCHCTL_TIMEOUT_SEC="${WR2_LAUNCHCTL_TIMEOUT_SEC:-6}"
+LAUNCHCTL_TIMEOUT_BIN="$(command -v timeout || command -v gtimeout || true)"
 RECOVERIES=()
 ERRORS=()
+
+_with_timeout() {
+    if [[ -n "${LAUNCHCTL_TIMEOUT_BIN}" ]]; then
+        "${LAUNCHCTL_TIMEOUT_BIN}" "${LAUNCHCTL_TIMEOUT_SEC}s" "$@"
+    else
+        "$@"
+    fi
+}
+
+_plist_label() {
+    local plist="$1"
+    local label
+
+    label="$(/usr/libexec/PlistBuddy -c 'Print :Label' "${plist}" 2>/dev/null || true)"
+    if [[ -z "${label}" ]]; then
+        label="$(basename "${plist}" .plist)"
+    fi
+
+    printf '%s\n' "${label}"
+}
+
+_is_disabled() {
+    local label="$1"
+    grep -F "\"${label}\" => disabled" <<<"${DISABLED_SERVICES}" >/dev/null
+}
+
+_bootstrap() {
+    local label="$1"
+    local target_plist="$2"
+    local output
+    local status
+
+    if output="$(_with_timeout launchctl bootstrap "${DOMAIN}" "${target_plist}" 2>&1)"; then
+        return 0
+    fi
+
+    status=$?
+    if [[ "${status}" -eq 124 ]]; then
+        output="timeout after ${LAUNCHCTL_TIMEOUT_SEC}s"
+    fi
+    output="${output//$'\n'/ }"
+    if [[ -z "${output}" ]]; then
+        output="exit ${status}"
+    fi
+    ERRORS+=("${label} (bootstrap failed: ${output})")
+    return 1
+}
 
 _telegram() {
     local text="$1"
@@ -54,21 +103,26 @@ if [[ ! -d "${SOURCE_DIR}" ]]; then
     exit 0
 fi
 
+DISABLED_SERVICES="$(_with_timeout launchctl print-disabled "${DOMAIN}" 2>/dev/null || true)"
+
 # Only protect WR2 family (com.balizero.wr2.*). Other plists in
 # infra/launchagents/ are out of scope — their respective owners can
 # write their own watchdog if they need one.
 shopt -s nullglob
 for source_plist in "${SOURCE_DIR}"/com.balizero.wr2.*.plist; do
-    label="$(basename "${source_plist}" .plist)"
-    target_plist="${TARGET_DIR}/${label}.plist"
+    target_plist="${TARGET_DIR}/$(basename "${source_plist}")"
+    label="$(_plist_label "${source_plist}")"
+    if [[ -f "${target_plist}" ]]; then
+        label="$(_plist_label "${target_plist}")"
+    fi
 
     if [[ ! -f "${target_plist}" ]]; then
         echo "[wr2-plist-watchdog] ${label}: missing on disk, restoring..."
         if cp "${source_plist}" "${target_plist}" 2>/dev/null && chmod 0444 "${target_plist}" 2>/dev/null; then
-            if launchctl bootstrap "${DOMAIN}" "${target_plist}" 2>/dev/null; then
+            if _is_disabled "${label}"; then
+                RECOVERIES+=("${label} (restored from git; launchd disabled, not bootstrapped)")
+            elif _bootstrap "${label}" "${target_plist}"; then
                 RECOVERIES+=("${label} (restored from git + bootstrapped)")
-            else
-                ERRORS+=("${label} (file restored, bootstrap failed)")
             fi
         else
             ERRORS+=("${label} (could not write to ${target_plist})")
@@ -77,12 +131,14 @@ for source_plist in "${SOURCE_DIR}"/com.balizero.wr2.*.plist; do
     fi
 
     # File exists — check launchctl knows about it.
-    if ! launchctl print "${DOMAIN}/${label}" >/dev/null 2>&1; then
+    if ! _with_timeout launchctl print "${DOMAIN}/${label}" >/dev/null 2>&1; then
+        if _is_disabled "${label}"; then
+            continue
+        fi
+
         echo "[wr2-plist-watchdog] ${label}: file present but not loaded, bootstrapping..."
-        if launchctl bootstrap "${DOMAIN}" "${target_plist}" 2>/dev/null; then
+        if _bootstrap "${label}" "${target_plist}"; then
             RECOVERIES+=("${label} (bootstrapped, file was already present)")
-        else
-            ERRORS+=("${label} (bootstrap failed; file present, launchctl unloaded)")
         fi
     fi
 done

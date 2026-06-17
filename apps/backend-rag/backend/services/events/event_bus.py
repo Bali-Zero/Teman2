@@ -156,6 +156,44 @@ PG_CHANNEL_MAP: dict[str, str] = {
     "intel_lake_event": "intel_lake.event",
 }
 
+# ── Normative consumer declarations (Antibody #7, 2026-06-13) ────────────────
+# Every PG channel MUST declare who consumes it. The inline comments above are
+# descriptive (and partially aspirational); THIS map is normative and enforced
+# by tests/services/events/test_channel_consumer_parity.py. A channel with no
+# declaration is an orphan: its events would be produced durably (outbox) and
+# then dropped silently until prune. Connectome TAC 2026-06-13 found 5 channels
+# believed orphan that were actually bridge-consumed — this map makes the
+# distinction explicit and machine-checkable.
+#
+# Consumer kinds:
+#   "in_app"  — a handler subscribes to the mapped event_type inside this
+#               backend process (handlers/_core.py, compliance_handlers,
+#               crm_hgt_handlers, partners/events, app_factory SSE,
+#               intel_lake_router, ...).
+#   "bridge"  — scripts/pg-to-organism-bridge.py (Pro daemon) LISTENs the raw
+#               PG channel and forwards to the organism Redis stream.
+#   "external:federation_alerts_daemon" — backend/services/federation_alerts/
+#               daemon.py runs as a dedicated process and LISTENs directly.
+CHANNEL_CONSUMERS: dict[str, frozenset[str]] = {
+    "practice_changed": frozenset({"in_app", "bridge"}),
+    "client_changed": frozenset({"in_app", "bridge"}),
+    "compliance_alert": frozenset({"in_app", "bridge"}),
+    "lkpm_ingest_completed": frozenset({"in_app", "bridge"}),
+    "war_room_event": frozenset({"bridge"}),
+    "wa_message_inserted": frozenset({"in_app"}),
+    "intel_event": frozenset({"in_app", "bridge"}),
+    "cognitive_event": frozenset({"bridge"}),
+    "partner_commission_changed": frozenset({"bridge"}),
+    "federation_alert": frozenset({"bridge", "external:federation_alerts_daemon"}),
+    "cell_pulse_observed": frozenset({"bridge"}),
+    "cell_pulse_sustained_red": frozenset({"bridge"}),
+    "measurer_event": frozenset({"bridge"}),
+    "crm_welcome_completed": frozenset({"bridge"}),
+    "whatsapp_message_received": frozenset({"in_app"}),
+    "asset_provenance": frozenset({"in_app", "bridge"}),
+    "intel_lake_event": frozenset({"in_app"}),
+}
+
 _RECONNECT_DELAY_S = 5
 _PING_INTERVAL_S = 30
 _HANDLER_TIMEOUT_S = 10  # max seconds per handler before it is cancelled

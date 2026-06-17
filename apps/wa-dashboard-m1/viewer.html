@@ -370,6 +370,46 @@
     font-size: 12.5px; padding: 5px 12px; border-radius: 8px;
     box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
   }
+
+  /* View toggle (Conversazioni / Qualità Team) */
+  .view-tabs { display: flex; gap: 4px; }
+  .view-tab {
+    background: transparent; border: 1px solid var(--wa-border);
+    color: var(--wa-text-2); padding: 6px 14px; border-radius: 8px;
+    font-size: 13px; cursor: pointer; font-family: inherit;
+    transition: background 0.1s;
+  }
+  .view-tab.active { background: var(--wa-accent); color: #fff; border-color: var(--wa-accent); }
+  .view-tab:hover:not(.active) { background: var(--wa-panel-2); }
+
+  /* Metrics view (Qualità Team) */
+  .metrics-view {
+    height: calc(100vh - 60px); overflow-y: auto;
+    background: var(--wa-bg); padding: 24px 32px;
+  }
+  .metrics-header h2 { font-size: 18px; font-weight: 600; color: var(--wa-text); margin: 0 0 4px; }
+  .metrics-sub { font-size: 13px; color: var(--wa-text-2); margin-bottom: 18px; }
+  .metrics-table-wrap { background: var(--wa-panel); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+  .metrics-table { border-collapse: collapse; width: 100%; }
+  .metrics-table th, .metrics-table td {
+    padding: 10px 12px; text-align: right; font-size: 13px;
+    border-bottom: 1px solid var(--wa-divider); white-space: nowrap;
+  }
+  .metrics-table th {
+    background: var(--wa-header-bg); color: var(--wa-text-2); font-weight: 600;
+    position: sticky; top: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .metrics-table td.op, .metrics-table th.op { text-align: left; font-weight: 500; color: var(--wa-text); }
+  .metrics-table tbody tr:hover td { background: var(--wa-panel-2); }
+  .metrics-table tbody tr:last-child td { border-bottom: none; }
+  .m-good { color: #08820a; font-weight: 600; }
+  .m-warn { color: #b8860b; font-weight: 600; }
+  .m-bad  { color: var(--wa-error); font-weight: 600; }
+  .m-delta { font-size: 11px; margin-left: 4px; }
+  .m-delta.up { color: var(--wa-error); }
+  .m-delta.down { color: #08820a; }
+  .metrics-legend { margin-top: 14px; font-size: 12px; color: var(--wa-text-3); line-height: 1.7; }
+  .metrics-legend b { color: var(--wa-text-2); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -378,13 +418,17 @@
     <div class="brand-icon">BZ</div>
     <span>WhatsApp Dashboard</span>
   </div>
+  <div class="view-tabs">
+    <button class="view-tab active" data-view="convs">Conversazioni</button>
+    <button class="view-tab" data-view="metrics">Qualità Team</button>
+  </div>
   <div class="meta">
     <span id="health-pill" class="badge">read-only</span>
     <span id="db-host">DB: …</span>
     <span id="last-refresh">aggiornato: …</span>
   </div>
 </header>
-<main>
+<main id="view-convs">
   <div class="col" id="col-teams">
     <div class="col-header">Team</div>
     <div class="loader">Caricamento team…</div>
@@ -401,6 +445,16 @@
     </div>
   </div>
 </main>
+<section id="view-metrics" class="metrics-view" style="display:none">
+  <div class="metrics-header">
+    <h2>Qualità conversazioni — ultimi <span id="m-window">30</span> giorni</h2>
+    <div class="metrics-sub" id="m-sub">Caricamento…</div>
+  </div>
+  <div class="metrics-table-wrap">
+    <table class="metrics-table" id="m-table"></table>
+  </div>
+  <div class="metrics-legend" id="m-legend"></div>
+</section>
 <script>
 let DATA = null;
 let SELECTED_TEAM = null;
@@ -767,6 +821,90 @@ async function checkHealth() {
       document.getElementById("health-pill").style.color = "var(--bz-success)";
     }
   } catch {}
+}
+
+// === View toggle + Team Quality metrics ===
+let METRICS = null;
+let CURRENT_VIEW = "convs";
+
+function switchView(view) {
+  CURRENT_VIEW = view;
+  document.getElementById("view-convs").style.display = view === "convs" ? "" : "none";
+  document.getElementById("view-metrics").style.display = view === "metrics" ? "" : "none";
+  for (const b of document.querySelectorAll(".view-tab")) b.classList.toggle("active", b.dataset.view === view);
+  if (view === "metrics") renderMetrics();
+}
+
+function mFmt(v, suffix) { return v == null ? "—" : v + (suffix || ""); }
+function respClass(v) { return v == null ? "" : v <= 5 ? "m-good" : v <= 30 ? "" : "m-warn"; }
+function staleClass(stale, threads) {
+  if (!threads) return "";
+  const r = stale / threads;
+  return r > 0.35 ? "m-bad" : r > 0.2 ? "m-warn" : "m-good";
+}
+
+async function renderMetrics() {
+  const tableEl = document.getElementById("m-table");
+  const subEl = document.getElementById("m-sub");
+  const legendEl = document.getElementById("m-legend");
+  tableEl.innerHTML = `<tbody><tr><td class="op">Caricamento…</td></tr></tbody>`;
+  try {
+    const [mr, hr] = await Promise.all([
+      fetch("/metrics.json?window=30").then((r) => r.json()),
+      fetch("/metrics-history.json?days=14").then((r) => r.json()).catch(() => ({ rows: [] })),
+    ]);
+    METRICS = mr;
+    document.getElementById("m-window").textContent = mr.window_days;
+
+    // most-recent PRIOR snapshot per operator (for backlog delta), excluding today
+    const today = new Date().toISOString().slice(0, 10);
+    const priorByOp = {};
+    for (const row of hr.rows || []) {
+      if (row.snapshot_date && String(row.snapshot_date).slice(0, 10) >= today) continue;
+      priorByOp[row.team_member_phone] = row; // rows date-ascending → last kept = most recent prior
+    }
+
+    let html = `<thead><tr>
+      <th class="op">Operatore</th><th>Msg</th><th>In</th><th>Out</th><th>Clienti</th>
+      <th>Resp p50</th><th>Resp p90</th><th>&lt;5min</th><th>After-hrs</th><th>Backlog 24h+</th><th>Gruppi</th>
+    </tr></thead><tbody>`;
+    for (const o of mr.operators) {
+      const prior = priorByOp[o.team_member_phone];
+      let delta = "";
+      if (prior && prior.backlog_stale24h != null) {
+        const d = o.backlog_stale24h - prior.backlog_stale24h;
+        if (d !== 0) delta = `<span class="m-delta ${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>`;
+      }
+      html += `<tr>
+        <td class="op">${escapeHtml(o.team_member_name || "")}</td>
+        <td>${o.msgs_total}</td><td>${o.msgs_in}</td><td>${o.msgs_out}</td><td>${o.clients}</td>
+        <td class="${respClass(o.resp_median_min)}">${mFmt(o.resp_median_min, "′")}</td>
+        <td class="${respClass(o.resp_p90_min)}">${mFmt(o.resp_p90_min, "′")}</td>
+        <td>${mFmt(o.pct_under5min, "%")}</td>
+        <td class="${o.pct_afterhours > 20 ? "m-warn" : ""}">${mFmt(o.pct_afterhours, "%")}</td>
+        <td class="${staleClass(o.backlog_stale24h, o.backlog_threads)}">${o.backlog_stale24h}${delta}</td>
+        <td>${o.grp_msgs}</td>
+      </tr>`;
+    }
+    html += `</tbody>`;
+    tableEl.innerHTML = html;
+
+    const histDates = new Set((hr.rows || []).map((r) => String(r.snapshot_date).slice(0, 10)));
+    subEl.textContent = `${mr.operators.length} operatori · schema v${mr.metrics_schema_version} · `
+      + `${histDates.size} snapshot storici · attribuzione per numero+alias (parità con le conversazioni)`;
+    legendEl.innerHTML =
+      `<b>Resp p50/p90</b>: mediana e 90° percentile del tempo di risposta (outbound dopo inbound, 0–12h). `
+      + `<b>&lt;5min</b>: % risposte sotto 5 minuti. <b>After-hrs</b>: % outbound fuori 8–18 WITA. `
+      + `<b>Backlog 24h+</b>: thread con ultimo messaggio inbound fermo da oltre 24h (palla al team); `
+      + `▲/▼ = variazione vs snapshot precedente. Verde/giallo/rosso = soglie qualità. `
+      + `Aggregati Pro-bound, nessun dato cliente in chiaro.`;
+  } catch (err) {
+    tableEl.innerHTML = `<tbody><tr><td class="op">Errore: ${escapeHtml(err.message)}</td></tr></tbody>`;
+  }
+}
+
+for (const b of document.querySelectorAll(".view-tab")) {
+  b.addEventListener("click", () => switchView(b.dataset.view));
 }
 
 checkHealth();

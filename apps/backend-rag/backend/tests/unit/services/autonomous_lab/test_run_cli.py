@@ -9,6 +9,11 @@ from types import ModuleType
 
 import pytest
 
+from backend.services.autonomous_lab.command_policy import (
+    autonomous_lab_pytest_env,
+    git_diff_check_env,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[7]
 SCRIPT = REPO_ROOT / "scripts" / "autonomous_lab_run.py"
 
@@ -104,12 +109,10 @@ def test_execute_refuses_unsafe_verification_command(
     assert exit_code == 3
     assert summary["ok"] is False
     assert summary["unsafe_verification_refused"] is True
-    assert summary["verification"]["refused_commands"] == [
-        {
-            "command": "cd apps/mouth && npm run lint",
-            "reason": "command_not_allowlisted",
-        }
-    ]
+    refused = summary["verification"]["refused_commands"]
+    assert refused[0]["command"].startswith("evidence_fingerprint:sha256:")
+    assert refused[0]["reason"] == "command_not_allowlisted"
+    assert "cd apps/mouth && npm run lint" not in stdout
     assert run_cli.refusal_reason("git push origin main") == "blocked_command_verb"
     assert run_cli.refusal_reason("fly deploy") == "blocked_command_verb"
     assert run_cli.refusal_reason("git merge main") == "blocked_command_verb"
@@ -136,14 +139,15 @@ def test_dry_run_marks_non_allowlisted_verification_as_not_ok(
     assert exit_code == 3
     assert summary["ok"] is False
     assert summary["unsafe_verification_refused"] is True
-    assert summary["verification"]["refused_commands"] == [
-        {
-            "command": "cd apps/mouth && npm run lint",
-            "reason": "command_not_allowlisted",
-        }
-    ]
+    refused = summary["verification"]["refused_commands"]
+    assert refused[0]["command"].startswith("evidence_fingerprint:sha256:")
+    assert refused[0]["reason"] == "command_not_allowlisted"
+    assert "cd apps/mouth && npm run lint" not in stdout
     assert summary["verification"]["results"][0]["allowed"] is False
     assert summary["verification"]["results"][0]["executed"] is False
+    assert summary["verification"]["results"][0]["command"].startswith(
+        "evidence_fingerprint:sha256:"
+    )
 
 
 def test_raw_text_is_omitted_from_lab_run_summary(
@@ -165,6 +169,27 @@ def test_raw_text_is_omitted_from_lab_run_summary(
     assert all("text" not in material for material in summary["receipt"]["materials"])
 
 
+def test_invalid_input_returns_receipt_safe_json_error(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    run_cli: ModuleType,
+) -> None:
+    bad_path = "apps/backend-rag/backend/services/autonomous_lab/planner.py\nBAD"
+    input_path = _write_input(tmp_path, _input_payload(target_paths=[bad_path]))
+
+    exit_code = run_cli.main([str(input_path)])
+    captured = capsys.readouterr()
+    summary = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert captured.err == ""
+    assert summary["ok"] is False
+    assert summary["failed_blockers"] == ["input_validation"]
+    assert "error_reference" in summary
+    assert bad_path not in captured.out
+    assert "control characters" not in captured.out
+
+
 def test_execute_runs_only_allowlisted_commands_without_shell(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -178,6 +203,20 @@ def test_execute_runs_only_allowlisted_commands_without_shell(
         ]
     )
     input_path = _write_input(tmp_path, payload)
+
+    # Hermetic: point the CLI at a repo tree that ships a stub `.venv/bin/pytest`
+    # so the pytest verification command forms an execution plan deterministically.
+    # CI installs deps `--system` (no project `.venv`), so without this the pytest
+    # command resolves to None and is silently dropped — the previous version only
+    # passed on a dev box that happened to have a `.venv`.
+    repo_root = tmp_path / "repo"
+    backend_root = repo_root / "apps" / "backend-rag"
+    venv_pytest = backend_root / ".venv" / "bin" / "pytest"
+    venv_pytest.parent.mkdir(parents=True, exist_ok=True)
+    venv_pytest.touch()
+    monkeypatch.setattr(run_cli, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(run_cli, "BACKEND_ROOT", backend_root)
+
     calls: list[tuple[list[str], dict]] = []
 
     def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -194,7 +233,7 @@ def test_execute_runs_only_allowlisted_commands_without_shell(
     assert len(calls) == 2
     assert all("shell" not in kwargs for _, kwargs in calls)
     assert calls[0][1]["cwd"] == run_cli.BACKEND_ROOT
-    assert calls[0][1]["env"]["PYTHONPATH"] == "."
+    assert calls[0][1]["env"] == autonomous_lab_pytest_env()
     assert calls[0][0][-2:] == ["backend/tests/unit/services/autonomous_lab", "-q"]
     assert calls[1][0] == [
         "git",
@@ -203,5 +242,21 @@ def test_execute_runs_only_allowlisted_commands_without_shell(
         "--",
         "research/operations/autonomous-lab",
     ]
+    assert calls[1][1]["env"] == git_diff_check_env()
     assert summary["verification_failed"] is False
     assert [result["executed"] for result in summary["verification"]["results"]] == [True, True]
+
+
+def test_refused_verification_summary_never_echoes_hostile_command(run_cli: ModuleType) -> None:
+    hostile_command = "git push origin main token=abcdef1234567890"
+
+    summary = run_cli.build_verification_summary([hostile_command], execute=False)
+    summary_text = json.dumps(summary, sort_keys=True)
+
+    assert summary["refused_commands"][0]["reason"] == "blocked_command_verb"
+    assert summary["refused_commands"][0]["command"].startswith(
+        "evidence_fingerprint:sha256:"
+    )
+    assert summary["results"][0]["command"].startswith("evidence_fingerprint:sha256:")
+    assert hostile_command not in summary_text
+    assert "abcdef1234567890" not in summary_text

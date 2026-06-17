@@ -2,16 +2,15 @@
 
 import Image from "next/image";
 import { Star, MapPin, ArrowUpRight, BadgeCheck } from "lucide-react";
+import { rosterBySlug, initialsOf } from "@/data/team-roster";
 
 // Google reviews link — the public Maps URL you shared.
-// When you have the Google Place API key wired, we can swap the static
-// stats + placeholder reviews for a live fetch. For now this is a
-// hand-curated snapshot.
 const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/whiMUTNchcDR5naz8";
 
-// Top 5 team members selected from /team (see team-scrape result).
-// Photos live at /static/team/*.{png,jpg}
-// When a face isn't available we show initials on a gradient disc.
+// Top team members for the homepage. name/role/photo come from the roster SSOT
+// (apps/mouth/src/data/team-roster.ts); this component keeps only the editorial
+// `department` caption + accent + role overrides. `department` here is a marketing
+// caption, NOT the SSOT dept.
 interface TeamMember {
   name: string;
   role: string;
@@ -21,59 +20,71 @@ interface TeamMember {
   accent: string;
 }
 
+interface SPEntry {
+  slug: string;
+  department: string;
+  accent: string;
+  roleOverride?: string;
+}
+
+function resolveSP(e: SPEntry): TeamMember {
+  const r = rosterBySlug(e.slug);
+  const name = r?.name ?? e.slug;
+  return {
+    name,
+    role: e.roleOverride ?? r?.role ?? "",
+    department: e.department,
+    photo: r?.photo,
+    initials: initialsOf(name),
+    accent: e.accent,
+  };
+}
+
 // Founders — shown first and larger. The two men who started Bali Zero
 // and still run it. Friends for 30 years, partners in the business.
-const FOUNDERS: TeamMember[] = [
+const FOUNDERS_SPEC: SPEntry[] = [
   {
-    name: "Zainal Abidin",
-    role: "CEO",
+    slug: "zainal",
+    roleOverride: "CEO",
     department: "Founder · Since the beginning",
-    photo: "/static/team/heru-komisaris.jpg",
-    initials: "ZA",
     accent: "#ff2d4c",
   },
   {
-    name: "Pak Heru",
-    role: "Komisaris",
+    slug: "heru",
+    roleOverride: "Komisaris",
     department: "Founder · Partner for 30 years",
-    photo: "/static/team/zainal-ceo.jpg",
-    initials: "PH",
     accent: "#a78bfa",
   },
 ];
+const FOUNDERS: TeamMember[] = FOUNDERS_SPEC.map(resolveSP);
 
-const TEAM: TeamMember[] = [
+const TEAM_SPEC: SPEntry[] = [
   {
-    name: "Ruslana",
-    role: "Special Advisory",
+    slug: "ruslana",
+    roleOverride: "Special Advisory",
     department: "Leadership",
-    photo: "/static/team/ruslana.jpg",
-    initials: "RU",
     accent: "#a78bfa",
   },
   {
-    name: "Veronika",
-    role: "Manager",
+    slug: "veronika",
+    roleOverride: "Manager",
     department: "Leadership",
-    initials: "VE",
     accent: "#06b6d4",
   },
   {
-    name: "Adit",
-    role: "Supervisor Lead",
+    slug: "adit",
+    roleOverride: "Supervisor Lead",
     department: "Setup",
-    photo: "/static/team/adit.png",
-    initials: "AD",
     accent: "#f59e0b",
   },
   {
-    name: "Angel",
-    role: "Supervisor",
+    slug: "angel",
+    roleOverride: "Supervisor",
     department: "Tax",
-    initials: "AN",
     accent: "#22c55e",
   },
 ];
+const TEAM: TeamMember[] = TEAM_SPEC.map(resolveSP);
 
 // Curated review snippets — canonical across homepage + (blog)/_components/GoogleReviewsBlock.
 const REVIEWS = [

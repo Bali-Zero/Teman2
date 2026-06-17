@@ -32,8 +32,9 @@ REPO_ROOT = gen.REPO_ROOT
 def test_generator_finds_components():
     arts = gen.build_components()
     assert len(arts) >= 12, "expected at least the 12 top-level components"
-    # disk-state truth: the real tree has 24 (13 top-level incl. Money + 11 under apps/)
-    assert len(arts) == 24, f"expected 24 components on disk, got {len(arts)}"
+    # disk-state truth: the real tree has 29 (18 top-level incl. Money +
+    # ListPageHeader/SearchBox/FilterBar/StatChips/SubNav + 11 under apps/)
+    assert len(arts) == 29, f"expected 29 components on disk, got {len(arts)}"
 
 
 def test_every_component_has_required_fields():

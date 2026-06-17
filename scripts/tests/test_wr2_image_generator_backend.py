@@ -320,3 +320,23 @@ def test_backend_unavailable_error_is_runtime_error(wig):
     """BackendUnavailableError extends RuntimeError so existing exception
     handlers in cron wrappers don't need updating."""
     assert issubclass(wig.BackendUnavailableError, RuntimeError)
+
+
+def test_desk_pen_cliche_ban_reaches_final_image_prompt(wig):
+    """The document/deed-on-a-desk-with-a-pen cliché ban (Antonello 2026-06-13)
+    must be in the prompt that EVERY image backend actually receives.
+
+    Regression guard for the wiring bug found 2026-06-13: the draft-generator's
+    NEGATIVE_PROMPT/BRAND_SUFFIX ban only ever reached the LLM that writes the
+    image_prompt — never the image model. The only anti-cliché text that reaches
+    Gemini/gpt-image-2/FlowKit is ANTI_CLICHE_SUFFIX via _compose_final_prompt;
+    the ban therefore has to live there to take effect at generation time.
+    """
+    final = wig._compose_final_prompt("a property transaction in Bali")
+    low = final.lower()
+    assert "document" in low and "desk" in low, final
+    assert "fountain pen" in low or "signing pen" in low, final
+    assert "notary-desk still life" in low, final
+    # every tonal-palette variant carries the ban too (suffix is palette-agnostic)
+    for palette in ("warm-ochre", "cool-teal", "monochrome", None):
+        assert "notary-desk still life" in wig._compose_final_prompt("x", palette).lower()

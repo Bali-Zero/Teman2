@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 import { BookOpen, ChevronDown, FileText } from "lucide-react";
 import { useChatLocale } from "@/hooks/useChatLocale";
 
@@ -34,6 +34,7 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
 }) => {
   const locale = useChatLocale();
   const labelPrefix = LABELS[locale] || LABELS.en;
+  const contentId = useId();
 
   return (
     <div className="mt-3 rounded-lg border-l-2 border-amber-600 overflow-hidden">
@@ -42,6 +43,7 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
+        aria-controls={contentId}
         className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900/50 hover:bg-zinc-900/70 transition-colors text-left focus-ring"
       >
         <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
@@ -61,15 +63,16 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
 
       {/* Collapsible citations list */}
       <div
+        id={contentId}
         className="transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden"
         style={{
           maxHeight: expanded ? `${citations.length * 120 + 16}px` : "0px",
           opacity: expanded ? 1 : 0,
         }}
       >
-        <div className="px-3 pb-3 pt-1 bg-zinc-900/50 space-y-3">
+        <ul className="px-3 pb-3 pt-1 bg-zinc-900/50 space-y-3">
           {citations.map((citation, idx) => (
-            <div key={idx} className="flex gap-2.5">
+            <li key={idx} className="flex gap-2.5">
               <div className="flex-shrink-0 mt-0.5 text-amber-600/60">
                 <FileText size={12} aria-hidden="true" />
               </div>
@@ -85,9 +88,9 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
                   &ldquo;{citation.excerpt}&rdquo;
                 </p>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </div>
   );

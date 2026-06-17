@@ -24,8 +24,15 @@ import type { Partner, PartnerFilters } from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
 // Status badge styles — CRIT-8: aligned to backend PartnerStatus enum
-const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  pending_approval: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Pending Approval" },
+const STATUS_STYLES: Record<
+  string,
+  { bg: string; text: string; label: string }
+> = {
+  pending_approval: {
+    bg: "bg-amber-500/20",
+    text: "text-amber-400",
+    label: "Pending Approval",
+  },
   active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active" },
   inactive: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Inactive" },
 };
@@ -38,18 +45,37 @@ const TIER_STYLES: Record<string, { bg: string; text: string }> = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] || { bg: "bg-gray-500/20", text: "text-gray-400", label: status };
+  const style = STATUS_STYLES[status] || {
+    bg: "bg-gray-500/20",
+    text: "text-gray-400",
+    label: status,
+  };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${style.bg} ${style.text}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${style.bg} ${style.text}`}
+    >
       {style.label || status}
     </span>
   );
 }
 
+// P2.1: backend returns commission as a decimal string ("10.0000") — trim
+// trailing zeros so the TIER fallback renders "10 %" instead of "10.0000 %".
+function formatCommission(value: number | string): string {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return String(value);
+  return parsed.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
 function TierBadge({ tier }: { tier: string }) {
-  const style = TIER_STYLES[tier] || { bg: "bg-gray-500/20", text: "text-gray-400" };
+  const style = TIER_STYLES[tier] || {
+    bg: "bg-gray-500/20",
+    text: "text-gray-400",
+  };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${style.bg} ${style.text}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${style.bg} ${style.text}`}
+    >
       {tier}
     </span>
   );
@@ -101,7 +127,11 @@ export default function PartnersPage() {
       setPartners(data.partners);
       setTotal(data.total);
     } catch (err) {
-      logger.error("Failed to load partners", { component: "PartnersPage" }, err as Error);
+      logger.error(
+        "Failed to load partners",
+        { component: "PartnersPage" },
+        err as Error,
+      );
       setError("Failed to load partners. Please try again.");
       toastErrorRef.current("Failed to load partners");
     } finally {
@@ -113,11 +143,24 @@ export default function PartnersPage() {
     loadPartners(filters);
   }, [filters, loadPartners]);
 
-  const handleFilterChange = (key: keyof PartnerFilters, value: string | boolean) => {
+  const handleFilterChange = (
+    key: keyof PartnerFilters,
+    value: string | boolean,
+  ) => {
     if (key === "assigned_to" && value === "__orphaned__") {
-      setFilters((prev) => ({ ...prev, assigned_to: undefined, orphaned: true, page: 1 }));
+      setFilters((prev) => ({
+        ...prev,
+        assigned_to: undefined,
+        orphaned: true,
+        page: 1,
+      }));
     } else if (key === "assigned_to") {
-      setFilters((prev) => ({ ...prev, assigned_to: (value as string) || undefined, orphaned: false, page: 1 }));
+      setFilters((prev) => ({
+        ...prev,
+        assigned_to: (value as string) || undefined,
+        orphaned: false,
+        page: 1,
+      }));
     } else {
       setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
     }
@@ -135,7 +178,12 @@ export default function PartnersPage() {
     setPage(1);
   };
 
-  const hasActiveFilters = !!(filters.status || filters.assigned_to || filters.search || filters.orphaned);
+  const hasActiveFilters = !!(
+    filters.status ||
+    filters.assigned_to ||
+    filters.search ||
+    filters.orphaned
+  );
 
   return (
     <div className="space-y-6">
@@ -147,7 +195,9 @@ export default function PartnersPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-zinc-100">Partners</h1>
-            <p className="text-sm text-zinc-400">{total} partner{total !== 1 ? "s" : ""} total</p>
+            <p className="text-sm text-zinc-400">
+              {total} partner{total !== 1 ? "s" : ""} total
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -184,7 +234,10 @@ export default function PartnersPage() {
           {/* Search */}
           <form onSubmit={handleSearch} className="flex-1 min-w-48">
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+              />
               <input
                 type="text"
                 placeholder="Search name, email..."
@@ -217,7 +270,9 @@ export default function PartnersPage() {
             <option value="">All assignees</option>
             <option value="__orphaned__">Unassigned</option>
             {teamMemberOptions.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
 
@@ -270,7 +325,12 @@ export default function PartnersPage() {
           <Handshake size={48} className="text-zinc-600" />
           <p className="text-zinc-400">No partners found</p>
           {hasActiveFilters && (
-            <Button variant="outline" size="sm" onClick={clearFilters} className="border-zinc-700 text-zinc-300">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+              className="border-zinc-700 text-zinc-300"
+            >
               Clear filters
             </Button>
           )}
@@ -280,12 +340,24 @@ export default function PartnersPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800 bg-zinc-900/50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Partner</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">Contact</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">Tier</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">Assigned To</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">Referrals</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                  Partner
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">
+                  Contact
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">
+                  Tier
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">
+                  Assigned To
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">
+                  Referrals
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -302,9 +374,13 @@ export default function PartnersPage() {
                         <User size={14} className="text-amber-400" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-zinc-100">{partner.full_name}</div>
+                        <div className="text-sm font-medium text-zinc-100">
+                          {partner.full_name}
+                        </div>
                         {partner.company_name && (
-                          <div className="text-xs text-zinc-500">{partner.company_name}</div>
+                          <div className="text-xs text-zinc-500">
+                            {partner.company_name}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -328,21 +404,28 @@ export default function PartnersPage() {
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     {/* CRIT-8: commission_tier is optional; backend uses default_commission_type + value */}
-                    {partner.commission_tier ? <TierBadge tier={partner.commission_tier} /> : (
+                    {partner.commission_tier ? (
+                      <TierBadge tier={partner.commission_tier} />
+                    ) : (
                       <span className="text-xs text-zinc-600 italic">
-                        {partner.default_commission_type
-                          ? `${partner.default_commission_value} ${partner.default_commission_type === 'percentage' ? '%' : 'IDR'}`
+                        {partner.default_commission_type &&
+                        partner.default_commission_value != null
+                          ? `${formatCommission(partner.default_commission_value)} ${partner.default_commission_type === "percentage" ? "%" : "IDR"}`
                           : "—"}
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="text-sm text-zinc-400">
-                      {partner.assigned_to || <span className="text-zinc-600 italic">Unassigned</span>}
+                      {partner.assigned_to || (
+                        <span className="text-zinc-600 italic">Unassigned</span>
+                      )}
                     </span>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-sm text-zinc-400">{partner.referral_count ?? 0}</span>
+                    <span className="text-sm text-zinc-400">
+                      {partner.referral_count ?? 0}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <ChevronRight size={16} className="text-zinc-600 ml-auto" />
@@ -356,7 +439,8 @@ export default function PartnersPage() {
           {total > 50 && (
             <div className="px-4 py-3 border-t border-zinc-800 flex items-center justify-between">
               <span className="text-sm text-zinc-500">
-                Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, total)} of {total}
+                Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, total)} of{" "}
+                {total}
               </span>
               <div className="flex gap-2">
                 <Button

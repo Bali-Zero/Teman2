@@ -30,6 +30,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { normalizeDashboardRole } from "@/lib/dashboard-role";
 import type { LiveActivityEvent } from "@/types/dashboard-role.types";
 import { logger } from "@/lib/logger";
+import { STRINGS } from "@/lib/strings";
 import { api } from "@/lib/api";
 import { formatIDRCompact } from "@balizero/core/utils";
 import { RefreshCw } from "lucide-react";
@@ -513,7 +514,9 @@ export default function DashboardPage() {
             ? formatIDRCompact(revenue.total_revenue)
             : "—",
           sub: revenue?.paid_revenue
-            ? `${formatIDRCompact(revenue.paid_revenue)} incassato`
+            ? STRINGS.dashboard.collectedSub(
+                formatIDRCompact(revenue.paid_revenue),
+              )
             : "—",
           accent: "#9880d8",
         },
@@ -522,28 +525,34 @@ export default function DashboardPage() {
           value: revenue?.outstanding_revenue
             ? formatIDRCompact(revenue.outstanding_revenue)
             : "—",
-          sub: "da incassare",
+          sub: STRINGS.dashboard.outstandingSub,
           accent: "#d4845a",
         },
         {
-          label: "Clienti",
+          label: STRINGS.dashboard.clientsLabel,
           value:
             totalClients != null ? totalClients.toLocaleString("en-US") : "—",
-          sub: "registrati",
+          sub: STRINGS.dashboard.clientsSub,
           accent: "#4a8ec4",
           href: "/clients",
         },
         {
-          label: "Processi",
+          label: STRINGS.dashboard.casesLabel,
           value: totalPractices != null ? totalPractices : "—",
-          sub: `${stats.activeCases} attivi · ${stats.criticalDeadlines} critici`,
+          sub: STRINGS.dashboard.casesSub(
+            stats.activeCases,
+            stats.criticalDeadlines,
+          ),
           accent: "#5cb88a",
           href: "/process",
         },
         {
-          label: "Fatture",
+          label: STRINGS.dashboard.invoicesLabel,
           value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "✓",
-          sub: stats.pendingInvoices > 0 ? "in attesa" : "tutte pagate",
+          sub:
+            stats.pendingInvoices > 0
+              ? STRINGS.dashboard.invoicesPendingSub
+              : STRINGS.dashboard.invoicesPaidSub,
           accent: "#b89a40",
         },
       ]
