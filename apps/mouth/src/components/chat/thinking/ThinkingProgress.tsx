@@ -21,7 +21,7 @@ export function ThinkingProgress({
       <div className="relative flex items-center gap-3 mb-3">
         <div className="flex-1">
           <span className="text-sm font-semibold text-[var(--foreground)]">
-            Zantara sta ragionando
+            Zantara is thinking
           </span>
           <motion.span
             animate={{ opacity: [1, 0.3, 1] }}
