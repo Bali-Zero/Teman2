@@ -918,14 +918,43 @@ function caseFirstName(conv) {
   return clean.split(/\s+/)[0].replace(/[^\p{L}\p{N}'-]/gu, "");
 }
 
+function detectConversationTopics(text, mediaTypes = []) {
+  const t = String(text || "").toLowerCase();
+  const topics = [];
+  if (/\b(visa|kitas|kitap|stay permit|immigration|imigrasi|e-voa|voa|permit)\b/.test(t)) topics.push("visa/immigrazione");
+  if (/\b(flight|ticket|depart|departure|arriv|arrival|leav|leaving|re-?enter|return|airport|dps|sin|bkk|cgk|jakarta|bali)\b/.test(t)) topics.push("viaggio/re-entry");
+  if (/\b(passport|ktp|npwp|akta|document|dokumen|file|photo|image|pdf|scan|screenshot)\b/.test(t) || mediaTypes.length) topics.push("documenti/media");
+  if (/\b(invoice|payment|paid|transfer|bank|price|quote|quotation|fee|harga|biaya|fattura|pagamento)\b/.test(t)) topics.push("pagamenti/quote");
+  if (/\b(company|pt |pma|director|shareholder|tax|oss|kbli|società|azienda)\b/.test(t)) topics.push("società/tax");
+  if (/\b(meeting|appointment|call|zoom|visit|schedule|jadwal|appuntamento|chiamata)\b/.test(t)) topics.push("appuntamento/call");
+  if (/\b(villa|property|land|lease|freehold|real estate|terreno|immobile)\b/.test(t)) topics.push("property");
+  return [...new Set(topics)];
+}
+
 function deriveThreadEvidence(payload, conv) {
   const messages = payload?.messages || [];
   const recentMessages = messages.slice(-12);
-  const lastInbound = [...messages].reverse().find((m) => m.direction !== "outbound" && messageTextForEvidence(m));
-  const lastOutbound = [...messages].reverse().find((m) => m.direction === "outbound" && messageTextForEvidence(m));
+  const inboundMessages = messages.filter((m) => m.direction !== "outbound" && messageTextForEvidence(m));
+  const outboundMessages = messages.filter((m) => m.direction === "outbound" && messageTextForEvidence(m));
+  const allTexts = messages.map(messageTextForEvidence).filter(Boolean);
+  const allInboundTexts = inboundMessages.map(messageTextForEvidence).filter(Boolean);
+  const allOutboundTexts = outboundMessages.map(messageTextForEvidence).filter(Boolean);
+  const lastInbound = [...inboundMessages].reverse()[0];
+  const lastOutbound = [...outboundMessages].reverse()[0];
   const lastAny = [...messages].reverse().find((m) => messageTextForEvidence(m));
+  const firstInbound = inboundMessages[0];
+  const questionMessages = inboundMessages.filter((m) => textLooksLikeQuestion(messageTextForEvidence(m)));
+  const thanksMessages = inboundMessages.filter((m) => textLooksLikeThanks(messageTextForEvidence(m)));
+  const lastMeaningfulInbound = [...inboundMessages].reverse().find((m) => {
+    const text = messageTextForEvidence(m);
+    return text && !textLooksLikeThanks(text) && !/^\[[a-z]+\]$/i.test(text);
+  });
   const lastInboundAt = lastInbound?.message_date ? new Date(lastInbound.message_date).getTime() : 0;
   const lastOutboundAt = lastOutbound?.message_date ? new Date(lastOutbound.message_date).getTime() : 0;
+  const openQuestionMessages = questionMessages.filter((m) => {
+    const at = m?.message_date ? new Date(m.message_date).getTime() : 0;
+    return !lastOutboundAt || at > lastOutboundAt;
+  });
   const recentInboundTexts = recentMessages
     .filter((m) => m.direction !== "outbound")
     .map(messageTextForEvidence)
@@ -938,31 +967,61 @@ function deriveThreadEvidence(payload, conv) {
   const recentMediaTypes = [...new Set(recentMessages.filter((m) => MEDIA_TYPES.has(m.media_type)).map((m) => m.media_type))];
   const lastInboundText = messageTextForEvidence(lastInbound);
   const lastOutboundText = messageTextForEvidence(lastOutbound);
+  const recapRaw = conv?.strategic_recap || conv?.sender_strategic_recap || "";
+  const recapSource = conv?.strategic_recap_source || (conv?.sender_strategic_recap ? "wa_thread" : "");
+  const topics = detectConversationTopics([...allTexts, recapRaw].join(" "), mediaTypes);
+  const openAttention = messages.filter((m) => m.attention_priority && !m.attention_resolved_at);
+  const openQuestions = [...openQuestionMessages]
+    .reverse()
+    .map((m) => messageSnippet(messageTextForEvidence(m), 180))
+    .filter(Boolean)
+    .slice(0, 3);
+  const count = payload?.count || conv?.n || messages.length || 0;
   return {
-    count: payload?.count || conv?.n || 0,
+    count,
+    inbound_count: inboundMessages.length,
+    outbound_count: outboundMessages.length,
+    question_count: questionMessages.length,
+    open_question_count: openQuestionMessages.length,
+    thanks_count: thanksMessages.length,
+    open_attention_count: openAttention.length,
     latest_direction: lastAny?.direction || null,
     latest_at: lastAny?.message_date || conv?.last_at || null,
     last_inbound_at: lastInbound?.message_date || null,
     last_outbound_at: lastOutbound?.message_date || null,
     last_inbound_sender: lastInbound?.sender_display || lastInbound?.sender_phone || "",
     last_outbound_sender: lastOutbound?.sender_display || lastOutbound?.sender_phone || "",
+    first_inbound: messageSnippet(messageTextForEvidence(firstInbound), 260),
     last_inbound: messageSnippet(lastInboundText, 360),
     last_outbound: messageSnippet(lastOutboundText, 260),
+    last_question: openQuestions[0] || "",
+    open_questions: openQuestions,
+    last_meaningful_customer_info: messageSnippet(messageTextForEvidence(lastMeaningfulInbound), 360),
+    whole_thread_inbound: messageSnippet(allInboundTexts.join(" · "), 900),
+    whole_thread_outbound: messageSnippet(allOutboundTexts.join(" · "), 720),
     recent_inbound: messageSnippet(recentInboundTexts.join(" · "), 520),
     recent_outbound: messageSnippet(recentOutboundTexts.join(" · "), 420),
     media_types: mediaTypes,
     recent_media_types: recentMediaTypes,
-    has_question: recentInboundTexts.some(textLooksLikeQuestion) || textLooksLikeQuestion(lastInboundText),
+    last_inbound_is_media_only: /^\[[a-z]+\]$/i.test(lastInboundText),
+    topics,
+    recap: messageSnippet(recapRaw, 700),
+    recap_source: recapSource,
+    whole_thread_summary: recapRaw
+      ? messageSnippet(recapRaw, 700)
+      : `Analisi locale su ${count} messaggi: ${inboundMessages.length} cliente/inbound, ${outboundMessages.length} team/outbound${topics.length ? `, topic ${topics.join(", ")}` : ""}.`,
+    has_question: questionMessages.length > 0,
     has_thanks: textLooksLikeThanks(lastInboundText),
     needs_reply: Boolean(conv?.unread_count) || (lastInboundAt > lastOutboundAt),
   };
 }
 
 function buildIdealReply(conv, evidence, intent) {
-  const lang = detectReplyLanguage(evidence.last_inbound || evidence.recent_inbound);
+  const lang = detectReplyLanguage(evidence.last_meaningful_customer_info || evidence.last_inbound || evidence.whole_thread_inbound);
   const name = caseFirstName(conv);
   const hi = name ? ` ${name}` : "";
-  const lastInfo = messageSnippet(evidence.last_inbound, 120);
+  const lastInfo = messageSnippet(evidence.last_meaningful_customer_info || evidence.last_inbound, 120);
+  const lastQuestion = messageSnippet(evidence.last_question || evidence.open_questions?.[0] || "", 120);
   const hasMedia = Boolean(evidence.recent_media_types?.length || evidence.media_types?.length);
   const mediaLabel = lang === "id"
     ? (hasMedia ? "file/foto yang kamu kirim" : "ini")
@@ -976,9 +1035,9 @@ function buildIdealReply(conv, evidence, intent) {
     return `You're welcome${hi}. We received it. We'll keep this case monitored and update you here if anything else is needed.`;
   }
   if (intent === "question") {
-    if (lang === "id") return `Terima kasih${hi}. Saya cek dulu dengan case kamu, lalu saya konfirmasi next step yang tepat di sini.`;
-    if (lang === "it") return `Grazie${hi}. Verifico questo punto sulla tua pratica e ti confermo qui il prossimo passaggio corretto.`;
-    return `Thanks${hi}. I'll check this against your case and confirm the correct next step here.`;
+    if (lang === "id") return `Terima kasih${hi}. Saya cek dulu poin ini${lastQuestion ? `: "${lastQuestion}"` : ""}, lalu saya konfirmasi next step yang tepat di sini.`;
+    if (lang === "it") return `Grazie${hi}. Verifico questo punto${lastQuestion ? `: "${lastQuestion}"` : ""} sulla tua pratica e ti confermo qui il prossimo passaggio corretto.`;
+    return `Thanks${hi}. I'll check this point${lastQuestion ? `: "${lastQuestion}"` : ""} against your case and confirm the correct next step here.`;
   }
   if (intent === "info") {
     if (lang === "id") return `Terima kasih${hi}, saya catat: "${lastInfo}". Kami pakai info ini untuk case kamu dan update next step di sini.`;
@@ -996,6 +1055,9 @@ function buildIdealReply(conv, evidence, intent) {
   if (intent === "already_replied") {
     return "No new message needed right now. Keep monitoring; reply only if the client asks again or the promised next step changes.";
   }
+  if (intent === "recap_monitor") {
+    return "No client message needed right now. Use the existing recap to prepare the next operator/owner update if the case status changes.";
+  }
   if (lang === "id") return `Terima kasih${hi}. Kami sedang cek statusnya dan akan update di sini dengan next step yang jelas.`;
   if (lang === "it") return `Grazie${hi}. Stiamo verificando lo stato e ti aggiorniamo qui con il prossimo passaggio chiaro.`;
   return `Thanks${hi}. We're checking the status and will update you here with the clear next step.`;
@@ -1005,19 +1067,26 @@ function buildSpecificCaseAnalysis(conv, evidence) {
   const media = evidence.recent_media_types?.length ? evidence.recent_media_types : evidence.media_types || [];
   const mediaLabel = media.length ? media.join(", ") : "";
   const specificSignals = [];
-  if (evidence.last_inbound) specificSignals.push(`Ultimo inbound: "${messageSnippet(evidence.last_inbound, 92)}"`);
+  specificSignals.push(`${evidence.count || 0} messaggi analizzati: ${evidence.inbound_count || 0} inbound / ${evidence.outbound_count || 0} outbound`);
+  if (evidence.recap) specificSignals.push(`Recap già presente (${evidence.recap_source || "CRM/WA"}): "${messageSnippet(evidence.recap, 120)}"`);
+  if (evidence.topics?.length) specificSignals.push(`Topic letti nel thread: ${evidence.topics.join(", ")}`);
+  if (evidence.question_count) specificSignals.push(`Domande cliente nel thread: ${evidence.question_count}`);
+  if (evidence.open_question_count) specificSignals.push(`Domande ancora aperte dopo ultimo team reply: ${evidence.open_question_count}`);
+  if (evidence.open_attention_count) specificSignals.push(`Alert locali aperti: ${evidence.open_attention_count}`);
+  if (evidence.last_meaningful_customer_info) specificSignals.push(`Ultimo dato cliente utile: "${messageSnippet(evidence.last_meaningful_customer_info, 92)}"`);
+  else if (evidence.last_inbound) specificSignals.push(`Ultimo inbound: "${messageSnippet(evidence.last_inbound, 92)}"`);
   if (evidence.last_outbound) specificSignals.push(`Ultimo outbound team: "${messageSnippet(evidence.last_outbound, 92)}"`);
   if (mediaLabel) specificSignals.push(`Media nel thread: ${mediaLabel}`);
-  if (evidence.has_question) specificSignals.push("C'è una domanda nel blocco recente");
   if (evidence.has_thanks) specificSignals.push("L'ultimo inbound è un ringraziamento/conferma");
   specificSignals.push(evidence.needs_reply ? "Palla al team: ultimo inbound/non letto da chiudere" : "Team già intervenuto dopo l'ultimo inbound");
 
   let intent = "status";
   if (conv?.tag === "internal") intent = "internal";
+  else if (evidence.needs_reply && evidence.open_questions?.length) intent = "question";
+  else if (evidence.needs_reply && evidence.last_meaningful_customer_info) intent = "info";
   else if (evidence.has_thanks) intent = "thanks";
-  else if (evidence.has_question) intent = "question";
-  else if (evidence.last_inbound && !/^\[[a-z]+\]$/i.test(evidence.last_inbound)) intent = "info";
-  else if (media.length) intent = "media";
+  else if (evidence.needs_reply && evidence.last_inbound_is_media_only) intent = "media";
+  else if (evidence.recap) intent = "recap_monitor";
   else if (!evidence.needs_reply) intent = "already_replied";
 
   const stateByIntent = {
@@ -1026,19 +1095,25 @@ function buildSpecificCaseAnalysis(conv, evidence) {
     info: "Dato operativo ricevuto: integrare nel caso",
     media: "Documento/media ricevuto: verifica e next step",
     internal: "Coordinamento interno: owner e blocco",
+    recap_monitor: "Recap strategico presente: monitoraggio informato",
     already_replied: "Già risposto: monitoraggio",
     status: conv?.crm_match ? "Cliente CRM: update da chiarire" : "Lead/prospect: qualificazione",
   };
+  const recapClause = evidence.recap
+    ? ` Usa anche il recap già salvato (${evidence.recap_source || "CRM/WA"}): "${messageSnippet(evidence.recap, 150)}".`
+    : " Non trova un recap già salvato, quindi costruisce la lettura dal thread locale.";
+  const threadClause = `Zantara ha letto tutto il thread disponibile (${evidence.count || 0} messaggi: ${evidence.inbound_count || 0} inbound, ${evidence.outbound_count || 0} outbound).`;
   const reasoningByIntent = {
-    thanks: `Zantara non legge questo come una nuova richiesta: l'ultimo inbound è un ringraziamento${mediaLabel ? ` e nel thread ci sono media (${mediaLabel})` : ""}. La risposta ideale è breve, conferma ricezione e lascia aperto l'update se serve.`,
-    question: `Zantara vede una domanda nel blocco recente e quindi non deve chiudere con un messaggio generico: deve verificare la pratica e rispondere al punto preciso.`,
-    info: `Zantara vede che l'ultimo inbound contiene un dato operativo concreto, non solo cortesia o allegato. Deve confermare che il dato è stato annotato e collegarlo al prossimo passaggio della pratica.`,
-    media: `Zantara vede media/documenti nel thread (${mediaLabel}). Il passaggio corretto è confermare ricezione, controllare il contenuto e promettere un next step verificabile.`,
-    internal: "Zantara tratta questa chat come coordinamento interno: non risposta cliente, ma owner, blocco, decisione richiesta e prossimo controllo.",
-    already_replied: "Zantara vede che il team è già intervenuto dopo l'ultimo inbound: non deve spingere un nuovo messaggio, deve monitorare fino a nuova domanda o scadenza.",
+    thanks: `${threadClause}${recapClause} L'ultimo inbound è un ringraziamento/conferma: la risposta ideale è breve, conferma ricezione e lascia aperto l'update se serve.`,
+    question: `${threadClause}${recapClause} Nel thread ci sono ${evidence.question_count || 1} domanda/e cliente: non deve chiudere con un messaggio generico, deve rispondere al punto preciso e collegarlo alla pratica.`,
+    info: `${threadClause}${recapClause} L'ultimo dato cliente utile non è solo cortesia o allegato: va confermato, annotato e collegato al prossimo passaggio della pratica.`,
+    media: `${threadClause}${recapClause} Ha visto media/documenti nel thread (${mediaLabel}). Il passaggio corretto è confermare ricezione, controllare il contenuto e promettere un next step verificabile.`,
+    internal: `${threadClause}${recapClause} Questa è una chat di coordinamento interno: non risposta cliente, ma owner, blocco, decisione richiesta e prossimo controllo.`,
+    recap_monitor: `${threadClause} Parte dal recap strategico già salvato (${evidence.recap_source || "CRM/WA"}) e controlla che non ci sia una palla cliente più recente. In assenza di nuova domanda, deve monitorare o preparare un update interno.`,
+    already_replied: `${threadClause}${recapClause} Il team è già intervenuto dopo l'ultimo inbound: non deve spingere un nuovo messaggio, deve monitorare fino a nuova domanda o scadenza.`,
     status: evidence.needs_reply
-      ? "Zantara vede una palla aperta sul team: serve un update concreto, non una frase generica."
-      : "Zantara vede una conversazione stabile: serve solo monitoraggio o un update programmato.",
+      ? `${threadClause}${recapClause} Vede una palla aperta sul team: serve un update concreto, non una frase generica.`
+      : `${threadClause}${recapClause} La conversazione è stabile: serve solo monitoraggio o un update programmato.`,
   };
   const nextByIntent = {
     thanks: "Rispondere con acknowledgement breve; niente escalation.",
@@ -1046,6 +1121,7 @@ function buildSpecificCaseAnalysis(conv, evidence) {
     info: "Confermare il dato ricevuto e spiegare che verrà usato nel caso.",
     media: "Confermare ricezione del media/documento e dire quando arriva l'update.",
     internal: "Scrivere owner brief: richiesta, blocco, decisione, prossimo controllo.",
+    recap_monitor: "Usare il recap come base; non inviare finché non c'è nuova domanda o cambio stato.",
     already_replied: "Non inviare ora; monitorare e riaprire solo se cambia lo stato.",
     status: evidence.needs_reply ? "Preparare update cliente con stato, blocco e prossimo passaggio." : "Tenere in monitoraggio e aggiornare solo se serve.",
   };
@@ -1145,16 +1221,22 @@ function renderCaseCaptainCard(conv, pd, payload) {
   const type = caseKindLabel(conv);
   const urgency = caseUrgencyLabel(conv);
   const signals = (d.specificSignals?.length ? d.specificSignals : d.signals || []).slice(0, 6);
+  const topicLabel = evidence.topics?.length ? evidence.topics.join(", ") : "nessun topic forte";
   return `<div class="case-captain-card">
     <div class="case-title-row">
-      <div class="case-title">Zantara legge questa conversazione</div>
+      <div class="case-title">Zantara legge tutta la conversazione</div>
       <div class="case-shadow-pill">bozza non inviata</div>
     </div>
     <div class="case-grid-mini">
       <div class="case-mini"><div class="label">Conversazione</div><div class="value">${escapeHtml(type)} · ${evidence.count || conv.n || 0} messaggi</div></div>
+      <div class="case-mini"><div class="label">Analisi</div><div class="value">${escapeHtml(`${evidence.inbound_count || 0} cliente/inbound · ${evidence.outbound_count || 0} team/outbound · ${topicLabel}`)}</div></div>
       <div class="case-mini"><div class="label">Stato Zantara</div><div class="value">${escapeHtml(d.state)} · ${escapeHtml(urgency)}</div></div>
       <div class="case-mini"><div class="label">Prossima mossa</div><div class="value">${escapeHtml(d.next)}</div></div>
     </div>
+    ${evidence.recap ? `<div class="case-local-context">
+      <div class="label">Recap già trovato nel corpus</div>
+      <div class="value">${escapeHtml(evidence.recap)}</div>
+    </div>` : ""}
     <div class="case-reasoning-grid">
       <div class="case-local-context">
         <div class="label">Perché lo pensa su questa chat</div>
