@@ -24,7 +24,7 @@
  * The <img>/<iframe> preview rides the same-origin SSO cookie.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
@@ -191,6 +191,10 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [detail, setDetail] = useState<ProposalDetail | null>(null);
   const [claimToken, setClaimToken] = useState<string | null>(null);
+  // Seed the destination (group+category) exactly ONCE per opened proposal,
+  // so a manual Profile-group / Category change is never clobbered by the
+  // doc_type re-inference. Keyed by proposal_id; re-seeds for a new document.
+  const destinationSeededRef = useRef<number | null>(null);
 
   // ── Decision-panel state ────────────────────────────────────────────────
   const [selectedClient, setSelectedClient] = useState<EntityCandidate | null>(
@@ -257,6 +261,9 @@ export default function ReviewPage() {
       setBusy(proposalId);
       setError(null);
       setNotice(null);
+      // A fresh open must re-seed the destination (even re-opening the
+      // same proposal); the seed effect owns the one-shot per proposal.
+      destinationSeededRef.current = null;
       try {
         // Claim first (15-min lease) so approve/reject have a valid token.
         const claim = await api.post<ClaimResponse>(
@@ -310,14 +317,19 @@ export default function ReviewPage() {
   );
 
   useEffect(() => {
-    if (!detail || categories.length === 0 || selectedCategoryCode) return;
+    // Re-derive the destination from doc_type ONCE per proposal, after the
+    // category list has loaded. The ref guard (not selectedCategoryCode)
+    // ensures a manual group/category switch is never re-inferred away.
+    if (!detail || categories.length === 0) return;
+    if (destinationSeededRef.current === detail.proposal_id) return;
+    destinationSeededRef.current = detail.proposal_id;
     const inferredDestination = inferDestinationFromDocType(
       detail.doc_type,
       categories,
     );
     setSelectedGroup(inferredDestination.group);
     setSelectedCategoryCode(inferredDestination.categoryCode);
-  }, [categories, detail, selectedCategoryCode]);
+  }, [categories, detail]);
 
   // ── Practice list follows the selected client ───────────────────────────
   useEffect(() => {
