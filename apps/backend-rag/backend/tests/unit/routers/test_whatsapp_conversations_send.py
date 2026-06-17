@@ -6,7 +6,10 @@ Coverage:
   check without a clients-table record.
 - Unknown numbers still get 403 (anti-spam guard unchanged).
 - Phone normalization: '+62 878-6187-0777' == '6287861870777' == '+6287861870777'.
-- Empty allowlist == today's behavior (CRM validation for everyone).
+- Empty allowlist == CRM/team-directory validation for everyone.
+- Team members (team_members.whatsapp) pass the DB gate even with an empty
+  allowlist and no clients-table record (CURE), while a number in neither
+  clients nor team_members is still rejected (INNOCENCE).
 """
 
 from unittest.mock import AsyncMock, patch
@@ -191,3 +194,77 @@ def test_empty_allowlist_team_number_still_403(client, mock_db_conn, monkeypatch
     assert response.status_code == 403
     assert "not found in CRM" in response.json()["detail"]
     mock_send.assert_not_awaited()
+
+
+# ============================================================
+# (e) DB recipient gate: team members pass, unknown numbers don't
+# ============================================================
+#
+# The /send DB gate accepts a recipient that is EITHER a non-deleted client
+# (clients.phone) OR an active team member (team_members.whatsapp), in a single
+# UNION-ALL EXISTS query. These tests pin both halves of that contract:
+#   - CURE: a team-member number absent from clients still sends (no 403).
+#   - INNOCENCE: a number in neither table is still rejected (403).
+# The DB is mocked, so the boolean returned by fetchval stands in for "the
+# UNION query found a matching row". We additionally assert the SQL actually
+# consults team_members, so the gate cannot silently regress to clients-only.
+
+
+def _send_query_sql(mock_db_conn) -> str:
+    """Return the SQL string passed to the single fetchval recipient-gate call."""
+    mock_db_conn.fetchval.assert_awaited_once()
+    args, _ = mock_db_conn.fetchval.await_args
+    return args[0]
+
+
+def test_team_member_in_db_bypasses_clients_only_gate(client, mock_db_conn, monkeypatch):
+    """CURE: a team-member number (in team_members.whatsapp, not in clients) sends.
+
+    Allowlist is empty, so the env short-circuit cannot help — the send must
+    succeed purely on the DB gate matching team_members. This is Surya's case:
+    +6282298000137 lives in team_members.whatsapp but not in clients.
+    """
+    _set_allowlist(monkeypatch, "")
+    # fetchval True == the UNION query found a row (here: the team_members half).
+    mock_db_conn.fetchval = AsyncMock(return_value=True)
+    surya_phone = "+6282298000137"
+
+    with patch.object(
+        whatsapp_conversations.whatsapp_service,
+        "send_message",
+        new=AsyncMock(return_value={"messages": [{"id": "wamid.test"}]}),
+    ) as mock_send:
+        response = client.post(
+            "/api/whatsapp/send", json={"phone": surya_phone, "message": "ciao Surya"}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    mock_send.assert_awaited_once()
+    # Prove the gate actually consults team_members (not a blanket allow and not
+    # a clients-only check): the SQL must reference both source tables.
+    sql = _send_query_sql(mock_db_conn)
+    assert "team_members" in sql
+    assert "whatsapp" in sql
+    assert "clients" in sql
+
+
+def test_unknown_number_not_in_clients_or_team_still_403(client, mock_db_conn, monkeypatch):
+    """INNOCENCE: a number in NEITHER clients NOR team_members is still rejected.
+
+    The team-member fix must not turn the gate into a blanket allow.
+    """
+    _set_allowlist(monkeypatch, "")
+    mock_db_conn.fetchval = AsyncMock(return_value=False)  # in no table
+
+    with patch.object(
+        whatsapp_conversations.whatsapp_service, "send_message", new=AsyncMock()
+    ) as mock_send:
+        response = client.post(
+            "/api/whatsapp/send", json={"phone": UNKNOWN_PHONE, "message": "spam?"}
+        )
+
+    assert response.status_code == 403
+    assert "not found in CRM" in response.json()["detail"]
+    mock_send.assert_not_awaited()
+    mock_db_conn.fetchval.assert_awaited_once()

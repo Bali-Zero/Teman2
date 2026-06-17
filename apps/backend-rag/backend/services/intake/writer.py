@@ -54,6 +54,7 @@ from typing import Any
 import asyncpg
 
 from backend.core.cache import invalidate_crm_stats
+from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
 
 logger = logging.getLogger("zantara.intake.writer")
 
@@ -224,12 +225,17 @@ def _document_payload(
             fields = {}
 
     # map intake doc_type → CRM document_category (folder) — mirrors create_document.
+    # NOTE: the canonical company category is "pma" (→ CATEGORY_TO_FOLDER["pma"] = "02_Company"),
+    # NOT "company": the latter is absent from document_categorizer.CATEGORY_TO_FOLDER, so it would
+    # silently fall through to the "99_Misc" default at crm_enhanced_documents.py and file NIB/akta
+    # into the Misc folder instead of 02_Company. Canonical value verified by
+    # tests/unit/app/services/portal/test_documents_mixin.py:45.
     category_map = {
         "passport": "immigration",
         "kitas": "immigration",
         "npwp": "tax",
-        "nib": "company",
-        "akta_pendirian": "company",
+        "nib": "pma",
+        "akta_pendirian": "pma",
     }
     category = category_map.get(doc_type)
 
@@ -647,6 +653,19 @@ async def execute_commit(
         )
         if plan.practice_id is not None:
             await _append_practice_document(conn, plan, doc_id)
+        # Client-card enrichment — in the SAME TX as the document write. The passport
+        # number/expiry, KITAS expiry, NPWP, NIB etc. extracted by FASE-3 feed the
+        # client's profile (renewal-alert clock, identity fields). Before this the
+        # intake commit filed the file and discarded the structured data. Conservative:
+        # skips archive-only (client_id None), unknown doc_types, and absent fields —
+        # never overwrites an existing card value with NULL. A bad field is skipped,
+        # never raised, so enrichment can't roll back the document it belongs to.
+        enriched = await enrich_client_from_extracted_fields(
+            conn,
+            plan.client_id,
+            plan.doc_type,
+            plan.payload.get("extracted_fields"),
+        )
         # Proposal advancement to the terminal 'routed' state — in the SAME TX as the
         # writes. P0#9 inverse: the DRY-RUN path never advances; the REAL path advances
         # exactly once, atomically with the document it routed.
@@ -655,11 +674,12 @@ async def execute_commit(
             conn, plan, dry_run=False, outcome="committed", doc_id=doc_id
         )
         logger.info(
-            "intake.writer.COMMITTED proposal=%s client=%s doc=%s practice=%s (real write)",
+            "intake.writer.COMMITTED proposal=%s client=%s doc=%s practice=%s enriched=%s (real write)",
             plan.proposal_id,
             plan.client_id,
             doc_id,
             plan.practice_id,
+            sorted(enriched.keys()) if enriched else [],
         )
         return CommitResult(
             proposal_id=plan.proposal_id,

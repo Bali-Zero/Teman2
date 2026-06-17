@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -515,22 +516,19 @@ export default function ClientDetailPage() {
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)]"
               title={`Assigned to: ${client.assigned_to.split("@")[0]}`}
             >
-              {teamMemberOptions.find((m) => m.value === client.assigned_to)
-                ?.avatar ? (
-                <img
-                  src={
-                    teamMemberOptions.find(
-                      (m) => m.value === client.assigned_to,
-                    )?.avatar
-                  }
-                  alt={client.assigned_to.split("@")[0]}
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <User className="w-4 h-4 text-green-500" />
-                </div>
-              )}
+              <AvatarWithFallback
+                src={
+                  teamMemberOptions.find((m) => m.value === client.assigned_to)
+                    ?.avatar
+                }
+                alt={client.assigned_to.split("@")[0]}
+                className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30"
+                fallback={
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <User className="w-4 h-4 text-green-500" />
+                  </div>
+                }
+              />
               <div className="flex flex-col">
                 <span className="text-xs text-[var(--bz-text-2)]">
                   Assigned to

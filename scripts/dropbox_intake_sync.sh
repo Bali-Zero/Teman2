@@ -20,6 +20,14 @@ ENABLED="${DROPBOX_INTAKE_ENABLED:-true}"
 SRC="${DROPBOX_INTAKE_SRC:-dropbox-bayu:}"
 DST="${DROPBOX_INTAKE_DST:-gdrive:Dropbox-Intake}"
 BWLIMIT="${DROPBOX_INTAKE_BWLIMIT:-4M}"
+# Dropbox throttles aggressively (HTTP 429 "too many requests"); cap the API
+# transaction rate + listing concurrency to avoid the 429->backoff death-spiral
+# that crawls throughput to ~100 B/s on a large tree. All env-overridable,
+# same idiom as BWLIMIT above. (anti-throttle tuning 2026-06-16)
+TPSLIMIT="${DROPBOX_INTAKE_TPSLIMIT:-12}"
+CHECKERS="${DROPBOX_INTAKE_CHECKERS:-4}"
+TRANSFERS="${DROPBOX_INTAKE_TRANSFERS:-4}"
+LOW_LEVEL_RETRIES="${DROPBOX_INTAKE_LLR:-20}"
 LOG_DIR="${HOME}/.cache/dropbox-intake"
 STATE_DIR="${HOME}/.agent/decisions/state"
 STATE_FILE="${STATE_DIR}/dropbox_intake.last.json"
@@ -87,15 +95,23 @@ for r in "${SRC%%:*}" "${DST%%:*}"; do
 done
 
 START=$(date +%s)
-log "run start: $SRC -> $DST (bwlimit=$BWLIMIT) log=$RUN_LOG"
+log "run start: $SRC -> $DST (bwlimit=$BWLIMIT tpslimit=$TPSLIMIT checkers=$CHECKERS) log=$RUN_LOG"
 
+# Skip Dropbox junk that clogs the queue head (alphabetically first), wastes
+# Drive quota, and pollutes the CRM intake: "(Selective Sync Conflict)" duplicate
+# folders, a stray cracked-software archive, and a Driver dump. (junk-exclude 2026-06-16)
 rclone copy "$SRC" "$DST" \
   --log-level INFO --log-file "$RUN_LOG" \
-  --transfers 4 --checkers 8 \
+  --transfers "$TRANSFERS" --checkers "$CHECKERS" \
+  --tpslimit "$TPSLIMIT" --tpslimit-burst 1 \
+  --low-level-retries "$LOW_LEVEL_RETRIES" --retries 5 \
   --fast-list \
   --bwlimit "$BWLIMIT" \
   --drive-stop-on-upload-limit \
-  --exclude ".DS_Store" --exclude "/.dropbox.cache/**"
+  --exclude ".DS_Store" --exclude "/.dropbox.cache/**" \
+  --exclude "*(Selective Sync Conflict)*/**" \
+  --exclude "Adobe CS4*/**" \
+  --exclude "Driver/**"
 RC=$?
 ELAPSED=$(( $(date +%s) - START ))
 

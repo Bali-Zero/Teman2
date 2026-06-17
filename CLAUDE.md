@@ -12,11 +12,12 @@
 
 | Machine | User | Hostname | Role | RAM |
 |---|---|---|---|---|
-| **Pro** | `nuzantara` | `Nuzantara` | Dev primario, interactive Claude Code | 48GB M4 Pro |
+| **Air-M5** | `balizero` | `Air-M5` | Dev workstation PRINCIPALE interattiva, leggera — no daemon/cron/Ollama H24 | 24GB M5 |
+| **Pro** | `nuzantara` | `Nuzantara` | Dev primario, interactive Claude Code; workhorse H24 (176 daemon, modelli 32B) | 48GB M4 Pro |
 | **Mini-Pro2** | `nuzantara` | `Mini-Pro2` | Server H24, Ollama dedicato, cron pesanti | 24GB M4 Pro |
 
-- `whoami=nuzantara` on both; distinguish via `hostname`. SSH alias `ssh pro` / `ssh mini` (Tailscale `100.93.236.6` for Mini, `100.107.22.111` for Pro from Mini).
-- First-response prefix: `[Pro]` or `[Mini]`.
+- `whoami=nuzantara` su Pro/Mini, `balizero` su M5 (home `/Users/balizero/` — path-aware scripts mandatory); distinguish via `hostname`. SSH alias `ssh pro` / `ssh mini` / `ssh air` (Tailscale `100.93.236.6` for Mini, `100.107.22.111` for Pro from Mini).
+- First-response prefix: `[Pro]`, `[Mini]`, or `[Air]`.
 - **Air decommissioned 2026-05-05** — handed off to Ari/Bali Zero. Historical references in code/scripts are archaeology, NOT active.
 
 ## Agent Worktree Discipline (2026-05-24)
@@ -75,7 +76,7 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Anthropic SDK BANNED.** Never `from anthropic import Anthropic` or `ANTHROPIC_API_KEY`. Sole path: shell out to `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (MAX-plan quota). Refuse any new tool/MCP/cron requiring `ANTHROPIC_API_KEY`. Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
 
-**Other paid per-token APIs (OpenRouter, OpenAI direct, Together, Fireworks, etc.) — require Zero's explicit authorization** (rule changed 2026-06-04, see `~/.claude/CLAUDE.md §Cost constraint`). Free-first by default (local Ollama → OAuth → free tier). Never install a paid key autonomously "to test" — surface to Antonello with cost + rationale, wait for explicit yes. **PII boundary absolute even when authorized**: no client PII (KTP/passport/NPWP/akta/credentials/OSINT) to any third-party paid endpoint (SYMBIOSIS Law 2 / UU PDP overrides cost). Pre-authorized non-PII: DeepSeek V4 Pro ($0.01/q), ChatGPT Pro Codex (unlimited).
+**Other paid per-token APIs (OpenRouter, OpenAI direct, Together, Fireworks, etc.) — require Zero's explicit authorization** (rule changed 2026-06-04, see `~/.claude/CLAUDE.md §Cost constraint`). Free-first by default (local Ollama → OAuth → free tier). Never install a paid key autonomously "to test" — surface to Antonello with cost + rationale, wait for explicit yes. **PII boundary absolute even when authorized**: LLM processing may use authorized operational context, but outputs, memories, logs, reports, skills, prompts saved for reuse, and shared artifacts must never transcribe client PII/OSINT in cleartext; use `client_id`, hashes, placeholders, or redaction (SYMBIOSIS Law 2 / UU PDP overrides cost). Pre-authorized non-PII: DeepSeek V4 Pro ($0.01/q), ChatGPT Pro Codex (unlimited).
 
 **MCP servers**: see `.mcp.json` for inventory. Default browser MCP: `mcp__claude-in-chrome__*` (NEVER `mcp__playwright__*` unless ordered). Text-first: `get_page_text`/`find`/`javascript_tool` before screenshot.
 
@@ -126,7 +127,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 9. **Verify Sources** — Never presume, verify against actual data.
 10. **Async HTTP Clients** — NEVER `httpx.AsyncClient()` in methods/loops. Persistent `_get_client`, close in `lifespan`.
 11. **PricingTool Only** — All prices from `PricingTool`. Never hardcode.
-12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`. Never `--no-verify`/`--amend` on pushed.
+12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`. Never `--no-verify`/`--amend` on pushed.
 
 ## 9. Data Invariants (NEVER VIOLATE)
 
@@ -182,7 +183,7 @@ Twitter (CRC broken), Google Chat (scaffold), Slack (scaffold) quarantined `.dis
 ## 14. Escalations & Continuity
 
 - **Session start**: check `shared/escalations.json` + `~/.agent/decisions/claude_tasks/` HIGH first. Delete file after fix + verify with `test_cmd`.
-- **OSINT sovereignty**: dati intelligence non escono mai dal Pro. Mai frontend, mai cloud, mai team. Skill condivise contengono conoscenza operativa, non dati. Reference SYMBIOSIS.md Law 2.
+- **PII/OSINT output boundary**: il vincolo non e' "nessun LLM vede contesto operativo"; il vincolo e' che nessun output, memoria, skill, report, log, alert o artefatto condiviso trascriva PII/OSINT in chiaro. Il mirror OSINT/WhatsApp resta Pro-bound: niente copie, repliche o dataset raw fuori dal Pro. Reference SYMBIOSIS.md Law 2.
 - **Local sovereignty** (Law 6): organismo vive su macchine Zero. Disconnessione internet NON è guasto — è stato naturale.
 
 ## 15. Research Capture Convention

@@ -113,10 +113,21 @@ _CRITIC_SCHEMA = {
 
 _CRITIC_PROMPT = """You are a senior editorial designer reviewing ONE Instagram carousel slide for Bali Zero (a regulatory/legal-info brand). Look at the image at: {png_path}
 
-Judge it like a designer who cares about clarity and restraint (think NYT/FT/Bloomberg editorial, NOT generic marketing):
-1. READABLE: is every word easy to read — including when shrunk to a phone thumbnail? Text over a photo must stay crisp.
+Judge it like a designer who cares about clarity and restraint (think NYT/FT/Bloomberg editorial, NOT generic marketing).
+
+VIEWING CONTEXT (critical — judge legibility at the RIGHT scale): an Instagram
+carousel is READ at full size (~1080px) once the viewer opens it. Only the
+HEADLINE/hook needs to survive the small grid thumbnail (~110px) to earn the
+tap. The kicker/eyebrow, sub-headline and body are SECONDARY context read after
+the open — judge them at full resolution, NOT at thumbnail scale. Do NOT fail a
+slide because a kicker/subhead/body would be small at 110px: only fail if it is
+unreadable at full open size, or if the dominant HEADLINE itself is illegible.
+
+1. READABLE: at full open size, is every word easy to read (crisp contrast over
+   any photo)? Separately: does the HEADLINE still read at thumbnail scale?
+   (Secondary text is NOT required to read at thumbnail.)
 2. HIERARCHY: does the title dominate, with sub-headline and body clearly subordinate? Do key numbers stand out?
-3. BALANCED: does it breathe, or is text crammed/floating awkwardly? Is the photo (if any) used well — does it dominate the cover?
+3. BALANCED: does it breathe, or is text crammed/floating awkwardly? Is the photo (if any) used well — does it dominate the cover? A 3-line title with a slightly shorter last line is acceptable if it reads cleanly; only flag wrap as a problem when it produces a true one-word orphan or a jarring shape.
 
 Brand rules you must respect (do NOT propose violating these): anthracite/white/yellow/red palette only, Montserrat font, logo present, no emoji, regulatory citations verbatim.
 
@@ -124,7 +135,7 @@ If it is publish-quality, set passes=true. Otherwise list concrete issues and pr
 - scrim_opacity (delta: +0.1..+0.3) — darken behind text when contrast is weak over a photo
 - text_stroke — add/strengthen outline on text over a photo
 - shrink_font (target: heading|body) — when text overflows or is too dense
-- grow_font (target: subhead|body) — increase the font size of a text element toward a thumbnail-legible minimum when it is too small to read at Instagram thumbnail scale (does NOT change palette/logo/layout)
+- grow_font (target: subhead|body) — increase the font size of a text element when it is too small to read AT FULL OPEN SIZE (not merely small at thumbnail scale; does NOT change palette/logo/layout)
 - rebalance_wrap — rewrap the title so line lengths are balanced (avoid one long line + one tiny orphan)
 - rerender — structural problem a small tweak can't fix
 

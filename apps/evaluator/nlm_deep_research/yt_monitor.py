@@ -35,7 +35,7 @@ VIDEO_URL_BASE = "https://www.youtube.com/watch?v={video_id}"
 
 NB_IDS = {
     "NB-2": "cff93ab0-813a-42f2-a8de-36987e724271",
-    "NB-3": "045f3cdb-ef62-488c-90ba-82594928b671",
+    "NB-3": "933509f9-1561-403d-bd44-4a7a67a36df2",
     "NB-4": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",
     "NB-5": "d9438180-5e63-4e2a-a473-6061101f6a8d",
 }

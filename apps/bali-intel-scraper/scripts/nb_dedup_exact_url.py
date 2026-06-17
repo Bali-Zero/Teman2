@@ -14,6 +14,16 @@ captures anti-bot placeholder titles ("just a moment", "security checkpoint",
 site name) on DISTINCT articles, so identical titles are false positives. Title
 and fuzzy dedup are left to the LLM Mode C propose-only pass.
 
+Challenge-sweep mode (--challenge-sweep): the ONE narrow exception to "no title
+dedup". Anti-bot placeholder pages ("Just a moment...", "Vercel Security
+Checkpoint") are zero-content garbage that never get a URL-dup partner, so the
+LLM proposes their deletion every day but is forbidden from applying it — they
+pile up until a notebook hits NotebookLM's hard 500-source ceiling and silently
+drops new sources. This mode deletes ONLY those exact-title placeholders, ONLY in
+notebooks at/near the ceiling (--near-cap). STRICT exact allowlist, never fuzzy/
+substring, so a real article whose title merely contains "moment"/"security" is
+untouched. Same per-run cap / --apply gate / audit log as the dedup path.
+
 Safety:
   - Only canonical-URL matches (L1+L4). NEVER title/Levenshtein/fuzzy.
   - Per-run delete cap (default 20): abort the whole run if exceeded — a large
@@ -49,6 +59,17 @@ TRACKING_PARAMS = frozenset({
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
     "fbclid", "gclid", "gbraid", "wbraid", "msclkid", "mc_cid", "mc_eid",
     "ref", "ref_src", "igshid", "_hsenc", "_hsmi", "yclid", "dclid",
+})
+
+# Anti-bot challenge-page placeholder titles (zero real content) the scraper
+# captures when a site's WAF blocks it. STRICT exact-match allowlist on the
+# NORMALIZED title (see _norm_title) — NEVER substring/fuzzy, so a real article
+# titled "A moment of reckoning" or "Vercel raises Series D" is never matched.
+# Only used by --challenge-sweep, and only on notebooks at/near the 500 ceiling.
+CHALLENGE_TITLES = frozenset({
+    "just a moment",                       # Cloudflare interstitial
+    "attention required! | cloudflare",    # Cloudflare block page
+    "vercel security checkpoint",          # Vercel WAF interstitial
 })
 
 # NB-INTEL live UUIDs (post 2026-05-18 switch). Source of truth: `nlm list notebooks`.
@@ -116,6 +137,41 @@ def find_duplicates(sources: list[dict]) -> list[tuple[str, list[str]]]:
     return out
 
 
+def _norm_title(title: str) -> str:
+    """Normalize a title for exact challenge-page comparison: lowercase, fold the
+    unicode ellipsis to '...', strip trailing dots/whitespace. So 'Just a moment...',
+    'Just a moment…' and '  JUST A MOMENT ' all collapse to 'just a moment'."""
+    return title.strip().lower().replace("…", "...").rstrip(". ")
+
+
+def find_challenge_pages(sources: list[dict]) -> list[str]:
+    """Return ids of sources whose NORMALIZED title is an exact challenge-page
+    placeholder (CHALLENGE_TITLES). Exact-match only — a title that merely contains
+    one of these words does not match."""
+    out: list[str] = []
+    for src in sources:
+        sid = src.get("id")
+        if sid and _norm_title(src.get("title") or "") in CHALLENGE_TITLES:
+            out.append(sid)
+    return out
+
+
+def select_challenge_deletions(
+    sources_by_nb: dict[str, list[dict]], near_cap: int
+) -> list[tuple[str, str]]:
+    """Plan challenge-page deletions, but ONLY for notebooks at/near the hard
+    500-source ceiling (len(sources) >= near_cap). Below the ceiling there is no
+    space pressure, so challenge pages stay as LLM propose-only items.
+    Returns [(nb_key, source_id), ...] in notebook order."""
+    plan: list[tuple[str, str]] = []
+    for key, sources in sources_by_nb.items():
+        if len(sources) < near_cap:
+            continue
+        for sid in find_challenge_pages(sources):
+            plan.append((key, sid))
+    return plan
+
+
 def delete_sources(source_ids: list[str]):
     """Delete sources via nlm in chunks (large argv fails).
 
@@ -143,11 +199,79 @@ def audit(entry: dict) -> None:
         f.write(json.dumps(entry) + "\n")
 
 
+def run_challenge_sweep(apply: bool, cap: int, near_cap: int) -> int:
+    """Delete anti-bot challenge-page placeholders, but ONLY in NB-INTEL notebooks
+    at/near the 500-source ceiling. Mirrors main()'s safety: cap-abort, --apply gate,
+    per-deletion audit. Exit codes match main() (0 ok, 2 cap exceeded, 3 nlm error)."""
+    sources_by_nb: dict[str, list[dict]] = {}
+    for key, nb_uuid in NB_INTEL.items():
+        try:
+            sources_by_nb[key] = list_sources(nb_uuid)
+        except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
+            logger.error("skip %s (%s): %s", key, nb_uuid, e)
+
+    plan = select_challenge_deletions(sources_by_nb, near_cap)
+    total = len(plan)
+    if total == 0:
+        logger.info(
+            "challenge-sweep: no challenge pages in near-cap NB-INTEL (near_cap=%d)", near_cap
+        )
+        print(json.dumps({"challenge_deleted": 0, "planned": 0, "applied": apply}))
+        return 0
+
+    if total > cap:
+        logger.error("ABORT challenge-sweep: %d planned exceed cap %d", total, cap)
+        print(json.dumps({"challenge_deleted": 0, "planned": total, "aborted_cap": cap}))
+        return 2
+
+    if not apply:
+        for key, sid in plan:
+            logger.info("[dry-run] challenge-sweep %s: would delete %s", key, sid)
+        print(json.dumps({"challenge_deleted": 0, "planned": total, "applied": False}))
+        return 0
+
+    deleted = 0
+    ts = datetime.now(timezone.utc).isoformat()
+    by_nb: dict[str, list[str]] = defaultdict(list)
+    for key, sid in plan:
+        by_nb[key].append(sid)
+    for key, ids in by_nb.items():
+        nb_deleted = 0
+        try:
+            for sid in delete_sources(ids):
+                audit({"ts": ts, "nb": key, "deleted_id": sid, "reason": "challenge_page_at_cap"})
+                deleted += 1
+                nb_deleted += 1
+        except (RuntimeError, subprocess.TimeoutExpired) as e:
+            logger.error("challenge-sweep delete failed for %s after %d: %s", key, nb_deleted, e)
+            print(json.dumps({"challenge_deleted": deleted, "planned": total, "applied": True, "error": str(e)}))
+            return 3
+        logger.info("%s: deleted %d challenge pages (at cap)", key, nb_deleted)
+
+    print(json.dumps({"challenge_deleted": deleted, "planned": total, "applied": True}))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Exact-URL dedup for NB-INTEL notebooks.")
     parser.add_argument("--apply", action="store_true", help="Actually delete (default: dry-run).")
     parser.add_argument("--cap", type=int, default=DELETE_CAP_PER_RUN, help="Abort if planned deletes exceed this.")
+    parser.add_argument(
+        "--challenge-sweep",
+        action="store_true",
+        help="Instead of URL-dedup: delete exact-title anti-bot challenge pages, "
+        "but only in notebooks at/near the 500 ceiling (--near-cap).",
+    )
+    parser.add_argument(
+        "--near-cap",
+        type=int,
+        default=480,
+        help="Challenge-sweep only runs on a notebook with >= this many sources (default 480).",
+    )
     args = parser.parse_args()
+
+    if args.challenge_sweep:
+        return run_challenge_sweep(apply=args.apply, cap=args.cap, near_cap=args.near_cap)
 
     plan: list[tuple[str, str, str]] = []  # (legacy_key, kept_id, dup_id)
     for key, nb_uuid in NB_INTEL.items():

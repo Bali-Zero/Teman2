@@ -911,3 +911,59 @@ async def test_candidate_ids_routing_fallback_and_companies_excluded(pool, seed)
         assert seed["cid_owner"] in ids, f"routing.client_id fallback missing: {cands}"
         assert seed["cid_other"] not in ids, (
             f"companies-table id leaked into clients lookup: {cands}")
+
+
+# --------------------------------------------------------------------------- #
+# Delivery-aware response status (intake message-journey TAC 2026-06-15)
+# Pure unit — no DB, no app. The Pro→Fly/Drive push NEVER raises, so a failed
+# delivery must be visible in the top-level approve status instead of a silent
+# "routed" (committed locally but ABSENT from kita.balizero — superscar #2).
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "push_status, expected",
+    [
+        # Delivered or intentionally-neutral → keep success status
+        ("pushed", "routed"),
+        ("disabled", "routed"),
+        ("already_delivered", "routed"),
+        # Every real delivery failure → operator-visible divergence status
+        ("unreachable", "committed_local_delivery_failed"),
+        ("server_error", "committed_local_delivery_failed"),
+        ("denied_rbac", "committed_local_delivery_failed"),
+        ("rejected", "committed_local_delivery_failed"),
+        ("too_large", "committed_local_delivery_failed"),
+        ("no_token", "committed_local_delivery_failed"),
+        ("missing_blob", "committed_local_delivery_failed"),
+        ("error", "committed_local_delivery_failed"),
+    ],
+)
+def test_delivery_aware_status_committed_path(push_status, expected):
+    from backend.app.routers.intake_review import _delivery_aware_status
+
+    out = _delivery_aware_status("routed", {"status": push_status})
+    assert out == expected, (
+        f"push status {push_status!r}: got {out!r}, expected {expected!r}"
+    )
+
+
+def test_delivery_aware_status_leaves_non_routed_untouched():
+    """A dry-run / blocked plan never reaches 'routed' — its status (and the
+    absence of a delivery leg) must pass through unchanged."""
+    from backend.app.routers.intake_review import _delivery_aware_status
+
+    # review_claimed is the dry-run/blocked base — never rewritten even if a
+    # (defensive) push_info were present.
+    assert _delivery_aware_status("review_claimed", None) == "review_claimed"
+    assert (
+        _delivery_aware_status("review_claimed", {"status": "unreachable"})
+        == "review_claimed"
+    )
+
+
+def test_delivery_aware_status_no_push_info_is_noop():
+    """If the delivery leg never ran (push_info is None/empty), a committed
+    'routed' stays 'routed' — we only downgrade on an OBSERVED failure."""
+    from backend.app.routers.intake_review import _delivery_aware_status
+
+    assert _delivery_aware_status("routed", None) == "routed"
+    assert _delivery_aware_status("routed", {}) == "routed"

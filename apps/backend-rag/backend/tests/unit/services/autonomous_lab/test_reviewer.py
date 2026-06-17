@@ -101,6 +101,26 @@ def test_autonomous_lab_script_paths_are_allowed_exactly() -> None:
     assert "unsafe_target_path" in _rule_ids(blocked)
 
 
+def test_autonomous_lab_ui_paths_are_allowed_narrowly() -> None:
+    allowed = _review(
+        _safe_run(
+            target_paths=[
+                "apps/admin-dashboard/app/autonomous-lab/page.tsx",
+                "apps/admin-dashboard/lib/autonomous-lab.ts",
+                "apps/admin-dashboard/components/Sidebar.tsx",
+            ]
+        )
+    )
+
+    assert allowed.approved is True
+    assert allowed.blocked is False
+
+    blocked = _review(_safe_run(target_paths=["apps/admin-dashboard/app/legal/page.tsx"]))
+
+    assert blocked.approved is False
+    assert "unsafe_target_path" in _rule_ids(blocked)
+
+
 def test_planned_only_commands_outside_plan_are_scanned() -> None:
     run = _safe_run()
     receipt = run.to_receipt()

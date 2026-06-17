@@ -1,0 +1,25 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-P1NLM",
+  "cycle": "c5-nlm-live",
+  "claim_id": "KBLI-HOTEL-55110",
+  "domain": "company",
+  "account": "antonellosiano@",
+  "nb_queried": { "id": "933509f9-1561-403d-bd44-4a7a67a36df2", "name": "NB-3 Company Setup (curated, ledger ground-truth source)" },
+  "nb_query": "In KBLI 2025 (Peraturan BPS 7/2025 conversion table), what happened to code 55110 for hotels? Was it split by star rating? List the current codes for star-rated hotels and for non-star (Hotel Melati / nonbintang) hotels.",
+  "ledger_current_fact_candidate": "KBLI 2025 split 55110 (star hotels) into 55101-55105 by star rating; Hotel Melati 55120 -> 55106 (nonbintang).",
+  "nb_citation_verbatim": "55110 Hotel Bintang 55101 Aktivitas Hotel Bintang Lima Pecah Kode ... 55102 Bintang Empat ... 55103 Bintang Tiga ... 55104 Bintang Dua ... 55105 Bintang Satu Pecah Kode. 55120 Hotel Melati 55106 Aktivitas Hotel Nonbintang Recoding/Pindah Kode. (Tabel Konversi BPS, Peraturan BPS No. 7/2025). All 55101-55106 are PMA TERBUKA 100%.",
+  "verdict": "CONFIRM",
+  "verdict_rationale": "Live NB-3 quotes the BPS conversion table verbatim, exactly matching the ledger: 55110 -> 55101-55105 (Pecah Kode by star), 55120 (Hotel Melati) -> 55106. One garbled OCR extraction (source c77a6791, column-shift) was disregarded in favour of the clean dominant table (source 0dba6cb9, 3 of 4 citations + answer synthesis).",
+  "fix_applied": {
+    "files": ["apps/mouth/src/content/articles/property/property-via-pt-pma-indonesia.mdx"],
+    "change": "KBLI table L131-132: '55110 | Hotel accommodation | 67% max' -> '55101-55106 | Hotel (55101-55105 star-rated, 55106 non-star; replaces old 55110/55120) | 100% PMA allowed'. Ownership corrected too (NB: 55101-55106 all 100% TERBUKA, not 67%).",
+    "cause_command": "grep -nE '55110|67% max|55101.55106' property-via-pt-pma-indonesia.mdx",
+    "cause_before": "L131 '55110 | Hotel accommodation | 67% max foreign ownership'",
+    "cause_after": "L131 '55101-55106 | Hotel ... | 100% PMA allowed' (CLEAN)"
+  },
+  "scope_note": "Flagship hospitality articles (kbli-2025-hospitality-accommodation.mdx full table; kbli-2025-hospitality-villa-hotel-guide migration table L388; pt-pma-in-bali...mdx:41) were verified ALREADY CORRECT (55110->55101-105). Legacy '55110' also persists in ~dozen other articles as historical/comparison context (NOT mass-replaced — superscar #3). Site-wide 55110 modernization = operator structural-antidote.",
+  "refuter_note": "BPS conversion table is a primary regulation transcribed in the curated NB; no reasoning-refuter can override a quoted gazette table. Father's grep is the gate.",
+  "ground_truth_source": "NB-3 933509f9 LIVE query 2026-06-16 (Peraturan BPS 7/2025 Tabel Konversi)",
+  "ts": "2026-06-16T04:15:55Z"
+}

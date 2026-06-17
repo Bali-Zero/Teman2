@@ -42,10 +42,16 @@ logger = logging.getLogger("wr2.composer")
 _BRAND = Path.home() / ".claude" / "skills" / "bali-zero-brand"
 _LAYOUTS = _BRAND / "layouts"
 
-# The 9 layout families that have real HTML/CSS skeletons (GROUND phase verified).
+# The layout families that have real HTML/CSS skeletons (GROUND phase verified).
+# `editorial-text` added 2026-06-13: a text-only prose family for non-hero slides
+# (smart-hero decision) — full antracite canvas, no photo, heading+sub+body.
 RENDERABLE_FAMILIES = {
     "cover-photo",
     "photo-headline-yellow-sub",
+    "photo-fullbleed",
+    "photo-fullbleed-top",
+    "photo-fullbleed-split",
+    "editorial-text",
     "qa-dialogue",
     "timeline-pinboard",
     "dark-status-list",
@@ -82,31 +88,46 @@ def map_slide_to_family(slide: dict[str, Any], index: int, total: int) -> str:
       slide_number, slide_type, is_cover, is_hero_image, headline, subhead,
       body, image_prompt, image_url.
 
-    Mapping rules (conservative — only the 9 renderable families):
+    Mapping rules (smart-hero, 2026-06-13 — only RENDERABLE families):
       - slide 1 / is_cover            -> cover-photo            (Art 9.3 hard rule)
-      - last slide / slide_type cta   -> statement-bomb         (Art 9.5 hard rule)
-      - is_hero_image (mid)           -> photo-headline-yellow-sub (hero + text)
-      - has explicit list structure   -> evidence-carved        (facts) [future]
-      - default body                  -> photo-headline-yellow-sub if image_url
-                                         else dark-status-list-ish text slide
+      - last slide / cta/closing/stmt -> statement-bomb         (Art 9.5 hard rule)
+      - is_hero_image (mid)           -> photo-headline-yellow-sub (hero photo + text)
+      - non-hero "take"               -> statement-bomb         (punchy text-only)
+      - non-hero default              -> editorial-text         (text-only prose)
+
+    A NON-hero slide NEVER routes to photo-headline-yellow-sub: that layout has a
+    full-bleed hero photo, so an empty/missing image would leave a visual void
+    (the "void-trap"). Non-hero slides go to a TEXT-ONLY family instead.
+
+    We deliberately do NOT auto-route to dark-status-list / evidence-carved /
+    source-citation: those need structured items/facts/citations the generator
+    does not produce, so a blind mapping would break their fill.
 
     Returns a family in RENDERABLE_FAMILIES. Never returns an UNDEFINED one.
     """
-    st = (slide.get("slide_type") or "").lower()
-
+    # Per-slide explicit override (manual full-bleed-photo carousels, 2026-06-13):
+    # a slides.json may pin `layout_family` directly to opt a slide into a
+    # specific renderable family (e.g. "photo-fullbleed" for the foto-a-tutta-slide
+    # treatment). Honoured ONLY when it names a RENDERABLE family — a typo or an
+    # UNDEFINED value falls through to auto-routing so we never emit a blank
+    # skeleton. This intentionally lets a manual author bypass the Art 9.3/9.5
+    # cover/CTA hard rules for a fully-photographic carousel.
+    explicit = (slide.get("layout_family") or "").strip()
+    if explicit in RENDERABLE_FAMILIES:
+        return explicit
     if index == 1 or slide.get("is_cover"):
         return "cover-photo"
+    st = (slide.get("slide_type") or "").lower()
     if index == total or st in {"cta", "closing", "statement"}:
         return "statement-bomb"
     if slide.get("is_hero_image"):
         return "photo-headline-yellow-sub"
-    # text-forward body slide: if it has an image use the photo layout, else a
-    # text layout. (dark-status-list expects label/value items; without that
-    # structure we keep it on the photo layout with image, or a plain text
-    # variant. For now, default to photo-headline if image present.)
-    if slide.get("image_url"):
-        return "photo-headline-yellow-sub"
-    return "photo-headline-yellow-sub"  # safe default (renders heading+sub+body)
+    # non-hero: route to a TEXT-ONLY family (never the photo layout with an empty
+    # image → void-trap). All non-hero prose — including an editorial "take" —
+    # goes to editorial-text: statement-bomb is for a 3-15 word punch, NOT a
+    # 35-word take (E2E 2026-06-13: a take routed to statement-bomb crammed; on
+    # editorial-text the same copy reads cleanly, like the other prose slides).
+    return "editorial-text"  # text-only prose family
 
 
 def _extract_skeleton(family: str) -> str:
@@ -988,7 +1009,7 @@ async def compose_carousel(
         plans.append(SlidePlan(index=i, family=family, slide=slide, expect_hero=expect_hero))
 
     # Download heroes + materialize HTML per slide
-    html_specs: list[tuple[Path, bool]] = []
+    html_specs: list[tuple[Path, bool, str]] = []
     async with httpx.AsyncClient() as client:
         for plan in plans:
             hero_filename: str | None = None
@@ -1016,7 +1037,9 @@ async def compose_carousel(
 
             html_path = slides_dir / f"{plan.index:02d}.html"
             html_path.write_text(html, encoding="utf-8")
-            html_specs.append((html_path, plan.expect_hero))
+            # 3-tuple: thread the layout family so the renderer's hero-visibility
+            # gate samples where THIS family exposes the photo (top/lower/middle).
+            html_specs.append((html_path, plan.expect_hero, plan.family))
 
     result = await render_html_files(html_specs, output_dir, timeout_ms=timeout_ms, make_pdf=True)
 
@@ -1115,8 +1138,13 @@ def make_slide_render_fn(
         html_path = slides_dir / f"{index:02d}.html"
         # render_html_files writes PNG to (render_root/"slides")/f"{enum_idx:02d}.png"
         # where enum_idx is the 1-based position in the list → always "01" here.
+        # Thread the layout family (same derivation materialize_slide_html used)
+        # so the hero-visibility gate samples the right band for this layout.
+        family = map_slide_to_family(slide_with_levers, index, total)
+        if family in UNDEFINED_FAMILIES:
+            family = "photo-headline-yellow-sub"
         res = await render_html_files(
-            [(html_path, expect_hero_for_index(slide_with_levers, index))],
+            [(html_path, expect_hero_for_index(slide_with_levers, index), family)],
             render_root,
             timeout_ms=timeout_ms,
             make_pdf=False,

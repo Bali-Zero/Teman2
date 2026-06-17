@@ -105,14 +105,17 @@ def select_review_rows(
     limit: int,
     gates: set[str],
     labels: set[str],
+    sources: set[str] | None = None,
 ) -> list[ClassifiedRow]:
     """Select the highest-volume rows requiring owner review."""
+    source_filter = sources or set()
     selected = [
         row
         for row in rows
         if row.review_required
         and (not gates or row.processing_gate in gates)
         and (not labels or row.classification_label in labels)
+        and (not source_filter or row.source in source_filter)
     ]
     return sorted(
         selected,
@@ -352,10 +355,17 @@ def build_review_manifest(
     limit: int,
     gates: set[str],
     labels: set[str],
+    sources: set[str] | None = None,
 ) -> list[ReviewManifestRow]:
     """Build the private review manifest and safe tracked summary."""
     classified_rows = read_classified_rows(classification_db)
-    selected = select_review_rows(classified_rows, limit=limit, gates=gates, labels=labels)
+    selected = select_review_rows(
+        classified_rows,
+        limit=limit,
+        gates=gates,
+        labels=labels,
+        sources=sources,
+    )
     refs_by_file_id = file_ref_index(build_file_refs(root))
     manifest_rows = build_manifest_rows(
         selected_rows=selected,
@@ -408,6 +418,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=[],
         help="Optional classification_label filter. Can be repeated.",
     )
+    parser.add_argument(
+        "--source",
+        action="append",
+        default=[],
+        help="Optional source filter. Can be repeated.",
+    )
     return parser
 
 
@@ -434,6 +450,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             gates=set(args.gate),
             labels=set(args.label),
+            sources=set(args.source),
         )
     except FileNotFoundError as exc:
         LOGGER.error("%s", exc)

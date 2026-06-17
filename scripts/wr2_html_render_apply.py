@@ -463,7 +463,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
         except VisionTransient as exc:
             # transient vision-infra failure (HTTP 429 quota window OR endpoint
             # timeout) — NOT a draft defect. Release the lease WITHOUT touching
-            # _html_attempts so the circuit breaker is not burned; the draft
+            # html_render_attempts so the circuit breaker is not burned; the draft
             # returns to the queue and renders next tick once the endpoint
             # recovers. (Pre-fix a 429/timeout masqueraded as "vision unavailable"
             # and killed healthy drafts in 3 attempts.)
@@ -488,8 +488,15 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             # this failure path records its terminal status instead of crashing on
             # a closed connection and leaving the draft stuck in 'rendering'.
             main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+            # Counter lives in a dedicated INTEGER column (migration 228). The old
+            # path read/wrote slides_json->>'_html_attempts', but slides_json is a
+            # JSONB ARRAY: the read silently returned 0 (so the counter never
+            # accumulated) and the write raised InvalidTextRepresentationError
+            # (`path element at position 1 is not an integer`), crashing the
+            # retry-release before the draft could be parked → reconciliation
+            # re-kicked it forever (2026-06-13 SCAR).
             attempts = await main_conn.fetchval(
-                "SELECT COALESCE((slides_json->>'_html_attempts')::int, 0) FROM war_room_drafts WHERE id=$1",
+                "SELECT COALESCE(html_render_attempts, 0) FROM war_room_drafts WHERE id=$1",
                 draft_id,
             ) or 0
             attempts += 1
@@ -508,7 +515,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             await main_conn.execute(
                 """
                 UPDATE war_room_drafts
-                   SET slides_json = jsonb_set(slides_json, '{_html_attempts}', to_jsonb($3::int)),
+                   SET html_render_attempts = $3::int,
                        status='drafts_imaged_checked', lease_owner=NULL,
                        lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
                  WHERE id=$1 AND lease_owner=$2 AND status='rendering'

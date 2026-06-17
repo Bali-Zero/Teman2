@@ -2,9 +2,21 @@
 
 import React from "react";
 import Link from "next/link";
-import { Newspaper, PenTool, ArrowRight, Zap } from "lucide-react";
+import { Newspaper, PenTool, ArrowRight, Shield, Zap } from "lucide-react";
 
 const TRINITY = [
+  {
+    name: "Visa Oracle",
+    href: "/intelligence/visa-oracle",
+    icon: Shield,
+    description:
+      "Review visa & immigration regulation changes detected on imigrasi.go.id and approve updates.",
+    gradient: "from-sky-500/20 via-sky-600/10 to-transparent",
+    glow: "rgba(14,165,233,0.15)",
+    iconColor: "#38bdf8",
+    borderColor: "rgba(14,165,233,0.15)",
+    step: "01",
+  },
   {
     name: "News Room",
     href: "/intelligence/news-room",
@@ -15,7 +27,7 @@ const TRINITY = [
     glow: "rgba(16,185,129,0.15)",
     iconColor: "#34d399",
     borderColor: "rgba(16,185,129,0.15)",
-    step: "01",
+    step: "02",
   },
   {
     name: "Article Composer",
@@ -27,7 +39,7 @@ const TRINITY = [
     glow: "rgba(139,92,246,0.15)",
     iconColor: "#a78bfa",
     borderColor: "rgba(139,92,246,0.15)",
-    step: "02",
+    step: "03",
     badge: "AI",
   },
 ];
