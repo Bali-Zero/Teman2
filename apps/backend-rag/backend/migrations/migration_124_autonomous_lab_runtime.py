@@ -27,6 +27,7 @@ async def apply(conn: Any) -> None:
                 CHECK (status IN (
                     'pending',
                     'running',
+                    'paused',
                     'succeeded',
                     'failed',
                     'cancelled'
@@ -92,6 +93,8 @@ async def apply(conn: Any) -> None:
                 CHECK (event_type IN (
                     'run_enqueued',
                     'run_claimed',
+                    'run_checkpointed',
+                    'run_paused',
                     'run_succeeded',
                     'run_failed',
                     'run_cancelled',
@@ -99,7 +102,10 @@ async def apply(conn: Any) -> None:
                     'run_drafted',
                     'experiment_ready',
                     'verification_failed',
-                    'candidate_ready'
+                    'candidate_ready',
+                    'evaluation_recorded',
+                    'curator_decision_recorded',
+                    'shadow_run_completed'
                 )),
             payload JSONB NOT NULL,
 

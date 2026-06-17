@@ -180,8 +180,8 @@ META_WORKFLOW_STAGES: tuple[MetaWorkflowStage, ...] = (
     MetaWorkflowStage(
         0,
         "study",
-        "reuse-first, memory recall, hot-file and risk scan",
-        "grounding_receipt_present",
+        "continuous AI/software scouting, reuse-first memory recall, hot-file and risk scan",
+        "fresh_research_or_idle_receipt",
         required_before_parallel=True,
     ),
     MetaWorkflowStage(1, "spec", "verifiable contract artifact", "acceptance_gates_named"),
@@ -248,13 +248,28 @@ MISSING_V1_COMPONENTS: tuple[LabControlPlaneComponent, ...] = (
         parallel_group="ingestion",
     ),
     LabControlPlaneComponent(
+        key="ai_software_watchtower",
+        agent_role="frontier_watchtower",
+        responsibility=(
+            "continuously scan approved AI research, model releases, SDK and framework "
+            "changelogs, and software implementation patterns for Nuzantara applicability; "
+            "route NotebookLM reads through frontier_radar and agent_engineering_core, "
+            "and route new writes through ai_research_overflow when the radar is near cap"
+        ),
+        output="ranked FrontierSignal envelopes with NotebookLM route receipts",
+        gate="fresh_sources_or_explicit_idle_receipt_and_notebook_route",
+        state=ComponentState.PLANNED,
+        depends_on=("operational_queue", "source_adapters"),
+        parallel_group="ingestion",
+    ),
+    LabControlPlaneComponent(
         key="composer",
         agent_role="hypothesis_composer",
         responsibility="compose evidence-backed hypotheses and implementation briefs",
         output="hypothesis and spec bundle",
         gate="evidence_quorum_or_warning",
         state=ComponentState.PLANNED,
-        depends_on=("source_adapters",),
+        depends_on=("source_adapters", "ai_software_watchtower"),
         parallel_group="reasoning",
     ),
     LabControlPlaneComponent(
@@ -330,10 +345,18 @@ PARALLEL_WORK_PACKAGES: tuple[ParallelWorkPackage, ...] = (
     ),
     ParallelWorkPackage(
         key="ingestion_reasoning_parallel",
-        components=("source_adapters", "composer", "prod_like_context_builder"),
+        components=(
+            "source_adapters",
+            "ai_software_watchtower",
+            "composer",
+            "prod_like_context_builder",
+        ),
         mode=ParallelizationMode.PARALLEL_SAFE,
         merge_gate="receipt_safe_material_contract",
-        rationale="adapters, composer, and context builder can advance against one envelope contract",
+        rationale=(
+            "watchtower, adapters, composer, and context builder can advance against "
+            "one envelope contract"
+        ),
     ),
     ParallelWorkPackage(
         key="execution_parallel",
