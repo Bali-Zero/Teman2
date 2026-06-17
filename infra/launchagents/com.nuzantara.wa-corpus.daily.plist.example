@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WA-corpus daily reconcile. Copy to ~/Library/LaunchAgents/ (drop .example),
+  then: launchctl bootstrap gui/$(id -u) <plist>.
+  Runs 05:00 WITA daily. Logs to ~/logs/wa-corpus-daily.{out,err}.log.
+  Telegram secrets are NOT in this plist — the wrapper sources ~/.wa-mirror.env
+  (0600), same as the other wa-mirror crons. No secret to fill or rotate here.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.nuzantara.wa-corpus.daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/scripts/wa_corpus_daily_run.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>WA_CORPUS_REPO_ROOT</key><string>/Users/nuzantara/Desktop/nuzantara</string>
+    <key>WA_CORPUS_MEMBERS_CONFIG</key><string>/Users/nuzantara/.config/nuzantara/wa_corpus_members.json</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
+  <key>StandardOutPath</key><string>/Users/nuzantara/logs/wa-corpus-daily.out.log</string>
+  <key>StandardErrorPath</key><string>/Users/nuzantara/logs/wa-corpus-daily.err.log</string>
+  <key>RunAtLoad</key><false/>
+</dict>
+</plist>
