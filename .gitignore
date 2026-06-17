@@ -311,6 +311,13 @@ research/**/*-guidance.pdf
 # (force-added there by plist_snapshot_dr.sh); ignored on every working branch.
 infra/launchagents/_snapshot-live/
 
+# WhatsApp/Baileys session credentials + sync-key dumps (OSINT secrets, Symbiosis Law 2).
+# A git stash captured 3041 such files (session-quarantine); this blocks any re-leak.
+apps/wa-mirror/historical/
+**/session-quarantine-*/
+**/baileys_auth*/
+**/creds.json
+
 # ========================================
 # SECURITY FIXES (2026-01-11)
 # ========================================
