@@ -156,6 +156,7 @@ def test_build_approval_routing_queue_writes_owner_queue(
     assert result.pack_count == 2
     assert result.brief_count == 2
     assert result.queue_item_count == 2
+    assert result.now_count == 2
     assert result.output_db == output_dir / "approval_routing_queue.local.sqlite"
     assert result.send_whatsapp_count == 0
     assert result.crm_mutation_count == 0
@@ -299,6 +300,7 @@ def test_cli_writes_json_without_route_details(tmp_path: Path) -> None:
     assert payload == {
         "brief_count": 2,
         "crm_mutation_count": 0,
+        "now_count": 2,
         "owner_item_count": 2,
         "pack_count": 2,
         "queue_item_count": 2,
