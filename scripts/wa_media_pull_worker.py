@@ -5,7 +5,7 @@ The Fly webhook publishes metadata-only rows to events_outbox
 (channel ``whatsapp_media_pending``) — just a Meta ``media_id`` + provenance,
 never a byte of the client document. This worker, running ONLY on the Pro:
 
-1. Reads ``WHATSAPP_ACCESS_TOKEN`` from the Pro Keychain (never env/plist/disk,
+1. Reads ``WHATSAPP_ACCESS_TOKEN`` from env (0600 env-file via wrapper) else Keychain (never plist,
    never logged).
 2. HTTP GETs the Fly bridge for pending rows (metadata only).
 3. For each: downloads the media FROM META ITSELF to the local sovereign blob
@@ -122,7 +122,16 @@ def _read_keychain(service: str, account: str) -> str:
 
 
 def _read_access_token() -> str:
-    """Read WHATSAPP_ACCESS_TOKEN from the Pro Keychain. Never logged."""
+    """WHATSAPP_ACCESS_TOKEN from env if set, else the Pro Keychain. Never logged.
+
+    Env-first mirrors _read_bridge_api_key: a 0600 env-file (sourced by the
+    wrapper, like ~/.wa-mirror.env) is the durable delivery channel on the Pro,
+    since the login Keychain is unreachable over SSH and a custom keychain gets
+    quarantined by macOS Keychain Services under concurrent launchd access.
+    """
+    env_token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    if env_token:
+        return env_token
     service = os.getenv("WA_MEDIA_KEYCHAIN_SERVICE", "balizero-whatsapp")
     account = os.getenv("WA_MEDIA_KEYCHAIN_ACCOUNT", "access-token")
     return _read_keychain(service, account)
