@@ -15,7 +15,12 @@ def pytest_configure(config: object) -> None:
     except (OSError, ValueError):
         return
 
-    target_limit = min(max(soft_limit, MIN_TEST_NOFILE_LIMIT), hard_limit)
+    if soft_limit == resource.RLIM_INFINITY:
+        return
+
+    target_limit = max(soft_limit, MIN_TEST_NOFILE_LIMIT)
+    if hard_limit != resource.RLIM_INFINITY:
+        target_limit = min(target_limit, hard_limit)
     if target_limit <= soft_limit:
         return
 

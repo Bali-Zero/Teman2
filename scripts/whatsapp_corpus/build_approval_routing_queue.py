@@ -75,6 +75,7 @@ class ApprovalRoutingQueueBuildResult:
     pack_count: int
     brief_count: int
     queue_item_count: int
+    now_count: int
     send_whatsapp_count: int
     crm_mutation_count: int
     decision_type_counts: dict[str, int]
@@ -452,6 +453,7 @@ def build_approval_routing_queue(
     ) = read_source_metadata(owner_briefs_db)
     rows = read_owner_brief_rows(owner_briefs_db)
     routes = build_route_items(rows)
+    now_count = sum(1 for route in routes if route.route_bucket == "owner_now")
     source_case_total = source_case_count or len(rows)
     owner_item_total = owner_item_count or len(rows)
     pack_total = pack_count or len(rows)
@@ -482,6 +484,7 @@ def build_approval_routing_queue(
         pack_count=pack_total,
         brief_count=brief_total,
         queue_item_count=len(routes),
+        now_count=now_count,
         send_whatsapp_count=sum(1 for route in routes if route.send_whatsapp),
         crm_mutation_count=sum(1 for route in routes if route.crm_mutation),
         decision_type_counts=dict(Counter(route.decision_type for route in routes)),
@@ -530,6 +533,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 {
                     "brief_count": result.brief_count,
                     "crm_mutation_count": result.crm_mutation_count,
+                    "now_count": result.now_count,
                     "owner_item_count": result.owner_item_count,
                     "pack_count": result.pack_count,
                     "queue_item_count": result.queue_item_count,

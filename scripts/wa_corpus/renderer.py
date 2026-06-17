@@ -10,10 +10,7 @@ from __future__ import annotations
 import io
 import re
 from datetime import datetime, timezone
-
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from typing import Any
 
 from scripts.wa_corpus.config import (
     DELEGATED_USER,
@@ -69,12 +66,17 @@ def doc_title(counterpart_phone: str, crm_name: str | None) -> str:
 
 class ChatDocRenderer:
     def __init__(self) -> None:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+
         creds = service_account.Credentials.from_service_account_file(
             SA_KEY_PATH, scopes=DRIVE_SCOPES
         ).with_subject(DELEGATED_USER)
         self.svc = build("drive", "v3", credentials=creds, cache_discovery=False)
 
-    def _media(self, markdown: str) -> MediaIoBaseUpload:
+    def _media(self, markdown: str) -> Any:
+        from googleapiclient.http import MediaIoBaseUpload
+
         return MediaIoBaseUpload(
             io.BytesIO(markdown.encode("utf-8")),
             mimetype="text/markdown",
