@@ -93,3 +93,35 @@ def test_cli_blocks_workspace_write_requests(tmp_path: Path) -> None:
     assert stdout["failed_blockers"] == ["google_workspace_write_block"]
     receipt = json.loads(Path(stdout["receipt_path"]).read_text(encoding="utf-8"))
     assert receipt["blocked"] is True
+
+
+def test_cli_invalid_input_returns_receipt_safe_json_error(tmp_path: Path) -> None:
+    bad_path = "apps/backend-rag/backend/services/autonomous_lab/planner.py\nBAD"
+    payload = _input_payload()
+    payload["target_paths"] = [bad_path]
+    input_path = tmp_path / "input.json"
+    receipt_dir = tmp_path / "receipts"
+    input_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            str(input_path),
+            "--receipt-dir",
+            str(receipt_dir),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    stdout = json.loads(result.stdout)
+    assert result.returncode == 1
+    assert result.stderr == ""
+    assert stdout["ok"] is False
+    assert stdout["failed_blockers"] == ["input_validation"]
+    assert "error_reference" in stdout
+    assert bad_path not in result.stdout
+    assert "control characters" not in result.stdout
