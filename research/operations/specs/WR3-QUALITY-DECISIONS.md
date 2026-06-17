@@ -280,6 +280,71 @@ with each spec's `NOT EXECUTED` guardrail.
 
 ---
 
+## Execution Record (2026-06-12)
+
+> **STATUS UPDATE: STEPS 1 + 2 NOW EXECUTED.** This section records the
+> operator-confirmed execution of the two no-dependency suspends. The rest of the
+> ordering (STEP 0 supervisor, STEP 3 F20, STEP 4 F21-Phase-2, STEP 5 F18-Phase-2)
+> stays **deferred / operator-gated** as decided above.
+>
+> Date: 2026-06-12 · Operator: Antonello ("WR3 = EXPLICIT PAUSE") · Executor:
+> Claude (Opus 4.8), L2 authority · Machine: Pro (`nuzantara@Nuzantara`) via `ssh
+> pro`.
+
+**Operator decision.** Antonello confirmed a **WR3 explicit pause** — suspend
+the green-theater self-improvement crons; produce no new episodes for now. This
+is the §0 quality principle applied: *off-honestly beats green-theater (C1)*.
+
+**STEP 1 (F18 Phase-1) — EXECUTED.** The evolver had the **weekly-vs-daily
+double-LaunchAgent** the F18 spec flagged as unresolved; **both** were suspended:
+
+- `com.balizero.agent-library-evolver.weekly` — `bootout` exit 0, `disable` exit
+  0 → **GONE from `launchctl list`** (verified this turn).
+- `com.balizero.agent-library-evolver.daily` — `bootout` exit 0, `disable` exit
+  0 → **GONE from `launchctl list`** (verified this turn).
+
+`disable` persists the suspension across reboot. (The weekly-vs-daily ambiguity
+is now mooted on the suspend side — both are off; if the evolver is ever resumed
+in Phase 2, the authoritative schedule must be settled then, single plist.)
+
+**STEP 2 (F21 Phase-1) — EXECUTED.** The 816-byte `sys.exit(0)` reflexion stub
+cron was suspended:
+
+- `com.balizero.wr3.reflexion.weekly` — `bootout` exit 0, `disable` exit 0 →
+  **GONE from `launchctl list`** (verified this turn).
+
+**Supervisor — DELIBERATELY NOT TOUCHED.** `com.balizero.wr3.supervisor` was
+**left running** (verified still present in `launchctl list`, PID alive this
+turn). The supervisor-revival diagnosis corrected the earlier picture: the
+supervisor is an **idle, healthy LISTEN daemon** — it consumes nothing when
+nothing is produced, so the WR3 pause is achieved by suspending the two
+self-improvement crons + simply not triggering production, **not** by killing the
+supervisor. Leaving it idle is the operator's chosen state.
+
+**Still deferred (operator-gated, unchanged):**
+
+- **STEP 0** — `com.balizero.wr3.supervisor` was diagnosed `exit=78`
+  (`EX_CONFIG`) earlier; the revival spec is the documented **resume path**
+  (STEP-0 prerequisite for F20/F21-Phase-2). See
+  `research/operations/specs/WR3-supervisor-revival.md` (authored on branch
+  `agent/nuzantara/docs/wr3-supervisor-revival-spec`, commit `2152ca619` — **not
+  yet on `main`**; this link resolves once that spec merges).
+- **STEP 3 (F20 manifest)** and **STEP 4 (F21-Phase-2 real reflexion)** — both
+  remain deferred **until WR3 production is intentionally resumed** (they are
+  green-on-empty until episodes flow again).
+- **STEP 5 (F18-Phase-2 curriculum)** — independent of the supervisor; still
+  gated on a panel-reviewed scar curriculum.
+
+**Resume path (when production is intentionally restarted).** Per the
+supervisor-revival spec, the WR3 episode pipeline restarts by **triggering
+`wr3-design-architect` to publish an episode-brief event** (the orchestrator
+fan-out entry point). At that point the deferred steps unblock in order: revive
+the supervisor (STEP 0), then F20 deterministic manifest + F21-Phase-2 real
+reflexion (STEPS 3–4) land on top of real episode input. Reversing a suspended
+cron is `launchctl enable …` + `launchctl bootstrap gui/$UID <plist-path>`.
+
+---
+
 ## Index pointer (post-#1345-merge)
 
 `WR3-DEBT-INDEX.md` currently exists only on the unmerged PR #1345 branch
