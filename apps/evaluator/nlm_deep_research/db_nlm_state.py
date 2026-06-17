@@ -26,9 +26,9 @@ _DEFAULT_LOCK_PATH: Path = _DIR / "db_nlm_sync.lock"
 
 # --- Notebook IDs (populated after creation via `nlm notebook create`) ---
 # These will be set on first run or via CLI args.
-NB_OPS_ID: str = ""       # NB-11: Bali Zero Ops Live
-NB_INTEL_ID: str = ""      # NB-12: Bali Zero Business Intelligence
-NB_TELEMETRY_ID: str = ""  # NB-13: Bali Zero System Telemetry
+NB_OPS_ID: str = "2072e518-e6f9-437d-93ea-f9037ec54052"       # NB-11: Bali Zero Ops Live
+NB_INTEL_ID: str = "5c2c3d90-eed2-4755-86b1-269e637e51e1"      # NB-12: Bali Zero Business Intelligence
+NB_TELEMETRY_ID: str = "53441d9e-fb11-44cc-8dd8-4d70637b651f"  # NB-13: Bali Zero System Telemetry
 
 # --- Source slots per notebook ---
 MAX_SOURCES_PER_NB: int = 15

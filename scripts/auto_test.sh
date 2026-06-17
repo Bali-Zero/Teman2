@@ -48,12 +48,14 @@ export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:latest}"
 log "--- Phase 1: Agent pytest suite ---"
 cd "$BACKEND_DIR" || exit 1
 # Activate virtualenv for pytest — use full path as fallback for cron
-# Prefer venv (Python 3.11, has pytest) over .venv (Python 3.13, no pytest)
+# The backend venv is .venv (Python 3.11.11, has pytest); legacy venv/ no longer exists.
+# Use the .venv/bin/python symlink (version-agnostic) so a future minor bump can't break this.
 if [ -d "$BACKEND_DIR/venv" ] && "$BACKEND_DIR/venv/bin/python" -c "import pytest" 2>/dev/null; then
     source "$BACKEND_DIR/venv/bin/activate" 2>/dev/null || true
     PYTEST_CMD=("$BACKEND_DIR/venv/bin/python" "-m" "pytest")
-elif [ -d "$BACKEND_DIR/.venv" ] && "$BACKEND_DIR/.venv/bin/python3.13" -c "import pytest" 2>/dev/null; then
-    PYTEST_CMD=("$BACKEND_DIR/.venv/bin/python3.13" "-m" "pytest")
+elif [ -d "$BACKEND_DIR/.venv" ] && "$BACKEND_DIR/.venv/bin/python" -c "import pytest" 2>/dev/null; then
+    source "$BACKEND_DIR/.venv/bin/activate" 2>/dev/null || true
+    PYTEST_CMD=("$BACKEND_DIR/.venv/bin/python" "-m" "pytest")
 else
     PYTEST_CMD=("python3" "-m" "pytest")
 fi
