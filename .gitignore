@@ -755,3 +755,7 @@ apps/backend-rag/scripts/output/*campaign*.csv
 **/dq_clients*.csv
 **/dq_orphan_clients*.csv
 research/nb-health/nb-inventory-live.json
+
+# S7 yield: local PII drafts staging (NEVER commit — UU PDP)
+s7-yield-drafts-local/
+research/crm/*-drafts-local/
