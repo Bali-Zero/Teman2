@@ -669,6 +669,7 @@ def test_team_cli_wrong_input_name_error_is_generic(tmp_path: Path) -> None:
             "Traceback",
         ],
     )
+    assert result.returncode == 1
 
 
 def test_team_cli_missing_input_error_is_generic(tmp_path: Path) -> None:
@@ -696,6 +697,7 @@ def test_team_cli_missing_input_error_is_generic(tmp_path: Path) -> None:
             "Traceback",
         ],
     )
+    assert result.returncode == 1
 
 
 def test_team_cli_sqlite_error_is_generic_system_failure(tmp_path: Path) -> None:
@@ -726,6 +728,7 @@ def test_team_cli_sqlite_error_is_generic_system_failure(tmp_path: Path) -> None
             "Traceback",
         ],
     )
+    assert result.returncode == 1
 
 
 def test_team_main_unexpected_error_is_generic_system_failure(

@@ -226,6 +226,7 @@ def test_owner_cli_wrong_input_name_error_is_generic(tmp_path: Path) -> None:
             "Traceback",
         ],
     )
+    assert result.returncode == 1
 
 
 def test_owner_cli_missing_input_error_is_generic(tmp_path: Path) -> None:
@@ -259,6 +260,7 @@ def test_owner_cli_missing_input_error_is_generic(tmp_path: Path) -> None:
             "Traceback",
         ],
     )
+    assert result.returncode == 1
 
 
 def test_owner_cli_malformed_input_error_is_generic_system_failure(
@@ -297,6 +299,7 @@ def test_owner_cli_malformed_input_error_is_generic_system_failure(
             "Traceback",
         ],
     )
+    assert result.returncode == 1
 
 
 def test_owner_main_unexpected_error_is_generic_system_failure(
@@ -382,6 +385,7 @@ def test_owner_cli_null_numeric_input_error_is_generic(tmp_path: Path) -> None:
             "Traceback",
         ],
     )
+    assert result.returncode == 1
 
 
 def test_build_owner_captain_shadow_reports_upstream_contract_violations(

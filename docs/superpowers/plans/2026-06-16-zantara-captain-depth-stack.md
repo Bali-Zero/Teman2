@@ -13,6 +13,7 @@
 ### Task 1: Client Captain Depth Layers
 
 **Files:**
+
 - Modify: `scripts/whatsapp_corpus/build_client_captain_shadow.py`
 - Modify: `scripts/tests/test_whatsapp_corpus_client_captain_shadow.py`
 
@@ -28,6 +29,7 @@ Expected: FAIL because `shadow_depth_layers` does not exist.
 - [x] **Step 3: Write minimal implementation**
 
 Add deterministic layer generation:
+
 1. signal readout
 2. diagnosis
 3. decision
@@ -42,6 +44,7 @@ Expected: PASS.
 ### Task 2: Team Captain Shadow Artifact
 
 **Files:**
+
 - Create: `scripts/whatsapp_corpus/build_team_captain_shadow.py`
 - Create: `scripts/tests/test_whatsapp_corpus_team_captain_shadow.py`
 - Modify: `scripts/whatsapp_corpus/README.md`
@@ -67,6 +70,7 @@ Expected: PASS.
 ### Task 3: Owner Captain Shadow Artifact
 
 **Files:**
+
 - Create: `scripts/whatsapp_corpus/build_owner_captain_shadow.py`
 - Create: `scripts/tests/test_whatsapp_corpus_owner_captain_shadow.py`
 - Modify: `scripts/whatsapp_corpus/README.md`
@@ -92,6 +96,7 @@ Expected: PASS.
 ### Task 4: Real Generation and Verification
 
 **Files:**
+
 - Runtime outputs under `/Users/nuzantara/Desktop/nuzantara/research/personal/wa-corpus/drive-*`
 
 - [x] **Step 1: Sync code to Pro worktree**
