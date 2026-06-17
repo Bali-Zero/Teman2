@@ -44,6 +44,7 @@ fi
 # Bypass alias --yolo that exists in .zshrc on Air
 GEMINI_BIN="command gemini"
 CODEX_BIN="command codex"
+AGY_BIN="${AGY_BIN:-agy}"
 
 # Gemini model cascade: 3.1 Pro (1M ctx) → 2.5 Pro (fallback) → 2.5 Flash (fast fallback)
 GEMINI_MODEL_PRIMARY="gemini-3.1-pro-preview"
@@ -261,6 +262,13 @@ require_gemini() {
     fi
 }
 
+require_agy() {
+    if ! command -v "$AGY_BIN" &>/dev/null; then
+        err "Antigravity CLI not installed or not on PATH. Expected: $AGY_BIN"
+        exit 1
+    fi
+}
+
 require_codex() {
     if ! command -v codex &>/dev/null; then
         err "Codex CLI not installed. Install: npm i -g @openai/codex-cli"
@@ -337,6 +345,40 @@ run_gemini() {
         echo "$output"
         return 1
     fi
+}
+
+run_agy_swarm() {
+    local model_key="$1"
+    local mode="$2"
+    local prompt="$3"
+    local timeout="${4:-90}"
+    local dry_run_flag="${5:-}"
+    require_agy
+    check_safety "$prompt"
+
+    local start_time exit_code output prompt_hash
+    local args
+    start_time=$(date +%s)
+    args=(
+        python3 "$PROJECT_ROOT/scripts/agy_swarm_commander.py"
+        --agy-bin "$AGY_BIN"
+        --model "$model_key"
+        --mode "$mode"
+        --timeout "$timeout"
+        --prompt "$prompt"
+    )
+    if [ "$dry_run_flag" = "dry-run" ] || [ "$dry_run_flag" = "--dry-run" ]; then
+        args+=(--dry-run)
+    fi
+
+    log "Agy Swarm Commander → $mode [model=$model_key, timeout=${timeout}s]"
+    output=$(run_with_timeout "$((timeout + 15))" "${args[@]}" 2>&1) && exit_code=0 || exit_code=$?
+    local duration=$(( $(date +%s) - start_time ))
+    save_output "agy-$mode" "$output" "$duration"
+    prompt_hash=$(echo "$prompt" | shasum -a 256 | cut -d' ' -f1)
+    audit_log "agy-$mode" "$prompt_hash" "$duration" "$exit_code"
+    echo "$output"
+    return "$exit_code"
 }
 
 run_codex() {
@@ -776,6 +818,30 @@ $PROMPT" 180) && ec=0 || ec=$?
         ;;
 
     # ╔══════════════════════════════════════════════════╗
+    # ║  AGY — Antigravity Gemini adjunct reviewers     ║
+    # ╚══════════════════════════════════════════════════╝
+
+    agy-flash)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh agy-flash \"prompt\" [dry-run]"; exit 1; }
+        run_agy_swarm "flash-high" "fast-review" "$PROMPT" 75 "$EXTRA"
+        ;;
+
+    agy-pro)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh agy-pro \"prompt\" [dry-run]"; exit 1; }
+        run_agy_swarm "pro-high" "deep-review" "$PROMPT" 180 "$EXTRA"
+        ;;
+
+    agy-redteam)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh agy-redteam \"solution\" [dry-run]"; exit 1; }
+        run_agy_swarm "pro-high" "redteam" "$PROMPT" 180 "$EXTRA"
+        ;;
+
+    swarm-commander)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh swarm-commander \"task\" [dry-run]"; exit 1; }
+        run_agy_swarm "flash-high" "swarm" "$PROMPT" 120 "$EXTRA"
+        ;;
+
+    # ╔══════════════════════════════════════════════════╗
     # ║  GEMINI — Extended commands (all read-only)     ║
     # ╚══════════════════════════════════════════════════╝
 
@@ -1084,6 +1150,7 @@ for m, count in machines.most_common():
         echo ""
         echo -n "  Claude Code (Re):           " && (command claude --version 2>/dev/null || echo "NOT INSTALLED")
         echo -n "  Gemini CLI (Consigliere):    " && (command gemini --version 2>/dev/null || echo "NOT INSTALLED")
+        echo -n "  Agy CLI (Swarm adjunct):     " && ("$AGY_BIN" --help >/dev/null 2>&1 && echo "INSTALLED" || echo "NOT INSTALLED")
         echo -n "  Codex CLI (Soldato):         " && (command codex --version 2>/dev/null || echo "NOT INSTALLED")
         echo -n "  Aider (Mercenario):          " && (aider --version 2>/dev/null || echo "NOT INSTALLED")
         echo -n "  Ollama (Locale):             " && (ollama --version 2>/dev/null || echo "NOT INSTALLED")
@@ -1151,6 +1218,13 @@ AGENTS — Autonomous runtimes (dispatchable, accept open-ended tasks):
 │ DEEPSEEK R1 (671b, chain-of-thought, ¢):                          │
 │   reasoning          "problem"      Deep reasoning + Nuz context   │
 │                                                                     │
+│ AGY / SWARM COMMANDER (Antigravity Gemini, bounded):               │
+│   agy-flash          "prompt"       Gemini 3.5 Flash High review   │
+│   agy-pro            "prompt"       Gemini 3.1 Pro High deep pass   │
+│   agy-redteam        "solution"     Pro High adversarial review     │
+│   swarm-commander    "task"         Decompose lanes/tools/limits    │
+│   Add third arg dry-run to validate without executing agy.          │
+│                                                                     │
 │ AIDER (OpenRouter/DeepSeek, $):                                    │
 │   aider-fix          "prompt"       Fix with DeepSeek V3 (fast)    │
 │   aider-refactor     "prompt"       Refactor with Claude Sonnet    │
@@ -1209,10 +1283,12 @@ DELEGATION CHECKPOINT (ask before every task):
   7. Complex architecture problem? → reasoning (DeepSeek R1 671b)
   8. Risky change to the repo?     → sandbox (Codex isolated)
   9. Critical deploy coming?       → redteam + claude-redteam
+ 10. Need bounded cloud swarm?      → swarm-commander + agy-pro
   All "No"? → Do it yourself. Don't delegate for sport.
 
 MODELS:
   Gemini cascade: 3.1 Pro (1M) → 2.5 Pro → 2.5 Flash (auto-fallback 429)
+  Agy: Gemini 3.5 Flash High (fast) / Gemini 3.1 Pro High (deep) via Swarm Commander
   Codex: GPT-5.4 (sandbox kernel-level)
   DeepSeek: R1 671b ($0.55/M in, $2.19/M out)
   Aider: DeepSeek V3 (fast) / Claude Sonnet (refactor) via OpenRouter
@@ -1221,6 +1297,7 @@ MODELS:
 SECURITY:
   ✓ 3-tier prompt filter: destructive blocked, protected read-only, secrets blocked
   ✓ Gemini: --sandbox --approval-mode plan (read-only absolute)
+  ✓ Agy: --sandbox + --print-timeout + external timeout + prompt-hash audit
   ✓ Codex: --sandbox (read-only or workspace-write)
   ✓ Timeout: 120s Gemini, 180-300s Codex, 180s DeepSeek
   ✓ Protected files: fly.toml, dependencies.py, .env — readable not writable

@@ -59,6 +59,7 @@ import logging
 import os
 import signal
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -141,26 +142,43 @@ def _alert_due(key: str, now_epoch: int, cooldown: int = ALERT_COOLDOWN_SEC) -> 
 # Telegram
 # ─────────────────────────────────────────────────────────────────────────
 
+def _post_telegram(token: str, payload: dict) -> None:
+    data = urllib.parse.urlencode(payload).encode()
+    urllib.request.urlopen(  # noqa: S310 — known URL
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        data,
+        timeout=10,
+    )
+
+
 def _send_telegram(text: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
     if not token:
         logger.info("Telegram skipped (no TELEGRAM_BOT_TOKEN)")
         return
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": "true",
+    }
     try:
-        data = urllib.parse.urlencode(
-            {
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": "Markdown",
-                "disable_web_page_preview": "true",
-            }
-        ).encode()
-        urllib.request.urlopen(  # noqa: S310 — known URL
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data,
-            timeout=10,
-        )
+        _post_telegram(token, payload)
+    except urllib.error.HTTPError as e:
+        # HTTP 400 = Markdown entity parse failure (unbalanced * / _ in job
+        # names or paths). The alert was being silently DROPPED once per
+        # cooldown window (observed daily 2026-06-10..12). Resend as plain
+        # text: delivery beats formatting for a P0/P1 alert channel.
+        if e.code == 400:
+            plain = {k: v for k, v in payload.items() if k != "parse_mode"}
+            try:
+                _post_telegram(token, plain)
+                logger.warning("Telegram Markdown rejected (400) — delivered as plain text")
+            except Exception as e2:  # noqa: BLE001 — alert delivery is best-effort
+                logger.warning("Telegram POST failed (plain-text retry): %s", e2)
+        else:
+            logger.warning("Telegram POST failed: %s", e)
     except Exception as e:  # noqa: BLE001 — alert delivery is best-effort
         logger.warning("Telegram POST failed: %s", e)
 

@@ -37,10 +37,10 @@ nuzantara/
 ## Tech Stack
 
 <!-- DOCSYNC:TECH_STATS_START -->
-- Backend: FastAPI · 321 routers · 607 services
+- Backend: FastAPI · 325 routers · 624 services
 - Vector DB: Qdrant · 12 collections · 104,154 documents
 - Knowledge Graph: 108,068 nodes · 242,827 edges
-- Apps: 28 · Packages: 6
+- Apps: 29 · Packages: 6
 - Version: 5.2.0
 <!-- DOCSYNC:TECH_STATS_END -->
 

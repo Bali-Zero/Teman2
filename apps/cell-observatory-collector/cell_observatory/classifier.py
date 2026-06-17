@@ -188,3 +188,108 @@ class MinimaxClassifier:
             latency_ms=latency_ms,
             error=None,
         )
+
+
+class OllamaClassifier:
+    """Local Ollama classifier (qwen3.5:9b) — zero-cost replacement for MiniMax.
+
+    Sanctioned arsenal Tier 4 (CLAUDE.md cost HARD RULE): runs on the local
+    Ollama daemon, never a paid per-token endpoint. Same public interface as
+    MinimaxClassifier (classify / aclose) so Collector is agnostic.
+    """
+    DEFAULT_HOST = "http://localhost:11434"
+    MODEL = "qwen3.5:9b"
+
+    def __init__(self, host: str | None = None, client: "httpx.AsyncClient | None" = None,
+                 circuit_threshold: int = 5, circuit_recovery_s: float = 60.0):
+        self._host = (host or self.DEFAULT_HOST).rstrip("/")
+        # 60s: qwen3.5:9b cold-load + classifier queue on the local Ollama daemon can exceed Minimax's 10s.
+        self._client = client or httpx.AsyncClient(timeout=60.0)
+        self._consecutive_failures = 0
+        self._circuit_threshold = circuit_threshold
+        self._circuit_open_until: float = 0.0
+        self._circuit_recovery_s = circuit_recovery_s
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    def _check_circuit(self) -> None:
+        if time.monotonic() < self._circuit_open_until:
+            raise CircuitOpenError("Ollama circuit open")
+
+    def _record_success(self) -> None:
+        self._consecutive_failures = 0
+
+    def _record_failure(self) -> None:
+        self._consecutive_failures += 1
+        if self._consecutive_failures >= self._circuit_threshold:
+            self._circuit_open_until = time.monotonic() + self._circuit_recovery_s
+
+    async def classify(self, event: PulseEventV1) -> ClassificationResult:
+        self._check_circuit()
+        start = time.monotonic()
+        messages = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": _render_user_prompt(event)},
+        ]
+        cell_self = event.pulse_result.get("classifier_self", "unknown")
+
+        try:
+            resp = await self._client.post(
+                f"{self._host}/api/chat",
+                json={
+                    "model": self.MODEL,
+                    "messages": messages,
+                    "format": "json",
+                    "stream": False,
+                    "think": False,
+                    "options": {"temperature": 0.1},
+                },
+            )
+            resp.raise_for_status()
+            content = resp.json().get("message", {}).get("content", "") or ""
+        except Exception as exc:
+            self._record_failure()
+            latency_ms = int((time.monotonic() - start) * 1000)
+            return self._error_result(event.outbox_id, str(exc), latency_ms)
+        self._record_success()
+        latency_ms = int((time.monotonic() - start) * 1000)
+
+        try:
+            # No reasoning-field fallback / single-retry (unlike MinimaxClassifier): qwen3.5 with format:json reliably emits JSON; a retry on a 60s local call is not worth the latency.
+            parsed = ClassificationOutput.model_validate_json(content)
+        except (ValidationError, ValueError) as exc:
+            return self._error_result(event.outbox_id, f"parse: {exc}", latency_ms)
+
+        label_diff = "agree" if (
+            (cell_self == "green" and parsed.label == ClassificationLabel.NORMAL)
+            or (cell_self in ("yellow", "red") and parsed.label != ClassificationLabel.NORMAL)
+        ) else "disagree"
+
+        return ClassificationResult(
+            outbox_id=event.outbox_id,
+            label=parsed.label,
+            confidence=parsed.confidence,
+            reasoning=parsed.reasoning[:500],
+            label_diff=label_diff,
+            model=f"{self.MODEL}-{_PROMPT_VERSION}",
+            model_version=self.MODEL,
+            cost_usd=0.0,
+            latency_ms=latency_ms,
+            error=None,
+        )
+
+    @staticmethod
+    def _error_result(outbox_id: int, err: str, latency_ms: int) -> ClassificationResult:
+        return ClassificationResult(
+            outbox_id=outbox_id,
+            label=ClassificationLabel.UNCERTAIN,
+            confidence=0.0,
+            reasoning="",
+            label_diff="agree",
+            model=f"{OllamaClassifier.MODEL}-{_PROMPT_VERSION}",
+            model_version=OllamaClassifier.MODEL,
+            cost_usd=0.0,
+            latency_ms=latency_ms,
+            error=err[:500],
+        )

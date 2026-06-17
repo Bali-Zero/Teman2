@@ -1,0 +1,243 @@
+# Connectome — Claude Code hooks + MCP servers + pre-commit chain (the agent layer's own nerves)
+# Census: 2026-06-13, M5 + Pro (via ssh).
+domain: hooks-mcp
+census_date: "2026-06-13"
+edges:
+  # ── M5 hooks ──
+  - id: hook-m5-guardrails-client
+    kind: claude_hook
+    machine: m5
+    status: ARMED
+    notes: "DEGRADED: Tier-1 daemon ABSENT on M5 (no socket/launchd job; Pro has it) → every PreToolUse pays Tier-2 static fallback. Fail-closed Tier-3 intact"
+  - id: hook-m5-worktree-isolation
+    kind: claude_hook
+    machine: m5
+    status: NEUTRALIZED
+    notes: "AGENT_WORKTREE_ENFORCEMENT=false live in ~/.zshrc:39 since 2026-06-07 'temp: dirty-rescue' — 6+ days stale; Pro runs =true. BOTH worktree hooks off on the PRIMARY dev machine"
+    probe:
+      {
+        type: cmd,
+        cmd: "! grep -q 'AGENT_WORKTREE_ENFORCEMENT=false' ~/.zshrc",
+      }
+  - {
+      id: hook-m5-worktree-file-write-check,
+      kind: claude_hook,
+      machine: m5,
+      status: NEUTRALIZED,
+      notes: "same kill-switch",
+    }
+  - {
+      id: hook-m5-block-heavy-brew,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+    }
+  - {
+      id: hook-m5-orchestrate-gate,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+    }
+  - {
+      id: hook-m5-stadio-zero-nudge,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+    }
+  - {
+      id: hook-m5-stop-verify,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+      notes: "STOP_VERIFY_ALLOW_DIRTY absent — re-armed",
+    }
+  - {
+      id: hook-m5-seam-verify,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+      notes: "PR #1237 wired",
+    }
+  - {
+      id: hook-m5-sessionstart-cluster,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+      notes: "18/18 script targets exist+exec",
+    }
+  - {
+      id: hook-m5-statusline,
+      kind: claude_hook,
+      machine: m5,
+      status: DEAD,
+      notes: "registered but ~/.claude/statusline.sh MISSING on M5 (Pro has it) — cosmetic sync gap",
+      probe: { type: file_exists, path: "~/.claude/statusline.sh" },
+    }
+  - {
+      id: hook-m5-guardrails-static,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+      notes: "W71 'not registered' is NOT exists-unwired — consumed as Tier-2 by guardrails-client.sh; on M5 it IS the effective evaluator",
+    }
+  - {
+      id: hook-project-codex-spalla,
+      kind: claude_hook,
+      machine: m5,
+      status: ARMED,
+      notes: "repo .claude/settings.json PostToolUse",
+    }
+  # ── Pro hooks ──
+  - {
+      id: hook-pro-registrations,
+      kind: claude_hook,
+      machine: pro,
+      status: ARMED,
+      notes: "mirrors M5 minus m5_block_heavy_brew; 12/12 script targets + pyenv interpreter verified",
+    }
+  - {
+      id: hook-pro-guardrails-daemon,
+      kind: claude_hook,
+      machine: pro,
+      status: ARMED,
+      notes: "Tier-1 daemon ALIVE (socket fresh)",
+    }
+  - {
+      id: hook-pro-worktree-enforcement,
+      kind: claude_hook,
+      machine: pro,
+      status: ARMED,
+      notes: "settings env =true explicit",
+    }
+  # ── M5 MCP servers ──
+  - {
+      id: mcp-m5-ga4-analytics,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      probe:
+        {
+          type: cmd,
+          cmd: "$HOME/Desktop/nuzantara/.mcp-servers/ga4-analytics/.venv/bin/python3 -c 'print(1)'",
+        },
+    }
+  - {
+      id: mcp-m5-ocr-tesseract,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      probe:
+        {
+          type: cmd,
+          cmd: "$HOME/Desktop/nuzantara/.mcp-servers/ocr/.venv/bin/python3 -c 'print(1)'",
+        },
+    }
+  - {
+      id: mcp-m5-nuzantara-mcp,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      notes: "LANGSMITH_API_KEY absent by design (optional)",
+      probe:
+        {
+          type: cmd,
+          cmd: "$HOME/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python3 -c 'print(1)'",
+        },
+    }
+  - {
+      id: mcp-m5-nuzantara-mcp-advanced,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      probe:
+        {
+          type: cmd,
+          cmd: "$HOME/Desktop/nuzantara/apps/nuzantara-mcp-advanced/.venv/bin/python3 -c 'print(1)'",
+        },
+    }
+  - {
+      id: mcp-m5-nuzantara-browser,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      notes: "all 5 venvs NATIVE post 2026-06-09 fix — dead-symlink class healed",
+      probe:
+        {
+          type: cmd,
+          cmd: "$HOME/Desktop/nuzantara/apps/nuzantara-mcp-browser/.venv/bin/python3 -c 'print(1)'",
+        },
+    }
+  - {
+      id: mcp-m5-notebooklm,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      probe: { type: file_exists, path: "~/.local/bin/notebooklm-mcp" },
+    }
+  - { id: mcp-m5-github, kind: mcp_server, machine: m5, status: ARMED }
+  - {
+      id: mcp-m5-playwright,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      notes: "use-gated by convention (claude-in-chrome default)",
+    }
+  - {
+      id: mcp-m5-postgres-nuzantara,
+      kind: mcp_server,
+      machine: m5,
+      status: UNKNOWN,
+      notes: "schema loads but :15432 tunnel + keychain liveness at query time unverified (audit F33)",
+    }
+  - {
+      id: mcp-m5-exa,
+      kind: mcp_server,
+      machine: m5,
+      status: ARMED,
+      notes: "API key cleartext in ~/.claude.json URL — secret-hygiene note",
+    }
+  # ── pre-commit chain (M5) ──
+  - {
+      id: precommit-pii-law2-gate,
+      kind: precommit_gate,
+      machine: m5,
+      status: ARMED,
+      notes: "first hard gate, pure-shell",
+    }
+  - {
+      id: precommit-cicatrix-auto-archive,
+      kind: precommit_gate,
+      machine: m5,
+      status: ARMED,
+    }
+  - id: precommit-redis-lease-check
+    kind: precommit_gate
+    machine: m5
+    status: NEUTRALIZED
+    notes: "backend ABSENT on M5 (no redis-cli, :6379 closed) → designed pass-through. Hot-zone commits from M5 have zero lease protection; Pro redis PONG (armed there)"
+  - {
+      id: precommit-migration-lints,
+      kind: precommit_gate,
+      machine: m5,
+      status: ARMED,
+    }
+  - {
+      id: precommit-reward-hacking-lint,
+      kind: precommit_gate,
+      machine: m5,
+      status: ARMED,
+      notes: "only gate with NO kill-switch by design",
+    }
+  - {
+      id: precommit-anti-rogue-gates,
+      kind: precommit_gate,
+      machine: m5,
+      status: ARMED,
+      notes: "OFF-LIMITS block + FastAPI import smoke",
+    }
+anomalies:
+  - "P1: AGENT_WORKTREE_ENFORCEMENT=false in M5 ~/.zshrc since 06-07 ('temp') — worktree discipline OFF on primary dev machine (remove the line; takes effect on new shells)"
+  - "P2: guardrails Tier-1 daemon absent on M5 (Pro/M5 asymmetry nobody decided)"
+  - "P2: redis lease backend absent on M5 → hot-zone lease gate pass-through"
+  - "P3: statusline.sh missing on M5 (cosmetic)"
+  - "SECURITY note from census itself: a census subagent cat'd ~/.zshenv and leaked CLAUDE_CODE_OAUTH_TOKEN into its transcript (2026-06-03 scar class) — rotation recommended; future censuses grep with patterns, never cat env files"

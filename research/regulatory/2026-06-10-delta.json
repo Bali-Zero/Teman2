@@ -1,0 +1,59 @@
+{
+  "run_at": "2026-06-10T07:00:00+08:00",
+  "today": "2026-06-10",
+  "yesterday_seen_count": 13,
+  "new_today_count": 2,
+  "partial": false,
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "hukumonline.com (403/blocked on berita search paths)",
+    "ortax.org (Artikel tidak ditemukan — JS-rendered, no content returned)",
+    "muc.co.id (empty response, blocked)",
+    "ikpi.or.id (not fetched — sufficient data from ddtc.co.id primary)"
+  ],
+  "deltas": [
+    {
+      "citation": "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+      "title_id": "Suket PPh Final UMKM Berdasarkan PP 55/2022 yang Berakhir 2024 Tetap Berlaku untuk 2025 dan 2026",
+      "title_en": "PPh Final UMKM Tax Certificate Under PP 55/2022 Expiring in 2024 Remains Valid for Tax Years 2025 and 2026",
+      "service_line": ["tax"],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "Clients (individual WP or PT Perorangan) whose PPh Final UMKM suket issued under PP 55/2022 expired in tax year 2024 do NOT need to re-apply — the certificate remains valid through 2026 under PP 20/2026 transitional provisions.",
+      "summary": "Pasal II ayat (1) huruf c of PP 20/2026 establishes a transitional provision clarifying that PPh Final UMKM tax certificates (suket) issued under PP 55/2022 that expired in tax year 2024 remain legally valid for tax years 2025 and 2026. This addresses practitioner confusion on Coretax where the facility appears unavailable for such taxpayers despite the legal entitlement. Relevant for Bali Zero clients enrolled in the 0.5% UMKM final PPh scheme whose 7-year (WP OP) or 4-year (PT Perorangan) benefit period ended in 2024.",
+      "source": "https://news.ddtc.co.id/berita/nasional/1819965/mau-bikin-bupot-tapi-fasilitas-pph-final-tak-muncul-harus-gimana",
+      "verbatim_excerpt": "Pasal II ayat (1) huruf c PP 20/2026 menyatakan surat keterangan pengenaan PPh final berdasarkan PP 55/2022 yang berakhir pada tahun pajak 2024 tetap berlaku untuk tahun pajak 2025 dan 2026.",
+      "first_seen_at": "2026-06-10T07:00:00+08:00"
+    },
+    {
+      "citation": "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+      "title_id": "DJP Catat Ada 93.260 WP Terindikasi Salahgunakan PPh Final UMKM (17,21% dari total WP UMKM terdaftar)",
+      "title_en": "Tax Authority Identifies 93,260 Taxpayers Suspected of Misusing PPh Final UMKM (17.21% of All Registered UMKM Taxpayers)",
+      "service_line": ["tax", "company"],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "DJP has active enforcement data identifying 17% of UMKM taxpayers as firm-splitting abusers. Bali Zero clients with multiple registered UMKM entities should review combined revenue against the Rp4.8B aggregate threshold established by PP 20/2026 Pasal 57 before DJP contact.",
+      "summary": "The Directorate General of Taxes disclosed June 9, 2026 that it has identified 93,260 taxpayers (17.21% of 542,000 registered UMKM PPh Final taxpayers) as suspected of engaging in firm splitting to remain under the Rp4.8 billion threshold and misuse the 0.5% final PPh rate. This follows PP 20/2026 anti-splitting provisions (Pasal 57 ayat 2 huruf e). DJP enforcement action is active; individual taxpayers and PT Perorangan with multiple related entities face heightened audit risk.",
+      "source": "https://news.ddtc.co.id/berita/nasional/1819966/djp-catat-ada-puluhan-ribu-wp-terindikasi-salahgunakan-pph-final-umkm",
+      "verbatim_excerpt": "PPh final UMKM hanya untuk wajib pajak orang pribadi, wajib pajak badan berbentuk perseroan perorangan, serta wajib pajak badan berbentuk koperasi.",
+      "first_seen_at": "2026-06-10T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistem administrasi perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)"
+  ]
+}

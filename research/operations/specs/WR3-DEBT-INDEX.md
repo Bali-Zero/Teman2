@@ -25,9 +25,20 @@
 - **F21**: a reflexion synthesizer exists (as a stub) but synthesizes nothing,
   and its cron is green every Sunday regardless.
 
-Both are gated by the **same dead upstream pipeline**:
-`com.balizero.wr3.supervisor` is **FAILED, exit=78**, with **zero new episodes
-in 12 days**. Consequences for ordering:
+Both are gated by the **same idle upstream pipeline**:
+`com.balizero.wr3.supervisor`, with **zero new episodes in ~12 days**.
+
+> **STEP 0 — read [`WR3-supervisor-revival.md`](WR3-supervisor-revival.md) first.** Live
+> read-only diagnosis (2026-06-12) **corrects** the original claim below: the supervisor is
+> **NOT "FAILED exit=78"** — `launchctl` shows it **running** (pid alive 1d17h, last exit **74**
+> EX_IOERR from the wrapper, not 78), and `wr3_supervisor.py` has **zero exit-78/EX_CONFIG paths**.
+> The real "no episodes" cause is an **upstream producer drought** (only 2 wr3 outbox rows EVER,
+> newest 2026-05-22) plus cosmetic idle-tunnel heartbeat churn — NOT a dead daemon. The STEP 0
+> "revival" is therefore **trigger one real episode** (publishes `brief_requested` → the running
+> supervisor dispatches it → produces the manifest F20/F21 are starved for), optionally + quiet the
+> churn. This step is the prerequisite that unblocks F20 + F21.
+
+Consequences for ordering (unchanged):
 
 - **F20** — wiring `validate_manifest()` into a dead supervisor changes nothing
   observable; there are no fresh episodes to validate.

@@ -1,25 +1,26 @@
 echo "🔍 Running pre-commit hooks..."
 
-# ── CICATRIX AUTO-ARCHIVE (2026-06-07) ───────────────────────────────────────
-# Root cause of the recurring "cicatrix-scars.md over 40k-char limit" warning:
-# /scar APPENDS but nothing PRUNES, and the old check_cicatrix_size.sh only
-# BLOCKED (never archived) and was never even wired here. This auto-REPAIRS:
-# when a commit touches cicatrix-scars.md and it's over the 40k limit, archive
-# old RESOLVED/INFO (+ STRUCTURAL >=15d as fallback) into the archive file and
-# re-stage both — so the file never lands over-limit. Self-healing, not a wall.
+# ── CICATRIX AUTO-ARCHIVE (2026-06-07; limit raised 40k→10M 2026-06-16) ───────
+# The recurring "cicatrix-scars.md over 40k-char limit" warning came from /scar
+# APPENDING with nothing to PRUNE. BUT the 40k limit itself was decided in error:
+# cicatrix-scars.md (the scar MAGAZZINO) is NOT loaded into agent context — only
+# the ponte cicatrix-superscar.md is. So the magazzino body has no practical size
+# limit and a scar must never be archived just to fit a threshold. Limit raised to
+# 10M (apparatus left in place but dormant; auto-archive preserved for optional
+# manual cleanup). Decision 2026-06-16. Self-healing, not a wall.
 # Kill switch: CICATRIX_ARCHIVE_ENFORCEMENT=false
 if [ "${CICATRIX_ARCHIVE_ENFORCEMENT:-true}" != "false" ]; then
     CICATRIX_FILE=".claude/rules/cicatrix-scars.md"
     if git diff --cached --name-only --diff-filter=ACMR | grep -Fxq "$CICATRIX_FILE"; then
         # Size of the STAGED blob (what would actually be committed).
         STAGED_SIZE=$(git show ":$CICATRIX_FILE" 2>/dev/null | LC_ALL=C wc -c | tr -d '[:space:]')
-        if [ -n "$STAGED_SIZE" ] && [ "$STAGED_SIZE" -gt "${CICATRIX_SIZE_LIMIT_CHARS:-40000}" ]; then
-            echo "🗄️  [cicatrix] staged scars file is ${STAGED_SIZE} chars (> 40k) — auto-archiving..."
+        if [ -n "$STAGED_SIZE" ] && [ "$STAGED_SIZE" -gt "${CICATRIX_SIZE_LIMIT_CHARS:-10000000}" ]; then
+            echo "🗄️  [cicatrix] staged scars file is ${STAGED_SIZE} chars (> 10M) — auto-archiving..."
             if python3 scripts/archive_cicatrix_scars.py; then
                 git add "$CICATRIX_FILE" .claude/rules/cicatrix-scars-archive.md
-                echo "✅ [cicatrix] archived old scars and re-staged (now under 40k)."
+                echo "✅ [cicatrix] archived old scars and re-staged (now under 10M)."
             else
-                echo "❌ [cicatrix] auto-archive could not bring the file under 40k."
+                echo "❌ [cicatrix] auto-archive could not bring the file under 10M."
                 echo "   Run: python3 scripts/archive_cicatrix_scars.py --dry-run"
                 echo "   Then move scars manually, or lower --structural-age-days."
                 echo "   Override (emergency only): CICATRIX_ARCHIVE_ENFORCEMENT=false git commit ..."

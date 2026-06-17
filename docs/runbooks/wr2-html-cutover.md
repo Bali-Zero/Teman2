@@ -19,6 +19,8 @@ HTML/CSS→PNG, uploads to Drive, and notifies Antonello+Damar over WhatsApp (24
    `scripts/wr2_html_renderer/*`, `infra/launchagents/com.balizero.wr2.html-apply.plist`
    present in `~/Desktop/nuzantara-deploy`.
 3. Pro-local venv `~/Desktop/nuzantara-deploy/.venv-wr2-html` exists; `--selftest` OK.
+   **If missing** (it evaporates on every deploy-worktree re-add — scar W81/html-venv):
+   `bash scripts/setup_wr2_html_venv.sh` recreates it reproducibly (~3-5 min), then re-run `--selftest`.
 4. SHADOW run done on a throwaway draft, Drive output inspected by hand.
 
 ## SHADOW run (safe — no WA, no status flip to real)

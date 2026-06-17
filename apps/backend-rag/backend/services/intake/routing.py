@@ -13,7 +13,7 @@ cloud, zero third-party endpoints.
 
 Reuse (reuse-first discipline)
 ------------------------------
-* ``backend.services.crm.client_core.validate_passport`` — passport normaliser
+* ``backend.services.crm.client_core.validate_passport`` — passport-number normaliser
   (upper-case + format guard), reused so the document identifier is normalised
   the same way the CRM stores/validates it.
 * The pg_trgm ``%`` / ``similarity()`` fuzzy-name + ambiguity-margin cascade is
@@ -76,6 +76,12 @@ CONF_STRONG_EXACT = 0.99
 CONF_PHONE_MATCH = 0.90
 # Boost applied when sender phone AND fuzzy name agree on the same client.
 PHONE_NAME_AGREE_BOOST = 0.05
+
+# Folder-name match (m227). Drive-intake blobs arrive under a per-client folder
+# (Dropbox-Intake/<Client Name>/...): the transport layer knows WHICH FOLDER the
+# blob came from, like the phone knows who sent it. Human-typed and shared-folder
+# prone → slightly below the phone signal and NEVER auto-attach alone.
+CONF_FOLDER_MATCH = 0.85
 
 # Doc-types whose subject is a PERSON (match against ``clients``) vs a COMPANY
 # (match against ``companies``). canonical_doc_type() upstream already maps
@@ -325,6 +331,58 @@ async def _match_sender_phone(
     ]
 
 
+def _clean_folder_segment(value: Any) -> str | None:
+    """Normalise the first path segment of ``source_path`` into a name to match.
+
+    Real Dropbox folders carry human decorations — ``###PERPANJANGAN KITAS
+    JOHN DOE###``, ``@arsip Cetak (2027)`` — so strip non-name punctuation and
+    parenthetical suffixes, collapse whitespace, reject <3 chars.
+    """
+    if value is None:
+        return None
+    seg = str(value).split("/", 1)[0]
+    seg = re.sub(r"\([^)]*\)", " ", seg)        # drop parenthetical suffixes
+    seg = re.sub(r"[#@_*\[\]{}!]+", " ", seg)   # drop decoration characters
+    seg = re.sub(r"\s+", " ", seg).strip()
+    if len(seg) < 3:
+        return None
+    return seg
+
+
+async def _match_folder_name(
+    conn: asyncpg.Connection, source_path: str | None
+) -> list[dict[str, Any]]:
+    """Folder-name match (m227): first ``source_path`` segment vs CRM names.
+
+    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name``;
+    only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport hint (a weak
+    folder sim is noise — unlike the OCR-name fuzzy, which has its own review
+    band). One clear winner → a single CONF_FOLDER_MATCH candidate; top-2 inside
+    the ambiguity margin → both returned so the decision matrix degrades to
+    AMBIGUOUS rather than guessing.
+    """
+    name = _clean_folder_segment(source_path)
+    if not name:
+        return []
+    merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
+    merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
+    usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
+    usable.sort(key=lambda c: c["score"], reverse=True)
+    if not usable:
+        return []
+
+    def _as_hint(c: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "table": c["table"], "id": c["id"], "name": c["name"],
+            "method": "folder_name", "score": CONF_FOLDER_MATCH,
+            "matched_value": name, "basis": "folder", "folder_sim": c["score"],
+        }
+
+    if len(usable) >= 2 and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN:
+        return [_as_hint(usable[0]), _as_hint(usable[1])]
+    return [_as_hint(usable[0])]
+
+
 async def _match_fuzzy_name(
     conn: asyncpg.Connection, table: str, name_col: str, name: str
 ) -> list[dict[str, Any]]:
@@ -360,17 +418,24 @@ def _classify_decision(
     fuzzy: list[dict[str, Any]],
     phone: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
-    """Apply the C4 decision matrix to strong + phone + fuzzy candidate lists.
+    """Apply the C4 decision matrix to strong + transport-hint + fuzzy lists.
 
-    Precedence: strong document identifiers > sender-phone exact match (m225)
-    > fuzzy name. The phone signal NEVER yields AUTO_ATTACH on its own (a phone
-    can be shared by spouse/agent): alone it is a LINK_CANDIDATE; agreeing with
-    the top fuzzy name it is a boosted LINK_CANDIDATE; disagreeing, BOTH are
-    surfaced for review; shared by >1 client it degrades to AMBIGUOUS.
+    ``phone`` carries the transport-layer hint candidates — sender-phone (m225)
+    or folder-name (m227); each candidate self-describes via its ``basis`` key.
+    Precedence: strong document identifiers > transport hint > fuzzy name. The
+    hint NEVER yields AUTO_ATTACH on its own (a phone can be shared by
+    spouse/agent; a folder can hold a family's documents): alone it is a
+    LINK_CANDIDATE; agreeing with the top fuzzy name it is a boosted
+    LINK_CANDIDATE; disagreeing, BOTH are surfaced for review; matching >1 row
+    it degrades to AMBIGUOUS.
 
     Returns ``(decision, candidates, reason)``.
     """
     phone = list(phone or [])
+    hint_label = (
+        "folder name" if phone and phone[0].get("basis") == "folder" else "sender phone"
+    )
+    hint_score_key = "folder_score" if hint_label == "folder name" else "phone_score"
 
     # De-dup strong candidates by (table, id).
     seen: set[tuple[str, int]] = set()
@@ -397,37 +462,37 @@ def _classify_decision(
     usable = [c for c in fuzzy if c["score"] >= FUZZY_REVIEW_LOW]
     usable.sort(key=lambda c: c["score"], reverse=True)
 
-    # 2) Sender-phone signal (no strong identifier resolved).
+    # 2) Transport-hint signal — sender phone / folder name (no strong id).
     if phone:
         if len(phone) > 1:
             return DECISION_AMBIGUOUS, phone, {
-                "reason": f"{len(phone)} clients share the sender phone",
+                "reason": f"{len(phone)} clients share the {hint_label}",
             }
         pc = phone[0]
         if usable:
             top_f = usable[0]
             if top_f["table"] == pc["table"] and top_f["id"] == pc["id"]:
-                # Phone + name agree on the same client → boosted candidate.
+                # Hint + name agree on the same client → boosted candidate.
                 boosted = dict(pc)
                 boosted["score"] = round(
                     min(CONF_STRONG_EXACT - 0.01, pc["score"] + PHONE_NAME_AGREE_BOOST), 4
                 )
                 boosted["method"] = f"{pc['method']}+{top_f['method']}"
                 return DECISION_LINK_CANDIDATE, [boosted], {
-                    "reason": "sender phone and fuzzy name agree on the same client",
-                    "phone_score": pc["score"], "name_sim": top_f["score"],
+                    "reason": f"{hint_label} and fuzzy name agree on the same client",
+                    hint_score_key: pc["score"], "name_sim": top_f["score"],
                 }
-            # Phone and name point at DIFFERENT rows → surface both for review.
+            # Hint and name point at DIFFERENT rows → surface both for review.
             return DECISION_LINK_CANDIDATE, [pc, top_f], {
-                "reason": "sender phone and fuzzy name disagree — review both",
-                "phone_score": pc["score"], "name_sim": top_f["score"],
+                "reason": f"{hint_label} and fuzzy name disagree — review both",
+                hint_score_key: pc["score"], "name_sim": top_f["score"],
             }
         return DECISION_LINK_CANDIDATE, [pc], {
-            "reason": "sender phone exact match (no strong identifier, no fuzzy name)",
-            "phone_score": pc["score"],
+            "reason": f"{hint_label} match (no strong identifier, no fuzzy name)",
+            hint_score_key: pc["score"],
         }
 
-    # 3) No strong identifier, no phone → fuzzy name candidates only.
+    # 3) No strong identifier, no transport hint → fuzzy name candidates only.
     if not usable:
         return DECISION_NO_MATCH, [], {"reason": "no strong identifier, no fuzzy name >= 0.40"}
 
@@ -461,12 +526,16 @@ async def resolve_entity(
     pool: asyncpg.Pool | asyncpg.Connection,
     *,
     sender_phone: str | None = None,
+    source_path: str | None = None,
 ) -> dict[str, Any]:
     """Resolve the document subject against existing CRM rows (READ-ONLY).
 
     ``sender_phone`` (m225) is the raw transport-layer sender number; it is
     consulted only when no strong document identifier matched, as a
     high-confidence (~0.90) person hint — see :func:`_classify_decision`.
+    ``source_path`` (m227) is the Drive-intake folder path relative to the
+    watched root (``<Client Name>/file.pdf``); its first segment is consulted
+    only when neither a strong identifier nor the phone resolved (~0.85 hint).
 
     Returns a dict::
 
@@ -513,6 +582,14 @@ async def resolve_entity(
             phone = await _match_sender_phone(conn, sender_phone)
             if phone and subject_kind == "unknown":
                 subject_kind = "person"
+
+        # Folder-name signal (m227) — Drive intake knows WHICH FOLDER the blob
+        # arrived in (Dropbox-Intake/<Client Name>/...). Consulted only when
+        # neither a strong identifier nor the sender phone resolved.
+        if not strong and not phone and source_path:
+            phone = await _match_folder_name(conn, source_path)
+            if phone and subject_kind == "unknown":
+                subject_kind = "person" if phone[0]["table"] == "clients" else "company"
 
         # Fuzzy name fallback (only matters when no strong identifier resolved).
         if not strong:
@@ -631,6 +708,7 @@ async def build_routing_proposal(
     doc_index: int = 0,
     pipeline_version: str = PIPELINE_VERSION_DEFAULT,
     sender_phone: str | None = None,
+    source_path: str | None = None,
 ) -> dict[str, Any]:
     """Build (but do NOT persist) the routing proposal payload.
 
@@ -638,7 +716,10 @@ async def build_routing_proposal(
     into ``document_routing_proposal``.
     """
     async def _run(conn: asyncpg.Connection) -> dict[str, Any]:
-        entity = await resolve_entity(extracted, doc_type, conn, sender_phone=sender_phone)
+        entity = await resolve_entity(
+            extracted, doc_type, conn,
+            sender_phone=sender_phone, source_path=source_path,
+        )
         target = await _resolve_routing_target(conn, entity)
 
         decision = entity["decision"]
@@ -771,10 +852,12 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         # reach _make_routing_key, else the old routing_key collides and
         # ON CONFLICT silently drops the fresh proposal.
         qrow = await conn.fetchrow(
-            "SELECT sender_phone, pipeline_version FROM intake_queue WHERE id = $1",
+            "SELECT sender_phone, source_path, pipeline_version"
+            " FROM intake_queue WHERE id = $1",
             queue_id,
         )
         sender_phone = job.get("sender_phone") or (qrow["sender_phone"] if qrow else None)
+        source_path = job.get("source_path") or (qrow["source_path"] if qrow else None)
         pipeline_version = (
             job.get("pipeline_version")
             or (qrow["pipeline_version"] if qrow else None)
@@ -785,6 +868,7 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             queue_id, fields, doc_type, conn,
             pipeline_version=pipeline_version,
             sender_phone=sender_phone,
+            source_path=source_path,
         )
 
         proposal_id = await conn.fetchval(

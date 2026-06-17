@@ -570,6 +570,66 @@ class TestDeleteFamilyMember:
 # ---------------------------------------------------------------------------
 
 
+class TestGeminiOcrPIIGate:
+    """PII sovereignty (SYMBIOSIS Law 2 / UU PDP Art. 56): when local Ollama OCR
+    is unavailable, the Gemini CLI + API fallbacks must be BLOCKED unless
+    OCR_ALLOW_CLOUD_VISION=true — the document image must not cross the border."""
+
+    @pytest.mark.asyncio
+    async def test_blocked_raises_before_any_cloud_tier(self) -> None:
+        """Ollama down + cloud blocked → RuntimeError raised before shutil.which
+        (CLI tier) or the genai client (API tier) are ever consulted."""
+        from backend.app.routers import crm_enhanced
+
+        which_spy = MagicMock(side_effect=AssertionError("CLI tier must not run when blocked"))
+        with (
+            # Tier 1 (Ollama) unavailable → cascade would proceed to cloud
+            patch(
+                "backend.llm.ollama_client.is_ollama_available",
+                new=AsyncMock(return_value=False),
+            ),
+            patch(
+                "backend.services.multimodal.cloud_vision_gate.cloud_vision_allowed",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.multimodal.cloud_vision_gate.note_cloud_ocr_blocked",
+            ) as note,
+            patch("shutil.which", which_spy),
+        ):
+            with pytest.raises(RuntimeError, match="PII sovereignty"):
+                await crm_enhanced._gemini_ocr(b"\xff\xd8\xff", "image/jpeg", "extract")
+        note.assert_called_once()
+        assert "crm_enhanced._gemini_ocr" in note.call_args.args[0]
+
+    @pytest.mark.asyncio
+    async def test_handler_degrades_to_success_false_when_blocked(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
+        """End-to-end at the handler: a blocked cloud fallback degrades to
+        {success: False}, NOT a 500 — and no document goes to the cloud."""
+        from backend.app.routers.crm_enhanced import _auto_ocr_passport
+
+        mock_db_conn.fetchrow = AsyncMock(return_value={"full_name": "X"})
+        with (
+            patch(
+                "backend.app.routers.crm_enhanced._download_drive_file",
+                new=AsyncMock(return_value=(b"\xff\xd8\xff", "image/jpeg")),
+            ),
+            patch(
+                "backend.llm.ollama_client.is_ollama_available",
+                new=AsyncMock(return_value=False),
+            ),
+            patch(
+                "backend.services.multimodal.cloud_vision_gate.cloud_vision_allowed",
+                return_value=False,
+            ),
+        ):
+            result = await _auto_ocr_passport(mock_db_pool, 42, "f1")
+        assert result["success"] is False
+        assert "PII sovereignty" in result["error"]
+
+
 class TestAutoOCRPassport:
     @pytest.mark.asyncio
     async def test_client_not_found(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:

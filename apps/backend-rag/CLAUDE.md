@@ -103,20 +103,34 @@ The `api` process has a persistent Fly volume (`nuzantara_api_data → /data`). 
 
 Both env vars are set in `fly.toml [env]`. Data survives rolling deploys. The `rag` process has its own separate volume (`nuzantara_rag_data`).
 
-### Router Registration — Manifest Pattern (PR #63)
+### Router Registration — Manifest + Parity Gate (PR #63, corrected 2026-06-13)
 
-**NEVER edit `router_registration.py` directly.** It reads from `router_manifest.py`.
+> CORRECTION 2026-06-13: this section previously claimed `router_registration.py`
+> "reads from router_manifest.py" and "no other file needs editing" — FALSE.
+> Registration is EXPLICIT imports + `include_router` calls (see scar #424:
+> the fix WAS editing registration). The drift the old text declared
+> "structurally impossible" happened repeatedly (#54/#55/#60, #422→#424,
+> olympus/intel trio caught 2026-06-13). What IS structural now is the
+> parity test below.
 
-To add a new router:
+To add a new router (all 3 steps, same PR):
 
 1. Create file in `backend/app/routers/`
 2. Add `RouterEntry` in `backend/app/setup/router_manifest.py` with correct `process_groups`
-3. Run `PYTHONPATH=. pytest backend/tests/setup/test_router_manifest.py -q`
-4. Done. No other file needs editing.
+3. Add the matching `api.include_router(...)` calls in `backend/app/setup/router_registration.py`:
+   ALWAYS in `include_routers()` (monolithic = full union), PLUS
+   `include_light_routers()` for `_API` and/or `include_heavy_routers()` for `_RAG`
+
+Then run BOTH gates:
+
+```bash
+PYTHONPATH=. pytest backend/tests/setup/test_router_manifest.py \
+  backend/tests/setup/test_manifest_registration_parity.py -q
+```
 
 Process groups: `_API` (light, public HTTP via main_api), `_RAG` (heavy, internal via main_rag), `_BOTH` (health checks).
 
-**SCAR:** PRs #54/#55/#60 registered routers only in `include_routers()` (dev) but not `include_light_routers()` (prod), causing silent 404s. The manifest makes this structurally impossible.
+**SCAR:** PRs #54/#55/#60 registered routers only in `include_routers()` (dev) but not `include_light_routers()` (prod) → silent 404s; #422 needed hotfix #424 for the same class. `test_manifest_registration_parity.py` (2026-06-13) enforces bidirectional manifest ↔ registration parity per process group — on its first run it caught `olympus.internal_router` missing from main_api prod and the `intel` trio missing from the monolithic app.
 
 ### ABSTAIN Override (reasoning.py)
 

@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { ArticleEditor } from "./components/ArticleEditor";
 import { CoverImageUploader } from "./components/CoverImageUploader";
+import { getArticlePalette } from "./article-palette";
 
 type FilterType = "all" | "NEW" | "UPDATED" | "critical";
 type SortType = "date-desc" | "date-asc" | "title-asc" | "title-desc";
@@ -493,74 +494,10 @@ export default function NewsRoomPage() {
       ) : (
         /* Article card grid — vivid liquid glassmorphism */
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {filteredAndSortedItems.map((item, idx) => {
-            const PALETTES = [
-              {
-                bg: "rgba(212,132,90,0.12)",
-                border: "rgba(212,132,90,0.25)",
-                glow: "rgba(212,132,90,0.15)",
-                accent: "#d4845a",
-                gradient:
-                  "linear-gradient(145deg, rgba(212,132,90,0.18) 0%, rgba(180,100,60,0.06) 100%)",
-              },
-              {
-                bg: "rgba(99,102,241,0.12)",
-                border: "rgba(99,102,241,0.25)",
-                glow: "rgba(99,102,241,0.15)",
-                accent: "#818cf8",
-                gradient:
-                  "linear-gradient(145deg, rgba(99,102,241,0.18) 0%, rgba(67,56,202,0.06) 100%)",
-              },
-              {
-                bg: "rgba(16,185,129,0.12)",
-                border: "rgba(16,185,129,0.25)",
-                glow: "rgba(16,185,129,0.15)",
-                accent: "#34d399",
-                gradient:
-                  "linear-gradient(145deg, rgba(16,185,129,0.18) 0%, rgba(5,150,105,0.06) 100%)",
-              },
-              {
-                bg: "rgba(244,63,94,0.12)",
-                border: "rgba(244,63,94,0.25)",
-                glow: "rgba(244,63,94,0.15)",
-                accent: "#fb7185",
-                gradient:
-                  "linear-gradient(145deg, rgba(244,63,94,0.18) 0%, rgba(190,18,60,0.06) 100%)",
-              },
-              {
-                bg: "rgba(245,158,11,0.12)",
-                border: "rgba(245,158,11,0.25)",
-                glow: "rgba(245,158,11,0.15)",
-                accent: "#fbbf24",
-                gradient:
-                  "linear-gradient(145deg, rgba(245,158,11,0.18) 0%, rgba(180,83,9,0.06) 100%)",
-              },
-              {
-                bg: "rgba(14,165,233,0.12)",
-                border: "rgba(14,165,233,0.25)",
-                glow: "rgba(14,165,233,0.15)",
-                accent: "#38bdf8",
-                gradient:
-                  "linear-gradient(145deg, rgba(14,165,233,0.18) 0%, rgba(2,132,199,0.06) 100%)",
-              },
-              {
-                bg: "rgba(168,85,247,0.12)",
-                border: "rgba(168,85,247,0.25)",
-                glow: "rgba(168,85,247,0.15)",
-                accent: "#c084fc",
-                gradient:
-                  "linear-gradient(145deg, rgba(168,85,247,0.18) 0%, rgba(126,34,206,0.06) 100%)",
-              },
-              {
-                bg: "rgba(236,72,153,0.12)",
-                border: "rgba(236,72,153,0.25)",
-                glow: "rgba(236,72,153,0.15)",
-                accent: "#f472b6",
-                gradient:
-                  "linear-gradient(145deg, rgba(236,72,153,0.18) 0%, rgba(190,24,93,0.06) 100%)",
-              },
-            ];
-            const pal = PALETTES[idx % PALETTES.length];
+          {filteredAndSortedItems.map((item) => {
+            // P1.5: accent driven by article state (critical/NEW/UPDATED),
+            // not by list index — see article-palette.ts.
+            const pal = getArticlePalette(item);
 
             return (
               <div
@@ -623,7 +560,8 @@ export default function NewsRoomPage() {
                       right: -32,
                       width: 120,
                       transform: "rotate(45deg)",
-                      background: "linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85))",
+                      background:
+                        "linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85))",
                       backdropFilter: "blur(8px)",
                       textAlign: "center",
                       padding: "2px 0",
@@ -962,9 +900,9 @@ export default function NewsRoomPage() {
             >
               <div
                 className="whitespace-pre-wrap"
-                dangerouslySetInnerHTML={safeMiniMarkdown(renderMiniMarkdown(
-                  previewItem.content,
-                ))}
+                dangerouslySetInnerHTML={safeMiniMarkdown(
+                  renderMiniMarkdown(previewItem.content),
+                )}
               />
             </div>
           )}

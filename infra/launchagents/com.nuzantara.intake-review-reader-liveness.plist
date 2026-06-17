@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nuzantara.intake-review-reader-liveness</string>
+
+  <!-- Port-liveness GUARDIAN for the intake-review reader (uvicorn :18795, Pro-only).  -->
+  <!-- Incident 2026-06-17: the reader crash-looped silently (ModuleNotFoundError:      -->
+  <!-- fastapi) while its KeepAlive=true LaunchAgent stayed "green" and                 -->
+  <!-- kita.balizero.com/review went down with NO alert (superscar #2 Esiste != Armato).-->
+  <!-- This probes the PORT (the real heartbeat) every 5min and pages on a dead port.   -->
+  <!-- SEGNALATORE only: it alerts, it does NOT auto-heal (sibling PR owns that).        -->
+  <!-- StartInterval + KeepAlive=false: a one-shot probe, never a restart-storm          -->
+  <!-- pseudo-daemon (superscar #7). Pro-only — do NOT install on Mini/M5 (superscar #10).-->
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/scripts/intake_review_reader_liveness.sh</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/intake-review-reader-liveness.out</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/intake-review-reader-liveness.err</string>
+</dict>
+</plist>

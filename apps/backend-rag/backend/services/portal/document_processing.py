@@ -296,7 +296,20 @@ class DocumentOCR:
 
     @classmethod
     async def _gemini_vision_ocr(cls, image_base64: str, vision_service: Any) -> str:
-        """Use Gemini Vision to extract text from image."""
+        """Use Gemini Vision to extract text from image.
+
+        PII-sovereignty gated (SYMBIOSIS Law 2 / UU PDP Art. 56): the document
+        image goes to Google. Blocked unless OCR_ALLOW_CLOUD_VISION=true; when
+        blocked, returns "" so the caller degrades locally.
+        """
+        from backend.services.multimodal.cloud_vision_gate import (
+            cloud_vision_allowed,
+            note_cloud_ocr_blocked,
+        )
+
+        if not cloud_vision_allowed():
+            note_cloud_ocr_blocked("portal.document_processing.DocumentOCR._gemini_vision_ocr")
+            return ""
         try:
             client = vision_service._get_genai_client()
             if not client or not client.is_available:

@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# cicatrix_autoarchive.sh — daily safety net for the cicatrix-scars.md 40k limit.
+# cicatrix_autoarchive.sh — daily safety net for the cicatrix-scars.md size limit.
 #
-# WHY: /scar APPENDS to .claude/rules/cicatrix-scars.md but nothing PRUNES.
-# The pre-commit hook auto-archives only when someone commits THAT file; this
-# cron catches the case where /scar appends and no commit touches it for days,
-# so the harness keeps warning "... over the 40.0k-char limit" every session.
+# LIMIT RAISED 40k→10M (decision 2026-06-16): cicatrix-scars.md (the scar
+# MAGAZZINO) is NOT loaded into agent context — only the ponte
+# cicatrix-superscar.md is. So the magazzino has no practical size limit and a
+# scar must never be archived just to fit a threshold. This cron is left in place
+# but DORMANT (limit 10M); auto-archive logic preserved for optional cleanup.
+#
+# WHY (original): /scar APPENDS to .claude/rules/cicatrix-scars.md but nothing
+# PRUNES. The pre-commit hook auto-archives only when someone commits THAT file;
+# this cron catches the case where /scar appends and no commit touches it — now a
+# no-op until the magazzino exceeds 10M.
 #
 # SAFETY (sibling-race aware, per cicatrix W59/W62/untracked-lost family):
 #   - Operates on the authoritative checkout ($REPO_ROOT, default ~/Desktop/nuzantara).
@@ -26,7 +32,7 @@ fi
 REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
 ACTIVE=".claude/rules/cicatrix-scars.md"
 ARCHIVE=".claude/rules/cicatrix-scars-archive.md"
-LIMIT="${CICATRIX_SIZE_LIMIT_CHARS:-40000}"
+LIMIT="${CICATRIX_SIZE_LIMIT_CHARS:-10000000}"
 
 cd "$REPO_ROOT" || { echo "[cicatrix-cron] FATAL: cannot cd $REPO_ROOT"; exit 1; }
 
