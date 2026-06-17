@@ -1,9 +1,17 @@
 [
-  {"email": "surya@balizero.com",     "team_phone": "+628133946856",    "nb_id": ""},
-  {"email": "adit@balizero.com",      "team_phone": "+628213454725",    "nb_id": ""},
-  {"email": "ari.firda@balizero.com", "team_phone": "+628213454721",    "nb_id": ""},
-  {"email": "asya@balizero.com",      "team_phone": "+62881038467246",  "nb_id": ""},
-  {"email": "damar@balizero.com",     "team_phone": "+628213454726",    "nb_id": ""},
-  {"email": "krisna@balizero.com",    "team_phone": "+6282326357501",   "nb_id": ""},
-  {"email": "sahira@balizero.com",    "team_phone": "+628213454723",    "nb_id": ""}
+  { "email": "surya@balizero.com", "team_phone": "+628120000001", "nb_id": "" },
+  { "email": "adit@balizero.com", "team_phone": "+628120000002", "nb_id": "" },
+  {
+    "email": "ari.firda@balizero.com",
+    "team_phone": "+628120000003",
+    "nb_id": ""
+  },
+  { "email": "asya@balizero.com", "team_phone": "+628120000004", "nb_id": "" },
+  { "email": "damar@balizero.com", "team_phone": "+628120000005", "nb_id": "" },
+  {
+    "email": "krisna@balizero.com",
+    "team_phone": "+628120000006",
+    "nb_id": ""
+  },
+  { "email": "sahira@balizero.com", "team_phone": "+628120000007", "nb_id": "" }
 ]

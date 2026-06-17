@@ -25,7 +25,7 @@ from scripts.wa_corpus.query_runner import _nlm
 # Ground-truth per real chat — what the recap MUST surface and must NOT invent.
 # Keyed by source_id so the lab can score whichever chat is queried.
 GROUND_TRUTH = {
-    # Alexandre +33614653019 / PT AUM — frustrated client, LKPM/OSS, email dispute.
+    # Alexandre +33600000000 / PT AUM — frustrated client, LKPM/OSS, email dispute.
     "8ec03a47-23ec-44e2-9c03-9546e422f17c": {
         "label": "Alexandre / PT AUM",
         "must_mention": ["PT AUM", "LKPM", "27 march", "email", "meet"],

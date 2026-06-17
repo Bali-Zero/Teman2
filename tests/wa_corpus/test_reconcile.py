@@ -32,18 +32,18 @@ def test_new_not_loadable_is_skip():
 
 def test_prospect_becomes_client_renames_to_name_plus_number():
     # last pass: only the phone (was a prospect / not in CRM yet)
-    recorded = _rec("WA · +33614653019", T0)
+    recorded = _rec("WA · +33600000000", T0)
     # this pass: now in CRM -> title is name + number
-    desired = DesiredState(loadable=True, title="WA · Alexandre · +33614653019", latest_msg_at=T0)
+    desired = DesiredState(loadable=True, title="WA · Alexandre · +33600000000", latest_msg_at=T0)
     dec = decide_action(desired, recorded)
     assert dec.action is Action.RENAME
-    assert dec.new_title == "WA · Alexandre · +33614653019"
-    assert "+33614653019" in dec.new_title  # phone preserved
+    assert dec.new_title == "WA · Alexandre · +33600000000"
+    assert "+33600000000" in dec.new_title  # phone preserved
 
 
 def test_crm_name_updated_renames():
-    recorded = _rec("WA · Alex · +33614653019", T0)
-    desired = DesiredState(loadable=True, title="WA · Alexandre Dupont · +33614653019", latest_msg_at=T0)
+    recorded = _rec("WA · Alex · +33600000000", T0)
+    desired = DesiredState(loadable=True, title="WA · Alexandre Dupont · +33600000000", latest_msg_at=T0)
     assert decide_action(desired, recorded).action is Action.RENAME
 
 
@@ -64,11 +64,11 @@ def test_same_title_same_msgs_is_skip():
 # --- ARCHIVE (rename, keep the Doc) ---------------------------------------
 
 def test_became_not_loadable_archives_by_rename():
-    recorded = _rec("WA · Alexandre · +33614653019", T0)
-    desired = DesiredState(loadable=False, title="WA · +33614653019", latest_msg_at=T0)
+    recorded = _rec("WA · Alexandre · +33600000000", T0)
+    desired = DesiredState(loadable=False, title="WA · +33600000000", latest_msg_at=T0)
     dec = decide_action(desired, recorded)
     assert dec.action is Action.ARCHIVE
-    assert dec.new_title == "ARCHIVED · WA · Alexandre · +33614653019"
+    assert dec.new_title == "ARCHIVED · WA · Alexandre · +33600000000"
 
 
 def test_already_archived_is_skip():
@@ -86,6 +86,6 @@ def test_archived_title_idempotent():
 
 def test_rename_takes_precedence_over_update():
     # both title changed AND new messages -> rename first (update happens next pass)
-    recorded = _rec("WA · +33614653019", T0)
-    desired = DesiredState(loadable=True, title="WA · Alexandre · +33614653019", latest_msg_at=T1)
+    recorded = _rec("WA · +33600000000", T0)
+    desired = DesiredState(loadable=True, title="WA · Alexandre · +33600000000", latest_msg_at=T1)
     assert decide_action(desired, recorded).action is Action.RENAME

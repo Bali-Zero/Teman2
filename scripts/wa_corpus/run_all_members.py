@@ -7,8 +7,8 @@ totals into a Telegram message.
 
 Config file (default ~/.config/nuzantara/wa_corpus_members.json):
 [
-  {"email": "surya@balizero.com",  "team_phone": "+628133946856",  "nb_id": "<NB-Surya>"},
-  {"email": "adit@balizero.com",   "team_phone": "+628213454725",  "nb_id": "<NB-Adit>"},
+  {"email": "surya@balizero.com",  "team_phone": "+628120000001",  "nb_id": "<NB-Surya>"},
+  {"email": "adit@balizero.com",   "team_phone": "+628120000002",  "nb_id": "<NB-Adit>"},
   ...
 ]
 

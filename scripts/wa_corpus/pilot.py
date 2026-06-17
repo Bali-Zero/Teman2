@@ -2,7 +2,7 @@
 
 Usage:
   PYTHONPATH=. apps/backend-rag/.venv/bin/python -m scripts.wa_corpus.pilot \\
-      --team +628133946856 --counterpart +33614653019 --nb <NB_ID>
+      --team +628120000001 --counterpart +33600000000 --nb <NB_ID>
 """
 from __future__ import annotations
 

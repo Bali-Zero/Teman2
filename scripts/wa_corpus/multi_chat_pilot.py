@@ -12,7 +12,7 @@ loaded (team/group/multi-client excluded), exactly as v1 production would.
 
 Usage:
   PYTHONPATH=. apps/backend-rag/.venv/bin/python -m scripts.wa_corpus.multi_chat_pilot \\
-      --email surya@balizero.com --team-phone +628133946856 \\
+      --email surya@balizero.com --team-phone +628120000001 \\
       --nb <NB_ID> --limit 10
 """
 from __future__ import annotations

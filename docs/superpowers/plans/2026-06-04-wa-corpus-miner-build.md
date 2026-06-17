@@ -9,6 +9,7 @@
 **Tech Stack:** Python 3.11 (backend-rag venv), psycopg2 (local `nuzantara_dev`), google-api-python-client + google-auth (Service Account DWD impersonating zero@balizero.com), nlm CLI 0.6.11 (profile `zero`, account antonellosiano@gmail.com), pytest.
 
 **GATE findings baked into this plan (verified 2026-06-04):**
+
 - Drive API direct write of native Doc works (mimeType `application/vnd.google-apps.document`, text/markdown media conversion). MCP google-workspace docs is NOT used.
 - NLM `source sync --source-ids <id> -y` propagates NEW content; a post-sync query cites it verbatim.
 - **F1:** nlm profile `zero` is logged as `antonellosiano@gmail.com`, NOT zero@. SA-owned Docs MUST be shared (writer, no notification) with antonellosiano@gmail.com or `source add` fails "Could not add drive source".
@@ -37,6 +38,7 @@ Constants live in `scripts/wa_corpus/config.py`: SA key path, delegated user, NL
 ### Task 1: Package skeleton + config
 
 **Files:**
+
 - Create: `scripts/wa_corpus/__init__.py`
 - Create: `scripts/wa_corpus/config.py`
 - Test: (none — pure constants)
@@ -82,6 +84,7 @@ git commit -m "feat(wa-corpus): package skeleton + gate-verified config"
 ### Task 2: Counterpart classifier (pure logic, TDD)
 
 **Files:**
+
 - Create: `scripts/wa_corpus/classifier.py`
 - Test: `tests/wa_corpus/test_classifier.py`
 
@@ -115,7 +118,7 @@ def test_unclassified_low_volume_is_client():
     assert v.verdict is Verdict.CLIENT
 
 def test_unclassified_high_volume_many_names_is_multi_client():
-    # the +628563785797-style operational channel (but NOT marked team)
+    # the +628120000009-style operational channel (but NOT marked team)
     v = clf.classify(contact_type="contact", n_msgs=275, n_distinct_names=30)
     assert v.verdict is Verdict.MULTI_CLIENT
 
@@ -224,6 +227,7 @@ git commit -m "feat(wa-corpus): exclusion-first counterpart classifier (TDD, 8 t
 ### Task 3: DB access layer
 
 **Files:**
+
 - Create: `scripts/wa_corpus/db.py`
 - Test: covered by the live integration test (Task 7); no unit test (thin SQL wrapper, would only re-mock the driver).
 
@@ -340,6 +344,7 @@ def latest_message_at(conn, team_phone: str, counterpart_phone: str) -> datetime
 - [ ] **Step 2: Smoke it against the real DB**
 
 Run:
+
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara/.worktrees/ops-wacorpus-gate-firetest-20260604
 PYTHONPATH=. apps/backend-rag/.venv/bin/python -c "
@@ -356,6 +361,7 @@ print('distinct names:', db.count_distinct_names(conn, p.team_member_phone, p.co
 print('chat lines:', len(db.fetch_chat(conn, p.team_member_phone, p.counterpart_phone)))
 "
 ```
+
 Expected: non-zero pairs, a printed contact_type, distinct-name count, chat-line count.
 
 - [ ] **Step 3: Commit**
@@ -370,6 +376,7 @@ git commit -m "feat(wa-corpus): read-only Postgres access layer"
 ### Task 4: Prompt-master template + recap validator (TDD)
 
 **Files:**
+
 - Create: `scripts/wa_corpus/prompt_master.py`
 - Test: `tests/wa_corpus/test_prompt_master.py`
 
@@ -475,6 +482,7 @@ git commit -m "feat(wa-corpus): 6-section grounded prompt-master + recap validat
 ### Task 5: Chat→Doc renderer (Drive API, gate-proven calls)
 
 **Files:**
+
 - Create: `scripts/wa_corpus/renderer.py`
 - Test: `tests/wa_corpus/test_renderer_render.py` (markdown rendering only — pure, no network)
 
@@ -618,6 +626,7 @@ git commit -m "feat(wa-corpus): chat->Doc renderer (Drive API, F1 auto-share)"
 ### Task 6: NLM query-runner (CLI wrapper, cited-text enforcement)
 
 **Files:**
+
 - Create: `scripts/wa_corpus/query_runner.py`
 - Test: `tests/wa_corpus/test_query_runner_parse.py` (parsing only — no network)
 
@@ -740,6 +749,7 @@ git commit -m "feat(wa-corpus): nlm query-runner (explicit sync F2, cited enforc
 ### Task 7: End-to-end pilot driver + live integration test
 
 **Files:**
+
 - Create: `scripts/wa_corpus/pilot.py` (CLI: pick one CLIENT pair, render → Doc → NB → sync → recap, print recap)
 - Test: `tests/wa_corpus/test_integration_gate.py` (env-gated `WA_CORPUS_LIVE=1`)
 
@@ -751,7 +761,7 @@ git commit -m "feat(wa-corpus): nlm query-runner (explicit sync F2, cited enforc
 
 Usage:
   PYTHONPATH=. apps/backend-rag/.venv/bin/python -m scripts.wa_corpus.pilot \
-      --team +628133946856 --counterpart +33614653019 --nb <NB_ID>
+      --team +628120000001 --counterpart +33600000000 --nb <NB_ID>
 """
 from __future__ import annotations
 
@@ -828,7 +838,7 @@ def test_pilot_end_to_end():
     nb = os.environ["WA_CORPUS_TEST_NB"]  # a throwaway NB id
     r = subprocess.run(
         ["apps/backend-rag/.venv/bin/python", "-m", "scripts.wa_corpus.pilot",
-         "--team", "+628133946856", "--counterpart", "+33614653019", "--nb", nb],
+         "--team", "+628120000001", "--counterpart", "+33600000000", "--nb", nb],
         capture_output=True, text=True, env={**os.environ, "PYTHONPATH": "."},
         timeout=600,
     )
@@ -844,12 +854,14 @@ Expected: all unit tests PASS, `test_pilot_end_to_end` SKIPPED.
 - [ ] **Step 4: Run the live pilot once against the gate test NB**
 
 Run:
+
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara/.worktrees/ops-wacorpus-gate-firetest-20260604
 PYTHONPATH=. apps/backend-rag/.venv/bin/python -m scripts.wa_corpus.pilot \
-  --team +628133946856 --counterpart +33614653019 \
+  --team +628120000001 --counterpart +33600000000 \
   --nb f4dcb203-c6cf-45b1-b6a9-dd5e14bb4663
 ```
+
 Expected: classify -> client; doc created+shared; a 6-section recap printed with >=1 citation; exit 0.
 
 - [ ] **Step 5: Commit**

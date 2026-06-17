@@ -36,8 +36,8 @@ SCOPES = ["https://www.googleapis.com/auth/drive"]
 DB_DSN = "postgresql://localhost:5432/nuzantara_dev"
 
 # Chosen real 1-a-1 chat (external counterpart, contact_type='contact', ~53 msg)
-TEAM_PHONE = "+628133946856"
-COUNTERPART_PHONE = "+33614653019"
+TEAM_PHONE = "+628120000001"
+COUNTERPART_PHONE = "+33600000000"
 
 RECEIPT_PATH = "/tmp/wa_corpus_gate_test1_receipt.json"
 
