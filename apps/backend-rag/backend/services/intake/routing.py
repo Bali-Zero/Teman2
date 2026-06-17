@@ -86,7 +86,9 @@ CONF_FOLDER_MATCH = 0.85
 # Doc-types whose subject is a PERSON (match against ``clients``) vs a COMPANY
 # (match against ``companies``). canonical_doc_type() upstream already maps
 # aliases (paspor->passport, akta->akta_pendirian, ...).
-_PERSON_DOC_TYPES = frozenset({"passport", "npwp", "kitas"})
+_PERSON_DOC_TYPES = frozenset(
+    {"passport", "npwp", "kitas", "itk", "itas", "itap"}
+)
 _COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian"})
 
 # NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
