@@ -23,21 +23,59 @@ from backend.app.modules.notifications.router import (
 
 class TestEnforceBalizeroCc:
     """Hard rule (Antonello 2026-06-17): a client never gets an email
-    without a @balizero.com address copied in.
+    without a @balizero.com address copied in. Contextual CC:
+    invoice → asya@ (accounting), else the assigned lead, else asya@.
 
     Superscar #3 discipline: every guard ships with an innocence test
     (does NOT fire on a legitimate neighbour) AND a guilt test (DOES
     fire on the real violation)."""
 
     # --- GUILT: external recipient, no balizero anywhere → inject CC ---
-    def test_external_no_balizero_forces_cc(self):
+    def test_external_no_context_falls_back_to_accounting(self):
+        # no email_type, no assigned → fallback asya@ (never silently void)
         assert _enforce_balizero_cc("alice@example.com", None, None) == [
-            "zero@balizero.com"
+            "asya@balizero.com"
         ]
 
+    def test_invoice_forces_accounting_cc(self):
+        out = _enforce_balizero_cc(
+            "alice@example.com", None, None, email_type="invoice_client"
+        )
+        assert out == ["asya@balizero.com"]
+
+    def test_non_invoice_forces_assigned_lead(self):
+        out = _enforce_balizero_cc(
+            "alice@example.com",
+            None,
+            None,
+            email_type="welcome",
+            assigned_to="krisna@balizero.com",
+        )
+        assert out == ["krisna@balizero.com"]
+
+    def test_non_invoice_no_assigned_falls_back_to_accounting(self):
+        out = _enforce_balizero_cc(
+            "alice@example.com", None, None, email_type="waiting_docs_client"
+        )
+        assert out == ["asya@balizero.com"]
+
+    def test_invoice_ignores_assigned_and_uses_accounting(self):
+        # even with an assigned lead, an invoice goes to accounting
+        out = _enforce_balizero_cc(
+            "alice@example.com",
+            None,
+            None,
+            email_type="invoice_client",
+            assigned_to="krisna@balizero.com",
+        )
+        assert out == ["asya@balizero.com"]
+
     def test_external_with_other_cc_appends_balizero(self):
-        out = _enforce_balizero_cc("alice@example.com", ["bob@gmail.com"], None)
-        assert "zero@balizero.com" in out
+        out = _enforce_balizero_cc(
+            "alice@example.com", ["bob@gmail.com"], None, email_type="welcome",
+            assigned_to="krisna@balizero.com",
+        )
+        assert "krisna@balizero.com" in out
         assert "bob@gmail.com" in out
 
     # --- INNOCENCE: already compliant → leave untouched ---
@@ -46,8 +84,16 @@ class TestEnforceBalizeroCc:
         assert _enforce_balizero_cc("bob@balizero.com", None, None) is None
 
     def test_existing_balizero_cc_untouched(self):
+        # caller already copied a balizero address → respect their choice,
+        # do NOT also add the contextual one
         cc = ["asya@balizero.com", "client@gmail.com"]
-        assert _enforce_balizero_cc("alice@example.com", cc, None) == cc
+        assert (
+            _enforce_balizero_cc(
+                "alice@example.com", cc, None, email_type="welcome",
+                assigned_to="krisna@balizero.com",
+            )
+            == cc
+        )
 
     def test_balizero_in_bcc_counts_as_compliant(self):
         # team copied via BCC → rule satisfied, cc not mutated
@@ -64,8 +110,12 @@ class TestEnforceBalizeroCc:
 
     def test_no_bare_substring_false_match(self):
         # 'balizero.com.evil.com' must NOT be treated as a balizero address
-        out = _enforce_balizero_cc("alice@example.com", ["x@balizero.com.evil.com"], None)
-        assert "zero@balizero.com" in out
+        # → guard fires, injects the fallback accounting address
+        out = _enforce_balizero_cc(
+            "alice@example.com", ["x@balizero.com.evil.com"], None,
+            email_type="invoice_client",
+        )
+        assert "asya@balizero.com" in out
 
 
 @pytest.fixture

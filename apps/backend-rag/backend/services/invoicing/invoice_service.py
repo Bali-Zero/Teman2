@@ -37,8 +37,10 @@ logger = get_logger(__name__)
 # Accounting email for invoice notifications
 ACCOUNTING_EMAIL = "asya@balizero.com"
 
-# CC on all invoice emails: owner + accounting
-INVOICE_CC_EMAILS = ["zero@balizero.com", "asya@balizero.com"]
+# CC on all invoice emails: accounting (Antonello 2026-06-17 — dropped
+# zero@ so the owner inbox no longer receives every single invoice;
+# accounting owns invoices, the assigned lead is appended separately).
+INVOICE_CC_EMAILS = ["asya@balizero.com"]
 
 # Internal email API (sender is always zantara@balizero.com)
 _EMAIL_API_URL = os.getenv(
@@ -327,6 +329,10 @@ class InvoiceAutomationService:
             "body": body_html,
             "cc": ", ".join(cc_emails),
             "attachments": [{"name": filename, "content": pdf_b64}],
+            # Context for the endpoint's @balizero.com CC hard rule
+            # (Antonello 2026-06-17): invoice → asya@ accounting.
+            "email_type": "invoice_client",
+            "assigned_to": team_member_email,
         }
         client = await get_email_client()
         response = await client.post(
