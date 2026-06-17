@@ -29,7 +29,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
-from backend.services.notifications.email_branding import logo_header_html, team_email_html
+from backend.services.notifications.email_branding import team_email_html
 from backend.services.notifications.email_http import get_email_client
 
 logger = get_logger(__name__)
@@ -297,8 +297,10 @@ class InvoiceAutomationService:
     ) -> bool:
         """Send invoice email to client via internal email API (sender: zantara@balizero.com)."""
         subject = f"Invoice {invoice_number} from Bali Zero"
+        # The Bali Zero logo lives on the invoice PDF attachment (top-right,
+        # rendered by invoice_generator.py), NOT in the email body — Antonello
+        # 2026-06-17: "hai fatto html sul messaggio email, non su allegato".
         body_html = (
-            f"{logo_header_html()}"
             f"<p>Dear {client_name},</p>"
             f"<p>Thank you for choosing Bali Zero for your business in Indonesia.</p>"
             f"<p>Please find your invoice attached to this email.</p>"
