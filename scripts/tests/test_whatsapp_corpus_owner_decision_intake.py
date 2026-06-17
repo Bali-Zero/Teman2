@@ -557,6 +557,36 @@ def test_build_owner_decision_intake_rejects_invalid_decision(
         )
 
 
+def test_build_owner_decision_intake_rejects_non_owner_actor(
+    tmp_path: Path,
+) -> None:
+    review_db = tmp_path / "operator_packet_review_console.local.sqlite"
+    output_dir = tmp_path / "owner-decision-intake"
+    owner_decisions_jsonl = output_dir / "owner_decisions.local.jsonl"
+    _write_operator_packet_review_console_db(review_db)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    owner_decisions_jsonl.write_text(
+        json.dumps(
+            {
+                "review_item_id": "operator-packet-review-item-pending",
+                "owner_decision": "approve",
+                "decision_note": "bad actor",
+                "event_actor": "operator",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="actor is not allowed"):
+        build_owner_decision_intake(
+            review_console_db=review_db,
+            owner_decisions_jsonl=owner_decisions_jsonl,
+            output_dir=output_dir,
+            summary_path=output_dir / "summary.md",
+        )
+
+
 def test_build_owner_decision_intake_rejects_non_owner_action_item(
     tmp_path: Path,
 ) -> None:
