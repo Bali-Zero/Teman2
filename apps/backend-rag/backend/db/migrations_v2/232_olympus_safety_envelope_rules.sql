@@ -1,4 +1,4 @@
--- 208_olympus_safety_envelope_rules.sql
+-- 232_olympus_safety_envelope_rules.sql
 -- Olympus DB Guardian — Safety Envelope (P0) + Consume (P1) rule seeds.
 --
 -- Adds the evolvable rules that govern the new bounded-operator behavior:
