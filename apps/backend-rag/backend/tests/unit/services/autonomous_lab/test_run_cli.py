@@ -203,6 +203,20 @@ def test_execute_runs_only_allowlisted_commands_without_shell(
         ]
     )
     input_path = _write_input(tmp_path, payload)
+
+    # Hermetic: point the CLI at a repo tree that ships a stub `.venv/bin/pytest`
+    # so the pytest verification command forms an execution plan deterministically.
+    # CI installs deps `--system` (no project `.venv`), so without this the pytest
+    # command resolves to None and is silently dropped — the previous version only
+    # passed on a dev box that happened to have a `.venv`.
+    repo_root = tmp_path / "repo"
+    backend_root = repo_root / "apps" / "backend-rag"
+    venv_pytest = backend_root / ".venv" / "bin" / "pytest"
+    venv_pytest.parent.mkdir(parents=True, exist_ok=True)
+    venv_pytest.touch()
+    monkeypatch.setattr(run_cli, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(run_cli, "BACKEND_ROOT", backend_root)
+
     calls: list[tuple[list[str], dict]] = []
 
     def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:

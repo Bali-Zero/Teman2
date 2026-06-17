@@ -23,6 +23,7 @@ if str(BACKEND_ROOT) not in sys.path:
 from autonomous_lab_draft import build_run, load_input
 from backend.services.autonomous_lab.command_policy import (
     CommandExecutionPlan,
+    is_allowed_verification_command,
     plan_for_allowlisted_command as build_allowlisted_command_plan,
     refusal_reason,
 )
@@ -96,15 +97,24 @@ def build_verification_summary(
     *,
     execute: bool,
 ) -> dict[str, Any]:
-    """Return dry-run or execution results for planner verification commands."""
-    command_plans = [plan_for_allowlisted_command(command) for command in commands]
+    """Return dry-run or execution results for planner verification commands.
+
+    Whether a command is *allowed* is a policy decision
+    (``is_allowed_verification_command``) and is independent of whether the
+    executor binary happens to exist on this host. A dry run must never depend
+    on the executor being present, otherwise a legitimately allowlisted command
+    is misclassified as refused on a clean checkout (e.g. CI without a local
+    ``.venv/bin/pytest``). Binary resolution via ``plan_for_allowlisted_command``
+    only matters on the execute path, where the command is actually shelled out.
+    """
+    allowed_flags = [is_allowed_verification_command(command) for command in commands]
     refused = [
         {
-            "command": _receipt_command_reference(command, allowed=plan is not None),
+            "command": _receipt_command_reference(command, allowed=allowed),
             "reason": refusal_reason(command),
         }
-        for command, plan in zip(commands, command_plans, strict=True)
-        if plan is None
+        for command, allowed in zip(commands, allowed_flags, strict=True)
+        if not allowed
     ]
 
     if not execute:
@@ -113,12 +123,12 @@ def build_verification_summary(
             "refused_commands": refused,
             "results": [
                 {
-                    "command": _receipt_command_reference(command, allowed=plan is not None),
-                    "allowed": plan is not None,
+                    "command": _receipt_command_reference(command, allowed=allowed),
+                    "allowed": allowed,
                     "executed": False,
                     "returncode": None,
                 }
-                for command, plan in zip(commands, command_plans, strict=True)
+                for command, allowed in zip(commands, allowed_flags, strict=True)
             ],
         }
 
@@ -128,12 +138,12 @@ def build_verification_summary(
             "refused_commands": refused,
             "results": [
                 {
-                    "command": _receipt_command_reference(command, allowed=plan is not None),
-                    "allowed": plan is not None,
+                    "command": _receipt_command_reference(command, allowed=allowed),
+                    "allowed": allowed,
                     "executed": False,
                     "returncode": None,
                 }
-                for command, plan in zip(commands, command_plans, strict=True)
+                for command, allowed in zip(commands, allowed_flags, strict=True)
             ],
         }
 
@@ -142,7 +152,7 @@ def build_verification_summary(
         "refused_commands": [],
         "results": [
             execute_command_plan(plan)
-            for plan in command_plans
+            for plan in (plan_for_allowlisted_command(command) for command in commands)
             if plan is not None
         ],
     }

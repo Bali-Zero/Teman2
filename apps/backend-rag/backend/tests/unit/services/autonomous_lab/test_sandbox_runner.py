@@ -18,9 +18,17 @@ from backend.services.autonomous_lab.command_policy import (
 from backend.services.autonomous_lab.sandbox_runner import LocalWorktreeSandboxRunner
 
 
-def test_command_policy_uses_only_backend_venv_and_minimal_env() -> None:
-    repo_root = Path(__file__).resolve().parents[7]
+def test_command_policy_uses_only_backend_venv_and_minimal_env(tmp_path: Path) -> None:
+    # Hermetic: build a repo tree with a stub `.venv/bin/pytest` so the plan
+    # resolves deterministically. The previous version relied on the ambient
+    # checkout shipping a `.venv` — true on a dev box but NOT in CI, where deps
+    # are installed `--system`, so the plan came back None and the assertions
+    # never ran (masked by `pytest -x`).
+    repo_root = tmp_path
     backend_root = repo_root / "apps" / "backend-rag"
+    venv_pytest = backend_root / ".venv" / "bin" / "pytest"
+    venv_pytest.parent.mkdir(parents=True, exist_ok=True)
+    venv_pytest.touch()
 
     plan = plan_for_allowlisted_command(
         PYTEST_AUTONOMOUS_LAB_COMMAND,
