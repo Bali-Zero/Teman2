@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
+import React from "react";
+import Link from "next/link";
 import {
   ExternalLink,
   ArrowUpRight,
@@ -10,33 +10,42 @@ import {
   CheckCircle2,
   FileText,
   TrendingUp,
-} from 'lucide-react';
-import { LiveActivityFeed, RoleWidget, ZantaraPortalCard } from '@/components/dashboard';
-import { HeroLiveWindow } from '@/components/workspace/HeroLiveWindow';
-import type { CasePreview } from '@/components/dashboard/CasesPreview';
-import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
-import { TeamActivityPanel } from '@/components/dashboard/TeamActivityPanel';
-import type { TeamMemberStats, TeamOverview } from '@/components/dashboard/TeamActivityPanel';
-import { useDashboardData } from '@/hooks/useDashboardData';
-import { useRealtime } from '@/lib/realtime';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { normalizeDashboardRole } from '@/lib/dashboard-role';
-import type { LiveActivityEvent } from '@/types/dashboard-role.types';
-import { logger } from '@/lib/logger';
-import { api } from '@/lib/api';
-import { RefreshCw } from 'lucide-react';
+} from "lucide-react";
+import {
+  LiveActivityFeed,
+  RoleWidget,
+  ZantaraPortalCard,
+} from "@/components/dashboard";
+import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
+import type { CasePreview } from "@/components/dashboard/CasesPreview";
+import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
+import { TeamActivityPanel } from "@/components/dashboard/TeamActivityPanel";
+import type {
+  TeamMemberStats,
+  TeamOverview,
+} from "@/components/dashboard/TeamActivityPanel";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useRealtime } from "@/lib/realtime";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { normalizeDashboardRole } from "@/lib/dashboard-role";
+import type { LiveActivityEvent } from "@/types/dashboard-role.types";
+import { logger } from "@/lib/logger";
+import { STRINGS } from "@/lib/strings";
+import { api } from "@/lib/api";
+import { formatIDRCompact } from "@balizero/core/utils";
+import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
-  visas: '#4a8ec4',
-  business: '#5cb88a',
-  taxes: '#b89a40',
-  property: '#9880d8',
-  living: '#d4845a',
-  emerging_trends: '#4ab8c4',
+  visas: "#4a8ec4",
+  business: "#5cb88a",
+  taxes: "#b89a40",
+  property: "#9880d8",
+  living: "#d4845a",
+  emerging_trends: "#4ab8c4",
 };
 function getCategoryColor(cat: string): string {
-  return CATEGORY_COLOR[cat] ?? '#9880d8';
+  return CATEGORY_COLOR[cat] ?? "#9880d8";
 }
 
 interface IntelArticle {
@@ -49,7 +58,7 @@ interface IntelArticle {
 
 function useIntelFeed() {
   return useQuery<IntelArticle[]>({
-    queryKey: ['intel-feed'],
+    queryKey: ["intel-feed"],
     queryFn: async () => {
       const data = await api.blog.listArticles(8, 0);
       return ((data.articles ?? []) as IntelArticle[]).slice(0, 8);
@@ -57,6 +66,59 @@ function useIntelFeed() {
     staleTime: 5 * 60_000,
     refetchInterval: 10 * 60_000,
   });
+}
+
+// ── Intake review queue hook ───────────────────────────────
+// Backend RBAC scopes the queue: team members get docs they received
+// (own-chat), admins get everything. Failure = silently hide the banner
+// (the reader runs on the Pro; if the tunnel is down the dashboard must
+// not degrade).
+function useIntakeReviewCount() {
+  return useQuery<number>({
+    queryKey: ["intake-review-count"],
+    queryFn: async () => {
+      const res = await api.get<{ items: unknown[] }>(
+        "/api/intake/review/queue?status=review_pending&limit=50",
+      );
+      return (res.items ?? []).length;
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    retry: false,
+  });
+}
+
+// ── Intake review banner ───────────────────────────────────
+function IntakeReviewBanner() {
+  const { data: count } = useIntakeReviewCount();
+  if (!count) return null;
+  return (
+    <Link
+      href="/review"
+      className="flex items-center gap-3 rounded-xl px-4 py-3 shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(45,40,35,0.85)]"
+      style={{
+        background: "rgba(45, 40, 35, 0.7)",
+        border: "1px solid rgba(212,132,90,0.25)",
+      }}
+    >
+      <FileText size={14} style={{ color: "#d4845a" }} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-semibold text-white/80">
+          {count} document{count === 1 ? "" : "s"} waiting for your review
+        </p>
+        <p className="text-[9px] text-white/35">
+          Confirm where each document goes — client, practice or archive
+        </p>
+      </div>
+      <span
+        className="text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full"
+        style={{ background: "rgba(212,132,90,0.18)", color: "#d4845a" }}
+      >
+        {count}
+      </span>
+      <ArrowUpRight size={11} className="text-white/30" />
+    </Link>
+  );
 }
 
 // ── Team stats hook ────────────────────────────────────────
@@ -67,22 +129,34 @@ interface TeamStatsResult {
 
 function useTeamStats(enabled: boolean) {
   return useQuery<TeamStatsResult>({
-    queryKey: ['team-stats'],
+    queryKey: ["team-stats"],
     enabled,
     queryFn: async () => {
       const [membersData, overviewData, practiceData] = await Promise.all([
-        api.adminApi.getTeamStats().catch(() => ({ team_stats: [] as TeamMemberStats[] }) as Record<string, unknown>),
+        api.adminApi
+          .getTeamStats()
+          .catch(
+            () =>
+              ({ team_stats: [] as TeamMemberStats[] }) as Record<
+                string,
+                unknown
+              >,
+          ),
         api.adminApi.getTeamActivityOverview().catch(() => null),
         api.adminApi.getPracticeStats().catch(() => ({ practice_stats: [] })),
       ]);
       const rawMembers: TeamMemberStats[] = Array.isArray(membersData)
         ? membersData
         : Array.isArray((membersData as Record<string, unknown>)?.team_stats)
-          ? (membersData as Record<string, unknown>).team_stats as TeamMemberStats[]
+          ? ((membersData as Record<string, unknown>)
+              .team_stats as TeamMemberStats[])
           : [];
 
       // Merge practice stats by email
-      const practiceMap = new Map<string, { completed: number; active: number; revenue: number }>();
+      const practiceMap = new Map<
+        string,
+        { completed: number; active: number; revenue: number }
+      >();
       if (practiceData && Array.isArray(practiceData.practice_stats)) {
         for (const p of practiceData.practice_stats) {
           practiceMap.set(p.email, {
@@ -103,7 +177,11 @@ function useTeamStats(enabled: boolean) {
         };
       });
 
-      const overview: TeamOverview | null = (overviewData as unknown as Record<string, unknown>)?.stats as TeamOverview ?? overviewData as unknown as TeamOverview ?? null;
+      const overview: TeamOverview | null =
+        ((overviewData as unknown as Record<string, unknown>)
+          ?.stats as TeamOverview) ??
+        (overviewData as unknown as TeamOverview) ??
+        null;
       return { members, overview };
     },
     staleTime: 3 * 60_000,
@@ -113,20 +191,12 @@ function useTeamStats(enabled: boolean) {
 
 // ── Status config for practices ───────────────────────────
 const STATUS_CONFIG = {
-  inquiry: { label: 'Inquiry', dot: '#9ca3af' },
-  quotation: { label: 'Quotation', dot: '#b89a40' },
-  in_progress: { label: 'In Progress', dot: '#4a8ec4' },
-  documents: { label: 'Documents', dot: '#b89a40' },
-  completed: { label: 'Completed', dot: '#5cb88a' },
+  inquiry: { label: "Inquiry", dot: "#9ca3af" },
+  quotation: { label: "Quotation", dot: "#b89a40" },
+  in_progress: { label: "In Progress", dot: "#4a8ec4" },
+  documents: { label: "Documents", dot: "#b89a40" },
+  completed: { label: "Completed", dot: "#5cb88a" },
 } as const;
-
-// ── Formatters ─────────────────────────────────────────────
-function formatRevenue(rp: number): string {
-  if (rp >= 1_000_000_000) return `Rp ${(rp / 1_000_000_000).toFixed(2)}B`;
-  if (rp >= 1_000_000) return `Rp ${(rp / 1_000_000).toFixed(1)}M`;
-  if (rp >= 1_000) return `Rp ${(rp / 1_000).toFixed(0)}K`;
-  return `Rp ${rp.toFixed(0)}`;
-}
 
 // ── Metric Bar item ────────────────────────────────────────
 function MetricItem({
@@ -153,7 +223,9 @@ function MetricItem({
       >
         {value}
       </span>
-      {sub && <span className="text-[9px] text-white/35 font-medium">{sub}</span>}
+      {sub && (
+        <span className="text-[9px] text-white/35 font-medium">{sub}</span>
+      )}
     </div>
   );
   if (href)
@@ -169,15 +241,19 @@ function MetricItem({
 function PipelineRow({ p }: { p: CasePreview }) {
   const cfg = STATUS_CONFIG[p.status];
   const isUrgent =
-    p.daysRemaining !== undefined && p.daysRemaining <= 3 && p.status !== 'completed';
+    p.daysRemaining !== undefined &&
+    p.daysRemaining <= 3 &&
+    p.status !== "completed";
   const isExpired =
-    p.daysRemaining !== undefined && p.daysRemaining <= 0 && p.status !== 'completed';
+    p.daysRemaining !== undefined &&
+    p.daysRemaining <= 0 &&
+    p.status !== "completed";
 
   return (
     <Link
       href={`/process/${p.id}`}
       className="group grid items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors"
-      style={{ gridTemplateColumns: '1fr auto auto' }}
+      style={{ gridTemplateColumns: "1fr auto auto" }}
     >
       {/* Left: client + title */}
       <div className="min-w-0">
@@ -203,10 +279,14 @@ function PipelineRow({ p }: { p: CasePreview }) {
       <span
         className="text-[9px] font-semibold tabular-nums whitespace-nowrap flex items-center gap-1"
         style={{
-          color: isExpired ? '#c45c78' : isUrgent ? '#b89a40' : 'rgba(255,255,255,0.25)',
+          color: isExpired
+            ? "#c45c78"
+            : isUrgent
+              ? "#b89a40"
+              : "rgba(255,255,255,0.25)",
         }}
       >
-        {p.status === 'completed' ? (
+        {p.status === "completed" ? (
           <CheckCircle2 size={10} className="opacity-60" />
         ) : isExpired ? (
           <>
@@ -227,11 +307,11 @@ function PipelineRow({ p }: { p: CasePreview }) {
 // ── Intel article row ──────────────────────────────────────
 function IntelRow({ article }: { article: IntelArticle }) {
   const color = getCategoryColor(article.category);
-  const catLabel = article.category.replace(/[-_]/g, ' ').toUpperCase();
+  const catLabel = article.category.replace(/[-_]/g, " ").toUpperCase();
   const href = `https://balizero.com/${article.category}/${article.slug}`;
-  const date = new Date(article.publishedAt).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
+  const date = new Date(article.publishedAt).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
   });
 
   return (
@@ -248,10 +328,15 @@ function IntelRow({ article }: { article: IntelArticle }) {
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-[8px] font-bold tracking-[.08em]" style={{ color, opacity: 0.9 }}>
+          <span
+            className="text-[8px] font-bold tracking-[.08em]"
+            style={{ color, opacity: 0.9 }}
+          >
             {catLabel}
           </span>
-          <span className="ml-auto text-[8px] text-white/25 flex-shrink-0">{date}</span>
+          <span className="ml-auto text-[8px] text-white/25 flex-shrink-0">
+            {date}
+          </span>
         </div>
         <p className="text-[10px] text-white/60 leading-snug line-clamp-2 group-hover:text-white/80 transition-colors">
           {article.title}
@@ -262,12 +347,24 @@ function IntelRow({ article }: { article: IntelArticle }) {
 }
 
 // ── Section header ─────────────────────────────────────────
-function SectionHeader({ label, href, count }: { label: string; href?: string; count?: number }) {
+function SectionHeader({
+  label,
+  href,
+  count,
+}: {
+  label: string;
+  href?: string;
+  count?: number;
+}) {
   return (
     <div className="flex items-center justify-between px-3 pb-1">
-      <span className="text-[9px] font-bold text-white/25 tracking-[.12em] uppercase">{label}</span>
+      <span className="text-[9px] font-bold text-white/25 tracking-[.12em] uppercase">
+        {label}
+      </span>
       <div className="flex items-center gap-2">
-        {count !== undefined && <span className="text-[9px] text-white/20">{count}</span>}
+        {count !== undefined && (
+          <span className="text-[9px] text-white/20">{count}</span>
+        )}
         {href && (
           <Link
             href={href}
@@ -316,8 +413,8 @@ export default function DashboardPage() {
   const role = normalizeDashboardRole(user?.role, user?.is_admin ?? false);
 
   React.useEffect(() => {
-    const unsubscribe = realtime.subscribe('dashboard_update', () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    const unsubscribe = realtime.subscribe("dashboard_update", () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     });
     return unsubscribe;
   }, [realtime, queryClient]);
@@ -325,9 +422,9 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (user?.email && !isLoading) {
       realtime.connect(user.email, user.email);
-      logger.info('Dashboard loaded', {
-        component: 'DashboardPage',
-        action: 'mount',
+      logger.info("Dashboard loaded", {
+        component: "DashboardPage",
+        action: "mount",
         user: user.email,
       });
     }
@@ -339,36 +436,36 @@ export default function DashboardPage() {
       (p): LiveActivityEvent => ({
         id: String(p.id),
         type:
-          p.status === 'completed'
-            ? 'ok'
+          p.status === "completed"
+            ? "ok"
             : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? 'critical'
-              : p.status === 'documents'
-                ? 'warning'
-                : 'info',
+              ? "critical"
+              : p.status === "documents"
+                ? "warning"
+                : "info",
         icon:
-          p.status === 'completed'
-            ? '✅'
+          p.status === "completed"
+            ? "✅"
             : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? '🚨'
-              : p.status === 'documents'
-                ? '📄'
-                : '📁',
+              ? "🚨"
+              : p.status === "documents"
+                ? "📄"
+                : "📁",
         text: `${p.client} · ${p.title || p.status}`,
         tag:
-          p.status === 'completed'
-            ? 'COMPLETED'
+          p.status === "completed"
+            ? "COMPLETED"
             : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? 'URGENT'
-              : p.status === 'documents'
-                ? 'DOCUMENTS'
+              ? "URGENT"
+              : p.status === "documents"
+                ? "DOCUMENTS"
                 : undefined,
-        timestamp: new Date().toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
+        timestamp: new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
         }),
         userId: user?.email,
-      })
+      }),
     );
   }, [practices, user?.email]);
 
@@ -376,13 +473,13 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="p-2.5 space-y-2">
-        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
         <div className="h-12 rounded-xl bg-white/[0.025] animate-pulse" />
         <div className="grid grid-cols-4 gap-2">
           <div className="col-span-3 h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
           <div className="h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
         </div>
         <div className="h-[320px] rounded-xl bg-white/[0.025] animate-pulse" />
+        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
       </div>
     );
   }
@@ -391,8 +488,12 @@ export default function DashboardPage() {
   if (isError) {
     return (
       <div className="p-4 rounded-xl border border-accent-pink-editorial/25 bg-[rgba(196,92,120,0.06)]">
-        <h3 className="font-semibold text-accent-pink-editorial">Dashboard Error</h3>
-        <p className="text-sm text-accent-pink-editorial/70 mt-1">Failed to load dashboard data.</p>
+        <h3 className="font-semibold text-accent-pink-editorial">
+          Dashboard Error
+        </h3>
+        <p className="text-sm text-accent-pink-editorial/70 mt-1">
+          Failed to load dashboard data.
+        </p>
         <button
           onClick={() => refetch()}
           className="mt-3 px-4 py-2 bg-accent-pink-editorial text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center gap-2 text-sm"
@@ -408,63 +509,78 @@ export default function DashboardPage() {
   const statItems = isZero
     ? [
         {
-          label: 'Revenue · MTD',
-          value: revenue?.total_revenue ? formatRevenue(revenue.total_revenue) : '—',
-          sub: revenue?.paid_revenue ? `${formatRevenue(revenue.paid_revenue)} incassato` : '—',
-          accent: '#9880d8',
+          label: "Revenue · MTD",
+          value: revenue?.total_revenue
+            ? formatIDRCompact(revenue.total_revenue)
+            : "—",
+          sub: revenue?.paid_revenue
+            ? STRINGS.dashboard.collectedSub(
+                formatIDRCompact(revenue.paid_revenue),
+              )
+            : "—",
+          accent: "#9880d8",
         },
         {
-          label: 'Outstanding',
-          value: revenue?.outstanding_revenue ? formatRevenue(revenue.outstanding_revenue) : '—',
-          sub: 'da incassare',
-          accent: '#d4845a',
+          label: "Outstanding",
+          value: revenue?.outstanding_revenue
+            ? formatIDRCompact(revenue.outstanding_revenue)
+            : "—",
+          sub: STRINGS.dashboard.outstandingSub,
+          accent: "#d4845a",
         },
         {
-          label: 'Clienti',
-          value: totalClients != null ? totalClients.toLocaleString('en-US') : '—',
-          sub: 'registrati',
-          accent: '#4a8ec4',
-          href: '/clients',
+          label: STRINGS.dashboard.clientsLabel,
+          value:
+            totalClients != null ? totalClients.toLocaleString("en-US") : "—",
+          sub: STRINGS.dashboard.clientsSub,
+          accent: "#4a8ec4",
+          href: "/clients",
         },
         {
-          label: 'Processi',
-          value: totalPractices != null ? totalPractices : '—',
-          sub: `${stats.activeCases} attivi · ${stats.criticalDeadlines} critici`,
-          accent: '#5cb88a',
-          href: '/process',
+          label: STRINGS.dashboard.casesLabel,
+          value: totalPractices != null ? totalPractices : "—",
+          sub: STRINGS.dashboard.casesSub(
+            stats.activeCases,
+            stats.criticalDeadlines,
+          ),
+          accent: "#5cb88a",
+          href: "/process",
         },
         {
-          label: 'Fatture',
-          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : '✓',
-          sub: stats.pendingInvoices > 0 ? 'in attesa' : 'tutte pagate',
-          accent: '#b89a40',
+          label: STRINGS.dashboard.invoicesLabel,
+          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "✓",
+          sub:
+            stats.pendingInvoices > 0
+              ? STRINGS.dashboard.invoicesPendingSub
+              : STRINGS.dashboard.invoicesPaidSub,
+          accent: "#b89a40",
         },
       ]
     : [
         {
-          label: 'My Cases',
+          label: "My Cases",
           value: stats.activeCases,
-          sub: 'assigned',
-          accent: '#5cb88a',
-          href: '/process',
+          sub: "assigned",
+          accent: "#5cb88a",
+          href: "/process",
         },
         {
-          label: 'Stalled',
+          label: "Stalled",
           value: stats.criticalDeadlines,
-          sub: '>14 days',
-          accent: '#c45c78',
+          sub: ">14 days",
+          accent: "#c45c78",
         },
         {
-          label: 'Invoices',
-          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : '—',
-          sub: 'pending',
-          accent: '#b89a40',
+          label: "Invoices",
+          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "—",
+          sub: "pending",
+          accent: "#b89a40",
         },
         {
-          label: 'Unread',
+          label: "Unread",
           value: stats.whatsappUnread + stats.emailUnread,
-          sub: 'messages',
-          accent: '#4a8ec4',
+          sub: "messages",
+          accent: "#4a8ec4",
         },
       ];
 
@@ -472,18 +588,18 @@ export default function DashboardPage() {
     <DashboardErrorBoundary>
       <div className="relative dash-liquid-bg">
         <div className="p-2.5 space-y-2">
-          {/* ROW 0: Hero */}
-          <HeroLiveWindow />
-
           {/* ROW 1: Zantara AI portal */}
           <ZantaraPortalCard />
+
+          {/* ROW 1.5: Intake review banner — only when docs are waiting */}
+          <IntakeReviewBanner />
 
           {/* ROW 2: Metric bar */}
           <div
             className="rounded-xl px-6 py-4 flex items-stretch shadow-2xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
             style={{
-              background: 'rgba(35, 35, 40, 0.65)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: "rgba(35, 35, 40, 0.65)",
+              border: "1px solid rgba(255,255,255,0.08)",
             }}
           >
             {statItems.map((s, i) => (
@@ -494,7 +610,7 @@ export default function DashboardPage() {
                 {i < statItems.length - 1 && (
                   <div
                     className="w-px flex-shrink-0 mx-6 self-stretch"
-                    style={{ background: 'rgba(255,255,255,0.10)' }}
+                    style={{ background: "rgba(255,255,255,0.10)" }}
                   />
                 )}
               </React.Fragment>
@@ -507,7 +623,9 @@ export default function DashboardPage() {
               members={
                 isZero
                   ? (teamData?.members ?? [])
-                  : (teamData?.members ?? []).filter((m) => m.email === user?.email)
+                  : (teamData?.members ?? []).filter(
+                      (m) => m.email === user?.email,
+                    )
               }
               overview={isZero ? (teamData?.overview ?? null) : null}
               isLoading={teamLoading || !teamEnabled}
@@ -515,13 +633,16 @@ export default function DashboardPage() {
           )}
 
           {/* ROW 4: Pipeline + Intel + LiveActivity/RoleWidget */}
-          <div className="grid gap-2" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: "1.5fr 1fr 1fr" }}
+          >
             {/* Pipeline panel */}
             <div
               className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
               style={{
-                background: 'rgba(35, 35, 40, 0.65)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: "rgba(35, 35, 40, 0.65)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 minHeight: 320,
               }}
             >
@@ -529,7 +650,9 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
                 <div className="flex items-center gap-2">
                   <FileText size={12} className="text-white/30" />
-                  <span className="text-[11px] font-semibold text-white/60">Process Pipeline</span>
+                  <span className="text-[11px] font-semibold text-white/60">
+                    Process Pipeline
+                  </span>
                 </div>
                 <Link
                   href="/process"
@@ -542,7 +665,7 @@ export default function DashboardPage() {
               {/* Column headers */}
               <div
                 className="grid px-3 py-1.5 border-b border-white/[0.04]"
-                style={{ gridTemplateColumns: '1fr auto auto' }}
+                style={{ gridTemplateColumns: "1fr auto auto" }}
               >
                 <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest">
                   Client
@@ -567,12 +690,14 @@ export default function DashboardPage() {
                       key={p.id}
                       p={{
                         id: p.id,
-                        title: p.title || 'Unknown',
-                        client: p.client || 'Unknown Client',
+                        title: p.title || "Unknown",
+                        client: p.client || "Unknown Client",
                         status: p.status,
                         daysRemaining: p.daysRemaining,
                         completedAt:
-                          p.status === 'completed' ? new Date().toLocaleDateString('en-US') : undefined,
+                          p.status === "completed"
+                            ? new Date().toLocaleDateString("en-US")
+                            : undefined,
                       }}
                     />
                   ))
@@ -584,8 +709,8 @@ export default function DashboardPage() {
             <div
               className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
               style={{
-                background: 'rgba(35, 35, 40, 0.65)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: "rgba(35, 35, 40, 0.65)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 minHeight: 320,
               }}
             >
@@ -593,7 +718,9 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
                 <div className="flex items-center gap-2">
                   <TrendingUp size={12} className="text-white/30" />
-                  <span className="text-[11px] font-semibold text-white/60">Intelligence Feed</span>
+                  <span className="text-[11px] font-semibold text-white/60">
+                    Intelligence Feed
+                  </span>
                 </div>
                 <Link
                   href="/intelligence"
@@ -608,15 +735,19 @@ export default function DashboardPage() {
                 {intelLoading && (
                   <div className="flex flex-col gap-1 p-3">
                     {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className="h-10 rounded-lg bg-white/[0.03] animate-pulse" />
+                      <div
+                        key={i}
+                        className="h-10 rounded-lg bg-white/[0.03] animate-pulse"
+                      />
                     ))}
                   </div>
                 )}
-                {!intelLoading && (!intelArticles || intelArticles.length === 0) && (
-                  <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
-                    No recent articles
-                  </div>
-                )}
+                {!intelLoading &&
+                  (!intelArticles || intelArticles.length === 0) && (
+                    <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
+                      No recent articles
+                    </div>
+                  )}
                 {!intelLoading &&
                   intelArticles &&
                   intelArticles.length > 0 &&
@@ -632,9 +763,12 @@ export default function DashboardPage() {
             {/* Right column: LiveActivityFeed + RoleWidget stacked */}
             <div className="flex flex-col gap-2">
               <LiveActivityFeed events={liveEvents} isLoading={isLoading} />
-              <RoleWidget role={role} userId={user?.email ?? ''} />
+              <RoleWidget role={role} userId={user?.email ?? ""} />
             </div>
           </div>
+
+          {/* ROW 5: Hero news — below the operational rows (audit P0.1: action above the fold) */}
+          <HeroLiveWindow />
         </div>
       </div>
     </DashboardErrorBoundary>

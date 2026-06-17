@@ -234,10 +234,9 @@ export default function GateScreen({
                 {documents.count} document{documents.count === 1 ? "" : "s"}{" "}
                 need your review (approve / reject).
               </p>
-              {/* TODO(gate): dedicated intake-review route — deep-link to /process for v1 */}
               <button
                 type="button"
-                onClick={() => router.push("/process")}
+                onClick={() => router.push("/review")}
                 className="self-start rounded-md border px-4 py-2 text-sm font-medium"
                 style={{
                   borderColor: "var(--bz-border)",

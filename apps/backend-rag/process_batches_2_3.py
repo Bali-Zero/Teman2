@@ -7,12 +7,12 @@ from typing import Any
 
 import httpx
 import pdfplumber
-from anthropic import AsyncAnthropic
 
 # Add backend to path
 sys.path.append("/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
 
 # Nuzantara imports
+from backend.llm.claude_oauth_client import complete_async
 from backend.services.integrations.drive.drive_auth import DriveAuthManager
 
 # Configure logging
@@ -31,7 +31,6 @@ BATCH_3 = [{'company_id': 2526, 'name': 'PT Unity Land Development', 'drive_file
 class BatchProcessor:
     def __init__(self):
         self.http_client = httpx.AsyncClient(timeout=60.0)
-        self.anthropic = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.drive_auth = DriveAuthManager(db_pool=None, http_client=self.http_client)
 
     async def get_token(self):
@@ -106,12 +105,12 @@ TEXT:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = await self.anthropic.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=2048,
-                    messages=[{"role": "user", "content": prompt}]
+                response = await complete_async(
+                    prompt,
+                    model="claude-sonnet-4-6",
+                    endpoint="batch_company_parser",
                 )
-                content = response.content[0].text
+                content = response.text
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
@@ -161,8 +160,5 @@ TEXT:
         await self.run_batch(BATCH_3, os.path.join(RESULTS_DIR, "batch_3_results.json"))
 
 if __name__ == "__main__":
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        logger.error("Missing ANTHROPIC_API_KEY")
-        sys.exit(1)
     processor = BatchProcessor()
     asyncio.run(processor.run())

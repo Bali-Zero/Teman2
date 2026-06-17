@@ -3,7 +3,7 @@
 
 > **GENERATED build-artifact.** Do not edit by hand — run `npm run bz:brand:api`. Derived from `packages/core/components/*.tsx`.
 
-**23 components** (schema v1).
+**29 components** (schema v1).
 
 ## `AppBranchSelector`
 
@@ -201,6 +201,20 @@
   - `windowDays`: `number | undefined`
 - **example**: `<DeadlineBadge date={/* Date */} />`
 
+## `FilterBar`
+
+- **import**: `@nuzantara/core/components/FilterBar`
+- **source**: `packages/core/components/FilterBar.tsx`
+- **props**:
+  - `activeCount`: `number`
+  - `onClearAll`: `() => void`
+  - `className`: `string | undefined`
+  - `style`: `React.CSSProperties | undefined`
+  - `gridClassName`: `string | undefined`
+  - `clearLabel`: `React.ReactNode | undefined`
+  - `children`: `React.ReactNode`
+- **example**: `<FilterBar activeCount={/* number */} onClearAll={/* () => void */} children={/* React.ReactNode */} />`
+
 ## `FunnelFrame`
 
 - **import**: `@nuzantara/core/components/FunnelFrame`
@@ -213,6 +227,16 @@
   - `handoff`: `Partial<Omit<CTAHandoffProps, "source" | "sessionId">> | undefined`
   - `children`: `ReactNode`
 - **example**: `<FunnelFrame funnel={/* NonNullable<Funnel> */} sessionId={/* string */} children={/* ReactNode */} />`
+
+## `ListPageHeader`
+
+- **import**: `@nuzantara/core/components/ListPageHeader`
+- **source**: `packages/core/components/ListPageHeader.tsx`
+- **props**:
+  - `title`: `React.ReactNode`
+  - `subtitle`: `React.ReactNode | undefined`
+  - `actions`: `React.ReactNode | undefined`
+- **example**: `<ListPageHeader title={/* React.ReactNode */} />`
 
 ## `MatterCard`
 
@@ -229,6 +253,17 @@
   - `action`: `ReactNode | undefined`
 - **example**: `<MatterCard title={/* string */} type={/* MatterType */} progressPercent={/* number */} />`
 
+## `Money`
+
+- **import**: `@nuzantara/core/components/Money`
+- **source**: `packages/core/components/Money.tsx`
+- **props**:
+  - `value`: `number`
+  - `compact`: `boolean | undefined`
+  - `className`: `string | undefined`
+  - `style`: `React.CSSProperties | undefined`
+- **example**: `<Money value={/* number */} />`
+
 ## `NavShell`
 
 - **import**: `@nuzantara/core/components/NavShell`
@@ -241,6 +276,7 @@
   - `slotBefore`: `ReactNode | undefined`
   - `slotAfter`: `ReactNode | undefined`
   - `children`: `ReactNode | undefined`
+  - `accentBar`: `boolean | undefined`
 - **example**: `<NavShell logo={/* ReactNode */} items={/* NavItem[] */} actions={/* ReactNode */} />`
 
 ## `ProgressRing`
@@ -255,6 +291,46 @@
   - `status`: `"ok" | "warn" | "danger" | "neutral" | undefined`
   - `label`: `string | undefined`
 - **example**: `<ProgressRing percent={/* number */} />`
+
+## `SearchBox`
+
+- **import**: `@nuzantara/core/components/SearchBox`
+- **source**: `packages/core/components/SearchBox.tsx`
+- **props**:
+  - `value`: `string`
+  - `onValueChange`: `(value: string) => void`
+  - `placeholder`: `string | undefined`
+  - `ariaLabel`: `string | undefined`
+  - `title`: `string | undefined`
+  - `className`: `string | undefined`
+  - `style`: `React.CSSProperties | undefined`
+  - `clearable`: `boolean | undefined`
+  - `onDebouncedChange`: `(value: string) => void | undefined`
+  - `debounceMs`: `number | undefined`
+- **example**: `<SearchBox value={/* string */} onValueChange={/* (value: string) => void */} />`
+
+## `StatChips`
+
+- **import**: `@nuzantara/core/components/StatChips`
+- **source**: `packages/core/components/StatChips.tsx`
+- **props**:
+  - `items`: `Array<StatChip | false | null | undefined>`
+  - `className`: `string | undefined`
+  - `chipClassName`: `string | undefined`
+- **example**: `<StatChips />`
+
+## `SubNav`
+
+- **import**: `@nuzantara/core/components/SubNav`
+- **source**: `packages/core/components/SubNav.tsx`
+- **use when**: navigation, shell, layout
+- **props**:
+  - `items`: `SubNavItem[]`
+  - `pathname`: `string | null`
+  - `variant`: `SubNavVariant`
+  - `rootHref`: `string | undefined`
+  - `linkAs`: `ElementType | undefined`
+- **example**: `<SubNav items={/* SubNavItem[] */} pathname={/* string | null */} variant={/* SubNavVariant */} />`
 
 ## `ThemeProvider`
 

@@ -148,18 +148,32 @@ class TeamDriveService:
             permanent=permanent,
         )
 
-    async def move_file(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
+    async def move_file(
+        self,
+        user_email: str,
+        file_id: str,
+        new_parent_id: str,
+        old_parent_id: str | None = None,
+    ) -> dict[str, Any]:
         return await self.operations.move_file(
             user_email=user_email,
             file_id=file_id,
-            request=request,
+            new_parent_id=new_parent_id,
+            old_parent_id=old_parent_id,
         )
 
-    async def copy_file(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
+    async def copy_file(
+        self,
+        user_email: str,
+        file_id: str,
+        new_name: str | None = None,
+        parent_folder_id: str | None = None,
+    ) -> dict[str, Any]:
         return await self.operations.copy_file(
             user_email=user_email,
             file_id=file_id,
-            request=request,
+            new_name=new_name,
+            parent_folder_id=parent_folder_id,
         )
 
     # =========================================================================

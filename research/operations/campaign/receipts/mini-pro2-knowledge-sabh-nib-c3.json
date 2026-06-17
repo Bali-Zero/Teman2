@@ -1,0 +1,29 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-KNOWLEDGE",
+  "task_id": "sabh-nib-c3",
+  "cycle": 3,
+  "account": "antonellosiano@",
+  "git_sha_before": "d0972cad5",
+  "git_sha_after": "83349d9a0",
+  "files_touched": [
+    "apps/mouth/src/content/articles/business/pt-pma-registration-guide.mdx",
+    "apps/mouth/src/content/articles/business/pt-pma-registration-guide.fr.mdx",
+    "apps/mouth/src/content/articles/business/pt-pma-registration-guide.ru.mdx"
+  ],
+  "artifact_proof": "branch agent/mini-pro2/mouth/lkpm-id-freshness extended (commit 83349d9a0); Permenkum 49/2025 sanction corrected EN+FR+RU from 'immediate NIB suspension' to 'written warning -> SABH/AHU access block (not NIB suspension)'; each replacement asserted exactly-once; it/id had no stale InfoCard.",
+  "cause_command": "grep -nE 'immediate NIB suspension|suspension immediate du NIB|nemedlennoy priostanovke NIB' pt-pma-registration-guide.{mdx,fr,ru}.mdx",
+  "cause_before": "3 surfaces stale (EN/FR/RU)",
+  "cause_after": "0 stale; SABH/AHU present in all 3 (CLEAN)",
+  "cause_exitcode": 0,
+  "refuter_id": "web cross-check (6 IDN legal sources) + 2 sibling on-disk articles + ledger",
+  "refuter_verdict": "PASS. 4 concordant ground-truth sources confirm SABH/AHU block != NIB suspension: ledger SABH-NIB-SUSPENSION (NB Pasal 17) + indonesia-corporate-reporting-mandate-regulation-49-2025.mdx + june-2026-deadlines.mdx (both already correct, the InfoCard links to the former) + web (CPT Corporate, ILA Global, Peterson Indonesia, AP Law Solution, ET-Consultant) which explicitly states 'different from suspension of NIB'. EN-stale but domain-CERTAIN (unlike C312/55110) -> internal-consistency fix toward the hyperlinked sibling, same risk class as KN-1.",
+  "ground_truth_source": "ledger SABH-NIB-SUSPENSION (NB) + 2 sibling articles + 6 web legal sources",
+  "remaining_claims_swept": {
+    "clean": ["CAPITAL-PAIDUP-10B", "VISA-E33G", "RETIRE-two-track", "KBLI-VILLA-55193(migration-context)"],
+    "escalate_P1_need_NLM": ["PONDOK-WISATA-FOREIGN", "MORATORIUM-SARBAGITA", "KBLI-VILLA-55120(ledger-vs-article-conflict)", "VISA-B211A-60", "VISA-C312", "KBLI-HOTEL-55110"]
+  },
+  "termination": "Autonomous scope EXHAUSTED. LKPM + SABH-NIB were the only ledger claims with a clean on-disk correct-fact reference (batch-1 sibling surface). Every remaining stale claim's replacement is domain-contested -> needs live NLM bipolar-verifier (firebreak). Loop stopped (no further wakeup scheduled).",
+  "lease_held": [],
+  "ts": "2026-06-15T22:38:00Z"
+}

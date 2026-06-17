@@ -1,14 +1,37 @@
 "use client";
 
-const funnels = [
+import type { ReactNode } from "react";
+import { trackFunnelCTA } from "@/lib/analytics";
+
+type FunnelKey = "visa" | "kbli" | "tax" | "property";
+
+const funnels: Array<{
+  title: string;
+  funnel: FunnelKey;
+  description: string;
+  href: string;
+  accent: string;
+  accentGlow: string;
+  icon: ReactNode;
+}> = [
   {
     title: "Visa Oracle",
+    funnel: "visa",
     description: "Find your best visa path in 60 seconds",
     href: "https://visa.balizero.com",
     accent: "#2E6FD4",
     accentGlow: "rgba(46, 111, 212, 0.15)",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
         <line x1="3" y1="6" x2="21" y2="6" />
         <path d="M16 10a4 4 0 0 1-8 0" />
@@ -17,12 +40,22 @@ const funnels = [
   },
   {
     title: "KBLI Navigator",
+    funnel: "kbli",
     description: "Decode 1,563 Indonesian business codes",
     href: "/kbli",
     accent: "#d4845a",
     accentGlow: "rgba(212, 132, 90, 0.15)",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <ellipse cx="12" cy="5" rx="9" ry="3" />
         <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
@@ -31,12 +64,22 @@ const funnels = [
   },
   {
     title: "Tax & Compliance",
+    funnel: "tax",
     description: "Personal and corporate tax services",
     href: "/contact?service=tax",
     accent: "#D4A853",
     accentGlow: "rgba(212, 168, 83, 0.15)",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <rect x="4" y="2" width="16" height="20" rx="2" />
         <line x1="8" y1="6" x2="16" y2="6" />
         <line x1="8" y1="10" x2="16" y2="10" />
@@ -46,12 +89,22 @@ const funnels = [
   },
   {
     title: "Property",
+    funnel: "property",
     description: "Leasehold, freehold & investment guidance",
     href: "/property",
     accent: "#d4845a",
     accentGlow: "rgba(212, 132, 90, 0.15)",
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         <polyline points="9 22 9 12 15 12 15 22" />
       </svg>
@@ -59,14 +112,13 @@ const funnels = [
   },
 ];
 
-function trackClick(funnel: string) {
-  if (typeof window !== "undefined" && "gtag" in window) {
-    (window as unknown as { gtag: (...args: unknown[]) => void }).gtag(
-      "event",
-      "funnel_cta_click",
-      { funnel },
-    );
-  }
+// MYTHOS B1: this used to fire a raw gtag "funnel_cta_click" — an event that
+// is not in FUNNEL_EVENTS/ALLOWED_EVENTS, so it never reached the funnel
+// store. Each card now dispatches the canonical allowlisted per-funnel
+// "<funnel>_cta_click" via the tracked helper (GA4 + CRM bus + funnel store);
+// the source payload preserves where the click came from.
+function trackClick(funnel: FunnelKey): void {
+  trackFunnelCTA(funnel, "cta_click", { source: "intelligence_tools" });
 }
 
 export function FunnelCTAs() {
@@ -117,7 +169,7 @@ export function FunnelCTAs() {
           <a
             key={f.title}
             href={f.href}
-            onClick={() => trackClick(f.title.toLowerCase().replace(/\s+/g, "-"))}
+            onClick={() => trackClick(f.funnel)}
             style={{
               display: "flex",
               flexDirection: "column",
@@ -194,7 +246,16 @@ export function FunnelCTAs() {
               }}
             >
               Explore
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M5 12h14" />
                 <path d="m12 5 7 7-7 7" />
               </svg>

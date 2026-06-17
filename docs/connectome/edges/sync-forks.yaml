@@ -1,0 +1,125 @@
+# Connectome — file-sync arteries + HOME-fork double-files (W50/W51/W52/W68 disease class)
+# Census: 2026-06-13. md5 values are census-time; the md5_pair probes re-verify drift.
+domain: sync-forks
+census_date: "2026-06-13"
+edges:
+  - id: memory-sync-bidirectional
+    kind: file_sync
+    producer: "Pro hub ~/.claude/projects/-Users-nuzantara/memory"
+    consumer: "Mini + M5 spokes (5min)"
+    machine: pro
+    status: STALE
+    notes: "daemon green but 100/100 runs skipped both spokes: script hardcodes M5_IP=192.168.0.16 vs live .19 (DHCP drift) + Mini down. Last M5 sync 06-12 13:22"
+  - id: nuz-sync-air
+    kind: file_sync
+    machine: pro
+    status: DEAD
+    notes: "Air decommissioned 2026-05-05 — expected retirement, scripts remain as archaeology (last run 05-04)"
+  - id: drive-codebase-mirror
+    kind: file_sync
+    producer: "Pro repo+brand+memory"
+    consumer: "gdrive:nuzantara-codebase (rclone, 06:00+18:00)"
+    machine: pro
+    status: ALIVE
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: "find ~/.cache/nuzantara-drive-sync -name 'sync-*.log' -mtime -1 | grep -q .",
+      }
+  - id: dropbox-drive-intake
+    kind: file_sync
+    producer: "dropbox data.bayusantero@"
+    consumer: "gdrive:Dropbox-Intake (rclone copy-only, 10min)"
+    machine: pro
+    status: ALIVE
+    notes: "527GiB backfill in flight at census (~50%)"
+  - id: wr2-deploy-puller-sync
+    kind: file_sync
+    producer: "origin/main"
+    consumer: "Pro ~/Desktop/nuzantara-deploy (hourly pull)"
+    machine: pro
+    status: STALE
+    notes: "census: dirty=1 + 17 behind + alerts suppressed (W55 replay #3). Sibling session realigned ~00:41 06-13; verify"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: 'cd ~/Desktop/nuzantara-deploy && test -z "$(git status --porcelain)" && git fetch -q origin && test "$(git rev-list --count HEAD..origin/main)" -lt 5',
+      }
+  - id: repomap-pro
+    kind: file_sync
+    machine: pro
+    status: ALIVE
+    probe:
+      {
+        type: file_age_max_h,
+        via: "ssh:pro-lan",
+        path: "~/.nuzantara-repomap.txt",
+        max_age_h: 1,
+      }
+    notes: "PR #1376 (sibling) fixed 188kB webpack noise → ~40kB real signatures"
+  # ── HOME-forks (copy_a = deployed/HOME, copy_b = repo/main) ──
+  - id: fork-openclaw-whatsapp-bridge
+    kind: home_fork
+    machine: pro
+    status: IDENTICAL
+    notes: "deployed Pro HOME copy == origin/main HEAD (md5 09ec1366) — W73 double-patch discipline HELD. Pro repo checkout copy is stale but that checkout is itself 131 behind (see anomaly)"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: 'test "$(md5 -q ~/.openclaw/bin/openclaw_whatsapp_bridge.py)" = "$(cd ~/Desktop/nuzantara-deploy && git show origin/main:scripts/openclaw_whatsapp_bridge.py | md5 -q)"',
+      }
+  - id: fork-fly-pg-backup
+    kind: home_fork
+    machine: pro
+    status: IDENTICAL
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: 'test "$(md5 -q ~/scripts/fly-pg-backup.sh)" = "$(cd ~/Desktop/nuzantara-deploy && git show origin/main:scripts/fly-pg-backup.sh | md5 -q)"',
+      }
+  - id: fork-fly-qdrant-backup
+    kind: home_fork
+    machine: pro
+    status: DRIFTED
+    notes: "HOME copy Apr 6 (2+ months stale, likely dead Air path) vs repo current — the cron runs the OLD file. Refresh HOME from repo (wave-2)"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: 'test "$(md5 -q ~/scripts/fly-qdrant-backup.sh)" = "$(cd ~/Desktop/nuzantara-deploy && git show origin/main:scripts/fly-qdrant-backup.sh | md5 -q)"',
+      }
+  - id: fork-wr2-deploy-pull
+    kind: home_fork
+    machine: pro
+    status: DRIFTED
+    notes: "HOME NEWER (Jun 7, uncommitted) than main — production hourly puller logic unversioned. Adopt into repo"
+  - id: fork-fly-backup
+    kind: home_fork
+    machine: pro
+    status: DRIFTED
+    notes: "HOME (May 27) ≠ repo infra/scripts/fly-backup.sh (main)"
+  - id: fork-nextdns-weekly-digest
+    kind: home_fork
+    machine: pro
+    status: DRIFTED
+    notes: "HOME newer (May 16), uncommitted"
+  - id: untracked-single-copies
+    kind: home_fork
+    machine: pro
+    status: UNKNOWN
+    notes: "production scripts existing ONLY in HOME, unversioned: qdrant-snapshot.sh (carries F09 fix), regulatory-watcher-run.sh (canonical cascade impl), wa-mirror-launcher trio. A Pro rebuild loses them — version them"
+  - id: fork-launchagent-plists
+    kind: home_fork
+    machine: pro
+    status: DRIFTED
+    notes: "136/215 live Pro plists NOT versioned in infra/launchagents/ (the installed-by-hand set); 79 overlap pairs not md5-diffed yet (next census pass)"
+anomalies:
+  - "P1: Pro MAIN checkout 131 commits behind origin/main + divergent local commit e2b355f45 + 33 dirty files — untrustworthy as reference, violates main-checkout-read-only discipline"
+  - "P2: fly-qdrant-backup deployed copy 2+ months stale (W70 backup-death class)"
+  - "P2: wr2-deploy-pull.sh production logic uncommitted (HOME newer than main)"
+  - "P2: 136/215 live plists unversioned — Pro not rebuildable from repo"
+  - "P3: memory-sync M5_IP hardcoded → DHCP drift broke the spoke"

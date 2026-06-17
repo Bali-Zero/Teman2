@@ -28,7 +28,7 @@ export function HomeSearchButton() {
       <button
         onClick={() => setOpen(true)}
         aria-label="Search articles"
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors hover:opacity-90"
+        className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold uppercase tracking-wide transition-colors hover:opacity-90"
         style={{
           background: "rgba(255,255,255,0.06)",
           border: "1px solid rgba(255,255,255,0.12)",

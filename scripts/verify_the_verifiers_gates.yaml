@@ -96,12 +96,25 @@ gates:
       empty STUDYs to unblock. Registering it here closes the loop: the meta-verifier
       (the FASE-0 decay-sensor) now observes whether STADIO-0 itself stays armed.
 
-  # NOTE: the `seam_verify` gate was REMOVED 2026-06-09 (W71). It registered a
-  # claude_hook for ~/.claude/hooks/seam_verify.py, but that hook was never built
-  # — research/operations/specs/P4-seam-verify.md is an explicit STUDY ("non
-  # implementazione"). A gate for a non-existent artifact pins the meta-verifier
-  # permanently DISARMED (cry-wolf → trains operators to ignore the verdict). When
-  # P4 ships the real seam_verify.py hook, re-add the gate in the SAME PR.
+  - id: seam_verify
+    kind: claude_hook
+    target: ~/.claude/hooks/seam_verify.py
+    registered_in: ~/.claude/settings.json
+    event: Stop
+    # No env disarm lever: the hook is purely advisory (sys.exit(0) always, never
+    # blocks). Armed = registered under Stop + file exists. Same shape as
+    # guardrails_client. Re-added 2026-06-09 now that P4 ships the real hook
+    # (scripts/hooks/seam_verify.py, installed to ~/.claude/hooks via
+    # install_fase0_governance.sh). Closes the W71-deferred gap: the meta-verifier
+    # (FASE-0 decay-sensor) now observes whether the seam-verify reminder stays armed.
+    disarm_substring: null
+    note: >
+      SEAM-VERIFY post-session reminder (P4 §3.5). Maps the git diff to the
+      declared seams (router/middleware/manifest/import-chain) and advises which
+      seam-test to run. Deterministic (not agent-inferred); testmon path deferred
+      until pytest-testmon is installed. Non-blocking by design — it cannot know
+      the agent didn't already run the test, and a false block on every dirty
+      session would be worse than the gap it closes.
 
   - id: hot_zone_codeowners_self_mod
     kind: ci_workflow
@@ -181,11 +194,12 @@ gates:
   - id: lint_asyncpg_except_completeness
     kind: lint_script
     target: scripts/lint_asyncpg_except_completeness.py
-    consumer: null
+    consumer: .github/workflows/asyncpg-lint.yml
     note: >
-      Gate WITHOUT consumer (cicatrix W64). The lint exists and works but no CI
-      workflow / .husky hook runs it → it gates nothing. Emits WARN, not FAIL.
-      Fix (asyncpg-lint.yml) tracked as a separate task.
+      Consumer ARMED 2026-06-11 (guardian-of-guardians audit — closes the W64
+      WARN / W35 deferral): asyncpg-lint.yml runs the lint blocking on every
+      PR + push to main. No paths filter, no sentinel needed (pure-stdlib,
+      seconds) → safe required-status-check.
 
   - id: lint_test_reward_hacking
     kind: lint_script

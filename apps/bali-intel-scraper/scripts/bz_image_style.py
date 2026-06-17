@@ -519,6 +519,105 @@ def build_cover_prompt(
     return _assemble_prompt(visual, effective_mood)
 
 
+# ── Codex $imagegen prompts (gpt-image-2) ────────────────────────────────────
+# Two-format cover generation. Unlike build_cover_prompt (Flux, single 16:9),
+# these are framed for Codex CLI's built-in $imagegen skill (gpt-image-2), which
+# (a) renders noticeably more photoreal than Flux and (b) accepts an explicit
+# output aspect in-prompt. We emit TWO prompts per article:
+#   - hero:  21:9 ultra-wide, for the article top hero (rendered aspect-[21/9])
+#   - card:  ~1.6:1 landscape, for the homepage news card (h-36 grid thumbnail)
+# Both share the SAME visual concept + grading so an article reads coherently
+# across home and article page, but the card is framed tighter on the subject so
+# the smaller crop still lands. The 5 brand pillars are injected as a constitution
+# so gpt-image-2's freedom stays inside the Bali Zero rail.
+
+# Codex/gpt-image-2 natively renders close to these; we name the target ratio
+# explicitly because the hero crop (21:9) is unforgiving of vertical-heavy frames.
+_CODEX_HERO_GEOMETRY = (
+    "Ultra-wide 21:9 cinematic aspect ratio (letterbox panorama). "
+    "Compose the main subject within the central third of the frame; let "
+    "atmosphere, light and environment fill the wide left and right margins, "
+    "so a centre crop never loses the subject."
+)
+_CODEX_CARD_GEOMETRY = (
+    "Landscape 16:10 aspect ratio, framed tighter on the subject (medium shot). "
+    "Keep the subject centred and the lower third uncluttered (a soft gradient-"
+    "friendly zone), so the small homepage thumbnail crop stays legible."
+)
+
+_CODEX_BRAND_CONSTITUTION = (
+    "BALI ZERO COVER — non-negotiable visual identity:\n"
+    "1. Cinematic hyper-realism — a still frame from a Denis Villeneuve / Roger "
+    "Deakins film. Editorial documentary photography, subtle high-end film grain. "
+    "NEVER cartoon, illustration, 3D render, or 'AI-art' plastic look.\n"
+    "2. Teal & amber color grading — teal/cyan in the shadows, warm amber/gold in "
+    "the highlights. This is the signature; it is mandatory.\n"
+    "3. The image is an emotional, symbolic HOOK, not a literal illustration — "
+    "never the obvious object. Vivid, brilliant colour, monumental composition.\n"
+    "4. Bali-rooted location: Balinese temples, rice terraces, beaches, immigration "
+    "halls, government offices, villas, coworking spaces or markets.\n"
+    "5. Absolute editorial seriousness. NEVER: any text, words, letters, numbers, "
+    "logos, watermarks, UI, neon, cyberpunk, smiling stock businesspeople, or "
+    "handshakes."
+)
+
+
+def _codex_frame(visual_concept: str, mood: str, geometry: str) -> str:
+    """Assemble one Codex $imagegen prompt: constitution + concept + light + geometry."""
+    grading = _quality_suffix(mood)
+    return (
+        f"{_CODEX_BRAND_CONSTITUTION}\n\n"
+        f"SCENE: {visual_concept}.\n"
+        f"LIGHT: {_light_spec(mood)}.\n"
+        f"STYLE: {grading}.\n"
+        f"FRAMING: {geometry}"
+    )
+
+
+def build_codex_cover_prompts(
+    title: str,
+    category: str = "general",
+    summary: str | None = None,
+    mood: str | None = None,
+) -> dict[str, str]:
+    """Build two Codex $imagegen prompts (hero 21:9 + card 16:10) for an article.
+
+    Reuses the same brand-tuned visual concept (Claude visual director when a
+    summary is available, deterministic brand fallback otherwise) so home and
+    article page read coherently, then frames it twice for the two crops.
+
+    Args:
+        title:    Article headline.
+        category: Content category (immigration|tax|company|property|lifestyle|regulation|general).
+        summary:  Article summary (~400 chars). Enables the LLM visual director.
+        mood:     Override mood. If None, auto-classified from title+summary.
+
+    Returns:
+        {"hero": <prompt>, "card": <prompt>, "mood": <mood>} — prompts are ready
+        to frame as `$imagegen <prompt>` for Codex CLI.
+    """
+    effective_mood = mood or classify_mood(title, summary or "")
+
+    # Derive ONE shared visual concept (same brand path as build_cover_prompt,
+    # but we keep the raw concept rather than the Flux quality suffix so we can
+    # reframe it per geometry).
+    visual_concept: str | None = None
+    if summary:
+        visual_concept = _prompt_via_claude(title, category, summary, effective_mood)
+    if not visual_concept:
+        print(
+            f"  Using fallback visual for codex [{category}/{effective_mood}]",
+            file=sys.stderr,
+        )
+        visual_concept = _fallback_visual(category, effective_mood, title)
+
+    return {
+        "hero": _codex_frame(visual_concept, effective_mood, _CODEX_HERO_GEOMETRY),
+        "card": _codex_frame(visual_concept, effective_mood, _CODEX_CARD_GEOMETRY),
+        "mood": effective_mood,
+    }
+
+
 def build_slide_prompt(
     title: str,
     body: str = "",

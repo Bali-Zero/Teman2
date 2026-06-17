@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""WR2 Draft Generator — Claude writes 11 English slides, Imagen generates cover only.
+"""WR2 Draft Generator — Claude writes 6-11 English slides with SMART hero selection.
 
 Daily cron (05:15 WITA): picks drafts with status='briefed', calls Claude
-OAuth to compose the 11-slide JSON (English content, register in the 7
-Council tones), runs Imagen 4 Ultra for the cover only (body slides keep
-image_url=None and carry image_prompt for manual generation by the team),
-uploads the cover to Tigris, persists slides_json to the draft and flips
-status to 'drafts'.
+OAuth to compose the slide JSON (English content, register in the 7
+Council tones). Slide count is FLEXIBLE (6-11) and the model decides which
+slides deserve a full-bleed photo (is_hero_image=true) based on the story —
+the cover is always hero; text-heavy slides (dense lists, citations, pure
+editorial takes) stay text-only and render as clean text-on-color (decision
+2026-06-13, superseding the 2026-06-12 "every slide hero" rule). Runs Imagen 4
+Ultra for the cover only (other hero slides keep image_url=None and carry
+image_prompt for downstream generation), uploads the cover to Tigris, persists
+slides_json to the draft and flips status to 'drafts'.
 
 Env:
     DATABASE_URL           — localhost form
@@ -67,7 +71,9 @@ TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
 # Settings() which requires JWT_SECRET_KEY etc. — unacceptable for a cron entry.
 BRAND_SUFFIX: str = (
     "Editorial style, high resolution, no stock imagery, "
-    "no handshakes, no generic passports, cinematic lighting"
+    "no handshakes, no generic passports, "
+    "NO documents or pens on a desk, NO paperwork close-ups, "
+    "cinematic lighting"
 )
 _DEFAULT_STYLE_MODIFIERS: tuple[str, ...] = (
     "macrografia editoriale",
@@ -78,7 +84,13 @@ _DEFAULT_STYLE_MODIFIERS: tuple[str, ...] = (
 NEGATIVE_PROMPT: str = (
     "hands holding objects, passport close-ups, generic handshake, "
     "stock photo aesthetic, text overlays, watermark, logo, "
-    "deformed hands, extra fingers, distorted faces, illegible text"
+    "deformed hands, extra fingers, distorted faces, illegible text, "
+    # 2026-06-13 (Antonello): the document-and-pen-on-a-desk cliché is the
+    # single most off-brand image WR2 keeps producing. Ban it explicitly.
+    "document on a desk, contract on a table, land deed on a desk, "
+    "fountain pen, signing pen, pen resting on paper, hand signing, "
+    "official seal close-up, stack of papers, paperwork on a desk, "
+    "notary scene, clipboard, ballpoint pen, desk with documents"
 )
 
 
@@ -139,7 +151,7 @@ SYSTEM_INSTRUCTIONS = """You are the Draft Composer of War Room 2.0 for Bali Zer
 
 Bali Zero is an Indonesian business-services agency serving international expats, foreign investors, digital nomads and retirees — primarily English-speaking, from ~50 countries. The Italian community is one slice among many; never default to Italian.
 
-GOAL: produce the 11-slide structure of an Instagram carousel that reads like a NARRATIVE (Wired/The Atlantic editorial), not a legal brief.
+GOAL: produce the 6-8 slide structure (flexible: pick the count the story needs) of an Instagram carousel that reads like a NARRATIVE (Wired/The Atlantic editorial), not a legal brief.
 
 TONE REGISTERS (pick ONE of the 7 based on content):
 - rituale (ritual): symbolic events, cultural anniversaries, turning points
@@ -158,27 +170,36 @@ HARD RULES:
 - Headlines max 60 characters
 - Body max 280 characters
 - Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
-- Slide 11 = CTA to Bali Zero
-- Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
+- LAST slide = CTA to Bali Zero
+- HERO slides must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups (text-only slides do NOT need image_prompt)
+- BANNED IMAGE CLICHÉ (HARD — Antonello 2026-06-13): NEVER a document / deed /
+  contract / form lying on a desk or table with a pen (especially a fountain
+  pen) resting on or beside it, NEVER paperwork close-ups, NEVER a hand signing,
+  NEVER an official seal close-up. This "papers + pen on a desk" image is the
+  single most off-brand stock cliché — the brand rejects it outright. Show the
+  HUMAN and PLACE reality behind the rule instead: people in a real moment, a
+  Balinese/Indonesian place or building, an architectural detail, a tense
+  street/landscape scene — never the lawyer's-desk still life.
 
-TONAL PALETTE (per hero slide — drives the photographic look, fights monotony):
-Each `is_hero_image: true` slide MUST include a `tonal_palette` field. Pick ONE
+TONAL PALETTE (per HERO slide — drives the photographic look, fights monotony):
+Each HERO slide MUST include a `tonal_palette` field. Pick ONE
 that fits the slide's mood; do NOT use the same palette for every hero slide,
 and vary it across carousels on the same topic (the brand forbids two
 same-domain carousels looking identical):
-- "warm-ochre": warm, intimate, document/interior mood (the house style)
+- "warm-ochre": warm, intimate, lived-in interior/place mood
 - "cool-teal": detached, analytical, institutional, data-heavy
 - "monochrome": stark, archival, historical, high-gravity
 - "high-contrast": tense, confrontational, urgent
 - "bleached-daylight": open, hopeful, resolution, "the way out"
-Non-hero slides do not need it.
 
-IMAGE MODE (per hero slide — the SCENE TYPE, drives anti-sameness):
-Each `is_hero_image: true` slide MUST include an `image_mode` field naming the
+IMAGE MODE (per HERO slide — the SCENE TYPE, drives anti-sameness):
+Each HERO slide MUST include an `image_mode` field naming the
 KIND of scene. Pick the ONE mode that matches what the photo depicts, and VARY
-it across the slides (two same-domain carousels must not repeat the same dominant
-mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
-- "desk-document": papers, forms, a desk, a document close enough to read
+it across the hero slides (two same-domain carousels must not repeat the same
+dominant mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
+- "desk-document": USE SPARINGLY and only for a genuinely novel documentary
+  detail — NEVER the banned "document + pen on a desk" still life (see HARD
+  rule above). Prefer a different mode whenever possible.
 - "event-photo": a real moment/scene with people doing something
 - "architecture-or-texture": buildings, surfaces, materials, no people
 - "provocation-photo": a tense or confrontational image that unsettles
@@ -187,21 +208,35 @@ mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
 - "calendar-photo": dates, deadlines, time made visible
 - "data-visualization": a chart, graph, map, or numbers as the image
 - "cultural-photo": Indonesian/Balinese culture, ritual, place, daily life
-Use the slug verbatim (e.g. "desk-document"). Non-hero slides may omit it.
+Use the slug verbatim (e.g. "cultural-photo").
 
-HERO IMAGE SELECTION (MANDATORY):
-You MUST mark exactly 4 slides as `is_hero_image: true`:
-- Slide 1 (cover) — ALWAYS hero
-- Slide 11 (CTA closer) — ALWAYS hero
-- 2 mid-carousel slides at NARRATIVE TURNING POINTS — pick the slides that
-  open a new beat (e.g. "the shift", "the stakes", "fiction vs substance"),
-  not the ones that list facts or numbers.
+HERO IMAGE SELECTION (SMART + ANTI-BANALITY — decision 2026-06-13):
+An image must EARN its place. The enemy is the banal filler photo — an image
+generated "tanto per", just so the slide has a picture. A decorative or
+generic image is WORSE than no image: it cheapens the whole carousel.
 
-The remaining 7 slides have `is_hero_image: false` — they keep the
-template's tipografia layout without an image. Hero slides get a
-full-bleed photo as background; non-hero slides are clean text-on-color.
+DEFAULT = TEXT-ONLY (`is_hero_image: false`). Mark `is_hero_image: true` ONLY
+when a photograph adds meaning the words cannot — a specific real SCENE, a
+human face of the story, a charged place, a turning point, a provocation. The
+cover is ALWAYS hero. Beyond that, be STINGY: usually only 1-3 mid slides plus
+(optionally) the CTA truly deserve a photo. If the best image you can imagine
+for a slide is a GENERIC illustration of the topic — a nondescript office, a
+generic building, a stock chart, a calendar, a desk, "a person looking at a
+laptop", anything that just visualises the concept rather than telling THIS
+story — then it is filler: mark the slide text-only instead. When in doubt,
+text-only.
 
-Output exactly 4 slides with `is_hero_image: true`. Not 3, not 5.
+The image_prompt for a hero slide must describe a SPECIFIC, concrete,
+photographable moment ("a half-built villa fenced off at dusk, one security
+lamp on") — never a generic concept ("real estate in Bali", "tax compliance",
+"a business meeting"). If you cannot name a specific scene, the slide is
+text-only.
+
+Each HERO slide MUST carry `image_prompt`, `tonal_palette` AND `image_mode`
+(vary the modes — never let one dominate, and never reach for the generic
+"data-visualization"/"calendar-photo"/"object-comparison" modes just to
+justify an image; those are the usual filler traps). Non-hero slides do NOT
+need `image_prompt`, `tonal_palette` or `image_mode`.
 
 STORYTELLING DIRECTIVES (overrides any default factual mode):
 
@@ -219,7 +254,10 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
 3. Headline is the HOOK, not the topic title. "Sham Investor KITAS: The
    Clock Is Ticking" is good (urgency, stakes). "Field Inspections Are
    Legal" is bad (sounds like a Wikipedia heading). Make headlines READ
-   like a magazine cover line.
+   like a magazine cover line. Write headlines that BALANCE well on two
+   lines: keep them short (≤6 words is ideal) and avoid phrasings that
+   would leave one tiny orphan word alone on the last wrapped line — two
+   even halves or two balanced clauses read best on a slide.
 
 4. Citations: a slide can name ONE law/article, not three. "PP 31/2013
    authorises field inspections" is fine. "Permenkumham 11/2024 Art.
@@ -239,12 +277,18 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    quoted phrase, or a concrete scene. Then introduce the law later if
    needed.
 
-7. Bali Zero "take" slides (typically slide 2 and slide 11): write as
+7. Bali Zero "take" slides (typically slide 2 and the last slide): write as
    first-person editorial voice ("Our read:", "What we are seeing:"),
    NOT as a third-party legal summary.
 
-8. The "What This Means For You" type closer (slide 11): SHORT, DIRECT,
+8. The "What This Means For You" type closer (the last slide): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
+
+9. The cover "subhead" MUST be 1-6 words maximum — a short tag/category/
+   kicker (e.g. "VISA UPDATE", "IMMIGRATION", "TAX ALERT"), NOT a full
+   sentence. UPPERCASE. It sits below the headline as a yellow accent
+   label. NEVER write a complete sentence in subhead; if you need to
+   explain, that goes in the body, not the subhead.
 
 OUTPUT FORMAT: valid JSON, no text outside the JSON object, no markdown fences.
 
@@ -259,10 +303,10 @@ Structure:
       "is_cover": true,
       "is_hero_image": true,
       "headline": "...",
-      "subhead": "...",
+      "subhead": "1-6 WORD KICKER",
       "body": "...",
       "image_prompt": "editorial scene, 1-2 sentences",
-      "image_mode": "desk-document"
+      "image_mode": "architecture-or-texture"
     },
     {
       "slide_number": 2,
@@ -270,30 +314,52 @@ Structure:
       "is_cover": false,
       "is_hero_image": false,
       "headline": "Our read: ...",
-      "body": "...",
-      "image_prompt": "editorial scene, 1-2 sentences"
+      "body": "First-person editorial take — reads as clean text-on-color, no photo needed."
     },
-    // ... 7 more slides — 2 of them at narrative turning points must have is_hero_image: true ...
     {
-      "slide_number": 11,
+      "slide_number": 3,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "The turning point",
+      "body": "A scene worth a photo — a moment, a place, a provocation.",
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "tonal_palette": "cool-teal",
+      "image_mode": "event-photo"
+    },
+    {
+      "slide_number": 4,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "What changes",
+      "body": "A dense list or stacked facts — lives on text, NO image_prompt."
+    },
+    // ... more slides; mix hero (with image_prompt/tonal_palette/image_mode)
+    //     and non-hero (text-only) as the story needs ...
+    {
+      "slide_number": 7,
       "slide_type": "cta",
       "is_cover": false,
       "is_hero_image": true,
       "headline": "Where this leaves you",
       "body": "One clear consequence, then one concrete next step. Reach Bali Zero when the deadline is yours, not theirs.",
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "tonal_palette": "bleached-daylight",
       "image_mode": "human-silhouette"
     }
   ]
 }
 
-REPEAT (MUST OBEY): every slide object MUST include the `is_hero_image` field
-(true or false). Slide 1 hero=true, slide 11 hero=true, plus exactly 2 more
-slides hero=true at narrative turning points = 4 hero slides total per
-carousel. The other 7 slides have is_hero_image=false. THIS IS NON-NEGOTIABLE.
+REPEAT (MUST OBEY): the cover (slide 1) MUST have `is_hero_image: true`. For
+every OTHER slide, set `is_hero_image` SMARTLY based on whether it carries real
+visual value (true) or lives on text (false). EVERY hero slide MUST carry
+`image_prompt`, `tonal_palette` and `image_mode`; non-hero slides need none of
+those. Typically 4-8 of N slides are hero — never all, never just the cover.
 
-ALSO MANDATORY: every is_hero_image=true slide MUST carry an `image_mode` (one
-of the 9 slugs above), and the 4 hero slides should use at least 3 DISTINCT
-modes — do not paint all four with the same scene type.
+ALSO MANDATORY: vary the `image_mode` (one of the 9 slugs above) across the
+HERO slides — use at least 4 DISTINCT modes per carousel; never let one scene
+type dominate the whole carousel.
 """
 
 
@@ -428,7 +494,7 @@ Content:
 
 ---
 
-Produce the full 11-slide JSON NOW. English content. No text outside the JSON object.
+Produce the full 6-8 slide JSON NOW. English content. No text outside the JSON object.
 """
 
 
@@ -738,6 +804,37 @@ async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | No
 # ─────────────────────────────────────────────────────────────────────────
 
 
+def _cap_subhead(text: str, max_words: int = 6, max_chars: int = 32) -> str:
+    """Hard-cap the cover subhead to the template contract (1-6 words).
+
+    The cover-photo.md template declares subheading = "1-6 words, UPPERCASE,
+    yellow accent, often a tag/category". A long subhead overflows the
+    rendered box once grow_font enlarges it, so this is the deterministic
+    backstop behind the prompt guidance: take at most ``max_words`` words,
+    then if still longer than ``max_chars`` trim to a word boundary. No
+    ellipsis is appended — a clean shorter kicker beats a truncated one.
+    """
+    words = text.strip().split()
+    if not words:
+        return ""
+    capped = " ".join(words[:max_words])
+    if len(capped) <= max_chars:
+        return capped
+    # Still too long: trim to max_chars on a word boundary (no mid-word cut).
+    trimmed: list[str] = []
+    length = 0
+    for w in capped.split():
+        extra = len(w) + (1 if trimmed else 0)
+        if length + extra > max_chars:
+            break
+        trimmed.append(w)
+        length += extra
+    # Guarantee at least the first word even if it alone exceeds max_chars.
+    if not trimmed:
+        trimmed = [capped.split()[0]]
+    return " ".join(trimmed)
+
+
 def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     register = (parsed.get("register") or "").strip().lower()
     if register not in VALID_TONES:
@@ -768,7 +865,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
             "is_cover": bool(raw.get("is_cover", i == 1)),
             "is_hero_image": bool(raw.get("is_hero_image", False)),
             "headline": (raw.get("headline") or "").strip()[:80],
-            "subhead": (raw.get("subhead") or "").strip()[:120],
+            "subhead": _cap_subhead(raw.get("subhead") or ""),
             "body": (raw.get("body") or "").strip()[:500],
             "image_prompt": (raw.get("image_prompt") or "").strip()[:600],
             "tonal_palette": tonal,
@@ -779,27 +876,20 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
 
     if normalised:
         normalised[0]["is_cover"] = True
-        # Slide 1 is ALWAYS hero (cover image). Force-set even if Claude omitted it.
-        normalised[0]["is_hero_image"] = True
         for s in normalised[1:]:
             s["is_cover"] = False
-        # Slide 11 (last, the CTA closer) is ALWAYS hero too.
-        if len(normalised) >= 11:
-            normalised[10]["is_hero_image"] = True
-
-    # Defensive: if Claude produced 0 hero slides (ignoring the prompt),
-    # auto-promote a sensible mid-carousel default so image-generator has
-    # work to do. Pick slides at narrative-turning-point positions.
-    hero_count = sum(1 for s in normalised if s.get("is_hero_image"))
-    if hero_count < 2 and len(normalised) >= 11:
-        # Force-promote slides 3 and 6 (typical turning points) if no
-        # other hero was selected. This is a fallback, not the desired path.
-        normalised[2]["is_hero_image"] = True   # slide 3
-        normalised[5]["is_hero_image"] = True   # slide 6
-        logger.warning(
-            "Claude returned %d hero slides (need >=2 mid). Auto-promoted slides 3 and 6.",
-            hero_count,
-        )
+        # SMART hero (decision Antonello 2026-06-13, supersedes 2026-06-12
+        # option A): the MODEL decides which slides deserve a photo. Minimal
+        # defensive rules only:
+        #   - the cover (slide 1) is ALWAYS hero (a carousel needs at least one
+        #     hero image; the cover is the natural minimum);
+        #   - every other slide PRESERVES the model's is_hero_image flag verbatim
+        #     (already set above from raw.get(...)) — we do NOT force-promote.
+        # If the model marked zero heroes beyond the cover, that is left as-is:
+        # the cover alone is hero enough, and text-only slides route to a
+        # text-only layout family downstream (composer.map_slide_to_family),
+        # never to a photo layout with an empty hero.
+        normalised[0]["is_hero_image"] = True
 
     return register, normalised
 
@@ -1067,40 +1157,55 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
         return 2
 
     pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=2, command_timeout=300)
+    # R4.2 drain-loop (P-1): re-fetch until the briefed queue is empty so a
+    # supervisor kickstart swallowed while we are busy still gets its draft
+    # processed this run. Capped against pathological re-queue loops.
+    max_loops = int(os.environ.get("WR2_DRAFT_DRAIN_MAX_LOOPS", "10"))
     try:
         async with pool.acquire() as conn:
-            if draft_id:
-                rows = await conn.fetch(
-                    "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
-                    draft_id,
-                )
-            else:
-                rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
-
-            if not rows:
-                logger.info("No briefed drafts to process")
-                return 1
-
-            if dry_run:
-                logger.info("[DRY-RUN] would process %d drafts:", len(rows))
-                for r in rows:
-                    logger.info("  %s — %s", r["id"], r["topic"][:80])
-                return 0
-
             successes = 0
-            for row in rows:
-                try:
-                    ok = await _process_one(conn, row)
-                    if ok:
-                        successes += 1
-                except Exception as e:
-                    logger.exception("Unhandled error on draft %s: %s", row["id"], e)
-                    try:
-                        await _mark_rejected(conn, row["id"], f"unhandled: {e}")
-                    except Exception:
-                        pass
+            attempted = 0
+            for loop_n in range(max_loops):
+                if draft_id:
+                    rows = (
+                        await conn.fetch(
+                            "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
+                            draft_id,
+                        )
+                        if loop_n == 0
+                        else []
+                    )
+                else:
+                    rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
 
-            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, len(rows))
+                if not rows:
+                    if attempted == 0:
+                        logger.info("No briefed drafts to process")
+                        return 1
+                    break
+
+                if dry_run:
+                    logger.info("[DRY-RUN] would process %d drafts:", len(rows))
+                    for r in rows:
+                        logger.info("  %s — %s", r["id"], r["topic"][:80])
+                    return 0
+
+                for row in rows:
+                    attempted += 1
+                    try:
+                        ok = await _process_one(conn, row)
+                        if ok:
+                            successes += 1
+                    except Exception as e:
+                        logger.exception("Unhandled error on draft %s: %s", row["id"], e)
+                        try:
+                            await _mark_rejected(conn, row["id"], f"unhandled: {e}")
+                        except Exception:
+                            pass
+                if draft_id:
+                    break
+
+            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, attempted)
             return 0 if successes > 0 else 2
     finally:
         await pool.close()

@@ -281,6 +281,26 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
       // connection.update last reported "open". Triggers reconnect loop.
       const DEAF_SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — issue #2491 recommended default
       const DEAF_SESSION_CHECK_MS = 60 * 1000; // poll every 60s
+      // W77 (2026-06-14): the deaf-session watchdog had no OFF condition for
+      // benign silence. At night WITA (Bali Zero hours are daytime) inbound
+      // WhatsApp traffic is ~0, so 5min of silence is EXPECTED, not a deaf
+      // socket — yet the watchdog forced ~50 empty reconnects/night (all
+      // 02:24-03:24 WITA, attempt counter climbing). Issue #2491 is a
+      // *daytime* flow-control bug; suppress the forced reconnect during the
+      // quiet window so the antibody rests when the organism rests. Override
+      // via WA_MIRROR_DEAF_QUIET_HOURS="" to disable, or "1-7" to retune.
+      const DEAF_QUIET_WINDOW = process.env.WA_MIRROR_DEAF_QUIET_HOURS ?? "1-7";
+      const isDeafQuietHourWITA = (): boolean => {
+        if (!DEAF_QUIET_WINDOW) return false;
+        const m = DEAF_QUIET_WINDOW.match(/^(\d{1,2})-(\d{1,2})$/);
+        if (!m) return false;
+        const [from, to] = [Number(m[1]), Number(m[2])];
+        // WITA = UTC+8, no DST.
+        const hourWITA = (new Date().getUTCHours() + 8) % 24;
+        return from <= to
+          ? hourWITA >= from && hourWITA < to
+          : hourWITA >= from || hourWITA < to;
+      };
       let lastUpsertAt = Date.now();
       let connectionOpen = false;
       const bumpUpsertTs = () => {
@@ -313,6 +333,18 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         if (!connectionOpen) return;
         const silentMs = Date.now() - lastUpsertAt;
         if (silentMs >= DEAF_SESSION_TIMEOUT_MS) {
+          if (isDeafQuietHourWITA()) {
+            // Benign nighttime silence — log at debug, do NOT force reconnect.
+            logger.debug(
+              {
+                sessionId: ctx.sessionId,
+                silentMs,
+                quietWindow: DEAF_QUIET_WINDOW,
+              },
+              "wa-mirror deaf-session timer hit during quiet hours WITA — suppressing forced reconnect (W77)",
+            );
+            return;
+          }
           logger.warn(
             { sessionId: ctx.sessionId, silentMs },
             "wa-mirror deaf-session detected — forcing reconnect (issue #2491)",

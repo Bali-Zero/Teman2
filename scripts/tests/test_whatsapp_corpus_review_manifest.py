@@ -69,6 +69,22 @@ def test_select_review_rows_orders_by_volume(tmp_path: Path) -> None:
     assert selected[0].message_start_count == 2
 
 
+def test_select_review_rows_filters_by_source(tmp_path: Path) -> None:
+    _, classification_db = build_classification_db(tmp_path)
+    rows = read_classified_rows(classification_db)
+
+    selected = select_review_rows(
+        rows,
+        limit=10,
+        gates=set(),
+        labels=set(),
+        sources={"03_drive-icloud"},
+    )
+
+    assert len(selected) == 1
+    assert selected[0].source == "03_drive-icloud"
+
+
 def test_build_review_manifest_writes_private_paths_but_safe_summary(tmp_path: Path) -> None:
     root, classification_db = build_classification_db(tmp_path)
     output_dir = tmp_path / "review"

@@ -21,6 +21,7 @@ pytestmark = pytest.mark.integration
 
 
 _MIG_DIR = pathlib.Path(__file__).parent.parent.parent / "db" / "migrations_v2"
+_ROUNDTRIP_MIGRATION_NUMBERS = {114, 115, 116}
 
 
 async def _table_exists(conn: asyncpg.Connection, name: str) -> bool:
@@ -41,6 +42,18 @@ async def _ensure_clean_slate(conn: asyncpg.Connection) -> None:
     await conn.execute("DROP TABLE IF EXISTS alert_outcomes CASCADE")
     await conn.execute("DROP TABLE IF EXISTS compliance_alerts CASCADE")
     await conn.execute("DROP TABLE IF EXISTS intel_validator_log CASCADE")
+
+
+def _migration_number(path: pathlib.Path) -> int:
+    return int(path.name.split("_", 1)[0])
+
+
+def _non_roundtrip_migration_files() -> list[pathlib.Path]:
+    return [
+        path
+        for path in _MIG_DIR.glob("*.sql")
+        if _migration_number(path) not in _ROUNDTRIP_MIGRATION_NUMBERS
+    ]
 
 
 def _forward_and_rollback(sql_text: str) -> tuple[str, str]:
@@ -225,20 +238,18 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
             "DELETE FROM schema_migrations WHERE migration_number IN (114, 115, 116)"
         )
 
-        # Mark earlier numbered migrations as applied so this test focuses on 114-116.
-        for n, name in (
-            (92, "092_attendance_late_incidents.sql"),
-            (108, "108_lkpm_receipts.sql"),
-            (109, "109_garuda_curator.sql"),
-            (110, "110_lkpm_allowlist_krisna.sql"),
-        ):
+        # Mark every migration outside 114/115/116 as applied so this test
+        # keeps its intended scope even as newer migration files are added.
+        preapplied_names: list[str] = []
+        for path in _non_roundtrip_migration_files():
+            preapplied_names.append(path.name)
             await conn.execute(
                 "INSERT INTO _schema_versions "
                 "(migration_name, migration_number, description, applied_by, checksum) "
                 "VALUES ($1, $2, 'pre-applied', 'test', 'fake') "
                 "ON CONFLICT DO NOTHING",
-                name,
-                n,
+                path.name,
+                _migration_number(path),
             )
 
         mgr = MigrationManager(database_url=_TEST_DB_URL)
@@ -276,7 +287,10 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
             "DELETE FROM schema_migrations WHERE migration_number IN (114, 115, 116)"
         )
         await conn.execute(
-            "DELETE FROM _schema_versions WHERE migration_number IN (92, 108, 109, 110, 114, 115, 116)"
+            "DELETE FROM _schema_versions "
+            "WHERE migration_number IN (114, 115, 116) "
+            "OR (applied_by = 'test' AND migration_name = ANY($1::text[]))",
+            preapplied_names,
         )
     finally:
         await conn.close()

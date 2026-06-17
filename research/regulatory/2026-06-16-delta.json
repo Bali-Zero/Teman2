@@ -1,0 +1,63 @@
+{
+  "run_at": "2026-06-16T07:00:00+08:00",
+  "today": "2026-06-16",
+  "yesterday_seen_count": 27,
+  "new_today_count": 1,
+  "partial": false,
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (HTTP 403)",
+    "https://ikpi.or.id/news/ (HTTP 404)",
+    "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026 (HTTP 403)",
+    "https://muc.co.id/article (HTTP 403)",
+    "https://ortax.org/news (error page — artikel tidak ditemukan)",
+    "https://www.pajak.go.id/id/siaran-pers (HTTP 404)",
+    "https://news.ddtc.co.id/pajak-internasional (HTTP 404)",
+    "https://news.ddtc.co.id/ppn/ppn-dtb (HTTP 404)"
+  ],
+  "deltas": [
+    {
+      "citation": "PMK 24/2026",
+      "title_id": "Peraturan Menteri Keuangan Nomor 24 Tahun 2026 — PPN Ditanggung Pemerintah atas Tiket Pesawat",
+      "title_en": "Ministry of Finance Regulation No. 24 of 2026 — Government-Borne VAT (DTP) on Airline Tickets",
+      "service_line": ["tax"],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "PMK 24/2026 DTP program for airline ticket PPN expires approximately June 20-21, 2026; clients and companies purchasing tickets before deadline avoid the standard 11% PPN liability otherwise passed to the buyer.",
+      "summary": "PMK 24/2026 governs the PPN DTP (Pajak Pertambahan Nilai Ditanggung Pemerintah) regime for airline tickets. DDTC article of June 14, 2026 reports the benefit remains accessible until next week, signaling imminent program expiry. No new regulatory amendment issued; this is a deadline-proximity notice.",
+      "source": "news.ddtc.co.id (14 June 2026) | https://news.ddtc.co.id/",
+      "verbatim_excerpt": "PPN DTP Tiket Pesawat Masih Bisa Dimanfaatkan hingga Pekan Depan [DDTC article headline, 14 June 2026 — full regulatory text not retrieved from source]",
+      "first_seen_at": "2026-06-16T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistema amministrativo perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV tidak termasuk penerima fasilitas PPh Final UMKM 0,5%)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025 from NPPN to PPh Final UMKM 0.5%)",
+    "22/MK/EF.2/2026 (nilai kurs — routine, low relevance for Bali Zero service lines)",
+    "PP 20/2026; Pasal 31E ayat (1) UU PPh s.t.d.d UU HPP (PT dan CV tarif PPh 11% via Pasal 31E(1), June 13 2026)",
+    "KBLI 2025 (implementasi AHU Online dan OSS, effettivo 15 Juni 2026)",
+    "PER-19/PJ/2025",
+    "PMK 6/2026",
+    "PP 21/2026",
+    "PP 24/2026",
+    "PP 20/2026 (suket transitional — Suket PPh Final lama tetap berlaku)",
+    "PER-7/PJ/2025",
+    "PMK 24/2026"
+  ]
+}
