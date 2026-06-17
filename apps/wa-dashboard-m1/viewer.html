@@ -802,6 +802,38 @@ function companyBadgeLabel(m) {
   return "BZ";
 }
 
+function sortedConvsForTeam(pd) {
+  if (!pd?.convs) return [];
+  return [...pd.convs].sort((a,b) => {
+    const aHigh = a.attention_priority === "HIGH" ? 1 : 0;
+    const bHigh = b.attention_priority === "HIGH" ? 1 : 0;
+    if (aHigh !== bHigh) return bHigh - aHigh;
+    return new Date(b.last_at) - new Date(a.last_at);
+  });
+}
+
+function selectedConversationExists() {
+  const pd = SELECTED_TEAM ? DATA?.by_phone?.[SELECTED_TEAM] : null;
+  return Boolean(pd?.convs?.some((c) => c.counterpart === SELECTED_CONV));
+}
+
+function selectFirstConversationForTeam(phone) {
+  const pd = DATA?.by_phone?.[phone];
+  const first = sortedConvsForTeam(pd)[0];
+  SELECTED_CONV = first?.counterpart || null;
+  THREAD_SEARCH = "";
+  THREAD_CACHE = null;
+  THREAD_CACHE_KEY = null;
+  return Boolean(SELECTED_CONV);
+}
+
+function ensureVisibleCaseSelected() {
+  if (!DATA || DATA.degraded || !DATA.team?.length) return false;
+  if (!SELECTED_TEAM) SELECTED_TEAM = DATA.team[0].phone;
+  if (!selectedConversationExists()) return selectFirstConversationForTeam(SELECTED_TEAM);
+  return true;
+}
+
 function currentCaseContext() {
   if (!DATA || !SELECTED_TEAM) return { member: null, pd: null, conv: null };
   const member = DATA.team.find((m) => m.phone === SELECTED_TEAM) || null;
@@ -1071,6 +1103,7 @@ async function ensureCurrentThreadPayload() {
 async function renderCaptain() {
   const root = document.getElementById("c-root");
   if (!root) return;
+  ensureVisibleCaseSelected();
   if (!TRAINING) {
     try {
       const r = await fetch("/training.json");
@@ -1147,14 +1180,7 @@ function renderConvs() {
     colConvs.innerHTML = `<div class="col-header">2 · Conversazioni live</div><div class="empty">Seleziona un team member</div>`;
     return;
   }
-  // Sort: HIGH always first, then strictly by last_at DESC (most recent wins, regardless of MEDIUM tag)
-  // Rationale: a group msg of 5 min ago is more relevant than a 3-day-old MEDIUM-flagged direct.
-  const convs = [...pd.convs].sort((a,b) => {
-    const aHigh = a.attention_priority === "HIGH" ? 1 : 0;
-    const bHigh = b.attention_priority === "HIGH" ? 1 : 0;
-    if (aHigh !== bHigh) return bHigh - aHigh;
-    return new Date(b.last_at) - new Date(a.last_at);
-  });
+  const convs = sortedConvsForTeam(pd);
   const headerExtra = pd.attention.high || pd.attention.medium
     ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} HIGH</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} MED</span>` : ""}`
     : "";
@@ -1381,9 +1407,7 @@ async function renderThread() {
 function selectTeam(phone) {
   if (SELECTED_TEAM === phone) return;
   SELECTED_TEAM = phone;
-  SELECTED_CONV = null;
-  THREAD_SEARCH = "";
-  THREAD_CACHE = null; THREAD_CACHE_KEY = null;
+  selectFirstConversationForTeam(phone);
   renderTeams(); renderConvs(); renderThread();
   if (CURRENT_VIEW === "captain") renderCaptain();
 }
@@ -1400,7 +1424,7 @@ async function refresh() {
     if (!r.ok) throw new Error(`data ${r.status}`);
     DATA = await r.json();
     document.getElementById("last-refresh").textContent = "refresh: " + new Date(DATA.generated_at).toLocaleTimeString("it-IT");
-    if (!SELECTED_TEAM && DATA.team.length) SELECTED_TEAM = DATA.team[0].phone;
+    ensureVisibleCaseSelected();
     renderTeams(); renderConvs(); renderThread();
     if (CURRENT_VIEW === "captain") renderCaptain();
   } catch (err) {
