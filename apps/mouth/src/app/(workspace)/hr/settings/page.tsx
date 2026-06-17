@@ -5,14 +5,7 @@ import { Save, Plus, Settings } from "lucide-react";
 import { toast } from "sonner";
 import * as hrApi from "@/lib/api/hr/hr";
 import type { BonusRate } from "@/types/hr";
-
-function formatIDR(amount: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+import { formatIDR } from "@balizero/core/utils";
 
 export default function HRSettingsPage() {
   const [rates, setRates] = useState<BonusRate[]>([]);

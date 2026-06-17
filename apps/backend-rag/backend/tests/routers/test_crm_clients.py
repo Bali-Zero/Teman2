@@ -153,8 +153,9 @@ class TestEnsureDriveFolder:
         ))
 
         fake_drive = MagicMock()
-        fake_drive.create_client_folder = AsyncMock(return_value={
+        fake_drive.ensure_client_folder = AsyncMock(return_value={
             "success": True,
+            "created": True,
             "root_folder_id": "NEW_ROOT_123",
             "root_folder_url": "https://drive.example/123",
             "subfolders": {"00_Profile": {"id": "x", "url": "y"}, "01_Immigration": {"id": "a", "url": "b"}},

@@ -141,6 +141,7 @@ async def ingest_live_media(
                 blob_hash=downloaded.sha256,
                 byte_size=downloaded.byte_size,
                 received_by=received_by,
+                sender_phone=media.from_phone,
             )
         except Exception:
             logger.exception("live WA enqueue failed media_id=%s", media.media_id)

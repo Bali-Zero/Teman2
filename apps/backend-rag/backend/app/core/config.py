@@ -515,6 +515,13 @@ class Settings(BaseSettings):
     enable_collective_memory: bool = False  # Set via ENABLE_COLLECTIVE_MEMORY env var
     enable_advanced_analytics: bool = False  # Set via ENABLE_ADVANCED_ANALYTICS env var
     enable_tool_execution: bool = False  # Set via ENABLE_TOOL_EXECUTION env var
+    # PII sovereignty (SYMBIOSIS Law 2 / UU PDP Art. 56): OCR of client documents
+    # (passport/KTP/NPWP/akta/visa) must NOT fall back to cloud Vision (Gemini) —
+    # that would send the document image to Google (cross-border). Default FALSE =
+    # local-only OCR; when Ollama is down the OCR degrades locally + alerts instead
+    # of sending PII to the cloud. Set OCR_ALLOW_CLOUD_VISION=true ONLY for
+    # non-PII document flows where cloud OCR is acceptable. Set via env var.
+    ocr_allow_cloud_vision: bool = False  # Set via OCR_ALLOW_CLOUD_VISION env var
 
     # ========================================
     # NOTIFICATION SERVICES
@@ -610,6 +617,17 @@ class Settings(BaseSettings):
             "If set, messages from numbers NOT in this list are silently ignored (no response sent). "
             "Set via WHATSAPP_ALLOWED_NUMBERS env var. "
             "Example: '6282264599868' — leave empty to allow everyone."
+        ),
+    )
+    whatsapp_team_allowlist: str = Field(
+        default="",
+        description=(
+            "Comma-separated list of Bali Zero team/staff phone numbers allowed as "
+            "outbound /api/whatsapp/send recipients WITHOUT a CRM client record. "
+            "Entries are normalized to digits-only before comparison, so "
+            "'+62 878-6187-0777', '6287861870777' and '+6287861870777' all match. "
+            "Set via WHATSAPP_TEAM_ALLOWLIST env var. Leave empty to require CRM "
+            "validation for every recipient (default)."
         ),
     )
     whatsapp_openclaw_bridge_url: str | None = Field(
@@ -782,6 +800,34 @@ class Settings(BaseSettings):
     admin_api_key: str | None = Field(
         None,
         description="Admin API key for plugin reload and admin endpoints (set via ADMIN_API_KEY env var)",
+    )
+    autonomous_lab_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable the internal autonomous lab draft API. Default False; set via "
+            "AUTONOMOUS_LAB_ENABLED env var."
+        ),
+    )
+    autonomous_lab_receipt_dir: str = Field(
+        default="/tmp/autonomous_lab_receipts",
+        description=(
+            "Directory for optional autonomous lab receipt persistence. Set via "
+            "AUTONOMOUS_LAB_RECEIPT_DIR env var."
+        ),
+    )
+    autonomous_lab_persistence_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow the internal autonomous lab API to persist receipts. Default False; set via "
+            "AUTONOMOUS_LAB_PERSISTENCE_ENABLED env var."
+        ),
+    )
+    autonomous_lab_execute_verification_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow autonomous lab verification execution for allowlisted commands only. "
+            "Default False; set via AUTONOMOUS_LAB_EXECUTE_VERIFICATION_ENABLED env var."
+        ),
     )
 
     admin_emails: str | None = Field(

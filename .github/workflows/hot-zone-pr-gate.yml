@@ -44,7 +44,7 @@ permissions:
 
 jobs:
   hot-zone-gate:
-    name: Hot-zone enforcement (monitor-mode)
+    name: Hot-zone enforcement
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -147,7 +147,7 @@ jobs:
       # Step 3 — Componente 2.5: CODEOWNERS self-modification protection
       #
       # Block + Telegram alert if non-Balizero1987 modifies .github/CODEOWNERS.
-      # In Phase 2a this is monitor-mode: log + alert, no block.
+      # Phase 2b ENFORCING since 2026-06-11: non-owner modification exits 1.
       # ---------------------------------------------------------------------
       - name: CODEOWNERS self-mod check
         if: |
@@ -179,10 +179,10 @@ jobs:
               echo "::warning::Telegram secrets missing — skipping alert"
             fi
 
-            # Phase 2a monitor-mode: log + alert but DO NOT fail
-            # Phase 2b: remove `exit 0` to enforce block
-            echo "Phase 2a monitor-mode: would block in Phase 2b"
-            exit 0
+            # Phase 2b ENFORCING (2026-06-11 guardian-of-guardians audit): the
+            # YAML said enforcing since 2026-06-07 but this branch still exited 0
+            # — the gate claimed to block and physically could not. Now it does.
+            exit 1
           else
             echo "OK: CODEOWNERS modified by owner (Balizero1987)"
           fi

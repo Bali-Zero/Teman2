@@ -49,19 +49,29 @@ ANOMALY_THRESHOLD_PCT = 25.0
 # ── NB IDs ────────────────────────────────────────────────────────────────────
 
 def _load_nb_ids() -> dict[str, str]:
-    """Load NB-11/12/13 IDs from db_nlm_sync state."""
+    """Load NB-11/12/13 IDs from db_nlm_sync state, falling back to the
+    committed defaults in db_nlm_state when the runtime state file is absent
+    or a key is blank. The state file is gitignored runtime state and may
+    not exist on a fresh checkout, so the committed constants are the
+    source of truth for which notebooks to query."""
+    from apps.evaluator.nlm_deep_research import db_nlm_state as _dbs
+    defaults = {
+        "ops": _dbs.NB_OPS_ID,
+        "intel": _dbs.NB_INTEL_ID,
+        "telemetry": _dbs.NB_TELEMETRY_ID,
+    }
     if not _SYNC_STATE_FILE.exists():
-        return {}
+        return dict(defaults)
     try:
         state = json.loads(_SYNC_STATE_FILE.read_text())
         return {
-            "ops": state.get("nb_ops_id", ""),        # NB-11
-            "intel": state.get("nb_intel_id", ""),    # NB-12
-            "telemetry": state.get("nb_telemetry_id", ""),  # NB-13
+            "ops": state.get("nb_ops_id", "") or defaults["ops"],
+            "intel": state.get("nb_intel_id", "") or defaults["intel"],
+            "telemetry": state.get("nb_telemetry_id", "") or defaults["telemetry"],
         }
     except Exception as exc:
         logger.error("Failed to load NB IDs from sync state: %s", exc)
-        return {}
+        return dict(defaults)
 
 
 # ── Telegram ──────────────────────────────────────────────────────────────────

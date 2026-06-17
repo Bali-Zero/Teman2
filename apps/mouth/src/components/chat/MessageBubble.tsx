@@ -180,6 +180,7 @@ function MessageBubbleComponent({
   isLast,
   onFollowUpClick,
 }: MessageBubbleProps) {
+  const thinkingId = React.useId();
   const {
     role,
     content,
@@ -414,6 +415,7 @@ function MessageBubbleComponent({
                   onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
                   className="flex items-center gap-2 text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors mb-2 focus-ring rounded"
                   aria-expanded={isThinkingExpanded}
+                  aria-controls={thinkingId}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
                   <span>Thinking Process</span>
@@ -427,6 +429,7 @@ function MessageBubbleComponent({
                 <AnimatePresence>
                   {isThinkingExpanded && (
                     <motion.div
+                      id={thinkingId}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -481,7 +484,7 @@ function MessageBubbleComponent({
                                 </div>
                                 {step.data.message && (
                                   <span className="text-[10px] text-[var(--foreground-muted)] ml-4 italic">
-                                    "{step.data.message}"
+                                    &ldquo;{step.data.message}&rdquo;
                                   </span>
                                 )}
                                 {/* Show details if available (e.g. corrections count) */}

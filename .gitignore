@@ -736,3 +736,22 @@ apps/mouth/scripts/output/
 # match vendor/evoskill/src/cache/ (tracked).
 /cache/
 apps/evaluator/.rag-eval-prod.env
+
+# pytest-testmon local coverage→test dependency map (per-machine, never shared).
+# Added 2026-06-09 (scripts/fast-gate.sh, 4-LLM panel ship #1).
+.testmondata
+.testmondata-*
+
+# WR2 manual carousel assets (pre-authored injection batches — delivered to Pro via deploy-puller)
+!docs/wr2/manual-assets/**/*.png
+!docs/wr2/manual-assets/**/*.jpg
+
+# Client PII CSVs — never commit (Law 2 / UU PDP). Added 2026-06-15 after 4-LLM
+# panel found ~746 client records tracked on origin/main (PR #133/#258).
+docs/crm/**/*.csv
+research/compliance/*clients*.csv
+research/compliance/*passport*.csv
+apps/backend-rag/scripts/output/*campaign*.csv
+**/dq_clients*.csv
+**/dq_orphan_clients*.csv
+research/nb-health/nb-inventory-live.json

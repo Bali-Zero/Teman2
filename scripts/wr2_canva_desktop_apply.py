@@ -238,45 +238,15 @@ async def _log_topic_type(
     slides_json: object | None,
     register: str | None,
 ) -> None:
-    """Derive (domain, dominant_mode, layout_family, archetype) and INSERT one
-    row into topic_type_log, idempotent on draft_id.
+    """Delegate to the shared ledger writer (P-1 S1).
 
-    If topic/slides_json/register were not threaded in by the caller, fall back
-    to a single SELECT on war_room_drafts (best-effort logging tolerates the
-    extra query). Pure-derivation lives in wr2_topic_type.
+    The INSERT used to live here; it moved to wr2_topic_type_log so the HTML
+    chokepoint feeds the same Postgres ledger. This wrapper survives until R2
+    retires the Canva lane.
     """
-    import wr2_topic_type as tt  # local import: keep module import side-effect-free
+    import wr2_topic_type_log as ttl  # local import: keep module import side-effect-free
 
-    if topic is None or slides_json is None or register is None:
-        rec = await conn.fetchrow(
-            "SELECT topic, register, slides_json FROM war_room_drafts WHERE id = $1",
-            draft_id,
-        )
-        if rec is not None:
-            topic = topic if topic is not None else rec["topic"]
-            register = register if register is not None else rec["register"]
-            slides_json = slides_json if slides_json is not None else rec["slides_json"]
-
-    domain = tt.derive_domain(topic)
-    dominant_mode = tt.derive_dominant_mode(slides_json)
-    layout_family = tt.derive_layout_family(slides_json)
-    archetype = tt.extract_archetype(slides_json)
-
-    await conn.execute(
-        """
-        INSERT INTO topic_type_log
-            (draft_id, domain, register, dominant_mode, layout_family, archetype, topic)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (draft_id) DO NOTHING
-        """,
-        draft_id,
-        domain,
-        register,
-        dominant_mode,
-        layout_family,
-        archetype,
-        topic,
-    )
+    await ttl.log_topic_type(conn, draft_id, topic=topic, slides_json=slides_json, register=register)
 
 
 # ─────────────────────────────────────────────────────────────────────────

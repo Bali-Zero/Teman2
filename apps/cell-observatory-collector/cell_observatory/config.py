@@ -6,7 +6,8 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Config:
-    minimax_api_key: str
+    minimax_api_key: str | None
+    classifier_backend: str  # "ollama" | "minimax"
     eventbus_database_url: str
     db_path: Path
     api_port: int
@@ -18,21 +19,26 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
-        try:
-            # Track A activation 2026-05-02: MiniMax classifier routes through
-            # OpenRouter (free tier minimax-m2.5:free). Cascade priority:
-            #   1. OPENROUTER_API_KEY (canonical OpenRouter env name)
-            #   2. MINIMAXM2_API_KEY (legacy alias)
-            #   3. MINIMAX_API_KEY (direct minimax.io fallback for paid mode)
-            minimax_api_key = (
-                os.environ.get("OPENROUTER_API_KEY")
-                or os.environ.get("MINIMAXM2_API_KEY")
-                or os.environ["MINIMAX_API_KEY"]
-            )
-        except KeyError as e:
+        # Backend selector (default ollama — local, zero-cost, sanctioned).
+        # Only the "minimax" backend needs a paid LLM key; "ollama" needs none.
+        classifier_backend = os.environ.get("OBSERVATORY_CLASSIFIER", "ollama").lower()
+
+        if classifier_backend not in ("ollama", "minimax"):
             raise RuntimeError(
-                "OPENROUTER_API_KEY or MINIMAXM2_API_KEY or MINIMAX_API_KEY required"
-            ) from e
+                f"OBSERVATORY_CLASSIFIER={classifier_backend!r} is not a recognised "
+                "backend; valid values: 'ollama' (default), 'minimax'"
+            )
+
+        minimax_api_key: str | None = (
+            os.environ.get("OPENROUTER_API_KEY")
+            or os.environ.get("MINIMAXM2_API_KEY")
+            or os.environ.get("MINIMAX_API_KEY")
+        )
+        if classifier_backend == "minimax" and not minimax_api_key:
+            raise RuntimeError(
+                "OBSERVATORY_CLASSIFIER=minimax requires OPENROUTER_API_KEY "
+                "or MINIMAXM2_API_KEY or MINIMAX_API_KEY"
+            )
 
         try:
             eventbus_database_url = os.environ["EVENTBUS_DATABASE_URL"]
@@ -46,6 +52,7 @@ class Config:
 
         return cls(
             minimax_api_key=minimax_api_key,
+            classifier_backend=classifier_backend,
             eventbus_database_url=eventbus_database_url,
             db_path=db_path,
             api_port=int(os.environ.get("OBSERVATORY_API_PORT", "17891")),

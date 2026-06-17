@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@balizero/core/utils";
 import {
   ArrowRightLeft,
   Building2,
@@ -102,16 +103,6 @@ const statusTone: Record<BaliZeroPaymentStatus, string> = {
   overdue: "destructive",
 };
 
-const currencyFormatter = (currency: "USD" | "IDR"): Intl.NumberFormat =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: currency === "IDR" ? 0 : 2,
-  });
-
-const formatCurrency = (value: number, currency: "USD" | "IDR"): string =>
-  currencyFormatter(currency).format(value);
-
 const formatDate = (value: string): string =>
   new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -183,14 +174,16 @@ export function BaliZeroPaymentsWorkbench({
 
   const kpis = useMemo(() => {
     const totalOutstanding = invoices.reduce(
-      (sum, invoice) => sum + Math.max(invoice.totalAmount - invoice.paidAmount, 0),
+      (sum, invoice) =>
+        sum + Math.max(invoice.totalAmount - invoice.paidAmount, 0),
       0,
     );
     const paymentReadyCount = invoices.filter(
       (invoice) => invoice.status !== "paid",
     ).length;
-    const activePractices = new Set(invoices.map((invoice) => invoice.practiceId))
-      .size;
+    const activePractices = new Set(
+      invoices.map((invoice) => invoice.practiceId),
+    ).size;
 
     return {
       totalOutstanding,
@@ -223,7 +216,9 @@ export function BaliZeroPaymentsWorkbench({
   const collectionRate =
     selectedInvoice.totalAmount === 0
       ? 0
-      : Math.round((selectedInvoice.paidAmount / selectedInvoice.totalAmount) * 100);
+      : Math.round(
+          (selectedInvoice.paidAmount / selectedInvoice.totalAmount) * 100,
+        );
   const dueInDays = getDaysToDue(selectedInvoice.dueAt);
 
   return (
@@ -241,7 +236,10 @@ export function BaliZeroPaymentsWorkbench({
             <MetricCard
               icon={Receipt}
               label="Outstanding"
-              value={formatCurrency(kpis.totalOutstanding, selectedInvoice.currency)}
+              value={formatCurrency(
+                kpis.totalOutstanding,
+                selectedInvoice.currency,
+              )}
             />
             <MetricCard
               icon={Link2}
@@ -292,7 +290,9 @@ export function BaliZeroPaymentsWorkbench({
                     </Badge>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-sm text-slate-300">
-                    <span>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
+                    <span>
+                      {formatCurrency(invoice.totalAmount, invoice.currency)}
+                    </span>
                     <span>Due {formatDate(invoice.dueAt)}</span>
                   </div>
                 </button>
@@ -307,9 +307,12 @@ export function BaliZeroPaymentsWorkbench({
           <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <CardDescription>Invoice to practice mapping</CardDescription>
-              <CardTitle className="text-2xl">{selectedInvoice.invoiceNumber}</CardTitle>
+              <CardTitle className="text-2xl">
+                {selectedInvoice.invoiceNumber}
+              </CardTitle>
               <p className="mt-2 text-sm text-slate-400">
-                {linkedPractice.clientName} · {linkedPractice.category} · {linkedPractice.crmStage}
+                {linkedPractice.clientName} · {linkedPractice.category} ·{" "}
+                {linkedPractice.crmStage}
               </p>
             </div>
             <Badge variant={statusTone[selectedInvoice.status] as never}>
@@ -332,7 +335,11 @@ export function BaliZeroPaymentsWorkbench({
                 />
                 <SummaryTile
                   label="Due in"
-                  value={dueInDays >= 0 ? `${dueInDays} days` : `${Math.abs(dueInDays)} late`}
+                  value={
+                    dueInDays >= 0
+                      ? `${dueInDays} days`
+                      : `${Math.abs(dueInDays)} late`
+                  }
                 />
               </div>
 
@@ -462,7 +469,10 @@ export function BaliZeroPaymentsWorkbench({
                     label="Issued"
                     value={formatDate(selectedInvoice.issuedAt)}
                   />
-                  <DetailRow label="Due" value={formatDate(selectedInvoice.dueAt)} />
+                  <DetailRow
+                    label="Due"
+                    value={formatDate(selectedInvoice.dueAt)}
+                  />
                 </dl>
               </div>
             </div>
@@ -652,7 +662,8 @@ export const baliZeroPaymentsFixture: BaliZeroPaymentsWorkbenchProps = {
       id: "event-01",
       invoiceId: "invoice-01",
       title: "Invoice issued",
-      detail: "Draft converted to live invoice and linked to CRM milestone gate.",
+      detail:
+        "Draft converted to live invoice and linked to CRM milestone gate.",
       at: "2026-03-24",
       actor: "billing-ops",
     },
@@ -668,7 +679,8 @@ export const baliZeroPaymentsFixture: BaliZeroPaymentsWorkbenchProps = {
       id: "event-03",
       invoiceId: "invoice-02",
       title: "Partial payment captured",
-      detail: "Deposit received and practice remains blocked until balance clears.",
+      detail:
+        "Deposit received and practice remains blocked until balance clears.",
       at: "2026-03-27",
       actor: "payments-api",
     },

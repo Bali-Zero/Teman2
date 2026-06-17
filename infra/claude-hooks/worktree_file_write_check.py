@@ -98,6 +98,18 @@ def _is_path_under_allowed_worktree(path_real: pathlib.Path) -> bool:
     worktrees = _git_worktree_list()
     allowed_worktrees = [w for w in worktrees if w != repo_real]
 
+    # W79 parity (2026-06-16 innocence-vaccine): any path under
+    # REPO_ROOT/.worktrees/<anything> is the convention scratch area — allowed
+    # even if not (yet) git-registered. Sibling hook worktree_isolation.py gained
+    # this fallback in W79; this file lacked it, so a Write into a freshly-created
+    # (unregistered) worktree was mis-classified as a main-checkout write and
+    # BLOCKED — a false positive that breaks the very worktree discipline the hook
+    # exists to enforce. Caught by infra/claude-hooks/test_hook_innocence.py.
+    _repo_esc = re.escape(str(repo_real))
+    worktrees_dir_re = re.compile(r"^" + _repo_esc + r"/\.worktrees/[^/]+(?:/|$)")
+    if worktrees_dir_re.match(str(path_real)):
+        return True
+
     _base = re.escape(os.path.dirname(REPO_ROOT))
     external_patterns = [
         re.compile(r"^" + _base + r"/nuzantara-deploy$"),

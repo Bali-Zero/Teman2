@@ -64,6 +64,10 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+# Silence httpx/httpcore INFO logs — httpx at INFO logs the full request URL,
+# which leaks the Telegram bot token in api.telegram.org/bot<token>/... calls (F01).
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("tri-llm-review")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,10 +94,14 @@ class PanelDecision:
     diff_sha: str  # sha256[:16] of the diff for traceability
     diff_lines: int
     verdicts: list[ReviewVerdict]
-    panel_outcome: str  # "green" | "yellow" | "red"
+    panel_outcome: str  # "green" | "yellow" | "red" | "inconclusive"
     green_count: int
     auto_merge_eligible: bool
     timestamp: str
+    # diff_complete=False means the reviewers saw a TRUNCATED diff (Codex P0:
+    # never report eligible/green on code the panel did not fully read). When
+    # False, the outcome is forced to "inconclusive" in main_async.
+    diff_complete: bool = True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -236,6 +244,24 @@ def parse_verdict(reviewer: str, raw: str, duration_s: float, error: str | None 
             raw_output=raw[:2000],
         )
     text = raw.strip()
+    # A CLI that hit its plan/usage cap prints a human notice (no JSON). That
+    # is an ENVIRONMENT failure, NOT a verdict on the code — surface it as a
+    # distinct error so the PR comment reads "down (rate/quota limit)" instead
+    # of an opaque "no_json", and so compute_outcome (error is not None)
+    # correctly excludes it from the live quorum (W64 armed-but-blind family).
+    _low = text.lower()
+    if any(m in _low for m in (
+        "hit your weekly limit", "hit your usage limit", "usage limit",
+        "weekly limit", "rate limit", "out of extra usage", "quota exceeded",
+    )):
+        return ReviewVerdict(
+            reviewer=reviewer,
+            verdict="red",
+            summary="reviewer environment hit a rate/quota limit (not a code verdict)",
+            duration_s=duration_s,
+            error="rate_or_quota_limit",
+            raw_output=raw[:2000],
+        )
     # Strip markdown fences if present
     if text.startswith("```"):
         lines = text.split("\n")
@@ -294,6 +320,30 @@ _STRIPPED_PROVIDER_KEYS: frozenset[str] = frozenset({
 })
 
 
+# CLI install dirs that a non-interactive launchd shell does NOT have on
+# PATH (it gets a bare /usr/bin:/bin:/usr/sbin:/sbin and never sources
+# ~/.zshrc). Without these prepended, ``claude`` (~/.local/bin), ``codex``
+# and ``node`` (/opt/homebrew/bin) all FileNotFoundError under launchd —
+# the W64 "armed-but-blind" failure this review-gate hit in prod.
+_CLI_PATH_DIRS: tuple[str, ...] = (
+    str(Path.home() / ".local" / "bin"),
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+)
+
+
+def _cli_path(existing: str | None) -> str:
+    """Prepend the known CLI install dirs to ``existing`` PATH, de-duped."""
+    parts: list[str] = []
+    for d in _CLI_PATH_DIRS:
+        if d and d not in parts:
+            parts.append(d)
+    for d in (existing or "").split(os.pathsep):
+        if d and d not in parts:
+            parts.append(d)
+    return os.pathsep.join(parts)
+
+
 def _safe_subprocess_env() -> dict[str, str]:
     """Strip provider API keys before spawning Codex/Claude CLI subprocess.
 
@@ -301,18 +351,30 @@ def _safe_subprocess_env() -> dict[str, str]:
     Neither needs an API key — keep the parent env's embedding-only
     OPENAI_API_KEY scoped to backend-rag and never leak it to a
     subprocess that could open a non-embedding billing path.
+
+    Also guarantees the CLI install dirs are on PATH so the spawned
+    ``claude``/``codex``/``node`` binaries resolve under a bare launchd
+    PATH (cf. _CLI_PATH_DIRS / W64 armed-but-blind).
     """
-    return {k: v for k, v in os.environ.items() if k not in _STRIPPED_PROVIDER_KEYS}
+    env = {k: v for k, v in os.environ.items() if k not in _STRIPPED_PROVIDER_KEYS}
+    env["PATH"] = _cli_path(env.get("PATH"))
+    return env
 
 
 async def review_codex(prompt: str) -> ReviewVerdict:
     start = time.time()
     try:
+        # NOTE: no --profile (there is no [profiles.review] block in
+        # ~/.codex/config.toml — referencing a missing profile errors).
+        # --skip-git-repo-check: the review-gate runs from the deploy
+        # worktree, which is not in codex's trusted [projects.*] list,
+        # so without this flag codex aborts "Not inside a trusted
+        # directory" (W64 armed-but-blind). Global config already sets
+        # approval_policy=never + sandbox_mode, so exec is non-interactive.
         proc = await asyncio.create_subprocess_exec(
             "codex",
-            "--profile",
-            "review",
             "exec",
+            "--skip-git-repo-check",
             prompt,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -392,7 +454,7 @@ async def review_claude_opus(prompt: str) -> ReviewVerdict:
         proc = await asyncio.create_subprocess_exec(
             "claude",
             "--model",
-            "claude-opus-4-7",
+            "claude-opus-4-8",
             "--max-turns",
             "1",
             "--print",
@@ -425,13 +487,27 @@ async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
     start = time.time()
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        # Try sourcing from .nuzantara-secrets.env
-        secrets_path = Path.home() / ".nuzantara-secrets.env"
-        if secrets_path.exists():
+        # Try sourcing from on-disk secret files, in priority order.
+        # ~/.openclaw/workspace/.env.master is where the key actually
+        # lives on the Pro (CLAUDE.md DeepSeek arsenal note); the older
+        # ~/.nuzantara-secrets.env is kept as a fallback. Under launchd
+        # DEEPSEEK_API_KEY is never in the env, so without reading
+        # .env.master the reviewer silently returns no_api_key (W64).
+        for secrets_path in (
+            Path.home() / ".openclaw" / "workspace" / ".env.master",
+            Path.home() / ".nuzantara-secrets.env",
+        ):
+            if not secrets_path.exists():
+                continue
             for line in secrets_path.read_text().splitlines():
-                if line.startswith("DEEPSEEK_API_KEY="):
-                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                stripped = line.strip()
+                if stripped.startswith("export "):
+                    stripped = stripped[len("export "):]
+                if stripped.startswith("DEEPSEEK_API_KEY="):
+                    api_key = stripped.split("=", 1)[1].strip().strip('"').strip("'")
                     break
+            if api_key:
+                break
     if not api_key:
         return parse_verdict("deepseek", "", time.time() - start, error="no_api_key")
 
@@ -515,14 +591,32 @@ async def run_panel(prompt: str) -> list[ReviewVerdict]:
     return list(results)
 
 
+# Minimum number of LIVE reviewers (error is None) required for a binding
+# verdict. With fewer, the panel is "inconclusive" — a env-down reviewer must
+# never be counted as a non-green vote over a fixed denominator (W64: a guardian
+# that reports RED because its own dependency is down is W64 theater, not signal).
+MIN_LIVE_REVIEWERS = 2
+
+
 def compute_outcome(verdicts: list[ReviewVerdict]) -> tuple[str, int, bool]:
-    """Return (panel_outcome, green_count, auto_merge_eligible)."""
-    green_count = sum(1 for v in verdicts if v.verdict == "green")
-    if green_count >= 2:
+    """Return (panel_outcome, green_count, auto_merge_eligible).
+
+    Robust quorum: decide ONLY over reviewers that actually ran (error is None).
+    - <2 live reviewers          -> "inconclusive" (not eligible)
+    - any live reviewer == red    -> "red"          (not eligible)
+    - all live reviewers == green -> "green"         (eligible)
+    - otherwise (mixed)           -> "yellow"        (not eligible)
+    green_count counts green among LIVE reviewers only.
+    """
+    live = [v for v in verdicts if v.error is None]
+    green_count = sum(1 for v in live if v.verdict == "green")
+    if len(live) < MIN_LIVE_REVIEWERS:
+        return "inconclusive", green_count, False
+    if any(v.verdict == "red" for v in live):
+        return "red", green_count, False
+    if green_count == len(live):
         return "green", green_count, True
-    if green_count == 1:
-        return "yellow", green_count, False
-    return "red", green_count, False
+    return "yellow", green_count, False
 
 
 def telegram_notify(decision: PanelDecision) -> None:
@@ -561,6 +655,77 @@ def telegram_notify(decision: PanelDecision) -> None:
         logger.warning("Telegram notify failed: %s", e)
 
 
+def post_pr_comment(decision: PanelDecision) -> bool:
+    """Post the panel verdict as a PR comment (review-only).
+
+    NEVER labels, approves, or merges — the comment is informational. Merging
+    stays the operator's decision (Legge 5). Returns True iff the comment posted.
+    Idempotency (one comment per head_sha) is the WRAPPER's job, not this call.
+    """
+    if decision.pr_number is None:
+        logger.warning("post_pr_comment: no --pr — skipping")
+        return False
+
+    emoji = {
+        "green": "✅", "yellow": "⚠️", "red": "🔴", "inconclusive": "❓",
+    }.get(decision.panel_outcome, "❓")
+    live = [v for v in decision.verdicts if v.error is None]
+    down = [v for v in decision.verdicts if v.error is not None]
+
+    lines = [
+        f"## {emoji} Tri-LLM review: **{decision.panel_outcome.upper()}** "
+        f"({decision.green_count}/{len(live)} live-green)",
+        "",
+        f"`diff_sha={decision.diff_sha}` · {decision.diff_lines} lines · "
+        f"diff_complete={decision.diff_complete}",
+        "",
+    ]
+    if not decision.diff_complete:
+        lines.append(
+            "> ⚠️ **Diff was truncated** — reviewers did not see the full change. "
+            "Verdict forced to `inconclusive`; treat as NOT reviewed."
+        )
+        lines.append("")
+    for v in live:
+        e = {"green": "✅", "yellow": "⚠️", "red": "🔴"}.get(v.verdict, "❓")
+        lines.append(f"- {e} **{v.reviewer}** → `{v.verdict}` — {v.summary or '(no summary)'}")
+        for p0 in v.p0_issues:
+            lines.append(f"    - 🔴 P0: {p0}")
+        for p1 in v.p1_issues:
+            lines.append(f"    - 🟠 P1: {p1}")
+    for v in down:
+        lines.append(f"- ⚪ **{v.reviewer}** → down ({v.error})")
+    lines += [
+        "",
+        "---",
+        "_Automated tri-LLM review (Codex GPT-5.5 · Claude Opus · DeepSeek V4-Pro). "
+        "Review-only — **merge is the operator's decision** (Legge 5). "
+        "This bot never labels, approves, or merges._",
+    ]
+    body = "\n".join(lines)
+
+    try:
+        result = subprocess.run(
+            [
+                "gh", "pr", "comment", str(decision.pr_number),
+                "--repo", "Balizero1987/Teman2",
+                "--body", body,
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=False,
+        )
+        if result.returncode != 0:
+            logger.warning("gh pr comment failed: %s", result.stderr.strip())
+            return False
+        logger.info("Posted review comment on PR #%s", decision.pr_number)
+        return True
+    except Exception as e:
+        logger.warning("post_pr_comment failed: %s", e)
+        return False
+
+
 async def main_async(args: argparse.Namespace) -> int:
     diff_text, files, branch, base = get_diff(args)
     if not diff_text.strip():
@@ -568,11 +733,27 @@ async def main_async(args: argparse.Namespace) -> int:
         return 3
     diff_sha = hashlib.sha256(diff_text.encode()).hexdigest()[:16]
     diff_lines = diff_text.count("\n")
-    logger.info("Diff sha=%s lines=%d files=%d branch=%s base=%s", diff_sha, diff_lines, len(files), branch, base)
+    # Codex P0: the reviewers only ever see diff[:max_diff_chars] (build_prompt).
+    # If the real diff is longer, the panel reviewed a TRUNCATED change — its
+    # verdict cannot speak for the bytes it never saw. Track this and fail-closed.
+    diff_complete = len(diff_text) <= args.max_diff_chars
+    logger.info(
+        "Diff sha=%s lines=%d files=%d branch=%s base=%s complete=%s",
+        diff_sha, diff_lines, len(files), branch, base, diff_complete,
+    )
 
     prompt = build_prompt(diff_text, branch, base, files)
     verdicts = await run_panel(prompt)
     outcome, green_count, auto_merge_eligible = compute_outcome(verdicts)
+
+    # Fail-closed on a truncated diff: force "inconclusive", never eligible —
+    # even a unanimous green over a partial diff is not a verdict on the whole PR.
+    if not diff_complete:
+        logger.warning(
+            "Diff truncated (%d chars > --max-diff-chars %d) — forcing inconclusive",
+            len(diff_text), args.max_diff_chars,
+        )
+        outcome, auto_merge_eligible = "inconclusive", False
 
     decision = PanelDecision(
         pr_number=args.pr,
@@ -584,6 +765,7 @@ async def main_async(args: argparse.Namespace) -> int:
         green_count=green_count,
         auto_merge_eligible=auto_merge_eligible,
         timestamp=time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        diff_complete=diff_complete,
     )
 
     # Persist log entry
@@ -598,6 +780,10 @@ async def main_async(args: argparse.Namespace) -> int:
     if args.notify:
         telegram_notify(decision)
 
+    # PR comment (review-only mode — posts the verdict, NEVER labels or merges).
+    if args.comment:
+        post_pr_comment(decision)
+
     return {"green": 0, "yellow": 1, "red": 2}.get(outcome, 3)
 
 
@@ -610,6 +796,12 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--base", default="main", help="Base branch for --branch mode (default: main)")
     ap.add_argument("--max-diff-chars", type=int, default=80000, help="Truncate diff at N chars (default: 80k)")
     ap.add_argument("--notify", action="store_true", help="Send Telegram notify on completion")
+    ap.add_argument(
+        "--comment",
+        action="store_true",
+        help="Post the panel verdict as a PR comment (review-only; requires --pr; "
+        "NEVER labels or merges — Legge 5)",
+    )
     return ap.parse_args()
 
 

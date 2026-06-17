@@ -158,6 +158,35 @@ def load_registry() -> dict:
         return {}
 
 
+def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
+    """Drain DLQ entries whose job has since recovered (state.status == 'ok').
+
+    Root cause this fixes (W81 / blind heal-loop, 2026-06-15): process_entry()'s
+    TERMINAL guard skips TERMINAL entries forever, and the sentinel's W70-resurrect
+    sweep (nuzantara-sentinel.py) only iterates *registry-backed* jobs. Jobs NOT in
+    job_registry.json that have recovered therefore rot in the DLQ as false-positive
+    corpses. This sweep reads each entry's live state file and removes any whose last
+    run succeeded, regardless of DLQ status. If a job regresses, the sentinel re-adds
+    it on the next failure. Returns (kept_entries, cleared_job_names).
+    """
+    state_dir = AGENT_DIR / "state"
+    kept: list = []
+    cleared: list = []
+    for entry in queue:
+        job = entry.get("job", "")
+        state_file = state_dir / f"{job}.last.json"
+        try:
+            state = json.loads(state_file.read_text())
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            kept.append(entry)
+            continue
+        if state.get("status") == "ok":
+            cleared.append(job)
+        else:
+            kept.append(entry)
+    return kept, cleared
+
+
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
 def send_telegram(message: str) -> None:
@@ -678,6 +707,18 @@ def run_autopilot() -> None:
 
     try:
         queue = load_dlq()
+        # W81 (2026-06-15): drain recovered corpses before processing. Closes the
+        # gap where non-registry jobs that recovered (state=ok) sit forever behind
+        # process_entry()'s TERMINAL guard, while the sentinel's W70-resurrect only
+        # iterates registry-backed jobs. See sweep_recovered_corpses().
+        queue, swept = sweep_recovered_corpses(queue)
+        if swept:
+            save_dlq(queue)
+            logger.info(f"corpse-sweep: drained {len(swept)} recovered entries: {swept}")
+            send_telegram(
+                f"🧹 DLQ corpse-sweep: drained {len(swept)} recovered job(s): "
+                f"{', '.join(swept[:8])}"
+            )
         registry = load_registry()
         logger.info(f"DLQ entries: {len(queue)}")
 
@@ -744,6 +785,59 @@ def run_autopilot() -> None:
         release_lock(fd)
 
 
+def requeue_terminal(job_id: str) -> int:
+    """W70 (2026-06-12): re-arm a TERMINAL DLQ entry for one more diagnostic pass.
+
+    Twin of `clear`, but instead of removing the entry it resets it to a
+    non-terminal, fresh state so process_entry() will actually reason about it
+    again on the next autopilot tick:
+      - status: TERMINAL -> active (key removed; absence == active)
+      - autopilot_attempts: -> 0 (so the max-attempts guard doesn't re-TERMINAL it)
+      - first_abandoned_at: -> removed (clean re-entry timestamp on next abandon)
+
+    This is the manual companion to Fix #1 (cron-wrapper now captures real
+    stderr): requeue lets a job that went TERMINAL while error_summary was BLIND
+    get a real diagnostic pass now that the signal is meaningful.
+
+    Does NOT touch the W61 preserve-terminal logic on the add/process path —
+    this is an explicit operator-driven requeue only. Same atomic tmp+replace
+    (save_dlq) and the same dlq_autopilot.lock as the autopilot itself, so a
+    concurrent autopilot tick can't interleave a half-written queue.
+
+    Returns 0 on success, 1 if no matching TERMINAL entry, 2 if lock busy.
+    """
+    fd = acquire_lock()
+    if fd is None:
+        print("Could not acquire lock (autopilot running?) — try again shortly")
+        return 2
+    try:
+        queue = load_dlq()
+        matched = 0
+        for entry in queue:
+            if entry.get("job") == job_id and entry.get("status") == "TERMINAL":
+                entry.pop("status", None)          # absence == active (non-terminal)
+                entry["autopilot_attempts"] = 0    # fresh attempt budget
+                entry.pop("first_abandoned_at", None)
+                entry["requeued_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                entry["requeued_by"] = "operator"
+                matched += 1
+        if matched == 0:
+            print(f"No TERMINAL entry found for '{job_id}' in DLQ")
+            return 1
+        save_dlq(queue)
+        print(
+            f"Requeued {matched} TERMINAL entry/entries for '{job_id}' "
+            f"(status cleared, autopilot_attempts=0) — will get a diagnostic pass next tick"
+        )
+        logger.info(
+            f"dlq_requeue_manual: {job_id} re-armed from TERMINAL by operator "
+            f"({matched} entry/entries)"
+        )
+        return 0
+    finally:
+        release_lock(fd)
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >= 3 and sys.argv[1] == "clear":
@@ -758,5 +852,14 @@ if __name__ == "__main__":
             save_dlq(queue)
             print(f"Cleared TERMINAL entry for '{job_id}' from DLQ ({before - after} removed)")
             logger.info(f"dlq_clear_manual: {job_id} removed from DLQ by operator")
+    elif len(sys.argv) >= 3 and sys.argv[1] == "requeue":
+        sys.exit(requeue_terminal(sys.argv[2]))
+    elif len(sys.argv) >= 2 and sys.argv[1] == "sweep":
+        _q = load_dlq()
+        _kept, _cleared = sweep_recovered_corpses(_q)
+        if _cleared:
+            save_dlq(_kept)
+        print(f"corpse-sweep: cleared {len(_cleared)} recovered entries: {_cleared}")
+        print(f"remaining: {len(_kept)}")
     else:
         run_autopilot()
