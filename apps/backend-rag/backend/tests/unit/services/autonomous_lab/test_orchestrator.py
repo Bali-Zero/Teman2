@@ -57,13 +57,15 @@ def test_orchestrator_runs_ordered_agent_fleet_stages() -> None:
     result = _orchestrate()
 
     assert [(stage.order, stage.stage, stage.role) for stage in result.stages] == [
-        (1, "intake", "intake_normalizer"),
-        (2, "compose", "hypothesis_composer"),
-        (3, "context", "context_builder"),
-        (4, "review", "reviewer"),
-        (5, "verify", "verification_planner"),
+        (1, "watch", "frontier_watchtower"),
+        (2, "intake", "intake_normalizer"),
+        (3, "compose", "hypothesis_composer"),
+        (4, "context", "context_builder"),
+        (5, "review", "reviewer"),
+        (6, "verify", "verification_planner"),
     ]
     assert [member.role for member in result.fleet] == [
+        "frontier_watchtower",
         "intake_normalizer",
         "hypothesis_composer",
         "context_builder",
@@ -90,10 +92,14 @@ def test_orchestration_receipt_declares_v1_control_plane_and_parallel_work() -> 
         "P9",
     ]
     assert operational_plan["anchor_jobs"][0]["key"] == "lab_intake_sweeper"
+    assert operational_plan["missing_components"][3]["gate"] == (
+        "fresh_sources_or_explicit_idle_receipt_and_notebook_route"
+    )
     assert operational_plan["missing_component_keys"] == [
         "operational_queue",
         "events_outbox",
         "source_adapters",
+        "ai_software_watchtower",
         "composer",
         "prod_like_context_builder",
         "worktree_experiment_runner",
@@ -105,6 +111,7 @@ def test_orchestration_receipt_declares_v1_control_plane_and_parallel_work() -> 
     assert "scheduler_daemon" in operational_plan["blocked_component_keys"]
     assert {
         "source_adapters",
+        "ai_software_watchtower",
         "composer",
         "prod_like_context_builder",
         "worktree_experiment_runner",
@@ -112,6 +119,16 @@ def test_orchestration_receipt_declares_v1_control_plane_and_parallel_work() -> 
         "curator_decision_gate",
         "dashboard_api",
     } <= set(operational_plan["parallelizable_component_keys"])
+
+    run_receipt = result.to_receipt()["run"]
+    assert [notebook["key"] for notebook in run_receipt["research_notebooks"]] == [
+        "frontier_radar",
+        "agent_engineering_core",
+        "ai_research_overflow",
+    ]
+    watch_stage = next(stage for stage in result.stages if stage.stage == "watch")
+    assert "notebook:frontier_radar" in watch_stage.outputs
+    assert "notebook:agent_engineering_core" in watch_stage.outputs
 
 
 def test_orchestration_receipt_omits_raw_material_text() -> None:

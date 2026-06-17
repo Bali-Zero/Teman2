@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-import { verifyAdminToken } from '@/lib/auth/verify-admin';
+import { verifyAdminToken } from "@/lib/auth/verify-admin";
 
 /**
  * Organo: admin-dashboard (apps/admin-dashboard)
@@ -23,75 +23,91 @@ import { verifyAdminToken } from '@/lib/auth/verify-admin';
  * Le API rispondono JSON 401/403. Le pagine HTML redirectano a kita login.
  */
 
-const LOGIN_URL = 'https://kita.balizero.com/login';
-const SELF_ORIGIN_DEFAULT = 'https://admin.balizero.com';
+const LOGIN_URL = "https://kita.balizero.com/login";
+const SELF_ORIGIN_DEFAULT = "https://admin.balizero.com";
+const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
 function isApiPath(pathname: string): boolean {
-  return pathname.startsWith('/api/');
+  return pathname.startsWith("/api/");
 }
 
 function isStaticAsset(pathname: string): boolean {
   return (
-    pathname.startsWith('/_next/') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/robots.txt' ||
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
     /\.[a-zA-Z0-9]+$/.test(pathname)
+  );
+}
+
+function isLocalDevRequest(request: NextRequest): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    LOCAL_DEV_HOSTS.has(request.nextUrl.hostname)
   );
 }
 
 function jsonError(
   status: number,
-  code: 'unauthenticated' | 'forbidden',
-  detail: string
+  code: "unauthenticated" | "forbidden",
+  detail: string,
 ): NextResponse {
   const body = JSON.stringify({ error: code, detail });
   const headers: Record<string, string> = {
-    'content-type': 'application/json',
-    'cache-control': 'no-store',
+    "content-type": "application/json",
+    "cache-control": "no-store",
   };
   if (status === 401) {
-    headers['www-authenticate'] = 'Bearer realm="admin-dashboard"';
+    headers["www-authenticate"] = 'Bearer realm="admin-dashboard"';
   }
   return new NextResponse(body, { status, headers });
 }
 
 function redirectToLogin(request: NextRequest): NextResponse {
   const selfOrigin =
-    process.env.NEXT_PUBLIC_ADMIN_ORIGIN || request.nextUrl.origin || SELF_ORIGIN_DEFAULT;
+    process.env.NEXT_PUBLIC_ADMIN_ORIGIN ||
+    request.nextUrl.origin ||
+    SELF_ORIGIN_DEFAULT;
   const returnTo = encodeURIComponent(
-    `${selfOrigin}${request.nextUrl.pathname}${request.nextUrl.search}`
+    `${selfOrigin}${request.nextUrl.pathname}${request.nextUrl.search}`,
   );
   return NextResponse.redirect(`${LOGIN_URL}?redirect=${returnTo}`);
 }
 
-export async function middleware(request: NextRequest): Promise<NextResponse | undefined> {
+export async function middleware(
+  request: NextRequest,
+): Promise<NextResponse | undefined> {
   const { pathname } = request.nextUrl;
 
   if (isStaticAsset(pathname)) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get('nz_access_token')?.value;
+  if (isLocalDevRequest(request)) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get("nz_access_token")?.value;
   const outcome = await verifyAdminToken(token);
 
   if (outcome.ok) {
     const res = NextResponse.next();
-    res.headers.set('x-admin-email', outcome.email);
+    res.headers.set("x-admin-email", outcome.email);
     return res;
   }
 
   const isApi = isApiPath(pathname);
 
-  if (outcome.reason === 'missing_cookie') {
+  if (outcome.reason === "missing_cookie") {
     if (isApi) {
-      return jsonError(401, 'unauthenticated', 'Authentication required');
+      return jsonError(401, "unauthenticated", "Authentication required");
     }
     return redirectToLogin(request);
   }
 
-  if (outcome.reason === 'bad_token') {
+  if (outcome.reason === "bad_token") {
     if (isApi) {
-      return jsonError(401, 'unauthenticated', 'Invalid or expired token');
+      return jsonError(401, "unauthenticated", "Invalid or expired token");
     }
     // For HTML pages we redirect so the user can re-authenticate.
     return redirectToLogin(request);
@@ -100,14 +116,14 @@ export async function middleware(request: NextRequest): Promise<NextResponse | u
   // forbidden_role: authenticated but not admin. Never bounce to login — that
   // would create a redirect loop for a logged-in non-admin user.
   if (isApi) {
-    return jsonError(403, 'forbidden', 'Admin role required');
+    return jsonError(403, "forbidden", "Admin role required");
   }
-  return new NextResponse('Forbidden: admin role required', {
+  return new NextResponse("Forbidden: admin role required", {
     status: 403,
-    headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' },
+    headers: { "content-type": "text/plain", "cache-control": "no-store" },
   });
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt).*)'],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
 };

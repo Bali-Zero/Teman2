@@ -5,14 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { Gift, Banknote, Calendar, Users } from "lucide-react";
 import * as hrApi from "@/lib/api/hr/hr";
 import type { AdminDashboard, PersonalDashboard } from "@/types/hr";
-
-function formatIDR(amount: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+import { formatIDR } from "@balizero/core/utils";
 
 function StatCard({
   icon: Icon,

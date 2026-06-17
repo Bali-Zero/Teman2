@@ -41,6 +41,7 @@ import asyncio
 import io
 import logging
 import mimetypes
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -65,6 +66,20 @@ MAX_PAGES = 30
 # would only add artifacts, so we skip it.
 LOW_CONTRAST_STD_THRESHOLD = 55.0
 
+# Text-layer fast-path. Born-digital PDFs (NIB/OSS/NPWP printouts, e-akta, bank
+# letters) carry a selectable text layer -- extracting it is ~instant and
+# lossless, vs ~120s/page on the local vision model rasterizing an image of the
+# same text. When a page's embedded text clears TEXTLAYER_MIN_CHARS of
+# non-whitespace we attach it to the PageImage; the OCR stage then uses it
+# verbatim and skips the vision call for that page. Scanned/photographed pages
+# (no text layer) fall through to vision unchanged. Toggle off via
+# INTAKE_TEXTLAYER_FASTPATH=false. Still 100% local (pypdfium2 in-process) --
+# Symbiosis Law 2 preserved (0 bytes to cloud).
+TEXTLAYER_FASTPATH = os.getenv(
+    "INTAKE_TEXTLAYER_FASTPATH", "true"
+).strip().lower() not in ("0", "false", "no", "off")
+TEXTLAYER_MIN_CHARS = int(os.getenv("INTAKE_TEXTLAYER_MIN_CHARS", "100"))
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -78,6 +93,12 @@ class PageImage:
     index: int  # 0-based page number within the source document
     png_bytes: bytes  # PNG-encoded image bytes
     enhanced: bool  # True if opencv enhancement was applied
+    # Born-digital text layer extracted from the source PDF page when present
+    # and above TEXTLAYER_MIN_CHARS. When set, the OCR stage uses this verbatim
+    # and skips the vision model (fast-path); None => OCR via vision as usual.
+    # Optional with a default so existing call-sites (and tests) that build a
+    # PageImage with three positional args keep working unchanged.
+    text: str | None = None
 
 
 @dataclass
@@ -154,7 +175,7 @@ def _enhance_png_sync(png_bytes: bytes) -> tuple[bytes, bool]:
             return png_bytes, False
 
         # Deskew: estimate dominant text angle from foreground pixels.
-        deskewed = _deskew(gray, cv2, np)
+        deskewed = _deskew(gray, cv2)
 
         # Denoise (non-local means) then adaptive threshold to a clean B/W image
         # that vision OCR reads more reliably on low-contrast input.
@@ -169,12 +190,12 @@ def _enhance_png_sync(png_bytes: bytes) -> tuple[bytes, bool]:
         if not ok:
             return png_bytes, False
         return buf.tobytes(), True
-    except Exception as exc:  # noqa: BLE001 -- enhancement is best-effort.
+    except Exception as exc:  # broad except: enhancement is best-effort.
         logger.warning("opencv enhancement failed, using raw page: %s", exc)
         return png_bytes, False
 
 
-def _deskew(gray, cv2, np):
+def _deskew(gray, cv2):
     """Rotate a grayscale image so its dominant text baseline is horizontal."""
     try:
         inverted = cv2.bitwise_not(gray)
@@ -195,7 +216,7 @@ def _deskew(gray, cv2, np):
         return cv2.warpAffine(
             gray, m, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         return gray
 
 
@@ -226,8 +247,41 @@ def _rasterize_pdf_sync(pdf_bytes: bytes, max_pages: int) -> list[bytes]:
             pil_image.save(buf, format="PNG")
             out.append(buf.getvalue())
         return out
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("pypdfium2 rasterize failed: %s", exc)
+        return []
+
+
+def _extract_pdf_textlayer_sync(pdf_bytes: bytes, max_pages: int) -> list[str | None]:
+    """Per-page embedded text layer from a PDF via pypdfium2. [] on failure.
+
+    Returns a list aligned to the rasterized pages: each entry is the page's
+    selectable text when it clears ``TEXTLAYER_MIN_CHARS`` of non-whitespace
+    (born-digital page), else ``None`` (scan/photo -> needs vision OCR). On any
+    error returns ``[]`` so the caller degrades to full vision rasterization
+    (never raises, never blocks OCR).
+    """
+    try:
+        import pypdfium2 as pdfium
+    except ImportError as exc:
+        logger.warning("pypdfium2 missing, cannot extract text layer: %s", exc)
+        return []
+    try:
+        pdf = pdfium.PdfDocument(pdf_bytes)
+        out: list[str | None] = []
+        n = min(len(pdf), max_pages)
+        for i in range(n):
+            try:
+                textpage = pdf[i].get_textpage()
+                txt = textpage.get_text_range() or ""
+            except Exception as exc:
+                logger.debug("text-layer extract failed on page %d: %r", i, exc)
+                txt = ""
+            dense = len("".join(txt.split()))
+            out.append(txt if dense >= TEXTLAYER_MIN_CHARS else None)
+        return out
+    except Exception as exc:
+        logger.warning("pypdfium2 text-layer extract failed: %s", exc)
         return []
 
 
@@ -241,7 +295,7 @@ def _normalize_image_sync(image_bytes: bytes) -> bytes | None:
             buf = io.BytesIO()
             im.save(buf, format="PNG")
             return buf.getvalue()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("image normalize failed: %s", exc)
         return None
 
@@ -285,6 +339,10 @@ async def preprocess_blob(
     # --- Build the list of raw PNG pages ---
     page_pngs: list[bytes]
     notes_parts: list[str] = []
+    # Per-page born-digital text layer (PDF only); aligned to page_pngs, may be
+    # empty/shorter -- the enhancement loop guards the index. A None entry means
+    # that page has no usable text layer and must go through vision OCR.
+    page_texts: list[str | None] = []
 
     if mime == "application/pdf":
         page_pngs = await asyncio.to_thread(_rasterize_pdf_sync, raw, max_pages)
@@ -297,6 +355,10 @@ async def preprocess_blob(
                 n_pages=1,
                 mime=mime,
                 notes=",".join(notes_parts) + ",raw_pdf_fallback",
+            )
+        if TEXTLAYER_FASTPATH:
+            page_texts = await asyncio.to_thread(
+                _extract_pdf_textlayer_sync, raw, max_pages
             )
     elif mime.startswith("image/"):
         normalized = await asyncio.to_thread(_normalize_image_sync, raw)
@@ -318,7 +380,18 @@ async def preprocess_blob(
     # --- Optional enhancement pass (per page, in threads) ---
     pages: list[PageImage] = []
     enhanced_any = False
+    textlayer_pages = 0
     for i, png in enumerate(page_pngs):
+        page_text = page_texts[i] if i < len(page_texts) else None
+        if page_text is not None:
+            # Born-digital page: text layer already extracted. Skip the opencv
+            # enhancement AND (downstream) the vision OCR. We keep the rendered
+            # png for provenance and for the classify vision-fallback path.
+            textlayer_pages += 1
+            pages.append(
+                PageImage(index=i, png_bytes=png, enhanced=False, text=page_text)
+            )
+            continue
         if enhance:
             out_png, was_enhanced = await asyncio.to_thread(_enhance_png_sync, png)
         else:
@@ -328,6 +401,8 @@ async def preprocess_blob(
 
     if enhanced_any:
         notes_parts.append("enhanced")
+    if textlayer_pages:
+        notes_parts.append(f"textlayer:{textlayer_pages}/{len(page_pngs)}")
 
     return PreprocessResult(
         pages=pages,

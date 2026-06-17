@@ -48,8 +48,60 @@ class KGProposalStore:
                 min_size=2,
                 max_size=5,
                 command_timeout=30,
+                # superscar #8 (proxy flap): the live DSN is a :15432 pgbouncer/Fly
+                # proxy that drops physical connections on brief flaps and on
+                # server-side SQL errors. Recycle idle connections aggressively so
+                # the pool never hands out a half-dead socket; pair with a SELECT 1
+                # liveness probe so a stale connection is detected at acquire, not
+                # mid-INSERT (which is what surfaced as "connection was closed in
+                # the middle of operation", one per gap, in the 2026-06 outage).
+                max_inactive_connection_lifetime=60.0,
             )
         return self._pool
+
+    async def _reset_pool(self) -> None:
+        """Tear down a poisoned pool so the next _get_pool() rebuilds it.
+
+        Called when a query fails with a connection-layer error: the whole pool
+        may be holding sockets the proxy already closed, so closing it forces
+        fresh connections rather than retrying on the same dead ones.
+        """
+        pool, self._pool = self._pool, None
+        if pool is not None:
+            try:
+                await pool.close()
+            except Exception as exc:  # never let cleanup mask the original error
+                logger.warning("KGProposalStore: pool close during reset raised %s", exc)
+
+    # Connection-layer errors worth one transparent retry against the proxy.
+    _RETRYABLE = (
+        asyncpg.InterfaceError,
+        asyncpg.PostgresConnectionError,
+        ConnectionResetError,
+        OSError,
+    )
+
+    async def _run(self, op: str, sql: str, *args: Any) -> Any:
+        """Execute a pool operation with one reconnect-and-retry on a proxy flap.
+
+        op is the asyncpg Pool coroutine name ('execute' | 'fetch' | 'fetchrow'
+        | 'fetchval'). A connection-layer failure resets the pool and retries
+        ONCE; a second failure (or any non-connection error, e.g. a real SQL
+        error like UndefinedTableError) propagates so callers/logs stay honest.
+        """
+        for attempt in (1, 2):
+            pool = await self._get_pool()
+            try:
+                return await getattr(pool, op)(sql, *args)
+            except self._RETRYABLE as exc:
+                if attempt == 2:
+                    raise
+                logger.warning(
+                    "KGProposalStore.%s: connection-layer error (%s), "
+                    "resetting pool and retrying once: %s",
+                    op, type(exc).__name__, exc,
+                )
+                await self._reset_pool()
 
     async def save(self, proposal: KGProposal) -> str:
         """Save a proposal to kg_proposals. NEVER touches kg_nodes/kg_edges.
@@ -57,9 +109,11 @@ class KGProposalStore:
         Returns:
             proposal_id of the saved proposal.
         """
-        pool = await self._get_pool()
-
-        await pool.execute(
+        # Hot path of the curiosity_loop cron — wrapped in _run so a proxy flap
+        # mid-cycle reconnects and retries once instead of poisoning every
+        # subsequent gap (superscar #8 outage 2026-06).
+        await self._run(
+            "execute",
             """
             INSERT INTO kg_proposals (
                 proposal_id, gap_id, domain, proposal_type,
@@ -156,10 +210,10 @@ class KGProposalStore:
 
     async def is_duplicate(self, gap_id: str, domain: str) -> bool:
         """Check if a proposal for this gap was created in the last DEDUP_WINDOW_DAYS."""
-        pool = await self._get_pool()
         cutoff = datetime.now(timezone.utc) - timedelta(days=DEDUP_WINDOW_DAYS)
 
-        row = await pool.fetchrow(
+        row = await self._run(
+            "fetchrow",
             """
             SELECT 1 FROM kg_proposals
             WHERE gap_id = $1 AND domain = $2
@@ -173,10 +227,10 @@ class KGProposalStore:
 
     async def is_blacklisted(self, gap_id: str) -> bool:
         """Check if a gap has been rejected >= BLACKLIST_FAILURES times recently."""
-        pool = await self._get_pool()
         cutoff = datetime.now(timezone.utc) - timedelta(days=BLACKLIST_DAYS)
 
-        row = await pool.fetchrow(
+        row = await self._run(
+            "fetchrow",
             """
             SELECT COUNT(*) as reject_count FROM kg_proposals
             WHERE gap_id = $1
@@ -335,10 +389,11 @@ class KGProposalStore:
 
     async def expire_stale(self) -> int:
         """Expire proposals unapproved for > EXPIRY_DAYS. Returns count expired."""
-        pool = await self._get_pool()
         cutoff = datetime.now(timezone.utc) - timedelta(days=EXPIRY_DAYS)
 
-        result = await pool.execute(
+        # Runs once per cycle after the gap loop — same hot path, same retry.
+        result = await self._run(
+            "execute",
             """
             UPDATE kg_proposals
             SET status = 'auto_expired'

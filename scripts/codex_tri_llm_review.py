@@ -64,6 +64,10 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+# Silence httpx/httpcore INFO logs — httpx at INFO logs the full request URL,
+# which leaks the Telegram bot token in api.telegram.org/bot<token>/... calls (F01).
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("tri-llm-review")
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -18,9 +18,15 @@ import sys
 # Tool pesanti che NON devono essere installati su M5 (lista R1 + modelli)
 HEAVY = {
     "ffmpeg", "ffmpeg-full", "cmake", "ollama", "cloudflared", "ghostscript",
-    "gcc", "flyctl", "fly", "qdrant", "redis", "postgresql", "postgres",
-    "postgresql@16", "postgresql@17", "postgresql@18",
+    "gcc", "qdrant", "redis",
 }
+# NOTE 2026-06-12 (M5 local PostgreSQL spec): postgresql* REMOVED from HEAVY (§2.4) —
+# M5 runs a local PG17 for the CI-parity pre-push test gate + dev snapshot.
+# flyctl/fly REMOVED too: M5 had no native flyctl (`fly` was a shell-function proxying
+# ssh→Pro), so `fly proxy` for nuz_db_refresh.sh (AC4 prod snapshot) opened the tunnel
+# on the Pro, unreachable by the local M5 pg_dump. Native flyctl makes the snapshot
+# self-contained (proxy+dump+restore all local), per the "dev uguale al Pro" doctrine.
+# Redis/Qdrant stay blocked (same snapshot pattern available later; for now Pro/Mini only).
 
 
 def main() -> int:

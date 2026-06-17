@@ -12,6 +12,7 @@ def test_config_defaults(monkeypatch):
     assert cfg.retention_days == 90
     assert cfg.classifier_max_inflight == 50
     assert cfg.classifier_queue_maxsize == 10000  # G1 fix
+    assert cfg.classifier_backend == "ollama"  # new default
 
 
 def test_config_overrides(monkeypatch):
@@ -24,8 +25,11 @@ def test_config_overrides(monkeypatch):
     assert cfg.api_port == 17892
 
 
-def test_config_required_keys_missing(monkeypatch):
+def test_config_eventbus_url_still_required(monkeypatch):
+    # EVENTBUS_DATABASE_URL is still mandatory regardless of backend
     monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("MINIMAXM2_API_KEY", raising=False)
     monkeypatch.delenv("EVENTBUS_DATABASE_URL", raising=False)
-    with pytest.raises(RuntimeError, match="MINIMAX_API_KEY"):
+    with pytest.raises(RuntimeError, match="EVENTBUS_DATABASE_URL"):
         Config.from_env()

@@ -235,19 +235,28 @@ def _ocr_pages(stage_output: dict[str, Any]) -> list[dict[str, Any]] | None:
 async def _load_candidate_clients(
     conn: asyncpg.Connection, client_ids: list[int]
 ) -> list[dict[str, Any]]:
-    """READ-ONLY lookup of candidate clients (id, name, assigned_to)."""
+    """READ-ONLY lookup of candidate clients, with the disambiguators a human
+    needs to tell homonyms apart (phone/email/nationality — the "tanti Walter"
+    problem: 10 clients named Walter, distinguishable only by phone)."""
     if not client_ids:
         return []
     rows = await conn.fetch(
         """
-        SELECT id, full_name, assigned_to
+        SELECT id, full_name, assigned_to, email, phone, nationality
         FROM clients
         WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL
         """,
         client_ids,
     )
     return [
-        {"client_id": r["id"], "full_name": r["full_name"], "assigned_to": r["assigned_to"]}
+        {
+            "client_id": r["id"],
+            "full_name": r["full_name"],
+            "assigned_to": r["assigned_to"],
+            "email": r["email"],
+            "phone": r["phone"],
+            "nationality": r["nationality"],
+        }
         for r in rows
     ]
 
@@ -364,6 +373,29 @@ async def list_review_queue(
 # Destination pickers (STATIC routes — registered BEFORE /{proposal_id} so the
 # int path-converter never swallows them)
 # --------------------------------------------------------------------------- #
+@router.get("/document-categories")
+async def list_document_categories(
+    _user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Active CRM document categories for the two-level review destination picker.
+
+    The review UI needs the canonical ``document_categories`` table, not a
+    hardcoded copy, so the reviewer can choose both the folder-level group and
+    the precise CRM document subtype before approve.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT code, name, category_group, description, has_expiry
+            FROM document_categories
+            WHERE active = true
+            ORDER BY sort_order, name
+            """
+        )
+    return {"items": [dict(row) for row in rows]}
+
+
 @router.get("/clients/search")
 async def search_clients(
     q: str = Query(..., min_length=2, max_length=120, description="Client name fragment"),
@@ -371,23 +403,27 @@ async def search_clients(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Name-lookup over local CRM clients for the review destination picker.
+    """Name/phone/email lookup over local CRM clients for the destination picker.
 
-    Deliberately MINIMAL projection (id, full_name, assigned_to) — this is a
-    routing affordance, not client access: a reviewer redirecting a NO_MATCH
-    document must be able to find ANY client by name (the doc's subject is
-    rarely one of their own assigned clients). pg_trgm-ranked, ILIKE-gated.
-    READ-ONLY. PII boundary unchanged: runs on the Pro reader, local DB only.
+    Projection includes the HUMAN DISAMBIGUATORS (phone/email/nationality):
+    the CRM holds many homonyms (10 bare "Walter"s) distinguishable only by
+    contact data — a name-only list forces blind guessing. Phone matching
+    activates when the query carries >=5 digits. This is a routing affordance,
+    not client access: a reviewer redirecting a NO_MATCH document must find ANY
+    client. pg_trgm-ranked, ILIKE-gated. READ-ONLY, Pro reader, local DB only.
     """
     needle = q.strip()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, full_name, assigned_to,
+            SELECT id, full_name, assigned_to, email, phone, nationality,
                    similarity(full_name, $1) AS sim
             FROM clients
             WHERE deleted_at IS NULL
-              AND full_name ILIKE '%' || $1 || '%'
+              AND (full_name ILIKE '%' || $1 || '%'
+                   OR phone LIKE '%' || regexp_replace($1, '[^0-9+]', '', 'g') || '%'
+                       AND length(regexp_replace($1, '[^0-9]', '', 'g')) >= 5
+                   OR email ILIKE '%' || $1 || '%')
             ORDER BY sim DESC, full_name ASC
             LIMIT $2
             """,
@@ -400,6 +436,9 @@ async def search_clients(
                 "client_id": r["id"],
                 "full_name": r["full_name"],
                 "assigned_to": r["assigned_to"],
+                "email": r["email"],
+                "phone": r["phone"],
+                "nationality": r["nationality"],
                 "score": round(float(r["sim"] or 0.0), 4),
             }
             for r in rows
@@ -947,6 +986,47 @@ async def _deliver_committed_to_crm(
 # --------------------------------------------------------------------------- #
 # approve (dry-run 5B / real commit 5C) + reject (terminal, queue-management)
 # --------------------------------------------------------------------------- #
+def _clean_destination_value(value: Any) -> str | None:
+    """Normalise an optional destination override value from the approve body."""
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip().lower()
+    return cleaned or None
+
+
+def _apply_document_destination_override(
+    plan: intake_writer.CommitPlan,
+    *,
+    document_category: Any,
+    document_subtype: Any,
+) -> None:
+    """Apply reviewer-selected destination to payload and planned write ops.
+
+    ``plan_commit`` derives a best-effort document category from the intake
+    doc_type. The review UI can now override both the folder-level category
+    (``documents.document_category``) and exact subtype
+    (``documents.document_type``). Mutating the plan here keeps dry-run audit
+    output and real writes aligned without touching the shared writer module.
+    """
+    category = _clean_destination_value(document_category)
+    subtype = _clean_destination_value(document_subtype)
+
+    if category:
+        plan.payload["document_category"] = category
+    if subtype:
+        plan.payload["document_type"] = subtype
+        plan.doc_type = subtype
+
+    for op in plan.ops:
+        if op.table == "documents":
+            if category:
+                op.values["document_category"] = category
+            if subtype:
+                op.values["document_type"] = subtype
+        elif op.table == "practices.documents[]" and subtype:
+            op.values["name"] = subtype
+
+
 @router.post("/{proposal_id}/approve")
 async def approve_review(
     request: Request,
@@ -971,7 +1051,8 @@ async def approve_review(
     P0#5: the caller must hold the active claim — non-admins must present the
     matching ``claim_token`` on a non-expired lease.
 
-    body: {client_id?, practice_id?, final_fields?, claim_token?}
+    body: {client_id?, practice_id?, document_category?, document_subtype?,
+           final_fields?, claim_token?}
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
@@ -1013,6 +1094,11 @@ async def approve_review(
                 practice_explicit=practice_explicit,
                 final_fields=final_fields,
             )
+            _apply_document_destination_override(
+                plan,
+                document_category=body.get("document_category"),
+                document_subtype=body.get("document_subtype"),
+            )
             # FASE 5C gate: dry-run UNLESS INTAKE_WRITER_ENABLED is truthy. With the
             # flag OFF (default) this stays True → simulate + audit-only, exactly as
             # 5B. With the flag ON the real atomic path runs INSIDE this transaction
@@ -1038,6 +1124,14 @@ async def approve_review(
             plan=plan,
             result=result,
         )
+        # Visibility (intake message-journey TAC 2026-06-15): the local commit
+        # is final but the Fly/Drive delivery leg is best-effort and NEVER
+        # raises. A failed delivery means the document exists in the Pro DB but
+        # is ABSENT from kita.balizero (Drive + Fly CRM) — a silent
+        # config↔reality divergence (superscar #2 "green ≠ working"). Surface it
+        # in the top-level status so the operator/front-end knows the doc did
+        # NOT land in kita, instead of seeing a success "routed".
+        response_status = _delivery_aware_status(response_status, crm_push_info)
 
     logger.info(
         "intake.review.approve proposal=%s reviewer=%s dry_run=%s outcome=%s status=%s",
@@ -1171,3 +1265,36 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if isinstance(value, datetime) else None
+
+
+# CrmPushResult.status values that do NOT mean "the document failed to reach
+# kita". `pushed` = delivered to Fly+Drive; `disabled` = push leg intentionally
+# off (writer/push OFF by design); `already_delivered` = the local row already
+# carries a Drive file (re-upload skipped). Every other status (`unreachable`,
+# `server_error`, `denied_rbac`, `rejected`, `too_large`, `no_token`,
+# `missing_blob`, `error`) means: committed in the Pro DB but ABSENT from
+# kita.balizero — a divergence the operator must see.
+_DELIVERY_OK_OR_NEUTRAL: frozenset[str] = frozenset(
+    {"pushed", "disabled", "already_delivered"}
+)
+
+DELIVERY_FAILED_STATUS = "committed_local_delivery_failed"
+
+
+def _delivery_aware_status(
+    base_status: str, crm_push_info: dict[str, Any] | None
+) -> str:
+    """Downgrade a 'routed' approve to a delivery-failure status when the
+    Pro→Fly/Drive push did not actually deliver the committed document.
+
+    Pure function (no I/O) so it is unit-testable across the full CrmPushResult
+    status space. Only rewrites the success case: a non-'routed' base status
+    (e.g. 'review_claimed' for a dry-run/blocked plan) is returned untouched,
+    and a missing/None push_info (delivery leg never ran) is left as-is.
+    """
+    if base_status != "routed" or not crm_push_info:
+        return base_status
+    push_status = crm_push_info.get("status")
+    if push_status in _DELIVERY_OK_OR_NEUTRAL:
+        return base_status
+    return DELIVERY_FAILED_STATUS

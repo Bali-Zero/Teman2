@@ -274,6 +274,23 @@ Use null for unclear fields. Return ONLY JSON."""
 
         # Fallback: Gemini API Vision
         if not ollama_ok:
+            # PII sovereignty gate (SYMBIOSIS Law 2 / UU PDP Art. 56): the passport
+            # image must NOT be sent to Google unless OCR_ALLOW_CLOUD_VISION=true.
+            from backend.services.multimodal.cloud_vision_gate import (
+                cloud_vision_allowed,
+                note_cloud_ocr_blocked,
+            )
+
+            if not cloud_vision_allowed():
+                note_cloud_ocr_blocked("crm_clients_documents.extract_passport_enhanced")
+                return PassportPreviewResponse(
+                    success=False,
+                    message=(
+                        "Vision OCR unavailable: local Ollama down and cloud fallback "
+                        "blocked for PII sovereignty (OCR_ALLOW_CLOUD_VISION=false)"
+                    ),
+                )
+
             from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
 
             if not GENAI_AVAILABLE:

@@ -78,6 +78,8 @@ async def enqueue(
     blob_hash: str | None = None,
     byte_size: int | None = None,
     received_by: str | None = None,
+    sender_phone: str | None = None,
+    source_path: str | None = None,
     pipeline_version: str = PIPELINE_VERSION,
 ) -> EnqueueResult:
     """Idempotently register a blob and enqueue it for processing.
@@ -142,19 +144,24 @@ async def enqueue(
             # 2. intake_queue — idempotent on intake_key.
             #    received_by (m218) records the team member who RECEIVED the
             #    document (live-WhatsApp path only; NULL for drive/zoho/export).
+            #    sender_phone (m225) records WHO SENT it (raw transport value;
+            #    routing normalizes + matches it against clients.phone_normalized).
+            #    source_path (m227) records WHERE the blob came from relative to
+            #    the watched Drive root (folder name = client-name signal; NULL
+            #    for whatsapp/zoho).
             queue_id = await conn.fetchval(
                 """
                 INSERT INTO intake_queue
                     (instance_id, source, source_ref, blob_path, blob_hash,
-                     text_hash, phash, client_id_hint, received_by,
-                     pipeline_version, intake_key)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                     text_hash, phash, client_id_hint, received_by, sender_phone,
+                     source_path, pipeline_version, intake_key)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 ON CONFLICT (intake_key) DO NOTHING
                 RETURNING id
                 """,
                 instance_id, source, source_ref, blob_path_str, blob_hash,
-                text_hash, phash, client_id_hint, received_by,
-                pipeline_version, intake_key,
+                text_hash, phash, client_id_hint, received_by, sender_phone,
+                source_path, pipeline_version, intake_key,
             )
             was_new = queue_id is not None
             if queue_id is None:

@@ -30,7 +30,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { normalizeDashboardRole } from "@/lib/dashboard-role";
 import type { LiveActivityEvent } from "@/types/dashboard-role.types";
 import { logger } from "@/lib/logger";
+import { STRINGS } from "@/lib/strings";
 import { api } from "@/lib/api";
+import { formatIDRCompact } from "@balizero/core/utils";
 import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
@@ -195,14 +197,6 @@ const STATUS_CONFIG = {
   documents: { label: "Documents", dot: "#b89a40" },
   completed: { label: "Completed", dot: "#5cb88a" },
 } as const;
-
-// ── Formatters ─────────────────────────────────────────────
-function formatRevenue(rp: number): string {
-  if (rp >= 1_000_000_000) return `Rp ${(rp / 1_000_000_000).toFixed(2)}B`;
-  if (rp >= 1_000_000) return `Rp ${(rp / 1_000_000).toFixed(1)}M`;
-  if (rp >= 1_000) return `Rp ${(rp / 1_000).toFixed(0)}K`;
-  return `Rp ${rp.toFixed(0)}`;
-}
 
 // ── Metric Bar item ────────────────────────────────────────
 function MetricItem({
@@ -479,13 +473,13 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="p-2.5 space-y-2">
-        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
         <div className="h-12 rounded-xl bg-white/[0.025] animate-pulse" />
         <div className="grid grid-cols-4 gap-2">
           <div className="col-span-3 h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
           <div className="h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
         </div>
         <div className="h-[320px] rounded-xl bg-white/[0.025] animate-pulse" />
+        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
       </div>
     );
   }
@@ -517,40 +511,48 @@ export default function DashboardPage() {
         {
           label: "Revenue · MTD",
           value: revenue?.total_revenue
-            ? formatRevenue(revenue.total_revenue)
+            ? formatIDRCompact(revenue.total_revenue)
             : "—",
           sub: revenue?.paid_revenue
-            ? `${formatRevenue(revenue.paid_revenue)} incassato`
+            ? STRINGS.dashboard.collectedSub(
+                formatIDRCompact(revenue.paid_revenue),
+              )
             : "—",
           accent: "#9880d8",
         },
         {
           label: "Outstanding",
           value: revenue?.outstanding_revenue
-            ? formatRevenue(revenue.outstanding_revenue)
+            ? formatIDRCompact(revenue.outstanding_revenue)
             : "—",
-          sub: "da incassare",
+          sub: STRINGS.dashboard.outstandingSub,
           accent: "#d4845a",
         },
         {
-          label: "Clienti",
+          label: STRINGS.dashboard.clientsLabel,
           value:
             totalClients != null ? totalClients.toLocaleString("en-US") : "—",
-          sub: "registrati",
+          sub: STRINGS.dashboard.clientsSub,
           accent: "#4a8ec4",
           href: "/clients",
         },
         {
-          label: "Processi",
+          label: STRINGS.dashboard.casesLabel,
           value: totalPractices != null ? totalPractices : "—",
-          sub: `${stats.activeCases} attivi · ${stats.criticalDeadlines} critici`,
+          sub: STRINGS.dashboard.casesSub(
+            stats.activeCases,
+            stats.criticalDeadlines,
+          ),
           accent: "#5cb88a",
           href: "/process",
         },
         {
-          label: "Fatture",
+          label: STRINGS.dashboard.invoicesLabel,
           value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "✓",
-          sub: stats.pendingInvoices > 0 ? "in attesa" : "tutte pagate",
+          sub:
+            stats.pendingInvoices > 0
+              ? STRINGS.dashboard.invoicesPendingSub
+              : STRINGS.dashboard.invoicesPaidSub,
           accent: "#b89a40",
         },
       ]
@@ -586,9 +588,6 @@ export default function DashboardPage() {
     <DashboardErrorBoundary>
       <div className="relative dash-liquid-bg">
         <div className="p-2.5 space-y-2">
-          {/* ROW 0: Hero */}
-          <HeroLiveWindow />
-
           {/* ROW 1: Zantara AI portal */}
           <ZantaraPortalCard />
 
@@ -767,6 +766,9 @@ export default function DashboardPage() {
               <RoleWidget role={role} userId={user?.email ?? ""} />
             </div>
           </div>
+
+          {/* ROW 5: Hero news — below the operational rows (audit P0.1: action above the fold) */}
+          <HeroLiveWindow />
         </div>
       </div>
     </DashboardErrorBoundary>

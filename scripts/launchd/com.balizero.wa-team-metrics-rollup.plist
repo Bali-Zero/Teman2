@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  wa-team-metrics-rollup — daily snapshot of WhatsApp team-quality metrics.
+  POSTs to the live wa-dashboard-m1 (:7790) /metrics-rollup endpoint, which
+  computes per-operator aggregates and UPSERTs one row/operator/day into
+  wa_team_daily_metrics (local nuzantara_dev — Pro-bound, no PII).
+
+  One-shot daily (StartCalendarInterval), NOT KeepAlive — this is a cron, not a
+  daemon (anti superscar #7 daemon-vs-cron misconfig). Real heartbeat is the row
+  written in the DB (computed_at), echoed in the log as rows_written.
+
+  Install (Pro only — wa-mirror is Pro-bound):
+    cp scripts/launchd/com.balizero.wa-team-metrics-rollup.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wa-team-metrics-rollup.plist
+    launchctl kickstart -k gui/$(id -u)/com.balizero.wa-team-metrics-rollup   # optional first run
+  Requires the dashboard (:7790) to already expose /metrics-rollup (merge + restart first).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.balizero.wa-team-metrics-rollup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>echo "[wa-team-metrics-rollup] $(date) start"; curl -sS -X POST "http://127.0.0.1:7790/metrics-rollup?window=30" -m 180; echo; echo "[wa-team-metrics-rollup] $(date) done"</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>6</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/wa-team-metrics-rollup.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/wa-team-metrics-rollup.err.log</string>
+</dict>
+</plist>

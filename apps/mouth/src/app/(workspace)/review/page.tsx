@@ -15,24 +15,48 @@
  *   4. reads the destination summary ("→ Client · Practice") and Approves,
  *      or Rejects with an optional reason (audited server-side).
  *
- * Approve sends {client_id, practice_id, final_fields} — the backend writer
- * (INTAKE_WRITER_ENABLED-gated) commits atomically or records a dry-run audit;
- * the page surfaces dry-run explicitly so nobody is misled.
+ * Approve sends {client_id, practice_id, document_category, document_subtype,
+ * final_fields} — the backend writer (INTAKE_WRITER_ENABLED-gated) commits
+ * atomically or records a dry-run audit; the page surfaces dry-run explicitly
+ * so nobody is misled.
  *
  * Auth + transport reuse the shared `api` client (httpOnly cookie + bearer).
  * The <img>/<iframe> preview rides the same-origin SSO cookie.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
+import {
+  categoriesForGroup,
+  categoryGroups,
+  driveFolderLabel,
+  formatOperator,
+  formatPracticeOption,
+  groupLabel,
+  inferDestinationFromDocType,
+  type DocumentCategory,
+} from "./destination";
+
 interface EntityCandidate {
   client_id: number;
   full_name: string;
   assigned_to?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  nationality?: string | null;
+}
+
+/** "Walter · +39 339… · IT" — the human disambiguators for homonym-heavy CRM. */
+function clientMeta(c: {
+  phone?: string | null;
+  email?: string | null;
+  nationality?: string | null;
+}): string {
+  return [c.phone, c.email, c.nationality].filter(Boolean).join(" · ");
 }
 
 interface ProposalSummary {
@@ -82,6 +106,9 @@ interface ClientSearchItem {
   client_id: number;
   full_name: string;
   assigned_to?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  nationality?: string | null;
   score: number;
 }
 
@@ -90,6 +117,10 @@ interface PracticeItem {
   practice_type_code: string;
   title?: string | null;
   status: string;
+}
+
+interface DocumentCategoriesResponse {
+  items?: DocumentCategory[];
 }
 
 const CARD = {
@@ -128,6 +159,29 @@ function fieldToString(v: unknown): string {
   return String(v);
 }
 
+/**
+ * Detect the "the proposal already left the claimable state" 409, so a retry
+ * after a transient blip (whose write already committed) is shown as an
+ * informational refresh, NOT a red "action failed" error.
+ *
+ * The backend guard (shared by approve AND reject) raises HTTP 409 with
+ * detail=`Proposal must be review_claimed (status=<actual>).`; the api client
+ * surfaces that detail verbatim into Error.message. We anchor on the stable
+ * "must be review_claimed" phrase, then branch on the terminal status:
+ *   - status=routed   → the document was already approved & filed.
+ *   - status=rejected → the proposal was already rejected.
+ * Any other status (e.g. review_pending) or a different error (network/500,
+ * "Claim lease expired", etc.) returns null and stays on the normal error path.
+ */
+export function classifyResolvedDecideError(
+  message: string | undefined | null,
+): "already_filed" | "already_rejected" | null {
+  if (!message || !message.includes("must be review_claimed")) return null;
+  if (message.includes("status=routed")) return "already_filed";
+  if (message.includes("status=rejected")) return "already_rejected";
+  return null;
+}
+
 export default function ReviewPage() {
   const router = useRouter();
   const [items, setItems] = useState<ProposalSummary[]>([]);
@@ -137,6 +191,10 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [detail, setDetail] = useState<ProposalDetail | null>(null);
   const [claimToken, setClaimToken] = useState<string | null>(null);
+  // Seed the destination (group+category) exactly ONCE per opened proposal,
+  // so a manual Profile-group / Category change is never clobbered by the
+  // doc_type re-inference. Keyed by proposal_id; re-seeds for a new document.
+  const destinationSeededRef = useRef<number | null>(null);
 
   // ── Decision-panel state ────────────────────────────────────────────────
   const [selectedClient, setSelectedClient] = useState<EntityCandidate | null>(
@@ -147,6 +205,9 @@ export default function ReviewPage() {
   const [fieldEdits, setFieldEdits] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<ClientSearchItem[]>([]);
+  const [categories, setCategories] = useState<DocumentCategory[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState("other");
+  const [selectedCategoryCode, setSelectedCategoryCode] = useState("");
   const [showOcr, setShowOcr] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
 
@@ -174,59 +235,107 @@ export default function ReviewPage() {
     void loadQueue();
   }, [loadQueue]);
 
-  // ── Open: claim + detail + seed the decision panel ──────────────────────
-  const openDetail = useCallback(async (proposalId: number) => {
-    setBusy(proposalId);
-    setError(null);
-    setNotice(null);
+  const loadCategories = useCallback(async () => {
     try {
-      // Claim first (15-min lease) so approve/reject have a valid token.
-      const claim = await api.post<ClaimResponse>(
-        `/api/intake/review/${proposalId}/claim`,
-        {},
-      );
-      setClaimToken(claim.claim_token);
-      const d = await api.get<ProposalDetail>(
-        `/api/intake/review/${proposalId}`,
-      );
-      setDetail(d);
-      setPreviewFailed(false);
-      setShowOcr(false);
-      setSearch("");
-      setSearchResults([]);
-      setFieldEdits({});
-      // Seed destination: routing's resolved client, else the first candidate.
-      const routedId = d.routing?.client_id ?? null;
-      const seed =
-        d.entity_candidates?.find((c) => c.client_id === routedId) ??
-        d.entity_candidates?.[0] ??
-        null;
-      setSelectedClient(seed);
-      setSelectedPracticeId(
-        seed && routedId === seed.client_id && d.routing?.practice_id
-          ? d.routing.practice_id
-          : "",
-      );
+      const res = await api.get<
+        DocumentCategoriesResponse | DocumentCategory[]
+      >("/api/intake/review/document-categories");
+      setCategories(Array.isArray(res) ? res : (res.items ?? []));
     } catch (e) {
-      const msg =
-        e instanceof Error && /409/.test(e.message)
-          ? "Already claimed by another reviewer."
-          : "Could not open the document.";
-      setError(msg);
-      logger.error(
-        "review claim/detail failed",
-        { component: "ReviewPage", action: "openDetail" },
-        e instanceof Error ? e : new Error(String(e)),
-      );
-    } finally {
-      setBusy(null);
+      setCategories([]);
+      logger.warn("document categories load failed", {
+        component: "ReviewPage",
+        action: "loadCategories",
+        metadata: { error: String(e) },
+      });
     }
   }, []);
+
+  useEffect(() => {
+    void loadCategories();
+  }, [loadCategories]);
+
+  // ── Open: claim + detail + seed the decision panel ──────────────────────
+  const openDetail = useCallback(
+    async (proposalId: number) => {
+      setBusy(proposalId);
+      setError(null);
+      setNotice(null);
+      // A fresh open must re-seed the destination (even re-opening the
+      // same proposal); the seed effect owns the one-shot per proposal.
+      destinationSeededRef.current = null;
+      try {
+        // Claim first (15-min lease) so approve/reject have a valid token.
+        const claim = await api.post<ClaimResponse>(
+          `/api/intake/review/${proposalId}/claim`,
+          {},
+        );
+        setClaimToken(claim.claim_token);
+        const d = await api.get<ProposalDetail>(
+          `/api/intake/review/${proposalId}`,
+        );
+        setDetail(d);
+        setPreviewFailed(false);
+        setShowOcr(false);
+        setSearch("");
+        setSearchResults([]);
+        setFieldEdits({});
+        const inferredDestination = inferDestinationFromDocType(
+          d.doc_type,
+          categories,
+        );
+        setSelectedGroup(inferredDestination.group);
+        setSelectedCategoryCode(inferredDestination.categoryCode);
+        // Seed destination: routing's resolved client, else the first candidate.
+        const routedId = d.routing?.client_id ?? null;
+        const seed =
+          d.entity_candidates?.find((c) => c.client_id === routedId) ??
+          d.entity_candidates?.[0] ??
+          null;
+        setSelectedClient(seed);
+        setSelectedPracticeId(
+          seed && routedId === seed.client_id && d.routing?.practice_id
+            ? d.routing.practice_id
+            : "",
+        );
+      } catch (e) {
+        const msg =
+          e instanceof Error && /409/.test(e.message)
+            ? "Already claimed by another reviewer."
+            : "Could not open the document.";
+        setError(msg);
+        logger.error(
+          "review claim/detail failed",
+          { component: "ReviewPage", action: "openDetail" },
+          e instanceof Error ? e : new Error(String(e)),
+        );
+      } finally {
+        setBusy(null);
+      }
+    },
+    [categories],
+  );
+
+  useEffect(() => {
+    // Re-derive the destination from doc_type ONCE per proposal, after the
+    // category list has loaded. The ref guard (not selectedCategoryCode)
+    // ensures a manual group/category switch is never re-inferred away.
+    if (!detail || categories.length === 0) return;
+    if (destinationSeededRef.current === detail.proposal_id) return;
+    destinationSeededRef.current = detail.proposal_id;
+    const inferredDestination = inferDestinationFromDocType(
+      detail.doc_type,
+      categories,
+    );
+    setSelectedGroup(inferredDestination.group);
+    setSelectedCategoryCode(inferredDestination.categoryCode);
+  }, [categories, detail]);
 
   // ── Practice list follows the selected client ───────────────────────────
   useEffect(() => {
     if (!selectedClient) {
       setPractices([]);
+      setSelectedPracticeId("");
       return;
     }
     let cancelled = false;
@@ -235,9 +344,18 @@ export default function ReviewPage() {
         const res = await api.get<{ items: PracticeItem[] }>(
           `/api/intake/review/clients/${selectedClient.client_id}/practices`,
         );
-        if (!cancelled) setPractices(res.items ?? []);
+        if (!cancelled) {
+          const nextPractices = res.items ?? [];
+          setPractices(nextPractices);
+          setSelectedPracticeId((current) =>
+            nextPractices.some((p) => p.practice_id === current) ? current : "",
+          );
+        }
       } catch {
-        if (!cancelled) setPractices([]);
+        if (!cancelled) {
+          setPractices([]);
+          setSelectedPracticeId("");
+        }
       }
     })();
     return () => {
@@ -283,6 +401,8 @@ export default function ReviewPage() {
     setSelectedClient(null);
     setPractices([]);
     setSelectedPracticeId("");
+    setSelectedGroup("other");
+    setSelectedCategoryCode("");
     setFieldEdits({});
   }, [detail, claimToken]);
 
@@ -300,6 +420,9 @@ export default function ReviewPage() {
           // "archive only" and must not fall back to routing's hint server-side.
           body.practice_id =
             selectedPracticeId === "" ? null : selectedPracticeId;
+          body.document_category = selectedGroup;
+          if (selectedCategoryCode)
+            body.document_subtype = selectedCategoryCode;
           if (Object.keys(fieldEdits).length > 0)
             body.final_fields = fieldEdits;
           const res = await api.post<ApproveResponse>(
@@ -330,12 +453,31 @@ export default function ReviewPage() {
         setSelectedClient(null);
         await loadQueue();
       } catch (e) {
-        setError(`Action "${action}" failed. Please retry.`);
-        logger.error(
-          "review decide failed",
-          { component: "ReviewPage", action },
-          e instanceof Error ? e : new Error(String(e)),
+        // Idempotent path: a transient blip may have hidden a response whose
+        // write already committed. Retrying then hits the backend 409 guard
+        // (status=routed/rejected). Surface that as an informational refresh,
+        // never a red failure that invites confusing re-clicks.
+        const resolved = classifyResolvedDecideError(
+          e instanceof Error ? e.message : String(e),
         );
+        if (resolved) {
+          setNotice(
+            resolved === "already_rejected"
+              ? "This document was already rejected — refreshing the queue."
+              : "This document was already filed — refreshing the queue.",
+          );
+          setDetail(null);
+          setClaimToken(null);
+          setSelectedClient(null);
+          await loadQueue();
+        } else {
+          setError(`Action "${action}" failed. Please retry.`);
+          logger.error(
+            "review decide failed",
+            { component: "ReviewPage", action },
+            e instanceof Error ? e : new Error(String(e)),
+          );
+        }
       } finally {
         setBusy(null);
       }
@@ -345,6 +487,8 @@ export default function ReviewPage() {
       claimToken,
       selectedClient,
       selectedPracticeId,
+      selectedGroup,
+      selectedCategoryCode,
       fieldEdits,
       loadQueue,
     ],
@@ -355,15 +499,74 @@ export default function ReviewPage() {
     () => practices.find((p) => p.practice_id === selectedPracticeId) ?? null,
     [practices, selectedPracticeId],
   );
+  const groupOptions = useMemo(() => categoryGroups(categories), [categories]);
+  const groupCategories = useMemo(
+    () => categoriesForGroup(categories, selectedGroup),
+    [categories, selectedGroup],
+  );
+  const selectedCategory = useMemo(
+    () =>
+      groupCategories.find(
+        (category) => category.code === selectedCategoryCode,
+      ) ?? null,
+    [groupCategories, selectedCategoryCode],
+  );
   const destinationLabel = useMemo(() => {
     if (!selectedClient) return "No destination — pick a client (or Reject)";
+    const categoryLabel = selectedCategory
+      ? selectedCategory.name
+      : "no category selected";
     const practiceLabel = selectedPractice
-      ? `${selectedPractice.practice_type_code}${selectedPractice.title ? ` · ${selectedPractice.title}` : ""}`
-      : "document archive (no practice)";
-    return `${selectedClient.full_name} → ${practiceLabel}`;
-  }, [selectedClient, selectedPractice]);
+      ? formatPracticeOption(selectedPractice)
+      : "client document archive";
+    return `${selectedClient.full_name} → ${groupLabel(selectedGroup)} / ${categoryLabel} → ${practiceLabel}`;
+  }, [selectedCategory, selectedClient, selectedGroup, selectedPractice]);
 
-  const blobUrl = detail ? `/api/intake/review/${detail.proposal_id}/blob` : "";
+  // Authenticated blob preview: an <iframe>/<img> request cannot carry the
+  // Bearer header, so a direct src 401s ("Connessione negata"). Fetch the
+  // blob WITH the token, then preview via a local object URL.
+  const [blobUrl, setBlobUrl] = useState<string>("");
+  useEffect(() => {
+    if (!detail) {
+      setBlobUrl("");
+      return;
+    }
+    let revoked: string | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = api.getToken();
+        const res = await fetch(
+          `/api/intake/review/${detail.proposal_id}/blob`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            credentials: "include",
+          },
+        );
+        if (!res.ok) throw new Error(`blob HTTP ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        revoked = URL.createObjectURL(blob);
+        setBlobUrl(revoked);
+        setPreviewFailed(false);
+      } catch (e) {
+        logger.warn("blob preview fetch failed", {
+          component: "ReviewPage",
+          action: "blobFetch",
+          metadata: { proposalId: detail.proposal_id, error: String(e) },
+        });
+        if (!cancelled) {
+          setBlobUrl("");
+          setPreviewFailed(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (revoked) URL.revokeObjectURL(revoked);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.proposal_id]);
   const mime = detail?.mime_type ?? "";
   const isImage = mime.startsWith("image/");
   const isPdf = mime === "application/pdf";
@@ -456,6 +659,12 @@ export default function ReviewPage() {
                         ? `Proposed client: ${candidate.full_name}`
                         : "No client matched — needs a decision"}
                     </p>
+                    <p
+                      className="mt-1 text-xs"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
+                      Operator: {formatOperator(it.received_by)}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -509,7 +718,19 @@ export default function ReviewPage() {
             <div className="grid gap-5 md:grid-cols-2">
               {/* ── LEFT: the exact document ──────────────────────────── */}
               <div>
-                {!previewFailed && isImage && (
+                {!previewFailed && !blobUrl && (isImage || isPdf) && (
+                  <div
+                    className="flex w-full items-center justify-center rounded-md border text-xs"
+                    style={{
+                      borderColor: "var(--bz-border)",
+                      color: "var(--bz-text-3)",
+                      height: "60vh",
+                    }}
+                  >
+                    Loading document…
+                  </div>
+                )}
+                {!previewFailed && blobUrl && isImage && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={blobUrl}
@@ -522,7 +743,7 @@ export default function ReviewPage() {
                     onError={() => setPreviewFailed(true)}
                   />
                 )}
-                {!previewFailed && isPdf && (
+                {!previewFailed && blobUrl && isPdf && (
                   <iframe
                     src={blobUrl}
                     title="document preview"
@@ -646,13 +867,23 @@ export default function ReviewPage() {
                               );
                             }}
                           />
-                          <span>{c.full_name}</span>
+                          <span className="min-w-0">
+                            {c.full_name}
+                            {clientMeta(c) && (
+                              <span
+                                className="block truncate text-xs"
+                                style={{ color: "var(--bz-text-3)" }}
+                              >
+                                {clientMeta(c)}
+                              </span>
+                            )}
+                          </span>
                           {c.assigned_to && (
                             <span
-                              className="text-xs"
+                              className="ml-auto text-xs"
                               style={{ color: "var(--bz-text-3)" }}
                             >
-                              · {c.assigned_to}
+                              {c.assigned_to}
                             </span>
                           )}
                         </label>
@@ -675,7 +906,7 @@ export default function ReviewPage() {
                       background: "var(--bz-surface)",
                       color: "var(--bz-text-1)",
                     }}
-                    placeholder="Search another client by name…"
+                    placeholder="Search client by name, phone or email…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -695,22 +926,34 @@ export default function ReviewPage() {
                                 client_id: r.client_id,
                                 full_name: r.full_name,
                                 assigned_to: r.assigned_to,
+                                email: r.email,
+                                phone: r.phone,
+                                nationality: r.nationality,
                               });
                               setSelectedPracticeId("");
                               setSearch("");
                               setSearchResults([]);
                             }}
                           >
-                            {r.full_name}
-                            {r.assigned_to ? (
+                            <span className="flex items-baseline justify-between gap-2">
+                              <span>{r.full_name}</span>
+                              {r.assigned_to ? (
+                                <span
+                                  className="text-xs"
+                                  style={{ color: "var(--bz-text-3)" }}
+                                >
+                                  {r.assigned_to}
+                                </span>
+                              ) : null}
+                            </span>
+                            {clientMeta(r) && (
                               <span
-                                className="text-xs"
+                                className="block truncate text-xs"
                                 style={{ color: "var(--bz-text-3)" }}
                               >
-                                {" "}
-                                · {r.assigned_to}
+                                {clientMeta(r)}
                               </span>
-                            ) : null}
+                            )}
                           </button>
                         </li>
                       ))}
@@ -718,8 +961,81 @@ export default function ReviewPage() {
                   )}
                 </div>
 
+                {/* Destination category */}
+                <div>
+                  <h3
+                    className="mb-1 text-sm font-medium"
+                    style={{ color: "var(--bz-text-1)" }}
+                  >
+                    Destination
+                  </h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label
+                      className="text-xs"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
+                      Profile group
+                      <select
+                        className="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                        style={{
+                          borderColor: "var(--bz-border)",
+                          background: "var(--bz-surface)",
+                          color: "var(--bz-text-1)",
+                        }}
+                        value={selectedGroup}
+                        onChange={(e) => {
+                          setSelectedGroup(e.target.value);
+                          setSelectedCategoryCode("");
+                        }}
+                      >
+                        {groupOptions.map((group) => (
+                          <option key={group} value={group}>
+                            {groupLabel(group)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label
+                      className="text-xs"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
+                      Category
+                      <select
+                        className="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                        style={{
+                          borderColor: "var(--bz-border)",
+                          background: "var(--bz-surface)",
+                          color: "var(--bz-text-1)",
+                        }}
+                        value={selectedCategoryCode}
+                        disabled={groupCategories.length === 0}
+                        onChange={(e) =>
+                          setSelectedCategoryCode(e.target.value)
+                        }
+                      >
+                        <option value="">
+                          {groupCategories.length === 0
+                            ? "No categories available"
+                            : "Select category"}
+                        </option>
+                        {groupCategories.map((category) => (
+                          <option key={category.code} value={category.code}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <p
+                    className="mt-1 text-xs"
+                    style={{ color: "var(--bz-text-3)" }}
+                  >
+                    Drive folder: {driveFolderLabel(selectedGroup)}
+                  </p>
+                </div>
+
                 {/* Practice picker */}
-                {selectedClient && (
+                {selectedClient && practices.length > 0 && (
                   <div>
                     <h3
                       className="mb-1 text-sm font-medium"
@@ -746,8 +1062,7 @@ export default function ReviewPage() {
                       </option>
                       {practices.map((p) => (
                         <option key={p.practice_id} value={p.practice_id}>
-                          {p.practice_type_code}
-                          {p.title ? ` — ${p.title}` : ""} ({p.status})
+                          {formatPracticeOption(p)}
                         </option>
                       ))}
                     </select>

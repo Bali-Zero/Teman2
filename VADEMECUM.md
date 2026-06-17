@@ -79,7 +79,7 @@ Se la cellula partecipa al sistema circolatorio di conoscenza:
 13. [ ] **Feedback** — se migliora skill ereditate: `VerticalFeedback` propone a parent se conf > inherited + 0.15
 14. [ ] **Domain tag** — ogni `record_skill()` include `domain=` corretto (11 domini canonici in `hgt/domains.py`)
 15. [ ] **Graceful degradation** — Redis down = cellula funziona in isolamento (Legge 4)
-16. [ ] **No OSINT in HGT** — solo conoscenza operativa nei payload skill (Legge 2)
+16. [ ] **No PII/OSINT in chiaro in HGT** — solo conoscenza operativa astratta nei payload skill (Legge 2)
 
 **Pattern di riferimento:** `apps/mata-garuda/mata_garuda/cell/runner.py` (publisher), `apps/mata-garuda/mata_garuda/cells/sentinel_cell.py` (consumer)
 
@@ -387,7 +387,7 @@ Prima di ogni PR, commit, o deploy, rispondi a queste 5:
 ## Leggi inviolabili (da SYMBIOSIS.md — non negoziabili)
 
 1. **CLI-only per LLM** — `claude --print`, `gemini --print`. Mai API HTTP Anthropic/Google/OpenAI. DeepSeek API unica eccezione.
-2. **OSINT blindato** — dati intelligence mai fuori dal Pro. Mai frontend, mai cloud, mai team.
+2. **PII/OSINT non trascritti in chiaro** — LLM e agenti possono processare contesto operativo autorizzato, ma output, memorie, skill, log, alert e artefatti condivisi non devono contenere dati cliente/OSINT in chiaro; usare ID, hash, placeholder o redazione. Il mirror OSINT/WhatsApp resta Pro-bound: niente copie raw fuori dal Pro.
 3. **Event-driven** — Redis Streams. Nessun polling, nessun orchestratore centrale.
 4. **Graceful degradation** — se un organo non risponde, gli altri procedono.
 5. **Zero come ultima istanza** — decisioni strutturali via Telegram. L'organismo propone, non decide.

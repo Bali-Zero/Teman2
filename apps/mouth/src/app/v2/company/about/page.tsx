@@ -4,6 +4,7 @@ import { NavShell } from "@balizero/core/components/NavShell";
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { MapPin, Users, BadgeCheck, Calendar } from "lucide-react";
 import { Footer } from "../../_components/Footer";
+import { rosterBySlug } from "@/data/team-roster";
 
 export const metadata: Metadata = {
   title: "About Bali Zero",
@@ -17,38 +18,22 @@ const STATS = [
   { value: "Bali", label: "Headquartered", icon: MapPin },
 ];
 
+// Curated subset for the About page; name/role/photo from the roster SSOT.
 const TEAM_MEMBERS = [
-  {
-    name: "Zainal Abidin",
-    role: "CEO · Founder",
-    photo: "/static/team/zainal-ceo.jpg",
-    accent: "#ff2d4c",
-  },
-  {
-    name: "Pak Heru",
-    role: "Komisaris · Founder",
-    photo: "/static/team/heru-komisaris.jpg",
-    accent: "#a78bfa",
-  },
-  {
-    name: "Ruslana",
-    role: "Board Member",
-    photo: "/static/team/ruslana.jpg",
-    accent: "#f59e0b",
-  },
-  {
-    name: "Krisna",
-    role: "Setup Lead",
-    photo: "/static/team/krisna.png",
-    accent: "#22c55e",
-  },
-  {
-    name: "Asya Nadia",
-    role: "Accountant",
-    photo: "/static/team/asya.jpg",
-    accent: "#06b6d4",
-  },
-];
+  { slug: "zainal", roleOverride: "CEO · Founder", accent: "#ff2d4c" },
+  { slug: "heru", roleOverride: "Komisaris · Founder", accent: "#a78bfa" },
+  { slug: "ruslana", accent: "#f59e0b" },
+  { slug: "krisna", roleOverride: "Setup Lead", accent: "#22c55e" },
+  { slug: "asya", roleOverride: "Accountant", accent: "#06b6d4" },
+].map((e) => {
+  const r = rosterBySlug(e.slug);
+  return {
+    name: r?.name ?? e.slug,
+    role: e.roleOverride ?? r?.role ?? "",
+    photo: r?.photo,
+    accent: e.accent,
+  };
+});
 
 export default function AboutPage() {
   return (
@@ -193,15 +178,26 @@ export default function AboutPage() {
                   border: `1px solid color-mix(in srgb, ${m.accent} 25%, transparent)`,
                 }}
               >
-                <Image
-                  src={m.photo}
-                  alt={m.name}
-                  fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
-                  quality={78}
-                  loading="lazy"
-                  className="object-cover"
-                />
+                {m.photo ? (
+                  <Image
+                    src={m.photo}
+                    alt={m.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                    quality={78}
+                    loading="lazy"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-white/90">
+                    {m.name
+                      .split(" ")
+                      .map((w) => w[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase()}
+                  </div>
+                )}
                 <div
                   className="absolute inset-x-0 bottom-0 pt-10 pb-3 px-3"
                   style={{

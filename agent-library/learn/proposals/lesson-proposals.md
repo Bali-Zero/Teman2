@@ -6,25 +6,36 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **5**
-- mechanical candidates (recurring ≥3): **0**
-- consultive (single-occurrence): **4**
+- scars scanned: **8**
+- mechanical candidates (recurring ≥3): **7**
+- consultive (single-occurrence): **0**
 - rejected (no objective anchor, G1): **1**
 
 ## Recurring patterns (the objective recurrence signal, G4)
 
-_(no pattern reached the recurrence threshold this run)_
+**W-numbers seen ≥3×:**
+- `W64` × 3
+- `W68` × 3
+- `W72` × 3
+- `W73` × 3
+- `W77` × 3
+- `W79` × 3
+- `W82` × 4
+- `W83` × 3
 
 ## Mechanical candidates (→ scar_replay pipeline, gated)
 
-_(none — no anchored scar is part of a ≥3 recurring pattern)_
+- **⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13)** [P2] — recurring via: W64
+- **⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)** [P2] — recurring via: W64, W79
+- **⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16)** [P1] — recurring via: W82
+- **✅ W81 (FIXED): i 3 loop di apprendimento WR3 erano "verdi ma vuoti" — malattia-madre "Omeostasi Tautologica" (telemetria-verde ≠ delta-di-stato); F20+F21 curati come codice+test, F18 escalato (2026-06-14)** [P2] — recurring via: W64
+- **🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)** [P2] — recurring via: W68, W72, W73, W77, W79, W82, W83
+- **🐛 W84 (P2 STRUCTURAL): `_strip_noise` del worktree-isolation hook usa `[^q]*` che MATCHA i newline → in un comando multi-riga una quota orfana (apostrofo IT / apertura `ssh '...'`) si accoppia cross-line, fonde i comandi e fa leakare i pattern grep nello scan redirect → phantom write-target (2026-06-16)** [P2] — recurring via: W68, W72, W73, W77, W79, W82, W83
+- **🐛 W85 (P3 STRUCTURAL): il worktree-isolation hook ha `stash` in `BLOCKED_SUBCMD_RE` senza distinguere il sottocomando → `git stash list` / `git stash show` (read-only) bloccati come se fossero `stash push`/`pop` (2026-06-17)** [P3] — recurring via: W68, W72, W73, W77, W82, W83
 
 ## Consultive (→ judgment pipeline, NOT a hook)
 
-- ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05) [P3]
-- ⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28) [P2]
-- ⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25) [P0]
-- ✅ RESOLVED (P1 SECURITY): `backend_rag_v2` Postgres role demoted `NOSUPERUSER` — W38 spec EXECUTED (verified live 2026-06-11, F30); 2 app/legacy superusers remain as follow-up (W38, 2026-05-23 → 2026-06-11) [P1]
+_(none)_
 
 ## Rejected — no objective anchor (gate G1)
 

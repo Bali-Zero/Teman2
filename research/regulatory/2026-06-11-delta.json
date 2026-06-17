@@ -1,0 +1,61 @@
+{
+  "run_at": "2026-06-11T07:00:00+08:00",
+  "today": "2026-06-11",
+  "yesterday_seen_count": 15,
+  "new_today_count": 2,
+  "partial": false,
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "hukumonline.com (403 Forbidden)",
+    "ortax.org/kategori/berita-pajak (404 Not Found)",
+    "peraturan.bpk.go.id (403 Forbidden)",
+    "jdih.kemenkeu.go.id (no database content returned)"
+  ],
+  "deltas": [
+    {
+      "citation": "Permenkum 49/2025, Pasal 27 ayat (1) (Peraturan Menteri Hukum Nomor 49 Tahun 2025)",
+      "title_id": "PT Perorangan Wajib Sampaikan Laporan Keuangan via SABH — Batas Waktu 30 Juni 2026 untuk Periode Akuntansi 2025",
+      "title_en": "PT Perorangan Must Submit FY2025 Financial Reports via SABH — Deadline June 30, 2026",
+      "service_line": ["company"],
+      "severity": "high",
+      "confidence": "medium",
+      "impact_note": "PT Perorangan clients with December 31 fiscal year-end must submit laporan posisi keuangan, laba rugi, dan catatan atas laporan keuangan for FY2025 via SABH (Sistem Administrasi Badan Hukum) by June 30, 2026 — 19 days from today. Non-compliance triggers staged sanctions escalating to legal status revocation after 5 years.",
+      "summary": "Pasal 27 ayat (1) Permenkum 49/2025 requires PT Perorangan (individual limited liability companies) to submit annual financial reports electronically via SABH within 6 months of the end of the accounting period. For FY2025 (period ending December 31, 2025), the deadline is June 30, 2026. Required documents: (i) laporan posisi keuangan, (ii) laporan laba rugi, (iii) catatan atas laporan keuangan. Sanctions for non-compliance are staged: teguran tertulis pertama (after 6 months past deadline) → teguran tertulis kedua (3 months later) → penghentian akses SABH (30 days after second warning) → pencabutan status badan hukum (after 5 years of suspended access). Highly relevant for Bali Zero PT Perorangan clients approaching this imminent deadline.",
+      "source": "https://news.ddtc.co.id/berita/nasional/1819996/ingat-pt-perorangan-wajib-sampaikan-laporan-keuangan-via-sabh",
+      "verbatim_excerpt": "Laporan keuangan perseroan perorangan dilaporkan kepada menteri dengan melakukan pengisian formulir isian penyampaian laporan keuangan secara elektronik melalui SABH paling lama 6 (enam) bulan setelah akhir periode akuntansi berjalan",
+      "first_seen_at": "2026-06-11T07:00:00+08:00"
+    },
+    {
+      "citation": "PP 20/2026 (DJP klarifikasi — PT dan CV tidak termasuk penerima fasilitas PPh Final UMKM 0,5%)",
+      "title_id": "DJP Tegaskan PT dan CV Tidak Dapat Menggunakan PPh Final UMKM karena Kewajiban Pembukuan",
+      "title_en": "Tax Authority Confirms PT and CV Cannot Use PPh Final UMKM 0.5% Rate — Must Apply General Tax Provisions",
+      "service_line": ["tax", "company"],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "Bali Zero clients with PT (non-Perorangan) or CV who previously used the 0.5% PPh Final UMKM rate must now comply with general income tax provisions (ketentuan umum perpajakan). The 0.5% rate remains available only for WP Orang Pribadi, PT Perorangan, and cooperatives under Rp 4.8 billion turnover. WP OP retain exemption on first Rp 500 million turnover.",
+      "summary": "DJP Direktur Inge Diana Rismawanti confirmed on June 10, 2026 that PT (regular, non-Perorangan) and CV are excluded from the PPh Final UMKM simplified tax regime under PP 20/2026, because these entities are required to maintain full accounting records (pembukuan). PT and CV must therefore compute tax under general provisions (ketentuan umum perpajakan) proportional to net profit rather than applying 0.5% on gross turnover. This is a material operational impact for Bali Zero clients who formed a PT or CV expecting to use the UMKM rate — they must now recompute their tax obligations under the standard regime.",
+      "source": "https://news.ddtc.co.id/berita/nasional/1819995/pembukuan-jadi-alasan-pt-dan-cv-tak-bisa-lagi-pakai-pph-final-umkm",
+      "verbatim_excerpt": "Mereka sudah kita arahkan untuk mengikuti ketentuan umum perpajakan",
+      "first_seen_at": "2026-06-11T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistem administrasi perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV tidak termasuk penerima fasilitas PPh Final UMKM 0,5%)"
+  ]
+}

@@ -74,7 +74,18 @@ def _is_connection_fatal(err: BaseException) -> bool:
     )
 
 
-async def _heartbeat(conn: Any, *, timeout: float = 2.0) -> None:
+# Layer-4 heartbeat timeout. Raised from the original hard-coded 2.0s to 8.0s
+# (env-overridable) on 2026-06-14 (STEP-0 B1 hygiene): a 2.0s ceiling over an idle
+# `fly proxy` edge tunnel self-triggered ~102 reconnects in a 495-line log on a
+# perfectly healthy, idle daemon — the churn produced the stale exit-74 that the
+# WR3-DEBT-INDEX misread as "FAILED exit=78". 8s still catches the half-open TCP
+# the probe exists for (the 2026-05-22 zombie-socket scar), but no longer fires on
+# pure idleness. For an idle LISTEN consumer the extra detection latency is moot
+# (nothing is queued). Tune via WR3_HEARTBEAT_TIMEOUT.
+_HEARTBEAT_TIMEOUT_S = float(os.environ.get("WR3_HEARTBEAT_TIMEOUT", "8.0"))
+
+
+async def _heartbeat(conn: Any, *, timeout: float = _HEARTBEAT_TIMEOUT_S) -> None:
     """Layer 4 — issue a cheap SELECT 1 to detect half-open TCP.
 
     asyncpg's add_termination_listener (Layer 3) covers explicit termination
@@ -571,7 +582,7 @@ async def run_supervisor(
                     # Layer 4 — periodic heartbeat catches half-open TCP
                     # (termination listener won't fire on silent network freeze).
                     if now - last_heartbeat > 30.0:
-                        await _heartbeat(conn, timeout=2.0)  # raises _ReconnectRequired on failure
+                        await _heartbeat(conn, timeout=_HEARTBEAT_TIMEOUT_S)  # raises _ReconnectRequired on failure
                         last_heartbeat = now
                     # Periodic outbox reconcile (Symbiosis Law 3)
                     if now - last_reconcile > reconcile_interval_s:

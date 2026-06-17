@@ -62,10 +62,12 @@ non un fatto. Registra gate/componenti per path verificato, mai per nome-da-spec
 
 Il task tocca dati cliente (KTP / passport / NPWP / akta / WhatsApp / CRM / OSINT) o `apps/backend-rag`?
 
-- **Sì** → confine assoluto: **nessuna PII a LLM cloud** (Symbiosis Law 2 / UU PDP). PII solo locale
-  (Ollama). Primitive di redazione: `scripts/_redact_pii.py` — ATTENZIONE: ha bug noti documentati, non
-  fidarti ciecamente; verifica lo stato corrente in `.claude/rules/cicatrix-scars.md`. Aggiungi il
-  criterio "zero PII nei prompt verso cloud".
+- **Sì** → confine assoluto: **nessuna PII/OSINT in chiaro negli output persistenti o condivisi**
+  (Symbiosis Law 2 / UU PDP). Un LLM puo' processare contesto operativo autorizzato quando serve, ma
+  report, memorie, skill, log, alert, prompt salvati per riuso e artefatti condivisi devono usare
+  `client_id`, hash, placeholder o redazione. Primitive di redazione: `scripts/_redact_pii.py` —
+  ATTENZIONE: ha bug noti documentati, non fidarti ciecamente; verifica lo stato corrente in
+  `.claude/rules/cicatrix-scars.md`. Aggiungi il criterio "zero PII/OSINT in chiaro negli output".
 - **No** → dichiaralo esplicito ("STADIO-0 PII: nessuno — task non tocca dati cliente"). Scope-vuoto è
   una risposta valida, ma va detta, non assunta.
 

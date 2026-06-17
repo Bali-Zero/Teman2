@@ -7,11 +7,7 @@ Skips complex agentic reasoning for speed.
 Pipeline: Query → Vector Search → Fast LLM → Response (~5-8s instead of 40s)
 """
 
-import hashlib
-import hmac
 import logging
-import os
-import re
 import time
 from typing import Any
 
@@ -19,7 +15,6 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
-from backend.services.kbli_eye import KBLIEye
 
 logger = logging.getLogger(__name__)
 
@@ -206,64 +201,25 @@ async def voice_query(
         raise HTTPException(status_code=500, detail="Voice query failed") from e
 
 
-kbli_eye = KBLIEye("source_documents/KBLI_2025_FINAL_CLEAN.json")
-
-
 class ElevenLabsRequest(BaseModel):
-    """ElevenLabs Conversational AI request."""
+    """Legacy ElevenLabs Conversational AI request."""
 
     query: str | None = None
     conversation: list[dict] | None = None
 
 
-@router.post("/elevenlabs/kbli-audit")
+@router.post("/elevenlabs/kbli-audit", deprecated=True)
 async def elevenlabs_kbli_audit(
-    request: ElevenLabsRequest,
-    x_elevenlabs_signature: str | None = Header(None),
-    http_raw_request: Request = None,
+    _request: ElevenLabsRequest,
 ) -> dict[str, Any]:
     """
-    ElevenLabs Tool Endpoint for KBLI Audit with Signature Verification.
+    Retired legacy ElevenLabs tool endpoint.
+
+    The production voice concierge is local-first and must not route through
+    external voice platforms. Keep the route as an explicit 410 so old webhook
+    callers fail closed with a clear migration signal.
     """
-    # 1. Verifica della firma (opzionale se presente il secret)
-    webhook_secret = os.getenv("ELEVENLABS_WEBHOOK_SECRET")
-    if webhook_secret and x_elevenlabs_signature:
-        body = await http_raw_request.body()
-        expected_signature = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-
-        if not hmac.compare_digest(expected_signature, x_elevenlabs_signature):
-            logger.warning("❌ Tentativo di accesso non autorizzato al Webhook ElevenLabs")
-            raise HTTPException(status_code=401, detail="Invalid signature")
-
-    # 2. Logica di Audit (come prima)
-    query = request.query or ""
-    # Cerca un codice a 5 cifre nella query
-    match = re.search(r"\b(\d{5})\b", query)
-
-    if not match:
-        return {
-            "result": "Non ho trovato un codice KBLI a 5 cifre nella tua domanda. Puoi ripetere il codice?",
-        }
-
-    code = match.group(1)
-    decision = kbli_eye.get_decision(code, is_pma=True, location="Bali")
-
-    if decision["state"] == "ERROR":
-        return {
-            "result": f"Mi dispiace, non ho trovato informazioni sul codice {code} nel database 2025.",
-        }
-
-    state = decision["audit"]["state"]
-    decision["audit"]["reason_code"]
-    title = decision["title"]
-
-    if state == "APPROVED":
-        response = f"Il codice {code} per {title} è approvato per la PMA a Bali. Non ci sono restrizioni particolari."
-    elif state == "WARNING":
-        response = f"Attenzione. Il codice {code} per {title} è in stato di allerta. Il Governatore di Bali ha richiesto restrizioni per questo settore a causa del rischio medio-basso. Ti consiglio di consultare il direttore Zero."
-    elif state == "REJECTED":
-        response = f"Il codice {code} per {title} è vietato per la PMA. È riservato esclusivamente alle imprese locali indonesiane secondo il decreto 10 del 2021."
-    else:
-        response = f"Ho analizzato il codice {code} ({title}). Lo stato attuale è {state}."
-
-    return {"result": response}
+    raise HTTPException(
+        status_code=410,
+        detail="ElevenLabs KBLI audit webhook retired; use local voice concierge.",
+    )

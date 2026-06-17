@@ -23,6 +23,7 @@ WHATSAPP_HANDLE_PATTERN = re.compile(
     r"(?i)(?<![A-Za-z0-9])(?:\+?\d[\d .()/-]{7,}\d|[a-z0-9._-]{3,})@(?:c|g|s)\.us"
     r"|(?<![A-Za-z0-9])(?:\+?\d[\d .()/-]{7,}\d)@s\.whatsapp\.net"
 )
+URL_WITH_QUERY_PATTERN = re.compile(r"https?://[^\s\"'<>]+")
 
 
 def safe_sha256_fingerprint(value: str, hex_chars: int = 16) -> str:
@@ -80,6 +81,26 @@ def shorten_receipt_value(value: str, limit: int = 180) -> str:
     return compact[: limit - 3].rstrip() + "..."
 
 
+def receipt_safe_command_output(
+    value: str,
+    *,
+    source: str,
+    limit: int = 12_000,
+    hash_only: bool = True,
+) -> str:
+    """Return a redacted command-output reference safe for receipts."""
+    if source not in {"stdout", "stderr"}:
+        raise ValueError("command output source must be stdout or stderr")
+    redacted = _redact_command_output(value)
+    bounded = redacted[:limit]
+    if hash_only:
+        return (
+            f"{source}_fingerprint:{safe_sha256_fingerprint(bounded, hex_chars=24)}; "
+            f"chars:{len(value)}; redacted_chars:{len(bounded)}"
+        )
+    return shorten_receipt_value(bounded, limit=limit)
+
+
 def _contains_phone_like_value(value: str) -> bool:
     """Detect likely phone numbers without flagging dates or receipt fingerprints."""
     for match in PHONE_PATTERN.finditer(value):
@@ -116,6 +137,28 @@ def _contains_phone_like_value(value: str) -> bool:
     return False
 
 
+def _redact_command_output(value: str) -> str:
+    redacted = SECRET_ASSIGNMENT_PATTERN.sub("[REDACTED_SECRET_ASSIGNMENT]", value)
+    redacted = _redact_url_queries(redacted)
+    redacted = WHATSAPP_HANDLE_PATTERN.sub("[REDACTED_WHATSAPP_HANDLE]", redacted)
+    redacted = EMAIL_PATTERN.sub("[REDACTED_EMAIL]", redacted)
+    redacted = PHONE_PATTERN.sub("[REDACTED_PHONE]", redacted)
+    redacted = RAW_MARKER_PATTERN.sub("[REDACTED_RAW_MARKER]", redacted)
+    return redacted
+
+
+def _redact_url_queries(value: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        raw_url = match.group(0)
+        parsed = urlsplit(raw_url)
+        if not parsed.query:
+            return raw_url
+        base = raw_url.split("?", 1)[0]
+        return f"{base}?REDACTED_QUERY"
+
+    return URL_WITH_QUERY_PATTERN.sub(replace, value)
+
+
 __all__ = [
     "EMAIL_PATTERN",
     "PHONE_PATTERN",
@@ -124,6 +167,7 @@ __all__ = [
     "SECRET_QUERY_KEY_PATTERN",
     "WHATSAPP_HANDLE_PATTERN",
     "contains_receipt_sensitive_value",
+    "receipt_safe_command_output",
     "receipt_safe_evidence",
     "receipt_safe_source_uri",
     "redacted_receipt_value",

@@ -5,6 +5,7 @@ const express = require("express");
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
+const metrics = require("./metrics.cjs");
 
 const PORT = parseInt(process.env.PORT || "7790", 10);
 const HOST = process.env.HOST || "0.0.0.0"; // bind also Tailnet (parity with wa-viewer:7777)
@@ -23,6 +24,14 @@ const ACCOUNTS_JSON =
 
 const MEDIA_ROOT = process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
 const TEAM_AVATAR_DIR = process.env.WA_TEAM_AVATAR_DIR || "/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/static/team";
+
+// Team members hidden from views (parity with conversations columns; Law-2 perimeter).
+const HIDE_TEAM_NAMES = new Set(
+  (process.env.HIDE_TEAM_NAMES || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 
 const TEAM = (() => {
   try {
@@ -879,6 +888,45 @@ app.get("/lid-stats", async (_req, res) => {
   }
 });
 
+// === Team Quality Metrics (quality tab) ===
+// Live aggregate metrics per operator. Attribution by team_member_phone + aliases
+// (parity with fetchOverview). Aggregate-only output — no PII leaves the box.
+app.get("/metrics.json", async (req, res) => {
+  try {
+    const windowDays = parseInt(req.query.window, 10) || 30;
+    const payload = await metrics.fetchLiveMetrics(pool, TEAM, aliasesForTeamMember, HIDE_TEAM_NAMES, windowDays);
+    res.json(payload);
+  } catch (err) {
+    console.error("[metrics.json]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Historical rollup trend (sparklines / delta vs prior period).
+app.get("/metrics-history.json", async (req, res) => {
+  try {
+    const days = parseInt(req.query.days, 10) || 90;
+    const payload = await metrics.fetchHistory(pool, { days });
+    res.json(payload);
+  } catch (err) {
+    console.error("[metrics-history.json]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Compute + persist today's snapshot (scheduled daily; idempotent UPSERT per day).
+// Heartbeat: returns rows_written + computed_at so the scheduler proves real liveness.
+app.post("/metrics-rollup", async (req, res) => {
+  try {
+    const windowDays = parseInt(req.query.window, 10) || 30;
+    const result = await metrics.computeAndStoreRollup(pool, TEAM, aliasesForTeamMember, HIDE_TEAM_NAMES, windowDays);
+    res.json(result);
+  } catch (err) {
+    console.error("[metrics-rollup]", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "viewer.html"));
 });
@@ -887,4 +935,8 @@ app.listen(PORT, HOST, () => {
   console.log(`[wa-dashboard-m1] listening on http://${HOST}:${PORT}`);
   console.log(`[wa-dashboard-m1] DB: ${DATABASE_URL.replace(/:[^@]+@/, ":***@")}`);
   console.log(`[wa-dashboard-m1] Team size: ${TEAM.length} | Media root: ${MEDIA_ROOT}`);
+  // Ensure the team-quality rollup table exists (idempotent, local DB).
+  metrics.ensureMetricsSchema(pool)
+    .then(() => console.log("[wa-dashboard-m1] wa_team_daily_metrics schema ready"))
+    .catch((err) => console.error("[wa-dashboard-m1] metrics schema init failed:", err.message));
 });
