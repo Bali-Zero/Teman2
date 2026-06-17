@@ -204,7 +204,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
 
     Returns (per page):
         {"page": int, "text": str, "confidence": float, "model": str,
-         "via": "response"|"thinking"|"fallback"|"empty"}
+         "via": "textlayer"|"response"|"thinking"|"fallback"|"empty"}
 
     Anti-hallucination: a page the model cannot read yields text="" and
     confidence 0.0 -- never invented content. The persistent client is reused
@@ -216,6 +216,30 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
     for i, page in enumerate(pages):
         png = getattr(page, "png_bytes", page)
         idx = getattr(page, "index", i)
+
+        # Text-layer fast-path (preprocess INTAKE_TEXTLAYER_FASTPATH): a
+        # born-digital PDF page already carries its extracted text layer. Use it
+        # verbatim and SKIP the vision model entirely -- that call is the
+        # dominant cost (~120s/page on the local VLM). Vision runs ONLY on pages
+        # with no usable text layer (scans/photos). 100% local either way.
+        pre_text = getattr(page, "text", None)
+        if pre_text and pre_text.strip():
+            results.append(
+                {
+                    "page": idx,
+                    "text": pre_text,
+                    "confidence": _heuristic_confidence(pre_text),
+                    "model": "textlayer",
+                    "via": "textlayer",
+                }
+            )
+            logger.info(
+                "intake OCR page=%d via=textlayer chars=%d (vision skipped)",
+                idx,
+                len(pre_text),
+            )
+            continue
+
         b64 = base64.b64encode(png).decode("ascii")
 
         text = ""
