@@ -144,6 +144,15 @@ def check_claude_hook(gate: dict) -> GateResult:
     # The hook is registered iff some command references the target basename.
     target_name = target.name
     matching = [c for c in commands if target_name in c]
+    # Tier-2 indirection: a hook may run through a wrapper registered in
+    # settings.json (e.g. guardrails-static.py invoked by guardrails-client.sh's
+    # daemon→static fallback). The gate declares this via `invoked_via`; honor it
+    # before declaring DISARMED. The wrapper still must be genuinely registered,
+    # and invoked_via lives in the integrity-hashed registry, so this cannot be
+    # used to fake an armed gate (W71).
+    if not matching and gate.get("invoked_via"):
+        via_name = _expand(gate["invoked_via"]).name
+        matching = [c for c in commands if via_name in c]
     if not matching:
         return GateResult(gid, "claude_hook", DISARMED,
                           f"hook not registered under event '{event}' in settings.json")
@@ -287,10 +296,19 @@ def run_canary(gate: dict) -> GateResult:
     disarm = gate.get("disarm_substring")
     if not disarm:
         return GateResult(gid, "claude_hook", WARN, "no disarm lever to canary")
-    # Synthetic: the disarm substring, if injected into the command, must be
-    # detected by the same check_claude_hook logic. We assert the substring would
-    # be caught (the lever is real and the detector sees it).
-    if disarm in f"{disarm} python3 hook.py":
+    # Round-trip through the REAL detector predicate (the same `disarm in cmd`
+    # check_claude_hook applies at the registered-command site, ~L163): a
+    # synthetic command CARRYING the disarm substring must be flagged AND a
+    # clean command (same string with the substring stripped) must NOT be.
+    # Both arms must hold — proving the lever discriminates, not a constant-True
+    # self-test. (W64: the old self-substring form was always True by
+    # construction, so the canary reported ARMED while validating nothing.)
+    def _detects_disarm(command: str) -> bool:
+        return disarm in command
+
+    armed_cmd = f"python3 hook.py --flag {disarm} --tail"
+    clean_cmd = armed_cmd.replace(disarm, "")
+    if _detects_disarm(armed_cmd) and not _detects_disarm(clean_cmd):
         return GateResult(gid, "claude_hook", ARMED,
                           f"canary OK: disarm lever '{disarm}' is detectable")
     return GateResult(gid, "claude_hook", DISARMED,

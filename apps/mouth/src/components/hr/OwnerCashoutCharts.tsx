@@ -13,13 +13,7 @@ import {
   YAxis,
 } from "recharts";
 
-function formatIDR(v: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(v);
-}
+import { formatIDR } from "@balizero/core/utils";
 
 function formatShort(v: number): string {
   if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}B`;

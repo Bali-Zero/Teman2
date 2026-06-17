@@ -68,7 +68,19 @@ class AlertService:
         # Rate limiting: track last send time per (title, path) key
         # Prevents same error from spamming Telegram on repeated failures
         self._last_alert_time: dict[str, float] = {}
-        self._alert_cooldown_seconds: float = 300.0  # 5 min per error type
+        self._alert_cooldown_seconds: float = 300.0  # base cooldown: first re-alert after 5 min
+
+        # Per-key escalating backoff. A condition that PERSISTS (the same
+        # alert key re-fired every monitor cycle) must NOT keep re-alerting at
+        # the fixed base cooldown forever — that is exactly what floods
+        # Telegram with hundreds of identical messages/day. Instead the
+        # cooldown doubles after each send (5m → 10m → 20m … capped), so a
+        # stuck condition decays to a rare reminder. The escalation resets
+        # once the key has been quiet long enough that the condition has
+        # almost certainly resolved (logic in send_alert).
+        self._alert_repeat: dict[str, int] = {}
+        self._alert_last_seen: dict[str, float] = {}
+        self._alert_backoff_max_seconds: float = 21600.0  # cap re-alert at 6 h
 
         # Global rate limiter: max N Telegram messages per minute across ALL paths
         self._global_send_times: list[float] = []
@@ -111,6 +123,7 @@ class AlertService:
         message: str,
         level: AlertLevel = AlertLevel.ERROR,
         metadata: dict[str, Any] | None = None,
+        dedup_key: str | None = None,
     ) -> dict[str, bool]:
         """
         Send alert to all configured channels.
@@ -120,6 +133,10 @@ class AlertService:
             message: Alert message
             level: Alert severity level
             metadata: Additional metadata to include
+            dedup_key: Stable key for rate-limiting/backoff. Pass this when the
+                title embeds a changing value (e.g. a live metric reading) so
+                the escalating cooldown still recognises repeats of the *same*
+                condition. Defaults to "{title}:{metadata[path]}".
 
         Returns:
             Dict with status for each channel
@@ -133,15 +150,42 @@ class AlertService:
         except Exception as e:
             logger.error("Failed to log alert: %s", e)
 
-        # Rate limiting: deduplicate same alert within cooldown window
-        rate_key = f"{title}:{metadata.get('path', '') if metadata else ''}"
+        # Per-key escalating backoff: deduplicate + decay re-alerts for a
+        # condition that persists. Without this, a stuck metric (dead tuples
+        # above threshold for hours, a long-running query that never clears)
+        # re-alerts every monitor cycle forever and floods Telegram.
+        rate_key = dedup_key or f"{title}:{metadata.get('path', '') if metadata else ''}"
         now = time.monotonic()
-        last_sent = self._last_alert_time.get(rate_key, 0.0)
-        if now - last_sent < self._alert_cooldown_seconds:
-            logger.debug(
-                f"[alert] Rate limited '{title}' — {int(self._alert_cooldown_seconds - (now - last_sent))}s remaining",
+        last_sent = self._last_alert_time.get(rate_key)
+        repeat = self._alert_repeat.get(rate_key, 0)
+        last_seen = self._alert_last_seen.get(rate_key)
+
+        # Reset the escalation if this key has been quiet (no attempts) for
+        # long enough that the underlying condition has very likely resolved.
+        # The quiet window scales with the current cooldown, so a slow-decayed
+        # alert needs a correspondingly longer silence to be treated as fresh.
+        if last_seen is not None:
+            reset_after = (
+                min(self._alert_cooldown_seconds * (2**repeat), self._alert_backoff_max_seconds) * 2
             )
-            return results
+            if now - last_seen >= reset_after:
+                repeat = 0
+                last_sent = None
+        self._alert_last_seen[rate_key] = now  # record this attempt
+
+        # Escalating cooldown = base * 2^(sends_so_far - 1), capped. The first
+        # send for a key (repeat == 0) is never suppressed here.
+        if last_sent is not None:
+            required = min(
+                self._alert_cooldown_seconds * (2 ** max(repeat - 1, 0)),
+                self._alert_backoff_max_seconds,
+            )
+            if now - last_sent < required:
+                logger.debug(
+                    f"[alert] backoff-suppressed '{rate_key}' (repeat={repeat}, "
+                    f"{int(required - (now - last_sent))}s remaining)",
+                )
+                return results
 
         # Global rate limiter: prevent Telegram spam across ALL error paths
         self._global_send_times = [
@@ -155,6 +199,7 @@ class AlertService:
         self._global_send_times.append(now)
 
         self._last_alert_time[rate_key] = now
+        self._alert_repeat[rate_key] = repeat + 1
 
         # Send to Telegram (primary channel)
         if self.enable_telegram:
@@ -525,7 +570,13 @@ class AlertService:
             "threshold": f"{threshold:.1f}{unit}",
         }
 
-        await self.send_alert(title=title, message=message, level=level, metadata=metadata)
+        await self.send_alert(
+            title=title,
+            message=message,
+            level=level,
+            metadata=metadata,
+            dedup_key=f"resource:{resource}",
+        )
 
 
 # Global singleton instance

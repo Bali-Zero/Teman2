@@ -116,15 +116,20 @@ class WebChannelAdapter(BaseChannel):
             channel_id: Session/correlation ID
             response: Response to send
         """
-        logger.warning("send_response called for web channel (use stream_response instead)")
-
-        # Format response
+        # F41: this method does NOT deliver anything for the web channel (delivery
+        # is over SSE via stream_response). Previously it logged "✅ Web response
+        # formatted", which reads as a successful SEND — so a caller routing here
+        # (e.g. a DLQ retry through send_response_safe) would believe the message
+        # was delivered while it silently evaporated. Be honest: format only, and
+        # warn that NO delivery happened so the dead path is observable.
         formatted_text = self.formatter.format_response(response)
 
-        logger.info(f"✅ Web response formatted: {len(formatted_text)} chars")
-
-        # In real implementation, this would send via HTTP response
-        # But for SSE streaming, we use stream_response() instead
+        logger.warning(
+            "send_response() is a NO-OP delivery for the web channel (SSE-only); "
+            "formatted %d chars but did NOT send to %s — caller must use stream_response()",
+            len(formatted_text),
+            channel_id,
+        )
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
         """

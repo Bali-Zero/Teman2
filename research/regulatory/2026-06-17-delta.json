@@ -1,0 +1,62 @@
+{
+  "run_at": "2026-06-17T07:00:00+08:00",
+  "today": "2026-06-17",
+  "yesterday_seen_count": 27,
+  "new_today_count": 1,
+  "partial": false,
+  "nb_notes": "Tutti e 4 i NB-INTEL (Regulation, Press, Immigration, Tax) hanno risposto nessuna novita per il periodo 24-48h.",
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "hukumonline.com (5.8KB response — Cloudflare block)",
+    "ortax.org/news (no article links extracted — JS-rendered)",
+    "jdih.kemenkeu.go.id (0 bytes — connection refused)",
+    "imigrasi.go.id (151KB — JS-rendered, no regulation text extractable)"
+  ],
+  "deltas": [
+    {
+      "citation": "PER-11/PJ/2025",
+      "title_id": "Tiga Jenis Kode Objek Pajak untuk Pemotongan PPh WP UMKM",
+      "title_en": "PER-11/PJ/2025: Three PPh Tax Object Codes for Withholding from UMKM Taxpayers — New Implementation Guidance for PP 20/2026 Context",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "low",
+      "confidence": "medium",
+      "impact_note": "PT PMA clients who transact with UMKM suppliers must use specific bupot codes under PER-11/PJ/2025 when withholding PPh Final 0.5%. Practical guidance issued June 16, 2026 for implementation under the new PP 20/2026 UMKM PPh Final regime.",
+      "summary": "DJP Regulation PER-11/PJ/2025 specifies the technical format and three types of PPh tax object codes (kode objek pajak) to be used in Bukti Pemotongan/Pemungutan (bupot) when a withholding party transacts with a taxpayer qualifying for PPh Final 0.5% under the UMKM regime. DDTC published concrete implementation guidance on June 16, 2026 clarifying which code applies per scenario: (1) UMKM with valid Surat Keterangan, (2) UMKM without Surat Keterangan, (3) UMKM below Rp 500 million turnover threshold (no withholding required). Relevant context: PP 20/2026 introduced permanence of the 0.5% PPh Final UMKM rate — PER-11/PJ/2025 governs the withholding mechanism for all parties transacting with UMKM taxpayers.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1820113/tiga-jenis-kode-objek-pajak-untuk-pemotongan-pph-wp-umkm-apa-saja",
+      "verbatim_excerpt": "PER-11/PJ/2025 memerinci tata cara pembuatan bupot untuk transaksi dengan wajib pajak UMKM.",
+      "first_seen_at": "2026-06-17T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistema amministrativo perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV non penerima fasilitas PPh Final UMKM 0,5%)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025)",
+    "22/MK/EF.2/2026 (routine kurs)",
+    "PP 20/2026; Pasal 31E ayat (1) UU PPh (PT dan CV tarif PPh 11%, June 13 2026)",
+    "KBLI 2025 (implementasi AHU Online dan OSS, effettivo 15 Juni 2026)",
+    "PER-19/PJ/2025",
+    "PMK 6/2026",
+    "PP 21/2026",
+    "PP 24/2026",
+    "PP 20/2026 (suket transitional — Suket PPh Final lama tetap berlaku)",
+    "PER-7/PJ/2025",
+    "PER-11/PJ/2025"
+  ]
+}

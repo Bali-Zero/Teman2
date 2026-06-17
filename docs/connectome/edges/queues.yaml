@@ -1,0 +1,144 @@
+# Connectome — queues, buffers, dead-letter stores (producer → queue → drainer)
+# Census: 2026-06-13. Depths/ages are census-time snapshots, not invariants.
+domain: queues
+census_date: "2026-06-13"
+edges:
+  - id: dlq-json-pro
+    kind: queue
+    producer: "scripts/nuzantara-sentinel.py add_to_dlq (heal-failure path)"
+    consumer: "scripts/dlq_autopilot.py (com.nuzantara.dlq-autopilot 30min); TERMINAL rows = human requeue only"
+    machine: pro
+    status: ALIVE
+    depth_at_census: "33 (31 TERMINAL) — REGREW from 0 on 2026-06-09 in 4 days"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: 'python3 -c "import json;d=json.load(open(''/Users/nuzantara/.agent/decisions/dlq.json''));q=[e for e in d.get(''queue'',[]) if e.get(''status'')==''TERMINAL''];import sys;sys.exit(0 if len(q)<40 else 1)"',
+      }
+    notes: "META-cause W70 #3 still open: log_tail='exit 1 after 3 attempts', classification UNKNOWN → autopilot blind"
+  - id: claude-tasks-escalation-dir
+    kind: queue
+    producer: "dlq_autopilot.py:430 escalate_to_claude_code"
+    consumer: "HUMAN convention (CLAUDE.md §14) — no automated drainer"
+    machine: pro
+    status: ORPHAN_CONSUMER
+    depth_at_census: "840 files, oldest ~18d"
+    notes: "producer is a 30-min cron loop, consumer is a human — structurally divergent"
+  - id: escalations-pro-jsonl
+    kind: queue
+    producer: "sentinel_lib/escalations.py write_escalation"
+    consumer: "dlq_autopilot cooldown consult + metabolic_rollup + suppressed_digest"
+    machine: pro
+    status: STALE
+    depth_at_census: "19 lines, ALL status=pending forever (no resolution lifecycle)"
+  - id: events-outbox-fly
+    kind: queue
+    producer: "services/events/outbox.py publish + migration-146 triggers"
+    consumer: "EventBus replay (ack-after-dispatch); prune crons daily/weekly (consumed-only)"
+    machine: fly
+    status: ALIVE
+    depth_at_census: "41,499 total; 1,351 unconsumed (client_changed 554, cell_pulse_observed 393, inbound_webhook_queued 188, practice_changed 113, sustained_red 52); oldest unconsumed 32d"
+    notes: "orphan-channel rows never pruned — event_bus.py:112 admits unmapped channels stay unconsumed forever"
+  - id: intake-queue-local
+    kind: queue
+    producer: "wa_media_pull_worker + drive_intake_drain + wa_mirror_intake_sweeper + dropbox intake"
+    consumer: "services/intake/worker.py (com.nuzantara.intake-worker, v2 lease-only claim, SKIP-LOCKED)"
+    machine: pro
+    status: STALE
+    depth_at_census: "pending=179, ocr_done=740 (stuck 9d at extract stage), review_pending=6, done=767"
+    notes: "lease discipline clean (0 processing-stuck) — mid-pipeline silt at the EXTRACT stage is the wound"
+  - id: post-publish-queue-fly
+    kind: queue
+    producer: "routers/news.py:33 + routers/intel.py:568"
+    consumer: "post_publish_poller.py (300s) + post_publish_webhook.py (daemon)"
+    machine: fly
+    status: STALE
+    depth_at_census: "failed=79 undrained, processing=1 STUCK 46 DAYS, done=33"
+    notes: "nothing requeues failed except manual re-publish; poller also has 47+45 claude_tasks escalations"
+  - id: redis-garuda-raw
+    kind: redis_stream
+    producer: "mata_garuda agents (intel_scraper_bridge, reddit_listener, lhkpn, exa, tavily)"
+    consumer: "groups: nexus-bridge (lag 0) · normalizer (lag 858, NO process exists)"
+    machine: pro
+    status: ORPHAN_CONSUMER
+    depth_at_census: "XLEN 3655; producers SILENT 22d (last entry 2026-05-21)"
+    notes: "pipeline semi-decommissioned toward Intel Lake; groups never removed"
+  - id: redis-garuda-enriched
+    kind: redis_stream
+    producer: "mata_garuda enrichment chain"
+    consumer: "classifier/kg_linker/ner lag 0 ALIVE · nlm_feeder lag 3144 STALE · scorer lag 3036 NO PROCESS"
+    machine: pro
+    status: ORPHAN_CONSUMER
+    depth_at_census: "XLEN 4539"
+    notes: "watchdogs consumer-lag.check + redis-split-brain.check BOTH exit 1 — blind watchers"
+  - id: redis-nexus-gaps
+    kind: redis_stream
+    producer: "gap-detector (twice daily)"
+    consumer: "workers/gap_consumer.py (acks ONLY on success)"
+    machine: pro
+    status: STALE
+    depth_at_census: "XLEN 1149, PEL 1097 delivered-never-ACKed (95%)"
+    notes: "consumer runs exit 0 but acks almost nothing — silent per-item failure"
+  - id: redis-nexus-tasks
+    kind: redis_stream
+    producer: "mata_garuda autonomy task_tools"
+    consumer: "nexus-autonomy-workers (lag 0)"
+    machine: pro
+    status: ALIVE
+    notes: "2032 churned consumer names in group — cosmetic debt"
+  - id: redis-bridge-inbound
+    kind: redis_stream
+    producer: "mata-garuda/bridge/nerve.py:346 XADD"
+    consumer: "nerve.py xreadgroup — group NEVER CREATED (zero groups)"
+    machine: pro
+    status: ORPHAN_PRODUCER
+    depth_at_census: "151 entries nobody reads; producer also quiet 19d"
+  - id: redis-cell-skills
+    kind: redis_stream
+    producer: "cell organism skill events"
+    consumer: "hgt_ai-intel-sentinel lag 0 ALIVE · sentinel-1 entries-read 0 (dead group)"
+    machine: pro
+    status: ALIVE
+  - id: redis-agent-lock-leases
+    kind: buffer
+    producer: "scripts/agent_start.py + pre-commit lease hook (TTL+heartbeat)"
+    consumer: "TTL expiry"
+    machine: pro
+    status: ALIVE
+    depth_at_census: "0 active leases"
+  - id: wa-outbox-fly
+    kind: queue
+    producer: "wa_inbox.py / whatsapp_chat.py send-intents"
+    consumer: "_run_wa_outbox_scheduler in main_api.py:38-65 (in-app loop, poll 3s, SKIP-LOCKED, 24h window)"
+    machine: fly
+    status: ALIVE
+    depth_at_census: "done=3, failed=33 terminal (no requeue path)"
+  - id: partner-email-outbox-fly
+    kind: queue
+    producer: "crm/partners/repository.py:453 insert_email_outbox"
+    consumer: "emails.py:328 flush_outbox — NO cron/endpoint invokes it"
+    machine: fly
+    status: ORPHAN_CONSUMER
+    depth_at_census: "1 pending for 53 days"
+  - id: wr2-damar-publish-feedback
+    kind: queue
+    producer: "Damar WA 'PUBBLICATO WR2-<ref>' → wa-mirror → whatsapp_message_context"
+    consumer: "scripts/wr2_damar_publish_consumer.py → mark_published"
+    machine: pro
+    status: BY_DESIGN_OFF
+    notes: "Damar standby 2026-06-12 — consumer disabled deliberately"
+  - id: bridge-outbox-local
+    kind: queue
+    producer: "services/bridge/outbox.py (Pro/Mini sync)"
+    consumer: "replay_outbox_throttled family"
+    machine: pro
+    status: ALIVE
+    depth_at_census: "0 rows"
+anomalies:
+  - "nexus:gaps PEL 1097/1149 unacked + both its watchdogs exit 1 — blind watchers over a sick stream"
+  - "DLQ TERMINAL regrowth 0→31 in 4 days post-W70-drain; healing_actions_24h=0 — heal loop still blind (stderr capture never shipped)"
+  - "claude_tasks/ 840 files — automated producer vs human consumer"
+  - "intake ocr_done=740 stuck 9d at extract stage"
+  - "post_publish failed=79 + 1 processing stuck 46d"
+  - "cross-cutting: every drainer-of-last-resort is either a human convention or a failing watchdog (W64 'esistere ≠ armato' on the queue layer)"

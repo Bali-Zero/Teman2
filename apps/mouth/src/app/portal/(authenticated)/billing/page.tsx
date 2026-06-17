@@ -14,13 +14,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import type { PortalInvoice } from "@/lib/api/portal/portal.types";
-
-const formatIDR = (amount: number) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(amount);
+import { formatIDR } from "@balizero/core/utils";
 
 export default function BillingPage() {
   const { data, isLoading, isError, error } = usePortalBilling();

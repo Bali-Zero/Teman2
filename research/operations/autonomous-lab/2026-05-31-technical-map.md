@@ -156,6 +156,88 @@ Next integration points:
 - Postgres state machine only after local receipts prove stable.
 - Outbox consumers only after ack-after-success behavior is implemented.
 
+## 7.1 2026-06-09 v1 Control-Plane Update
+
+The Lab now exposes a receipt-safe operational plan that separates the repo's
+meta workflow from the P1-P9 governance pieces:
+
+- Meta workflow: `0 STUDY`, `1 SPEC`, `2 ARCH`, `3 PLAN/SQUAD`,
+  `4 BUILD_parallel`, `5 SEAM_VERIFY`, `6 ENRICH`, `7 TEST_PROD`,
+  `8 REVIEW`, `9 SHIP`, `10 LEARN`, plus `GOVERN`.
+- Governance pieces: `P1` verifier verification, `P2` private-material
+  confinement, `P3` prod-like sandbox, `P4` contract verification, `P5` spec
+  as gate, `P6` parallel fanout gate, `P7` quarantined learning, `P8` bounded
+  internal app design, `P9` liveness governance.
+
+Beyond the anchored `lab-intake-sweeper`, the v1 plan names ten control-plane
+pieces:
+
+| Component | State | Parallel group | Gate |
+| --- | --- | --- | --- |
+| `operational_queue` | Implemented foundation | Foundation | `skip_locked_or_equivalent_claim` |
+| `events_outbox` | Implemented foundation | Foundation | `ack_after_success` |
+| `source_adapters` | Planned | Ingestion | `no_raw_receipt_persistence` |
+| `composer` | Planned | Reasoning | `evidence_quorum_or_warning` |
+| `prod_like_context_builder` | Planned | Reasoning | `no_secret_values` |
+| `worktree_experiment_runner` | Planned | Execution | `worktree_isolation` |
+| `verification_runner` | Planned | Execution | `empirical_result_recorded` |
+| `curator_decision_gate` | Planned | Curation | `manual_operator_decision_only` |
+| `scheduler_daemon` | Blocked | Ops | `state_contract_stable_first` |
+| `dashboard_api` | Planned | Ops | `read_only_until_operator_action` |
+
+Parallelization rule:
+
+- Serial first: `operational_queue` and `events_outbox`.
+- Parallel after shared envelope contract: `source_adapters`, `composer`,
+  `prod_like_context_builder`.
+- Parallel after worktree contract: `worktree_experiment_runner`,
+  `verification_runner`.
+- Parallel read-only visibility and curation: `curator_decision_gate`,
+  `dashboard_api`.
+- Last/manual gate: `scheduler_daemon`, because H24 automation amplifies every
+  upstream mistake.
+
+## 7.2 2026-06-09 v1 Runtime Foundation
+
+The first durable runtime foundation is implemented, but no H24 daemon is
+enabled by default.
+
+Files:
+
+- `apps/backend-rag/backend/services/autonomous_lab/state_store.py`
+- `apps/backend-rag/backend/migrations/migration_124_autonomous_lab_runtime.py`
+- `docs/runbooks/autonomous-lab-runtime-placement.md`
+
+Placement:
+
+- Air-M5 is `air_m5_cockpit`: edit, enqueue, light tests, receipt review.
+- Pro is `pro_runtime`: claim and execute Lab runs, consume outbox.
+- Mini is `mini_scheduler`: schedule/enqueue and consume outbox, but route run
+  execution to Pro.
+- Unknown hosts fail closed.
+
+Durable storage:
+
+- `autonomous_lab_runs` is idempotent on `idempotency_key`, claimed with
+  `FOR UPDATE SKIP LOCKED`, and owns run retry/heartbeat state.
+- `autonomous_lab_events_outbox` is an at-least-once queue. Consumers claim
+  events with `FOR UPDATE SKIP LOCKED`, then ack only after the downstream
+  handler succeeds.
+- Run lifecycle transitions use a single SQL CTE for state update plus outbox
+  insert. The state mutation and lifecycle event are not split across separate
+  storage calls.
+- Runtime placement is resolved from current host/user and enforced fail-closed;
+  caller-provided roles are treated only as a consistency check.
+
+Still blocked:
+
+- `scheduler_daemon`: blocked until queue/outbox and migration tests are green
+  on the target branch.
+- `worktree_experiment_runner`: blocked from deploy, merge, push, and Workspace
+  writes until an explicit operator gate exists.
+- `dashboard_api`: read-only only until operator actions have a separate
+  authorization model.
+
 CLI usage:
 
 ```bash

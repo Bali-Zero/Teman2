@@ -5,6 +5,83 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🐛 W85 (P3 STRUCTURAL): il worktree-isolation hook ha `stash` in `BLOCKED_SUBCMD_RE` senza distinguere il sottocomando → `git stash list` / `git stash show` (read-only) bloccati come se fossero `stash push`/`pop` (2026-06-17)
+
+_Discovered: 2026-06-17, durante la riconciliazione 3-nodi — un subagent ha riportato che `git -C ... fetch ... stash list` veniva bloccato dal hook. Riprodotto verbatim QUESTO turno: `git stash list` e `git -C <main> stash list` → exit 2 (BLOCK) entrambi · Severity: **P3 STRUCTURAL** (over-match: blocca un'introspezione read-only dello stash, costringe a workaround `git rev-parse refs/stash`) · Status: **OPEN** (scar registrata; fix candidato da foldare nella stessa linea W84)_
+
+**Famiglia: superscar #3 (Guard-over-match), terzo membro consecutivo della linea locale W83→W84→W85.** Identica radice di W83: la guardia decide sul **sottocomando testuale**, non sull'**intento** (mutazione vs introspezione). W83 era il dispatcher remoto troppo largo; W84 lo stripper di rumore; W85 è la regex blocked-subcmd che tratta tutto il verbo `stash` come mutante.
+
+**TRAUMA:** `worktree_isolation.py:102` definisce `BLOCKED_SUBCMD_RE` con `(checkout|switch|stash|reset|merge|rebase|pull)\b`. Il `\b` ferma il word-boundary su `stash`, ma `git stash` ha sottocomandi: `push`/`pop`/`apply`/`drop` **mutano** la working tree (legittimamente da bloccare in main), mentre `list`/`show` sono **puro read-only** (introspezione, zero scrittura). Il regex non guarda oltre il verbo → `git stash list` matcha e viene bloccato (exit 2). Stessa classe di `git log`/`git status` che (correttamente) NON sono blocked: `stash list` appartiene a quella categoria read-only ma è catturato per sineddoche dal verbo padre. Costo: un agent che vuole solo *ispezionare* gli stash deve aggirare con `git rev-parse refs/stash` + `git reflog refs/stash` (verbi non-blocked) — friction inutile, e un agent meno esperto si pianterebbe.
+
+**ANTIBODY (PROGETTATO, non ancora armato):** distinguere il sottocomando read-only dentro la famiglia `stash`: dopo il match del verbo, se il token seguente è `list`|`show` → ALLOW (come `git log`). Implementazione minima: una `STASH_READONLY_RE = re.compile(r"\bstash\s+(list|show)\b")` testata PRIMA del blocked-scan, oppure raffinare `BLOCKED_SUBCMD_RE` in `stash\s+(push|pop|apply|drop|save|clear|store|create)` (enumerare i mutanti) lasciando passare il resto. Stesso pattern di innocenza/colpevolezza del vaccino #1485: un test che `stash list`/`stash show` NON scattano + `stash push`/`stash pop` ancora scattano.
+
+**GOTCHA:** (a) È il **terzo over-match consecutivo della stessa guardia in 2 giorni** (W83 16/06, W84 16/06, W85 17/06) — la superscar #3 sul `worktree_isolation` non è "chiusa" da un fix puntuale: ogni asse (dispatcher remoto, stripper quote, subcmd-vs-subverb) è una faccia diversa della stessa malattia "match-sulla-forma-non-sull-intento". Conferma l'antidoto di famiglia: nessuna guardia mergiata senza test d'innocenza su un caso legittimo limitrofo. (b) L'escape documentato nel messaggio d'errore del hook (`AGENT_WORKTREE_ENFORCEMENT=false` come prefix inline di un singolo Bash) **NON funziona** — il hook legge l'env dal proprio processo padre, non dal corpo del comando: un secondo over-match latente nel messaggio di rimedio stesso. (c) Verificato su disco questo turno (exit 2 ×2), NON dedotto dal report del subagent — il subagent aveva ragione su questo (1/3 dei suoi flag erano reali), gli altri 2 erano allucinazioni (superscar #6).
+
+**Reference:** Verificato live su `~/Desktop/nuzantara/.worktrees/infra-w84-strip-noise-fix/infra/claude-hooks/worktree_isolation.py:102-105`. Fix candidato da foldare nella linea W83/W84 (stessa guardia, stesso file). Famiglia: superscar #3 (W83/W84 gemelli-di-sessione, W82 under-match, W68/W72/W73/W77 reply-guards).
+
+---
+
+### 🐛 W84 (P2 STRUCTURAL): `_strip_noise` del worktree-isolation hook usa `[^q]*` che MATCHA i newline → in un comando multi-riga una quota orfana (apostrofo IT / apertura `ssh '...'`) si accoppia cross-line, fonde i comandi e fa leakare i pattern grep nello scan redirect → phantom write-target (2026-06-16)
+
+_Discovered: 2026-06-16, fratello-immediato di W83 nella stessa sessione — il fix W83 aveva aggiunto `_strip_noise` pre-scan ma lo stripper stesso aveva il bug. Trigger reale: un mio `echo "=== verify: dell'insurance ... ==="` (apostrofo italiano in "dell'insurance") ha aperto una single-quote che si è accoppiata col `'` di apertura del primo `ssh '...'` 2 righe sotto · Severity: **P2 STRUCTURAL** (over-match: blocca un `ssh ... grep ...` read-only legittimo come se scrivesse in main) · Status: **FIXED** — char-class `[^'\n]*`/`[^"\n]*` + classifier scarta `\`/`|`, 15/15 test, W83 (6/6) e W79 (20/20) reggono, live patchato (+`.bak.pre-w84`)_
+
+**Famiglia: superscar #3 (Guard-over-match), variante OVER-match su guard-di-COMANDO — gemello di W83.** Stessa malattia: la guardia decide sulla **forma testuale** del comando, non sul target reale. W83 era il regex dispatcher troppo largo; W84 è lo *stripper di rumore* che W83 stesso aveva introdotto — un fix che ha partorito il bug successivo nella stessa classe.
+
+**TRAUMA:** `worktree_isolation.py:_strip_noise` emptia le stringhe quotate con `re.sub(r"'[^']*'", ...)` e `r'"[^"]*"'` PRIMA dello scan write-target (la ricetta W79/W83). Ma `[^']*` e `[^"]*` **matchano anche `\n`**: in un comando multi-riga (`cd ... && echo "..." && ssh 'grep ...' && ssh 'grep ...'`) una quota orfana su una riga si accoppia con una quota su un'altra. Il trigger empirico: `echo "=== verify: dell'insurance files ==="` — l'**apostrofo italiano** in `dell'insurance` apre una single-quote che il regex chiude contro il `'` di apertura del primo `ssh '...'` due righe sotto, **fondendo 3 comandi** in una stringa mangled tipo `...num_predict""EnvironmentVariables\|...warm_models_extra\|...`. I pattern grep (`"a\|b" 2>&1`) sopravvivono allo strip, il `>` di `2>&1` viene letto come redirect, e `REDIR_RE` estrae `warm_models_extra\` come write-target → risolto sotto il main checkout → **falso BLOCK** di un `ssh ... grep ...` puramente read-only. Vissuto 3 volte nella sessione (ogni STADIO-0 verify multi-riga con un apostrofo).
+
+**ANTIBODY:** (a) **char-class senza newline**: `re.sub(r"'[^'\n]*'", ...)` e `r'"[^"\n]*"'` — una quota shell non si estende mai oltre una riga in questo contesto, quindi confinare il match a una riga è corretto E uccide il falso-positivo. (b) **classifier difesa-in-profondità**: scarta ogni write-target che contiene `\` (line-continuation/escape residuo) o `|` (grep-alternation) — non è mai un path di scrittura reale. Test `test_w84_strip_noise_cross_line.py` (15 casi: il caso reale + 6 shape della stessa classe → no-block, 6 veri-write in main → ancora-block, +worktree/+esterno → no-block) 15/15. W83 (6/6) e W79 (20/20) reggono.
+
+**GOTCHA:** (a) **Un fix può partorire il bug successivo nella stessa famiglia**: W83 aggiunse `_strip_noise` pre-scan; W84 è un bug DENTRO quello strip. La superscar #3 è ricorsiva (come la famiglia WhatsApp `_guard_*`: W68→W72→W73→W77). (b) **L'apostrofo italiano è un substring-trap linguistico** — `dell'insurance`, `l'organismo`, `un'istanza` sono mine in qualunque comando con quote: lo stesso asse-lingua di W77 (i marker EN-only), qui sul versante shell-parsing. (c) **Il hook ispeziona OGNI Bash, compresi i comandi che lo diagnosticano** (W83 GOTCHA-b): la riproduzione va fatta caricando il modulo via `importlib` e chiamando `_write_hits_main` direttamente, NON ridando il comando inline (si auto-ispeziona). (d) **host_boundary blocca l'Edit-tool sul control-plane `~/.claude/hooks/` anche dal main-loop** (a differenza del `cp` via Bash, che passa) — per patchare il hook live: genera in `/tmp` + `cp` via Bash, non Edit-tool. (e) Anti-hallucination: la prima ricostruzione del comando-trigger era sbagliata (3 tentativi a vuoto); solo recuperando il comando VERBATIM dal transcript (`.jsonl`) è emersa la causa. Non indovinare il repro — recuperalo.
+
+**Reference:** PR (questo branch `fix/w84-strip-noise-cross-line-quote`). Edited: `worktree_isolation.py:_strip_noise` (newline-exclusion) + `_extract_write_targets` classifier (`\`/`|` drop). Test: `infra/claude-hooks/test_w84_strip_noise_cross_line.py` (15 casi, nuovo). Live `~/.claude/hooks/worktree_isolation.py` patchato + backup `.bak.pre-w84`. Famiglia: superscar #3 (W83 gemello, W82 under-match, W68/W72/W73/W77 reply-guards), eredita lo strip da W79.
+
+---
+
+### 🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)
+
+_Discovered: 2026-06-16 vissuta IN DIRETTA 3 volte nella sessione che rianimava curiosity_loop — il hook bloccò `ssh pro git pull`, `cd .worktrees/... && git checkout`, e un comando diagnostico multi-riga che conteneva git-verb non-quotati · Severity: **P2 STRUCTURAL** (over-match anti-allucinazione che NUOCE: clobbera ops legittime; il danno è frizione operatore + workaround rischiosi tipo `false && cd /pro && git pull`) · Status: **FIXED** — `_strip_noise` pre-scan + `_is_remote_dispatch` segment-anchored, 21/21 test, live+repo sync (PR #1517)_
+
+**Famiglia: superscar #3 (Guard-over-match), gemello-locale di W82.** Stessa malattia: una guardia (qui `worktree_isolation.py`, non un `_guard_*` di WhatsApp ma identica classe) decide sulla **forma testuale** del comando, non sul suo **target reale**. W68/W72/W73/W77 = guard di RISPOSTA; W82 = under-match; W83 = over-match su un guard di COMANDO. Il layer è lo stesso, il bersaglio diverso.
+
+**TRAUMA:** Il hook `infra/claude-hooks/worktree_isolation.py` (+ copia live `~/.claude/hooks/`) blocca i git mutanti nel main checkout per evitare sibling-race (superscar #5). Tre over-match, tutti provati live nella stessa sessione: (1) **`ssh pro git pull`** — l'op gira su UN ALTRO host, non tocca QUESTO checkout, ma il `git pull` nudo nel payload ssh scattava il block; l'operatore aggirava con `false && cd /pro/path && git pull` per far risolvere il target al path Pro. (2) **`cd <worktree> && git checkout -b x`** — legittimo (il `cd` ri-targetizza al worktree) ma Bash **resetta la cwd al main checkout** prima di eseguire, quindi il target effettivo cadeva su main → falso block. (3) **un git-verb dentro una stringa quotata / heredoc** (`echo "git reset is dangerous"`, o un comando diagnostico di test multi-riga) veniva scansionato come se fosse un comando reale.
+
+**ANTIBODY:** (a) **`_strip_noise`** (rimozione heredoc + stringhe-quotate, la ricetta W79) ora gira **PRIMA** dello scan blocked-subcmd E della risoluzione del target — un git-verb che vive solo dentro un literal quotato non è più visto come comando. (b) **`_is_remote_dispatch`**: ssh/scp/rsync short-circuit ad ALLOW — ma **ancorato a un confine di SEGMENTO** (inizio riga o subito dopo `&&`/`||`/`;`/`|`), NON bare-substring: `ssh pro git reset` è esentato (off-box) mentre `echo via ssh && git reset --hard` NON lo è (op locale distruttiva che solo MENZIONA ssh → deve bloccare). (c) la risoluzione del target effettivo gestiva già `cd <wt> && git` e `git -C <wt>`; ora gira anche sul form strippato (chiude #2). Test `test_w83_remote_dispatch.py` 21 casi (incl. il caso pericoloso `echo ssh && git reset` no-exempt) → 21/21; W79 (20/20) e innocence-vaccine #1485 (29/29) restano verdi (nessun nuovo over-match). Live smoke 4/4.
+
+**GOTCHA:** (a) **L'over-match `_is_remote_dispatch` v1 era esso stesso superscar #3**: il primo regex `(?:^|[\s|;&(])(?:ssh|scp|rsync)\b` matchava `ssh` come parola dentro `echo ssh ...` → un `echo ssh && git reset` in main sarebbe stato erroneamente esentato. Il TEST l'ha trovato (2/17 fail iniziale) — uno dei 2 fail era questo over-match reale nel codice, l'ALTRO era una mia ASPETTATIVA di test sbagliata (`git commit -m "..."` senza `-a` NON è un blocked subcmd → atteso False, non True). Lezione gemella W82/W73: il test d'innocenza deve includere il caso "menzione-innocua-vicino-a-op-distruttiva", e il refuter (il test) può sbagliare in ENTRAMBI i versi. (b) **Il hook ispeziona OGNI Bash, compresi i propri smoke-test**: un comando diagnostico multi-riga con git-verb non-quotati si auto-blocca → scrivi i test in un FILE ed eseguilo, mai inline. (c) **host_boundary asimmetria**: la scrittura sul control-plane `~/.claude/hooks/` è bloccata per i SUBAGENT ma passa dal main-loop (operatore) — propaga i fix-hook tu, non delegarli a un subagent. (d) **HOME-fork (superscar #1)**: il hook è vendored in `infra/claude-hooks/` con installer `install_worktree_hooks.sh`; patchare solo la copia live `~/.claude/` lascia il repo source-of-truth indietro → il prossimo install/reset perde il fix. Patcha ENTRAMBI (questa scar lo fa).
+
+**Reference:** PR #1517, branch `fix/w83-vendor-worktree-isolation-hook`. Edited: `worktree_isolation.py` (`REMOTE_DISPATCH_RE` segment-anchored, `_is_remote_dispatch` nuovo, `_strip_noise` pre-scan in `main()`). Test: `infra/claude-hooks/test_w83_remote_dispatch.py` (21 casi, nuovo). Live `~/.claude/hooks/worktree_isolation.py` patchato+smoke 4/4 + backup `.bak.w83-hardened` chmod 600. Famiglia: superscar #3 (W68/W72/W73/W77 reply-guards, W82 under-match), eredita `_strip_noise` da W79, protegge superscar #5 (sibling-race).
+
+---
+
+### ⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16)
+
+_Discovered: 2026-06-16 dalla lane L-KNOWLEDGE della Connectome Campaign (Mini, ciclo 1→2), confermata su disco dal Super-Osservatore leggendo `content-freshness-sentinel.test.ts` riga per riga · Severity: **P1 STRUCTURAL** (il guardiano anti-knowledge-decay ha un buco strutturale: verde mentre il sito è marcio) · Status: **REPORTED + scar promossa per decisione operatore (Antonello, 2026-06-16) — fix = guardiano fact-based, spec+PR mai armata senza OK**_
+
+**Famiglia: superscar #3 (Guard-over-match) — variante UNDER-match.** #3 nasce con guardie che *sopra*-matchano (clobberano risposte corrette). W82 è il gemello speculare: una guardia che *sotto*-matcha (lascia passare fatti marci). Stessa malattia di fondo — **il match è sulla forma testuale, non sull'intento/entità** — segno opposto.
+
+**TRAUMA:** `apps/mouth/src/content/content-freshness-sentinel.test.ts` (nato 2026-06-14, Mythos M3) è il "dead-man's switch" tra contenuto pubblicato e ground-truth regolatorio: legge `_regulatory-claim-ledger.json` (15 `stale_pattern` literal) e FALLISCE se un pattern stale ricompare in MDX pubblicato. **Ma il match è puro substring-letterale** (`staleHits`, riga 125: `lines[i].toLowerCase().includes(needle)`). Tre buchi strutturali, tutti verificati nel codice:
+
+1. **Substring, non fatto** (riga 119-132): cerca la *frase esatta* `"hotels (55110)"`. Lo **stesso codice KBLI 55110** dentro una cella-tabella, o riformulato (`"perhotelan 55110"`, `"55110 (hotel)"`), o citato senza la parola "hotels", **NON matcha** → test verde. Prova viva: C312 (retirement) e 55110 (hotels) sono stale **anche nel canonico EN**, e il sentinel è **verde** su entrambi.
+2. **Scope strutturalmente cieco alle traduzioni** (riga 21-22, 35-36, `TRANSLATION_SUFFIX`): *"English canonical .mdx only — translations audited separately"*. Il sentinel **non guarda mai** `.it/.id/.ru/.fr/.de/.es/.nl`. Questa è **letteralmente la causa-radice del bug KN-3** che il ciclo 2 ha dovuto fixare a mano (LKPM 10th→15th era stale in it/ru/fr mentre il sentinel era verde) — by-design non poteva vederlo. "Audited separately" = audited **mai**, finché un umano/agente non passa.
+3. **Anche l'escape-clause è literal** (`MIGRATION_CONTEXT`, riga 58-97): la lista di frasi che "scusano" un pattern stale (`"superseded"`, `"old kbli 2020"`, `"moved to the 15th"`...) è essa stessa una lista di stringhe → fragile e da manutenere a mano; una correzione fraseggiata diversamente o non-EN non viene riconosciuta come legittima.
+
+**ANTIBODY (PROGETTATO, NON armato — firebreak operatore):** guardiano **fact-based**, non string-based. La spec (vedi Reference) propone:
+1. **Match per ENTITÀ normativa, non per frase**: ogni claim del ledger porta un `fact_key` strutturato (codice KBLI / sigla visto / numero-norma / soglia) + `fact_anchor` regex tolleranti a contesto-tabella e punteggiatura, NON una singola `stale_pattern` letterale. Il test fallisce se l'*entità* ricompare con il valore-stale, ovunque appaia.
+2. **Scope multilingua**: rimuovere `TRANSLATION_SUFFIX` dallo skip per i `fact_key` numerici/codici (un codice KBLI è language-invariant: `55110` è `55110` in ogni lingua). Le traduzioni rientrano nel guardiano per i fatti-codice; restano fuori solo per il fact-in-prosa che richiede NLM.
+3. **Test di INNOCENZA obbligatorio** (regola madre #3): ogni nuovo `fact_anchor` deve dimostrare di NON scattare su un caso legittimo limitrofo (es. `55110` dentro una nota "old KBLI 2020"), oltre al test di colpevolezza. Mai mergiare una guardia senza prova d'innocenza.
+4. **Stale-anche-in-EN → escalation NLM, non auto-fix**: i claim marci nel canonico (C312, 55110) NON si indovinano — si verificano contro NotebookLM ground-truth (no-guess rule). Solo i `traduzione-lag-puliti` (EN corretto come riferimento) sono auto-fixabili.
+
+**GOTCHA:**
+
+- Il test **già si auto-accusa**: il suo stesso commento (riga 8-12) cita *"the malattia-delle-malattie: the SAME stale code reappears across many files and silently rots"* — ma poi lo combatte con substring-match, che è proprio il vettore del "silently rots". L'intento era giusto, l'implementazione resta alla forma.
+- "Verde non prova che il sito sia perfetto, prova solo che i known-stale non sono regrediti" (riga 16-18) — vero, ma **understated**: verde non prova nemmeno *quello*, perché un known-stale riformulato/in-tabella/in-traduzione regredisce SENZA far diventare rosso il test. È #2 (Esiste≠Armato) applicato a un guardiano: gira e si dichiara verde mentre il fatto che dovrebbe presidiare è marcio.
+- Confine #3-vs-W82: stessa famiglia, NON unire. #3 = guardia che NUOCE (clobbera il corretto, falso-positivo). W82 = guardia che NON PROTEGGE (lascia passare il marcio, falso-negativo). L'antidoto comune è identico: **match su entità/intento, non su substring** + test di innocenza E di colpevolezza.
+- Scope reale della classe: 15 entry nel ledger oggi, ognuna una superficie di evasione × N lingue × (tabella|prosa|FAQ-embed). Il numero di "fatti potenzialmente marci ma verdi" è 15 × molteplicità, non 15.
+
+**Reference**: scoperta in `research/operations/campaign/findings/mini-knowledge-SUMMARY.md` (lane L-KNOWLEDGE, ciclo 1-2). Code-fix del sintomo KN-3 in PR #1500 (LKPM it/ru/fr). Artefatti in PR #1501. Spec del guardiano fact-based: `research/operations/campaign/findings/W82-fact-based-sentinel-spec.md` (da redigere, lane KNOWLEDGE o META). Bridge superscar: aggiunto a `#3 — Guard-over-match` come membro under-match. NO valore-secret in questa scar (non applicabile).
+
+---
+
 ### 🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)
 
 _Discovered: 2026-06-03 ~20:30 WITA during the organism TAC (read-only diagnosis), when `ssh pro 'cat ~/Desktop/nuzantara/apps/cell/.env'` printed the secret into the session transcript · Severity: **P0 SECURITY** · Status: **REPORTED — rotation + chmod deferred to deliberate operator decision (Antonello)**_
@@ -31,375 +108,82 @@ _Discovered: 2026-06-03 ~20:30 WITA during the organism TAC (read-only diagnosis
 
 ---
 
-### ⚠️ STRUCTURAL: W62 — Agent worktree broker TTL=60min violated 34× by 6 abandoned ops fan-out (2026-05-28)
+### ⚠️ W78 (P2 STRUCTURAL/META): il sistema plasma l'agente all'~80% → due rischi sistemici non-presidiati — cicatrice-sbagliata-propagata (no unlearning) + l'-umano-disimpara (escalation drift) (2026-06-13)
 
-_Discovered: 2026-05-28 09:00 WITA by general-purpose subagent during orchestrator wave-c-ops-triage · Severity: P2 (storage waste, sibling-race surface area increase) · Status: **REPORTED, no enforcement fix yet (broker has no auto-cleanup)**_
+_Discovered: 2026-06-13 da un panel asimmetrico 4-LLM (Gemini 3.1 Pro + 3.5 Flash + Codex GPT-5.5 + DeepSeek V4 Pro) sul flusso grezzo di 14 sessioni-madre Fable M5+Pro, analisi 1°/2°/3° grado · Severity: P2 STRUCTURAL/META (non runtime — rischio di governance dell'organismo) · Status: **REPORTED** — research capture `research/operations/2026-06-13-system-shapes-the-agent-4llm.md`, fix di processo operator-decided_
 
-**TRAUMA:** 6 worktrees under `.worktrees/ops-*` created during a parallel fan-out wave at 2026-05-26 14:00-14:23 UTC (PIDs 30081/34063/37516/41062/41637/63354 different agents). Each was supposed to TTL out at 60min per `scripts/agent_start.py` broker default. By the time orchestrator audit ran 2026-05-28 (34+ hours later), all 6 were still on disk:
+**TRAUMA:** Studiando "quanto del comportamento di Fable è il modello vs il nostro sistema", i 4 LLM convergono: **~75-80% è il SISTEMA** (i 5 layer coercitivi: hook-che-bloccano, memoria persistente, cicatrici, SessionStart injection, Autonomous Ops L2), **20-25% è il modello**. Il sistema impone il COME, il modello porta il PERCHÉ. Corollario verificato: **qualunque modello (GPT-5.5, Gemini) per ~40 sessioni qui dentro diventa "agente Nuzantara"** — il comportamento operativo è sovrascritto dall'esoscheletro, sopravvive solo la qualità del giudizio. Questo è una FORZA (replicabilità, scala, disciplina) ma il 3° grado dell'analisi ha smascherato **due rischi sistemici che nessun layer attuale presidia**:
 
-- `ops-wa-doc-req-worker-e2`
-- `ops-whatsapp-privacy-audit-worker-i`
-- `ops-worker-f-immigration-lifecycle`
-- `ops-worker-g-tax-payment-signals-wa`
-- `ops-worker-h-followup-risk`
-- `ops-worker-j-case-windows`
+1. **Cicatrice-sbagliata-propagata (no unlearning):** l'organismo impara solo dagli errori _diventati cicatrice_, le carica a freddo ogni sessione, e **non ha alcun meccanismo di unlearning**. Se una cicatrice è SBAGLIATA (o invecchia, o si contraddice con un'altra in scenari edge), **TUTTI gli agenti ereditano lo stesso errore per sempre**. Precedente reale già accaduto: la ℹ️ META cicatrice "il 13-agent autopsy HALLUCINATED 3 file:line" — un report sbagliato citato come ground-truth. Il rischio scala col numero di cicatrici (548 righe e in crescita).
 
-Each had 3-5 "dirty" files (verified by triage agent: all were pure formatting noise — Black/Prettier reformat + timestamp `Generated UTC:` lines in summary md). ZERO unique commits vs `origin/feat/wr2-c5a-pilot-and-p1-structural-fixes-2026-05-26` (PR #891). The fan-out was 100% subsumed by PR #891 (34 commit ahead of main).
+2. **L'-umano-disimpara (escalation drift):** SYMBIOSIS Legge 5 ("gli allarmi sono input per l'organismo, non per te") + memoria + auto-merge spingono l'agente a disturbare sempre meno l'operatore. Conseguenza di 2° ordine: Antonello passa da programmatore a "Gatekeeper biologico / Oracolo di approvazione", e **se l'agente si ferma (API down, quota, sistema corrotto) l'operatore potrebbe non saper più intervenire a mano**. DeepSeek lo nota già nei transcript: "Antonello chiede 'Finito?' → indica che non ha più il polso diretto." A questo si lega il rischio-dipendenza (nessun fallback umano agile se il sistema cade).
 
-**Why TTL was violated**:
+**ANTIBODY (proposto, NON ancora shippato — fix di processo, operator-decided):**
 
-- `scripts/agent_start.py --cleanup` is **opt-in** — must be invoked manually. There's no cron LaunchAgent that runs `--cleanup` periodically.
-- Spawning agent didn't call `--release <task-id>` at exit (subagents don't have the broker concept exposed in their context).
-- The 6 worktrees had `.agent-task.json` metadata with `created_at` timestamps but no enforcement consumer reads them.
-
-**ANTIBODY (proposed, NOT yet shipped):**
-
-1. **Add LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily`** (or hourly): invokes `python scripts/agent_start.py --cleanup` automatically. Skip worktrees with dirty files > some threshold OR with very recent mtime (<10min, active session).
-
-2. **Add hook in `scripts/agent_start.py` to detect orphan**: at every `--list` invocation, surface worktrees older than 2× TTL as WARN. Operator sees warning in interactive session.
-
-3. **Broker-aware spawn convention**: subagent SDK should provide a `register_worktree_for_cleanup()` callback. Or simpler: orchestrator (when dispatching subagent) registers task-id in broker, broker auto-cleans at agent exit notification.
-
-4. **CI test**: `tests/integration/test_no_stale_worktrees.py` — fails CI if `.worktrees/` has entries with mtime > 24h. Forces hygiene at PR time.
-
-**TACTICAL MITIGATION applied 2026-05-28 09:15 WITA** (no fix shipped):
-
-- All 6 worktrees + branches manually droppato by orchestrator (verified non-blocking — content was in PR #891).
-- 1 nested worktree bug (W63) discovered concurrently and fixed.
+- **Per #1 (no unlearning):** (a) ogni cicatrice dovrebbe avere un campo `verified_on` / `expires_after` o una review periodica; (b) un meccanismo esplicito di RETRACT (marcare una cicatrice come superata/sbagliata, non solo archiviarla); (c) un lint che segnala cicatrici contraddittorie. Modello già esistente da estendere: la ℹ️ META autopsy-phantom-citation è già la prova-di-concetto di "cicatrice che inocula contro un'altra cicatrice sbagliata".
+- **Per #2 (umano disimpara):** (a) un digest periodico "cosa ho deciso in autonomia che forse vorresti sapere" (contro l'escalation drift); (b) runbook di intervento-manuale-quando-l'agente-è-giù; (c) accettare il drift come trade-off consapevole, MA documentato — non scoperto il giorno che il sistema cade.
 
 **GOTCHA:**
 
-- The `--cleanup` flag in `agent_start.py` is WIP-safe: it does NOT remove worktrees with uncommitted changes. So even if cron ran, the 6 ops worktrees would have stayed (each had pseudo-dirty formatting noise). The fix needs to be smarter than "TTL expired = drop".
-- Subagents spawned via the Agent tool create worktrees under `.claude/worktrees/agent-<id>/` (different path) and are auto-cleaned by the harness. The broker TTL violation specifically applies to the user-facing `.worktrees/` path used for manual or scripted lane spawns.
-- Sibling-race surface area grows with stale worktrees: each adds a checkout that another session may accidentally `cd` into and commit on. W59 ANTIBODY (BRANCH_EXPECTED hook) covers commit-time but not directory-context confusion.
-- The 6 stale worktrees contributed to the W59 incident family (sibling automation operating on shared trees). Cleanup is part of W59 long-term ANTIBODY.
+- **Questa NON è una cicatrice di bug — è una cicatrice di GOVERNANCE.** Non c'è un `exit 1` da aggiungere; è un rischio di 2° ordine dell'intero design SYMBIOSIS. Va probabilmente promossa a blocco in SYMBIOSIS.md, non solo qui.
+- **Il rischio #1 è auto-referenziale:** questa stessa cicatrice W78 potrebbe un giorno essere sbagliata e propagarsi. È il paradosso del sistema che documenta il proprio difetto-di-documentazione. L'unico presidio è la regola anti-allucinazione (ri-verifica su disco prima di costruire su una cicatrice) — che però è un nudge, non un blocco.
+- **Famiglia:** ℹ️ META 13-agent-autopsy phantom-citation (cicatrice sbagliata già accaduta), W64/W71 (esiste≠armato — qui: "armato ma su premessa sbagliata"), W55 (segnale emesso ma non visto — qui: segnale MAI emesso per escalation drift).
+- **Verificato sul disco (gate scettico W65):** i blocchi-prova del 20%-modello che i 4 LLM citano (`[82]` 3-porte-UX, `[91-92]` Subhi-non-cliente) esistono e sono verbatim-corretti — il panel non ha proiettato.
 
-**Reference**:
-
-- Investigation: `/tmp/wave-c-ops-triage-2026-05-28.md` (124 righe, general-purpose subagent)
-- Cleanup commands executed: orchestrator session 2026-05-28 09:15 WITA (12 `git worktree remove --force` + 6 `git branch -D`)
-- Family: closes part of W59 (sibling-race), opens new structural debt for broker enforcement
-- Related: `docs/runbooks/agent-worktree-broker.md`, `research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`
+**Reference:** research `research/operations/2026-06-13-system-shapes-the-agent-4llm.md` (+ appendice RAW-PANEL coi 4 output grezzi). Corpus: `~/Desktop/FABLE-FLUSSO-COMPLETO-M5-Pro.txt` (14 sessioni-madre), `decision_opus_mythos_model_2026_06_13.md`. Metodo: panel asimmetrico 4-LLM via skill `opus-mythos`. Sibling: cicatrice gemella sul difetto Opus-interattivo (i layer sono nudge non exit 1 → Opus si ferma/chiede-permesso dove Fable obbedisce).
 
 ---
 
-### ⚠️ STRUCTURAL: `agent-library-evolver` weekly cron checkout `program/base` su REPO_ROOT condiviso con `wr2-deploy-puller` — 32h broken silent (2026-05-25)
+### ⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)
 
-_Discovered: 2026-05-25 ~03:40 WITA via GEN-5 disambiguation test "sto avendo problemi con il deploy" · Resolved 2026-05-25 04:13 WITA via stash + checkout deploy/main + pull origin/main (50 commits) · Severity: P0 (cron 32h broken) · Status: **RECOVERED** — root design issue worktree-sharing pending operator decision_
+_Discovered: 2026-06-13 da Opus durante la sessione W79, quando `git -C .../.worktrees/docs-system-shapes-agent-4llm` ha dato `No such file` a metà lavoro · Severity: P2 STRUCTURAL · Status: **FIXED** — antibody a 2-AND shippato + testato (PR #1401), 35/35 test verdi_
 
-**TRAUMA:** Due LaunchAgent autonomi condividevano lo stesso `~/Desktop/nuzantara-deploy/` worktree:
+**TRAUMA:** Il worktree attivo `docs-system-shapes-agent-4llm` è scomparso sotto i piedi a metà sessione. La diagnosi iniziale ("colpa del cron cleanup") era SBAGLIATA: il log `~/logs/agent-worktree-cleanup.log` prova che il cron `com.nuzantara.agent-worktree-cleanup.daily` (gira 00:15, ma quel giorno alle 22:08 locale) ha CORRETTAMENTE SALTATO il worktree (`WARN: skip system-shapes-agent-4llm — uncommitted WIP present`). Il WIP-guard (W62 antibody #1) ha funzionato. La causa REALE è un'interazione perversa tra due guardrail: `stop_verify.py` blocca lo Stop su git dirty → spinge a **committare tutto in continuazione**; ma `scripts/agent_start.py --cleanup` reap-a i worktree scaduti che sono **puliti** (`cmd_cleanup` ~L671: controlla solo `is_expired` TTL + `_worktree_has_wip` + `_worktree_recently_active` su FILE). Quindi: **nel momento esatto in cui committi tutto per soddisfare lo stop-hook, il tuo worktree diventa reap-eligibile** — e se un cleanup parte in quella finestra (o lo scateni tu/un subagent durante operazioni di cleanup), te lo porta via mentre ci stai ancora lavorando. Più sei disciplinato coi commit, più il worktree è vulnerabile. (In questo caso il danno è stato ZERO — branch + commit erano su origin + PR — ma è stato fortuna, non design.)
 
-- `com.balizero.agent-library-evolver.weekly.plist` (Sunday 03:00 WITA) — Voyager-style skill library evolution che fa `git checkout program/base` per checkpoint proprio output (`agent-library/.claude/program.yaml`)
-- `com.balizero.wr2.deploy-puller` (hourly) — git pull `origin/main` per refresh WR2 cron logic
+**ANTIBODY (SHIPPATO + testato, PR #1401):** Reap automatico SOLO se **ENTRAMBE** vere (regola a 2-AND):
 
-Cronologia 2026-05-24:
+1. **Nessuna sessione viva nel worktree** — un PROCESSO con cwd o file aperti dentro il worktree (`lsof +D <wt>` / `ps` con cwd-match), NON l'mtime dei file. Il guard di liveness attuale `_worktree_recently_active` (`agent_start.py` ~L481) misura solo mtime di dir/`.git`/`HEAD` → una sessione interattiva Claude Code che RAGIONA/RISPONDE a lungo senza scrivere file né committare risulta "inattiva" pur essendo viva (è ESATTAMENTE come il bug è scattato). Il fix vero è qui: liveness = processo, non mtime.
+2. **Lavoro consolidato in `origin/main`** — `git -C <wt> merge-base --is-ancestor HEAD origin/main` (branch GIÀ mergiato). Confronto con `origin/main`, NON con `@{upstream}` del branch.
 
-1. **03:00:46**: evolver crea commit `7902ac05d "Create program: base"` su nuovo branch `program/base` (1 commit ahead di `deploy/main`, file `agent-library/.claude/program.yaml` 59 lines)
-2. **03:43+**: wr2-deploy-puller cron tick → `git branch --show-current` ritorna `program/base` → exit 1 `ERROR: deploy worktree on branch=program/base, expected deploy/main`
-3. **Cooldown alert suppression** (W55 retry pattern correttamente comportandosi) → ogni ora cron fallisce + suppressed → operator NON vede alert
-4. **32 ore di drift**: WR2 cron logic merged a `main` (50 commit) NON propagato al worktree → WR2 Canva renderer + topic selector + draft generator runnano vecchio codice
+Implementato in `cmd_cleanup` come guard #3 (dopo WIP + recent-activity): reap automatico SOLO se `_worktree_has_live_process(wt)` è False (nessun processo OS ancorato — `lsof +D` rileva cwd/fd-aperti, coglie la sessione-che-committa-e-ragiona che il guard mtime manca) AND `_branch_in_origin_main(wt)` è True (`git merge-base --is-ancestor HEAD origin/main`). Se uno dei due dice "proteggi" → WARN + skip (non un fallimento, come il recent-activity guard). Scelto `origin/main` e NON `@{upstream}..HEAD` (rev-list count) né main locale: il refuter DeepSeek ha ucciso entrambi — main locale può essere indietro rispetto a origin; rev-list-count protegge gli zombie-mergiati per sempre E scatta sul caso-bug. Il test dell'ancestor contro il ref d'integrazione è il discriminante non-ambiguo. 35/35 test (4 casi cmd_cleanup + 2 real-resolver no-mock: `_branch_in_origin_main` su git vero, `_worktree_has_live_process` su lsof vero).
 
-Compounding: 4 file WR2 (`scripts/wr2_draft_generator.py`, `scripts/wr2_topic_selector.py` + 2 test) dirty mai-committed sul worktree (probabilmente artefatto debug sibling-session pre-checkout `program/base`).
+Se il branch NON è mergiato in `origin/main` → **mai rimuovere, solo WARN**. Se il guard-processo non è implementabile → disabilitare del tutto il reap automatico (solo `--list` + warn + rimozione manuale). Il 24h CI cap (`find_stale_worktrees`) resta il tetto duro.
 
-Discovery via GEN-5 test scenario "sto avendo problemi con il deploy" prompt vago: Claude ha letto `~/logs/wr2-deploy-pull.log` + identificato pattern `branch=program/base, expected deploy/main` ripetuto da 32h. Antonello non aveva ricevuto alert (suppression attiva).
+> ⚠️ **NOTA AUTO-CORRETTIVA (esempio vivo di W78):** l'antibody v1 era SBAGLIATO — `rev-list @{upstream}..HEAD > 0` NON scatta se i commit sono già pushati ma non in main (= il caso reale → reap di nuovo) e protegge per sempre un branch-mergiato-non-cancellato (zombie). Colto dal refuter DeepSeek PRIMA del merge = rischio #1 di W78 (cicatrice-sbagliata-propagata) in atto. Presidio = il panel, non un hook.
 
-**ANTIBODY (immediate recovery shipped):**
+**GOTCHA:** (a) La diagnosi "è il cron" è il falso-amico qui — RUN il log del cron e leggi `skip ... WIP` prima di accusarlo (come per W70 `log_tail` false friend). (b) Il `recently_active` guard misura mtime dei FILE del worktree, non la vita della sessione — un agente che passa minuti su risposte/panel senza scrivere file supera la soglia pur essendo vivo. (c) Il danno è mascherato dal fatto che il branch sopravvive su origin: perdi solo il checkout fisico, non il lavoro — il che rende il bug subdolo (non rompe nulla di visibile, solo `No such file` improvviso). (d) Famiglia: W62 (worktree broker TTL — questo è il rovescio: lì i worktree NON venivano puliti, qui vengono puliti TROPPO presto), W70 (false-friend diagnostico), e l'interazione-tra-guardrail (come phase-aware §9: due hook che si ostacolano). (e) **Trappola empirica scoperta in implementazione (W64/W75 — RUN it, don't trust `bash -n`):** `lsof +D` su un linked worktree ritorna **rc=1 ANCHE QUANDO trova** la riga `cwd DIR` viva (emette un warning mentre discende il `.git` _file_ pointer). Keyare la liveness sull'exit code legge una sessione viva come morta. Fix: parsare lo STDOUT per qualunque data-line oltre l'header `COMMAND`, ignorare rc. `bash -n` + AST-parse + una probe su dir-piatta in /tmp passavano tutti — solo il run sul vero linked-worktree ha esposto il bug.
 
-1. **`git stash push -u`** dei 4 file WR2 dirty con messaggio `wr2-rescue-pre-checkout-2026-05-25` (preservata in stash@{0} per recovery se serve)
-2. **`git checkout deploy/main`** + **`git pull --ff-only origin main`** (50 commit) → worktree a `f6ba657f1` (head main)
-3. **Kickstart wr2.deploy-puller** → `runs=62 last exit code=0` `[wr2-deploy-pull] OK: already up-to-date (f6ba657f1)` ✓
-4. Branch `program/base` PRESERVED (evolver lo userà al prossimo Sunday 03:00 — non eliminare)
-
-**ANTIBODY (design issue, pending operator decision):**
-
-3 opzioni per disaccoppiare evolver dal worktree WR2:
-
-- **Opzione A**: dedicate worktree separato per evolver (`~/Desktop/nuzantara-evolver/`) — plist evolver REPO_ROOT punta lì
-- **Opzione B**: evolver fa `git worktree add /tmp/evolver-$$` ad-hoc + cleanup post-run (no persistent state)
-- **Opzione C**: deploy-puller skip silently se branch `program/*` (whitelist `evolver-managed-branches`) + alert solo se altro branch wrong
-
-Opzione A è la più chiara (zero magic), B è più ergonomic (auto-cleanup), C è zero-friction ma maschera classi di errore future. Decision pending Antonello.
-
-**GOTCHA:**
-
-- **Suppression NON è bug — è feature W55 working as designed**. Il problema è che la suppression presume "operator vedrà alert in dashboard" — ma se NON c'è dashboard separato per cooldown-suppressed alerts, l'operator scopre il problema solo quando qualcosa di visibile rompe (qui: WR2 produzione cron stale). Future improvement: weekly digest "alert suppressed by cooldown last 7 days" via Telegram.
-- **Worktree-sharing è anti-pattern noto** ma cicatrix W50/W51/W52 era diverso (HOME-fork drift su `~/scripts/`). Questa è prima istanza di "due cron LaunchAgent condividono `git checkout` state sul medesimo worktree". Generalizza: ogni LaunchAgent autonomo che fa `git checkout` deve avere worktree dedicato O usare `git worktree add` ad-hoc.
-- **Recovery side-effect**: pull origin/main ha portato 50 commit incluso lavoro WA copilot di altre sessioni (mig 200 schema, mig 201 audit, S1.3 identity resolver). NON è regressione — è semplicemente catch-up post-drift. Verificare che WR2 cron logic non sia stato refactored in modi incompatibili durante questi 50 commit (review log `git log a4394c9b1..f6ba657f1 -- scripts/wr2_*` opzionale).
-- **`git pull --ff-only origin deploy/main` fail con `fatal: couldn't find remote ref deploy/main`** perché `deploy/main` è SOLO local branch — il remote ha `origin/main`. Branch `deploy/main` locale traccia `origin/main` (verify via `git rev-parse --abbrev-ref @{u}` = `origin/main`). Pattern: in questo repo `deploy/main` è alias locale per "main destinato al deploy", non remote branch.
-- **wr2-deploy-pull.sh ha logica robust**: dopo il `fatal` exit comunque scrive `[wr2-deploy-pull] OK: already up-to-date (f6ba657f1)` perché controlla `git rev-parse HEAD` vs `origin/main` come second-pass check. Architettura difensiva preservata.
-- **Family** scar: ⚠️ STRUCTURAL deploy-path coordination (W50/W51/W52/PR #63 manifest drift + ora questa). Tutte caratterizzate da "due cron/sistemi credono di avere world-state diverso, drift silenzioso fino a sintomo visibile".
-
-**Reference**: ~/logs/wr2-deploy-pull.log (32h trail di ERROR + suppressed). LaunchAgent `~/Library/LaunchAgents/com.balizero.agent-library-evolver.weekly.plist` + `com.balizero.wr2.deploy-puller`. Runner `~/Desktop/nuzantara-deploy/scripts/agent-library-evolver-run.sh`. Stash preserved: `stash@{0}` su `program/base` con label `wr2-rescue-pre-checkout-2026-05-25`. Sister scar: W50/W51/W52 family (deploy-path desync, diversa surface).
+**Reference:** `~/logs/agent-worktree-cleanup.log` (prova dello skip-WIP corretto), `scripts/agent_start.py` `cmd_cleanup` (~L638-700: i 3 guard is_expired/WIP/recent-active, NESSUN guard unmerged-commits), LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily`. Fix shippato PR #1401 (branch `agent/air-m5/infra/w80-reap-guard`, `scripts/agent_start.py` `cmd_cleanup` + `_worktree_has_live_process` + `_branch_in_origin_main`, test `scripts/tests/test_agent_start.py`). Diagnosi: sessione W79 (PR #1399). Famiglia: W62, W70, phase-aware-guardrails §9 (interazione tra guardrail).
 
 ---
 
-### 🚨 PENDING APPROVAL (P1 SECURITY): `backend_rag_v2` Postgres role has `rolsuper=t` — demotion spec drafted, awaiting Antonello sign-off (W38, 2026-05-23)
+### ✅ W81 (FIXED): i 3 loop di apprendimento WR3 erano "verdi ma vuoti" — malattia-madre "Omeostasi Tautologica" (telemetria-verde ≠ delta-di-stato); F20+F21 curati come codice+test, F18 escalato (2026-06-14)
 
-_Discovered: 2026-05-23 ~04:30 WITA by T3.2 read-only `fly ssh console` investigation (closed in cicatrix below). Spec drafted: 2026-05-23 ~07:45 WITA W38 audit · Severity: **P1 SECURITY** · Status: **DRAFT SPEC — NOT EXECUTED — awaiting Antonello approval for any production write**_
+_Discovered/Fixed: 2026-06-14 sessione OPUS MYTHOS P4 (Pro), dispatch multi-AI asimmetrico (Gemini synth + Codex refuter; DeepSeek refuter DOWN 402) · Severity: P2 STRUCTURAL · Status: **F20+F21 FIXED (live-proven, 114/114 test WR3), STEP-0 B1 igiene shippata, F18 ESCALATO operatore**_
 
-**TRAUMA:** The application role `backend_rag_v2` (used by every backend service via Fly secret `DATABASE_URL`) has `rolsuper=t` — FULL PostgreSQL superuser. If the app is compromised (SQLi, dependency takeover, leaked secret, container escape), the attacker has: `DROP DATABASE`, `ALTER SYSTEM`, `CREATE ROLE`, `pg_terminate_backend()` on any session, `COPY ... FROM PROGRAM` (RCE on DB host), `pg_read_server_files`, `pg_write_server_files`, and the ability to read/modify `pg_hba.conf`. Eight superuser roles total exist in the DB (`backend_rag_v2`, `backend_ts_user`, `flypgadmin`, `nuzantara_memory`, `nuzantara_rag`, `postgres`, `repmgr`, `zantara_rag_user`); `backend_rag_v2` is the only one actively used by app code and the only one reachable via leakable application secret.
+**TRAUMA:** WR3 (video-room) aveva 3 loop di auto-miglioramento tutti "armed but inactive / green but empty": **F20** validator manifest dead-code (il manifest reale 17 chiavi → hard-fail 4 gate, cablato in nulla); **F21** reflexion stub 816B `sys.exit(0)` (cron nemmeno loaded) vs WR2 reale 314 righe; **F18** evoskill che propone 0 by construction (curriculum risolto 100%). A monte: supervisor **sano+idle** (exit 74 wrapper, NON "FAILED exit=78" come scriveva il DEBT-INDEX) con siccità producer (2 righe outbox, newest 2026-05-22). La malattia-delle-malattie (2° ordine, Gemini): **"Omeostasi Tautologica"** — confondere la _telemetria di processo_ (cron esce 0) con l'_impatto di stato_ (il sistema evolve). Fratello **attivo-ingannevole** di "Esistere≠Armato" (statico, W64/W71) e "catalogare-non-curare" (passivo): qui la macchina corre sul tapis roulant **producendo attivamente verde**. I learning-loop sono l'istanza più insidiosa: la **convergenza** (propongo 0 perché ho imparato tutto) è fenomenologicamente identica all'**inerzia** (propongo 0 perché il curriculum è rotto / il giudice è 402).
 
-W38 read-only empirical audit (via `fly ssh console -a nuzantara-rag` → asyncpg as `backend_rag_v2`, 12 queries against `pg_roles`, `pg_stat_activity`, `pg_extension`, `pg_namespace`, `pg_tables`, etc.) confirmed:
+**ANTIBODY (FIXED + live-proven):** **F21** — port reale WR2→file-based `scripts/wr3_reflexion_synthesis.py` con il **DELTA GATE** (`_reflexion-state.json` registra `{episodes_found,lessons_written,status∈{SYNTHESIZED,THIN_SIGNAL,NO_INPUT,LLM_FAILED}}` — un run vuoto NON è più `sys.exit(0)` silenzioso) + plist versionato `infra/launchagents/` + install. Live: 5 episodi → claude Sonnet → 5 lessons.md genuine. **F20** — `normalize_assembler_manifest()` + `finalize_episode_manifest()` + enum `PASS-WITH-NOTES` in `wr3_episode_manifest.py`: il manifest REALE su disco normalizzato VALIDA (18 campi, 27 claim_ids, cosine 0.79); il validator non è più dead-code. **STEP-0 B1** — `_heartbeat` timeout 2.0→8.0s env-gated (`scripts/wr3_supervisor.py`): il churn da 2s su tunnel idle aveva prodotto lo stale exit-74 = la causa-radice della mis-diagnosi "FAILED". 114/114 test WR3 verdi. Report `research/operations/2026-06-14-mythos-p4-wr3-debt.md`.
 
-1. **`rolsuper=t` is STILL the live state** (not stale memory). Plus `rolinherit=t`, `rolconnlimit=-1`, `rolvaliduntil=null`.
-2. **No legitimate runtime use** for superuser by application code paths:
-   - 30/30 sampled `pg_stat_activity` queries are routine CRUD (UPDATE wa-mirror, SELECT events_outbox, SELECT 1)
-   - 227 of 239 public tables are OWNED by `backend_rag_v2` → OWNER role already grants ALL on those
-   - 12 non-owned tables have explicit grants from migration 156 + T3.2 cascade (244 entries × 7 privileges)
-3. **Only TWO real ceilings after demotion**:
-   - `CREATE EXTENSION` on non-trusted extensions (postgis, pg_stat_statements) — 6/8 existing migration calls hit IF NOT EXISTS no-ops; new migrations would fail
-   - `pg_ls_waldir()` requires `pg_monitor` role — already documented as needed in `health_monitor.py:280-291`
-4. **Olympus pulse cron** DROP/CREATE partitions on owned `olympus_heartbeats` parent → OWNER preserves capability post-demotion
-5. **codebase grep** found ZERO uses of `CREATE ROLE`, `ALTER SYSTEM`, `pg_hba`, `COPY … FROM PROGRAM`, `CREATE LANGUAGE` — no legitimate superuser dependency
+**Contromisura strutturale (Gemini "Mutation & Delta Gate", raccomandata per tutti i loop):** nessun loop è "Healthy" senza (1) **failure-injection** (inietta input rotto → verifica che ALLARMI) + (2) **state-delta** (delta=0 per N cicli → degrada a "Futility Run", non resta verde). F21 implementa il fattore-2 (delta gate); F20 il fattore-1 (test fail-loud); F18 ha entrambi nel readiness-gate `scar_replay` già esistente.
 
-**ANTIBODY (DRAFTED, NOT EXECUTED — spec file: `research/operations/specs/W38-backend-rag-v2-nosuperuser.md`):**
+**GOTCHA:** (a) **F18 NON eseguito (escalato):** cron plist fuori perimetro WR3 + `vendor/evoskill` vendored + curriculum=ground-truth-del-giudice (panel review). Scoperta load-bearing: il refuter DeepSeek è tornato **402 Insufficient Balance** → l'evolver (harness+scorer=deepseek-v4-pro) crasherebbe comunque → doppiamente morto. (b) **Zero credito Veo speso:** l'episodio reale end-to-end (STEP-0 A1) resta operatore (spende Veo + muta prod outbox + cascata agenti); la **logica di dispatch è provata FREE** da 24 test esistenti (consume→route→ack con fake-PG). (c) **Enum widening `PASS-WITH-NOTES` deliberato** (il critic LIVE lo emette — escluderlo era il bug); se non deve contare come pass per i downstream, mapparlo a `DEGRADED`. (d) **W74 in atto:** le spec sembravano phantom ma erano solo su `origin/main` (checkout locale stale `e2b355f45`); ri-verificate tutte su disco prima di costruire. (e) **Refuter esterni entrambi fragili** (DeepSeek 402, Codex stdin-confusion al 1° tentativo) → gate finale = Opus, ogni claim ri-eseguito su disco/PG/pytest questo turno.
 
-3-stage plan, fully reversible via single `ALTER ROLE backend_rag_v2 SUPERUSER` rollback:
-
-- **Stage A** (pre-flight, no prod change): empirical CREATE TABLE smoke on throwaway role + `pg_signal_backend` usage grep + Olympus partition rotation verification
-- **Stage B** (code + secret prep, ~20min, no DB demotion yet): patch `migration_manager.py` to prefer `ADMIN_DATABASE_URL` (with `flypgadmin` DSN) over `DATABASE_URL`; add Fly secret `ADMIN_DATABASE_URL`; `GRANT pg_monitor TO backend_rag_v2` (idempotent); deploy
-- **Stage C** (the actual demotion, ~5min + 24h observation window): `ALTER ROLE backend_rag_v2 NOSUPERUSER` during Sunday 03:00-05:00 WITA low-traffic window; immediate verification via `/health` + `mcp__nuzantara-mcp__check_health` + `list_clients limit=1`; 24h Cell organism telegram alert + audit-launchd-daily delta observation
-
-Audit snapshot: `research/operations/audits/2026-05-23-w38-backend-rag-v2-rolsuper-audit.json` (604 lines JSON).
-
-**GOTCHA:**
-
-- **DO NOT EXECUTE `ALTER ROLE backend_rag_v2 NOSUPERUSER` without explicit Antonello approval.** W38 deliberately stopped at spec drafting per task constraint.
-- **6/8 existing `CREATE EXTENSION` calls in migrations are idempotent no-ops** because the extensions are already installed; new migrations adding a non-trusted extension (e.g., a hypothetical `pg_hint_plan` or `postgis_topology`) would fail. The Stage B `ADMIN_DATABASE_URL` split is what unblocks future schema work without re-elevating the app role.
-- **OWNER ≠ SUPER**: post-demotion, `backend_rag_v2` retains ALL on its 227 owned tables via OWNER grant. The 12 non-owned tables (e.g., partitioned children, mata_garuda tables) need verification that explicit grants cover them all. Migration 156 + T3.2 cascade already cover 244 of 244.
-- **`pg_monitor` membership is mandatory** for the demotion to be transparent — `health_monitor.py:288` calls `pg_ls_waldir()` which needs it. Without the GRANT, WAL monitoring silently disables (already-handled with try/except + WARN log per code, but loses visibility).
-- **The other 7 superuser roles** (`zantara_rag_user`, `nuzantara_memory`, `nuzantara_rag`, `backend_ts_user`) are legacy or Fly platform — separate spec needed if demoting them. They're not used by app code BUT they ARE attack surface for any rogue script in the codebase that hardcodes them. Future audit candidate.
-- **Cicatrix 2026-05-21 P0 SECURITY** (postgres password leak in 32 files) and W38 are orthogonal: that one is "secret leaked", this one is "even if secret leaks, blast radius minimized". Defense-in-depth layered.
-
-**Reference**: spec `research/operations/specs/W38-backend-rag-v2-nosuperuser.md` (~330 lines, 9 sections), audit snapshot `research/operations/audits/2026-05-23-w38-backend-rag-v2-rolsuper-audit.json`. Parent cicatrix entry (T3.2 resolution) flagged this as discovery: `### ✅ RESOLVED: T3.2 Postgres MCP installato post-panel 3-LLM Hybrid D + 5 empirical discoveries (2026-05-23)` line ~770 of this file. Branch: feature branch then merge to main per L2 Autonomous Ops.
-
----
-
-### ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)
-
-_Discovered: 2026-05-06 22:45 WITA during Symbiosis W1 genome enrollment audit · Severity: P1 · Workaround: TBD (cleanup follow-up PR)_
-
-**TRAUMA:** 13 launchd labels fire SIMULTANEOUSLY on Pro AND Mini:
-
-```
-watcher.daily, reg-alert.30min, kg-linker, wr-topic, wr2-bridge.hourly,
-bridge.adaptive, sentinel.daily, intel-bridge.daily, daily-briefing,
-kita-feed.daily, public-channel, weekly-digest, gap.consumer
-```
-
-Blast radius: `regulation-alert.30min` sends duplicate Telegram alerts; `kg-linker` risks duplicate PG edges; `weekly-digest`/`daily-briefing` sent twice; `intel-bridge.daily` emits 2 distinct Redis entries with same OSINT content. Masked until 2026-05-04 because Mini was offline most of April.
-
-**ANTIBODY (proposed, NOT yet implemented):**
-
-1. Per-organ decision: (a) Pro-only, (b) Mini-only, or (c) leader-election. Default: Pro-only (canonical CRM + API tokens).
-2. `launchctl bootout + rm plist` on losing side; update `organs_registry.yaml`.
-3. Extend `wave1-pro-mini-dup-resolver.sh --resolve` to cover 13 labels.
-4. CI test `test_genome_no_active_active.py` — scan `organs_registry.yaml` for shared labels across hosts, fail if outside explicit allowlist.
-
-**GOTCHA:**
-
-- `organs_registry.yaml` `duplicates_id` is HEADER-ONLY — validator does NOT enforce it.
-- `--check` returns "0 conflicts" when Mini is offline → misleading. Only reliable when Mini is up.
-- Metrics: `items_processed` inflated 2× until cleanup. Dashboard queries: filter by `host_pro_or_mini`.
-- 13th entry `gap.consumer` reported as 12 in topology brief — verify with Zero if dup pair or Pro-only.
-
----
-
-### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
-
-_Discovered: 2026-05-02 — 3 hotfix PRs (#423, #424) chained on PR #422 because tests were green but live endpoints failed · Severity: P1_
-
-**TRAUMA:** PR #422 added `GET /api/channels/{name}/health` router. Unit tests 4/4 green. On prod:
-
-1. `401` — `HybridAuthMiddleware` blocked path not in `PUBLIC_ENDPOINTS`. Test `_build_app_with_db_pool()` mounted router only, not middleware. Fixed by #423: added 4 entries to `_INFRA` group in `public_endpoints.py`.
-2. `404` — router added to `router_manifest.py` but `router_registration.py` uses explicit imports, not the manifest. Fixed by #424: added `from backend.app.routers import channel_health` (×2) + `api.include_router(channel_health.router)` (×2).
-3. After #424: 200 ✅. Timeline: 11:30 UTC (401) → 12:50 UTC (404) → 14:25 UTC (200).
-
-**ANTIBODY (proposed, NOT yet implemented):**
-
-1. Integration test `tests/integration/test_endpoints_reachable.py` — mount full `create_app()` via `httpx.AsyncClient`, GET every route; `404` → fail; `/health` returning `401` → flag for PUBLIC_ENDPOINTS review.
-2. Manifest-vs-registration parity test `tests/setup/test_manifest_parity.py` — assert every `RouterEntry(name=X)` for `_API`/`_BOTH` has a matching `api.include_router(X.router)` in both include functions.
-3. Extend `tests/test_public_endpoints_registry.py`: routes with `/health`/`/heartbeat` NOT in PUBLIC_ENDPOINTS → warning (not failure); silence with `# health-private: <reason>`.
-
-**GOTCHA:**
-
-- `_build_app_with_db_pool()` is intentionally minimal (no middleware) — correct for unit tests. Bug is absence of complementary integration layer.
-- PR #422 is a regression of PRs #54/#55/#60 (same scar class). The manifest was created to prevent this but only catches symmetric include-function drift, not "manifest entry with zero include_router calls".
-- `HybridAuthMiddleware.__init__` logs `Public Endpoints: N` at startup — grep-able sanity check on Fly machines.
-
----
-
-### ⚠️ STRUCTURAL: Untracked files lost when sibling automation switches branches mid-session (2026-04-29, twice in 9h)
-
-_Discovered: 2026-04-29 21:42 WITA (incident #1) and 22:30 WITA (incident #2) · Partial mitigation: WIP-commit-every-10min · Permanent fix: TBD_
-
-**TRAUMA:** Long-running sessions accumulate untracked files before commit threshold. Sibling processes (`nuz-sync`, parallel claude sessions, `agent-*` subagents `--dangerously-skip-permissions`) do `git stash` + `git checkout` automatically. `git stash` without `-u` does NOT stash untracked files → silent loss.
-
-| Incident | Time  | Producer                                                                  | Lost                                     | Recovery                                                             |
-| -------- | ----- | ------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------- |
-| #1       | 21:42 | `nuz-sync` watchdog auto-pull                                             | 2 design docs ~17KB (never `git add`-ed) | Reconstructed from conversation context only                         |
-| #2       | 22:30 | Parallel Claude session checking out `nbe/resend-fallback-team-templates` | 4 `.py` files ~26KB                      | Recovered from `.git/objects` dangling blobs (had been `git add`-ed) |
-
-Incident #2 key sequence: Session-A wrote 4 untracked `.py` + 18/18 tests passing → 22:30:03 sibling stashes (tracked only) + checks out main → 22:30:06 checks out `nbe/*` → 4 files silently dropped → 22:32 Session-A diagnoses via `git fsck --dangling` → recovers to `/tmp/innervation-recovery-*/` → WIP commit `3980a1403`.
-
-**ANTIBODY (partial — permanent fix pending):**
-
-1. **WIP-commit-every-10min** whenever untracked files exist:
-   ```bash
-   if git ls-files --others --exclude-standard | grep -q .; then
-     git add -A apps/<scope>/  # scope-limited, NOT bare `git add -A`
-     git commit -m "WIP(<scope>): checkpoint $(date +%H:%M) — work in progress"
-     git push origin "$(git rev-parse --abbrev-ref HEAD)"
-   fi
-   ```
-2. **Push within 30 seconds of commit** — no Write/Read tool calls between commit and push.
-3. **Pre-session: `ps aux | grep claude | wc -l`** — if >2, STOP and ask Zero which to kill.
-4. **Recovery**: `git fsck --dangling --no-reflogs 2>&1 | grep "dangling blob"` then `git cat-file -p <hash> > /tmp/recovery-<timestamp>/<filename>`. Only works if content was `git add`-ed. After ~14 days `git gc` may prune blobs.
-
-**ANTIBODY (TBD):** Identify producer for 22:30 switch (suspects: PID 79949, PID 42807, wave-2/3 team agents). `nuz-sync` explicitly NOT enrolled in `organs_registry.yaml` — manual restart only until producer identified.
-
-**GOTCHA:**
-
-- A stash labeled `temp-<branch>` does NOT guarantee it contains all WIP — only tracked-dirty files. Always cross-check with `git fsck --dangling`.
-- Files written via `Write` tool but never `git add`-ed have NO blob in `.git/objects` → unrecoverable via fsck. Only `git add`-ed content is recoverable.
-- `/tmp/innervation-recovery-*` dirs are volatile (cleared on macOS reboot) — commit within minutes.
-- `nuz-sync` is incident #1 suspect (fired at 21:42 inside 5-min cron tick) but NOT incident #2 (watchdog log shows it ran at 22:32:31, AFTER the hijack).
-
----
-
-### ⚠️ STRUCTURAL: EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams (2026-04-29)
-
-_Discovered: 2026-04-29 audit · Severity: P0 · Phase 1 SHIPPED PR #342 (`0062090c4`); Phase 2 SHIPPED `feat/p0-2-fase2-callsite-refactor`; Phase 3 (per-handler ack + pruning cron) pending._
-
-**TRAUMA:** `SYMBIOSIS.md` Law 4 promises "Redis Streams + consumer groups". Reality: EventBus uses **PostgreSQL LISTEN/NOTIFY** (`PG_CHANNEL_MAP`: `practice_changed`, `client_changed`, `compliance_alert`, `lkpm_ingest_completed`, `war_room_event`, `intel_event`, `cognitive_event`). When PG listener disconnects (5s window), every NOTIFY is **silently lost** — pg_notify is volatile, no queue.
-
-**ANTIBODY phase 1 (PR #342):**
-
-- New `events_outbox` table (migration 144). `outbox.py` exposes `publish`/`acknowledge`/`replay_unconsumed`/`prune_consumed`. `publish()` writes to outbox + fires `pg_notify($1, $2)` parameterised (**NOT** `quote_ident` — wrong for `pg_notify(text, text)`). `_outbox_id` injected into NOTIFY payload for idempotent ack.
-- `EventBus._replay_outbox_on_reconnect` called after `add_listener`, before keep-alive loop.
-- 20 unit tests (`test_outbox.py` + `test_event_bus_replay.py`).
-- Phase-1 limit: `replay_unconsumed` auto-acks immediately after `dispatch_fn` returns; handler crash = event consumed. Phase 2 fixes.
-
-**ANTIBODY phase 2 (feat/p0-2-fase2-callsite-refactor):**
-
-- `EventBus.emit_pg` delegates to `outbox.publish` (local import, avoids circular init). Any future `emit_pg` call auto-writes to `events_outbox`.
-- Migration `146_eventbus_triggers_use_outbox.sql`: rewrites 6 trigger functions (`notify_practice_change`, `notify_client_change`, `notify_compliance_alert`, `notify_war_room_event`, `notify_intel_event`, `notify_cognitive_event`) to `INSERT INTO events_outbox … RETURNING id` + `pg_notify(channel, payload||{_outbox_id})` inside the user transaction. Idempotent (`CREATE OR REPLACE`). ROLLBACK section restores pre-146 bodies.
-- 12 new tests in `test_outbox_callsite_integration.py`.
-- Channels out of scope: `lkpm_ingest_completed` (Python emitter, no DB trigger — picks up new path via `emit_pg`); `wr2_status_change` (not in PG_CHANNEL_MAP); `partner.commission_changed` (dotted name fails `validate_channel`, not in PG_CHANNEL_MAP — must be renamed `partner_commission_changed` first).
-
-**ANTIBODY phase 3 (pending):** per-handler ack; pruning cron `prune_consumed` daily (30-day retention).
-
-**Decision:** kept PG LISTEN/NOTIFY + Outbox. SYMBIOSIS.md doc update pending (low priority — code-as-truth). Redis Streams migration rejected as too risky for an audit fix.
-
-**GOTCHA:**
-
-- Migration 146 trigger wraps INSERT+NOTIFY in the SAME user transaction — rollback loses both (correct MVCC behavior). Disconnect after commit → outbox row stays unconsumed → replayed on reconnect.
-- Consumers MUST be idempotent on `_outbox_id`. Phase 3 adds per-handler ack; until then `replay_unconsumed` auto-acks on `dispatch_fn` return.
-- **`schema_migrations` is the active runner table (88 rows); `_schema_versions` is legacy (6 rows).** Future agents: always query `schema_migrations` to check migration status.
-- `pg_notify($1, $2)` parameterised = injection-safe. Do NOT add `quote_ident($1)`.
-- `events_outbox` is unbounded until phase 3. Manual: `await prune_consumed(conn, older_than_days=30)`.
-- Migration 146 applies via post-deploy `run-sql-v2-migrations-post-deploy` job — no manual `workflow_dispatch` needed.
-
----
-
-### ⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29)
-
-_Discovered: 2026-04-29 audit zero-crash via Codex empirical scan · Severity: P0 · Workaround: TBD (P0-3 mass plist audit)_
-
-**TRAUMA:** `~/Library/LaunchAgents/com.{nuzantara,balizero,cell}.*.plist`. Codex counted 53 project plist: 7/53 (13%) `KeepAlive=true`, 11/53 no KeepAlive at all, 5/53 missing `EnvironmentVariables` (VADEMECUM §11 violation), 6/53 logging to `/tmp/` (lost on reboot). Critical daemons missing KeepAlive: `com.cell.organism`, `com.balizero.nlm-bridge`, `com.balizero.post-publish-poller`. Cell's crisis-recovery assumes daemon respawns within 10s.
-
-**ANTIBODY (proposed):** P0-3 — `scripts/lint_launchagents.sh` + `scripts/patch_launchagents.sh --dry-run` + PreToolUse hook. Auto-classifies daemon-vs-cron by `StartInterval`/`StartCalendarInterval` presence.
-
-**GOTCHA:** `RunAtLoad=true + no schedule` is ambiguous — manual review needed. Each plist gets `.pre-vademecum-audit` backup before patching. **After plist corruption hardening (see next scar): must `chmod u+w "$plist"` before patch scripts can run.**
-
----
-
-### ⚠️ STRUCTURAL: SQL v2 migrations duplicate numbers `129_*` and `130_*` (2026-04-29)
-
-_Discovered: 2026-04-29 audit zero-crash via Codex empirical scan · Severity: P0 · Workaround: rename non-applied duplicate (P0-7)_
-
-**TRAUMA:** `apps/backend-rag/backend/db/migrations_v2/` has TWO files each for numbers `129` and `130`. Runner (`backend/db/migration_manager.py`) tracks via `migration_number` in `_schema_versions` — duplicates cause undefined apply order and silent corruption risk.
-
-**ANTIBODY (proposed):** P0-7 — compare contents + git history, identify which is in `_schema_versions` (applied), rename the unapplied to next-available number. CI guardrail `lint-migration-numbers.yml` prevents regression. Migration runner asserts uniqueness in `discover_migrations()`.
-
-**GOTCHA:** If both have been applied (unlikely): Zero handoff. Renaming changes file hash but not SQL content — apply order must be re-verified.
-
----
-
-### ⚠️ STRUCTURAL: Unknown agent overwrites loaded LaunchAgent plist files with JSON dump (2026-04-29)
-
-_Discovered: 2026-04-29 ~15:30Z during P0-3 audit · Severity: P0 · Recovery automated; root cause UNKNOWN — escalation HIGH in `shared/escalations_pro.jsonl`_
-
-**TRAUMA:** At 15:09:15-17 WITA, an unidentified process truncated **51 of 54** project plist files, replacing each XML with a tiny JSON fragment of one of the plist's own keys (e.g. `{"Hour":1,"Minute":0}` or the `EnvironmentVariables` object with secrets). Same event repeated at 16:05:18 (50 plist re-corrupted in <1s). Signature matches `plutil -extract <key> json stdout-redirect` pattern. Grep across all script dirs turned up zero matches — producer not a versioned script.
-
-**Critical observation:** canary plist NOT loaded in launchd was NEVER corrupted — **producer enumerates `launchctl list` and writes per-label.**
-
-On-disk corruption was masked (launchd serves cached boot config); **reboot would have lost 51 services** including `com.cell.organism`, `com.balizero.nlm-bridge`, all WR2 producers, all key cron jobs.
-
-**Secrets leaked** into world-readable (0644) plist files:
-
-- `post-publish-poller` → `GH_TOKEN`, `FIREWORKS_API_KEY`, `SCRAPER_API_KEY`
-- `post-publish-webhook` → `POST_PUBLISH_SECRET`
-- `cell.organism` → `GOOGLE_API_KEY`, `CELL_TELEGRAM_BOT_TOKEN`, `FLY_API_TOKEN`, `CELL_DATABASE_URL`
-- `dlq-autopilot` + `sentinel` → `TELEGRAM_BOT_TOKEN`
-
-Rotation plan: `~/p0-3-recovery/secrets_rotation_plan.md`.
-
-**ANTIBODY (recovery):** `~/p0-3-recovery/reconstruct_plist.py` parses `launchctl print gui/501/<label>` (in-memory config) and emits valid plist XML via `plistlib.dump`, validated with `plutil -lint`, atomic mv. 53/54 recovered in ~30s, zero service flap.
-
-Recovery command:
-
-```bash
-python3 ~/p0-3-recovery/reconstruct_plist.py && \
-for src in ~/p0-3-recovery/plist_reconstructed/com.*.plist; do
-  chmod u+w "$HOME/Library/LaunchAgents/$(basename "$src")" 2>/dev/null
-  install -m 0444 "$src" ~/Library/LaunchAgents/
-done
-```
-
-**ANTIBODY (prevention):**
-
-1. **Filesystem hardening**: 5 plist with leaked secrets → `0400`; 49 remaining → `0444`. To edit: `chmod u+w "$plist"`, edit, restore mode.
-2. **fs_usage audit** at `~/p0-3-recovery/fs_usage_trap/capture-*.log` — captures `WrData`/`O_TRUNC`/`truncate` on project plist. Check: `grep -E "WrData|O_TRUNC|truncate" ~/p0-3-recovery/fs_usage_trap/capture-*.log`. Stop: `sudo pkill -f "fs_usage -w -f filesys"`.
-
-56-minute recurrence hypothesis **refuted** — no third wave by 18:44 WITA. Most likely: one-shot AI agent action (Antigravity/Cline/parallel Claude Code via filesystem MCP).
-
-**GOTCHA:**
-
-- Producer targets only launchd-loaded services. Unbootstrapped plist = safe canary, useless production state.
-- `plutil -lint` fails on corrupted plist but launchd still serves cached boot XML. Don't equate lint-OK with service-OK.
-- Most likely candidates: (a) parallel AI-agent session via filesystem MCP (Antigravity network activity at 15:09:05-13 supports this); (b) unknown binary with `plutil -convert` semantics; (c) launchd race from simultaneous `launchctl list`. 56-min cycle hypothesis refuted.
-- After hardening, `patch_launchagents.sh --apply` MUST `chmod u+w` first — otherwise `plutil -insert/-replace` fails silently with `Operation not permitted`.
-
-### ℹ️ META: the 13-agent WR2 autopsy report HALLUCINATED 3 file:line refs — re-verify before trusting any autopsy citation (2026-06-05)
-
-_Discovered: 2026-06-05 while planning P-4 (topic_type_log) off the autopsy report · Severity: P3 (process/trust, not runtime) · Status: REPORTED — the autopsy report stays as-is (it was right about the SUBSTANCE), this scar inoculates future readers against its 3 phantom citations_
-
-**TRAUMA:** `research/operations/2026-06-04-wr2-autopsy-report.md` (the 13-agent autopsy, finding #10 + per-dimension "Anti-monotony") cites, with PRECISE line numbers, three artifacts that DO NOT EXIST:
-
-- `_state-schema.sql:63` (claimed to define a SQLite `topic_type_log` table)
-- `_voyager-curriculum.py:49` (claimed to read it via a LEFT JOIN)
-- `topic_type_log` itself as an existing-but-empty table
-
-Direct re-verification on 2026-06-05: `find . -name _state-schema.sql -o -name _voyager-curriculum.py` → **0 results**. `grep -rl topic_type_log` (excluding .venv/.git/.worktrees) → **only the autopsy report itself**. The table was never created, there is no SQLite schema file, no Voyager curriculum reader. The autopsy described "make the existing aspirational table real" — but there was nothing aspirational on disk; it was confabulated with file:line precision that READS as ground truth.
-
-A SECOND autopsy claim was also wrong (caught by an Explore + direct re-verify): the autopsy implied a software publish event at `wr2_carousel_orchestrator.py:900` (`transition_state → published`). That orchestrator is Pipeline A = DEAD CODE (its dispatcher AND telegram-gate both crash-loop, launchctl exit 75). The LIVE pipeline (B) has NO instagram/graph call (Legge 5 — Damar publishes manually); its terminal software status is `rendered` (`wr2_canva_desktop_apply.py` `_persist_result`). Building P-4's write at the autopsy's suggested chokepoint would have written into dead code.
-
-**ANTIBODY:** When a long multi-agent report (autopsy, deep-research, council synthesis) cites `file:line`, treat those citations as LEADS, not facts — re-run `find`/`grep`/`Read` on each load-bearing one BEFORE building on it. The autopsy was CORRECT about the substance (the variety machine is unplugged; the fact-checker self-references; BRAND_SUFFIX clamps) — verified, and batch-1 fixes shipped on it (PR #1125). But 3 of its specific file refs were hallucinated. The discipline that caught this is the standing anti-hallucination rule (CLAUDE.md §6): "mai citare output di un tool senza averlo eseguito in QUESTO turn". Extended here to: **mai costruire un piano su un file:line di un REPORT senza ri-verificare che il file esista in questo turn.** The P-4 plan (`research/operations/P4-topic-type-log-plan.md` §0) documents the corrections and was built on the verified reality, not the report text.
-
-**GOTCHA:**
-
-- The autopsy is NOT retracted — it remains the authoritative diagnosis of WR2's monotony/fact problems. Only its 3 phantom citations are wrong. Future agents: use it for the WHAT, re-verify every WHERE.
-- The hallucinated `_voyager-curriculum.py` is plausible because a real Voyager-style skill-library evolver DOES exist in this ecosystem (`agent-library` / EvoSkill, see `discovery_s13_evolution_loop_never_closed`). The autopsy likely pattern-matched that into a WR2 curriculum reader that was never built. Plausibility ≠ existence.
-- P-4 (migration 216, shipped 2026-06-05 PR #1133) is the FIRST real `topic_type_log` — it's a Postgres table on the production path, NOT the phantom SQLite one. Anyone grepping `topic_type_log` after 2026-06-05 will find the real one; do not confuse it with the autopsy's phantom.
-
-**Reference:** autopsy `research/operations/2026-06-04-wr2-autopsy-report.md` (finding #10). Corrections in `research/operations/P4-topic-type-log-plan.md` §0 + REV2. Real implementation: PR #1133 (squash `d45d43656`), migration `216_wr2_topic_type_log.sql`. Family: anti-hallucination discipline (the `non è vero` → re-verify-disk-state reflex), `lessons_hallucinating_tool_output_is_diabolical`.
+**Reference:** report `research/operations/2026-06-14-mythos-p4-wr3-debt.md`. Spec `research/operations/specs/WR3-{DEBT-INDEX,supervisor-revival,F18,F20,F21}.md`. File: `scripts/wr3_reflexion_synthesis.py` (nuovo), `scripts/wr3_episode_manifest.py` (normalizer+enum), `scripts/wr3_supervisor.py` (B1 heartbeat), `infra/launchagents/com.balizero.wr3.reflexion.weekly.plist`+`install_wr3_reflexion.sh`, test `scripts/tests/test_wr3_{reflexion_synthesis,manifest_normalize}.py`. Famiglia: W64/W71 (Esistere≠Armato), W74 (green cron≠working + phantom-citation), connectome TAC (catalogare-non-curare). Modello readiness-gate: `agent-library/scar_replay/scar_replay.py`.
 
 ---
 
 ## Archived
 
 Resolved scars moved to [`cicatrix-scars-archive.md`](./cicatrix-scars-archive.md) (not auto-loaded per session). Currently archived:
+
+**Archived 2026-06-13 sweep+W68 (16 scars, RESOLVED/stable — oversize remediation to land the W78 commit <40k char, rebased on main+W77):**
+
+- W62, agent-library-evolver, W38, live-503+CORRECTION, W64, W65, W67, W68 (subsumed by live W73/W77), P3-flaky-clock-race, W69, W71, W72 (subsumed by live W73), M5-dev-env-path-drift, W74, W76. Full TRAUMA/ANTIBODY/GOTCHA in archive — grep by W-number.
+
+**Archived 2026-06-13 (W75 — RESOLVED/stable, swept to keep cicatrix <40k while landing the W80→FIXED update; the W64/W75 cross-ref in the W80 GOTCHA stays valid — grep `W75` in the archive):**
+
+- ✅ **W75** (P2 SECURITY): `nuz_db_refresh.sh` DUMP_MODE=fly-ssh leaked the readonly DB password (secret as line 1 of a `bash -s` script). FIXED PR #1372 (`_shq()` helper, secret on stdin not argv). Full TRAUMA/ANTIBODY/GOTCHA in archive.
 
 **Archived 2026-05-27 sweep (~36 scars, RESOLVED/INFO/STRUCTURAL ≤2026-05-23 — W31–W57 series, T0.2/T3.2/Wave 1/3/4 spec runs, mata-garuda consumer-group + NER worker repairs, CRM-Guardian Phase 1.5 OCR layer, P0 SECURITY postgres password rotation, Cell `.env` quoting trap, KG-linker dead-upstream, claude mcp list stale-status, canva-renderer flycast DNS wrapper):**
 
@@ -427,155 +211,6 @@ Resolved scars moved to [`cicatrix-scars-archive.md`](./cicatrix-scars-archive.m
 
 ---
 
-### ⚠️ W64 (REOPEN of W34): asyncpg silent-death pattern re-introduced by W49 sibling-fix in wr2_canva_lease_watchdog.py (2026-06-02)
-
-_Discovered: 2026-06-02 05:15 WITA by S15 symbiosis-deep-audit (cicatrix-resurrection assailant + orchestrator independent re-verify) · Severity: P2 · Status: **REOPENED** — antibody (lint script) alive, codebase compliance regressed_
-
-**TRAUMA**: W34 (2026-05-23, commit cb32f8214) patched 5 daemon sites + shipped `scripts/lint_asyncpg_except_completeness.py` and claimed "Live codebase post-fixes: 0 violations". S15 re-test runs the lint live → **REAL_LINT_EXIT=1** (orchestrator isolated `$?` after catching a pipe-masked exit-0 false-read). Violation: `scripts/wr2_canva_lease_watchdog.py:40` has `except (asyncio.TimeoutError, OSError, asyncpg.PostgresError) as e:` — **missing `asyncpg.InterfaceError`** (sibling of PostgresError, NOT a subclass → connection-interface failures silently swallowed in a daemon reconnect loop). The file is a genuine daemon (`async def main()` + `asyncio.run(main())` + retry loop, the W49 lease-watchdog cron). Git blame: violation introduced by commit `120078999` "fix(wr2): lease-watchdog connect-with-retry (W49)" dated 2026-05-23 14:40:54 — AFTER W34's cb32f8214 landed the SAME DAY. W34's own sibling fix re-introduced the exact silent-death class W34 was built to prevent. CI never caught it because W34's GOTCHA admitted CI integration was "deferred to W35" — the guard never gated commits.
-
-**ANTIBODY**: (1) Patch `scripts/wr2_canva_lease_watchdog.py:40` to `except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, asyncio.TimeoutError) as exc:` (lint fix-template). (2) Finally wire `lint_asyncpg_except_completeness.py` into CI / pre-commit (close the W35 deferral) so the next sibling-fix regression gates at PR time, not at audit time 10 days later. NOT executed by S15 (read-only diagnosis; reopen = structured entry, not fix).
-
-**GOTCHA**: The antibody-vs-wound distinction matters: the lint SCRIPT is healthy and correctly detects the bug. A future agent grepping "is W34 resolved?" must RUN the lint, not check the script exists. Also: piping the lint through `tail`/`head` masks its exit code — capture `$?` immediately or redirect to file first. `asyncpg.InterfaceError` is the load-bearing omission (connection lost mid-query); `PostgresError` alone covers SQL errors but NOT interface/connection failures.
-
-**Reference**: S15 FROZEN `research/operations/S15-symbiosis-FROZEN.json`. Lint output `/tmp/s15-lint-asyncpg.txt`. Parent W34 in `cicatrix-scars-archive.md` (Archived 2026-05-27 sweep). Regression-introducing commit `120078999`. Target file `scripts/wr2_canva_lease_watchdog.py:40`.
-
----
-
-### ⚠️ W65 (RESIDUE of 2026-04-29 plist-secret-644): skills-bridge-consumer .bak leaks 64-hex API key world-readable; live plist hardened but backup ignored (2026-06-02)
-
-_Discovered: 2026-06-02 05:15 WITA by S15 symbiosis-deep-audit (launchagent-health assailant; devils-advocate FALSELY refuted, orchestrator grep re-confirmed) · Severity: P2 SECURITY · Status: **chmod RESOLVED 2026-06-03 (verify-fix-loop empirical re-check), KEY ROTATION residual still recommended**_
-
-> **2026-06-03 verify-fix-loop empirical re-verification** (closed-loop PR verification of S15 #1023): ran `ls -la` + `stat -f '%Sp'` on `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531` → perms are now **`-r--------` (0400)**, NO LONGER 0444 world-readable. The chmod half of the antibody is DONE (a follow-up sweep hardened it). The 64-hex `BRIDGE_SKILLS_API_KEY` is still embedded in the backup, so **ROTATION remains the open residual** since the value was world-readable historically. ALSO re-checked `com.cell.organism.plist` (flagged in the parent 2026-04-29 scar as carrying `GOOGLE_API_KEY`/`FLY_API_TOKEN`/`CELL_DATABASE_URL` inline at 0644): it is now **805 bytes with ZERO inline secret keys** (reconstructed-minimal post 2026-04-29), so its 0644 is harmless — no leak. Net: S5 #1021 FROZEN claim "all 5 inline-secret plists are 0400" HOLDS empirically.
-
-**TRAUMA**: The S4 2026-05-31 hardening sweep correctly chmod'd the LIVE `com.nuzantara.skills-bridge-consumer.plist` to 0400. But it created a backup `com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531` and left it **world-readable (`-r--r--r--`, 0444)** — and that backup still embeds the real secret: `<key>BRIDGE_SKILLS_API_KEY</key><string><<REDACTED_64HEX_ROTATE_BRIDGE_SKILLS_API_KEY>></string>` (64-hex). The hardening hardened the file but leaked its own backup — the exact 2026-04-29 plist-secret-644 scar pattern, residue edition. (Sibling finding: 3 `wa-dashboard-m1` plist backups also world-readable carrying a local postgres DSN — lower severity, no password.)
-
-**ANTIBODY**: (1) `chmod 0400` (or `rm`) the backup: `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531`. (2) **ROTATE `BRIDGE_SKILLS_API_KEY`** — the 64-hex value sat world-readable on a multi-process machine; treat as exposed. (3) Patch the hardening sweep script so it `chmod 0400`s every `.bak*` it produces, not just the live file. NOT executed by S15 (read-only; reopen = entry, not fix).
-
-**GOTCHA**: The devils-advocate analyst (DeepSeek-class refuter) FALSELY claimed this backup contained ONLY a placeholder comment (`Operator must add BRIDGE_SKILLS_API_KEY here`) and NO embedded secret, trying to downgrade the finding to INFO. Orchestrator grep proved the comment is FOLLOWED by a real value on the next `<string>` line. Lesson: even adversarial verifiers hallucinate — the orchestrator's independent re-grep (anti-hallucination rule 2) is what caught it. NEVER accept a "refuted" verdict on a security finding without re-running the grep yourself.
-
-**Reference**: S15 FROZEN `research/operations/S15-symbiosis-FROZEN.json` (contradictions_caught[1]). File `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist.bak-pre-chmod0400-20260531` (0444). Parent scar "Unknown agent overwrites loaded LaunchAgent plist files" (2026-04-29, this file). Sibling: wa-dashboard-m1 backups.
-
-### ✅ RESOLVED: Live 503 "RAG worker unavailable" on kita /process = deploy-desync, NOT runtime (2026-06-02)
-
-_Discovered: 2026-06-02 13:10 WITA · Severity: RESOLVED · Status: Fixed (v3429)_
-
-**TRAUMA**: kita.balizero.com/process threw 503 "RAG worker unavailable" on /api/crm/practices. Looked like a DB/runtime outage. Reality: Fly app nuzantara-rag has 2 process groups (api + rag). The rag machine crash-looped 10x on startup with ModuleNotFoundError: backend.services.crm.whatsapp_enrichment (crm_clients.py:30), then Fly left it STOPPED. The api machine kept /health=200 and unauth endpoints=401 — masking that the rag worker was dead. Broken import was an orphan from W59 CRM AI-profile feature, already removed in origin/main by #1018 (6206f0cf4); but deployed image v3428 predated the fix. Classic deploy-desync (S4 family).
-
-**ANTIBODY**: Clean redeploy from deploy/main (already had the fix) — no code change. Pre-deploy gate green: dep-import smoke + RAG app factory boot + 91/91 RAG pytests + zero whatsapp_enrichment grep hits. Deployed v3429, force-started rag machine, confirmed clean boot past include_heavy_routers, endpoint now 401 not 503.
-
-**GOTCHA**: TRAP 1: `fly deploy` from inside apps/backend-rag FAILS — Dockerfile uses monorepo-root-relative COPY (packages/cell-core, apps/crm-cell), build context MUST be repo root: `cd ~/Desktop/nuzantara-deploy && fly deploy --config apps/backend-rag/fly.toml --dockerfile apps/backend-rag/Dockerfile`. TRAP 2: a STOPPED rag machine post-deploy is autostop-idle, NOT proof of fix — `fly machine start <rag-id>` + read boot logs to confirm clean startup. TRAP 3: pre-deploy import smoke fails on JWT_SECRET_KEY/API_KEYS pydantic validation (Fly runtime secrets) — export dummy 32-char values to reach the real import check. DIAGNOSTIC: split-brain health (api up, rag down) hides worker death behind /health=200 — always check per-process-group state with `fly status`, not just /health.
-
-**Reference**: fix #1018 commit 6206f0cf4 · deployed v3429 image deployment-01KT32YTJJGN1T7YXDCK9BRGQ5 · related: fix_crm_guardian_deploy_venv_empty_2026_06_02.md, S4 structural-debt scar
-
-### CORRECTION to above 503 scar — verified root cause is STUCK-STOPPED machine, not stale deploy (2026-06-02)
-
-_Discovered: 2026-06-02 13:25 WITA · Severity: P2 · Status: Corrected_
-
-**TRAUMA**: The scar entry directly above claimed "deployed image v3428 predated the fix #1018". FALSE — corrected after checking `gh run list` + post-23:51 logs. Verified timeline: (1) 18:15 UTC W59 #1010 deploys broken whatsapp_enrichment import; (2) 19:08 UTC rag machine crash-loops 10x, hits Fly max-restart cap, left STOPPED; (3) 23:51 UTC fix #1018 auto-deploys SUCCESSFULLY via CI (fly-deploy.yml) -> v3428 = FIXED image; (4) BUT the rag machine was already stopped/failed — a rolling deploy to an autostop machine stages the new image and leaves it stopped, does NOT force-boot it. So the fixed code was present from 23:51 but NEVER EXECUTED. Zero crash signatures in logs after 23:51 confirms it never re-ran the app. (5) browser hit /process -> rag worker stopped -> 503. Fix shipped 5h+ before the error was seen; machine just never rebooted to pick it up.
-
-**ANTIBODY**: The real lesson — a Fly machine that crash-loops to the max-restart cap gets stuck STOPPED and is NOT auto-recovered by a later fixing deploy. CI auto-deploy worked correctly; the gap is machine-recovery. Mitigations: (a) cron-fly-restart-detector.yml exists — verify it actually force-starts machines stuck stopped-after-crashloop, not just alerts; (b) post-deploy, always `fly machine start <id>` + read boot logs for autostop machines (a 'stopped' state after deploy is NOT proof the new image runs); (c) consider min_machines_running=1 for the rag process group if 503-on-cold-rag is unacceptable.
-
-**GOTCHA**: A successful `fly releases` entry + green CI does NOT mean the fix is live on an autostop machine that was already dead. `fly status` showing rag=stopped is ambiguous: could be healthy-idle OR stuck-after-crashloop. Disambiguate by force-start + boot-log read. Also: crash stack traces in `fly logs` carry the ORIGINAL crash timestamp (19:08) even when surfaced later — don't misread an old trace as a fresh crash.
-
-**Reference**: gh run 26789282348 (#1018 deploy success 23:51Z) · supersedes mechanism-claim in scar immediately above · cron-fly-restart-detector.yml to audit
-
----
-
-### ℹ️ P3 FLAKY TEST (clock race): `test_duplicate_alert_id_skipped` blocks innocent PRs on a 1-second boundary (2026-06-04)
-
-_Discovered: 2026-06-04 06:15 WITA while monitoring PR #1101 (a scar_replay-only change touching ZERO backend code) · Severity: P3 · Status: **REPORTED — fix belongs in a backend-scoped PR, not shipped here**_
-
-**TRAUMA**: CI "Backend Tests (Python)" failed on exactly ONE test — `apps/backend-rag/backend/tests/unit/services/ingestion/test_performance_monitor.py:311 TestCreateAlert::test_duplicate_alert_id_skipped` — with `AssertionError: assert 2 == 1` (10576 passed, 1 failed, stop-after-1). The test's OWN comment admits the design: `# Same metric + same second → same alert_id → skip`. It calls `monitor._create_alert("parsing_duration", ...)` twice and asserts `len(active_alerts) == count_before`, RELYING on both calls landing in the **same wall-clock second** so the timestamp-derived `alert_id` collides and the 2nd is skipped as a duplicate. The CI log showed the two ids were `parsing_duration_1780524705` and `parsing_duration_1780524706` — the two calls straddled a 1-second tick, so the ids differed, both alerts were stored, and `2 != 1`. There is NO time mock. The test passes most of the time and fails ~randomly whenever the two `_create_alert` calls fall across a second boundary. It blocked an unrelated PR's auto-merge.
-
-**ANTIBODY** (proposed, NOT shipped — wrong PR scope): freeze/mock time in the test so both `_create_alert` calls deterministically share the same second. Either `@patch` the time source used to build the id (`time.time` / `datetime.now` inside `backend.services.ingestion.performance_monitor`) to a constant, or pass an explicit timestamp into `_create_alert`. The fix belongs in a backend-scoped PR. Immediate mitigation (used now): `gh run rerun <run-id> --failed` re-rolls the dice and usually passes.
-
-**GOTCHA**: This is a non-mine flake — a scar_replay-only PR (`#1101` touches only `agent-library/scar_replay/scar_replay.py` + `test_scar_replay.py`) was blocked by it. **Diagnostic rule**: when CI Backend Tests fail on a PR that changed NO backend code, check whether the failing test is timestamp/clock-dependent BEFORE assuming regression — verify via `gh pr view <N> --json files -q '.files[].path'` that your diff doesn't touch the failing module. The same test passed clean on `#1104` minutes earlier (same suite) → proof it's nondeterministic, not a real break. Any PR whose `update-branch` re-triggers the full Backend Tests can hit it. Family: **nondeterministic-test-blocks-merge (clock race)**. Related discipline: anti-hallucination rule — verify the failing path is actually yours, don't assume.
-
-**Reference**: CI run 26915762002 job 79404910575 (#1101). Failing test `apps/backend-rag/backend/tests/unit/services/ingestion/test_performance_monitor.py:311`. Source under test `apps/backend-rag/backend/services/ingestion/performance_monitor.py` (alert-id generation). PR #1101 files: scar_replay only.
-
----
-
-### ✅ RESOLVED: W67 — wa-mirror reconnect storm = `supervise-launcher.sh` was `exec start-all.sh` (one-shot) under KeepAlive=true → launchd SIGTERM-kills healthy node bridges every ~22s (2026-06-07)
-
-_Discovered: 2026-06-07 ~08:45 WITA by background-job triage of streaming `wa-mirror disconnected: <name>; reconnect_attempt=35x` notifications · Severity: P2 (OSINT mirror effectively churning, healthy sessions killed) · Status: **RESOLVED** — fix deployed live + empirically verified, PR #1161 to main_
-
-**TRAUMA**: `com.balizero.wa-mirror-launcher` (`KeepAlive=true`, `RunAtLoad=true`, `ThrottleInterval=10`) ran `apps/wa-mirror/scripts/supervise-launcher.sh`, which — despite the name — was a thin **compatibility passthrough** ending in `exec /bin/bash ~/scripts/wa-mirror-launcher/start-all.sh`. But `start-all.sh` is a **one-shot**: it spawns the 6 per-employee Baileys node bridges (`nohup node dist/bridge/index.js --employee=X &`), prints a Summary, and exits 0. Under `KeepAlive=true`, launchd treats every exit as "job died" and restarts it after `ThrottleInterval`. Because the `nohup`'d node children stay in the **launchd job's process group** (nohup ignores SIGHUP but does NOT `setsid`/detach the group), each KeepAlive restart tore down the previous job's process group and **SIGTERM-killed the healthy node bridges**. Net effect: every ~22s (12s launcher run incl. `sleep 2` stagger + 10s throttle) every account was killed and relaunched → endless reconnect storm, `reconnect_attempt` climbing into the hundreds (352+ observed).
-
-Empirical evidence (read-only triage):
-
-- `surya.log`: `wa-mirror session connected` + `opened connection to WA`, then `{"signal":"SIGTERM","msg":"wa-mirror shutdown requested"}` ~21s later — a perfectly healthy session killed from outside.
-- launchd `runs = 1369` and climbing; launcher log had **15,732** `START ALL` (cumulative across reloads; the `runs` counter resets on reload, the log persists — that's why the two numbers don't match).
-- Node bridge etimes all <40s, staggered ~8-10s apart = single relaunch wave, constantly recycled. No zombie accumulation (~5MB total) → pure churn, not a leak.
-- start-all's Summary always read `Launched: 6 / Already running: 0` — the "already running" guard never held _across cycles_ because the processes it would have skipped were being SIGTERM-killed between cycles.
-
-A SEPARATE, independent failure mode surfaced in the same triage (NOT fixed by W67): `sahira.log` showed `Connection Failure → code:401 reason:"logged_out" terminal:true` = the linked device was removed **phone-side**. The bridge retries in an internal backoff loop forever — futile until a human re-links via QR. This is the other contributor to the `reconnect_attempt` counter and is **operational, not code-fixable**.
-
-**ANTIBODY (shipped + verified)**: Rewrote `supervise-launcher.sh` from `exec one-shot` into a **real blocking supervisor**: run the launcher once, then re-run on an interval (`while true; do start-all.sh; sleep ${WA_MIRROR_SUPERVISE_INTERVAL:-60}; done`). A single long-lived supervisor process means launchd's `KeepAlive` never cycles the job, so the node bridges (now grandchildren of a stable, long-lived process group) keep running uninterrupted. `start-all.sh`'s existing pidfile + `kill -0` guard now actually holds across iterations (skips live accounts, relaunches only dead ones). Dropped `set -e` → `set -uo pipefail` so a non-zero launcher iteration is logged + tolerated instead of killing the supervisor and handing churn back to KeepAlive (verified with an exit-1 stub: logs `continuing`, survives). **NO plist change needed** — the plist already pointed at `supervise-launcher.sh`; only the script body changed, so blast radius = 1 file, no plist re-hardening dance.
-
-Deploy: live-incident hotfix on main checkout (commit `b55f9c705`, scoped — operator's pre-staged `infra/launchagents/*` untouched) + clean PR #1161 from `worktree-wa-mirror-supervisor-loop` (commit `926da933b`). `launchctl kickstart -k`. **Empirical verification ~135s post-restart**: `runs` stayed at 1370 (= +1 for the kickstart, then flat → churn STOPPED); single `supervise-launcher` pid 47356 alive 2m15s; all 6 bridges alive with etimes 1:17–2:14 (survived past the old ~22s kill window; before, max etime was 39s); zero new SIGTERM in any bridge log.
-
-**GOTCHA**:
-
-- **`nohup` does NOT detach from the process group.** A backgrounded `nohup cmd &` child still dies when launchd tears down the job's group. If you ever want children to outlive the launchd job _without_ a long-lived supervisor, you need `setsid`. The chosen fix (long-lived supervisor) sidesteps this — the group simply never gets torn down.
-- **`launchd runs` resets on plist reload but the StandardOutPath log is cumulative** — don't equate the two counts (here 1369 vs 15732). To prove a KeepAlive crash-loop is fixed, watch whether `runs` _climbs_ over a window, not its absolute value.
-- **A "stopped"/short-lived child is not proof of crash** — here the bridges were healthy and killed by SIGTERM from _outside_. Always read the child's own log for the death cause (`signal:SIGTERM` vs `code:401`) before assuming the child crashed. Two different death causes (SIGTERM-from-launcher vs 401-logout) coexisted and need different fixes.
-- **The script was NAMED `supervise-launcher.sh` but did not supervise** — name ≠ behavior. The header even called it a "thin compatibility entrypoint". Grep for `exec ` in anything launchd runs with `KeepAlive=true`: `exec one-shot` + KeepAlive is the crash-loop signature (family of the 2026-04-29 "53 LaunchAgents, 13% KeepAlive" scar — daemon-vs-cron misclassification).
-- **W67 fixes ONLY the launcher churn.** Accounts logged out phone-side (sahira `628213454723`, and the notification names `Ari` / `+628213454721` which are sequential Bali Zero numbers not in the start-all roster) still need a manual QR re-link: `bash ~/scripts/wa-mirror-launcher/start-one.sh <name> --qr` with the employee scanning on their phone. Until then their bridge runs but loops internally on 401.
-
-**Reference**: PR #1161 (branch `worktree-wa-mirror-supervisor-loop`, commit `926da933b`) + live hotfix commit `b55f9c705`. Memory `discovery_wa_mirror_reconnect_storm_2026_06_06`. Files: `apps/wa-mirror/scripts/supervise-launcher.sh` (fixed), `~/scripts/wa-mirror-launcher/{start-all,start-one}.sh` + `_lib.sh` (HOME-fork, unchanged; `PID_DIR=/tmp/wa-mirror-pids`, `LOG_DIR=/tmp/wa-mirror-logs`). Plist `~/Library/LaunchAgents/com.balizero.wa-mirror-launcher.plist` (0400, unchanged). Verification snapshot: `runs` flat at 1370, 6 bridges etime >70s, zero SIGTERM. Family: daemon-vs-cron KeepAlive misconfig (2026-04-29 plist audit scar).
-
-#### W67b — the loggedOut (401) follow-up: retry-stop + keepalive (2026-06-07)
-
-After W67 stopped the launcher churn, **4 of 6 accounts reconnected on their own with zero QR** (proof the mass "disconnect storm" was the churn, not real logouts). Only **sahira** had a genuine terminal `loggedOut` (401): `creds.json` intact locally (it reaches `logging in…`) but WhatsApp rejects them → device removed/invalidated **server-side** (`session.ts` doc: "the team member removed the linked device", or phone offline >14d, or anti-automation flag). Two code defects made one real logout look like a crisis:
-
-1. **`runAccountForever` (index.ts) retried EVERY error identically** — including the terminal `loggedOut` that `session.ts` rejects with — backoff-capped at 60s, **forever**, firing a Telegram `disconnected; reconnect_attempt=N` alert each time (that is the literal source of the `reconnect_attempt=352` notifications — `index.ts:150`). Fix: `session.ts` now rejects with a typed `SessionLoggedOutError` (instanceof-safe via `Object.setPrototypeOf`); `index.ts` matches it, logs once, sends ONE "needs QR re-link" alert, and `return`s (stops that account's loop). Realizes the intent already documented in `index.ts:10-13`.
-
-2. **The process then EXITED** and start-all relaunched it every ~60-120s (spam just moved from the bridge's internal loop to the supervisor's relaunch loop). Root cause: `await new Promise(() => undefined)` is **NOT** an event-loop handle — once the last Baileys socket/timer drains, Node exits 0. Fix: added an explicit ref'd `setInterval(() => undefined, 1 << 30)` heartbeat in `main()` so the process stays idle-alive; start-all then logs `⏭️ already running PID X` and skips it. **Verified**: sahira pid 67119 stable across a full supervisor cycle (etime 3:04→4:14), launcher log flipped from `🚀 launching` to `⏭️ already running`, `stopping retries=1`, exactly one logout alert; 6/6 bridges present.
-
-Net: a logged-out account now produces **exactly one** alert and one idle process until a manual `start-one.sh <name> --qr` re-link (which kills+restarts it). Daemon restart re-fires one alert (rare now). PR #1161 commits `4c8092248` (retry-stop + 2 vitest cases) + `2b8377dff` (keepalive); live `f5f1aed04` + `50263172e` (+ `npm run build` → `dist/`, gitignored).
-
-**GOTCHA W67b**: (a) `await new Promise(() => undefined)` is a classic false keepalive — it does NOT keep Node alive; only an unref-free timer/handle / open socket does. (b) The launcher log has NO per-line timestamps and is cumulative across kickstarts — `🚀 launching` lines can be stale settling noise; disambiguate "relaunch loop vs stable" by watching the **pid/etime across a full supervisor cycle**, never by the log tail alone. (c) `instanceof` across an `extends Error` needs `Object.setPrototypeOf(this, X.prototype)` to survive TS downleveling — the orchestrator's stop-decision is load-bearing on it. (d) This does NOT prevent the logout itself (server-side) — to actually reduce QR frequency the employee's phone must stay online ≥1×/14d (WhatsApp companion-device limit, not software-fixable). (e) `Ari (+628213454721)` / `Vino (+628213454727)` have sessions but are NOT in `WA_MIRROR_SUPERVISED_NAMES` — orphan/dismissed, pending operator decision.
-
-#### W67c — the Telegram spam was a SECOND machine (Mini active-active orphan), not the Pro (2026-06-07)
-
-After W67/W67b made the Pro silent + clean, the operator was STILL getting `wa-mirror disconnected: <name>; reconnect_attempt=1715` Telegram alerts (Adit, Surya, **Ari**, **+628213454721**), counter climbing live. The trap: I assumed the source had to be the machine I'd been fixing (Pro). It was **Mini-Pro2**. Two independent tells pointed off-Pro: (1) the Pro plist passes `TELEGRAM_BOT_TOKEN=""` to `start-one.sh`, so **Pro bridges physically cannot send Telegram** — every alert had to originate elsewhere; (2) `Ari` / `+628213454721` are NOT in the Pro roster (`WA_MIRROR_SUPERVISED_NAMES`), so a different roster was in play. `ssh mini` found `com.balizero.wa-mirror` (the LEGACY **monolithic** launcher: `~/bin/wa-mirror-runner.sh` → `node dist/bridge/index.js` with NO `--employee`, i.e. the full roster incl. Ari/Vino in one process), pid 735 alive **1d6h**, dist WITHOUT the fix (`grep SessionLoggedOutError dist = 0`), looping `attempt":1720` with its own `~/.wa-mirror.env` Telegram token. Classic **active-active Pro+Mini** (same family as the 2026-05-07 "12+1 mata_garuda LaunchAgents active-active" scar). Operator confirmed "wa-mirror è solo sul Pro" → Mini's instance is a pure orphan: it wrote to Mini's local PG that nothing reads (the dashboard `com.balizero.wa-dashboard-m1` + `wa-viewer` run on the **Pro**, which is therefore canonical). Fix: `ssh mini` → `launchctl bootout gui/$UID/com.balizero.wa-mirror` + `launchctl disable …` (rc=0, process dead, job unloaded, disable persists across reboot). No data loss (Pro canonical). Reverse if ever needed: `ssh mini launchctl enable … && launchctl bootstrap …`.
-
-**GOTCHA W67c**: (a) **A daemon's Telegram/alert spam can originate on a DIFFERENT machine than the one you're debugging.** Before concluding, `ps -eo` + `launchctl list | grep` on EVERY node in the fleet (Pro AND Mini), not just the local one. (b) `ps etime` in `hh:mm:ss`/`DD-hh:mm:ss` form is easy to misread as minutes — a process that looks "7 min old" may be 7 HOURS; use `ps -o lstart` for an unambiguous start timestamp. (c) Two architectures coexisted for the same service: Pro = new single-account-per-process (`start-one --employee=X`), Mini = legacy monolithic (one process, whole roster). When you "fix the launcher", confirm WHICH launcher each running process belongs to. (d) `TELEGRAM_BOT_TOKEN=""` in a plist is a deliberate mute — its presence on one host and absence on another is a strong "who is actually sending alerts" discriminator.
-
-### 🐛 W68: WhatsApp `_guard_property_zoning_reply` over-broad on "lease" → clobbered every villa-leasehold-DURATION answer with a canned Airbnb/zoning lecture (2026-06-08)
-
-_Discovered: 2026-06-08 by the WhatsApp quality-loop test session (31 Q across visa/tax/property/adversarial) · property batch Q4 · Severity: P1 (silent wrong-answer to real clients) · Status: **FIXED** PR #1195 (`d1823ea9d`), verified live 5/5 + 3 regression tests_
-
-**TRAUMA:** Zantara WhatsApp answered "How long is a typical villa leasehold in Bali?" with an unrelated **Airbnb/short-stay zoning lecture** (KBLI 55203, OSS, etc.) — never the ~25-30yr duration. NOT a knowledge gap (KB was correct) and NOT a cache: a post-LLM guard `_guard_property_zoning_reply` (scripts/openclaw_whatsapp_bridge.py) **overwrote** the correct answer with a hardcoded canned text (`_canonical_property_zoning_answer`). The guard fires on `("villa"|"vila"|"airbnb") AND ("zoning"|"residential"|"zone"|"lease")`. The bare `"lease"` token is a substring of `"leasehold"`, so any "villa leasehold" / "villa lease" question tripped it. Its escape clause requires the reply to contain oss+bkpm AND ≤125 words — which a correct lease-DURATION reply never satisfies → the guard **always** clobbered a correct answer. Reproduced live 5/5: "villa leasehold"/"villa lease" broken; "property leasehold" (no "villa") and "villa rental" (no "lease") correct — the asymmetry that pinpointed the trigger. Deterministic, message-keyed (NOT phone-keyed — reproduced on fresh phones), so it hit EVERY client asking villa lease duration.
-
-**ANTIBODY:** Bail out of the guard for pure lease-DURATION intent (how long / how many years / duration / berapa lama / durata / quanto dura …) UNLESS the message also signals Airbnb/short-stay OPERATION intent (airbnb / short-stay / rent out / operate / sewa harian / pondok wisata / business). Genuine "can I run my villa as Airbnb in a residential zone" still gets guarded. 3 regression tests added (`test_property_zoning_guard_allows_villa_leasehold_duration`, `_reworded`, `_still_fires_on_airbnb_operation`). 22/22 bridge tests pass. PR #1195.
-
-**GOTCHA:** The bridge lives in TWO byte-identical copies — `scripts/openclaw_whatsapp_bridge.py` (repo, git-tracked) and `~/.openclaw/bin/openclaw_whatsapp_bridge.py` (HOME, deployed, NOT git-tracked). The fix was applied to BOTH and the HOME bridge restarted (`launchctl kickstart -k gui/501/com.nuzantara.openclaw-whatsapp-bridge`) so it's live NOW — but if a deploy script re-syncs repo→HOME or they drift, re-verify both carry the fix (HOME-fork drift class, cf. W50/W51/W52). The guard family (`_guard_property_zoning_reply`, `_guard_villa_kbli_reply`, `_guard_tax_compliance_reply`, `_guard_lkpm_reply`) is a curated anti-hallucination layer (intro `be06d86ba` #969) — useful but keyword-triggered, so EVERY guard is a candidate for the same over-match class (substring traps, unreachable escape clauses). When adding/auditing a guard: test that it does NOT clobber a correct on-topic answer, not just that it catches the bad one. The broader pattern the quality-loop found: Zantara is **over-cautious** (hides stable facts behind "verify with team") — but this specific case was worse, an active wrong-answer, because a guard _substituted_ text rather than just hedging.
-
-**Reference:** PR #1195, commit `d1823ea9d`, branch `agent/nuzantara/cicatrix-fix/villa-zoning-guard`. Guard `_guard_property_zoning_reply` scripts/openclaw_whatsapp_bridge.py. Tests `apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py`. Discovered during WA quality-loop (memory `decision_zantara_wa_live_test_protocol_2026_06_07`). Family: HOME-fork drift (W50/W51/W52), over-cautious-persona pattern (same session, visa Q3/Q8 + tax property-sale).
-
----
-
-### ⚠️ P2 STRUCTURAL: W69 — FASE-0 armament audit: le 9 spec P1-P9 sono codice+CI su main ma 2 buchi di armamento restano + 2 trappole che impediscono il fix-facile (2026-06-09)
-
-_Discovered: 2026-06-09 06:54 WITA da M5 (thin-client), audit indipendente post-chiusura sessione sibling FASE-0 · Severity: **P2 STRUCTURAL** · Status: **REPORTED — fix richiede sessione SUL Pro (non armabile da M5)**_
-
-**TRAUMA**: Dopo che la sessione sibling ha implementato le 9 spec del ciclo meta-dev-loop come codice reale su main (`scripts/verify_the_verifiers.py`, `cost_breaker.py` + `cost_breaker_deadman.sh`, `federation_parallelize.py`, `brand_api_gen.py`, `agent-library/learn/lesson_harvester.py` + 8 workflow `.github/workflows/p*.yml` + `hot-zone-pr-gate.yml`), un audit di armamento indipendente (principio W64: **esistere ≠ armato**) trova 2 buchi:
-
-- **BUCO #1**: i workflow P\* **NON sono required-status-checks su main**. I required su main sono solo i 9 storici (`Backend Tests (Python)`, `CodeQL Analysis (javascript/python)`, `E2E Tests (Playwright)`, `Detect Secrets`, `Bandit Python Security`, `Frontend Tests (Next.js) (mouth, true)`, `MCP Server Tests`, `root-guard`). I workflow P\* **girano ma non bloccano** un merge → "esiste-ma-disarmato".
-- **BUCO #2**: `cost_breaker.py` (P9) **non ha LaunchAgent runtime** → il dead-man's switch (`cost_breaker_deadman.sh`, G5) è armato solo in CI per-PR, **non H24**.
-
-**ANTIBODY** (NON eseguito — richiede sessione SUL Pro):
-
-1. **Buco #1 NON è chiudibile con un `PUT required_status_checks` cieco** (TRAPPOLA #1): `verify-the-verifiers` e `p1s2-mutation-incremental` sono `pull_request` **`paths:`-filtered** (girano solo se il PR tocca rispettivamente `scripts/verify_the_verifiers.py` / `scripts/mutation_incremental.py`). Un required-check che non gira resta **`pending` forever** → **BLOCCA OGNI PR** che non tocca quei path. Serve PRIMA un job **skip→success sentinel** per ogni workflow (riporta success quando i path non sono toccati), POI il PUT. Inoltre **`p6-federation-parallelize` = FAILURE** su main (run 27100900310, 7 giu) e **`p7`/`p8`/`p3`/`hot-zone` = NO-RUNS** (mai girati): solo `verify-the-verifiers` (success ×3) + `p1s2` (success) sono verdi-stabili candidabili — gli altri NON sono required-safe.
-2. **Buco #2** (TRAPPOLA #2): `cost_breaker.py` legge il ledger Postgres `llm_cost_events` (migrazione 117) e `cost_breaker_deadman.sh` osserva `~/.agent/decisions/state/verify_the_verifiers.json` + `sentinel_meta_watchdog.json` → il LaunchAgent **DEVE girare su Pro/Mini** (ledger + cron pesanti), **NON su M5 thin-client**.
-
-**GOTCHA**: **Nessuno dei 2 buchi è armabile da M5** — entrambi richiedono una sessione SUL Pro (coerente con la nota-pending lasciata dal sibling). `hot-zone-pr-gate` è **GIÀ flipped a enforcing 2026-06-07**: gli step `CODEOWNERS self-mod check` + `Replay lint_migration_numbers` sono `continue-on-error: false` (= bloccano); gli step `Redis lease` + `LaunchAgent notice` restano `continue-on-error: true` ma è **monitor-by-design** (i runner effimeri non hanno Redis né LaunchAgent), **NON disarmo accidentale** — non confonderli con il buco #1.
-
-**Reference**: audit in worktree isolato `.worktrees/ops-fase0-armament-audit` allineato a `origin/main` 8bab25ba5. Branch sibling `agent/air-m5/fase0-instrumentation-rearm` (locale, 2 commit `verify_mcp_integrity.sh` + W67-sentinel) **MAI toccato**. Required-checks letti via `gh api repos/Balizero1987/Teman2/branches/main/protection/required_status_checks`. Family: W64 (`esistere ≠ armato`, asyncpg sibling-fix), il verdetto eserciti `2026-06-07-sota-9-spec-armies-verdict.md §4c` rischio-max "decadimento entropico inosservabile / esiste-ma-disarmato". Fix → sessione-Pro dedicata.
-
----
-
 ### ⚠️ W70 (P2, renumber of m5-branch W67): sentinel + meta-watchdog OK but 39 jobs DLQ-terminal (21 in 24h), healing=0 — common cause = Air-decommissioned path-drift in backup scripts + sentinel captures no real stderr (blind autopilot) (2026-06-09)
 
 _Discovered: 2026-06-09 ~04:45 WITA during FASE-0 instrumentation re-arm (read-only audit from M5 via ssh pro) · Severity: P2 · Status: **DIAGNOSED — fix deferred to a dedicated Pro session**. Renumbered from the m5-branch's "W67" because W67 was independently taken on main by the wa-mirror reconnect-storm scar (2026-06-07); two different scars, same number → this DLQ one becomes W70._
@@ -599,43 +234,6 @@ Two compounding root causes (found by EXECUTING the real scripts, which the sent
 **GOTCHA**: monitor-alive ≠ fleet-healthy — read `dlq.json` / `jobs_circuit_terminal` + `healing_actions_24h`, not just "is the sentinel running". `log_tail="exit 1 after 3 attempts"` is a false friend (zero diagnostic signal). The Air decommission (2026-05-05) keeps spawning path-drift scars 35 days later — no sweep ever grepped all scripts for `Projects/nuzantara`. Family: W50/W51/W52 (Air-path drift), W55 (cooldown masks slow failure).
 
 **Reference**: `~/.agent/decisions/dlq.json` (39 terminal), `sentinel_status.json`, `~/scripts/nuzantara-sentinel.py` (log_tail handling). Origin: m5 branch `agent/air-m5/fase0-instrumentation-rearm` commit d6ae97e33. Pending: triage 39 DLQ + 3 fixes on a dedicated Pro session.
-
----
-
-### ✅ W71: FASE-0 governance-liveness ARMED H24 on Pro (W69 BUCO #2 closed) + verify_mcp_integrity.sh shipped-but-untested glyph bug caught (2026-06-09)
-
-_Discovered/Fixed: 2026-06-09 ~08:00-08:30 WITA, dedicated Pro session closing W69 · Severity: P2 → RESOLVED for BUCO #2; BUCO #1 + cost_breaker-ledger deferred · Status: **ARMED (2/3 live) + PR**_
-
-**TRAUMA**: W69 found the FASE-0 governance layer running only per-PR in CI, never H24. Arming it surfaced THREE latent wounds, each an instance of W64 (`esistere ≠ armato`):
-
-1. **`verify_the_verifiers.json` permanently MISSING on Pro** — the P1 §4 meta-verifier had NO Pro cron, so its alive-signal never existed, which ALSO blinded `cost_breaker_deadman.sh` (it observes that file). At first deadman boot it correctly alerted `verify_the_verifiers=MISSING`.
-2. **`verify_mcp_integrity.sh` (m5 branch) shipped-but-never-run** — it counted the WRONG checkmark glyph (`✓` U+2713) while `claude mcp list` emits `✔` (U+2714) → `connected` parsed as **0** despite ~12 truly connected; and `failed>0 → RED` pinned it perma-RED on chronically-unconfigured optional plugin MCP servers (slack/asana/pagerduty/github-copilot). A guardian that exists, runs, and lies.
-3. **`cost_breaker.py` CLI cannot read the real ledger from the Pro** — its `_check_all` path reads ONLY the JSONL fallback (`${LLM_COST_JSONL_ROOT:-/data}`), but the real ledger is Fly Postgres `llm_cost_events`; on the Pro every provider returns UNKNOWN → fail-closed DEGRADE-log every tick. (G4 fail-closed is CORRECT; it just isn't governing real spend.)
-
-**ANTIBODY (SHIPPED + live-verified):**
-
-- 3 LaunchAgents authored (`infra/launchagents/com.nuzantara.{verify-the-verifiers,mcp-integrity,cost-breaker-deadman}.plist`) + idempotent installer `install_fase0_governance.sh` (runtime home = deploy worktree; graceful-SKIP a label whose script is absent; `/bin/bash` 3.2-compatible — NO `declare -A`, a `case()` function). 2 armed live (verify-the-verifiers + deadman); mcp-integrity SKIPs until this PR merges + the deploy worktree syncs the fixed script.
-- `verify_mcp_integrity.sh` fixed: glyph `✔|✓`; RED only on failures INCREASING vs a baseline (pre-existing optional-plugin failures tolerated, captured first-run); + a per-tick alive-signal `mcp_integrity.json` (the m5 version wrote only the frozen baseline, useless for staleness).
-- `cost_breaker_deadman.sh` OBSERVED_FILES extended with `mcp_integrity.json` → closes the W69 §G5 mutual-watch (deadman now watches all three governance signals).
-- GATES (live on Pro): verify-the-verifiers `runs≥1`, `verify_the_verifiers.json` now FRESH; deadman exit 0 on fresh signals (zero false alarm) + FORCE_ALERT emits a SELF-TEST Telegram; cost_breaker proven UNKNOWN→DEGRADE, over-budget $25/$20→STOP, known-low→ALLOW; verify_mcp_integrity now YELLOW (was false-RED) with `connected=12`.
-
-**GOTCHA**: arming ≠ value — a cron that runs but reads the wrong glyph / a missing ledger is W64 theater; RUN the guardian and read its verdict before trusting the green light. macOS `/bin/bash` is 3.2 — `declare -A` raises "invalid arithmetic operator" (it failed silently here until run with `/bin/bash` explicitly; `which bash` was 3.2 too). The deadman's first-boot `MISSING` alert is a one-time transient (the signal persists on disk after first write). DEFERRED (not this session): cost_breaker.py real-ledger bridge (Fly PG → Pro), BUCO #1 (P\* required-status-checks), and the 2 disarmed claude_hook gates verify_the_verifiers surfaced (`seam_verify` hook file missing, `guardrails_static` not registered in settings.json).
-
-**Reference**: PR (FASE-0 instrumentation rearm) branch `agent/nuzantara/infra/fase0-governance-rearm`. Live state: `~/.agent/decisions/state/{verify_the_verifiers,mcp_integrity,cost_breaker_deadman}.json`. Family: W69 (parent audit), W70 (sibling DLQ), W64 (esistere ≠ armato), W50/W51/W52 (deploy-worktree as runtime home).
-
----
-
-### ⚠️ W72: WhatsApp persona over-cautious — deflected STABLE regulatory facts (B211-vs-KITAS etc.) to "verify with team"; root cause was prompt blanket-clause + \_guard_legacy_b211_reply clobbering correct answers (2026-06-08)
-
-_Discovered: 2026-06-08 during the WhatsApp quality-loop session · Severity: P2 (persona quality / trust, not runtime) · Status: **FIXED** — prompt split + b211 guard gate narrowed + 2 regression tests, both file copies patched, bridge restarted (PR #1197)_
-
-**TRAUMA:** The quality-loop found Zantara hiding STABLE, published regulatory facts behind "I'll verify with the Bali Zero team" deflection — the B211-vs-KITAS definitional difference, the standard overstay fine, and standard property-sale rates were all deferred instead of answered. A competent consultant answers those on sight; deferring them read as evasive. The first investigation blamed the prompt alone (`reply_rules` ~L886 + `knowledge_tool_contract` ~L858 conflated three different things: exact prices, this-client status, and "legal/tax/immigration rules" — and deferred all of them). But the fix loop FALSIFIED the "pure prompt" hypothesis: `_guard_legacy_b211_reply` (a post-reply guard) was OVERWRITING correct definitional B211 answers with a canned deflection — the SAME guard-over-match class as the villa zoning guard fixed in W68/#1195. Editing only the prompt flipped 1/4 cases; the guard dragged the other 3 back to the canned answer.
-
-**ANTIBODY:** Split defer from state-directly across `reply_rules` + `knowledge_tool_contract` + the `_tool_mandates` visa block: DEFER (unchanged caution) exact prices, custom quotes, service-package totals, case-specific timelines, and this-client filing/eligibility/status; STATE DIRECTLY the stable published facts (visa-type definitions and differences, standard overstay fines, standard property-sale rates, statutory capital thresholds), then note the team confirms client-specific application. Rewrote the `_guard_legacy_b211_reply` gate: it now PASSES correct legacy/definitional answers (those that frame B211 as old wording, or define it against a KITAS / short-stay / residency permit, or give the current C2/C12 route) and CLOBBERS only genuinely-unsafe "B211 is the current route" claims with no legacy/definitional framing. Added 2 regression tests (`test_b211_guard_allows_correct_definitional_answer`, `test_b211_guard_still_clobbers_unsafe_current_claim`) — 21/21 unit tests green. Both copies patched identically (repo `scripts/openclaw_whatsapp_bridge.py` + HOME `~/.openclaw/bin/openclaw_whatsapp_bridge.py`) and the bridge restarted. PR #1197.
-
-**GOTCHA:** This is the THIRD guard-over-match found in the `_guard_*` family (after the villa zoning guard W68/#1195, same author-class). The guards (introduced be06d86ba / #969) are a recurring over-deflection source: each one is a post-reply enforcement that can clobber a CORRECT on-topic answer because its gate predicate is too tight. **When auditing ANY `_guard_*`, write a test that it does NOT clobber a CORRECT on-topic answer, not just that it clobbers a wrong one.** HOME-fork double-file applies (W50/W51/W52): the live bridge runs the HOME copy, so a fix that only touches `scripts/` is invisible to production until the HOME copy is patched and the bridge restarted — keep them byte-identical in the edited regions. The over-caution had TWO layers (prompt + guard): fixing only the visible prompt layer is insufficient because the post-reply guards are the load-bearing enforcement that runs AFTER the model has already produced a good answer.
-
-**Reference:** PR #1197, branch `agent/nuzantara/cicatrix-fix/persona-overcaution`, fix commit `2bd9af3cd`. Edited functions: `_tool_mandates` (visa mandate block ~L153), `_guard_legacy_b211_reply` (~L502, the load-bearing gate rewrite), `_build_prompt` `knowledge_tool_contract` (~L858) + `reply_rules` (~L886). Tests: `apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py` (`test_b211_guard_*`). Family: `_guard_*` over-match (W68 villa zoning), HOME-fork double-file (W50/W51/W52).
 
 ---
 
@@ -666,3 +264,17 @@ _Discovered: 2026-06-09 by an 8-agent parallel quality-loop (5 service domains +
 **GOTCHA:** This is the FOURTH+ guard-over-match sweep (W68, W72, now 5 at once). The recurring root is now named: (a) **bare-substring triggers** — `_contains_any` does `term in value`, so every short term is a landmine; use `_contains_any_word()` for triggers. (b) **positive-gating escapes** — a guard that keeps the reply only if it contains one exact phrase (`"1 to 15 april"`, `oss`+`bkpm`) is unreachable for a correct answer phrased any other way; flip to **negative-gating** (clobber only on a detectable WRONG signal, default passthrough). (c) **fixed phrase lists are brittle** — "hold the title for me" missed "hold the land title for me"; prefer a compositional verb+noun+signal detector. (d) HOME-fork double-file (W50/W51/W52) — the live bridge runs the HOME copy; a `scripts/`-only fix is invisible until HOME is patched + bridge restarted. The cherry-pick base for this PR pulled #1197 (persona + b211) forward so this is a super-set; #1197 can close as subsumed. **Meta-recommendation (not yet shipped): a shared test-matrix harness — for each `_guard_*`, one "correct-answer-passes" + one "wrong-answer-clobbers" assertion — would have caught all five at once and gates the next one.**
 
 **Reference:** branch `agent/air-m5/wa-guard-family-fix`, fix commit (this PR). Edited: `_VILLA_TERMS`, `_contains_any_word` (new), `_guard_lkpm_reply`, `_guard_tax_compliance_reply`, `_guard_cafe_pma_reply`, `_canonical_nominee_answer`, `_is_nominee_intent` (new) + `_guard_nominee_reply`, `_build_prompt` `reply_rules`. Tests: `apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py` (11 new). Discovered via the 8-agent quality-loop (memory `decision_zantara_wa_live_test_protocol_2026_06_07`). Family: `_guard_*` over-match (W68 villa, W72 b211), HOME-fork double-file (W50/W51/W52), bare-substring-trigger root class.
+
+---
+
+### 🐛 W77: WhatsApp `_guard_*` family — QUARTA sweep trova l'ASSE LINGUISTICO: 10 wrong-answer-passes ID/IT + 1 falso positivo nominee; il layer era calibrato in inglese su un canale EN/ID/IT (2026-06-13)
+
+_Discovered: 2026-06-13 dalla sessione Fable 5 "Zantara Golden Corpus" — probe empirico di 13 casi ID/IT sui guard live, 10 GAP confermati PRIMA del fix · Severity: P1 (risposte sbagliate a clienti in 2 delle 3 lingue del canale) · Status: **FIXED** — 11 fix + matrice trilingue 80 casi + META gate lingue, 165/165 test verdi (PR branch `agent/nuzantara/zantara-golden-corpus`)_
+
+**TRAUMA:** Dopo W68 (villa), W72 (b211/persona), W73 (5 guard in un colpo), la quarta sweep trova l'asse che le precedenti non vedevano: **la lingua**. La GUARD_MATRIX (shippata con l'hardening F06) era English-only, e i gate dei guard pure: (1) `document_status` aveva marker unsafe SOLO inglesi → `"KITAS kamu sudah disetujui dan siap diambil"` (status inventato, la classe più pericolosa) arrivava al cliente non clobberato, idem l'italiano `"già approvata"`; (2) `lkpm` stale-markers senza mesi ID/IT → `"la scadenza LKPM è il 10 luglio"` (deadline ABROGATA da PerBKPM 5/2025) passava in IT e ID; (3) `property_zoning` non si ARMAVA affatto su messaggi IT/ID (secondo braccio trigger solo `zoning/residential/zone/lease`) → wrong "non serve permesso per l'Airbnb" passava; (4) `hak_milik`: `_normalize_text` converte gli apostrofi curvi ma NON strippa gli accenti, quindi il marker `"puo' detenere"` non matchava mai il naturale `"può detenere"` → una risposta SBAGLIATA "può detenere Hak Milik tramite PMA" passava se <125 parole; (5) `cafe_pma`: "caffè" (doppia f) non contiene "cafe" come substring → guard mai armato su domande italiane; (6) `tax_compliance`: "IVA"/"tasse" assenti dai trigger → risk-suffix mai applicato a domande fiscali italiane; (7) over-match inverso: una risposta IT CORRETTA che inquadrava il B211 come "una vecchia dicitura" veniva CLOBBERATA (gli escape marker erano `old`/`lama`, mai `vecchia`); (8) il nuovo probe no_trigger ha trovato un falso positivo EN: "can you book the hotel room under my wife's name?" riceveva la lezione sull'illegalità del nominee (solo il gerundio "booking" era nei false-positive admin, non "book the" né "hotel").
+
+**ANTIBODY:** (a) 9 fix chirurgici ai gate (marker affermativi ID/IT per document*status; "vecchia/vecchio"+"non più"+"tidak lagi"+route corrente/attuale/saat ini per b211; varianti accentate in \_NEGATIONS/\_CAN_OWN per hak_milik; mesi ID/IT + "tanggal 10" negli stale-markers lkpm; zona/residenziale/residensial nel trigger zoning; iva/tasse nel trigger tax; caffè/caffe/caffetteria + reply-check ristorante per cafe_pma; book the/book a/book me/hotel nei false-positive nominee). (b) **Refactor `_apply_reply_guards()` + `_REPLY_GUARD_CHAIN`**: la catena di produzione esce dall'endpoint inline e diventa l'unica fonte di verità condivisa da endpoint e test — l'ordering non può più driftare, e 6 test full-chain coprono ordering/no-double-mutation/format-net. (c) **GUARD_MATRIX 20→80 casi**: pass+clobber × en/id/it × 10 guard + un probe no_trigger per guard. (d) **META gate lingue** (`test_guard_matrix_covers_languages_and_no_trigger`): ogni `\_guard*\*`futuro FALLISCE la suite finché non porta pass+clobber in TUTTE e tre le lingue + no_trigger — dimostrato iniettando un guard fantasma (3/3 gate scattano). (e) Golden corpus`apps/evaluator/zantara_persona_eval/golden_corpus.json`(50 scenari × 3 lingue, ogni fatto con fonte,`valid_until`sui deperibili) +`validate_corpus.py` + CI binding.
+
+**GOTCHA:** (1) **`_normalize_text` NON strippa gli accenti** — ogni marker italiano deve esistere in ENTRAMBE le grafie ("puo'" E "può"); è la versione linguistica del substring-trap. (2) Le tre lingue del canale NON sono simmetriche nei gate: l'indonesiano era parzialmente coperto (i canonical sono trilingui dal D1), l'italiano quasi zero — quando si aggiunge un marker, aggiungerlo per TUTTE le lingue del canale, il META gate ora lo forza. (3) Il probe no_trigger è quello che ha trovato il falso positivo nominee: testare solo pass+clobber non basta, la terza polarità (messaggio off-domain → reply intatta) è dove vivono i substring-trap. (4) **HOME-fork (W50/51/52)**: il bridge live gira da `~/.openclaw/bin/openclaw_whatsapp_bridge.py` — i fix proteggono i clienti SOLO dopo sync della copia HOME + `launchctl kickstart -k gui/501/com.nuzantara.openclaw-whatsapp-bridge` post-merge. (5) La famiglia è ricorsiva: W68 trovò 1 bug, W72 2 layer, W73 5 bug + raccomandò l'harness, l'harness nacque EN-only, W77 trova l'asse lingua. La domanda per la quinta sweep è già scritta: **quale asse manca ancora? (history/context multi-turn? code-switching ID-EN nello stesso messaggio?)**
+
+**Reference:** branch `agent/nuzantara/zantara-golden-corpus`. Report completo: `research/operations/2026-06-13-zantara-golden-corpus-fable5.md`. Probe empirico pre-fix: 13 casi, 10 GAP (in sessione). Famiglia: W68 (#1195), W72 (#1197), W73, F05-F39 hardening, HOME-fork (W50/51/52). Ground truth fonti: `research/operations/2026-06-13-knowledge-decay-audit-fable5.md` (41 claim verificate).

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  WR3 Reflexion weekly synthesizer (F21 cure, 2026-06-14).
+  Was: unversioned HOME-only plist pointing at the 816-byte S7.3 stub.
+  Now: versioned in-repo, runs the real scripts/wr3_reflexion_synthesis.py from the
+  deploy worktree (same runtime-host pattern as com.balizero.wr3.supervisor).
+  Install: infra/launchagents/install_wr3_reflexion.sh
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.balizero.wr3.reflexion.weekly</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy/apps/backend-rag/.venv/bin/python</string>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr3_reflexion_synthesis.py</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR3_REPO_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+	</dict>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Weekday</key>
+		<integer>0</integer>
+		<key>Hour</key>
+		<integer>2</integer>
+		<key>Minute</key>
+		<integer>30</integer>
+	</dict>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/Library/Logs/wr3-reflexion-weekly.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/Library/Logs/wr3-reflexion-weekly.err</string>
+	<key>RunAtLoad</key>
+	<false/>
+</dict>
+</plist>

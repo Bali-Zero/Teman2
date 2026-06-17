@@ -1,0 +1,120 @@
+{
+  "$schema_version": "1.0",
+  "description": "Knowledge-freshness claim ledger — the SSOT for regulatory facts the client-facing site must NOT contradict. Each entry pairs a STALE pattern (what the site used to say / must never reassert) with the VERIFIED current fact and its ground-truth source. The sentinel test (content-freshness-sentinel.test.ts) fails if any `stale_pattern` reappears in published MDX without being inside a recognised migration/correction note. Born 2026-06-14 (Mythos M3) from the knowledge-decay audit (2026-06-13). To update: re-verify against NotebookLM ground-truth, bump `verified_on`, cite the source verbatim.",
+  "verified_on": "2026-06-14",
+  "ground_truth_source": "NotebookLM NB-2 Immigration (cff93ab0), NB-3 Company (933509f9), NB-5 Property (d9438180) — Permenkumham 22/2023 & 11/2024, Permen Investasi/BKPM 5/2025, Peraturan BPS 7/2025 (KBLI 2025), PP 28/2025, Permenpar tourism framework",
+  "claims": [
+    {
+      "id": "VISA-E33G",
+      "domain": "visa",
+      "stale_pattern": "E33G investor KITAS",
+      "current_fact": "E33G is the Remote Worker (digital nomad) index; the Investor KITAS is E28A (Golden Visa variants E28B/E28C)",
+      "source": "Permenkumham 11/2024 visa index: 'pekerja jarak jauh (remote worker)'; E28A 'Penanaman modal asing untuk tinggal paling lama 2 tahun'",
+      "severity": "P0"
+    },
+    {
+      "id": "VISA-C312",
+      "domain": "visa",
+      "stale_pattern": "C312 retirement",
+      "current_fact": "C312 is a retired pre-2024 code; it was the foreign-worker (TKA) code, now E23 — NOT a retirement code. Retirement is E33E/E33F.",
+      "source": "Permenkumham 22/2023; KITAS E23 (Kepmenkumham M.HH-02.GR.01.04/2023)",
+      "severity": "P0"
+    },
+    {
+      "id": "VISA-B211A-60",
+      "domain": "visa",
+      "stale_pattern": "B211A tourist visa on arrival (extendable once for a total of 60 days)",
+      "current_fact": "B211A is superseded by C1; C1 is 60 days initial, extendable up to a maximum total stay of 180 days",
+      "source": "NB-2: 'Il visto C1 ha sostituito il precedente codice B211A ... durata iniziale di 60 giorni prorogabile fino a un massimo di 180 giorni totali'",
+      "severity": "P0"
+    },
+    {
+      "id": "VISA-SECONDHOME-PERPRES",
+      "domain": "visa",
+      "stale_pattern": "Second Home Visa, introduced in late 2022 under Presidential Regulation No. 37/2022",
+      "current_fact": "The specific Perpres 37/2022 attribution is unconfirmed by ground-truth; the current Second Home regime sits in the E33 'rumah kedua' family codified by Permenkumham 22/2023 & 11/2024",
+      "source": "NB-2 abstained on Perpres 37/2022; confirmed regime under Permenkumham 22/2023, 11/2024",
+      "severity": "P1"
+    },
+    {
+      "id": "KBLI-HOTEL-55110",
+      "domain": "company",
+      "stale_pattern": "hotels (55110)",
+      "current_fact": "KBLI 2025 split 55110 (star hotels) into 55101-55105 by star rating; Hotel Melati 55120 -> 55106 (nonbintang)",
+      "source": "Tabel Konversi BPS (Peraturan BPS 7/2025): '55110 Hotel Bintang 55101 Aktivitas Hotel Bintang Lima Pecah Kode' ... '55120 Hotel Melati 55106 Aktivitas Hotel Nonbintang Recoding'",
+      "severity": "P0"
+    },
+    {
+      "id": "KBLI-VILLA-55120",
+      "domain": "company",
+      "stale_pattern": "villa accommodation (55120)",
+      "current_fact": "Villa is KBLI 55203 in KBLI 2025 (recoded from old 55193); 55120 was 'Hotel Melati', NOT villa",
+      "source": "Tabel Konversi BPS: '55193 Villa 55203 Aktivitas Vila Recoding/Pindah Kode'",
+      "severity": "P0"
+    },
+    {
+      "id": "KBLI-VILLA-55193-CURRENT",
+      "domain": "company",
+      "stale_pattern": "Register under KBLI 55193 (Villa)",
+      "current_fact": "55193 is the OLD KBLI 2020 villa code; the current KBLI 2025 villa code is 55203. (NB-5 property sources still call 55193 current — they are stale on the KBLI 2025 renumbering that NB-3/BPS reflects.)",
+      "source": "Tabel Konversi BPS (NB-3) is authoritative on KBLI 2025 numbering: 55193 -> 55203 Recoding",
+      "severity": "P1"
+    },
+    {
+      "id": "CAPITAL-PAIDUP-10B",
+      "domain": "company",
+      "stale_pattern": "Paid-up Capital: IDR 10 billion",
+      "current_fact": "Minimum paid-up capital for a PT PMA is IDR 2.5 billion (Pasal 26(10) Permen BKPM 5/2025, 12-month lock-in); minimum TOTAL investment is >IDR 10 billion per 5-digit KBLI per location (Pasal 26(2)) — two separate figures",
+      "source": "Permen Investasi/BKPM 5/2025 Pasal 26(10): 'modal ditempatkan/disetor paling sedikit Rp2.500.000.000,00 per perseroan terbatas'; Pasal 26(2): 'total investasi lebih besar dari Rp10.000.000.000,00 ... per bidang usaha KBLI 5 digit per lokasi'",
+      "severity": "P0"
+    },
+    {
+      "id": "RETIRE-NO-SPONSOR-SINGLE",
+      "domain": "visa",
+      "stale_pattern": "Min. USD 1,500/month income evidence",
+      "current_fact": "Retirement is two tracks: E33F (55+, REQUIRES a licensed sponsor/guarantor, 1yr) vs E33E Silver Hair (no sponsor, ~USD 50k deposit in a BUMN state bank, 5yr). A single 'no corporate sponsor' rule conflates them.",
+      "source": "Permenkumham 11/2024 index E33E/E33F; sponsor/deposit distinction verbatim in NB-2",
+      "severity": "P0"
+    },
+    {
+      "id": "PONDOK-WISATA-FOREIGN",
+      "domain": "property",
+      "stale_pattern": "must possess a valid Pondok Wisata license",
+      "current_fact": "Pondok Wisata is reserved for Indonesian citizens (WNI) as individuals (usaha perseorangan); a foreigner / PT PMA CANNOT hold it. Foreigner route = PT PMA + Villa KBLI (55203) in a Pink tourism zone via OSS-RBA. Nominee = criminal under Perda Bali 4/2026.",
+      "source": "Permenpar tourism framework: 'Perseorangan ... merupakan warga negara Indonesia'; 'The compliant path is a PT PMA with a Villa license'",
+      "severity": "P0"
+    },
+    {
+      "id": "MORATORIUM-SARBAGITA-FREEZE",
+      "domain": "property",
+      "stale_pattern": "four Sarbagita regencies (Denpasar, Badung, Gianyar, Tabanan) now enforce",
+      "current_fact": "INVERTED: the 2026 formal construction ban covers 6 LESS-developed districts (Tabanan, Jembrana, Buleleng, Bangli, Karangasem, Klungkung) and EXCLUDES the tourist core (Badung/Gianyar/Denpasar). A separate province-wide ban applies only to agricultural-land conversion. 'Sarbagita' was the cancelled Sept-2024 proposal.",
+      "source": "NB-5: 'the original September 2024 proposal targeted the Sarbagita area ... The actual 2026 policy reversed this focus ... formal 6-district construction ban covers Tabanan, Jembrana, Buleleng, Bangli, Karangasem, Klungkung'",
+      "severity": "P0"
+    },
+    {
+      "id": "MORATORIUM-PERGUB",
+      "domain": "property",
+      "stale_pattern": "construction density controls under Bali Governor Regulation",
+      "current_fact": "The moratorium is NOT codified in a single Pergub or Perda; it operates as executive instructions from the Governor's office, backed by SK Menko Marves 163/2024, Perda Bali 2/2023 (RTRWP), PP 16/2021",
+      "source": "NB-5: 'does not have a single codifying Pergub or Perda ... operates primarily through executive instructions'",
+      "severity": "P1"
+    },
+    {
+      "id": "LKPM-DEADLINE-10TH",
+      "domain": "company",
+      "stale_pattern": "by April 10",
+      "current_fact": "LKPM deadlines moved to the 15th (window 1-15 of the month after each quarter) by PerBKPM 5/2025 Pasal 285(3); the old 'by the 10th' is abolished. (Fixed in batch-1 PR #1383 — ledger guards regression.)",
+      "source": "PerBKPM 5/2025 Pasal 285(3)",
+      "severity": "P0"
+    },
+    {
+      "id": "SABH-NIB-SUSPENSION",
+      "domain": "company",
+      "stale_pattern": "automatic NIB suspension",
+      "current_fact": "Permenkum 49/2025 failure triggers a written warning then blocked SABH/AHU access (Pasal 17), NOT NIB suspension (NIB is OSS, not SABH). (Fixed in batch-1 PR #1383 — ledger guards regression.)",
+      "source": "Permenkum 49/2025 Pasal 17",
+      "severity": "P0"
+    }
+  ]
+}

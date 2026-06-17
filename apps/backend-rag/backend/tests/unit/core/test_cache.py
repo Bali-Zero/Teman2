@@ -139,3 +139,36 @@ class TestCachedDecorator:
         assert result3 == 10
         # Should be called twice (once for 5, once for 10)
         assert call_count["count"] >= 1
+
+
+class TestInvalidateCrmStats:
+    """F32: invalidate_crm_stats() clears both CRM aggregate-stats namespaces."""
+
+    @pytest.mark.asyncio
+    async def test_invalidates_both_namespaces(self):
+        from backend.core.cache import invalidate_crm_stats
+
+        cleared: list[str] = []
+
+        class FakeCache:
+            async def clear_pattern(self, pattern: str) -> int:
+                cleared.append(pattern)
+                return 3  # pretend 3 keys per namespace
+
+        total = await invalidate_crm_stats(cache_service=FakeCache())
+
+        assert cleared == [
+            "zantara:crm_clients_stats:*",
+            "zantara:crm_practices_stats:*",
+        ]
+        assert total == 6  # 3 + 3
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_no_keys(self):
+        from backend.core.cache import invalidate_crm_stats
+
+        class EmptyCache:
+            async def clear_pattern(self, pattern: str) -> int:
+                return 0
+
+        assert await invalidate_crm_stats(cache_service=EmptyCache()) == 0

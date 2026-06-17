@@ -350,13 +350,21 @@ class OrchestratorStreamingCore:
             evidence_score = getattr(state, "evidence_score", None)
             trusted = getattr(state, "trusted_tools_used", True)
 
-            # Determine confidence zone
+            # Determine confidence zone via the shared AbstainPolicy SSOT
+            # (replaces the previously-hardcoded 0.15 / 0.60 literals — same
+            # values, now sourced from EvidenceScoreConstants.CONFIDENCE_LOW /
+            # CONFIDENCE_HIGH so this site cannot drift from the other gates).
+            # See _abstain_policy.py + 2026-06-14 Mythos M1 audit.
             confidence_zone: str = "confident"
             if evidence_score is not None:
-                if evidence_score < 0.15:
-                    confidence_zone = "abstain"
-                elif evidence_score <= 0.60 and not trusted:
-                    confidence_zone = "cautious"
+                from backend.services.rag.agentic._abstain_policy import (
+                    build_abstain_policy,
+                )
+
+                policy = build_abstain_policy(getattr(state, "query", "") or "")
+                confidence_zone = policy.confidence_zone(
+                    evidence_score, trusted=trusted
+                )
 
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time

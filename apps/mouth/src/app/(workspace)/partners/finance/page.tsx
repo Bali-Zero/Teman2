@@ -20,14 +20,7 @@ import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
 import * as partnersApi from "@/lib/api/partners/partners";
 import type { PartnerCommission } from "@/lib/api/partners/partners";
-
-function formatIDR(amount: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+import { formatIDR } from "@balizero/core/utils";
 
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   pending_approval: { bg: "bg-amber-500/20", text: "text-amber-400" },
@@ -57,23 +50,35 @@ function CommissionRow({
   onWaive,
   actioningId,
 }: CommissionRowProps) {
-  const cs = STATUS_STYLES[c.status] || { bg: "bg-gray-500/20", text: "text-gray-400" };
+  const cs = STATUS_STYLES[c.status] || {
+    bg: "bg-gray-500/20",
+    text: "text-gray-400",
+  };
   const isActioning = actioningId === c.id;
 
   return (
     <tr className="hover:bg-zinc-800/30 transition-colors">
       <td className="px-4 py-3">
         {/* CRIT-8: partner_id is a UUID string */}
-        <div className="text-sm font-medium text-zinc-100">{c.partner_name || `Partner ${c.partner_id.substring(0, 8)}…`}</div>
+        <div className="text-sm font-medium text-zinc-100">
+          {c.partner_name || `Partner ${c.partner_id.substring(0, 8)}…`}
+        </div>
         <div className="text-xs text-zinc-500">{c.client_name || ""}</div>
       </td>
       <td className="px-4 py-3 text-sm text-zinc-400 hidden md:table-cell">
-        {c.practice_type_name || (c.practice_id ? `Practice ${c.practice_id.substring(0, 8)}…` : "—")}
+        {c.practice_type_name ||
+          (c.practice_id ? `Practice ${c.practice_id.substring(0, 8)}…` : "—")}
       </td>
-      <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.gross_amount)}</td>
-      <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.net_amount)}</td>
+      <td className="px-4 py-3 text-sm text-zinc-300">
+        {formatIDR(c.gross_amount)}
+      </td>
+      <td className="px-4 py-3 text-sm text-zinc-300">
+        {formatIDR(c.net_amount)}
+      </td>
       <td className="px-4 py-3">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cs.bg} ${cs.text}`}>
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cs.bg} ${cs.text}`}
+        >
           {c.status.replace(/_/g, " ")}
         </span>
       </td>
@@ -86,7 +91,14 @@ function CommissionRow({
               onClick={() => onApprove(c.id)}
               className="bg-green-700 hover:bg-green-600 text-white h-7 text-xs px-2"
             >
-              {isActioning ? <Loader2 size={10} className="animate-spin" /> : <><CheckCircle size={10} className="mr-1" />Approve</>}
+              {isActioning ? (
+                <Loader2 size={10} className="animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle size={10} className="mr-1" />
+                  Approve
+                </>
+              )}
             </Button>
           )}
           {c.status === "approved" && onMarkPaid && (
@@ -96,20 +108,37 @@ function CommissionRow({
               onClick={() => onMarkPaid(c.id)}
               className="bg-purple-700 hover:bg-purple-600 text-white h-7 text-xs px-2"
             >
-              {isActioning ? <Loader2 size={10} className="animate-spin" /> : <><DollarSign size={10} className="mr-1" />Mark Paid</>}
+              {isActioning ? (
+                <Loader2 size={10} className="animate-spin" />
+              ) : (
+                <>
+                  <DollarSign size={10} className="mr-1" />
+                  Mark Paid
+                </>
+              )}
             </Button>
           )}
-          {["pending_approval", "approved", "ready_to_pay"].includes(c.status) && onClawback && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isActioning}
-              onClick={() => onClawback(c.id)}
-              className="border-red-700 text-red-400 hover:bg-red-900/20 h-7 text-xs px-2"
-            >
-              {isActioning ? <Loader2 size={10} className="animate-spin" /> : <><XCircle size={10} className="mr-1" />Clawback</>}
-            </Button>
-          )}
+          {["pending_approval", "approved", "ready_to_pay"].includes(
+            c.status,
+          ) &&
+            onClawback && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isActioning}
+                onClick={() => onClawback(c.id)}
+                className="border-red-700 text-red-400 hover:bg-red-900/20 h-7 text-xs px-2"
+              >
+                {isActioning ? (
+                  <Loader2 size={10} className="animate-spin" />
+                ) : (
+                  <>
+                    <XCircle size={10} className="mr-1" />
+                    Clawback
+                  </>
+                )}
+              </Button>
+            )}
           {["pending_approval", "approved"].includes(c.status) && onWaive && (
             <Button
               size="sm"
@@ -118,7 +147,14 @@ function CommissionRow({
               onClick={() => onWaive(c.id)}
               className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 h-7 text-xs px-2"
             >
-              {isActioning ? <Loader2 size={10} className="animate-spin" /> : <><MinusCircle size={10} className="mr-1" />Waive</>}
+              {isActioning ? (
+                <Loader2 size={10} className="animate-spin" />
+              ) : (
+                <>
+                  <MinusCircle size={10} className="mr-1" />
+                  Waive
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -152,7 +188,9 @@ function CommissionSection({
   if (commissions.length === 0) {
     return (
       <div>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">{title}</h2>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+          {title}
+        </h2>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center text-sm text-zinc-600">
           {emptyMessage}
         </div>
@@ -176,11 +214,21 @@ function CommissionSection({
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Partner / Client</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">Practice</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Gross</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Net</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Status</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+                Partner / Client
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">
+                Practice
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+                Gross
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+                Net
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">
+                Status
+              </th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -215,7 +263,7 @@ export default function FinanceQueuePage() {
   // Admin gate — redirect non-admin users back to partners list
   useEffect(() => {
     if (!api.isAdmin?.()) {
-      router.replace('/partners');
+      router.replace("/partners");
     }
   }, [router]);
 
@@ -228,14 +276,20 @@ export default function FinanceQueuePage() {
       });
       setCommissions(data.commissions);
     } catch (err) {
-      logger.error("Failed to load finance queue", { component: "FinanceQueuePage" }, err as Error);
+      logger.error(
+        "Failed to load finance queue",
+        { component: "FinanceQueuePage" },
+        err as Error,
+      );
       setError("Failed to load commissions. Please try again.");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadCommissions(); }, [loadCommissions]);
+  useEffect(() => {
+    loadCommissions();
+  }, [loadCommissions]);
 
   // CRIT-8: commission IDs are UUID strings
   const handleApprove = async (id: string) => {
@@ -265,7 +319,10 @@ export default function FinanceQueuePage() {
     }
     setActioningId(id);
     try {
-      await partnersApi.markPaid(id, { paid_via: via.trim(), payment_reference: ref.trim() });
+      await partnersApi.markPaid(id, {
+        paid_via: via.trim(),
+        payment_reference: ref.trim(),
+      });
       toastSuccess("Commission marked as paid");
       await loadCommissions();
     } catch {
@@ -278,7 +335,10 @@ export default function FinanceQueuePage() {
   const handleClawback = async (id: string) => {
     setActioningId(id);
     const reason = prompt("Clawback reason (required):");
-    if (!reason?.trim()) { setActioningId(null); return; }
+    if (!reason?.trim()) {
+      setActioningId(null);
+      return;
+    }
     try {
       await partnersApi.clawback(id, { reason: reason.trim() });
       toastSuccess("Clawback initiated");
@@ -293,7 +353,10 @@ export default function FinanceQueuePage() {
   const handleWaive = async (id: string) => {
     setActioningId(id);
     const reason = prompt("Waive reason (required):");
-    if (!reason?.trim()) { setActioningId(null); return; }
+    if (!reason?.trim()) {
+      setActioningId(null);
+      return;
+    }
     try {
       await partnersApi.waive(id, { reason: reason.trim() });
       toastSuccess("Commission waived");
@@ -305,9 +368,13 @@ export default function FinanceQueuePage() {
     }
   };
 
-  const pendingApproval = commissions.filter((c) => c.status === "pending_approval");
+  const pendingApproval = commissions.filter(
+    (c) => c.status === "pending_approval",
+  );
   const approved = commissions.filter((c) => c.status === "approved");
-  const clawbackPending = commissions.filter((c) => c.status === "clawback_pending");
+  const clawbackPending = commissions.filter(
+    (c) => c.status === "clawback_pending",
+  );
 
   const csvUrl = partnersApi.exportFinanceCsv();
 
@@ -317,14 +384,20 @@ export default function FinanceQueuePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/partners">
-            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-zinc-400 hover:text-zinc-200"
+            >
               <ArrowLeft size={16} className="mr-1" />
               Partners
             </Button>
           </Link>
           <div>
             <h1 className="text-xl font-bold text-zinc-100">Finance Queue</h1>
-            <p className="text-sm text-zinc-500">Partner commission approval and payment tracking</p>
+            <p className="text-sm text-zinc-500">
+              Partner commission approval and payment tracking
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

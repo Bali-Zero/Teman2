@@ -20,7 +20,7 @@ import importlib.util
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -723,3 +723,142 @@ class TestSharedHelpersExist:
     def test_queue_helpers_exist(self, worker) -> None:
         assert callable(worker.queue_mark_running)
         assert callable(worker.queue_mark_terminal)
+
+
+class TestDriveRequestRetry:
+    @pytest.mark.asyncio
+    async def test_retries_internal_failure(self, worker, monkeypatch: pytest.MonkeyPatch) -> None:
+        class FakeRequest:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def execute(self, **_kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    raise RuntimeError("internal_failure: None")
+                return {"files": []}
+
+        request = FakeRequest()
+        monkeypatch.setattr(worker, "DRIVE_API_MAX_ATTEMPTS", 2)
+        monkeypatch.setattr(worker, "DRIVE_API_RETRY_BASE_SECONDS", 0)
+
+        result = await worker._execute_drive_request(request, operation="files.list")
+
+        assert result == {"files": []}
+        assert request.calls == 2
+
+
+class TestRunOneClientQueueMode:
+    @pytest.mark.asyncio
+    async def test_marks_running_before_drive_aggregation(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        events: list[str] = []
+
+        async def fake_mark_running(_conn, _client_id: int, _run_id: str) -> int:
+            events.append("mark_running")
+            return 77
+
+        async def fake_fetch_client(_conn, _client_id: int) -> dict:
+            events.append("fetch_client")
+            return {
+                "folder_id": "root",
+                "ai_summary_file_hash": "same-fingerprint",
+                "full_name": "Client",
+            }
+
+        async def fake_fetch_linked(_conn, _client_id: int) -> list[dict]:
+            return []
+
+        async def fake_aggregate(_drive, _folder_id: str, _linked: list[dict]):
+            events.append("aggregate")
+            return (
+                [{"id": "file-1", "modifiedTime": "t", "source_folder_id": "root"}],
+                {"root": "Root"},
+            )
+
+        terminal = AsyncMock()
+        monkeypatch.setattr(worker, "queue_mark_running", fake_mark_running)
+        monkeypatch.setattr(worker, "fetch_client", fake_fetch_client)
+        monkeypatch.setattr(worker, "fetch_linked_companies", fake_fetch_linked)
+        monkeypatch.setattr(worker, "aggregate_cross_folder_files", fake_aggregate)
+        monkeypatch.setattr(
+            worker,
+            "compute_cross_folder_fingerprint",
+            lambda _files: "same-fingerprint",
+        )
+        monkeypatch.setattr(worker, "queue_mark_terminal", terminal)
+
+        fake_conn = MagicMock()
+        result = await worker.run_one_client(
+            fake_conn,
+            object(),
+            "prompt",
+            123,
+            False,
+            "run-id",
+            queue_mode=True,
+        )
+
+        assert result["status"] == "skipped"
+        assert events == ["mark_running", "fetch_client", "aggregate"]
+        terminal.assert_awaited_once()
+        assert terminal.await_args.args[:3] == (fake_conn, 77, "skipped")
+
+    @pytest.mark.asyncio
+    async def test_errors_on_empty_drive_inventory(
+        self,
+        worker,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fake_conn = MagicMock()
+        terminal = AsyncMock()
+
+        monkeypatch.setattr(worker, "queue_mark_running", AsyncMock(return_value=88))
+        monkeypatch.setattr(
+            worker,
+            "fetch_client",
+            AsyncMock(return_value={"folder_id": "root", "full_name": "Client"}),
+        )
+        monkeypatch.setattr(
+            worker,
+            "fetch_linked_companies",
+            AsyncMock(
+                return_value=[
+                    {
+                        "google_drive_folder_id": "company",
+                        "tax_dept_folder_id": "tax",
+                        "company_name": "PT Example",
+                    }
+                ]
+            ),
+        )
+        monkeypatch.setattr(
+            worker,
+            "aggregate_cross_folder_files",
+            AsyncMock(return_value=([], {})),
+        )
+        monkeypatch.setattr(worker, "queue_mark_terminal", terminal)
+        monkeypatch.setattr(
+            worker,
+            "call_gemini_cli",
+            MagicMock(side_effect=AssertionError("Gemini must not be called")),
+        )
+
+        result = await worker.run_one_client(
+            fake_conn,
+            object(),
+            "prompt",
+            123,
+            False,
+            "run-id",
+            queue_mode=True,
+        )
+
+        assert result["status"] == "error"
+        assert result["files_total"] == 0
+        assert "drive aggregation returned no files across 3 folder(s)" == result["error"]
+        terminal.assert_awaited_once()
+        assert terminal.await_args.kwargs["last_error"] == result["error"]
