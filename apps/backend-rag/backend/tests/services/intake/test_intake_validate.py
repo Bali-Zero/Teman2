@@ -216,8 +216,14 @@ async def test_live_kbli_dynamic_query_real_vs_fake():
     Real code 56101 must pass; fabricated code 99999 must fail — both decided
     by the live Qdrant ``kbli_2025_final`` scroll, not a static list.
     """
-    if not os.getenv("QDRANT_URL") or not os.getenv("QDRANT_API_KEY"):
-        pytest.skip("QDRANT_URL/QDRANT_API_KEY not set")
+    qdrant_url = os.getenv("QDRANT_URL", "")
+    if (
+        os.getenv("RUN_LIVE_QDRANT_TESTS") != "1"
+        or not qdrant_url
+        or qdrant_url == "http://localhost:6333"
+        or not os.getenv("QDRANT_API_KEY")
+    ):
+        pytest.skip("set RUN_LIVE_QDRANT_TESTS=1 with real Qdrant env")
 
     # real existing code -> live catalogue accepts it
     ok = await vr.validate_fields("nib", _fields(kbli_codes=["56101"]))

@@ -1,0 +1,23 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-P1NLM",
+  "cycle": "c5-nlm-live",
+  "claim_id": "VISA-B211A-60",
+  "domain": "visa",
+  "account": "antonellosiano@",
+  "nb_queried": { "id": "cff93ab0-813a-42f2-a8de-36987e724271", "name": "NB-2 Immigration & Visa (curated, ledger ground-truth source)" },
+  "nb_query": "What is the current status of tourist visit visa code B211A? Has it been superseded by C1 (Permenkumham 22/2023)? For the current short-stay tourist visa, what is the initial validity in days and the maximum total stay with extensions?",
+  "ledger_current_fact_candidate": "B211A is superseded by C1; C1 is 60 days initial, extendable up to a maximum total stay of 180 days.",
+  "nb_citation_verbatim": "The Indonesian tourist visit visa code B211A is now obsolete ... superseded by the new single-entry tourist visit visa index C1. Permenkumham 11/2024 Pasal 11(1): 'Visa Kunjungan 1 kali perjalanan dapat diberikan ... paling lama: a. 180 Hari; atau b. 60 Hari, sejak tanggal diberikannya Tanda Masuk.' Pasal 95(3): perpanjangan paling lama 60 Hari setiap kali ... 'keseluruhan Izin Tinggal ... tidak lebih dari 180 Hari.'",
+  "verdict": "CONFIRM",
+  "verdict_rationale": "Live NB-2 confirms the fact verbatim with statute: B211A -> C1, 60 days initial / 180 days max total (Permenkumham 11/2024 Pasal 11(1) + 95(3)).",
+  "fix_applied": {
+    "status": "NONE — no live stale-duration offender",
+    "reason": "The ledger's stale_pattern is the OLD duration 'extendable once for a total of 60 days'. An empirical grep (grep -rnE 'B211A...(extendable once|60 days total|total of 60)') returned ZERO hits across all EN articles — the site already states the CORRECT 180-day max (e.g. kitas-for-digital-nomads-reality.mdx:129 'up to 180 days (60 initial + two 60-day extensions)'). The 547 B211A mentions are legacy-NAME usage (practitioner-standard) with mostly-correct duration. A site-wide B211A->C1 rename is exactly the mass-replace forbidden by superscar #3. Naming-modernization is an operator structural decision, not a P0 fix.",
+    "cause_command": "grep -rnE 'B211A[^.]{0,60}(extendable once|60 days total|total of 60|once for)' apps/mouth/src/content/articles/",
+    "cause_result": "0 hits (old duration NOT live on disk)"
+  },
+  "refuter_note": "Fact verbatim from Permenkumham 11/2024 in curated NB; no override. The honest call: CONFIRM the fact, but do NOT manufacture a fix where no stale text exists (anti-hallucination — fixing absent staleness would fabricate a problem).",
+  "ground_truth_source": "NB-2 cff93ab0 LIVE query 2026-06-16 (Permenkumham 22/2023, Permenkumham 11/2024 Pasal 11(1)/95(3))",
+  "ts": "2026-06-16T04:15:55Z"
+}

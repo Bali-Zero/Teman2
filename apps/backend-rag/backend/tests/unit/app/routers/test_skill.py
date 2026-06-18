@@ -7,14 +7,16 @@ SkillService backed by a temp SQLite path.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_current_user
-from backend.app.routers.skill import get_skill_service, router
+from backend.app.routers.skill import get_skill_coach_service, get_skill_service, router
 from backend.services.skill.service import SkillService
+from backend.services.skill_coach.service import SkillCoachService
 
 
 @pytest.fixture
@@ -23,10 +25,16 @@ def service(tmp_path) -> SkillService:
 
 
 @pytest.fixture
-def app(service: SkillService) -> FastAPI:
+def skill_coach_service(tmp_path) -> SkillCoachService:
+    return SkillCoachService(evidence_path=str(tmp_path / "skill_coach_evidence.jsonl"))
+
+
+@pytest.fixture
+def app(service: SkillService, skill_coach_service: SkillCoachService) -> FastAPI:
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_skill_service] = lambda: service
+    app.dependency_overrides[get_skill_coach_service] = lambda: skill_coach_service
     app.dependency_overrides[get_current_user] = lambda: {
         "email": "zero@balizero.com",
         "role": "admin",
@@ -235,6 +243,79 @@ def test_merge_proposals_reads_written_file(client, monkeypatch, tmp_path):
     body = resp.json()
     assert body["count"] == 1
     assert body["proposals"][0]["pair"] == ["a", "b"]
+
+
+def test_merge_proposals_requires_admin_role(service, skill_coach_service):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_skill_service] = lambda: service
+    app.dependency_overrides[get_skill_coach_service] = lambda: skill_coach_service
+    app.dependency_overrides[get_current_user] = lambda: {
+        "email": "team@example.test",
+        "role": "team",
+    }
+    client = TestClient(app)
+
+    resp = client.get("/api/skill/merge-proposals")
+
+    assert resp.status_code == 403
+
+
+# ─── GET /creation-proposals ─────────────────────────────────────────
+
+
+def test_creation_proposals_reads_skill_coach_evidence(client, skill_coach_service):
+    path = Path(skill_coach_service._evidence_path)
+    path.write_text(
+        json.dumps(
+            {
+                "proposal_id": "rag:agg_retrieval",
+                "skill_id": "rag:agg_retrieval",
+                "cell": "rag",
+                "tags": ["retrieval"],
+                "scope": "Project",
+                "status": "shadow_eligible",
+                "source_trajectory_ids": ["t1", "t2", "t3"],
+                "preconditions": "rag retrieval run",
+                "procedure": "Use retrieval pattern.",
+                "success_criteria": "success repeats",
+                "confidence": 0.45,
+                "redaction_status": "passed",
+                "redaction_findings": [],
+                "support_count": 3,
+                "hurt_count": 0,
+                "false_apply_count": 0,
+                "neutral_count": 0,
+                "history_sample_size": 3,
+                "decision_reason": "eligible for shadow mode",
+                "created_at": "2026-06-16T00:00:00+00:00",
+            }
+        )
+        + "\n"
+    )
+
+    resp = client.get("/api/skill/creation-proposals?status=shadow_eligible")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["count"] == 1
+    assert body["proposals"][0]["skill_id"] == "rag:agg_retrieval"
+
+
+def test_creation_proposals_requires_admin_role(service, skill_coach_service):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_skill_service] = lambda: service
+    app.dependency_overrides[get_skill_coach_service] = lambda: skill_coach_service
+    app.dependency_overrides[get_current_user] = lambda: {
+        "email": "team@example.test",
+        "role": "team",
+    }
+    client = TestClient(app)
+
+    resp = client.get("/api/skill/creation-proposals")
+
+    assert resp.status_code == 403
 
 
 # ─── GET /{skill_id} ─────────────────────────────────────────────────

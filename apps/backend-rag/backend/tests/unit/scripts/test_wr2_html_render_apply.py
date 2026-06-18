@@ -82,6 +82,446 @@ def test_vision_critic_fail_closed_when_required(monkeypatch):
     assert any("vision" in i.lower() for i in c.issues)
 
 
+# ── 429 rate-limit resilience (2026-06-12: a transient quota window masqueraded
+#    as "vision unavailable" and burned 3 attempts → render_failed on a healthy
+#    draft) ──────────────────────────────────────────────────────────────────
+
+
+def _fake_proc(returncode=0, stdout="", stderr=""):
+    from types import SimpleNamespace
+    return SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+def test_run_claude_json_raises_on_429_envelope(monkeypatch):
+    """A CLI error envelope with api_error_status==429 (even rc!=0) is a transient
+    rate-limit, distinct from a real outage — must raise VisionRateLimited."""
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    envelope = _json.dumps({"is_error": True, "api_error_status": 429,
+                            "result": "You've hit your session limit · resets 2:40am"})
+    monkeypatch.setattr(claude_vision.subprocess, "run",
+                        lambda *a, **k: _fake_proc(returncode=1, stdout=envelope))
+    with pytest.raises(claude_vision.VisionRateLimited):
+        claude_vision._run_claude_json("p", {"type": "object"})
+
+
+def test_run_claude_json_raises_on_session_limit_text(monkeypatch):
+    from wr2_html_renderer import claude_vision
+
+    monkeypatch.setattr(claude_vision.subprocess, "run",
+                        lambda *a, **k: _fake_proc(returncode=1, stderr="Error: session limit reached"))
+    with pytest.raises(claude_vision.VisionRateLimited):
+        claude_vision._run_claude_json("p", {"type": "object"})
+
+
+def test_run_claude_json_genuine_failure_returns_none_not_raise(monkeypatch):
+    """A real non-429 failure (rc!=0, no limit text) stays the None/unavailable
+    path — must NOT be reclassified as rate-limit."""
+    from wr2_html_renderer import claude_vision
+
+    monkeypatch.setattr(claude_vision.subprocess, "run",
+                        lambda *a, **k: _fake_proc(returncode=1, stderr="boom: chromium crashed"))
+    assert claude_vision._run_claude_json("p", {"type": "object"}) is None
+
+
+def test_run_claude_json_timeout_raises_transient(monkeypatch):
+    """A subprocess timeout is endpoint latency, not a defect — must raise the
+    transient VisionTimeout (no burned attempt), NOT return None (which would
+    fail-closed crash a healthy draft)."""
+    import subprocess as _sp
+
+    from wr2_html_renderer import claude_vision
+
+    def _boom(*a, **k):
+        raise _sp.TimeoutExpired(cmd="claude", timeout=180)
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _boom)
+    with pytest.raises(claude_vision.VisionTimeout):
+        claude_vision._run_claude_json("p", {"type": "object"})
+
+
+def test_vision_timeout_is_a_transient(monkeypatch):
+    """VisionTimeout and VisionRateLimited share the VisionTransient base so the
+    worker's single handler covers both."""
+    from wr2_html_renderer import claude_vision
+
+    assert issubclass(claude_vision.VisionTimeout, claude_vision.VisionTransient)
+    assert issubclass(claude_vision.VisionRateLimited, claude_vision.VisionTransient)
+
+
+def test_run_claude_json_timeout_budget_from_env(monkeypatch):
+    """The wall-clock budget defaults to 180s and is overridable via
+    WR2_VISION_TIMEOUT_S (raised from the old hardcoded 120s)."""
+    import subprocess as _sp
+
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(cmd, *a, **k):
+        captured["timeout"] = k.get("timeout")
+        raise _sp.TimeoutExpired(cmd="claude", timeout=k.get("timeout"))
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.delenv("WR2_VISION_TIMEOUT_S", raising=False)
+    with pytest.raises(claude_vision.VisionTimeout):
+        claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["timeout"] == 180
+
+    monkeypatch.setenv("WR2_VISION_TIMEOUT_S", "300")
+    with pytest.raises(claude_vision.VisionTimeout):
+        claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["timeout"] == 300
+
+
+def test_run_claude_json_pins_vision_model(monkeypatch):
+    """Default pins claude-sonnet-4-6; WR2_VISION_MODEL overrides. (No --model
+    before = CLI default, heavier → 120s timeouts + quota burn.)"""
+    import json as _json
+
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(cmd, *a, **k):
+        captured["cmd"] = cmd
+        return _fake_proc(returncode=0, stdout=_json.dumps({"structured_output": {"ok": True}}))
+
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+    monkeypatch.delenv("WR2_VISION_MODEL", raising=False)
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert "--model" in captured["cmd"]
+    assert "claude-sonnet-4-6" in captured["cmd"]
+
+    monkeypatch.setenv("WR2_VISION_MODEL", "claude-opus-4-8")
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert "claude-opus-4-8" in captured["cmd"]
+
+
+def test_design_critic_propagates_rate_limit_not_fail_closed(monkeypatch):
+    """When the runner signals rate-limit, the critic must propagate it (the
+    apply-worker treats it as transient), NOT collapse to the fail-closed
+    'unavailable' Critique that the circuit breaker would burn an attempt on."""
+    from wr2_html_renderer import claude_vision
+
+    def _raise(*a, **k):
+        raise claude_vision.VisionRateLimited("429")
+
+    monkeypatch.setattr(claude_vision, "_run_claude_json", _raise)
+    monkeypatch.setenv("WR2_VISION_REQUIRED", "1")
+    png = Path(tempfile.mkdtemp()) / "x.png"
+    png.write_bytes(b"PNG")
+    with pytest.raises(claude_vision.VisionRateLimited):
+        claude_vision.claude_design_critic(png, {}, {})
+
+
+@pytest.mark.asyncio
+async def test_apply_one_rate_limit_does_not_burn_attempt(monkeypatch):
+    """INVARIANT: a 429 during render releases the lease back to
+    drafts_imaged_checked WITHOUT writing _html_attempts and WITHOUT
+    render_failed — the draft is retried next tick, no attempt consumed."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=0)
+    conn.close = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(return_value=conn))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": {"slides": [{"headline": "H"}]}}),
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+    from wr2_html_renderer.claude_vision import VisionRateLimited, VisionTimeout
+    # parametrize-free: prove BOTH transient kinds (429 + timeout) take the
+    # no-burn path via the shared VisionTransient base.
+    monkeypatch.setattr(
+        html, "_render_carousel",
+        AsyncMock(side_effect=VisionTimeout("vision call timed out after 180s")),
+    )
+    monkeypatch.setenv("WR2_VISION_REQUIRED", "1")
+    assert issubclass(VisionRateLimited, html.VisionTransient)
+    assert issubclass(VisionTimeout, html.VisionTransient)
+
+    import uuid as _uuid
+    did = _uuid.uuid4()
+    result = await html._apply_one("postgres://x", did, "owner-1")
+
+    assert result.startswith("rate_limited")
+    # the release UPDATE must NOT touch the attempt counter and must NOT fail it
+    sqls = " ".join(str(c.args[0]) for c in conn.execute.call_args_list)
+    assert "_html_attempts" not in sqls
+    assert "render_failed" not in sqls
+    assert "drafts_imaged_checked" in sqls
+
+
+# ── render-failure circuit breaker: the attempt counter must INCREMENT and
+#    eventually reach render_failed (2026-06-13 SCAR: the counter was stored in
+#    slides_json — a JSONB ARRAY — so the read silently returned 0 and the
+#    jsonb_set WRITE raised InvalidTextRepresentationError, crashing the
+#    retry-release before the draft could be parked → reconciliation re-kicked it
+#    forever. Fixed by a dedicated INTEGER column html_render_attempts, mig 228) ─
+
+
+class _InvalidTextRepresentationError(Exception):
+    """Stand-in for asyncpg.exceptions.InvalidTextRepresentationError — raised by
+    the fake conn to reproduce the exact Postgres error the OLD jsonb_set-on-array
+    write triggered (`path element at position 1 is not an integer`)."""
+
+
+class _FakeRenderFailDB:
+    """A minimal fake DB connection that emulates JUST enough Postgres semantics
+    to make the BUGGY form crash and the FIXED form work:
+
+      * a row with slides_json as a JSONB ARRAY (the real shape) + an integer
+        html_render_attempts column (migration 228).
+      * fetchval on the OLD read (slides_json->>'_html_attempts') would return
+        NULL on an array; on the NEW read it returns the integer column.
+      * execute on the OLD write (jsonb_set(slides_json, '{_html_attempts}', ...))
+        RAISES (array path element is not an integer); on the NEW write it sets
+        the integer column. A render_failed UPDATE flips the status.
+
+    This is a true regression guard: revert _apply_one to the jsonb_set/array
+    form and the retry-path execute raises here exactly as it did in prod.
+    """
+
+    def __init__(self, attempts: int = 0):
+        self.attempts = attempts          # the html_render_attempts column value
+        self.status = "rendering"
+        self.executed: list[str] = []
+
+    def is_closed(self):
+        return False
+
+    async def close(self):
+        return None
+
+    async def fetchval(self, sql, *args):
+        s = " ".join(sql.split())
+        if "html_render_attempts" in s:
+            return self.attempts          # the fixed read
+        if "_html_attempts" in s:
+            # the OLD read against a JSONB ARRAY: ->> 'text-key' yields NULL
+            return None
+        return 0
+
+    async def execute(self, sql, *args):
+        s = " ".join(sql.split())
+        self.executed.append(s)
+        if "jsonb_set" in s and "_html_attempts" in s:
+            # the OLD buggy write — Postgres rejects a non-integer array path
+            raise _InvalidTextRepresentationError(
+                'path element at position 1 is not an integer: "_html_attempts"'
+            )
+        if "html_render_attempts" in s:
+            # the fixed write: SET html_render_attempts = $3
+            self.attempts = args[2]
+            self.status = "drafts_imaged_checked"
+            return "UPDATE 1"
+        if "render_failed" in s:
+            self.status = "render_failed"
+            return "UPDATE 1"
+        return "UPDATE 1"
+
+
+async def _run_apply_one_with_render_failure(monkeypatch, fake_conn, max_attempts="3"):
+    """Drive _apply_one so the render raises a RuntimeError (the designer-loop
+    convergence-failure path), using the supplied fake_conn for main_conn."""
+    from unittest.mock import AsyncMock
+
+    import scripts.wr2_html_render_apply as html
+
+    # main_conn = fake_conn; hb_conn = throwaway mock (heartbeat is stubbed out)
+    hb = AsyncMock()
+    hb.close = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(side_effect=[fake_conn, hb]))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": [{"headline": "H"}]}),  # ARRAY, the real shape
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+    # the render fails the convergence gate -> RuntimeError (transient render path)
+    monkeypatch.setattr(
+        html, "_render_carousel",
+        AsyncMock(side_effect=RuntimeError("designer loop did not converge")),
+    )
+    monkeypatch.setattr(html, "_ops_alert", AsyncMock())
+    monkeypatch.setenv("WR2_HTML_MAX_ATTEMPTS", max_attempts)
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+    monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)
+
+    import uuid as _uuid
+    return await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+
+
+@pytest.mark.asyncio
+async def test_apply_one_render_failure_increments_attempt_without_jsonb_crash(monkeypatch):
+    """REGRESSION (2026-06-13): the retry-release UPDATE must execute WITHOUT
+    raising InvalidTextRepresentationError, and must increment the dedicated
+    INTEGER counter (not jsonb_set the slides_json array). The bug crashed this
+    path and left the draft looping forever."""
+    fake = _FakeRenderFailDB(attempts=0)
+    result = await _run_apply_one_with_render_failure(monkeypatch, fake)
+
+    # first failure of 3 → back to the queue for retry (NOT render_failed yet)
+    assert result.startswith("retry:1:")
+    assert fake.status == "drafts_imaged_checked"
+    assert fake.attempts == 1  # counter actually incremented + persisted
+
+    sqls = " ".join(fake.executed)
+    # the fixed write uses the integer column; the buggy array form is gone
+    assert "html_render_attempts" in sqls
+    assert "jsonb_set" not in sqls
+    assert "_html_attempts" not in sqls
+
+
+@pytest.mark.asyncio
+async def test_apply_one_attempt_counter_accumulates_to_render_failed(monkeypatch):
+    """REGRESSION: across successive failures the counter accumulates (1→2→3) and
+    at max_attempts the draft transitions to render_failed instead of looping
+    forever. Pre-fix the read always returned 0 (array ->> text-key = NULL) so
+    the draft NEVER reached the breaker."""
+    # attempt 1: counter 0 → 1, retry
+    f1 = _FakeRenderFailDB(attempts=0)
+    r1 = await _run_apply_one_with_render_failure(monkeypatch, f1)
+    assert r1.startswith("retry:1:") and f1.attempts == 1 and f1.status == "drafts_imaged_checked"
+
+    # attempt 2: counter 1 → 2, still retry (max=3)
+    f2 = _FakeRenderFailDB(attempts=1)
+    r2 = await _run_apply_one_with_render_failure(monkeypatch, f2)
+    assert r2.startswith("retry:2:") and f2.attempts == 2 and f2.status == "drafts_imaged_checked"
+
+    # attempt 3: counter 1→... reaches max=3 → render_failed (terminal)
+    f3 = _FakeRenderFailDB(attempts=2)
+    r3 = await _run_apply_one_with_render_failure(monkeypatch, f3)
+    assert r3.startswith("render_failed:")
+    assert f3.status == "render_failed"
+    # the terminal path does NOT touch the integer counter (just flips status)
+    sqls = " ".join(f3.executed)
+    assert "render_failed" in sqls
+    assert "jsonb_set" not in sqls
+
+
+# ── connection-resilience: the ~15 min render kills the idle main_conn; the
+#    terminal write must reconnect (2026-06-12 SCAR: drafts stuck 'rendering'
+#    forever because the post-render write crashed on a closed connection) ──────
+
+
+@pytest.mark.asyncio
+async def test_ensure_live_reconnects_when_closed(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    dead = MagicMock()
+    dead.is_closed = MagicMock(return_value=True)
+    fresh = MagicMock()
+    connect = AsyncMock(return_value=fresh)
+    monkeypatch.setattr(html.asyncpg, "connect", connect)
+
+    out = await html._ensure_live(dead, "postgres://x")
+
+    assert out is fresh
+    connect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ensure_live_keeps_open_connection(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    live = MagicMock()
+    live.is_closed = MagicMock(return_value=False)
+    connect = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", connect)
+
+    out = await html._ensure_live(live, "postgres://x")
+
+    assert out is live
+    connect.assert_not_awaited()  # no needless reconnect on a healthy conn
+
+
+@pytest.mark.asyncio
+async def test_apply_one_reconnects_before_terminal_write(monkeypatch):
+    """INVARIANT: if main_conn died during the long render, the success path
+    reconnects so the carousel reaches status='rendered' instead of crashing on
+    a closed connection (which left it stuck in 'rendering')."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    dead = MagicMock(name="dead")
+    dead.is_closed = MagicMock(return_value=True)   # closed by the proxy mid-render
+    dead.execute = AsyncMock()
+    dead.fetchval = AsyncMock(return_value=0)
+    dead.close = AsyncMock()
+    fresh = MagicMock(name="fresh")
+    fresh.is_closed = MagicMock(return_value=False)
+    fresh.execute = AsyncMock()
+    fresh.fetchval = AsyncMock(return_value=0)
+    fresh.close = AsyncMock()
+
+    # first two connects (main_conn, hb_conn) → dead; any reconnect → fresh
+    conns = [dead, dead, fresh, fresh]
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(side_effect=conns))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": {"slides": [{"headline": "H"}]}}),
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+
+    # render "succeeds": produce a PNG path the worker will glob
+    async def _fake_render(draft_id, slides, work, vision_required):
+        d = work / "carousel" / "slides"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "01.png").write_bytes(b"PNG")
+        return d
+    monkeypatch.setattr(html, "_render_carousel", _fake_render)
+    monkeypatch.setattr(html, "_drive_upload_carousel", AsyncMock(return_value="https://drive/x"))
+    monkeypatch.setattr(
+        html._pg, "persist_html_result_and_enqueue_notifications",
+        AsyncMock(return_value={}),
+    )
+    monkeypatch.setattr(html, "_log_ledger_best_effort", AsyncMock())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+    monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)
+
+    import uuid as _uuid
+    persist = html._pg.persist_html_result_and_enqueue_notifications
+    result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+
+    assert result.startswith("rendered")
+    # the persist (terminal write) ran on the RECONNECTED conn, not the dead one
+    assert persist.await_args.args[0] is fresh
+
+
 @pytest.mark.asyncio
 async def test_designer_loop_converges_default_no_vision(monkeypatch):
     import base64
@@ -251,6 +691,68 @@ def test_legibility_levers_constant():
     from wr2_html_renderer.designer_loop import _LEGIBILITY_LEVERS
 
     assert _LEGIBILITY_LEVERS == {"scrim_opacity", "text_stroke", "shrink_font", "grow_font"}
+
+
+# ── saliency-placement is SOFT when contrast passes (2026-06-12 SCAR: a busy
+#    background band blocked a legible slide forever — busyness measured on the
+#    raw hero ignores the scrim, and the reposition remedy is disabled) ─────────
+
+
+def _mk_png(tmp):
+    p = Path(tmp) / "iter.png"
+    p.write_bytes(b"PNG")
+    return p
+
+
+def test_legibility_busy_band_is_soft_when_contrast_passes(monkeypatch, tmp_path):
+    """Hero text on a busier-than-calmest band but with PASSING contrast must NOT
+    fail the gate — the text is legible, scrim mitigates the busy bg, and the
+    only real remedy (reposition) is disabled. The note is still surfaced."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 12.6)  # ≫ AAA 7.0
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (0, [0.00, 0.02, 0.05]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is True
+    assert any("busier than calmest" in i for i in c.issues)  # note still visible
+    assert not c.levers  # nothing to pull — contrast is fine, reposition disabled
+
+
+def test_legibility_busy_band_is_hard_when_contrast_fails(monkeypatch, tmp_path):
+    """If contrast ALSO fails, the busy-band note is part of the hard problem and
+    the in-place remedy ladder (scrim+stroke) is proposed; gate fails."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 3.0)  # < AAA 7.0
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (0, [0.00, 0.02, 0.05]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is False
+    assert any("contrast" in i for i in c.issues)
+    assert any(lev["lever"] == "scrim_opacity" for lev in c.levers)
+
+
+def test_legibility_calm_band_passes_clean(monkeypatch, tmp_path):
+    """Calm bottom band + good contrast → pass, no issues, no levers."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "text_region_contrast", lambda *a, **k: 13.0)
+    monkeypatch.setattr(dl, "calmest_band", lambda *a, **k: (2, [0.05, 0.04, 0.01]))
+    hero = tmp_path / "hero.jpg"
+    hero.write_bytes(b"JPG")
+
+    c = dl.critic_legibility(_mk_png(tmp_path), {"headline": "H"}, is_hero=True, hero_path=hero)
+
+    assert c.passed is True
+    assert c.issues == []
+    assert c.levers == []
 
 
 @pytest.mark.asyncio
@@ -2157,3 +2659,343 @@ def test_non_cover_slide_no_sentence_wrap():
     out = _fill_placeholders(html, slide, hero_filename=None, cover_family=False)
     # no font-fit override, no sentence <br> inserted by the cover-only path
     assert "data-headline-fit" not in out
+
+
+# ── HARD-reject observability (post-mortem of 2026-06-11: 3 drafts render_failed
+#    with zero trace of WHICH critiques rejected them) ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_hard_residual_logs_the_critiques(monkeypatch, caplog):
+    """When the loop keeps best but does NOT converge because of a HARD residual,
+    the critiques MUST reach the WARNING log — symmetric to the composition-debt
+    accept branch which already logs. Without this, a render_failed leaves zero
+    trace of WHY the gate rejected."""
+    import base64
+    import logging
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    def vision_critic(png, slide, ctx):
+        return dl.Critique(
+            tier="vision",
+            passed=False,
+            issues=["single-word orphan 'TOP' on line 3 — the title is hard to read"],
+            levers=[{"lever": "rerender", "reason": "structural"}],
+            score=0.4,
+        )
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
+
+    out = Path(tempfile.mkdtemp())
+    with caplog.at_level(logging.WARNING):
+        res = await dl.run_designer_loop(
+            slide={"headline": "X"},
+            render_fn=render_fn,
+            out_dir=out,
+            vision_critic=vision_critic,
+            brand_verifier=None,
+            ocr_critic=None,
+            use_vision=True,
+            max_iters=2,
+        )
+    assert res.converged is False
+    assert any("single-word orphan" in r.message for r in caplog.records), (
+        "HARD residual critiques never reached the log"
+    )
+
+
+@pytest.mark.asyncio
+async def test_render_carousel_reject_cites_critiques_and_dumps_history(monkeypatch, tmp_path):
+    """On a non-converged slide, _render_carousel must (a) include the last vision
+    critiques in the raised RuntimeError (they reach the apply-log + DB
+    rejection_reason) and (b) persist the full designer history as JSON under
+    WR2_HTML_DEBUG_DIR for post-mortem (the render tmp dir is deleted on exit)."""
+    import json as _json
+
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer import composer as comp
+    from wr2_html_renderer import designer_loop as dl
+
+    hist = [
+        {
+            "iter": 1,
+            "vision": {"passed": False, "issues": ["title clipped at right edge"]},
+            "verdict": "vision flagged hard residual ['rerender'] / ['title clipped at right edge'] (not auto-fixable) — keeping best, not converged",
+        }
+    ]
+
+    async def fake_loop(**kwargs):
+        return dl.DesignerResult(
+            final_png=None, iterations=2, converged=False, history=hist, reason="max_iters"
+        )
+
+    monkeypatch.setattr(dl, "run_designer_loop", fake_loop)
+    monkeypatch.setattr(comp, "_stage_assets", lambda *a, **k: None)
+    monkeypatch.setattr(comp, "make_slide_render_fn", lambda **k: None)
+    debug_dir = tmp_path / "debug"
+    monkeypatch.setenv("WR2_HTML_DEBUG_DIR", str(debug_dir))
+
+    with pytest.raises(RuntimeError) as ei:
+        await html._render_carousel(
+            "draft-test", [{"headline": "T"}], tmp_path / "work", vision_required=True
+        )
+    assert "title clipped at right edge" in str(ei.value)
+
+    dumps = list(debug_dir.glob("*.json"))
+    assert dumps, "designer history JSON was not persisted"
+    payload = _json.loads(dumps[0].read_text())
+    assert payload["draft_id"] == "draft-test"
+    assert payload["history"] == hist
+
+
+# ── facts-block body structurer (designer-loop convergence, 2026-06-12) ──────
+# Diagnosis: draft 3e2c2923 slide 2 HARD-rejected every iteration because the
+# body renders as ONE monolithic uppercase-bold paragraph; the vision critic's
+# only lever is `rerender` (structural) which no CSS lever can perform → the
+# loop can never converge. The fix is a deterministic body structurer in the
+# COMPOSER: label/value stack + separated subordinate source line + yellow
+# accent on the lead value. Conservative: non-parsing bodies render
+# byte-identical to the legacy paragraph path; cover slides untouched.
+
+_FACTS_BODY = (
+    "NEW FEE: IDR 3,500,000. OLD FEE: IDR 2,000,000. REGULATION: PMK 47/2026. "
+    "EFFECTIVE: 1 JUNE 2026. [SOURCE: KEMENKEU, 24 APR 2026]"
+)
+_FACTS_BODY_NO_SOURCE = (
+    "NEW FEE: IDR 3,500,000. OLD FEE: IDR 2,000,000. REGULATION: PMK 47/2026. "
+    "EFFECTIVE: 1 JUNE 2026."
+)
+
+
+def test_split_source_line_extracts_trailing_source():
+    """_split_source_line extracts a trailing [SOURCE: …] verbatim (brackets
+    stripped) and returns the body without it."""
+    from wr2_html_renderer.composer import _split_source_line
+
+    body, src = _split_source_line(_FACTS_BODY)
+    assert body == _FACTS_BODY_NO_SOURCE
+    assert src == "SOURCE: KEMENKEU, 24 APR 2026"
+
+
+def test_split_source_line_fonte_and_case_insensitive():
+    from wr2_html_renderer.composer import _split_source_line
+
+    body, src = _split_source_line("BODY TEXT. [Fonte: Kemenkeu, 24 Apr 2026]")
+    assert body == "BODY TEXT."
+    assert src == "Fonte: Kemenkeu, 24 Apr 2026"
+    body, src = _split_source_line("BODY TEXT. [source: imigrasi]")
+    assert body == "BODY TEXT."
+    assert src == "source: imigrasi"
+
+
+def test_split_source_line_no_source_returns_none():
+    from wr2_html_renderer.composer import _split_source_line
+
+    plain = "A NORMAL BODY WITH NO ATTRIBUTION AT ALL."
+    assert _split_source_line(plain) == (plain, None)
+    # a NON-trailing bracket segment is content, not attribution — untouched
+    mid = "[SOURCE: X] FOLLOWED BY MORE TEXT."
+    assert _split_source_line(mid) == (mid, None)
+
+
+def test_parse_fact_pairs_parses_facts_body():
+    """The exact 3e2c2923 slide-2 style body (source-stripped) parses into
+    ordered label/value pairs."""
+    from wr2_html_renderer.composer import _parse_fact_pairs
+
+    pairs = _parse_fact_pairs(_FACTS_BODY_NO_SOURCE)
+    assert pairs == [
+        ("NEW FEE", "IDR 3,500,000"),
+        ("OLD FEE", "IDR 2,000,000"),
+        ("REGULATION", "PMK 47/2026"),
+        ("EFFECTIVE", "1 JUNE 2026"),
+    ]
+
+
+def test_parse_fact_pairs_none_for_prose():
+    """Conservative fallback: anything that is not a clean ≥2-pair chain of
+    `LABEL: value. ` segments returns None (legacy paragraph rendering)."""
+    from wr2_html_renderer.composer import _parse_fact_pairs
+
+    # narrative sentence with one colon → single segment → None
+    assert _parse_fact_pairs(
+        "THE MINISTRY CONFIRMED: FEES WILL RISE SHARPLY IN JUNE 2026."
+    ) is None
+    # plain prose, no colon at all
+    assert _parse_fact_pairs(
+        "YOUR KITAP STAYS VALID. THE RENEWAL WINDOW MOVED TO MARCH."
+    ) is None
+    # mixed: one fact segment + one narrative segment → whole-or-nothing → None
+    assert _parse_fact_pairs(
+        "NEW FEE: IDR 3,500,000. THIS IS WHY IT MATTERS FOR YOUR VISA."
+    ) is None
+    # label longer than 4 words → None
+    assert _parse_fact_pairs(
+        "WHAT YOU NEED TO KNOW NOW: EVERYTHING. ALSO THIS OTHER THING HERE: MORE."
+    ) is None
+    # empty / whitespace
+    assert _parse_fact_pairs("") is None
+    assert _parse_fact_pairs("   ") is None
+
+
+_BODY_SLIDE_HTML = (
+    "<html><head></head><body>"
+    '<div class="text-panel" data-zone-type="text">'
+    '<div class="heading">{{heading}}</div>'
+    '<div class="body">{{body}}</div>'
+    "</div></body></html>"
+)
+
+
+def test_fill_placeholders_facts_body_renders_label_value_stack():
+    """A facts body renders as a label/value stack: one row per pair, the
+    source line present OUTSIDE the rows, yellow accent on the FIRST value
+    only (the lead fact), facts CSS injected."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "VISA FEE UPDATE", "body": _FACTS_BODY},
+        hero_filename=None,
+        cover_family=False,
+    )
+    # 4 label/value rows
+    assert out.count('class="fact-row"') == 4
+    assert '<div class="fact-label">NEW FEE</div>' in out
+    assert '<div class="fact-label">EFFECTIVE</div>' in out
+    # yellow accent on the FIRST value only
+    assert out.count("fact-value-lead") >= 1
+    assert '<div class="fact-value fact-value-lead">IDR 3,500,000</div>' in out
+    assert '<div class="fact-value">IDR 2,000,000</div>' in out
+    assert '<div class="fact-value">PMK 47/2026</div>' in out
+    assert 'fact-value-lead">IDR 2,000,000' not in out
+    # source line present, OUTSIDE the rows, brackets stripped
+    assert '<div class="fact-source">SOURCE: KEMENKEU, 24 APR 2026</div>' in out
+    assert "[SOURCE" not in out
+    last_row = out.rfind('class="fact-row"')
+    assert out.find('class="fact-source"') > last_row
+    # facts CSS injected, accent from the existing brand token (no invented hex)
+    assert 'data-facts-block="1"' in out
+    assert "var(--color-accent-yellow)" in out
+    # the dead-void fix: the text stack centers vertically in its zone
+    assert "justify-content:center" in out
+    assert "{{body}}" not in out
+
+
+def test_fill_placeholders_facts_body_without_source_still_stacks():
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "VISA FEE UPDATE", "body": _FACTS_BODY_NO_SOURCE},
+        hero_filename=None,
+        cover_family=False,
+    )
+    assert out.count('class="fact-row"') == 4
+    assert 'class="fact-source"' not in out
+
+
+def test_fill_placeholders_non_parsing_body_byte_identical():
+    """Regression: a body that does NOT parse as fact pairs renders EXACTLY as
+    before the change — placeholder substituted verbatim, no facts markup, no
+    injected facts CSS."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    prose = "YOUR KITAP STAYS VALID. THE RENEWAL WINDOW MOVED TO MARCH."
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "SHORT TITLE", "body": prose},
+        hero_filename=None,
+        cover_family=False,
+    )
+    # pre-change snapshot semantics: plain placeholder substitution only
+    expected = _BODY_SLIDE_HTML.replace("{{heading}}", "SHORT TITLE").replace(
+        "{{body}}", prose
+    )
+    assert out == expected
+    assert "fact-row" not in out
+    assert "data-facts-block" not in out
+
+
+def test_fill_placeholders_cover_family_facts_body_untouched():
+    """Cover slides are COMPLETELY untouched by the facts structurer — even a
+    body that would parse as pairs renders as the legacy paragraph."""
+    from wr2_html_renderer.composer import _fill_placeholders
+
+    out = _fill_placeholders(
+        _BODY_SLIDE_HTML,
+        {"headline": "FEE", "body": _FACTS_BODY},
+        hero_filename=None,
+        cover_family=True,
+    )
+    assert "fact-row" not in out
+    assert "data-facts-block" not in out
+    expected = _BODY_SLIDE_HTML.replace("{{heading}}", "FEE").replace(
+        "{{body}}", _FACTS_BODY
+    )
+    assert out == expected
+
+
+def test_materialize_body_slide_facts_stack_and_centering():
+    """materialize_slide_html on a NON-cover body slide with a facts body emits
+    the stack + the vertical-centering CSS (dead-void critique) into the HTML
+    file the renderer consumes."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+
+    BODY_SKELETON = """<!doctype html>
+<html><head><link rel="stylesheet" href="../_base.css"></head>
+<body>
+  <div class="text-panel" data-zone-type="text">
+    <div class="subheading">{{subheading}}</div>
+    <div class="heading">{{heading}}</div>
+    <div class="body">{{body}}</div>
+  </div>
+</body></html>"""
+
+    slide = {
+        "slide_number": 2,
+        "slide_type": "facts",
+        "headline": "THE NUMBERS",
+        "subhead": "PMK 47/2026",
+        "body": _FACTS_BODY,
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        slides_dir = Path(tmpdir) / "slides"
+        slides_dir.mkdir()
+        with patch(
+            "wr2_html_renderer.composer._extract_skeleton", return_value=BODY_SKELETON
+        ):
+            from wr2_html_renderer.composer import materialize_slide_html
+
+            html_path, expect_hero = asyncio.run(
+                materialize_slide_html(slide, slides_dir, index=2, total=6)
+            )
+        html = html_path.read_text()
+        assert html.count('class="fact-row"') == 4
+        assert '<div class="fact-source">SOURCE: KEMENKEU, 24 APR 2026</div>' in html
+        assert "justify-content:center" in html
+        assert "var(--color-accent-yellow)" in html
+        assert "[SOURCE" not in html

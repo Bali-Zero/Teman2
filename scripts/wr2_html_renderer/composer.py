@@ -31,6 +31,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
+from html import escape as _html_escape
 from pathlib import Path
 from typing import Any
 
@@ -41,10 +42,16 @@ logger = logging.getLogger("wr2.composer")
 _BRAND = Path.home() / ".claude" / "skills" / "bali-zero-brand"
 _LAYOUTS = _BRAND / "layouts"
 
-# The 9 layout families that have real HTML/CSS skeletons (GROUND phase verified).
+# The layout families that have real HTML/CSS skeletons (GROUND phase verified).
+# `editorial-text` added 2026-06-13: a text-only prose family for non-hero slides
+# (smart-hero decision) — full antracite canvas, no photo, heading+sub+body.
 RENDERABLE_FAMILIES = {
     "cover-photo",
     "photo-headline-yellow-sub",
+    "photo-fullbleed",
+    "photo-fullbleed-top",
+    "photo-fullbleed-split",
+    "editorial-text",
     "qa-dialogue",
     "timeline-pinboard",
     "dark-status-list",
@@ -81,31 +88,46 @@ def map_slide_to_family(slide: dict[str, Any], index: int, total: int) -> str:
       slide_number, slide_type, is_cover, is_hero_image, headline, subhead,
       body, image_prompt, image_url.
 
-    Mapping rules (conservative — only the 9 renderable families):
+    Mapping rules (smart-hero, 2026-06-13 — only RENDERABLE families):
       - slide 1 / is_cover            -> cover-photo            (Art 9.3 hard rule)
-      - last slide / slide_type cta   -> statement-bomb         (Art 9.5 hard rule)
-      - is_hero_image (mid)           -> photo-headline-yellow-sub (hero + text)
-      - has explicit list structure   -> evidence-carved        (facts) [future]
-      - default body                  -> photo-headline-yellow-sub if image_url
-                                         else dark-status-list-ish text slide
+      - last slide / cta/closing/stmt -> statement-bomb         (Art 9.5 hard rule)
+      - is_hero_image (mid)           -> photo-headline-yellow-sub (hero photo + text)
+      - non-hero "take"               -> statement-bomb         (punchy text-only)
+      - non-hero default              -> editorial-text         (text-only prose)
+
+    A NON-hero slide NEVER routes to photo-headline-yellow-sub: that layout has a
+    full-bleed hero photo, so an empty/missing image would leave a visual void
+    (the "void-trap"). Non-hero slides go to a TEXT-ONLY family instead.
+
+    We deliberately do NOT auto-route to dark-status-list / evidence-carved /
+    source-citation: those need structured items/facts/citations the generator
+    does not produce, so a blind mapping would break their fill.
 
     Returns a family in RENDERABLE_FAMILIES. Never returns an UNDEFINED one.
     """
-    st = (slide.get("slide_type") or "").lower()
-
+    # Per-slide explicit override (manual full-bleed-photo carousels, 2026-06-13):
+    # a slides.json may pin `layout_family` directly to opt a slide into a
+    # specific renderable family (e.g. "photo-fullbleed" for the foto-a-tutta-slide
+    # treatment). Honoured ONLY when it names a RENDERABLE family — a typo or an
+    # UNDEFINED value falls through to auto-routing so we never emit a blank
+    # skeleton. This intentionally lets a manual author bypass the Art 9.3/9.5
+    # cover/CTA hard rules for a fully-photographic carousel.
+    explicit = (slide.get("layout_family") or "").strip()
+    if explicit in RENDERABLE_FAMILIES:
+        return explicit
     if index == 1 or slide.get("is_cover"):
         return "cover-photo"
+    st = (slide.get("slide_type") or "").lower()
     if index == total or st in {"cta", "closing", "statement"}:
         return "statement-bomb"
     if slide.get("is_hero_image"):
         return "photo-headline-yellow-sub"
-    # text-forward body slide: if it has an image use the photo layout, else a
-    # text layout. (dark-status-list expects label/value items; without that
-    # structure we keep it on the photo layout with image, or a plain text
-    # variant. For now, default to photo-headline if image present.)
-    if slide.get("image_url"):
-        return "photo-headline-yellow-sub"
-    return "photo-headline-yellow-sub"  # safe default (renders heading+sub+body)
+    # non-hero: route to a TEXT-ONLY family (never the photo layout with an empty
+    # image → void-trap). All non-hero prose — including an editorial "take" —
+    # goes to editorial-text: statement-bomb is for a 3-15 word punch, NOT a
+    # 35-word take (E2E 2026-06-13: a take routed to statement-bomb crammed; on
+    # editorial-text the same copy reads cleanly, like the other prose slides).
+    return "editorial-text"  # text-only prose family
 
 
 def _extract_skeleton(family: str) -> str:
@@ -186,12 +208,21 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
         return html
 
     # Fallback: no <div class="hero"> — inject a positioned <img> after <body>.
+    # The image must NOT paint OVER the slide text (statement-bomb etc.): the
+    # existing content is raised above the img (z-index:1) and a legibility
+    # scrim (.hero-scrim) sits between image and text.
     hero_img_css = (
         "\n.hero-img{position:absolute;inset:0;width:100%;height:100%;"
         "object-fit:cover;z-index:0;}\n"
+        ".hero-scrim{position:absolute;inset:0;"
+        "background:rgba(10,10,10,0.55);z-index:0;}\n"
+        "body > *:not(.hero-img):not(.hero-scrim){position:relative;z-index:1;}\n"
     )
     html = html.replace("</style>", hero_img_css + "</style>", 1)
-    img_tag = f'<img class="hero-img" src="{hero_filename}" alt="" data-zone-type="hero-photo">'
+    img_tag = (
+        f'<img class="hero-img" src="{hero_filename}" alt="" data-zone-type="hero-photo">'
+        '<div class="hero-scrim"></div>'
+    )
     html = re.sub(r"(<body[^>]*>)", r"\1\n  " + img_tag, html, count=1)
     return html
 
@@ -679,6 +710,132 @@ def _wrap_headline_sentence_aware(
     return "<br>".join(out_lines), floor_px
 
 
+# ── facts-block body structurer (designer-loop convergence, 2026-06-12) ─────
+# Diagnosis (draft 3e2c2923 slide 2, HARD-reject history 2026-06-11): a "facts"
+# body like "NEW FEE: IDR 3,500,000. OLD FEE: IDR 2,000,000. REGULATION: PMK
+# 47/2026. EFFECTIVE: 1 JUNE 2026. [SOURCE: KEMENKEU, 24 APR 2026]" rendered as
+# ONE monolithic uppercase-bold paragraph. The vision critic HARD-rejects it
+# every iteration (no internal hierarchy, the key number doesn't pop, the
+# [SOURCE:…] attribution glued into the paragraph, the text block floats in
+# dead voids) and its only proposed lever is `rerender` — a structural
+# recomposition that no CSS lever can perform, so the designer loop can NEVER
+# converge on these slides. The fix lives HERE in the composer: detect the
+# label/value structure at compose time and render it as a proper stack.
+# CONSERVATIVE by contract (W68/W72/W73 discipline — never clobber a correct
+# rendering): a body that does not parse as fact pairs renders byte-identical
+# to the legacy paragraph path, and cover slides are completely untouched.
+
+# Trailing `[SOURCE: …]` / `[FONTE: …]` attribution (case-insensitive). Only a
+# TRAILING bracket segment is attribution — a mid-body bracket is content.
+_SOURCE_LINE_RE = re.compile(
+    r"\s*\[\s*((?:SOURCE|FONTE)\s*:\s*[^\]]+?)\s*\]\s*\.?\s*$",
+    re.IGNORECASE,
+)
+
+# A fact segment is `LABEL: value` — label 1-4 words with no internal period
+# (the [^.:] class enforces it), value non-empty.
+_FACT_SEGMENT_RE = re.compile(r"^([^.:]+):\s*(.+)$")
+_FACT_LABEL_MAX_WORDS = 4
+
+# Stack styling, brand-token-pure: label = small muted uppercase, value =
+# larger high-contrast extrabold, lead value (the key number) = the existing
+# brand yellow accent token, source line = subordinate (smaller, reduced
+# opacity, NOT uppercase-bold). `.text-panel{justify-content:center}` centers
+# the whole text stack vertically in its zone (the dead-void critique) — the
+# skeleton's .text-panel is already a flex column, so this is positioning-inert
+# for every other element. Selectors are defensive descendants of the
+# skeleton's .body slot; unused selectors are inert (same approach as levers).
+_FACTS_BLOCK_CSS = (
+    "\n<style data-facts-block=\"1\">\n"
+    ".text-panel{justify-content:center;}\n"
+    ".fact-row{margin-bottom:var(--spacing-list-gap);}\n"
+    ".fact-label{font-size:var(--font-size-body-md);color:var(--color-text-muted);"
+    "font-weight:var(--font-weight-bold);letter-spacing:var(--letter-spacing-title);"
+    "line-height:var(--line-height-snug);}\n"
+    ".fact-value{font-size:var(--font-size-subheadline);color:var(--color-text-white);"
+    "font-weight:var(--font-weight-extrabold);line-height:var(--line-height-snug);}\n"
+    ".fact-value-lead{color:var(--color-accent-yellow);}\n"
+    ".fact-source{margin-top:var(--spacing-section-gap);"
+    "font-size:calc(var(--font-size-body-md) * 0.8);color:var(--color-text-muted);"
+    "font-weight:400;text-transform:none;opacity:0.7;}\n"
+    "</style>\n"
+)
+
+
+def _split_source_line(body: str) -> tuple[str, str | None]:
+    """Extract a trailing `[SOURCE: …]` / `[FONTE: …]` attribution from a body.
+
+    Returns (body_without_source, source_text). source_text keeps the label +
+    citation verbatim (brackets stripped) — e.g. "SOURCE: KEMENKEU, 24 APR
+    2026" — so the attribution renders untouched on its own subordinate line.
+    A body with no trailing source returns (body, None).
+    """
+    m = _SOURCE_LINE_RE.search(body)
+    if not m:
+        return body, None
+    return body[: m.start()].rstrip(), m.group(1).strip()
+
+
+def _parse_fact_pairs(body: str) -> list[tuple[str, str]] | None:
+    """Heuristic LABEL/value parser for "facts" slide bodies.
+
+    Returns the ordered pairs ONLY when the whole (source-stripped) body is a
+    chain of ≥2 `LABEL: value` segments separated by `. ` — label 1-4 words
+    with no internal period, value non-empty. ANY segment that doesn't fit the
+    shape (narrative prose, a single colon-clause, a >4-word label) returns
+    None and the caller falls back to the legacy paragraph rendering
+    UNCHANGED. When in doubt: None — this MUST stay conservative.
+    """
+    text = (body or "").strip()
+    if not text:
+        return None
+    # Split AFTER a period followed by whitespace; each segment keeps its
+    # terminal period (stripped from the value below). Periods inside tokens
+    # (e.g. Indonesian "3.500.000") are not followed by a space → safe.
+    segments = [s.strip() for s in re.split(r"(?<=\.)\s+", text) if s.strip()]
+    if len(segments) < 2:
+        return None
+    pairs: list[tuple[str, str]] = []
+    for seg in segments:
+        m = _FACT_SEGMENT_RE.match(seg)
+        if not m:
+            return None
+        label = m.group(1).strip()
+        value = m.group(2).strip()
+        if value.endswith("."):
+            value = value[:-1].rstrip()  # the segment terminator, not content
+        if not label or not value:
+            return None
+        if len(label.split()) > _FACT_LABEL_MAX_WORDS:
+            return None
+        pairs.append((label, value))
+    return pairs
+
+
+def _facts_block_html(pairs: list[tuple[str, str]], source_text: str | None) -> str:
+    """Render parsed fact pairs as a label/value stack + optional source line.
+
+    Each row = small muted uppercase label + larger high-contrast value; the
+    FIRST row's value (the lead fact, e.g. the new fee) carries the brand
+    yellow accent so the key number pops. The source line sits OUTSIDE the
+    rows, at the bottom of the stack, as a subordinate attribution. Plain
+    string markup (no escaping) — consistent with _fill_placeholders, which
+    substitutes via str.replace.
+    """
+    rows: list[str] = []
+    for i, (label, value) in enumerate(pairs):
+        lead = " fact-value-lead" if i == 0 else ""
+        rows.append(
+            '<div class="fact-row">'
+            f'<div class="fact-label">{label}</div>'
+            f'<div class="fact-value{lead}">{value}</div>'
+            "</div>"
+        )
+    if source_text:
+        rows.append(f'<div class="fact-source">{source_text}</div>')
+    return "\n".join(rows)
+
+
 def _fill_placeholders(
     html: str,
     slide: dict[str, Any],
@@ -724,6 +881,20 @@ def _fill_placeholders(
     body = (slide.get("body") or slide.get("body_text") or "").strip()
     reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()
 
+    # Facts-block body structurer (NON-cover slides only): when the body parses
+    # as a chain of LABEL: value facts, render it as a label/value stack with a
+    # separated subordinate source line instead of one monolithic paragraph.
+    # When it does NOT parse (or on a cover), body_html stays the verbatim body
+    # and NO facts CSS is injected → byte-identical to the legacy rendering.
+    body_html = body
+    facts_block = False
+    if body and not cover_family:
+        body_wo_source, source_text = _split_source_line(body)
+        pairs = _parse_fact_pairs(body_wo_source)
+        if pairs:
+            body_html = _facts_block_html(pairs, source_text)
+            facts_block = True
+
     # {{#if regulation_code}} ... {{/if}}
     if reg:
         html = re.sub(r"\{\{#if regulation_code\}\}(.*?)\{\{/if\}\}", r"\1", html, flags=re.DOTALL)
@@ -733,13 +904,29 @@ def _fill_placeholders(
     # statement-bomb uses {{statement}}; map from headline/body
     statement = (slide.get("statement") or headline or body).strip()
 
+    # statement-bomb's richer placeholder {{statement_html_with_emphasis_span}}
+    # was previously NEVER filled — the raw mustache shipped to the renderer on
+    # every CTA slide. Build it from the statement: HTML-escape the text, then
+    # wrap the LAST word in <span class="emphasis"> (the skeleton's accent).
+    statement_emphasis_html = ""
+    if statement:
+        words = _html_escape(statement).split()
+        if len(words) > 1:
+            statement_emphasis_html = (
+                " ".join(words[:-1])
+                + f' <span class="emphasis">{words[-1]}</span>'
+            )
+        else:
+            statement_emphasis_html = f'<span class="emphasis">{words[0]}</span>'
+
     replacements = {
         "{{heading}}": headline,
         "{{subheading}}": subhead,
         "{{subhead}}": subhead,
-        "{{body}}": body,
+        "{{body}}": body_html,
         "{{regulation_code}}": reg,
         "{{statement}}": statement,
+        "{{statement_html_with_emphasis_span}}": statement_emphasis_html,
     }
     for k, v in replacements.items():
         html = html.replace(k, v)
@@ -768,6 +955,16 @@ def _fill_placeholders(
             html = html.replace("</body>", font_css + "</body>", 1)
         else:
             html = html + font_css
+
+    # Inject the facts-block styles ONLY when the stack was rendered, so a
+    # non-parsing body stays byte-identical to the legacy paragraph output.
+    if facts_block:
+        if "</head>" in html:
+            html = html.replace("</head>", _FACTS_BLOCK_CSS + "</head>", 1)
+        elif "</body>" in html:
+            html = html.replace("</body>", _FACTS_BLOCK_CSS + "</body>", 1)
+        else:
+            html = html + _FACTS_BLOCK_CSS
 
     return html
 
@@ -812,7 +1009,7 @@ async def compose_carousel(
         plans.append(SlidePlan(index=i, family=family, slide=slide, expect_hero=expect_hero))
 
     # Download heroes + materialize HTML per slide
-    html_specs: list[tuple[Path, bool]] = []
+    html_specs: list[tuple[Path, bool, str]] = []
     async with httpx.AsyncClient() as client:
         for plan in plans:
             hero_filename: str | None = None
@@ -840,7 +1037,9 @@ async def compose_carousel(
 
             html_path = slides_dir / f"{plan.index:02d}.html"
             html_path.write_text(html, encoding="utf-8")
-            html_specs.append((html_path, plan.expect_hero))
+            # 3-tuple: thread the layout family so the renderer's hero-visibility
+            # gate samples where THIS family exposes the photo (top/lower/middle).
+            html_specs.append((html_path, plan.expect_hero, plan.family))
 
     result = await render_html_files(html_specs, output_dir, timeout_ms=timeout_ms, make_pdf=True)
 
@@ -939,8 +1138,13 @@ def make_slide_render_fn(
         html_path = slides_dir / f"{index:02d}.html"
         # render_html_files writes PNG to (render_root/"slides")/f"{enum_idx:02d}.png"
         # where enum_idx is the 1-based position in the list → always "01" here.
+        # Thread the layout family (same derivation materialize_slide_html used)
+        # so the hero-visibility gate samples the right band for this layout.
+        family = map_slide_to_family(slide_with_levers, index, total)
+        if family in UNDEFINED_FAMILIES:
+            family = "photo-headline-yellow-sub"
         res = await render_html_files(
-            [(html_path, expect_hero_for_index(slide_with_levers, index))],
+            [(html_path, expect_hero_for_index(slide_with_levers, index), family)],
             render_root,
             timeout_ms=timeout_ms,
             make_pdf=False,

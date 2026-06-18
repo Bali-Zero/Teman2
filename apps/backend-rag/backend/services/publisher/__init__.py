@@ -10,7 +10,6 @@ Design contract:
         property platform_name -> Platform
 
 Concrete implementations:
-    - IGPublisher: Meta Graph API v20 carousel (Sprint 7)
     - XPublisher:  X API v2 thread chained (Sprint 7)
     - LinkedInPublisher: REST API v2 posts (Sprint 8)
     - BlogPublisher: MDX + git commit (Sprint 8)
@@ -33,7 +32,6 @@ from backend.services.publisher.blog_batch_publisher import (
     BlogBatchPublisher,
 )
 from backend.services.publisher.blog_publisher import BlogPublisher
-from backend.services.publisher.ig_publisher import IGPublisher
 from backend.services.publisher.linkedin_publisher import LinkedInPublisher
 from backend.services.publisher.mdx_template import (
     MdxExtras,
@@ -61,7 +59,6 @@ __all__ = [
     "BlogBatchPublisher",
     "BlogPublisher",
     "DraftPayload",
-    "IGPublisher",
     "LinkedInPublisher",
     "MdxExtras",
     "PublishResult",

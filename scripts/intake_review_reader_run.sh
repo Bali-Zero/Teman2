@@ -12,7 +12,8 @@
 #   API_KEYS=<any non-empty value; settings requires it, reader is JWT-only in practice>
 #   INTAKE_REVIEW_DATABASE_URL=postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev
 #   INTAKE_REVIEW_BRIDGE_SECRET=<shared X-Bridge-Auth secret, added by the Fly proxy>
-# (INTAKE_WRITER_ENABLED is forced to 0 below — approvals stay dry-run.)
+# (INTAKE_WRITER_ENABLED defaults to 0 — dry-run. FASE 5C go-live: set
+#  INTAKE_WRITER_ENABLED=1 in this env-file + kickstart the LaunchAgent.)
 set -euo pipefail
 
 REPO_ROOT="${INTAKE_REVIEW_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
@@ -41,11 +42,45 @@ set -a
 source "${ENV_FILE}"
 set +a
 
-# P2: approvals dry-run regardless of what the env-file says.
-export INTAKE_WRITER_ENABLED=0
+# Writer flag: SAFE-OFF unless the operator explicitly enables it in the
+# 0600 env-file (FASE 5C go-live = add INTAKE_WRITER_ENABLED=1 there + restart;
+# no code change). Anything other than an explicit truthy value stays dry-run.
+export INTAKE_WRITER_ENABLED="${INTAKE_WRITER_ENABLED:-0}"
+if [[ "${INTAKE_WRITER_ENABLED}" == "1" ]]; then
+  echo "[intake-review-reader] WARNING: INTAKE_WRITER_ENABLED=1 — approvals COMMIT to the local CRM (FASE 5C live)" >&2
+fi
 
 cd "${BACKEND_DIR}"
 export PYTHONPATH="${BACKEND_DIR}"
+
+# Venv auto-heal (scar #1546 follow-up / superscar #1 HOME-fork + W81 deploy-worktree
+# evaporation): the deploy worktree this wrapper runs from can lose its .venv (re-add,
+# sibling-race, GC). PR #1546 healed the WR2 html venv but this reader was left bare:
+# a missing-or-dep-incomplete venv made `exec uvicorn` die with
+# `ModuleNotFoundError: No module named 'uvicorn'` and KeepAlive crash-looped every
+# ThrottleInterval (10s), taking down kita/review (2026-06-17).
+#
+# Heal BEFORE exec so the FIRST boot after evaporation self-recovers instead of looping:
+#   1. venv shell gone   -> recreate it (python3 -m venv).
+#   2. deps unimportable  -> pip install -r requirements.txt. CRITICAL: cwd MUST be
+#      BACKEND_DIR — requirements.txt has `-e ../../packages/cell-core`, a path-relative
+#      editable that only resolves from apps/backend-rag/. We are already cd'd here.
+# Idempotent + cheap on the happy path: the import probe short-circuits when deps exist,
+# so a healthy boot adds one ~0.1s python invocation and never touches pip.
+if [[ ! -x "${VENV_PY}" ]]; then
+  echo "[intake-review-reader] WARN: venv python missing at ${VENV_PY} — recreating (scar #1546)" >&2
+  if ! python3 -m venv "${BACKEND_DIR}/.venv" >&2; then
+    echo "[intake-review-reader] FATAL: venv shell creation failed" >&2
+    exit 75  # EX_OSERR
+  fi
+fi
+if ! "${VENV_PY}" -c 'import uvicorn' 2>/dev/null; then
+  echo "[intake-review-reader] WARN: uvicorn unimportable — pip install -r requirements.txt (cwd=${BACKEND_DIR}; scar #1546)" >&2
+  if ! "${VENV_PY}" -m pip install -r requirements.txt >&2; then
+    echo "[intake-review-reader] FATAL: dependency install failed" >&2
+    exit 75  # EX_OSERR
+  fi
+fi
 
 exec "${VENV_PY}" -m uvicorn backend.app.intake_review_reader:app \
   --host "${HOST}" --port "${PORT}" --no-access-log

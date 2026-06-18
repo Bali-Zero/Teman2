@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Revenue Analytics Dashboard
@@ -13,8 +13,8 @@
  * @ai_onboarding - Strict TypeScript, mobile-first design
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   DollarSign,
   TrendingUp,
@@ -33,11 +33,12 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownRight,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { useToast } from '@/components/ui/toast';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
+import { formatIDR, formatIDRCompact } from "@balizero/core/utils";
 
 // ================================================
 // TYPES
@@ -74,7 +75,7 @@ interface Payment {
   id: number;
   client_name: string;
   amount: number;
-  status: 'paid' | 'pending' | 'overdue';
+  status: "paid" | "pending" | "overdue";
   due_date: string;
   paid_date?: string;
 }
@@ -106,7 +107,9 @@ const StatCard = ({
   color: string;
   loading?: boolean;
 }) => (
-  <div className={`rounded-xl border p-4 sm:p-6 bg-${color}-500/5 border-${color}-500/20`}>
+  <div
+    className={`rounded-xl border p-4 sm:p-6 bg-${color}-500/5 border-${color}-500/20`}
+  >
     <div className="flex items-start justify-between">
       <div>
         <p className="text-xs sm:text-sm text-muted-foreground">{title}</p>
@@ -115,10 +118,12 @@ const StatCard = ({
         ) : (
           <>
             <p className="text-xl sm:text-2xl font-bold mt-1">{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+            {subtitle && (
+              <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+            )}
             {trend !== undefined && (
               <span
-                className={`text-xs font-medium flex items-center gap-1 mt-1 ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}
+                className={`text-xs font-medium flex items-center gap-1 mt-1 ${trend >= 0 ? "text-green-500" : "text-red-500"}`}
               >
                 {trend >= 0 ? (
                   <ArrowUpRight className="w-3 h-3" />
@@ -138,7 +143,13 @@ const StatCard = ({
   </div>
 );
 
-const MiniChart = ({ data, color = 'blue' }: { data: number[]; color?: string }) => {
+const MiniChart = ({
+  data,
+  color = "blue",
+}: {
+  data: number[];
+  color?: string;
+}) => {
   if (!data.length) return null;
 
   const max = Math.max(...data);
@@ -151,17 +162,21 @@ const MiniChart = ({ data, color = 'blue' }: { data: number[]; color?: string })
       const y = 100 - ((val - min) / range) * 80 - 10;
       return `${x},${y}`;
     })
-    .join(' ');
+    .join(" ");
 
   const colorClasses: Record<string, string> = {
-    blue: 'stroke-blue-500 fill-blue-500/10',
-    green: 'stroke-green-500 fill-green-500/10',
-    red: 'stroke-red-500 fill-red-500/10',
-    amber: 'stroke-amber-500 fill-amber-500/10',
+    blue: "stroke-blue-500 fill-blue-500/10",
+    green: "stroke-green-500 fill-green-500/10",
+    red: "stroke-red-500 fill-red-500/10",
+    amber: "stroke-amber-500 fill-amber-500/10",
   };
 
   return (
-    <svg viewBox="0 0 100 100" className="w-full h-20" preserveAspectRatio="none">
+    <svg
+      viewBox="0 0 100 100"
+      className="w-full h-20"
+      preserveAspectRatio="none"
+    >
       <polygon
         points={`0,100 ${points} 100,100`}
         className={colorClasses[color] || colorClasses.blue}
@@ -170,7 +185,7 @@ const MiniChart = ({ data, color = 'blue' }: { data: number[]; color?: string })
         fill="none"
         strokeWidth="2"
         points={points}
-        className={colorClasses[color]?.split(' ')[0] || 'stroke-blue-500'}
+        className={colorClasses[color]?.split(" ")[0] || "stroke-blue-500"}
       />
     </svg>
   );
@@ -178,9 +193,9 @@ const MiniChart = ({ data, color = 'blue' }: { data: number[]; color?: string })
 
 const PaymentStatusBadge = ({ status }: { status: string }) => {
   const styles = {
-    paid: 'bg-green-500/20 text-green-500',
-    pending: 'bg-amber-500/20 text-amber-500',
-    overdue: 'bg-red-500/20 text-red-500',
+    paid: "bg-green-500/20 text-green-500",
+    pending: "bg-amber-500/20 text-amber-500",
+    overdue: "bg-red-500/20 text-red-500",
   };
 
   return (
@@ -200,7 +215,9 @@ export default function RevenueAnalyticsPage() {
   const router = useRouter();
   const { error: showError, warning: showWarning } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('quarter');
+  const [timeRange, setTimeRange] = useState<"month" | "quarter" | "year">(
+    "quarter",
+  );
 
   const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
   const [outstanding, setOutstanding] = useState<OutstandingByAge[]>([]);
@@ -211,7 +228,7 @@ export default function RevenueAnalyticsPage() {
       setIsLoading(true);
 
       const [revenueRes] = await Promise.all([
-        api.get<RevenueSummary>('/api/crm/analytics/revenue/summary'),
+        api.get<RevenueSummary>("/api/crm/analytics/revenue/summary"),
       ]);
 
       setRevenue(revenueRes);
@@ -219,22 +236,22 @@ export default function RevenueAnalyticsPage() {
       // Generate aging buckets
       const aging: OutstandingByAge[] = [
         {
-          bucket: '0-30 days',
+          bucket: "0-30 days",
           amount: revenueRes.total_outstanding * 0.4,
           count: 12,
         },
         {
-          bucket: '31-60 days',
+          bucket: "31-60 days",
           amount: revenueRes.total_outstanding * 0.3,
           count: 8,
         },
         {
-          bucket: '61-90 days',
+          bucket: "61-90 days",
           amount: revenueRes.total_outstanding * 0.2,
           count: 5,
         },
         {
-          bucket: '90+ days',
+          bucket: "90+ days",
           amount: revenueRes.total_outstanding * 0.1,
           count: 3,
         },
@@ -245,38 +262,38 @@ export default function RevenueAnalyticsPage() {
       setRecentPayments([
         {
           id: 1,
-          client_name: 'PT Example Indonesia',
+          client_name: "PT Example Indonesia",
           amount: 15000000,
-          status: 'paid',
-          due_date: '2026-02-15',
-          paid_date: '2026-02-14',
+          status: "paid",
+          due_date: "2026-02-15",
+          paid_date: "2026-02-14",
         },
         {
           id: 2,
-          client_name: 'John Smith',
+          client_name: "John Smith",
           amount: 8500000,
-          status: 'pending',
-          due_date: '2026-02-20',
+          status: "pending",
+          due_date: "2026-02-20",
         },
         {
           id: 3,
-          client_name: 'PT Bali Business',
+          client_name: "PT Bali Business",
           amount: 22000000,
-          status: 'overdue',
-          due_date: '2026-02-01',
+          status: "overdue",
+          due_date: "2026-02-01",
         },
         {
           id: 4,
-          client_name: 'Sarah Johnson',
+          client_name: "Sarah Johnson",
           amount: 12000000,
-          status: 'paid',
-          due_date: '2026-02-10',
-          paid_date: '2026-02-10',
+          status: "paid",
+          due_date: "2026-02-10",
+          paid_date: "2026-02-10",
         },
       ]);
     } catch (err) {
-      logger.error('Failed to load revenue analytics', {}, err as Error);
-      showError('Failed to load revenue analytics', 'Please try again later');
+      logger.error("Failed to load revenue analytics", {}, err as Error);
+      showError("Failed to load revenue analytics", "Please try again later");
     } finally {
       setIsLoading(false);
     }
@@ -285,24 +302,6 @@ export default function RevenueAnalyticsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(amount);
-  };
-
-  const formatCurrencyFull = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   // Calculate metrics
   const collectionRate = revenue?.total_actual
@@ -324,14 +323,16 @@ export default function RevenueAnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push("/dashboard")}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-2 text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </button>
           <h1 className="text-2xl sm:text-3xl font-bold">Revenue Analytics</h1>
-          <p className="text-sm text-muted-foreground mt-1">Financial performance and forecasts</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Financial performance and forecasts
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -343,7 +344,12 @@ export default function RevenueAnalyticsPage() {
             <option value="quarter">This Quarter</option>
             <option value="year">This Year</option>
           </select>
-          <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            disabled={isLoading}
+          >
             <Activity className="w-4 h-4" />
           </Button>
         </div>
@@ -355,7 +361,9 @@ export default function RevenueAnalyticsPage() {
           <StatCard
             title="Total Revenue"
             aria-label="Total Revenue"
-            value={isLoading ? '-' : formatCurrency(revenue?.total_actual || 0)}
+            value={
+              isLoading ? "-" : formatIDRCompact(revenue?.total_actual || 0)
+            }
             subtitle="Actual collected"
             trend={15.2}
             icon={DollarSign}
@@ -365,7 +373,11 @@ export default function RevenueAnalyticsPage() {
           <StatCard
             title="Outstanding"
             aria-label="Outstanding"
-            value={isLoading ? '-' : formatCurrency(revenue?.total_outstanding || 0)}
+            value={
+              isLoading
+                ? "-"
+                : formatIDRCompact(revenue?.total_outstanding || 0)
+            }
             subtitle={`${outstandingRate.toFixed(1)}% of total`}
             trend={-5.3}
             icon={Clock}
@@ -375,7 +387,7 @@ export default function RevenueAnalyticsPage() {
           <StatCard
             title="Collection Rate"
             aria-label="Collection Rate"
-            value={isLoading ? '-' : `${collectionRate.toFixed(1)}%`}
+            value={isLoading ? "-" : `${collectionRate.toFixed(1)}%`}
             subtitle="Paid / Actual"
             trend={3.8}
             icon={CheckCircle}
@@ -385,7 +397,11 @@ export default function RevenueAnalyticsPage() {
           <StatCard
             title="Forecast (Next Month)"
             aria-label="Forecast (Next Month)"
-            value={isLoading ? '-' : formatCurrency(revenue?.forecast_next_month || 0)}
+            value={
+              isLoading
+                ? "-"
+                : formatIDRCompact(revenue?.forecast_next_month || 0)
+            }
             subtitle="Projected revenue"
             icon={Target}
             color="purple"
@@ -415,16 +431,19 @@ export default function RevenueAnalyticsPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Best Month</p>
                     <p className="font-medium">
-                      {formatCurrency(Math.max(...(revenueTrend.length ? revenueTrend : [0])))}
+                      {formatIDRCompact(
+                        Math.max(...(revenueTrend.length ? revenueTrend : [0])),
+                      )}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Average</p>
                     <p className="font-medium">
-                      {formatCurrency(
+                      {formatIDRCompact(
                         revenueTrend.length
-                          ? revenueTrend.reduce((a, b) => a + b, 0) / revenueTrend.length
-                          : 0
+                          ? revenueTrend.reduce((a, b) => a + b, 0) /
+                              revenueTrend.length
+                          : 0,
                       )}
                     </p>
                   </div>
@@ -463,22 +482,25 @@ export default function RevenueAnalyticsPage() {
                   </thead>
                   <tbody className="divide-y">
                     {revenue?.by_month?.map((month, idx) => {
-                      const percent = month.target > 0 ? (month.revenue / month.target) * 100 : 0;
+                      const percent =
+                        month.target > 0
+                          ? (month.revenue / month.target) * 100
+                          : 0;
                       return (
                         <tr key={idx} className="hover:bg-muted/50">
                           <td className="p-3">{month.period}</td>
                           <td className="p-3 text-right font-medium">
-                            {formatCurrencyFull(month.revenue)}
+                            {formatIDR(month.revenue)}
                           </td>
                           <td className="p-3 text-right text-green-500">
-                            {formatCurrencyFull(month.paid)}
+                            {formatIDR(month.paid)}
                           </td>
                           <td className="p-3 text-right text-muted-foreground">
-                            {formatCurrencyFull(month.target)}
+                            {formatIDR(month.target)}
                           </td>
                           <td className="p-3 text-right">
                             <span
-                              className={`font-medium ${percent >= 100 ? 'text-green-500' : percent >= 80 ? 'text-amber-500' : 'text-red-500'}`}
+                              className={`font-medium ${percent >= 100 ? "text-green-500" : percent >= 80 ? "text-amber-500" : "text-red-500"}`}
                             >
                               {percent.toFixed(0)}%
                             </span>
@@ -513,7 +535,10 @@ export default function RevenueAnalyticsPage() {
                 <tbody className="divide-y">
                   {recentPayments.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-sm text-muted-foreground">
+                      <td
+                        colSpan={4}
+                        className="p-8 text-center text-sm text-muted-foreground"
+                      >
                         No recent payments found.
                       </td>
                     </tr>
@@ -522,12 +547,14 @@ export default function RevenueAnalyticsPage() {
                     <tr key={payment.id} className="hover:bg-muted/50">
                       <td className="p-3">{payment.client_name}</td>
                       <td className="p-3 text-right font-medium">
-                        {formatCurrencyFull(payment.amount)}
+                        {formatIDR(payment.amount)}
                       </td>
                       <td className="p-3 text-center">
                         <PaymentStatusBadge status={payment.status} />
                       </td>
-                      <td className="p-3 text-right text-muted-foreground">{payment.due_date}</td>
+                      <td className="p-3 text-right text-muted-foreground">
+                        {payment.due_date}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -551,26 +578,32 @@ export default function RevenueAnalyticsPage() {
                 {outstanding.map((item, idx) => (
                   <div key={idx}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-muted-foreground">{item.bucket}</span>
-                      <span className="font-medium">{formatCurrency(item.amount)}</span>
+                      <span className="text-muted-foreground">
+                        {item.bucket}
+                      </span>
+                      <span className="font-medium">
+                        {formatIDRCompact(item.amount)}
+                      </span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
                           idx === 0
-                            ? 'bg-green-500'
+                            ? "bg-green-500"
                             : idx === 1
-                              ? 'bg-amber-500'
+                              ? "bg-amber-500"
                               : idx === 2
-                                ? 'bg-orange-500'
-                                : 'bg-red-500'
+                                ? "bg-orange-500"
+                                : "bg-red-500"
                         }`}
                         style={{
                           width: `${(item.amount / (outstanding[0]?.amount || 1)) * 100}%`,
                         }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{item.count} invoices</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {item.count} invoices
+                    </p>
                   </div>
                 ))}
               </div>
@@ -590,7 +623,9 @@ export default function RevenueAnalyticsPage() {
                 {revenue?.by_process_type?.slice(0, 5).map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <span className="text-sm truncate flex-1">{item.type}</span>
-                    <span className="text-sm font-medium">{formatCurrency(item.revenue)}</span>
+                    <span className="text-sm font-medium">
+                      {formatIDRCompact(item.revenue)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -605,7 +640,12 @@ export default function RevenueAnalyticsPage() {
                 variant="outline"
                 className="w-full justify-start gap-2"
                 size="sm"
-                onClick={() => showWarning('Not yet available', 'Revenue report export will be enabled in a future update.')}
+                onClick={() =>
+                  showWarning(
+                    "Not yet available",
+                    "Revenue report export will be enabled in a future update.",
+                  )
+                }
               >
                 <Download className="w-4 h-4" />
                 Export Report
@@ -614,7 +654,7 @@ export default function RevenueAnalyticsPage() {
                 variant="outline"
                 className="w-full justify-start gap-2"
                 size="sm"
-                onClick={() => router.push('/process?filter=outstanding')}
+                onClick={() => router.push("/process?filter=outstanding")}
               >
                 <Clock className="w-4 h-4" />
                 View Outstanding

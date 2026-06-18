@@ -43,7 +43,13 @@ from trajectories at query time, and sharing the table means a single
               ▼ writes proposals to
   ~/.nuzantara/skill_creation_proposals.jsonl
               │
-              ▼ (Zero reviews)
+              ▼ (OpenClaw sidecar, dry-run)
+  scripts/skill_coach_openclaw_runner.py
+              │
+              ▼ writes redacted evidence to
+  ~/.nuzantara/skill_coach_evidence.jsonl
+              │
+              ▼ (Zero reviews via GET /api/skill/creation-proposals)
   POST /api/skill/record            (Week 3-4 — canonical skills)
               │
               ▼
@@ -107,6 +113,7 @@ the canonical way to do X" → Skill.
 | `EXPERIENCE_DB_PATH`            | ⚙️        | SQLite path (shared with Experience Library)             |
 | `SKILL_MERGE_PROPOSALS_PATH`    | ⚙️        | jsonl target for `skill_merge_proposals.py` (default `~/.nuzantara/skill_merge_proposals.jsonl`) |
 | `SKILL_CREATION_PROPOSALS_PATH` | ⚙️        | jsonl target for `experience_to_skill_aggregator.py`     |
+| `SKILL_COACH_EVIDENCE_PATH`     | ⚙️        | jsonl target for redacted Skill Coach evidence cards     |
 | `OPENAI_API_KEY`                | ✅       | Required by the merge-proposals job (text-embedding-3-small) |
 | `JWT_SECRET_KEY`, `API_KEYS`    | ✅       | Auth for the HTTP surface                                 |
 
@@ -238,7 +245,7 @@ PYTHONPATH=. python backend/scripts/skill_merge_proposals.py \
 Never merges — only suggests. Zero reads via `GET /api/skill/merge-proposals`
 and decides.
 
-### Experience → Skill aggregation (weekly, NOT scheduled yet)
+### Experience → Skill aggregation (standalone building block)
 
 `scripts/experience_to_skill_aggregator.py` clusters successful trajectories
 by (cell, sorted tags) inside a rolling window. When a cluster hits
@@ -251,7 +258,40 @@ PYTHONPATH=. python backend/scripts/experience_to_skill_aggregator.py \
 ```
 
 Never creates — only suggests. Zero reviews and either recorded the skill
-manually via `POST /api/skill/record` or ignores the proposal.
+manually via `POST /api/skill/record` or ignores the proposal. For scheduled
+operations, use the Skill Coach OpenClaw cycle below so the proposals are also
+converted into redacted evidence cards.
+
+### Skill Coach OpenClaw cycle (daily sidecar, propose-only)
+
+`scripts/skill_coach_openclaw_runner.py` is the runner OpenClaw should call.
+It chains the conservative aggregator with the Skill Coach evaluator and emits
+one machine-readable JSON summary for the cron gateway:
+
+```bash
+cd apps/backend-rag
+source .venv/bin/activate
+PYTHONPATH=. python -m backend.scripts.skill_coach_openclaw_runner
+```
+
+The runner writes:
+
+- proposals: `~/.nuzantara/skill_creation_proposals.jsonl`
+- redacted evidence: `~/.nuzantara/skill_coach_evidence.jsonl`
+
+It never records a skill, never promotes a skill, and never publishes HGT.
+Only the evidence cards become visible to admins at
+`GET /api/skill/creation-proposals`.
+
+To arm it on the Pro OpenClaw gateway:
+
+```bash
+cp /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/config/openclaw_skill_coach_cron.yaml \
+   ~/.openclaw/crons/skill_coach.yaml
+```
+
+The config runs daily at 02:20 WITA. Use `--skip-aggregator` only when you want
+to re-evaluate an existing proposals file without regenerating it.
 
 ## Daily Operations
 
@@ -282,6 +322,7 @@ curl -s "http://localhost:8000/api/skill/top?tier=tier1&limit=10" \
 ```bash
 cat ~/.nuzantara/skill_merge_proposals.jsonl | jq -c '{pair, cosine}' | head
 cat ~/.nuzantara/skill_creation_proposals.jsonl | jq -c '{cell, skill_id, n_trajectories}' | head
+cat ~/.nuzantara/skill_coach_evidence.jsonl | jq -c '{skill_id, status, support_count}' | head
 ```
 
 ## Maintenance
@@ -314,6 +355,7 @@ grows past ~10k rows.
 | 422 on every record                              | client sending empty precondition/success_criterion        | both fields are required by Pydantic — enforce upstream                             |
 | Merge proposals file stays empty                 | fewer than 2 active skills, or threshold too tight        | lower `--threshold`, check `/api/skill/stats.total`                                 |
 | Aggregator proposals file stays empty            | no (cell, tags) cluster hits `--min-cluster-size`         | lower the threshold temporarily for inspection; `--window-days` can widen the lens  |
+| Skill Coach evidence file stays empty            | proposals file is empty, or runner was called with wrong paths | run `skill_coach_openclaw_runner.py` manually and inspect its JSON summary        |
 
 ## Design Notes (from DeepSeek R1 federation review, 2026-04-16)
 

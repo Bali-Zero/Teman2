@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Merge-train coordinator (spec MERGE-TRAIN-coordinator-spec.md v2).
+         One-shot cron: StartInterval, NO KeepAlive (W67: KeepAlive+one-shot
+         = crash-loop signature). Kill switch: ~/.agent/merge-train.config
+         {"enabled": false} — read live every tick, no reload needed. -->
+    <key>Label</key>
+    <string>com.nuzantara.merge-train</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/merge_train_run.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>180</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/merge-train.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/merge-train.launchd.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>MERGE_TRAIN_REPO_ROOT</key>
+        <string>/Users/nuzantara/Desktop/nuzantara</string>
+    </dict>
+</dict>
+</plist>

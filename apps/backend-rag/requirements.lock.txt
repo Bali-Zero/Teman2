@@ -1032,7 +1032,6 @@ fastapi==0.136.1 \
     --hash=sha256:a6e9d7eeada96c93a4d69cb03836b44fa34e2854accb7244a1ece36cd4781c3f
     # via
     #   -r requirements.txt
-    #   prometheus-fastapi-instrumentator
     #   sentry-sdk
 fastuuid==0.14.0 \
     --hash=sha256:05a8dde1f395e0c9b4be515b7a521403d1e8349443e7641761af07c7ad1624b1 \
@@ -1949,6 +1948,7 @@ litellm==1.85.0 \
     # via -r requirements.txt
 lxml==6.1.1 \
     --hash=sha256:05a82eb6e1530a64f26225b55cbd178113bd0b5af1c2b625f25e5296742c26d2 \
+    --hash=sha256:07a4a68e286ee7a1ed7dfb8af83e615757c0ccfe9f18c6b4ea6771388d9ba8c9 \
     --hash=sha256:09dd5b7075dc2f7709654a46543ba1ea3c2e217b2ed8fbd413a8a945a0f40f60 \
     --hash=sha256:0b7e8a14c8634bf6f7a568634cb395305a6d964aeb5b7ee32248094bed3a7e2c \
     --hash=sha256:104c09bda8d2a562824c0e319d0768ce26a779b7601e0931d33b09b53c392ef7 \
@@ -1977,6 +1977,8 @@ lxml==6.1.1 \
     --hash=sha256:3a12689be69a28ddaa0ab99a5a1137da2afd5f8f16df7b5680b66f616d3eda1d \
     --hash=sha256:3ab541146f1f6968c462d6c2ac495148e8cdba2f8347700b2141b6ec5a75bf52 \
     --hash=sha256:3abf332af33a74288675d936fe861fd4344da0dd6622193fbc4f2bfbb35536b5 \
+    --hash=sha256:3fd9728a2735fda14f4e8235830c86b539e9661e849665bf926d3f867943b4bf \
+    --hash=sha256:424aa57aca0897eb922aef34395bd1289b3b6f04e6bae20ea123c0c7e333cffc \
     --hash=sha256:441dd227fa0690eb9fc81edabc63cdcefc212bba99b906dcf6e32cc1a9d3e533 \
     --hash=sha256:469e3618338bd7ab5beb412d2439825479fcf0dab99e394ca563dbc4eaf6c834 \
     --hash=sha256:47402e62c52ff5988c1e8c6c63177f5708bccf48e366dea4e3dcf1e645e04947 \
@@ -1987,6 +1989,7 @@ lxml==6.1.1 \
     --hash=sha256:556e94a63c9b04716f8e4de2abb65775061f846e89331b6c5be79183a24f98ea \
     --hash=sha256:55b03549819867ea141c0202242c4816c82e52ec36e7e648db9d8da5a3dc3ed6 \
     --hash=sha256:581d4c8ae690a6609e64862dd6b7c2489635c2d13907fc2b20f2bc200ff1d21e \
+    --hash=sha256:58bb955caba94e467d2a96da17660d2d704e0675894cba21ab8a775b8621fd1c \
     --hash=sha256:5b7328b46d49fc9477d91ae8f6d55340347d827b7734ba3ea33faae0efef1383 \
     --hash=sha256:5ba186ad207446c65d3bb3d3e0412b032b1d9f595e59861e2354798c5703d955 \
     --hash=sha256:5bec7d03d78d853597d6107854c2310ce3f761fd218fe9fe91d5101fcf6c2efe \
@@ -1997,6 +2000,7 @@ lxml==6.1.1 \
     --hash=sha256:639f6c857d91d9be29bd7502348d6736dab168b54b5158cd899abf11684dc186 \
     --hash=sha256:640f97d43d867bcb9c75b3af013b64850756b746cb6bce8ace83b70da3abba9d \
     --hash=sha256:649dda677cf3bd6ac9ae14007ba0c824ded8ce5808b53fc7431d9140399118c1 \
+    --hash=sha256:6540377fbd53fe1b629172288c464fb18db11ce1fa7dc15891da10aa9dcc3e7f \
     --hash=sha256:6689e828a94eee4f139408c337bb198e014724bb8a8c26d3cfac49d119ed69a6 \
     --hash=sha256:68a9198d0fc122d14bb76837de9aa80cf84caed990b5b237f532ed87d3706736 \
     --hash=sha256:6b1761fbf9ec984e2e9d9c589ef5f5fd684b7c19f92aadd567a26c5224958db6 \
@@ -2021,6 +2025,7 @@ lxml==6.1.1 \
     --hash=sha256:88d8cb75b9d82858497a5393e3c63cfbf03035225e4b35a49ed7ccb151e4dc0e \
     --hash=sha256:8be8ad51249698103d24b0571df35a10990fbe93dd043b6c024172189485f5e3 \
     --hash=sha256:8d43ca737b20e106e4aebc42b2f3ae19f00ba63d7eb731698ee083d72d15646f \
+    --hash=sha256:8dadbe5b217ff35b6a8d16610dd710219b59b76d13f0e3f0d9f36786206e4485 \
     --hash=sha256:9395002973c827b3ed67db77e6ec09f092919a587022174554096a269378fb13 \
     --hash=sha256:96f2ec43df44b1f76249ee0a615334f9b5b060e1c8bd90e706dad2d14d02f383 \
     --hash=sha256:98fc784c2c1440667aeedf8465bdfe10208acf0ead656a2c68627299f546b315 \
@@ -2061,6 +2066,7 @@ lxml==6.1.1 \
     --hash=sha256:d49514be2f28d895c38cf9d2b72d7b9a07d00314519f456c0b50b53cfcf4c785 \
     --hash=sha256:d680fbcb768404c601ecb43519ecd8461f6954cb11c06a78962f666832ccfca8 \
     --hash=sha256:db1d75f6617a49c1c01bc7023713e0ff59ab32c9579ae62a7674c0e34f3b0b0a \
+    --hash=sha256:dcb292aa7fe485ceff7af4f92e46c5af397daec5dff64871a528f0fc47a3cc5b \
     --hash=sha256:e07c65f443c887bbcf31cc1771d932ecc192a5273943589b3c7572b749f1ffb2 \
     --hash=sha256:e902da4b04e6b52e5893900d4b8ab46068f75f3561f01bf1080957f9fd932ed6 \
     --hash=sha256:e9308ff8241c532df3f3e570f9a5aeed6c853f888512ba4b75638d7c11c95ef6 \
@@ -2510,6 +2516,7 @@ numpy==2.4.6 \
     #   -r requirements.txt
     #   blis
     #   datasets
+    #   opencv-python-headless
     #   pandas
     #   qdrant-client
     #   scikit-learn
@@ -2530,6 +2537,16 @@ openai==2.38.0 \
     #   langchain-openai
     #   langfuse
     #   litellm
+opencv-python-headless==4.13.0.92 \
+    --hash=sha256:0525a3d2c0b46c611e2130b5fdebc94cf404845d8fa64d2f3a3b679572a5bd22 \
+    --hash=sha256:0bd48544f77c68b2941392fcdf9bcd2b9cdf00e98cb8c29b2455d194763cf99e \
+    --hash=sha256:1a7d040ac656c11b8c38677cc8cccdc149f98535089dbe5b081e80a4e5903209 \
+    --hash=sha256:3e0a6f0a37994ec6ce5f59e936be21d5d6384a4556f2d2da9c2f9c5dc948394c \
+    --hash=sha256:5c8cfc8e87ed452b5cecb9419473ee5560a989859fe1d10d1ce11ae87b09a2cb \
+    --hash=sha256:77a82fe35ddcec0f62c15f2ba8a12ecc2ed4207c17b0902c7a3151ae29f37fb6 \
+    --hash=sha256:a7cf08e5b191f4ebb530791acc0825a7986e0d0dee2a3c491184bd8599848a4b \
+    --hash=sha256:eb60e36b237b1ebd40a912da5384b348df8ed534f6f644d8e0b4f103e272ba7d
+    # via -r requirements.txt
 openinference-instrumentation==0.1.51 \
     --hash=sha256:7923619c9e1c3f3a8ae924f909e86bdeda27186222352a7a8a7a6cecea1771a6 \
     --hash=sha256:a35b45f4912c2668fb6986394229fa5d785b9f7ded038793dc0ceed88f699a5b
@@ -4449,14 +4466,15 @@ sse-starlette==3.4.4 \
     # via
     #   -r requirements.txt
     #   mcp
-starlette==1.0.1 \
-    --hash=sha256:512399c5f1de7fac99c88572212ded9ddeddef2fb32afa82d724000e88b38f4f \
-    --hash=sha256:7c0e69b2ee1c848bd54669d908500117a3ee13de603a21427e5c6fc1adf98dcd
+starlette==1.3.1 \
+    --hash=sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0 \
+    --hash=sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6
     # via
     #   -r requirements.txt
     #   brotli-asgi
     #   fastapi
     #   mcp
+    #   prometheus-fastapi-instrumentator
     #   sse-starlette
 structlog==25.5.0 \
     --hash=sha256:098522a3bebed9153d4570c6d0288abf80a031dfdb2048d59a49e9dc2190fc98 \

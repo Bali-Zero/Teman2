@@ -6,7 +6,7 @@ from typing import Any
 
 import asyncpg
 
-from cell_observatory.classifier import CircuitOpenError, MinimaxClassifier
+from cell_observatory.classifier import CircuitOpenError, MinimaxClassifier, OllamaClassifier
 from cell_observatory.config import Config
 from cell_observatory.models import PulseEventV1
 from cell_observatory.storage import Storage
@@ -20,7 +20,7 @@ class Collector:
     def __init__(
         self,
         storage: Storage,
-        classifier: MinimaxClassifier,
+        classifier: "MinimaxClassifier | OllamaClassifier",
         classifier_max_inflight: int = 50,
         classifier_queue_maxsize: int = 10000,
     ):
@@ -146,7 +146,10 @@ async def run_collector() -> None:
     cfg = Config.from_env()
     storage = Storage(db_path=cfg.db_path)
     await storage.init()
-    classifier = MinimaxClassifier(api_key=cfg.minimax_api_key)
+    if cfg.classifier_backend == "ollama":
+        classifier = OllamaClassifier()
+    else:
+        classifier = MinimaxClassifier(api_key=cfg.minimax_api_key)
     collector = Collector(
         storage=storage, classifier=classifier,
         classifier_max_inflight=cfg.classifier_max_inflight,

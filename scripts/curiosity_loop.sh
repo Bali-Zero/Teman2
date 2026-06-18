@@ -31,9 +31,28 @@ if [ -f "$HOME/.nuzantara-secrets.env" ]; then
     set +a
 fi
 
-PY="$HOME/.pyenv/shims/python3"
-if [ ! -x "$PY" ]; then
-    PY="/usr/bin/python3"
+# Pick a Python that can actually run this app, not just any python3 on PATH.
+# curiosity.models imports enum.StrEnum (3.11+); the Pro's ~/.pyenv/shims/python3
+# is an orphan shim that resolves to system 3.9.6 (no StrEnum), and so does
+# /usr/bin/python3 — both would die on ImportError before touching the DB
+# (cicatrix "Esiste != Armato": the cron was green but would crash at import).
+# So we VERIFY capability instead of guessing by path. The repo venv (3.11.11)
+# is the source of truth; we still fall back to whatever else can import StrEnum.
+_py_ok() { [ -x "$1" ] && "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; }
+
+PY=""
+for cand in \
+    "$REPO/apps/backend-rag/.venv/bin/python" \
+    "$HOME/.pyenv/shims/python3" \
+    "/opt/homebrew/bin/python3" \
+    "/usr/bin/python3"; do
+    if _py_ok "$cand"; then PY="$cand"; break; fi
+done
+
+if [ -z "$PY" ]; then
+    echo "FATAL curiosity_loop: no Python >= 3.11 found (need enum.StrEnum). " \
+         "Tried repo venv, pyenv shim, homebrew, /usr/bin. Aborting." >&2
+    exit 1
 fi
 
 cd "$REPO"

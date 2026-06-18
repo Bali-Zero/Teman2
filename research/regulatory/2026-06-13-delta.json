@@ -1,0 +1,58 @@
+{
+  "run_at": "2026-06-13T07:00:00+08:00",
+  "today": "2026-06-13",
+  "yesterday_seen_count": 19,
+  "new_today_count": 1,
+  "partial": true,
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "hukumonline.com (403 Cloudflare)",
+    "ortax.org (JS-rendered/SPA, nessun contenuto estraibile)",
+    "muc.co.id (403 Forbidden)",
+    "ikpi.or.id (404 Not Found)",
+    "peraturan.bpk.go.id (403 su pagine dettaglio)",
+    "imigrasi.go.id/news (404 Not Found)",
+    "pajak.go.id/berita-terbaru (404 Not Found)",
+    "jdih.kemenkeu.go.id (nessun contenuto strutturato)"
+  ],
+  "nb_notes": "Tutti e 4 i NB-INTEL (Regulation, Press, Immigration, Tax) hanno risposto nessuna novita per il periodo 24-48h.",
+  "deltas": [
+    {
+      "citation": "PP 20/2026; Pasal 31E ayat (1) UU PPh s.t.d.d UU HPP (DJP klarifikasi — PT dan CV tarif PPh 11% via fasilitas pengurangan tarif Pasal 31E(1))",
+      "title_id": "Bukan PPh Final UMKM, PT dan CV Masih Bisa Pakai Tarif PPh 11% via Fasilitas Pasal 31E ayat (1) UU PPh",
+      "title_en": "Unlike MSME Final PPh (0.5%), PT and CV Can Still Use 11% Corporate PPh Rate via Article 31E(1) 50% Tariff Reduction Facility",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "PT PMA / PT PMDN / CV clients excluded from PP 20/2026 UMKM 0.5% PPh Final scheme retain access to Pasal 31E(1) 50% tariff reduction, bringing effective PPh badan from 22% to 11%, for gross revenue (omzet) <= Rp50 billion. Bali Zero PT PMA clients should be informed of this alternative.",
+      "summary": "DJP Director P2Humas Inge Diana Rismawanti confirmed June 13, 2026 (DDTC) that PT and CV excluded from PP 20/2026 UMKM 0.5% PPh Final scheme still qualify for Pasal 31E ayat (1) UU PPh s.t.d.d UU HPP: 50% reduction on standard 22% PPh badan rate, yielding effective 11% rate, for taxpayers with gross turnover up to Rp50 billion. The UMKM exclusion does NOT preclude access to this separate UU PPh facility.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1820052/bukan-pph-final-umkm-pt-dan-cv-masih-bisa-pakai-tarif-pph-11",
+      "verbatim_excerpt": "\"Omzet sampai dengan Rp50 miliar, badan usaha yang seharusnya kena tarif PPh badan 22%, ini dikalikan dulu dengan 50% [fasilitas pengurangan tarif]. Jadi sebetulnya tarif PPh 11%.\" Inge Diana Rismawanti (Direktur P2Humas DJP): \"PT dan CV tidak perlu lagi diberikan fasilitas karena sebetulnya mereka kan harusnya bisa lebih mapan, lebih paham tentang pembukuan.\"",
+      "first_seen_at": "2026-06-13T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistema amministrativo perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV tidak termasuk penerima fasilitas PPh Final UMKM 0,5%)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025 from NPPN to PPh Final UMKM 0.5%)",
+    "22/MK/EF.2/2026 (nilai kurs — routine, low relevance for Bali Zero service lines)",
+    "PP 20/2026; Pasal 31E ayat (1) UU PPh s.t.d.d UU HPP (PT dan CV tarif PPh 11% via Pasal 31E(1), June 13 2026)"
+  ]
+}

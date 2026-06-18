@@ -13,6 +13,7 @@ import {
   PortalListSkeleton,
 } from "@/components/portal";
 import { trackTaxDashboardViewed } from "@/lib/analytics";
+import { formatIDR } from "@balizero/core/utils";
 
 export default function TaxesPage() {
   const { error } = useToast();
@@ -75,14 +76,6 @@ export default function TaxesPage() {
     );
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
@@ -123,7 +116,7 @@ export default function TaxesPage() {
             </p>
             <p className="text-lg font-bold">
               {taxData.summary.totalDue > 0
-                ? formatCurrency(taxData.summary.totalDue)
+                ? formatIDR(taxData.summary.totalDue)
                 : "Rp 0"}
             </p>
           </div>
@@ -274,7 +267,7 @@ export default function TaxesPage() {
               <ObligationCard
                 key={obligation.id}
                 obligation={obligation}
-                formatCurrency={formatCurrency}
+                formatCurrency={formatIDR}
               />
             ))}
           </div>

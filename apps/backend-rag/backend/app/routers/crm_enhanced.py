@@ -122,6 +122,24 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
     except Exception as _e:
         logger.warning("Ollama vision error: %s, falling back to Gemini", _e)
 
+    # --- PII sovereignty gate (SYMBIOSIS Law 2 / UU PDP Art. 56) ---
+    # Both fallback tiers below (Gemini CLI + Gemini API) send the document image
+    # (passport/KTP/NPWP/akta/visa) to Google = cross-border PII transfer. Block
+    # unless OCR_ALLOW_CLOUD_VISION=true (default false). When blocked, degrade to
+    # the no-result path so the caller falls back to local/manual handling — never
+    # send the document to the cloud.
+    from backend.services.multimodal.cloud_vision_gate import (
+        cloud_vision_allowed,
+        note_cloud_ocr_blocked,
+    )
+
+    if not cloud_vision_allowed():
+        note_cloud_ocr_blocked("crm_enhanced._gemini_ocr")
+        raise RuntimeError(
+            "Cloud OCR fallback blocked for PII sovereignty (OCR_ALLOW_CLOUD_VISION=false); "
+            "local Ollama vision unavailable",
+        )
+
     # --- Attempt 2: Gemini CLI (free via Ultra subscription) ---
     gemini_path = shutil.which("gemini")
     if gemini_path:

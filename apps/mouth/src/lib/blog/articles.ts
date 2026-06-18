@@ -73,6 +73,28 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
 }
 
 /**
+ * Coerce a raw `tags` value (from MDX frontmatter or the backend `ai_tags`
+ * field) into a guaranteed `string[]`. Both sources are untrusted at runtime:
+ *  - MDX frontmatter `tags:` can be mis-indented so gray-matter parses it as an
+ *    object (real bug: bali-ota-purge-2026.mdx had every later field nested
+ *    under `tags`, making it a non-iterable object).
+ *  - The backend `ai_tags` is typed `string[] | null` but can arrive as a JSON
+ *    string, a single string, or null.
+ * Anything that is not an array of strings becomes `[]` (a single string is
+ * wrapped). This is the single boundary where tags become iterable — every
+ * downstream consumer (`.map`, `.length`, `[...tags]`) is then safe.
+ */
+export function normalizeTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((t): t is string => typeof t === "string");
+  }
+  if (typeof raw === "string" && raw.trim().length > 0) {
+    return [raw.trim()];
+  }
+  return [];
+}
+
+/**
  * Resolve a requested category param to its canonical category, if known.
  * Returns null for unknown categories (caller keeps current behavior).
  * Used by the article page to issue a permanent redirect from alias
@@ -282,7 +304,7 @@ function backendToArticle(item: BackendNewsItem): Article {
     cardImage: deriveCardImage(item.image_url),
     coverImageAlt: item.title,
     category: normalizeCategory(item.category),
-    tags: item.ai_tags || [],
+    tags: normalizeTags(item.ai_tags),
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -494,7 +516,7 @@ async function getMdxArticleBySlug(
     coverImageAlt:
       frontmatter.coverImageAlt || frontmatter.image?.alt || frontmatter.title,
     category: normalizeCategory(frontmatter.category || category),
-    tags: frontmatter.tags || [],
+    tags: normalizeTags(frontmatter.tags),
     author,
     createdAt: new Date(frontmatter.publishedAt || Date.now()),
     updatedAt: new Date(
@@ -622,7 +644,7 @@ export async function getArticleByLocale(
           frontmatter.image?.alt ||
           frontmatter.title,
         category: normalizeCategory(frontmatter.category || category),
-        tags: frontmatter.tags || [],
+        tags: normalizeTags(frontmatter.tags),
         author,
         createdAt: new Date(frontmatter.publishedAt || Date.now()),
         updatedAt: new Date(
@@ -876,4 +898,76 @@ export async function searchArticles(
   });
 
   return results.slice(0, limit);
+}
+
+// ─── Homepage layout slug-drift guard ───────────────────────────────────────
+// The homepage curates hero_main..hero_N + latest_1..N (+ insight_*) slugs in
+// content/homepage-layout.json, resolved against getAllArticles() in
+// (marketing)/page.tsx with a silent `.filter(Boolean)`. A deleted/renamed
+// slug therefore silently drops with NO signal — and Next.js notFound() returns
+// HTTP 200, so status-only monitoring also misses it. This guard makes the
+// drift LOUD at build/test time. (Antonello flagged 2026-06-11.)
+
+/** Keys in homepage-layout.json that hold a curated article slug. Non-slug
+ *  metadata keys (anything starting with `_`, e.g. `_comment`) are ignored. */
+function isCuratedSlugKey(key: string): boolean {
+  return !key.startsWith("_");
+}
+
+export interface HomepageLayoutValidation {
+  ok: boolean;
+  /** [layoutKey, slug] pairs whose slug does not resolve to a real article. */
+  missing: { key: string; slug: string }[];
+  checked: number;
+}
+
+/**
+ * Pure validator: assert every curated slug in `layout` resolves to a real
+ * article slug in `knownSlugs`. No I/O — feed it a fixture in tests or the
+ * real MDX slug index (via {@link validateHomepageLayoutFromDisk}) in CI.
+ */
+export function validateHomepageLayout(
+  layout: Record<string, unknown>,
+  knownSlugs: Iterable<string>,
+): HomepageLayoutValidation {
+  const slugSet = new Set(knownSlugs);
+  const missing: { key: string; slug: string }[] = [];
+  let checked = 0;
+
+  for (const [key, value] of Object.entries(layout)) {
+    if (!isCuratedSlugKey(key)) continue;
+    if (typeof value !== "string" || value.length === 0) continue;
+    checked += 1;
+    if (!slugSet.has(value)) {
+      missing.push({ key, slug: value });
+    }
+  }
+
+  return { ok: missing.length === 0, missing, checked };
+}
+
+/**
+ * Offline/deterministic CI helper: validate `layout` against the canonical
+ * MDX slug index on disk (no network, no backend). Throws with a readable
+ * message listing every drifted slug so a build/test fails loudly.
+ */
+export async function validateHomepageLayoutFromDisk(
+  layout: Record<string, unknown>,
+): Promise<HomepageLayoutValidation> {
+  const slugs = await getAllMdxSlugs();
+  const result = validateHomepageLayout(
+    layout,
+    slugs.map((s) => s.slug),
+  );
+  if (!result.ok) {
+    const detail = result.missing
+      .map((m) => `  - ${m.key}: "${m.slug}"`)
+      .join("\n");
+    throw new Error(
+      `homepage-layout.json references ${result.missing.length} ` +
+        `slug(s) that no longer resolve to a real article:\n${detail}\n` +
+        `Fix the slug(s) in apps/mouth/src/content/homepage-layout.json.`,
+    );
+  }
+  return result;
 }
