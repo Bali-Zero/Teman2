@@ -1,0 +1,1605 @@
+{
+ "10421": {
+  "intel": {
+   "whatItMeans": "This covers sun‑drying and processing whole coconuts into kopra (dried coconut meat), which is later used as raw material to produce coconut oil.",
+   "baliReality": "Nationally this KBLI is open 100% to foreign ownership, but in Bali it is currently blocked for PMA companies. The local moratorium (valid until 13 May 2026) temporarily stops new foreign‑investment permits for low and medium‑low risk activities like kopra production.",
+   "whoThisIsFor": "A foreign entrepreneur who wants to own a coconut‑processing operation, but must wait for the Bali moratorium to lift or consider a different region."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10413": {
+  "intel": {
+   "whatItMeans": "This covers the industrial processing of inedible animal fats and crude oils from non-fish sources—think tallow, lard, or marine mammal oils—not meant for the table, but often used in manufacturing soaps, biodiesel, or cosmetics.",
+   "baliReality": "Nationally, a PMA can be 100% foreign-owned for this activity. However, in Bali, even this low/medium-risk business faces a current block: the local moratorium (valid until May 2026) puts all PMA registrations for this KBLI on hold regardless of risk class.",
+   "whoThisIsFor": "This suits a foreign manufacturer looking to process animal by-products at scale for industrial supply chains, rather than for direct consumer food products."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10419": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "introduced foreign codes {'10415', '10411'}"
+  }
+ },
+ "10422": {
+  "intel": {
+   "whatItMeans": "This activity covers the industrial processing of coconuts into crude coconut oil (crude oil), including the production of copra pellets as a by-product from the oil extraction process. Basically, it's the first stage of turning dried coconut meat into raw coconut oil.",
+   "baliReality": "Nationally, this business is fully open to 100% foreign ownership. However, in Bali, it falls under a moratorium on low and medium-low risk business classifications that blocks new PMA registrations until May 13, 2026. That means right now, a foreign-owned company cannot get the necessary operating license for this activity in Bali – you would need to wait or set up in another region.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to build a large-scale coconut oil extraction facility with export ambitions, but who are flexible on location or timing if targeting Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10415": {
+  "intel": {
+   "whatItMeans": "This activity covers the manufacturing of cooking and edible oils from sources other than coconut and palm oil—like sesame, rice bran, lard, or poultry fat—producing niche vegetable and animal-based oils for culinary use.",
+   "baliReality": "Nationally, this business is open for 100% foreign ownership (PMA). In Bali, however, a moratorium blocks all new PMA registrations for low-to-medium-low-risk activities until at least 13 May 2026, making this KBLI effectively off-limits for foreign entrepreneurs in the province right now.",
+   "whoThisIsFor": "A foreign entrepreneur wanting to produce specialty edible oils (sesame, rice bran, or animal fat-based) for niche culinary or health markets, but currently unable to set up in Bali due to the PMA moratorium."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10414": {
+  "intel": {
+   "whatItMeans": "This is the manufacturing of fish oil from high-fat fish like lemuru or from fish organs such as shark liver. It covers crude or refined fish oil intended for food, animal feed, or industrial use; processing for pharmaceutical or cosmetic purposes falls under separate KBLI codes.",
+   "baliReality": "Nationally, this business field is 100% open to foreign ownership. In Bali, however, a provincial moratorium until 13 May 2026 blocks all PMA applications for low and medium-low risk activities, so a foreign-owned company cannot currently obtain this license in Bali.",
+   "whoThisIsFor": "Foreign entrepreneurs who have a reliable supply of fatty fish and want to produce non-pharmaceutical fish oil for the food, feed, or technical industries."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10431": {
+  "intel": {
+   "whatItMeans": "This covers the processing of palm fruit flesh into crude palm oil (CPO), a raw, unrefined oil that still requires further treatment and typically serves as an input for other industries like food, cosmetics, or biofuels.",
+   "baliReality": "Foreign-owned companies (PMA) can operate this activity in Bali, but it’s graded medium-high to high risk. The moratorium does not block it outright, yet approval hinges on location—expect your specific address to be verified for industrial zoning and environmental compliance.",
+   "whoThisIsFor": "Foreign agribusiness or processing investors ready to set up a large-scale extraction facility, often as part of an integrated palm oil supply chain."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10433": {
+  "intel": {
+   "whatItMeans": "This business fractionates crude palm oil or crude palm kernel oil into solid (stearin) and liquid (olein) streams — intermediate products that still require further refining before final use. It's an early-stage processing step in the palm oil supply chain.",
+   "baliReality": "Nationally, this activity is fully open (100% PMA). However, Bali applies a provincial moratorium that temporarily blocks new foreign-owned companies from registering low/medium-low-risk KBLI codes — so a PMA cannot currently set this up in Bali until at least 13 May 2026.",
+   "whoThisIsFor": "A foreign entrepreneur in the palm-oil processing sector looking to produce semi-refined fractions for downstream refineries or export."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10423": {
+  "intel": {
+   "whatItMeans": "This covers the industrial-scale refining of crude coconut oil into edible cooking oil. The process includes purification, bleaching, and deodorizing to remove unwanted odors and colors, yielding a shelf-stable product ready for consumption or further packaging.",
+   "baliReality": "Nationally, this activity is fully open to 100% foreign ownership. However, in Bali it is currently blocked for PMA companies because it falls under a low/medium-low risk category subject to a local moratorium until 13 May 2026. A foreign entrepreneur cannot register this KBLI for a new PMA in Bali until that moratorium lifts.",
+   "whoThisIsFor": "This is for foreign entrepreneurs planning to set up a capital-intensive coconut oil refinery, processing raw coconut oil into branded cooking oil at industrial scale."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10432": {
+  "intel": {
+   "whatItMeans": "This covers the industrial processing of palm kernels into crude palm kernel oil (CPKO), a semi-finished oil that still requires further refining and is typically used as an input for other industries like food, cosmetics, or oleochemicals.",
+   "baliReality": "While nationally the KBLI is 100% open to foreign ownership (PMA), Bali applies a special moratorium that blocks new PMA registrations for low and medium-low risk activities. CPKO processing falls into that blocked category, so a foreign-owned company cannot obtain this license in Bali at present.",
+   "whoThisIsFor": "Foreign entrepreneurs involved in palm oil downstream processing who target markets outside Bali or can structure their investment in a region without this moratorium."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10435": {
+  "intel": {
+   "whatItMeans": "This activity covers the physical separation of refined palm oil into its solid fraction (stearin) and liquid fraction (olein), producing RBD palm olein and RBD palm stearin—intermediate oils used widely in food and non-food industries.",
+   "baliReality": "Despite being 100% open to foreign ownership nationally, Bali treats this as a blocked risk class for PMA companies under the current moratorium on low/medium-low risk activities until 13 May 2026. A foreign-owned entity cannot legally obtain this KBLI in Bali until the block is lifted or the moratorium is revised.",
+   "whoThisIsFor": "Foreign entrepreneurs planning a palm oil fractionation plant to supply olein and stearin to industrial buyers, but who must currently look outside Bali for registration."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10434": {
+  "intel": {
+   "whatItMeans": "This covers the industrial refining of crude palm oil (CPO) into refined, bleached, deodorized palm oil (RBDPO) and crude palm kernel oil into refined, bleached, deodorized palm kernel oil (RBDPKO). The output is a semi-finished product still requiring further processing before becoming consumer goods.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership (PMA). However, Bali applies a local moratorium that blocks PMA registrations for low- and medium-low-risk businesses like this one, so a foreign company cannot currently obtain the required license for this refining activity on the island.",
+   "whoThisIsFor": "Foreign palm oil millers or traders planning to refine crude oils into traded intermediate products; they should be aware that Bali is currently off-limits, but other Indonesian regions are fully open."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10437": {
+  "intel": {
+   "whatItMeans": "This covers the industrial refinement of crude palm oil (CPO) into ready-to-use cooking oil. It includes purification, bleaching, deodorization, and may involve producing red palm oil or adding substances to improve quality or nutritional value.",
+   "baliReality": "Foreign ownership is fully allowed nationally, and in Bali the activity is not blocked by the local moratorium. However, it is classified as medium-high to high risk, meaning you will need to secure a proper industrial-zoned commercial address and be prepared for a more rigorous permitting process, including environmental and operational permits.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to establish a large-scale palm oil refinery or a branded cooking oil production facility, particularly for export or the Indonesian consumer market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10501": {
+  "intel": {
+   "whatItMeans": "This covers the industrial processing of fresh liquid milk into pasteurized, sterilized, homogenized, or UHT milk, as well as producing liquid or semi-liquid cream from fresh milk. It’s essentially a dairy processing activity turning raw milk into bottled milk and cream products.",
+   "baliReality": "Nationally, this business field is fully open to 100% foreign ownership. However, in Bali, the current moratorium on low and medium-low risk classes blocks the registration of a PMA company for this activity, so a foreign entrepreneur cannot legally set up this dairy processing operation in Bali under the prevailing restrictions.",
+   "whoThisIsFor": "A foreign dairy processor or investor planning to establish a milk and cream processing plant, though a Bali location is currently not viable."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10436": {
+  "intel": {
+   "whatItMeans": "This activity covers the industrial fractionation of pure palm kernel oil to separate it into solid stearin and liquid olein fractions, producing refined bleached deodorized palm kernel olein and stearin. It essentially involves a physical separation process that tailors the oil’s consistency for further use.",
+   "baliReality": "Despite being fully open (100%) to foreign ownership at the national level, in Bali this business line is currently blocked for PMA companies. The activity falls under a local moratorium on low and medium–low risk businesses, effective until 13 May 2026, which prevents foreign investors from setting up a PMA in this field anywhere in Bali.",
+   "whoThisIsFor": "Foreign entrepreneurs in specialty oils and fats processing who want to manufacture fractionated palm kernel oil products, though presently this venture can only be pursued in Indonesia outside Bali due to the temporary PMA block."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10502": {
+  "intel": {
+   "whatItMeans": "This covers the industrial processing of milk into powdered milk, condensed milk or creamer (sweetened or unsweetened), evaporated milk, and solid milk or cream products.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership (PMA). However, Bali currently blocks new PMA registrations for low and medium-low risk businesses under a moratorium. Since this KBLI falls into that risk category, a foreign-owned company cannot be registered in Bali for this activity at this time.",
+   "whoThisIsFor": "Foreign dairy manufacturers looking to produce powdered or condensed milk products, but currently unable to incorporate a PMA in Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10504": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "10612": {
+  "intel": {
+   "whatItMeans": "This covers the production of flour from various beans and legumes (such as mung beans, soybeans, peanuts, and red beans) by milling them. It focuses on turning raw legumes into fine powders used in food manufacturing or cooking.",
+   "baliReality": "Nationally, this KBLI is fully open to foreign ownership (PMA). In Bali, however, it falls under a low/medium-low risk moratorium blocking PMA registration until 13 May 2026, meaning a foreign-owned company cannot currently be registered for this activity in Bali.",
+   "whoThisIsFor": "Foreign food processing companies or ingredient brands that want to mill legume flours at scale for local or export markets."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10503": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "10611": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "10509": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the industrial processing of dairy products beyond liquid milk, including butter, yoghurt, cheese, curd, whey, casein, lactose, fermented milk, and milk kefir. It also includes cheese ripening and aging, but excludes ice cream and non-dairy kefir like fruit or water kefir.",
+   "baliReality": "Nationally, this activity is fully open to 100% foreign ownership (PMA). However, in Bali, a regional moratorium on low/medium-low risk business activities currently blocks foreign-owned companies from registering this KBLI, so a PMA cannot be established for it in Bali at this time.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to manufacture high-value dairy products like artisanal cheese, cultured butter, or yoghurt for premium domestic and export markets."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10614": {
+  "intel": {
+   "whatItMeans": "This activity covers making pre-mixed flours and dough blends for bread, cakes, biscuits, pancakes, and coating batters — including seasoned flour, fritter mix, meatball flour, cereal-based dessert premixes, and starch or custard powder (without egg). Essentially, you’re manufacturing ready-to-use dry mixes for bakeries, food processing, or coating proteins like fish and chicken.",
+   "baliReality": "Nationally, this KBLI is 100% open to foreign ownership (PMA), but in Bali it is currently blocked for new PMA registrations due to a moratorium on low or medium-low risk activities. The moratorium, effective until 13 May 2026, prevents foreign entrepreneurs from obtaining a business license for this activity in Bali right now.",
+   "whoThisIsFor": "A foreign entrepreneur planning a flour blending facility who wants to produce branded premixes for the food service, retail, or export market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10621": {
+  "intel": {
+   "whatItMeans": "This covers manufacturing starch from cassava, including tapioca flour and modified cassava starch products.",
+   "baliReality": "Nationally, the activity is open for 100% foreign ownership, but in Bali it is currently blocked for PMA companies. A local moratorium on low and medium-low risk business activities, in effect until 13 May 2026, prevents new foreign-owned companies from registering this KBLI in the province.",
+   "whoThisIsFor": "Foreign entrepreneurs planning to produce tapioca or modified cassava starch, who must set up their factory outside Bali due to the current provincial restrictions."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10616": {
+  "intel": {
+   "whatItMeans": "This covers the industrial milling of wheat grains to produce wheat flour—essentially a flour factory. It’s a manufacturing activity, not trading or retail.",
+   "baliReality": "Nationally, 100% foreign ownership is allowed. In Bali, this activity is classified as medium-high/high risk, so it’s not blocked by the general moratorium, but you must verify zoning and obtain location permits per address—not every area in Bali will allow an industrial flour mill.",
+   "whoThisIsFor": "This fits a foreign investor ready to set up a small-to-mid-scale wheat mill in an industrial area of Bali, aiming to serve the island’s food manufacturing or hospitality supply chain."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10615": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of all types of cereal foods—from ready-to-eat and instant cereals like corn flakes, granola, and puffed grains, to hot cereals such as oatmeal and muesli. It also includes soy-based cereal products and extruded cereal flour items.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership (PMA), but in Bali it is currently blocked for PMA companies. A local moratorium (13/5/26) prohibits foreign registration for low and medium-low risk classes, meaning you cannot legally establish a PMA in Bali for cereal manufacturing at this time.",
+   "whoThisIsFor": "Foreign entrepreneurs planning to produce branded breakfast cereals, oatmeal, or healthy snack flakes—but they must look outside Bali for their factory setup until the moratorium lifts."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10613": {
+  "intel": {
+   "whatItMeans": "This activity covers the industrial milling of tubers, rhizomes (like ginger, turmeric, temulawak, cardamom), and vegetables into flours and powders. Think cassava flour (gaplek), sweet potato starch, arrowroot powder, or dried vegetable flours—it’s about converting raw root crops and spices into shelf-stable food ingredients.",
+   "baliReality": "Nationally, this KBLI is fully open for 100% foreign ownership. In Bali, however, PMA registration is currently blocked. A provincial moratorium on low- and medium-low-risk businesses (in place until at least May 2026) means a foreign-owned company cannot be licensed for this activity on the island—your application will be rejected.",
+   "whoThisIsFor": "Foreign entrepreneurs who want to produce specialty flours and natural spice powders from Indonesia’s abundant tubers for export, but due to Bali’s current PMA block, they would need to incorporate the company in another regency or province."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10629": {
+  "intel": {
+   "whatItMeans": "This covers manufacturing of starches extracted from non-grain sources—such as potato, yam bean, arrowroot, mango seed, and modified starches—along with inulin and gluten production.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership. However, in Bali it falls under a blanket moratorium blocking new PMA registrations for low- and medium-low-risk business classifications, meaning a foreign-owned company cannot currently obtain this license locally.",
+   "whoThisIsFor": "A foreign manufacturer or food-tech entrepreneur looking to process niche tuber, root, or fruit-seed starches in Indonesia."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10622": {
+  "intel": {
+   "whatItMeans": "This activity covers the production of starch extracted from palm plants—especially sago, pearl starch, and aren starch—including modified versions. It’s essentially a small-scale food ingredient manufacturing process, often using traditional or semi-mechanised methods, serving local food industries, bakeries, or noodle makers.",
+   "baliReality": "Nationally, this business is 100% open to foreign ownership, so a PMA company could legally be set up elsewhere in Indonesia. In Bali, however, the moratorium blocks foreign registration for this low/medium-low risk activity, meaning PMA companies cannot obtain this KBLI in the province right now—local alternatives like a local PT or partnership would be needed.",
+   "whoThisIsFor": "Foreign entrepreneurs in the food ingredient or starch sector aiming to produce specialty palm starches for local, export, or industrial markets, but a Bali-based PMA is currently not an option."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10623": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of glucose and similar sugars (fructose, maltose, sucrose) from sources other than rice and corn, along with related syrups. It excludes sugar refined from cane, beet, or milk.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership. In Bali, it’s not blocked by the current moratorium, but it’s flagged as medium-high to high risk—meaning you can register a PMA, yet location and permits will face extra scrutiny. Always verify your intended address with a local advisor before committing.",
+   "whoThisIsFor": "A foreign entrepreneur setting up a specialty sweetener or industrial sugar-ingredient factory, typically supplying the F&B sector."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10631": {
+  "intel": {
+   "whatItMeans": "This covers the industrial process of milling harvested paddy into rice, including the polishing step that produces the final white or semi-polished rice product.",
+   "baliReality": "Nationally, this business field is fully open to 100% foreign ownership. In Bali, however, it falls under a temporary moratorium on new foreign PMA registrations for low or medium-low risk activities. That means a foreign-owned company cannot be set up for rice milling/polishing in Bali at this moment, with the restriction in place until at least 13 May 2026.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to run a rice milling and polishing facility, who can set up nationally but must look outside Bali until the risk-class moratorium lifts."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10633": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of rice flour, corn flour, and corn grits—dry-milling grains into powder or coarse meal for food or industrial use.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership. However, Bali applies a special moratorium on PMA companies for low- and medium-low-risk activities, so a new foreign-owned company cannot currently be registered for this KBLI in Bali until the moratorium is lifted (currently set until 13 May 2026).",
+   "whoThisIsFor": "Foreign entrepreneurs in grain processing who want to set up a milling operation to produce rice flour, corn flour, or corn grits."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10634": {
+  "intel": {
+   "whatItMeans": "This activity covers the manufacturing of starch from rice and corn, including modified starches—essentially producing basic food ingredients like rice starch and cornstarch (maizena) for culinary, industrial, or thickening uses.",
+   "baliReality": "Nationally, this sector is fully open to 100% foreign ownership (PMA), but in Bali it is currently blocked for foreign companies due to a local moratorium on low and medium-low risk activities. The restriction is based on a risk class policy, not a permanent ban, but until the moratorium is lifted you cannot register a PMA under this KBLI in Bali.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to produce rice or corn starch ingredients at scale, but right now this can only be set up in other Indonesian regions, not Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10636": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of oil extracted from rice and corn, either for edible or technical use.",
+   "baliReality": "Nationally, this business line is fully open to 100% foreign ownership. However, Bali applies a blanket moratorium on new PMA registrations for low and medium-low risk activities like this one, making it impossible to set up a foreign-owned company for rice or corn oil manufacturing on the island right now.",
+   "whoThisIsFor": "A foreign entrepreneur looking to process agricultural grains into value-added oil products, but who must be prepared to set up entirely outside Bali due to current provincial restrictions."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10632": {
+  "intel": {
+   "whatItMeans": "This covers the industrial shelling of wet corn to produce dry, loose kernels—essentially operating a corn processing facility that transforms freshly harvested cobs into a storable, tradeable commodity.",
+   "baliReality": "Nationally, this activity is fully open (100% foreign ownership allowed), but Bali’s current moratorium blocks PMA companies from registering low/medium-low risk activities, meaning a foreign-owned corn-shelling business cannot be set up in Bali right now.",
+   "whoThisIsFor": "A foreign entrepreneur in agricultural processing or corn trading who wants to add value to raw crops, but would need to locate the operation outside Bali or wait for the policy to lift."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10635": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of sweeteners like fructose, glucose, maltose, sucrose, and dextrose, derived from rice and corn. Essentially, it's a food-processing activity that turns raw grains into liquid or powdered sugar substitutes used in food and beverage manufacturing.",
+   "baliReality": "Nationally, this business line is fully open to foreign ownership. In Bali, the activity is not blocked by the local moratorium but is flagged as medium-high to high risk; this means registration is possible but may face stricter zoning or address-specific reviews, so you'll need to secure a compliant industrial location.",
+   "whoThisIsFor": "Foreign entrepreneurs in the food-tech or sweetener manufacturing space who plan to set up a production facility in Bali using local corn or rice as feedstock."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10710": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of all types of bakery items, whether fresh, frozen, or dried—think bread loaves, pastries, cakes, pies, biscuits, crackers, cookies, tortillas, and even frozen pancakes or waffles. It includes both sweet and savory snack products but excludes making prepared doughs or flour mixes, which fall under a different category.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership (PMA). However, in Bali, it is currently blocked for PMA companies due to a moratorium on low and medium-low risk business classes—meaning you cannot register a foreign-owned bakery manufacturing company there at this time.",
+   "whoThisIsFor": "A foreign entrepreneur or manufacturer looking to produce bakery items commercially, though currently locked out of establishing a PMA factory in Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10721": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of crystallized sugar (granulated sugar) from sugarcane, sugar beet, or other raw materials. It includes the entire refining process from raw input to packaged sugar crystal ready for sale.",
+   "baliReality": "Foreign-owned companies (PMA) can operate this activity in Bali, but it is rated higher risk. You can register, but expect stricter location and environmental checks—make sure to secure a proper industrial address and prepare for additional permits beyond the basic business license.",
+   "whoThisIsFor": "Foreign entrepreneurs with manufacturing experience in sugar refining or agri-processing who want to produce granulated sugar for Indonesia’s domestic or regional export markets."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10722": {
+  "intel": {
+   "whatItMeans": "This activity covers making pure palm sugar from the sap of palm trees like sugar palm, coconut, or sugarcane—whether as molded blocks, granules, or syrup. It’s traditional, small-scale food processing without refinement or blending.",
+   "baliReality": "Nationally, the business is 100% open to foreign ownership, but in Bali a moratorium on low/medium-low risk classes currently blocks any new PMA company from registering this activity. So despite being legally open on paper, a foreign-owned setup can’t get the needed license here right now.",
+   "whoThisIsFor": "Foreign entrepreneurs who want to produce authentic palm sugar products using local raw materials, but must consider other Indonesian regions until Bali’s temporary restriction lifts."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10723": {
+  "intel": {
+   "whatItMeans": "This covers the processing of sugar into syrups — like sugar syrup or maple syrup — as a standalone manufacturing activity, separate from integrated sugar mills.",
+   "baliReality": "Foreign-owned (PMA) companies can register this business in Bali. While the national risk level is medium-high to high, the moratorium does not block it. Registration success depends on address verification and local risk assessment.",
+   "whoThisIsFor": "Foreign entrepreneurs setting up a dedicated syrup production facility for commercial supply, such as artisanal maple syrup or industrial sugar syrups."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10729": {
+  "intel": {
+   "whatItMeans": "This activity covers transforming sugar or sweeteners into various forms like rock sugar, syrups, or powdered sugar, and producing alternative sugars from cane, beet, maple, stevia, or palm sources (coconut, aren). It also includes making molasses, sweet sauces (non-fruit), and brown sugar from raw materials other than sap.",
+   "baliReality": "Nationally, this business line is fully open for 100% foreign ownership (PMA). In Bali, however, a local moratorium on new PMA licenses for low and medium-low risk classes (13/5/26) currently blocks foreign registration for this activity.",
+   "whoThisIsFor": "This fits a foreign entrepreneur creating niche or natural sweetener products—such as coconut sugar, stevia-based sweeteners, or specialty syrups—often for export or health-conscious markets."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10731": {
+  "intel": {
+   "whatItMeans": "This covers the industrial processing of raw cocoa beans into finished or semi-finished products like cocoa powder, cocoa butter, cocoa paste, cocoa oil, and cocoa cake—essentially turning the raw bean into the core ingredients for chocolate and confectionery.",
+   "baliReality": "Nationally, this sector is fully open to 100% foreign ownership. In Bali, it is not blocked by the general moratorium on foreign business, but because it is classified as medium-high/high risk, you can expect extra verification requirements tied to your specific business address, such as location permits or zoning clearances before you can register.",
+   "whoThisIsFor": "A foreign entrepreneur planning to set up a cocoa-bean processing facility in Bali, such as a small-to-medium factory producing semi-finished cocoa goods for the local or export market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10732": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of all types of chocolate—compound, couverture, imitation, white chocolate—as well as chocolate-based confectionery, spreads, fillings, and chocolate drinks in powdered or liquid form.",
+   "baliReality": "Nationally, this sector is fully open to 100% foreign ownership, but in Bali a local regulatory moratorium blocks PMA registration for low and medium-low risk activities until 13 May 2026. Until then, a foreign-owned company cannot be established in Bali under this classification.",
+   "whoThisIsFor": "Foreign entrepreneurs planning to manufacture chocolate products, from confectionery to drinking chocolate, in their own facility."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10733": {
+  "intel": {
+   "whatItMeans": "This covers the business of preserving fruits, nuts, peels, and other plant parts by candying and drying them, whether packaged or not. Examples include candied nutmeg and dried mango sweets.",
+   "baliReality": "Nationally, this activity is open to 100% foreign ownership. However, in Bali it is currently blocked for PMA companies because it falls under a low/medium-low risk classification that is subject to a moratorium until 13 May 2026, meaning no new foreign-owned businesses for this activity can be registered in Bali during that period.",
+   "whoThisIsFor": "A foreign entrepreneur who wants to produce branded dried or candied fruit and vegetable snacks, such as dried mango strips or candied tropical nuts, for export or local specialty retail."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10740": {
+  "intel": {
+   "whatItMeans": "This activity covers manufacturing pasta and similar products—including macaroni, noodles (mi), spaghetti, vermicelli (bihun, sohun), whether cooked or not. It also includes making couscous (semolina) and analog rice. It does not include further processing of these into ready meals or soups containing pasta.",
+   "baliReality": "Nationally, this KBLI is fully open to 100% foreign ownership (PMA). However, in Bali the situation is different: a local moratorium (valid until 13 May 2026) blocks the registration of low- and medium-low risk business activities for foreign-owned companies. This specific activity falls under that moratorium, so a PMA company cannot currently obtain this license to operate in Bali.",
+   "whoThisIsFor": "This suits a foreign entrepreneur aiming to set up a pasta or noodle manufacturing facility, but right now that path is closed for a Bali-based PMA."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10762": {
+  "intel": {
+   "whatItMeans": "This activity covers turning tea leaves into dried tea packaged in bags, pads, capsules, or other formats, including blending with natural ingredients like mate, spices, herbs, and dried flowers. It also includes producing tea extracts—both liquid concentrates and powders—but excludes ready-to-drink beverages.",
+   "baliReality": "Nationally, this business line is fully open to 100% foreign ownership. However, in Bali, the current moratorium (effective until 13 May 2026) blocks new PMA registrations for low and medium-low risk activities, which this processing falls under. So you cannot set up a foreign-owned tea processing company in Bali right now.",
+   "whoThisIsFor": "Foreign entrepreneurs who want to produce value-added tea products, herbal blends, or tea extracts for export or premium local markets—but who are comfortable starting outside Bali for now."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10739": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the manufacturing of non-chocolate sugar confectionery—think caramels, nougat, fondant, marzipan, chewing gum, medicated cough drops, and similar pastilles. It’s basically the production of the whole range of sweets that aren’t chocolate-based.",
+   "baliReality": "Nationally, this business line is fully open to 100% foreign ownership (PMA), so in much of Indonesia you could set up a foreign-owned candy factory. In Bali, however, a local moratorium through May 2026 blocks new PMA registrations for low- and medium-low risk classes—this KBLI falls squarely into that blocked category. That means, for now, you cannot register a new foreign-owned confectionery manufacturing company in Bali.",
+   "whoThisIsFor": "Foreign confectionery entrepreneurs who want to produce non-chocolate sweets, but currently cannot launch a PMA in Bali due to the active moratorium."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10761": {
+  "intel": {
+   "whatItMeans": "Pengolahan Kopi covers the industrial processing of coffee from raw beans to finished products: drying, roasting, grinding, and extraction. This includes making roasted coffee, ground coffee, instant coffee, decaf, coffee extracts and essences, and coffee substitutes — all on a factory scale. It excludes simple in-shop grinding done at a coffee retailer.",
+   "baliReality": "Nationally, this KBLI is 100% open to foreign ownership. But in Bali, a temporary moratorium on low and medium-low risk business lines (in effect until 13 May 2026) blocks new PMA companies from registering it. So while you can set up a foreign coffee-processing company in other provinces, Bali is currently off-limits for this activity.",
+   "whoThisIsFor": "Foreign entrepreneurs planning an industrial-scale coffee roasting, grinding, or soluble coffee production facility, who are willing to locate outside Bali or wait until the moratorium lifts."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10771": {
+  "intel": {
+   "whatItMeans": "This activity covers the manufacture of soy sauce (kecap) from soybeans or other legumes, including taoco, a fermented soybean paste, whether from fresh beans or production by-products. It does not cover fish sauce (kecap ikan).",
+   "baliReality": "Nationally, this business is fully open to 100% foreign ownership (PMA). But in Bali, a temporary moratorium blocks new PMA licenses for low and medium-low risk activities until 13 May 2026, so a foreign-owned company cannot currently be registered for soy sauce manufacturing here.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to produce traditional soy sauce or taoco at scale in Indonesia, but not presently suited for a Bali-based setup due to the PMA freeze."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10773": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "10750": {
+  "intel": {
+   "whatItMeans": "This covers industrial-scale production of ready-to-eat, pre-cooked meals that are preserved (canned or frozen), packaged, and labeled for resale—not for immediate consumption like in a restaurant. It specifically requires at least two main ingredients besides seasoning, and includes items like prepared fish dishes (pepes, presto, dendeng ikan) or meat/poultry meals.",
+   "baliReality": "Nationally, this activity is 100% open for foreign PMA companies. However, Bali currently blocks new foreign-owned registrations for this low/medium-low risk activity due to a moratorium (in effect until 13 May 2026), so a PMA in Bali cannot be licensed for it right now.",
+   "whoThisIsFor": "Foreign entrepreneurs wanting to manufacture and export packaged Indonesian prepared meals (like frozen rendang or canned fish delicacies) from a dedicated production facility, provided they set up outside Bali or delay until the moratorium lifts."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10772": {
+  "intel": {
+   "whatItMeans": "This covers the processing of raw salt into iodized table salt for human consumption, including refining, iodization, and packaging. It focuses on producing a finished consumable product rather than industrial salt.",
+   "baliReality": "Nationally, this activity is open to 100% foreign ownership. However, in Bali, a moratorium on new foreign-owned (PMA) companies in low and medium-low risk sectors currently blocks registration of this KBLI until at least 13 May 2026.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to produce and distribute branded iodized salt for the Indonesian market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10791": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of baby food, infant formula, follow-on milk, complementary weaning foods, children's snacks, drinks for pregnant and breastfeeding mothers, and specialized foods for dietary or medical needs. Essentially, it’s the production of any nutrition-tailored product for infants, young children, or people with specific health conditions.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership. In Bali, it is not blocked by the current moratorium, but it falls into a medium-high risk category—so while registration is possible, authorities will scrutinize the business location and may require additional permits or conditions depending on the address.",
+   "whoThisIsFor": "This suits a foreign entrepreneur looking to manufacture premium or specialized nutritional products, such as organic baby food, medical formula, or diet-specific foods, for the Indonesian market or export."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10779": {
+  "intel": {
+   "whatItMeans": "This covers manufacturing cooking spices and seasonings, whether pre-mixed (like gulai or curry blends) or single-ingredient powders (pepper, ginger, chili, cinnamon, nutmeg). It also includes producing flavor enhancers (MSG, vanilla powder), condiments and sauces (mayonnaise, mustard, ketchup, oyster sauce, salad dressing), and salt substitutes used as seasoning.",
+   "baliReality": "Although nationally this activity is fully open to foreign ownership, Bali currently blocks new PMA registrations for this KBLI. A local moratorium on low/medium-low risk businesses, in effect until May 13, 2026, prevents a foreign-owned company from obtaining this license in Bali.",
+   "whoThisIsFor": "This suits foreign food manufacturers or spice brands looking to produce cooking seasonings, sauces, or condiments at scale for both local and export markets."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10794": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of various traditional Indonesian crackers and chips—like shrimp crackers (kerupuk udang), nut-based chips (keripik kacang), and crispy flour snacks (peyek). It includes all production steps for similar items such as emping, opak, or fried skin chips.",
+   "baliReality": "Nationally, this business is 100% open to foreign ownership (PMA). However, in Bali, low/medium-low risk activities are currently under a local moratorium until 13 May 2026, blocking new PMA registrations for this KBLI. Until then, a foreign-owned company cannot obtain this license in Bali.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to mass-produce authentic Indonesian snack foods for export or local retail, who is willing to wait until the Bali PMA block is lifted or consider other Indonesian regions."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10792": {
+  "intel": {
+   "whatItMeans": "Industri Kue Basah covers the production of traditional Indonesian wet cakes—moist, perishable snacks like lemper, kue lapis, lumpia, and martabak. It also includes fermented items such as tape (fermented cassava or rice) and lempok (durian paste). These are artisanal, locally loved products typically sold fresh in markets and food stalls.",
+   "baliReality": "Nationally, this industry is fully open (100%) to foreign PMA ownership. In Bali, however, it is blocked for foreign companies due to the local moratorium (Per. 13/5/26) that suspends PMA licensing for low and medium-low risk activities. Practically, you cannot register a foreign-owned company under this code in Bali right now.",
+   "whoThisIsFor": "This suits a foreign entrepreneur passionate about Indonesian culinary heritage who wants to scale production of artisanal wet cakes, but they would need to set up outside Bali under current restrictions."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10795": {
+  "intel": {
+   "whatItMeans": "This covers making plant-based drinks (like soy, oat, almond, cashew, and other nut milks), vegetable creamers, and vegetable fat emulsions from coconut or palm oil for food and beverage use. It also includes manufacturing cheese substitutes.",
+   "baliReality": "Nationally, this activity is open for 100% foreign ownership, but in Bali it is currently blocked for PMA companies. The local moratorium (13/5/26) applies to low/medium-low risk classes, meaning you cannot register a foreign-owned company for this KBLI in Bali right now.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to produce plant-based milks, vegan creamers, or cheese alternatives in Indonesia, but not currently in Bali due to the registration freeze."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10793": {
+  "intel": {
+   "whatItMeans": "This covers manufacturing food products where coconut is the key ingredient, such as coconut milk (liquid, concentrated, or powder), coconut cream, desiccated coconut, nata de coco, coconut flour, and even coconut-based soy sauce. Essentially, it’s turning raw coconut into packaged, value-added food items for sale.",
+   "baliReality": "Although this KBLI is 100% open for foreign ownership at the national level, in Bali it is currently blocked for new foreign-owned (PMA) companies. A local moratorium on low and medium-low risk business sectors prevents PMA registrations here until at least 13 May 2026, so a coconut food production PMA cannot be established in Bali at this time.",
+   "whoThisIsFor": "Entrepreneurs who want to process coconut raw materials into manufactured food products, often targeting export markets or the growing health-food segment."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10798": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "10796": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the manufacturing of dodol, a traditional Indonesian sticky confection made primarily from rice flour or glutinous rice flour, coconut milk, sugar, and optional additional ingredients, cooked to achieve the desired chewy texture. It does not include similar products like lempok, which fall under a different classification.",
+   "baliReality": "Nationally, this business activity is 100% open to foreign ownership (PMA). However, in Bali, a current moratorium blocks new PMA company registrations for low and medium-low risk activities, including this one. As a result, a foreign-owned company cannot register for this KBLI in Bali at present.",
+   "whoThisIsFor": "Foreign food entrepreneurs interested in producing authentic Indonesian sweets and confectionery on a manufacturing scale."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10797": {
+  "intel": {
+   "whatItMeans": "This covers processing herbal infusions such as mint, vervain, and chamomile into products like non-tea herbal brews and refreshing drinks—essentially manufacturing packaged herbal beverages or infusions. It's about turning raw herbs into ready-to-sell drinks, from tea bags to bottled cold infusions.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership (PMA). However, in Bali, it falls under a moratorium blocking new PMA registrations for low/medium-low risk businesses until 13 May 2026, meaning you cannot currently set up a foreign-owned company for herbal infusion manufacturing on the island.",
+   "whoThisIsFor": "A foreign entrepreneur who wants to produce and sell branded herbal infusion drinks like chamomile or mint teas, but must either wait for the Bali moratorium to lift or consider another Indonesian location."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10802": {
+  "intel": {
+   "whatItMeans": "This covers the manufacture of concentrated animal feed — both for pets and livestock. It includes processing that transforms raw agricultural materials into nutrient-dense feed mixes, typically done as a standalone industrial activity rather than on the farm itself.",
+   "baliReality": "Nationally, the government permits 100% foreign ownership for this business. However, Bali has placed this activity under a local moratorium that blocks new PMA registrations until at least 13 May 2026 because its low/medium-low risk class triggered the automatic block for foreign companies.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to produce specialized animal feed concentrates (for pets or farm animals) — provided they can set up in a region other than Bali where PMA is still allowed."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10801": {
+  "intel": {
+   "whatItMeans": "This activity covers the industrial production of compound animal feed (rations), including both pet food and feed for livestock. It involves blending and processing ingredients into complete, ready-to-use nutritional formulas.",
+   "baliReality": "Nationally, this KBLI is 100% open to foreign ownership (PMA). In Bali, however, it is currently blocked for new foreign-owned companies: a local moratorium suspends PMA licensing for low/medium-low risk activities—expected to remain in place until at least May 13, 2026—so you cannot register this business in Bali right now.",
+   "whoThisIsFor": "Agribusiness entrepreneurs with expertise in animal nutrition, food processing, or feed manufacturing who want to create proprietary formulas for the pet or livestock market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11010": {
+  "intel": {
+   "whatItMeans": "This covers the production of distilled alcoholic beverages (whiskey, brandy, gin, vodka, arak, soju, liqueurs, etc.), including blending and mixing to achieve specific ethanol levels, as well as the manufacture of neutral spirit.",
+   "baliReality": "Although Bali's local moratorium does not block this activity outright, the national investment regulation classifies it as completely closed to foreign ownership (TERTUTUP 0%). Therefore, a foreign-owned PMA company cannot register this KBLI in Bali—only a 100% Indonesian-owned entity is permitted.",
+   "whoThisIsFor": "This is for Indonesian entrepreneurs running a local distillery or blending operation; foreign investors are legally barred from this sector."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "10799": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the manufacturing of a wide range of other finished food products not classified elsewhere, from soups, broths, and raw sandwiches/pizzas to specialty items like collagen sausage casings, probiotics, yeast, egg products (salted eggs, albumin), meat or seafood extracts, artificial essences, and plant-based proteins such as texturized vegetable protein.",
+   "baliReality": "Although nationally the activity is 100% open to foreign ownership (PMA), Bali’s current investment moratorium blocks PMA registrations for this low/medium-low-risk activity. As a result, a foreign-owned company cannot legally operate this KBLI in Bali until at least the restriction is lifted.",
+   "whoThisIsFor": "This suits foreign entrepreneurs aiming to manufacture niche food ingredients—like plant-based proteins, broth concentrates, egg-based products, or natural extracts—but under current rules, only outside Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11030": {
+  "intel": {
+   "whatItMeans": "This activity covers the industrial production of fermented malt beverages, including beer, ale, porter, stout, and even low-alcohol or non-alcoholic versions of these drinks.",
+   "baliReality": "Nationally, this business is 100% open to foreign ownership, but in Bali a current moratorium on low and medium-low risk activities blocks any new PMA company from registering for this KBLI, making it impossible to set up a foreign-owned brewery here at this time.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to start a craft beer brewery or industrial malt-beverage operation in Indonesia, though they would need to look outside Bali due to the temporary local restriction."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11040": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of malt from barley, rye, or other cereals. It does not include making malt-based alcoholic beverages (a separate activity) or producing malt extract and syrup (also classified elsewhere).",
+   "baliReality": "Nationally, foreign ownership (PMA) is allowed up to 100% for malt production. However, Bali currently blocks this KBLI for foreign companies due to a moratorium on low/medium-low risk business classes enacted on 13 May 2026. Only a local (PMDN) company can register this activity in Bali until the ban is lifted.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to manufacture malt for breweries or food processing, though direct PMA registration in Bali is not possible under the current moratorium."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11052": {
+  "intel": {
+   "whatItMeans": "This covers the business of producing ready-to-drink water at a refill depot, using filtration equipment to treat raw water into safe drinking water. It includes both manually operated depots and automatic self-service water vending machines.",
+   "baliReality": "Nationally, this activity is fully open to foreign ownership (100% PMA). In Bali, it is not blocked by the local moratorium, but it is classified as medium-high to high risk, so approval depends on verifying the specific address and meeting local spatial, environmental, and health requirements.",
+   "whoThisIsFor": "Foreign entrepreneurs who want a fully foreign-owned refill drinking water business and are prepared to navigate higher regulatory and site-specific compliance hurdles."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11020": {
+  "intel": {
+   "whatItMeans": "This covers the production of fermented alcoholic beverages from grapes or other agricultural products, including still and sparkling wines, fruit wines (apple, pear, etc.), sake, mead, cider, perry, and fortified wines like vermouth—all made without distillation.",
+   "baliReality": "Although Bali’s provincial moratorium does not block this activity (it’s categorized as medium-high/high risk, so a location check would still be needed), the national PMA rule is TERTUTUP (0% foreign ownership). That means no foreign-owned company can obtain this KBLI anywhere in Indonesia, including Bali. The Bali ‘OK’ status is therefore irrelevant for foreign investors.",
+   "whoThisIsFor": "This activity is fully reserved for Indonesian citizens; no foreign entrepreneur can legally establish a PMA to produce these fermented alcoholic beverages."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11051": {
+  "intel": {
+   "whatItMeans": "This activity covers turning raw water into packaged drinking water that is ready to consume directly — still or sparkling, with or without added minerals, and possibly infused with oxygen or carbon dioxide. Essentially, it’s the industrial production of bottled water, mineral water, or enhanced water in sealed containers.",
+   "baliReality": "Nationally, a PMA can own 100% of this business. In Bali, it is not blocked by the moratorium, but it is flagged as medium-high to high risk. That means you can register a foreign company here, but approval is not automatic — the license will be location‑specific and subject to extra scrutiny on permits (like environmental impact and zoning) at the chosen address. It’s open but requires a higher‑compliance site.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to manufacture branded bottled still or sparkling water at scale in Bali, typically to supply hotels, restaurants, or retail channels directly from a local production facility."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "12001": {
+  "intel": {
+   "whatItMeans": "This covers the manual production of kretek cigarettes—a blend of chopped tobacco, cloves, and flavorings—hand-rolled using ambri, paper, or tipping wrappers. It includes both standard hand-rolled kretek (SKT) and those with a filter tip. The activity is strictly about the craftsmanship-intensive rolling process, not machine-made varieties.",
+   "baliReality": "Nationally, this business line is fully open to 100% foreign ownership (PMA). However, in Bali, it is currently blocked for foreign-owned companies: the local moratorium (linked to risk classification) prevents PMA registration for this activity, regardless of the national openness.",
+   "whoThisIsFor": "A foreign entrepreneur with deep tobacco-industry experience looking to produce artisanal, hand-rolled kretek at scale—but who must set up outside Bali or explore domestic partnership structures."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "12003": {
+  "intel": {
+   "whatItMeans": "This covers the industrial manufacturing of white cigarettes — tobacco cigarettes that contain no clove, distinguishing them from the classic Indonesian kretek. It includes full-scale production, blending, and packaging of these non-clove cigarette products.",
+   "baliReality": "Nationally, this KBLI is 100% open to foreign ownership (PMA). In Bali, it is not blocked by the general moratorium but is classified as medium‑high to high risk, meaning a PMA can be registered as long as each specific business address meets local zoning and high‑risk licensing requirements.",
+   "whoThisIsFor": "A foreign entrepreneur or company looking to produce non‑clove cigarettes at scale, whether for the domestic market or export, and who needs a manufacturing base in Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11053": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of non-alcoholic beverages—everything from carbonated soft drinks (colas, lemon-lime, orangeade), flavored fruit drinks, nectar-based drinks, tonic water, and soy-based beverages, through to powdered soft drink mixes. It excludes fresh juices and dairy-based drinks, which fall under separate codes.",
+   "baliReality": "Nationally, this activity is fully open to 100% foreign ownership. In Bali, however, a temporary moratorium effective 13 May 2026 blocks new PMA registrations for low- and medium-low risk activities like soft drink manufacturing. This means a foreign-owned company cannot currently be established in Bali under this KBLI, even though a pure domestic (PT) company would not face that restriction.",
+   "whoThisIsFor": "This fits a foreign beverage entrepreneur planning to manufacture their own brand of soft drinks, flavored waters, or powdered drink mixes in Indonesia—but due to the Bali moratorium, they would need to set up their company and factory in another Indonesian region."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "12004": {
+  "intel": {
+   "whatItMeans": "This activity covers the drying and processing of tobacco leaves, including smoke-drying or other methods, as well as shredding the leaves. It’s essentially the first stage of turning raw tobacco into a form usable for cigarettes or other products.",
+   "baliReality": "While the national government allows full foreign ownership (100% PMA) for this activity, in Bali it is currently blocked for foreign companies. The local moratorium classifies it as a low/medium-low risk activity, and no new PMA registrations are accepted until at least May 13, 2026.",
+   "whoThisIsFor": "A foreign entrepreneur in the tobacco processing chain who wants to buy local leaves and dry or cut them for export or supply to larger manufacturers."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "12002": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of machine-rolled kretek cigarettes, using a mix of shredded tobacco, cloves, and flavoring, wrapped automatically in paper or tipping. It includes both regular and filter machine-made kretek cigarettes.",
+   "baliReality": "A foreign-owned PMA can legally pursue this cigarette manufacturing in Bali—it is not blocked by the local moratorium. Because the activity is classified as medium-high to high risk, you will need a verified commercial address and must pass stricter regulatory checks, but registration is permitted.",
+   "whoThisIsFor": "This fits a foreign entrepreneur with deep tobacco-industry experience who wants to set up a large-scale, mechanized kretek factory in Bali for export or the domestic market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "11059": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the production of non-factory-packaged beverages that don't fall under other drink manufacturing codes—think fresh coconut water, sugarcane juice, palm sap water, or traditional powdered drinks like sekoteng. It typically involves small-scale or artisanal preparation rather than mass bottling or canning.",
+   "baliReality": "Nationally, this activity is fully open to 100% foreign ownership. However, Bali has enacted a moratorium on low and medium-low risk business activities, which blocks the issuance of new PMA licenses for this code until at least 13 May 2026. So right now, a foreign-owned company cannot legally start this beverage business in Bali.",
+   "whoThisIsFor": "This suits a foreign entrepreneur aiming to create authentic, minimally processed traditional Indonesian drinks, likely in a small workshop or open kitchen rather than a large factory."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "12005": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of cigarette flavorings, such as tobacco sauces and cigarette capsules used to enhance or modify the taste of tobacco products.",
+   "baliReality": "Nationally, it’s fully open to 100% foreign ownership. In Bali, it’s not blocked by the moratorium but classified as medium-high to high risk, meaning registration is possible but extra scrutiny and location-specific verification will apply—so securing a compliant commercial address is critical.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to produce tobacco flavor enhancers or capsule technologies for the cigarette industry."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "12009": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of tobacco products beyond conventional cigarettes — including cigars, pipe tobacco, snuff, chewing tobacco, fine-cut rolling tobacco, homogenized or reconstituted tobacco, molasses tobacco, and nicotine pouches. Essentially, if you’re producing any non-cigarette tobacco or nicotine-containing product for smoking, sucking, or chewing, it falls here.",
+   "baliReality": "Foreign-owned (PMA) companies can set up this business in Bali because it’s not blocked by the general moratorium — the national status allows 100% foreign ownership. However, the activity is classified as medium-high or high risk, which means you will face a stricter location verification process; you must ensure your chosen address complies with local zoning and may need additional permits or environmental approvals before you can get operational.",
+   "whoThisIsFor": "This suits a foreign entrepreneur or investor who already has experience in tobacco processing, alternative nicotine products, or artisanal cigar/pipe tobacco manufacturing and is ready to navigate a heavily regulated industry with location-specific requirements in Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13111": {
+  "intel": {
+   "whatItMeans": "This covers the initial processing of natural, synthetic, and artificial fibers before spinning—things like washing, degreasing, carding, combing, and scutching flax, silk, wool, or polyester. Essentially, you’re turning raw or semi-raw fiber into uniform slivers or tops ready for yarn making.",
+   "baliReality": "Nationally, this business line is 100% open to foreign ownership, but in Bali it is currently blocked for PMA companies. A local moratorium (Peraturan 13/5/26) suspends new foreign investment in low/medium-low risk sectors, and this KBLI falls under that restriction.",
+   "whoThisIsFor": "A foreign entrepreneur who wants to build a textile fiber preparation facility and has the technical knowledge to process animal, plant, or man-made fibers at scale—but who currently cannot set up that operation in Bali as a PMA."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13112": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "13121": {
+  "intel": {
+   "whatItMeans": "This covers machine weaving of textiles using various materials—from natural fibers like cotton, silk, or wool to synthetic, recycled textile waste, paper, or glass fiber—to produce woven fabrics on powered looms.",
+   "baliReality": "Nationally this activity is fully open to 100% foreign ownership, but in Bali it falls under the low/medium-low risk moratorium (until at least 13 May 2026), so a new PMA company cannot currently register this KBLI locally.",
+   "whoThisIsFor": "A foreign entrepreneur looking to set up a textile weaving factory using machine looms and diverse raw materials."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13122": {
+  "intel": {
+   "whatItMeans": "This covers traditional textile weaving using backstrap looms (gedogan) or other non-machine tools to make handcrafted fabrics like ikat, songket, ulos, cual, ulap doyo, or geringsing. It’s all about preserving manual craftsmanship rather than industrial production.",
+   "baliReality": "Nationally, this activity is fully open for foreign-owned PMA companies. However, in Bali it is currently blocked due to a local moratorium that prevents new PMA registrations for low and medium-low risk classes—yours is affected, with no new foreign companies accepted until at least the moratorium review date.",
+   "whoThisIsFor": "A foreign entrepreneur building an artisan brand, cultural-social enterprise, or boutique label that works directly with Bali’s traditional weavers to create authentic, handwoven textiles."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13113": {
+  "intel": {
+   "whatItMeans": "This covers the industrial production of sewing thread—starting from raw fibers or yarn and then applying processes like twisting, folding, cabling, and coating to create finished thread spools.",
+   "baliReality": "Nationally, this activity is fully open (100% foreign ownership allowed). However, in Bali, a moratorium that blocks new PMA registrations for low and medium-low risk classes (as per 13/5/26 regulation) makes it impossible for a foreign-owned company to register this KBLI here.",
+   "whoThisIsFor": "Foreign textile manufacturers who want to set up a sewing thread factory, but note that a Bali-based PMA cannot currently be licensed for this activity."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13131": {
+  "intel": {
+   "whatItMeans": "This covers industrial processes to treat fibers, yarns, and sewing threads – specifically bleaching, dyeing, and applying final or specialty finishes to prepare the material for textile manufacturing or sale.",
+   "baliReality": "Even though this KBLI is 100% open for foreign-owned PT PMA at the national level, in Bali it currently falls under the local moratorium for low/medium-low risk activities, so the Bali investment office will not accept a PMA application for this code until at least 13 May 2026.",
+   "whoThisIsFor": "A foreign textile industrialist looking to set up a yarn finishing factory, but who cannot currently base it in Bali due to the moratorium."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13132": {
+  "intel": {
+   "whatItMeans": "This covers wet finishing processes applied to woven fabrics and finished textile goods, like bleaching, dyeing, printing, sanforizing, mercerizing, and functional treatments such as waterproofing or rubber coating. It excludes similar coating and impregnation work done directly on raw fabrics (which falls under a different code).",
+   "baliReality": "Nationally, the activity is fully open to 100% foreign ownership. However, in Bali, it is currently blocked for PMA companies due to a local moratorium on low and medium-low risk classes, effective until 13 May 2026. A foreign-owned entity cannot obtain this KBLI in Bali under present restrictions.",
+   "whoThisIsFor": "Suitable for foreign entrepreneurs in textile finishing and treatment services, but PMA registration in Bali is not possible while the moratorium remains active."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13139": {
+  "intel": {
+   "whatItMeans": "This covers specialised textile finishing processes that are done as an intermediate step, like dry finishing (calendering, embossing, sueding, raising, shearing, singeing, brushing, sanding, decating, pleating, crushing, pintuck, ecoprint) and transfer printing (heat transfer, sublimation). It also includes made-to-order embroidery on textiles and making scarves or kerchiefs without sewing, integrated with a printing process.",
+   "baliReality": "Nationally, this activity is fully open for 100% foreign ownership. However, in Bali it is currently blocked for PMA companies because it falls under a low/medium-low risk classification affected by the moratorium that prevents new foreign-owned businesses in those risk tiers.",
+   "whoThisIsFor": "Foreign entrepreneurs who want to offer contract textile finishing, custom embroidery, or print-on-demand scarf production for fashion brands and garment manufacturers."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13133": {
+  "intel": {
+   "whatItMeans": "This covers the craft of creating batik fabric—using wax as a resist to build intricate motifs on cloth, whether by hand-drawing (tulis), stamping (cap), or a combination of both.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership, but in Bali, foreign-owned companies (PMA) cannot currently register under this KBLI. A temporary moratorium blocks all low and medium-low risk classifications—including batik making—until at least 13 May 2026.",
+   "whoThisIsFor": "A foreign entrepreneur with deep appreciation for textile heritage who wants to produce authentic batik fabrics, but must plan around the Bali moratorium for a PMA setup."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13913": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of artificial fur through knitting techniques, producing a textile that mimics real animal fur. It's a niche within textile production, yielding a knitted synthetic fur material used in apparel, upholstery, toys, and accessories.",
+   "baliReality": "Nationally, this activity is 100% open to foreign-owned PMA companies. However, in Bali, the moratorium on low-to-medium-low-risk business classifications currently blocks PMA registration for this KBLI until at least 13 May 2026, so you cannot set up a foreign entity for this in Bali today.",
+   "whoThisIsFor": "A foreign entrepreneur in the textile or fashion supply chain who wants to manufacture knitted faux fur fabrics at scale."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13912": {
+  "intel": {
+   "whatItMeans": "This covers the hand-making of crocheted fabric using a hook, where each loop is completed before the next begins, creating plain or patterned textiles. It’s distinct from knitting.",
+   "baliReality": "Nationally, this KBLI is fully open for 100% foreign ownership. However, in Bali, it is currently blocked for PMA companies due to a moratorium (13/5/26) that suspends new low/medium-low risk business registrations. A foreign-owned company cannot legally operate this activity in Bali under that moratorium.",
+   "whoThisIsFor": "This fits a foreign entrepreneur who wants to produce crocheted textiles manually, but only outside Bali—ideal for those eyeing other Indonesian regions with no such blockade."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13923": {
+  "intel": {
+   "whatItMeans": "This activity covers the manufacturing of jute sacks — woven textile bags made specifically from jute fiber. It's a traditional packaging industry often supplying agriculture, commodities, and dry goods sectors.",
+   "baliReality": "Nationally, the KBLI is fully open to 100% foreign ownership. However, in Bali, this activity falls under a risk-class moratorium for low and medium-low risk businesses, blocking new foreign PMA registrations until the restriction is lifted on 13 May 2026.",
+   "whoThisIsFor": "Foreign entrepreneurs in agricultural packaging, sustainable materials, or jute textile production who plan to operate outside Bali or are willing to wait until the Bali moratorium ends."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13911": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "introduced foreign codes {'1399'}"
+  }
+ },
+ "13921": {
+  "intel": {
+   "whatItMeans": "This activity covers manufacturing finished textile goods for household use — such as blankets, bed linens, towels, curtains, tablecloths, pillowcases, chair covers, prayer mats, and baby carriers — where textiles are the main material and production involves cutting, joining, or sewing. It also includes items like electric blankets, mosquito nets (with or without insecticide), laundry bags, shoe covers, cleaning cloths, and tapestry wall hangings.",
+   "baliReality": "Nationally this KBLI is fully open to 100% foreign ownership (PMA), but in Bali it is currently blocked for PMA companies due to a local moratorium (13/5/26) that prevents registration of low- and medium-low risk activities. This means a foreign entrepreneur cannot legally open a PMA company under this code in Bali at this time — despite the low-risk classification — and would need to explore other regions or wait for the moratorium to lift.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to manufacture household textile products like linens, towels, curtains, and baby carriers."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13924": {
+  "intel": {
+   "whatItMeans": "This covers manufacturing woven or knitted fabric sacks, like calico flour or sugar bags (bagor) — but not paper or plastic-sheet sacks.",
+   "baliReality": "Nationally, 100% foreign ownership is allowed, but in Bali this KBLI is completely blocked for PMA companies due to a regional moratorium on low/medium-low risk activities, even with no specific high-risk concern.",
+   "whoThisIsFor": "A foreign manufacturer of textile-based industrial sacks targeting agricultural or food packaging markets."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13922": {
+  "intel": {
+   "whatItMeans": "This activity involves manufacturing finished textile goods that are stuffed with fillers such as kapok, dacron, animal fur, or similar materials. It covers products like pillows, bolsters, seat cushions (not integral to furniture), duvets, throw pillows, sleeping bags, bed covers, quilts, and pouffes. It also includes textile parts for electric pillows and pillow/bolster toys designed like dolls or with character motifs.",
+   "baliReality": "Nationally, this KBLI is fully open for 100% foreign ownership (PMA). However, in Bali it is currently blocked for new PMA registrations due to a moratorium on low and medium-low risk business activities (per regulation 13/5/26). This means you cannot legally establish a foreign-owned company for this industry in Bali under the current freeze.",
+   "whoThisIsFor": "Foreign entrepreneurs who want to manufacture home textile products like pillows, quilts, and cushions, but this activity is not currently registrable for a PMA in Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13929": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of finished textile goods that are not clothing—things like flags, banners, pennants, and textile life jackets or flotation devices.",
+   "baliReality": "Nationally, this activity is fully open to 100% foreign ownership (PMA), but Bali applies a moratorium on low and medium-low risk classes. That moratorium currently blocks new PMA registrations for this KBLI in Bali, so you cannot set up a foreign-owned company for this activity on the island right now.",
+   "whoThisIsFor": "A foreign entrepreneur producing promotional textiles, event flags, or safety buoyancy aids who would otherwise target full foreign ownership."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13941": {
+  "intel": {
+   "whatItMeans": "This activity covers the industrial-scale production of all kinds of rope, from natural fibers like jute, sisal, or hemp, to synthetic materials like nylon or mixed blends. Think twine, cordage, raffia ties, and similar binding materials.",
+   "baliReality": "Nationally, this KBLI is fully open (100% PMA). However, on Bali, foreign-owned companies are currently blocked from registering this activity. A moratorium on low and medium-low risk classifications means PMA applications under this code are not being processed in Bali right now.",
+   "whoThisIsFor": "A foreign manufacturer of ropes, cords, or nets looking to produce in Indonesia—but for Bali specifically, a PMA setup is currently unavailable under this code."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13930": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of textile floor coverings—carpets, rugs, carpet tiles, and prayer mats—made from natural, synthetic, or blended fibers using methods like weaving, tufting, or needle punching. It also includes artificial grass carpets.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership (PMA). However, in Bali, a temporary moratorium blocks new PMA registrations for low and medium-low risk businesses until at least mid-2026, so you cannot currently start a carpet factory under a foreign company there.",
+   "whoThisIsFor": "Foreign producers of carpets, rugs, prayer mats, or synthetic grass who want to manufacture in Indonesia for the domestic or export market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13991": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of narrow fabrics—textiles with a width of 30 cm or less—such as ribbons, lace, woven labels, hook-and-loop fasteners, textile tapes, and webbing. It specifically excludes businesses that only cut wider fabrics into smaller strips and rewind them.",
+   "baliReality": "Foreign ownership is permitted in Bali, as this activity is not blocked by the local moratorium. However, it falls into a medium-high or high risk category, meaning registration is possible but requires strict address compliance: you’ll typically need an industrial-zoned location and will face closer scrutiny during verification.",
+   "whoThisIsFor": "Foreign entrepreneurs with a manufacturing background who want to produce specialized narrow textiles—like webbing, lace, or industrial tapes—for export or local supply."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13942": {
+  "intel": {
+   "whatItMeans": "This activity covers manufacturing goods from rope—like fishing nets, ship ropes, cargo slings, and lifting nets—using natural, synthetic, or blended fiber ropes. (Shoelaces, stove wicks, and similar items fall under a different classification.)",
+   "baliReality": "Nationally, this business line is 100% open to foreign-owned PMA companies. However, in Bali, it is currently blocked for new PMA registrations due to a local moratorium that applies to low/medium-low risk classes. An existing PMA may not be affected, but fresh setups are on hold.",
+   "whoThisIsFor": "Foreign entrepreneurs looking to manufacture industrial rope products for maritime, fisheries, or logistics industries—though a direct Bali PMA setup isn’t possible right now under current restrictions."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13993": {
+  "intel": {
+   "whatItMeans": "This covers the production of nonwoven fabrics like felt, felting, and laken, made without weaving or knitting. The process uses new or recycled fibers formed into sheets, then bonded by mechanical, thermal, spunlaid, or chemical techniques. It excludes traditional woven or knitted textile manufacturing.",
+   "baliReality": "Nationally, this KBLI is 100% open for foreign ownership. In Bali, it is not blocked by the moratorium, but classified as higher risk — meaning a PMA can still be set up, though you'll face stricter site verification, likely requiring a proper industrial-zoned address and additional environmental or safety permits.",
+   "whoThisIsFor": "Foreign manufacturers of nonwoven goods — such as geotextiles, hygiene material, or acoustic felt — ready to invest in a Bali-based industrial facility and manage enhanced regulatory checks."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13992": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the industrial production of textile fabrics (woven, knitted, or non-woven) that are coated, impregnated, or laminated with materials like plastic, rubber, or starch-based substances. Think of functional fabrics like tarpaulins, tent and sail cloth, umbrella fabric, artist canvas, tracing cloth, buckram, and interlining—essentially any textile given a special finish to make it waterproof, stiff, paintable, or durable.",
+   "baliReality": "Nationally, this business line is fully open to 100% foreign ownership. In Bali, it is not blocked by the general investment moratorium, but because it carries a medium-high to high environmental risk, you'll need to secure a suitable commercial or industrial address that passes zoning and environmental checks. Expect a higher compliance burden—like an environmental permit (UKL-UPL or AMDAL) and possible site-specific verification—so do your due diligence on the location before committing.",
+   "whoThisIsFor": "A foreign entrepreneur who manufactures technical or coated fabrics and wants a Bali base to supply markets like outdoor gear, hospitality (tents/umbrellas), marine, or art materials, often with an export or premium local angle."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13994": {
+  "intel": {
+   "whatItMeans": "This activity covers the manufacturing of tire cord fabric from high-strength synthetic yarns, such as nylon or polyester reinforcement material used in vehicle tires.",
+   "baliReality": "Nationally, this KBLI is fully open to foreign PMA ownership. In Bali, it is not blocked by the general moratorium, but it carries a medium-high to high risk classification. This means registration is possible only after a stricter address-level verification, likely involving environmental or zoning checks.",
+   "whoThisIsFor": "Industrial foreign investors planning to set up a specialized textile plant that supplies the automotive tire sector and are prepared for enhanced site-specific compliance in Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13995": {
+  "intel": {
+   "whatItMeans": "This covers the industrial processing of kapok (kapuk), a natural plant fiber commonly used as stuffing for pillows, mattresses, and similar products.",
+   "baliReality": "While nationally a foreign-owned PMA can hold 100% of this activity, Bali’s current moratorium blocks new PMA registrations for all low/medium-low risk classes—including kapok processing—until at least 13 May 2026. So a PMA cannot be set up in Bali for this activity at this time.",
+   "whoThisIsFor": "Foreign entrepreneurs looking to process natural fibers into eco-friendly stuffing products, though they must currently base operations outside Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13999": {
+  "intel": {
+   "whatItMeans": "This covers the manufacture of textiles not elsewhere classified, such as rubber thread, metallic yarn, shoelaces, ornamental trimmings (braids, tassels, pompons, etc.), and badges.",
+   "baliReality": "Nationally, this activity is open for 100% foreign ownership (PMA). In Bali, however, a temporary moratorium on low and medium-low risk business activities blocks foreign-owned companies from registering this KBLI until at least 13 May 2026.",
+   "whoThisIsFor": "This fits a foreign entrepreneur focused on niche textile accessories or decorative trimmings manufacturing."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "13996": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "14112": {
+  "intel": {
+   "whatItMeans": "This covers manufacturing finished garments from leather or imitation leather by cutting and sewing—think jackets, coats, vests, trousers, skirts, sports clothing, and even industrial leather accessories like welder’s aprons.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership. However, in Bali, it falls under a blanket moratorium that blocks new PMA registration for low to medium-low risk business lines until 13 May 2026. This means a foreign-owned company cannot currently register this KBLI in Bali; you’d need to wait for the moratorium to lift or explore a different location.",
+   "whoThisIsFor": "A foreign entrepreneur aiming to build a leather fashion brand, a high-end outerwear line, or a niche workwear accessories label."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "14111": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "14131": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of ready-to-use textile clothing accessories—by cutting and sewing woven, knitted, or non-woven fabrics—such as hats, caps, headbands, ties, gloves, prayer garments (mukena), shawls, veils, belts, scarves, hairbands, bow ties, hairnets, and slippers without applied soles. It also includes woven hats and accessories from patchwork and embroidery.",
+   "baliReality": "Nationally, this activity is open for 100% foreign ownership (PMA). However, in Bali it is currently blocked for foreign-owned companies due to a low/medium-low risk classification that falls under a moratorium until 13 May 2026. This means a PMA cannot obtain a business license for this KBLI in Bali at this time.",
+   "whoThisIsFor": "A foreign entrepreneur wanting to produce textile fashion accessories—like branded hats, prayer wear, or woven slippers—for export or the local market."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "14132": {
+  "intel": {
+   "whatItMeans": "This activity covers manufacturing ready-to-use clothing accessories from leather or imitation leather by cutting and sewing. Examples include hats, gloves, belts, headbands, hair nets, and even furry headwear or parts of these products.",
+   "baliReality": "Nationally, this business field is fully open (100%) to foreign ownership. However, in Bali, a temporary moratorium blocks new PMA registrations for low- and medium-low risk activities—including this one—until at least 13 May 2026. So, for now, a foreign-owned company cannot be established in Bali for this activity.",
+   "whoThisIsFor": "A foreign entrepreneur looking to manufacture leather or faux-leather fashion accessories, such as belts, hats, or gloves, who is willing to set up outside Bali or wait until the local moratorium lifts."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "14120": {
+  "intel": {
+   "whatItMeans": "This activity covers the custom tailoring and making of garments (not factory-made clothing) for individual clients, including cutting and sewing items such as suits, jackets, pants, kebaya, shirts, and dancewear. It includes both home-based tailors and boutique or atelier operations, but excludes garment repair services.",
+   "baliReality": "Nationally, this KBLI is 100% open for foreign-owned (PMA) companies. However, in Bali it is currently blocked for PMA registration because it falls under a low/medium-low risk class that is subject to a local moratorium (regulation 13/5/26), meaning a foreign PT PMA cannot obtain this business activity in Bali.",
+   "whoThisIsFor": "Foreign entrepreneurs who specialize in bespoke tailoring, custom-made clothing design, or high-end boutique apparel services."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "14200": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the manufacture of finished goods from tanned fur skins, including fur clothing (like coats and accessories), assembled fur pieces (plates, mats, strips), and home or industrial items (rugs, unstuffed pouffes, polishing cloths). It excludes raw fur production, raw hides, and imitation fur made by weaving or knitting.",
+   "baliReality": "Nationally, this activity is fully open to 100% foreign ownership (PMA), but Bali currently blocks all such PMA registrations. Due to a moratorium effective until 13 May 2026, low and medium-low risk KBLI categories – including this one – cannot obtain a PMA license in Bali, making a foreign-owned company impossible to set up on the island for this activity.",
+   "whoThisIsFor": "Foreign entrepreneurs aiming to manufacture luxury fur garments, fur accessories, or fur home décor items."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "14301": {
+  "intel": {
+   "whatItMeans": "This KBLI covers the manufacturing of all types of apparel made from knitted or crocheted fabrics, including sweaters, t-shirts, shirts, blouses, vests, coats, sleepwear, underwear, baby clothes, sportswear, swimwear, and accessories like hats and gloves (except socks). Essentially, it's the full range of ready-to-wear knitwear and crocheted clothing and gear.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership. However, under Bali's current rules, low- and medium-low-risk KBLI like this one are subject to a moratorium that blocks new PMA companies; you cannot register a foreign-owned entity for this business in Bali until at least 13 May 2026.",
+   "whoThisIsFor": "Foreign fashion entrepreneurs or brands wanting to set up their own knitwear or crocheted apparel production in Indonesia."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "15114": {
+  "intel": null,
+  "provenance": {
+   "fact_gate": "REJECT",
+   "reason": "contradicts blocked Bali status"
+  }
+ },
+ "14302": {
+  "intel": {
+   "whatItMeans": "This covers the manufacturing of knitted or crocheted hosiery items like socks, tights, stockings, pantyhose, and medical compression stockings. It also includes making sol-free footwear from knitted or crocheted material.",
+   "baliReality": "While nationally this business is 100% open to foreign ownership, in Bali a PMA company currently cannot register this KBLI. An ongoing administrative moratorium blocks low- and medium-low risk business codes for foreign companies here (likely until mid-2026).",
+   "whoThisIsFor": "A foreign entrepreneur planning to manufacture branded socks, stockings, or specialty medical hosiery in Indonesia."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "15112": {
+  "intel": {
+   "whatItMeans": "This covers the tanning of animal hides and skins—after pre-tanning—using synthetic agents (like chromium) or vegetable-based methods to produce finished leathers such as wet blue, crust, suede, patent leather, laminated leather, and specialty skins like chamois or hair-on hides.",
+   "baliReality": "Nationally, this KBLI is fully open (100% foreign ownership). However, the Bali authority currently blocks PMA registration for this activity because it falls under the low/medium-low risk class moratorium, meaning a foreign-owned company cannot be established in Bali for leather tanning at this time.",
+   "whoThisIsFor": "This suits foreign entrepreneurs in leather goods manufacturing, fashion, or automotive interiors who want to control their raw material supply by running a tannery—but they must look outside Bali due to the current restriction."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "15113": {
+  "intel": {
+   "whatItMeans": "This covers the process of dyeing or coloring leather that still has its fur or wool attached (e.g., sheepskin, shearling). The activity is specifically for treating furry hides used in finished leather goods like coats, bags, or footware.",
+   "baliReality": "Nationally, this KBLI is fully open to 100% foreign ownership (PMA). However, in Bali the activity is currently blocked for foreign-owned companies due to a local moratorium that halts new PMA registrations for low and medium-low risk classes until 2026—so you cannot legally set up a foreign-owned dyeing workshop for furry leather on the island.",
+   "whoThisIsFor": "A foreign entrepreneur with deep expertise in leather dyeing and a supply chain for furry hides, but who will need to base the operation outside Bali while this restriction remains."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "15111": {
+  "intel": {
+   "whatItMeans": "This covers the preservation of raw animal hides and skins through methods like drying, salting, or pickling. It applies to large animal skins (cow, buffalo), small animal skins (sheep, goat), reptile skins (crocodile, snake, monitor lizard), fish skins (stingray, shark, snapper, eel), and other animal hides.",
+   "baliReality": "Nationally, this activity is 100% open to foreign ownership (PMA). However, in Bali, a regional moratorium—in effect since mid-2024 and lasting at least until 13 May 2026—blocks PMA registration for low and medium-low risk business lines, which includes this KBLI. As a result, a foreigner cannot currently set up a leather preservation company in Bali.",
+   "whoThisIsFor": "A foreign entrepreneur in the leather supply chain who wants to build a hide or skin preservation facility for export or to supply local tanneries and craft industries."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "15122": {
+  "intel": {
+   "whatItMeans": "This sector covers manufacturing of animal equipment and accessories from leather or other materials—everything from saddles, harnesses, and collars to muzzles, whips, animal footwear, carry bags, and even pet clothing.",
+   "baliReality": "Nationally, this KBLI is fully open to 100% foreign ownership. However, in Bali the picture is different: low/medium-low risk classifications are currently blocked by a moratorium effective until May 13, 2026. That means a PMA cannot obtain this activity on its Bali business license during the moratorium period.",
+   "whoThisIsFor": "Foreign entrepreneurs looking to manufacture premium leather or fabric accessories for pets and working animals."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "16219": {
+  "intel": {
+   "whatItMeans": "This covers manufacturing engineered wood panels like MDF, particle board, OSB, and honeycomb board—typically used in furniture, construction, and interior applications. It's a factory-scale production activity, not a simple woodworking workshop.",
+   "baliReality": "Nationally, this activity is open to 100% foreign ownership. However, due to Bali’s current moratorium on new PMA registrations for low and medium-low risk activities (in effect until 13 May 2026), you cannot register a foreign-owned company under this KBLI in Bali at this moment.",
+   "whoThisIsFor": "A foreign manufacturer aiming to set up a wood-panel production plant for export or B2B supply, who is willing to either wait for the Bali moratorium to lift or consider basing the facility outside Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "15129": {
+  "intel": {
+   "whatItMeans": "This activity covers making various leather and composition-leather goods not classified elsewhere—such as upholstery, decorative crafts (shadow puppets, lampshades), and machine parts like van belts and gaskets.",
+   "baliReality": "Nationally, this KBLI is 100% open to foreign ownership, but in Bali a local moratorium blocks new PMA registrations for low/medium-low-risk activities. As a result, a foreign-owned company cannot currently obtain this business license in Bali under this code.",
+   "whoThisIsFor": "A foreign artisan or manufacturer looking to produce niche leather goods for machinery or handicraft markets, though currently PMA registration is unavailable in Bali."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ },
+ "19201": {
+  "intel": {
+   "whatItMeans": "This covers the industrial refining and processing of crude oil into finished fuel products like gasoline, diesel, kerosene, jet fuel, and LPG. It’s large-scale downstream oil processing, turning raw petroleum into usable energy sources.",
+   "baliReality": "Even though this business field is fully open to foreign ownership at the national level, Bali currently applies a moratorium that blocks any foreign-owned company (PMA) from registering in this activity. The block is due to a local policy pausing low and medium-low risk business approvals for foreign investors, making it effectively closed in Bali for now.",
+   "whoThisIsFor": "A foreign entrepreneur or company with heavy industrial experience, substantial capital, and access to crude oil supply chains, likely looking to set up a refinery outside of Bali or awaiting policy changes."
+  },
+  "provenance": {
+   "source": "LLM_EDITORIAL",
+   "model": "deepseek-v4-pro",
+   "confidence": "LOW",
+   "fact_gate": "PASS",
+   "generated": "2026-06-19"
+  }
+ }
+}
