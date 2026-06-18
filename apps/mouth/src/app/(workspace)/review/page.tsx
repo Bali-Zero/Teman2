@@ -29,6 +29,11 @@ import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import {
+  createClientSchema,
+  type CreateClientInput,
+} from "@/lib/api/crm/crm.schemas";
+import type { CreateClientParams } from "@/lib/api/crm/crm.types";
 
 import {
   categoriesForGroup,
@@ -197,6 +202,48 @@ function statusFromClaimError(e: unknown): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * The "create new client" path unlocks ONLY for proposals where no existing
+ * client fits: NO_MATCH (entity resolution found nothing) and LINK_CANDIDATE (a
+ * client was PROPOSED but may be wrong, so the reviewer may reject it and create
+ * a fresh one). AUTO_ATTACH / AMBIGUOUS keep the pick-an-existing flow.
+ */
+const CREATE_CLIENT_DECISIONS = new Set(["NO_MATCH", "LINK_CANDIDATE"]);
+
+/** Minimal create-client form state — only what the operator may need to type. */
+interface NewClientFields {
+  full_name: string;
+  email: string;
+  phone: string;
+  nationality: string;
+}
+
+const EMPTY_NEW_CLIENT: NewClientFields = {
+  full_name: "",
+  email: "",
+  phone: "",
+  nationality: "",
+};
+
+/**
+ * Prefill a new-client form from the proposal: a LINK_CANDIDATE carries the
+ * proposed (maybe-wrong) name as its first candidate; otherwise scan the
+ * extracted document fields for a name-like key. `fieldToString` unwraps the
+ * `{value, confidence}` shape the extractor uses.
+ */
+function prefillNewClient(detail: ProposalDetail): NewClientFields {
+  const proposed = detail.entity_candidates?.[0]?.full_name;
+  let name = proposed ?? "";
+  if (!name) {
+    const fields = detail.extracted_fields ?? {};
+    const nameKey = Object.keys(fields).find((k) =>
+      /(^|_)(full_?name|name|holder|nama)(_|$)/i.test(k),
+    );
+    if (nameKey) name = fieldToString(fields[nameKey]);
+  }
+  return { ...EMPTY_NEW_CLIENT, full_name: name };
+}
+
 export default function ReviewPage() {
   const router = useRouter();
   const [items, setItems] = useState<ProposalSummary[]>([]);
@@ -209,6 +256,12 @@ export default function ReviewPage() {
   // Read-only reason when a proposal is opened WITHOUT a live claim (terminal
   // status, or claimed by another reviewer). null ⇒ the open is editable.
   const [readOnlyReason, setReadOnlyReason] = useState<string | null>(null);
+
+  // ── Create-new-client (unlocked only for NO_MATCH / LINK_CANDIDATE) ───────
+  const [showCreateClient, setShowCreateClient] = useState(false);
+  const [newClient, setNewClient] = useState<NewClientFields>(EMPTY_NEW_CLIENT);
+  const [newClientError, setNewClientError] = useState<string | null>(null);
+  const [creatingClient, setCreatingClient] = useState(false);
 
   // ── Decision-panel state ────────────────────────────────────────────────
   const [selectedClient, setSelectedClient] = useState<EntityCandidate | null>(
@@ -285,6 +338,9 @@ export default function ReviewPage() {
       setNotice(null);
       setClaimToken(null);
       setReadOnlyReason(null);
+      setShowCreateClient(false);
+      setNewClient(EMPTY_NEW_CLIENT);
+      setNewClientError(null);
       try {
         // 1) Fetch the detail first — this works for any authorised proposal,
         //    regardless of status or lease ownership.
@@ -454,6 +510,9 @@ export default function ReviewPage() {
     setDetail(null);
     setClaimToken(null);
     setReadOnlyReason(null);
+    setShowCreateClient(false);
+    setNewClient(EMPTY_NEW_CLIENT);
+    setNewClientError(null);
     setSelectedClient(null);
     setPractices([]);
     setSelectedPracticeId("");
@@ -461,6 +520,63 @@ export default function ReviewPage() {
     setSelectedCategoryCode("");
     setFieldEdits({});
   }, [detail, claimToken]);
+
+  // ── Create a brand-new client and set it as the destination ──────────────
+  // Reuses the existing CRM create endpoint + Zod schema (no new validation).
+  // On success the new client becomes selectedClient so the operator files the
+  // document to it via the normal Approve flow.
+  const createNewClient = useCallback(async () => {
+    setNewClientError(null);
+    // Validate with the SAME schema the full New-Client page uses. Only
+    // full_name is required; blank optionals are dropped to undefined.
+    const candidate: CreateClientInput = {
+      full_name: newClient.full_name,
+      email: newClient.email || undefined,
+      phone: newClient.phone || undefined,
+      nationality: newClient.nationality || undefined,
+      lead_source: "whatsapp",
+    };
+    const parsed = createClientSchema.safeParse(candidate);
+    if (!parsed.success) {
+      setNewClientError(
+        parsed.error.issues[0]?.message ?? "Please check the client details.",
+      );
+      return;
+    }
+    setCreatingClient(true);
+    try {
+      const profile = await api.getProfile();
+      if (!profile?.email) throw new Error("User email not available");
+      const created = await api.crm.createClient(
+        parsed.data as CreateClientParams,
+        profile.email,
+      );
+      // Become the document destination via the normal radio/selectedClient path.
+      setSelectedClient({
+        client_id: created.id,
+        full_name: created.full_name,
+        assigned_to: created.assigned_to ?? profile.email,
+        email: created.email ?? null,
+        phone: created.phone ?? null,
+        nationality: created.nationality ?? null,
+      });
+      setSelectedPracticeId("");
+      setShowCreateClient(false);
+      setNewClient(EMPTY_NEW_CLIENT);
+      setNotice(`✓ New client created: ${created.full_name}. Pick a category, then Approve.`);
+    } catch (e) {
+      setNewClientError(
+        e instanceof Error ? e.message : "Could not create the client.",
+      );
+      logger.error(
+        "review create-client failed",
+        { component: "ReviewPage", action: "createNewClient" },
+        e instanceof Error ? e : new Error(String(e)),
+      );
+    } finally {
+      setCreatingClient(false);
+    }
+  }, [newClient]);
 
   const decide = useCallback(
     async (action: "approve" | "reject") => {
@@ -559,6 +675,18 @@ export default function ReviewPage() {
       : "client document archive";
     return `${selectedClient.full_name} → ${groupLabel(selectedGroup)} / ${categoryLabel} → ${practiceLabel}`;
   }, [selectedCategory, selectedClient, selectedGroup, selectedPractice]);
+
+  // "Create new client" unlocks ONLY for the no-existing-client cases
+  // (NO_MATCH / LINK_CANDIDATE) AND only while the reviewer holds a live claim
+  // (read-only / terminal opens keep it disabled — "si sblocca solo per questo
+  // caso").
+  const canCreateClient = useMemo(
+    () =>
+      Boolean(claimToken) &&
+      Boolean(detail?.decision) &&
+      CREATE_CLIENT_DECISIONS.has(detail!.decision),
+    [claimToken, detail],
+  );
 
   // Authenticated blob preview: an <iframe>/<img> request cannot carry the
   // Bearer header, so a direct src 401s ("Connessione negata"). Fetch the
@@ -1009,6 +1137,149 @@ export default function ReviewPage() {
                         </li>
                       ))}
                     </ul>
+                  )}
+
+                  {/* Create new client — unlocked ONLY for NO_MATCH /
+                      LINK_CANDIDATE while a claim is held. */}
+                  {canCreateClient && !showCreateClient && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (detail) setNewClient(prefillNewClient(detail));
+                        setNewClientError(null);
+                        setShowCreateClient(true);
+                      }}
+                      className="mt-2 w-full rounded border border-dashed px-2 py-1.5 text-sm"
+                      style={{
+                        borderColor: "var(--bz-accent, #d4845a)",
+                        color: "var(--bz-accent, #d4845a)",
+                      }}
+                    >
+                      + Crea nuovo cliente
+                    </button>
+                  )}
+
+                  {canCreateClient && showCreateClient && (
+                    <div
+                      className="mt-2 space-y-2 rounded-md border p-3"
+                      style={{ borderColor: "var(--bz-accent, #d4845a)" }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4
+                          className="text-sm font-medium"
+                          style={{ color: "var(--bz-text-1)" }}
+                        >
+                          New client
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCreateClient(false);
+                            setNewClientError(null);
+                          }}
+                          className="text-xs"
+                          style={{ color: "var(--bz-text-3)" }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      <input
+                        className="w-full rounded border px-2 py-1.5 text-sm"
+                        style={{
+                          borderColor: "var(--bz-border)",
+                          background: "var(--bz-surface)",
+                          color: "var(--bz-text-1)",
+                        }}
+                        placeholder="Full name (required)"
+                        aria-label="New client full name"
+                        value={newClient.full_name}
+                        onChange={(e) =>
+                          setNewClient((p) => ({
+                            ...p,
+                            full_name: e.target.value,
+                          }))
+                        }
+                      />
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <input
+                          className="w-full rounded border px-2 py-1.5 text-sm"
+                          style={{
+                            borderColor: "var(--bz-border)",
+                            background: "var(--bz-surface)",
+                            color: "var(--bz-text-1)",
+                          }}
+                          placeholder="Phone (optional)"
+                          aria-label="New client phone"
+                          value={newClient.phone}
+                          onChange={(e) =>
+                            setNewClient((p) => ({
+                              ...p,
+                              phone: e.target.value,
+                            }))
+                          }
+                        />
+                        <input
+                          className="w-full rounded border px-2 py-1.5 text-sm"
+                          style={{
+                            borderColor: "var(--bz-border)",
+                            background: "var(--bz-surface)",
+                            color: "var(--bz-text-1)",
+                          }}
+                          placeholder="Nationality (optional)"
+                          aria-label="New client nationality"
+                          value={newClient.nationality}
+                          onChange={(e) =>
+                            setNewClient((p) => ({
+                              ...p,
+                              nationality: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <input
+                        className="w-full rounded border px-2 py-1.5 text-sm"
+                        style={{
+                          borderColor: "var(--bz-border)",
+                          background: "var(--bz-surface)",
+                          color: "var(--bz-text-1)",
+                        }}
+                        placeholder="Email (optional)"
+                        aria-label="New client email"
+                        type="email"
+                        value={newClient.email}
+                        onChange={(e) =>
+                          setNewClient((p) => ({
+                            ...p,
+                            email: e.target.value,
+                          }))
+                        }
+                      />
+                      {newClientError && (
+                        <p
+                          className="text-xs"
+                          style={{ color: "var(--bz-error, #d95f5a)" }}
+                        >
+                          {newClientError}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        disabled={creatingClient || !newClient.full_name.trim()}
+                        onClick={() => void createNewClient()}
+                        className="w-full rounded-md px-3 py-1.5 text-sm font-medium text-white"
+                        style={{
+                          background: "var(--bz-accent, #d4845a)",
+                          opacity:
+                            creatingClient || !newClient.full_name.trim()
+                              ? 0.5
+                              : 1,
+                        }}
+                      >
+                        {creatingClient
+                          ? "Creating…"
+                          : "Create client & set as destination"}
+                      </button>
+                    </div>
                   )}
                 </div>
 

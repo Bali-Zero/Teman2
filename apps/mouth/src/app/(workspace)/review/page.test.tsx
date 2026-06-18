@@ -8,6 +8,8 @@ const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   getToken: vi.fn(() => null),
+  getProfile: vi.fn(async () => ({ email: "adit@balizero.com" })),
+  crm: { createClient: vi.fn() },
 }));
 
 vi.mock("@/lib/api", () => ({ api: apiMock }));
@@ -241,5 +243,175 @@ describe("ReviewPage", () => {
     ).toBeVisible();
     // The detail GET failed before any claim attempt.
     expect(apiMock.post).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix #2 — "create new client" from the review panel (NO_MATCH / LINK_CANDIDATE)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Placeholder ids only — never real client PII (UU PDP, intake is PII-L2).
+const NO_MATCH_DETAIL = {
+  proposal_id: 1,
+  doc_type: "passport",
+  decision: "NO_MATCH",
+  source: "whatsapp",
+  status: "review_pending",
+  received_by: "adit@balizero.com",
+  entity_candidates: [],
+  extracted_fields: {},
+  created_at: "2026-06-15T09:00:00Z",
+  routing: {},
+};
+
+const AUTO_ATTACH_DETAIL = {
+  ...NO_MATCH_DETAIL,
+  decision: "AUTO_ATTACH",
+  entity_candidates: [{ client_id: 21, full_name: "Existing One" }],
+};
+
+/** Queue with one card so the modal can be opened, plus a detail responder. */
+function mockQueueAndDetail(detail: Record<string, unknown>) {
+  apiMock.get.mockImplementation(async (endpoint: string) => {
+    if (endpoint.startsWith("/api/intake/review/queue")) {
+      return {
+        items: [
+          {
+            proposal_id: 1,
+            doc_type: "passport",
+            decision: detail.decision,
+            source: "whatsapp",
+            status: "review_pending",
+            received_by: "adit@balizero.com",
+            entity_candidates: detail.entity_candidates,
+            extracted_fields: {},
+            created_at: "2026-06-15T09:00:00Z",
+          },
+        ],
+      };
+    }
+    if (endpoint === "/api/intake/review/document-categories")
+      return { items: [] };
+    if (endpoint === "/api/intake/review/1") return detail;
+    if (/^\/api\/intake\/review\/clients\//.test(endpoint))
+      return { items: [] };
+    throw new Error(`Unexpected GET ${endpoint}`);
+  });
+}
+
+describe("ReviewPage — create new client", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal("fetch", fetchMock);
+    apiMock.getProfile.mockResolvedValue({ email: "adit@balizero.com" });
+  });
+
+  it("offers 'Crea nuovo cliente' for a NO_MATCH claimable proposal", async () => {
+    mockQueueAndDetail(NO_MATCH_DETAIL);
+    apiMock.post.mockResolvedValueOnce({
+      proposal_id: 1,
+      claim_token: "tok-1",
+      lease_expires_at: "2026-06-15T09:15:00Z",
+    });
+
+    const user = userEvent.setup();
+    render(<ReviewPage />);
+    await user.click(await screen.findByRole("button", { name: "Review" }));
+
+    expect(
+      await screen.findByRole("button", { name: "+ Crea nuovo cliente" }),
+    ).toBeEnabled();
+  });
+
+  it("does NOT offer create-client for an AUTO_ATTACH proposal", async () => {
+    mockQueueAndDetail(AUTO_ATTACH_DETAIL);
+    apiMock.post.mockResolvedValueOnce({
+      proposal_id: 1,
+      claim_token: "tok-1",
+      lease_expires_at: "2026-06-15T09:15:00Z",
+    });
+
+    const user = userEvent.setup();
+    render(<ReviewPage />);
+    await user.click(await screen.findByRole("button", { name: "Review" }));
+
+    // The detail modal is open (Destination heading present)…
+    expect(await screen.findByText("Destination")).toBeVisible();
+    // …but the create-client entry point is NOT rendered.
+    expect(
+      screen.queryByRole("button", { name: "+ Crea nuovo cliente" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps create-client DISABLED in read-only mode (NO_MATCH but terminal)", async () => {
+    mockQueueAndDetail({ ...NO_MATCH_DETAIL, status: "routed" });
+    // status is terminal → openDetail never claims; if the UI mistakenly tried,
+    // a 409 stub guards against a false positive.
+    apiMock.post.mockRejectedValue(
+      new Error("Proposal not claimable (status=routed, lease_owner=None)"),
+    );
+
+    const user = userEvent.setup();
+    render(<ReviewPage />);
+    await user.click(await screen.findByRole("button", { name: "Review" }));
+
+    // Read-only notice shown, no claim held → no create-client entry point.
+    expect(
+      await screen.findByText(/already filed — view only/i),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "+ Crea nuovo cliente" }),
+    ).not.toBeInTheDocument();
+    // We never claimed a terminal proposal.
+    expect(apiMock.post).not.toHaveBeenCalled();
+  });
+
+  it("creates a client and sets it as the destination (enables Approve)", async () => {
+    mockQueueAndDetail(NO_MATCH_DETAIL);
+    // 1st post = claim (review opens editable).
+    apiMock.post.mockResolvedValueOnce({
+      proposal_id: 1,
+      claim_token: "tok-1",
+      lease_expires_at: "2026-06-15T09:15:00Z",
+    });
+    // createClient returns the new client (placeholder id).
+    apiMock.crm.createClient.mockResolvedValueOnce({
+      id: 99,
+      full_name: "Brand New",
+      assigned_to: "adit@balizero.com",
+    });
+
+    const user = userEvent.setup();
+    render(<ReviewPage />);
+    await user.click(await screen.findByRole("button", { name: "Review" }));
+
+    await user.click(
+      await screen.findByRole("button", { name: "+ Crea nuovo cliente" }),
+    );
+    await user.type(
+      await screen.findByLabelText("New client full name"),
+      "Brand New",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Create client & set as destination",
+      }),
+    );
+
+    // createClient called with the typed name + the operator email as created_by.
+    await waitFor(() =>
+      expect(apiMock.crm.createClient).toHaveBeenCalledTimes(1),
+    );
+    const [payload, createdBy] = apiMock.crm.createClient.mock.calls[0];
+    expect(payload.full_name).toBe("Brand New");
+    expect(createdBy).toBe("adit@balizero.com");
+
+    // Success notice + the new client is now the destination → Approve enabled.
+    expect(
+      await screen.findByText(/New client created: Brand New/i),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled(),
+    );
   });
 });
