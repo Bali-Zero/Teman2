@@ -60,6 +60,16 @@ async def _kg_link_after_ocr(
         {"success": bool, "extracted": {<fields>}, ...}
 
     """
+    # Enqueue the document for per-client Qdrant indexing. Independent of the
+    # KG flag and best-effort — fires for every successful OCR so the RAG can
+    # reason over the client's documents (council decision 2026-06-18).
+    await _enqueue_client_doc_index_after_ocr(
+        db_pool,
+        file_id=file_id,
+        client_id=client_id,
+        doc_id=doc_id,
+    )
+
     if not _kg_enabled():
         return
 
@@ -124,6 +134,65 @@ async def _kg_link_after_ocr(
         logger.error(
             "kg_link_document hook crashed for file %s (client %d): %s",
             file_id,
+            client_id,
+            e,
+            exc_info=True,
+        )
+
+
+async def _enqueue_client_doc_index_after_ocr(
+    db_pool: Any,
+    *,
+    file_id: str,
+    client_id: int,
+    doc_id: int | None = None,
+) -> None:
+    """Best-effort enqueue of the document for per-client Qdrant indexing.
+
+    Mirror of the KG-link hook contract: total-swallow, fire-and-forget. The
+    OCR text is already persisted in documents.ocr_extracted_data by the
+    handler before this fires; a worker (or backfill) consumes the queued job.
+    Indexing failures must NEVER make an OCR caller think the upload failed.
+    """
+    if doc_id is None:
+        # No documents row to map → nothing to index. DrivePoll inserts the
+        # row + content_hash; root-folder files without a doc_id are skipped.
+        return
+
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT content_hash FROM documents WHERE id = $1",
+                doc_id,
+            )
+            content_hash = row["content_hash"] if row else None
+            if not content_hash:
+                logger.info(
+                    "client_doc_index enqueue skipped: no content_hash for doc %s",
+                    doc_id,
+                )
+                return
+
+            from backend.services.crm.client_doc_indexer import enqueue_index_job
+
+            await enqueue_index_job(
+                conn,
+                document_id=doc_id,
+                client_id=client_id,
+                file_id=file_id,
+                content_hash=content_hash,
+            )
+        logger.info(
+            "client_doc_index enqueued: doc %s client %s file %s",
+            doc_id,
+            client_id,
+            file_id,
+        )
+    except Exception as e:
+        # Total swallow — same contract as kg_link hook.
+        logger.error(
+            "client_doc_index enqueue hook crashed for doc %s (client %d): %s",
+            doc_id,
             client_id,
             e,
             exc_info=True,
