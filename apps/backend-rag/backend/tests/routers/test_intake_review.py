@@ -306,6 +306,35 @@ async def test_detail_null_received_by_admin_only(pool, seed):
     assert r2.status_code == 200, r2.text
 
 
+async def test_detail_terminal_routed_view_without_claim(pool, seed):
+    """A processed (terminal `routed`) proposal must stay VIEWABLE: GET detail
+    returns 200 with status=routed and never requires a lease, while POST claim
+    correctly 409s (state machine unchanged — `routed` is not claimable).
+
+    This is the contract the /review UI relies on to open an already-filed
+    document read-only instead of showing 'Could not open the document.'
+    """
+    pid = seed["p_owner"]
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal "
+            "SET status='routed', lease_owner=NULL, lease_expires_at=NULL, "
+            "claim_token=NULL WHERE id=$1",
+            pid,
+        )
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        # GET detail works WITHOUT any claim/lease.
+        r = await cl.get(f"/api/intake/review/{pid}")
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "routed"
+        # Claiming a terminal proposal is rejected — view-only is the only path.
+        rc = await cl.post(f"/api/intake/review/{pid}/claim")
+        assert rc.status_code == 409, rc.text
+        assert "not claimable" in rc.json()["detail"].lower()
+        assert "status=routed" in rc.json()["detail"]
+
+
 async def test_claim_rbac_own_chat(pool, seed):
     """Non-admin claim is gated by own-chat (received_by), not assigned_to.
 
