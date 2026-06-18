@@ -29,7 +29,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
-from backend.services.notifications.email_branding import logo_header_html, team_email_html
+from backend.services.notifications.email_branding import team_email_html
 from backend.services.notifications.email_http import get_email_client
 
 logger = get_logger(__name__)
@@ -37,8 +37,10 @@ logger = get_logger(__name__)
 # Accounting email for invoice notifications
 ACCOUNTING_EMAIL = "asya@balizero.com"
 
-# CC on all invoice emails: owner + accounting
-INVOICE_CC_EMAILS = ["zero@balizero.com", "asya@balizero.com"]
+# CC on all invoice emails: accounting (Antonello 2026-06-17 — dropped
+# zero@ so the owner inbox no longer receives every single invoice;
+# accounting owns invoices, the assigned lead is appended separately).
+INVOICE_CC_EMAILS = ["asya@balizero.com"]
 
 # Internal email API (sender is always zantara@balizero.com)
 _EMAIL_API_URL = os.getenv(
@@ -295,8 +297,10 @@ class InvoiceAutomationService:
     ) -> bool:
         """Send invoice email to client via internal email API (sender: zantara@balizero.com)."""
         subject = f"Invoice {invoice_number} from Bali Zero"
+        # The Bali Zero logo lives on the invoice PDF attachment (top-right,
+        # rendered by invoice_generator.py), NOT in the email body — Antonello
+        # 2026-06-17: "hai fatto html sul messaggio email, non su allegato".
         body_html = (
-            f"{logo_header_html()}"
             f"<p>Dear {client_name},</p>"
             f"<p>Thank you for choosing Bali Zero for your business in Indonesia.</p>"
             f"<p>Please find your invoice attached to this email.</p>"
@@ -327,6 +331,10 @@ class InvoiceAutomationService:
             "body": body_html,
             "cc": ", ".join(cc_emails),
             "attachments": [{"name": filename, "content": pdf_b64}],
+            # Context for the endpoint's @balizero.com CC hard rule
+            # (Antonello 2026-06-17): invoice → asya@ accounting.
+            "email_type": "invoice_client",
+            "assigned_to": team_member_email,
         }
         client = await get_email_client()
         response = await client.post(
