@@ -22,7 +22,10 @@ class Settings(BaseSettings):
     COMPANY_LOCATION: str = "Jalan Semer, Kerobokan, Bali"
     COMPANY_SERVICE_DOMAIN: str = "Visas, Business Setup, Tax, Legal matters in Indonesia"
     SUPPORT_EMAIL: str = "info@balizero.com"
-    SUPPORT_WHATSAPP: str = "+62 822 6459 9868"
+    # Zantara/Bali Zero WhatsApp Business number, Meta-verified (verified_name
+    # BALI ZERO, GREEN). The old personal number (+62 822 64xx, Antonello's)
+    # no longer exists — replaced fleet-wide 2026-06-18.
+    SUPPORT_WHATSAPP: str = "+62 821 3465 159"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 

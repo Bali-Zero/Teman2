@@ -62,7 +62,7 @@ CHANNEL_CONFIGS: dict[str, ChannelConfig] = {
             "Keep answers concise and helpful — this is a lead generation context. "
             "After the user's 3rd question, naturally suggest a personal consultation: "
             '"For a personalized consultation, reach us at '
-            'info@balizero.com or WhatsApp +62 822 6459 9868."'
+            'info@balizero.com or WhatsApp +62 821 3465 159."'
         ),
     ),
 }
