@@ -222,6 +222,45 @@ export function classifyResolvedDecideError(
   return null;
 }
 
+/**
+ * Terminal proposal statuses — a proposal that has already been processed and
+ * can never be claimed again (migration 212 CHECK: review_pending |
+ * review_claimed | routed | rejected | dead). `routed` is the SUCCESS terminal.
+ */
+const TERMINAL_STATUSES = new Set(["routed", "rejected", "dead"]);
+
+/** Human-facing label for a terminal status used in the read-only notice. */
+function terminalLabel(status: string): string {
+  switch (status) {
+    case "routed":
+      return "already filed";
+    case "rejected":
+      return "rejected";
+    case "dead":
+      return "discarded";
+    default:
+      return `already ${status}`;
+  }
+}
+
+/**
+ * The `/claim` 409 — DISTINCT from the approve/reject 409 above. The backend
+ * raises HTTP 409 with detail=`Proposal not claimable (status=<s>,
+ * lease_owner=<o>)`; the api client surfaces that detail verbatim into
+ * Error.message (api/client.ts:371). We key off the stable "not claimable"
+ * phrase — NOT off "409", which never appears in the message.
+ */
+function isNotClaimable(e: unknown): boolean {
+  return e instanceof Error && /not claimable/i.test(e.message);
+}
+
+/** Extract the `status=<s>` token from a "not claimable" 409 detail string. */
+function statusFromClaimError(e: unknown): string | null {
+  if (!(e instanceof Error)) return null;
+  const m = /status=([a-z_]+)/i.exec(e.message);
+  return m ? m[1] : null;
+}
+
 export default function ReviewPage() {
   const router = useRouter();
   const [items, setItems] = useState<ProposalSummary[]>([]);
@@ -231,6 +270,9 @@ export default function ReviewPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [detail, setDetail] = useState<ProposalDetail | null>(null);
   const [claimToken, setClaimToken] = useState<string | null>(null);
+  // Read-only reason when a proposal is opened WITHOUT a live claim (terminal
+  // status, or claimed by another reviewer). null ⇒ the open is editable.
+  const [readOnlyReason, setReadOnlyReason] = useState<string | null>(null);
   // Seed the destination (group+category) exactly ONCE per opened proposal,
   // so a manual Profile-group / Category change is never clobbered by the
   // doc_type re-inference. Keyed by proposal_id; re-seeds for a new document.
@@ -301,25 +343,76 @@ export default function ReviewPage() {
     void loadCategories();
   }, [loadCategories]);
 
-  // ── Open: claim + detail + seed the decision panel ──────────────────────
+  // ── Open: detail FIRST, claim only when claimable, seed the panel ────────
+  //
+  // Viewing is decoupled from claiming. We ALWAYS fetch the read-only detail
+  // first (GET requires only RBAC, never a lease) so the operator can open any
+  // authorised proposal — including terminal ones (routed/rejected/dead) and
+  // ones another reviewer holds live. We attempt the 15-min claim ONLY when the
+  // proposal is in a claimable state; on success the panel is editable, on a
+  // 409 (raced / live-claimed by someone else) we fall back to read-only. A
+  // failed claim is NEVER an error toast — the document still opens.
   const openDetail = useCallback(
     async (proposalId: number) => {
       setBusy(proposalId);
       setError(null);
       setNotice(null);
+      setClaimToken(null);
+      setReadOnlyReason(null);
       // A fresh open must re-seed the destination (even re-opening the
       // same proposal); the seed effect owns the one-shot per proposal.
       destinationSeededRef.current = null;
       try {
-        // Claim first (15-min lease) so approve/reject have a valid token.
-        const claim = await api.post<ClaimResponse>(
-          `/api/intake/review/${proposalId}/claim`,
-          {},
-        );
-        setClaimToken(claim.claim_token);
+        // 1) Fetch the detail first — this works for any authorised proposal,
+        //    regardless of status or lease ownership.
         const d = await api.get<ProposalDetail>(
           `/api/intake/review/${proposalId}`,
         );
+
+        // 2) Claim only when the proposal is not in a terminal state. The
+        //    backend atomically handles steal-expired / renew-own / 409-other,
+        //    so we just attempt it for any non-terminal status.
+        let token: string | null = null;
+        let roReason: string | null = null;
+        if (TERMINAL_STATUSES.has(d.status)) {
+          roReason = `This proposal is ${terminalLabel(d.status)} — view only.`;
+        } else {
+          try {
+            const claim = await api.post<ClaimResponse>(
+              `/api/intake/review/${proposalId}/claim`,
+              {},
+            );
+            token = claim.claim_token;
+          } catch (claimErr) {
+            if (isNotClaimable(claimErr)) {
+              // Lost the race between list-load and click. Distinguish a
+              // status that turned terminal from a live claim by another.
+              const st = statusFromClaimError(claimErr);
+              roReason =
+                st && TERMINAL_STATUSES.has(st)
+                  ? `This proposal is ${terminalLabel(st)} — view only.`
+                  : "Claimed by another reviewer — view only.";
+            } else {
+              // A real claim failure (404/500/network). Detail already loaded;
+              // surface a soft read-only notice rather than hiding the document.
+              roReason = "Could not claim this proposal — view only.";
+              logger.warn(
+                "review claim failed (detail still shown)",
+                {
+                  component: "ReviewPage",
+                  action: "openDetail",
+                  metadata: { proposalId },
+                },
+                claimErr instanceof Error
+                  ? claimErr
+                  : new Error(String(claimErr)),
+              );
+            }
+          }
+        }
+
+        setClaimToken(token);
+        setReadOnlyReason(roReason);
         setDetail(d);
         setPreviewFailed(false);
         setShowOcr(false);
@@ -349,13 +442,11 @@ export default function ReviewPage() {
             : "",
         );
       } catch (e) {
-        const msg =
-          e instanceof Error && /409/.test(e.message)
-            ? "Already claimed by another reviewer."
-            : "Could not open the document.";
-        setError(msg);
+        // Only the detail GET reaching here is a true failure (the claim has
+        // its own catch above and never re-throws).
+        setError("Could not open the document.");
         logger.error(
-          "review claim/detail failed",
+          "review detail load failed",
           { component: "ReviewPage", action: "openDetail" },
           e instanceof Error ? e : new Error(String(e)),
         );
@@ -448,6 +539,7 @@ export default function ReviewPage() {
     }
     setDetail(null);
     setClaimToken(null);
+    setReadOnlyReason(null);
     setSelectedClient(null);
     setPractices([]);
     setSelectedPracticeId("");
@@ -505,6 +597,7 @@ export default function ReviewPage() {
         }
         setDetail(null);
         setClaimToken(null);
+        setReadOnlyReason(null);
         setSelectedClient(null);
         await loadQueue();
       } catch (e) {
@@ -523,6 +616,7 @@ export default function ReviewPage() {
           );
           setDetail(null);
           setClaimToken(null);
+          setReadOnlyReason(null);
           setSelectedClient(null);
           await loadQueue();
         } else {
@@ -834,6 +928,19 @@ export default function ReviewPage() {
               </button>
             </div>
 
+            {readOnlyReason && (
+              <div
+                className="mb-3 rounded-md border px-3 py-2 text-sm"
+                role="status"
+                style={{
+                  borderColor: "var(--bz-warning, #d4923a)",
+                  color: "var(--bz-text-1)",
+                }}
+              >
+                {readOnlyReason}
+              </div>
+            )}
+
             <div className="grid gap-5 md:grid-cols-2">
               {/* ── LEFT: the exact document ──────────────────────────── */}
               <div>
@@ -1020,6 +1127,7 @@ export default function ReviewPage() {
                       disabled={
                         createBusy ||
                         busy === detail.proposal_id ||
+                        !claimToken ||
                         (createForm.full_name ?? "").trim().length < 2
                       }
                       onClick={() => void createAndApprove()}
@@ -1029,6 +1137,7 @@ export default function ReviewPage() {
                         opacity:
                           createBusy ||
                           busy === detail.proposal_id ||
+                          !claimToken ||
                           (createForm.full_name ?? "").trim().length < 2
                             ? 0.5
                             : 1,
@@ -1318,13 +1427,19 @@ export default function ReviewPage() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    disabled={busy === detail.proposal_id || !selectedClient}
+                    disabled={
+                      busy === detail.proposal_id ||
+                      !claimToken ||
+                      !selectedClient
+                    }
                     onClick={() => void decide("approve")}
                     className="flex-1 rounded-md px-4 py-2 text-sm font-medium text-white"
                     style={{
                       background: "var(--bz-success, #2e9e6b)",
                       opacity:
-                        busy === detail.proposal_id || !selectedClient
+                        busy === detail.proposal_id ||
+                        !claimToken ||
+                        !selectedClient
                           ? 0.5
                           : 1,
                     }}
@@ -1333,12 +1448,13 @@ export default function ReviewPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={busy === detail.proposal_id}
+                    disabled={busy === detail.proposal_id || !claimToken}
                     onClick={() => void decide("reject")}
                     className="flex-1 rounded-md px-4 py-2 text-sm font-medium text-white"
                     style={{
                       background: "var(--bz-error, #d95f5a)",
-                      opacity: busy === detail.proposal_id ? 0.6 : 1,
+                      opacity:
+                        busy === detail.proposal_id || !claimToken ? 0.6 : 1,
                     }}
                   >
                     Reject
