@@ -185,6 +185,28 @@ async def evaluate_gate_status(
         logger.warning("gate_evaluator: empty user_email, failing OPEN")
         return _degraded(as_of)
 
+    # Operator kill-switch (Antonello 2026-06-18): temporarily disable the whole
+    # login gate fleet-wide WITHOUT a code change or data mutation. Flip with
+    #   fly secrets set INTAKE_GATE_DISABLED=true  -a nuzantara-rag
+    # and revert with  fly secrets unset INTAKE_GATE_DISABLED. When set, every
+    # user is reported non-blocking (counts forced to 0) so the workspace is
+    # always reachable. NOT `degraded` — this is a deliberate, audited disable.
+    if os.getenv("INTAKE_GATE_DISABLED", "").strip().lower() in {"1", "true", "yes", "on"}:
+        logger.warning(
+            "gate_evaluator: INTAKE_GATE_DISABLED is set — gate bypassed for user=%s",
+            email,
+        )
+        return {
+            "blocked": False,
+            "sections": {
+                "documents": {"count": 0, "blocking": True},
+                "late_note": {"count": 0, "blocking": True},
+                "deadlines": {"count": 0, "blocking": True},
+            },
+            "as_of": as_of,
+            "degraded": False,
+        }
+
     # F6: admins are scoped IDENTICALLY (by-receiver / assigned-to) — NOT the
     # company-wide queue — so they are never trapped behind hundreds of items.
     # is_admin therefore does not change the counts; it is logged for audit and
