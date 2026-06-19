@@ -679,7 +679,11 @@ async def list_clients(
             params: list[Any] = []
             param_index = 1
 
-            # RBAC: enforce assigned_to filter for non-admin users
+            # RBAC: enforce assigned_to filter for non-admin users. A non-admin
+            # sees ONLY their own assigned clients (admins get rbac_filter=None =
+            # full view). Decision 2026-06-19: NOT "own + unassigned" — 93% of the
+            # book is unassigned, so an OR-NULL clause would leak ~10.7k clients to
+            # every team member. Unassigned clients stay admin-only until triaged.
             if rbac_filter is not None:
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(rbac_filter)
