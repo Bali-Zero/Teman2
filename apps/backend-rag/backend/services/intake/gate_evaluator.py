@@ -229,7 +229,10 @@ async def evaluate_gate_status(
         "late_note": {"count": late, "blocking": True},
         "deadlines": {"count": deadlines, "blocking": True},
     }
-    blocked = any(s["count"] > 0 for s in sections.values())
+    # F6 (TAC 2026-06-19): admins/owners see the counts (badge) but are
+    # NEVER walled by the gate — they reach /review when they choose, not
+    # by coercion. Operational reviewers (non-admin) stay gated until clear.
+    blocked = (not is_admin) and any(s["count"] > 0 for s in sections.values())
     return {
         "blocked": blocked,
         "sections": sections,
