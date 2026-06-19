@@ -19,7 +19,6 @@ CRM_EXTRA_ADMIN_EMAILS: frozenset[str] = frozenset(
         "admin@balizero.com",
         "admin@zantara.io",
         "asya@balizero.com",
-        "damar@balizero.com",
     },
 )
 
