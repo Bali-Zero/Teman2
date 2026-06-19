@@ -109,7 +109,7 @@ CONF_FOLDER_MATCH = 0.85
 _PERSON_DOC_TYPES = frozenset(
     {"passport", "npwp", "kitas", "itk", "itas", "itap"}
 )
-_COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian"})
+_COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian", "profil_perseroan"})
 
 # NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
 # match first when the npwp resolves a company row, else fall back to person.

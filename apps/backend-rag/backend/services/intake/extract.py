@@ -119,6 +119,14 @@ DOC_TYPE_FIELDS: dict[str, list[_FieldSpec]] = {
         ("notary", False, "notary (Notaris) name"),
         ("date", False, "deed date (prefer YYYY-MM-DD)"),
     ],
+    "profil_perseroan": [
+        ("company_name", False, "full legal company name (PT ...)"),
+        ("directors", True, "list of director (Direktur) full names"),
+        ("commissioners", True, "list of commissioner (Komisaris) full names"),
+        ("kbli_codes", True, "list of 5-digit KBLI / bidang-usaha codes"),
+        ("capital", False, "share-capital / modal structure amount"),
+        ("address", False, "registered company address"),
+    ],
     "passport": [
         ("passport_no", False, "passport number"),
         ("name", False, "full name of the holder"),
@@ -145,6 +153,9 @@ _DOC_TYPE_ALIASES: dict[str, str] = {
     "paspor": "passport",
     "kitas_card": "kitas",
     "itas": "kitas",
+    "company_profile": "profil_perseroan",
+    "profil_pt": "profil_perseroan",
+    "profile_perseroan": "profil_perseroan",
 }
 
 
