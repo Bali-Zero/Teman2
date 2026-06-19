@@ -228,6 +228,15 @@ describe("ReviewPage", () => {
     // Actions are disabled in read-only mode.
     expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+
+    // …and the now-terminal row is PRUNED from the in-memory queue so it can no
+    // longer be reopened as a zombie (it turned terminal mid-session — a full
+    // loadQueue() would also drop it, this does it eagerly). The list started
+    // with two cards (proposal 1 + the NO_MATCH proposal); after opening the
+    // terminal one, only the NO_MATCH 'Review' button remains.
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "Review" })).toHaveLength(1),
+    );
   });
 
   it("falls back to read-only 'claimed by another reviewer' on a live-claim 409", async () => {
