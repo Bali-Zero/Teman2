@@ -292,7 +292,7 @@ def _extract_pdf_textlayer_sync(pdf_bytes: bytes, max_pages: int) -> list[str | 
         return []
 
 
-def _upscale_if_below_min(im: "Any", Image: "Any") -> "Any":
+def _upscale_if_below_min(im: object, Image: object) -> object:
     """Upscale an image so its smallest side is >= MIN_OCR_DIMENSION.
 
     Guards qwen2.5vl's SmartResize panic on sub-28px images (kills the Ollama
