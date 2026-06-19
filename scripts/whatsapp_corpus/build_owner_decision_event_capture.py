@@ -265,6 +265,8 @@ def read_owner_event_inputs(
         decision_note = raw.get("decision_note")
         event_actor = raw.get("event_actor")
         event_recorded_at_utc = raw.get("event_recorded_at_utc")
+        if event_actor is not None and event_actor != DEFAULT_EVENT_ACTOR:
+            raise ValueError(f"Owner event actor is not allowed for {entry_id}")
         if event_recorded_at_utc is not None and not isinstance(event_recorded_at_utc, str):
             raise ValueError(f"Owner event for {entry_id} has invalid timestamp")
         events[entry_id] = OwnerDecisionEventInput(

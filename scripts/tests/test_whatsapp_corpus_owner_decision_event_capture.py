@@ -370,6 +370,36 @@ def test_build_owner_decision_event_capture_rejects_invalid_owner_decision(
         )
 
 
+def test_build_owner_decision_event_capture_rejects_non_owner_actor(
+    tmp_path: Path,
+) -> None:
+    ledger_db = tmp_path / "approve_reject_ledger.local.sqlite"
+    output_dir = tmp_path / "owner-decision-events"
+    owner_events_jsonl = output_dir / "owner_events.local.jsonl"
+    _write_approve_reject_ledger_db(ledger_db)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    owner_events_jsonl.write_text(
+        json.dumps(
+            {
+                "entry_id": "ledger-entry-followup",
+                "owner_decision": "approve",
+                "decision_note": "bad actor",
+                "event_actor": "operator",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="actor is not allowed"):
+        build_owner_decision_event_capture(
+            ledger_db=ledger_db,
+            owner_events_jsonl=owner_events_jsonl,
+            output_dir=output_dir,
+            summary_path=output_dir / "summary.md",
+        )
+
+
 def test_build_owner_decision_event_capture_rejects_unexpected_input_name(
     tmp_path: Path,
 ) -> None:

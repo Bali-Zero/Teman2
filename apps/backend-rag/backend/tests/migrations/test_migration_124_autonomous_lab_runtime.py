@@ -41,10 +41,16 @@ async def test_migration_124_status_and_event_constraints() -> None:
 
     assert "'pending'" in sql
     assert "'running'" in sql
+    assert "'paused'" in sql
     assert "'succeeded'" in sql
     assert "'failed_dlq'" in sql
     assert "'run_enqueued'" in sql
+    assert "'run_checkpointed'" in sql
+    assert "'run_paused'" in sql
     assert "'candidate_ready'" in sql
+    assert "'evaluation_recorded'" in sql
+    assert "'curator_decision_recorded'" in sql
+    assert "'shadow_run_completed'" in sql
 
 
 @pytest.mark.asyncio

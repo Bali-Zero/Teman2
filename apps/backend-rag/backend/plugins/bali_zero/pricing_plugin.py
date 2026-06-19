@@ -107,7 +107,7 @@ class PricingPlugin(Plugin):
                     error="Official prices not loaded",
                     fallback_contact={
                         "email": "info@balizero.com",
-                        "whatsapp": "+62 822 6459 9868",
+                        "whatsapp": "+62 821 3465 159",
                     },
                 )
 

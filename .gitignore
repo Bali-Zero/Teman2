@@ -32,6 +32,12 @@ uv.lock
 # Also catch .venv symlinks (without trailing slash, the dir-pattern misses them)
 .venv
 **/.venv
+# WR2 HTML renderer venv — its name doesn't match the .venv* patterns above, so
+# without this line `git status` shows it as `?? .venv-wr2-html/` and the deploy
+# puller flags the worktree DIRTY (scar W81/html-venv, 2026-06-17). Gitignore it
+# so it never counts as a local change.
+.venv-wr2-html/
+**/.venv-wr2-html/
 # apps/backend-rag/data/ holds large logs + raw assets we don't ship, BUT
 # apps/backend-rag/data/evaluation/ holds small static golden-query fixtures
 # that tests import at collection time — CI needs them in the repo.
@@ -235,6 +241,16 @@ docs/generated/
 !apps/mouth/public/**/*.png
 !apps/mouth/public/**/*.gif
 !apps/mouth/public/**/*.webp
+!apps/admin-dashboard/public/**/*.jpg
+!apps/admin-dashboard/public/**/*.jpeg
+!apps/admin-dashboard/public/**/*.png
+!apps/admin-dashboard/public/**/*.gif
+!apps/admin-dashboard/public/**/*.webp
+!apps/autonomous-lab/public/**/*.jpg
+!apps/autonomous-lab/public/**/*.jpeg
+!apps/autonomous-lab/public/**/*.png
+!apps/autonomous-lab/public/**/*.gif
+!apps/autonomous-lab/public/**/*.webp
 
 # Allow pricing assets (heros + icons generated via codex $imagegen)
 !docs/pricing/assets/**/*.png

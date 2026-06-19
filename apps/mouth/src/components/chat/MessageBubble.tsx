@@ -39,6 +39,7 @@ import { PricingResponse } from "@/types/pricing";
 import { TIMEOUTS, ANIMATION } from "@/constants";
 import { TeamVerificationBadge } from "./TeamVerificationBadge";
 import { NLMCitationPanel } from "./NLMCitationPanel";
+import { useChatLocale } from "@/hooks/useChatLocale";
 
 interface MessageBubbleProps {
   message: Message;
@@ -174,6 +175,39 @@ const EmotionalBadge = ({ emotion }: { emotion: string }) => {
 
 const nlmUiEnabled = process.env.NEXT_PUBLIC_ENABLE_NLM_UI !== "false";
 
+const LABELS = {
+  en: {
+    thinking: "Thinking Process",
+    followups: "SUGGESTED FOLLOW-UPS",
+    copy: "Copy message",
+    copied: "Message copied",
+  },
+  it: {
+    thinking: "Processo di pensiero",
+    followups: "FOLLOW-UP SUGGERITI",
+    copy: "Copia messaggio",
+    copied: "Messaggio copiato",
+  },
+  id: {
+    thinking: "Proses Berpikir",
+    followups: "SARAN PERTANYAAN",
+    copy: "Salin pesan",
+    copied: "Pesan disalin",
+  },
+  fr: {
+    thinking: "Processus de réflexion",
+    followups: "SUITES SUGGÉRÉES",
+    copy: "Copier le message",
+    copied: "Message copié",
+  },
+  ru: {
+    thinking: "Процесс мышления",
+    followups: "РЕКОМЕНДУЕМЫЕ ВОПРОСЫ",
+    copy: "Копировать сообщение",
+    copied: "Сообщение скопировано",
+  },
+} as const;
+
 function MessageBubbleComponent({
   message,
   userAvatar,
@@ -181,6 +215,8 @@ function MessageBubbleComponent({
   onFollowUpClick,
 }: MessageBubbleProps) {
   const thinkingId = React.useId();
+  const locale = useChatLocale();
+  const L = LABELS[locale as keyof typeof LABELS] || LABELS.en;
   const {
     role,
     content,
@@ -418,7 +454,7 @@ function MessageBubbleComponent({
                   aria-controls={thinkingId}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
-                  <span>Thinking Process</span>
+                  <span>{L.thinking}</span>
                   {isThinkingExpanded ? (
                     <ChevronDown className="w-3 h-3" />
                   ) : (
@@ -435,9 +471,9 @@ function MessageBubbleComponent({
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="pl-3 border-l-2 border-[var(--border)] space-y-2 py-1">
+                      <ul className="pl-3 border-l-2 border-[var(--border)] space-y-2 py-1">
                         {steps?.map((step, idx) => (
-                          <div
+                          <li
                             key={idx}
                             className="text-xs text-[var(--foreground-secondary)]"
                           >
@@ -513,9 +549,9 @@ function MessageBubbleComponent({
                                 )}
                               </div>
                             )}
-                          </div>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -578,22 +614,23 @@ function MessageBubbleComponent({
                 <div className="mt-4 pt-3 border-t border-[var(--border)]/50">
                   <p className="text-[10px] font-medium text-[var(--foreground-muted)] mb-2 flex items-center gap-1.5">
                     <MessageSquarePlus size={12} />
-                    SUGGESTED FOLLOW-UPS
+                    {L.followups}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <ul className="flex flex-wrap gap-2">
                     {message.metadata.followup_questions.map(
                       (question, idx) => (
-                        <button
-                          type="button"
-                          key={idx}
-                          onClick={() => onFollowUpClick?.(question)}
-                          className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200 focus-ring"
-                        >
-                          {question}
-                        </button>
+                        <li key={idx}>
+                          <button
+                            type="button"
+                            onClick={() => onFollowUpClick?.(question)}
+                            className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200 focus-ring"
+                          >
+                            {question}
+                          </button>
+                        </li>
                       ),
                     )}
-                  </div>
+                  </ul>
                 </div>
               )}
 
@@ -621,7 +658,7 @@ function MessageBubbleComponent({
               type="button"
               onClick={handleCopy}
               className="transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded opacity-70 hover:opacity-100 focus-ring"
-              aria-label="Copy message"
+              aria-label={copied ? L.copied : L.copy}
             >
               {copied ? (
                 <Check className="w-3 h-3 text-[var(--success)]" />

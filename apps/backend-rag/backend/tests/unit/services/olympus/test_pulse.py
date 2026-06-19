@@ -479,6 +479,7 @@ class TestRunFullPulse:
             patch.object(pulse, "cleanup_expired_sessions", new_callable=AsyncMock) as s,
             patch.object(pulse, "ensure_next_partition", new_callable=AsyncMock) as p,
             patch.object(pulse, "autovacuum_advisor", new_callable=AsyncMock) as a,
+            patch.object(pulse, "cleanup_olympus_self", new_callable=AsyncMock) as co,
         ):
             from backend.services.olympus.models import PulseAction
 
@@ -490,6 +491,7 @@ class TestRunFullPulse:
             s.return_value = PulseAction(action_type="cleanup_expired_sessions", outcome="success")
             p.return_value = None
             a.return_value = []
+            co.return_value = []
 
             actions = await pulse.run_full_pulse()
 
