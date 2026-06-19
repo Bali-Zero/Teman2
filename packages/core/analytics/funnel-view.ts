@@ -99,6 +99,7 @@ export async function trackFunnelEvent(
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      keepalive: true,
     });
   } catch {
     /* silent — analytics never blocks UX */

@@ -74,11 +74,15 @@ export function WhatsAppLeadButton({
         lead_intent_id: json.lead_intent_id,
         result_ref: resultHash,
       });
+      // Give fire-and-forget tracking calls (GA4 beacon) a brief window to
+      // dispatch before the redirect potentially cancels in-flight requests.
+      await new Promise((resolve) => setTimeout(resolve, 100));
       window.location.href = json.whatsapp_url;
     } catch {
       // Fallback handoff still counts as a CTA click — captured=false
       // distinguishes it (no lead_intents row was written).
       trackLeadWhatsAppCTA(source, { captured: false, result_ref: resultHash });
+      await new Promise((resolve) => setTimeout(resolve, 100));
       window.location.href = fallbackHref;
     } finally {
       setPending(false);
