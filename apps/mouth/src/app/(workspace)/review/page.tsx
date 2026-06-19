@@ -354,6 +354,14 @@ export default function ReviewPage() {
         let roReason: string | null = null;
         if (TERMINAL_STATUSES.has(d.status)) {
           roReason = `This proposal is ${terminalLabel(d.status)} — view only.`;
+          // Prune the now-terminal row from the in-memory list. A proposal can
+          // turn terminal because ANOTHER operator decided it while this page
+          // was open — loadQueue() only re-runs after *our* own decide, so the
+          // stale row lingers as a clickable zombie that always reopens
+          // read-only. Dropping it here keeps the queue honest without a full
+          // refetch (the backend WHERE status='review_pending' already excludes
+          // it, so a reload would drop it too — this just does it eagerly).
+          setItems((prev) => prev.filter((p) => p.proposal_id !== proposalId));
         } else {
           try {
             const claim = await api.post<ClaimResponse>(
@@ -366,10 +374,19 @@ export default function ReviewPage() {
               // Lost the race between list-load and click. Distinguish a
               // status that turned terminal from a live claim by another.
               const st = statusFromClaimError(claimErr);
-              roReason =
-                st && TERMINAL_STATUSES.has(st)
-                  ? `This proposal is ${terminalLabel(st)} — view only.`
-                  : "Claimed by another reviewer — view only.";
+              if (st && TERMINAL_STATUSES.has(st)) {
+                roReason = `This proposal is ${terminalLabel(st)} — view only.`;
+                // Same as the up-front terminal branch: another operator drove
+                // it to a terminal state mid-session — prune the zombie row.
+                setItems((prev) =>
+                  prev.filter((p) => p.proposal_id !== proposalId),
+                );
+              } else {
+                // Live claim held by a DIFFERENT reviewer — the row is NOT
+                // terminal, it is legitimately still pending for them; keep it
+                // in the list (it may free up when their lease expires).
+                roReason = "Claimed by another reviewer — view only.";
+              }
             } else {
               // A real claim failure (404/500/network). Detail already loaded;
               // surface a soft read-only notice rather than hiding the document.
