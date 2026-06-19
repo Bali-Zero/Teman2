@@ -273,7 +273,7 @@ Zantara — Bali Zero Team
 P.S. Save our contact info for future needs—we're always here to help! 😊
 
 ---
-📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 822 6459 9868
+📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 821 3465 159
 """
 
         await self._send_with_brevo_fallback(

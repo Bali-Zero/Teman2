@@ -82,6 +82,11 @@ STAGE_TRANSITIONS: dict[str, tuple[str, str]] = {
 
 # --- Defaults (overridable via env / constructor for tests). ---
 DEFAULT_LEASE_TTL_SECONDS = 900  # 15 min — must exceed the slowest stage.
+# Parallel in-flight jobs per worker process. Default 1 = legacy sequential.
+# Keep LOW: the OCR stage is bottlenecked on a single local Ollama GPU, so
+# high concurrency starves VRAM and causes empty-page timeouts. 2-3 overlaps
+# cheap stages (classify-advance/extract/route) with one in-flight OCR.
+DEFAULT_CONCURRENCY = 1
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 120  # 2 min, like workflow/queue.
 DEFAULT_POLL_INTERVAL_SECONDS = 2
 DEFAULT_BASE_BACKOFF_SECONDS = 2.0  # exponential: base * 2**(attempts-1).
@@ -138,6 +143,7 @@ class WorkerConfig:
     base_backoff_seconds: float = DEFAULT_BASE_BACKOFF_SECONDS
     max_backoff_seconds: float = DEFAULT_MAX_BACKOFF_SECONDS
     transient_backoff_seconds: float = DEFAULT_TRANSIENT_BACKOFF_SECONDS
+    concurrency: int = DEFAULT_CONCURRENCY
 
     @classmethod
     def from_env(cls) -> WorkerConfig:
@@ -165,6 +171,9 @@ class WorkerConfig:
                     "INTAKE_TRANSIENT_BACKOFF_SECONDS",
                     DEFAULT_TRANSIENT_BACKOFF_SECONDS,
                 )
+            ),
+            concurrency=max(
+                1, int(os.getenv("INTAKE_CONCURRENCY", DEFAULT_CONCURRENCY))
             ),
         )
 
@@ -629,7 +638,20 @@ class IntakeWorker:
                 if loop.time() - last_reap >= REAP_INTERVAL_SECONDS:
                     last_reap = loop.time()
                     await reap_expired_review_claims(self.pool)
-                did_work = await self.run_once()
+                n = self.config.concurrency
+                if n <= 1:
+                    did_work = await self.run_once()
+                else:
+                    # Fan out N concurrent claims. FOR UPDATE SKIP LOCKED in the
+                    # claim CTE guarantees each task grabs a distinct row (or None).
+                    results = await asyncio.gather(
+                        *(self.run_once() for _ in range(n)),
+                        return_exceptions=True,
+                    )
+                    for r in results:
+                        if isinstance(r, (asyncpg.PostgresError, asyncpg.InterfaceError, OSError)):
+                            raise r
+                    did_work = any(r is True for r in results)
                 db_failures = 0
                 if not did_work:
                     await self._sleep_or_stop(self.config.poll_interval_seconds)

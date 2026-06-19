@@ -184,14 +184,16 @@ async def test_intake_upstream_5xx_mapped_to_503(monkeypatch):
 
 
 async def test_intake_tight_timeout_configured(monkeypatch):
-    """The intake client uses a TIGHT timeout (connect<=3, read<=5), not the 300s RAG one."""
+    """The intake client fail-fasts on CONNECT (<=3s, the Pro-offline guard) and bounds READ
+    well under the 300s RAG timeout. Read is 30s — enough for the detail/blob round-trip over
+    the Pro's mobile tunnel (a 5s read budget mapped every detail open to a spurious 503)."""
     monkeypatch.setenv("INTAKE_REVIEW_WORKER_URL", "https://intake-review.balizero.com")
     # Force a fresh client to pick up the env-derived base_url.
     monkeypatch.setattr(rag_proxy, "_intake_client", None)
     client = await rag_proxy.get_intake_client()
     try:
         assert client.timeout.connect is not None and client.timeout.connect <= 3.0
-        assert client.timeout.read is not None and client.timeout.read <= 5.0
+        assert client.timeout.read is not None and client.timeout.read <= 30.0
     finally:
         await client.aclose()
         rag_proxy._intake_client = None

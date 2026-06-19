@@ -38,8 +38,11 @@ Decision matrix (C4)
 * ``LINK_CANDIDATE`` — a single probable match via the sender-phone signal
   (m225, conf ~0.90 — phones can be shared by spouse/agent so never auto) or
   via fuzzy name only (no strong identifier) → human confirmation recommended.
-* ``AMBIGUOUS``      — >= 2 plausible candidates (homonyms!) or strong-identifier
-  collision → human review mandatory.
+* ``AMBIGUOUS``      — >= 2 plausible candidates (homonyms!), a strong-identifier
+  collision, OR a sender-phone match whose OCR subject name DISAGREES with the
+  matched client (sender ≠ subject: the phone matched the FORWARDER, not the
+  document holder — reason carries ``sender_subject_mismatch: true``) → human
+  review mandatory, never one-click attach.
 * ``NO_MATCH``       — no candidate at all → potential new client, human review.
 """
 
@@ -77,6 +80,23 @@ CONF_PHONE_MATCH = 0.90
 # Boost applied when sender phone AND fuzzy name agree on the same client.
 PHONE_NAME_AGREE_BOOST = 0.05
 
+# Sender != subject guard (forwarder vs document holder).
+# When the sender-phone matches a CRM client but the OCR-extracted SUBJECT name
+# disagrees with that client, the match is driven by WHO FORWARDED the document,
+# not WHOSE document it is (a Bali Zero agent/staffer forwarding a client doc).
+# Such a candidate must NOT be presented as a confident one-click LINK_CANDIDATE.
+#
+# Calibration (live proposals, 2026-06-17):
+#   * 12927 Gennaro Piraino  — phone 0.90, fuzzy name sim 0.6154, SAME client id
+#       (sender IS the subject, just OCR noise) → must stay LINK_CANDIDATE.
+#   * 12693 Yanti BS / 12682 Adi Bayu Santero / 16251 Andrea 23 Paradise —
+#       phone 0.90 but the OCR subject name does NOT resolve to the phone client
+#       (no corroborating fuzzy candidate ≥ this floor) → flagged & downgraded.
+# The trigger is genuine name DISAGREEMENT (different person / no corroboration
+# despite a name being present), NEVER merely "name_sim < 1.0": same-client trgm
+# agreement at 0.62 passes, a different-person name is flagged.
+SENDER_SUBJECT_AGREE_MIN_SIM = 0.45
+
 # Folder-name match (m227). Drive-intake blobs arrive under a per-client folder
 # (Dropbox-Intake/<Client Name>/...): the transport layer knows WHICH FOLDER the
 # blob came from, like the phone knows who sent it. Human-typed and shared-folder
@@ -86,7 +106,9 @@ CONF_FOLDER_MATCH = 0.85
 # Doc-types whose subject is a PERSON (match against ``clients``) vs a COMPANY
 # (match against ``companies``). canonical_doc_type() upstream already maps
 # aliases (paspor->passport, akta->akta_pendirian, ...).
-_PERSON_DOC_TYPES = frozenset({"passport", "npwp", "kitas"})
+_PERSON_DOC_TYPES = frozenset(
+    {"passport", "npwp", "kitas", "itk", "itas", "itap"}
+)
 _COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian"})
 
 # NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
@@ -417,6 +439,7 @@ def _classify_decision(
     strong: list[dict[str, Any]],
     fuzzy: list[dict[str, Any]],
     phone: list[dict[str, Any]] | None = None,
+    subject_name: str | None = None,
 ) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
     """Apply the C4 decision matrix to strong + transport-hint + fuzzy lists.
 
@@ -429,6 +452,15 @@ def _classify_decision(
     LINK_CANDIDATE; disagreeing, BOTH are surfaced for review; matching >1 row
     it degrades to AMBIGUOUS.
 
+    ``subject_name`` is the OCR-extracted SUBJECT name (person or company) of the
+    document, when present. It lets the matrix tell apart two phone-only cases
+    that otherwise look identical: (a) the doc carries NO subject name → the
+    phone is the only signal, keep the conservative LINK_CANDIDATE; (b) the doc
+    DOES carry a subject name but it does NOT corroborate the phone-matched
+    client → the phone matched WHO FORWARDED the doc, not whose doc it is
+    (sender ≠ subject). Case (b) is flagged ``sender_subject_mismatch`` and
+    downgraded to AMBIGUOUS so a human must confirm — never one-click attach.
+
     Returns ``(decision, candidates, reason)``.
     """
     phone = list(phone or [])
@@ -436,6 +468,9 @@ def _classify_decision(
         "folder name" if phone and phone[0].get("basis") == "folder" else "sender phone"
     )
     hint_score_key = "folder_score" if hint_label == "folder name" else "phone_score"
+    # How to phrase the sender != subject downgrade: a phone names a FORWARDER,
+    # a folder names a CARRIER context — both are "who delivered it", not "whose".
+    hint_role = "the folder" if hint_label == "folder name" else "the FORWARDER"
 
     # De-dup strong candidates by (table, id).
     seen: set[tuple[str, int]] = set()
@@ -469,10 +504,18 @@ def _classify_decision(
                 "reason": f"{len(phone)} clients share the {hint_label}",
             }
         pc = phone[0]
+        # Did the document carry a real SUBJECT name to corroborate the hint?
+        has_subject_name = bool(subject_name and subject_name.strip())
         if usable:
             top_f = usable[0]
-            if top_f["table"] == pc["table"] and top_f["id"] == pc["id"]:
-                # Hint + name agree on the same client → boosted candidate.
+            if (
+                top_f["table"] == pc["table"]
+                and top_f["id"] == pc["id"]
+                and top_f["score"] >= SENDER_SUBJECT_AGREE_MIN_SIM
+            ):
+                # Hint + name agree on the SAME client (OCR noise tolerated) →
+                # boosted candidate. This is the innocence case (e.g. 12927:
+                # same client, name_sim 0.62) — must NOT be flagged.
                 boosted = dict(pc)
                 boosted["score"] = round(
                     min(CONF_STRONG_EXACT - 0.01, pc["score"] + PHONE_NAME_AGREE_BOOST), 4
@@ -482,11 +525,34 @@ def _classify_decision(
                     "reason": f"{hint_label} and fuzzy name agree on the same client",
                     hint_score_key: pc["score"], "name_sim": top_f["score"],
                 }
-            # Hint and name point at DIFFERENT rows → surface both for review.
-            return DECISION_LINK_CANDIDATE, [pc, top_f], {
-                "reason": f"{hint_label} and fuzzy name disagree — review both",
+            # Hint and name point at DIFFERENT clients (the doc subject is a
+            # different person than the sender) → sender ≠ subject. Downgrade to
+            # AMBIGUOUS: the phone matched the FORWARDER, not the document holder.
+            return DECISION_AMBIGUOUS, [pc, top_f], {
+                "reason": (
+                    f"{hint_label} matched {hint_role}, not the document "
+                    f"subject — confirm this is {pc.get('name')}'s document"
+                ),
                 hint_score_key: pc["score"], "name_sim": top_f["score"],
+                "sender_subject_mismatch": True,
+                "subject_name": (subject_name or "").strip() or None,
             }
+        if has_subject_name:
+            # A subject name WAS extracted but resolved to NO client at all (not
+            # even a weak fuzzy hit ≥ 0.40): the named subject is unknown to the
+            # CRM while the phone matches the sender → sender ≠ subject again.
+            # Flag for human confirmation rather than a confident one-click link.
+            return DECISION_AMBIGUOUS, [pc], {
+                "reason": (
+                    f"{hint_label} matched {hint_role}, not the document "
+                    f"subject — confirm this is {pc.get('name')}'s document"
+                ),
+                hint_score_key: pc["score"],
+                "sender_subject_mismatch": True,
+                "subject_name": subject_name.strip(),
+            }
+        # No subject name on the document at all → the phone is the only signal
+        # and we cannot prove a mismatch. Keep the conservative LINK_CANDIDATE.
         return DECISION_LINK_CANDIDATE, [pc], {
             "reason": f"{hint_label} match (no strong identifier, no fuzzy name)",
             hint_score_key: pc["score"],
@@ -592,11 +658,20 @@ async def resolve_entity(
                 subject_kind = "person" if phone[0]["table"] == "clients" else "company"
 
         # Fuzzy name fallback (only matters when no strong identifier resolved).
+        # ``subject_name`` is the document's OCR-extracted subject (company or
+        # person) — passed to the decision matrix so a sender-phone hit whose
+        # named subject DISAGREES with the matched client is flagged sender ≠
+        # subject (forwarder, not document holder) instead of confident-linked.
+        subject_name: str | None = None
         if not strong:
             company_name = _field_value(extracted_fields, "company_name")
             person_name = (
                 _field_value(extracted_fields, "name")
                 or _field_value(extracted_fields, "full_name")
+            )
+            subject_name = (
+                str(company_name) if company_name
+                else (str(person_name) if person_name else None)
             )
             if company_name:
                 fuzzy += await _match_fuzzy_name(conn, "companies", "company_name", str(company_name))
@@ -608,7 +683,9 @@ async def resolve_entity(
                 if pf and subject_kind == "unknown":
                     subject_kind = "person"
 
-        decision, candidates, reason = _classify_decision(strong, fuzzy, phone)
+        decision, candidates, reason = _classify_decision(
+            strong, fuzzy, phone, subject_name=subject_name
+        )
         return {
             "decision": decision,
             "candidates": candidates,
