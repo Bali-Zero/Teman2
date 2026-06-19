@@ -236,6 +236,7 @@ def _document_payload(
         "npwp": "tax",
         "nib": "pma",
         "akta_pendirian": "pma",
+        "profil_perseroan": "pma",
     }
     category = category_map.get(doc_type)
 
