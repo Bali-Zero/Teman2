@@ -305,6 +305,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
 DOC_TYPES: tuple[str, ...] = (
     "passport",
     "akta_pendirian",
+    "profil_perseroan",
     "nib",
     "npwp",
     "kitas",
@@ -362,6 +363,15 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("perseroan terbatas", 0.3),
         ("anggaran dasar", 0.4),
         ("akta nomor", 0.3),
+    ],
+    "profil_perseroan": [
+        ("profil perseroan", 0.6),
+        ("company profile", 0.45),
+        ("profil pt", 0.5),
+        ("profile perseroan", 0.5),
+        ("bidang usaha", 0.2),
+        ("struktur permodalan", 0.3),
+        ("susunan pengurus", 0.25),
     ],
     "sk_kemenkumham": [
         ("kementerian hukum dan hak asasi manusia", 0.5),
