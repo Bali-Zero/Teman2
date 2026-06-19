@@ -142,9 +142,15 @@ async def get_proxy_client() -> httpx.AsyncClient:
 async def get_intake_client() -> httpx.AsyncClient:
     """Persistent client for the intake-review target (Golden Rule #10 — never per-request).
 
-    TIGHT timeouts (connect=3, read=5): the Pro reader is over a Cloudflare Tunnel and may be
-    offline. A short fail-fast prevents a Pro outage from exhausting the Fly worker pool and
-    taking down the WHOLE api (Gemini P0 / Codex P1#3). Bounded base_url to the tunnel host.
+    Timeouts (connect=3, read=30): a SHORT connect (3s) still fail-fasts when the Pro is
+    offline — an unreachable tunnel fails at connect, so a Pro outage can't exhaust the Fly
+    worker pool and take down the WHOLE api (Gemini P0 / Codex P1#3). But the READ budget must
+    cover the full round-trip over the Cloudflare Tunnel on the Pro's mobile/hotspot uplink:
+    the detail/blob endpoints (which load the document blob + candidate clients) routinely take
+    >5s end-to-end, so a 5s read budget mapped EVERY detail open to a spurious 503 "reader
+    offline" while /queue (a fast PG read) stayed 200. 30s read covers the slow link without
+    re-opening the worker-pool-exhaustion risk (connect, not read, is the offline guard).
+    Bounded base_url to the tunnel host.
     """
     global _intake_client
     if _intake_client is None or _intake_client.is_closed:
@@ -153,7 +159,7 @@ async def get_intake_client() -> httpx.AsyncClient:
                 base = get_intake_review_worker_url()
                 _intake_client = httpx.AsyncClient(
                     base_url=base or "",
-                    timeout=httpx.Timeout(5.0, connect=3.0),
+                    timeout=httpx.Timeout(30.0, connect=3.0),
                     limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
                 )
     return _intake_client
