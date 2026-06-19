@@ -259,26 +259,30 @@ async def test_queue_drive_source_gated_out(pool, seed):
 
 async def test_queue_source_allowlist_env_readmits_drive(pool, seed, monkeypatch):
     """INTAKE_REVIEW_SOURCES re-admits a source without a code change ('for now'
-    is a config, not a hardcode). With drive admitted, ?source=drive surfaces the
-    Drive seed again."""
-    monkeypatch.setenv("INTAKE_REVIEW_SOURCES", "whatsapp,drive")
+    is a config, not a hardcode).
+
+    Asserted by the GATE, not by finding the seed: against the live nuzantara_dev
+    (thousands of real Drive rows), ?source=drive returns total=0 by DEFAULT and
+    total>0 once drive is admitted. We never page the whole Drive backlog (that is
+    slow and races the live drain cron); the total flip is the contract.
+    """
     app = _make_app(pool, ADMIN)
-    ids: set[int] = set()
     async with _client(app) as cl:
-        offset = 0
-        page_size = 200
-        while True:
-            r = await cl.get(
-                "/api/intake/review/queue",
-                params={"source": "drive", "limit": page_size, "offset": offset},
-            )
-            assert r.status_code == 200, r.text
-            body = r.json()
-            ids.update(it["proposal_id"] for it in body["items"])
-            offset += page_size
-            if len(body["items"]) < page_size or offset >= body["total"]:
-                break
-    assert seed["p_null"] in ids
+        # Default allowlist (whatsapp only): Drive is gated → empty.
+        r_default = await cl.get(
+            "/api/intake/review/queue", params={"source": "drive", "limit": 1}
+        )
+        assert r_default.status_code == 200, r_default.text
+        assert r_default.json()["total"] == 0
+
+        # Re-admit drive via env → the same query now reports the real backlog.
+        monkeypatch.setenv("INTAKE_REVIEW_SOURCES", "whatsapp,drive")
+        r_admitted = await cl.get(
+            "/api/intake/review/queue", params={"source": "drive", "limit": 1}
+        )
+        assert r_admitted.status_code == 200, r_admitted.text
+        # The seeded p_null (source=drive) guarantees at least one row exists.
+        assert r_admitted.json()["total"] >= 1
 
 
 async def test_queue_team_rbac_filter(pool, seed):
