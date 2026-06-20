@@ -61,6 +61,10 @@ const ProcessStepper = dynamic(
   { ssr: false },
 );
 import { usePortalProcessTimeline } from "@/hooks/usePortalProcessTimeline";
+import {
+  PracticeBaton,
+  statusToBaton,
+} from "@/components/portal/PracticeBaton";
 
 // Status configurations
 const STATUS_CONFIG = {
@@ -337,13 +341,20 @@ function ProcessCard({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Your Turn / Our Turn baton — derived from the practice status.
+              The single signal that tells the client whether THEY must act. */}
+          <PracticeBaton
+            status={process.processStatus}
+            compact
+            className="hidden sm:flex"
+          />
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium">
               {verifiedCount}/{totalCount} documents
             </p>
             <div
-              className="w-24 h-1.5 rounded-full mt-1 border border-[rgba(255,255,255,0.05)]"
-              style={{ background: "rgba(255,255,255,0.05)" }}
+              className="w-24 h-1.5 rounded-full mt-1 border border-[var(--bz-border)]"
+              style={{ background: "var(--bz-border)" }}
             >
               <div
                 className="h-full bg-[var(--accent)] rounded-full transition-all"
@@ -408,9 +419,49 @@ function ProcessCard({
       {/* Documents List */}
       {isExpanded && (
         <div
-          className="border-t divide-y divide-[rgba(255,255,255,0.05)]"
-          style={{ borderColor: "rgba(255,255,255,0.05)" }}
+          className="border-t divide-y divide-[var(--bz-border)]"
+          style={{ borderColor: "var(--bz-border)" }}
         >
+          {/* Your Turn / Our Turn full banner — the hard dependency made explicit.
+              When it's the client's turn, surface the concrete next action
+              (the first pending document) so they know exactly what to do. */}
+          {(() => {
+            const baton = statusToBaton(process.processStatus);
+            const firstPending = process.documents.find(
+              (d) => d.status === "pending" || d.status === "rejected",
+            );
+            const statusLabel =
+              PROCESS_STATUS_CONFIG[process.processStatus]?.label ||
+              process.processStatus;
+            return (
+              <div
+                className="p-4"
+                style={{ borderBottom: "1px solid var(--bz-border)" }}
+              >
+                <PracticeBaton
+                  status={process.processStatus}
+                  statusLabel={statusLabel}
+                  nextActionLabel={
+                    baton === "your_turn"
+                      ? firstPending
+                        ? `Upload: ${firstPending.document_label}`
+                        : "Review what's needed below"
+                      : undefined
+                  }
+                  onAction={() => {
+                    if (firstPending) {
+                      document
+                        .getElementById(`doc-${firstPending.id}`)
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                    }
+                  }}
+                />
+              </div>
+            );
+          })()}
           {process.documents.length === 0 ? (
             <div
               className="p-6 text-center"
@@ -423,6 +474,7 @@ function ProcessCard({
             process.documents.map((doc) => (
               <div
                 key={doc.id}
+                id={`doc-${doc.id}`}
                 className={`p-4 flex items-start justify-between gap-3 ${
                   doc.is_required ? "border-l-2 border-l-amber-500" : ""
                 }`}
