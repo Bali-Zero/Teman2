@@ -40,6 +40,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
 
 logger = logging.getLogger("zantara.backend")
@@ -69,8 +70,30 @@ def is_bot_autoreply_enabled() -> bool:
     )
 
 
+def _rag_client_headers() -> dict[str, str]:
+    """Service-to-service auth for the api→rag hop.
+
+    ``/api/agentic-rag/query`` is NOT a public endpoint, so HybridAuthMiddleware
+    rejects an unauthenticated hop with 401 "Authentication required". Send the
+    X-Internal-Key header (settings.wa_mirror_internal_key, Fly secret
+    WA_MIRROR_INTERNAL_KEY) — the middleware maps a matching key to a
+    "role=internal" pseudo-user, the same channel Pro-side internal scripts use.
+    Without this the bot can NEVER generate a reply (every call → 401 → worker
+    marks the row failed).
+    """
+    internal_key = getattr(settings, "wa_mirror_internal_key", None)
+    if internal_key:
+        return {"X-Internal-Key": internal_key}
+    logger.warning(
+        "wa-inbox bot: WA_MIRROR_INTERNAL_KEY not configured — "
+        "RAG calls will be rejected by HybridAuthMiddleware (401)"
+    )
+    return {}
+
+
 async def _get_rag_client() -> httpx.AsyncClient:
     global _rag_client
+    headers = _rag_client_headers()
     if _rag_client is None or _rag_client.is_closed:
         async with _rag_client_lock:
             if _rag_client is None or _rag_client.is_closed:
@@ -78,6 +101,7 @@ async def _get_rag_client() -> httpx.AsyncClient:
                     base_url=get_rag_worker_url(),
                     timeout=httpx.Timeout(120.0, connect=10.0),
                     limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+                    headers=headers,
                 )
     return _rag_client
 
