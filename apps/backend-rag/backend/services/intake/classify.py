@@ -195,38 +195,47 @@ def _heuristic_confidence(text: str) -> float:
     return round(max(0.0, base - penalty), 3)
 
 
-# qwen2.5vl in Ollama (>=0.20.x) panics in SmartResize when an image dimension
-# is below the patch factor (28px): "height:N or width:N must be larger than
-# factor:28" -> the runner crashes -> HTTP 500 -> the whole job stalls at
-# ocr_done with chars=0 (SCAR 2026-06-20: this silently froze the intake tail
-# for 33h). Pad any too-small page up to MIN_OCR_DIM before sending to the VLM.
+# qwen2.5vl in Ollama (>=0.20.x) crashes its runner on two classes of input,
+# both surfacing as HTTP 500 -> page chars=0 -> job stalls at ocr_done forever
+# (SCAR 2026-06-20: this silently froze the intake tail for 33h):
+#   1. "height:N or width:N must be larger than factor:28" — SmartResize panic
+#      on any dimension below the 28px patch factor.
+#   2. "image: unknown format" — non-PNG/odd-encoded bytes (HEIC/WebP/TIFF or a
+#      mis-rendered page) Ollama's Go image decoder cannot parse.
+# Fix: re-encode EVERY page through PIL to a canonical RGB PNG and pad it up to
+# MIN_OCR_DIM. This normalizes format AND size in one pass. PIL handles far more
+# formats than Ollama's decoder, so "unknown format" pages become valid PNGs.
 MIN_OCR_DIM = 32  # one patch above the 28px factor, safe margin
 
 
 def _ensure_min_size(png: bytes) -> bytes:
-    """Pad a PNG so both dimensions are >= MIN_OCR_DIM. No-op if already large
-    enough or if PIL/parse fails (degrade to original bytes, never crash)."""
+    """Re-encode any image to a canonical RGB PNG and pad to >= MIN_OCR_DIM.
+    Normalizes both format ('unknown format') and size (SmartResize panic).
+    Degrades to original bytes if PIL cannot parse it at all (never crash)."""
     try:
         import io
 
         from PIL import Image
 
         with Image.open(io.BytesIO(png)) as im:
+            im = im.convert("RGB")
             w, h = im.size
-            if w >= MIN_OCR_DIM and h >= MIN_OCR_DIM:
-                return png
             new_w, new_h = max(w, MIN_OCR_DIM), max(h, MIN_OCR_DIM)
-            canvas = Image.new("RGB", (new_w, new_h), (255, 255, 255))
-            canvas.paste(im.convert("RGB"), (0, 0))
+            if (new_w, new_h) != (w, h):
+                canvas = Image.new("RGB", (new_w, new_h), (255, 255, 255))
+                canvas.paste(im, (0, 0))
+                im = canvas
             out = io.BytesIO()
-            canvas.save(out, format="PNG")
-            logger.info(
-                "intake OCR padded undersized page %dx%d -> %dx%d (avoids qwen25vl SmartResize panic)",
-                w, h, new_w, new_h,
-            )
-            return out.getvalue()
-    except Exception as exc:  # never let padding break OCR
-        logger.warning("intake OCR _ensure_min_size skipped: %s", exc)
+            im.save(out, format="PNG")
+            data = out.getvalue()
+            if (new_w, new_h) != (w, h) or len(data) != len(png):
+                logger.info(
+                    "intake OCR normalized page %dx%d -> %dx%d PNG (size/format safe for qwen25vl)",
+                    w, h, new_w, new_h,
+                )
+            return data
+    except Exception as exc:  # never let normalization break OCR
+        logger.warning("intake OCR _ensure_min_size skipped (unparseable): %s", exc)
         return png
 
 
