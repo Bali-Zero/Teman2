@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WA_AUTO_PROMOTE_SELFHEAL_ENABLED</key>
+		<string>1</string>
+	</dict>
+	<key>Label</key>
+	<string>com.balizero.wa-mirror-auto-promote-selfheal</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3</string>
+		<string>/Users/nuzantara/scripts/wa-mirror-auto-promote-selfheal.py</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wa-mirror-auto-promote-selfheal.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wa-mirror-auto-promote-selfheal.out.log</string>
+	<key>StartInterval</key>
+	<integer>1800</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara</string>
+</dict>
+</plist>
