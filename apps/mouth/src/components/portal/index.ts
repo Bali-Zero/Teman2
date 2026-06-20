@@ -28,5 +28,12 @@ export {
 
 export { ProcessStepper } from "./ProcessStepper";
 
+export {
+  PracticeBaton,
+  statusToBaton,
+  STATUS_TO_BATON,
+  type Baton,
+} from "./PracticeBaton";
+
 export { PortalEmptyState } from "./PortalEmptyState";
 export { PortalBackButton } from "./PortalBackButton";
