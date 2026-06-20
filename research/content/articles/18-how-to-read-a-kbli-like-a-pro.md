@@ -1,0 +1,48 @@
+---
+date: 2026-06-21
+domain: compliance
+client_case: none
+kbli_codes:
+  - "56301 — Aktivitas Bar — National: TERBUKA 100% — Bali: OK_or_HIGHER_RISK (registrable) — used as the worked OSS example (judul/uraian/ruang lingkup)"
+  - "56303 — Aktivitas Rumah Minum/Kafe — National: TERBUKA 100% — Bali: BLOCCATO_CLASSE_RISCHIO (blocked) — the neighbour that the uraian distinguishes"
+status: published-draft
+---
+
+# How to Read a KBLI Like a Pro
+
+Most foreigners treat a KBLI code as a label — a five-digit sticker that says "restaurant" or "consulting" or "villa." That is exactly the mistake that ends in a wrong registration. A KBLI entry is not a label; it is a small legal document with parts, and each part answers a different question. Learn to read the parts, and you stop guessing.
+
+Let's read a real one, straight from the 2025 OSS ground-truth: **KBLI 56301, Aktivitas Bar.**
+
+## Part 1 — Judul: the title (what it's called)
+
+The **judul** is the official name of the activity. For our code it is simply **"Aktivitas Bar."** This is the headline — useful for searching, useless for deciding. Two codes can have near-identical titles and opposite fates. The judul tells you what bucket you're near; it does not tell you whether you belong in it. Never register on the strength of a title alone.
+
+## Part 2 — Uraian: the description (what it actually covers)
+
+The **uraian** is where the real decision lives. It is the prose definition of what the activity includes — and, just as importantly, excludes. Here is the actual 2025 uraian for 56301 (translated):
+
+> "This group covers activities primarily serving drinks, both alcoholic (such as spirits, beer, wine, whisky) and non-alcoholic. This group also covers — **beach clubs that primarily serve drinks**; bar activities aboard transport such as trains or ships, when carried out by a separate unit."
+
+Read that closely and three things jump out. First, the activity is defined by **serving drinks**, not food. Second — and this is the kind of detail only the uraian gives you — a **beach club** that primarily serves drinks lives *here*, under the bar code, not under some "beach club" code (there isn't one). Third, by implication, a venue whose primary activity is serving *food* or *coffee* is **not** 56301 — it belongs to a different code.
+
+That last point is decisive in Bali. The drinks-led venue (56301, Bar) is **registrable for a PMA**. The food-and-coffee-led venue (56303, Rumah Minum/Kafe) is **blocked** under the moratorium. The line between "I can register this" and "I cannot" is drawn inside the uraian — in the word "primarily." Read the label and you'd never see it; read the description and it's the whole story.
+
+## Part 3 — Ruang lingkup: the scope (the activity's reach)
+
+The **ruang lingkup** is the declared scope of the activity. For 56301 the 2025 data records the scope as **"Seluruh"** — *all / entire* — meaning the code covers the full breadth of the bar activity rather than a narrow carve-out. For other codes, the scope is where activities split into low-risk and higher-risk variants, and — as we cover elsewhere in this series — that scope choice can decide whether a foreigner can register at all (a code can be blocked on its low-risk scope but registrable on a higher-risk one). The scope is not decoration; it is sometimes the lever.
+
+## Reading it the way a professional does
+
+Put the parts in the right order and the workflow is obvious:
+
+1. **Search by judul** to find candidate codes — but never stop there.
+2. **Read the uraian word by word.** Find the verb that defines the activity ("serving drinks") and the includes/excludes. This is where you discover your real code is the neighbour, not the one you assumed.
+3. **Check the ruang lingkup** — is the activity whole, or split into scopes that change the risk and the registrability?
+4. **Only then** check the national ownership status and the Bali risk class.
+
+The amateur reads the title and registers a café when they wanted a bar — and finds out at the OSS counter that one is blocked and the other isn't. The professional reads the uraian and registers the right code the first time.
+
+A KBLI code rewards close reading the way a contract does. The five digits are the citation; the uraian is the clause that binds you.
+
+*Read the full judul, uraian, and scope of your candidate code — alongside its national and Bali status — on the Bali Zero KBLI Navigator at balizero.com, so you register against what the code actually says, not what its title suggests.*
