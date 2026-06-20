@@ -147,3 +147,37 @@ async def test_escalate_marker_stripped(monkeypatch):
     answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
     assert "[ESCALATE]" not in answer
     assert answer == "Ti metto in contatto col team"
+
+
+# ── Service-to-service auth header (X-Internal-Key) ──
+# Regression guard for the silent-401 bug: /api/agentic-rag/query is not public,
+# so the api→rag hop MUST carry X-Internal-Key or HybridAuthMiddleware rejects it
+# with 401 → the worker marks every bot row failed → the bot never replies.
+
+
+def test_rag_client_headers_sends_internal_key_when_configured(monkeypatch):
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {"X-Internal-Key": "secret-xyz"}
+
+
+def test_rag_client_headers_omits_internal_key_and_warns_when_unset(monkeypatch, caplog):
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", None)
+    with caplog.at_level("WARNING"):
+        headers = wa_inbox_bot._rag_client_headers()
+    assert headers == {}
+    assert any("WA_MIRROR_INTERNAL_KEY not configured" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_get_rag_client_applies_internal_key_header(monkeypatch):
+    """End-to-end: the cached client carries the X-Internal-Key header."""
+    monkeypatch.setattr(wa_inbox_bot, "_rag_client", None)
+    monkeypatch.setattr(wa_inbox_bot.settings, "wa_mirror_internal_key", "secret-xyz")
+    monkeypatch.setattr(wa_inbox_bot, "get_rag_worker_url", lambda: "http://rag.internal:8080")
+    client = await wa_inbox_bot._get_rag_client()
+    try:
+        assert client.headers.get("x-internal-key") == "secret-xyz"
+    finally:
+        await client.aclose()
+        wa_inbox_bot._rag_client = None
