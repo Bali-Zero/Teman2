@@ -28,7 +28,7 @@ const BOXES: Box[] = [
     title: "KBLI Navigator",
     desc: "Complete Indonesian business classification with PMA eligibility and risk scoring.",
     stats: [
-      { l: "Categories", v: "1,563" },
+      { l: "Categories", v: "1,559" },
       { l: "PMA eligible", v: "847" },
       { l: "Updated", v: "KBLI 2025" },
     ],
