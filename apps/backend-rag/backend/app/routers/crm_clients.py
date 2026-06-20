@@ -1144,9 +1144,9 @@ async def upsert_client_by_phone(
                       $1, '+' || $2, '+' || $2, $2,
                       'lead', 'individual', $3, $4,
                       $5, $5, $6,
-                      $7,
-                      CASE WHEN $7 IS NULL THEN NULL ELSE 'ollama_local' END,
-                      CASE WHEN $7 IS NULL THEN NULL ELSE NOW() END
+                      $7::text,
+                      CASE WHEN $7::text IS NULL THEN NULL ELSE 'ollama_local' END,
+                      CASE WHEN $7::text IS NULL THEN NULL ELSE NOW() END
                     )
                     RETURNING id
                     """,
