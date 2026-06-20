@@ -200,14 +200,18 @@ async def fetch_unclassified_inbound(conn: asyncpg.Connection) -> list[dict]:
           m.created_at,
           m.client_id,
           m.practice_id,
-          REGEXP_REPLACE(m.raw_baileys_event->'key'->>'senderPn', '@.*', '') AS phone,
+          -- WhatsApp LID migration (~2026-05-25): raw_baileys_event.key.senderPn was
+          -- dropped; identity now lives in the structured sender_phone column (E.164,
+          -- already LID-resolved upstream by wa-mirror-auto-promote-leads.py). Strip to
+          -- digits to match clients.phone_normalized (stored as bare 62… digits).
+          REGEXP_REPLACE(m.sender_phone, '\\D', '', 'g') AS phone,
           COALESCE(NULLIF(m.body,''), NULLIF(m.message_text,'')) AS body,
           m.media_type,
           m.media_stored_path
         FROM whatsapp_message_context m
         WHERE m.direction = 'inbound'
           AND m.attention_priority IS NULL
-          AND m.raw_baileys_event->'key'->>'senderPn' ~ '^[0-9]+@'
+          AND m.sender_phone IS NOT NULL
         ORDER BY m.created_at DESC
         LIMIT 200
       )
@@ -224,7 +228,7 @@ async def fetch_unclassified_inbound(conn: asyncpg.Connection) -> list[dict]:
                       AND p.status NOT IN ('completed','cancelled','rejected')
                       AND p.actual_completion_date IS NULL) AS has_active_practice,
              (SELECT COUNT(*) FROM whatsapp_message_context m2
-              WHERE REGEXP_REPLACE(m2.raw_baileys_event->'key'->>'senderPn','@.*','') = u.phone
+              WHERE REGEXP_REPLACE(m2.sender_phone,'\\D','','g') = u.phone
                 AND m2.direction='inbound'
                 AND m2.attention_resolved_at IS NULL
                 AND m2.created_at >= u.created_at - INTERVAL '48 hours'
@@ -248,8 +252,9 @@ async def apply_decay(conn: asyncpg.Connection) -> int:
       FROM (
         SELECT inb.id,
                (SELECT MIN(out_.created_at) FROM whatsapp_message_context out_
-                WHERE REGEXP_REPLACE(out_.raw_baileys_event->'key'->>'senderPn','@.*','')
-                      = REGEXP_REPLACE(inb.raw_baileys_event->'key'->>'senderPn','@.*','')
+                -- inbound client = sender_phone; outbound client = counterpart_phone
+                WHERE REGEXP_REPLACE(out_.counterpart_phone,'\\D','','g')
+                      = REGEXP_REPLACE(inb.sender_phone,'\\D','','g')
                   AND out_.direction='outbound'
                   AND out_.created_at > inb.created_at
                   AND out_.created_at <= inb.created_at + INTERVAL '2 hours'
