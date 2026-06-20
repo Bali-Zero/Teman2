@@ -194,6 +194,19 @@ def main() -> int:
         )
         return 0
 
+    # --- Signal 2b: DB unreachable (detect-only; transient, recovers on its own) ---
+    if any(r.get("action") == "DEGRADED_DB_UNREACHABLE" for r in recent):
+        _audit(
+            {
+                "action": "HEAL_DB_UNREACHABLE_NOTED",
+                "detail": "local Postgres was unreachable recently (typically the Pro "
+                "just rebooted and PG was not up yet) — not auto-repaired (transient, "
+                "the bounded retry in auto-promote recovers on the next tick). Recorded "
+                "so a persistent DB outage is visible rather than a raw traceback.",
+            }
+        )
+        return 0
+
     # --- Signal 3: silent stall (runs but pushes nothing for too long) ------------
     pushes = [r for r in recent if r.get("action") in {"INSERTED", "ENRICHED"}]
     summaries = [r for r in recent if "candidates" in r]
