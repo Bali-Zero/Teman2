@@ -641,3 +641,78 @@ class TestGetRedisClient:
         with patch.dict(sys.modules, {"backend.core.redis_manager": mock_redis_module}):
             result = _get_redis_client()
             assert result is mock_client
+
+
+# --------------------------------------------------------------------------- #
+# _process_dlq — adapter-missing must NOT orphan the row (2026-06-21 fix)
+# --------------------------------------------------------------------------- #
+
+
+class TestProcessDlqAdapterMissing:
+    """Regression: a channel with no adapter in the loop's process group used to
+    `continue` silently → row stuck pending attempt_count=0 forever (43 IG rows
+    for a week). Now it counts an attempt and backs off / exhausts."""
+
+    def _pool_with_one_row(self, attempt_count: int, max_attempts: int = 5):
+        row = {
+            "id": 99,
+            "channel": "instagram",
+            "channel_id": "ig_123",
+            "content": "ciao",
+            "attempt_count": attempt_count,
+            "max_attempts": max_attempts,
+        }
+        pool = AsyncMock()
+        pool.execute = AsyncMock()
+        # First fetch returns the row, then the loop is cancelled.
+        pool.fetch = AsyncMock(return_value=[row])
+        return pool, row
+
+    async def _run_one_iteration(self, dm: DeliveryManager, adapters: dict) -> None:
+        # Loop is `while True: sleep; drain; fetch; process`. Its body CATCHES
+        # CancelledError → break (returns normally). Let the 1st sleep pass, then
+        # raise CancelledError on the 2nd sleep so exactly one pass runs and the
+        # loop exits cleanly. Skip the redis drain.
+        calls = {"n": 0}
+
+        async def fake_sleep(_seconds: float) -> None:
+            calls["n"] += 1
+            if calls["n"] >= 2:  # after the post-fetch work, next sleep cancels
+                raise asyncio.CancelledError
+
+        dm._drain_redis_dlq = AsyncMock(return_value=0)  # type: ignore[method-assign]
+        with patch.object(asyncio, "sleep", fake_sleep):
+            await dm._process_dlq(adapters)  # loop catches CancelledError → returns
+
+    @pytest.mark.asyncio
+    async def test_adapter_missing_marks_retrying_not_orphan(self) -> None:
+        pool, _ = self._pool_with_one_row(attempt_count=0)
+        dm = DeliveryManager(db_pool=pool)
+        await self._run_one_iteration(dm, adapters={})  # no instagram adapter
+
+        # The row must have been UPDATEd (not skipped). Find the UPDATE call.
+        update_calls = [
+            c for c in pool.execute.await_args_list
+            if "UPDATE failed_messages" in c.args[0]
+        ]
+        assert update_calls, "adapter-missing row was orphaned (no UPDATE)"
+        sql, *params = update_calls[0].args
+        # status=$1, attempt_count=$2 → retrying / 1 (below max)
+        assert params[0] == "retrying"
+        assert params[1] == 1
+
+    @pytest.mark.asyncio
+    async def test_adapter_missing_exhausts_at_max(self) -> None:
+        pool, _ = self._pool_with_one_row(attempt_count=4, max_attempts=5)
+        dm = DeliveryManager(db_pool=pool)
+        await self._run_one_iteration(dm, adapters={})
+
+        update_calls = [
+            c for c in pool.execute.await_args_list
+            if "UPDATE failed_messages" in c.args[0]
+        ]
+        assert update_calls
+        sql, *params = update_calls[0].args
+        assert params[0] == "exhausted"
+        assert params[1] == 5
+        assert params[2] is None  # next_retry None when exhausted
