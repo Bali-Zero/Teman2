@@ -55,7 +55,7 @@ def _get_database_url() -> str:
         "DATABASE_URL",
         os.environ.get(
             "NUZANTARA_DATABASE_URL",
-            "postgresql://postgres:postgres@localhost:5432/nuzantara_rag",
+            "postgresql://postgres:postgres@localhost:5432/nuzantara_rag",  # pragma: allowlist secret  # localhost dev default, not a production credential
         ),
     )
 
