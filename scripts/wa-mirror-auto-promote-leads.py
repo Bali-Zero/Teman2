@@ -877,9 +877,38 @@ async def main() -> None:
         print(json.dumps(degraded))
         write_audit(degraded)
 
-    pool = await asyncpg.create_pool(
-        DB_URL, min_size=1, max_size=2, ssl=False, command_timeout=90.0
-    )
+    # Self-heal #3: the local Postgres may be DOWN at startup (the 2026-06-17 incident:
+    # the Pro was powered off ~8h; this script then hammered a dead DB and spat 23 raw
+    # OSError tracebacks to stderr until PG came back — Connect call failed
+    # 127.0.0.1:5432). create_pool fails BEFORE command_timeout and BEFORE the read
+    # guard above, so wrap it in a bounded retry-with-backoff (superscar #8 — a network
+    # service touched without retry). If PG is still unreachable after the retries,
+    # emit a clean, always-audited DEGRADED_DB_UNREACHABLE and exit; the next tick (or
+    # a recovered DB) succeeds — no raw traceback, no half-state.
+    pool = None
+    last_db_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            pool = await asyncpg.create_pool(
+                DB_URL, min_size=1, max_size=2, ssl=False, command_timeout=90.0
+            )
+            break
+        except (OSError, asyncpg.PostgresError, asyncio.TimeoutError) as exc:
+            last_db_err = exc
+            if attempt < 2:
+                await asyncio.sleep(2.0 * (attempt + 1))  # 2s, 4s backoff
+    if pool is None:
+        degraded = {
+            "ts": started.isoformat(),
+            "action": "DEGRADED_DB_UNREACHABLE",
+            "detail": f"local Postgres unreachable after 3 attempts "
+            f"({type(last_db_err).__name__}: {str(last_db_err)[:160]}) — likely the "
+            "Pro just rebooted and PG is not up yet; tick aborted clean, retries next "
+            "cycle.",
+        }
+        print(json.dumps(degraded))
+        write_audit(degraded)
+        return
     try:
         async with pool.acquire() as conn:
             try:
