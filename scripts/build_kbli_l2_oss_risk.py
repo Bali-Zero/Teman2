@@ -162,16 +162,24 @@ def main():
 
         if not r or r.get("status") != 200 or not r.get("data", {}).get("success"):
             stats["no_oss_risk"] += 1
-            # 221 codes have no OSS scope (404). They keep the old per_skala/l4, but
-            # any that were BLOCKED in the old paraphrase data can't be re-derived from
-            # OSS risk -> flag needs_review (65 such codes).
+            # 221 codes have no OSS scope (404). Most are special-regime activities
+            # (central bank, OJK-regulated finance 64xxx/66xxx, narcotics, radioactive
+            # waste, bonded warehouse) that sit OUTSIDE the ordinary RBA flow — the old
+            # "BLOCCATO_CLASSE_RISCHIO" is a fictitious risk-derived verdict we cannot
+            # re-confirm. Relabel as NEEDS_REVIEW (sectoral check), but PRESERVE the
+            # non-risk-derived closed statuses (TERTUTUP/TERBATAS) untouched.
             was_blocked = bool((old_l4 or {}).get("blocked"))
             if args.apply:
                 rec["_l2_status"] = "no_oss_risk"
-                if was_blocked:
-                    rec["_l4_needs_review"] = "no_oss_scope_but_blocked_in_old_data"
+                if old_status not in PRESERVE_STATUSES and was_blocked:
+                    rec["_l4_needs_review"] = "no_oss_scope_special_regime"
+                    rec["l4_bali"]["status"] = "NEEDS_REVIEW_NO_OSS_SCOPE"
+                    rec["l4_bali"]["blocked"] = True  # stay conservative until sectoral check
+                    rec["l4_bali"]["reason"] = (
+                        "no OSS-RBA scope (special/sectoral regime: OJK/BI/BPOM/etc.) — "
+                        "Bali registrability needs manual sectoral verification")
                     stats["needs_review_no_scope_blocked"] += 1
-            elif was_blocked:
+            elif old_status not in PRESERVE_STATUSES and was_blocked:
                 stats["needs_review_no_scope_blocked"] += 1
             continue
 
@@ -199,8 +207,13 @@ def main():
                 "BLOCKED": "BLOCCATO_CLASSE_RISCHIO",
                 "AMBIGUOUS": "BLOCCATO_DIPENDE_SCOPE",
                 "OPEN": "OK_or_HIGHER_RISK",
-                "NO_BESAR": "OK_or_HIGHER_RISK",
+                # no Besar row at all = activity reserved for UMKM (Perpres 49/2021 Annex II);
+                # a PMA (Besar by law) cannot register it. NB-3 verbatim: "unavailable / fails
+                # validation for a PT PMA profile". This is a CLOSURE, not openness.
+                "NO_BESAR": "CHIUSO_PMA_NO_BESAR",
             }[verdict]
+            # NO_BESAR is a block (PMA cannot register), like BLOCKED
+            new_blocked = verdict in ("BLOCKED", "NO_BESAR")
             stats[f"verdict_{verdict}"] += 1
             old_blocked = bool(old_l4.get("blocked"))
             # a "flip" = the binary block flag changed vs the old (paraphrase) data
@@ -227,6 +240,10 @@ def main():
                         "OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): "
                         "registrable as PMA in Bali only by declaring the higher-risk scope "
                         "(e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity")
+                elif verdict == "NO_BESAR":
+                    rec["l4_bali"]["reason"] = (
+                        "OSS has no Usaha Besar scale row → activity reserved for UMKM "
+                        "(Perpres 49/2021 Annex II); a PT PMA (Besar by law) cannot register it")
                 else:
                     rec["l4_bali"]["reason"] = (
                         "OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium")
