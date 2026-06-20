@@ -100,13 +100,18 @@ def test_folder_and_fuzzy_agree_boosts() -> None:
     assert "folder name" in reason["reason"]
 
 
-def test_folder_and_fuzzy_disagree_surfaces_both() -> None:
+def test_folder_and_fuzzy_disagree_is_sender_subject_mismatch() -> None:
+    # Same sender != subject guard as the phone path (shared _classify_decision):
+    # the folder names client 2 but the OCR subject name resolves to client 9 ->
+    # the folder is the FORWARDER context, not the document holder. Downgrade to
+    # AMBIGUOUS + sender_subject_mismatch so a human confirms (no one-click).
     decision, cands, reason = rt._classify_decision(
         [], [_fuzzy(9, 0.85)], [_folder(2)]
     )
-    assert decision == rt.DECISION_LINK_CANDIDATE
+    assert decision == rt.DECISION_AMBIGUOUS
     assert [c["id"] for c in cands] == [2, 9]  # folder candidate first
-    assert "disagree" in reason["reason"]
+    assert reason["sender_subject_mismatch"] is True
+    assert "not the document subject" in reason["reason"]
 
 
 def test_shared_folder_is_ambiguous() -> None:

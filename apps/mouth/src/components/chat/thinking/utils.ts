@@ -16,37 +16,37 @@ export function getDynamicToolMessage(
   switch (toolName) {
     case "vector_search": {
       if (collection && COLLECTION_NAMES[collection]) {
-        return `Cerco "${shortQuery}" in ${COLLECTION_NAMES[collection]}...`;
+        return `Searching for "${shortQuery}" in ${COLLECTION_NAMES[collection]}...`;
       }
-      return `Cerco "${shortQuery}" nella knowledge base...`;
+      return `Searching for "${shortQuery}" in knowledge base...`;
     }
     case "knowledge_graph_search": {
       const entity =
         typeof args?.entity_name === "string" ? args.entity_name : query;
-      return `Esploro connessioni per "${entity}"...`;
+      return `Exploring connections for "${entity}"...`;
     }
     case "calculator": {
       const expr = typeof args?.expression === "string" ? args.expression : "";
-      return `Calcolo: ${expr.slice(0, 30)}${expr.length > 30 ? "..." : ""}`;
+      return `Calculating: ${expr.slice(0, 30)}${expr.length > 30 ? "..." : ""}`;
     }
     case "get_pricing": {
       const service =
-        typeof args?.service_name === "string" ? args.service_name : "servizio";
-      return `Recupero prezzo per "${service}"...`;
+        typeof args?.service_name === "string" ? args.service_name : "service";
+      return `Retrieving price for "${service}"...`;
     }
     case "team_knowledge":
     case "search_team_member":
     case "get_team_members_list": {
-      return "Consulto il team Bali Zero...";
+      return "Consulting Bali Zero team...";
     }
     case "web_search": {
-      return `Cerco sul web: "${shortQuery}"...`;
+      return `Searching the web for: "${shortQuery}"...`;
     }
     case "generate_image": {
-      return "Genero immagine...";
+      return "Generating image...";
     }
     default:
-      return `Elaboro con ${toolName}...`;
+      return `Processing with ${toolName}...`;
   }
 }
 

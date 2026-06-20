@@ -41,8 +41,8 @@ huggingface-hub>=0.34.0,<1.0  # Required by sentence-transformers CrossEncoder m
 tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 
 # PII Detection (UU PDP compliance)
-presidio-analyzer>=2.2.362
-presidio-anonymizer>=2.2.362
+presidio-analyzer>=2.2.355
+presidio-anonymizer>=2.2.355
 
 # Document Processing
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
@@ -139,6 +139,12 @@ psutil>=5.9.0  # Required by metrics module/tests
 # PDF Processing - UPGRADED
 pdfplumber>=0.11.0
 pdfminer.six>=20251107  # Match pdfplumber requirement
+
+# Word (.docx) text extraction — intake pipeline reads native text layer of
+# WhatsApp Word attachments (parsers.extract_text_from_docx / preprocess.py).
+# Already imported with a None fallback in backend/core/parsers.py; pinning it
+# here so Fly/CI install it (was Pro-only, 2026-06-20).
+python-docx>=1.1.0
 
 # Protocol Buffers - Pin to 5.x (compatible with OTEL + Google packages)
 protobuf>=5.27.0,<6.0.0

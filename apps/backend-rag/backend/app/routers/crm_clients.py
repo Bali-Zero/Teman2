@@ -421,6 +421,24 @@ class ClientResponse(BaseModel):
             return []
         return v
 
+    @field_validator("custom_fields", mode="before")
+    @classmethod
+    def ensure_custom_fields_dict(cls, v: Any) -> Any:
+        """Coerce custom_fields to a dict regardless of the stored jsonb shape.
+
+        custom_fields is jsonb and the schema expects an object, but a handful of
+        legacy rows hold a non-object value (e.g. a json array — id 10816 had
+        ``custom_fields`` stored as ``[]``). Without this coercion Pydantic raises
+        ``Input should be a valid dictionary`` on that row, and since the list
+        endpoint validates the whole page in one comprehension a single bad row
+        500s the entire request (reproduced: sahira@ page 2, limit>=75). Any
+        non-dict — array, scalar, null — degrades to ``{}`` so one dirty row can
+        never poison a list page.
+        """
+        if isinstance(v, dict):
+            return v
+        return {}
+
     @field_validator("passport_expiry", "date_of_birth", mode="before")
     @classmethod
     def convert_date_to_string(cls, v: Any) -> Any:
@@ -679,7 +697,11 @@ async def list_clients(
             params: list[Any] = []
             param_index = 1
 
-            # RBAC: enforce assigned_to filter for non-admin users
+            # RBAC: enforce assigned_to filter for non-admin users. A non-admin
+            # sees ONLY their own assigned clients (admins get rbac_filter=None =
+            # full view). Decision 2026-06-19: NOT "own + unassigned" — 93% of the
+            # book is unassigned, so an OR-NULL clause would leak ~10.7k clients to
+            # every team member. Unassigned clients stay admin-only until triaged.
             if rbac_filter is not None:
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(rbac_filter)
@@ -1122,9 +1144,9 @@ async def upsert_client_by_phone(
                       $1, '+' || $2, '+' || $2, $2,
                       'lead', 'individual', $3, $4,
                       $5, $5, $6,
-                      $7,
-                      CASE WHEN $7 IS NULL THEN NULL ELSE 'ollama_local' END,
-                      CASE WHEN $7 IS NULL THEN NULL ELSE NOW() END
+                      $7::text,
+                      CASE WHEN $7::text IS NULL THEN NULL ELSE 'ollama_local' END,
+                      CASE WHEN $7::text IS NULL THEN NULL ELSE NOW() END
                     )
                     RETURNING id
                     """,
