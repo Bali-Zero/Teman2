@@ -78,10 +78,14 @@ FROM q
 """
 
 # The ids of superseded-orphan queues (done + has proposal + none live).
+# $3 = optional source filter (NULL = any). Heal defaults to source='whatsapp'
+# because Drive/Dropbox proposals are an admin-only dump that must NOT be poured
+# into a team member's /review — only own-chat WhatsApp docs have a real owner.
 ORPHAN_IDS_SQL = """
 SELECT iq.id
 FROM intake_queue iq
 WHERE iq.status = 'done'
+  AND ($3::text IS NULL OR iq.source = $3)
   AND EXISTS (SELECT 1 FROM document_routing_proposal p WHERE p.queue_id = iq.id)
   AND NOT EXISTS (
       SELECT 1 FROM document_routing_proposal p
@@ -131,7 +135,7 @@ def _send_alert(message: str, level: str) -> None:
         logger.warning("alert dispatch failed (%s): %s", type(exc).__name__, message)
 
 
-async def run(heal: bool, limit: int) -> int:
+async def run(heal: bool, limit: int, heal_source: str | None) -> int:
     pool = await asyncpg.create_pool(dsn=_dsn(), min_size=1, max_size=3)
     try:
         async with pool.acquire() as conn:
@@ -146,7 +150,16 @@ async def run(heal: bool, limit: int) -> int:
 
             healed = 0
             if heal and orphans:
-                ids = [r["id"] for r in await conn.fetch(ORPHAN_IDS_SQL, list(_LIVE_STATUSES), limit)]
+                ids = [
+                    r["id"]
+                    for r in await conn.fetch(
+                        ORPHAN_IDS_SQL, list(_LIVE_STATUSES), limit, heal_source
+                    )
+                ]
+                logger.info(
+                    "heal scope: source=%s, %d candidate(s) this run",
+                    heal_source or "ANY", len(ids),
+                )
                 for qid in ids:
                     revived = await conn.fetchval(HEAL_SQL, qid, list(_LIVE_STATUSES))
                     if revived is not None:
@@ -189,6 +202,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=500,
         help="max orphans to heal per run (default 500; report counts are unbounded)",
     )
+    p.add_argument(
+        "--source",
+        default="whatsapp",
+        help="restrict --heal to this intake source (default 'whatsapp' — own-chat "
+        "docs with a real owner; pass 'any' to also revive Drive/Dropbox, NOT "
+        "recommended: that dump is admin-only and would flood /review)",
+    )
     return p
 
 
@@ -198,7 +218,8 @@ async def main(argv: list[str] | None = None) -> int:
         level=os.getenv("INTAKE_SENTINEL_LOG_LEVEL", "INFO"),
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
-    return await run(heal=args.heal, limit=args.limit)
+    heal_source = None if str(args.source).lower() == "any" else args.source
+    return await run(heal=args.heal, limit=args.limit, heal_source=heal_source)
 
 
 if __name__ == "__main__":
