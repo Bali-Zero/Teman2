@@ -56,7 +56,7 @@ const SERVICES: Service[] = [
     accent: "#d4a017",
     icon: Building2,
     bullets: [
-      "1,563 KBLI 2025 codes · 4-level risk mapping",
+      "1,559 KBLI 2025 codes · 4-level risk mapping",
       "PT PMA minimum capital & classified sectors",
       "OSS, SKK, operational licenses",
       "Shareholder structures, nominee-free",

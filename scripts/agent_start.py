@@ -382,17 +382,40 @@ def cmd_create(
 
     WORKTREES_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Base the worktree on the FRESH upstream tip, not the (possibly stale)
+    # local branch. The main checkout routinely lags origin/main by dozens of
+    # commits on this high-traffic repo (it is read-only for agents, so nothing
+    # fast-forwards it). Branching from local `main` then yields a worktree N
+    # commits behind → every PR opened from it conflicts with intervening work
+    # on the same files (sibling-race / merge-train class, superscar #5).
+    # Fetch origin/<base> and branch from there. If the fetch fails (offline —
+    # Law 6 sovereignty: disconnection is a NORMAL state, not a fault), fall
+    # back to the local ref with a loud warning rather than blocking work.
+    start_point = base_branch
+    try:
+        _run_git(["fetch", "origin", base_branch])
+        start_point = f"origin/{base_branch}"
+    except subprocess.CalledProcessError as exc:
+        logger.warning(
+            "could not fetch origin/%s (offline?) — basing worktree on LOCAL "
+            "%s, which may lag upstream: %s",
+            base_branch,
+            base_branch,
+            (exc.stderr or "").strip(),
+        )
+
     logger.info(
-        "creating worktree lane=%s task_id=%s branch=%s base=%s ttl_min=%d",
+        "creating worktree lane=%s task_id=%s branch=%s base=%s start=%s ttl_min=%d",
         lane,
         task_id,
         branch,
         base_branch,
+        start_point,
         ttl_minutes,
     )
 
     try:
-        _run_git(["worktree", "add", "-b", branch, str(worktree), base_branch])
+        _run_git(["worktree", "add", "-b", branch, str(worktree), start_point])
     except subprocess.CalledProcessError as exc:
         stderr = (exc.stderr or "").strip()
         raise SystemExit(f"ERROR: git worktree add failed: {stderr}") from exc

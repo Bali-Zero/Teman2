@@ -40,7 +40,7 @@ const DOC_TYPE_DESTINATIONS: Record<
   { group: string; categoryCode: string }
 > = {
   passport: { group: "immigration", categoryCode: "passport" },
-  kitas: { group: "immigration", categoryCode: "kitas" },
+  kitas: { group: "immigration", categoryCode: "itas" },
   npwp: { group: "tax", categoryCode: "npwp" },
   nib: { group: "pma", categoryCode: "nib" },
   akta_pendirian: { group: "pma", categoryCode: "akta_pendirian" },

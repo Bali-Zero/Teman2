@@ -97,6 +97,29 @@ def is_healthy(declared: str) -> bool:
     return any(head.startswith(p) for p in HEALTHY_PREFIXES)
 
 
+LAUNCHAGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
+
+
+def plist_intentionally_disabled(label: str) -> str | None:
+    """If a LaunchAgent plist for `label` exists ONLY in a disabled/renamed form
+    (e.g. *.plist.disabled-W81-*, *.disabled-*), the edge is a deliberate firebreak,
+    not a regression. Returns the disabled filename if so, else None.
+
+    An active plist == exactly '<label>.plist'. Anything else carrying the label as a
+    prefix (disabled-*, superseded-*, .bak) is an intentional non-arming. An
+    active-but-dead plist still has '<label>.plist' present → returns None → it still
+    REGRESSES (a genuine silent death is never masked).
+    """
+    if not label.startswith("com.") or not LAUNCHAGENTS_DIR.is_dir():
+        return None
+    if (LAUNCHAGENTS_DIR / f"{label}.plist").exists():
+        return None
+    for f in LAUNCHAGENTS_DIR.glob(f"{label}.plist.*"):
+        if "disabled" in f.name or "superseded" in f.name or f.name.endswith(".bak"):
+            return f.name
+    return None
+
+
 @dataclass
 class ProbeResult:
     ok: bool
@@ -338,7 +361,28 @@ def main() -> int:
         elif result.ok and not healthy:
             verdict = "RECOVERED"
         elif not result.ok and healthy:
-            verdict = "REGRESSED"
+            # Before calling a failed-probe healthy edge REGRESSED, distinguish a
+            # deliberate firebreak (plist intentionally renamed *.disabled-*) and a
+            # completed one-shot (its sentinel exists on disk) from a true silent
+            # death — both are "Esiste≠Armato" (#2): census says ALIVE but the
+            # activation state on disk says intentionally-not-armed.
+            disabled_as = (
+                plist_intentionally_disabled(edge["id"])
+                if (machine in ("", this_machine) and edge.get("kind") == "launchd")
+                else None
+            )
+            sentinel = edge.get("oneshot_sentinel")
+            sentinel_present = bool(
+                sentinel and Path(os.path.expanduser(str(sentinel))).exists()
+            )
+            if disabled_as:
+                verdict = "DISABLED"
+                result = ProbeResult(False, f"intentional firebreak: {disabled_as}")
+            elif sentinel_present:
+                verdict = "COMPLETED"
+                result = ProbeResult(False, f"one-shot done: sentinel {sentinel}")
+            else:
+                verdict = "REGRESSED"
         else:
             verdict = "CONFIRMED"  # declared dead, still dead
         reports.append(

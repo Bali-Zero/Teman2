@@ -246,6 +246,46 @@ def test_client_response_tags_none_becomes_list():
     assert r.tags == []
 
 
+@pytest.mark.parametrize("dirty_value", [[], ["x"], None, "string", 42])
+def test_client_response_custom_fields_non_dict_becomes_empty(dirty_value):
+    """A legacy row with a non-object custom_fields must not 500 a list page.
+
+    Regression: client id 10816 stored custom_fields as a json array ([]); the
+    list endpoint validates the whole page in one comprehension, so that single
+    row raised ValidationError and 500'd sahira@'s entire page 2 (limit>=75).
+    Any non-dict jsonb shape must degrade to {} instead of raising.
+    """
+    from backend.app.routers.crm_clients import ClientResponse
+
+    r = ClientResponse(
+        id=1,
+        uuid="abc",
+        full_name="Test",
+        status="active",
+        client_type="individual",
+        custom_fields=dirty_value,
+        created_at=datetime.now(tz=timezone.utc),
+        updated_at=datetime.now(tz=timezone.utc),
+    )
+    assert r.custom_fields == {}
+
+
+def test_client_response_custom_fields_dict_preserved():
+    from backend.app.routers.crm_clients import ClientResponse
+
+    r = ClientResponse(
+        id=1,
+        uuid="abc",
+        full_name="Test",
+        status="active",
+        client_type="individual",
+        custom_fields={"k": "v"},
+        created_at=datetime.now(tz=timezone.utc),
+        updated_at=datetime.now(tz=timezone.utc),
+    )
+    assert r.custom_fields == {"k": "v"}
+
+
 def test_client_response_date_conversion():
     from backend.app.routers.crm_clients import ClientResponse
 

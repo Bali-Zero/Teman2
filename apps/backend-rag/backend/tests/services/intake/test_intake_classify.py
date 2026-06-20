@@ -109,6 +109,67 @@ async def test_source_page_attribution():
 
 
 # ---------------------------------------------------------------------------
+# Stay-permit disambiguation (ITK / ITAS / ITAP) -- live defect 2026-06-17
+# (proposals 12937 / 15368 / 12694: izin-tinggal cards misfiled as passport
+# because the card prints a "Passport Number" field -> passport 0.8 > kitas 0.75)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_stay_permit_itas_not_passport():
+    # Electronic limited stay permit. Note it DOES carry a "Passport Number"
+    # field (the exact thing that fooled the scorer into passport:0.8).
+    r = await cls.classify_document(
+        "IZIN TINGGAL TERBATAS ELEKTRONIK / ELECTRONIC LIMITED STAY PERMIT\n"
+        "DIREKTORAT JENDERAL IMIGRASI REPUBLIK INDONESIA\n"
+        "Passport Number: <redacted>  Stay Permit Index: <redacted>"
+    )
+    assert r["type"] == "itas"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
+    assert r["confidence"] >= 0.55
+
+
+@pytest.mark.asyncio
+async def test_stay_permit_itk_not_passport():
+    r = await cls.classify_document(
+        "IZIN TINGGAL KUNJUNGAN / VISIT STAY PERMIT\n"
+        "DIREKTORAT JENDERAL IMIGRASI\n"
+        "Passport Number: <redacted>  Permit Number: 99/ITK/2026"
+    )
+    assert r["type"] == "itk"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
+
+
+@pytest.mark.asyncio
+async def test_stay_permit_itap_not_passport():
+    r = await cls.classify_document(
+        "IZIN TINGGAL TETAP / PERMANENT STAY PERMIT\n"
+        "DIREKTORAT JENDERAL IMIGRASI\n"
+        "Passport Number: <redacted>  Stay Permit Index: II C"
+    )
+    assert r["type"] == "itap"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
+
+
+@pytest.mark.asyncio
+async def test_real_passport_still_passport_innocence():
+    # INNOCENCE: a genuine passport (proposal 12927 head "PASSPORT / AUSTRALIA")
+    # carries NO izin-tinggal / stay-permit marker, so the override must NOT
+    # fire and the doc must STILL classify as passport.
+    r = await cls.classify_document(
+        "PASSPORT  AUSTRALIA  PASSEPORT\n"
+        "P<AUSCITIZEN<<JANE<<<<<<<<<<<<<<<<<<<<<<<<<<\n"
+        "Type P  Date of expiry 12 JAN 2030"
+    )
+    assert r["type"] == "passport"
+    assert r.get("via") != "stay_permit_override"
+    assert r["confidence"] >= 0.30
+
+
+# ---------------------------------------------------------------------------
 # ocr_pages -- monkeypatched vision call (deterministic)
 # ---------------------------------------------------------------------------
 

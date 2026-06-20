@@ -58,7 +58,7 @@ logger = logging.getLogger("zantara.intake.auto_attach")
 # human email, so the audit trail and CRM doc clearly attribute the write.
 AUTO_ATTACH_ACTOR = "system:auto-attach"
 
-# Terminal status for an auto-committed proposal (migration 232). Distinct from
+# Terminal status for an auto-committed proposal (migration 234). Distinct from
 # the human ``routed`` so reports / undo can target machine commits.
 AUTO_ROUTED_STATUS = "auto_routed"
 
