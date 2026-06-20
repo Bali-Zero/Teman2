@@ -41,11 +41,34 @@ EMBED_BATCH = 50
 UPSERT_BATCH = 50
 PHANTOMS = {"26120", "60111", "82920", "85598"}
 
-SOURCE_FILE = Path(__file__).resolve().parents[4] / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+SOURCE_FILE = (
+    Path(__file__).resolve().parents[4]
+    / "data"
+    / "source_documents"
+    / "KBLI_2025_FINAL_CLEAN.json"
+)
 
 
 def det_uuid(key: str) -> str:
     return str(uuid.UUID(hashlib.md5(key.encode()).hexdigest()))
+
+
+def ruang_lingkup_text_block(e: dict) -> list[str]:
+    """L1 — OSS scope detail (ruang_lingkup) folded into the _uraian chunk text
+    so it is searchable. List of {uraian, deskripsi?}; Indonesian only."""
+    rl = e.get("ruang_lingkup") or []
+    if not rl:
+        return []
+    out = ["", "RUANG LINGKUP (OSS):"]
+    for item in rl:
+        if not isinstance(item, dict):
+            continue
+        line = (item.get("uraian") or "").strip()
+        if not line:
+            continue
+        desk = (item.get("deskripsi") or "").strip()
+        out.append(f"- {line}" + (f": {desk}" if desk else ""))
+    return out if len(out) > 2 else []
 
 
 def l4_text_block(e: dict) -> list[str]:
@@ -88,9 +111,11 @@ def build_chunks(e: dict) -> list[dict]:
     }
     chunks = []
 
-    # 1) _uraian chunk — pure description + L4 (this matches activity queries)
+    # 1) _uraian chunk — pure description + OSS scope + L4 (matches activity queries)
     utext = "\n".join(
-        [f"[KBLI {code}] {judul}", "", uraian] + l4_text_block(e),
+        [f"[KBLI {code}] {judul}", "", uraian]
+        + ruang_lingkup_text_block(e)
+        + l4_text_block(e),
     )
     chunks.append({
         "id": det_uuid(f"kbli_2025_oss::{code}::uraian"),
