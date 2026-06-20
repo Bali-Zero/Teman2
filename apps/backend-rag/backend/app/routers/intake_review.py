@@ -268,7 +268,11 @@ async def _load_candidate_clients(
 async def list_review_queue(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
-    status: str = Query("review_pending", pattern="^(review_pending|review_claimed)$"),
+    status: str = Query(
+        "review_pending",
+        pattern="^(review_pending|review_claimed|quarantine)$",
+        description="review_pending|review_claimed (main feed) or quarantine (LEVA 1 noise tab)",
+    ),
     source: str | None = Query(None, description="Filter by intake source (whatsapp|drive|zoho)"),
     decision: str | None = Query(
         None, description="Filter by entity_resolution.decision (AUTO_ATTACH|LINK_CANDIDATE|AMBIGUOUS|NO_MATCH)"
@@ -799,6 +803,68 @@ async def release_review(
     logger.info(
         "intake.review.released",
         extra={"proposal_id": proposal_id, "reviewer": user_email, "admin_force": admin},
+    )
+    return {"proposal_id": updated["id"], "status": "review_pending"}
+
+
+@router.post("/{proposal_id}/recover")
+async def recover_from_quarantine(
+    proposal_id: int = Path(..., ge=1),
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """LEVA 1 — pull a quarantined (noise-parked) proposal back into review.
+
+    The noise pre-filter (route stage) is conservative but not infallible: a real
+    document with a degraded/empty OCR pass can be mis-binned as noise. This is
+    the recovery hatch — ``quarantine`` → ``review_pending`` — so nothing is ever
+    lost, only deferred. RBAC mirrors the queue feed: admins recover anything; a
+    non-admin recovers ONLY proposals from their own chats
+    (``intake_queue.received_by == caller``); NULL-received_by (shared line +
+    Drive) is admin-only. NO CRM writes.
+    """
+    admin = is_crm_admin(user)
+    user_email = (user.get("email") or "").lower().strip()
+
+    async with pool.acquire() as conn:
+        # The own-chat RBAC gate lives on intake_queue.received_by — guard it in
+        # the UPDATE's correlated subquery so a non-admin can never recover
+        # someone else's (or an admin-only NULL) quarantined row.
+        updated = await conn.fetchrow(
+            """
+            UPDATE document_routing_proposal p
+               SET status = 'review_pending'
+              FROM intake_queue q
+             WHERE p.id = $1
+               AND p.queue_id = q.id
+               AND p.status = 'quarantine'
+               AND ($2::boolean OR q.received_by = $3)
+            RETURNING p.id
+            """,
+            proposal_id,
+            admin,
+            user_email,
+        )
+
+    if updated is None:
+        async with pool.acquire() as conn:
+            existing = await conn.fetchrow(
+                "SELECT status FROM document_routing_proposal WHERE id = $1",
+                proposal_id,
+            )
+        if existing is None:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Recover failed: proposal is not quarantined or is outside your "
+                f"scope (status={existing['status']})"
+            ),
+        )
+
+    logger.info(
+        "intake.review.recovered proposal=%s reviewer=%s admin=%s (quarantine→review_pending)",
+        proposal_id, user_email, admin,
     )
     return {"proposal_id": updated["id"], "status": "review_pending"}
 
