@@ -124,7 +124,9 @@ exec_uvicorn_from() {
 # #1 (HOME-fork deploy-worktree evaporation) + #2 (silent heal failure) + #7 (KeepAlive
 # restart-storm). When the Pro rebooted (2026-06-19), the deploy-worktree .venv evaporated
 # and the #1546 auto-heal hit a CHAIN of failures:
-#   BUG 1 — requirements asked presidio>=2.2.362 (max on PyPI is 2.2.359) → impossible.
+#   BUG 1 — presidio>=2.2.362 floor: 2.2.362 DOES exist on PyPI (uploaded 2026-03-15,
+#           the latest). Real cause = py3.14 has no compatible wheel for 2.2.360-362, so a
+#           from-scratch py3.14 venv can't satisfy the floor. Lowered to >=2.2.355 (has py3.14 wheels).
 #   BUG 2 — the ~5min `pip install` ran under KeepAlive=true; launchd restarted the wrapper
 #           every ThrottleInterval and KILLED the in-flight install, relaunching it →
 #           observed runs=40 with the install never completing (superscar #7).
