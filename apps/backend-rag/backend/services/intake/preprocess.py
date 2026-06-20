@@ -146,6 +146,12 @@ def _detect_mime(blob_path: str, declared_mime: str | None) -> str:
             return "image/webp"
         if head[:2] in (b"II", b"MM"):
             return "image/tiff"
+        # OOXML (.docx/.xlsx/.pptx) and legacy OLE (.doc) share generic magic
+        # (PK zip / D0CF OLE) with other formats, so we cannot tell a .docx from
+        # a .zip by magic alone. Fall through to the extension guess below, which
+        # maps .docx -> wordprocessingml. A declared_mime from the WA row (which
+        # word docs carry) already short-circuited above, so this only matters for
+        # extension-only disk backfill.
     except OSError as exc:
         logger.warning("mime sniff failed for %s: %s", blob_path, exc)
 
@@ -330,6 +336,38 @@ def _normalize_image_sync(image_bytes: bytes) -> bytes | None:
         return None
 
 
+# Office word-processing mimes that carry a native text layer (NOT images). A
+# .docx is a zip of XML; the vision pipeline would OCR the raw zip bytes to
+# garbage -> classify "unknown" -> a real contract/akta silently lost (the
+# 9 Word docs found in adit's intake, 2026-06-20). We extract the text layer
+# directly (python-docx) and feed it downstream exactly like the PDF born-digital
+# text-layer fast-path -- 100% local, 0 bytes to cloud (Symbiosis Law 2).
+_WORD_MIMES = frozenset(
+    {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+        "application/msword",  # legacy .doc
+    }
+)
+
+
+def _extract_docx_text_sync(blob_path: str) -> str | None:
+    """Extract the text layer from a .docx via python-docx. None on failure.
+
+    Legacy binary .doc is NOT supported by python-docx (it raises); we return
+    None so the caller falls through to the raw-bytes path rather than crashing
+    the stage. Never raises -- a bad office doc is a recoverable input, not a
+    programmer error (matches the module's graceful-degradation contract).
+    """
+    try:
+        from backend.core.parsers import extract_text_from_docx
+
+        text = extract_text_from_docx(blob_path)
+        return text if text and text.strip() else None
+    except Exception as exc:  # broad: any parse failure -> graceful fallthrough
+        logger.warning("docx text extract failed for %s: %s", blob_path, exc)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -397,6 +435,28 @@ async def preprocess_blob(
             page_pngs = [raw]  # let OCR try the raw bytes
         else:
             page_pngs = [normalized]
+    elif mime in _WORD_MIMES:
+        # Word doc: no image to OCR -- extract the native text layer and emit a
+        # single born-digital page (text set, png_bytes empty). Downstream OCR
+        # uses PageImage.text verbatim and skips the vision model, exactly like
+        # the PDF text-layer fast-path. A legacy .doc / corrupt .docx returns
+        # None -> graceful single empty page (classify -> "unknown" -> human
+        # review), never a stage crash.
+        text = await asyncio.to_thread(_extract_docx_text_sync, blob_path)
+        if text is None:
+            logger.warning("preprocess: word doc unreadable %s (mime=%s)", blob_path, mime)
+            return PreprocessResult(
+                pages=[PageImage(index=0, png_bytes=b"", enhanced=False, text=None)],
+                n_pages=1,
+                mime=mime,
+                notes="word_extract_failed",
+            )
+        return PreprocessResult(
+            pages=[PageImage(index=0, png_bytes=b"", enhanced=False, text=text)],
+            n_pages=1,
+            mime=mime,
+            notes="word_textlayer",
+        )
     else:
         # Unknown/unsupported format -- pass raw bytes through; OCR may cope.
         logger.warning("preprocess: unsupported mime %s for %s", mime, blob_path)
