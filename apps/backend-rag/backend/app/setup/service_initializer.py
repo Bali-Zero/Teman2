@@ -1632,10 +1632,12 @@ async def initialize_services_light(app: FastAPI) -> None:
         # (no orchestrator/ConversationEngine — send_response only needs config +
         # httpx) so the loop has someone to deliver through.
         try:
-            from backend.channels.optimizations import (
-                delivery_manager,
-                initialize_optimizations,
-            )
+            # Import the MODULE, not the `delivery_manager` name: the singleton
+            # starts as None and initialize_optimizations() reassigns the module
+            # global. `from ... import delivery_manager` would bind the stale None
+            # forever (the cause of "delivery_manager=False" on first deploy,
+            # 2026-06-21). Read optimizations.delivery_manager AFTER init instead.
+            from backend.channels import optimizations as channel_opt
 
             send_adapters: dict[str, Any] = {}
 
@@ -1664,7 +1666,8 @@ async def initialize_services_light(app: FastAPI) -> None:
                     }
                 )
 
-            initialize_optimizations(db_pool=db_pool)
+            channel_opt.initialize_optimizations(db_pool=db_pool)
+            delivery_manager = channel_opt.delivery_manager  # read AFTER init
             if delivery_manager and db_pool and send_adapters:
                 delivery_manager._db_pool = db_pool
                 await delivery_manager.start_retry_loop(send_adapters)
