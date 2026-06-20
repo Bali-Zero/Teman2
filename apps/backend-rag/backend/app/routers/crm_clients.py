@@ -5,6 +5,7 @@ Endpoints for managing client data (anagrafica clienti)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import json
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -1720,6 +1721,69 @@ class AiSummaryResponse(BaseModel):
     status: str  # 'available' | 'not_generated' | 'pending'
 
 
+class WaCaseIntelligenceCard(BaseModel):
+    """One Zantara Captain card linked to a client's WhatsApp conversation."""
+
+    id: int
+    conversation_key: str
+    member_phone: str | None = None
+    counterpart_key: str | None = None
+    display_name: str | None = None
+    chat_kind: str
+    case_status: str
+    case_type: str | None = None
+    source_model: str
+    reasoning_effort: str | None = None
+    analysis_hash: str
+    analysis_id: str | None = None
+    message_count: int
+    unread_count: int
+    last_message_at: datetime | None = None
+    priority_score: int
+    flags: list[dict[str, Any]]
+    recap: str | None = None
+    next_action: str | None = None
+    ideal_reply: str | None = None
+    evidence: str | None = None
+    crm_packet: str | None = None
+    raw_sections: dict[str, Any]
+    analysis_output_path: str | None = None
+    generated_at: datetime | None = None
+    imported_at: datetime
+    updated_at: datetime
+
+
+class WaCaseIntelligenceResponse(BaseModel):
+    client_id: int
+    status: str  # 'available' | 'not_generated'
+    case_count: int
+    cases: list[WaCaseIntelligenceCard]
+
+
+def _coerce_json_list(value: Any) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _coerce_json_dict(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+    return value if isinstance(value, dict) else {}
+
+
 @router.get(
     "/{client_id}/ai-summary",
     operation_id="get_crm_client_ai_summary",
@@ -1851,6 +1915,68 @@ async def get_client_ai_summary(
         # CodeQL log-injection: cast to int defangs any non-numeric path.
         logger.exception(
             "ai_summary fetch failed for client %d",
+            int(client_id),
+        )
+        raise handle_database_error(e) from e
+
+
+@router.get(
+    "/{client_id}/wa-case-intelligence",
+    operation_id="get_crm_client_wa_case_intelligence",
+    response_model=WaCaseIntelligenceResponse,
+)
+async def get_client_wa_case_intelligence(
+    client_id: int,
+    limit: int = Query(12, ge=1, le=50),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> WaCaseIntelligenceResponse:
+    """Fetch Zantara Captain case cards derived from WhatsApp analysis.
+
+    This endpoint is read-only. It intentionally returns case-level intelligence
+    separately from clients.strategic_recap so the CRM can show per-conversation
+    reasoning, evidence, ideal reply, and next action without flattening multiple
+    cases into a single paragraph.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+            rows = await conn.fetch(
+                """
+                SELECT id, conversation_key, member_phone, counterpart_key, display_name,
+                       chat_kind, case_status, case_type, source_model, reasoning_effort,
+                       analysis_hash, analysis_id, message_count, unread_count,
+                       last_message_at, priority_score, flags, recap, next_action,
+                       ideal_reply, evidence, crm_packet, raw_sections,
+                       analysis_output_path, generated_at, imported_at, updated_at
+                FROM crm_wa_case_intelligence
+                WHERE client_id = $1
+                ORDER BY priority_score DESC, last_message_at DESC NULLS LAST, updated_at DESC
+                LIMIT $2
+                """,
+                client_id,
+                limit,
+            )
+
+            cases: list[WaCaseIntelligenceCard] = []
+            for row in rows:
+                payload = dict(row)
+                payload["flags"] = _coerce_json_list(payload.get("flags"))
+                payload["raw_sections"] = _coerce_json_dict(payload.get("raw_sections"))
+                cases.append(WaCaseIntelligenceCard(**payload))
+
+            return WaCaseIntelligenceResponse(
+                client_id=client_id,
+                status="available" if cases else "not_generated",
+                case_count=len(cases),
+                cases=cases,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(
+            "wa_case_intelligence fetch failed for client %d",
             int(client_id),
         )
         raise handle_database_error(e) from e
