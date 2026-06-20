@@ -149,6 +149,25 @@ def build_embedding_text(entry: dict) -> str:
             parts.append(intel)
         parts.append("")
 
+    # L4 Bali sovereign-local status (moratorium 2026-05-13) — embed it so semantic
+    # search surfaces the Bali block, not just the national PMA status.
+    l4 = entry.get("l4_bali") or {}
+    if l4.get("status"):
+        parts.append("## Status PMA di Bali (L4 — moratorium provinsi)")
+        if l4.get("blocked"):
+            parts.append(
+                "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
+                "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13).",
+            )
+        parts.append(f"- Status Bali: {l4['status']}")
+        if l4.get("reason"):
+            parts.append(f"- Alasan: {l4['reason']}")
+        parts.append(
+            "- Catatan: status nasional (Perpres 10/2021) bisa TERBUKA 100% "
+            "sementara di Bali diblokir — keduanya benar bersamaan.",
+        )
+        parts.append("")
+
     return "\n".join(parts)
 
 
@@ -168,6 +187,11 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
     description = entry.get("uraian", "")
     risk_category = next(iter(risk_levels), "")
 
+    # L4 Bali sovereign-local layer (flat fields — KBLI flat-payload golden rule).
+    # National PMA openness (pma_status) != Bali registrability (bali_status).
+    l4 = entry.get("l4_bali") or {}
+    bali_status = l4.get("status", "")
+
     return {
         "text": embedding_text,
         "content": embedding_text,
@@ -181,7 +205,7 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         "digit_count": len(code),
         "sources": ["BPS_7_2025", "PP_28_2025"],
         "doc_type": "kbli_bps",
-        "version": "v8.0-final-complete",
+        "version": "v8.1-final-l4-bali",
         "sektor": entry.get("sektor_id", ""),
         "section": entry.get("sektor_id", ""),
         "pma_status": entry.get("pma_status", ""),
@@ -193,6 +217,11 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         "has_intel_2026": bool(entry.get("intel_2026")),
         "has_gold_content": False,
         "status_mapping": entry.get("status_mapping", ""),
+        # L4 Bali (flat) — sovereign-local status, moratorium 2026-05-13
+        "bali_status": bali_status,
+        "bali_blocked": bool(l4.get("blocked")),
+        "bali_reason": l4.get("reason", ""),
+        "has_bali_l4": bool(bali_status),
         "indexed_at": "",  # filled at upsert time
     }
 
@@ -375,7 +404,7 @@ async def main():
         code = entry["kode_kbli_2025"]
         embedding_text = build_embedding_text(entry)
         payload = build_payload(entry, embedding_text)
-        payload["metadata"]["indexed_at"] = indexed_at
+        payload["indexed_at"] = indexed_at  # flat payload (KBLI flat-payload golden rule)
 
         all_points.append(
             {
@@ -408,13 +437,18 @@ async def main():
     if args.dry_run:
         logger.info("\nDRY RUN - sample points:")
         for p in all_points[:2]:
-            logger.info(f"  Code: {p['payload']['metadata']['kode']}")
-            logger.info(f"  Judul: {p['payload']['metadata']['judul'][:80]}")
-            logger.info(f"  Sektor: {p['payload']['metadata']['sektor']}")
-            logger.info(f"  PMA: {p['payload']['metadata']['pma_status']}")
-            logger.info(f"  Scales: {p['payload']['metadata']['scales']}")
+            pl = p["payload"]  # flat payload
+            logger.info(f"  Code: {pl['kode']}")
+            logger.info(f"  Judul: {pl['judul'][:80]}")
+            logger.info(f"  Sektor: {pl['sektor']}")
+            logger.info(f"  PMA (national): {pl['pma_status']}")
+            logger.info(f"  Bali (L4): {pl['bali_status']} (blocked={pl['bali_blocked']})")
+            logger.info(f"  Scales: {pl['scales']}")
             logger.info(f"  Text preview: {p['_text_to_embed'][:300]}...")
             logger.info("")
+        bali_blocked = sum(1 for p in all_points if p["payload"]["bali_blocked"])
+        bali_l4 = sum(1 for p in all_points if p["payload"]["has_bali_l4"])
+        logger.info(f"L4 coverage: {bali_l4}/{len(all_points)} have Bali status, {bali_blocked} blocked in Bali")
         logger.info(f"Would delete old OSS_RBA_API points and upsert {len(all_points)} new points")
         return
 

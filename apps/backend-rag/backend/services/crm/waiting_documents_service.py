@@ -286,6 +286,12 @@ Zantara — Bali Zero Team
             payload: dict = {"to": to_email, "subject": subject, "body": html_body}
             if cc:
                 payload["cc"] = cc
+            # Context for the endpoint's @balizero.com CC hard rule
+            # (Antonello 2026-06-17): non-invoice → assigned lead, else asya@.
+            # cc here is the practice's assigned/team-leader address.
+            payload["email_type"] = email_type
+            if cc:
+                payload["assigned_to"] = cc
             client = await get_email_client()
             response = await client.post(
                 _EMAIL_API_URL,

@@ -4,7 +4,9 @@ Covers the panel-2026-06-04 fixes:
   - cadence: sleep ~0.1s after 'sent' (drain fast), full interval after 'idle'.
   - resilience: a raised exception in a tick is logged and the loop continues.
   - cancellation: the loop exits cleanly on CancelledError (shutdown path).
-  - v1 sentinel bot generator raises NotImplementedError (human-send-only).
+  - bot generator (Option B): _make_wa_bot_generate returns a flag-gated
+    closure that raises (RuntimeError) when WA_INBOX_BOT_AUTOREPLY is off —
+    so the worker marks the row failed/retry, never a wrong send (default).
 
 The loop is driven against a fake app whose state.db_pool is a sentinel, with
 process_outbox_once monkeypatched to a scripted sequence of statuses. We cap
@@ -23,9 +25,15 @@ from backend.app import main_api
 
 
 @pytest.mark.asyncio
-async def test_v1_bot_generator_raises_not_implemented() -> None:
-    with pytest.raises(NotImplementedError):
-        await main_api._wa_bot_generate_not_implemented(object())
+async def test_bot_generator_flag_off_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Default (flag off) → the closure raises so the worker never sends a wrong
+    # reply. Option B is opt-in via WA_INBOX_BOT_AUTOREPLY.
+    monkeypatch.delenv("WA_INBOX_BOT_AUTOREPLY", raising=False)
+    app = SimpleNamespace(state=SimpleNamespace(db_pool=object()))
+    bot_fn = main_api._make_wa_bot_generate(app)
+    thread = {"thread_id": 1, "counterpart_phone": "62811"}
+    with pytest.raises(RuntimeError, match="disabled"):
+        await bot_fn(thread)
 
 
 @pytest.mark.asyncio
@@ -62,8 +70,10 @@ async def test_scheduler_cadence_sent_then_idle(monkeypatch: pytest.MonkeyPatch)
     assert sleeps[0] == pytest.approx(0.1)
     assert sleeps[1] == pytest.approx(0.1)
     assert sleeps[2] == pytest.approx(3.0)
-    # the bot generator passed through is the v1 sentinel
-    assert calls[0][2] is main_api._wa_bot_generate_not_implemented
+    # the bot generator passed through is the Option-B closure (callable,
+    # built once and reused for every tick of this scheduler run)
+    assert callable(calls[0][2])
+    assert calls[0][2] is calls[1][2]
 
 
 @pytest.mark.asyncio

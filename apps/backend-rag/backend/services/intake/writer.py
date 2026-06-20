@@ -55,6 +55,7 @@ import asyncpg
 
 from backend.core.cache import invalidate_crm_stats
 from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+from backend.services.intake.enqueue import PIPELINE_VERSION
 
 logger = logging.getLogger("zantara.intake.writer")
 
@@ -236,6 +237,7 @@ def _document_payload(
         "npwp": "tax",
         "nib": "pma",
         "akta_pendirian": "pma",
+        "profil_perseroan": "pma",
     }
     category = category_map.get(doc_type)
 
@@ -305,7 +307,7 @@ async def plan_commit(
     blob_hash = (qrow["blob_hash"] if qrow else None) or ""
     pipeline_version = (qrow["pipeline_version"] if qrow else None) or p.get(
         "pipeline_version"
-    ) or "v1"
+    ) or PIPELINE_VERSION
     doc_index = int(p.get("doc_index") or 0)
 
     # Target client: explicit override (human chose) wins, else routing's resolved client.

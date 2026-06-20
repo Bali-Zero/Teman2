@@ -13,6 +13,7 @@ import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
+import { BaliStatusBadge } from "@/components/kbli/BaliStatusBadge";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import {
   KBLICodeJsonLd,
@@ -247,6 +248,14 @@ export default async function KBLICodePage({
                   <RiskBadge category={kbli.licensing[0].riskCategory} />
                 )}
                 <TransitionBadge status={kbli.transition.mappingStatus} />
+                {kbli.baliL4 && (
+                  <BaliStatusBadge
+                    status={kbli.baliL4.status}
+                    reason={kbli.baliL4.reason}
+                    confidence={kbli.baliL4.confidence}
+                    needsReview={kbli.baliL4.needsReview}
+                  />
+                )}
               </div>
             </div>
           </div>

@@ -56,6 +56,25 @@ router = APIRouter(prefix="/api/intake/review", tags=["intake-review"])
 # How long a single reviewer holds a proposal before it becomes reclaimable.
 CLAIM_TTL_MINUTES = 15
 
+# Which intake sources surface in the human review queue. Per Zero (2026-06-19):
+# the review queue is WhatsApp-only "for now" — Drive/Dropbox documents are still
+# catalogued into intake_queue + document_routing_proposal (the DB record is kept
+# and the worker keeps running), they just must NOT flood the team/admin review
+# list. The Dropbox→Drive mirror is the team's whole historical archive (years of
+# scans + iPhone camera rolls), so draining it into review buried the ~107 real
+# WhatsApp docs under ~19.6k archive proposals. This is the single gate that keeps
+# the queue honest; widen it only by setting INTAKE_REVIEW_SOURCES.
+#
+# Override (CSV, e.g. "whatsapp,drive") to re-admit other sources without a code
+# change. An empty/whitespace value falls back to the default allowlist.
+_DEFAULT_REVIEW_SOURCES = ("whatsapp",)
+
+
+def _review_source_allowlist() -> tuple[str, ...]:
+    raw = os.getenv("INTAKE_REVIEW_SOURCES", "")
+    parsed = tuple(s.strip().lower() for s in raw.split(",") if s.strip())
+    return parsed or _DEFAULT_REVIEW_SOURCES
+
 # MIME types a browser can render inline WITHOUT a script-execution surface.
 # Deliberately excludes image/svg+xml (can embed <script>) and text/html.
 _INLINE_SAFE_MIME = frozenset(
@@ -269,7 +288,14 @@ async def list_review_queue(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
     status: str = Query("review_pending", pattern="^(review_pending|review_claimed)$"),
-    source: str | None = Query(None, description="Filter by intake source (whatsapp|drive|zoho)"),
+    source: str | None = Query(
+        None,
+        description=(
+            "Filter by intake source. Must be within the review allowlist "
+            "(WhatsApp-only by default; see INTAKE_REVIEW_SOURCES). An out-of-"
+            "allowlist source returns an empty page, never Drive/Dropbox docs."
+        ),
+    ),
     decision: str | None = Query(
         None, description="Filter by entity_resolution.decision (AUTO_ATTACH|LINK_CANDIDATE|AMBIGUOUS|NO_MATCH)"
     ),
@@ -285,6 +311,18 @@ async def list_review_queue(
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
+
+    # Source gate (WhatsApp-only by default): an explicit ?source= still wins for
+    # ad-hoc inspection, but MUST be inside the allowlist — a caller cannot ask
+    # for ?source=drive unless INTAKE_REVIEW_SOURCES admits it. With no ?source=,
+    # the queue is scoped to the whole allowlist. Both go through the same
+    # `q.source = ANY($2)` clause so Drive/Dropbox proposals never surface here.
+    allowlist = _review_source_allowlist()
+    if source is not None and source.lower() not in allowlist:
+        # Asking for a source the queue doesn't admit → an empty, honest page
+        # (not an error: the proposal exists in the DB, it's just not reviewable).
+        return {"total": 0, "limit": limit, "offset": offset, "items": []}
+    source_filter = [source.lower()] if source is not None else list(allowlist)
 
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -308,12 +346,12 @@ async def list_review_queue(
             FROM document_routing_proposal p
             JOIN intake_queue q ON q.id = p.queue_id
             WHERE p.status = $1
-              AND ($2::text IS NULL OR q.source = $2)
+              AND q.source = ANY($2::text[])
               AND ($3::boolean OR q.received_by = $4)
             ORDER BY p.created_at ASC, p.id ASC
             """,
             status,
-            source,
+            source_filter,
             admin,
             user_email,
         )

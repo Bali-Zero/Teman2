@@ -244,3 +244,60 @@ async def test_route_stage_zero_crm_writes(pool, seeded):
     await route_stage({"id": q2, "pipeline_version": "v1"}, "route", pool)
     after = await counts()
     assert before == after, f"CRM tables mutated: before={before} after={after}"
+
+
+def test_pipeline_version_is_single_source_of_truth():
+    """Blindatura difetto-1: routing/writer/enqueue must agree on ONE version.
+
+    Historical drift: enqueue used "intake-v1" while routing/writer used "v1".
+    Because routing_key = sha256(queue_id|doc_index|pipeline_version), the two
+    halves of the pipeline derived different keys for the same document and a
+    re-process could orphan proposals. The constants must be the SAME object,
+    not two literals that merely happen to match today.
+    """
+    # NB: `from backend.services.intake import enqueue` resolves to the enqueue
+    # FUNCTION (re-exported by __init__), not the submodule — so import the
+    # constant explicitly and the submodules via their full dotted path.
+    from backend.services.intake.enqueue import PIPELINE_VERSION
+    from backend.services.intake.routing import PIPELINE_VERSION_DEFAULT
+    from backend.services.intake.writer import PIPELINE_VERSION as WRITER_PV
+
+    assert PIPELINE_VERSION_DEFAULT == PIPELINE_VERSION
+    assert WRITER_PV == PIPELINE_VERSION
+
+
+@pytest.mark.asyncio
+async def test_anti_deadlock_revives_superseded_orphan(pool, seeded):
+    """Blindatura difetto-2: a re-route over a superseded-orphan must revive it.
+
+    Reproduces the adit done-deadlock: a proposal is superseded (by a reprocess)
+    but the same routing_key gets re-derived, so the bare ON CONFLICT DO NOTHING
+    would drop the fresh proposal and leave the queue with ZERO live proposal —
+    invisible in /review forever. The guard must flip the survivor back to
+    'review_pending' instead.
+    """
+    q = await _seed_queue(pool, "passport", {"name": f"{TAG} Nonexistent Person XYZ"})
+    r1 = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
+    pid = r1["proposal_id"]
+
+    # Simulate the reprocess marking the proposal superseded (m226) WITHOUT
+    # bumping the queue's pipeline_version — so the re-route derives the SAME key.
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE document_routing_proposal SET status='superseded' WHERE id=$1", pid
+        )
+        assert (await _proposal(pool, q))["status"] == "superseded"
+
+    # Re-route: same routing_key → ON CONFLICT → guard must revive the orphan.
+    r2 = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
+    assert r2["proposal_id"] == pid  # same row, not a duplicate
+    row = await _proposal(pool, q)
+    assert row["status"] == "review_pending", (
+        "superseded-orphan was NOT revived — done-deadlock would recur"
+    )
+    # exactly one proposal for this queue (no duplicate created)
+    async with pool.acquire() as c:
+        n = await c.fetchval(
+            "SELECT count(*) FROM document_routing_proposal WHERE queue_id=$1", q
+        )
+    assert n == 1

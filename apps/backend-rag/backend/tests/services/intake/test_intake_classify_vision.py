@@ -175,6 +175,12 @@ async def test_generic_mrz_lead_in_scores_passport():
 
 @pytest.mark.asyncio
 async def test_english_kitas_title_classifies():
+    # An English-title "LIMITED STAY PERMIT CARD" is a KITAS = an *itas* card.
+    # Since the 2026-06-17 stay-permit override, the classifier emits the
+    # SPECIFIC subtype (itas) rather than the generic "kitas" — the override
+    # fires on the "stay permit" / "limited stay" markers and never on passport.
     r = await cls.classify_document("LIMITED STAY PERMIT CARD REPUBLIC OF INDONESIA")
-    assert r["type"] == "kitas"
+    assert r["type"] == "itas"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
     assert r["confidence"] >= 0.30

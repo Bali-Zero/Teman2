@@ -21,11 +21,16 @@ from backend.services.autonomous_lab.receipt_safety import (
 )
 
 DEFAULT_ALLOWED_TARGET_PREFIXES = (
+    "apps/admin-dashboard/app/autonomous-lab/",
     "apps/backend-rag/backend/services/autonomous_lab/",
     "apps/backend-rag/backend/tests/unit/services/autonomous_lab/",
     "research/operations/autonomous-lab/",
 )
 DEFAULT_ALLOWED_TARGET_PATHS = (
+    "apps/admin-dashboard/app/globals.css",
+    "apps/admin-dashboard/app/layout.tsx",
+    "apps/admin-dashboard/components/Sidebar.tsx",
+    "apps/admin-dashboard/lib/autonomous-lab.ts",
     "scripts/autonomous_lab_draft.py",
     "scripts/autonomous_lab_run.py",
 )
@@ -41,6 +46,7 @@ _SECRET_ASSIGNMENT_RE = re.compile(
 _SECRET_QUERY_KEY_RE = re.compile(
     r"(?i)(?:^|[?&])(?:access[_-]?token|api[_-]?key|key|password|secret|signature|sig|token)="
 )
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 _GOOGLE_WORKSPACE_WRITE_RE = re.compile(
     r"(?i)\b(?:google\s+(?:workspace|drive|docs|sheets)|gdrive|gam|clasp)\b"
     r".{0,80}\b(?:append|batchupdate|create|delete|insert|patch|update|write)\b"
@@ -446,6 +452,8 @@ def invalid_autonomous_lab_target_path_reason(
         return "target path is empty"
     if "\x00" in candidate:
         return "target path contains a null byte"
+    if _CONTROL_CHAR_RE.search(candidate):
+        return "target path must not contain control characters"
     if "\\" in candidate:
         return "target path must use POSIX separators"
     if "://" in candidate:

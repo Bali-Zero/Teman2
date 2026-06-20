@@ -165,14 +165,32 @@ def _read_heartbeat_state(
     """
     sdir = state_dir or STATE_DIR
     target = sdir / f"heartbeat_{pipeline_name}.json"
-    if not target.exists():
-        return None
-    try:
-        with open(target, encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Failed to read heartbeat state for %s: %s", pipeline_name, exc)
-        return None
+    if target.exists():
+        try:
+            with open(target, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read heartbeat state for %s: %s", pipeline_name, exc)
+    # Fallback: cron-runner run-state files. Many healthy jobs never call --record
+    # (they only write run_<name>.last.json), so a missing heartbeat_*.json is NOT
+    # proof the job never ran — that produced ~5 false NEVER_RANs. Treat status=="ok"
+    # with a positive ts as a success heartbeat (source of truth for those jobs).
+    for cand in (f"run_{pipeline_name}.last.json", f"{pipeline_name}.last.json",
+                 f"nlm_{pipeline_name}.last.json"):
+        rf = sdir / cand
+        if not rf.exists():
+            continue
+        try:
+            d = json.loads(rf.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        ts = d.get("ts")
+        if d.get("status") == "ok" and isinstance(ts, (int, float)) and ts > 0:
+            return {
+                "pipeline": pipeline_name,
+                "last_success": datetime.fromtimestamp(ts, tz=WITA).isoformat(),
+            }
+    return None
 
 
 # ---------------------------------------------------------------------------

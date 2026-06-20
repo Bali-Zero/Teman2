@@ -258,8 +258,10 @@ class HealthMonitor:
         Dead tuples predict vacuum lag; WAL accumulation predicts I/O saturation.
         Source: NB-1 doc 2026-03-14, §5.5 — "two metrics that predict every PostgreSQL outage".
 
-        Auto-triggers VACUUM ANALYZE if dead_tuples > 10000, only during off-peak hours
-        (02:00–06:00 WITA) or if count is critical.
+        Vacuum lag is measured as a fraction of each table's OWN autovacuum trigger
+        (threshold + scale_factor*live_tup), not an absolute dead-tuple sum. Auto-
+        triggers a TARGETED VACUUM ANALYZE on the most-bloated table only when that
+        fraction is high, during off-peak hours (02:00-06:00 WITA) or if critical.
         """
         if not self.app_state:
             return
@@ -269,10 +271,30 @@ class HealthMonitor:
 
         try:
             async with db_pool.acquire() as conn:
-                # Dead tuple count
-                dead_tup = await conn.fetchval(
-                    "SELECT COALESCE(sum(n_dead_tup), 0) FROM pg_stat_user_tables"
+                # Vacuum lag is a RATIO, not an absolute count: a table is behind
+                # only when its dead tuples exceed its own autovacuum trigger
+                # (threshold + scale_factor * live_tup). Summing raw n_dead_tup across
+                # all tables made a large healthy table (e.g. api_audit_trail ~11k
+                # dead / 777k live, frac 0.07) trip a >10000 "critical" — a pure
+                # false-positive (verified live 2026-06-20). Rank by fraction of the
+                # table's own threshold instead.
+                bloat = await conn.fetchrow(
+                    """
+                    SELECT relname,
+                           n_dead_tup,
+                           (n_dead_tup::float / NULLIF(
+                               current_setting('autovacuum_vacuum_threshold')::float
+                               + current_setting('autovacuum_vacuum_scale_factor')::float
+                                 * n_live_tup, 0)) AS frac
+                    FROM pg_stat_user_tables
+                    WHERE n_dead_tup > 0
+                    ORDER BY frac DESC NULLS LAST
+                    LIMIT 1
+                    """
                 )
+                worst_table = bloat["relname"] if bloat else None
+                worst_dead = int(bloat["n_dead_tup"]) if bloat and bloat["n_dead_tup"] else 0
+                worst_frac = float(bloat["frac"]) if bloat and bloat["frac"] is not None else 0.0
 
                 # WAL size — pg_ls_waldir() requires superuser or pg_monitor role.
                 # backend_rag_v2 does NOT have pg_monitor granted in any migration,
@@ -292,29 +314,41 @@ class HealthMonitor:
                             wal_err,
                         )
 
-                # Alert thresholds
-                if dead_tup > 10000:
+                # Alert thresholds — fraction of the table's OWN autovacuum trigger.
+                # frac >= 1.0 means autovacuum is about to (or should) fire; warn a
+                # bit before (1.2) and crit at 2x (autovacuum is clearly behind).
+                if worst_frac >= 2.0:
                     await self._send_resource_alert_throttled(
                         "pg_dead_tuples",
-                        float(dead_tup),
-                        10000.0,
-                        unit=" dead tuples (auto-VACUUM triggered)",
+                        round(worst_frac, 2),
+                        2.0,
+                        unit=f"x autovacuum trigger on {worst_table} "
+                        f"({worst_dead} dead tuples; auto-VACUUM triggered)",
                     )
-                    # Auto-trigger VACUUM ANALYZE off-peak or critical
-                    # Use timezone-aware UTC time (utcnow() is deprecated in Python 3.12+)
+                    # Targeted VACUUM of the offending table only (never a full-DB
+                    # VACUUM on a false-positive) — off-peak or clearly critical.
+                    # Use timezone-aware UTC time (utcnow() is deprecated in 3.12+).
                     now_hour_wita = (datetime.now(timezone.utc).hour + 8) % 24
-                    if 2 <= now_hour_wita < 6 or dead_tup > 50000:
-                        logger.info("Auto-triggering VACUUM ANALYZE (%s dead tuples)", dead_tup)
+                    if (
+                        worst_table
+                        and worst_table.isidentifier()  # guard: catalog identifier only
+                        and (2 <= now_hour_wita < 6 or worst_frac >= 4.0)
+                    ):
+                        logger.info(
+                            "Auto-triggering VACUUM ANALYZE on %s (frac %.2f, %s dead)",
+                            worst_table, worst_frac, worst_dead,
+                        )
                         try:
-                            await conn.execute("VACUUM ANALYZE")
+                            await conn.execute(f'VACUUM ANALYZE "{worst_table}"')
                         except Exception as ve:
-                            logger.warning("VACUUM ANALYZE failed: %s", ve)
-                elif dead_tup > 5000:
+                            logger.warning("VACUUM ANALYZE %s failed: %s", worst_table, ve)
+                elif worst_frac >= 1.2:
                     await self._send_resource_alert_throttled(
                         "pg_dead_tuples_warn",
-                        float(dead_tup),
-                        5000.0,
-                        unit=" dead tuples (VACUUM recommended)",
+                        round(worst_frac, 2),
+                        1.2,
+                        unit=f"x autovacuum trigger on {worst_table} "
+                        f"({worst_dead} dead tuples; VACUUM recommended)",
                     )
 
                 if wal_mb > 500:
@@ -340,14 +374,21 @@ class HealthMonitor:
         try:
             pool_size = db_pool.get_size()
             pool_max = db_pool.get_max_size()
+            idle = db_pool.get_idle_size()
+            in_use = max(pool_size - idle, 0)
             if pool_max > 0:
-                saturation = (pool_size / pool_max) * 100
+                # Saturation = connections actually checked OUT, not the pool's held
+                # size (asyncpg keeps idle conns open up to max, so size/max read a
+                # warm-but-idle pool as "saturated"). This is the app's asyncpg pool,
+                # NOT Postgres server max_connections.
+                saturation = (in_use / pool_max) * 100
                 if saturation > 85:
                     await self._send_resource_alert_throttled(
-                        "db_pool",
+                        "app_db_pool",
                         saturation,
                         85.0,
-                        unit=f"% ({pool_size}/{pool_max} connections)",
+                        unit=f"% of app asyncpg pool in use "
+                        f"({in_use}/{pool_max} checked out; not Postgres max_connections)",
                     )
         except Exception as e:
             logger.debug("DB pool check failed: %s", e)
