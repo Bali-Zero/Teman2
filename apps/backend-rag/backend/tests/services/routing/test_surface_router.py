@@ -350,6 +350,61 @@ class TestAmbiguousQueries:
             assert d.layer_used == 1  # fallback to keyword
 
 
+class TestHaikuJsonSchema:
+    """The Haiku classifier passes a native --json-schema and prefers the
+    structured_output over text parsing (SPEC v2 F3)."""
+
+    @pytest.mark.asyncio
+    async def test_classify_prefers_structured(self):
+        router = SurfaceRouter()
+        captured: dict = {}
+
+        async def fake_complete(prompt, *, model=None, timeout_s=120, endpoint=None, request_id=None, json_schema=None):
+            captured["json_schema"] = json_schema
+            captured["model"] = model
+            # structured present + garbage text → structured must win.
+            return type(
+                "R",
+                (),
+                {"text": "not json", "structured": {"domain": "tax", "confidence": 0.88}},
+            )()
+
+        with patch(
+            "backend.llm.claude_oauth_client.complete_async",
+            side_effect=fake_complete,
+        ):
+            decision = await router._classify_with_haiku("how is my villa rental taxed?")
+
+        assert decision is not None
+        assert decision.domain == "tax"
+        assert decision.confidence == pytest.approx(0.88)
+        # native schema was passed with the enum of domains.
+        assert captured["json_schema"] is not None
+        assert "domain" in captured["json_schema"]["properties"]
+        assert captured["model"] == "claude-haiku-4-5-20251001"
+
+    @pytest.mark.asyncio
+    async def test_classify_falls_back_to_text_when_no_structured(self):
+        router = SurfaceRouter()
+
+        async def fake_complete(prompt, *, model=None, timeout_s=120, endpoint=None, request_id=None, json_schema=None):
+            # No structured (e.g. CLI lacks flag) → parse the JSON text.
+            return type(
+                "R",
+                (),
+                {"text": '{"domain": "property", "confidence": 0.6}', "structured": None},
+            )()
+
+        with patch(
+            "backend.llm.claude_oauth_client.complete_async",
+            side_effect=fake_complete,
+        ):
+            decision = await router._classify_with_haiku("villa hak pakai zoning?")
+
+        assert decision is not None
+        assert decision.domain == "property"
+
+
 # ---------------------------------------------------------------------------
 # 9. SurfaceDecision dataclass
 # ---------------------------------------------------------------------------
