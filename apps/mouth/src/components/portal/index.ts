@@ -37,5 +37,7 @@ export {
 
 export { PracticeRecapCard } from "./PracticeRecapCard";
 
+export { PortalNewsRail, relevantCategories } from "./PortalNewsRail";
+
 export { PortalEmptyState } from "./PortalEmptyState";
 export { PortalBackButton } from "./PortalBackButton";
