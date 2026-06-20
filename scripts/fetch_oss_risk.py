@@ -11,12 +11,16 @@ to /tmp/oss_risk_raw.jsonl so a parsing bug never forces a re-download.
 Usage:
     python scripts/fetch_oss_risk.py [--limit N] [--start N]
 """
-import argparse, json, time, urllib.request, urllib.error
+import argparse, json, os, time, urllib.request, urllib.error
 from pathlib import Path
 
 OSS_GT = Path("/Users/balizero/Desktop/nuzantara/data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json")
 OUT = Path("/tmp/oss_risk_raw.jsonl")
-USER_KEY = "846ee507525c6b00d18733e066bd5686"
+# Static app credential of the OSS RBA iOS app (gw.oss.go.id) — NOT a Bali Zero secret:
+# it is embedded in the public government app, identical for every user, and unlocks only
+# public economic-classification data (zero PII, no user login). Read from env so the
+# high-entropy literal stays out of the repo; the value is the one published in the app.
+USER_KEY = os.environ.get("OSS_RBA_USER_KEY", "")
 BASE = "https://gw.oss.go.id/v2/portal/kbli/ruang-lingkup/"
 
 
@@ -45,6 +49,11 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--start", type=int, default=0)
     args = ap.parse_args()
+
+    if not USER_KEY:
+        raise SystemExit(
+            "set OSS_RBA_USER_KEY (the OSS RBA app's static public user_key) before running, "
+            "e.g. OSS_RBA_USER_KEY=<key> python scripts/fetch_oss_risk.py")
 
     gt = json.loads(OSS_GT.read_text(encoding="utf-8"))
     codes = [(str(x["kode"]), x["uuid"]) for x in gt["data"] if x.get("digits") == 5]
