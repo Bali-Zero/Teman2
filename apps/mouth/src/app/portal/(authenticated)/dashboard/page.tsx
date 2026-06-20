@@ -19,7 +19,12 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/format-date";
-import type { PortalProfile, VisaInfo } from "@/lib/api/portal/portal.types";
+import type {
+  PortalProfile,
+  VisaInfo,
+  DashboardSummary,
+} from "@/lib/api/portal/portal.types";
+import { PracticeRecapCard } from "@/components/portal/PracticeRecapCard";
 
 interface PassportValidityInfo {
   color: string;
@@ -92,6 +97,7 @@ export default function PortalDashboardPage() {
   const [processStatus, setProcessStatus] = useState<
     "process" | "electronic" | "actual"
   >("process");
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -101,12 +107,16 @@ export default function PortalDashboardPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [profileData, visaData] = await Promise.all([
+      const [profileData, visaData, summaryData] = await Promise.all([
         api.portal.getProfile(),
         api.portal.getVisaStatus(),
+        // Recap + hero data. Non-blocking: a failure here must not break the
+        // dashboard, so it resolves to null instead of rejecting the Promise.all.
+        api.portal.getDashboardSummary().catch(() => null),
       ]);
       setProfile(profileData);
       setVisaInfo(visaData);
+      setSummary(summaryData);
 
       // Determine which visa status to show
       if (visaData?.current) {
@@ -220,6 +230,9 @@ export default function PortalDashboardPage() {
           Your personal information and documents
         </p>
       </section>
+
+      {/* AI recap — facts-locked "since your last visit" summary (FASE 3) */}
+      {summary?.recap && <PracticeRecapCard recap={summary.recap} />}
 
       {/* Main Grid - 3 columns on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

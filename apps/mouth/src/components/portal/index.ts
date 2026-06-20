@@ -35,5 +35,7 @@ export {
   type Baton,
 } from "./PracticeBaton";
 
+export { PracticeRecapCard } from "./PracticeRecapCard";
+
 export { PortalEmptyState } from "./PortalEmptyState";
 export { PortalBackButton } from "./PortalBackButton";
