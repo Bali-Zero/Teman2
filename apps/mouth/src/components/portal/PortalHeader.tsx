@@ -87,7 +87,7 @@ export function PortalHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[rgba(29,39,59,0.7)] backdrop-blur-[24px] border-b border-[var(--glass-rim)] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
+    <header className="sticky top-0 z-30 w-full bg-[var(--portal-header-bg)] backdrop-blur-[24px] border-b border-[var(--glass-rim)] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
       <div className="flex items-center justify-between h-16 px-4 md:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-3">
