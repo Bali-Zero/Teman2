@@ -41,7 +41,7 @@ const funnels: Array<{
   {
     title: "KBLI Navigator",
     funnel: "kbli",
-    description: "Decode 1,563 Indonesian business codes",
+    description: "Decode 1,559 Indonesian business codes",
     href: "/kbli",
     accent: "#d4845a",
     accentGlow: "rgba(212, 132, 90, 0.15)",
