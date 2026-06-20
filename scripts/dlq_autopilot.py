@@ -77,6 +77,13 @@ LOCK_STALE_AGE_S = 1500          # 25min — if lock older than this, treat as s
 MAX_ATTEMPTS = 10                 # per DLQ entry (default; per-job override via registry max_attempts)
 DLQ_TTL_S = 172800                # 48h — abandon entries older than this with empty error
 MIN_ERROR_LEN = 20                # skip reasoning if error_summary shorter than this
+# Corpse-sweep freshness window: only drain a "recovered" (status==ok) DLQ entry if
+# its state file's "ok" is RECENT. A stale "ok" (job hasn't actually re-run in this
+# window) is NOT proof of recovery — draining it just re-arms the blind loop
+# (drain → sentinel re-adds on next failure → drain → forever; 90 consecutive blind
+# cycles observed 2026-06-20). Genuinely-recovered jobs write a fresh ok on success
+# and drain on the next tick. Fail-closed on missing/old ts.
+CORPSE_SWEEP_FRESH_S = int(os.getenv("DLQ_CORPSE_SWEEP_FRESH_S", str(6 * 3600)))  # 6h
 CONFIDENCE_RETRY = 0.95           # no-code-change retry threshold
 CONFIDENCE_AIDER = 0.90           # code-change aider threshold
 REASONING_TIMEOUT_S = 90          # claude --print timeout
@@ -158,8 +165,30 @@ def load_registry() -> dict:
         return {}
 
 
+def _state_is_fresh(state: dict) -> bool:
+    """True iff the state file's timestamp is within CORPSE_SWEEP_FRESH_S of now.
+
+    A missing / zero / unparseable ts is NOT fresh (fail-closed: never drain on an
+    absent timestamp). Tolerates the legacy ISO-8601 ts format older writers emitted
+    (W54) the same way the sentinel does.
+    """
+    raw = state.get("ts", 0)
+    try:
+        ts = float(raw) if raw not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        try:
+            import datetime as _dt
+            ts = _dt.datetime.strptime(str(raw), "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=_dt.timezone.utc).timestamp()
+        except Exception:
+            return False
+    if ts <= 0:
+        return False
+    return (time.time() - ts) <= CORPSE_SWEEP_FRESH_S
+
+
 def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
-    """Drain DLQ entries whose job has since recovered (state.status == 'ok').
+    """Drain DLQ entries whose job has since recovered (state.status == 'ok' AND fresh).
 
     Root cause this fixes (W81 / blind heal-loop, 2026-06-15): process_entry()'s
     TERMINAL guard skips TERMINAL entries forever, and the sentinel's W70-resurrect
@@ -180,9 +209,12 @@ def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             kept.append(entry)
             continue
-        if state.get("status") == "ok":
+        if state.get("status") == "ok" and _state_is_fresh(state):
             cleared.append(job)
         else:
+            # status != ok OR a stale "ok" (no proof the job re-ran in the window):
+            # keep in DLQ for audit. The sentinel's own staleness path (ok→stale)
+            # re-classifies it through the normal failure flow if it really died.
             kept.append(entry)
     return kept, cleared
 
