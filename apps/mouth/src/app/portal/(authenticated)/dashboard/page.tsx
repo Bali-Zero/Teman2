@@ -25,6 +25,8 @@ import type {
   DashboardSummary,
 } from "@/lib/api/portal/portal.types";
 import { PracticeRecapCard } from "@/components/portal/PracticeRecapCard";
+import { PortalNewsRail } from "@/components/portal/PortalNewsRail";
+import type { ArticleListItem } from "@/lib/blog/types";
 
 interface PassportValidityInfo {
   color: string;
@@ -98,6 +100,7 @@ export default function PortalDashboardPage() {
     "process" | "electronic" | "actual"
   >("process");
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [articles, setArticles] = useState<ArticleListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -107,16 +110,25 @@ export default function PortalDashboardPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [profileData, visaData, summaryData] = await Promise.all([
-        api.portal.getProfile(),
-        api.portal.getVisaStatus(),
-        // Recap + hero data. Non-blocking: a failure here must not break the
-        // dashboard, so it resolves to null instead of rejecting the Promise.all.
-        api.portal.getDashboardSummary().catch(() => null),
-      ]);
+      const [profileData, visaData, summaryData, articlesRes] =
+        await Promise.all([
+          api.portal.getProfile(),
+          api.portal.getVisaStatus(),
+          // Recap + hero data. Non-blocking: a failure here must not break the
+          // dashboard, so it resolves to null instead of rejecting Promise.all.
+          api.portal.getDashboardSummary().catch(() => null),
+          // News rail (The Bali Zero Dispatch). Reuses the existing newsroom
+          // API; non-blocking — an empty list just hides the rail.
+          fetch("/api/blog/articles?limit=8")
+            .then((r) => (r.ok ? r.json() : { articles: [] }))
+            .catch(() => ({ articles: [] })),
+        ]);
       setProfile(profileData);
       setVisaInfo(visaData);
       setSummary(summaryData);
+      setArticles(
+        Array.isArray(articlesRes?.articles) ? articlesRes.articles : [],
+      );
 
       // Determine which visa status to show
       if (visaData?.current) {
@@ -245,6 +257,21 @@ export default function PortalDashboardPage() {
         {/* Column 3: Process → Electronic Visa → Actual Visa */}
         <VisaProcessCard status={processStatus} visaInfo={visaInfo} />
       </div>
+
+      {/* The Bali Zero Dispatch — news from our world, filtered to the client's
+          active practices. Context, not hero (FASE 4, blueprint §3.3 Tier-3). */}
+      {articles.length > 0 && (
+        <PortalNewsRail
+          articles={articles}
+          practiceKinds={[
+            "visa",
+            ...(summary?.open_actions
+              ?.map((a) => a.type || "")
+              .filter(Boolean) ?? []),
+          ]}
+          limit={4}
+        />
+      )}
     </div>
   );
 }
