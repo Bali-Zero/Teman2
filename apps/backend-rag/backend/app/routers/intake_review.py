@@ -270,8 +270,8 @@ async def list_review_queue(
     pool: asyncpg.Pool = Depends(get_database_pool),
     status: str = Query(
         "review_pending",
-        pattern="^(review_pending|review_claimed|quarantine)$",
-        description="review_pending|review_claimed (main feed) or quarantine (LEVA 1 noise tab)",
+        pattern="^(review_pending|review_claimed|quarantine|duplicate)$",
+        description="review_pending|review_claimed (main feed); quarantine (LEVA-1 noise tab); duplicate (LEVA-3 already-on-profile tab)",
     ),
     source: str | None = Query(None, description="Filter by intake source (whatsapp|drive|zoho)"),
     decision: str | None = Query(
@@ -813,13 +813,15 @@ async def recover_from_quarantine(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """LEVA 1 — pull a quarantined (noise-parked) proposal back into review.
+    """Pull a parked proposal back into review — LEVA-1 ``quarantine`` (noise) OR
+    LEVA-3 ``duplicate`` (already-on-profile) → ``review_pending``.
 
-    The noise pre-filter (route stage) is conservative but not infallible: a real
-    document with a degraded/empty OCR pass can be mis-binned as noise. This is
-    the recovery hatch — ``quarantine`` → ``review_pending`` — so nothing is ever
-    lost, only deferred. RBAC mirrors the queue feed: admins recover anything; a
-    non-admin recovers ONLY proposals from their own chats
+    Both pre-filters are conservative but not infallible: a real document with a
+    degraded OCR pass can be mis-binned as noise, and a genuine SECOND copy of a
+    doc-type (a renewed passport, a superseding akta) may legitimately need
+    filing even though the client already has one. This is the recovery hatch so
+    nothing is ever lost, only deferred. RBAC mirrors the queue feed: admins
+    recover anything; a non-admin recovers ONLY proposals from their own chats
     (``intake_queue.received_by == caller``); NULL-received_by (shared line +
     Drive) is admin-only. NO CRM writes.
     """
@@ -829,7 +831,8 @@ async def recover_from_quarantine(
     async with pool.acquire() as conn:
         # The own-chat RBAC gate lives on intake_queue.received_by — guard it in
         # the UPDATE's correlated subquery so a non-admin can never recover
-        # someone else's (or an admin-only NULL) quarantined row.
+        # someone else's (or an admin-only NULL) parked row. Both parked statuses
+        # (quarantine + duplicate) are recoverable.
         updated = await conn.fetchrow(
             """
             UPDATE document_routing_proposal p
@@ -837,7 +840,7 @@ async def recover_from_quarantine(
               FROM intake_queue q
              WHERE p.id = $1
                AND p.queue_id = q.id
-               AND p.status = 'quarantine'
+               AND p.status IN ('quarantine', 'duplicate')
                AND ($2::boolean OR q.received_by = $3)
             RETURNING p.id
             """,
@@ -857,13 +860,13 @@ async def recover_from_quarantine(
         raise HTTPException(
             status_code=409,
             detail=(
-                "Recover failed: proposal is not quarantined or is outside your "
-                f"scope (status={existing['status']})"
+                "Recover failed: proposal is not parked (quarantine/duplicate) or "
+                f"is outside your scope (status={existing['status']})"
             ),
         )
 
     logger.info(
-        "intake.review.recovered proposal=%s reviewer=%s admin=%s (quarantine→review_pending)",
+        "intake.review.recovered proposal=%s reviewer=%s admin=%s (parked→review_pending)",
         proposal_id, user_email, admin,
     )
     return {"proposal_id": updated["id"], "status": "review_pending"}

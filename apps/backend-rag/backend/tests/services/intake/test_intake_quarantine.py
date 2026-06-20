@@ -11,9 +11,13 @@ noise it exists to catch). The 2026-06-12 backlog poisoning (782 empty-OCR
 
 from __future__ import annotations
 
+import pytest
+
 from backend.services.intake.routing import (
     QUARANTINE_MIN_OCR_CHARS,
     _ocr_char_count,
+    client_already_has_doc_type,
+    dedup_wall_enabled,
     is_noise_proposal,
     quarantine_enabled,
 )
@@ -127,3 +131,68 @@ def test_quarantine_disabled_when_falsy(monkeypatch):
     for val in ("0", "false", "no", "off", ""):
         monkeypatch.setenv("INTAKE_QUARANTINE_ENABLED", val)
         assert quarantine_enabled() is False
+
+
+# --------------------------------------------------------------------------- #
+# LEVA 3 — dedup wall (already-on-profile pre-filter)
+# --------------------------------------------------------------------------- #
+class _FakeConn:
+    """Stub asyncpg conn: returns a preset row for fetchrow, records the query."""
+
+    def __init__(self, row):
+        self._row = row
+        self.called = False
+
+    async def fetchrow(self, *args, **kwargs):
+        self.called = True
+        return self._row
+
+
+@pytest.mark.asyncio
+async def test_dedup_guilt_client_has_same_type():
+    """client_id resolved + already has this doc_type → dedup True (parked)."""
+    conn = _FakeConn(row={"?column?": 1})  # a matching documents row exists
+    assert await client_already_has_doc_type(conn, 659, "sk_kemenkumham") is True
+    assert conn.called is True  # the DB was actually queried
+
+
+@pytest.mark.asyncio
+async def test_dedup_innocence_client_has_no_such_type():
+    """client resolved but NO existing doc of this type → not a dup (stays review)."""
+    conn = _FakeConn(row=None)
+    assert await client_already_has_doc_type(conn, 659, "passport") is False
+    assert conn.called is True
+
+
+@pytest.mark.asyncio
+async def test_dedup_innocence_unresolved_client_short_circuits():
+    """No client_id → never a dup, and the DB is NOT queried (cheap short-circuit)."""
+    conn = _FakeConn(row={"x": 1})
+    assert await client_already_has_doc_type(conn, None, "nib") is False
+    assert conn.called is False
+
+
+@pytest.mark.asyncio
+async def test_dedup_innocence_unknown_type_short_circuits():
+    """doc_type 'unknown' (or empty) has nothing to dedup against → False, no query."""
+    conn = _FakeConn(row={"x": 1})
+    assert await client_already_has_doc_type(conn, 659, "unknown") is False
+    assert await client_already_has_doc_type(conn, 659, "") is False
+    assert conn.called is False
+
+
+def test_dedup_wall_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("INTAKE_DEDUP_WALL_ENABLED", raising=False)
+    assert dedup_wall_enabled() is False
+
+
+def test_dedup_wall_enabled_when_truthy(monkeypatch):
+    for val in ("1", "true", "yes", "on", "ON"):
+        monkeypatch.setenv("INTAKE_DEDUP_WALL_ENABLED", val)
+        assert dedup_wall_enabled() is True
+
+
+def test_dedup_wall_disabled_when_falsy(monkeypatch):
+    for val in ("0", "false", "no", "off", ""):
+        monkeypatch.setenv("INTAKE_DEDUP_WALL_ENABLED", val)
+        assert dedup_wall_enabled() is False

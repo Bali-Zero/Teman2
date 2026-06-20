@@ -125,6 +125,58 @@ def is_noise_proposal(doc_type: str, classify_out: dict[str, Any]) -> bool:
         return False
     return _ocr_char_count(classify_out) < QUARANTINE_MIN_OCR_CHARS
 
+
+# --- LEVA 3: dedup wall — already-on-profile pre-filter ---------------------- #
+# A document whose subject is ALREADY matched to a CRM client AND that client
+# ALREADY carries a document of the same type on their kita profile is a
+# RE-ARRIVAL of something already filed. It must NOT re-enter the /review queue
+# for a human to catalog again — it is born 'duplicate' (out of the feed,
+# consultable for audit). This is the wall Zero asked for: "quando approviamo
+# non deve arrivare in pending se è già matchato col profilo e i docs su kita".
+#
+# Scoped to TYPED docs only (doc_type != 'unknown'): an unknown doc has no type
+# to dedup against, and noise is already handled by LEVA 1.
+#
+# Kill-switch (default OFF): INTAKE_DEDUP_WALL_ENABLED. Read at call time.
+def dedup_wall_enabled() -> bool:
+    """True only if INTAKE_DEDUP_WALL_ENABLED is explicitly truthy (default OFF)."""
+    return os.environ.get("INTAKE_DEDUP_WALL_ENABLED", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+async def client_already_has_doc_type(
+    conn: asyncpg.Connection, client_id: int | None, doc_type: str
+) -> bool:
+    """True if ``client_id`` already carries a ``documents`` row of ``doc_type``
+    (already filed on their kita profile).
+
+    The dedup key is (client_id, document_type) — the SAME logical document
+    re-arriving (a fresh photo, a different blob_hash) is caught here, where the
+    blob-level idempotency key (writer.compute_idempotency_key) would not.
+    Returns False for an unresolved client or an unknown type (nothing to dedup).
+
+    NB: the ``documents`` table has NO ``deleted_at`` column (hard-delete only,
+    verified 2026-06-21) — do not add a soft-delete filter here.
+    """
+    if client_id is None or not doc_type or doc_type == "unknown":
+        return False
+    row = await conn.fetchrow(
+        """
+        SELECT 1
+        FROM documents
+        WHERE client_id = $1
+          AND document_type = $2
+        LIMIT 1
+        """,
+        client_id,
+        doc_type,
+    )
+    return row is not None
+
 # Sender-phone exact match (m225). High confidence but NEVER auto-attach: a
 # phone can be shared by spouse/agent — the sender is not always the subject.
 CONF_PHONE_MATCH = 0.90
@@ -932,9 +984,26 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         # commit_gate either way so the reason is auditable.
         noise = is_noise_proposal(doc_type, classify_out)
         proposal["commit_gate"]["noise"] = noise
-        initial_status = (
-            "quarantine" if (noise and quarantine_enabled()) else "review_pending"
-        )
+
+        # LEVA 3 — dedup wall (Zero 2026-06-21). If the resolved client ALREADY
+        # carries a document of this type on their kita profile, this is a
+        # re-arrival of something already filed: it must NOT re-enter /review for
+        # a human to re-catalog. Born 'duplicate' (parked, consultable), never
+        # review_pending. Scoped to typed docs with a resolved client; armed by
+        # INTAKE_DEDUP_WALL_ENABLED (default OFF). Checked AFTER noise so genuine
+        # noise still wins the 'quarantine' label.
+        resolved_client_id = proposal["routing"]["client_id"]
+        is_dup = False
+        if not noise:
+            is_dup = await client_already_has_doc_type(conn, resolved_client_id, doc_type)
+        proposal["commit_gate"]["dedup_already_on_profile"] = is_dup
+
+        if noise and quarantine_enabled():
+            initial_status = "quarantine"
+        elif is_dup and dedup_wall_enabled():
+            initial_status = "duplicate"
+        else:
+            initial_status = "review_pending"
 
         proposal_id = await conn.fetchval(
             """
@@ -975,11 +1044,11 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
     decision = proposal["entity_resolution"]["decision"]
     logger.info(
         "route(FASE4): job=%s proposal_id=%s decision=%s requires_human=%s "
-        "client_id=%s status=%s noise=%s (0 CRM writes)",
+        "client_id=%s status=%s noise=%s dedup=%s (0 CRM writes)",
         queue_id, proposal_id, decision,
         proposal["commit_gate"]["requires_human"],
         proposal["routing"]["client_id"],
-        initial_status, noise,
+        initial_status, noise, is_dup,
     )
     return {
         "routed": False,
@@ -990,6 +1059,7 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         "requires_human": proposal["commit_gate"]["requires_human"],
         "status": initial_status,
         "noise": noise,
+        "dedup_already_on_profile": is_dup,
         "idempotent_skip": already,
         "received_by_backfilled": backfilled_owner,
         "_metric": {"model": "entity-resolution-fase4", "confidence": 1.0},
