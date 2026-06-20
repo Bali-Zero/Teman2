@@ -55,7 +55,8 @@ async def main() -> None:
         # 1. twin exists + count
         rt = await http.get(f"{qurl}/collections/{TWIN}", headers=headers)
         tc = rt.json()["result"]["points_count"] if rt.status_code == 200 else 0
-        check("1. twin exists, >=1500 points", tc >= 1500, f"{tc} points")
+        # 1559 = 1563 OSS 5-digit minus 4 removed phantoms
+        check("1. twin exists, 1559 points (phantoms removed)", tc == 1559, f"{tc} points")
 
         # 2. live untouched
         rl = await http.get(f"{qurl}/collections/{LIVE}", headers=headers)
@@ -114,14 +115,15 @@ async def main() -> None:
                 break
         with_l4 = sum(1 for p in all_pts if p["payload"].get("bali_status"))
         blocked = sum(1 for p in all_pts if p["payload"].get("bali_blocked"))
-        # 4 codes legitimately lack L4: the phantoms (in our old file, NOT in OSS ground-truth).
-        # They have no Bali status because they don't exist in KBLI 2025.
+        # The 4 phantom codes (in our old file, NOT in OSS ground-truth) have been REMOVED from
+        # the twin — so every remaining point must carry bali_status (none should lack it).
         PHANTOMS = {"26120", "60111", "82920", "85598"}
         no_l4 = {p["payload"].get("kode") for p in all_pts if not p["payload"].get("bali_status")}
+        phantoms_present = PHANTOMS & {p["payload"].get("kode") for p in all_pts}
         check(
-            "5. only known phantoms lack bali_status",
-            no_l4 == PHANTOMS,
-            f"{with_l4}/{len(all_pts)} carry L4; without={sorted(no_l4)} (expected the 4 phantoms)",
+            "5. all remaining points carry L4 (phantoms removed)",
+            len(no_l4) == 0 and len(phantoms_present) == 0,
+            f"{with_l4}/{len(all_pts)} carry L4; without={sorted(no_l4)}; phantoms_present={sorted(phantoms_present)}",
         )
         # double-truth: at least one code TERBUKA nationally but blocked in Bali
         double = sum(
