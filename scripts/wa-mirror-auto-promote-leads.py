@@ -893,7 +893,14 @@ async def main() -> None:
                 DB_URL, min_size=1, max_size=2, ssl=False, command_timeout=90.0
             )
             break
-        except (OSError, asyncpg.PostgresError, asyncio.TimeoutError) as exc:
+        except (
+            OSError,
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,  # sibling of PostgresError, NOT subclass — the
+            # stale-connection class (W29/W32/W34 silent-death); a reconnect after a
+            # PG restart raises this, not PostgresError.
+            asyncio.TimeoutError,
+        ) as exc:
             last_db_err = exc
             if attempt < 2:
                 await asyncio.sleep(2.0 * (attempt + 1))  # 2s, 4s backoff
