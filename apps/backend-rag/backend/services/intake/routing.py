@@ -56,9 +56,18 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.intake.enqueue import PIPELINE_VERSION
+
 logger = logging.getLogger("zantara.intake.routing")
 
-PIPELINE_VERSION_DEFAULT = "v1"
+# SSOT: the pipeline version is defined ONCE in enqueue.PIPELINE_VERSION and
+# imported everywhere. Historically routing defined its own "v1" while enqueue
+# used "intake-v1" — a silent drift that made routing_key
+# (= sha256(queue_id|doc_index|pipeline_version)) diverge between the row that
+# was enqueued and the route stage that should match it. A re-process that
+# bumped the version on the queue row but left a reader on the old constant
+# produced orphaned/duplicate proposals. Keep this an ALIAS, never a literal.
+PIPELINE_VERSION_DEFAULT = PIPELINE_VERSION
 
 # --- Decision-matrix C4 outcomes ---
 DECISION_AUTO_ATTACH = "AUTO_ATTACH"
@@ -967,13 +976,49 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         )
 
         if proposal_id is None:
-            # Conflict: proposal already existed (idempotent re-run).
+            # Conflict: a proposal with this routing_key already existed.
             existing = await conn.fetchrow(
-                "SELECT id FROM document_routing_proposal WHERE routing_key = $1",
+                "SELECT id, status FROM document_routing_proposal WHERE routing_key = $1",
                 proposal["routing_key"],
             )
             proposal_id = existing["id"] if existing else None
             already = True
+
+            # ANTI-DEADLOCK GUARD (done-deadlock fix). The bare ON CONFLICT DO
+            # NOTHING above silently dropped the fresh proposal whenever the key
+            # collided. If the surviving row is 'superseded' (a re-process bumped
+            # the version, marked the old proposal superseded, but the same key
+            # was re-derived) the document would be lost: the queue advances to
+            # 'done' while NO live proposal exists, so it never appears in
+            # /review and the worker (which only claims non-'done' rows) never
+            # revisits it. Revive a superseded survivor back to 'review_pending'
+            # so a re-route always leaves a reviewable proposal. 'rejected'/
+            # 'routed'/'review_pending'/'review_claimed' are intentional human
+            # (or in-flight) states and are left untouched.
+            if existing is not None and existing["status"] == "superseded":
+                await conn.execute(
+                    """
+                    UPDATE document_routing_proposal
+                       SET status           = 'review_pending',
+                           entity_resolution = $2::jsonb,
+                           routing           = $3::jsonb,
+                           commit_gate       = $4::jsonb,
+                           lease_owner       = NULL,
+                           lease_expires_at  = NULL,
+                           claim_token       = NULL
+                     WHERE id = $1
+                       AND status = 'superseded'
+                    """,
+                    proposal_id,
+                    json.dumps(proposal["entity_resolution"]),
+                    json.dumps(proposal["routing"]),
+                    json.dumps(proposal["commit_gate"]),
+                )
+                logger.warning(
+                    "route(FASE4): revived superseded-orphan proposal_id=%s "
+                    "queue=%s back to review_pending (anti-deadlock guard)",
+                    proposal_id, queue_id,
+                )
         else:
             already = False
 
