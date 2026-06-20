@@ -421,6 +421,24 @@ class ClientResponse(BaseModel):
             return []
         return v
 
+    @field_validator("custom_fields", mode="before")
+    @classmethod
+    def ensure_custom_fields_dict(cls, v: Any) -> Any:
+        """Coerce custom_fields to a dict regardless of the stored jsonb shape.
+
+        custom_fields is jsonb and the schema expects an object, but a handful of
+        legacy rows hold a non-object value (e.g. a json array — id 10816 had
+        ``custom_fields`` stored as ``[]``). Without this coercion Pydantic raises
+        ``Input should be a valid dictionary`` on that row, and since the list
+        endpoint validates the whole page in one comprehension a single bad row
+        500s the entire request (reproduced: sahira@ page 2, limit>=75). Any
+        non-dict — array, scalar, null — degrades to ``{}`` so one dirty row can
+        never poison a list page.
+        """
+        if isinstance(v, dict):
+            return v
+        return {}
+
     @field_validator("passport_expiry", "date_of_birth", mode="before")
     @classmethod
     def convert_date_to_string(cls, v: Any) -> Any:
