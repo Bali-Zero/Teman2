@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils";
 export type BaliStatus =
   | "OK_or_HIGHER_RISK"
   | "BLOCCATO_CLASSE_RISCHIO"
+  | "BLOCCATO_DIPENDE_SCOPE"
+  | "CHIUSO_PMA_NO_BESAR"
+  | "NEEDS_REVIEW_NO_OSS_SCOPE"
   | "CHIUSO_BALI"
   | "CHIUSO_BALI_PROPOSTO"
   | "TERTUTUP"
@@ -31,12 +34,48 @@ const config: Record<
     icon: "🚫",
     tone: "block",
   },
+  // Besar-scale risk is low on some ruang lingkup but higher on others: OSS computes
+  // risk per (code × scope × scale), so registrability depends on the declared scope.
+  // (deep research 2026-06-20: rejection is on "tingkat risiko", not on the code.)
+  BLOCCATO_DIPENDE_SCOPE: {
+    label: "Conditional in Bali — depends on declared scope",
+    icon: "⚠️",
+    tone: "warn",
+  },
+  // No Usaha Besar scale row in OSS → activity reserved for cooperatives/MSME under
+  // Perpres 10/2021 (amended 49/2021), Lampiran II Pasal 5(1)(a). A PT PMA is Usaha
+  // Besar by law (UU 6/2023 + Permeninves 5/2025) and cannot register it.
+  CHIUSO_PMA_NO_BESAR: {
+    label: "Reserved for MSME — closed to PT PMA",
+    icon: "🚫",
+    tone: "block",
+  },
+  // No OSS-RBA risk scope at all (404): special/sectoral regime — finance (OJK/BI),
+  // pharma (BPOM), and other sensitive activities licensed outside the ordinary RBA
+  // flow. Not mechanically caught by the low-risk Bali block → verify case-by-case.
+  NEEDS_REVIEW_NO_OSS_SCOPE: {
+    label: "Special regime — verify case-by-case",
+    icon: "❓",
+    tone: "warn",
+  },
   CHIUSO_BALI: { label: "Closed for PMA in Bali", icon: "🚫", tone: "block" },
-  CHIUSO_BALI_PROPOSTO: { label: "Closure proposed (Bali)", icon: "⚠️", tone: "warn" },
+  CHIUSO_BALI_PROPOSTO: {
+    label: "Closure proposed (Bali)",
+    icon: "⚠️",
+    tone: "warn",
+  },
   TERTUTUP: { label: "Closed to foreigners", icon: "🚫", tone: "block" },
   TERBATAS: { label: "Restricted (foreign cap)", icon: "⚠️", tone: "warn" },
-  TERTUTUP_CANDIDATE: { label: "Likely closed — verify", icon: "❓", tone: "warn" },
-  TERBATAS_CANDIDATE: { label: "Likely restricted — verify", icon: "❓", tone: "warn" },
+  TERTUTUP_CANDIDATE: {
+    label: "Likely closed — verify",
+    icon: "❓",
+    tone: "warn",
+  },
+  TERBATAS_CANDIDATE: {
+    label: "Likely restricted — verify",
+    icon: "❓",
+    tone: "warn",
+  },
 };
 
 const toneClass = {
