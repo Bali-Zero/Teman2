@@ -995,6 +995,7 @@ edges:
       machine: pro,
       status: ALIVE,
       producer: "daily 9:00",
+      oneshot_sentinel: "~/.agent/l5-2-phase2b-fired.sentinel",
     }
   - {
       id: com.balizero.sota.m13-checkpoint,
