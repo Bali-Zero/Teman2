@@ -97,6 +97,17 @@ async function proxy(req: NextRequest): Promise<Response> {
       "cookie",
       existingCookie ? `${existingCookie}; ${csrfValue}` : csrfValue,
     );
+
+    // BUG A (portal upload 401): the backend's double-submit CSRF check
+    // (validate_csrf) compares the nz_csrf_token COOKIE against the
+    // X-CSRF-Token HEADER. Callers that go through this proxy with a raw
+    // XHR/fetch (e.g. the vault upload) never set that header, so every
+    // mutating request got 401. Promote the cookie to the header for
+    // unsafe methods — but never clobber a header the caller already sent.
+    const isSafeMethod = req.method === "GET" || req.method === "HEAD";
+    if (!isSafeMethod && !headers.has("x-csrf-token")) {
+      headers.set("X-CSRF-Token", csrfCookie.value);
+    }
   }
 
   let body: BodyInit | undefined = undefined;
