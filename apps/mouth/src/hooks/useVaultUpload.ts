@@ -23,6 +23,11 @@ export type UploadState =
 export interface UploadOptions {
   practiceId?: number | string | null;
   documentType?: string;
+  /**
+   * FASE 5 — client-facing note on why this document is being provided.
+   * Sent as the `document_purpose` form field; trimmed/capped server-side.
+   */
+  purpose?: string | null;
 }
 
 /**
@@ -67,6 +72,9 @@ export function useVaultUpload() {
     }
     if (opts.documentType) {
       fd.append("document_type", opts.documentType);
+    }
+    if (opts.purpose != null && opts.purpose.trim() !== "") {
+      fd.append("document_purpose", opts.purpose.trim());
     }
 
     const xhr = new XMLHttpRequest();
