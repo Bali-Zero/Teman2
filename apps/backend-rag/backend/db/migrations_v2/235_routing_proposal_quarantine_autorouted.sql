@@ -28,7 +28,7 @@
 -- existing row keeps a value that is still in the new set, so the ADD validates
 -- with no row rewrite).
 --
--- On the Pro apply manually like 212-234:
+-- On the Pro apply manually like 212-233:
 --   psql postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev \
 --     -f apps/backend-rag/backend/db/migrations_v2/235_routing_proposal_quarantine_autorouted.sql
 -- === FORWARD ===
