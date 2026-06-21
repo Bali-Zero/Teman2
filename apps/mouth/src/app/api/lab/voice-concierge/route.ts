@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { canAccessVoiceConcierge } from "./auth";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,7 @@ type ConciergeIntent =
   | "unknown";
 
 type ConciergeRisk = "low" | "medium" | "high";
+type SupportedLocale = "en" | "it" | "id" | "fr" | "ru";
 
 type ConciergeNextAction =
   | "answer_only"
@@ -20,8 +22,13 @@ type ConciergeNextAction =
 
 interface VoiceConciergeRequest {
   message?: string;
-  locale?: "en" | "it" | "id" | "fr" | "ru";
+  locale?: SupportedLocale;
   history?: { role: "user" | "assistant"; content: string }[];
+}
+
+interface SafeHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
 }
 
 interface VoiceConciergeResponse {
@@ -49,6 +56,14 @@ interface GeminiResponse {
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const MAX_MESSAGE_LENGTH = 1200;
 const MAX_HISTORY_ITEMS = 4;
+const TEXT_PROVIDER_TIMEOUT_MS = 15_000;
+const SUPPORTED_LOCALES = new Set<SupportedLocale>([
+  "en",
+  "it",
+  "id",
+  "fr",
+  "ru",
+]);
 
 const SYSTEM_PROMPT = [
   "You are the Bali Zero voice concierge prototype.",
@@ -82,13 +97,7 @@ const RESPONSE_SCHEMA = {
       items: { type: "string" },
     },
   },
-  required: [
-    "answer",
-    "intent",
-    "risk_level",
-    "next_action",
-    "quick_replies",
-  ],
+  required: ["answer", "intent", "risk_level", "next_action", "quick_replies"],
 };
 
 function getApiKey(): string | undefined {
@@ -106,6 +115,10 @@ function isPrototypeEnabled(): boolean {
   );
 }
 
+function isCloudTextAllowed(): boolean {
+  return process.env.VOICE_CONCIERGE_ALLOW_CLOUD_TEXT === "true";
+}
+
 function containsObviousPii(message: string): boolean {
   const patterns = [
     /\b[A-Z][0-9]{7,8}\b/i, // common passport-like format
@@ -113,40 +126,168 @@ function containsObviousPii(message: string): boolean {
     /\b\d{15,16}\b/, // NPWP-like digit count
     /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,
     /(?:\+?\d[\s.-]?){9,}/,
+    /\b(?:my|our|the)\s+(?:client|customer|applicant|beneficiary|investor|director|shareholder|employee|lead|prospect)\s+(?:is|called|named)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/,
+    /\b(?:client|customer|applicant|beneficiary|investor|director|shareholder|employee|lead|prospect)\s+(?:name\s+)?(?:is|called|named|:)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/,
+    /\b(?:cliente|richiedente|investitore|direttore|socio|dipendente)\s+(?:si\s+chiama|e|:)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/i,
+    /\b(?:klien|pelanggan|pemohon|investor|direktur|pemegang\s+saham|karyawan)\s+(?:bernama|adalah|:)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/i,
+    /\bPT\s+(?!PMA\b|PMDN\b)[A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,5}\b/,
+    /\b(?:address|alamat|domicile|domisili|indirizzo)\s*(?:is|adalah|e|:)\s*[^,.]{6,}/i,
+    /\b(?:jalan|jl\.?|street|road|avenue|gang|banjar|desa|kelurahan|kecamatan|kabupaten)\s+[A-Z0-9][^,.]{4,}/i,
+    /\b(?:villa|land|plot|property|company|societa|azienda|proprieta|tanah|properti)\s+(?:is|called|named|si\s+chiama|denominata|bernama|adalah|:)\s+[A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,5}\b/i,
+    /\b(?:SHM|HGB|AJB|IMB|PBG)\s*(?:no\.?|number|nomor|:)?\s*[A-Z0-9./-]{4,}\b/i,
   ];
   return patterns.some((pattern) => pattern.test(message));
 }
 
+function isSafeHistoryTurn(turn: unknown): turn is SafeHistoryTurn {
+  if (!turn || typeof turn !== "object") return false;
+  const candidate = turn as Partial<SafeHistoryTurn>;
+  return (
+    (candidate.role === "user" || candidate.role === "assistant") &&
+    typeof candidate.content === "string"
+  );
+}
+
+function getSafeHistory(body: VoiceConciergeRequest): SafeHistoryTurn[] {
+  return (Array.isArray(body.history) ? body.history : [])
+    .filter(isSafeHistoryTurn)
+    .slice(-MAX_HISTORY_ITEMS)
+    .map((turn) => ({
+      role: turn.role,
+      content: turn.content.slice(0, MAX_MESSAGE_LENGTH),
+    }));
+}
+
+function containsRequestPii(
+  body: VoiceConciergeRequest,
+  message: string,
+): boolean {
+  if (containsObviousPii(message)) return true;
+  return getSafeHistory(body).some((turn) => containsObviousPii(turn.content));
+}
+
+function inferLocaleFromText(message: string): SupportedLocale {
+  const normalized = message.toLowerCase();
+  if (/[а-яё]/i.test(message)) return "ru";
+  if (
+    /(?:\bper una\b|\bciao\b|\bvorrei\b|\bposso\b|\baprire\b|\bsocieta\b|\bazienda\b|\bvisto\b|\bpermesso\b|\bquanto\b|\bcome\b|\bdevo\b|\bserve\b|\btasse\b|\bfiscale\b|\bproprieta\b|\blavorare\b|\binvestire\b|\bparti\b|\biniziamo\b|\bdal\b|\bdalla\b)/.test(
+      normalized,
+    )
+  ) {
+    return "it";
+  }
+  if (
+    /\b(halo|saya|bisa|izin|pajak|perusahaan|properti|apakah|untuk|tinggal|kerja|membuka)\b/.test(
+      normalized,
+    )
+  ) {
+    return "id";
+  }
+  if (
+    /\b(bonjour|puis-je|societe|impot|propriete|ouvrir|travailler)\b/.test(
+      normalized,
+    )
+  ) {
+    return "fr";
+  }
+  return "en";
+}
+
+function getLocale(
+  body: VoiceConciergeRequest,
+  message: string,
+): SupportedLocale {
+  return body.locale && SUPPORTED_LOCALES.has(body.locale)
+    ? body.locale
+    : inferLocaleFromText(message);
+}
+
 function inferIntent(message: string): ConciergeIntent {
   const normalized = message.toLowerCase();
-  if (/\b(visa|kitas|kitap|e33|e28|golden visa|immigration)\b/.test(normalized))
+  if (
+    /\b(visa|visto|permesso|kitas|kitap|e33|e28|golden visa|immigration|immigrazione)\b/.test(
+      normalized,
+    )
+  ) {
     return "visa";
-  if (/\b(pt pma|company|kbli|oss|business|cafe|restaurant)\b/.test(normalized))
+  }
+  if (
+    /\b(pt pma|company|kbli|oss|business|cafe|restaurant|societa|azienda|attivita|perusahaan|usaha|membuka)\b/.test(
+      normalized,
+    )
+  ) {
     return "company";
-  if (/\b(tax|npwp|ppn|vat|spt|coretax)\b/.test(normalized)) return "tax";
-  if (/\b(property|villa|land|zoning|lease|hgb|hak pakai)\b/.test(normalized))
+  }
+  if (
+    /\b(tax|tasse|fiscale|pajak|npwp|ppn|vat|spt|coretax)\b/.test(normalized)
+  ) {
+    return "tax";
+  }
+  if (
+    /\b(property|proprieta|villa|land|terreno|zoning|lease|hgb|hak pakai|properti)\b/.test(
+      normalized,
+    )
+  ) {
     return "property";
-  if (/\b(bpjs|payroll|employee|permit|operations|compliance)\b/.test(normalized))
+  }
+  if (
+    /\b(bpjs|payroll|employee|dipendenti|karyawan|permit|operations|operazioni|compliance|workflow)\b/.test(
+      normalized,
+    )
+  ) {
     return "operations";
+  }
   return "unknown";
 }
 
-function demoResponse(message: string): VoiceConciergeResponse {
+function demoResponse(
+  message: string,
+  locale: SupportedLocale,
+  safetyNote?: string,
+): VoiceConciergeResponse {
   const intent = inferIntent(message);
-  const byIntent: Record<ConciergeIntent, string> = {
-    visa:
-      "I can help triage the visa path, but keep this non-PII. Tell me your broad goal, nationality region, expected stay length, and whether this is work, investment, family, or retirement.",
-    company:
-      "For a PT PMA, the first useful checks are business activity, KBLI fit, foreign ownership limits, address/zoning, and whether the activity needs extra permits. Keep names and document numbers out for now.",
-    tax:
-      "For tax questions, we should separate personal residency, company obligations, VAT/PPN, payroll, and annual filing. Share only the scenario, not NPWP or client identifiers.",
-    property:
-      "For property, the first screen is legal title, zoning, access, building permits, lease/HGB structure, and buyer profile. Do not share parcel documents or owner names in this prototype.",
-    operations:
-      "For operations, I can classify the workflow and suggest the next Bali Zero team step. Keep employee names, phone numbers, and private case details out of the voice test.",
-    unknown:
-      "I can help route the question into visa, company, tax, property, or operations. Ask in plain language and avoid personal or document identifiers.",
+  const byLocale: Record<
+    "en" | "it" | "id",
+    Record<ConciergeIntent, string>
+  > = {
+    en: {
+      visa: "I can help triage the visa path, but keep this non-PII. Tell me your broad goal, nationality region, expected stay length, and whether this is work, investment, family, or retirement.",
+      company:
+        "For a PT PMA, the first useful checks are business activity, KBLI fit, foreign ownership limits, address/zoning, and whether the activity needs extra permits. Keep names and document numbers out for now.",
+      tax: "For tax questions, we should separate personal residency, company obligations, VAT/PPN, payroll, and annual filing. Share only the scenario, not NPWP or client identifiers.",
+      property:
+        "For property, the first screen is legal title, zoning, access, building permits, lease/HGB structure, and buyer profile. Do not share parcel documents or owner names in this prototype.",
+      operations:
+        "For operations, I can classify the workflow and suggest the next Bali Zero team step. Keep employee names, phone numbers, and private case details out of the voice test.",
+      unknown:
+        "I can help route the question into visa, company, tax, property, or operations. Ask in plain language and avoid personal or document identifiers.",
+    },
+    it: {
+      visa: "Posso aiutarti a fare triage sul percorso visa, restando fuori dai dati personali. Dimmi solo obiettivo generale, area di nazionalita, durata prevista e se riguarda lavoro, investimento, famiglia o retirement.",
+      company:
+        "Per una PT PMA, i primi controlli utili sono attivita, KBLI, limiti di proprieta straniera, indirizzo/zoning e permessi extra. Non inserire nomi o numeri documento in questo prototipo.",
+      tax: "Per le tasse conviene separare residenza personale, obblighi societari, VAT/PPN, payroll e dichiarazione annuale. Descrivi solo lo scenario, senza NPWP o identificativi cliente.",
+      property:
+        "Per property, il primo filtro e titolo, zoning, accesso, permessi edilizi, struttura lease/HGB e profilo acquirente. Non condividere documenti catastali o nomi proprietari qui.",
+      operations:
+        "Per operations posso classificare il workflow e suggerire il prossimo step del team Bali Zero. Tieni fuori nomi dipendenti, telefoni e dettagli privati del case.",
+      unknown:
+        "Posso instradare la domanda su visa, company, tax, property o operations. Chiedi in linguaggio naturale ed evita identificativi personali o documentali.",
+    },
+    id: {
+      visa: "Saya bisa membantu triage jalur visa tanpa data pribadi. Beri konteks umum: tujuan, wilayah kewarganegaraan, lama tinggal, dan apakah untuk kerja, investasi, keluarga, atau pensiun.",
+      company:
+        "Untuk PT PMA, pemeriksaan awalnya adalah aktivitas usaha, KBLI, batas kepemilikan asing, alamat/zoning, dan izin tambahan. Jangan masukkan nama atau nomor dokumen di prototipe ini.",
+      tax: "Untuk pajak, pisahkan dulu residensi pribadi, kewajiban perusahaan, VAT/PPN, payroll, dan laporan tahunan. Bagikan skenario saja, tanpa NPWP atau identitas klien.",
+      property:
+        "Untuk properti, layar awalnya adalah status hak, zoning, akses, izin bangunan, struktur lease/HGB, dan profil pembeli. Jangan unggah dokumen tanah atau nama pemilik di sini.",
+      operations:
+        "Untuk operations, saya bisa mengklasifikasikan workflow dan menyarankan langkah tim Bali Zero berikutnya. Hindari nama karyawan, nomor telepon, dan detail case privat.",
+      unknown:
+        "Saya bisa mengarahkan pertanyaan ke visa, company, tax, property, atau operations. Tanyakan dengan bahasa natural tanpa identitas pribadi atau nomor dokumen.",
+    },
   };
+  const byIntent = byLocale[locale === "it" || locale === "id" ? locale : "en"];
 
   return {
     answer: byIntent[intent],
@@ -160,6 +301,7 @@ function demoResponse(message: string): VoiceConciergeResponse {
       "Try another question",
     ],
     safety_note:
+      safetyNote ??
       "Demo mode: no Gemini call was made because GOOGLE_AI_STUDIO_API_KEY or GEMINI_API_KEY is not configured.",
     mode: "demo",
     provider: "local-demo",
@@ -207,12 +349,7 @@ function parseGeminiJson(text: string): Partial<VoiceConciergeResponse> {
 }
 
 function buildContents(body: VoiceConciergeRequest, message: string) {
-  const history = (body.history ?? []).slice(-MAX_HISTORY_ITEMS);
   return [
-    ...history.map((turn) => ({
-      role: turn.role === "assistant" ? "model" : "user",
-      parts: [{ text: turn.content.slice(0, MAX_MESSAGE_LENGTH) }],
-    })),
     {
       role: "user",
       parts: [
@@ -236,14 +373,27 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const body = (await request.json().catch(() => ({}))) as VoiceConciergeRequest;
+  if (
+    !(await canAccessVoiceConcierge(request, {
+      technicalTokenEnv: "VOICE_CONCIERGE_TEXT_TOKEN",
+    }))
+  ) {
+    return NextResponse.json(
+      { error: "voice_concierge_forbidden" },
+      { status: 403 },
+    );
+  }
+
+  const body = (await request
+    .json()
+    .catch(() => ({}))) as VoiceConciergeRequest;
   const message = body.message?.trim().slice(0, MAX_MESSAGE_LENGTH);
 
   if (!message) {
     return NextResponse.json({ error: "message required" }, { status: 400 });
   }
 
-  if (containsObviousPii(message)) {
+  if (containsRequestPii(body, message)) {
     return NextResponse.json(
       {
         error: "pii_not_allowed",
@@ -254,9 +404,21 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
+  const locale = getLocale(body, message);
+
+  if (!isCloudTextAllowed()) {
+    return NextResponse.json(
+      demoResponse(
+        message,
+        locale,
+        "Cloud text concierge disabled, so no Gemini call was made.",
+      ),
+    );
+  }
+
   const apiKey = getApiKey();
   if (!apiKey) {
-    return NextResponse.json(demoResponse(message));
+    return NextResponse.json(demoResponse(message, locale));
   }
 
   const model = getModel();
@@ -264,20 +426,29 @@ export async function POST(request: Request): Promise<NextResponse> {
     model,
   )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: buildContents(body, message),
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 700,
-        responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
-      },
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(TEXT_PROVIDER_TIMEOUT_MS),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: buildContents({ ...body, locale }, message),
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 700,
+          responseMimeType: "application/json",
+          responseSchema: RESPONSE_SCHEMA,
+        },
+      }),
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "gemini_request_failed" },
+      { status: 502 },
+    );
+  }
 
   if (!response.ok) {
     return NextResponse.json(
@@ -301,9 +472,6 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     return NextResponse.json(normalizeResponse(parseGeminiJson(text), model));
   } catch {
-    return NextResponse.json(
-      { error: "gemini_invalid_json" },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: "gemini_invalid_json" }, { status: 502 });
   }
 }

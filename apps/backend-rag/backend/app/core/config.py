@@ -199,6 +199,78 @@ class Settings(BaseSettings):
     cpu_alert_threshold_percent: float = 90.0  # Alert if CPU exceeds 90% sustained
 
     # ========================================
+    # VOICE CONCIERGE LOCAL AUDIO CONFIGURATION
+    # ========================================
+    voice_concierge_local_audio_enabled: bool = Field(
+        default=False,
+        description="Enable local-only voice concierge audio stack. Set via VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED.",
+    )
+    voice_concierge_local_audio: bool = Field(
+        default=False,
+        description="Alias flag for local-only voice concierge audio. Set via VOICE_CONCIERGE_LOCAL_AUDIO.",
+    )
+    voice_concierge_whisper_binary: str | None = Field(
+        default=None,
+        description="Path to local whisper.cpp binary. Set via VOICE_CONCIERGE_WHISPER_BINARY.",
+    )
+    voice_concierge_whisper_model: str | None = Field(
+        default=None,
+        description="Path to local whisper.cpp model. Set via VOICE_CONCIERGE_WHISPER_MODEL.",
+    )
+    voice_concierge_whisper_timeout_seconds: float = Field(
+        default=30.0,
+        description="Local whisper.cpp transcription timeout in seconds.",
+    )
+    voice_concierge_audio_max_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        description="Maximum local voice concierge upload size in bytes.",
+    )
+    voice_concierge_tts_max_chars: int = Field(
+        default=1200,
+        description="Maximum local voice concierge TTS input length in characters.",
+    )
+    voice_concierge_tts_audio_max_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        description="Maximum local voice concierge TTS output size in bytes.",
+    )
+    voice_concierge_chatterbox_module: str = Field(
+        default="chatterbox",
+        description="Python module marker for Chatterbox runtime availability.",
+    )
+    voice_concierge_chatterbox_model_path: str | None = Field(
+        default=None,
+        description="Optional local Chatterbox checkpoint directory. If unset, a local HuggingFace cache snapshot is discovered without downloading.",
+    )
+    voice_concierge_chatterbox_t3_model: str = Field(
+        default="v3",
+        description="Local Chatterbox multilingual T3 model selector.",
+    )
+    voice_concierge_chatterbox_language: str = Field(
+        default="en",
+        description="Default local Chatterbox language id for voice concierge TTS.",
+    )
+    voice_concierge_chatterbox_timeout_seconds: float = Field(
+        default=60.0,
+        description="Local Chatterbox synthesis timeout in seconds.",
+    )
+    voice_concierge_silero_module: str = Field(
+        default="silero_vad",
+        description="Python module marker for Silero VAD runtime availability.",
+    )
+    voice_concierge_silero_sampling_rate: int = Field(
+        default=16000,
+        description="Silero VAD audio sampling rate. Supported values: 8000 or 16000.",
+    )
+    voice_concierge_silero_threshold: float = Field(
+        default=0.5,
+        description="Silero VAD speech probability threshold.",
+    )
+    voice_concierge_silero_timeout_seconds: float = Field(
+        default=15.0,
+        description="Local Silero VAD timeout in seconds.",
+    )
+
+    # ========================================
     # RERANKER CONFIGURATION
     # ========================================
     reranker_backend: str = Field(
