@@ -31,9 +31,11 @@ import argparse
 import json
 import logging
 import os
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -425,16 +427,24 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            if resp.status == 200:
-                logger.info("Telegram alert sent successfully")
-                return True
-            logger.warning("Telegram API returned status %d", resp.status)
-            return False
-    except urllib.error.URLError as exc:
-        logger.error("Failed to send Telegram alert: %s", exc)
-        return False
+    # #8 network-flap: api.telegram.org can read-stall. The old URLError-only
+    # except let a bare TimeoutError escape and crash the --check run (DLQ
+    # run_heartbeat_check). Retry with backoff + catch the transport-level errors.
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status == 200:
+                    logger.info("Telegram alert sent successfully")
+                    return True
+                logger.warning("Telegram API returned status %d", resp.status)
+                return False
+        except (urllib.error.URLError, TimeoutError, socket.timeout, OSError) as exc:
+            last_exc = exc
+            if attempt < 3:
+                time.sleep(2 ** (attempt - 1))
+    logger.error("Failed to send Telegram alert after 3 attempts: %s", last_exc)
+    return False
 
 
 def _format_last_run(last_success: str | None) -> str:
