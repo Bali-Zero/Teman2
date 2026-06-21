@@ -6,6 +6,7 @@ const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
 const metrics = require("./metrics.cjs");
+const training = require("./training.cjs");
 
 const PORT = parseInt(process.env.PORT || "7790", 10);
 const HOST = process.env.HOST || "0.0.0.0"; // bind also Tailnet (parity with wa-viewer:7777)
@@ -207,13 +208,8 @@ async function teamSessionFor(member) {
 }
 
 // === MAIN overview query ===
-async function fetchOverview() {
-  if (CACHE.teams.payload && Date.now() - CACHE.teams.at < CACHE_MS) {
-    return CACHE.teams.payload;
-  }
-
-  const result = { generated_at: new Date().toISOString(), team: [], by_phone: {} };
-  result.team = TEAM.map((m) => {
+function buildTeamList() {
+  return TEAM.map((m) => {
     const kindInfo = contactKindColor(m, false);
     return {
       name: m.name,
@@ -232,6 +228,15 @@ async function fetchOverview() {
       avatar_url: TEAM_AVATAR_FILES[m.e164] ? `/team-avatar/${encodeURIComponent(m.name.toLowerCase())}` : null,
     };
   });
+}
+
+async function fetchOverview() {
+  if (CACHE.teams.payload && Date.now() - CACHE.teams.at < CACHE_MS) {
+    return CACHE.teams.payload;
+  }
+
+  const result = { generated_at: new Date().toISOString(), team: [], by_phone: {} };
+  result.team = buildTeamList();
 
   // P1 fix 2026-05-26: serial for-loop → Promise.all(.map()) parallelize cross-member.
   // Each member's payload is keyed by member.phone in result.by_phone (no shared state,
@@ -737,18 +742,36 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get("/favicon.ico", (_req, res) => {
+  res.status(204).end();
+});
+
+function dbUrlHost() {
+  try {
+    return new URL(DATABASE_URL.replace(/^postgres/, "http")).host;
+  } catch {
+    return "unknown";
+  }
+}
+
 app.get("/health.json", async (_req, res) => {
+  const db = { ok: false, host: dbUrlHost(), now: null, error: null };
   try {
     const r = await pool.query("SELECT 1 AS ok, NOW() AS now");
-    res.json({
-      ok: true,
-      db_now: r.rows[0].now,
-      team_size: TEAM.length,
-      db_url_host: new URL(DATABASE_URL.replace(/^postgres/, "http")).host,
-    });
+    db.ok = true;
+    db.now = r.rows[0].now;
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    db.error = err.message;
   }
+  res.json({
+    ok: true,
+    status: db.ok ? "ok" : "degraded",
+    db_ok: db.ok,
+    db_now: db.now,
+    db_error: db.error,
+    team_size: TEAM.length,
+    db_url_host: db.host,
+  });
 });
 
 app.get("/data.json", async (_req, res) => {
@@ -757,7 +780,22 @@ app.get("/data.json", async (_req, res) => {
     res.json(payload);
   } catch (err) {
     console.error("[data.json]", err);
-    res.status(500).json({ error: err.message });
+    res.json({
+      generated_at: new Date().toISOString(),
+      degraded: true,
+      error: `database unavailable: ${err.message}`,
+      team: buildTeamList(),
+      by_phone: {},
+    });
+  }
+});
+
+app.get("/training.json", (_req, res) => {
+  try {
+    res.json(training.buildTrainingPayload());
+  } catch (err) {
+    console.error("[training.json]", err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
@@ -796,6 +834,32 @@ const MIME_BY_EXT = {
   ".mp4": "video/mp4", ".webm": "video/webm", ".m4a": "audio/mp4",
   ".ogg": "audio/ogg", ".mp3": "audio/mpeg", ".opus": "audio/opus",
 };
+
+function xmlEscape(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function initialsForAvatar(name) {
+  const clean = cleanName(name) || "Client";
+  const parts = clean.split(/\s+/).filter(Boolean);
+  const letters = parts.length > 1
+    ? `${parts[0][0] || ""}${parts[1][0] || ""}`
+    : clean.slice(0, 2);
+  return letters.toUpperCase();
+}
+
+function sendClientAvatarFallback(res, label) {
+  const initials = xmlEscape(initialsForAvatar(label));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Client avatar"><rect width="96" height="96" rx="48" fill="#d9fdd3"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#25564a" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">${initials}</text></svg>`;
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  return res.status(200).send(svg);
+}
+
 app.get("/media", (req, res) => {
   const p = req.query.path;
   if (!p || typeof p !== "string") return res.status(400).send("missing path");
@@ -833,12 +897,18 @@ app.get("/client-avatar/:id", async (req, res) => {
   const cid = parseInt(req.params.id, 10);
   if (!cid) return res.status(400).send("bad id");
   try {
-    const r = await pool.query(`SELECT avatar_url FROM clients WHERE id = $1 AND deleted_at IS NULL`, [cid]);
-    const a = r.rows[0]?.avatar_url;
-    if (!a) return res.status(404).send("no avatar");
+    const r = await pool.query(
+      `SELECT full_name, company_name, avatar_url FROM clients WHERE id = $1 AND deleted_at IS NULL`,
+      [cid],
+    );
+    const client = r.rows[0];
+    if (!client) return sendClientAvatarFallback(res, "Client");
+    const a = client.avatar_url;
+    const label = client.full_name || client.company_name || "Client";
+    if (!a) return sendClientAvatarFallback(res, label);
     if (a.startsWith("data:")) {
       const m = a.match(/^data:([^;]+);base64,(.+)$/);
-      if (!m) return res.status(415).send("bad data uri");
+      if (!m) return sendClientAvatarFallback(res, label);
       res.setHeader("Content-Type", m[1]);
       res.setHeader("Cache-Control", "private, max-age=3600");
       return res.end(Buffer.from(m[2], "base64"));
@@ -854,10 +924,10 @@ app.get("/client-avatar/:id", async (req, res) => {
       }
     }
     if (a.startsWith("http")) return res.redirect(a);
-    res.status(415).send("unsupported");
+    return sendClientAvatarFallback(res, label);
   } catch (err) {
-    console.error("[client-avatar]", err);
-    res.status(500).send(err.message);
+    console.warn(`[client-avatar] fallback: ${err.message}`);
+    return sendClientAvatarFallback(res, "Client");
   }
 });
 

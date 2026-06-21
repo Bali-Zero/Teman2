@@ -472,6 +472,45 @@ class DeliveryManager:
                     ch = row["channel"]
                     adapter = adapters.get(ch)
                     if adapter is None:
+                        # No adapter for this channel in the loop's process group.
+                        # Do NOT silently `continue` — that left the row pending
+                        # forever (43 IG rows stuck attempt_count=0 for a week,
+                        # 2026-06-21). Count it as an attempt and back off /
+                        # exhaust like a send failure, so the row never orphans.
+                        attempt = row["attempt_count"] + 1
+                        if attempt >= row["max_attempts"]:
+                            new_status = "exhausted"
+                            next_retry = None
+                        else:
+                            new_status = "retrying"
+                            backoff = self.BASE_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                            next_retry = now + timedelta(seconds=backoff)
+                        await self._db_pool.execute(
+                            """
+                            UPDATE failed_messages
+                            SET status=$1, attempt_count=$2, next_retry_at=$3,
+                                error_message=$4, updated_at=NOW()
+                            WHERE id=$5
+                            """,
+                            new_status,
+                            attempt,
+                            next_retry,
+                            f"no adapter registered for channel '{ch}' in this process group",
+                            row["id"],
+                        )
+                        if new_status == "exhausted":
+                            await self._alert_exhausted(
+                                row, f"no adapter for channel '{ch}'"
+                            )
+                        logger.warning(
+                            "DLQ: no adapter for channel '%s' (msg %s) — "
+                            "attempt %d/%d, status=%s",
+                            ch,
+                            row["id"],
+                            attempt,
+                            row["max_attempts"],
+                            new_status,
+                        )
                         continue
 
                     attempt = row["attempt_count"] + 1

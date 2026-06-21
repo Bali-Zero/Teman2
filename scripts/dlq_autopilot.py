@@ -42,6 +42,10 @@ LOCKS_DIR = AGENT_DIR / "locks"
 LOCK_FILE = LOCKS_DIR / "dlq_autopilot.lock"
 CLAUDE_TASKS_DIR = AGENT_DIR / "claude_tasks"
 NUZANTARA_ROOT = HOME / "Desktop" / "nuzantara"
+# Organism heartbeat sidecars (_organism_lib.sh → ~/.organism/last_seen/<node>.<job>.json).
+# Used as an INDEPENDENT corpse-sweep freshness source when the launchagent-state-bridge
+# stops refreshing AGENT_DIR/state/<job>.last.json (see _organism_recovery_signal).
+ORGANISM_DIR = HOME / ".organism" / "last_seen"
 
 # D2.3: Per-machine escalation JSONL — import lazily to avoid circular issues
 import sys as _sys
@@ -77,6 +81,13 @@ LOCK_STALE_AGE_S = 1500          # 25min — if lock older than this, treat as s
 MAX_ATTEMPTS = 10                 # per DLQ entry (default; per-job override via registry max_attempts)
 DLQ_TTL_S = 172800                # 48h — abandon entries older than this with empty error
 MIN_ERROR_LEN = 20                # skip reasoning if error_summary shorter than this
+# Corpse-sweep freshness window: only drain a "recovered" (status==ok) DLQ entry if
+# its state file's "ok" is RECENT. A stale "ok" (job hasn't actually re-run in this
+# window) is NOT proof of recovery — draining it just re-arms the blind loop
+# (drain → sentinel re-adds on next failure → drain → forever; 90 consecutive blind
+# cycles observed 2026-06-20). Genuinely-recovered jobs write a fresh ok on success
+# and drain on the next tick. Fail-closed on missing/old ts.
+CORPSE_SWEEP_FRESH_S = int(os.getenv("DLQ_CORPSE_SWEEP_FRESH_S", str(6 * 3600)))  # 6h
 CONFIDENCE_RETRY = 0.95           # no-code-change retry threshold
 CONFIDENCE_AIDER = 0.90           # code-change aider threshold
 REASONING_TIMEOUT_S = 90          # claude --print timeout
@@ -158,8 +169,57 @@ def load_registry() -> dict:
         return {}
 
 
+def _state_is_fresh(state: dict) -> bool:
+    """True iff the state file's timestamp is within CORPSE_SWEEP_FRESH_S of now.
+
+    A missing / zero / unparseable ts is NOT fresh (fail-closed: never drain on an
+    absent timestamp). Tolerates the legacy ISO-8601 ts format older writers emitted
+    (W54) the same way the sentinel does.
+    """
+    raw = state.get("ts", 0)
+    try:
+        ts = float(raw) if raw not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        try:
+            import datetime as _dt
+            ts = _dt.datetime.strptime(str(raw), "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=_dt.timezone.utc).timestamp()
+        except Exception:
+            return False
+    if ts <= 0:
+        return False
+    return (time.time() - ts) <= CORPSE_SWEEP_FRESH_S
+
+
+def _organism_recovery_signal(job: str) -> bool:
+    """Fallback recovery proof from the organism heartbeat sidecar.
+
+    Root cause (2026-06-21): the launchagent-state-bridge (a HOME-fork edited
+    2026-06-06) silently stopped refreshing AGENT_DIR/state/<job>.last.json for a
+    subset of jobs (zombie_hunter, post_publish_poller, post_publish_webhook). Those
+    files froze at a stale "ok", so the corpse-sweep's fail-closed freshness check
+    parked the jobs DLQ-TERMINAL forever even though they are healthy. Jobs that emit
+    the organism heartbeat (_organism_lib.sh → ~/.organism/last_seen/<node>.<job>.json)
+    write a genuinely-independent fresh "ok" on every run, so consult it as a SECOND
+    freshness source. This never weakens fail-closed: it only ever drains MORE, and
+    only when a live independent heartbeat proves recovery. Returns True iff some
+    matching organism sidecar is status==ok AND fresh.
+    """
+    if not ORGANISM_DIR.is_dir():
+        return False
+    candidates = list(ORGANISM_DIR.glob(f"*.{job}.json")) + [ORGANISM_DIR / f"{job}.json"]
+    for sf in candidates:
+        try:
+            state = json.loads(sf.read_text())
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            continue
+        if state.get("status") == "ok" and _state_is_fresh(state):
+            return True
+    return False
+
+
 def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
-    """Drain DLQ entries whose job has since recovered (state.status == 'ok').
+    """Drain DLQ entries whose job has since recovered (state.status == 'ok' AND fresh).
 
     Root cause this fixes (W81 / blind heal-loop, 2026-06-15): process_entry()'s
     TERMINAL guard skips TERMINAL entries forever, and the sentinel's W70-resurrect
@@ -175,12 +235,18 @@ def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
     for entry in queue:
         job = entry.get("job", "")
         state_file = state_dir / f"{job}.last.json"
+        agent_state_ok = False
         try:
             state = json.loads(state_file.read_text())
+            agent_state_ok = state.get("status") == "ok" and _state_is_fresh(state)
         except (FileNotFoundError, json.JSONDecodeError, OSError):
-            kept.append(entry)
-            continue
-        if state.get("status") == "ok":
+            agent_state_ok = False
+        # Primary signal: agent-state .last.json (launchagent-state-bridge). Fallback:
+        # the organism heartbeat sidecar, for jobs the bridge no longer refreshes
+        # (2026-06-21 — see _organism_recovery_signal). Both are fail-closed: a stale
+        # "ok", status != ok, or an absent file is NOT proof of recovery, so the entry
+        # stays parked for audit and the sentinel re-classifies it if it really died.
+        if agent_state_ok or _organism_recovery_signal(job):
             cleared.append(job)
         else:
             kept.append(entry)

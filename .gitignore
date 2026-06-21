@@ -241,6 +241,16 @@ docs/generated/
 !apps/mouth/public/**/*.png
 !apps/mouth/public/**/*.gif
 !apps/mouth/public/**/*.webp
+!apps/admin-dashboard/public/**/*.jpg
+!apps/admin-dashboard/public/**/*.jpeg
+!apps/admin-dashboard/public/**/*.png
+!apps/admin-dashboard/public/**/*.gif
+!apps/admin-dashboard/public/**/*.webp
+!apps/autonomous-lab/public/**/*.jpg
+!apps/autonomous-lab/public/**/*.jpeg
+!apps/autonomous-lab/public/**/*.png
+!apps/autonomous-lab/public/**/*.gif
+!apps/autonomous-lab/public/**/*.webp
 
 # Allow pricing assets (heros + icons generated via codex $imagegen)
 !docs/pricing/assets/**/*.png

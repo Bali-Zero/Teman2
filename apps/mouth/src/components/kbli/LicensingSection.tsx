@@ -723,8 +723,45 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   const parsed = gold ? parseWhatYouNeed(gold.whatYouNeed) : null;
   const currentTier = kbli.licensing[activeTier] ?? kbli.licensing[0];
 
+  // When Bali blocks this code for PMA, the licensing steps below are still the
+  // correct NATIONAL procedure (open in Jakarta/Lombok/etc.) — but they must NOT
+  // be read as a how-to for a foreign-owned company IN BALI. Frame, don't hide:
+  // the steps are national truth; the Bali restriction is the local override.
+  const baliBlocked = !!kbli.baliL4?.blocked;
+
   return (
     <div className="space-y-8">
+      {/* ── NATIONAL-vs-BALI FRAME (only when Bali blocks PMA for this code) ── */}
+      {baliBlocked && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 113, 108, 0.06)",
+            borderColor: "rgba(232, 113, 108, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">🏝️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-closed)" }}
+            >
+              National procedure — does not apply to a PT PMA in Bali
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            The licensing path below is the <strong>national</strong> procedure,
+            valid for a foreign-owned company outside Bali (e.g. Jakarta). In{" "}
+            <strong>Bali</strong>, this activity is currently{" "}
+            {kbli.baliL4?.status === "CHIUSO_PMA_NO_BESAR"
+              ? "reserved for micro/small/medium enterprises and closed to a PT PMA"
+              : "blocked for a PT PMA under the 13 May 2026 moratorium"}
+            {kbli.baliL4?.reason ? ` — ${kbli.baliL4.reason}` : ""}. See the
+            Bali status badge above before planning a Bali setup.
+          </p>
+        </div>
+      )}
+
       {/* ── KEY FACTS AT A GLANCE ── */}
       <KeyFacts licensing={kbli.licensing} pma={kbli.pma} />
 
