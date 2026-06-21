@@ -100,10 +100,18 @@ def build_embedding_text(entry: dict) -> str:
         parts.append("")
 
     # PP28/2025 licensing (per_skala)
+    # CAP: some codes (e.g. 61108 telecom) carry 60+ per_skala entries whose verbatim
+    # persyaratan/kewajiban blow the embedding text past the 8192-token limit of
+    # text-embedding-3-small (observed 539k chars). The licensing detail is repetitive
+    # across scale combinations; for SEMANTIC SEARCH the first N distinct entries carry
+    # the signal. We cap to PER_SKALA_MAX entries and note the omission, so the embedding
+    # stays under the model limit without losing the discriminating content.
+    PER_SKALA_MAX = 12
     per_skala = entry.get("per_skala", [])
     if per_skala:
         parts.append("## Perizinan per Skala Usaha (PP 28/2025)")
-        for skala in per_skala:
+        omitted = len(per_skala) - PER_SKALA_MAX
+        for skala in per_skala[:PER_SKALA_MAX]:
             skala_names = ", ".join(skala.get("skala_usaha", []))
             risiko = skala.get("kategori_risiko", "")
             perizinan = skala.get("perizinan", "")
@@ -135,6 +143,12 @@ def build_embedding_text(entry: dict) -> str:
             if fiktif:
                 parts.append("- Fiktif positif: Ya (otomatis jika tidak ditolak)")
 
+            parts.append("")
+        if omitted > 0:
+            parts.append(
+                f"(... {omitted} kombinasi skala/ruang-lingkup tambahan dengan pola "
+                "perizinan serupa tidak ditampilkan di sini.)",
+            )
             parts.append("")
 
     # Intel 2026 (Bali-specific intelligence)
@@ -168,7 +182,15 @@ def build_embedding_text(entry: dict) -> str:
         )
         parts.append("")
 
-    return "\n".join(parts)
+    text = "\n".join(parts)
+    # Final safety cap: text-embedding-3-small rejects inputs over 8192 tokens.
+    # ~24000 chars is a conservative ceiling (mixed ID/EN ≈ 3 chars/token); the
+    # PER_SKALA_MAX cap above keeps virtually every code well under this, but a
+    # pathological uraian or ruang_lingkup must never abort the whole re-index.
+    MAX_EMBED_CHARS = 20000
+    if len(text) > MAX_EMBED_CHARS:
+        text = text[:MAX_EMBED_CHARS].rsplit("\n", 1)[0] + "\n(... dipotong untuk batas panjang.)"
+    return text
 
 
 def build_payload(entry: dict, embedding_text: str) -> dict:
