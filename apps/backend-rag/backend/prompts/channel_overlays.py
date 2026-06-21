@@ -51,9 +51,10 @@ CHANNEL_CONFIGS: dict[str, ChannelConfig] = {
         progressive=False,
         extra_instructions=(
             "NO markdown (no **, ##, *, -, backticks — they render as raw symbols "
-            "in Instagram DMs). Plain text only. Keep the whole reply under 900 "
-            "characters so Instagram never truncates it mid-sentence. Be short, "
-            "direct and complete — end with one clear next step."
+            "in Instagram DMs). Plain text only. HARD LIMIT: keep the whole reply "
+            "under 800 characters — Instagram truncates at 1000, so going over "
+            "loses your closing line and source. Prefer fewer, tighter points over "
+            "completeness. Be short, direct, and end with one clear next step."
         ),
     ),
     "voice": ChannelConfig(
