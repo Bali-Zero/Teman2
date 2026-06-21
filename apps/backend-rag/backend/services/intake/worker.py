@@ -585,7 +585,23 @@ class IntakeWorker:
                 WHERE status = ANY($1::text[])
                   AND next_visible_at <= now()
                   AND (lease_owner IS NULL OR lease_expires_at < now())
-                ORDER BY next_visible_at, id
+                -- Downstream stages (extract/validate/route) cost ~3ms; the
+                -- classify+OCR stage costs ~50-90s on the local VLM. Pure FIFO
+                -- lets a backlog of 'pending' jobs starve the cheap downstream
+                -- stages, so 'ocr_done' piles up and nothing reaches 'done'
+                -- (SCAR 2026-06-21). Drain near-done work FIRST: later pipeline
+                -- stages rank ahead of 'pending', then FIFO within each rank.
+                ORDER BY
+                  CASE status
+                    WHEN 'validated'    THEN 0
+                    WHEN 'extracted'    THEN 1
+                    WHEN 'ocr_done'     THEN 2
+                    WHEN 'classified'   THEN 3
+                    WHEN 'ocr'          THEN 4
+                    WHEN 'processing'   THEN 5
+                    ELSE 9  -- 'pending' last
+                  END,
+                  next_visible_at, id
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
             )

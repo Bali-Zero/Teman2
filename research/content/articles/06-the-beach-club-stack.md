@@ -1,0 +1,40 @@
+---
+date: 2026-06-21
+domain: compliance
+client_case: none
+kbli_codes:
+  - "56301 — Aktivitas Bar — National: TERBUKA 100% — Bali: OK_or_HIGHER_RISK (registrable)"
+  - "56302 — Aktivitas Kelab Malam atau Diskotek yang Utamanya Menyediakan Minuman (Nightclub/Discotheque) — National: TERBUKA 100% — Bali: OK_or_HIGHER_RISK (registrable)"
+  - "56303 — Aktivitas Rumah Minum/Kafe (Cafe/Coffee Shop) — National: TERBUKA 100% — Bali: BLOCCATO_CLASSE_RISCHIO (blocked)"
+status: published-draft
+---
+
+# The Beach Club Stack
+
+Picture the thing you actually want to build: a beach club. Day-beds and a long bar, a kitchen pushing out small plates, a DJ as the sun drops, and a crowd that drinks from noon to midnight. In your head it is one business. In the OSS system it is **three different KBLI codes** — and after 13 May 2026, two of them are open to your foreign company in Bali and one of them is a brick wall. Which is which decides whether your beach club is legal.
+
+This is the subtlety that catches operators who think of "F&B" as a single category. The moratorium doesn't care about your concept. It cares about the **risk class of each registered activity**, one code at a time.
+
+## The three codes, decoded
+
+- **56301 — Aktivitas Bar.** National: open. Bali: **REGISTRABLE.** This is the code that primarily serves drinks — alcoholic and non-alcoholic. And here's the detail that matters enormously: the 2025 description of 56301 **explicitly names "beach club"** among the activities it covers (a beach club whose main offering is beverages). Its risk class at large scale is medium-high, so it clears the moratorium. It will be scrutinised hard for noise and zoning — beach clubs always are — but the door is open.
+
+- **56302 — Aktivitas Kelab Malam atau Diskotek (Nightclub / Discotheque).** National: open. Bali: **REGISTRABLE.** Drinks-led venue with a dance floor, live music, light shows, hosts. Medium-high risk → survives the moratorium. The late-night, high-energy end of the stack is, somewhat counterintuitively, *open* to foreign investment.
+
+- **56303 — Aktivitas Rumah Minum / Kafe (Cafe / Coffee Shop).** National: open. Bali: **BLOCKED.** This is the code for the place that primarily serves drinks — hot and cold — consumed on-site: the café, the coffee shop. Its risk class lands in the low/medium-low bucket on every scope, so the 13 May 2026 moratorium catches it. A foreign-owned PMA cannot register a standalone café in Bali.
+
+Read that stack again, because it inverts every intuition: the **bar and the nightclub are open; the café is closed.** The harmless flat-white-and-laptops business is the forbidden one. The boozy, loud, late-night business is the permitted one. Risk class, not vibe, is destiny.
+
+## How to actually build the beach club
+
+The practical consequence: your beach club survives or dies on **which code carries the registration**, and on getting the activity mix to sit under codes that clear the filter.
+
+- If beverages are genuinely the heart of the operation, **56301 (Bar)** is your anchor — and it's the one that explicitly contemplates a beach club. That is almost certainly the spine of the structure.
+- The dance-floor / late-night dimension can live under **56302 (Nightclub)**, also open.
+- The thing you cannot do is hang the whole venture off **56303 (Café)** thinking "it's just drinks." That's the blocked code, and a foreign PMA can't register it in Bali.
+
+A word of honesty: a real beach club also serves food, which pulls in restaurant codes (the 5610x family) that have their own national-vs-Bali status — and the food-service side has its own blocked/open pattern under the moratorium. The point of this article isn't to hand you the full multi-code license stack; it's to make you see that the venue is a *stack of codes*, each independently filtered, and that the café code in particular is a trap. Get the anchor code right and you have a foundation. Anchor on the café and you have an application the system will refuse.
+
+The beach club, in other words, is not blocked. It's just that *one specific way of describing it* is — and it happens to be the most innocent-sounding one.
+
+*Check 56301, 56302, and 56303 — bar, nightclub, café — side by side on the Bali Zero KBLI Navigator at balizero.com. The two-branch national-vs-Bali view shows you instantly which code in your F&B stack survives the moratorium and which one quietly sinks the application.*
