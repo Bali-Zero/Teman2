@@ -55,6 +55,7 @@ import asyncpg
 
 from backend.core.cache import invalidate_crm_stats
 from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+from backend.services.intake.enqueue import PIPELINE_VERSION
 
 logger = logging.getLogger("zantara.intake.writer")
 
@@ -236,6 +237,7 @@ def _document_payload(
         "npwp": "tax",
         "nib": "pma",
         "akta_pendirian": "pma",
+        "profil_perseroan": "pma",
     }
     category = category_map.get(doc_type)
 
@@ -305,7 +307,7 @@ async def plan_commit(
     blob_hash = (qrow["blob_hash"] if qrow else None) or ""
     pipeline_version = (qrow["pipeline_version"] if qrow else None) or p.get(
         "pipeline_version"
-    ) or "v1"
+    ) or PIPELINE_VERSION
     doc_index = int(p.get("doc_index") or 0)
 
     # Target client: explicit override (human chose) wins, else routing's resolved client.
@@ -576,6 +578,8 @@ async def execute_commit(
     conn: asyncpg.Connection,
     *,
     dry_run: bool = True,
+    advance_from: str = "review_claimed",
+    advance_to: str = "routed",
 ) -> CommitResult:
     """Execute (or simulate) the commit plan.
 
@@ -586,6 +590,11 @@ async def execute_commit(
     dry_run=False (FASE 5C): requires INTAKE_WRITER_ENABLED — otherwise raises
     WriterDisabledError BEFORE any write. The real atomic path is implemented but
     NOT exercised in 5B.
+
+    ``advance_from`` / ``advance_to`` select the proposal transition on a real
+    commit: the human approve path uses the defaults (``review_claimed`` →
+    ``routed``); the LEVA-2 auto-attach path passes ``review_pending`` →
+    ``auto_routed`` (a never-claimed proposal committed by the system).
     """
     would_write = [op.__dict__ for op in plan.ops]
 
@@ -666,10 +675,14 @@ async def execute_commit(
             plan.doc_type,
             plan.payload.get("extracted_fields"),
         )
-        # Proposal advancement to the terminal 'routed' state — in the SAME TX as the
+        # Proposal advancement to the terminal state — in the SAME TX as the
         # writes. P0#9 inverse: the DRY-RUN path never advances; the REAL path advances
-        # exactly once, atomically with the document it routed.
-        await advance_proposal(conn, plan.proposal_id)
+        # exactly once, atomically with the document it routed. ``advance_from``/
+        # ``advance_to`` distinguish human (review_claimed→routed) from auto-attach
+        # (review_pending→auto_routed).
+        await advance_proposal(
+            conn, plan.proposal_id, from_status=advance_from, target_status=advance_to
+        )
         audit_id = await _write_audit(
             conn, plan, dry_run=False, outcome="committed", doc_id=doc_id
         )
@@ -754,29 +767,40 @@ async def _append_practice_document(
 # --------------------------------------------------------------------------- #
 # advance_proposal — terminal state transition (real path only, 5C)
 # --------------------------------------------------------------------------- #
-async def advance_proposal(conn: asyncpg.Connection, proposal_id: int) -> None:
-    """Move a proposal to its terminal 'routed' state and release the claim.
+async def advance_proposal(
+    conn: asyncpg.Connection,
+    proposal_id: int,
+    *,
+    from_status: str = "review_claimed",
+    target_status: str = "routed",
+) -> None:
+    """Move a proposal to its terminal success state and release the claim.
 
     Called ONLY on the real (dry_run=False) commit path, inside the same TX as the
-    document write. 'routed' is the success terminal in the chk_rp_status CHECK
-    (migration 212: review_pending | review_claimed | routed | rejected | dead).
+    document write. Both terminals live in the chk_rp_status CHECK:
 
-    Idempotent-by-guard: the WHERE only matches a proposal still in review_claimed,
+    * human approve: ``review_claimed`` → ``routed`` (the default).
+    * LEVA-2 auto-attach: ``review_pending`` → ``auto_routed`` (a never-claimed
+      proposal the system committed without a human; ``auto_routed`` keeps the
+      audit trail able to tell machine commits apart from human ones).
+
+    Idempotent-by-guard: the WHERE only matches a proposal still in ``from_status``,
     so a re-run (or a concurrent winner) is a no-op rather than a double-advance. The
-    lease columns are cleared because a routed proposal is terminal — no reviewer
-    holds it anymore.
+    lease columns are cleared because a terminal proposal is held by no reviewer.
     """
     await conn.execute(
         """
         UPDATE document_routing_proposal
-           SET status = 'routed',
+           SET status = $3,
                lease_owner = NULL,
                lease_expires_at = NULL,
                claim_token = NULL
          WHERE id = $1
-           AND status = 'review_claimed'
+           AND status = $2
         """,
         proposal_id,
+        from_status,
+        target_status,
     )
 
 

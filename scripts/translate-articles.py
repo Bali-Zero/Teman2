@@ -21,7 +21,11 @@ import httpx
 # ── Configuration ──────────────────────────────────────────────────────────
 
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:27b")
+# Default model: SEA-LION-32B-IT (SEA-tuned, present on the H24 host). The old
+# gemma3:27b default was NOT pulled on the runner — the translate.hourly cron
+# silently produced no output until OLLAMA_MODEL was overridden in the plist.
+# Keep the code default in sync with the host so a manual run works out of the box.
+MODEL = os.environ.get("OLLAMA_MODEL", "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m")
 ARTICLES_DIR = Path(__file__).resolve().parent.parent / "apps" / "mouth" / "src" / "content" / "articles"
 
 LANG_NAMES = {
@@ -229,7 +233,7 @@ def main():
     parser.add_argument("--skip-existing", action="store_true",
                         help="Skip articles that already have translations")
     parser.add_argument("--model", default=None,
-                        help="Override Ollama model (default: gemma3:27b)")
+                        help="Override Ollama model (default: aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m)")
     args = parser.parse_args()
 
     global MODEL

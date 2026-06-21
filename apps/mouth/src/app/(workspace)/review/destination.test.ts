@@ -16,6 +16,12 @@ const categories = [
     has_expiry: true,
   },
   {
+    code: "itas",
+    name: "ITAS (Izin Tinggal Terbatas)",
+    category_group: "immigration",
+    has_expiry: true,
+  },
+  {
     code: "npwp",
     name: "NPWP",
     category_group: "tax",
@@ -51,8 +57,24 @@ describe("intake review destination helpers", () => {
     });
   });
 
-  it("falls back to the group only when the mapped category code is absent", () => {
+  it("remaps deprecated kitas doc-type onto the canonical itas category", () => {
     expect(inferDestinationFromDocType("kitas", categories)).toEqual({
+      group: "immigration",
+      categoryCode: "itas",
+    });
+  });
+
+  it("falls back to the group only when the mapped category code is absent", () => {
+    expect(
+      inferDestinationFromDocType("kitas", [
+        {
+          code: "passport",
+          name: "Passport",
+          category_group: "immigration",
+          has_expiry: true,
+        },
+      ]),
+    ).toEqual({
       group: "immigration",
       categoryCode: "",
     });

@@ -31,7 +31,7 @@ const SLIDES: Slide[] = [
   },
   {
     funnel: "kbli",
-    badge: "1,563 BUSINESS CATEGORIES · KBLI 2025",
+    badge: "1,559 BUSINESS CATEGORIES · KBLI 2025",
     titleTop: "Your",
     titleAccent: "business",
     titleBottom: "code. In 60 seconds.",
@@ -66,7 +66,7 @@ const SLIDES: Slide[] = [
 
 const STATS = [
   { n: "5,000+", l: "CLIENTS SERVED" },
-  { n: "1,563", l: "KBLI CATEGORIES" },
+  { n: "1,559", l: "KBLI CATEGORIES" },
   { n: "24/7", l: "AI SUPPORT" },
 ];
 

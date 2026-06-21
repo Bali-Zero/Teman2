@@ -215,9 +215,21 @@ class Heartbeat:
 
     @staticmethod
     async def _count_long_queries(conn: asyncpg.Connection, threshold_seconds: int) -> int:
+        # Exclude this very probe connection and any background/auxiliary
+        # processes: pg_stat_activity lists autovacuum workers, walsenders and
+        # the monitoring connection itself, all of which can sit "active" past
+        # the threshold without being a stuck client query. Counting them made
+        # Olympus report "1 long-running query" every single heartbeat cycle
+        # (verified 2026-06-21: pg_stat_activity live = 0 genuinely stuck) — a
+        # perpetual false-positive. Restrict to real client backends other than
+        # ourselves, in our own database.
         row = await conn.fetchrow(
             "SELECT count(*) AS cnt FROM pg_stat_activity "
-            "WHERE state = 'active' AND query_start < now() - make_interval(secs => $1)",
+            "WHERE state = 'active' "
+            "AND backend_type = 'client backend' "
+            "AND pid <> pg_backend_pid() "
+            "AND datname = current_database() "
+            "AND query_start < now() - make_interval(secs => $1)",
             threshold_seconds,
         )
         return int(row["cnt"]) if row else 0

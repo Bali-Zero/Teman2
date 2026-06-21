@@ -93,13 +93,17 @@ def test_phone_and_fuzzy_agree_boosts() -> None:
     assert reason["name_sim"] == 0.82
 
 
-def test_phone_and_fuzzy_disagree_surfaces_both() -> None:
+def test_phone_and_fuzzy_disagree_is_sender_subject_mismatch() -> None:
+    # Sender != subject: the OCR subject name resolves to a DIFFERENT client than
+    # the sender phone. The phone matched the FORWARDER, not the document holder
+    # -> downgrade to AMBIGUOUS so a human must confirm (never one-click attach).
     decision, cands, reason = rt._classify_decision(
-        [], [_fuzzy(9, 0.85)], [_phone(2)]
+        [], [_fuzzy(9, 0.85)], [_phone(2)], subject_name="Someone Else"
     )
-    assert decision == rt.DECISION_LINK_CANDIDATE
+    assert decision == rt.DECISION_AMBIGUOUS
     assert [c["id"] for c in cands] == [2, 9]  # phone candidate first
-    assert "disagree" in reason["reason"]
+    assert reason["sender_subject_mismatch"] is True
+    assert "FORWARDER" in reason["reason"]
 
 
 def test_shared_phone_is_ambiguous() -> None:
@@ -217,3 +221,95 @@ async def test_resolve_entity_invalid_phone_is_inert() -> None:
     out = await rt.resolve_entity({}, "unknown", FakePool(conn), sender_phone="abc")
     assert out["decision"] == rt.DECISION_NO_MATCH
     assert not any("phone_normalized" in q for q in conn.queries)
+
+
+# ---------------------------------------------------------------------------
+# Sender != subject guard (forwarder vs document holder) -- live 12693/12682/16251
+# vs innocence 12927. Born from a VERIFIED defect: a Bali Zero staffer/agent
+# forwards a CLIENT's document, the sender phone matches the agent's CRM row,
+# and the doc auto-linked to the AGENT instead of the real subject.
+# ---------------------------------------------------------------------------
+
+def test_phone_match_named_subject_unknown_to_crm_is_flagged() -> None:
+    # Live shape 12693 / 12682 / 16251: phone matches the sender (forwarder) but
+    # the OCR-extracted subject name resolves to NO client at all (no fuzzy hit
+    # >= 0.40). Must be flagged sender_subject_mismatch + AMBIGUOUS, NOT a
+    # confident one-click LINK_CANDIDATE.
+    decision, cands, reason = rt._classify_decision(
+        [], [], [_phone(659)], subject_name="Totally Different Person"
+    )
+    assert decision == rt.DECISION_AMBIGUOUS
+    assert reason["sender_subject_mismatch"] is True
+    assert reason["subject_name"] == "Totally Different Person"
+    assert "FORWARDER" in reason["reason"]
+    # The phone candidate is still surfaced (so the human can reject it fast).
+    assert cands[0]["id"] == 659
+
+
+def test_phone_match_no_subject_name_stays_link_candidate() -> None:
+    # No subject name on the document at all -> we cannot PROVE a mismatch, so the
+    # conservative phone-only LINK_CANDIDATE is preserved (no false downgrade).
+    decision, cands, reason = rt._classify_decision(
+        [], [], [_phone(2)], subject_name=None
+    )
+    assert decision == rt.DECISION_LINK_CANDIDATE
+    assert "sender_subject_mismatch" not in reason
+    assert cands[0]["method"] == "sender_phone"
+
+
+def test_innocence_12927_same_client_ocr_noise_still_links() -> None:
+    # INNOCENCE (live 12927 Gennaro Piraino): phone 0.90 + fuzzy name sim 0.6154
+    # pointing at the SAME client id (sender IS the subject, just OCR noise).
+    # Must STILL be a boosted LINK_CANDIDATE -- NOT downgraded -- proving the rule
+    # triggers on genuine name DISAGREEMENT, not merely "name_sim < 1.0".
+    decision, cands, reason = rt._classify_decision(
+        [], [_fuzzy(2916, 0.6154)], [_phone(2916)], subject_name="Gennaro Piraino"
+    )
+    assert decision == rt.DECISION_LINK_CANDIDATE
+    assert "sender_subject_mismatch" not in reason
+    assert cands[0]["id"] == 2916
+    assert cands[0]["method"] == "sender_phone+fuzzy_full_name"
+    assert reason["name_sim"] == 0.6154
+    # 0.6154 sits comfortably above the agreement floor.
+    assert 0.6154 >= rt.SENDER_SUBJECT_AGREE_MIN_SIM
+
+
+def test_same_client_but_below_agree_floor_is_flagged() -> None:
+    # Boundary: even a SAME-client fuzzy is only trusted as agreement when its
+    # similarity clears the floor. Below the floor we conservatively flag (the
+    # false-positive-to-human direction is acceptable; false-auto-attach is not).
+    low = rt.SENDER_SUBJECT_AGREE_MIN_SIM - 0.05
+    decision, cands, reason = rt._classify_decision(
+        [], [_fuzzy(2, low)], [_phone(2)], subject_name="Noisy Name"
+    )
+    assert decision == rt.DECISION_AMBIGUOUS
+    assert reason["sender_subject_mismatch"] is True
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_phone_match_named_subject_disagrees_is_ambiguous() -> None:
+    # End-to-end via resolve_entity: phone resolves the sender, the OCR subject
+    # name ("name") resolves to a DIFFERENT client via fuzzy -> sender != subject.
+    conn = FakeConn(
+        phone_rows=[{"id": 1526, "full_name": "Adi Bayu Santero"}],
+        fuzzy_rows=[{"id": 9001, "name": "Someone Elses Visa", "sim": 0.71}],
+    )
+    out = await rt.resolve_entity(
+        {"name": {"value": "Someone Elses Visa"}}, "kitas",
+        FakePool(conn), sender_phone="081338656330",
+    )
+    assert out["decision"] == rt.DECISION_AMBIGUOUS
+    assert out["reason"]["sender_subject_mismatch"] is True
+    assert out["reason"]["subject_name"] == "Someone Elses Visa"
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_phone_match_no_subject_name_links() -> None:
+    # Innocence wiring: phone match, document carries NO subject name -> keep the
+    # conservative LINK_CANDIDATE (regression guard for the existing behaviour).
+    conn = FakeConn(phone_rows=[{"id": 42, "full_name": "Wira Phone"}])
+    out = await rt.resolve_entity(
+        {}, "unknown", FakePool(conn), sender_phone="0812-345-6789"
+    )
+    assert out["decision"] == rt.DECISION_LINK_CANDIDATE
+    assert "sender_subject_mismatch" not in out["reason"]

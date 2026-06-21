@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PMABadge } from "./PMABadge";
 import { RiskBadge } from "./RiskBadge";
 import { TransitionBadge } from "./TransitionBadge";
+import { BaliStatusBadge } from "./BaliStatusBadge";
 import type { KBLICode } from "@/lib/kbli-types";
 
 interface KBLICardProps {
@@ -75,6 +76,12 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
 
       {/* Badges */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {/* Bali L4 status first — national openness (PMA) != Bali registrability.
+            A card showing only "Open · 100% Foreign" would teach the national truth
+            and hide the Bali moratorium block. Show the Bali verdict up front. */}
+        {code.baliL4?.status && (
+          <BaliStatusBadge status={code.baliL4.status} size="sm" />
+        )}
         <PMABadge
           status={code.pma.status}
           maxForeign={code.pma.maxForeign}
