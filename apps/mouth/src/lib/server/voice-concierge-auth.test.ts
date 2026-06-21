@@ -1,15 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { canAccessVoiceConciergeHeaders } from "./voice-concierge-auth";
+import {
+  canAccessVoiceConciergeHeaders,
+  getVoiceConciergeInternalApiKey,
+} from "./voice-concierge-auth";
 
 describe("voice concierge auth helper", () => {
   const originalFetch = global.fetch;
   const originalBackendUrl = process.env.VOICE_CONCIERGE_BACKEND_URL;
   const originalNuzantaraApiUrl = process.env.NUZANTARA_API_URL;
+  const originalBackendApiKey = process.env.VOICE_CONCIERGE_BACKEND_API_KEY;
+  const originalApiKeys = process.env.API_KEYS;
 
   beforeEach(() => {
     vi.restoreAllMocks();
     delete process.env.VOICE_CONCIERGE_BACKEND_URL;
     delete process.env.NUZANTARA_API_URL;
+    delete process.env.VOICE_CONCIERGE_BACKEND_API_KEY;
+    delete process.env.API_KEYS;
     global.fetch = vi.fn();
   });
 
@@ -18,6 +25,8 @@ describe("voice concierge auth helper", () => {
     global.fetch = originalFetch;
     restoreEnv("VOICE_CONCIERGE_BACKEND_URL", originalBackendUrl);
     restoreEnv("NUZANTARA_API_URL", originalNuzantaraApiUrl);
+    restoreEnv("VOICE_CONCIERGE_BACKEND_API_KEY", originalBackendApiKey);
+    restoreEnv("API_KEYS", originalApiKeys);
   });
 
   it("bounds the production profile lookup with an abort signal", async () => {
@@ -42,6 +51,19 @@ describe("voice concierge auth helper", () => {
         signal: expect.any(AbortSignal),
       }),
     );
+  });
+
+  it("does not fall back to broad API_KEYS for voice audio endpoints", () => {
+    process.env.API_KEYS = "generic-key, second-key";
+
+    expect(getVoiceConciergeInternalApiKey()).toBeUndefined();
+  });
+
+  it("uses only the dedicated voice backend API key", () => {
+    process.env.API_KEYS = "generic-key, second-key";
+    process.env.VOICE_CONCIERGE_BACKEND_API_KEY = "voice-only-key";
+
+    expect(getVoiceConciergeInternalApiKey()).toBe("voice-only-key");
   });
 });
 

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from backend.app.services.local_audio import readiness
+from backend.app.services.local_audio import ProviderStatus, readiness
 
 
 def _make_executable(path: Path) -> None:
@@ -282,6 +282,120 @@ def test_deep_readiness_fails_on_air_without_loading_runtime_providers(
     assert _check(report, "host_role").status == "fail"
     with pytest.raises(KeyError):
         report.check("whisper_binary")
+
+
+def test_deep_readiness_fails_when_chatterbox_model_load_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    _offline_env: None,
+) -> None:
+    class PassingWhisper:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="whisper.cpp",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+        def warm_status(self) -> ProviderStatus:
+            return self.status()
+
+    class PassingSilero:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def warm_status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="silero-vad",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+    class ChatterboxLoadFails:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="chatterbox-v3",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+        def warm_status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="chatterbox-v3",
+                available=False,
+                detail="model load failed: RuntimeError",
+                policy=self.policy,
+            )
+
+    monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingWhisper)
+    monkeypatch.setattr(readiness, "SileroVADProvider", PassingSilero)
+    monkeypatch.setattr(readiness, "ChatterboxTTSProvider", ChatterboxLoadFails)
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="deep",
+        settings=_settings(tmp_path),
+        hostname="Nuzantara",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is False
+    assert _check(report, "deep_chatterbox_status").status == "fail"
+    assert "RuntimeError" in _check(report, "deep_chatterbox_status").detail
+
+
+def test_deep_readiness_fails_until_livekit_agent_health_is_wired(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    _offline_env: None,
+) -> None:
+    class PassingProvider:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="provider",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+        def warm_status(self) -> ProviderStatus:
+            return self.status()
+
+    monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "SileroVADProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "ChatterboxTTSProvider", PassingProvider)
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="deep",
+        settings=_settings(tmp_path),
+        hostname="Nuzantara",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is False
+    assert _check(report, "livekit_agent").status == "fail"
+    assert "not wired" in _check(report, "livekit_agent").detail
 
 
 def test_static_readiness_fails_invalid_audio_caps(tmp_path: Path) -> None:

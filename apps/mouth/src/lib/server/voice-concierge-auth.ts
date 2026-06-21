@@ -52,12 +52,7 @@ export function isProduction(): boolean {
 }
 
 export function getVoiceConciergeInternalApiKey(): string | undefined {
-  const explicitKey = process.env.VOICE_CONCIERGE_BACKEND_API_KEY?.trim();
-  if (explicitKey) return explicitKey;
-
-  return process.env.API_KEYS?.split(",")
-    .find((key) => key.trim())
-    ?.trim();
+  return process.env.VOICE_CONCIERGE_BACKEND_API_KEY?.trim() || undefined;
 }
 
 export function getVoiceConciergeBackendBaseUrl(): string | undefined {

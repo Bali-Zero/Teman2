@@ -59,6 +59,10 @@ TRANSFORMERS_OFFLINE=1
 `VOICE_CONCIERGE_CHATTERBOX_MODEL_PATH` may be omitted if the local HuggingFace cache already
 contains a complete `ResembleAI/chatterbox` snapshot.
 
+For the Next.js audio bridge, set `VOICE_CONCIERGE_BACKEND_API_KEY` in `apps/mouth/.env.local`.
+That key must be a dedicated voice bridge secret and must also be present in the backend `API_KEYS`
+allowlist. The frontend intentionally does not fall back to broad `API_KEYS`.
+
 ## Doctor
 
 Static mode validates config, filesystem, import specs, local-only policy, checkpoint presence,
@@ -70,7 +74,12 @@ source .venv/bin/activate
 PYTHONPATH=. python scripts/local_audio_doctor.py --mode static --json
 ```
 
-Deep mode is gated to Pro/Mini and may instantiate provider status checks:
+Deep mode is gated to Pro/Mini and exercises the local runtime:
+
+- Whisper runs a small local `whisper-cli` smoke check against the configured model.
+- Silero validates the runtime import path.
+- Chatterbox loads the local multilingual model snapshot.
+- LiveKit worker health must be wired before production promotion.
 
 ```bash
 cd ~/Desktop/nuzantara/apps/backend-rag
@@ -94,7 +103,12 @@ Deep checks on Air-M5 should fail closed. That is expected and protects the thin
 - `chatterbox_checkpoint: fail`: local checkpoint files are incomplete or the cache is missing.
 - `silero_import: fail`: the overlay runtime is not installed in the active venv.
 - `offline_env: warn`: set the offline guard env before runtime verification.
-- `livekit_agent: warn`: LiveKit worker health is still runbook-gated until a worker/sidecar exists.
+- `livekit_agent: warn`: static mode is reminding you that production still needs worker health.
+- `livekit_agent: fail`: deep mode intentionally blocks production promotion until a real
+  LiveKit worker/sidecar health check is integrated.
+
+If deep mode returns local audio warm-check results plus `livekit_agent: fail`, use the provider
+results to fix Whisper/Silero/Chatterbox, but do not treat the overall report as production-green.
 
 ## Promotion rule
 
@@ -102,6 +116,7 @@ The lab UI can remain available for experiments, but production voice should not
 ready unless:
 
 1. Static doctor is green on Pro/Mini.
-2. Deep doctor is green on the intended runtime host.
+2. Deep doctor is green on the intended runtime host, including a passing LiveKit worker health
+   check.
 3. The route still fails closed when local audio is disabled.
 4. No voice/transcript path falls back to cloud providers for client data.

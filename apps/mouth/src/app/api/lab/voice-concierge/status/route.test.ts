@@ -126,7 +126,7 @@ describe("voice concierge status route", () => {
 
   it("forwards local audio status through the server-side backend bridge", async () => {
     process.env.VOICE_CONCIERGE_LOCAL_AUDIO = "true";
-    process.env.API_KEYS = "test-key, second-key";
+    process.env.VOICE_CONCIERGE_BACKEND_API_KEY = "test-key";
     process.env.VOICE_CONCIERGE_BACKEND_URL = "https://backend.test/api";
     vi.mocked(global.fetch).mockResolvedValue(
       new Response(

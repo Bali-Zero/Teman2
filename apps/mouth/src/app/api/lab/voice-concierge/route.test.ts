@@ -346,6 +346,23 @@ describe("voice concierge route", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it("blocks bare person names before calling Gemini", async () => {
+    process.env.GOOGLE_AI_STUDIO_API_KEY = "test-key";
+    process.env.VOICE_CONCIERGE_ALLOW_CLOUD_TEXT = "true";
+
+    const response = await POST(
+      request({
+        message: "John Smith wants a retirement KITAS.",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "pii_not_allowed",
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("blocks private client names in history before calling Gemini", async () => {
     process.env.GOOGLE_AI_STUDIO_API_KEY = "test-key";
     process.env.VOICE_CONCIERGE_ALLOW_CLOUD_TEXT = "true";

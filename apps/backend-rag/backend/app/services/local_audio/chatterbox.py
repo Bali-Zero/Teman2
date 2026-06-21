@@ -187,6 +187,37 @@ class ChatterboxTTSProvider(LocalTTSProvider):
             policy=self.policy,
         )
 
+    def warm_status(self) -> ProviderStatus:
+        status = self.status()
+        if not status.available:
+            return status
+
+        model_path = self._resolve_model_path()
+        if model_path is None:
+            return ProviderStatus(
+                name=self.name,
+                available=False,
+                detail="local model path not configured and cache snapshot not found",
+                policy=self.policy,
+            )
+
+        try:
+            _get_chatterbox_model(self.module_name, model_path, self.t3_model)
+        except BaseException as exc:
+            return ProviderStatus(
+                name=self.name,
+                available=False,
+                detail=f"model load failed: {type(exc).__name__}",
+                policy=self.policy,
+            )
+
+        return ProviderStatus(
+            name=self.name,
+            available=True,
+            detail="model load ready",
+            policy=self.policy,
+        )
+
     def _resolve_model_path(self) -> Path | None:
         if self.model_path is not None:
             return self.model_path

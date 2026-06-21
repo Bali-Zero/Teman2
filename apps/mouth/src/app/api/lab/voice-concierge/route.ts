@@ -130,6 +130,8 @@ function containsObviousPii(message: string): boolean {
     /\b(?:client|customer|applicant|beneficiary|investor|director|shareholder|employee|lead|prospect)\s+(?:name\s+)?(?:is|called|named|:)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/,
     /\b(?:cliente|richiedente|investitore|direttore|socio|dipendente)\s+(?:si\s+chiama|e|:)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/i,
     /\b(?:klien|pelanggan|pemohon|investor|direktur|pemegang\s+saham|karyawan)\s+(?:bernama|adalah|:)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/i,
+    /\b[A-Z][a-z]{1,30}(?:\s+[A-Z][a-z]{1,30}){1,3}\s+(?:wants?|needs?|asked|requires?|owns?|has|is|plans?|would\s+like|will)\b/,
+    /\b(?:for|about|regarding|re)\s+[A-Z][a-z]{1,30}(?:\s+[A-Z][a-z]{1,30}){1,3}\b/,
     /\bPT\s+(?!PMA\b|PMDN\b)[A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,5}\b/,
     /\b(?:address|alamat|domicile|domisili|indirizzo)\s*(?:is|adalah|e|:)\s*[^,.]{6,}/i,
     /\b(?:jalan|jl\.?|street|road|avenue|gang|banjar|desa|kelurahan|kecamatan|kabupaten)\s+[A-Z0-9][^,.]{4,}/i,

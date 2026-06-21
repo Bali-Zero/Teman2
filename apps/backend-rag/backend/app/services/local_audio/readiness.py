@@ -139,7 +139,7 @@ def build_local_audio_readiness_report(
         python_base_prefix=base_prefix,
     )
 
-    static_failed = _has_failure(checks)
+    static_failed = _has_static_blocking_failure(checks)
     if mode == "deep":
         if static_failed:
             checks.append(
@@ -171,6 +171,7 @@ def _report(
             "no_cloud_fallback",
             "pii_boundary_local_only",
             "deep_runtime_checks_pro_mini_only",
+            "livekit_agent_required_for_production",
         ],
     )
 
@@ -210,11 +211,7 @@ def _build_static_checks(
         _chatterbox_checkpoint_check(settings),
         _chatterbox_config_check(settings),
         _offline_env_check(mode),
-        ReadinessCheck(
-            name="livekit_agent",
-            status="warn",
-            detail="LiveKit worker health is not wired into this doctor yet; gate remains runbook-only",
-        ),
+        _livekit_agent_check(mode),
     ]
     return checks
 
@@ -235,7 +232,7 @@ def _build_deep_checks(settings: Any) -> list[ReadinessCheck]:
                         settings,
                         "voice_concierge_whisper_timeout_seconds",
                     ),
-                ).status(),
+                ).warm_status(),
             ),
         )
 
@@ -264,7 +261,7 @@ def _build_deep_checks(settings: Any) -> list[ReadinessCheck]:
                     settings,
                     "voice_concierge_chatterbox_timeout_seconds",
                 ),
-            ).status(),
+            ).warm_status(),
         ),
     )
     return checks
@@ -539,6 +536,20 @@ def _offline_env_check(mode: ReadinessMode) -> ReadinessCheck:
     )
 
 
+def _livekit_agent_check(mode: ReadinessMode) -> ReadinessCheck:
+    if mode == "deep":
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail="LiveKit worker health is not wired into this doctor yet; production promotion is blocked",
+        )
+    return ReadinessCheck(
+        name="livekit_agent",
+        status="warn",
+        detail="LiveKit worker health is not wired into this doctor yet; deep mode blocks production promotion",
+    )
+
+
 def _positive_timeout_check(name: str, timeout_seconds: float) -> ReadinessCheck:
     return ReadinessCheck(
         name=name,
@@ -612,6 +623,10 @@ def _get_float(settings: Any, name: str) -> float:
 
 def _has_failure(checks: list[ReadinessCheck]) -> bool:
     return any(check.status == "fail" for check in checks)
+
+
+def _has_static_blocking_failure(checks: list[ReadinessCheck]) -> bool:
+    return any(check.status == "fail" for check in checks if check.name != "livekit_agent")
 
 
 __all__ = [

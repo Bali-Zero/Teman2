@@ -270,7 +270,7 @@ describe("voice concierge synthesize route", () => {
 
   it("forwards local TTS through the server-side backend bridge", async () => {
     process.env.VOICE_CONCIERGE_LOCAL_AUDIO = "true";
-    process.env.API_KEYS = "test-key, second-key";
+    process.env.VOICE_CONCIERGE_BACKEND_API_KEY = "test-key";
     process.env.VOICE_CONCIERGE_BACKEND_URL = "https://backend.test/api";
     vi.mocked(global.fetch).mockResolvedValue(
       new Response("RIFF", {
@@ -311,7 +311,7 @@ describe("voice concierge synthesize route", () => {
 
   it("rejects oversized backend TTS audio before buffering when content length is known", async () => {
     process.env.VOICE_CONCIERGE_LOCAL_AUDIO = "true";
-    process.env.API_KEYS = "test-key, second-key";
+    process.env.VOICE_CONCIERGE_BACKEND_API_KEY = "test-key";
     process.env.VOICE_CONCIERGE_BACKEND_URL = "https://backend.test/api";
     process.env.VOICE_CONCIERGE_TTS_AUDIO_MAX_BYTES = "3";
     const arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(4));
@@ -335,7 +335,7 @@ describe("voice concierge synthesize route", () => {
 
   it("rejects oversized backend TTS audio after buffering when content length is absent", async () => {
     process.env.VOICE_CONCIERGE_LOCAL_AUDIO = "true";
-    process.env.API_KEYS = "test-key, second-key";
+    process.env.VOICE_CONCIERGE_BACKEND_API_KEY = "test-key";
     process.env.VOICE_CONCIERGE_BACKEND_URL = "https://backend.test/api";
     process.env.VOICE_CONCIERGE_TTS_AUDIO_MAX_BYTES = "3";
     vi.mocked(global.fetch).mockResolvedValue(
