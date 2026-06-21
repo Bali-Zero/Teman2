@@ -825,7 +825,13 @@ class PortalDocumentsMixin:
             # Use Service Account if OAuth unavailable
             if use_service_account:
                 team_drive = TeamDriveService(db_pool=self.pool)
-                if not team_drive.service_account_available:
+                # BUG B (portal upload 500): TeamDriveService does NOT expose a
+                # `service_account_available` attribute (the SA-fallback code
+                # predates the facade refactor). Reading it directly raised
+                # AttributeError, which the outer except turned into a 500 on
+                # every upload that hit this path. Use getattr so a missing
+                # attribute degrades to the handled "no auth" branch instead.
+                if not getattr(team_drive, "service_account_available", False):
                     logger.error("Service Account also not available")
                     result["error"] = "No Drive authentication available"
                     return result

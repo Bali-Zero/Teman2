@@ -802,3 +802,43 @@ async def test_upload_to_drive_oauth_success() -> None:
     assert drive_service.upload_file_to_folder.call_args.kwargs["file_name"].endswith(
         "_passport.pdf"
     )
+
+
+@pytest.mark.asyncio
+async def test_upload_to_drive_service_account_guard_uses_real_team_drive() -> None:
+    """BUG B (portal upload 500): the SA-fallback guard reads
+    `team_drive.service_account_available`, but the REAL TeamDriveService never
+    defines that attribute. The CI test mocked TeamDriveService and set the
+    attribute on the mock, so it stayed green while prod raised
+    AttributeError → aborted txn → 500 on every upload that hit the SA path.
+
+    Here we patch ONLY GoogleDriveService (to force the SA path) and let the
+    REAL TeamDriveService be constructed. The guard must degrade gracefully
+    (success=False, error set) instead of raising AttributeError.
+    """
+    service, _mock_conn = _make_service_with_fetchrow(row=None)
+
+    with patch(
+        "backend.services.integrations.google_drive_service.GoogleDriveService"
+    ) as drive_cls:
+        # Force the Service-Account fallback path.
+        drive_cls.return_value.is_configured.return_value = True
+        drive_cls.return_value.get_valid_token = AsyncMock(return_value=None)
+
+        # NOTE: TeamDriveService is intentionally NOT patched — we exercise the
+        # real class, which is what runs in production.
+        result = await service._upload_to_drive(
+            conn=AsyncMock(),
+            client_id=1,
+            client_name="Client One",
+            document_type="passport",
+            file_content=b"PDF",
+            file_name="passport.pdf",
+            mime_type="application/pdf",
+        )
+
+    # Must NOT raise; must degrade to the HANDLED "no auth" error, not leak an
+    # AttributeError string (which is what the bug produces when the guard
+    # blindly reads a non-existent attribute on the real TeamDriveService).
+    assert result["success"] is False
+    assert result["error"] == "No Drive authentication available"
