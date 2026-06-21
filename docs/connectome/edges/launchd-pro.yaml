@@ -169,6 +169,26 @@ edges:
       status: BY_DESIGN_OFF,
       notes: "HTML cutover",
     }
+  - {
+      id: com.balizero.skill-coach.daily,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      consumer: "scripts/skill-coach-daily.sh",
+      notes: "launchctl disable + bootout + plist renamed .disabled-W84-2026-06-22 (W84 TCC: launchd lacks Full-Disk-Access for ~/Desktop on Pro -> exit 127 can't open input file). Migrated to crontab (see pro-crontab-skill-coach-daily)",
+    }
+  - id: pro-crontab-skill-coach-daily
+    kind: cron
+    machine: pro
+    status: SCHEDULED_ALIVE
+    consumer: "scripts/skill-coach-daily.sh via scripts/cron-runner.sh (02:20 daily WITA)"
+    notes: "migrated from launchd com.balizero.skill-coach.daily (W84 TCC firebreak). Verified live exit 0 status=ok 2026-06-21"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: "crontab -l | grep -F skill-coach-daily.sh",
+      }
   # ── DISARMED (loaded, no trigger — on-demand kickstart targets) ──
   - {
       id: com.balizero.sota.m13-collect,
