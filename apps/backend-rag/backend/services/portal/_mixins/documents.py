@@ -181,12 +181,14 @@ class PortalDocumentsMixin:
             query = """
                 SELECT d.id, d.document_type, d.file_name, d.status,
                        d.expiry_date, d.file_url, d.file_id, d.file_size_kb, d.created_at,
+                       d.document_purpose,
                        p.id as practice_id, pt.name as practice_name
                 FROM documents d
                 LEFT JOIN practices p ON p.id = d.practice_id
                 LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
                 WHERE d.client_id = $1
                 AND d.client_visible = true
+                AND d.deleted_at IS NULL
             """
             params = [client_id]
 
@@ -210,6 +212,7 @@ class PortalDocumentsMixin:
                     "practice_name": d["practice_name"],
                     "downloadable": d["file_url"] is not None or d["file_id"] is not None,
                     "created_at": d["created_at"].isoformat(),
+                    "purpose": d["document_purpose"],
                 }
                 for d in documents
             ]
@@ -231,6 +234,7 @@ class PortalDocumentsMixin:
                 WHERE id = $1
                   AND client_id = $2
                   AND client_visible = true
+                  AND deleted_at IS NULL
                 LIMIT 1
                 """,
                 document_id,
@@ -293,6 +297,141 @@ class PortalDocumentsMixin:
         ]
     )
     @require_client_access
+    async def soft_delete_document(
+        self,
+        client_id: int,
+        document_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any] | None:
+        """Soft-delete a client-visible document (recoverable for 30 days).
+
+        Sets deleted_at / deleted_by. The file stays in Google Drive and the DB
+        row is preserved — only get_documents / download_document hide it. A
+        timeline event records the action for the case officer.
+        """
+        deleted_by = current_user.get("email") or f"client:{client_id}"
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NOW(), deleted_by = $3
+                    WHERE id = $1
+                      AND client_id = $2
+                      AND client_visible = true
+                      AND deleted_at IS NULL
+                    RETURNING id, file_name, document_type
+                    """,
+                    document_id,
+                    client_id,
+                    deleted_by,
+                )
+                if not row:
+                    return None
+
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO timeline_events (
+                            client_id, event_type, title,
+                            description, event_date, client_visible, color
+                        )
+                        VALUES ($1, 'document_removed', 'Document removed',
+                                $2, NOW(), true, 'warning')
+                        """,
+                        client_id,
+                        f"{row['file_name']} removed by client (recoverable for 30 days)",
+                    )
+                except Exception as e:
+                    if not self._is_undefined_table_error(e):
+                        logger.warning("Could not create timeline event for soft-delete: %s", e)
+
+        logger.info(
+            "🗑️ Document %s soft-deleted by %s (client %s)",
+            document_id,
+            deleted_by,
+            client_id,
+        )
+        return {
+            "id": row["id"],
+            "name": row["file_name"],
+            "type": row["document_type"],
+            "deleted": True,
+        }
+
+    @cache_invalidating(
+        [
+            lambda _self, client_id, *_a, **_k: f"zantara:portal_documents:{client_id}:*",
+            "zantara:portal_documents:*",
+            "zantara:portal_timeline:*",
+        ]
+    )
+    @require_client_access
+    async def restore_document(
+        self,
+        client_id: int,
+        document_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any] | None:
+        """Restore a previously soft-deleted document (recovery path)."""
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    UPDATE documents
+                    SET deleted_at = NULL, deleted_by = NULL
+                    WHERE id = $1
+                      AND client_id = $2
+                      AND client_visible = true
+                      AND deleted_at IS NOT NULL
+                    RETURNING id, file_name, document_type
+                    """,
+                    document_id,
+                    client_id,
+                )
+                if not row:
+                    return None
+
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO timeline_events (
+                            client_id, event_type, title,
+                            description, event_date, client_visible, color
+                        )
+                        VALUES ($1, 'document_restored', 'Document restored',
+                                $2, NOW(), true, 'success')
+                        """,
+                        client_id,
+                        f"{row['file_name']} restored by client",
+                    )
+                except Exception as e:
+                    if not self._is_undefined_table_error(e):
+                        logger.warning("Could not create timeline event for restore: %s", e)
+
+        logger.info(
+            "♻️ Document %s restored by %s (client %s)",
+            document_id,
+            current_user.get("email") or f"client:{client_id}",
+            client_id,
+        )
+        return {
+            "id": row["id"],
+            "name": row["file_name"],
+            "type": row["document_type"],
+            "deleted": False,
+        }
+
+    @cache_invalidating(
+        [
+            lambda _self, client_id, *_a, **_k: f"zantara:portal_documents:{client_id}:*",
+            "zantara:portal_documents:*",
+            "zantara:portal_timeline:*",
+        ]
+    )
+    @require_client_access
     async def upload_document(
         self,
         client_id: int,
@@ -301,6 +440,7 @@ class PortalDocumentsMixin:
         document_type: str,
         mime_type: str | None = None,
         practice_id: int | None = None,
+        document_purpose: str | None = None,
         *,
         current_user: ClientContext,
     ) -> dict[str, Any]:
@@ -476,13 +616,13 @@ class PortalDocumentsMixin:
                             client_id, practice_id, document_type, document_category, file_name,
                             status, uploaded_by, uploaded_source, file_size_kb, mime_type,
                             storage_type, storage_path, file_id, file_url,
-                            extracted_text, expiry_date,
+                            extracted_text, expiry_date, document_purpose,
                             client_visible, created_at
                         )
                         VALUES (
                             $1, $2, $3, $13, $4, 'received', $5, 'client', $6, $7,
                             'google_drive', $8, $9, $10,
-                            $11, $12,
+                            $11, $12, $14,
                             true, NOW()
                         )
                         RETURNING id, document_type, file_name, status, created_at, expiry_date
@@ -502,6 +642,7 @@ class PortalDocumentsMixin:
                         else None,  # Limit text size
                         expiry_result.get("expiry_date"),
                         doc_category,
+                        document_purpose,
                     )
                 except Exception as e:
                     # Backward compatibility: try without new columns
