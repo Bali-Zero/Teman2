@@ -43,6 +43,19 @@ CHANNEL_CONFIGS: dict[str, ChannelConfig] = {
         progressive=False,
         extra_instructions="NO markdown. Plain text only. Short, direct.",
     ),
+    "instagram": ChannelConfig(
+        name="instagram",
+        max_words=150,
+        markdown=False,
+        emoji=True,
+        progressive=False,
+        extra_instructions=(
+            "NO markdown (no **, ##, *, -, backticks — they render as raw symbols "
+            "in Instagram DMs). Plain text only. Keep the whole reply under 900 "
+            "characters so Instagram never truncates it mid-sentence. Be short, "
+            "direct and complete — end with one clear next step."
+        ),
+    ),
     "voice": ChannelConfig(
         name="voice",
         max_words=100,
@@ -72,7 +85,7 @@ def build_channel_context(channel: str) -> str:
     """Build the XML channel context block for injection into the system prompt.
 
     Args:
-        channel: Channel name (webapp, telegram, whatsapp, voice, website).
+        channel: Channel name (webapp, telegram, whatsapp, instagram, voice, website).
 
     Returns:
         XML string to inject, or empty string if channel is unknown.

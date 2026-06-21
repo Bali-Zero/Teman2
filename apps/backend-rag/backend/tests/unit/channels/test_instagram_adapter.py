@@ -209,6 +209,36 @@ class TestInstagramAdapter:
         assert "messages" in first_call.args[0]
         assert first_call.kwargs["json"]["recipient"]["id"] == "9876543210"
 
+    async def test_send_status_update_sends_typing_on(
+        self,
+        adapter: InstagramChannelAdapter,
+    ) -> None:
+        """typing_on ack must actually hit the Graph API (was a no-op `pass`
+        → 50s of dead silence during the RAG round-trip)."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        adapter.client = AsyncMock()
+        adapter.client.post = AsyncMock(return_value=mock_resp)
+
+        await adapter.send_status_update("9876543210", "processing")
+
+        adapter.client.post.assert_awaited_once()
+        call = adapter.client.post.call_args
+        assert "messages" in call.args[0]
+        assert call.kwargs["json"]["sender_action"] == "typing_on"
+        assert call.kwargs["json"]["recipient"]["id"] == "9876543210"
+
+    async def test_send_status_update_never_raises(
+        self,
+        adapter: InstagramChannelAdapter,
+    ) -> None:
+        """A failed typing bubble must not block / fail the real reply."""
+        adapter.client = AsyncMock()
+        adapter.client.post = AsyncMock(side_effect=Exception("Graph down"))
+
+        # Must swallow the error (best-effort), unlike send_response which re-raises.
+        await adapter.send_status_update("123", "processing")
+
     async def test_send_response_truncates_long_message(
         self,
         adapter: InstagramChannelAdapter,
@@ -320,13 +350,6 @@ class TestInstagramAdapter:
         assert f"/{GRAPH_API_VERSION}/" in str(requests_seen[0].url)
         assert f"/{GRAPH_API_VERSION}/" in str(requests_seen[1].url)
         assert b"mark_seen" in requests_seen[1].content
-
-    async def test_send_status_update_noop(
-        self,
-        adapter: InstagramChannelAdapter,
-    ) -> None:
-        # Instagram doesn't support typing indicators, should be no-op
-        await adapter.send_status_update("123", "typing")
 
     async def test_stream_response_accumulates(
         self,
