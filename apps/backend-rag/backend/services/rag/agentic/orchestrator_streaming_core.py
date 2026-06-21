@@ -214,7 +214,13 @@ class OrchestratorStreamingCore:
         }
         query_lower = query.lower()
         if any(kw in query_lower for kw in _crm_keywords):
-            crm_tool = self.core.tool_map.get("crm_query")
+            # OrchestratorCore has no `tool_map`; the {name: tool} dict lives on
+            # its reasoning_engine (ReasoningEngine.tool_map). Accessing
+            # self.core.tool_map raised AttributeError on every CRM-keyword query
+            # (e.g. any Bahasa query with "berapa", or "how many"/"breakdown"),
+            # crashing the whole streaming path → the channel bot replied with a
+            # generic error. Non-streaming path was unaffected (never read tool_map).
+            crm_tool = self.core.reasoning_engine.tool_map.get("crm_query")
             if crm_tool:
                 try:
                     # Determine best query_type
