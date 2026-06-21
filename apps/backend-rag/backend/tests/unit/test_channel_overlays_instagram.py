@@ -41,7 +41,7 @@ def test_build_channel_context_instagram_is_plain_no_markdown() -> None:
     # The extra-instructions must explicitly forbid markdown and bound length.
     lowered = block.lower()
     assert "no markdown" in lowered
-    assert "900" in block, "must cap reply length so IG never truncates mid-sentence"
+    assert "800" in block, "must cap reply length so IG never truncates mid-sentence"
 
 
 def test_unknown_channel_still_returns_empty() -> None:
