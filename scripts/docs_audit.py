@@ -282,6 +282,34 @@ def compute_broken_links(repo: Path, doc: Path) -> int:
     return broken
 
 
+def ensure_full_git_history(repo: Path) -> None:
+    """Expand shallow clones before deriving semantic mtimes from git history."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--is-shallow-repository"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return
+    if result.returncode != 0 or result.stdout.strip() != "true":
+        return
+    fetch = subprocess.run(
+        ["git", "-C", str(repo), "fetch", "--unshallow", "--quiet", "--no-tags"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if fetch.returncode != 0:
+        details = fetch.stderr.strip() or fetch.stdout.strip() or "unknown error"
+        raise SystemExit(
+            "docs_audit: repository has shallow git history, so path mtimes "
+            "are unreliable. Run `git fetch --unshallow --no-tags` before "
+            f"`scripts/docs_audit.py`. git fetch said: {details}"
+        )
+
+
 def compute_mtime_days(repo: Path, doc: Path) -> int:
     """Age of `doc` in days, preferring git history over os.stat().
 
@@ -509,6 +537,7 @@ def apply_moves(repo: Path, rows: List[DocRow], use_git: bool = True) -> int:
 def main() -> int:
     args = parse_args()
     repo = Path(args.repo).resolve()
+    ensure_full_git_history(repo)
     whitelist = args.whitelist
     clusters = parse_clusters(args.cluster)
     expected_keys = parse_docsync_keys(args.docsync_key)

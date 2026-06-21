@@ -387,6 +387,82 @@ def test_git_mtime_beats_stat_mtime(tmp_path):
     assert "orphan" in files["docs/ORPHAN_OLD.md"]["action"]
 
 
+def test_shallow_boundary_mtime_is_not_trusted(tmp_path):
+    """A shallow boundary commit must not make old docs look freshly edited.
+
+    Regression for PR #1644: the local Air checkout was shallow and contained
+    a recent boundary commit. `git log -- docs/foo.md` reported that boundary
+    as the last path change for many untouched docs, while GitHub's full
+    history correctly classified them as old orphans.
+    """
+    import shutil
+
+    source_repo = tmp_path / "source"
+    shutil.copytree(FIXTURE_REPO, source_repo)
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    subprocess.run(
+        ["git", "init", "-q", "-b", "main"], cwd=source_repo, check=True, env=env
+    )
+    subprocess.run(["git", "add", "."], cwd=source_repo, check=True, env=env)
+    old_date = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - 200 * 86400))
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "initial", "--date", old_date],
+        cwd=source_repo,
+        check=True,
+        env={**env, "GIT_COMMITTER_DATE": old_date},
+    )
+    (source_repo / "README.md").write_text("# Recent unrelated change\n")
+    subprocess.run(["git", "add", "README.md"], cwd=source_repo, check=True, env=env)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "recent unrelated"],
+        cwd=source_repo,
+        check=True,
+        env=env,
+    )
+
+    shallow_repo = tmp_path / "shallow"
+    subprocess.run(
+        ["git", "clone", "--depth", "1", f"file://{source_repo}", str(shallow_repo)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert (shallow_repo / ".git" / "shallow").exists()
+
+    raw_log = subprocess.run(
+        ["git", "log", "-1", "--format=%s", "--", "docs/ORPHAN_OLD.md"],
+        cwd=shallow_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert raw_log == "recent unrelated"
+
+    result = _run_audit(
+        shallow_repo,
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--cluster",
+        "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--orphan-days",
+        "90",
+        "--json",
+    )
+    assert result.returncode in (0, 1), result.stderr
+    stats = json.loads(result.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+
+    assert files["docs/ORPHAN_OLD.md"]["mtime_days"] >= 90
+    assert files["docs/ORPHAN_OLD.md"]["status"] == "ARCHIVED"
+    assert "orphan" in files["docs/ORPHAN_OLD.md"]["action"]
+
+
 def test_broken_link_inside_code_fence_is_ignored(aged_fixture):
     """Links inside ``` fenced code blocks AND inline `...` spans are examples,
     not real markdown links. They should NOT count as broken.
