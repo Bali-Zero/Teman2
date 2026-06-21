@@ -231,6 +231,9 @@ def test_check_flag_exit_codes(aged_fixture):
     live_doc.write_text(live_doc.read_text() + "\n[missing](nope.md)\n")
     result = _run_audit(aged_fixture, *common, "--check")
     assert result.returncode == 1
+    assert "docs_audit: docs/DOCS_INVENTORY.md is out of date" in result.stderr
+    assert "--- committed/" in result.stderr
+    assert "+++ generated/" in result.stderr
 
 
 def test_check_ignores_mtime_days_drift(aged_fixture):

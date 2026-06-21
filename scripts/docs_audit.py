@@ -17,6 +17,7 @@ See docs/superpowers/specs/2026-04-24-docs-hygiene-design.md for the full spec.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import subprocess
@@ -121,6 +122,35 @@ def parse_docsync_keys(raw: List[str]) -> Dict[str, str]:
         k, v = r.split(":", 1)
         out[k] = v
     return out
+
+
+def print_check_delta(
+    inventory_path: Path,
+    old_content: str,
+    new_content: str,
+    *,
+    diff_limit: int = 200,
+) -> None:
+    """Emit a compact diff when --check finds inventory drift."""
+    print(
+        "docs_audit: docs/DOCS_INVENTORY.md is out of date; "
+        f"regenerate with python {Path(__file__).as_posix()}",
+        file=sys.stderr,
+    )
+    diff = list(
+        difflib.unified_diff(
+            old_content.splitlines(),
+            new_content.splitlines(),
+            fromfile=f"committed/{inventory_path.as_posix()}",
+            tofile=f"generated/{inventory_path.as_posix()}",
+            lineterm="",
+        )
+    )
+    if len(diff) > diff_limit:
+        diff = diff[:diff_limit]
+        diff.append(f"... diff truncated after {diff_limit} lines ...")
+    for line in diff:
+        print(line, file=sys.stderr)
 
 
 def walk_docs(repo: Path) -> List[Path]:
@@ -524,7 +554,9 @@ def main() -> int:
             out.append(line)
         return "\n".join(out)
 
-    stale_delta = strip_volatile(new_content) != strip_volatile(old_content)
+    old_normalized = strip_volatile(old_content)
+    new_normalized = strip_volatile(new_content)
+    stale_delta = new_normalized != old_normalized
 
     if args.json:
         payload = {
@@ -552,6 +584,8 @@ def main() -> int:
         print(json.dumps(payload, indent=2))
 
     if args.check:
+        if stale_delta and not args.quiet:
+            print_check_delta(inventory_path, old_normalized, new_normalized)
         return 1 if stale_delta else 0
 
     inventory_path.parent.mkdir(parents=True, exist_ok=True)
