@@ -284,9 +284,14 @@ async def test_soft_delete_document_marks_deleted_and_returns_summary() -> None:
     assert "deleted_at IS NULL" in update_sql  # idempotent: only live rows
     # actor + ids passed through
     assert mock_conn.fetchrow.call_args.args[1:] == (10, 1, "client@example.com")
-    # timeline event recorded
+    # timeline event recorded with a constraint-valid event_type (BUG D):
+    # 'document_removed' violated chk_timeline_event_type and silently rolled
+    # back the whole soft-delete. The human-facing title is unchanged.
     assert mock_conn.execute.await_count == 1
-    assert "document_removed" in mock_conn.execute.call_args.args[0]
+    insert_sql = mock_conn.execute.call_args.args[0]
+    assert "'status_change'" in insert_sql
+    assert "Document removed" in insert_sql
+    assert "document_removed" not in insert_sql
 
 
 @pytest.mark.asyncio
@@ -326,8 +331,14 @@ async def test_restore_document_clears_deleted_and_returns_summary() -> None:
     assert "deleted_at = NULL" in update_sql
     assert "deleted_at IS NOT NULL" in update_sql  # only restore actually-deleted rows
     assert mock_conn.fetchrow.call_args.args[1:] == (11, 1)
+    # timeline event recorded with a constraint-valid event_type (BUG D):
+    # 'document_restored' violated chk_timeline_event_type and silently rolled
+    # back the restore. The human-facing title is unchanged.
     assert mock_conn.execute.await_count == 1
-    assert "document_restored" in mock_conn.execute.call_args.args[0]
+    insert_sql = mock_conn.execute.call_args.args[0]
+    assert "'status_change'" in insert_sql
+    assert "Document restored" in insert_sql
+    assert "document_restored" not in insert_sql
 
 
 @pytest.mark.asyncio
@@ -801,4 +812,75 @@ async def test_upload_to_drive_oauth_success() -> None:
     assert drive_service.upload_file_to_folder.call_args.kwargs["folder_id"] == "type_folder"
     assert drive_service.upload_file_to_folder.call_args.kwargs["file_name"].endswith(
         "_passport.pdf"
+    )
+
+
+# Valid timeline_events.event_type values, per chk_timeline_event_type in prod.
+_VALID_TIMELINE_EVENT_TYPES = {
+    "deadline",
+    "milestone",
+    "document_request",
+    "document_received",
+    "status_change",
+    "payment_due",
+    "appointment",
+    "reminder",
+    "completion",
+}
+
+
+def _timeline_event_type_from_execute(mock_conn: AsyncMock) -> str:
+    """Pull the event_type literal out of the timeline INSERT the mixin ran."""
+    for call in mock_conn.execute.await_args_list:
+        sql = call.args[0]
+        if "INSERT INTO timeline_events" in sql:
+            # event_type is the literal in the VALUES (...) clause.
+            for et in _VALID_TIMELINE_EVENT_TYPES | {"document_removed", "document_restored"}:
+                if f"'{et}'" in sql:
+                    return et
+    raise AssertionError("no timeline_events INSERT was issued")
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_timeline_event_type_is_constraint_valid() -> None:
+    """BUG D: soft_delete_document inserted a timeline event with
+    event_type='document_removed', which VIOLATES chk_timeline_event_type
+    (allowed set above). In prod that violation poisoned the same transaction
+    as the UPDATE deleted_at, so the soft-delete was rolled back while the
+    endpoint still returned 200 'deleted'. The event_type must be one the
+    constraint accepts."""
+    service, mock_conn = _make_service_with_fetchrow(
+        {"id": 10, "file_name": "passport.pdf", "document_type": "passport"}
+    )
+
+    await service.soft_delete_document(
+        client_id=1,
+        document_id=10,
+        current_user={"client_id": 1, "email": "client@example.com"},
+    )
+
+    event_type = _timeline_event_type_from_execute(mock_conn)
+    assert event_type in _VALID_TIMELINE_EVENT_TYPES, (
+        f"timeline event_type {event_type!r} is not in chk_timeline_event_type"
+    )
+
+
+@pytest.mark.asyncio
+async def test_restore_timeline_event_type_is_constraint_valid() -> None:
+    """BUG D (restore side): same as above for restore_document, which used
+    event_type='document_restored' (also invalid)."""
+    service, mock_conn = _make_service_with_fetchrow(
+        {"id": 10, "file_name": "passport.pdf", "document_type": "passport"}
+    )
+
+    await service.restore_document.__wrapped__.__wrapped__(
+        service,
+        client_id=1,
+        document_id=10,
+        current_user={"client_id": 1, "email": "client@example.com"},
+    )
+
+    event_type = _timeline_event_type_from_execute(mock_conn)
+    assert event_type in _VALID_TIMELINE_EVENT_TYPES, (
+        f"timeline event_type {event_type!r} is not in chk_timeline_event_type"
     )

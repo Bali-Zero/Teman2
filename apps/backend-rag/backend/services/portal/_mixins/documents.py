@@ -312,6 +312,14 @@ class PortalDocumentsMixin:
         """
         deleted_by = current_user.get("email") or f"client:{client_id}"
         async with self.pool.acquire() as conn:
+            # BUG D: the soft-delete UPDATE and the timeline INSERT used to live
+            # in the SAME transaction. The INSERT used event_type
+            # 'document_removed', which VIOLATES chk_timeline_event_type, so the
+            # constraint violation poisoned the transaction and rolled back the
+            # UPDATE deleted_at — yet the endpoint still returned 200 'deleted'.
+            # Two-part fix: (1) use a constraint-valid event_type
+            # ('status_change'); (2) commit the UPDATE in its OWN transaction so
+            # a timeline failure can never roll back the soft-delete.
             async with conn.transaction():
                 row = await conn.fetchrow(
                     """
@@ -330,22 +338,23 @@ class PortalDocumentsMixin:
                 if not row:
                     return None
 
-                try:
-                    await conn.execute(
-                        """
-                        INSERT INTO timeline_events (
-                            client_id, event_type, title,
-                            description, event_date, client_visible, color
-                        )
-                        VALUES ($1, 'document_removed', 'Document removed',
-                                $2, NOW(), true, 'warning')
-                        """,
-                        client_id,
-                        f"{row['file_name']} removed by client (recoverable for 30 days)",
+            # Timeline event is best-effort and OUTSIDE the delete transaction.
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO timeline_events (
+                        client_id, event_type, title,
+                        description, event_date, client_visible, color
                     )
-                except Exception as e:
-                    if not self._is_undefined_table_error(e):
-                        logger.warning("Could not create timeline event for soft-delete: %s", e)
+                    VALUES ($1, 'status_change', 'Document removed',
+                            $2, NOW(), true, 'warning')
+                    """,
+                    client_id,
+                    f"{row['file_name']} removed by client (recoverable for 30 days)",
+                )
+            except Exception as e:
+                if not self._is_undefined_table_error(e):
+                    logger.warning("Could not create timeline event for soft-delete: %s", e)
 
         logger.info(
             "🗑️ Document %s soft-deleted by %s (client %s)",
@@ -377,6 +386,9 @@ class PortalDocumentsMixin:
     ) -> dict[str, Any] | None:
         """Restore a previously soft-deleted document (recovery path)."""
         async with self.pool.acquire() as conn:
+            # BUG D (restore side): same two-part fix as soft_delete_document —
+            # constraint-valid event_type + timeline INSERT outside the restore
+            # transaction so it can never roll back the restore.
             async with conn.transaction():
                 row = await conn.fetchrow(
                     """
@@ -394,22 +406,23 @@ class PortalDocumentsMixin:
                 if not row:
                     return None
 
-                try:
-                    await conn.execute(
-                        """
-                        INSERT INTO timeline_events (
-                            client_id, event_type, title,
-                            description, event_date, client_visible, color
-                        )
-                        VALUES ($1, 'document_restored', 'Document restored',
-                                $2, NOW(), true, 'success')
-                        """,
-                        client_id,
-                        f"{row['file_name']} restored by client",
+            # Timeline event is best-effort and OUTSIDE the restore transaction.
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO timeline_events (
+                        client_id, event_type, title,
+                        description, event_date, client_visible, color
                     )
-                except Exception as e:
-                    if not self._is_undefined_table_error(e):
-                        logger.warning("Could not create timeline event for restore: %s", e)
+                    VALUES ($1, 'status_change', 'Document restored',
+                            $2, NOW(), true, 'success')
+                    """,
+                    client_id,
+                    f"{row['file_name']} restored by client",
+                )
+            except Exception as e:
+                if not self._is_undefined_table_error(e):
+                    logger.warning("Could not create timeline event for restore: %s", e)
 
         logger.info(
             "♻️ Document %s restored by %s (client %s)",
