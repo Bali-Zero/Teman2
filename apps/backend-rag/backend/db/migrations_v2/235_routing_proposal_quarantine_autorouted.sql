@@ -1,4 +1,4 @@
--- Migration 234: document_routing_proposal — allow status='quarantine' + 'auto_routed' + 'duplicate'.
+-- Migration 235: document_routing_proposal — allow status='quarantine' + 'auto_routed' + 'duplicate'.
 --
 -- Three review-load-reduction levers (research/operations/2026-06-21-intake-review-time-reduction.md):
 --
@@ -28,9 +28,9 @@
 -- existing row keeps a value that is still in the new set, so the ADD validates
 -- with no row rewrite).
 --
--- On the Pro apply manually like 212-233:
+-- On the Pro apply manually like 212-234:
 --   psql postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev \
---     -f apps/backend-rag/backend/db/migrations_v2/234_routing_proposal_quarantine_autorouted.sql
+--     -f apps/backend-rag/backend/db/migrations_v2/235_routing_proposal_quarantine_autorouted.sql
 -- === FORWARD ===
 
 ALTER TABLE document_routing_proposal DROP CONSTRAINT IF EXISTS chk_rp_status;
@@ -39,7 +39,7 @@ ALTER TABLE document_routing_proposal ADD CONSTRAINT chk_rp_status CHECK (status
      'quarantine','auto_routed','duplicate'));
 
 COMMENT ON CONSTRAINT chk_rp_status ON document_routing_proposal IS
-    'Proposal lifecycle (migration 234): review states + terminal routed/auto_routed/rejected/dead + superseded (re-pipelined) + quarantine (noise parked) + duplicate (LEVA-3 dedup wall: client already has this doc_type on profile, parked out of /review).';
+    'Proposal lifecycle (migration 235): review states + terminal routed/auto_routed/rejected/dead + superseded (re-pipelined) + quarantine (noise parked) + duplicate (LEVA-3 dedup wall: client already has this doc_type on profile, parked out of /review).';
 
 -- === ROLLBACK ===
 -- (Only safe when no rows carry status='quarantine' or 'auto_routed'.)
