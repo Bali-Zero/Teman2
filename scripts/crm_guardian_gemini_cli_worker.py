@@ -223,6 +223,48 @@ def _resolve_db_url() -> str:
     )
 
 
+# DB connect retry: this worker reaches Fly Postgres through a long-running flyctl
+# proxy on localhost:15432. When the WireGuard tunnel briefly flaps, asyncpg's
+# single-shot connect raised ConnectionDoesNotExistError mid-handshake and the whole
+# 5-min tick exited 1 (superscar #8 network flap — ~4 spurious FAILs/2.5h observed
+# 2026-06-21). A short bounded retry rides over the transient flap; a genuinely-down
+# proxy still surfaces after the last attempt.
+DB_CONNECT_MAX_ATTEMPTS = int(os.getenv("CRM_GUARDIAN_DB_CONNECT_ATTEMPTS", "4"))
+DB_CONNECT_BASE_DELAY_S = float(os.getenv("CRM_GUARDIAN_DB_CONNECT_BASE_DELAY", "1.0"))
+
+
+async def _connect_with_retry(asyncpg, db_url: str):
+    """Connect to Postgres with bounded exponential-backoff retry on transient
+    connection failures (proxy/WireGuard flap). Re-raises the last error once the
+    attempt budget is exhausted, so a real outage is NOT masked."""
+    exc = asyncpg.exceptions
+    retryable = tuple(
+        c for c in (
+            getattr(exc, "ConnectionDoesNotExistError", None),
+            getattr(exc, "CannotConnectNowError", None),
+            getattr(exc, "ConnectionFailureError", None),
+            getattr(exc, "InterfaceError", None),
+            getattr(exc, "PostgresConnectionError", None),
+        ) if c is not None
+    ) + (ConnectionError, OSError, asyncio.TimeoutError)
+    last_exc: Exception | None = None
+    for attempt in range(1, DB_CONNECT_MAX_ATTEMPTS + 1):
+        try:
+            return await asyncpg.connect(db_url)
+        except retryable as e:
+            last_exc = e
+            if attempt >= DB_CONNECT_MAX_ATTEMPTS:
+                break
+            delay = DB_CONNECT_BASE_DELAY_S * (2 ** (attempt - 1))
+            LOG.warning(
+                "DB connect transient failure attempt %d/%d: %s — retrying in %.1fs",
+                attempt, DB_CONNECT_MAX_ATTEMPTS, type(e).__name__, delay,
+            )
+            await asyncio.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
+
+
 async def fetch_client(conn, client_id: int) -> dict[str, Any] | None:
     """Fetch a CRM client row. Schema canonical 2026-05-17."""
     row = await conn.fetchrow(
@@ -1517,7 +1559,7 @@ async def main() -> int:
     )
 
     db_url = _resolve_db_url()
-    conn = await asyncpg.connect(db_url)
+    conn = await _connect_with_retry(asyncpg, db_url)
 
     if args.client_id:
         targets = [args.client_id]

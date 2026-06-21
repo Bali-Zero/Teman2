@@ -278,6 +278,16 @@ class HealthMonitor:
                 # dead / 777k live, frac 0.07) trip a >10000 "critical" — a pure
                 # false-positive (verified live 2026-06-20). Rank by fraction of the
                 # table's own threshold instead.
+                # Require a meaningful ABSOLUTE dead-tuple floor before ranking
+                # by fraction. A table with only a handful of dead tuples is never
+                # an operational concern — autovacuum clears it in one trivial
+                # pass. Tiny churning tables (e.g. wa_lid_phone_resolution: 79 dead,
+                # frac 1.2x; kg_proposals: 41 dead, frac 0.72) otherwise trip the
+                # warn threshold purely because their OWN autovacuum trigger is also
+                # tiny (50 + 0.2*live). A genuinely vacuum-starved table accumulates
+                # dead tuples without bound and clears this floor immediately, so the
+                # floor suppresses noise without hiding a real autovacuum failure.
+                min_dead = int(os.getenv("PG_DEAD_TUPLE_MIN", "1000"))
                 bloat = await conn.fetchrow(
                     """
                     SELECT relname,
@@ -287,10 +297,11 @@ class HealthMonitor:
                                + current_setting('autovacuum_vacuum_scale_factor')::float
                                  * n_live_tup, 0)) AS frac
                     FROM pg_stat_user_tables
-                    WHERE n_dead_tup > 0
+                    WHERE n_dead_tup >= $1
                     ORDER BY frac DESC NULLS LAST
                     LIMIT 1
-                    """
+                    """,
+                    min_dead,
                 )
                 worst_table = bloat["relname"] if bloat else None
                 worst_dead = int(bloat["n_dead_tup"]) if bloat and bloat["n_dead_tup"] else 0
