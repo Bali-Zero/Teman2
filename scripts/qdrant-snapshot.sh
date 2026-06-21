@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Repo-canonical (W50 promotion from ~/scripts/, 2026-06-21).
+# The crontab MUST exec THIS copy; the ~/scripts fork is deprecated.
 # qdrant-snapshot.sh — Qdrant Cloud Snapshot Backup → Tigris S3
 # Creates per-collection snapshots, uploads individually to Tigris
 # Retention: last 4 snapshots per collection on Tigris
@@ -182,7 +184,8 @@ for COLLECTION in $COLLECTIONS; do
        aws s3 cp "$OUTPUT_FILE" \
            "s3://$TIGRIS_BUCKET/$S3_KEY" \
            --endpoint-url "$TIGRIS_ENDPOINT" \
-           --region auto 2>/dev/null; then
+           --region auto \
+           --cli-connect-timeout 30 --cli-read-timeout 0 2>/dev/null; then
         log "  Uploaded: s3://$TIGRIS_BUCKET/$S3_KEY"
 
         # Retention: keep last KEEP_REMOTE per collection on Tigris
