@@ -10,7 +10,10 @@
 const fs = require("fs");
 const path = require("path");
 
-const DEFAULT_CORPUS_DIR = path.resolve(__dirname, "../../research/personal/wa-corpus");
+const DEFAULT_CORPUS_DIR = path.resolve(
+  __dirname,
+  "../../research/personal/wa-corpus",
+);
 const SUMMARY_RE = /_summary\.md$/i;
 const MAX_DEPTH = 5;
 const MAX_FILES = 700;
@@ -113,7 +116,7 @@ function numericValue(value) {
   if (value == null) return null;
   const s = String(value).trim().replace(/,/g, "");
   if (!/^-?\d+(\.\d+)?%?$/.test(s)) return null;
-  return Number(s.replace("%", ""));
+  return Number(s.replace(/%/g, ""));
 }
 
 function cleanBullet(line) {
@@ -136,12 +139,19 @@ function markdownSections(text) {
     if (current) current.body.push(line);
   }
   if (current) sections.push(current);
-  return sections.map((section) => ({ ...section, body: section.body.join("\n").trim() }));
+  return sections.map((section) => ({
+    ...section,
+    body: section.body.join("\n").trim(),
+  }));
 }
 
 function sectionText(text, heading) {
-  const wanted = String(heading || "").trim().toLowerCase();
-  const found = markdownSections(text).find((section) => section.title.toLowerCase() === wanted);
+  const wanted = String(heading || "")
+    .trim()
+    .toLowerCase();
+  const found = markdownSections(text).find(
+    (section) => section.title.toLowerCase() === wanted,
+  );
   return found ? found.body : "";
 }
 
@@ -156,7 +166,8 @@ function parseTableRows(section) {
       .map((cell) => cell.trim());
     if (cells.length < 2) continue;
     if (/^-{2,}:?$/.test(cells[0].replace(/\s/g, ""))) continue;
-    if (/^(metric|value)$/i.test(cells[0]) && /^(value|count)$/i.test(cells[1])) continue;
+    if (/^(metric|value)$/i.test(cells[0]) && /^(value|count)$/i.test(cells[1]))
+      continue;
     rows.push({ label: cells[0], value: cells[1] });
   }
   return rows;
@@ -213,7 +224,8 @@ function scanSummaryFiles(baseDir, dir, depth, acc) {
 }
 
 function parseSummaryText(text, relativePath, stat) {
-  const title = (text.match(/^#\s+(.+?)\s*$/m) || [])[1] || path.basename(relativePath);
+  const title =
+    (text.match(/^#\s+(.+?)\s*$/m) || [])[1] || path.basename(relativePath);
   const generatedAt =
     (text.match(/^Generated UTC:\s*`?([^`\n]+)`?/im) || [])[1] ||
     (text.match(/^Generated(?: at)?:\s*`?([^`\n]+)`?/im) || [])[1] ||
@@ -237,8 +249,7 @@ function parseSummaryText(text, relativePath, stat) {
     .map(cleanBullet);
 
   const category = categorize(relativePath, title);
-  const keyMetrics = IMPORTANT_METRICS
-    .filter((key) => counts[key] != null)
+  const keyMetrics = IMPORTANT_METRICS.filter((key) => counts[key] != null)
     .slice(0, 8)
     .map((key) => ({
       key,
@@ -301,27 +312,43 @@ function buildCategories(artifacts) {
     }
     const group = byId.get(artifact.category_id);
     group.count += 1;
-    if (artifact.generated_at && (!group.latest_generated_at || artifact.generated_at > group.latest_generated_at)) {
+    if (
+      artifact.generated_at &&
+      (!group.latest_generated_at ||
+        artifact.generated_at > group.latest_generated_at)
+    ) {
       group.latest_generated_at = artifact.generated_at;
     }
-    if (artifact.mtime && (!group.latest_mtime || artifact.mtime > group.latest_mtime)) {
+    if (
+      artifact.mtime &&
+      (!group.latest_mtime || artifact.mtime > group.latest_mtime)
+    ) {
       group.latest_mtime = artifact.mtime;
     }
     for (const metric of artifact.key_metrics.slice(0, 4)) {
-      if (group.top_metrics[metric.key] == null) group.top_metrics[metric.key] = metric.display_value;
+      if (group.top_metrics[metric.key] == null)
+        group.top_metrics[metric.key] = metric.display_value;
     }
   }
   return [...byId.values()].sort((a, b) => {
     const ar = CATEGORY_RULES.findIndex((r) => r.id === a.id);
     const br = CATEGORY_RULES.findIndex((r) => r.id === b.id);
-    return (ar === -1 ? 99 : ar) - (br === -1 ? 99 : br) || a.label.localeCompare(b.label);
+    return (
+      (ar === -1 ? 99 : ar) - (br === -1 ? 99 : br) ||
+      a.label.localeCompare(b.label)
+    );
   });
 }
 
 function buildTrainingPayload(options = {}) {
   const baseDir = options.baseDir || corpusDir();
   const now = Date.now();
-  if (!options.noCache && CACHE.payload && Date.now() - CACHE.at < CACHE_MS && CACHE.payload.base_dir === baseDir) {
+  if (
+    !options.noCache &&
+    CACHE.payload &&
+    Date.now() - CACHE.at < CACHE_MS &&
+    CACHE.payload.base_dir === baseDir
+  ) {
     return CACHE.payload;
   }
 
@@ -334,7 +361,9 @@ function buildTrainingPayload(options = {}) {
   for (const file of files) {
     try {
       const stat = safeStat(file.full);
-      const raw = fs.readFileSync(file.full, "utf8").slice(0, MAX_SUMMARY_BYTES);
+      const raw = fs
+        .readFileSync(file.full, "utf8")
+        .slice(0, MAX_SUMMARY_BYTES);
       artifacts.push(parseSummaryText(raw, file.rel, stat));
     } catch (err) {
       errors.push({ relative_path: file.rel, error: err.message });
@@ -344,7 +373,9 @@ function buildTrainingPayload(options = {}) {
   artifacts.sort((a, b) => {
     const at = a.generated_at || a.mtime || "";
     const bt = b.generated_at || b.mtime || "";
-    return bt.localeCompare(at) || a.relative_path.localeCompare(b.relative_path);
+    return (
+      bt.localeCompare(at) || a.relative_path.localeCompare(b.relative_path)
+    );
   });
 
   const totals = aggregateTotals(artifacts);
@@ -354,13 +385,16 @@ function buildTrainingPayload(options = {}) {
     exists,
     artifact_count: artifacts.length,
     summary_limit: MAX_FILES,
-    latest_generated_at: artifacts.find((a) => a.generated_at)?.generated_at || null,
+    latest_generated_at:
+      artifacts.find((a) => a.generated_at)?.generated_at || null,
     totals,
     total_cards: {
       training_examples: displayNumber(totals.training_examples || 0),
       replay_scenarios: displayNumber(totals.replay_scenarios || 0),
       shadow_drafts: displayNumber(totals.shadow_drafts || 0),
-      owner_queue: displayNumber(totals.awaiting_owner_decision || totals.owner_approval_items || 0),
+      owner_queue: displayNumber(
+        totals.awaiting_owner_decision || totals.owner_approval_items || 0,
+      ),
       whatsapp_sends: displayNumber(totals.whatsapp_sends || 0),
       crm_mutations: displayNumber(totals.crm_mutations || 0),
     },

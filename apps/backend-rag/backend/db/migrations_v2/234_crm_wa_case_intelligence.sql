@@ -1,4 +1,4 @@
--- migration 232: CRM WhatsApp case intelligence
+-- migration 234: CRM WhatsApp case intelligence
 --
 -- Stores one Zantara Captain card per WhatsApp conversation/case linked to a
 -- CRM client. This is intentionally separate from clients.strategic_recap:
