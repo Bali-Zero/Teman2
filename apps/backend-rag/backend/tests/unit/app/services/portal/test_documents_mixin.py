@@ -91,6 +91,7 @@ async def test_get_documents_shapes_client_visible_rows() -> None:
             "created_at": created_at,
             "practice_id": 3,
             "practice_name": "KITAS",
+            "document_purpose": "Passport for KITAS renewal",
         },
     ]
 
@@ -117,8 +118,12 @@ async def test_get_documents_shapes_client_visible_rows() -> None:
             "practice_name": "KITAS",
             "downloadable": True,
             "created_at": created_at.isoformat(),
+            "purpose": "Passport for KITAS renewal",
         },
     ]
+    # FASE 5: live documents only (soft-deleted hidden) + purpose surfaced
+    assert "d.deleted_at IS NULL" in mock_conn.fetch.call_args.args[0]
+    assert "d.document_purpose" in mock_conn.fetch.call_args.args[0]
     assert "d.document_type = $2" in mock_conn.fetch.call_args.args[0]
     assert mock_conn.fetch.call_args.args[1:] == (1, "passport")
 
@@ -193,7 +198,150 @@ async def test_upload_document_success_stores_processed_document() -> None:
     assert service._metrics["drive_uploads"] == 1
     assert service._metrics["ocr_processed"] == 1
     assert spawn_mock.call_count == 2
-    assert mock_conn.fetchrow.call_args_list[2].args[-1] == "personal"
+    # doc_category is now second-to-last positional ($13); document_purpose is last ($14)
+    assert mock_conn.fetchrow.call_args_list[2].args[-2] == "personal"
+    assert mock_conn.fetchrow.call_args_list[2].args[-1] is None
+
+
+@pytest.mark.asyncio
+async def test_upload_document_persists_document_purpose() -> None:
+    """FASE 5: a client-provided purpose note is stored as the last INSERT arg."""
+    service, mock_conn = _make_service_with_fetchrow(row=None)
+    created_at = datetime(2026, 5, 10, 10, 0, tzinfo=timezone.utc)
+    mock_conn.fetchrow.side_effect = [
+        None,
+        {"email": "client@example.com", "full_name": "Client One", "assigned_to": None},
+        {
+            "id": 90,
+            "document_type": "passport",
+            "file_name": "passport.pdf",
+            "status": "received",
+            "created_at": created_at,
+            "expiry_date": None,
+        },
+    ]
+    service._upload_to_drive = AsyncMock(
+        return_value={
+            "success": True,
+            "file_id": "drive_file_90",
+            "file_url": "https://drive.google.com/file/d/drive_file_90/view",
+            "folder_path": "Zantara Portal Uploads/1_Client One/Passport",
+        }
+    )
+
+    with (
+        patch(
+            "backend.services.portal._mixins.documents.DocumentOCR.extract_text",
+            new=AsyncMock(return_value={"success": True, "text": "txt", "pages": 1}),
+        ),
+        patch(
+            "backend.services.portal._mixins.documents.ExpiryDetector.detect_expiry",
+            return_value={"expiry_date": None, "confidence": 0.0},
+        ),
+        patch(
+            "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+            return_value=object(),
+        ),
+        patch("backend.services.portal._mixins.documents.spawn", side_effect=_close_spawn),
+    ):
+        result = await service.upload_document(
+            client_id=1,
+            file_content=b"%PDF-1.4 clean passport",
+            file_name="passport.pdf",
+            document_type="passport",
+            mime_type="application/pdf",
+            document_purpose="Required for KITAS renewal",
+            current_user={"client_id": 1, "email": "client@example.com"},
+        )
+
+    assert result["id"] == 90
+    # document_purpose is the last positional arg of the INSERT ($14)
+    assert mock_conn.fetchrow.call_args_list[2].args[-1] == "Required for KITAS renewal"
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_document_marks_deleted_and_returns_summary() -> None:
+    """FASE 5: soft-delete sets deleted_at/deleted_by and records a timeline event."""
+    service, mock_conn = _make_service_with_fetchrow(
+        {"id": 10, "file_name": "passport.pdf", "document_type": "passport"}
+    )
+
+    result = await service.soft_delete_document(
+        client_id=1,
+        document_id=10,
+        current_user={"client_id": 1, "email": "client@example.com"},
+    )
+
+    assert result == {
+        "id": 10,
+        "name": "passport.pdf",
+        "type": "passport",
+        "deleted": True,
+    }
+    update_sql = mock_conn.fetchrow.call_args.args[0]
+    assert "UPDATE documents" in update_sql
+    assert "deleted_at = NOW()" in update_sql
+    assert "deleted_at IS NULL" in update_sql  # idempotent: only live rows
+    # actor + ids passed through
+    assert mock_conn.fetchrow.call_args.args[1:] == (10, 1, "client@example.com")
+    # timeline event recorded
+    assert mock_conn.execute.await_count == 1
+    assert "document_removed" in mock_conn.execute.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_document_returns_none_when_not_found() -> None:
+    service, mock_conn = _make_service_with_fetchrow(row=None)
+
+    result = await service.soft_delete_document(
+        client_id=1,
+        document_id=404,
+        current_user={"client_id": 1, "email": "client@example.com"},
+    )
+
+    assert result is None
+    # no timeline event when nothing was deleted
+    assert mock_conn.execute.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_restore_document_clears_deleted_and_returns_summary() -> None:
+    service, mock_conn = _make_service_with_fetchrow(
+        {"id": 11, "file_name": "kitas.pdf", "document_type": "kitas"}
+    )
+
+    result = await service.restore_document(
+        client_id=1,
+        document_id=11,
+        current_user={"client_id": 1, "email": "client@example.com"},
+    )
+
+    assert result == {
+        "id": 11,
+        "name": "kitas.pdf",
+        "type": "kitas",
+        "deleted": False,
+    }
+    update_sql = mock_conn.fetchrow.call_args.args[0]
+    assert "deleted_at = NULL" in update_sql
+    assert "deleted_at IS NOT NULL" in update_sql  # only restore actually-deleted rows
+    assert mock_conn.fetchrow.call_args.args[1:] == (11, 1)
+    assert mock_conn.execute.await_count == 1
+    assert "document_restored" in mock_conn.execute.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_restore_document_returns_none_when_not_deleted() -> None:
+    service, mock_conn = _make_service_with_fetchrow(row=None)
+
+    result = await service.restore_document(
+        client_id=1,
+        document_id=11,
+        current_user={"client_id": 1, "email": "client@example.com"},
+    )
+
+    assert result is None
+    assert mock_conn.execute.await_count == 0
 
 
 @pytest.mark.asyncio
