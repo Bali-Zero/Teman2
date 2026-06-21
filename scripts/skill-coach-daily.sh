@@ -1,10 +1,12 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 # Repo-canonical (W50 promotion from ~/.openclaw/bin/, 2026-06-21).
-# Plist MUST exec THIS copy; paths derive from repo root (no dead worktree).
+# Run via crontab + cron-runner.sh, NOT launchd: on Pro launchd lacks the TCC/
+# Full-Disk-Access grant for ~/Desktop (scar W84) so it cannot open files here,
+# while cron has it. Paths derive from this file's own repo location.
 set -euo pipefail
 
 export PATH="/opt/homebrew/bin:/opt/homebrew/opt/node/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-WT="$(cd "$(dirname "${0:A}")/.." && pwd)"  # repo root (W50: derive; was dead worktree)
+WT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"  # repo root (W50: derive; portable bash)
 APP="$WT/apps/backend-rag"
 VENV="$APP/.venv"
 OPENCLAW_NODE="/opt/homebrew/opt/node/bin/node"
