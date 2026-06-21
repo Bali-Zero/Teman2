@@ -59,11 +59,28 @@ function readLatestManifestRows(baseDir) {
   };
 }
 
-function readTextIfExists(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) return "";
-  const stat = fs.statSync(filePath);
-  if (!stat.isFile() || stat.size < 20) return "";
-  return fs.readFileSync(filePath, "utf8");
+function isPathInside(parentDir, childPath) {
+  const parent = path.resolve(parentDir);
+  const child = path.resolve(childPath);
+  return child === parent || child.startsWith(`${parent}${path.sep}`);
+}
+
+function readFileSnapshot(filePath) {
+  if (!filePath) return null;
+  let fd;
+  try {
+    fd = fs.openSync(filePath, "r");
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile() || stat.size < 20) return null;
+    return {
+      text: fs.readFileSync(fd, "utf8"),
+      mtime: stat.mtime,
+    };
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
 }
 
 function trimText(value, maxChars = MAX_SECTION_CHARS) {
@@ -100,6 +117,7 @@ function parseSections(markdown) {
   const sections = {};
   let current = null;
   let buffer = [];
+  const source = typeof markdown === "string" ? markdown : "";
 
   const flush = () => {
     if (!current) return;
@@ -112,7 +130,7 @@ function parseSections(markdown) {
     buffer = [];
   };
 
-  for (const line of String(markdown || "").split(/\r?\n/)) {
+  for (const line of source.split(/\r?\n/)) {
     const isMarkdownHeading = /^\s*#{1,6}\s+/.test(line);
     const clean = line
       .trim()
@@ -247,10 +265,11 @@ function caseKindLabel(row) {
 
 function buildAnalysisItem(row, baseDir) {
   const outputPath = row.outputPath || "";
-  const markdown = readTextIfExists(outputPath);
-  if (!markdown) return null;
+  if (!isPathInside(baseDir, outputPath)) return null;
+  const snapshot = readFileSnapshot(outputPath);
+  if (!snapshot?.text) return null;
 
-  const parsed = parseSections(markdown);
+  const parsed = parseSections(snapshot.text);
   const sections = {
     type: findSection(parsed, 1, ["tipo", "attori"]),
     state: findSection(parsed, 2, ["stato reale", "stato"]),
@@ -265,9 +284,8 @@ function buildAnalysisItem(row, baseDir) {
     ]),
     training_labels: findSection(parsed, 8, ["training label", "gold label"]),
   };
-  const fullText = `${row.label || ""}\n${markdown}`;
+  const fullText = `${row.label || ""}\n${snapshot.text}`;
   const flags = detectFlags(fullText);
-  const stat = fs.statSync(outputPath);
 
   return {
     key: row.key,
@@ -282,7 +300,7 @@ function buildAnalysisItem(row, baseDir) {
     status: row.status || "unknown",
     analysis_id: path.basename(outputPath, ".md"),
     relative_path: path.relative(baseDir, outputPath),
-    output_mtime: stat.mtime.toISOString(),
+    output_mtime: snapshot.mtime.toISOString(),
     flags,
     flag_ids: flags.map((f) => f.id),
     priority_score: priorityScore(row, flags, sections),

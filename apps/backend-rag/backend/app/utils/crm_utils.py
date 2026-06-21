@@ -180,10 +180,12 @@ async def verify_client_access(
             return True, assigned_to
 
         logger.warning(
-            "RBAC: User %s denied write access to client %s (assigned_to: %s)",
-            user_email,
-            client_id,
-            assigned_to,
+            "crm.rbac_client_write_denied",
+            extra={
+                "client_id": client_id,
+                "user_email_present": bool(user_email),
+                "assigned_to_present": bool(assigned_to),
+            },
         )
         raise HTTPException(
             status_code=403,
@@ -198,10 +200,12 @@ async def verify_client_access(
 
     # Access denied (only reachable if allow_assigned=False)
     logger.warning(
-        "RBAC: User %s denied access to client %s (assigned_to: %s)",
-        user_email,
-        client_id,
-        assigned_to,
+        "crm.rbac_client_access_denied",
+        extra={
+            "client_id": client_id,
+            "user_email_present": bool(user_email),
+            "assigned_to_present": bool(assigned_to),
+        },
     )
     raise HTTPException(
         status_code=403,
