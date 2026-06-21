@@ -310,6 +310,95 @@
   --bz-sidebar-width: 216px;
   --bz-header-height: 48px;
   --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
+  /* Header surface — dark default; overridden under operative-light */
+  --portal-header-bg: rgba(29, 39, 59, 0.7);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   PORTAL LIGHT SURFACE — "Rumah Putih / Lounge" (2026-06-21)
+
+   The pre-paint themeInitScript in layout.tsx already routes `my.` (and
+   `zantara.`) → data-theme="operative-light", while `kita.`/`prime.` →
+   operative-dark. BUT the operative-light shell variables were never defined
+   (superscar #2 "Esiste ≠ Armato": routing wired, theme unarmed) — so the
+   client portal received the dark `:root` values. This block ARMS the light
+   surface by overriding the GARUDA shell tokens under [data-theme="operative-light"].
+
+   Scoped to data-theme on <html>, set per-DOMAIN — so it CANNOT leak into kita
+   (operative-dark) or the editorial site. The client gets a calm warm-paper
+   lounge; the team backoffice stays dark. Accent copper is kept for brand
+   continuity; only base/text/border/elevated invert. WCAG AA verified:
+   ink #16213a on paper #f4f1ea ≈ 12.8:1; soft-ink #475372 ≈ 6.4:1.
+   ─────────────────────────────────────────────────────────────────────────── */
+[data-theme="operative-light"] {
+  color-scheme: light;
+
+  /* Shell base surfaces — warm paper, not glaring white */
+  --bz-base: #f4f1ea;
+  --bz-elevated: #ffffff;
+  --bz-surface: #ffffff;
+  --bz-card: #ffffff;
+  --bz-card-hover: #faf8f3;
+
+  /* Generic background/foreground mappings (body + ui components) */
+  --background: #f4f1ea;
+  --background-secondary: #ffffff;
+  --background-elevated: #ffffff;
+  --background-hover: #faf8f3;
+  --foreground: #16213a;
+  --foreground-secondary: #475372;
+  --foreground-muted: #7a8aa6;
+  --border: rgba(9, 9, 11, 0.08);
+  --border-hover: rgba(9, 9, 11, 0.14);
+  --accent: #d4845a;
+  --accent-hover: #bf7350;
+
+  /* Typography on light */
+  --tx-pure: #16213a;
+  --tx-primary: #16213a;
+  --tx-secondary: #475372;
+  --tx-tertiary: #7a8aa6;
+  --bz-text-1: #16213a;
+  --bz-text-2: #475372;
+  --bz-text-3: #7a8aa6;
+
+  /* Borders / glass on light (dark hairlines, not white) */
+  --bz-border: rgba(9, 9, 11, 0.08);
+  --bz-border-hover: rgba(9, 9, 11, 0.14);
+  --bz-border-accent: rgba(201, 169, 110, 0.35);
+  --glass-highlight: rgba(9, 9, 11, 0.05);
+  --glass-rim: rgba(9, 9, 11, 0.06);
+
+  /* Header surface (consumed by PortalHeader, was hardcoded dark navy) */
+  --portal-header-bg: rgba(244, 241, 234, 0.72);
+
+  /* Status colors deepened for AA contrast on light paper */
+  --bz-green: #0f9d63;
+  --bz-red: #c2453f;
+  --bz-amber: #b67519;
+  --success: #0f9d63;
+  --warning: #b67519;
+  --error: #c2453f;
+
+  /* KBLI base tokens — the ROOT layer body + several shell utilities derive
+     from (body bg = var(--kbli-bg-base); --background = var(--kbli-bg-base)).
+     Without these the <body> stayed dark navy #1d273b even with the portal
+     surface light. Remap them to the paper palette so the whole client
+     surface — not just the GARUDA-token components — turns light. */
+  --kbli-bg-base: #f4f1ea;
+  --kbli-bg-primary: #f4f1ea;
+  --kbli-bg-secondary: #ffffff;
+  --kbli-bg-elevated: #ffffff;
+  --kbli-bg-surface: #ffffff;
+  --kbli-bg-surface-hover: #faf8f3;
+  --kbli-bg-card: #ffffff;
+  --kbli-bg-card-hover: #faf8f3;
+  --kbli-bg-input: #ffffff;
+  --kbli-text-primary: #16213a;
+  --kbli-text-secondary: #475372;
+  --kbli-text-muted: #7a8aa6;
+  --kbli-border: rgba(9, 9, 11, 0.08);
+  --kbli-border-hover: rgba(9, 9, 11, 0.14);
 }
 
 html {
