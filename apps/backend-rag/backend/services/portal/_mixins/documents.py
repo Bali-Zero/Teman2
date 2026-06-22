@@ -189,6 +189,7 @@ class PortalDocumentsMixin:
                 WHERE d.client_id = $1
                 AND d.client_visible = true
                 AND d.deleted_at IS NULL
+                AND COALESCE(d.is_archived, FALSE) = FALSE
             """
             params = [client_id]
 
@@ -235,6 +236,7 @@ class PortalDocumentsMixin:
                   AND client_id = $2
                   AND client_visible = true
                   AND deleted_at IS NULL
+                  AND COALESCE(is_archived, FALSE) = FALSE
                 LIMIT 1
                 """,
                 document_id,
@@ -321,6 +323,7 @@ class PortalDocumentsMixin:
                       AND client_id = $2
                       AND client_visible = true
                       AND deleted_at IS NULL
+                      AND COALESCE(is_archived, FALSE) = FALSE
                     RETURNING id, file_name, document_type
                     """,
                     document_id,
@@ -386,6 +389,7 @@ class PortalDocumentsMixin:
                       AND client_id = $2
                       AND client_visible = true
                       AND deleted_at IS NOT NULL
+                      AND COALESCE(is_archived, FALSE) = FALSE
                     RETURNING id, file_name, document_type
                     """,
                     document_id,

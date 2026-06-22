@@ -123,6 +123,7 @@ async def test_get_documents_shapes_client_visible_rows() -> None:
     ]
     # FASE 5: live documents only (soft-deleted hidden) + purpose surfaced
     assert "d.deleted_at IS NULL" in mock_conn.fetch.call_args.args[0]
+    assert "COALESCE(d.is_archived, FALSE) = FALSE" in mock_conn.fetch.call_args.args[0]
     assert "d.document_purpose" in mock_conn.fetch.call_args.args[0]
     assert "d.document_type = $2" in mock_conn.fetch.call_args.args[0]
     assert mock_conn.fetch.call_args.args[1:] == (1, "passport")
@@ -282,6 +283,7 @@ async def test_soft_delete_document_marks_deleted_and_returns_summary() -> None:
     assert "UPDATE documents" in update_sql
     assert "deleted_at = NOW()" in update_sql
     assert "deleted_at IS NULL" in update_sql  # idempotent: only live rows
+    assert "COALESCE(is_archived, FALSE) = FALSE" in update_sql
     # actor + ids passed through
     assert mock_conn.fetchrow.call_args.args[1:] == (10, 1, "client@example.com")
     # timeline event recorded
@@ -325,6 +327,7 @@ async def test_restore_document_clears_deleted_and_returns_summary() -> None:
     update_sql = mock_conn.fetchrow.call_args.args[0]
     assert "deleted_at = NULL" in update_sql
     assert "deleted_at IS NOT NULL" in update_sql  # only restore actually-deleted rows
+    assert "COALESCE(is_archived, FALSE) = FALSE" in update_sql
     assert mock_conn.fetchrow.call_args.args[1:] == (11, 1)
     assert mock_conn.execute.await_count == 1
     assert "document_restored" in mock_conn.execute.call_args.args[0]
@@ -519,7 +522,7 @@ async def test_download_document_raises_when_drive_not_connected() -> None:
 
 @pytest.mark.asyncio
 async def test_download_document_streams_drive_file() -> None:
-    service, _mock_conn = _make_service_with_fetchrow(
+    service, mock_conn = _make_service_with_fetchrow(
         {
             "id": 10,
             "file_name": "passport.pdf",
@@ -558,6 +561,9 @@ async def test_download_document_streams_drive_file() -> None:
         "file_name": "passport-renamed.pdf",
         "mime_type": "application/pdf",
     }
+    fetch_sql = mock_conn.fetchrow.call_args.args[0]
+    assert "deleted_at IS NULL" in fetch_sql
+    assert "COALESCE(is_archived, FALSE) = FALSE" in fetch_sql
 
 
 @pytest.mark.asyncio
