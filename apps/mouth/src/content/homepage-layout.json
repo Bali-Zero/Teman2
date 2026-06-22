@@ -1,7 +1,7 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
   "hero_main": "pp-20-2026-who-keeps-the-05-tax-and-who-loses-it",
-  "hero_2": "june-2026-deadlines-kbli-2025-and-annual-rups-report",
+  "hero_2": "indonesia-deports-25-foreigners-caught-doing-illegal-photography-work",
   "hero_3": "indonesia-umkm-tax-reforms-pp-20-2026",
   "hero_4": "indonesia-tightens-pma-rules-what-foreign-investors-must-know",
   "hero_5": "sono-hotels-signs-bali-canggu-property-betting-on-indonesias-luxury-lifestyle-boom",
