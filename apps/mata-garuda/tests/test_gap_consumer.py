@@ -167,9 +167,9 @@ def test_process_gap_skips_lhkpn_missing_lhkpn_without_nip():
     assert result["reason"] == "lhkpn_profile_fetch_requires_existing_nip"
 
 
-def test_process_gap_dispatches_lhkpn_missing_lhkpn_when_nip_present():
-    """gap.missing_lhkpn with an existing NIP remains dispatchable."""
-    fake_dispatch = MagicMock(return_value={"case_resolved": True})
+def test_process_gap_skips_lhkpn_missing_lhkpn_without_name():
+    """The current KPK portal searches by name, not by NIP alone."""
+    fake_dispatch = MagicMock()
     fake_xack = MagicMock()
 
     result = process_gap(
@@ -180,13 +180,9 @@ def test_process_gap_dispatches_lhkpn_missing_lhkpn_when_nip_present():
         xack=fake_xack,
     )
 
-    fake_dispatch.assert_called_once()
-    call_kwargs = fake_dispatch.call_args.kwargs
-    assert call_kwargs["agent_name"] == "lhkpn_harvester"
-    assert call_kwargs["payload"]["entity_nip"] == "123"
-    assert call_kwargs["payload"]["_gap_type"] == "gap.missing_lhkpn"
-    assert result["status"] == "resolved"
-    assert result["agent"] == "lhkpn_harvester"
+    fake_dispatch.assert_not_called()
+    assert result["status"] == "skipped"
+    assert result["reason"] == "lhkpn_portal_search_requires_person_name"
     fake_xack.assert_called_once()
 
 
@@ -346,7 +342,7 @@ def test_process_gap_dispatch_exception_caught_no_ack():
 
     result = process_gap(
         msg_id="6-0",
-        gap_type="gap.missing_lhkpn",
+        gap_type="gap.stale_official",
         payload={"entity_nip": "123"},
         dispatch_agent=fake_dispatch,
         xack=fake_xack,
@@ -383,9 +379,10 @@ def test_run_gap_consumer_processes_batch():
     )
 
     assert stats["read"] == 2
-    assert stats["resolved"] == 2
+    assert stats["resolved"] == 1
+    assert stats["skipped"] == 1
     assert stats["failed"] == 0
-    assert fake_dispatch.call_count == 2
+    assert fake_dispatch.call_count == 1
     assert fake_xack.call_count == 2
 
 
@@ -536,10 +533,10 @@ def test_run_gap_consumer_mixed_canonical_and_legacy_batch():
     )
 
     assert stats["read"] == 3
-    assert stats["resolved"] == 2  # canonical + mappable legacy
-    assert stats["skipped"] == 1   # drained legacy
-    assert fake_dispatch.call_count == 2
-    # All three entries got acked (2 via process_gap on resolve, 1 via drain)
+    assert stats["resolved"] == 1  # canonical regulation gap
+    assert stats["skipped"] == 2   # LHKPN without name + drained legacy
+    assert fake_dispatch.call_count == 1
+    # All three entries got acked (1 resolve, 2 skip/drain)
     assert fake_xack.call_count == 3
 
 

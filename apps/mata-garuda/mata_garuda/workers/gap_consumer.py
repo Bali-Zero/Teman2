@@ -103,6 +103,14 @@ def _payload_has_nip(payload: dict[str, Any]) -> bool:
     return False
 
 
+def _payload_has_person_name(payload: dict[str, Any]) -> bool:
+    """True when the payload carries a usable official/person name."""
+    for key in ("entity_name", "person_name", "name"):
+        if str(payload.get(key, "")).strip():
+            return True
+    return False
+
+
 def _lhkpn_terminal_skip_reason(gap_type: str, payload: dict[str, Any]) -> str | None:
     """Return a reason when an LHKPN gap is structurally unresolvable today.
 
@@ -116,6 +124,8 @@ def _lhkpn_terminal_skip_reason(gap_type: str, payload: dict[str, Any]) -> str |
         return "lhkpn_portal_does_not_expose_angkatan"
     if gap_type == "gap.missing_lhkpn" and not _payload_has_nip(payload):
         return "lhkpn_profile_fetch_requires_existing_nip"
+    if gap_type == "gap.missing_lhkpn" and not _payload_has_person_name(payload):
+        return "lhkpn_portal_search_requires_person_name"
     return None
 
 
