@@ -17,7 +17,7 @@ const POLL_INTERVAL = 30000; // 30 seconds
 const PAGE_SIZE = 100;
 
 export default function ChatPage() {
-  const { error, success } = useToast();
+  const { error } = useToast();
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +30,15 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Ref mirror of messages — lets markVisibleMessagesAsRead read current
+  // messages without taking `messages` as a useCallback dep (which would
+  // recreate the callback on every fetch and re-trigger the mark-as-read
+  // effect, causing the infinite-fetch loop).
+  const messagesRef = useRef<PortalMessage[]>([]);
+  // useToast returns inline arrow functions — new identity on every render.
+  // Mirror in a ref so loadMessages can have empty deps and stay stable.
+  const errorRef = useRef(error);
+  useEffect(() => { errorRef.current = error; });
 
   // Load messages
   const loadMessages = useCallback(
@@ -44,20 +53,22 @@ export default function ChatPage() {
           (a, b) =>
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
+        messagesRef.current = sortedMessages;
         setMessages(sortedMessages);
         setUnreadCount(data.unreadCount);
         setOffset(PAGE_SIZE);
         setHasMore(data.messages.length === PAGE_SIZE);
       } catch (err) {
         if (!silent) {
-          error("Failed to load messages", "Please try again later");
+          errorRef.current("Failed to load messages", "Please try again later");
         }
         logger.error("Failed to load portal messages", {}, err as Error);
       } finally {
         setIsLoading(false);
       }
     },
-    [error],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   // Load earlier messages (prepend)
@@ -76,20 +87,29 @@ export default function ChatPage() {
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
-      setMessages((prev) => [...older, ...prev]);
+      setMessages((prev) => {
+        const next = [...older, ...prev];
+        messagesRef.current = next;
+        return next;
+      });
       setOffset((prev) => prev + PAGE_SIZE);
       setHasMore(data.messages.length === PAGE_SIZE);
     } catch (err) {
-      error("Failed to load earlier messages", "Please try again");
+      errorRef.current("Failed to load earlier messages", "Please try again");
       logger.error("Failed to load earlier messages", {}, err as Error);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [offset, error]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offset]);
 
-  // Mark visible messages as read
+  // Mark visible messages as read.
+  // Reads from messagesRef (not from the `messages` state variable) so this
+  // callback is stable and does NOT need `messages` in its dep array.
+  // That breaks the cycle: messages → markVisibleMessagesAsRead → effect →
+  // loadMessages → setMessages → messages → … (was causing ~1167 fetches).
   const markVisibleMessagesAsRead = useCallback(async () => {
-    const unreadMessages = messages.filter(
+    const unreadMessages = messagesRef.current.filter(
       (msg) => msg.direction === "team_to_client" && !msg.readAt,
     );
 
@@ -105,7 +125,7 @@ export default function ChatPage() {
     if (unreadMessages.length > 0) {
       loadMessages(true);
     }
-  }, [messages, loadMessages]);
+  }, [loadMessages]);
 
   // Initial load
   useEffect(() => {
@@ -128,16 +148,23 @@ export default function ChatPage() {
     }
   }, [messages]);
 
-  // Mark messages as read when they become visible
+  // Mark messages as read once after the initial load completes.
+  // Deps: only [isLoading, markVisibleMessagesAsRead] — NOT `messages`.
+  // Removing `messages` from deps is intentional: we read from messagesRef
+  // inside the callback so we always see the latest list without causing
+  // this effect to re-fire on every fetch (which was the infinite-loop root).
+  const prevIsLoadingRef = useRef(true);
   useEffect(() => {
-    if (!isLoading && messages.length > 0) {
+    // Fire when isLoading transitions from true → false (initial load done)
+    if (prevIsLoadingRef.current && !isLoading && messagesRef.current.length > 0) {
       const timer = setTimeout(() => {
         markVisibleMessagesAsRead();
-      }, 1000); // Wait 1s before marking as read
-
+      }, 1000);
+      prevIsLoadingRef.current = false;
       return () => clearTimeout(timer);
     }
-  }, [messages, isLoading, markVisibleMessagesAsRead]);
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading, markVisibleMessagesAsRead]);
 
   // Send message
   const handleSendMessage = async () => {
