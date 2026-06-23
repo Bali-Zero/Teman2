@@ -269,6 +269,14 @@ class Settings(BaseSettings):
         default=15.0,
         description="Local Silero VAD timeout in seconds.",
     )
+    voice_concierge_livekit_worker_health_url: str | None = Field(
+        default=None,
+        description="HTTP health URL for the local LiveKit voice worker. Required for deep production readiness.",
+    )
+    voice_concierge_livekit_worker_timeout_seconds: float = Field(
+        default=3.0,
+        description="Timeout in seconds for LiveKit worker health checks.",
+    )
 
     # ========================================
     # RERANKER CONFIGURATION
