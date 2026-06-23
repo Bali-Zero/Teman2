@@ -79,4 +79,39 @@ The second, sharper pitfall is "proposed" optimism: the belief that because the 
 
 The crucial lesson: match the *weight* of your investment to the *certainty* of your code. The heavier and more location-locked the business, the more you need a code that is *firmly* open—not nationally open, not provincially tolerated, not "proposed for closure," but solidly, durably open in this province. Daniel understood the nomad economy better than almost anyone. What he nearly missed is that in Bali, a coworking space is not a tech bet—it is a real-estate bet, on the most contested ground on the island, under a code with a demolition notice on the door. The dream is real. But you do not build something this heavy on a foundation this uncertain.
 
-*Before you sign anything, scan to check the live status of KBLI 68127 on the Nuzantara platform.*
+**8. The Way Through**
+
+The consultant didn't hand back the pitch deck. He turned it over to the blank side, uncapped a pen, and drew a single vertical line down the middle.
+
+"On this side," he said, "is the thing you cannot own in Bali right now: the building, the desks, the rent. That's 68127, and that door is closing. On this side"—he tapped the other half—"is everything *else* that makes a coworking space worth walking into. The software. The community. The events. The skills. The design. Almost none of that is real estate. You came in wanting to own the room. Let me show you how to own everything that makes the room valuable—and let a Balinese partner own the room itself."
+
+He started writing codes.
+
+> ### THE OPEN ROUTES — ALTERNATIVES TO CHECK
+>
+> *These codes are not closed the way 68127 is. But "open nationally" is the starting line, not the finish: in Bali the moratorium blocks anything that lands in the Low or Medium-Low risk tier, so a code is only safe here if its activity is scored Medium-High or above. Treat the routes below in two groups: the confirmed-survivable codes (Medium-High risk, 100% PMA, registrable in Bali today), and the must-test codes whose exact risk grade decides whether OSS lets them through. **Verify every code's live OSS risk grade before you commit capital.** None of these lets you secretly run building-letting under a friendlier label.*
+>
+> **CONFIRMED ROUTES — survivable in Bali (Medium-High risk, 100% PMA)**
+>
+> **ROUTE 1 — Own the platform, not the property (62199 — *Aktivitas Pemrograman Komputer Lainnya* / 62209 — *Konsultansi Komputer dan Manajemen Fasilitas Komputer*).** Build the booking system, the members' app, the community Slack, the access-control and Wi-Fi management layer as a *software and IT-services* PMA. You license that platform to coworking operators across Bali—including the local-owned space in your own building—and capture the recurring, scalable revenue (subscriptions, SaaS) while the bricks stay in local hands. *Caveat:* this has to be a genuine software business; if your only "software" is a spreadsheet and the real money is desk rent, you're back in the code-mismatch trap.
+>
+> **ROUTE 2 — Sell the connectivity backbone (63102 — *Penyediaan Infrastruktur Komputasi, Hosting, dan Aktivitas Terkait*).** The one thing every nomad truly pays for is *reliable internet and digital infrastructure*. Provide it as a service—managed hosting, computing infrastructure, the connectivity layer remote workers depend on. Open, scalable, not real estate. *Caveat:* hosting carries its own technical and data-handling permit obligations; budget for them.
+>
+> **MUST-TEST ROUTES — open nationally, risk grade decides Bali**
+>
+> **ROUTE 3 — Run the academy, not the landlord (85573 — *Pelatihan Kerja Industri Kreatif Swasta*).** The "events, workshops, sunset networking, skill-up" half of Daniel's dream is, in law, *creative-industry training*. A training PMA could run the masterclasses and bootcamps the nomad community shows up for. *Caveat — do not treat this as verified-open.* 85573's exact OSS risk grade is the deciding variable: related vocational/training codes fall in the blocked Low/Medium-Low band, so if OSS scores 85573 Low or Medium-Low it is **auto-rejected in Bali**. Live-OSS testing on a real Bali address is mandatory before relying on it.
+>
+> **WHAT THIS LIST DELIBERATELY DROPS**
+> *   *A generic "business-support / community-management" code (the 82990 class) is **not** offered here as a safe route.* On paper it looks like a clean way to own the community while a local owns the building, but its activity can land in the Low/Medium-Low risk tier that the Bali moratorium auto-rejects—the same trap as the café down the road. Don't build a route on a code that the province's risk filter may bounce.
+>
+> **ROUTE 4 — The honest partnership (structure, not a single code).** The cleanest path of all: the foreign PMA owns what foreigners *can* own and scale—the platform (Route 1/2) and, if it clears the OSS risk test, the training program (Route 3). A **local Balinese-owned company or UMKM** owns the building activity, the lease, and the 68127-class storefront, and is paid a genuine arm's-length licence/management fee. Two real companies, two real owners, two real sets of books. *Caveat:* this only works if the local partner genuinely owns and controls the building side. The moment the local entity is a hollow front and you pull every economic string, it is a nominee arrangement—illegal, voidable, and the single most common way foreign founders lose everything. Real partnership, not costume. (Note the structural rules either way: virtual offices are banned for a Bali PMA domicile, and each KBLI per location carries the IDR 10bn investment / IDR 2.5bn paid-up commitment with a 12-month lock-up under Permen BKPM 5/2025.)
+
+**WHAT IS NOT A ROUTE**
+
+*   **The nominee "fix."** Putting a Balinese name on the 68127 PMA while you hold a secret loan agreement, undated share transfer, or power of attorney is not a structure—it's a fraud the law treats as void from day one. You don't own a workaround; you own nothing.
+*   **The code-mismatch dodge.** Registering one of the open codes above and then quietly running pure desk-and-office letting underneath it is the exact trap Chapters 4–7 warn against. The OSS form reads the *substance*. A software code does not grant a building-management licence; a training code does not grant a real-estate licence.
+*   **The "I'll add a secondary code and I'm covered" myth.** Stapling an extra KBLI to your company does not automatically upgrade your licence class or waive sector permits—or override the Bali risk-tier filter. Each activity pulls its own approvals. There is no master code that quietly unlocks the closed one.
+
+So the principle is the same one that runs through this whole book, turned from a warning into a plan: **match the weight of what you build to what you are actually allowed to own—and verify the live risk grade before you pour concrete.** Daniel's mistake was wanting to pour capital onto a closing door. The way through is to stop trying to own the *room* and start owning the things that made him fall in love with the room—the platform, the people, the programs. Let the building belong to Bali. Own the engine that runs inside it.
+
+*Before you sign anything, check the live status of KBLI 68127 — and of your candidate routes 62199, 62209, 63102, and 85573 (risk grade is decisive for 85573) — on the Nuzantara platform.*

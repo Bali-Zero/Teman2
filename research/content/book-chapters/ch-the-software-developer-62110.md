@@ -86,4 +86,40 @@ The crucial lesson: **when a Bali door is open, walk through it properly—not c
 
 After five chapters of walls, Sam's is the one where the answer is yes. Don't waste it by treating yes as the end of the work. It's the beginning.
 
-*Before you sign anything, scan to check the live status of KBLI 62110 on the Nuzantara platform.*
+**8. The Way Through**
+
+For Sam, "the way through" is not a search for an escape route — he doesn't need one. His door is open. His way through is *discipline*: the practice of keeping 62110 registrable instead of quietly disqualifying himself after the fact. An open door has hinges, and hinges can be made to seize. This section is about how the studio stays buildable from filing day through every annual report after it — and which neighbouring doors are open too, in case the team's work drifts past where game-software development ends.
+
+The consultant put it simply when Sam asked, "So what do I actually do to not screw this up?" Her answer was about scope, sister-codes, and the two or three adjacent rooms a software studio tends to wander into.
+
+> ### THE OPEN ROUTES — VERIFIED ALTERNATIVES
+>
+> *All codes below are confirmed open to foreign investment nationally **and** registrable in Bali above the moratorium line. None is a substitute for doing the licensing properly — every one carries its own higher-risk compliance load, and several need their own sector or telecom permits before you operate.*
+>
+> **ROUTE 1 — Keep the core clean: 62110, scoped tightly (your primary).**
+> The single most reliable way through is to make your registered scope *match what you actually do*. 62110 covers designing, writing, modifying, patching, customizing, testing and supporting game software, game applications, and supporting software/middleware. If that is the work, register that and nothing it isn't. The door stays open because the activity stays honest.
+>
+> **ROUTE 2 — The engine/tooling and "other programming" overflow: 62199 (Aktivitas Pemrograman Komputer Lainnya YTDL).**
+> Sam's netcode middleware and engine plugin licensed to other studios may stretch past "game software" into general programming. 62199 is the registrable catch-all for computer programming not elsewhere classified. Adding it as a secondary code is the honest way to cover non-game tooling — but understand it is a *separate* activity with its own licensing track, not an automatic widening of your 62110 licence. You file it; you don't inherit it.
+>
+> **ROUTE 3 — If the team builds immersive/AR/VR experiences: 62192 (Pengembangan Aplikasi dan Produksi Konten Berbasis Media Imersif).**
+> The line between "a game" and "an immersive media application" is thin and getting thinner. If the studio's output drifts toward AR/VR or immersive content that isn't strictly a video game, 62192 is the registrable adjacent code. Same caution: it is its own activity with its own scope and approvals, not a free extension.
+>
+> **ROUTE 4 — If you build a commercial platform/storefront app: 62191 (Pengembangan Aplikasi Perdagangan melalui Internet / E-Commerce).**
+> The moment the studio builds its own marketplace, in-app store, or transactional platform rather than the game itself, that is e-commerce application development — 62191, registrable. Note the honest caveat: building the *app* is one thing; actually *operating* a payment or trading platform pulls in telecom/PSE and possibly OJK-side obligations that a development licence does not grant.
+>
+> **ROUTE 5 — If you sell services rather than ship product: 62209 (Konsultansi Komputer dan Manajemen Fasilitas Komputer Lainnya).**
+> Work-for-hire consulting, technical advisory, managed-build services for a bigger publisher — that is computer consultancy, not game development. 62209 is the registrable code for it. Keeping consulting revenue under a consulting code (rather than stretching 62110 to cover it) is exactly the scope hygiene that keeps the primary licence clean.
+>
+> **ROUTE 6 — If you grow into infrastructure or data processing: 63101 (Pengolahan Data) and 63102 (Penyediaan Infrastruktur Komputasi, Hosting).**
+> If the studio starts running backend services, processing player data at scale, or hosting infrastructure for clients, those are data-processing and hosting activities — registrable, but heavily watched. They carry real obligations: PSE registration with Kominfo and serious personal-data-protection duties under UU PDP. Open, yes; light, no.
+
+**WHAT IS NOT A ROUTE**
+
+*   **The nominee dodge.** There is nothing here to dodge — your code is open, so a "local front who really owns it" buys you nothing but an unenforceable structure and a personal-liability time bomb. The one chapter where you don't need a workaround is the worst possible chapter to invent one.
+*   **The code-mismatch trap.** Registering 62110 because it's the open code, then actually publishing software, running a trading platform, or operating as an ad agency under cover of it — that is the exact mismatch this book keeps warning about. The matching codes above (62191, 62192, 62199, 62209, 63101, 63102) exist precisely so you never have to run activity Z under code Y. Publishing in particular is *not* 62110 — software/game publishing sits under a publishing code with a different and far less friendly fate. Develop under a development code; if you publish, file the publishing activity honestly and check its status first.
+*   **Fake "it's just software" minimalism.** Treating the higher-risk licence as a formality, or assuming a secondary code "auto-upgrades" your permissions, is the version of complacency §7 warned about. Every code above is a separate filing with its own sector/PSE/data permits. None of them is free.
+
+The principle underneath all six routes is the one the whole chapter turns on: **an open door stays open only while your declared scope and your real activity are the same sentence.** Sam's danger was never the moratorium — it was the slow drift where a game studio quietly becomes a publisher, a payments platform, a data host, an ad shop, while still flying the 62110 flag. The discipline is boring and it is the entire job: file what you do, file the adjacent code when the work genuinely moves into its room, and treat each higher-risk licence as homework rather than paperwork. The codes are not loopholes; they are an honest map of where a software business legitimately spreads, each with its own toll booth. Build the studio. Build it under the code that names it. And when it grows, grow the filings with it — out loud, on the record, before the activity starts.
+
+*Before you sign anything, scan to check the live status of KBLI 62110 — and, if your work reaches past game-software development, 62199, 62192, 62191, 62209, 63101, and 63102 — on the Nuzantara platform.*

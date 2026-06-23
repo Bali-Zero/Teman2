@@ -82,4 +82,29 @@ The pitfall has a twin, and Sofia nearly fell into it too in her panic: the assu
 
 The crucial lesson: in Bali, charm is not a defense and simplicity is not safety. The province closes the *easy* doors first, precisely because they are easy. Before you fall in love with a small, beautiful, low-cost business, check the one thing that matters more than how lovely it is: *is this exact code open to a foreign PMA in this province today?* Sofia's coffee was world-class. Her business plan was sound. But 56303 was locked, and no amount of perfect crema reopens a door the province has chosen to close. The dream is not over—but it has to be re-poured into a cup the island will let her hold.
 
-*Before you sign anything, scan to check the live status of KBLI 56303 on the Nuzantara platform.*
+**8. The Way Through**
+
+A blocked code is not the end of the conversation—it is the beginning of the *real* one. Sofia did not have to walk away from coffee in Bali. She had to walk away from one specific legal shape of it. Here are the genuine, verified routes that were open to her, in rough order of how close they keep her to the original dream.
+
+> ### THE OPEN ROUTES — VERIFIED ALTERNATIVES TO 56303
+>
+> *Each route below is a code that is open to a foreign PMA in Bali (or a structure that sidesteps the block honestly). None is a paperwork trick—each is a genuinely different business you actually operate.*
+>
+> **ROUTE 1 — Become a food-led venue, not a drinks-led one → 56101 (OPEN)**
+> Re-cut the concept so food is the primary business and coffee rides alongside it: an all-day brunch kitchen, a bakery-café, a breakfast-and-lunch eatery. Registered honestly as **56101 (food service in a permanent building)**—the open restaurant code—this is *not* the "café wearing restaurant paperwork" trap, because you genuinely build and run a kitchen. You serve real food; the espresso is part of a food venue. This is the closest route to "a beautiful room where people drink my coffee," and it is fully open.
+>
+> **ROUTE 2 — Roast and sell the beans → 10761 Pengolahan Kopi (OPEN) + wholesale**
+> Move the value from *pouring* coffee to *producing* it. A roastery PMA under **10761 (coffee processing)** is open in Bali: source Bali beans, roast under your brand, and sell wholesale to the very cafés and hotels you can't own. This keeps you in specialty coffee at its most defensible, highest-margin point—the craft of the roast—without touching the blocked on-premise café code.
+>
+> **ROUTE 3 — Own the brand and the program; partner for the room.**
+> Hold the open layers in your PMA (the roastery, the brand, barista training as recreation education, catering) and let a licensed local operator—an Indonesian UMKM—run the actual café front under their own registration, supplied and branded by you. You build the business that scales (brand, beans, know-how); the island keeps the small storefront it has reserved for its own people. This is the structure that turns the moratorium's logic into a partnership instead of a wall.
+>
+> **ROUTE 4 — Take the café concept where the code is open.**
+> 56303 is blocked *in Bali*. The café code is open in most other provinces. If the dream is genuinely the café and not the island, a foreign-owned café PMA is registrable elsewhere in Indonesia. Sometimes the honest answer is that the business is fine and the *province* is the constraint.
+>
+> **WHAT IS NOT A ROUTE**
+> Registering 56101 and running a pure drinks café anyway; using a nominee to hold the café in a local's name while you control it; or registering "consulting" and operating a café. These are the traps the crackdown exists to catch—they convert a permitted pivot into an enforcement risk.
+
+The pattern across all four routes is the same: **move up or sideways into the open part of the value chain, and partner out the blocked part.** Bali blocked the small storefront; it did not block the roast, the brand, the kitchen, the catering, or the craft. The founders who thrive after a blocked code are the ones who ask not "how do I sneak through the locked door?" but "which adjacent open door leads to the same money?" There is almost always one—and finding it is exactly the work a good consultant does before you sign anything.
+
+*Before you sign anything, scan to check the live status of KBLI 56303—and the open routes 56101 and 10761—on the Nuzantara platform.*
