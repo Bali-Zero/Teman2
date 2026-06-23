@@ -19,7 +19,19 @@ focus sul **moratorium Bali 2026**. Tre funzioni: (1) **Cerca** codice/testo →
 App single-window, **`NavigationSplitView` 3-colonne** (sidebar sezioni / lista risultati / detail).
 SwiftUI + AppKit + PDFKit, compilata con `build.sh` (swiftc + plugin macro Xcode-beta) → bundle `.app`.
 
-- **Dev + build su M5** (ha Xcode-beta → macro SwiftUI). **Deploy del `.app` compilato via `rsync` sul Mini** (H24). Pattern identico a `wr2-control-app/deploy/`.
+### Distribuzione 3-Mac (DECISO 2026-06-23) — icona nativa su M5 + Pro + Mini
+
+**Lo stesso `.app` gira nativo su tutte e 3 le macchine** (icona vera, doppio-click). NON è un'app remota:
+è un binario arm64 locale su ogni Mac. Due risorse, due politiche:
+- **Dati (Cerca + Media)** = **bundlati nel `.app`** → 100% locali, veloci, offline su OGNI Mac. Nessuna rete.
+- **Chat (Zantara-OpenClaw)** = **un solo cervello, sul Mini** (FASE 0). L'`OpenClawRunner` è **dual-mode**:
+  - **sul Mini** → invoca `~/.openclaw/bin/openclaw agent ... --json` diretto (locale).
+  - **su M5 / Pro** → invoca `ssh mini ~/.openclaw/bin/openclaw agent ... --json` (SSH verificato funzionante da
+    entrambe 2026-06-23; `openclaw` NON è in PATH sul Mini → path assoluto obbligatorio). Rileva l'host via `Host.current()`/`hostname`.
+  - Un solo Zantara condiviso → **niente split-brain** (cicatrice #10); ma se il Mini è giù, la chat si degrada
+    e Cerca+Media restano vivi ovunque.
+- **Build una volta** (M5 in `~/Downloads/Xcode-beta.app`, o Pro che ha Xcode.app pieno + macOS 27) →
+  `rsync` del `.app` sulle altre due macchine. Pattern `wr2-control-app/deploy/install-mini.sh` esteso a 3 target.
 - **NO Swift Package Manager**: solo framework Apple nativi + codice vendorato single-file (vincolo `build.sh` swiftc).
 - **3 unità isolate**, comunicano solo via modelli `Codable`:
   - **(A) `KBLIStore`** — carica + indicizza il JSON, espone search ranked.
@@ -85,10 +97,11 @@ bullet `- `, blockquote `>`, paragrafi, inline bold/italic/link via `AttributedS
 *grounded* sui contenuti reali Bali Zero (come NotebookLM: cita le fonti, non inventa codici/numeri/norme)
 MA conversazionale e fluido (come GPT, non un retriever rigido che sputa snippet).
 
-`OpenClawRunner` (NON clone di `codex exec` — vedi §9 F1): spawna
-`~/.openclaw/bin/openclaw agent --agent zantara-kbli --message <q> --json --session-id <s>` sul Mini,
-legge `result.finalAssistantVisibleText` (testo pulito, no banner/hook). GPT-5.5 dietro OpenClaw.
-Streaming/poll → `ChatView` (fork chirurgico da WR2). PII: nessuna (codici pubblici).
+`OpenClawRunner` (NON clone di `codex exec` — vedi §9 F1) è **dual-mode** (vedi §2 distribuzione 3-Mac):
+- **sul Mini**: spawna `~/.openclaw/bin/openclaw agent --agent zantara-kbli --message <q> --json --session-id <s>` (locale).
+- **su M5/Pro**: spawna `ssh mini ~/.openclaw/bin/openclaw agent --agent zantara-kbli --message <q> --json --session-id <s>`.
+Legge `result.finalAssistantVisibleText` (testo pulito, no banner/hook). GPT-5.5 dietro OpenClaw, **un solo cervello sul Mini**.
+Streaming/poll → `ChatView` (fork chirurgico da WR2). PII: nessuna (codici pubblici). L'host si rileva a runtime (`hostname`).
 
 **Grounding NLM-style (il cuore del "non inventa"):**
 - **Corpus di grounding = i contenuti già su disco**: 1559 record KBLI (`l4_bali`, `per_skala`, `uraian`),
@@ -162,7 +175,8 @@ kbli-navigator-app/
 6. **FASE 0**: `openclaw agent --agent zantara-kbli --message "test" --json` sul Mini → stdout JSON con `result.finalAssistantVisibleText` non vuoto.
 7. Chat: con gateway su, "cos'è il 55203?" → risposta che cita lo status Bali REALE dal grounding (no codice inventato); con gateway giù → avviso, no crash, no hang.
 8. `swift Tests/*` → tutti verdi.
-9. **Deploy**: `rsync` del `.app` sul Mini + `xattr -cr` + `codesign --force --sign -` sul Mini → **lancia senza "damaged/cannot open"** (verifica F2) e funziona (Cerca+Media offline; Chat via gateway locale).
+9. **Deploy 3-Mac**: `rsync` del `.app` su M5 + Pro + Mini, `xattr -cr` + `codesign --force --sign -` su OGNI macchina destinazione → **lancia senza "damaged/cannot open"** ovunque (verifica F2).
+10. **Chat dual-mode**: su M5/Pro "cos'è il 55203?" → risposta via `ssh mini openclaw` (cervello unico); sul Mini → stessa risposta via openclaw locale. Mini giù → chat degrada, Cerca+Media vivi su M5/Pro.
 
 ## 9. Findings review 4-LLM (REV 2) — incorporati sopra
 
