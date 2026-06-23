@@ -1,4 +1,9 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import {
+  canAccessVoiceConciergeHeaders,
+  isProduction,
+} from "@/lib/server/voice-concierge-auth";
 import { VoiceConciergeClient } from "./VoiceConciergeClient";
 
 function isPrototypeEnabled(): boolean {
@@ -8,8 +13,15 @@ function isPrototypeEnabled(): boolean {
   );
 }
 
-export default function VoiceConciergePage(): React.JSX.Element {
+export default async function VoiceConciergePage(): Promise<React.JSX.Element> {
   if (!isPrototypeEnabled()) {
+    notFound();
+  }
+
+  if (
+    isProduction() &&
+    !(await canAccessVoiceConciergeHeaders(await headers()))
+  ) {
     notFound();
   }
 
