@@ -119,6 +119,18 @@ def _lhkpn_terminal_skip_reason(gap_type: str, payload: dict[str, Any]) -> str |
     return None
 
 
+def _dispatch_lhkpn_known_person(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve LHKPN directly when a legacy gap already carries name + NIP."""
+    name = str(payload.get("entity_name") or payload.get("person_name") or "").strip()
+    nip = str(payload.get("entity_nip") or payload.get("nip") or "").strip()
+    if not name or not nip:
+        return None
+
+    from mata_garuda.agents.lhkpn_harvester import harvest_lhkpn_for_person
+
+    return harvest_lhkpn_for_person(name=name, nip=nip)
+
+
 def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Default dispatcher: invokes the registered agent via Lamarckian loop.
 
@@ -198,6 +210,29 @@ def process_gap(
             )
             xack(STREAM_NEXUS_GAPS, CONSUMER_GROUP, msg_id)
             return {"status": "skipped", "agent": agent_name, "reason": skip_reason}
+        if gap_type == "gap.missing_lhkpn":
+            direct_result = _dispatch_lhkpn_known_person(enriched)
+            if direct_result is not None:
+                if direct_result.get("case_resolved"):
+                    xack(STREAM_NEXUS_GAPS, CONSUMER_GROUP, msg_id)
+                    logger.info(
+                        "Gap %s resolved directly by %s (msg %s)",
+                        gap_type,
+                        agent_name,
+                        msg_id,
+                    )
+                    return {"status": "resolved", "agent": agent_name}
+                logger.warning(
+                    "Gap %s direct LHKPN resolution failed (msg %s): %s — NOT acking",
+                    gap_type,
+                    msg_id,
+                    direct_result.get("reason", ""),
+                )
+                return {
+                    "status": "failed",
+                    "agent": agent_name,
+                    "reason": direct_result.get("reason", ""),
+                }
 
     try:
         result = dispatch_agent(agent_name=agent_name, payload=enriched)

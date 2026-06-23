@@ -175,7 +175,7 @@ def test_process_gap_dispatches_lhkpn_missing_lhkpn_when_nip_present():
     result = process_gap(
         msg_id="3-2",
         gap_type="gap.missing_lhkpn",
-        payload={"entity_name": "redacted", "entity_nip": "123"},
+        payload={"entity_nip": "123"},
         dispatch_agent=fake_dispatch,
         xack=fake_xack,
     )
@@ -188,6 +188,59 @@ def test_process_gap_dispatches_lhkpn_missing_lhkpn_when_nip_present():
     assert result["status"] == "resolved"
     assert result["agent"] == "lhkpn_harvester"
     fake_xack.assert_called_once()
+
+
+def test_process_gap_resolves_lhkpn_known_person_directly(monkeypatch):
+    """Name + NIP LHKPN gaps use the local scraper tool, not the LLM dispatch."""
+    fake_dispatch = MagicMock()
+    fake_xack = MagicMock()
+
+    def fake_harvest_lhkpn_for_person(name: str, nip: str) -> dict[str, object]:
+        assert name == "Redacted Official"
+        assert nip == "123"
+        return {"case_resolved": True, "msg_id": "raw-1"}
+
+    monkeypatch.setattr(
+        "mata_garuda.agents.lhkpn_harvester.harvest_lhkpn_for_person",
+        fake_harvest_lhkpn_for_person,
+    )
+
+    result = process_gap(
+        msg_id="3-4",
+        gap_type="gap.missing_lhkpn",
+        payload={"entity_name": "Redacted Official", "entity_nip": "123"},
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
+    fake_dispatch.assert_not_called()
+    fake_xack.assert_called_once()
+    assert result["status"] == "resolved"
+    assert result["agent"] == "lhkpn_harvester"
+
+
+def test_process_gap_lhkpn_direct_failure_does_not_ack(monkeypatch):
+    """A failed direct LHKPN lookup must remain pending for retry/audit."""
+    fake_dispatch = MagicMock()
+    fake_xack = MagicMock()
+
+    monkeypatch.setattr(
+        "mata_garuda.agents.lhkpn_harvester.harvest_lhkpn_for_person",
+        lambda name, nip: {"case_resolved": False, "reason": "no search results"},
+    )
+
+    result = process_gap(
+        msg_id="3-5",
+        gap_type="gap.missing_lhkpn",
+        payload={"entity_name": "Redacted Official", "entity_nip": "123"},
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
+    fake_dispatch.assert_not_called()
+    fake_xack.assert_not_called()
+    assert result["status"] == "failed"
+    assert result["reason"] == "no search results"
 
 
 def test_process_gap_skips_lhkpn_missing_angkatan():
@@ -309,7 +362,7 @@ def test_run_gap_consumer_processes_batch():
         {"id": "10-0", "data": {
             "id": "uuid-10", "type": "gap.missing_lhkpn", "source": "gap_detector",
             "timestamp": "2026-04-16T00:00:00+08:00", "priority": "3",
-            "payload": '{"entity_name": "A", "entity_nip": "123"}',
+            "payload": '{"entity_nip": "123"}',
         }},
         {"id": "11-0", "data": {
             "id": "uuid-11", "type": "gap.stale_official", "source": "gap_detector",
@@ -464,7 +517,7 @@ def test_run_gap_consumer_mixed_canonical_and_legacy_batch():
         # legacy mappable
         {"id": "201-0", "data": {
             "gap_type": "missing_attribute", "attribute": "lhkpn",
-            "entity_name": "Bar", "entity_nip": "123", "priority": "2",
+            "entity_nip": "123", "priority": "2",
         }},
         # legacy drained
         {"id": "202-0", "data": {
