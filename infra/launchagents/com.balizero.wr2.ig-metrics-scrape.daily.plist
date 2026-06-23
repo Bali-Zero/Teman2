@@ -8,7 +8,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/.openclaw/bin/wr2/wr2-ig-metrics-scrape.sh</string>
+        <string>__HOME__/.openclaw/bin/wr2/wr2-ig-metrics-scrape.sh</string>
     </array>
 
     <!-- Daily 05:00 WITA — BEFORE ig-metrics-analyst (Mon 06:00) so the analyst
@@ -22,9 +22,9 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/nuzantara/logs/wr2-ig-metrics-scrape.launchd.out.log</string>
+    <string>__HOME__/logs/wr2-ig-metrics-scrape.launchd.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/nuzantara/logs/wr2-ig-metrics-scrape.launchd.err.log</string>
+    <string>__HOME__/logs/wr2-ig-metrics-scrape.launchd.err.log</string>
 
     <key>RunAtLoad</key>
     <false/>
