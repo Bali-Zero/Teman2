@@ -46,10 +46,10 @@ rm ~/Library/LaunchAgents/com.nuzantara.cost-advisor-*.plist
 
 ## WA mirror intake sweeper
 
-Read-only consumer of `whatsapp_message_context` that pushes new inbound
-document/image media into `intake_queue`. This is the Pro-side cron shim for
-`wa-mirror`; the historical backlog is handled separately by the reprocess
-script.
+Pro-side cron shim for `wa-mirror`: resolves/creates phone-keyed CRM leads from
+new inbound direct messages, then pushes new inbound document/image media into
+`intake_queue`. It never writes back to `whatsapp_message_context`. The
+historical backlog is handled separately by the reprocess script.
 
 ### Install
 
@@ -65,6 +65,7 @@ launchctl load ~/Library/LaunchAgents/com.nuzantara.wa-mirror-intake-sweeper.pli
 - Seeds watermark from the current max id on first run
 - Uses local Postgres only
 - Single-instance via flock in the script
+- Does not store raw WhatsApp message text in CRM notes
 
 ### Logs
 
