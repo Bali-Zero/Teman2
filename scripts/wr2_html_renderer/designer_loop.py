@@ -76,10 +76,30 @@ _COMPOSITION_LEVERS = {"rerender", "regen"}
 # Substrings that mark a vision issue as a COMPOSITION/EDITORIAL critique (a
 # weak/generic hero photo, awkward whitespace, "editorially weak", etc.) — the
 # kind of thing only a rerender or a human hero-swap fixes, NOT a CSS lever.
+#
+# The vertical-balance / dead-zone family was MISSING: the Claude vision critic
+# routinely describes a layout-balance debt as "dead zone at top", "wasted
+# vertical real estate", "content sits in the upper portion leaving the lower
+# third empty", "anchored to the floor", "unbalanced/crammed" — none of which
+# matched the original markers. A single such unmatched claim flipped
+# all_composition→False (see _classify_residual_issues), so the loop could
+# neither accept (not all-composition) nor fix (no CSS lever) → it stalled to
+# max_iters and emitted "did not converge", failing EVERY fresh draft for ~10
+# days (last real `rendered` 2026-06-17). This is the W82 UNDER-match class:
+# the taxonomy decided on a vocabulary that did not cover how the critic really
+# names the defect. Phrases below are balance-specific and were innocence-tested
+# NOT to swallow a real legibility/clip/brand HARD defect (has_hard always wins).
 _COMPOSITION_CLAIM_MARKERS = (
     "photo", "hero", "image", "editorial", "generic", "stock", "weak",
     "spacing", "whitespace", "white space", "breathe", "composition",
     "crop", "scene", "imagery", "boring", "bland", "uninspired",
+    # vertical-balance / dead-zone family (W82 under-match fix)
+    "dead zone", "dead-zone", "dead space", "empty anthracite",
+    "lower third", "upper third", "top third", "bottom third",
+    "upper portion", "lower portion", "anchored to the floor",
+    "real estate", "unbalanced", "imbalanced", "crammed", "cramped",
+    "lopsided", "top-heavy", "bottom-heavy", "off-center", "off-centre",
+    "leaving the lower", "leaving the upper",
 )
 
 # HARD-defect markers, matched on WORD BOUNDARY (not bare substring) — the
