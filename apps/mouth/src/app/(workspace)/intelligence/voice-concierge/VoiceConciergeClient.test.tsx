@@ -274,7 +274,7 @@ describe("VoiceConciergeClient", () => {
         expect(init?.method).toBe("POST");
         expect(init?.headers).toEqual({ "Content-Type": "application/json" });
         expect(JSON.parse(String(init?.body))).toEqual({
-          text: "Per una PT PMA, parti da KBLI e zoning.",
+          text: "Triage PMA pronto. Parti da KBLI e zoning.",
           language: "it",
         });
         return new Response("RIFF", {
@@ -285,7 +285,9 @@ describe("VoiceConciergeClient", () => {
 
       return new Response(
         JSON.stringify({
-          answer: "Per una PT PMA, parti da KBLI e zoning.",
+          answer:
+            "Per una PT PMA, i primi controlli utili sono attivita, KBLI, limiti di proprieta straniera, indirizzo/zoning e permessi extra.",
+          spoken_answer: "Triage PMA pronto. Parti da KBLI e zoning.",
           intent: "company",
           risk_level: "medium",
           next_action: "collect_non_pii_context",
@@ -308,7 +310,9 @@ describe("VoiceConciergeClient", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Per una PT PMA, parti da KBLI e zoning."),
+        screen.getByText(
+          "Per una PT PMA, i primi controlli utili sono attivita, KBLI, limiti di proprieta straniera, indirizzo/zoning e permessi extra.",
+        ),
       ).toBeInTheDocument();
       expect(playAudio).toHaveBeenCalledTimes(1);
     });

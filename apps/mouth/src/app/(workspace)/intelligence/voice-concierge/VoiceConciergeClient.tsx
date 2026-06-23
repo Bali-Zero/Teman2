@@ -45,6 +45,7 @@ interface ConciergeMessage {
 
 interface ConciergeResponse {
   answer: string;
+  spoken_answer?: string;
   intent: ConciergeIntent;
   risk_level: ConciergeRisk;
   next_action: ConciergeNextAction;
@@ -116,6 +117,10 @@ function isConciergeResponse(
   payload: ConciergeResponse | ConciergeErrorResponse,
 ): payload is ConciergeResponse {
   return "answer" in payload;
+}
+
+function getSpeechText(response: ConciergeResponse): string {
+  return (response.spoken_answer?.trim() || response.answer).trim();
 }
 
 function canUseBrowserRecorder(): boolean {
@@ -432,7 +437,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
         };
         setLastResponse(payload);
         setMessages([...nextMessages, assistantMessage].slice(-6));
-        void playLocalSpeech(payload.answer);
+        void playLocalSpeech(getSpeechText(payload));
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -785,13 +790,13 @@ export function VoiceConciergeClient(): React.JSX.Element {
                     }
                     onClick={() =>
                       lastResponse &&
-                      void playLocalSpeech(lastResponse.answer, {
+                      void playLocalSpeech(getSpeechText(lastResponse), {
                         reportError: true,
                       })
                     }
                     title={
                       isManualAudioReady
-                        ? "Read the latest answer with local TTS."
+                        ? "Read the latest short voice response with local TTS."
                         : "Local TTS is gated until local audio roundtrip is ready."
                     }
                     variant="outline"
