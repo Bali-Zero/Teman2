@@ -101,11 +101,26 @@ class TestDashboard:
         assert "active_visa" in data["data"]
 
     def test_dashboard_service_error(self, client, mock_portal_service):
-        """Service exception returns 500."""
+        """Generic service exception returns 500."""
         mock_portal_service.get_dashboard.side_effect = Exception("DB down")
 
         response = client.get("/api/portal/dashboard")
         assert response.status_code == 500
+
+    def test_dashboard_client_not_found_returns_404_not_500(
+        self, client, mock_portal_service
+    ):
+        """BUG C: if the portal account is linked to a soft-deleted client,
+        get_dashboard raises ValueError('Client X not found'). That is a
+        not-found condition (the client row is gone / soft-deleted), NOT an
+        internal error — it must surface as 404, not a 500 that crashes the
+        whole dashboard."""
+        mock_portal_service.get_dashboard.side_effect = ValueError(
+            "Client 42 not found"
+        )
+
+        response = client.get("/api/portal/dashboard")
+        assert response.status_code == 404
 
 
 # ============================================
