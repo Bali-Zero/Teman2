@@ -115,14 +115,53 @@ def test_static_readiness_accepts_dotted_mini_hostname(
     report = readiness.build_local_audio_readiness_report(
         mode="static",
         settings=_settings(tmp_path),
-        hostname="Mini-Pro2.local",
+        hostname="mini-pro2.local",
         python_prefix="/tmp/venv",
         python_base_prefix="/usr",
     )
 
     assert report.ok is True
     assert _check(report, "host_role").status == "pass"
-    assert _check(report, "host_role").metadata["normalized_hostname"] == "Mini-Pro2"
+    assert _check(report, "host_role").metadata["normalized_hostname"] == "mini-pro2"
+
+
+def test_deep_readiness_accepts_lowercase_mini_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    _offline_env: None,
+) -> None:
+    class PassingProvider:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def warm_status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="provider",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+    monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "SileroVADProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "ChatterboxTTSProvider", PassingProvider)
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="deep",
+        settings=_settings(tmp_path),
+        hostname="mini-pro2",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is False
+    assert _check(report, "host_role").status == "pass"
+    assert _check(report, "host_role").metadata["normalized_hostname"] == "mini-pro2"
+    assert _check(report, "deep_whisper_status").status == "pass"
+    with pytest.raises(KeyError):
+        report.check("deep_runtime_gate")
 
 
 def test_static_readiness_requires_whisper_large_v3_turbo(tmp_path: Path) -> None:

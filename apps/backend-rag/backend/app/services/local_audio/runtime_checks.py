@@ -7,7 +7,7 @@ import socket
 from dataclasses import dataclass, field
 from pathlib import Path
 
-VOICE_RUNTIME_HOSTS = frozenset({"Nuzantara", "Mini-Pro2"})
+VOICE_RUNTIME_HOSTS = frozenset({"nuzantara", "mini-pro2"})
 MIN_WHISPER_MODEL_BYTES = 100 * 1024 * 1024
 MIN_CHATTERBOX_WEIGHT_BYTES = 1024 * 1024
 MIN_CHATTERBOX_JSON_BYTES = 128
@@ -33,7 +33,7 @@ class LocalAudioCheckResult:
 
 
 def normalize_hostname(hostname: str) -> str:
-    return hostname.split(".", 1)[0]
+    return hostname.split(".", 1)[0].strip().lower()
 
 
 def is_approved_voice_runtime_host(hostname: str | None = None) -> bool:
