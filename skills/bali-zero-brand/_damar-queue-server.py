@@ -324,9 +324,28 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # No `Access-Control-Allow-Origin: *` — this is a localhost-only tool
+        # (binds 127.0.0.1). A wildcard CORS header would let any web page read
+        # the queue/responses cross-origin. State-changing POSTs are Origin-gated
+        # in do_POST (#1708 hardening).
         self.end_headers()
         self.wfile.write(body)
+
+    def _origin_ok(self) -> bool:
+        """CSRF guard for state-changing requests (#1708). A request is allowed
+        when it has NO Origin header (curl / same-origin fetch / non-browser
+        clients) OR an Origin whose host is loopback. A browser page on any other
+        site sends its real Origin, which is rejected — so a malicious tab cannot
+        drive the local queue server. Bind is already 127.0.0.1-only; this closes
+        the only realistic remote vector (cross-site request from Damar's browser)."""
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        try:
+            host = urlparse(origin).hostname
+        except ValueError:
+            return False
+        return host in ("127.0.0.1", "localhost", "::1")
 
     def _read_json(self):
         length = int(self.headers.get("Content-Length", "0"))
@@ -479,6 +498,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        # CSRF guard (#1708): every POST here mutates state (mark-published,
+        # inject-topic which spawns a bypassPermissions claude run, open-folder).
+        # Reject cross-site browser requests before reading the body.
+        if not self._origin_ok():
+            self._json(403, {"ok": False, "error": "cross-origin request rejected"})
+            return
         body = self._read_json()
         if body is None:
             self._json(400, {"error": "invalid JSON body"})
@@ -533,8 +558,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(404, {"ok": False, "error": "slides_dir not found"})
                 return
             slides_dir = item["slides_dir"]
+            # Defense-in-depth (#1708): slides_dir comes from the queue (pipeline-
+            # written, not raw HTTP), but verify it is an existing directory and
+            # terminate `open` option parsing with `--` so a value starting with
+            # `-` can't be read as an `open` flag (e.g. `-a`/`--args`).
+            if not Path(slides_dir).is_dir():
+                self._json(404, {"ok": False, "error": "slides_dir not a directory"})
+                return
             try:
-                subprocess.run(["open", slides_dir], check=True, timeout=10)
+                subprocess.run(["open", "--", slides_dir], check=True, timeout=10)
                 self._json(200, {"ok": True, "opened": slides_dir})
             except Exception as e:
                 self._json(500, {"ok": False, "error": str(e)})
@@ -568,24 +600,30 @@ class Handler(BaseHTTPRequestHandler):
                 f.write(report)
                 report_file = f.name
 
+            # Argument-injection guard (#1708): user-supplied values are passed
+            # as a single `--flag=value` token, NOT `["--flag", value]`. A value
+            # beginning with `--` therefore stays the flag's VALUE and can never be
+            # re-parsed by the downstream argparse as a separate flag (flag-smuggling).
+            # report_file/archetype are server-controlled, but use the same form for
+            # uniformity.
             cmd = [
                 "/Users/nuzantara/Desktop/nuzantara/.venv/bin/python",
                 str(SKILL_DIR / "_manual_inject_runner.py"),
-                "--topic", topic,
-                "--report-file", report_file,
-                "--archetype", archetype,
+                f"--topic={topic}",
+                f"--report-file={report_file}",
+                f"--archetype={archetype}",
             ]
             if audience:
-                cmd += ["--audience", audience]
+                cmd.append(f"--audience={audience}")
             if register:
-                cmd += ["--register", register]
+                cmd.append(f"--register={register}")
             # Article 14 SOTA fields pass-through to manual_inject_runner
             if primary_regulation_code:
-                cmd += ["--primary-regulation-code", primary_regulation_code]
+                cmd.append(f"--primary-regulation-code={primary_regulation_code}")
             if primary_source_url:
-                cmd += ["--primary-source-url", primary_source_url]
+                cmd.append(f"--primary-source-url={primary_source_url}")
             if qr_caption:
-                cmd += ["--qr-caption", qr_caption]
+                cmd.append(f"--qr-caption={qr_caption}")
 
             try:
                 proc = subprocess.Popen(

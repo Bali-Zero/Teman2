@@ -138,7 +138,12 @@ def run_design_architect(prompt: str, obs_log: Path) -> tuple[int, str]:
         claude_bin, "-p",
         "--model", "claude-opus-4-8",
         "--agent", "wr2-design-architect",  # explicit agent invocation
-        "--permission-mode", "bypassPermissions",  # detached subprocess can't prompt
+        # bypassPermissions is required: this is a DETACHED subprocess that cannot
+        # answer an interactive permission prompt. The trust boundary is therefore
+        # UPSTREAM, not here: the only caller is _damar-queue-server.py's
+        # /api/inject-topic, which is CSRF/Origin-gated + localhost-bound (#1708).
+        # Do NOT expose this runner to any un-gated input source.
+        "--permission-mode", "bypassPermissions",
         "--output-format", "stream-json",  # observable: tool calls + sub-agent events
         "--include-partial-messages",
         "--verbose",  # required for stream-json
