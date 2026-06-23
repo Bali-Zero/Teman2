@@ -116,6 +116,11 @@ class TestCreateClient:
                 "client_type": "individual",
                 "assigned_to": "team@example.com",
                 "tags": ["vip"],
+                # This test asserts CREATE success, not phone-dedup. The shared
+                # fetchrow mock returns an existing row, which the new phone-dedup
+                # gate would read as a duplicate (409) — bypass it explicitly so
+                # the test keeps exercising the create path it was written for.
+                "allow_duplicate_phone": True,
             },
         )
 
