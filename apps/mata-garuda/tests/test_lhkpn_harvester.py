@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from mata_garuda.agents.lhkpn_harvester import (
     harvest_lhkpn_by_name,
+    harvest_lhkpn_for_person,
     harvest_lhkpn_for_nip,
 )
 
@@ -105,6 +106,55 @@ def test_harvest_by_name_first_hit_no_nip_fails():
     fake_publish.assert_not_called()
 
 
+def test_harvest_for_person_uses_name_search_with_known_nip():
+    """New portal search has no NIP, so use the gap-provided NIP."""
+    search_hits = [
+        {
+            "nama": "Ahmad Wijaya",
+            "nip": "",
+            "jabatan": "x",
+            "report_year": "2025",
+            "_raw": {
+                "tahun_data": "2025",
+                "lembaga": "KPK",
+                "unit_kerja": "Unit",
+                "tanggal_lapor": "2025-01-01",
+                "jenis_laporan": "Periodik",
+                "total_harta": 5_000_000,
+                "data_id": "opaque",
+            },
+        },
+    ]
+
+    with patch("mata_garuda.agents.lhkpn_harvester.scrape_lhkpn_search", return_value=search_hits), \
+         patch("mata_garuda.agents.lhkpn_harvester.stream_publish_redis", return_value="3-0") as fake_publish:
+        result = harvest_lhkpn_for_person("Ahmad Wijaya", "199001012010011001")
+
+    assert result["case_resolved"] is True
+    assert result["nip"] == "199001012010011001"
+    fake_publish.assert_called_once()
+    stream, fields = fake_publish.call_args.args
+    assert stream == "garuda:raw"
+    content = fields["content"]
+    assert "199001012010011001" in content
+    assert "5000000" in content
+
+
+def test_harvest_for_person_rejects_non_matching_name():
+    """Avoid publishing first-row data when the portal match is ambiguous."""
+    search_hits = [
+        {"nama": "Different Person", "nip": "", "jabatan": "x", "report_year": "2025"},
+    ]
+
+    with patch("mata_garuda.agents.lhkpn_harvester.scrape_lhkpn_search", return_value=search_hits), \
+         patch("mata_garuda.agents.lhkpn_harvester.stream_publish_redis") as fake_publish:
+        result = harvest_lhkpn_for_person("Ahmad Wijaya", "199001012010011001")
+
+    assert result["case_resolved"] is False
+    assert result["reason"] == "no exact name match"
+    fake_publish.assert_not_called()
+
+
 def test_agent_registered_in_registry():
     """Importing the module registers lhkpn_harvester in the global registry."""
     # Trigger registration by importing the module
@@ -120,6 +170,7 @@ def test_agent_registered_in_registry():
     fn_names = {fn.__name__ for fn in agent.functions}
     assert "harvest_lhkpn_for_nip" in fn_names
     assert "harvest_lhkpn_by_name" in fn_names
+    assert "harvest_lhkpn_for_person" in fn_names
 
 
 def test_genome_md_exists_and_has_constraints():
