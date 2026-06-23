@@ -338,11 +338,16 @@ gates:
   - id: scar_W82_content_freshness_undermatch
     kind: scar_test
     w_number: W82
-    prose_only: true
-    target: ""
+    target: infra/scar-gates/test_W82_content_freshness_undermatch.py
     note: >
       Superscar #3 UNDER-match twin (content-freshness-sentinel: substring + blind to
-      translations → stale fact stays green). Documented in cicatrix-scars.md but has
-      NO executable regression test yet. Registered prose_only so the meta-verifier
-      reports it as WARN — the Loop-B debt is OBSERVABLE, not silently absent. This is
-      the seed of the natural loop: a prose-only scar is visible debt asking for a test.
+      translations → stale fact stays green). PROMOTED from prose_only to an executable
+      gate 2026-06-23 — the self-loop feeding itself: the prose WARN became a test.
+      The gate PINS the documented current (broken) contract: the under-match still
+      behaves as the scar describes (reworded/table/translated stale facts slip past the
+      substring matcher; the exact literal IS caught; migration-context excused). ARMED =
+      contract holds = bug present & captured. When the fact-based ANTIBODY is finally
+      armed (operator firebreak, Antonello 2026-06-16), the under-match stops happening,
+      this test FAILS → DISARMED → loud "W82 contract changed: promote scar to RESOLVED".
+      We did NOT arm the fact-based sentinel here (firebreak respected) — we made the
+      debt a tripwire that fires the moment the cure lands.
