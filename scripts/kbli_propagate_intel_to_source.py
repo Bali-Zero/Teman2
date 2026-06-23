@@ -15,6 +15,13 @@ kode_kbli_2025 and only fill records that are currently mute in source_documents
 Idempotent: only fills a source record if (a) it is mute AND (b) the navigator has intel
 for that exact code. Never overwrites an existing non-mute source record.
 
+--align-all (front-C residue 2026-06-23): the fill-only-of-mutes default left ~288 records
+whose source intel_2026 PRE-EXISTED (Indonesian whatItMeans) while the navigator had since
+moved to the English L3 rewrite — those were skipped (not mute), so the RAG source drifted
+behind the navigator. --align-all overwrites intel_2026 for EVERY code where the navigator's
+block differs, making source == navigator on intel_2026. Still a pure data copy from the
+already-fact-gated navigator; we invent nothing, only mirror the SSOT.
+
 DRY-RUN by default. Pass --apply to write.
 """
 import json
@@ -48,6 +55,12 @@ def is_mute(rec):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write the file (default: dry-run)")
+    ap.add_argument(
+        "--align-all",
+        action="store_true",
+        help="overwrite intel_2026 for EVERY code where it differs from the navigator "
+        "(not only mute source records) — closes the front-C residue drift",
+    )
     args = ap.parse_args()
 
     nav_recs, _ = load(NAV)
@@ -63,10 +76,16 @@ def main():
     filled = 0
     skipped_no_nav = 0
     already_ok = 0
+    realigned = 0
     for r in src_recs:
         code = str(r.get(KEY) or "")
         if not is_mute(r):
             already_ok += 1
+            # --align-all: also re-sync non-mute records that drifted from the navigator
+            if args.align_all and code in nav_intel and r.get("intel_2026") != nav_intel[code]:
+                if args.apply:
+                    r["intel_2026"] = nav_intel[code]
+                realigned += 1
             continue
         if code in nav_intel:
             if args.apply:
@@ -79,6 +98,8 @@ def main():
     print(f"  already non-mute:            {already_ok}")
     print(f"  WOULD FILL (nav has intel):  {filled}")
     print(f"  still mute (nav also mute):  {skipped_no_nav}")
+    if args.align_all:
+        print(f"  WOULD RE-ALIGN (drifted):    {realigned}")
     print(f"navigator non-mute codes:      {len(nav_intel)}")
 
     if args.apply:
@@ -89,7 +110,7 @@ def main():
             src_wrapper["records"] = src_recs
         with open(SRC, "w") as fh:
             json.dump(out, fh, ensure_ascii=False, indent=2)
-        print(f"\n✅ APPLIED: wrote {filled} intel blocks into {SRC}")
+        print(f"\n✅ APPLIED: filled {filled} + re-aligned {realigned} intel blocks into {SRC}")
     else:
         print("\n(dry-run — pass --apply to write)")
 
