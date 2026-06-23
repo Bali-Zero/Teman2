@@ -400,3 +400,22 @@ gates:
       as a valid run), and the Omeostasi-Tautologica alarm WR3 previously lacked is now
       reachable. Green = the duplication stays collapsed; if someone re-forks a private
       record_run, the reader-safe mapping breaks and this goes RED.
+
+  - id: scar_A_wr2_reflexion
+    kind: scar_test
+    w_number: A-wr2-reflexion
+    target: scripts/test_wr2_reflexion_cabling.py
+    note: >
+      Superscar #1 (HOME-fork) + #2 (Esiste != Armato), ACTUATED on the LAST organism
+      organ that lacked a Delta Gate. The WR2 weekly reflexion ran ONLY as a HOME-only
+      file (~/.claude/skills/bali-zero-brand/_reflexion-synthesis.py, 0 repo source) and
+      its empty-week path was a SILENT print(...); return 0 — the canonical W74 green-cron-
+      theater (12 empty weeks indistinguishable from 12 healthy ones). This repo port
+      (scripts/wr2_reflexion_synthesis.py) cables every main() exit to the unified core
+      (scripts/lib/reflexion.record_run): no-data -> NO_INPUT (canonical NO_SIGNAL, exit 0),
+      synthesis-failed -> LLM_FAILED (exit 1, alert-worthy), synthesized -> SYNTHESIZED/
+      THIN_SIGNAL. The test asserts THE W74 REGRESSION (empty week leaves an audit record,
+      never a silent return 0), the status map only targets real enum values, an unmapped
+      status RAISES, the failure path records LLM_FAILED + exits 1, and the tautology alarm
+      fires after 3 empty weeks. Green = the last green-but-empty loop now records its own
+      no-delta. Closes the self-loop: all reflexion organs delegate to the one core.
