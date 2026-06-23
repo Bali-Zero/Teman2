@@ -419,12 +419,16 @@ def test_chatterbox_model_loader_uses_local_checkpoint_and_v3_selector(
 def test_chatterbox_process_timeout_terminates_child(monkeypatch, tmp_path) -> None:
     events: list[str] = []
 
-    class FakeQueue:
-        def close(self) -> None:
-            events.append("queue.close")
+    class FakeReceiver:
+        def poll(self) -> bool:
+            return False
 
-        def join_thread(self) -> None:
-            events.append("queue.join_thread")
+        def close(self) -> None:
+            events.append("receiver.close")
+
+    class FakeSender:
+        def close(self) -> None:
+            events.append("sender.close")
 
     class FakeProcess:
         daemon = False
@@ -450,9 +454,12 @@ def test_chatterbox_process_timeout_terminates_child(monkeypatch, tmp_path) -> N
             events.append("process.kill")
 
     class FakeContext:
-        def Queue(self, *, maxsize: int) -> FakeQueue:
-            assert maxsize == 1
-            return FakeQueue()
+        def Pipe(self, *, duplex: bool) -> tuple[FakeReceiver, FakeSender]:
+            assert duplex is False
+            return FakeReceiver(), FakeSender()
+
+        def Queue(self, *args, **kwargs) -> None:
+            raise AssertionError("Chatterbox process IPC must use Pipe, not Queue")
 
         def Process(self, *args, **kwargs) -> FakeProcess:
             return FakeProcess()
@@ -471,7 +478,61 @@ def test_chatterbox_process_timeout_terminates_child(monkeypatch, tmp_path) -> N
         )
 
     assert "process.terminate" in events
-    assert events[-2:] == ["queue.close", "queue.join_thread"]
+    assert "receiver.close" in events
+    assert "sender.close" in events
+
+
+def test_chatterbox_process_missing_pipe_payload_is_sanitized(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    class FakeReceiver:
+        def poll(self) -> bool:
+            return True
+
+        def recv(self):
+            raise EOFError
+
+        def close(self) -> None:
+            pass
+
+    class FakeSender:
+        def close(self) -> None:
+            pass
+
+    class FakeProcess:
+        daemon = False
+        exitcode = 0
+
+        def start(self) -> None:
+            pass
+
+        def join(self, timeout=None) -> None:
+            pass
+
+        def is_alive(self) -> bool:
+            return False
+
+    class FakeContext:
+        def Pipe(self, *, duplex: bool) -> tuple[FakeReceiver, FakeSender]:
+            assert duplex is False
+            return FakeReceiver(), FakeSender()
+
+        def Process(self, *args, **kwargs) -> FakeProcess:
+            return FakeProcess()
+
+    monkeypatch.setattr(chatterbox_module.mp, "get_context", lambda _name: FakeContext())
+
+    with pytest.raises(RuntimeError, match="exited without result: 0"):
+        chatterbox_module._run_chatterbox_generation_process(
+            "ciao",
+            tmp_path / "out.wav",
+            module_name="chatterbox",
+            model_path=tmp_path / "model",
+            t3_model="v3",
+            language_id="en",
+            timeout_seconds=0.01,
+        )
 
 
 def test_silero_status_unavailable_when_runtime_missing(monkeypatch) -> None:
@@ -730,12 +791,16 @@ def test_silero_current_process_forces_offline_runtime_env(monkeypatch) -> None:
 def test_silero_process_timeout_terminates_child(monkeypatch) -> None:
     events: list[str] = []
 
-    class FakeQueue:
-        def close(self) -> None:
-            events.append("queue.close")
+    class FakeReceiver:
+        def poll(self) -> bool:
+            return False
 
-        def join_thread(self) -> None:
-            events.append("queue.join_thread")
+        def close(self) -> None:
+            events.append("receiver.close")
+
+    class FakeSender:
+        def close(self) -> None:
+            events.append("sender.close")
 
     class FakeProcess:
         daemon = False
@@ -761,9 +826,12 @@ def test_silero_process_timeout_terminates_child(monkeypatch) -> None:
             events.append("process.kill")
 
     class FakeContext:
-        def Queue(self, *, maxsize: int) -> FakeQueue:
-            assert maxsize == 1
-            return FakeQueue()
+        def Pipe(self, *, duplex: bool) -> tuple[FakeReceiver, FakeSender]:
+            assert duplex is False
+            return FakeReceiver(), FakeSender()
+
+        def Queue(self, *args, **kwargs) -> None:
+            raise AssertionError("Silero process IPC must use Pipe, not Queue")
 
         def Process(self, *args, **kwargs) -> FakeProcess:
             return FakeProcess()
@@ -780,7 +848,56 @@ def test_silero_process_timeout_terminates_child(monkeypatch) -> None:
         )
 
     assert "process.terminate" in events
-    assert events[-2:] == ["queue.close", "queue.join_thread"]
+    assert "receiver.close" in events
+    assert "sender.close" in events
+
+
+def test_silero_process_missing_pipe_payload_is_sanitized(monkeypatch) -> None:
+    class FakeReceiver:
+        def poll(self) -> bool:
+            return True
+
+        def recv(self):
+            raise EOFError
+
+        def close(self) -> None:
+            pass
+
+    class FakeSender:
+        def close(self) -> None:
+            pass
+
+    class FakeProcess:
+        daemon = False
+        exitcode = 0
+
+        def start(self) -> None:
+            pass
+
+        def join(self, timeout=None) -> None:
+            pass
+
+        def is_alive(self) -> bool:
+            return False
+
+    class FakeContext:
+        def Pipe(self, *, duplex: bool) -> tuple[FakeReceiver, FakeSender]:
+            assert duplex is False
+            return FakeReceiver(), FakeSender()
+
+        def Process(self, *args, **kwargs) -> FakeProcess:
+            return FakeProcess()
+
+    monkeypatch.setattr(silero_vad_module.mp, "get_context", lambda _name: FakeContext())
+
+    with pytest.raises(RuntimeError, match="exited without result: 0"):
+        silero_vad_module._run_silero_detection_process(
+            Path("/tmp/sample.wav"),
+            module_name="silero_vad",
+            sampling_rate=16000,
+            threshold=0.5,
+            timeout_seconds=0.01,
+        )
 
 
 def test_optional_silero_runtime_import_smoke() -> None:

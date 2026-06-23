@@ -351,3 +351,37 @@ gates:
       this test FAILS → DISARMED → loud "W82 contract changed: promote scar to RESOLVED".
       We did NOT arm the fact-based sentinel here (firebreak respected) — we made the
       debt a tripwire that fires the moment the cure lands.
+
+  # ---------------------------------------------------------------------------
+  # A2 / A3 (2026-06-23) — the last two rings of the self-loop, registered so CI
+  # re-runs their innocence+guilt suites every PR. Reference:
+  # research/operations/2026-06-23-self-loop-implementation-plan.md (Anelli 2,3).
+  # ---------------------------------------------------------------------------
+  - id: scar_A2_heartbeat_starved
+    kind: scar_test
+    w_number: A2-heartbeat-semantico
+    target: scripts/test_sentinel_starved.py
+    note: >
+      Superscar #2 (Esiste != Armato) at the OUTPUT level. The sentinel classically
+      asks "did the organ RUN?" (ts fresh, status ok, launchctl PID). A2 adds the
+      missing axis "did the organ's OUTPUT ADVANCE?": an organ green-on-schedule whose
+      registry-declared progress_field is byte-identical across STARVED_TICKS=3 ticks is
+      'starved'. This test asserts innocence (advancing output / no progress_field /
+      first-run / a real dead organ are NEVER mislabelled starved) AND guilt (frozen
+      output for N ticks flips to starved, one advance clears it). Green = green-but-no-
+      delta stays detectable. Opt-in + fail-open (no schema regression, superscar #9).
+
+  - id: scar_A3_reflexion_delta_gate
+    kind: scar_test
+    w_number: A3-reflexion-che-impara
+    target: scripts/lib/test_reflexion.py
+    note: >
+      Reflexion core (Shinn et al 2023) unified from two divergent half-copies
+      (superscar #1 HOME-fork cure: lift the shared core, don't make a third copy).
+      The Delta Gate records every run — a NO_SIGNAL tick is visible on disk, not a
+      silent sys.exit(0) (Omeostasi Tautologica defeated; A2 applied to the loop
+      itself). This test asserts the delta-gate persists honestly + rejects invalid
+      status, the tautology alarm fires after HOT_WINDOW all-NO_SIGNAL runs, lesson
+      noise is bounded to Ω, the MOS promote-gate BLOCKS un-promoted (phantom) lessons
+      (superscar #6), the FTS5 hyphen-sanitize holds, and consolidation dedups. Green =
+      a loop that records its own no-delta instead of mistaking green for learning.
