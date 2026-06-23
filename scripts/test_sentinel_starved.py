@@ -124,9 +124,10 @@ def main() -> int:
           r["status"] == "ok" and r.get("starved_streak") == 0)
 
     # ======================================================================
-    # ARTIFACT-MTIME mode — the honest opt-in for organs whose payload has NO
-    # monotone field: A2 observes the OUTPUT ARTIFACT on disk (mtime_ns,size),
-    # zero writer-change. Same innocence+guilt discipline.
+    # ARTIFACT mode — the honest opt-in for organs whose payload has NO monotone
+    # field: A2 observes the OUTPUT ARTIFACT on disk as [size, sha256] of its
+    # CONTENT (NOT mtime), zero writer-change. Content-hash is the fix for the
+    # unconditional-rewrite trap (see the dedicated regression below).
     # ======================================================================
     tmp = pathlib.Path(tempfile.mkdtemp())
     art = tmp / "scraped.json"
@@ -141,29 +142,37 @@ def main() -> int:
     # INNOCENCE A: missing artifact → opt out (None), never starved even with prior.
     miss = {"id": "x", "runtime": "cron", "type": "cron", "expected_hb_seconds": 3600,
             "severity_on_silence": "warning", "output_artifact": str(tmp / "nope.json")}
-    r = _classify(miss, _hb(60), prior={"progress_value": [1, 2], "starved_streak": 9})
+    r = _classify(miss, _hb(60), prior={"progress_value": [1, "ab"], "starved_streak": 9})
     check("artifact innocence: missing artifact opts out (ok, no progress_value, never starved)",
           r["status"] == "ok" and "progress_value" not in r)
 
-    # INNOCENCE B: artifact CHANGED on disk between ticks → advance → streak stays 0.
+    # INNOCENCE B: first observation records [size, sha256]; CONTENT change → advance.
     r1 = _classify(_art_organ(), _hb(60), prior=None)
     pv1 = r1.get("progress_value")
-    check("artifact innocence: first observation records [mtime_ns,size], streak 0",
-          isinstance(pv1, list) and len(pv1) == 2 and r1.get("starved_streak") == 0)
-    time.sleep(0.01)
-    art.write_text('[{"id":1}]')  # real work: artifact rewritten (mtime + size change)
+    check("artifact innocence: first observation records [size,sha256], streak 0",
+          isinstance(pv1, list) and len(pv1) == 2 and isinstance(pv1[1], str)
+          and len(pv1[1]) == 64 and r1.get("starved_streak") == 0)
+    art.write_text('[{"id":1}]')  # real work: CONTENT changed (size + hash change)
     r2 = _classify(_art_organ(), _hb(60), prior={"progress_value": pv1, "starved_streak": 2})
-    check("artifact innocence: artifact rewrite (output advanced) -> streak resets to 0, ok",
+    check("artifact innocence: content change (output advanced) -> streak resets to 0, ok",
           r2["status"] == "ok" and r2.get("starved_streak") == 0 and r2.get("progress_value") != pv1)
 
-    # GUILT: artifact UNCHANGED on disk across STARVED_TICKS ticks -> starved.
-    pv = r2.get("progress_value")  # current on-disk signal; we now freeze the file
+    # REGRESSION (the intel_nightly trap): writer REWRITES identical content every tick.
+    # mtime advances but CONTENT is unchanged → must NOT count as advance, must still starve.
+    pv = r2.get("progress_value")
+    time.sleep(0.01)
+    art.write_text('[{"id":1}]')  # SAME content rewritten (mtime advances, hash identical)
+    r_restamp = _classify(_art_organ(), _hb(60), prior={"progress_value": pv, "starved_streak": 1})
+    check("artifact REGRESSION: unconditional rewrite of identical content does NOT advance",
+          r_restamp.get("progress_value") == pv and r_restamp.get("starved_streak") == 2)
+
+    # GUILT: content frozen across STARVED_TICKS ticks -> starved (even with re-stamps).
     prior = {"progress_value": pv, "starved_streak": S.STARVED_TICKS - 1}
-    r = _classify(_art_organ(), _hb(60), prior=prior)  # file untouched since pv captured
-    check(f"artifact guilt: frozen artifact for STARVED_TICKS={S.STARVED_TICKS} ticks -> starved",
+    r = _classify(_art_organ(), _hb(60), prior=prior)
+    check(f"artifact guilt: frozen content for STARVED_TICKS={S.STARVED_TICKS} ticks -> starved",
           r["status"] == "starved")
 
-    total = 14
+    total = 15
     print(f"\n=== {'ALL ' + str(total) + ' PASS' if not fails else str(fails) + ' FAIL'} ===")
     return 1 if fails else 0
 
