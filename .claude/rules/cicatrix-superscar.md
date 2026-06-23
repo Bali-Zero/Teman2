@@ -211,8 +211,13 @@ stream, event bus, `*.last.json`) senza scope end-to-end di chi li legge.
 unificato + scansione completa dei partecipanti; mai cambiare un formato condiviso da un solo lato.
 
 **MEMBRI:** W54 (timestamp ISO-8601 schianta il check di staleness) · W53 (DLQ TERMINAL suppression gate
-mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`).
-**→ dettaglio:** archive (W53/W54/W61) · `scar query "schema drift json contract"`
+mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`) · **W86 (DOCSYNC stale —
+auto-merge-a-verde mergia il commit-feature PRIMA che il commit docs_sync bump atterri → il
+contratto-derivato `AI_ONBOARDING.md` test/router/service count resta stale su main → il gate
+`check-docs-sync` boccia la PR backend successiva, innocente. Antidoto: il `docs_sync.py` regen va
+nello STESSO commit della feature, MAI separato — con `--auto` non esiste "poi", merge al primo
+verde. 2026-06-23, PR #1670→#1672)**.
+**→ dettaglio:** cicatrix-scars.md (W86) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
 
 ---
 
