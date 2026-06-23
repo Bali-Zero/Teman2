@@ -691,7 +691,7 @@ class Settings(BaseSettings):
             "Comma-separated whitelist of phone numbers allowed to interact with WhatsApp bot (no + prefix). "
             "If set, messages from numbers NOT in this list are silently ignored (no response sent). "
             "Set via WHATSAPP_ALLOWED_NUMBERS env var. "
-            "Example: '6282264599868' — leave empty to allow everyone."
+            "Example: '6282210302328' — leave empty to allow everyone."
         ),
     )
     whatsapp_team_allowlist: str = Field(
