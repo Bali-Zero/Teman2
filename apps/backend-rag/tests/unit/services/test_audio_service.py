@@ -22,6 +22,7 @@ class _FakeResponse:
 
 def _make_http_client(response=None, error=None):
     client = AsyncMock()
+    client.is_closed = False
     if error:
         client.get = AsyncMock(side_effect=error)
     else:
@@ -63,6 +64,7 @@ def _build_service(openai_key="key", http_client=None, openai_client=None):
             with patch("backend.app.services.audio_service.AsyncOpenAI") as mock_openai:
                 mock_openai.return_value = openai_client
                 service = AudioService()
+                service.http_client = http_client
     return service
 
 
@@ -84,7 +86,7 @@ def test_init_without_openai_key():
 async def test_transcribe_audio_from_path():
     service = _build_service(openai_key="test-key")
 
-    with patch("builtins.open", mock_open(read_data=b"audio data")) as mock_file:
+    with patch("backend.app.services.audio_service.open", mock_open(read_data=b"audio data"), create=True) as mock_file:
         result = await service.transcribe_audio("/path/to/audio.mp3", language="id")
 
     assert result == "ok"
@@ -120,7 +122,7 @@ async def test_transcribe_audio_exception_closes_file():
     service = _build_service(openai_key="test-key", openai_client=_make_openai_client(error=error))
 
     m = mock_open()
-    with patch("builtins.open", m):
+    with patch("backend.app.services.audio_service.open", m, create=True):
         with pytest.raises(RuntimeError, match="api error"):
             await service.transcribe_audio("/path/to/audio.mp3")
 

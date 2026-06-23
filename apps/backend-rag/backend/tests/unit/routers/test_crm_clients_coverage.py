@@ -790,3 +790,79 @@ def test_get_client_service_returns_service():
     from backend.services.crm.client_service import ClientService
 
     assert isinstance(svc, ClientService)
+
+
+# ============================================================
+# PHONE DEDUP GATE (Trevor-class duplicate prevention)
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_create_client_blocks_duplicate_phone(mock_db_pool, mock_current_user):
+    """A new client whose phone already belongs to a live client returns 409
+    with the existing match — the Trevor-class duplicate is blocked, not silently
+    inserted."""
+    from backend.app.routers.crm_clients import ClientCreate, create_client
+
+    # The dedup query finds an existing owner for this phone.
+    mock_db_pool._mock_conn.fetchrow.return_value = {
+        "id": 11654,
+        "full_name": "Trevor Richard Gerhardt",
+        "assigned_to": "krisna@balizero.com",
+    }
+    mock_service = MagicMock()
+    mock_service.create_client = AsyncMock()  # must NOT be called
+
+    with pytest.raises(HTTPException) as exc_info:
+        await create_client(
+            client=ClientCreate(full_name="TREVOR RICHARD GERHARDT", phone="+62 821-3454-721"),
+            background_tasks=MagicMock(),
+            current_user=mock_current_user,
+            client_service=mock_service,
+            db_pool=mock_db_pool,
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["existing_client_id"] == 11654
+    assert exc_info.value.detail["error"] == "duplicate_phone"
+    mock_service.create_client.assert_not_called()  # no duplicate insert
+
+
+@pytest.mark.asyncio
+async def test_create_client_allows_duplicate_phone_override(
+    mock_db_pool, mock_current_user, sample_client_row
+):
+    """`allow_duplicate_phone=True` lets a legitimate shared-phone person through
+    (spouses / reused numbers) — the gate is skipped, the insert proceeds."""
+    from backend.app.routers.crm_clients import ClientCreate, create_client
+
+    # Even though a match exists, the override skips the gate entirely.
+    mock_db_pool._mock_conn.fetchrow.return_value = {
+        "id": 999,
+        "full_name": "Existing Spouse",
+        "assigned_to": "vino@balizero.com",
+    }
+    mock_service = MagicMock()
+    mock_service.create_client = AsyncMock(return_value=sample_client_row)
+
+    with (
+        patch("backend.app.routers.crm_clients.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            side_effect=Exception("skip"),
+        ),
+    ):
+        result = await create_client(
+            client=ClientCreate(
+                full_name="Spouse Two",
+                phone="+62 821-3454-721",
+                allow_duplicate_phone=True,
+            ),
+            background_tasks=MagicMock(),
+            current_user=mock_current_user,
+            client_service=mock_service,
+            db_pool=mock_db_pool,
+        )
+
+    assert result.id == 1
+    mock_service.create_client.assert_called_once()  # insert DID happen

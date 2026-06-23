@@ -269,6 +269,10 @@ export function trackLeadWhatsAppCTA(
     ...(params.result_ref ? { result_ref: params.result_ref } : {}),
   });
   trackEvent("lead_whatsapp_cta", { source, ...params });
+  void trackFunnelEvent("lead_whatsapp_cta", {
+    sessionId: getOrCreateSessionId(),
+    payload: { source, ...params },
+  });
 }
 
 // ============================================================

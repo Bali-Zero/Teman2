@@ -282,6 +282,16 @@ async def get_dashboard(
             "success": True,
             "data": data,
         }
+    except ValueError as e:
+        # BUG C: get_dashboard raises ValueError("Client X not found") when the
+        # linked client row is gone / soft-deleted (it filters
+        # `... WHERE id = $1 AND deleted_at IS NULL`). That's a not-found
+        # condition, not an internal error — surface 404 so a soft-deleted
+        # client's portal doesn't 500 the whole dashboard.
+        logger.warning(
+            f"Dashboard client not found for client {client['client_id']}: {e}"
+        )
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get dashboard for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -516,6 +526,7 @@ async def upload_document(
     file: UploadFile = File(...),
     document_type: str = Form(...),
     practice_id: int | None = Form(None),
+    document_purpose: str | None = Form(None),
     client: dict = Depends(get_current_client),
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
@@ -526,6 +537,8 @@ async def upload_document(
     - file: The document file
     - document_type: Type of document (passport, nib, etc.)
     - practice_id: Optional practice to link to
+    - document_purpose: Optional client-facing note on why this document was
+      provided (trust UX — shown back to the client in the vault)
     """
     # Validate file
     if not file.filename:
@@ -546,6 +559,11 @@ async def upload_document(
             detail=f"File type not allowed. Allowed types: {', '.join(allowed_extensions)}",
         )
 
+    # Cap the client-facing purpose note (trust UX field, not free-form storage)
+    purpose = (document_purpose or "").strip() or None
+    if purpose and len(purpose) > 500:
+        purpose = purpose[:500]
+
     try:
         document = await portal_service.upload_document(
             client_id=client["client_id"],
@@ -554,6 +572,7 @@ async def upload_document(
             document_type=document_type,
             mime_type=file.content_type,
             practice_id=practice_id,
+            document_purpose=purpose,
             current_user=client,
         )
         return {
@@ -605,6 +624,72 @@ async def download_document(
             f"Failed to download document {document_id} for client {client['client_id']}: {e}"
         )
         raise HTTPException(status_code=500, detail="Failed to download document") from e
+
+
+@router.delete("/documents/{document_id}")
+async def delete_document(
+    document_id: int,
+    client: dict = Depends(get_current_client),
+    portal_service: PortalService = Depends(get_portal_service),
+) -> dict[str, Any]:
+    """
+    Soft-delete a client-visible document.
+
+    The document is hidden from the vault but recoverable for 30 days
+    (the file stays in Google Drive and the DB row is preserved).
+    """
+    try:
+        result = await portal_service.soft_delete_document(
+            client["client_id"],
+            document_id,
+            current_user=client,
+        )
+        if result is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return {
+            "success": True,
+            "message": "Document removed. You can restore it within 30 days.",
+            "data": result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Failed to delete document {document_id} for client {client['client_id']}: {e}"
+        )
+        raise HTTPException(status_code=500, detail="Failed to remove document") from e
+
+
+@router.post("/documents/{document_id}/restore")
+async def restore_document(
+    document_id: int,
+    client: dict = Depends(get_current_client),
+    portal_service: PortalService = Depends(get_portal_service),
+) -> dict[str, Any]:
+    """Restore a previously removed document (recovery path)."""
+    try:
+        result = await portal_service.restore_document(
+            client["client_id"],
+            document_id,
+            current_user=client,
+        )
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Document not found or not eligible for restore",
+            )
+        return {
+            "success": True,
+            "message": "Document restored.",
+            "data": result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Failed to restore document {document_id} for client {client['client_id']}: {e}"
+        )
+        raise HTTPException(status_code=500, detail="Failed to restore document") from e
 
 
 # ================================================

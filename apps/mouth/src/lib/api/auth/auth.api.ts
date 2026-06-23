@@ -98,6 +98,38 @@ export class AuthApi {
     }
   }
 
+  /**
+   * FASE 6 — consume a passwordless magic-link token and establish a session.
+   *
+   * Mirrors `login`: the backend sets the httpOnly cookie and returns the same
+   * payload (token + csrfToken + user), which we persist the same way.
+   */
+  async verifyMagicLink(token: string): Promise<LoginResponse> {
+    const response = await this.client.request<BackendLoginResponse>(
+      `/api/auth/verify-magic/${encodeURIComponent(token)}`,
+      { method: "GET" },
+      90000,
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(
+        response.message || "This sign-in link is invalid or expired.",
+      );
+    }
+
+    if (response.data.csrfToken) {
+      this.client.setCsrfToken(response.data.csrfToken);
+    }
+    this.client.setToken(response.data.token);
+    this.client.setUserProfile(response.data.user);
+
+    return {
+      access_token: response.data.token,
+      token_type: response.data.token_type,
+      user: response.data.user,
+    };
+  }
+
   async logout(): Promise<void> {
     try {
       await this.client.request<void>("/api/auth/logout", { method: "POST" });

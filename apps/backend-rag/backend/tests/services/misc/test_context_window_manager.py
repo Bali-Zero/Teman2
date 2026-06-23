@@ -58,6 +58,21 @@ def test_trim_empty_conversation(manager: ContextWindowManager):
     assert result["needs_summarization"] is False
 
 
+@pytest.mark.asyncio
+async def test_manage_context_summarizes_long_conversation(manager: ContextWindowManager):
+    """manage_context should provide the async history API used by RAG orchestration."""
+    manager.zantara_client = AsyncMock()
+    manager.zantara_client.generate_text = AsyncMock(return_value="Older turns summary")
+
+    result = await manager.manage_context(_make_messages(12), query="current question")
+
+    assert result == [
+        {"role": "system", "content": "[Earlier conversation summary]: Older turns summary"},
+        *_make_messages(12)[-5:],
+    ]
+    manager.zantara_client.generate_text.assert_awaited_once()
+
+
 # ============================================================
 # generate_summary — memoization
 # ============================================================
@@ -121,6 +136,41 @@ async def test_generate_summary_no_client(manager: ContextWindowManager):
     manager.zantara_client = None
     result = await manager.generate_summary(_make_messages(3))
     assert "Earlier conversation" in result
+
+
+@pytest.mark.asyncio
+async def test_generate_summary_uses_chat_async_client(manager: ContextWindowManager):
+    """The production ZantaraAIClient exposes chat_async rather than generate_text."""
+
+    class ChatOnlyClient:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        async def chat_async(
+            self,
+            messages: list[dict[str, str]],
+            max_tokens: int,
+            temperature: float,
+            system: str | None = None,
+        ) -> dict[str, str]:
+            self.calls.append(
+                {
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "system": system,
+                }
+            )
+            return {"text": "Summary via chat"}
+
+    manager.zantara_client = ChatOnlyClient()
+
+    result = await manager.generate_summary(_make_messages(3))
+
+    assert result == "Summary via chat"
+    assert len(manager.zantara_client.calls) == 1
+    assert manager.zantara_client.calls[0]["messages"][0]["role"] == "user"
+    assert manager.zantara_client.calls[0]["system"]
 
 
 # ============================================================

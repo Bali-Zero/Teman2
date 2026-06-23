@@ -425,6 +425,50 @@ async function publishRows(databaseUrl, rows) {
   return { inserted, updated };
 }
 
+async function filterRowsWithExistingClients(databaseUrl, rows) {
+  if (!rows.length) {
+    return {
+      rows,
+      skippedMissingRows: 0,
+      skippedMissingClients: 0,
+    };
+  }
+
+  const clientIds = uniqueBy(rows, (row) => row.client_id).map(
+    (row) => row.client_id,
+  );
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    max: 1,
+    idleTimeoutMillis: 30000,
+  });
+
+  try {
+    const result = await pool.query(
+      "SELECT id FROM clients WHERE id = ANY($1::bigint[])",
+      [clientIds],
+    );
+    const existingClientIds = new Set(
+      result.rows.map((row) => Number(row.id)),
+    );
+    const validRows = rows.filter((row) =>
+      existingClientIds.has(row.client_id),
+    );
+    const skippedRows = rows.filter(
+      (row) => !existingClientIds.has(row.client_id),
+    );
+
+    return {
+      rows: validRows,
+      skippedMissingRows: skippedRows.length,
+      skippedMissingClients: new Set(skippedRows.map((row) => row.client_id))
+        .size,
+    };
+  } finally {
+    await pool.end();
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const [overview, analysisPayload] = await Promise.all([
@@ -463,14 +507,21 @@ async function main() {
     return;
   }
 
-  const result = await publishRows(options.databaseUrl, rows);
+  const filtered = await filterRowsWithExistingClients(
+    options.databaseUrl,
+    rows,
+  );
+  const result = await publishRows(options.databaseUrl, filtered.rows);
   console.log(
     JSON.stringify(
       {
         mode: "published",
         dashboard_url: options.dashboardUrl,
         matched_rows: rows.length,
-        clients: new Set(rows.map((row) => row.client_id)).size,
+        published_rows: filtered.rows.length,
+        clients: new Set(filtered.rows.map((row) => row.client_id)).size,
+        skipped_missing_client_rows: filtered.skippedMissingRows,
+        skipped_missing_clients: filtered.skippedMissingClients,
         inserted: result.inserted,
         updated: result.updated,
       },
