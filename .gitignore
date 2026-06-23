@@ -782,3 +782,4 @@ research/nb-health/nb-inventory-live.json
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/
 research/crm/*-drafts-local/
+.agent-task.json
