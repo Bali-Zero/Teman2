@@ -363,6 +363,14 @@ organs:
       label: com.balizero.intel.nightly
     severity_on_silence: warning
     cicatrix_refs: []
+    # A2 Heartbeat-Semantico opt-in (first pilot, 2026-06-23). The nightly intel job
+    # EXISTS to add scraped articles; its output artifact grows on real work. A2 flags
+    # 'starved' if the artifact is byte-identical (mtime_ns+size unchanged) across
+    # STARVED_TICKS=3 ticks — i.e. 3 consecutive nights of ZERO new articles, a real
+    # stall the bare heartbeat (ts fresh + status ok) cannot see. CAVEAT (operator-
+    # accepted): published_articles.json is repo-tracked, so a manual edit could reset
+    # the streak — unlikely to mask a genuine 3-night stall.
+    output_artifact: ~/Desktop/nuzantara/apps/bali-intel-scraper/data/published_articles.json
     bridge_source:
       type: state_file
       path: ~/.agent/decisions/state/intel_scraper.last.json
