@@ -332,12 +332,14 @@ def record_run(skill_dir: Path, *, window_days: int, episodes_found: int,
     """Append an auditable run record. THIS is what kills the green-cron-theater:
     a NO_INPUT run is visible on disk, not a silent sys.exit(0).
 
-    CABLED (A3, 2026-06-23): delegates to the unified core Delta Gate
-    (reflexion_core.record_run) instead of a private copy. The WR3 `episodes_found`
-    count is carried as the core's generic `signals_found` (verified 2026-06-23: NO
-    reader anywhere consumes `episodes_found` — repo, skill copy, Pro state file all
-    read only `status`), so the schema swap is reader-safe (superscar #9). WR3 status
-    strings are mapped to the core enum; an unmapped status raises (no silent typo)."""
+    CABLED (A3, 2026-06-24): delegates to the unified core Delta Gate
+    (reflexion_core.record_run) instead of a private copy. Two-vocabulary contract: the WR3
+    NATIVE status (NO_INPUT/SYNTHESIZED/...) is persisted on disk verbatim via `loop_status`
+    (what an operator reading _reflexion-state.json expects — unchanged from the pre-cabling
+    file), while the CANONICAL enum value drives the core's machine logic (is_tautological).
+    `episodes_found` is carried as the generic `signals_found` (no reader consumes the count
+    by name). An unmapped status raises (no silent typo). Superscar #9: the on-disk audit
+    vocabulary is preserved across the cabling — only the storage backend changed."""
     core_status = _WR3_STATUS_TO_CORE.get(status)
     if core_status is None:
         raise ValueError(f"unknown WR3 reflexion status {status!r}; "
@@ -345,7 +347,7 @@ def record_run(skill_dir: Path, *, window_days: int, episodes_found: int,
     return reflexion_core.record_run(
         skill_dir, loop="wr3", window_days=window_days,
         signals_found=episodes_found, lessons_written=lessons_written,
-        status=core_status, notes=notes,
+        status=core_status, loop_status=status, notes=notes,
     )
 
 

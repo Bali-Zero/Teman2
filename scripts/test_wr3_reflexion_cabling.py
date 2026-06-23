@@ -40,18 +40,24 @@ def main() -> int:
     hist = CORE._load_json(sp)
     check("cabling: WR3 record_run persists via core (state file is a list)",
           isinstance(hist, list) and len(hist) == 1)
-    check("cabling: NO_INPUT mapped to core NO_SIGNAL (honest empty run on disk)",
-          hist[0]["status"] == CORE.NO_SIGNAL)
+    # TWO-VOCABULARY CONTRACT (the 2026-06-24 fix): on-disk `status` is the NATIVE WR3 label
+    # (what an operator reads — unchanged from the pre-cabling file), `canonical_status` is
+    # the core enum that drives machine logic.
+    check("cabling: on-disk status keeps the NATIVE WR3 label (NO_INPUT, not NO_SIGNAL)",
+          hist[0]["status"] == "NO_INPUT")
+    check("cabling: canonical_status carries the core enum (NO_SIGNAL) for machine logic",
+          hist[0]["canonical_status"] == CORE.NO_SIGNAL)
     check("cabling: WR3 episodes_found carried as core signals_found (reader-safe swap)",
           hist[0]["signals_found"] == 0 and hist[0]["loop"] == "wr3")
 
-    # --- INNOCENCE: SYNTHESIZED maps to LEARNED, THIN_SIGNAL to NO_SIGNAL ---
+    # --- INNOCENCE: native labels preserved on disk; canonical drives machine logic ---
     WR3.record_run(tmp, window_days=7, episodes_found=4, lessons_written=2, status="SYNTHESIZED")
     WR3.record_run(tmp, window_days=7, episodes_found=4, lessons_written=0, status="THIN_SIGNAL")
     hist = CORE._load_json(sp)
-    statuses = [h["status"] for h in hist]
-    check("cabling: SYNTHESIZED -> LEARNED", CORE.LEARNED in statuses)
-    check("cabling: THIN_SIGNAL -> NO_SIGNAL", statuses[-1] == CORE.NO_SIGNAL)
+    check("cabling: SYNTHESIZED kept native on disk + canonical LEARNED",
+          hist[1]["status"] == "SYNTHESIZED" and hist[1]["canonical_status"] == CORE.LEARNED)
+    check("cabling: THIN_SIGNAL kept native on disk + canonical NO_SIGNAL",
+          hist[-1]["status"] == "THIN_SIGNAL" and hist[-1]["canonical_status"] == CORE.NO_SIGNAL)
 
     # --- GUILT: an unmapped/typo WR3 status RAISES (no silent bad record) ---
     try:
