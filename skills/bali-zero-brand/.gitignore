@@ -1,0 +1,33 @@
+# bali-zero-brand skill — repo-versioned SOURCE only.
+# The HOME copy (~/.claude/skills/bali-zero-brand/) accumulates generated artifacts
+# and client-case material that MUST NOT enter git (UU PDP / SYMBIOSIS Law 2).
+# This .gitignore makes a re-sync from HOME safe: artifacts + PII never re-enter.
+
+# --- Generated artifacts (rebuildable output, not source) ---
+past/
+_carousels-by-session/
+_observations/
+__pycache__/
+*.pyc
+
+# --- Client PII (rendered briefs with real names/IDs — operator-machine only) ---
+surfaces/internal-print-a4/examples/
+
+# --- Runtime state written by the reflexion loop / scrapers (machine-local) ---
+_reflexion-state.json
+
+# --- Backups / drift copies (sessione-local, never versioned) ---
+*.bak
+*.bak-*
+*.bak.*
+*.pre-*
+
+.DS_Store
+
+# Smoke-test renders + decommissioned/archived anchors (not live source)
+_smoke-*.png
+anchors/_archive/
+
+# WR3 reflexion: cured + versioned as scripts/wr3_reflexion_synthesis.py — the HOME
+# copy here is the un-cabled divergent one; never re-version it (superscar #1).
+wr3/_reflexion-synthesis.py
