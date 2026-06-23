@@ -351,13 +351,20 @@ async def verify_collection(qdrant_url: str, api_key: str | None):
             indexed = info["indexed_vectors_count"]
             logger.info(f"  Collection: {total} points, {indexed} indexed vectors")
 
-        # Count by doc_type
+        # Count by doc_type.
+        # Payloads are written FLAT (build_payload puts doc_type at top level, per the KBLI
+        # flat-payload golden rule), but legacy points may still carry it nested under
+        # `metadata.doc_type`. Match either, mirroring delete_old_points' dual-key filter —
+        # otherwise this verify count returns 0 on a successful flat re-index (green-that-lies).
         for doc_type in ["kbli_bps", "kbli_gold"]:
             cr = await http.post(
                 f"{qdrant_url}/collections/{COLLECTION_NAME}/points/count",
                 json={
                     "filter": {
-                        "must": [{"key": "metadata.doc_type", "match": {"value": doc_type}}],
+                        "should": [
+                            {"key": "doc_type", "match": {"value": doc_type}},
+                            {"key": "metadata.doc_type", "match": {"value": doc_type}},
+                        ],
                     },
                     "exact": True,
                 },
