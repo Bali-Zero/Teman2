@@ -5,13 +5,13 @@
   <key>Label</key>
   <string>com.nuzantara.wa-mirror-intake-sweeper</string>
 
-  <!-- Anello 1-bis (Law 2) — wa-mirror (team lines) media → intake sweeper.    -->
+  <!-- Anello 1-bis (Law 2) — wa-mirror phone-keyed lead + media intake.       -->
   <!-- Distinct from com.nuzantara.wa-media-pull (the OFFICIAL Meta line). This -->
-  <!-- one is a READ-ONLY consumer of the LOCAL whatsapp_message_context table  -->
-  <!-- that wa-mirror (Baileys) populates: it finds new inbound document/image  -->
-  <!-- blobs already on disk and enqueue()s them into the SAME LOCAL            -->
-  <!-- nuzantara_dev intake_queue. Cron shim (NOT daemon, KeepAlive=false),     -->
-  <!-- single-instance via flock in the script. Runs ONLY on the Pro.          -->
+  <!-- one consumes the LOCAL whatsapp_message_context table that wa-mirror    -->
+  <!-- (Baileys) populates. It never writes back to that table. It resolves or -->
+  <!-- creates CRM leads by normalized phone, then enqueue()s inbound media    -->
+  <!-- blobs into the SAME LOCAL nuzantara_dev intake_queue. Cron shim (NOT    -->
+  <!-- daemon, KeepAlive=false), single-instance via flock. Runs ONLY on Pro.  -->
   <!-- PRO-HALF: the watermark seeds to the current max id on first run, so     -->
   <!-- this processes ONLY NEW arrivals. The historical backlog is the Mini's  -->
   <!-- job (separate step). No secrets — local DB + local disk only.           -->
