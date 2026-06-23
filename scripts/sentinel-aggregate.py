@@ -80,15 +80,35 @@ def _read_prior_snapshot() -> dict[str, dict[str, Any]]:
 
 def _progress_value(hb: dict[str, Any] | None, organ: dict[str, Any]) -> Any:
     """A2: the organ's OUTPUT-progress signal — what must ADVANCE for the organ to be alive,
-    not merely fresh. The field name is registry-declared (`progress_field`); we read it off
-    the already-loaded heartbeat dict. Returns None when no progress field is declared/present
-    (→ organ opts out of A2, classified the classic way — additive, never regresses #9)."""
-    if hb is None:
-        return None
+    not merely fresh. Two declaration modes (registry-driven, both OPT-IN, additive #9):
+
+      1. progress_field — read a value off the already-loaded heartbeat dict. Use when the
+         organ ALREADY emits a monotone counter in its payload (no writer-change needed).
+
+      2. output_artifact — a filesystem path the organ PRODUCES. We return a (mtime_ns, size)
+         tuple: "did output advance?" becomes "did the artifact change on disk?". This needs
+         ZERO writer-change to any H24 organ — A2 observes the artifact, not the heartbeat.
+         CRITICAL (anti-false-alarm): mtime is a real advance-signal ONLY when the writer
+         REWRITES the artifact on real work and leaves it untouched otherwise — which is the
+         normal case (a scraper appends to its JSON, a renderer overwrites its output). A
+         writer that re-stamps the file every tick regardless of work would defeat this; such
+         organs must NOT declare output_artifact (they have no honest disk progress signal).
+
+    Returns None when neither is declared / the artifact is missing → organ opts out of A2,
+    classified the classic way. NEVER raises (a stat() failure = opt-out, not a crash)."""
     field = organ.get("progress_field")
-    if not field:
-        return None
-    return hb.get(field)
+    if field and hb is not None:
+        return hb.get(field)
+    artifact = organ.get("output_artifact")
+    if artifact:
+        try:
+            st = Path(os.path.expanduser(str(artifact))).stat()
+        except OSError:
+            return None  # missing/unreadable artifact → opt out, not a false starve
+        # JSON-serialisable tuple → list; survives the aggregate.json round-trip so the
+        # prior-snapshot comparison in _classify works byte-identically across ticks.
+        return [st.st_mtime_ns, st.st_size]
+    return None
 
 
 def _now_epoch() -> float:
