@@ -289,6 +289,41 @@ class PortalDocumentsMixin:
             "mime_type": mime_type,
         }
 
+    async def _record_timeline_event(
+        self,
+        client_id: int,
+        *,
+        title: str,
+        description: str,
+        color: str,
+    ) -> None:
+        """Best-effort audit log on a SEPARATE connection (Bug D).
+
+        Written AFTER the mutating transaction has committed, on its own
+        connection, so a failure here can never roll back the caller's mutation.
+        event_type is 'status_change' — a value allowed by the
+        chk_timeline_event_type CHECK constraint (document_removed /
+        document_restored are NOT allowed and previously aborted the txn).
+        """
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO timeline_events (
+                        client_id, event_type, title,
+                        description, event_date, client_visible, color
+                    )
+                    VALUES ($1, 'status_change', $2, $3, NOW(), true, $4)
+                    """,
+                    client_id,
+                    title,
+                    description,
+                    color,
+                )
+        except Exception as e:
+            if not self._is_undefined_table_error(e):
+                logger.warning("Could not create timeline event (%s): %s", title, e)
+
     @cache_invalidating(
         [
             lambda _self, client_id, *_a, **_k: f"zantara:portal_documents:{client_id}:*",
@@ -311,6 +346,12 @@ class PortalDocumentsMixin:
         timeline event records the action for the case officer.
         """
         deleted_by = current_user.get("email") or f"client:{client_id}"
+        # The soft-delete UPDATE commits ON ITS OWN. The timeline INSERT is a
+        # best-effort audit log written on a SEPARATE connection AFTER the commit,
+        # so it can NEVER roll back the deletion. (Bug D: it used to share the same
+        # transaction AND used event_type='document_removed', which violates the
+        # chk_timeline_event_type CHECK constraint — the violation aborted the txn
+        # and silently rolled the UPDATE back while returning 200 "deleted: true".)
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
@@ -330,22 +371,13 @@ class PortalDocumentsMixin:
                 if not row:
                     return None
 
-                try:
-                    await conn.execute(
-                        """
-                        INSERT INTO timeline_events (
-                            client_id, event_type, title,
-                            description, event_date, client_visible, color
-                        )
-                        VALUES ($1, 'document_removed', 'Document removed',
-                                $2, NOW(), true, 'warning')
-                        """,
-                        client_id,
-                        f"{row['file_name']} removed by client (recoverable for 30 days)",
-                    )
-                except Exception as e:
-                    if not self._is_undefined_table_error(e):
-                        logger.warning("Could not create timeline event for soft-delete: %s", e)
+        # Audit log — separate connection, after the delete has committed.
+        await self._record_timeline_event(
+            client_id,
+            title="Document removed",
+            description=f"{row['file_name']} removed by client (recoverable for 30 days)",
+            color="warning",
+        )
 
         logger.info(
             "🗑️ Document %s soft-deleted by %s (client %s)",
@@ -394,22 +426,13 @@ class PortalDocumentsMixin:
                 if not row:
                     return None
 
-                try:
-                    await conn.execute(
-                        """
-                        INSERT INTO timeline_events (
-                            client_id, event_type, title,
-                            description, event_date, client_visible, color
-                        )
-                        VALUES ($1, 'document_restored', 'Document restored',
-                                $2, NOW(), true, 'success')
-                        """,
-                        client_id,
-                        f"{row['file_name']} restored by client",
-                    )
-                except Exception as e:
-                    if not self._is_undefined_table_error(e):
-                        logger.warning("Could not create timeline event for restore: %s", e)
+        # Audit log — separate connection, after the restore has committed (Bug D).
+        await self._record_timeline_event(
+            client_id,
+            title="Document restored",
+            description=f"{row['file_name']} restored by client",
+            color="success",
+        )
 
         logger.info(
             "♻️ Document %s restored by %s (client %s)",
