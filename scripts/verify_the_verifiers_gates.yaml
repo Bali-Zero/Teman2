@@ -304,3 +304,45 @@ gates:
       only by its own state file + a human reading its last alert — the recursion
       terminates at a person, not at another machine. Kill-switch
       COST_BREAKER_DEADMAN_OFF=1.
+
+  # ---------------------------------------------------------------------------
+  # A1 / Loop-B (2026-06-23) — scar_test gates. The other kinds verify a guardian
+  # is INSTALLED; these RUN the regression test that fails if the scar re-bites,
+  # answering "is the disease still dead?". prose_only:true = scar documented but
+  # no executable gate yet = WARN (visible Loop-B debt, never silently green).
+  # Reference: research/operations/2026-06-23-self-loop-implementation-plan.md (Anello 1).
+  # ---------------------------------------------------------------------------
+  - id: scar_W86_worktree_overmatch
+    kind: scar_test
+    w_number: W86
+    target: infra/claude-hooks/test_w84_strip_noise_cross_line.py
+    note: >
+      Superscar #3 (guard over-match). W83/84/85/86 family: the worktree_isolation
+      hook over-matched a bare `>` in code-residue (python -c / awk / perl bodies)
+      as a redirect → phantom write-target → read-only command falsely blocked.
+      W86 cure = path-plausibility whitelist (_is_plausible_path). This test asserts
+      innocence (no false block on code-residue) AND guilt (genuine writes to main
+      still blocked). Green = the over-match family stays dead.
+
+  - id: scar_premise_gate_L1
+    kind: scar_test
+    w_number: premise-gate-L1
+    target: infra/claude-hooks/test_premise_gate.py
+    note: >
+      DNA L1 detector (anti-hallucination rule #2 made mechanical). The premise_gate
+      hook warns on an Edit of a product file not read in-turn. This test asserts it
+      WARNS on the genuine missing-premise case AND stays silent on every legitimate
+      neighbor (read-in-turn, exempt surfaces, plan-mode, repeat-suppression).
+      Green = the "build on a false premise" disease stays caught.
+
+  - id: scar_W82_content_freshness_undermatch
+    kind: scar_test
+    w_number: W82
+    prose_only: true
+    target: ""
+    note: >
+      Superscar #3 UNDER-match twin (content-freshness-sentinel: substring + blind to
+      translations → stale fact stays green). Documented in cicatrix-scars.md but has
+      NO executable regression test yet. Registered prose_only so the meta-verifier
+      reports it as WARN — the Loop-B debt is OBSERVABLE, not silently absent. This is
+      the seed of the natural loop: a prose-only scar is visible debt asking for a test.
