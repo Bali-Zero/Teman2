@@ -40,6 +40,9 @@ CONSUMER_NAME = "consumer-1"
 # Rate limit: max dispatches per run + sleep between them
 MAX_DISPATCH_PER_RUN = 5
 DISPATCH_SLEEP_S = 2
+AGENT_MAX_RETRIES = {
+    "lhkpn_harvester": 1,
+}
 
 # Gap type → agent name (None = Phase 2, skipped with ack)
 #
@@ -71,6 +74,46 @@ GAP_DISPATCH: dict[str, Optional[str]] = {
 }
 
 
+def _extract_terminal_case_status(messages: list[dict[str, Any]]) -> tuple[bool, str]:
+    """Return the final explicit case status from agent messages.
+
+    Intermediate tool payloads such as ``{"case_resolved": False}`` are not
+    terminal states. Only the status tools return these exact strings.
+    """
+    for msg in reversed(messages):
+        content = msg.get("content", "") if isinstance(msg, dict) else ""
+        if "Case not resolved." in content:
+            return False, content[:200]
+        if "Case resolved." in content:
+            return True, ""
+    return False, "missing_terminal_case_status"
+
+
+def _payload_has_nip(payload: dict[str, Any]) -> bool:
+    """True when any known payload key carries a usable NIP-like identifier."""
+    for key in ("nip", "entity_nip", "matched_nip"):
+        value = str(payload.get(key, "")).strip()
+        if value:
+            return True
+    return False
+
+
+def _lhkpn_terminal_skip_reason(gap_type: str, payload: dict[str, Any]) -> str | None:
+    """Return a reason when an LHKPN gap is structurally unresolvable today.
+
+    KPK's post-2026-04-26 portal search rows do not expose NIP, and the
+    current profile path cannot derive angkatan. Spending LLM turns on those
+    shapes only creates redelivery loops.
+    """
+    if gap_type == "gap.missing_nip":
+        return "lhkpn_portal_search_does_not_return_nip"
+    if gap_type == "gap.missing_angkatan":
+        return "lhkpn_portal_does_not_expose_angkatan"
+    if gap_type == "gap.missing_lhkpn" and not _payload_has_nip(payload):
+        return "lhkpn_profile_fetch_requires_existing_nip"
+    return None
+
+
 def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Default dispatcher: invokes the registered agent via Lamarckian loop.
 
@@ -90,24 +133,18 @@ def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[st
     query = json.dumps(payload, ensure_ascii=False)
     kb = KnowledgeBase()
     try:
-        response = run_with_lamarckian_feedback(agent, query, kb=kb)
+        response = run_with_lamarckian_feedback(
+            agent,
+            query,
+            kb=kb,
+            max_retry=AGENT_MAX_RETRIES.get(agent_name, 3),
+        )
     finally:
         kb.close()
 
-    # Inspect the response messages for the case_resolved/case_not_resolved tool call.
-    # The lamarckian loop ends with one of these tools being called.
-    resolved = False
-    reason = ""
-    if response is not None and hasattr(response, "messages"):
-        for msg in response.messages:
-            content = msg.get("content", "") if isinstance(msg, dict) else ""
-            if "Case resolved" in content or "case_resolved" in content.lower():
-                resolved = True
-                break
-            if "Case not resolved" in content or "case_not_resolved" in content.lower():
-                resolved = False
-                reason = content[:200]
-                break
+    resolved, reason = _extract_terminal_case_status(
+        response.messages if response is not None and hasattr(response, "messages") else []
+    )
 
     return {"case_resolved": resolved, "reason": reason}
 
@@ -144,6 +181,17 @@ def process_gap(
 
     # Inject _gap_type so the agent knows what it's solving
     enriched = {**payload, "_gap_type": gap_type}
+
+    if agent_name == "lhkpn_harvester":
+        skip_reason = _lhkpn_terminal_skip_reason(gap_type, enriched)
+        if skip_reason:
+            logger.warning(
+                "Gap %s skipped before LHKPN dispatch (%s) — ACKing",
+                gap_type,
+                skip_reason,
+            )
+            xack(STREAM_NEXUS_GAPS, CONSUMER_GROUP, msg_id)
+            return {"status": "skipped", "agent": agent_name, "reason": skip_reason}
 
     try:
         result = dispatch_agent(agent_name=agent_name, payload=enriched)
