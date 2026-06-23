@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 import importlib
 import importlib.util
+import json
 import multiprocessing as mp
 import os
-import queue
+import tempfile
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -174,50 +175,60 @@ def _run_silero_detection_process(
         raise TimeoutError("Silero VAD concurrency limit reached")
 
     context = mp.get_context("spawn")
-    result_queue = context.Queue(maxsize=1)
-    process = context.Process(
-        target=_run_silero_detection_child,
-        args=(
-            result_queue,
-            str(audio_path),
-            module_name,
-            sampling_rate,
-            threshold,
-        ),
-    )
-    process.daemon = True
-
-    try:
-        process.start()
-        process.join(timeout_seconds)
-        if process.is_alive():
-            process.terminate()
-            process.join(timeout=1.0)
-            if process.is_alive():
-                process.kill()
-                process.join(timeout=1.0)
-            raise TimeoutError(f"Silero VAD timed out after {timeout_seconds}s")
+    with tempfile.TemporaryDirectory(prefix="silero-vad-") as tmpdir:
+        result_path = Path(tmpdir) / "segments.json"
+        result_receiver, result_sender = context.Pipe(duplex=False)
+        process = context.Process(
+            target=_run_silero_detection_child,
+            args=(
+                result_sender,
+                str(result_path),
+                str(audio_path),
+                module_name,
+                sampling_rate,
+                threshold,
+            ),
+        )
+        process.daemon = True
 
         try:
-            result = result_queue.get_nowait()
-        except queue.Empty as exc:
-            exit_code = process.exitcode
-            raise RuntimeError(f"Silero VAD process exited without result: {exit_code}") from exc
+            process.start()
+            result_sender.close()
+            process.join(timeout_seconds)
+            if process.is_alive():
+                process.terminate()
+                process.join(timeout=1.0)
+                if process.is_alive():
+                    process.kill()
+                    process.join(timeout=1.0)
+                raise TimeoutError(f"Silero VAD timed out after {timeout_seconds}s")
 
-        status = result[0]
-        if status == "ok":
-            return result[1]
-        if status == "error":
-            raise RuntimeError(f"Silero VAD failed: {result[1]}")
-        raise RuntimeError("Silero VAD returned an invalid result")
-    finally:
-        result_queue.close()
-        result_queue.join_thread()
-        _SILERO_PROCESS_SEMAPHORE.release()
+            if not result_receiver.poll():
+                exit_code = process.exitcode
+                raise RuntimeError(f"Silero VAD process exited without result: {exit_code}")
+            try:
+                result = result_receiver.recv()
+            except EOFError as exc:
+                exit_code = process.exitcode
+                raise RuntimeError(
+                    f"Silero VAD process exited without result: {exit_code}",
+                ) from exc
+
+            status = result[0]
+            if status == "ok":
+                return _read_silero_result_file(result_path)
+            if status == "error":
+                raise RuntimeError(f"Silero VAD failed: {result[1]}")
+            raise RuntimeError("Silero VAD returned an invalid result")
+        finally:
+            result_receiver.close()
+            result_sender.close()
+            _SILERO_PROCESS_SEMAPHORE.release()
 
 
 def _run_silero_detection_child(
-    result_queue: Any,
+    result_sender: Any,
+    result_path: str,
     audio_path: str,
     module_name: str,
     sampling_rate: int,
@@ -230,9 +241,31 @@ def _run_silero_detection_child(
             sampling_rate=sampling_rate,
             threshold=threshold,
         )
-        result_queue.put(("ok", segments))
+        Path(result_path).write_text(json.dumps(segments), encoding="utf-8")
+        result_sender.send(("ok", None))
     except BaseException as exc:
-        result_queue.put(("error", type(exc).__name__))
+        result_sender.send(("error", type(exc).__name__))
+    finally:
+        result_sender.close()
+
+
+def _read_silero_result_file(result_path: Path) -> list[tuple[float, float]]:
+    try:
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise RuntimeError("Silero VAD process exited without result file") from exc
+    if not isinstance(payload, list):
+        raise RuntimeError("Silero VAD returned an invalid result file")
+    segments: list[tuple[float, float]] = []
+    for item in payload:
+        if (
+            not isinstance(item, list)
+            or len(item) != 2
+            or not all(isinstance(value, (int, float)) for value in item)
+        ):
+            raise RuntimeError("Silero VAD returned an invalid result file")
+        segments.append((float(item[0]), float(item[1])))
+    return segments
 
 
 def _detect_silero_segments_in_current_process(
