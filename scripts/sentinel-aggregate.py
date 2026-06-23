@@ -33,6 +33,7 @@ Exit codes:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -85,29 +86,36 @@ def _progress_value(hb: dict[str, Any] | None, organ: dict[str, Any]) -> Any:
       1. progress_field — read a value off the already-loaded heartbeat dict. Use when the
          organ ALREADY emits a monotone counter in its payload (no writer-change needed).
 
-      2. output_artifact — a filesystem path the organ PRODUCES. We return a (mtime_ns, size)
-         tuple: "did output advance?" becomes "did the artifact change on disk?". This needs
+      2. output_artifact — a filesystem path the organ PRODUCES. We return a [size, sha256]
+         pair: "did output advance?" becomes "did the artifact's CONTENT change?". This needs
          ZERO writer-change to any H24 organ — A2 observes the artifact, not the heartbeat.
-         CRITICAL (anti-false-alarm): mtime is a real advance-signal ONLY when the writer
-         REWRITES the artifact on real work and leaves it untouched otherwise — which is the
-         normal case (a scraper appends to its JSON, a renderer overwrites its output). A
-         writer that re-stamps the file every tick regardless of work would defeat this; such
-         organs must NOT declare output_artifact (they have no honest disk progress signal).
+
+         CRITICAL (anti-false-alarm, the trap this design corrects): we hash CONTENT, NOT
+         mtime. Many writers REWRITE the file every run unconditionally even when nothing
+         changed (e.g. run_intel_pipeline.py re-serialises published_articles.json on a
+         zero-article night) — mtime would advance every tick and the organ could NEVER be
+         flagged starved (the "green != working" disease applied to the detector itself).
+         A content hash is identical across an unchanged rewrite, so a frozen output is seen
+         as frozen regardless of how often the writer touches the file. The remaining
+         contract: declare output_artifact only when the CONTENT is meant to grow/change on
+         real work (a content-rotated dated filename or an in-place per-run shuffle would
+         still misfire — those organs have no honest content-progress signal).
 
     Returns None when neither is declared / the artifact is missing → organ opts out of A2,
-    classified the classic way. NEVER raises (a stat() failure = opt-out, not a crash)."""
+    classified the classic way. NEVER raises (a read failure = opt-out, not a crash)."""
     field = organ.get("progress_field")
     if field and hb is not None:
         return hb.get(field)
     artifact = organ.get("output_artifact")
     if artifact:
         try:
-            st = Path(os.path.expanduser(str(artifact))).stat()
+            data = Path(os.path.expanduser(str(artifact))).read_bytes()
         except OSError:
             return None  # missing/unreadable artifact → opt out, not a false starve
-        # JSON-serialisable tuple → list; survives the aggregate.json round-trip so the
-        # prior-snapshot comparison in _classify works byte-identically across ticks.
-        return [st.st_mtime_ns, st.st_size]
+        # [size, sha256]: content-based, immune to unconditional re-stamps (mtime would not
+        # be). JSON-serialisable list → survives the aggregate.json round-trip so the
+        # prior-snapshot equality check in _classify holds byte-identically across ticks.
+        return [len(data), hashlib.sha256(data).hexdigest()]
     return None
 
 
