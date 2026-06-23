@@ -284,9 +284,11 @@ async def test_soft_delete_document_marks_deleted_and_returns_summary() -> None:
     assert "deleted_at IS NULL" in update_sql  # idempotent: only live rows
     # actor + ids passed through
     assert mock_conn.fetchrow.call_args.args[1:] == (10, 1, "client@example.com")
-    # timeline event recorded
+    # timeline event recorded with a CONSTRAINT-VALID event_type (Bug D).
+    # 'document_removed' violates chk_timeline_event_type; must be 'status_change'.
     assert mock_conn.execute.await_count == 1
-    assert "document_removed" in mock_conn.execute.call_args.args[0]
+    assert "'status_change'" in mock_conn.execute.call_args.args[0]
+    assert "document_removed" not in mock_conn.execute.call_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -327,7 +329,9 @@ async def test_restore_document_clears_deleted_and_returns_summary() -> None:
     assert "deleted_at IS NOT NULL" in update_sql  # only restore actually-deleted rows
     assert mock_conn.fetchrow.call_args.args[1:] == (11, 1)
     assert mock_conn.execute.await_count == 1
-    assert "document_restored" in mock_conn.execute.call_args.args[0]
+    # Bug D: 'document_restored' violates chk_timeline_event_type; must be 'status_change'.
+    assert "'status_change'" in mock_conn.execute.call_args.args[0]
+    assert "document_restored" not in mock_conn.execute.call_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -894,3 +898,89 @@ async def test_upload_to_drive_no_auth_does_not_raise_attribute_error() -> None:
     assert result["file_id"] is None
     assert result["file_url"] is None
 
+
+# ---------------------------------------------------------------------------
+# Bug D — soft-delete must NOT share a transaction with the timeline INSERT, and
+# the timeline event_type must be a value allowed by chk_timeline_event_type.
+# Previously soft_delete_document INSERTed event_type='document_removed' inside the
+# SAME conn.transaction() as the UPDATE; the CHECK violation aborted the txn and
+# silently rolled the soft-delete back while returning 200 "deleted: true".
+# ---------------------------------------------------------------------------
+
+
+def _make_two_conn_service(row: dict[str, Any] | None):
+    """Service whose pool hands out a DISTINCT conn on each acquire(), so we can
+    assert the UPDATE and the timeline INSERT run on SEPARATE connections."""
+    update_conn = AsyncMock()
+    update_conn.fetchrow.return_value = row
+    update_conn.transaction = MagicMock(return_value=_AsyncCtx())
+
+    audit_conn = AsyncMock()
+    audit_conn.transaction = MagicMock(return_value=_AsyncCtx())
+
+    conns = iter([update_conn, audit_conn])
+
+    def _acquire(*_a: object, **_k: object):
+        ctx = MagicMock()
+        chosen = next(conns)
+        ctx.__aenter__ = AsyncMock(return_value=chosen)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        return ctx
+
+    mock_pool = MagicMock()
+    mock_pool.acquire.side_effect = _acquire
+    return PortalService(mock_pool), update_conn, audit_conn
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_uses_valid_event_type_on_separate_conn() -> None:
+    row = {"id": 7, "file_name": "akta.pdf", "document_type": "company"}
+    service, update_conn, audit_conn = _make_two_conn_service(row)
+
+    result = await service.soft_delete_document(
+        client_id=1, document_id=7, current_user={"client_id": 1, "email": "c@x.com"}
+    )
+
+    assert result is not None and result["deleted"] is True
+    # The UPDATE ran inside a transaction on the first connection.
+    update_conn.transaction.assert_called_once()
+    # The timeline INSERT ran on a DIFFERENT connection (audit_conn) and was NOT
+    # wrapped in update_conn's transaction — so it can never roll back the delete.
+    audit_conn.execute.assert_awaited_once()
+    sql = audit_conn.execute.call_args.args[0]
+    assert "'status_change'" in sql, "timeline event_type must be the allowed value"
+    assert "document_removed" not in sql, "must not use the constraint-violating value"
+    # The delete connection must NOT have run the timeline INSERT.
+    for call in update_conn.execute.await_args_list:
+        assert "timeline_events" not in (call.args[0] if call.args else "")
+
+
+@pytest.mark.asyncio
+async def test_restore_uses_valid_event_type_on_separate_conn() -> None:
+    row = {"id": 7, "file_name": "akta.pdf", "document_type": "company"}
+    service, update_conn, audit_conn = _make_two_conn_service(row)
+
+    result = await service.restore_document(
+        client_id=1, document_id=7, current_user={"client_id": 1, "email": "c@x.com"}
+    )
+
+    assert result is not None and result["deleted"] is False
+    audit_conn.execute.assert_awaited_once()
+    sql = audit_conn.execute.call_args.args[0]
+    assert "'status_change'" in sql
+    assert "document_restored" not in sql
+
+
+@pytest.mark.asyncio
+async def test_timeline_failure_does_not_break_soft_delete() -> None:
+    """If the audit-log INSERT fails, the soft-delete result still succeeds —
+    proving the audit log can no longer roll back the mutation."""
+    row = {"id": 7, "file_name": "akta.pdf", "document_type": "company"}
+    service, _update_conn, audit_conn = _make_two_conn_service(row)
+    audit_conn.execute.side_effect = RuntimeError("timeline boom")
+
+    result = await service.soft_delete_document(
+        client_id=1, document_id=7, current_user={"client_id": 1, "email": "c@x.com"}
+    )
+
+    assert result is not None and result["deleted"] is True
