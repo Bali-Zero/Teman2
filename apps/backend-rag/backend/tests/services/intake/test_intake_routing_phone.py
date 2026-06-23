@@ -128,6 +128,11 @@ def test_fuzzy_only_path_unchanged() -> None:
     assert cands[0]["id"] == 5
 
 
+def test_ktp_is_person_doc_type() -> None:
+    assert "ktp" in rt._PERSON_DOC_TYPES
+    assert "ktp" not in rt._COMPANY_DOC_TYPES
+
+
 # ---------------------------------------------------------------------------
 # resolve_entity wiring — fake pool/conn (no PG)
 # ---------------------------------------------------------------------------
@@ -138,10 +143,12 @@ class FakeConn:
     def __init__(
         self,
         passport_rows: list[dict[str, Any]] | None = None,
+        kitas_rows: list[dict[str, Any]] | None = None,
         phone_rows: list[dict[str, Any]] | None = None,
         fuzzy_rows: list[dict[str, Any]] | None = None,
     ) -> None:
         self.passport_rows = passport_rows or []
+        self.kitas_rows = kitas_rows or []
         self.phone_rows = phone_rows or []
         self.fuzzy_rows = fuzzy_rows or []
         self.queries: list[str] = []
@@ -150,6 +157,8 @@ class FakeConn:
         self.queries.append(query)
         if "passport_number" in query:
             return self.passport_rows
+        if "kitas_number" in query:
+            return self.kitas_rows
         if "phone_normalized" in query:
             return self.phone_rows
         if "similarity" in query:
@@ -204,6 +213,22 @@ async def test_resolve_entity_strong_id_skips_phone_query() -> None:
     assert out["decision"] == rt.DECISION_AUTO_ATTACH
     assert out["candidates"][0]["id"] == 7
     # The phone signal must not even be queried when a strong ID matched.
+    assert not any("phone_normalized" in q for q in conn.queries)
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_itap_strong_id_skips_phone_query() -> None:
+    conn = FakeConn(
+        kitas_rows=[{"id": 8, "full_name": "Permanent Stay"}],
+        phone_rows=[{"id": 42, "full_name": "Wira Phone"}],
+    )
+    out = await rt.resolve_entity(
+        {"itap_no": {"value": "2C-123456"}}, "itap",
+        FakePool(conn), sender_phone="08123456789",
+    )
+    assert out["decision"] == rt.DECISION_AUTO_ATTACH
+    cand = out["candidates"][0]
+    assert (cand["id"], cand["method"]) == (8, "kitas_number")
     assert not any("phone_normalized" in q for q in conn.queries)
 
 
