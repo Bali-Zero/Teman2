@@ -94,6 +94,12 @@ def build_root_vars(tokens: dict[str, Any]) -> dict[str, str]:
     v["--font-family-mono"] = _get(tokens, "font", "family", "mono")
     v["--font-weight-bold"] = str(_get(tokens, "font", "weight", "bold"))
     v["--font-weight-extrabold"] = str(_get(tokens, "font", "weight", "extrabold"))
+    # medium (500) — lighter body so the title dominates (option C 2026-06-24).
+    # Default to 500 if an older tokens.json predates the key (backward compatible).
+    try:
+        v["--font-weight-medium"] = str(_get(tokens, "font", "weight", "medium"))
+    except KeyError:
+        v["--font-weight-medium"] = "500"
     v["--font-size-headline-cover"] = _get(tokens, "font", "size", "headline-cover")
     v["--font-size-headline-slide"] = _get(tokens, "font", "size", "headline-slide")
     v["--font-size-subheadline"] = _get(tokens, "font", "size", "subheadline")
