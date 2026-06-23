@@ -42,11 +42,12 @@ elif [ "$(whoami)" = "antonellosiano" ]; then
 fi
 
 # Bypass alias --yolo that exists in .zshrc on Air
-GEMINI_BIN="command gemini"
+# (GEMINI_BIN removed 2026-06-23: legacy Gemini CLI sunset 2026-06-18 — run_gemini now uses agy)
 CODEX_BIN="command codex"
 AGY_BIN="${AGY_BIN:-agy}"
 
-# Gemini model cascade: 3.1 Pro (1M ctx) → 2.5 Pro (fallback) → 2.5 Flash (fast fallback)
+# Gemini model labels (retained for reference; run_gemini now routes through `agy -p`
+# after the 2026-06-18 Gemini-CLI sunset — these no longer select a live backend).
 GEMINI_MODEL_PRIMARY="gemini-3.1-pro-preview"
 GEMINI_MODEL_FALLBACK="gemini-2.5-pro"
 GEMINI_MODEL_FAST="gemini-2.5-flash"
@@ -252,13 +253,16 @@ HEADER
 # CLI availability check
 # ═══════════════════════════════════════════════════════
 require_gemini() {
-    if ! command -v gemini &>/dev/null; then
-        err "Gemini CLI not installed. Install: npm i -g @google/gemini-cli"
+    # NOTE 2026-06-23: the legacy Gemini CLI was SUNSET on 2026-06-18 — it no longer
+    # serves Google AI Pro/Ultra/free subscription requests (only paid API keys do).
+    # The GA replacement on our AI Ultra OAuth is the Antigravity CLI (`agy`). So this
+    # check now requires `agy`, NOT the dead `gemini` binary (which may still sit on
+    # disk and would otherwise pass `command -v gemini` while every call fails at
+    # runtime — superscar #2 "green-but-dead"). run_gemini() routes through `agy -p`.
+    if ! command -v "$AGY_BIN" &>/dev/null; then
+        err "Antigravity CLI (agy) not installed or not on PATH. Expected: $AGY_BIN"
+        err "agy replaced the Gemini CLI on 2026-06-18 for AI Ultra subscriptions."
         exit 1
-    fi
-    # Check if authenticated (gemini stores creds after first OAuth)
-    if [ ! -d "$HOME/.gemini" ] && [ ! -d "$HOME/.config/gemini" ]; then
-        warn "Gemini may need first-time auth. Run 'gemini' interactively first."
     fi
 }
 
@@ -301,36 +305,38 @@ require_aider() {
 # Core runners
 # ═══════════════════════════════════════════════════════
 run_gemini() {
+    # ADAPTER (2026-06-23): the legacy Gemini CLI was sunset on 2026-06-18 (no longer
+    # serves AI Ultra subscription requests). This function keeps its name + signature
+    # — run_gemini "<mode>" "<prompt>" [timeout] — so all 13 existing call-sites and the
+    # NLM fallbacks keep working unchanged, but it now routes through `agy -p` (the
+    # Antigravity CLI on our AI Ultra OAuth), exactly the print-mode path that
+    # nb-curator-daily.sh and wr3_reflexion_synthesis.py already use in prod.
     local mode="$1"
     local prompt="$2"
     local timeout="${3:-120}"
     require_gemini
     check_safety "$prompt"
 
-    # Model cascade: Primary → Fallback → Fast
-    local models=("$GEMINI_MODEL_PRIMARY" "$GEMINI_MODEL_FALLBACK" "$GEMINI_MODEL_FAST")
-    local model_names=("3.1 Pro (1M ctx)" "2.5 Pro (fallback)" "2.5 Flash (fast)")
+    # Mode → behavioral framing prefix (agy -p is a single-shot prompt, no -m/--sandbox).
+    local framing
+    case "$mode" in
+        review|scan)        framing="Act as a code reviewer. " ;;
+        redteam)            framing="Act as an adversarial red-team reviewer; try to falsify the proposed solution. " ;;
+        explore|investigate) framing="Act as a codebase investigator: trace dependencies, map architecture, cite file:line. " ;;
+        search)             framing="Act as a web researcher; provide a summary with sources and citations. " ;;
+        docs)               framing="Generate documentation as markdown; do NOT modify any files. " ;;
+        explain)            framing="Explain clearly and concisely. " ;;
+        vision)             framing="Read and analyze the referenced file. " ;;
+        *)                  framing="" ;;
+    esac
 
-    local start_time exit_code output attempt=0
+    local start_time exit_code output
     start_time=$(date +%s)
 
-    for i in 0 1 2; do
-        local model="${models[$i]}"
-        local name="${model_names[$i]}"
-        attempt=$((attempt + 1))
-
-        log "Gemini $name → $mode [sandbox + plan, model=$model]"
-        output=$(run_with_timeout "$timeout" $GEMINI_BIN -m "$model" --sandbox --approval-mode plan -p "$prompt" -o text 2>&1) && exit_code=0 || exit_code=$?
-
-        # Check if it's a rate limit / capacity error → try next model
-        if [ "$exit_code" -ne 0 ] && echo "$output" | grep -qiE "429|RESOURCE_EXHAUSTED|capacity|ModelNotFound|not found"; then
-            if [ "$i" -lt 2 ]; then
-                warn "Model $model unavailable (429/404), falling back to ${models[$((i+1))]}..."
-                continue
-            fi
-        fi
-        break  # Success or non-retryable error
-    done
+    # agy reads the prompt from STDIN (the prod pattern in nb-curator-daily.sh and
+    # wr3_reflexion_synthesis.py); flags after -p are agy flags, NOT the prompt.
+    log "Antigravity (agy) → $mode [print mode, timeout=${timeout}s]"
+    output=$(printf '%s' "${framing}${prompt}" | run_with_timeout "$timeout" "$AGY_BIN" -p --print-timeout "${timeout}s" 2>&1) && exit_code=0 || exit_code=$?
 
     local duration=$(( $(date +%s) - start_time ))
     save_output "gemini-$mode" "$output" "$duration"
@@ -338,10 +344,10 @@ run_gemini() {
     if [ "$exit_code" -eq 0 ]; then
         echo "$output"
     elif [ "$exit_code" -eq 124 ]; then
-        err "TIMEOUT: Gemini did not respond in ${timeout}s (tried $attempt models)"
+        err "TIMEOUT: agy did not respond in ${timeout}s (mode=$mode)"
         return 1
     else
-        err "Gemini failed (exit $exit_code) after ${duration}s (tried $attempt models)"
+        err "agy failed (exit $exit_code) after ${duration}s (mode=$mode)"
         echo "$output"
         return 1
     fi
@@ -496,7 +502,7 @@ case "$CMD" in
             log "NLM Oracolo → NB-1 query [timeout=120s]"
             output=$("$NLM_BIN" notebook query "$NB1_ID" "$PROMPT" --json --timeout 120 2>&1) && ec=0 || ec=$?
         else
-            warn "nlm CLI not found at $NLM_BIN. Falling back to gemini-explore..."
+            warn "nlm CLI not found at $NLM_BIN. Falling back to agy explore..."
             output=$(run_gemini "explore" "Consulta il codebase Nuzantara per rispondere: $PROMPT. Cita file e path specifici." 180) && ec=0 || ec=$?
         fi
         duration=$(( $(date +%s) - start ))
@@ -553,7 +559,7 @@ case "$CMD" in
             log "NLM Oracolo → $NB_TAG ($nb_id)"
             output=$("$NLM_BIN" notebook query "$nb_id" "$QUESTION" --json --timeout 120 2>&1) && ec=0 || ec=$?
         else
-            warn "nlm CLI not found. Falling back to gemini-explore..."
+            warn "nlm CLI not found. Falling back to agy explore..."
             output=$(run_gemini "explore" "$QUESTION" 180) && ec=0 || ec=$?
         fi
         duration=$(( $(date +%s) - start ))
@@ -583,7 +589,7 @@ case "$CMD" in
                 info "Import when done: $NLM_BIN research import"
             fi
         else
-            warn "nlm CLI not found. Falling back to gemini-search..."
+            warn "nlm CLI not found. Falling back to agy search..."
             output=$(run_gemini "search" "Deep research: $PROMPT" 120) && ec=0 || ec=$?
         fi
         duration=$(( $(date +%s) - start ))
@@ -951,8 +957,8 @@ Working directory: apps/backend-rag/" 300
         check_safety "$PROMPT"
         log "COMBO: Gemini analyzes → Codex fixes (sandbox)"
 
-        info "Step 1/2: Gemini analyzing..."
-        ANALYSIS=$($GEMINI_BIN -m "$GEMINI_MODEL" --sandbox --approval-mode plan -p "Analyze and list ALL issues with specific file:line references for: $PROMPT. Output as a numbered list of issues with exact file paths and line numbers." -o text 2>&1) || true
+        info "Step 1/2: agy (Antigravity) analyzing..."
+        ANALYSIS=$(run_gemini "explore" "Analyze and list ALL issues with specific file:line references for: $PROMPT. Output as a numbered list of issues with exact file paths and line numbers." 300 2>&1) || true
 
         echo ""
         info "Gemini found:"
