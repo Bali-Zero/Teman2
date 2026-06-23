@@ -216,6 +216,41 @@ Summary:"""
         # Inject at beginning
         return [summary_message, *recent_messages]
 
+    async def manage_context(
+        self,
+        conversation_history: list[dict],
+        query: str | None = None,
+        current_summary: str | None = None,
+    ) -> list[dict]:
+        """
+        Trim and summarize conversation history for RAG orchestration.
+
+        The current query is accepted for the orchestration contract; trimming is
+        driven by the history size and existing summary state.
+        """
+        if not conversation_history:
+            return []
+
+        trim_result = self.trim_conversation_history(
+            conversation_history,
+            current_summary=current_summary,
+        )
+        recent_messages = trim_result.get("trimmed_messages", conversation_history)
+
+        if not trim_result.get("needs_summarization"):
+            return recent_messages
+
+        messages_to_summarize = trim_result.get("messages_to_summarize", [])
+        try:
+            summary = await self.generate_summary(
+                messages_to_summarize,
+                existing_summary=trim_result.get("context_summary") or current_summary,
+            )
+            return self.inject_summary_into_history(recent_messages, summary)
+        except Exception as e:
+            logger.warning("⚠️ [Context] manage_context summarization failed: %s", e)
+            return recent_messages
+
     @staticmethod
     def _cache_key(messages: list[dict], existing_summary: str | None) -> str:
         """Compute a stable hash key for a set of messages + existing summary."""
@@ -267,11 +302,24 @@ Update the summary to include both the previous context and new messages."""
         try:
             logger.info(f"📝 [Summary] Generating summary for {len(messages)} messages...")
 
-            summary = await self.zantara_client.generate_text(
-                prompt=prompt,
-                max_tokens=8192,
-                temperature=0.3,
-            )
+            generate_text = getattr(self.zantara_client, "generate_text", None)
+            if callable(generate_text):
+                summary = await generate_text(
+                    prompt=prompt,
+                    max_tokens=8192,
+                    temperature=0.3,
+                )
+            else:
+                chat_async = getattr(self.zantara_client, "chat_async", None)
+                if not callable(chat_async):
+                    raise AttributeError("ZANTARA AI client has no text generation method")
+                response = await chat_async(
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=8192,
+                    temperature=0.3,
+                    system="Summarize conversation history concisely for future context.",
+                )
+                summary = response.get("text", "") if isinstance(response, dict) else str(response)
 
             result = summary.strip()
             logger.info(f"✅ [Summary] Generated ({len(result)} chars)")
