@@ -114,6 +114,7 @@ def test_agent_registered_in_registry():
     agent = get_agent("lhkpn_harvester")
     assert agent is not None
     assert agent.name == "lhkpn_harvester"
+    assert agent.model == "ollama:qwen3.5:9b"
     assert agent.layer == "harvester"
     # Tools are functions; check by name
     fn_names = {fn.__name__ for fn in agent.functions}

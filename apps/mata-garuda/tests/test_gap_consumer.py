@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from mata_garuda.workers.gap_consumer import (
     GAP_DISPATCH,
+    _extract_terminal_case_status,
     process_gap,
     run_gap_consumer,
 )
@@ -103,9 +104,32 @@ def test_process_gap_unknown_type_skips_with_ack():
     fake_xack.assert_called_once()
 
 
-def test_process_gap_dispatches_lhkpn_for_missing_nip():
-    """gap.missing_nip → lhkpn_harvester."""
-    fake_dispatch = MagicMock(return_value={"case_resolved": True})
+def test_terminal_case_status_ignores_intermediate_false_payload():
+    """Tool payloads with case_resolved=False are not terminal success."""
+    messages = [
+        {"role": "tool", "content": "[harvest] {'case_resolved': False}"},
+        {"role": "tool", "content": "Case not resolved. Reason: no NIP. Insight: stop"},
+    ]
+
+    resolved, reason = _extract_terminal_case_status(messages)
+
+    assert resolved is False
+    assert "Case not resolved" in reason
+
+
+def test_terminal_case_status_requires_explicit_status_tool():
+    """A run without case_resolved/case_not_resolved is a failure signal."""
+    resolved, reason = _extract_terminal_case_status([
+        {"role": "assistant", "content": "I stopped without calling a status tool."}
+    ])
+
+    assert resolved is False
+    assert reason == "missing_terminal_case_status"
+
+
+def test_process_gap_skips_lhkpn_missing_nip_without_dispatch():
+    """gap.missing_nip is structurally unresolvable in the current KPK portal."""
+    fake_dispatch = MagicMock()
     fake_xack = MagicMock()
 
     result = process_gap(
@@ -116,14 +140,72 @@ def test_process_gap_dispatches_lhkpn_for_missing_nip():
         xack=fake_xack,
     )
 
+    fake_dispatch.assert_not_called()
+    fake_xack.assert_called_once()
+    assert result["status"] == "skipped"
+    assert result["agent"] == "lhkpn_harvester"
+    assert result["reason"] == "lhkpn_portal_search_does_not_return_nip"
+
+
+def test_process_gap_skips_lhkpn_missing_lhkpn_without_nip():
+    """gap.missing_lhkpn needs a NIP before it is worth dispatching."""
+    fake_dispatch = MagicMock()
+    fake_xack = MagicMock()
+
+    result = process_gap(
+        msg_id="3-1",
+        gap_type="gap.missing_lhkpn",
+        payload={"entity_name": "redacted", "entity_nip": ""},
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
+    fake_dispatch.assert_not_called()
+    fake_xack.assert_called_once()
+    assert result["status"] == "skipped"
+    assert result["reason"] == "lhkpn_profile_fetch_requires_existing_nip"
+
+
+def test_process_gap_dispatches_lhkpn_missing_lhkpn_when_nip_present():
+    """gap.missing_lhkpn with an existing NIP remains dispatchable."""
+    fake_dispatch = MagicMock(return_value={"case_resolved": True})
+    fake_xack = MagicMock()
+
+    result = process_gap(
+        msg_id="3-2",
+        gap_type="gap.missing_lhkpn",
+        payload={"entity_name": "redacted", "entity_nip": "123"},
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
     fake_dispatch.assert_called_once()
     call_kwargs = fake_dispatch.call_args.kwargs
     assert call_kwargs["agent_name"] == "lhkpn_harvester"
-    assert call_kwargs["payload"]["person_name"] == "Budi"
-    assert call_kwargs["payload"]["_gap_type"] == "gap.missing_nip"
+    assert call_kwargs["payload"]["entity_nip"] == "123"
+    assert call_kwargs["payload"]["_gap_type"] == "gap.missing_lhkpn"
     assert result["status"] == "resolved"
     assert result["agent"] == "lhkpn_harvester"
     fake_xack.assert_called_once()
+
+
+def test_process_gap_skips_lhkpn_missing_angkatan():
+    """Current LHKPN source cannot derive angkatan, so avoid retry loops."""
+    fake_dispatch = MagicMock()
+    fake_xack = MagicMock()
+
+    result = process_gap(
+        msg_id="3-3",
+        gap_type="gap.missing_angkatan",
+        payload={"entity_name": "redacted", "entity_nip": "123"},
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
+    fake_dispatch.assert_not_called()
+    fake_xack.assert_called_once()
+    assert result["status"] == "skipped"
+    assert result["reason"] == "lhkpn_portal_does_not_expose_angkatan"
 
 
 def test_process_gap_dispatches_regulation_watcher_for_stale_official():
@@ -153,8 +235,8 @@ def test_process_gap_does_not_ack_on_case_not_resolved():
 
     result = process_gap(
         msg_id="5-0",
-        gap_type="gap.missing_nip",
-        payload={"person_name": "x"},
+        gap_type="gap.missing_lhkpn",
+        payload={"entity_name": "redacted", "entity_nip": "123"},
         dispatch_agent=fake_dispatch,
         xack=fake_xack,
     )
@@ -170,8 +252,8 @@ def test_process_gap_dispatch_exception_caught_no_ack():
 
     result = process_gap(
         msg_id="6-0",
-        gap_type="gap.missing_nip",
-        payload={},
+        gap_type="gap.missing_lhkpn",
+        payload={"entity_nip": "123"},
         dispatch_agent=fake_dispatch,
         xack=fake_xack,
     )
@@ -184,9 +266,9 @@ def test_run_gap_consumer_processes_batch():
     """run_gap_consumer reads N messages and processes each."""
     msgs = [
         {"id": "10-0", "data": {
-            "id": "uuid-10", "type": "gap.missing_nip", "source": "gap_detector",
+            "id": "uuid-10", "type": "gap.missing_lhkpn", "source": "gap_detector",
             "timestamp": "2026-04-16T00:00:00+08:00", "priority": "3",
-            "payload": '{"person_name": "A"}',
+            "payload": '{"entity_name": "A", "entity_nip": "123"}',
         }},
         {"id": "11-0", "data": {
             "id": "uuid-11", "type": "gap.stale_official", "source": "gap_detector",
@@ -235,7 +317,7 @@ def test_run_gap_consumer_handles_invalid_json_payload():
     """Invalid JSON in payload field → empty dict, still processes."""
     msgs = [
         {"id": "12-0", "data": {
-            "id": "uuid-12", "type": "gap.missing_nip", "source": "gap_detector",
+            "id": "uuid-12", "type": "gap.stale_official", "source": "gap_detector",
             "timestamp": "2026-04-16T00:00:00+08:00", "priority": "3",
             "payload": "not json {{{",
         }},
@@ -256,15 +338,15 @@ def test_run_gap_consumer_handles_invalid_json_payload():
     # dispatch was called even with empty payload (only _gap_type added)
     fake_dispatch.assert_called_once()
     payload = fake_dispatch.call_args.kwargs["payload"]
-    assert payload == {"_gap_type": "gap.missing_nip"}
+    assert payload == {"_gap_type": "gap.stale_official"}
 
 
 # ── legacy stream end-to-end (coerce + dispatch) ───────────────────────
 
 
-def test_run_gap_consumer_routes_legacy_missing_nip_to_lhkpn():
+def test_run_gap_consumer_skips_legacy_missing_nip_without_dispatch():
     """Legacy entry (gap_type=missing_attribute, attribute=nip) reaches
-    lhkpn_harvester via canonical translation."""
+    a terminal LHKPN skip because KPK search no longer returns NIP."""
     msgs = [
         {
             "id": "100-0",
@@ -273,7 +355,7 @@ def test_run_gap_consumer_routes_legacy_missing_nip_to_lhkpn():
                 "gap_type": "missing_attribute",
                 "attribute": "nip",
                 "entity_type": "Official",
-                "entity_name": "Felucia Sengky Ratna",
+                "entity_name": "redacted",
                 "entity_nip": "",
                 "priority": "2",
                 "ttl_seconds": "86400",
@@ -293,13 +375,9 @@ def test_run_gap_consumer_routes_legacy_missing_nip_to_lhkpn():
     )
 
     assert stats["read"] == 1
-    assert stats["resolved"] == 1
-    assert fake_dispatch.call_args.kwargs["agent_name"] == "lhkpn_harvester"
-    payload = fake_dispatch.call_args.kwargs["payload"]
-    # Legacy fields preserved + audit marker present
-    assert payload["entity_name"] == "Felucia Sengky Ratna"
-    assert payload["_legacy_source"] == "nexus:gaps:pre-2026-04-14"
-    assert payload["_gap_type"] == "gap.missing_nip"
+    assert stats["skipped"] == 1
+    fake_dispatch.assert_not_called()
+    fake_xack.assert_called_once()
 
 
 def test_run_gap_consumer_drains_unmappable_legacy_with_ack():
@@ -345,7 +423,7 @@ def test_run_gap_consumer_mixed_canonical_and_legacy_batch():
         # legacy mappable
         {"id": "201-0", "data": {
             "gap_type": "missing_attribute", "attribute": "lhkpn",
-            "entity_name": "Bar", "priority": "2",
+            "entity_name": "Bar", "entity_nip": "123", "priority": "2",
         }},
         # legacy drained
         {"id": "202-0", "data": {

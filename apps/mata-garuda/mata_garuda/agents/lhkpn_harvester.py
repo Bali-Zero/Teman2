@@ -119,7 +119,7 @@ def harvest_lhkpn_by_name(name: str) -> dict[str, Any]:
 
 
 @register_agent(name="lhkpn_harvester", func_name="get_lhkpn_harvester")
-def get_lhkpn_harvester(model: str = "claude") -> Agent:
+def get_lhkpn_harvester(model: str = "ollama:qwen3.5:9b") -> Agent:
     """Harvester agent for LHKPN wealth declarations."""
 
     def instructions(context_variables: dict) -> str:
