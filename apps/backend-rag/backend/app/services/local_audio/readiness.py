@@ -10,6 +10,9 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import ParseResult, urlparse, urlunparse
+
+import httpx
 
 from backend.app.services.local_audio import LOCAL_ONLY_PROVIDER_POLICY, ProviderStatus
 from backend.app.services.local_audio.chatterbox import (
@@ -41,6 +44,13 @@ OFFLINE_ENV_GUARDS = {
     "HF_HUB_OFFLINE": "1",
     "TRANSFORMERS_OFFLINE": "1",
 }
+LOOPBACK_HEALTH_HOSTS = {"localhost", "127.0.0.1", "::1", "0:0:0:0:0:0:0:1"}
+LIVEKIT_HEALTHY_TEXT = {"healthy", "ready", "live", "running"}
+PKUSEG_REQUIRED_FILES = (
+    "spacy_ontonotes.zip",
+    "spacy_ontonotes/features.msgpack",
+    "spacy_ontonotes/weights.npz",
+)
 
 
 @dataclass(frozen=True)
@@ -209,9 +219,10 @@ def _build_static_checks(
         _chatterbox_dependency_check("soundfile"),
         _chatterbox_dependency_check("torch"),
         _chatterbox_checkpoint_check(settings),
+        _chatterbox_pkuseg_asset_check(mode, settings),
         _chatterbox_config_check(settings),
         _offline_env_check(mode),
-        _livekit_agent_check(mode),
+        _livekit_agent_check(mode, settings),
     ]
     return checks
 
@@ -517,6 +528,31 @@ def _chatterbox_config_check(settings: Any) -> ReadinessCheck:
     )
 
 
+def _chatterbox_pkuseg_asset_check(mode: ReadinessMode, settings: Any) -> ReadinessCheck:
+    configured_cache_dir = _path_or_none(_get_str(settings, "voice_concierge_pkuseg_cache_dir"))
+    cache_dir = configured_cache_dir or (Path.home() / ".pkuseg")
+    missing = [relative for relative in PKUSEG_REQUIRED_FILES if not (cache_dir / relative).is_file()]
+    metadata = {
+        "cache_dir": str(cache_dir),
+        "required_count": len(PKUSEG_REQUIRED_FILES),
+        "missing_count": len(missing),
+        "missing_first": missing[0] if missing else None,
+    }
+    if missing:
+        return ReadinessCheck(
+            name="chatterbox_pkuseg_asset",
+            status="fail" if mode == "deep" else "warn",
+            detail=f"pkuseg asset cache incomplete: {missing[0]}",
+            metadata=metadata,
+        )
+    return ReadinessCheck(
+        name="chatterbox_pkuseg_asset",
+        status="pass",
+        detail=f"pkuseg asset cache ready: {cache_dir}",
+        metadata=metadata,
+    )
+
+
 def _offline_env_check(mode: ReadinessMode) -> ReadinessCheck:
     missing_or_wrong = [
         key for key, expected in OFFLINE_ENV_GUARDS.items() if os.environ.get(key) != expected
@@ -536,17 +572,92 @@ def _offline_env_check(mode: ReadinessMode) -> ReadinessCheck:
     )
 
 
-def _livekit_agent_check(mode: ReadinessMode) -> ReadinessCheck:
-    if mode == "deep":
+def _livekit_agent_check(mode: ReadinessMode, settings: Any) -> ReadinessCheck:
+    configured_url = _get_str(settings, "voice_concierge_livekit_worker_health_url")
+    timeout_seconds = _get_float_default(
+        settings,
+        "voice_concierge_livekit_worker_health_timeout_seconds",
+        2.0,
+    )
+    url_check = _validate_livekit_health_url(configured_url, timeout_seconds)
+    metadata = {
+        "health_url": _sanitize_url(configured_url),
+        "timeout_seconds": timeout_seconds,
+        "expected_agent_name": _get_str(settings, "voice_concierge_livekit_agent_name")
+        or "voice-concierge-local",
+    }
+    if url_check is not None:
+        if mode == "deep":
+            return ReadinessCheck(
+                name="livekit_agent",
+                status="fail",
+                detail=url_check.detail,
+                metadata=metadata,
+            )
+        if url_check.status == "fail":
+            return ReadinessCheck(
+                name="livekit_agent",
+                status="fail",
+                detail=url_check.detail,
+                metadata=metadata,
+            )
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="warn",
+            detail=url_check.detail,
+            metadata=metadata,
+        )
+
+    if mode == "static":
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="pass",
+            detail="LiveKit worker health endpoint is configured for local loopback",
+            metadata=metadata,
+        )
+
+    health_url = configured_url or ""
+    try:
+        response = httpx.get(
+            health_url,
+            timeout=timeout_seconds,
+            follow_redirects=False,
+            trust_env=False,
+        )
+    except httpx.HTTPError as exc:
         return ReadinessCheck(
             name="livekit_agent",
             status="fail",
-            detail="LiveKit worker health is not wired into this doctor yet; production promotion is blocked",
+            detail=f"LiveKit worker health request failed: {type(exc).__name__}",
+            metadata=metadata,
         )
+
+    response_metadata = {**metadata, "status_code": response.status_code}
+    if response.status_code < 200 or response.status_code >= 300:
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail=f"LiveKit worker health returned HTTP {response.status_code}",
+            metadata=response_metadata,
+        )
+
+    payload_healthy = _livekit_health_payload_is_healthy(
+        response,
+        expected_agent_name=str(metadata["expected_agent_name"]),
+    )
+    if not payload_healthy:
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail="LiveKit worker health payload did not report healthy",
+            metadata=response_metadata,
+        )
+
     return ReadinessCheck(
         name="livekit_agent",
-        status="warn",
-        detail="LiveKit worker health is not wired into this doctor yet; deep mode blocks production promotion",
+        status="pass",
+        detail="LiveKit worker health is healthy",
+        metadata=response_metadata,
     )
 
 
@@ -604,6 +715,105 @@ def _path_or_none(value: str | None) -> Path | None:
     return Path(value).expanduser()
 
 
+def _validate_livekit_health_url(
+    value: str | None,
+    timeout_seconds: float,
+) -> ReadinessCheck | None:
+    if not value or not value.strip():
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="warn",
+            detail="LiveKit worker health URL is not configured; health check not wired",
+        )
+    if timeout_seconds <= 0:
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail="LiveKit worker health timeout must be positive",
+        )
+
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail="LiveKit worker health URL must be an HTTP(S) loopback URL",
+        )
+    if parsed.hostname.lower() not in LOOPBACK_HEALTH_HOSTS:
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail="LiveKit worker health URL must use a loopback host",
+        )
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail="LiveKit worker health URL must not include credentials, query, or fragment",
+        )
+    return None
+
+
+def _sanitize_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.netloc:
+        return urlunparse(
+            ParseResult(
+                scheme=parsed.scheme,
+                netloc=parsed.netloc,
+                path=parsed.path,
+                params="",
+                query="",
+                fragment="",
+            ),
+        )
+    return value
+
+
+def _livekit_health_payload_is_healthy(
+    response: httpx.Response,
+    *,
+    expected_agent_name: str,
+) -> bool:
+    try:
+        payload = response.json()
+    except ValueError:
+        return False
+
+    if isinstance(payload, dict):
+        negative_markers = (
+            "ok",
+            "healthy",
+            "ready",
+            "livekit_connected",
+            "worker_registered",
+        )
+        if any(payload.get(marker) is False for marker in negative_markers):
+            return False
+        worker_metadata = payload.get("worker_metadata")
+        worker_agent_name = (
+            worker_metadata.get("agent_name") if isinstance(worker_metadata, dict) else None
+        )
+        reported_agent_names = {
+            agent_name
+            for agent_name in (payload.get("agent_name"), worker_agent_name)
+            if isinstance(agent_name, str)
+        }
+        if expected_agent_name not in reported_agent_names:
+            return False
+        boolean_markers = ("ok", "healthy", "ready")
+        if any(payload.get(marker) is True for marker in boolean_markers):
+            return True
+        status = payload.get("status") or payload.get("state")
+        if isinstance(status, str) and status.strip().lower() in LIVEKIT_HEALTHY_TEXT:
+            return True
+        return False
+
+    return False
+
+
 def _get_str(settings: Any, name: str) -> str | None:
     value = getattr(settings, name, None)
     if value is None:
@@ -621,6 +831,11 @@ def _get_float(settings: Any, name: str) -> float:
     return float(value)
 
 
+def _get_float_default(settings: Any, name: str, default: float) -> float:
+    value = getattr(settings, name, default)
+    return float(value)
+
+
 def _has_failure(checks: list[ReadinessCheck]) -> bool:
     return any(check.status == "fail" for check in checks)
 
@@ -634,6 +849,7 @@ __all__ = [
     "MIN_CHATTERBOX_WEIGHT_BYTES",
     "MIN_WHISPER_MODEL_BYTES",
     "OFFLINE_ENV_GUARDS",
+    "PKUSEG_REQUIRED_FILES",
     "VOICE_RUNTIME_HOSTS",
     "ReadinessCheck",
     "ReadinessReport",

@@ -253,6 +253,10 @@ class Settings(BaseSettings):
         default=60.0,
         description="Local Chatterbox synthesis timeout in seconds.",
     )
+    voice_concierge_pkuseg_cache_dir: str | None = Field(
+        default=None,
+        description="Optional local pkuseg cache directory required by Chatterbox Chinese tokenization. Defaults to ~/.pkuseg.",
+    )
     voice_concierge_silero_module: str = Field(
         default="silero_vad",
         description="Python module marker for Silero VAD runtime availability.",
@@ -268,6 +272,18 @@ class Settings(BaseSettings):
     voice_concierge_silero_timeout_seconds: float = Field(
         default=15.0,
         description="Local Silero VAD timeout in seconds.",
+    )
+    voice_concierge_livekit_worker_health_url: str | None = Field(
+        default=None,
+        description="Loopback health URL for the local LiveKit voice worker. Set via VOICE_CONCIERGE_LIVEKIT_WORKER_HEALTH_URL.",
+    )
+    voice_concierge_livekit_worker_health_timeout_seconds: float = Field(
+        default=2.0,
+        description="Local LiveKit voice worker health-check timeout in seconds.",
+    )
+    voice_concierge_livekit_agent_name: str = Field(
+        default="voice-concierge-local",
+        description="Expected local LiveKit worker agent name in the readiness health payload.",
     )
 
     # ========================================

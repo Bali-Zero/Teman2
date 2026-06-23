@@ -10,6 +10,7 @@ import multiprocessing as mp
 import os
 import tempfile
 import threading
+import wave
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -278,7 +279,11 @@ def _detect_silero_segments_in_current_process(
     with _forced_offline_runtime_env():
         silero = importlib.import_module(module_name)
         model = _get_silero_model(module_name)
-        wav = silero.read_audio(str(audio_path), sampling_rate=sampling_rate)
+        wav = _read_audio_for_silero(
+            silero,
+            audio_path,
+            sampling_rate=sampling_rate,
+        )
         timestamps = silero.get_speech_timestamps(
             wav,
             model,
@@ -290,6 +295,60 @@ def _detect_silero_segments_in_current_process(
         (float(timestamp["start"]), float(timestamp["end"]))
         for timestamp in timestamps
     ]
+
+
+class _UnsupportedWavForOfflineDecode(Exception):
+    """Raised when stdlib WAV decoding cannot safely handle the input."""
+
+
+def _read_audio_for_silero(silero: Any, audio_path: Path, *, sampling_rate: int) -> Any:
+    try:
+        return _read_pcm_wav_audio(audio_path, sampling_rate=sampling_rate)
+    except (
+        EOFError,
+        OSError,
+        ValueError,
+        wave.Error,
+        _UnsupportedWavForOfflineDecode,
+    ):
+        return silero.read_audio(str(audio_path), sampling_rate=sampling_rate)
+
+
+def _read_pcm_wav_audio(audio_path: Path, *, sampling_rate: int) -> Any:
+    import torch
+
+    with wave.open(str(audio_path), "rb") as wav_file:
+        channels = wav_file.getnchannels()
+        sample_width = wav_file.getsampwidth()
+        source_rate = wav_file.getframerate()
+        frame_count = wav_file.getnframes()
+        frames = wav_file.readframes(frame_count)
+
+    if channels < 1 or sample_width != 2 or source_rate <= 0:
+        raise _UnsupportedWavForOfflineDecode
+
+    if not frames:
+        return torch.zeros(0, dtype=torch.float32)
+
+    waveform = torch.frombuffer(bytearray(frames), dtype=torch.int16).to(torch.float32)
+    complete_samples = waveform.numel() - (waveform.numel() % channels)
+    waveform = waveform[:complete_samples]
+    if waveform.numel() == 0:
+        return torch.zeros(0, dtype=torch.float32)
+
+    waveform = waveform / 32768.0
+    if channels > 1:
+        waveform = waveform.reshape(-1, channels).mean(dim=1)
+    if source_rate == sampling_rate:
+        return waveform
+
+    target_samples = max(1, round(waveform.numel() * sampling_rate / source_rate))
+    return torch.nn.functional.interpolate(
+        waveform.reshape(1, 1, -1),
+        size=target_samples,
+        mode="linear",
+        align_corners=False,
+    ).reshape(-1)
 
 
 def _get_silero_model(module_name: str) -> Any:

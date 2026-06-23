@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 from collections.abc import Sequence
@@ -33,10 +34,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    report = build_local_audio_readiness_report(mode=args.mode)
     if args.json:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = build_local_audio_readiness_report(mode=args.mode)
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
+        report = build_local_audio_readiness_report(mode=args.mode)
         print(report.format_text())
     return 0 if report.ok else 1
 

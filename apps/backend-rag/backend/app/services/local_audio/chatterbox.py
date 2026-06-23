@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import importlib.util
+import inspect
 import multiprocessing as mp
 import os
 import threading
@@ -434,14 +435,24 @@ def _get_chatterbox_model(
             return _CHATTERBOX_MODEL
 
         mtl_tts = importlib.import_module(f"{module_name}.mtl_tts")
-        _CHATTERBOX_MODEL = mtl_tts.ChatterboxMultilingualTTS.from_local(
-            model_path,
-            device=device,
-            t3_model=t3_model,
-        )
+        from_local = mtl_tts.ChatterboxMultilingualTTS.from_local
+        if not _from_local_supports_t3_model(from_local):
+            raise RuntimeError("Chatterbox runtime does not support t3_model selector")
+        from_local_kwargs: dict[str, Any] = {"device": device}
+        from_local_kwargs["t3_model"] = t3_model
+        _CHATTERBOX_MODEL = from_local(model_path, **from_local_kwargs)
         _CHATTERBOX_MODEL_KEY = model_key
 
         return _CHATTERBOX_MODEL
+
+
+
+def _from_local_supports_t3_model(from_local: Any) -> bool:
+    try:
+        parameters = inspect.signature(from_local).parameters
+    except (TypeError, ValueError):
+        return True
+    return "t3_model" in parameters
 
 
 def _select_device(torch_module: Any) -> str:
