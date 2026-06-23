@@ -1182,6 +1182,14 @@ organs:
     type: cron
     expected_hb_seconds: 1800
     owner_module: apps/war-room/scripts/wr2_fact_extractor.py
+    # A2 Heartbeat Semantico (self-loop Anello 2). fact_extractor appends ONE JSONL
+    # line per successfully fact-checked draft and writes NOTHING on a no-work run
+    # (no ready drafts -> early return BEFORE _log_telemetry). So a frozen [size,sha256]
+    # across STARVED_TICKS=3 ticks = 3 consecutive runs that fact-checked zero drafts
+    # while the cron still fires green — the green!=working stall the bare heartbeat
+    # (ts fresh + status ok) cannot see. CONTENT-hash, not mtime: per-line work ts
+    # only, no top-level run-timestamp, so an unchanged file stays byte-identical.
+    output_artifact: ~/logs/wr2_fact_extractor_telemetry.jsonl
     dependencies:
       - wr2.supervisor
       - infra.postgres
