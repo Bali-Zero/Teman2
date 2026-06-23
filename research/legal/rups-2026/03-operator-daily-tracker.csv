@@ -1,3 +1,8 @@
-Client,PT Name,Entity Type,FY-end,RUPS Status,RUPS / Circular Date,Deed Signed Date,Notary,Filing Deadline (deed +30d),SABH Filing Date (actual),Filing Evidence (link),UBO Checked,Owner (operator),Last Update,Status,Notes / Blocker
-EXAMPLE — delete this row,PT Contoh Bali,PT PMA,31 Dec 2025,Accounts in,,,Notaris Dewi SH,,,,No,Adit,2026-06-23,In progress,Audit threshold check pending — turnover near IDR 50bn
-,,,,,,,,,,,,,,,
+Operator,Client,PT Name,RUPS Status,Deed Signed,Filing Deadline,SABH Filed,Owner Updated,Notes
+Ari,,,Not started,,,,,
+Adit,,,Not started,,,,,
+Surya,,,Not started,,,,,
+Sahira,,,Not started,,,,,
+Damar,,,Not started,,,,,
+Vino,,,Not started,,,,,
+Krisna,,,Not started,,,,,
