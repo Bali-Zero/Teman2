@@ -7,7 +7,6 @@ import importlib
 import importlib.util
 import multiprocessing as mp
 import os
-import queue
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -308,11 +307,11 @@ def _run_chatterbox_generation_process(
         raise TimeoutError("Chatterbox generate concurrency limit reached")
 
     context = mp.get_context("spawn")
-    result_queue = context.Queue(maxsize=1)
+    result_receiver, result_sender = context.Pipe(duplex=False)
     process = context.Process(
         target=_run_chatterbox_generation_child,
         args=(
-            result_queue,
+            result_sender,
             text,
             str(output_path),
             module_name,
@@ -325,6 +324,7 @@ def _run_chatterbox_generation_process(
 
     try:
         process.start()
+        result_sender.close()
         process.join(timeout_seconds)
         if process.is_alive():
             process.terminate()
@@ -334,9 +334,14 @@ def _run_chatterbox_generation_process(
                 process.join(timeout=1.0)
             raise TimeoutError(f"Chatterbox generate timed out after {timeout_seconds}s")
 
+        if not result_receiver.poll():
+            exit_code = process.exitcode
+            raise RuntimeError(
+                f"Chatterbox generate process exited without result: {exit_code}",
+            )
         try:
-            result = result_queue.get_nowait()
-        except queue.Empty as exc:
+            result = result_receiver.recv()
+        except EOFError as exc:
             exit_code = process.exitcode
             raise RuntimeError(
                 f"Chatterbox generate process exited without result: {exit_code}",
@@ -349,13 +354,13 @@ def _run_chatterbox_generation_process(
             raise RuntimeError(f"Chatterbox generate failed: {result[1]}")
         raise RuntimeError("Chatterbox generate returned an invalid result")
     finally:
-        result_queue.close()
-        result_queue.join_thread()
+        result_receiver.close()
+        result_sender.close()
         _CHATTERBOX_PROCESS_SEMAPHORE.release()
 
 
 def _run_chatterbox_generation_child(
-    result_queue: Any,
+    result_sender: Any,
     text: str,
     output_path: str,
     module_name: str,
@@ -372,9 +377,11 @@ def _run_chatterbox_generation_child(
             t3_model=t3_model,
             language_id=language_id,
         )
-        result_queue.put(("ok", None))
+        result_sender.send(("ok", None))
     except BaseException as exc:
-        result_queue.put(("error", type(exc).__name__))
+        result_sender.send(("error", type(exc).__name__))
+    finally:
+        result_sender.close()
 
 
 def _generate_chatterbox_wav_in_current_process(
