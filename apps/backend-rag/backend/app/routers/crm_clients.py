@@ -6,6 +6,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import json
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -30,6 +31,25 @@ from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
 
 logger = get_logger(__name__)
+
+
+def _normalize_phone_digits(raw: str | None) -> str | None:
+    """Reduce a phone to a comparable digit tail for dedup.
+
+    Strips every non-digit, then drops the Indonesian country/trunk prefix
+    (`62` or a leading `0`) so `+62 821-3454-721`, `0821 3454721` and
+    `8213454721` all collapse to the same key. Returns None for empty/too-short
+    input (a 1-2 digit fragment is never a usable dedup key).
+    """
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("62"):
+        digits = digits[2:]
+    elif digits.startswith("0"):
+        digits = digits[1:]
+    return digits if len(digits) >= 6 else None
+
 
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 
@@ -181,6 +201,12 @@ class ClientCreate(BaseModel):
     lead_source: str | None = None  # 'website', 'referral', 'event', 'social_media', etc
     service_interest: list[str] = []  # Services client is interested in
     custom_fields: dict = {}
+    # When a client with the same normalized phone already exists, create_client
+    # returns 409 with the existing match instead of silently spawning a duplicate
+    # (the Trevor-class bug: a team member adds a WhatsApp contact already owned by
+    # someone else). Set True to override for a legitimate shared-phone person
+    # (51 live shared-phone groups exist — spouses / reused numbers).
+    allow_duplicate_phone: bool = False
 
     @field_validator("status")
     @classmethod
@@ -492,6 +518,71 @@ async def create_client(
         if not client_data.get("assigned_to"):
             client_data["assigned_to"] = creator_email
 
+        # Phone dedup gate (not a DB column — strip before insert).
+        allow_dup_phone = bool(client_data.pop("allow_duplicate_phone", False))
+
+        # Phone-keyed dedup: a team member adding a WhatsApp contact that another
+        # owner already has (same number) used to spawn a silent duplicate
+        # (the Trevor-class bug). Block with 409 + the existing match so the UI
+        # can offer "open existing" instead. `allow_duplicate_phone=True` overrides
+        # for legitimate shared-phone people (spouses / reused numbers — 51 live
+        # groups). The auto-promote path already dedups via upsert_client_by_phone;
+        # this closes the manual-create hole.
+        phone_norm = _normalize_phone_digits(client.phone or client.whatsapp)
+        if phone_norm and not allow_dup_phone:
+            # Match on digits-only on BOTH sides: the table stores phone in two
+            # inconsistent shapes (E.164 `+62…` in `phone`, bare digits in
+            # `phone_normalized`), and that drift is part of why duplicates slip
+            # through. Compare normalized-to-digits to catch either shape.
+            async with db_pool.acquire() as conn:
+                # Mirror `_normalize_phone_digits` IN SQL: strip non-digits, then
+                # drop a leading `62` or `0` so both sides collapse to the same
+                # tail. Keeping these two normalizers identical is load-bearing —
+                # if they drift, the gate silently never matches (false safety).
+                dup = await conn.fetchrow(
+                    """
+                    WITH norm AS (
+                        SELECT id, full_name, assigned_to, updated_at,
+                               REGEXP_REPLACE(COALESCE(phone_normalized, phone, ''),
+                                              '\\D', '', 'g') AS digits
+                        FROM clients
+                        WHERE deleted_at IS NULL
+                    )
+                    SELECT id, full_name, assigned_to
+                    FROM norm
+                    WHERE CASE
+                            WHEN digits LIKE '62%' THEN SUBSTRING(digits FROM 3)
+                            WHEN digits LIKE '0%'  THEN SUBSTRING(digits FROM 2)
+                            ELSE digits
+                          END = $1
+                    ORDER BY updated_at DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    phone_norm,
+                )
+            if dup:
+                # Do NOT log the raw phone (UU PDP / Law 2: no PII in clear text —
+                # CodeQL clear-text-logging gate). The existing client id is a
+                # non-PII internal reference and is enough to trace the dedup hit.
+                logger.info(
+                    "create_client phone dedup hit: existing client id=%s",
+                    dup["id"],
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "duplicate_phone",
+                        "message": (
+                            "A client with this phone already exists. Open the "
+                            "existing record, or resend with allow_duplicate_phone "
+                            "to add a separate person on a shared number."
+                        ),
+                        "existing_client_id": dup["id"],
+                        "existing_full_name": dup["full_name"],
+                        "existing_assigned_to": dup["assigned_to"],
+                    },
+                )
+
         # Costruisce i dati opzionali per l'azienda se presenti nel payload
         # NIB-only dedup: match existing company by NIB (unique identifier)
         # NEVER match by name — One Sponsor Policy (SE 3/836/2026) requires legal entity distinction
@@ -583,6 +674,10 @@ async def create_client(
     except ResourceConflictError as e:
         logger.warning("Integrity error creating client: %s", e)
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        # Intentional HTTP errors (409 duplicate-phone gate, 401 missing email)
+        # must pass through — the generic handler below would mask them as 500.
+        raise
     except Exception as e:
         raise handle_database_error(e) from e
 
