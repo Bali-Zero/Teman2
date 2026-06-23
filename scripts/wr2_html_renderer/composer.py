@@ -27,6 +27,7 @@ is Phase 3 (gated by the 4-LLM panel).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -1169,15 +1170,37 @@ def expect_hero_for_index(slide: dict[str, Any], index: int) -> bool:
 
 
 async def _download_hero(client: Any, url: str, dest: Path) -> bool:
-    try:
-        resp = await client.get(url, follow_redirects=True, timeout=30.0)
-    except Exception as exc:
-        logger.warning("hero GET failed url=%s err=%s", url, exc)
-        return False
-    if resp.status_code != 200 or not resp.headers.get("content-type", "").startswith("image/"):
-        logger.warning("hero bad response url=%s status=%s ctype=%s", url, resp.status_code, resp.headers.get("content-type"))
-        return False
-    if not resp.content:
-        return False
-    dest.write_bytes(resp.content)
-    return True
+    # Retry with backoff: the hero lives on Fly/Tigris storage and a single transient
+    # network flap ("No route to host" / ConnectTimeout) on the Pro would otherwise burn
+    # an html_render_attempt and fail the whole carousel render. Superscar #8 (network
+    # flap / proxy fragility): wrap the point download in a retry-loop with backoff.
+    attempts = 3
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = await client.get(url, follow_redirects=True, timeout=30.0)
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "hero GET failed url=%s err=%s (attempt %d/%d)", url, exc, attempt, attempts
+            )
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))  # 1s, 2s
+            continue
+        if resp.status_code != 200 or not resp.headers.get("content-type", "").startswith("image/"):
+            logger.warning(
+                "hero bad response url=%s status=%s ctype=%s (attempt %d/%d)",
+                url, resp.status_code, resp.headers.get("content-type"), attempt, attempts,
+            )
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))
+            continue
+        if not resp.content:
+            logger.warning("hero empty body url=%s (attempt %d/%d)", url, attempt, attempts)
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))
+            continue
+        dest.write_bytes(resp.content)
+        return True
+    logger.error("hero download exhausted %d attempts url=%s last_err=%s", attempts, url, last_exc)
+    return False
