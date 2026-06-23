@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "picked_by": "claude-vision",
+  "exported_at": "2026-05-08T10:48:08.815758+00:00",
+  "anchors": {
+    "visa": "unknown__carousel-29__f9f4b963",
+    "property": "unknown__carousel-30__94743382",
+    "regulatory": "unknown__carousel-13__78e5fba2",
+    "hr": "unknown__carousel-19__d41694c9",
+    "tax": "unknown__carousel-06__18e85eda"
+  },
+  "completed": true,
+  "_notes": {
+    "visa": "Strong: immigration officer at desk reviewing D12 form, dark wood, official setting. Good editorial mood.",
+    "property": "Strong: man hunched over laptop, villa listing pixelating/dissolving \u2014 surreal but photoreal. Dark wood desk. No clich\u00e9.",
+    "regulatory": "Strongest pick: news-photo of angry Balinese local pointing at illegal hotel construction. Real reportage feel.",
+    "hr": "WEAKEST: man holding BPJS card with palms in background (slight clich\u00e9). No better hr-specific cover available in 31 unique. Antonello may want to replace later.",
+    "tax": "Adequate: stack of paper documents on dark wood, warm side-lighting. Topic is KBLI not tax, but the visual mood (paper + dark + chiaroscuro) fits 'tax/regulatory document' anchor purpose."
+  }
+}

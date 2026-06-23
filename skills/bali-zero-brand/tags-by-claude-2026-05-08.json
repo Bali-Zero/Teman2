@@ -1,0 +1,641 @@
+{
+  "version": 1,
+  "tagged_by": "claude-vision",
+  "exported_at": "2026-05-08T10:47:17.296053+00:00",
+  "total_carousels": 64,
+  "tagged_count": 62,
+  "skipped_count": 2,
+  "tags": {
+    "unknown__carousel-01__f3074906": {
+      "topic": "lkpm-deadline-alert",
+      "domain": "regulatory",
+      "register": "ironico",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-02__91662163": {
+      "topic": "alcohol-license-bali",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "founder",
+      "layout": "statement-bomb",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-03__b67d752b": {
+      "topic": "alcohol-license-rules",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "founder",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-04__912ea209": {
+      "topic": "d12-visa-2-years",
+      "domain": "visa",
+      "register": "ironico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-05__0cafece8": {
+      "topic": "company-update-legality",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-06__18e85eda": {
+      "topic": "shareholder-kbli-change",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "founder",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-07__4ec834bb": {
+      "topic": "kitas-e33g-einstein",
+      "domain": "visa",
+      "register": "ironico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-08__f75d3b02": {
+      "topic": "kitas-e33g-rules",
+      "domain": "visa",
+      "register": "analitico",
+      "audience": "digital-nomad",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-09__3d510b5a": {
+      "topic": "global-citizenship-indonesia",
+      "domain": "visa",
+      "register": "rituale",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-10__0ae1a9e2": {
+      "topic": "gci-pathway-roots",
+      "domain": "visa",
+      "register": "poetico",
+      "audience": "investor",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-11__72cd8dca": {
+      "topic": "passport-renewal-indonesia",
+      "domain": "visa",
+      "register": "ironico",
+      "audience": "mixed",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-12__5e7f859e": {
+      "topic": "passport-types-indonesia",
+      "domain": "visa",
+      "register": "pedagogico",
+      "audience": "mixed",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-13__78e5fba2": {
+      "topic": "above-the-law-bali",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-14__2fbec2b7": {
+      "topic": "bali-tourism-restructuring",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "investor",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-15__f1d249bb": {
+      "topic": "bali-legal-authority-koster",
+      "domain": "regulatory",
+      "register": "ironico",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-16__b77f0aa7": {
+      "topic": "koster-policy-history",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "investor",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-17__5c750c2c": {
+      "topic": "dengue-emergency-2026",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "mixed",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-18__0954ba7c": {
+      "topic": "dengue-first-aid-kit",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "mixed",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-19__d41694c9": {
+      "topic": "bpjs-kitas-2026",
+      "domain": "hr",
+      "register": "ironico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-20__8b60a9c7": {
+      "topic": "bpjs-bureaucracy-cta",
+      "domain": "hr",
+      "register": "pedagogico",
+      "audience": "digital-nomad",
+      "layout": "statement-bomb",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-21__294b8a45": {
+      "topic": "waste-crisis-2026",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-22__5b24f16e": {
+      "topic": "recycling-rvm-bali",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "founder",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-23__97fa279b": {
+      "topic": "bali-real-estate-party-over",
+      "domain": "property",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-24__30f653d2": {
+      "topic": "uluwatu-legal-investigation",
+      "domain": "property",
+      "register": "analitico",
+      "audience": "investor",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-25__70fd05e0": {
+      "topic": "kbli-2025-business-legality",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-26__0489a6a7": {
+      "topic": "kbli-2025-new-sectors",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "founder",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-27__96739268": {
+      "topic": "satellite-villa-monitoring",
+      "domain": "property",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-28__c220fd51": {
+      "topic": "waterfront-properties-clock",
+      "domain": "property",
+      "register": "rituale",
+      "audience": "investor",
+      "layout": "statement-bomb",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-29__f9f4b963": {
+      "topic": "d12-visa-extension-policy",
+      "domain": "visa",
+      "register": "analitico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-30__94743382": {
+      "topic": "silent-purge-villa-listings",
+      "domain": "property",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-31__6511896a": {
+      "topic": "nominee-house-of-cards",
+      "domain": "property",
+      "register": "tecnico",
+      "audience": "investor",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": null
+    },
+    "unknown__carousel-32__e4a6200a": {
+      "skipped": true,
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "_skip_reason": "template incomplete (YOUR PARAGRAPH TEXT placeholder)"
+    },
+    "unknown__carousel-33__b5977a38": {
+      "topic": "lkpm-deadline-alert",
+      "domain": "regulatory",
+      "register": "ironico",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 1
+    },
+    "unknown__carousel-34__39261cf8": {
+      "topic": "alcohol-license-bali",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "founder",
+      "layout": "statement-bomb",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 2
+    },
+    "unknown__carousel-35__b64510f2": {
+      "topic": "alcohol-license-rules",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "founder",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 3
+    },
+    "unknown__carousel-36__99cb5a4b": {
+      "topic": "d12-visa-2-years",
+      "domain": "visa",
+      "register": "ironico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 4
+    },
+    "unknown__carousel-37__57c1a928": {
+      "topic": "company-update-legality",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 5
+    },
+    "unknown__carousel-38__6227b7d3": {
+      "topic": "shareholder-kbli-change",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "founder",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 6
+    },
+    "unknown__carousel-39__4034d715": {
+      "topic": "kitas-e33g-einstein",
+      "domain": "visa",
+      "register": "ironico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 7
+    },
+    "unknown__carousel-40__5e84a890": {
+      "topic": "kitas-e33g-rules",
+      "domain": "visa",
+      "register": "analitico",
+      "audience": "digital-nomad",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 8
+    },
+    "unknown__carousel-41__74e15da2": {
+      "topic": "global-citizenship-indonesia",
+      "domain": "visa",
+      "register": "rituale",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 9
+    },
+    "unknown__carousel-42__1dac8ef6": {
+      "topic": "gci-pathway-roots",
+      "domain": "visa",
+      "register": "poetico",
+      "audience": "investor",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 10
+    },
+    "unknown__carousel-43__4363cb9e": {
+      "topic": "passport-renewal-indonesia",
+      "domain": "visa",
+      "register": "ironico",
+      "audience": "mixed",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 11
+    },
+    "unknown__carousel-44__bd7329cd": {
+      "topic": "passport-types-indonesia",
+      "domain": "visa",
+      "register": "pedagogico",
+      "audience": "mixed",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 12
+    },
+    "unknown__carousel-45__3b6c52bd": {
+      "topic": "above-the-law-bali",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 13
+    },
+    "unknown__carousel-46__7c46c154": {
+      "topic": "bali-tourism-restructuring",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "investor",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 14
+    },
+    "unknown__carousel-47__271e37fb": {
+      "topic": "bali-legal-authority-koster",
+      "domain": "regulatory",
+      "register": "ironico",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 15
+    },
+    "unknown__carousel-48__02da6db0": {
+      "topic": "koster-policy-history",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "investor",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 16
+    },
+    "unknown__carousel-49__07dc827e": {
+      "topic": "dengue-emergency-2026",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "mixed",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 17
+    },
+    "unknown__carousel-50__67fb1e16": {
+      "topic": "dengue-first-aid-kit",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "mixed",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 18
+    },
+    "unknown__carousel-51__98048cde": {
+      "topic": "bpjs-kitas-2026",
+      "domain": "hr",
+      "register": "ironico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 19
+    },
+    "unknown__carousel-52__0cef6679": {
+      "topic": "bpjs-bureaucracy-cta",
+      "domain": "hr",
+      "register": "pedagogico",
+      "audience": "digital-nomad",
+      "layout": "statement-bomb",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 20
+    },
+    "unknown__carousel-53__0185bf31": {
+      "topic": "waste-crisis-2026",
+      "domain": "regulatory",
+      "register": "militante",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 21
+    },
+    "unknown__carousel-54__8075ab65": {
+      "topic": "recycling-rvm-bali",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "founder",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 22
+    },
+    "unknown__carousel-55__5533f5c1": {
+      "topic": "bali-real-estate-party-over",
+      "domain": "property",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 23
+    },
+    "unknown__carousel-56__ab1fbd11": {
+      "topic": "uluwatu-legal-investigation",
+      "domain": "property",
+      "register": "analitico",
+      "audience": "investor",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 24
+    },
+    "unknown__carousel-57__d735d819": {
+      "topic": "kbli-2025-business-legality",
+      "domain": "regulatory",
+      "register": "pedagogico",
+      "audience": "founder",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 25
+    },
+    "unknown__carousel-58__4e1b528f": {
+      "topic": "kbli-2025-new-sectors",
+      "domain": "regulatory",
+      "register": "analitico",
+      "audience": "founder",
+      "layout": "dark-status-list",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 26
+    },
+    "unknown__carousel-59__7ad89f69": {
+      "topic": "satellite-villa-monitoring",
+      "domain": "property",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 27
+    },
+    "unknown__carousel-60__94592461": {
+      "topic": "waterfront-properties-clock",
+      "domain": "property",
+      "register": "rituale",
+      "audience": "investor",
+      "layout": "statement-bomb",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 28
+    },
+    "unknown__carousel-61__0f60c5bb": {
+      "topic": "d12-visa-extension-policy",
+      "domain": "visa",
+      "register": "analitico",
+      "audience": "digital-nomad",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 29
+    },
+    "unknown__carousel-62__09f6d835": {
+      "topic": "silent-purge-villa-listings",
+      "domain": "property",
+      "register": "militante",
+      "audience": "investor",
+      "layout": "cover-photo",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 30
+    },
+    "unknown__carousel-63__f626e9ed": {
+      "topic": "nominee-house-of-cards",
+      "domain": "property",
+      "register": "tecnico",
+      "audience": "investor",
+      "layout": "photo-headline-yellow-sub",
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "skipped": false,
+      "_source_index": 31
+    },
+    "unknown__carousel-64__4502ad98": {
+      "skipped": true,
+      "tagged_at": "2026-05-08T10:47:17.296053+00:00",
+      "_skip_reason": "template incomplete (YOUR PARAGRAPH TEXT placeholder)"
+    }
+  },
+  "_note": "C33-63 are duplicates of C1-31; same tags applied. C32 and C64 are templates with placeholder 'YOUR PARAGRAPH TEXT' \u2014 skipped."
+}

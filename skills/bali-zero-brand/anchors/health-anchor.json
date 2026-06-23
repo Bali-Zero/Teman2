@@ -1,0 +1,8 @@
+{
+  "domain": "health",
+  "source_bucket": "unknown__carousel-17__5c750c2c",
+  "source_slide": 1,
+  "assigned_at": "2026-05-08T10:55:23.114437+00:00",
+  "assigned_by": "claude-vision-correction",
+  "imported_from": "auto-correction after hr→regulatory merge + health domain added"
+}
