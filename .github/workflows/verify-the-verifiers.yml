@@ -52,7 +52,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/verify_the_verifiers\.py|scripts/verify_the_verifiers_gates\.yaml|\.github/verify-the-verifiers\.sha256|\.github/workflows/verify-the-verifiers\.yml|\.github/workflows/hot-zone-pr-gate\.yml|scripts/tests/test_verify_the_verifiers\.py)$'; then
+            '^(scripts/verify_the_verifiers\.py|scripts/verify_the_verifiers_gates\.yaml|\.github/verify-the-verifiers\.sha256|\.github/workflows/verify-the-verifiers\.yml|\.github/workflows/hot-zone-pr-gate\.yml|scripts/tests/test_verify_the_verifiers\.py|scripts/tests/test_wr3_reflexion_synthesis\.py|scripts/wr3_reflexion_synthesis\.py|scripts/lib/reflexion\.py)$'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -99,6 +99,15 @@ jobs:
       - name: Run meta-verifier tests
         if: steps.relevant.outputs.run == 'true'
         run: python3 -m pytest scripts/tests/test_verify_the_verifiers.py -q
+
+      # Closes the gap that made the #1696 A3-cabling regression invisible: the WR3
+      # reflexion Delta-Gate test existed but was run by NO CI workflow, so a schema
+      # break (episodes_found->signals_found, status vocabulary) merged green. Now it
+      # is a required check here. Pinned to the relevant-paths regex above so it only
+      # runs when the reflexion code/test changes (cheap, no noise).
+      - name: Run WR3 reflexion Delta-Gate test
+        if: steps.relevant.outputs.run == 'true'
+        run: python3 -m pytest scripts/tests/test_wr3_reflexion_synthesis.py -q
 
       # --scope repo: a CI runner has no ~/.claude/ hooks, so the local-scope
       # claude_hook gates are SKIPPED (not DISARMED) here. The repo-scope gates
