@@ -241,8 +241,48 @@ def _extract_write_targets(cmd: str) -> list[str]:
         # token is noise that survived quote-stripping, not a path.
         if "\\" in t or "|" in t:
             continue
+        # superscar #3 STRUCTURAL CURE (replaces the W83/84/85 patch-per-noise-shape
+        # treadmill): instead of blacklisting every new way code-residue can leak past
+        # the noise-stripper (`>=0.9` from `python -c`, `awk`/`perl`/`jq` bodies, ...),
+        # WHITELIST the outcome. A real write target is a PLAUSIBLE PATH; code residue
+        # is not. We only block HIGH-CONFIDENCE writes (extract is conservative), so a
+        # token that doesn't look like a path is dropped → command ALLOWED.
+        if not _is_plausible_path(t):
+            continue
         cleaned.append(t)
     return cleaned
+
+
+# superscar #3 structural cure — match the ENTITY (is this a writable path?), not the
+# substring. A token survives only if it looks like a filesystem path; otherwise it is
+# code/operator residue that leaked past _strip_noise and must never count as a write.
+_PATH_LIKE_RE = re.compile(r"^[~$]?[\w./@+-]+$")
+_FILE_EXT_RE = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,7}$")  # .py .json .md .sh .yaml ...
+
+
+def _is_plausible_path(t: str) -> bool:
+    """True if `t` plausibly names a file path (vs code/operator residue).
+
+    Conservative whitelist: a write target legitimately has a directory separator,
+    a file extension, OR is a bare dotfile/known name. Residue like `=0.9:`,
+    `warm_models_extra`, `b[0]+=1`, `2>&1` has none of these.
+    Must NOT reject genuine writes (apps/f.py, CLAUDE.md, /tmp/x) — see test suite.
+    """
+    if not t or len(t) > 256:
+        return False
+    # operator/code residue: anything outside a conservative path char-set is not a path
+    if not _PATH_LIKE_RE.match(t):
+        return False
+    # leftover comparison/assignment residue (`=0.9`, `>=2`) — '=' never in a real path token here
+    if "=" in t:
+        return False
+    has_sep = "/" in t
+    has_ext = bool(_FILE_EXT_RE.search(t))
+    is_dotfile = t.startswith(".") and len(t) > 1
+    # a known bare filename (no dir, no ext) is still a plausible target only if it is
+    # ALL-CAPS-ish doc name (CLAUDE.md handled by ext) — bare lowercase words like
+    # `warm_models_extra` are residue, NOT files. Require sep OR ext OR dotfile.
+    return has_sep or has_ext or is_dotfile
 
 
 def _resolve_target(path_str: str, cwd: str) -> pathlib.Path | None:
