@@ -172,7 +172,54 @@ def main() -> int:
     check(f"artifact guilt: frozen content for STARVED_TICKS={S.STARVED_TICKS} ticks -> starved",
           r["status"] == "starved")
 
-    total = 15
+    # ======================================================================
+    # HEARTBEATLESS mode — an organ with NO last_seen heartbeat (hb=None) falls
+    # into the launchctl-liveness branch. Before the fix, that branch returned
+    # "ok" WITHOUT ever calling _progress_value, so a declared output_artifact was
+    # silently ignored (the green!=working trap applied to A2 itself: wr2.fact_extractor
+    # had output_artifact armed but progress_value=None on the live Pro run, 2026-06-23).
+    # A2 must observe the artifact REGARDLESS of heartbeat presence.
+    # ======================================================================
+    LC_PID = {"pid": 4242, "last_exit": 0}  # launchctl-loaded, running, exit 0
+
+    def _classify_hbless(organ, prior):
+        return S._classify(organ, None, LC_PID, NOW, prior)
+
+    art2 = tmp / "hbless.jsonl"
+    art2.write_text("line1\n")
+
+    def _hbless_organ():
+        return {"id": "demo.hbless", "runtime": "pro_launchd", "type": "cron",
+                "expected_hb_seconds": 1800, "severity_on_silence": "warning",
+                "output_artifact": str(art2)}
+
+    # INNOCENCE: heartbeatless + launchctl-ok + first observation -> ok, records progress, streak 0
+    rh1 = _classify_hbless(_hbless_organ(), prior=None)
+    check("hbless innocence: launchctl-ok organ records progress_value (A2 axis reaches the branch)",
+          rh1["status"] == "ok" and isinstance(rh1.get("progress_value"), list) and rh1.get("starved_streak") == 0)
+
+    # INNOCENCE: output advances -> streak stays 0, ok
+    pvh = rh1.get("progress_value")
+    art2.write_text("line1\nline2\n")  # real work appended
+    rh2 = _classify_hbless(_hbless_organ(), prior={"progress_value": pvh, "starved_streak": 2})
+    check("hbless innocence: appended output -> streak resets to 0, ok",
+          rh2["status"] == "ok" and rh2.get("starved_streak") == 0)
+
+    # GUILT: frozen output across STARVED_TICKS -> starved, even with NO heartbeat
+    pvh2 = rh2.get("progress_value")
+    prior_hbless = {"progress_value": pvh2, "starved_streak": S.STARVED_TICKS - 1}
+    rh3 = _classify_hbless(_hbless_organ(), prior=prior_hbless)
+    check(f"hbless GUILT: frozen output for STARVED_TICKS={S.STARVED_TICKS} with no heartbeat -> starved",
+          rh3["status"] == "starved" and rh3.get("severity") != "info")
+
+    # INNOCENCE: an organ with NO artifact in the launchctl branch stays plain ok (never touched)
+    plain = {"id": "demo.plain", "runtime": "pro_launchd", "type": "cron",
+             "expected_hb_seconds": 1800, "severity_on_silence": "warning"}
+    rp = _classify_hbless(plain, prior={"progress_value": [9, "zz"], "starved_streak": 9})
+    check("hbless innocence: no output_artifact in launchctl branch -> classic ok, no progress_value",
+          rp["status"] == "ok" and "progress_value" not in rp)
+
+    total = 20
     print(f"\n=== {'ALL ' + str(total) + ' PASS' if not fails else str(fails) + ' FAIL'} ===")
     return 1 if fails else 0
 

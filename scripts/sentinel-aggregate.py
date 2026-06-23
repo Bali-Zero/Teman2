@@ -190,6 +190,47 @@ def _launchctl_loaded(command: list[str] | None = None) -> dict[str, dict[str, A
     return _parse_launchctl_list(out)
 
 
+def _apply_starved_axis(
+    result: dict[str, Any],
+    organ: dict[str, Any],
+    hb: dict[str, Any] | None,
+    prior: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """A2 Heartbeat Semantico, branch-independent. Given a result dict that the
+    classifier has already scored as 'ok', downgrade it to 'starved' iff the organ
+    declares a progress signal (progress_field / output_artifact) whose value is
+    byte-identical to the prior snapshot across STARVED_TICKS consecutive ticks.
+
+    Extracted so EVERY 'ok' path can apply it — not only the heartbeat branch. An
+    organ with NO last_seen heartbeat (hb=None) lands in the launchctl-liveness
+    branch; before this helper that branch returned 'ok' WITHOUT ever computing the
+    output-delta, so a declared output_artifact was silently ignored (the
+    green!=working trap applied to A2 itself: wr2.fact_extractor armed but
+    progress_value=None on the live Pro run, 2026-06-23).
+
+    Mutates `result` in place (adds progress_value/starved_streak, may flip status)
+    and returns it. Fail-open: only ever downgrades ok->starved, never raises."""
+    if result.get("status") != "ok":
+        return result
+    prog = _progress_value(hb, organ)
+    if prog is None:
+        return result  # organ opts out of A2 → classic ok, untouched
+    prior_prog = (prior or {}).get("progress_value") if prior else None
+    prior_streak = int((prior or {}).get("starved_streak") or 0) if prior else 0
+    if prior is not None and "progress_value" in (prior or {}) and prog == prior_prog:
+        starved_streak = prior_streak + 1
+    else:
+        starved_streak = 0  # output advanced (or first observation) → not starved
+    result["progress_value"] = prog
+    result["starved_streak"] = starved_streak
+    if starved_streak >= STARVED_TICKS:
+        result["status"] = "starved"
+        # raise visibility: a starved organ must not stay 'info'
+        if result.get("severity") in (None, "info"):
+            result["severity"] = organ.get("severity_on_silence", "warning")
+    return result
+
+
 def _classify(
     organ: dict[str, Any],
     hb: dict[str, Any] | None,
@@ -335,7 +376,9 @@ def _classify(
                 "last_exit": last_exit,
             }
         if pid is not None:
-            return {
+            # A2: a launchctl-ok organ with NO heartbeat can still be starved at the
+            # output level — apply the starved axis here too (was heartbeat-only before).
+            return _apply_starved_axis({
                 "id": organ_id,
                 "runtime": runtime,
                 "status": "ok",
@@ -346,7 +389,7 @@ def _classify(
                 "pid": pid,
                 "last_exit": last_exit,
                 "hb_source": "launchctl",
-            }
+            }, organ, hb, prior)
         # Treat SIGTERM (-15) and SIGINT (-2) as graceful — not failure.
         # These happen on normal restart cycles or manual kickstart.
         graceful_signals = {-15, -2}
@@ -382,7 +425,8 @@ def _classify(
         # file is a broken contract → noheartbeat. http-type bridge_source
         # is not implemented yet (Codex P1c fix): fall through to "ok"
         # rather than spuriously flagging http-source organs as noheartbeat.
-        return {
+        # A2: apply the starved axis here too (heartbeatless + no-pid-but-loaded).
+        return _apply_starved_axis({
             "id": organ_id,
             "runtime": runtime,
             "status": "ok",
@@ -392,7 +436,7 @@ def _classify(
             "recovery_action": organ.get("recovery_action"),
             "pid": pid,
             "hb_source": "launchctl",
-        }
+        }, organ, hb, prior)
 
     # Not loaded in launchctl AND no heartbeat = unknown / not running.
     return {
