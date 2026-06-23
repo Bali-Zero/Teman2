@@ -385,3 +385,18 @@ gates:
       noise is bounded to Ω, the MOS promote-gate BLOCKS un-promoted (phantom) lessons
       (superscar #6), the FTS5 hyphen-sanitize holds, and consolidation dedups. Green =
       a loop that records its own no-delta instead of mistaking green for learning.
+
+  - id: scar_A3_wr3_cabling
+    kind: scar_test
+    w_number: A3-wr3-cabling
+    target: scripts/test_wr3_reflexion_cabling.py
+    note: >
+      Superscar #1 (HOME-fork) cure, ACTUATED: wr3_reflexion_synthesis.record_run no
+      longer keeps a private Delta-Gate copy — it delegates to the unified core
+      (scripts/lib/reflexion.record_run). This test asserts the swap is reader-safe (the
+      WR3 _reflexion-state.json still records honestly; episodes_found carried as the
+      core's signals_found — verified NO reader consumes episodes_found), the WR3 status
+      vocabulary maps to the core enum, an UNMAPPED status RAISES (no silent typo logged
+      as a valid run), and the Omeostasi-Tautologica alarm WR3 previously lacked is now
+      reachable. Green = the duplication stays collapsed; if someone re-forks a private
+      record_run, the reader-safe mapping breaks and this goes RED.
