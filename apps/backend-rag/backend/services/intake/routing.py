@@ -222,9 +222,11 @@ CONF_FOLDER_MATCH = 0.85
 # (match against ``companies``). canonical_doc_type() upstream already maps
 # aliases (paspor->passport, akta->akta_pendirian, ...).
 _PERSON_DOC_TYPES = frozenset(
-    {"passport", "npwp", "kitas", "itk", "itas", "itap"}
+    {"passport", "npwp", "kitas", "itk", "itas", "itap", "ktp"}
 )
-_COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian", "profil_perseroan"})
+_COMPANY_DOC_TYPES = frozenset(
+    {"nib", "akta_pendirian", "profil_perseroan", "sk_kemenkumham"}
+)
 
 # NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
 # match first when the npwp resolves a company row, else fall back to person.
@@ -344,7 +346,13 @@ async def _match_person_strong(
                     "matched_value": norm,
                 })
 
-    kitas = _field_value(extracted, "kitas_no") or _field_value(extracted, "kitas_number")
+    kitas = (
+        _field_value(extracted, "kitas_no")
+        or _field_value(extracted, "kitas_number")
+        or _field_value(extracted, "itap_no")
+        or _field_value(extracted, "itk_no")
+        or _field_value(extracted, "stay_permit_no")
+    )
     if kitas:
         norm = _normalize_id(kitas)
         if norm:

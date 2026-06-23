@@ -509,7 +509,14 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
     [
         ("nib", "pma", "02_Company"),
         ("akta_pendirian", "pma", "02_Company"),
+        ("profil_perseroan", "pma", "02_Company"),
+        ("sk_kemenkumham", "pma", "02_Company"),
+        ("oss", "pma", "02_Company"),
         ("passport", "immigration", "01_Immigration"),
+        ("kitas", "immigration", "01_Immigration"),
+        ("itap", "immigration", "01_Immigration"),
+        ("itk", "immigration", "01_Immigration"),
+        ("ktp", "personal", "00_Profile"),
         ("npwp", "tax", "03_Tax"),
     ],
 )

@@ -234,10 +234,15 @@ def _document_payload(
     category_map = {
         "passport": "immigration",
         "kitas": "immigration",
+        "itap": "immigration",
+        "itk": "immigration",
+        "ktp": "personal",
         "npwp": "tax",
         "nib": "pma",
+        "oss": "pma",
         "akta_pendirian": "pma",
         "profil_perseroan": "pma",
+        "sk_kemenkumham": "pma",
     }
     category = category_map.get(doc_type)
 
