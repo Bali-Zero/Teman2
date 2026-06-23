@@ -7,6 +7,7 @@ import pytest
 from mata_garuda.workers.gap_consumer import (
     GAP_DISPATCH,
     _extract_terminal_case_status,
+    _default_dispatch_agent,
     process_gap,
     run_gap_consumer,
 )
@@ -206,6 +207,46 @@ def test_process_gap_skips_lhkpn_missing_angkatan():
     fake_xack.assert_called_once()
     assert result["status"] == "skipped"
     assert result["reason"] == "lhkpn_portal_does_not_expose_angkatan"
+
+
+def test_default_dispatch_forces_non_frontier_model(monkeypatch):
+    """Automated gap dispatch must not inherit Claude defaults from agents."""
+    import importlib
+
+    from mata_garuda.types import Agent, Response
+
+    captured: dict[str, Agent] = {}
+    registry_agent = Agent(name="Regulation Watcher", model="claude")
+
+    class _FakeKB:
+        def close(self):
+            pass
+
+    def fake_get_agent(name: str) -> Agent:
+        assert name == "Regulation Watcher"
+        return registry_agent
+
+    def fake_run_with_lamarckian_feedback(agent: Agent, query: str, **kwargs) -> Response:
+        captured["agent"] = agent
+        return Response(messages=[{"role": "tool", "content": "Case resolved. The result is: ok"}])
+
+    registry_module = importlib.import_module("mata_garuda.registry")
+    knowledge_module = importlib.import_module("mata_garuda.runtime.knowledge")
+    lamarckian_module = importlib.import_module("mata_garuda.runtime.lamarckian")
+
+    monkeypatch.setattr(registry_module, "get_agent", fake_get_agent)
+    monkeypatch.setattr(knowledge_module, "KnowledgeBase", _FakeKB)
+    monkeypatch.setattr(
+        lamarckian_module,
+        "run_with_lamarckian_feedback",
+        fake_run_with_lamarckian_feedback,
+    )
+
+    result = _default_dispatch_agent("Regulation Watcher", {"_gap_type": "gap.stale_official"})
+
+    assert result["case_resolved"] is True
+    assert captured["agent"].model == "ollama:qwen3.5:9b"
+    assert registry_agent.model == "claude"
 
 
 def test_process_gap_dispatches_regulation_watcher_for_stale_official():
