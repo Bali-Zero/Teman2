@@ -837,7 +837,7 @@ def test_identity_rules_unknown_or_missing_is_empty() -> None:
 
 def test_build_prompt_injects_identity_rules_for_owner_only() -> None:
     owner_body = bridge.BridgeRequest(
-        phone="+62 822-6459-9868",
+        phone="+62 822-1030-2328",
         sender_name="Zero",
         message_id="wamid.owner",
         text="Quante pratiche KITAS abbiamo in pipeline questo mese?",
@@ -929,24 +929,24 @@ def test_army_owner_allowlist_deny_all_when_unset(monkeypatch: pytest.MonkeyPatc
 
 
 def test_army_owner_allowlist_parses_and_normalizes_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("WA_ARMY_OWNERS", " +62 822-6459-9868 , 6281234567890 , ")
+    monkeypatch.setenv("WA_ARMY_OWNERS", " +62 822-1030-2328 , 6281234567890 , ")
     allow = bridge._army_owner_allowlist()
-    assert allow == frozenset({"6282264599868", "6281234567890"})
+    assert allow == frozenset({"6282210302328", "6281234567890"})
 
 
 def test_army_owner_allowlist_drops_non_digit_entries(monkeypatch: pytest.MonkeyPatch) -> None:
     # Panel fix (Codex): an env value that normalizes to "" must NOT become a
     # member, or a malformed sender phone normalizing to "" would match it.
-    monkeypatch.setenv("WA_ARMY_OWNERS", "abc, 6282264599868, ---")
+    monkeypatch.setenv("WA_ARMY_OWNERS", "abc, 6282210302328, ---")
     allow = bridge._army_owner_allowlist()
-    assert allow == frozenset({"6282264599868"})
+    assert allow == frozenset({"6282210302328"})
     assert "" not in allow
 
 
 def test_is_army_owner_normalizes_punctuation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
-    assert bridge._is_army_owner("+62 822-6459-9868") is True
-    assert bridge._is_army_owner("6282264599868") is True
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282210302328")
+    assert bridge._is_army_owner("+62 822-1030-2328") is True
+    assert bridge._is_army_owner("6282210302328") is True
     assert bridge._is_army_owner("+62 812-000-0000") is False
     assert bridge._is_army_owner(None) is False
     assert bridge._is_army_owner("") is False
@@ -964,7 +964,7 @@ def test_is_army_owner_rejects_malformed_phone_against_empty_allowlist(
 
 @pytest.mark.asyncio
 async def test_army_command_owner_can_launch(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282210302328")
     captured: dict[str, Any] = {}
 
     async def fake_runner(*args: str) -> tuple[int, str, str]:
@@ -973,7 +973,7 @@ async def test_army_command_owner_can_launch(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(bridge, "_run_army_launcher", fake_runner)
 
-    reply = await bridge._handle_army_command("/lancia S1", "+62 822-6459-9868")
+    reply = await bridge._handle_army_command("/lancia S1", "+62 822-1030-2328")
 
     assert captured["args"] == ("launch", "S1")
     assert reply is not None
@@ -984,7 +984,7 @@ async def test_army_command_owner_can_launch(monkeypatch: pytest.MonkeyPatch) ->
 async def test_army_command_non_owner_falls_through_silently(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282210302328")
     called = False
 
     async def fake_runner(*args: str) -> tuple[int, str, str]:
@@ -1017,7 +1017,7 @@ async def test_army_command_deny_all_blocks_even_owner_number_when_unset(
 
     monkeypatch.setattr(bridge, "_run_army_launcher", fake_runner)
 
-    assert await bridge._handle_army_command("/lancia S1", "+62 822-6459-9868") is None
+    assert await bridge._handle_army_command("/lancia S1", "+62 822-1030-2328") is None
     assert called is False
 
 
@@ -1025,10 +1025,10 @@ async def test_army_command_deny_all_blocks_even_owner_number_when_unset(
 async def test_army_command_non_command_returns_none_for_everyone(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("WA_ARMY_OWNERS", "6282264599868")
+    monkeypatch.setenv("WA_ARMY_OWNERS", "6282210302328")
     # Even the owner: a normal message is not a command → None (LLM handles it).
-    assert await bridge._handle_army_command("ciao come stai?", "+62 822-6459-9868") is None
-    assert await bridge._handle_army_command("", "+62 822-6459-9868") is None
+    assert await bridge._handle_army_command("ciao come stai?", "+62 822-1030-2328") is None
+    assert await bridge._handle_army_command("", "+62 822-1030-2328") is None
 
 
 @pytest.mark.asyncio

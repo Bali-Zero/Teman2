@@ -35,7 +35,7 @@ logger = get_logger(__name__)
 
 _DIGITS_RE = re.compile(r"[^\d]")
 
-_DEFAULT_OWNER_NUMBERS = "6282264599868"
+_DEFAULT_OWNER_NUMBERS = "6282210302328"
 
 _CLIENT_LOOKUP_SQL = """
 SELECT id, full_name, status

@@ -63,7 +63,7 @@ class TestNormalizePhone:
 class TestResolveSenderIdentity:
     @pytest.mark.asyncio
     async def test_owner_default_number_all_formats(self):
-        for raw in ("6282264599868", "+62 822-6459-9868", "082264599868"):
+        for raw in ("6282210302328", "+62 822-1030-2328", "082210302328"):
             identity = await resolve_sender_identity(raw, None)
             assert identity == {"role": "owner"}, raw
 
@@ -82,8 +82,8 @@ class TestResolveSenderIdentity:
 
     @pytest.mark.asyncio
     async def test_owner_wins_over_team(self, monkeypatch):
-        monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", "6282264599868:NotZero")
-        assert (await resolve_sender_identity("6282264599868", None))["role"] == "owner"
+        monkeypatch.setenv("WHATSAPP_TEAM_NUMBERS", "6282210302328:NotZero")
+        assert (await resolve_sender_identity("6282210302328", None))["role"] == "owner"
 
     @pytest.mark.asyncio
     async def test_client_lookup_hit(self):

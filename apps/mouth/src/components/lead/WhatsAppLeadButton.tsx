@@ -11,7 +11,7 @@ import { trackLeadWhatsAppCTA } from "@/lib/analytics";
 
 /** Bare business wa.me link — no-JS href and fallback when capture fails.
  *  Same number used by the backend deeplink builder default. */
-export const FALLBACK_WA_URL = "https://wa.me/6282264599868";
+export const FALLBACK_WA_URL = "https://wa.me/6282210302328";
 
 export interface WhatsAppLeadButtonProps {
   /** LeadSource wire value (backend enum): "article" | "kbli_navigator" | ... */
