@@ -77,9 +77,19 @@ def _sanitize_key(loop_name: str) -> str:
 
 def record_run(state_dir: Path, *, loop: str, window_days: int = 0,
                signals_found: int, lessons_written: int, status: str,
-               notes: str = "") -> Path:
+               notes: str = "", loop_status: str | None = None) -> Path:
     """Append an auditable run record. THIS kills green-cron-theater: a NO_SIGNAL run is
-    visible on disk, not a silent sys.exit(0). Lifted from wr3_reflexion_synthesis (L310)."""
+    visible on disk, not a silent sys.exit(0). Lifted from wr3_reflexion_synthesis (L310).
+
+    Two-vocabulary contract (separates VALIDATION from AUDIT, so a cabled caller keeps its
+    own on-disk vocabulary — superscar #9, the WR3-cabling fix 2026-06-24):
+      - `status`  : the CANONICAL enum value, validated against _VALID_STATUS (anti-typo gate).
+      - `loop_status` (optional): the caller's NATIVE audit label (e.g. WR3's 'NO_INPUT').
+    The on-disk `status` field is the native label when `loop_status` is given (what an
+    operator reading the file expects), else the canonical value. The canonical value is
+    ALWAYS persisted under `canonical_status` so machine consumers (is_tautological) stay
+    correct regardless of the audit vocabulary. Readers of old records (no canonical_status)
+    fall back to `status` — backward compatible."""
     if status not in _VALID_STATUS:
         raise ValueError(f"invalid reflexion status {status!r}; use one of {sorted(_VALID_STATUS)}")
     state_dir.mkdir(parents=True, exist_ok=True)
@@ -93,7 +103,8 @@ def record_run(state_dir: Path, *, loop: str, window_days: int = 0,
         "window_days": window_days,
         "signals_found": signals_found,
         "lessons_written": lessons_written,
-        "status": status,
+        "status": loop_status if loop_status is not None else status,
+        "canonical_status": status,
         "notes": notes,
     })
     state_path.write_text(json.dumps(history[-HISTORY_CAP:], indent=2))
@@ -108,7 +119,10 @@ def is_tautological(state_dir: Path, *, last_n: int = HOT_WINDOW) -> bool:
     if not isinstance(history, list) or len(history) < last_n:
         return False
     tail = history[-last_n:]
-    return all(r.get("status") in (NO_SIGNAL, NOOP) for r in tail)
+    # Read the CANONICAL status (machine vocabulary), falling back to `status` for old
+    # records written before the two-vocabulary split — so a cabled caller's native audit
+    # label (e.g. WR3 'NO_INPUT') never confuses the machine alarm.
+    return all((r.get("canonical_status") or r.get("status")) in (NO_SIGNAL, NOOP) for r in tail)
 
 
 # ---- Lesson store: file (hot-window) + MOS (cross-session) -------------------
