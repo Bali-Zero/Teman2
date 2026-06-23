@@ -67,6 +67,8 @@ def _settings(
         voice_concierge_silero_sampling_rate=16000,
         voice_concierge_silero_threshold=0.5,
         voice_concierge_silero_timeout_seconds=15.0,
+        voice_concierge_livekit_worker_health_url="http://127.0.0.1:7880/healthz",
+        voice_concierge_livekit_worker_timeout_seconds=3.0,
     )
 
 
@@ -87,6 +89,80 @@ def _offline_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _check(report: readiness.ReadinessReport, name: str) -> readiness.ReadinessCheck:
     return report.check(name)
+
+
+def test_livekit_health_url_sanitizer_strips_query_and_rejects_userinfo() -> None:
+    assert readiness._sanitize_livekit_health_url(
+        "https://voice.local:7880/healthz?token=secret",
+    ) == "https://voice.local:7880/healthz"
+    assert readiness._sanitize_livekit_health_url("https://user:pass@voice.local/healthz") is None
+    assert readiness._sanitize_livekit_health_url("http://127.0.0.1:bad/healthz") is None
+
+
+def test_fetch_livekit_worker_health_passes_on_direct_2xx(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeHTTPConnection:
+        def __init__(self, host: str, port: int | None, timeout: float) -> None:
+            calls["host"] = host
+            calls["port"] = port
+            calls["timeout"] = timeout
+
+        def request(
+            self,
+            method: str,
+            target: str,
+            headers: dict[str, str],
+        ) -> None:
+            calls["method"] = method
+            calls["target"] = target
+            calls["headers"] = headers
+
+        def getresponse(self) -> SimpleNamespace:
+            return SimpleNamespace(status=204)
+
+        def close(self) -> None:
+            calls["closed"] = True
+
+    monkeypatch.setattr(readiness.http.client, "HTTPConnection", FakeHTTPConnection)
+
+    result = readiness._fetch_livekit_worker_health(
+        "http://127.0.0.1:7880/healthz?probe=1",
+        2.5,
+    )
+
+    assert result.ok is True
+    assert result.status_code == 204
+    assert calls["host"] == "127.0.0.1"
+    assert calls["port"] == 7880
+    assert calls["target"] == "/healthz?probe=1"
+    assert calls["closed"] is True
+
+
+def test_fetch_livekit_worker_health_fails_on_redirect_without_following(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeHTTPConnection:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def request(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def getresponse(self) -> SimpleNamespace:
+            return SimpleNamespace(status=302)
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(readiness.http.client, "HTTPConnection", FakeHTTPConnection)
+
+    result = readiness._fetch_livekit_worker_health("http://127.0.0.1:7880/healthz", 2.5)
+
+    assert result.ok is False
+    assert result.status_code == 302
 
 
 def test_static_readiness_passes_for_complete_local_stack(
@@ -147,6 +223,15 @@ def test_deep_readiness_accepts_lowercase_mini_hostname(
     monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingProvider)
     monkeypatch.setattr(readiness, "SileroVADProvider", PassingProvider)
     monkeypatch.setattr(readiness, "ChatterboxTTSProvider", PassingProvider)
+    monkeypatch.setattr(
+        readiness,
+        "_fetch_livekit_worker_health",
+        lambda *_args, **_kwargs: readiness._LiveKitWorkerHealth(
+            ok=True,
+            detail="LiveKit worker health returned HTTP 200",
+            status_code=200,
+        ),
+    )
 
     report = readiness.build_local_audio_readiness_report(
         mode="deep",
@@ -156,10 +241,11 @@ def test_deep_readiness_accepts_lowercase_mini_hostname(
         python_base_prefix="/usr",
     )
 
-    assert report.ok is False
+    assert report.ok is True
     assert _check(report, "host_role").status == "pass"
     assert _check(report, "host_role").metadata["normalized_hostname"] == "mini-pro2"
     assert _check(report, "deep_whisper_status").status == "pass"
+    assert _check(report, "livekit_agent").status == "pass"
     with pytest.raises(KeyError):
         report.check("deep_runtime_gate")
 
@@ -384,6 +470,15 @@ def test_deep_readiness_fails_when_chatterbox_model_load_fails(
     monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingWhisper)
     monkeypatch.setattr(readiness, "SileroVADProvider", PassingSilero)
     monkeypatch.setattr(readiness, "ChatterboxTTSProvider", ChatterboxLoadFails)
+    monkeypatch.setattr(
+        readiness,
+        "_fetch_livekit_worker_health",
+        lambda *_args, **_kwargs: readiness._LiveKitWorkerHealth(
+            ok=True,
+            detail="LiveKit worker health returned HTTP 200",
+            status_code=200,
+        ),
+    )
 
     report = readiness.build_local_audio_readiness_report(
         mode="deep",
@@ -398,7 +493,7 @@ def test_deep_readiness_fails_when_chatterbox_model_load_fails(
     assert "RuntimeError" in _check(report, "deep_chatterbox_status").detail
 
 
-def test_deep_readiness_fails_until_livekit_agent_health_is_wired(
+def test_deep_readiness_fails_when_livekit_worker_health_url_is_missing(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     _offline_env: None,
@@ -423,6 +518,139 @@ def test_deep_readiness_fails_until_livekit_agent_health_is_wired(
     monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingProvider)
     monkeypatch.setattr(readiness, "SileroVADProvider", PassingProvider)
     monkeypatch.setattr(readiness, "ChatterboxTTSProvider", PassingProvider)
+    settings = _settings(tmp_path)
+    settings.voice_concierge_livekit_worker_health_url = None
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="deep",
+        settings=settings,
+        hostname="Nuzantara",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is False
+    assert _check(report, "livekit_agent").status == "fail"
+    assert "VOICE_CONCIERGE_LIVEKIT_WORKER_HEALTH_URL" in _check(report, "livekit_agent").detail
+
+
+def test_deep_readiness_fails_when_livekit_worker_health_url_is_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    _offline_env: None,
+) -> None:
+    class PassingProvider:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def warm_status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="provider",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+    monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "SileroVADProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "ChatterboxTTSProvider", PassingProvider)
+    settings = _settings(tmp_path)
+    settings.voice_concierge_livekit_worker_health_url = "http://127.0.0.1:bad/healthz"
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="deep",
+        settings=settings,
+        hostname="Nuzantara",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is False
+    assert _check(report, "livekit_agent").status == "fail"
+    assert "http(s) URL" in _check(report, "livekit_agent").detail
+
+
+def test_deep_readiness_passes_when_livekit_worker_health_passes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    _offline_env: None,
+) -> None:
+    class PassingProvider:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def warm_status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="provider",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+    monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "SileroVADProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "ChatterboxTTSProvider", PassingProvider)
+    monkeypatch.setattr(
+        readiness,
+        "_fetch_livekit_worker_health",
+        lambda *_args, **_kwargs: readiness._LiveKitWorkerHealth(
+            ok=True,
+            detail="LiveKit worker health returned HTTP 204",
+            status_code=204,
+        ),
+    )
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="deep",
+        settings=_settings(tmp_path),
+        hostname="Nuzantara",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is True
+    assert _check(report, "livekit_agent").status == "pass"
+    assert _check(report, "livekit_agent").metadata["status_code"] == 204
+    assert _check(report, "livekit_agent").metadata["health_url"] == (
+        "http://127.0.0.1:7880/healthz"
+    )
+
+
+def test_deep_readiness_fails_when_livekit_worker_health_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    _offline_env: None,
+) -> None:
+    class PassingProvider:
+        policy = readiness.LOCAL_ONLY_PROVIDER_POLICY
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def warm_status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name="provider",
+                available=True,
+                detail="ready",
+                policy=self.policy,
+            )
+
+    monkeypatch.setattr(readiness, "WhisperCppSTTProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "SileroVADProvider", PassingProvider)
+    monkeypatch.setattr(readiness, "ChatterboxTTSProvider", PassingProvider)
+    monkeypatch.setattr(
+        readiness,
+        "_fetch_livekit_worker_health",
+        lambda *_args, **_kwargs: readiness._LiveKitWorkerHealth(
+            ok=False,
+            detail="LiveKit worker health returned HTTP 503",
+            status_code=503,
+        ),
+    )
 
     report = readiness.build_local_audio_readiness_report(
         mode="deep",
@@ -434,7 +662,7 @@ def test_deep_readiness_fails_until_livekit_agent_health_is_wired(
 
     assert report.ok is False
     assert _check(report, "livekit_agent").status == "fail"
-    assert "not wired" in _check(report, "livekit_agent").detail
+    assert _check(report, "livekit_agent").metadata["status_code"] == 503
 
 
 def test_static_readiness_fails_invalid_audio_caps(tmp_path: Path) -> None:

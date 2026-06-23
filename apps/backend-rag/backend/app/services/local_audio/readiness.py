@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import json
 import os
 import socket
 import sys
+import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -94,6 +96,13 @@ class ReadinessReport:
         for check in self.checks:
             lines.append(f"[{check.status.upper()}] {check.name}: {check.detail}")
         return "\n".join(lines)
+
+
+@dataclass(frozen=True)
+class _LiveKitWorkerHealth:
+    ok: bool
+    detail: str
+    status_code: int | None = None
 
 
 def build_local_audio_readiness_report(
@@ -211,7 +220,7 @@ def _build_static_checks(
         _chatterbox_checkpoint_check(settings),
         _chatterbox_config_check(settings),
         _offline_env_check(mode),
-        _livekit_agent_check(mode),
+        _livekit_agent_check(mode, settings),
     ]
     return checks
 
@@ -536,17 +545,143 @@ def _offline_env_check(mode: ReadinessMode) -> ReadinessCheck:
     )
 
 
-def _livekit_agent_check(mode: ReadinessMode) -> ReadinessCheck:
-    if mode == "deep":
+def _livekit_agent_check(mode: ReadinessMode, settings: Any) -> ReadinessCheck:
+    health_url = _get_str(settings, "voice_concierge_livekit_worker_health_url")
+    timeout_seconds = _get_float_default(
+        settings,
+        "voice_concierge_livekit_worker_timeout_seconds",
+        3.0,
+    )
+    if timeout_seconds <= 0:
         return ReadinessCheck(
             name="livekit_agent",
             status="fail",
-            detail="LiveKit worker health is not wired into this doctor yet; production promotion is blocked",
+            detail="LiveKit worker health timeout must be positive",
+            metadata={"timeout_seconds": timeout_seconds},
         )
+    if health_url is None or not health_url.strip():
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail" if mode == "deep" else "warn",
+            detail="VOICE_CONCIERGE_LIVEKIT_WORKER_HEALTH_URL is not configured",
+            metadata={"configured": False, "timeout_seconds": timeout_seconds},
+        )
+
+    sanitized_url = _sanitize_livekit_health_url(health_url)
+    if sanitized_url is None:
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="fail",
+            detail="LiveKit worker health URL must be an http(s) URL with a host",
+            metadata={"configured": True, "timeout_seconds": timeout_seconds},
+        )
+
+    metadata: dict[str, str | int | float | bool | None] = {
+        "configured": True,
+        "health_url": sanitized_url,
+        "timeout_seconds": timeout_seconds,
+    }
+    if mode == "static":
+        return ReadinessCheck(
+            name="livekit_agent",
+            status="pass",
+            detail="LiveKit worker health URL configured",
+            metadata=metadata,
+        )
+
+    health = _fetch_livekit_worker_health(health_url.strip(), timeout_seconds)
+    if health.status_code is not None:
+        metadata["status_code"] = health.status_code
     return ReadinessCheck(
         name="livekit_agent",
-        status="warn",
-        detail="LiveKit worker health is not wired into this doctor yet; deep mode blocks production promotion",
+        status="pass" if health.ok else "fail",
+        detail=health.detail,
+        metadata=metadata,
+    )
+
+
+def _sanitize_livekit_health_url(health_url: str) -> str | None:
+    parsed = urllib.parse.urlsplit(health_url.strip())
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        return None
+    path = parsed.path or "/"
+    host = parsed.hostname
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    netloc = f"{host}:{port}" if port is not None else host
+    return urllib.parse.urlunsplit((parsed.scheme, netloc, path, "", ""))
+
+
+def _fetch_livekit_worker_health(
+    health_url: str,
+    timeout_seconds: float,
+) -> _LiveKitWorkerHealth:
+    parsed = urllib.parse.urlsplit(health_url)
+    if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
+        return _LiveKitWorkerHealth(
+            ok=False,
+            detail="LiveKit worker health URL is invalid",
+        )
+    try:
+        port = parsed.port
+    except ValueError:
+        return _LiveKitWorkerHealth(
+            ok=False,
+            detail="LiveKit worker health URL is invalid",
+        )
+    connection_class = (
+        http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
+    )
+    request_target = urllib.parse.urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
+    connection = connection_class(
+        parsed.hostname,
+        port=port,
+        timeout=timeout_seconds,
+    )
+    try:
+        connection.request(
+            "GET",
+            request_target,
+            headers={
+                "Accept": "application/json,text/plain,*/*",
+                "User-Agent": "nuzantara-local-audio-doctor/1.0",
+            },
+        )
+        response = connection.getresponse()
+        status_code = int(response.status)
+    except TimeoutError:
+        return _LiveKitWorkerHealth(
+            ok=False,
+            detail="LiveKit worker health request timed out",
+        )
+    except (http.client.HTTPException, OSError, ValueError) as exc:
+        return _LiveKitWorkerHealth(
+            ok=False,
+            detail=f"LiveKit worker health request failed: {type(exc).__name__}",
+        )
+    finally:
+        connection.close()
+
+    if 200 <= status_code < 300:
+        return _LiveKitWorkerHealth(
+            ok=True,
+            detail=f"LiveKit worker health returned HTTP {status_code}",
+            status_code=status_code,
+        )
+    return _LiveKitWorkerHealth(
+        ok=False,
+        detail=f"LiveKit worker health returned HTTP {status_code}",
+        status_code=status_code,
     )
 
 
@@ -618,6 +753,11 @@ def _get_int(settings: Any, name: str) -> int:
 
 def _get_float(settings: Any, name: str) -> float:
     value = getattr(settings, name)
+    return float(value)
+
+
+def _get_float_default(settings: Any, name: str, default: float) -> float:
+    value = getattr(settings, name, default)
     return float(value)
 
 
