@@ -31,7 +31,19 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from backend.core.collection_registry import resolve_collection_name
+
+# Load apps/backend-rag/.env so QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY are present
+# even when this script is invoked directly (not via the FastAPI app). Path is derived
+# from __file__ — backend/scripts/<this> → parents[2] == apps/backend-rag — so it works
+# from any cwd. Without this the script silently fell back to localhost:6333 and aborted
+# on a missing OPENAI_API_KEY (env had to be exported by hand). Existing env vars win
+# (load_dotenv does not override), so CI / explicit exports still take precedence.
+_BACKEND_RAG_ENV = Path(__file__).resolve().parents[2] / ".env"
+if _BACKEND_RAG_ENV.exists():
+    load_dotenv(_BACKEND_RAG_ENV)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -257,6 +269,38 @@ async def embed_texts(texts: list[str], client) -> list[list[float]]:
         all_embeddings.extend([d.embedding for d in response.data])
         logger.info(f"  Embedded batch {i}-{i + len(batch)} ({len(batch)} texts)")
     return all_embeddings
+
+
+async def ensure_payload_indexes(qdrant_url: str, api_key: str | None):
+    """Ensure the keyword payload indexes this script's filters depend on exist.
+
+    delete_old_points() and verify_collection() filter/count on doc_type and
+    metadata.doc_type; the kode_kbli index lets callers fetch a single code. Qdrant
+    rejects a filtered count/delete on an UNINDEXED keyword field with
+    'Index required but not found' — which silently aborted the delete step on a
+    collection that had never been indexed. Creating an index is idempotent (a no-op
+    if it already exists), so this is safe to run on every re-index.
+    """
+    import httpx
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["api-key"] = api_key
+
+    fields = ["doc_type", "metadata.doc_type", "kode_kbli"]
+    async with httpx.AsyncClient(timeout=60) as http:
+        for field in fields:
+            resp = await http.put(
+                f"{qdrant_url}/collections/{COLLECTION_NAME}/index",
+                params={"wait": "true"},
+                json={"field_name": field, "field_schema": "keyword"},
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                logger.info(f"  Payload index ready: {field}")
+            else:
+                # Already-exists or benign errors should not abort the re-index.
+                logger.warning(f"  Index ensure for {field}: {resp.status_code} {resp.text[:120]}")
 
 
 async def delete_old_points(qdrant_url: str, api_key: str | None):
@@ -512,12 +556,14 @@ async def main():
     sparse_vectors = [bm25.generate_sparse_vector(t) for t in texts]
     logger.info(f"Generated {len(sparse_vectors)} sparse vectors")
 
-    # Step 3: Delete old points
+    # Step 3: Ensure payload indexes (delete/verify filters depend on them), then delete old points
+    logger.info(f"\nStep 3: Ensuring payload indexes on {COLLECTION_NAME}...")
+    await ensure_payload_indexes(qdrant_url, qdrant_api_key)
     if not args.skip_delete:
-        logger.info(f"\nStep 3: Deleting old OSS_RBA_API points from {COLLECTION_NAME}...")
+        logger.info(f"Step 3: Deleting old OSS_RBA_API points from {COLLECTION_NAME}...")
         await delete_old_points(qdrant_url, qdrant_api_key)
     else:
-        logger.info("\nStep 3: Skipped (--skip-delete)")
+        logger.info("Step 3: Delete skipped (--skip-delete)")
 
     # Step 4: Build final Qdrant points and upsert
     logger.info(f"\nStep 4: Upserting {len(all_points)} points...")
