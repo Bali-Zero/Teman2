@@ -26,6 +26,7 @@ describe("voice concierge synthesize route", () => {
   const originalLocalAudio = process.env.VOICE_CONCIERGE_LOCAL_AUDIO;
   const originalLocalAudioEnabled =
     process.env.VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED;
+  const originalTtsProfile = process.env.VOICE_CONCIERGE_TTS_PROFILE;
   const originalLabEnabled = process.env.VOICE_CONCIERGE_LAB_ENABLED;
   const originalStatusToken = process.env.VOICE_CONCIERGE_STATUS_TOKEN;
   const originalSynthesizeToken = process.env.VOICE_CONCIERGE_SYNTHESIZE_TOKEN;
@@ -44,6 +45,7 @@ describe("voice concierge synthesize route", () => {
     delete process.env.NUZANTARA_API_URL;
     delete process.env.VOICE_CONCIERGE_LOCAL_AUDIO;
     delete process.env.VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED;
+    delete process.env.VOICE_CONCIERGE_TTS_PROFILE;
     delete process.env.VOICE_CONCIERGE_LAB_ENABLED;
     delete process.env.VOICE_CONCIERGE_STATUS_TOKEN;
     delete process.env.VOICE_CONCIERGE_SYNTHESIZE_TOKEN;
@@ -66,6 +68,7 @@ describe("voice concierge synthesize route", () => {
       "VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED",
       originalLocalAudioEnabled,
     );
+    restoreEnv("VOICE_CONCIERGE_TTS_PROFILE", originalTtsProfile);
     restoreEnv("VOICE_CONCIERGE_LAB_ENABLED", originalLabEnabled);
     restoreEnv("VOICE_CONCIERGE_STATUS_TOKEN", originalStatusToken);
     restoreEnv("VOICE_CONCIERGE_SYNTHESIZE_TOKEN", originalSynthesizeToken);
@@ -127,6 +130,21 @@ describe("voice concierge synthesize route", () => {
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
       error: "voice_concierge_synthesize_forbidden",
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("fails closed without backend calls when browser realtime TTS is active", async () => {
+    process.env.VOICE_CONCIERGE_LOCAL_AUDIO = "true";
+    process.env.VOICE_CONCIERGE_BACKEND_API_KEY = "test-key";
+    process.env.VOICE_CONCIERGE_BACKEND_URL = "https://backend.test/api";
+    process.env.VOICE_CONCIERGE_TTS_PROFILE = "browser_realtime";
+
+    const response = await POST(synthesizeRequest({ text: "Hello" }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "backend_tts_disabled_for_realtime_profile",
     });
     expect(global.fetch).not.toHaveBeenCalled();
   });

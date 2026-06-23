@@ -244,6 +244,7 @@ def test_local_audio_status_rejects_unapproved_runtime_host(monkeypatch) -> None
 
 def test_local_audio_status_ready_requires_stt_vad_and_tts(monkeypatch) -> None:
     monkeypatch.setattr(settings, "voice_concierge_local_audio_enabled", True)
+    monkeypatch.setattr(settings, "voice_concierge_tts_profile", "high_quality_offline")
 
     class FakeUnavailableVAD:
         name = "silero-vad"
@@ -322,7 +323,85 @@ def test_local_audio_status_ready_requires_stt_vad_and_tts(monkeypatch) -> None:
     assert body["roundtrip_ready"] is True
     assert body["turn_detection_ready"] is False
     assert body["providers"]["vad"]["available"] is False
+    assert body["tts_profile"]["active_profile"] == "high_quality_offline"
+    assert body["tts_profile"]["active_provider"] == "chatterbox-v3"
+    assert body["tts_profile"]["quality"] == "high_quality"
+    assert body["tts_profile"]["latency_class"] == "offline"
+    assert body["tts_profile"]["fallback_policy"] == "fail_closed"
     assert "ready_requires_stt_vad_tts" in body["constraints"]
+
+
+def test_local_audio_status_exposes_browser_realtime_tts_profile(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "voice_concierge_local_audio_enabled", True)
+    monkeypatch.setattr(settings, "voice_concierge_tts_profile", "browser_realtime")
+    monkeypatch.setattr(
+        settings,
+        "voice_concierge_realtime_tts_provider",
+        "browser-web-speech-local",
+    )
+    monkeypatch.setattr(
+        voice,
+        "_whisper_status",
+        lambda: ProviderStatus(
+            name="whisper.cpp",
+            available=True,
+            detail="ready",
+            policy=ProviderPolicy(),
+        ),
+    )
+
+    class FakeUnavailableVAD:
+        name = "silero-vad"
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name=self.name,
+                available=False,
+                detail="adapter not wired",
+                policy=ProviderPolicy(),
+            )
+
+    class FakeUnavailableChatterbox:
+        name = "chatterbox-v3"
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def status(self) -> ProviderStatus:
+            return ProviderStatus(
+                name=self.name,
+                available=False,
+                detail="too slow for realtime",
+                policy=ProviderPolicy(),
+            )
+
+    monkeypatch.setattr(voice, "SileroVADProvider", FakeUnavailableVAD)
+    monkeypatch.setattr(voice, "ChatterboxTTSProvider", FakeUnavailableChatterbox)
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/voice/local-audio/status",
+        headers={"X-API-Key": "test_api_key_1"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tts_profile"]["active_profile"] == "browser_realtime"
+    assert body["tts_profile"]["active_provider"] == "browser-web-speech-local"
+    assert body["tts_profile"]["quality"] == "realtime"
+    assert body["tts_profile"]["latency_class"] == "interactive"
+    assert body["tts_profile"]["fallback_policy"] == "fail_closed"
+    assert body["tts_profile"]["profiles"]["browser_realtime"]["policy"] == {
+        "requires_network": False,
+        "allows_cloud_fallback": False,
+        "pii_boundary": "local_only",
+    }
+    assert body["tts_profile"]["profiles"]["browser_realtime"]["available"] is False
 
 
 def test_local_audio_transcribe_requires_api_key() -> None:
@@ -774,6 +853,26 @@ def test_local_audio_synthesize_returns_local_wav_and_deletes_temp_output(
     )
     assert provider.calls == [("Ciao Antonello", "en", False)]
     assert not Path(provider.synthesize_paths[0]).exists()
+
+
+def test_local_audio_synthesize_rejects_browser_realtime_profile_before_provider(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "voice_concierge_local_audio_enabled", True)
+    monkeypatch.setattr(settings, "voice_concierge_tts_profile", "browser_realtime")
+    provider = _FakeLocalTTSProvider()
+    app = _build_voice_app(tts_provider=provider)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/voice/local-audio/synthesize",
+        headers={"X-API-Key": "test_api_key_1"},
+        json={"text": "Ciao Antonello"},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "backend TTS disabled for realtime browser profile"}
+    assert provider.calls == []
 
 
 def test_local_audio_synthesize_accepts_language_alias_for_voice(
