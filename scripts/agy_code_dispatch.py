@@ -161,6 +161,17 @@ def run(
         str(worktree),
     ]
     if skip_permissions:
+        # SECURITY (acknowledged finding 2026-06-23): --dangerously-skip-permissions lets
+        # agy auto-approve its own tool calls. This is REQUIRED for headless coding (agy
+        # otherwise blocks on every permission prompt), and is the same pattern prod uses
+        # in nb-curator-daily.sh. The blast radius is bounded by, in order:
+        #   1. HARD gate: agy can only run inside .worktrees/<lane>-<id> (never main — #5);
+        #   2. the prompt is safety-filtered (validate_prompt rejects rm -rf / force-push /
+        #      secret-exfil) BEFORE agy ever sees it;
+        #   3. --add-dir scopes the workspace to that one worktree;
+        #   4. ANTHROPIC_API_KEY is stripped (no paid path);
+        #   5. the dispatcher never commits/pushes — promotion stays operator-gated.
+        # Pass --no-skip-permissions to require interactive approval for sensitive runs.
         cmd.append("--dangerously-skip-permissions")
     cmd += ["-p", "--print-timeout", f"{timeout_s}s"]
 
