@@ -431,6 +431,7 @@ describe("voice concierge route", () => {
       provider: "local-demo",
       intent: "company",
       next_action: "collect_non_pii_context",
+      spoken_answer: "PMA triage ready. Start with KBLI and zoning.",
     });
     expect(global.fetch).not.toHaveBeenCalled();
   });
@@ -485,6 +486,7 @@ describe("voice concierge route", () => {
                       risk_level: "medium",
                       next_action: "collect_non_pii_context",
                       quick_replies: ["Ask about KBLI", "Check zoning"],
+                      spoken_answer: "PMA triage ready. Check KBLI and zoning.",
                     }),
                   },
                 ],
@@ -508,6 +510,7 @@ describe("voice concierge route", () => {
       model: "gemini-test",
       intent: "company",
       next_action: "collect_non_pii_context",
+      spoken_answer: "PMA triage ready. Check KBLI and zoning.",
     });
     expect(body.quick_replies).toEqual(["Ask about KBLI", "Check zoning"]);
     expect(global.fetch).toHaveBeenCalledWith(

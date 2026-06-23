@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 const DEFAULT_TTS_MAX_CHARS = 1200;
 const DEFAULT_TTS_AUDIO_MAX_BYTES = 10 * 1024 * 1024;
-const BACKEND_SYNTHESIZE_TIMEOUT_MS = 65_000;
+const DEFAULT_BACKEND_SYNTHESIZE_TIMEOUT_MS = 240_000;
 
 interface SynthesizeRequestBody {
   text?: unknown;
@@ -48,6 +48,16 @@ function getTtsAudioMaxBytes(): number {
   return Number.isFinite(configured) && configured > 0
     ? configured
     : DEFAULT_TTS_AUDIO_MAX_BYTES;
+}
+
+function getBackendSynthesizeTimeoutMs(): number {
+  const configured = Number.parseInt(
+    process.env.VOICE_CONCIERGE_SYNTHESIZE_TIMEOUT_MS ?? "",
+    10,
+  );
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_BACKEND_SYNTHESIZE_TIMEOUT_MS;
 }
 
 function getOptionalString(value: unknown): string | undefined {
@@ -144,7 +154,7 @@ export async function POST(request: Request): Promise<Response> {
           "X-API-Key": apiKey,
         },
         redirect: "error",
-        signal: AbortSignal.timeout(BACKEND_SYNTHESIZE_TIMEOUT_MS),
+        signal: AbortSignal.timeout(getBackendSynthesizeTimeoutMs()),
         body: JSON.stringify(payload),
       },
     );

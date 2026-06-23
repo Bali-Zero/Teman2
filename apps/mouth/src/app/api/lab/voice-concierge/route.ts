@@ -33,6 +33,7 @@ interface SafeHistoryTurn {
 
 interface VoiceConciergeResponse {
   answer: string;
+  spoken_answer?: string;
   intent: ConciergeIntent;
   risk_level: ConciergeRisk;
   next_action: ConciergeNextAction;
@@ -56,6 +57,7 @@ interface GeminiResponse {
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const MAX_MESSAGE_LENGTH = 1200;
 const MAX_HISTORY_ITEMS = 4;
+const MAX_SPOKEN_ANSWER_LENGTH = 96;
 const TEXT_PROVIDER_TIMEOUT_MS = 15_000;
 const SUPPORTED_LOCALES = new Set<SupportedLocale>([
   "en",
@@ -71,6 +73,7 @@ const SYSTEM_PROMPT = [
   "Do not ask for passports, KTP, NPWP, phone numbers, emails, exact client names, document numbers, or private WhatsApp/CRM details.",
   "If the user needs case-specific advice, collect only non-PII context and suggest a team handoff.",
   "Never quote prices. Tell the user that pricing must be checked through the Bali Zero pricing tool/team.",
+  "Also return spoken_answer: one short sentence for local TTS, max 96 characters, no PII.",
   "Return only JSON that matches the requested schema.",
 ].join("\n");
 
@@ -78,6 +81,7 @@ const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     answer: { type: "string" },
+    spoken_answer: { type: "string" },
     intent: {
       type: "string",
       enum: ["visa", "company", "tax", "property", "operations", "unknown"],
@@ -97,7 +101,14 @@ const RESPONSE_SCHEMA = {
       items: { type: "string" },
     },
   },
-  required: ["answer", "intent", "risk_level", "next_action", "quick_replies"],
+  required: [
+    "answer",
+    "spoken_answer",
+    "intent",
+    "risk_level",
+    "next_action",
+    "quick_replies",
+  ],
 };
 
 function getApiKey(): string | undefined {
@@ -242,6 +253,24 @@ function inferIntent(message: string): ConciergeIntent {
   return "unknown";
 }
 
+function compactForSpeech(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= MAX_SPOKEN_ANSWER_LENGTH) return normalized;
+
+  const firstSentence = normalized.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim();
+  if (firstSentence && firstSentence.length <= MAX_SPOKEN_ANSWER_LENGTH) {
+    return firstSentence;
+  }
+
+  const candidate = normalized.slice(0, MAX_SPOKEN_ANSWER_LENGTH + 1);
+  const lastSpace = candidate.lastIndexOf(" ");
+  const endIndex =
+    lastSpace >= Math.floor(MAX_SPOKEN_ANSWER_LENGTH * 0.6)
+      ? lastSpace
+      : MAX_SPOKEN_ANSWER_LENGTH;
+  return `${normalized.slice(0, endIndex).replace(/[,:;.\-\s]+$/, "")}.`;
+}
+
 function demoResponse(
   message: string,
   locale: SupportedLocale,
@@ -289,10 +318,42 @@ function demoResponse(
         "Saya bisa mengarahkan pertanyaan ke visa, company, tax, property, atau operations. Tanyakan dengan bahasa natural tanpa identitas pribadi atau nomor dokumen.",
     },
   };
+  const spokenByLocale: Record<
+    "en" | "it" | "id",
+    Record<ConciergeIntent, string>
+  > = {
+    en: {
+      visa: "Visa triage ready. Share only broad, non-private context.",
+      company: "PMA triage ready. Start with KBLI and zoning.",
+      tax: "Tax triage ready. Keep NPWP and client IDs out.",
+      property: "Property triage ready. Start with title and zoning.",
+      operations: "Workflow triage ready. I can route the next team step.",
+      unknown: "I can route this into visa, company, tax, property, or ops.",
+    },
+    it: {
+      visa: "Triage visa pronto. Usa solo contesto generale, non privato.",
+      company: "Triage PMA pronto. Parti da KBLI e zoning.",
+      tax: "Triage fiscale pronto. Tieni fuori NPWP e dati cliente.",
+      property: "Triage property pronto. Parti da titolo e zoning.",
+      operations: "Triage workflow pronto. Posso instradare il prossimo step.",
+      unknown: "Posso instradare su visa, company, tax, property o ops.",
+    },
+    id: {
+      visa: "Triage visa siap. Pakai konteks umum saja.",
+      company: "Triage PMA siap. Mulai dari KBLI dan zoning.",
+      tax: "Triage pajak siap. Jangan masukkan NPWP atau identitas klien.",
+      property: "Triage properti siap. Mulai dari status hak dan zoning.",
+      operations: "Triage workflow siap. Saya bisa arahkan langkah tim.",
+      unknown: "Saya bisa arahkan ke visa, company, tax, property, atau ops.",
+    },
+  };
   const byIntent = byLocale[locale === "it" || locale === "id" ? locale : "en"];
+  const spokenByIntent =
+    spokenByLocale[locale === "it" || locale === "id" ? locale : "en"];
 
   return {
     answer: byIntent[intent],
+    spoken_answer: spokenByIntent[intent],
     intent,
     risk_level: intent === "unknown" ? "low" : "medium",
     next_action:
@@ -317,14 +378,16 @@ function normalizeResponse(
   const intent = parsed.intent ?? "unknown";
   const riskLevel = parsed.risk_level ?? "medium";
   const nextAction = parsed.next_action ?? "collect_non_pii_context";
+  const answer =
+    parsed.answer ??
+    "I can help, but I need a clearer non-PII question before routing this.";
   const quickReplies = Array.isArray(parsed.quick_replies)
     ? parsed.quick_replies.slice(0, 4).filter((reply) => reply.trim())
     : [];
 
   return {
-    answer:
-      parsed.answer ??
-      "I can help, but I need a clearer non-PII question before routing this.",
+    answer,
+    spoken_answer: compactForSpeech(parsed.spoken_answer ?? answer),
     intent,
     risk_level: riskLevel,
     next_action: nextAction,

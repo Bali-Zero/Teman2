@@ -32,6 +32,8 @@ describe("voice concierge synthesize route", () => {
   const originalTtsMaxChars = process.env.VOICE_CONCIERGE_TTS_MAX_CHARS;
   const originalTtsAudioMaxBytes =
     process.env.VOICE_CONCIERGE_TTS_AUDIO_MAX_BYTES;
+  const originalSynthesizeTimeoutMs =
+    process.env.VOICE_CONCIERGE_SYNTHESIZE_TIMEOUT_MS;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -47,6 +49,7 @@ describe("voice concierge synthesize route", () => {
     delete process.env.VOICE_CONCIERGE_SYNTHESIZE_TOKEN;
     delete process.env.VOICE_CONCIERGE_TTS_MAX_CHARS;
     delete process.env.VOICE_CONCIERGE_TTS_AUDIO_MAX_BYTES;
+    delete process.env.VOICE_CONCIERGE_SYNTHESIZE_TIMEOUT_MS;
     global.fetch = vi.fn();
   });
 
@@ -68,6 +71,10 @@ describe("voice concierge synthesize route", () => {
     restoreEnv("VOICE_CONCIERGE_SYNTHESIZE_TOKEN", originalSynthesizeToken);
     restoreEnv("VOICE_CONCIERGE_TTS_MAX_CHARS", originalTtsMaxChars);
     restoreEnv("VOICE_CONCIERGE_TTS_AUDIO_MAX_BYTES", originalTtsAudioMaxBytes);
+    restoreEnv(
+      "VOICE_CONCIERGE_SYNTHESIZE_TIMEOUT_MS",
+      originalSynthesizeTimeoutMs,
+    );
   });
 
   it("fails closed without calling the backend when local audio is disabled", async () => {
@@ -305,6 +312,34 @@ describe("voice concierge synthesize route", () => {
         redirect: "error",
         signal: expect.any(AbortSignal),
         body: JSON.stringify({ text: "Hello", voice: "en" }),
+      }),
+    );
+  });
+
+  it("uses a configurable backend synthesis timeout", async () => {
+    process.env.VOICE_CONCIERGE_LOCAL_AUDIO = "true";
+    process.env.VOICE_CONCIERGE_BACKEND_API_KEY = "test-key";
+    process.env.VOICE_CONCIERGE_BACKEND_URL = "https://backend.test/api";
+    process.env.VOICE_CONCIERGE_SYNTHESIZE_TIMEOUT_MS = "180000";
+    const timeoutSignal = new AbortController().signal;
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(timeoutSignal);
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response("RIFF", {
+        status: 200,
+        headers: { "Content-Type": "audio/wav" },
+      }),
+    );
+
+    const response = await POST(synthesizeRequest({ text: "Hello" }));
+
+    expect(response.status).toBe(200);
+    expect(timeoutSpy).toHaveBeenCalledWith(180_000);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://backend.test/api/voice/local-audio/synthesize",
+      expect.objectContaining({
+        signal: timeoutSignal,
       }),
     );
   });
