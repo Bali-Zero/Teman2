@@ -100,6 +100,10 @@ _COMPOSITION_CLAIM_MARKERS = (
     "real estate", "unbalanced", "imbalanced", "crammed", "cramped",
     "lopsided", "top-heavy", "bottom-heavy", "off-center", "off-centre",
     "leaving the lower", "leaving the upper",
+    # gap / void / negative-space phrasings of the same vertical-balance debt
+    "bottom gap", "top gap", "large gap", "substantial gap",
+    "large void", "void before", "void above", "void below",
+    "negative space", "large empty", "empty band", "empty strip",
 )
 
 # HARD-defect markers, matched on WORD BOUNDARY (not bare substring) — the
