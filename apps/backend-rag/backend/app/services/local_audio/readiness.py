@@ -43,6 +43,19 @@ OFFLINE_ENV_GUARDS = {
     "HF_HUB_OFFLINE": "1",
     "TRANSFORMERS_OFFLINE": "1",
 }
+TTS_PROFILE_HIGH_QUALITY = "high_quality_offline"
+TTS_PROFILE_BROWSER_REALTIME = "browser_realtime"
+CHATTERBOX_TTS_PROVIDER_NAME = "chatterbox-v3"
+TTS_PROFILE_ALIASES = {
+    "high-quality": TTS_PROFILE_HIGH_QUALITY,
+    "high-quality-offline": TTS_PROFILE_HIGH_QUALITY,
+    "high_quality": TTS_PROFILE_HIGH_QUALITY,
+    "high_quality_offline": TTS_PROFILE_HIGH_QUALITY,
+    "offline": TTS_PROFILE_HIGH_QUALITY,
+    "browser-realtime": TTS_PROFILE_BROWSER_REALTIME,
+    "browser_realtime": TTS_PROFILE_BROWSER_REALTIME,
+    "realtime": TTS_PROFILE_BROWSER_REALTIME,
+}
 
 
 @dataclass(frozen=True)
@@ -204,6 +217,7 @@ def _build_static_checks(
         _venv_check(python_prefix=python_prefix, python_base_prefix=python_base_prefix),
         _local_audio_enabled_check(settings),
         _provider_policy_check(),
+        _tts_profile_check(settings),
         _capacity_limits_check(settings),
         _whisper_binary_check(settings),
         _whisper_model_check(settings),
@@ -341,6 +355,37 @@ def _provider_policy_check() -> ReadinessCheck:
     )
 
 
+def _tts_profile_check(settings: Any) -> ReadinessCheck:
+    raw_value = _get_str(settings, "voice_concierge_tts_profile") or TTS_PROFILE_HIGH_QUALITY
+    normalized = _normalize_tts_profile(raw_value)
+    if normalized is None:
+        return ReadinessCheck(
+            name="tts_profile",
+            status="fail",
+            detail="VOICE_CONCIERGE_TTS_PROFILE must be high_quality_offline or browser_realtime",
+            metadata={"configured": raw_value},
+        )
+    provider = (
+        CHATTERBOX_TTS_PROVIDER_NAME
+        if normalized == TTS_PROFILE_HIGH_QUALITY
+        else (
+            _get_str(settings, "voice_concierge_realtime_tts_provider")
+            or "browser-web-speech-local"
+        )
+    )
+    return ReadinessCheck(
+        name="tts_profile",
+        status="pass",
+        detail=f"active TTS profile {normalized} uses {provider}",
+        metadata={
+            "active_profile": normalized,
+            "active_provider": provider,
+            "fallback_policy": "fail_closed",
+            "pii_boundary": "local_only",
+        },
+    )
+
+
 def _capacity_limits_check(settings: Any) -> ReadinessCheck:
     values = {
         "audio_max_bytes": _get_int(settings, "voice_concierge_audio_max_bytes"),
@@ -351,9 +396,16 @@ def _capacity_limits_check(settings: Any) -> ReadinessCheck:
     return ReadinessCheck(
         name="capacity_limits",
         status="fail" if invalid else "pass",
-        detail=f"invalid positive limits: {', '.join(invalid)}" if invalid else "capacity caps are positive",
+        detail=f"invalid positive limits: {', '.join(invalid)}"
+        if invalid
+        else "capacity caps are positive",
         metadata=values,
     )
+
+
+def _normalize_tts_profile(raw_value: str) -> str | None:
+    value = raw_value.strip().lower().replace(" ", "_")
+    return TTS_PROFILE_ALIASES.get(value)
 
 
 def _whisper_binary_check(settings: Any) -> ReadinessCheck:
@@ -517,7 +569,9 @@ def _chatterbox_config_check(settings: Any) -> ReadinessCheck:
     return ReadinessCheck(
         name="chatterbox_config",
         status="fail" if invalid else "pass",
-        detail=f"invalid Chatterbox config: {', '.join(invalid)}" if invalid else "Chatterbox config valid",
+        detail=f"invalid Chatterbox config: {', '.join(invalid)}"
+        if invalid
+        else "Chatterbox config valid",
         metadata={
             "t3_model": t3_model,
             "language": language,

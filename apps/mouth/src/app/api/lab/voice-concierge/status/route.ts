@@ -8,8 +8,13 @@ import {
 export const runtime = "nodejs";
 
 const BACKEND_STATUS_TIMEOUT_MS = 8_000;
+const TTS_PROFILE_HIGH_QUALITY = "high_quality_offline";
+const TTS_PROFILE_BROWSER_REALTIME = "browser_realtime";
 
 type ProviderKey = "stt" | "vad" | "tts";
+type TtsProfileId =
+  | typeof TTS_PROFILE_HIGH_QUALITY
+  | typeof TTS_PROFILE_BROWSER_REALTIME;
 
 interface ProviderPolicy {
   requires_network: boolean;
@@ -24,12 +29,32 @@ interface LocalAudioProviderStatus {
   policy: ProviderPolicy;
 }
 
+interface TtsProfileEntry {
+  profile: TtsProfileId;
+  provider: string;
+  quality: "high_quality" | "realtime";
+  latency_class: "offline" | "interactive";
+  available: boolean;
+  detail: string;
+  policy: ProviderPolicy;
+}
+
+interface TtsProfileStatus {
+  active_profile: TtsProfileId;
+  active_provider: string;
+  quality: "high_quality" | "realtime";
+  latency_class: "offline" | "interactive";
+  fallback_policy: "fail_closed";
+  profiles: Record<TtsProfileId, TtsProfileEntry>;
+}
+
 interface BackendLocalAudioStatus {
   enabled: boolean;
   ready: boolean;
   roundtrip_ready: boolean;
   turn_detection_ready: boolean;
   providers: Record<ProviderKey, LocalAudioProviderStatus>;
+  tts_profile?: TtsProfileStatus;
   constraints: string[];
 }
 
@@ -39,9 +64,10 @@ interface LabLocalAudioStatus extends BackendLocalAudioStatus {
 }
 
 interface VoiceConciergeLabStatus {
-  browser_speech_provider: "disabled";
+  browser_speech_provider: "disabled" | "web-speech-local";
   text_concierge_provider: "local-demo" | "google-ai-studio";
   local_audio: LabLocalAudioStatus;
+  tts_profile: TtsProfileStatus;
 }
 
 const DISABLED_POLICY: ProviderPolicy = {
@@ -92,11 +118,72 @@ function getTextConciergeProvider(): "local-demo" | "google-ai-studio" {
     : "local-demo";
 }
 
-function baseStatus(localAudio: LabLocalAudioStatus): VoiceConciergeLabStatus {
+function getConfiguredTtsProfile(): TtsProfileId {
+  const rawValue = (process.env.VOICE_CONCIERGE_TTS_PROFILE ?? "")
+    .trim()
+    .toLowerCase()
+    .replaceAll(" ", "_")
+    .replaceAll("-", "_");
+  if (rawValue === "browser_realtime" || rawValue === "realtime") {
+    return TTS_PROFILE_BROWSER_REALTIME;
+  }
+  return TTS_PROFILE_HIGH_QUALITY;
+}
+
+function getRealtimeTtsProvider(): string {
+  return (
+    process.env.VOICE_CONCIERGE_REALTIME_TTS_PROVIDER?.trim() ||
+    "browser-web-speech-local"
+  );
+}
+
+function buildTtsProfileStatus(
+  localAudio: Pick<BackendLocalAudioStatus, "providers">,
+): TtsProfileStatus {
+  const activeProfile = getConfiguredTtsProfile();
+  const highQualityProvider = localAudio.providers.tts;
+  const profiles: Record<TtsProfileId, TtsProfileEntry> = {
+    high_quality_offline: {
+      profile: TTS_PROFILE_HIGH_QUALITY,
+      provider: highQualityProvider.name,
+      quality: "high_quality",
+      latency_class: "offline",
+      available: highQualityProvider.available,
+      detail: highQualityProvider.detail,
+      policy: highQualityProvider.policy,
+    },
+    browser_realtime: {
+      profile: TTS_PROFILE_BROWSER_REALTIME,
+      provider: getRealtimeTtsProvider(),
+      quality: "realtime",
+      latency_class: "interactive",
+      available: false,
+      detail: "client must confirm a browser localService voice",
+      policy: DISABLED_POLICY,
+    },
+  };
+  const active = profiles[activeProfile];
   return {
-    browser_speech_provider: "disabled",
+    active_profile: active.profile,
+    active_provider: active.provider,
+    quality: active.quality,
+    latency_class: active.latency_class,
+    fallback_policy: "fail_closed",
+    profiles,
+  };
+}
+
+function baseStatus(localAudio: LabLocalAudioStatus): VoiceConciergeLabStatus {
+  const ttsProfile =
+    localAudio.tts_profile ?? buildTtsProfileStatus(localAudio);
+  return {
+    browser_speech_provider:
+      ttsProfile.active_profile === TTS_PROFILE_BROWSER_REALTIME
+        ? "web-speech-local"
+        : "disabled",
     text_concierge_provider: getTextConciergeProvider(),
     local_audio: localAudio,
+    tts_profile: ttsProfile,
   };
 }
 

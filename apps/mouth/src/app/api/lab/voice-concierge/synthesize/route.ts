@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 const DEFAULT_TTS_MAX_CHARS = 1200;
 const DEFAULT_TTS_AUDIO_MAX_BYTES = 10 * 1024 * 1024;
 const DEFAULT_BACKEND_SYNTHESIZE_TIMEOUT_MS = 240_000;
+const TTS_PROFILE_BROWSER_REALTIME = "browser_realtime";
 
 interface SynthesizeRequestBody {
   text?: unknown;
@@ -58,6 +59,15 @@ function getBackendSynthesizeTimeoutMs(): number {
   return Number.isFinite(configured) && configured > 0
     ? configured
     : DEFAULT_BACKEND_SYNTHESIZE_TIMEOUT_MS;
+}
+
+function isBrowserRealtimeTtsProfile(): boolean {
+  const rawValue = (process.env.VOICE_CONCIERGE_TTS_PROFILE ?? "")
+    .trim()
+    .toLowerCase()
+    .replaceAll(" ", "_")
+    .replaceAll("-", "_");
+  return rawValue === TTS_PROFILE_BROWSER_REALTIME || rawValue === "realtime";
 }
 
 function getOptionalString(value: unknown): string | undefined {
@@ -111,6 +121,13 @@ export async function POST(request: Request): Promise<Response> {
   if (!isLocalAudioEnabled()) {
     return NextResponse.json(
       { error: "local_audio_disabled" },
+      { status: 503 },
+    );
+  }
+
+  if (isBrowserRealtimeTtsProfile()) {
+    return NextResponse.json(
+      { error: "backend_tts_disabled_for_realtime_profile" },
       { status: 503 },
     );
   }

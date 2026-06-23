@@ -81,9 +81,20 @@ interface LocalAudioProviderStatus {
   };
 }
 
+type TtsProfileId = "high_quality_offline" | "browser_realtime";
+
+interface TtsProfileStatus {
+  active_profile: TtsProfileId;
+  active_provider: string;
+  quality: "high_quality" | "realtime";
+  latency_class: "offline" | "interactive";
+  fallback_policy: "fail_closed";
+}
+
 interface VoiceConciergeLabStatus {
-  browser_speech_provider: "disabled";
+  browser_speech_provider: "disabled" | "web-speech-local";
   text_concierge_provider: "local-demo" | "google-ai-studio";
+  tts_profile?: TtsProfileStatus;
   local_audio: {
     enabled: boolean;
     ready: boolean;
@@ -100,6 +111,31 @@ interface VoiceConciergeLabStatus {
   };
 }
 
+interface BrowserTtsStatus {
+  available: boolean;
+  detail: string;
+  voiceName?: string;
+  language?: string;
+}
+
+const BROWSER_TTS_UNAVAILABLE: BrowserTtsStatus = {
+  available: false,
+  detail: "browser local voice not checked",
+};
+
+function getEffectiveTtsProfile(
+  status: VoiceConciergeLabStatus | null,
+): TtsProfileStatus {
+  if (status?.tts_profile) return status.tts_profile;
+  return {
+    active_profile: "high_quality_offline",
+    active_provider: status?.local_audio.providers.tts.name ?? "chatterbox-v3",
+    quality: "high_quality",
+    latency_class: "offline",
+    fallback_policy: "fail_closed",
+  };
+}
+
 function getStatusLabel(response: ConciergeResponse | null): string {
   if (!response) return "Ready";
   return response.mode === "gemini" ? "Gemini" : "Demo";
@@ -107,6 +143,11 @@ function getStatusLabel(response: ConciergeResponse | null): string {
 
 function getAudioStackLabel(status: VoiceConciergeLabStatus | null): string {
   if (!status) return "Checking audio";
+  if (getEffectiveTtsProfile(status).active_profile === "browser_realtime") {
+    return status.local_audio.providers.stt.available
+      ? "Realtime TTS profile"
+      : "Realtime TTS gated";
+  }
   if (status.local_audio.ready) return "Local audio ready";
   if (status.local_audio.roundtrip_ready) return "Local audio roundtrip ready";
   if (status.local_audio.enabled) return "Local audio gated";
@@ -121,6 +162,59 @@ function isConciergeResponse(
 
 function getSpeechText(response: ConciergeResponse): string {
   return (response.spoken_answer?.trim() || response.answer).trim();
+}
+
+function isLocalOnlyProviderReady(
+  provider: LocalAudioProviderStatus | undefined,
+): boolean {
+  return Boolean(
+    provider?.available &&
+    provider.policy.requires_network === false &&
+    provider.policy.allows_cloud_fallback === false &&
+    provider.policy.pii_boundary === "local_only",
+  );
+}
+
+function canUseBrowserSpeechSynthesis(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.speechSynthesis !== "undefined" &&
+    typeof SpeechSynthesisUtterance !== "undefined"
+  );
+}
+
+function findLocalBrowserVoice(): SpeechSynthesisVoice | null {
+  if (!canUseBrowserSpeechSynthesis()) return null;
+  const voices = window.speechSynthesis.getVoices();
+  return voices.find((voice) => voice.localService === true) ?? null;
+}
+
+function getBrowserTtsStatus(): BrowserTtsStatus {
+  if (!canUseBrowserSpeechSynthesis()) {
+    return {
+      available: false,
+      detail: "browser speech synthesis unavailable",
+    };
+  }
+
+  const voices = window.speechSynthesis.getVoices();
+  const localVoice = voices.find((voice) => voice.localService === true);
+  if (!localVoice) {
+    return {
+      available: false,
+      detail:
+        voices.length > 0
+          ? "no browser localService voice available"
+          : "browser voices not loaded",
+    };
+  }
+
+  return {
+    available: true,
+    detail: "browser localService voice ready",
+    voiceName: localVoice.name,
+    language: localVoice.lang,
+  };
 }
 
 function canUseBrowserRecorder(): boolean {
@@ -195,6 +289,9 @@ export function VoiceConciergeClient(): React.JSX.Element {
   const [labStatus, setLabStatus] = useState<VoiceConciergeLabStatus | null>(
     null,
   );
+  const [browserTtsStatus, setBrowserTtsStatus] = useState<BrowserTtsStatus>(
+    BROWSER_TTS_UNAVAILABLE,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStartingRecording, setIsStartingRecording] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -211,7 +308,21 @@ export function VoiceConciergeClient(): React.JSX.Element {
   const streamRef = useRef<MediaStream | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
   const speechObjectUrlRef = useRef<string | null>(null);
-  const isManualAudioReady = Boolean(labStatus?.local_audio.roundtrip_ready);
+  const ttsProfile = getEffectiveTtsProfile(labStatus);
+  const isBrowserRealtimeProfile =
+    ttsProfile.active_profile === "browser_realtime";
+  const isLocalSttReady = isLocalOnlyProviderReady(
+    labStatus?.local_audio.providers.stt,
+  );
+  const isBackendTtsReady = isLocalOnlyProviderReady(
+    labStatus?.local_audio.providers.tts,
+  );
+  const isRealtimeTtsReady =
+    isBrowserRealtimeProfile && browserTtsStatus.available;
+  const isTtsReady = isBrowserRealtimeProfile
+    ? isRealtimeTtsReady
+    : isBackendTtsReady;
+  const isManualAudioReady = isLocalSttReady && isTtsReady;
   const hasBrowserRecorder = canUseBrowserRecorder();
 
   const stopSpeechPlayback = useCallback(
@@ -238,6 +349,10 @@ export function VoiceConciergeClient(): React.JSX.Element {
         URL.revokeObjectURL(objectUrl);
       }
 
+      if (canUseBrowserSpeechSynthesis()) {
+        window.speechSynthesis.cancel();
+      }
+
       if (options.updateState !== false && isMountedRef.current) {
         setIsSpeaking(false);
       }
@@ -245,12 +360,52 @@ export function VoiceConciergeClient(): React.JSX.Element {
     [],
   );
 
-  const playLocalSpeech = useCallback(
+  const playBrowserSpeech = useCallback(
     async (text: string, options: { reportError?: boolean } = {}) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
-      if (!isManualAudioReady) {
+      const voice = findLocalBrowserVoice();
+      if (!voice || !canUseBrowserSpeechSynthesis()) {
+        setBrowserTtsStatus(getBrowserTtsStatus());
+        if (options.reportError) {
+          setError("Realtime local TTS is not ready");
+        }
+        return;
+      }
+
+      const sessionId = speechSessionRef.current + 1;
+      speechSessionRef.current = sessionId;
+      stopSpeechPlayback({ invalidate: false });
+      setIsSpeaking(true);
+
+      const utterance = new SpeechSynthesisUtterance(trimmed);
+      utterance.voice = voice;
+      utterance.lang = voice.lang || inferLocaleFromText(trimmed);
+      utterance.onend = () => {
+        if (speechSessionRef.current === sessionId) {
+          stopSpeechPlayback({ invalidate: false });
+        }
+      };
+      utterance.onerror = () => {
+        if (speechSessionRef.current === sessionId) {
+          stopSpeechPlayback();
+          if (options.reportError && isMountedRef.current) {
+            setError("Realtime local TTS failed");
+          }
+        }
+      };
+      window.speechSynthesis.speak(utterance);
+    },
+    [stopSpeechPlayback],
+  );
+
+  const playBackendSpeech = useCallback(
+    async (text: string, options: { reportError?: boolean } = {}) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      if (!isBackendTtsReady) {
         if (options.reportError) {
           setError("Local TTS is not ready");
         }
@@ -331,7 +486,37 @@ export function VoiceConciergeClient(): React.JSX.Element {
         }
       }
     },
-    [isManualAudioReady, stopSpeechPlayback],
+    [isBackendTtsReady, stopSpeechPlayback],
+  );
+
+  const playLocalSpeech = useCallback(
+    async (text: string, options: { reportError?: boolean } = {}) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      if (!isTtsReady) {
+        if (options.reportError) {
+          setError(
+            isBrowserRealtimeProfile
+              ? "Realtime local TTS is not ready"
+              : "Local TTS is not ready",
+          );
+        }
+        return;
+      }
+
+      if (isBrowserRealtimeProfile) {
+        await playBrowserSpeech(trimmed, options);
+        return;
+      }
+      await playBackendSpeech(trimmed, options);
+    },
+    [
+      isBrowserRealtimeProfile,
+      isTtsReady,
+      playBackendSpeech,
+      playBrowserSpeech,
+    ],
   );
 
   const stopAudioStream = useCallback(() => {
@@ -361,6 +546,21 @@ export function VoiceConciergeClient(): React.JSX.Element {
 
     void loadLabStatus();
 
+    const updateBrowserTts = () => {
+      if (!cancelled) {
+        setBrowserTtsStatus(getBrowserTtsStatus());
+      }
+    };
+    updateBrowserTts();
+
+    if (canUseBrowserSpeechSynthesis()) {
+      window.speechSynthesis.addEventListener?.(
+        "voiceschanged",
+        updateBrowserTts,
+      );
+      window.setTimeout(updateBrowserTts, 250);
+    }
+
     return () => {
       isMountedRef.current = false;
       cancelled = true;
@@ -377,6 +577,12 @@ export function VoiceConciergeClient(): React.JSX.Element {
       }
       stopAudioStream();
       stopSpeechPlayback({ updateState: false });
+      if (canUseBrowserSpeechSynthesis()) {
+        window.speechSynthesis.removeEventListener?.(
+          "voiceschanged",
+          updateBrowserTts,
+        );
+      }
     };
   }, [stopAudioStream, stopSpeechPlayback]);
 
@@ -385,6 +591,14 @@ export function VoiceConciergeClient(): React.JSX.Element {
     { label: "VAD", provider: labStatus?.local_audio.providers.vad },
     { label: "TTS", provider: labStatus?.local_audio.providers.tts },
   ];
+  const activeTtsProvider = isBrowserRealtimeProfile
+    ? browserTtsStatus.voiceName
+      ? `${ttsProfile.active_provider} · ${browserTtsStatus.voiceName}`
+      : ttsProfile.active_provider
+    : ttsProfile.active_provider;
+  const activeTtsDetail = isBrowserRealtimeProfile
+    ? browserTtsStatus.detail
+    : (labStatus?.local_audio.providers.tts.detail ?? "checking");
 
   const submitTurn = useCallback(
     async (message: string) => {
@@ -611,7 +825,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
       ? "Starting voice input"
       : isManualAudioReady && hasBrowserRecorder
         ? "Start voice input"
-        : "Voice input gated until local audio roundtrip is wired";
+        : "Voice input gated until local audio roundtrip is ready";
   const voiceButtonText = isRecording
     ? isStoppingRecording
       ? "Stopping"
@@ -641,7 +855,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
   const voiceButtonTitle =
     isManualAudioReady && hasBrowserRecorder
       ? "Record a short local-only voice prompt."
-      : "Voice capture is gated until local Whisper/Chatterbox roundtrip is wired.";
+      : "Voice capture is gated until local STT and active TTS are ready.";
 
   return (
     <main className="min-h-full px-4 py-6 md:px-6">
@@ -786,7 +1000,7 @@ export function VoiceConciergeClient(): React.JSX.Element {
                   <Button
                     aria-label="Read latest answer"
                     disabled={
-                      !lastResponse?.answer || !isManualAudioReady || isSpeaking
+                      !lastResponse?.answer || !isTtsReady || isSpeaking
                     }
                     onClick={() =>
                       lastResponse &&
@@ -795,9 +1009,9 @@ export function VoiceConciergeClient(): React.JSX.Element {
                       })
                     }
                     title={
-                      isManualAudioReady
+                      isTtsReady
                         ? "Read the latest short voice response with local TTS."
-                        : "Local TTS is gated until local audio roundtrip is ready."
+                        : "Local TTS is gated until the active profile is ready."
                     }
                     variant="outline"
                   >
@@ -899,6 +1113,37 @@ export function VoiceConciergeClient(): React.JSX.Element {
                     </span>
                   </div>
                 ))}
+                <div
+                  className="rounded-md border px-3 py-2"
+                  style={{
+                    borderColor: "rgba(255,255,255,0.08)",
+                    color: "var(--bz-text-2)",
+                    background: "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  <div className="grid grid-cols-[86px_1fr] gap-2">
+                    <span style={{ color: "var(--bz-text-3)" }}>TTS</span>
+                    <span style={{ color: "var(--bz-text-1)" }}>
+                      {activeTtsProvider}
+                    </span>
+                    <span style={{ color: "var(--bz-text-3)" }}>Quality</span>
+                    <span style={{ color: "var(--bz-text-1)" }}>
+                      {ttsProfile.quality}
+                    </span>
+                    <span style={{ color: "var(--bz-text-3)" }}>Latency</span>
+                    <span style={{ color: "var(--bz-text-1)" }}>
+                      {ttsProfile.latency_class}
+                    </span>
+                    <span style={{ color: "var(--bz-text-3)" }}>State</span>
+                    <span
+                      style={{
+                        color: isTtsReady ? "#86efac" : "#fca5a5",
+                      }}
+                    >
+                      {isTtsReady ? "ready" : activeTtsDetail}
+                    </span>
+                  </div>
+                </div>
                 <div
                   className="rounded-md border px-3 py-2"
                   style={{
