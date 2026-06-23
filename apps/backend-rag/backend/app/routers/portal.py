@@ -282,6 +282,16 @@ async def get_dashboard(
             "success": True,
             "data": data,
         }
+    except ValueError as e:
+        # BUG C: get_dashboard raises ValueError("Client X not found") when the
+        # linked client row is gone / soft-deleted (it filters
+        # `... WHERE id = $1 AND deleted_at IS NULL`). That's a not-found
+        # condition, not an internal error — surface 404 so a soft-deleted
+        # client's portal doesn't 500 the whole dashboard.
+        logger.warning(
+            f"Dashboard client not found for client {client['client_id']}: {e}"
+        )
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get dashboard for client {client['client_id']}: {e}")
         raise HTTPException(
