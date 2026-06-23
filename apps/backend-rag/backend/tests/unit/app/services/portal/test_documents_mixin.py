@@ -802,3 +802,95 @@ async def test_upload_to_drive_oauth_success() -> None:
     assert drive_service.upload_file_to_folder.call_args.kwargs["file_name"].endswith(
         "_passport.pdf"
     )
+
+
+# =============================================================================
+# BUG B REGRESSION — TeamDriveService.service_account_available (Bug-A worktree)
+# =============================================================================
+
+
+def test_team_drive_service_has_service_account_available_attribute() -> None:
+    """TeamDriveService must expose service_account_available without raising.
+
+    Before the fix, accessing team_drive.service_account_available raised
+    AttributeError → the upload transaction was aborted → 500 on every request
+    that fell through to the service-account path.
+    """
+    from unittest.mock import MagicMock
+
+    from backend.services.integrations.team_drive_service import TeamDriveService
+
+    # Constructing TeamDriveService requires a db_pool but we only test the
+    # property, so we stub the internal managers to avoid real I/O.
+    with patch(
+        "backend.services.integrations.team_drive_service.DriveAuthManager"
+    ) as auth_cls, patch(
+        "backend.services.integrations.team_drive_service.DriveOperationsManager"
+    ), patch(
+        "backend.services.integrations.team_drive_service.DrivePermissionsManager"
+    ), patch(
+        "backend.services.integrations.team_drive_service.DriveAuditLogger"
+    ), patch(
+        "httpx.AsyncClient"
+    ):
+        service = TeamDriveService(db_pool=MagicMock())
+
+        # Case 1: auth manager has no service_account_available attr → False
+        auth_cls.return_value = MagicMock(spec=[])  # no extra attrs
+        service.auth = auth_cls.return_value
+        assert service.service_account_available is False
+
+        # Case 2: auth manager exposes service_account_available = True
+        auth_manager_with_sa = MagicMock()
+        auth_manager_with_sa.service_account_available = True
+        service.auth = auth_manager_with_sa
+        assert service.service_account_available is True
+
+        # Case 3: auth manager exposes service_account_available = False
+        auth_manager_without_sa = MagicMock()
+        auth_manager_without_sa.service_account_available = False
+        service.auth = auth_manager_without_sa
+        assert service.service_account_available is False
+
+        # Case 4: auth is None → safe fallback
+        service.auth = None
+        assert service.service_account_available is False
+
+
+@pytest.mark.asyncio
+async def test_upload_to_drive_no_auth_does_not_raise_attribute_error() -> None:
+    """_upload_to_drive must return an error dict, never raise AttributeError.
+
+    The AttributeError was triggered by accessing team_drive.service_account_available
+    before the property was added.  This test guards against the regression.
+    """
+    service, _mock_conn = _make_service_with_fetchrow(row=None)
+
+    with (
+        patch(
+            "backend.services.integrations.google_drive_service.GoogleDriveService"
+        ) as drive_cls,
+        patch(
+            "backend.services.integrations.team_drive_service.TeamDriveService"
+        ) as team_cls,
+    ):
+        drive_cls.return_value.is_configured.return_value = False
+        # Critically: ensure service_account_available is defined and False
+        team_cls.return_value.service_account_available = False
+
+        # Must NOT raise — must return a well-formed error dict
+        result = await service._upload_to_drive(
+            conn=AsyncMock(),
+            client_id=1,
+            client_name="Client One",
+            document_type="passport",
+            file_content=b"PDF",
+            file_name="passport.pdf",
+            mime_type="application/pdf",
+        )
+
+    assert result["success"] is False
+    assert result["error"] == "No Drive authentication available"
+    assert result["file_id"] is None
+    assert result["file_url"] is None
+
