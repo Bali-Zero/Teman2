@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from typing import Any, Callable, Optional
 
@@ -43,6 +44,10 @@ DISPATCH_SLEEP_S = 2
 AGENT_MAX_RETRIES = {
     "lhkpn_harvester": 1,
 }
+DEFAULT_GAP_AGENT_MODEL = os.environ.get(
+    "MATA_GARUDA_GAP_AGENT_MODEL",
+    "ollama:qwen3.5:9b",
+)
 
 # Gap type → agent name (None = Phase 2, skipped with ack)
 #
@@ -128,6 +133,7 @@ def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[st
     agent = get_agent(agent_name)
     if agent is None:
         return {"case_resolved": False, "reason": f"agent {agent_name!r} not registered"}
+    agent = agent.model_copy(update={"model": DEFAULT_GAP_AGENT_MODEL})
 
     # Format payload as a query string the agent can understand
     query = json.dumps(payload, ensure_ascii=False)
