@@ -98,17 +98,16 @@ CONF_STRONG_EXACT = 0.99
 # noise. 20 mirrors classify._normalize_ocr_text's own legibility floor (a page
 # transcript shorter than 20 chars is treated as empty there too).
 QUARANTINE_MIN_OCR_CHARS = 20
-# Kill-switch: with the flag OFF (default) the route stage NEVER emits
-# 'quarantine' — every proposal lands in review_pending exactly as before. Flip
-# to truthy to arm the parking. Read at call time so tests/ops can toggle it.
+# Kill-switch: quarantine is ON by default for empty-OCR unknown noise. Set
+# INTAKE_QUARANTINE_ENABLED=0/false/no/off (or empty) to disable parking and
+# send every proposal to review_pending exactly as before. Read at call time so
+# tests/ops can toggle it.
 def quarantine_enabled() -> bool:
-    """True only if INTAKE_QUARANTINE_ENABLED is explicitly truthy (default OFF)."""
-    return os.environ.get("INTAKE_QUARANTINE_ENABLED", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    """True unless INTAKE_QUARANTINE_ENABLED is explicitly falsy."""
+    raw = os.environ.get("INTAKE_QUARANTINE_ENABLED")
+    if raw is None:
+        return True
+    return raw.strip().lower() not in {"", "0", "false", "no", "off"}
 
 
 def _ocr_char_count(classify_out: dict[str, Any]) -> int:
