@@ -58,6 +58,8 @@ def _settings(
         voice_concierge_audio_max_bytes=audio_max_bytes,
         voice_concierge_tts_max_chars=1200,
         voice_concierge_tts_audio_max_bytes=10 * 1024 * 1024,
+        voice_concierge_tts_profile="high_quality_offline",
+        voice_concierge_realtime_tts_provider="browser-web-speech-local",
         voice_concierge_chatterbox_module="chatterbox",
         voice_concierge_chatterbox_model_path=str(checkpoint),
         voice_concierge_chatterbox_t3_model="v3",
@@ -92,9 +94,12 @@ def _check(report: readiness.ReadinessReport, name: str) -> readiness.ReadinessC
 
 
 def test_livekit_health_url_sanitizer_strips_query_and_rejects_userinfo() -> None:
-    assert readiness._sanitize_livekit_health_url(
-        "https://voice.local:7880/healthz?token=secret",
-    ) == "https://voice.local:7880/healthz"
+    assert (
+        readiness._sanitize_livekit_health_url(
+            "https://voice.local:7880/healthz?token=secret",
+        )
+        == "https://voice.local:7880/healthz"
+    )
     assert readiness._sanitize_livekit_health_url("https://user:pass@voice.local/healthz") is None
     assert readiness._sanitize_livekit_health_url("http://127.0.0.1:bad/healthz") is None
 
@@ -179,6 +184,12 @@ def test_static_readiness_passes_for_complete_local_stack(
 
     assert report.ok is True
     assert _check(report, "local_audio_enabled").status == "pass"
+    assert _check(report, "tts_profile").metadata == {
+        "active_profile": "high_quality_offline",
+        "active_provider": "chatterbox-v3",
+        "fallback_policy": "fail_closed",
+        "pii_boundary": "local_only",
+    }
     assert _check(report, "whisper_model_quality").status == "pass"
     assert _check(report, "chatterbox_checkpoint").status == "pass"
     assert _check(report, "silero_import").status == "pass"
@@ -199,6 +210,48 @@ def test_static_readiness_accepts_dotted_mini_hostname(
     assert report.ok is True
     assert _check(report, "host_role").status == "pass"
     assert _check(report, "host_role").metadata["normalized_hostname"] == "mini-pro2"
+
+
+def test_static_readiness_accepts_browser_realtime_tts_profile(
+    tmp_path: Path,
+    _offline_env: None,
+) -> None:
+    settings = _settings(tmp_path)
+    settings.voice_concierge_tts_profile = "browser-realtime"
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="static",
+        settings=settings,
+        hostname="Nuzantara",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is True
+    assert _check(report, "tts_profile").status == "pass"
+    assert _check(report, "tts_profile").metadata == {
+        "active_profile": "browser_realtime",
+        "active_provider": "browser-web-speech-local",
+        "fallback_policy": "fail_closed",
+        "pii_boundary": "local_only",
+    }
+
+
+def test_static_readiness_rejects_unknown_tts_profile(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.voice_concierge_tts_profile = "cloud-low-latency"
+
+    report = readiness.build_local_audio_readiness_report(
+        mode="static",
+        settings=settings,
+        hostname="Nuzantara",
+        python_prefix="/tmp/venv",
+        python_base_prefix="/usr",
+    )
+
+    assert report.ok is False
+    assert _check(report, "tts_profile").status == "fail"
+    assert "browser_realtime" in _check(report, "tts_profile").detail
 
 
 def test_deep_readiness_accepts_lowercase_mini_hostname(

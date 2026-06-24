@@ -233,6 +233,14 @@ class Settings(BaseSettings):
         default=10 * 1024 * 1024,
         description="Maximum local voice concierge TTS output size in bytes.",
     )
+    voice_concierge_tts_profile: str = Field(
+        default="high_quality_offline",
+        description="Active voice concierge TTS profile: high_quality_offline or browser_realtime.",
+    )
+    voice_concierge_realtime_tts_provider: str = Field(
+        default="browser-web-speech-local",
+        description="Realtime voice concierge TTS provider. Browser profile requires a client-side localService voice.",
+    )
     voice_concierge_chatterbox_module: str = Field(
         default="chatterbox",
         description="Python module marker for Chatterbox runtime availability.",
@@ -727,8 +735,7 @@ class Settings(BaseSettings):
     whatsapp_openclaw_model: str = Field(
         default="openai/gpt-5.5",
         description=(
-            "OpenClaw model override for WhatsApp replies. "
-            "Set via WHATSAPP_OPENCLAW_MODEL env var."
+            "OpenClaw model override for WhatsApp replies. Set via WHATSAPP_OPENCLAW_MODEL env var."
         ),
     )
     whatsapp_openclaw_thinking: str = Field(

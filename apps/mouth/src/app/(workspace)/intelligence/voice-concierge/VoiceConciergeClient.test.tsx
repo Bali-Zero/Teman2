@@ -6,13 +6,71 @@ import { VoiceConciergeClient } from "./VoiceConciergeClient";
 const originalMediaRecorder = globalThis.MediaRecorder;
 const originalMediaDevices = navigator.mediaDevices;
 const originalAudio = globalThis.Audio;
+const originalSpeechSynthesis = window.speechSynthesis;
+const originalSpeechSynthesisUtterance = window.SpeechSynthesisUtterance;
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
+
+function ttsProfileStatus(
+  overrides: Partial<{
+    active_profile: "high_quality_offline" | "browser_realtime";
+    active_provider: string;
+    quality: "high_quality" | "realtime";
+    latency_class: "offline" | "interactive";
+  }> = {},
+): object {
+  const activeProfile = overrides.active_profile ?? "high_quality_offline";
+  const activeProvider =
+    overrides.active_provider ??
+    (activeProfile === "browser_realtime"
+      ? "browser-web-speech-local"
+      : "chatterbox-v3");
+  const quality =
+    overrides.quality ??
+    (activeProfile === "browser_realtime" ? "realtime" : "high_quality");
+  const latencyClass =
+    overrides.latency_class ??
+    (activeProfile === "browser_realtime" ? "interactive" : "offline");
+  const policy = {
+    requires_network: false,
+    allows_cloud_fallback: false,
+    pii_boundary: "local_only",
+  };
+
+  return {
+    active_profile: activeProfile,
+    active_provider: activeProvider,
+    quality,
+    latency_class: latencyClass,
+    fallback_policy: "fail_closed",
+    profiles: {
+      high_quality_offline: {
+        profile: "high_quality_offline",
+        provider: "chatterbox-v3",
+        quality: "high_quality",
+        latency_class: "offline",
+        available: true,
+        detail: "ready",
+        policy,
+      },
+      browser_realtime: {
+        profile: "browser_realtime",
+        provider: "browser-web-speech-local",
+        quality: "realtime",
+        latency_class: "interactive",
+        available: false,
+        detail: "client must confirm a browser localService voice",
+        policy,
+      },
+    },
+  };
+}
 
 function readyLocalAudioStatus(): object {
   return {
     browser_speech_provider: "disabled",
     text_concierge_provider: "local-demo",
+    tts_profile: ttsProfileStatus(),
     local_audio: {
       enabled: true,
       ready: true,
@@ -71,6 +129,18 @@ function roundtripReadyLocalAudioStatus(): object {
   status.local_audio.turn_detection_ready = false;
   status.local_audio.providers.vad.available = false;
   status.local_audio.providers.vad.detail = "runtime installed, not wired";
+  return status;
+}
+
+function browserRealtimeStatus(): object {
+  const status = roundtripReadyLocalAudioStatus() as {
+    browser_speech_provider: "disabled" | "web-speech-local";
+    tts_profile: object;
+  };
+  status.browser_speech_provider = "web-speech-local";
+  status.tts_profile = ttsProfileStatus({
+    active_profile: "browser_realtime",
+  });
   return status;
 }
 
@@ -137,6 +207,7 @@ describe("VoiceConciergeClient", () => {
               },
               constraints: ["local_only"],
             },
+            tts_profile: ttsProfileStatus(),
           }),
           { status: 200 },
         );
@@ -171,6 +242,14 @@ describe("VoiceConciergeClient", () => {
       configurable: true,
       value: originalAudio,
     });
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: originalSpeechSynthesis,
+    });
+    Object.defineProperty(window, "SpeechSynthesisUtterance", {
+      configurable: true,
+      value: originalSpeechSynthesisUtterance,
+    });
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: originalCreateObjectURL,
@@ -193,7 +272,7 @@ describe("VoiceConciergeClient", () => {
     });
     expect(
       screen.getByRole("button", {
-        name: "Voice input gated until local audio roundtrip is wired",
+        name: "Voice input gated until local audio roundtrip is ready",
       }),
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
@@ -335,6 +414,181 @@ describe("VoiceConciergeClient", () => {
         "blob:voice-concierge-tts",
       );
     });
+  });
+
+  it("uses spoken_answer through browser realtime TTS without backend synthesis", async () => {
+    const user = userEvent.setup();
+    const speak = vi.fn((utterance: SpeechSynthesisUtterance) => {
+      utterance.onend?.({} as SpeechSynthesisEvent);
+    });
+    const cancel = vi.fn();
+
+    class MockUtterance {
+      text: string;
+      voice: SpeechSynthesisVoice | null = null;
+      lang = "";
+      onend: ((event: SpeechSynthesisEvent) => void) | null = null;
+      onerror: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
+
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+
+    Object.defineProperty(window, "SpeechSynthesisUtterance", {
+      configurable: true,
+      value: MockUtterance,
+    });
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        cancel,
+        getVoices: vi.fn(() => [
+          {
+            name: "Local Alice",
+            lang: "it-IT",
+            localService: true,
+          } as SpeechSynthesisVoice,
+        ]),
+        speak,
+      },
+    });
+
+    vi.mocked(global.fetch).mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/status")) {
+        return new Response(JSON.stringify(browserRealtimeStatus()), {
+          status: 200,
+        });
+      }
+      if (url.endsWith("/synthesize")) {
+        return new Response(
+          JSON.stringify({ error: "unexpected synthesize" }),
+          {
+            status: 500,
+          },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          answer:
+            "Per una PT PMA, verifica attivita, KBLI, limiti stranieri, zoning e permessi.",
+          spoken_answer: "Triage PMA pronto. Parti da KBLI e zoning.",
+          intent: "company",
+          risk_level: "medium",
+          next_action: "collect_non_pii_context",
+          quick_replies: ["Ask about shareholders"],
+          safety_note: "No PII.",
+          mode: "demo",
+          provider: "local-demo",
+        }),
+        { status: 200 },
+      );
+    });
+
+    render(<VoiceConciergeClient />);
+
+    await user.type(
+      screen.getByLabelText("Concierge prompt"),
+      "Can I open a PMA?",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(speak).toHaveBeenCalledTimes(1);
+    });
+    expect(speak.mock.calls[0]?.[0]).toMatchObject({
+      text: "Triage PMA pronto. Parti da KBLI e zoning.",
+      lang: "it-IT",
+    });
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      "/api/lab/voice-concierge/synthesize",
+      expect.anything(),
+    );
+  });
+
+  it("fails closed when realtime TTS has no local browser voice", async () => {
+    const user = userEvent.setup();
+    const speak = vi.fn();
+
+    Object.defineProperty(window, "SpeechSynthesisUtterance", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        cancel: vi.fn(),
+        getVoices: vi.fn(() => [
+          {
+            name: "Remote Voice",
+            lang: "en-US",
+            localService: false,
+          } as SpeechSynthesisVoice,
+        ]),
+        speak,
+      },
+    });
+
+    vi.mocked(global.fetch).mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/status")) {
+        return new Response(JSON.stringify(browserRealtimeStatus()), {
+          status: 200,
+        });
+      }
+      if (url.endsWith("/synthesize")) {
+        return new Response(
+          JSON.stringify({ error: "unexpected synthesize" }),
+          {
+            status: 500,
+          },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          answer:
+            "Keep the details non-PII and start with the service category.",
+          spoken_answer: "Client Maria Rossi needs a PT PMA.",
+          intent: "company",
+          risk_level: "medium",
+          next_action: "collect_non_pii_context",
+          quick_replies: ["Ask about shareholders"],
+          safety_note: "No PII.",
+          mode: "demo",
+          provider: "local-demo",
+        }),
+        { status: 200 },
+      );
+    });
+
+    render(<VoiceConciergeClient />);
+
+    await user.type(
+      screen.getByLabelText("Concierge prompt"),
+      "Can I open a PMA?",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Keep the details non-PII and start with the service category.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(speak).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      "/api/lab/voice-concierge/synthesize",
+      expect.anything(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Read latest answer" }),
+    ).toBeDisabled();
   });
 
   it("does not play stale synthesized audio after a newer answer wins the race", async () => {

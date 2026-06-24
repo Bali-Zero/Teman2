@@ -45,6 +45,18 @@ _ALLOWED_LOCAL_AUDIO_CONTENT_TYPES = {
 }
 _REQUIRED_LOCAL_AUDIO_PROVIDER_KEYS = ("stt", "vad", "tts")
 _REQUIRED_LOCAL_AUDIO_ROUNDTRIP_PROVIDER_KEYS = ("stt", "tts")
+_TTS_PROFILE_HIGH_QUALITY = "high_quality_offline"
+_TTS_PROFILE_BROWSER_REALTIME = "browser_realtime"
+_TTS_PROFILE_ALIASES = {
+    "high-quality": _TTS_PROFILE_HIGH_QUALITY,
+    "high-quality-offline": _TTS_PROFILE_HIGH_QUALITY,
+    "high_quality": _TTS_PROFILE_HIGH_QUALITY,
+    "high_quality_offline": _TTS_PROFILE_HIGH_QUALITY,
+    "offline": _TTS_PROFILE_HIGH_QUALITY,
+    "browser-realtime": _TTS_PROFILE_BROWSER_REALTIME,
+    "browser_realtime": _TTS_PROFILE_BROWSER_REALTIME,
+    "realtime": _TTS_PROFILE_BROWSER_REALTIME,
+}
 
 
 async def verify_api_key(x_api_key: str | None = Header(None)) -> dict:
@@ -101,6 +113,29 @@ class LocalAudioProviderResponse(BaseModel):
     policy: LocalAudioPolicyResponse
 
 
+class LocalAudioTTSProfileEntry(BaseModel):
+    """Operational metadata for one TTS profile."""
+
+    profile: str
+    provider: str
+    quality: str
+    latency_class: str
+    available: bool
+    detail: str
+    policy: LocalAudioPolicyResponse
+
+
+class LocalAudioTTSProfileResponse(BaseModel):
+    """Active TTS profile and fallback policy for local audio."""
+
+    active_profile: str
+    active_provider: str
+    quality: str
+    latency_class: str
+    fallback_policy: str
+    profiles: dict[str, LocalAudioTTSProfileEntry]
+
+
 class LocalAudioStatusResponse(BaseModel):
     """Local audio stack readiness for the voice concierge lab."""
 
@@ -109,6 +144,7 @@ class LocalAudioStatusResponse(BaseModel):
     roundtrip_ready: bool
     turn_detection_ready: bool
     providers: dict[str, LocalAudioProviderResponse]
+    tts_profile: LocalAudioTTSProfileResponse
     constraints: list[str]
 
 
@@ -162,10 +198,7 @@ def _disabled_provider_status(name: str) -> ProviderStatus:
 
 
 def _local_audio_enabled() -> bool:
-    return (
-        settings.voice_concierge_local_audio_enabled
-        or settings.voice_concierge_local_audio
-    )
+    return settings.voice_concierge_local_audio_enabled or settings.voice_concierge_local_audio
 
 
 def _local_audio_runtime_host_allowed() -> bool:
@@ -233,6 +266,24 @@ def get_local_tts_provider_factory() -> Callable[[], LocalTTSProvider]:
     return get_local_tts_provider
 
 
+def _normalize_tts_profile(raw_value: str | None) -> str:
+    value = (raw_value or "").strip().lower().replace(" ", "_")
+    return _TTS_PROFILE_ALIASES.get(value, _TTS_PROFILE_HIGH_QUALITY)
+
+
+def _active_tts_profile() -> str:
+    return _normalize_tts_profile(settings.voice_concierge_tts_profile)
+
+
+def _policy_response() -> LocalAudioPolicyResponse:
+    policy = LOCAL_ONLY_PROVIDER_POLICY
+    return LocalAudioPolicyResponse(
+        requires_network=policy.requires_network,
+        allows_cloud_fallback=policy.allows_cloud_fallback,
+        pii_boundary=policy.pii_boundary,
+    )
+
+
 def _sanitize_provider_status(status: ProviderStatus) -> LocalAudioProviderResponse:
     detail = status.detail
     if status.name == WhisperCppSTTProvider.name and ":" in detail:
@@ -246,6 +297,43 @@ def _sanitize_provider_status(status: ProviderStatus) -> LocalAudioProviderRespo
             allows_cloud_fallback=status.policy.allows_cloud_fallback,
             pii_boundary=status.policy.pii_boundary,
         ),
+    )
+
+
+def _tts_profile_response(
+    *,
+    active_profile: str,
+    chatterbox_status: LocalAudioProviderResponse,
+) -> LocalAudioTTSProfileResponse:
+    realtime_provider = settings.voice_concierge_realtime_tts_provider or "browser-web-speech-local"
+    profiles = {
+        _TTS_PROFILE_HIGH_QUALITY: LocalAudioTTSProfileEntry(
+            profile=_TTS_PROFILE_HIGH_QUALITY,
+            provider=chatterbox_status.name,
+            quality="high_quality",
+            latency_class="offline",
+            available=chatterbox_status.available,
+            detail=chatterbox_status.detail,
+            policy=chatterbox_status.policy,
+        ),
+        _TTS_PROFILE_BROWSER_REALTIME: LocalAudioTTSProfileEntry(
+            profile=_TTS_PROFILE_BROWSER_REALTIME,
+            provider=realtime_provider,
+            quality="realtime",
+            latency_class="interactive",
+            available=False,
+            detail="client must confirm a browser localService voice",
+            policy=_policy_response(),
+        ),
+    }
+    active = profiles[active_profile]
+    return LocalAudioTTSProfileResponse(
+        active_profile=active.profile,
+        active_provider=active.provider,
+        quality=active.quality,
+        latency_class=active.latency_class,
+        fallback_policy="fail_closed",
+        profiles=profiles,
     )
 
 
@@ -295,14 +383,18 @@ def get_local_audio_status() -> LocalAudioStatusResponse:
         }
 
     providers = {key: _sanitize_provider_status(value) for key, value in statuses.items()}
+    active_tts_profile = _active_tts_profile()
+    tts_profile = _tts_profile_response(
+        active_profile=active_tts_profile,
+        chatterbox_status=providers["tts"],
+    )
     roundtrip_ready = enabled and all(
         _is_local_only_provider_ready(providers[key])
         for key in _REQUIRED_LOCAL_AUDIO_ROUNDTRIP_PROVIDER_KEYS
     )
     turn_detection_ready = enabled and _is_local_only_provider_ready(providers["vad"])
     ready = enabled and all(
-        _is_local_only_provider_ready(providers[key])
-        for key in _REQUIRED_LOCAL_AUDIO_PROVIDER_KEYS
+        _is_local_only_provider_ready(providers[key]) for key in _REQUIRED_LOCAL_AUDIO_PROVIDER_KEYS
     )
     return LocalAudioStatusResponse(
         enabled=enabled,
@@ -310,6 +402,7 @@ def get_local_audio_status() -> LocalAudioStatusResponse:
         roundtrip_ready=roundtrip_ready,
         turn_detection_ready=turn_detection_ready,
         providers=providers,
+        tts_profile=tts_profile,
         constraints=constraints,
     )
 
@@ -419,9 +512,7 @@ async def _extract_single_audio_payload(
 
     try:
         uploads = [
-            (key, value)
-            for key, value in form.multi_items()
-            if isinstance(value, UploadFile)
+            (key, value) for key, value in form.multi_items() if isinstance(value, UploadFile)
         ]
         if len(uploads) != 1 or uploads[0][0] != "file":
             raise HTTPException(
@@ -519,6 +610,11 @@ async def local_audio_synthesize(
     """Synthesize local speech without persisting generated audio."""
     if not _local_audio_enabled():
         raise HTTPException(status_code=503, detail="local audio disabled")
+    if _active_tts_profile() == _TTS_PROFILE_BROWSER_REALTIME:
+        raise HTTPException(
+            status_code=503,
+            detail="backend TTS disabled for realtime browser profile",
+        )
     _ensure_local_audio_runtime_host()
 
     text = _validate_tts_text(request.text)
@@ -539,9 +635,7 @@ async def local_audio_synthesize(
                 _validate_tts_audio_size(len(result.audio_bytes))
                 payload = result.audio_bytes
             elif result.audio_path is not None:
-                output_size = await asyncio.to_thread(
-                    lambda: result.audio_path.stat().st_size
-                )
+                output_size = await asyncio.to_thread(lambda: result.audio_path.stat().st_size)
                 _validate_tts_audio_size(output_size)
                 payload = await asyncio.to_thread(result.audio_path.read_bytes)
                 _validate_tts_audio_size(len(payload))
@@ -561,9 +655,7 @@ async def local_audio_synthesize(
         media_type=result.mime_type,
         headers={
             "X-Voice-Provider": result.provider,
-            "X-Voice-Constraints": (
-                "local_only,no_cloud_audio_fallback,no_raw_audio_persistence"
-            ),
+            "X-Voice-Constraints": ("local_only,no_cloud_audio_fallback,no_raw_audio_persistence"),
         },
     )
 
