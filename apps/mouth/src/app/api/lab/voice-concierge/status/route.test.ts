@@ -17,6 +17,9 @@ describe("voice concierge status route", () => {
   const originalLocalAudio = process.env.VOICE_CONCIERGE_LOCAL_AUDIO;
   const originalLocalAudioEnabled =
     process.env.VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED;
+  const originalTtsProfile = process.env.VOICE_CONCIERGE_TTS_PROFILE;
+  const originalRealtimeTtsProvider =
+    process.env.VOICE_CONCIERGE_REALTIME_TTS_PROVIDER;
   const originalLabEnabled = process.env.VOICE_CONCIERGE_LAB_ENABLED;
   const originalStatusToken = process.env.VOICE_CONCIERGE_STATUS_TOKEN;
 
@@ -29,6 +32,8 @@ describe("voice concierge status route", () => {
     delete process.env.NUZANTARA_API_URL;
     delete process.env.VOICE_CONCIERGE_LOCAL_AUDIO;
     delete process.env.VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED;
+    delete process.env.VOICE_CONCIERGE_TTS_PROFILE;
+    delete process.env.VOICE_CONCIERGE_REALTIME_TTS_PROVIDER;
     delete process.env.VOICE_CONCIERGE_LAB_ENABLED;
     delete process.env.VOICE_CONCIERGE_STATUS_TOKEN;
     global.fetch = vi.fn();
@@ -47,6 +52,11 @@ describe("voice concierge status route", () => {
       "VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED",
       originalLocalAudioEnabled,
     );
+    restoreEnv("VOICE_CONCIERGE_TTS_PROFILE", originalTtsProfile);
+    restoreEnv(
+      "VOICE_CONCIERGE_REALTIME_TTS_PROVIDER",
+      originalRealtimeTtsProvider,
+    );
     restoreEnv("VOICE_CONCIERGE_LAB_ENABLED", originalLabEnabled);
     restoreEnv("VOICE_CONCIERGE_STATUS_TOKEN", originalStatusToken);
   });
@@ -58,6 +68,13 @@ describe("voice concierge status route", () => {
     await expect(response.json()).resolves.toMatchObject({
       browser_speech_provider: "disabled",
       text_concierge_provider: "local-demo",
+      tts_profile: {
+        active_profile: "high_quality_offline",
+        active_provider: "chatterbox-v3",
+        quality: "high_quality",
+        latency_class: "offline",
+        fallback_policy: "fail_closed",
+      },
       local_audio: {
         enabled: false,
         ready: false,
@@ -67,6 +84,38 @@ describe("voice concierge status route", () => {
             name: "whisper.cpp",
             available: false,
             detail: "local audio disabled",
+          },
+        },
+      },
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("exposes browser realtime TTS as an explicit local-only profile", async () => {
+    process.env.VOICE_CONCIERGE_TTS_PROFILE = "browser-realtime";
+    process.env.VOICE_CONCIERGE_REALTIME_TTS_PROVIDER =
+      "browser-web-speech-local";
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      browser_speech_provider: "web-speech-local",
+      tts_profile: {
+        active_profile: "browser_realtime",
+        active_provider: "browser-web-speech-local",
+        quality: "realtime",
+        latency_class: "interactive",
+        fallback_policy: "fail_closed",
+        profiles: {
+          browser_realtime: {
+            available: false,
+            detail: "client must confirm a browser localService voice",
+            policy: {
+              requires_network: false,
+              allows_cloud_fallback: false,
+              pii_boundary: "local_only",
+            },
           },
         },
       },
@@ -167,6 +216,41 @@ describe("voice concierge status route", () => {
               },
             },
           },
+          tts_profile: {
+            active_profile: "browser_realtime",
+            active_provider: "browser-web-speech-local",
+            quality: "realtime",
+            latency_class: "interactive",
+            fallback_policy: "fail_closed",
+            profiles: {
+              high_quality_offline: {
+                profile: "high_quality_offline",
+                provider: "chatterbox-v3",
+                quality: "high_quality",
+                latency_class: "offline",
+                available: false,
+                detail: "adapter not wired",
+                policy: {
+                  requires_network: false,
+                  allows_cloud_fallback: false,
+                  pii_boundary: "local_only",
+                },
+              },
+              browser_realtime: {
+                profile: "browser_realtime",
+                provider: "browser-web-speech-local",
+                quality: "realtime",
+                latency_class: "interactive",
+                available: false,
+                detail: "client must confirm a browser localService voice",
+                policy: {
+                  requires_network: false,
+                  allows_cloud_fallback: false,
+                  pii_boundary: "local_only",
+                },
+              },
+            },
+          },
           constraints: ["local_only", "no_cloud_audio_fallback"],
         }),
         { status: 200 },
@@ -186,6 +270,10 @@ describe("voice concierge status route", () => {
         providers: {
           stt: { name: "whisper.cpp", available: true, detail: "ready" },
         },
+      },
+      tts_profile: {
+        active_profile: "browser_realtime",
+        active_provider: "browser-web-speech-local",
       },
     });
     expect(global.fetch).toHaveBeenCalledWith(
