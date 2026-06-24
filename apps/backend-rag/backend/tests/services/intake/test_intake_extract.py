@@ -57,6 +57,8 @@ def test_canonical_doc_type_aliases():
     assert extract.canonical_doc_type("akta") == "akta_pendirian"
     assert extract.canonical_doc_type("sk_menkumham") == "sk_kemenkumham"
     assert extract.canonical_doc_type("paspor") == "passport"
+    assert extract.canonical_doc_type("e-visa") == "visa"
+    assert extract.canonical_doc_type("voa") == "visa"
     assert extract.canonical_doc_type("kitap") == "itap"
     assert extract.canonical_doc_type("itk_card") == "itk"
     assert extract.canonical_doc_type("e_ktp") == "ktp"
@@ -191,6 +193,19 @@ async def test_akta_list_fields():
 @pytest.mark.parametrize(
     "doc_type, payload, expected_key, expected_value",
     [
+        (
+            "visa",
+            {
+                "visa_no": {"value": "EV-123456", "source_page": 1},
+                "visa_index": {"value": "B211A", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "passport_no": {"value": "YC1234567", "source_page": 1},
+                "expiry": {"value": "2026-12-31", "source_page": 1},
+                "sponsor": {"value": "PT Bali Zero", "source_page": 1},
+            },
+            "visa_index",
+            "B211A",
+        ),
         (
             "itap",
             {

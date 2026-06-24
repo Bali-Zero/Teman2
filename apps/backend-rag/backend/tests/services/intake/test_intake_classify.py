@@ -97,6 +97,23 @@ async def test_sk_kemenkumham_classified():
 
 
 @pytest.mark.asyncio
+async def test_evisa_classified():
+    r = await cls.classify_document(
+        "REPUBLIC OF INDONESIA E-VISA VISA INDEX B211A "
+        "DIRECTORATE GENERAL OF IMMIGRATION"
+    )
+    assert r["type"] == "visa"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_generic_visa_word_alone_stays_unknown():
+    r = await cls.classify_document("visa consultation payment note")
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
 async def test_source_page_attribution():
     # Evidence lives on page 1 (index 1), not page 0.
     pages = [
