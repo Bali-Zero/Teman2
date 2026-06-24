@@ -19,6 +19,8 @@ class LeadSource(str, Enum):
     # Content-funnel sources (2026-06): blog articles + KBLI Navigator pages.
     ARTICLE = "article"
     KBLI_NAVIGATOR = "kbli_navigator"
+    # Sticky "Next actions" handoff bar — shared CTAHandoff component across all funnel pages (2026-06).
+    CTA_HANDOFF = "cta_handoff"
 
     @property
     def human_name(self) -> str:
@@ -32,6 +34,7 @@ class LeadSource(str, Enum):
             LeadSource.ZONING_CHECK: "Zoning Check",
             LeadSource.ARTICLE: "the Insights blog",
             LeadSource.KBLI_NAVIGATOR: "the KBLI Navigator",
+            LeadSource.CTA_HANDOFF: "Bali Zero",
         }[self]
 
     @property
@@ -48,4 +51,6 @@ class LeadSource(str, Enum):
             LeadSource.ARTICLE: "/",
             # KBLI Navigator: result_hash = the KBLI code → /kbli/<code>.
             LeadSource.KBLI_NAVIGATOR: "/kbli",
+            # Sticky handoff bar lives on the page already in context; no hash-based result page.
+            LeadSource.CTA_HANDOFF: "/",
         }[self]
