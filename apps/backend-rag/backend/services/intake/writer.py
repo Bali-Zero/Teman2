@@ -234,6 +234,7 @@ def _document_payload(
     category_map = {
         "passport": "immigration",
         "kitas": "immigration",
+        "visa": "immigration",
         "itap": "immigration",
         "itk": "immigration",
         "ktp": "personal",
