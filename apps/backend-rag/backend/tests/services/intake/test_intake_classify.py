@@ -485,6 +485,7 @@ async def test_ocr_pages_uses_gemini_primary_when_enabled_and_allowed(monkeypatc
         raise AssertionError("Ollama must not run when Gemini primary succeeds")
 
     monkeypatch.setenv("INTAKE_OCR_PROVIDER", "gemini")
+    monkeypatch.setattr(cls, "_GEMINI_OCR_AUTH_FAILED", False)
     monkeypatch.setattr(cls, "_cloud_vision_allowed", lambda: True)
     monkeypatch.setattr(cls, "_gemini_vision", fake_gemini)
     monkeypatch.setattr(cls, "_ollama_vision", fail_ollama)
@@ -508,6 +509,7 @@ async def test_ocr_pages_blocks_gemini_when_gate_denies_then_uses_ollama(monkeyp
         return ("NOMOR POKOK WAJIB PAJAK", "")
 
     monkeypatch.setenv("INTAKE_OCR_PROVIDER", "gemini")
+    monkeypatch.setattr(cls, "_GEMINI_OCR_AUTH_FAILED", False)
     monkeypatch.setattr(cls, "_cloud_vision_allowed", lambda: False)
     monkeypatch.setattr(cls, "_note_cloud_ocr_blocked", lambda context: calls.append(context))
     monkeypatch.setattr(cls, "_gemini_vision", fail_gemini)
@@ -535,6 +537,7 @@ async def test_ocr_pages_gemini_empty_falls_back_to_ollama(monkeypatch):
         return ("IZIN TINGGAL TERBATAS", "")
 
     monkeypatch.setenv("INTAKE_OCR_PROVIDER", "gemini")
+    monkeypatch.setattr(cls, "_GEMINI_OCR_AUTH_FAILED", False)
     monkeypatch.setattr(cls, "_cloud_vision_allowed", lambda: True)
     monkeypatch.setattr(cls, "_gemini_vision", fake_gemini)
     monkeypatch.setattr(cls, "_ollama_vision", fake_ollama)
@@ -545,6 +548,30 @@ async def test_ocr_pages_gemini_empty_falls_back_to_ollama(monkeypatch):
     assert out[0]["model"] == cls._OCR_FALLBACK
     assert out[0]["text"] == "IZIN TINGGAL TERBATAS"
     assert calls == ["gemini", cls._OCR_FALLBACK]
+
+
+@pytest.mark.asyncio
+async def test_ocr_pages_disables_gemini_after_auth_failure(monkeypatch):
+    calls = []
+
+    async def fail_gemini(b64):
+        calls.append("gemini")
+        raise RuntimeError("403 PERMISSION_DENIED API key was reported as leaked")
+
+    async def fake_ollama(model, b64):
+        calls.append(model)
+        return ("PASSPORT", "")
+
+    monkeypatch.setenv("INTAKE_OCR_PROVIDER", "gemini")
+    monkeypatch.setattr(cls, "_GEMINI_OCR_AUTH_FAILED", False)
+    monkeypatch.setattr(cls, "_cloud_vision_allowed", lambda: True)
+    monkeypatch.setattr(cls, "_gemini_vision", fail_gemini)
+    monkeypatch.setattr(cls, "_ollama_vision", fake_ollama)
+
+    out = await cls.ocr_pages([_FakePage(0, b"x"), _FakePage(1, b"y")])
+
+    assert [page["via"] for page in out] == ["response", "response"]
+    assert calls == ["gemini", cls._OCR_FALLBACK, cls._OCR_FALLBACK]
 
 
 # ---------------------------------------------------------------------------

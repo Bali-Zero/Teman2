@@ -88,6 +88,17 @@ _OCR_FALLBACK = "qwen2.5vl:7b"
 
 OLLAMA_URL = os.getenv("INTAKE_OLLAMA_URL", os.getenv("OLLAMA_URL", "http://localhost:11434"))
 _GEMINI_OCR_MODEL = os.getenv("INTAKE_GEMINI_OCR_MODEL", ModelName.FALLBACK)
+_GEMINI_OCR_AUTH_FAILED = False
+_GEMINI_OCR_AUTH_ERROR_MARKERS = (
+    "401",
+    "403",
+    "api key",
+    "api_key",
+    "forbidden",
+    "permission_denied",
+    "reported as leaked",
+    "unauthorized",
+)
 
 # Per-page hard cap. CLAUDE.md OCR rule: 120s for >3 pages -- but we OCR one page
 # per request, so this is the single-page ceiling (reasoning VLM is slow).
@@ -114,6 +125,12 @@ def _ocr_provider() -> str:
     """Return the configured OCR primary provider; fail closed to local Ollama."""
     provider = os.getenv("INTAKE_OCR_PROVIDER", "ollama").strip().lower()
     return "gemini" if provider in {"gemini", "gemini_first", "gemini-first"} else "ollama"
+
+
+def _is_gemini_auth_error(exc: Exception) -> bool:
+    """Return True for Gemini failures that should stop repeat cloud attempts."""
+    text = f"{type(exc).__name__}: {exc!r}".casefold()
+    return any(marker in text for marker in _GEMINI_OCR_AUTH_ERROR_MARKERS)
 
 
 def _cloud_vision_allowed() -> bool:
@@ -351,6 +368,8 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
     confidence 0.0 -- never invented content. The persistent client is reused
     across pages (Golden Rule #10).
     """
+    global _GEMINI_OCR_AUTH_FAILED
+
     primary = _resolve_ocr_model()
     results: list[dict[str, Any]] = []
 
@@ -389,7 +408,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
 
         # Optional cloud OCR primary. This is disabled by default and requires
         # both INTAKE_OCR_PROVIDER=gemini and the shared cloud vision gate.
-        if _ocr_provider() == "gemini":
+        if _ocr_provider() == "gemini" and not _GEMINI_OCR_AUTH_FAILED:
             if _cloud_vision_allowed():
                 try:
                     resp = await asyncio.wait_for(
@@ -401,6 +420,11 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                         text, via, model_used = resp, "gemini", _GEMINI_OCR_MODEL
                 except Exception as exc:
                     logger.warning("OCR Gemini primary failed on page %d: %r", idx, exc)
+                    if _is_gemini_auth_error(exc):
+                        _GEMINI_OCR_AUTH_FAILED = True
+                        logger.error(
+                            "OCR Gemini primary disabled for this worker after auth failure"
+                        )
             else:
                 _note_cloud_ocr_blocked("intake.classify.ocr_pages")
 
