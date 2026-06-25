@@ -1064,11 +1064,11 @@ def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]
 
     surname = _first_line_match(
         pages,
-        r"^(?:surname|family\s+name|last\s+name|cognome|nama\s+belakang)\s*[:\-]\s*(.+)$",
+        r"^(?:surname|family\s+name|last\s+name|cognome|nama\s+belakang)(?:\s*[:\-]\s*|\s+)(.+)$",
     )
     given = _first_line_match(
         pages,
-        r"^(?:given\s*names?|given\s+name|first\s+names?|nama\s+depan)\s*[:\-]\s*(.+)$",
+        r"^(?:given\s*names?|given\s+name|first\s+names?|nama\s+depan)(?:\s*[:\-]\s*|\s+)(.+)$",
     )
     if surname is not None and given is not None:
         surname_value, surname_page = surname
@@ -1081,13 +1081,13 @@ def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]
         _set_if_present(
             fields,
             "name",
-            _first_line_match(pages, r"^(?:name|full\s+name|nama)\s*[:\-]\s*(.+)$"),
+            _first_line_match(pages, r"^(?:name|full\s+name|nama)(?:\s*[:\-]\s*|\s+)(.+)$"),
             person_name=True,
         )
 
     nationality = _first_line_match(
         pages,
-        r"^(?:nationality|kewarganegaraan|warga\s+negara)\s*[:\-]\s*(.+)$",
+        r"^(?:nationality|kewarganegaraan|warga\s+negara)(?:\s*[:\-]\s*|\s+)(.+)$",
     )
     if nationality is not None:
         value, page = nationality
@@ -1100,7 +1100,7 @@ def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]
         "dob",
         _first_line_match(
             pages,
-            r"^(?:date\s+of\s+birth|birth\s+date|dob|tanggal\s+lahir|tgl\s+lahir)\s*[:\-]\s*(.+)$",
+            r"^(?:date\s+of\s+birth|birth\s+date|dob|tanggal\s+lahir|tgl\s+lahir)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
@@ -1109,7 +1109,7 @@ def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]
         "expiry",
         _first_line_match(
             pages,
-            r"^(?:date\s+of\s+expiry|expiry\s+date|expires|valid\s*(?:until|to)|berlaku\s*(?:hingga|sampai))\s*[:\-]\s*(.+)$",
+            r"^(?:date\s+of\s+expiry|expiry\s+date|expires|valid\s*(?:until|to)|berlaku\s*(?:hingga|sampai))(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
@@ -1140,7 +1140,7 @@ def _extract_visa_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     _set_if_present(
         fields,
         "name",
-        _first_line_match(pages, r"^(?:name|full\s+name|nama)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:name|full\s+name|nama)(?:\s*[:\-]\s*|\s+)(.+)$"),
         person_name=True,
     )
 
@@ -1159,14 +1159,14 @@ def _extract_visa_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "expiry",
         _first_line_match(
             pages,
-            r"^(?:valid\s*(?:until|to)|expiry|expiry\s+date|date\s+of\s+expiry|berlaku\s*(?:hingga|sampai))\s*[:\-]\s*(.+)$",
+            r"^(?:valid\s*(?:until|to)|expiry|expiry\s+date|date\s+of\s+expiry|berlaku\s*(?:hingga|sampai))(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
     _set_if_present(
         fields,
         "sponsor",
-        _first_line_match(pages, r"^(?:sponsor|penjamin)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:sponsor|penjamin)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     return fields
 
@@ -1185,7 +1185,7 @@ def _extract_kitas_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     _set_if_present(
         fields,
         "name",
-        _first_line_match(pages, r"^(?:nama|name)\s*[:\-]\s*(?!rekening\b)(.+)$"),
+        _first_line_match(pages, r"^(?:nama|name)(?:\s*[:\-]\s*|\s+)(?!rekening\b)(.+)$"),
         person_name=True,
     )
     _set_if_present(
@@ -1193,14 +1193,14 @@ def _extract_kitas_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "expiry",
         _first_line_match(
             pages,
-            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)\s*[:\-]\s*(.+)$",
+            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
     _set_if_present(
         fields,
         "sponsor",
-        _first_line_match(pages, r"^(?:penjamin|sponsor)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:penjamin|sponsor)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     return fields
 
@@ -1219,7 +1219,7 @@ def _extract_itap_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     _set_if_present(
         fields,
         "name",
-        _first_line_match(pages, r"^(?:nama|name)\s*[:\-]\s*(?!rekening\b)(.+)$"),
+        _first_line_match(pages, r"^(?:nama|name)(?:\s*[:\-]\s*|\s+)(?!rekening\b)(.+)$"),
         person_name=True,
     )
     _set_if_present(
@@ -1227,14 +1227,14 @@ def _extract_itap_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "expiry",
         _first_line_match(
             pages,
-            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)\s*[:\-]\s*(.+)$",
+            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
     _set_if_present(
         fields,
         "sponsor",
-        _first_line_match(pages, r"^(?:penjamin|sponsor)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:penjamin|sponsor)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     return fields
 
@@ -1253,7 +1253,7 @@ def _extract_itk_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     _set_if_present(
         fields,
         "name",
-        _first_line_match(pages, r"^(?:nama|name)\s*[:\-]\s*(?!rekening\b)(.+)$"),
+        _first_line_match(pages, r"^(?:nama|name)(?:\s*[:\-]\s*|\s+)(?!rekening\b)(.+)$"),
         person_name=True,
     )
     _set_if_present(
@@ -1261,14 +1261,14 @@ def _extract_itk_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "expiry",
         _first_line_match(
             pages,
-            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)\s*[:\-]\s*(.+)$",
+            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
     _set_if_present(
         fields,
         "sponsor",
-        _first_line_match(pages, r"^(?:penjamin|sponsor)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:penjamin|sponsor)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     return fields
 

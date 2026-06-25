@@ -444,6 +444,37 @@ async def test_passport_label_fields_skip_model_call():
     assert out["fields"]["expiry"]["value"] == "2031-09-22"
 
 
+async def test_passport_label_fields_accept_colonless_ocr_labels():
+    """Vision OCR often drops label separators while keeping field order clear."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PASSPORT\n"
+        "Type P Country UTOPIA\n"
+        "Passport No YA1234567\n"
+        "Surname ROSSI\n"
+        "Given Names MARIO LUCA\n"
+        "Nationality ITALIAN\n"
+        "Date of Birth 14 JAN 1987\n"
+        "Sex M\n"
+        "Date of Expiry 13 JAN 2032"
+    )
+    out = await extract.extract_fields("passport", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["passport_labels"]
+    assert out["fields"]["passport_no"]["value"] == "YA1234567"
+    assert out["fields"]["name"]["value"] == "Mario Luca Rossi"
+    assert out["fields"]["nationality"]["value"] == "Italian"
+    assert out["fields"]["dob"]["value"] == "1987-01-14"
+    assert out["fields"]["expiry"]["value"] == "2032-01-13"
+
+
 async def test_visa_label_fields_skip_model_call():
     """Clearly-labelled e-visa OCR carries routing-critical fields locally."""
     called = {"n": 0}
@@ -519,6 +550,34 @@ async def test_kitas_label_number_drops_ocr_prefix_inside_value():
     assert called["n"] == 0
     assert out["extraction_model"] == "deterministic_labels"
     assert out["fields"]["kitas_no"]["value"] == "2C11AB98765"
+
+
+async def test_kitas_label_fields_accept_colonless_ocr_labels():
+    """Gemini/Ollama OCR can emit KITAS fields as label + value without punctuation."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "IZIN TINGGAL TERBATAS\n"
+        "No. ITAS 2C11AB98765\n"
+        "Name MARIO LUCA ROSSI\n"
+        "Nationality ITALIA\n"
+        "Sponsor PT BALI ZERO NUSANTARA\n"
+        "Valid Until 30 JUN 2027"
+    )
+    out = await extract.extract_fields("itas", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "kitas"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["kitas_labels"]
+    assert out["fields"]["kitas_no"]["value"] == "2C11AB98765"
+    assert out["fields"]["name"]["value"] == "Mario Luca Rossi"
+    assert out["fields"]["expiry"]["value"] == "2027-06-30"
+    assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO NUSANTARA"
 
 
 async def test_itap_label_fields_skip_model_call():
