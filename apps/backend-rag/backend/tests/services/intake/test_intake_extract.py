@@ -320,6 +320,45 @@ async def test_skt_label_fields_skip_model_call():
     assert out["fields"]["registration_date"]["value"] == "2026-05-15"
 
 
+async def test_skt_model_alias_fields_map_to_canonical_schema():
+    """LLM alias names for SKT are preserved as canonical fields."""
+    payload = {
+        "registration_number": {
+            "value": "PEM-00123/WPJ.12/KP.0103/2026",
+            "source_page": 1,
+        },
+        "npwp": {"value": "09.876.543.2-901.000", "source_page": 1},
+        "taxpayer_name": {"value": "PT ZANTARA TEST MANDIRI", "source_page": 1},
+        "taxpayer_address": {
+            "value": "JALAN RAYA CANGGU NO 10 BADUNG",
+            "source_page": 1,
+        },
+        "registered_date": {"value": "2026-05-15", "source_page": 1},
+    }
+
+    out = await extract.extract_fields(
+        "skt",
+        ["OCR fragment from a tax registration certificate without clear labels"],
+        generate_fn=_fake_gen(payload),
+    )
+
+    assert out["doc_type"] == "skt"
+    assert out["extraction_model"] == "sea-lion"
+    assert out["fields"]["skt_number"]["value"] == "PEM-00123/WPJ.12/KP.0103/2026"
+    assert out["fields"]["npwp_number"]["value"] == "09.876.543.2-901.000"
+    assert out["fields"]["name"]["value"] == "PT ZANTARA TEST MANDIRI"
+    assert out["fields"]["address"]["value"] == "JALAN RAYA CANGGU NO 10 BADUNG"
+    assert out["fields"]["registration_date"]["value"] == "2026-05-15"
+    assert out["field_aliases"] == {
+        "skt_number": "registration_number",
+        "npwp_number": "npwp",
+        "name": "taxpayer_name",
+        "address": "taxpayer_address",
+        "registration_date": "registered_date",
+    }
+    assert out["any_low_confidence"] is False
+
+
 async def test_sk_kemenkumham_label_fields_skip_model_call():
     """Clearly-labelled SK Kemenkumham OCR carries company decision fields locally."""
     called = {"n": 0}

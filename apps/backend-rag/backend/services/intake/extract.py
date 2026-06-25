@@ -296,6 +296,23 @@ _DOC_TYPE_ALIASES: dict[str, str] = {
 }
 
 
+_FIELD_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "skt": {
+        "skt_number": (
+            "registration_number",
+            "certificate_number",
+            "skt_registration_number",
+            "skt_no",
+            "number",
+        ),
+        "npwp_number": ("npwp", "tax_number"),
+        "name": ("taxpayer_name", "company_name", "registered_taxpayer_name"),
+        "address": ("taxpayer_address", "registered_address"),
+        "registration_date": ("registered_date", "issue_date", "date"),
+    },
+}
+
+
 def canonical_doc_type(doc_type: str | None) -> str | None:
     """Map a (possibly variant) classifier doc_type to a schema key."""
     if not doc_type:
@@ -303,6 +320,20 @@ def canonical_doc_type(doc_type: str | None) -> str | None:
     key = doc_type.strip().lower()
     key = _DOC_TYPE_ALIASES.get(key, key)
     return key if key in DOC_TYPE_FIELDS else None
+
+
+def _parsed_field_with_alias(
+    parsed: dict[str, Any],
+    doc_type: str,
+    field_name: str,
+) -> tuple[Any, str | None]:
+    """Return a canonical field value, falling back to known model aliases."""
+    if field_name in parsed:
+        return parsed.get(field_name), None
+    for alias in _FIELD_ALIASES.get(doc_type, {}).get(field_name, ()):
+        if alias in parsed:
+            return parsed.get(alias), alias
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -1859,10 +1890,14 @@ async def extract_fields(
     specs = DOC_TYPE_FIELDS[canonical]
     num_pages = len(pages)
     fields: dict[str, Any] = {}
+    field_aliases: dict[str, str] = {}
     any_low = False
     for name, is_list, _desc in specs:
-        field = _coerce_field(is_list, parsed.get(name), num_pages)
+        raw_field, alias = _parsed_field_with_alias(parsed, canonical, name)
+        field = _coerce_field(is_list, raw_field, num_pages)
         fields[name] = field
+        if alias is not None:
+            field_aliases[name] = alias
     if deterministic_fields:
         _merge_deterministic_fields(fields, deterministic_fields)
     for field in fields.values():
@@ -1875,6 +1910,8 @@ async def extract_fields(
         "extraction_model": EXTRACTION_MODEL_LABEL,
         "any_low_confidence": any_low,
     }
+    if field_aliases:
+        result["field_aliases"] = field_aliases
     if deterministic_extractors:
         result["deterministic_extractors"] = deterministic_extractors
     return result
