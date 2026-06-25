@@ -21,7 +21,7 @@ from urllib.parse import quote
 import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
@@ -46,9 +46,14 @@ router = APIRouter(prefix="/api/portal", tags=["portal"])
 class SendMessageRequest(BaseModel):
     """Request to send a message"""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     content: str
     subject: str | None = None
-    practice_id: int | None = None
+    practice_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("practice_id", "practiceId"),
+    )
 
 
 class UpdatePreferencesRequest(BaseModel):
