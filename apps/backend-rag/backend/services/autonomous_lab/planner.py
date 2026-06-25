@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -22,8 +20,12 @@ from backend.services.autonomous_lab.receipt_safety import (
     safe_sha256_fingerprint,
 )
 
-PIPELINE_VERSION = "autonomous-lab-v0"
+PIPELINE_VERSION = "autonomous-lab-v0.2"
+NOTEBOOKLM_SOURCE_LIMIT = 500
+NOTEBOOKLM_OVERFLOW_THRESHOLD = 485
+NOTEBOOKLM_ROUTE_OBSERVED_AT = "2026-06-16"
 SAFE_COMMAND_ARG_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x1f\x7f]")
 
 
 class MaterialSourceType(str, Enum):
@@ -74,6 +76,43 @@ class PipelineStep:
             "component": self.component,
             "output": self.output,
             "gate": self.gate,
+        }
+
+
+@dataclass(frozen=True)
+class LabResearchNotebook:
+    """NotebookLM research surface assigned to the autonomous lab."""
+
+    key: str
+    notebook_id: str
+    title: str
+    role: str
+    query_contract: str
+    write_policy: str
+    observed_source_count: int
+    observed_at: str = NOTEBOOKLM_ROUTE_OBSERVED_AT
+    source_limit: int = NOTEBOOKLM_SOURCE_LIMIT
+    related_notebook_ids: tuple[str, ...] = ()
+
+    @property
+    def near_source_limit(self) -> bool:
+        """Return True when new ingestion should prefer the overflow notebook."""
+        return self.observed_source_count >= NOTEBOOKLM_OVERFLOW_THRESHOLD
+
+    def to_receipt(self) -> dict[str, Any]:
+        """Return a JSON-safe representation."""
+        return {
+            "key": self.key,
+            "notebook_id": self.notebook_id,
+            "title": self.title,
+            "role": self.role,
+            "query_contract": self.query_contract,
+            "write_policy": self.write_policy,
+            "observed_source_count": self.observed_source_count,
+            "observed_at": self.observed_at,
+            "source_limit": self.source_limit,
+            "near_source_limit": self.near_source_limit,
+            "related_notebook_ids": list(self.related_notebook_ids),
         }
 
 
@@ -179,6 +218,7 @@ class LabRun:
     created_at: datetime
     pipeline_version: str
     pipeline: list[PipelineStep]
+    research_notebooks: tuple[LabResearchNotebook, ...]
     materials: list[NormalizedMaterial]
     hypotheses: list[str]
     simulation_plan: SimulationPlan
@@ -200,6 +240,9 @@ class LabRun:
             "created_at": self.created_at.isoformat(),
             "pipeline_version": self.pipeline_version,
             "pipeline": [step.to_receipt() for step in self.pipeline],
+            "research_notebooks": [
+                notebook.to_receipt() for notebook in self.research_notebooks
+            ],
             "materials": [material.to_receipt() for material in self.materials],
             "hypotheses": self.hypotheses,
             "simulation_plan": self.simulation_plan.to_receipt(),
@@ -213,6 +256,13 @@ class LabRun:
 def default_pipeline() -> list[PipelineStep]:
     """Return the canonical v0 lab pipeline."""
     return [
+        PipelineStep(
+            0,
+            "watch",
+            "ai_software_watchtower",
+            "FrontierSignal[]",
+            "fresh_sources_or_idle_tick",
+        ),
         PipelineStep(1, "intake", "source_adapters", "ResearchMaterial[]", "provenance"),
         PipelineStep(2, "normalize", "normalizer", "NormalizedMaterial[]", "no_raw_receipt"),
         PipelineStep(3, "compose", "composer", "hypotheses_and_spec", "evidence_quorum"),
@@ -221,8 +271,75 @@ def default_pipeline() -> list[PipelineStep]:
         PipelineStep(
             6, "verify", "verification_runner", "test_metrics_failure_report", "empirical"
         ),
-        PipelineStep(7, "promote", "decision_gate", "operator_proposal", "manual_only"),
+        PipelineStep(7, "curate", "decision_gate", "operator_proposal", "manual_only"),
+        PipelineStep(
+            8,
+            "archive",
+            "learning_library",
+            "trajectory_summary",
+            "approved_summaries_only",
+        ),
     ]
+
+
+def default_research_notebooks() -> tuple[LabResearchNotebook, ...]:
+    """Return the NotebookLM routing contract for AI/coding lab research."""
+    return (
+        LabResearchNotebook(
+            key="frontier_radar",
+            notebook_id="dc5d01cd-e99f-4c8f-aae4-75060b43d0de",
+            title="NB-INTEL-AIResearch — Daily AI Intelligence",
+            role="daily AI/software frontier intake",
+            query_contract=(
+                "Ask for AI research, model release, SDK, framework, and software "
+                "changes since the last run; return implementation candidates, "
+                "risks, and citations."
+            ),
+            write_policy=(
+                "read for daily watch; route new writes to ai_research_overflow "
+                "when the observed count is near the NotebookLM source limit"
+            ),
+            observed_source_count=493,
+        ),
+        LabResearchNotebook(
+            key="agent_engineering_core",
+            notebook_id="dff45303-4b51-45ad-8718-502d4f8a8e3f",
+            title="NB-LAB-AGENT-ENGINEERING-2026 — AI Coding Core",
+            role="stable agent engineering synthesis memory",
+            query_contract=(
+                "Ask for implementation patterns across multi-agent architecture, "
+                "MCP, self-evolving agents, sandboxing, codebase hygiene, and "
+                "Nuzantara applicability before drafting experiments."
+            ),
+            write_policy=(
+                "read-mostly; add only curated syntheses or manifest updates after "
+                "operator-approved consolidation"
+            ),
+            observed_source_count=404,
+            related_notebook_ids=(
+                "6d449787-04e3-430e-acbe-d6fc38d379a9",
+                "5af11152-7809-4ece-8000-7ca8ce4e9678",
+                "305f5f2e-d2f4-4f77-a771-c2b7aa0867e4",
+                "76de5123-af21-4d2c-81f1-cbc97e5e65e9",
+                "e00d497a-f55a-47c7-9c79-6a7b7641b528",
+            ),
+        ),
+        LabResearchNotebook(
+            key="ai_research_overflow",
+            notebook_id="069f009c-ce74-42e5-b75c-e584aa18feb1",
+            title="NB-INTEL-AIResearch-2 — Daily AI Intelligence Overflow",
+            role="overflow intake for new AI research sources",
+            query_contract=(
+                "Store fresh frontier sources and daily manifests while the primary "
+                "AIResearch notebook stays near the source cap."
+            ),
+            write_policy=(
+                "primary write target for new AI/software sources until the frontier "
+                "radar notebook is split or cleaned"
+            ),
+            observed_source_count=1,
+        ),
+    )
 
 
 class AutonomousLabPlanner:
@@ -259,6 +376,7 @@ class AutonomousLabPlanner:
         safe_objective = _receipt_safe_objective(objective)
         normalized = [self.normalize_material(material) for material in materials]
         simulation_plan = self._build_simulation_plan(target_paths=target_paths, task_id=task_id)
+        research_notebooks = default_research_notebooks()
         gates = self._evaluate_gates(materials=materials, simulation_plan=simulation_plan)
         return LabRun(
             run_id=task_id,
@@ -266,6 +384,7 @@ class AutonomousLabPlanner:
             created_at=created_at or datetime.now(tz=timezone.utc),
             pipeline_version=PIPELINE_VERSION,
             pipeline=default_pipeline(),
+            research_notebooks=research_notebooks,
             materials=normalized,
             hypotheses=_hypotheses(safe_objective, normalized),
             simulation_plan=simulation_plan,
@@ -282,18 +401,10 @@ class AutonomousLabPlanner:
         )
 
     def write_receipt(self, run: LabRun, receipt_dir: Path) -> Path:
-        """Persist a lab run receipt atomically and return the final path."""
-        receipt_dir.mkdir(parents=True, exist_ok=True)
-        final_path = receipt_dir / f"{run.run_id}.json"
-        tmp_path = final_path.with_suffix(".json.tmp")
-        payload = run.to_receipt()
-        with tmp_path.open("w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2, sort_keys=True)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        tmp_path.replace(final_path)
-        return final_path
+        """Persist a lab run receipt through the append-only receipt store."""
+        from backend.services.autonomous_lab.receipt_store import ReceiptStore
+
+        return ReceiptStore(receipt_dir).write_run(run).receipt_path
 
     def _build_simulation_plan(self, *, target_paths: list[str], task_id: str) -> SimulationPlan:
         safe_paths = [
@@ -314,6 +425,7 @@ class AutonomousLabPlanner:
                 "environment key allowlist without secret values",
                 "fixture or sanitized data shape matching production contracts",
                 "exact runtime command path used by production or cron",
+                "production-equivalent sandbox inputs and acceptance metrics",
             ],
             verification_commands=_verification_commands(safe_paths),
         )
@@ -364,6 +476,21 @@ class AutonomousLabPlanner:
                 passed=True,
                 severity=GateSeverity.BLOCKER,
                 detail="operator must approve any promotion after verification",
+            ),
+            LabSafetyGate(
+                name="frontier_watch_is_bounded",
+                passed=True,
+                severity=GateSeverity.INFO,
+                detail=(
+                    "continuous AI/software scouting must emit receipts for fresh signals "
+                    "or explicit idle ticks"
+                ),
+            ),
+            LabSafetyGate(
+                name="notebooklm_research_route_declared",
+                passed=True,
+                severity=GateSeverity.INFO,
+                detail=_notebook_route_summary(default_research_notebooks()),
             ),
         ]
 
@@ -427,6 +554,8 @@ def _require_safe_repo_path(value: str, field_name: str) -> str:
         raise ValueError(f"{field_name} must be a non-empty repository-relative path")
     if "\x00" in candidate:
         raise ValueError(f"{field_name} must not contain null bytes")
+    if CONTROL_CHAR_PATTERN.search(candidate):
+        raise ValueError(f"{field_name} must not contain control characters")
     if "\\" in candidate:
         raise ValueError(f"{field_name} must use POSIX separators")
     if "://" in candidate:
@@ -447,6 +576,25 @@ def _require_safe_repo_path(value: str, field_name: str) -> str:
 def _extract_tags(text: str, metadata: dict[str, str]) -> list[str]:
     haystack = " ".join([text, " ".join(metadata.values())]).lower()
     tag_map = {
+        "ai_frontier": (
+            "ai",
+            "agent",
+            "benchmark",
+            "eval",
+            "llm",
+            "model",
+            "paper",
+            "research",
+        ),
+        "software_frontier": (
+            "api",
+            "changelog",
+            "framework",
+            "library",
+            "release",
+            "sdk",
+            "software",
+        ),
         "research": ("research", "paper", "study", "source"),
         "repo": ("code", "repo", "diff", "test", "pytest"),
         "simulation": ("simulate", "prod-like", "fixture", "runtime"),
@@ -499,3 +647,11 @@ def _hypotheses(objective: str, materials: list[NormalizedMaterial]) -> list[str
 
 def _verification_commands(target_paths: list[str]) -> list[str]:
     return verification_commands_for_paths(target_paths)
+
+
+def _notebook_route_summary(notebooks: tuple[LabResearchNotebook, ...]) -> str:
+    keys = ", ".join(notebook.key for notebook in notebooks)
+    near_limit = ", ".join(notebook.key for notebook in notebooks if notebook.near_source_limit)
+    if not near_limit:
+        near_limit = "none"
+    return f"NotebookLM routes declared: {keys}; near_source_limit: {near_limit}"

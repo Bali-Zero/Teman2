@@ -44,7 +44,7 @@ async def test_greeting_only_routes_to_ai(monkeypatch):
     service = WhatsAppTriageService()
 
     decision, reason = await service.should_escalate(
-        phone="6282264599868",
+        phone="6282210302328",
         message_text="Hi",
         sender_name="Test",
     )

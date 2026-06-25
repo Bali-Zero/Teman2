@@ -60,6 +60,12 @@ FUNNEL_PAGE_EVENTS: frozenset[str] = frozenset(
         "visa_calling_block",
         # --- Home CTAs ---
         "home_whatsapp_cta",
+        # --- Cross-funnel lead CTA ---
+        # WhatsAppLeadButton (PR #1576); carries source=article|kbli_navigator|...
+        # in its payload rather than a per-page event name. Mirrors the
+        # FUNNEL_EVENTS entry in packages/core/analytics/funnel-view.ts so the
+        # parity gate (test_analytics_funnel_parity) stays green.
+        "lead_whatsapp_cta",
         # --- Funnel home-block CTAs ---
         "visa_cta_click",
         "visa_consult_click",

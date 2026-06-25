@@ -286,4 +286,55 @@ describe("AuthApi", () => {
       );
     });
   });
+
+  describe("verifyMagicLink", () => {
+    it("exchanges a token for a session and persists it", async () => {
+      const mockResponse: BackendLoginResponse = {
+        success: true,
+        message: "Login successful",
+        data: {
+          token: "magic-token",
+          token_type: "Bearer",
+          expiresIn: 43200,
+          user: {
+            id: "7",
+            email: "client@example.com",
+            name: "Client One",
+            role: "client",
+          },
+          csrfToken: "csrf-magic",
+        },
+      };
+      mockRequest.mockResolvedValueOnce(mockResponse);
+
+      const result = await authApi.verifyMagicLink("raw token/with?chars");
+
+      // token is URL-encoded into the path
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/auth/verify-magic/raw%20token%2Fwith%3Fchars",
+        { method: "GET" },
+        90000,
+      );
+      expect(mockClient.setCsrfToken).toHaveBeenCalledWith("csrf-magic");
+      expect(mockClient.setToken).toHaveBeenCalledWith("magic-token");
+      expect(mockClient.setUserProfile).toHaveBeenCalledWith(
+        mockResponse.data.user,
+      );
+      expect(result.access_token).toBe("magic-token");
+    });
+
+    it("throws on an invalid/expired token", async () => {
+      const mockResponse: BackendLoginResponse = {
+        success: false,
+        message: "This sign-in link is invalid or expired.",
+        data: undefined as any,
+      };
+      mockRequest.mockResolvedValueOnce(mockResponse);
+
+      await expect(authApi.verifyMagicLink("bad")).rejects.toThrow(
+        "invalid or expired",
+      );
+      expect(mockClient.setToken).not.toHaveBeenCalled();
+    });
+  });
 });

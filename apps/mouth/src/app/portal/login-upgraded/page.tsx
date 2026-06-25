@@ -1404,6 +1404,15 @@ function UpgradedLoginPageInner() {
                           "Verify Identity"
                         )}
                       </motion.button>
+
+                      <div className="pt-3 text-center">
+                        <Link
+                          href="/portal/magic-link"
+                          className="text-[11px] uppercase tracking-[2px] text-accent-gold-muted/60 hover:text-accent-gold-muted transition-colors"
+                        >
+                          Sign in with an email link instead
+                        </Link>
+                      </div>
                     </motion.form>
                   )}
                 </AnimatePresence>

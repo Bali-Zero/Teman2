@@ -58,6 +58,7 @@ def test_app(mock_db_pool):
     app.dependency_overrides[get_database_pool] = override_get_database_pool
     app.dependency_overrides[get_current_user] = override_get_current_user
 
+    assert app.dependency_overrides[get_database_pool] is override_get_database_pool
     return app
 
 
@@ -115,6 +116,11 @@ class TestCreateClient:
                 "client_type": "individual",
                 "assigned_to": "team@example.com",
                 "tags": ["vip"],
+                # This test asserts CREATE success, not phone-dedup. The shared
+                # fetchrow mock returns an existing row, which the new phone-dedup
+                # gate would read as a duplicate (409) — bypass it explicitly so
+                # the test keeps exercising the create path it was written for.
+                "allow_duplicate_phone": True,
             },
         )
 
@@ -909,3 +915,91 @@ class TestGetClientAiSummary:
         assert isinstance(body["summary"], dict)
         assert body["summary"]["schema_version"] == "v1.0"
         assert body["summary"]["profile"]["tier"] == "VIP"
+
+
+class TestGetClientWaCaseIntelligence:
+    """Tests for GET /api/crm/clients/{client_id}/wa-case-intelligence."""
+
+    def test_case_intelligence_available(self, client, mock_db_pool):
+        pool, conn = mock_db_pool
+        now = datetime.now(tz=timezone.utc)
+
+        async def mock_fetchrow(sql, *args):
+            return {"id": 70, "assigned_to": None, "created_by": None}
+
+        conn.fetchrow = mock_fetchrow
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "conversation_key": "direct|+6281|+3933",
+                    "member_phone": "+6281",
+                    "counterpart_key": "+3933",
+                    "display_name": "Kerrie",
+                    "chat_kind": "direct",
+                    "case_status": "open",
+                    "case_type": "referral lead",
+                    "source_model": "gpt-5.5",
+                    "reasoning_effort": "xhigh",
+                    "analysis_hash": "abc123",
+                    "analysis_id": "0dc5d3f74653-kerrie-adit",
+                    "message_count": 32,
+                    "unread_count": 0,
+                    "last_message_at": now,
+                    "priority_score": 78,
+                    "flags": '[{"id":"crm_collision","label":"CRM/thread collision"}]',
+                    "recap": "Client referred a friend and has a separate admin case.",
+                    "next_action": "Qualify the referral before quoting.",
+                    "ideal_reply": "Hi Kerrie, thanks. Can you confirm the activity and timing?",
+                    "evidence": "Messages 4-8 discuss the referral.",
+                    "crm_packet": "Kerrie has two separate tracks to keep apart.",
+                    "raw_sections": '{"state":"Two cases are merged in the chat."}',
+                    "analysis_output_path": "analyses/0dc5d3f74653-kerrie-adit.md",
+                    "generated_at": now,
+                    "imported_at": now,
+                    "updated_at": now,
+                }
+            ]
+        )
+
+        response = client.get("/api/crm/clients/70/wa-case-intelligence")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "available"
+        assert body["case_count"] == 1
+        assert body["cases"][0]["display_name"] == "Kerrie"
+        assert body["cases"][0]["flags"][0]["id"] == "crm_collision"
+        assert body["cases"][0]["raw_sections"]["state"] == "Two cases are merged in the chat."
+
+    def test_case_intelligence_not_generated(self, client, mock_db_pool):
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            return {"id": 70, "assigned_to": None, "created_by": None}
+
+        conn.fetchrow = mock_fetchrow
+        conn.fetch = AsyncMock(return_value=[])
+
+        response = client.get("/api/crm/clients/70/wa-case-intelligence")
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "client_id": 70,
+            "status": "not_generated",
+            "case_count": 0,
+            "cases": [],
+        }
+
+    def test_case_intelligence_client_not_found(self, client, mock_db_pool):
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/99999/wa-case-intelligence")
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()

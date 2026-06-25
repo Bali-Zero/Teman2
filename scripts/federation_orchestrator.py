@@ -17,6 +17,7 @@ Architecture:
 
 import asyncio
 import json
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -24,7 +25,11 @@ from pathlib import Path
 from contextlib import contextmanager
 from typing import Any, TypedDict
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # minimal CI env (e.g. p6 workflow installs only pytest)
+    def load_dotenv(*_args: Any, **_kwargs: Any) -> bool:
+        return False
 
 # Load env for TELEGRAM_BOT_TOKEN
 _master_env = Path.home() / "Desktop" / "NUZANTARA_ENV_KEYS.env"
@@ -43,6 +48,7 @@ from federation_capability_table import (
     suggest_agents,
 )
 from federation_parallelize import parallelizable_hypothesis
+from privacy_preflight import Route, privacy_preflight
 
 # Make backend/core/observability.py importable from scripts/ (POC-scope).
 _BACKEND_RAG = Path(__file__).resolve().parent.parent / "apps" / "backend-rag"
@@ -119,6 +125,8 @@ AUDIT_FILE = OUTPUT_DIR / "audit.jsonl"
 CLASSIFIER_MODEL = "qwen3.5:9b"  # Local via Ollama — $0, fast classification
 OLLAMA_URL = "http://localhost:11434"
 
+logger = logging.getLogger("federation_orchestrator")
+
 # LangSmith observability (disabled until API key configured)
 # Set LANGCHAIN_API_KEY in .env to enable tracing
 if not os.environ.get("LANGCHAIN_API_KEY"):
@@ -148,7 +156,34 @@ class FederationState(TypedDict, total=False):
 # Helpers
 # ═══════════════════════════════════════════════════════
 async def run_dispatch(cmd: str, prompt: str) -> str:
-    """Execute ai-dispatch.sh and return output."""
+    """Execute ai-dispatch.sh and return output.
+
+    P2 confine-PII gate (CRITICO-2 §3 STRATA B+C): every `cmd` here
+    (search/explore/sandbox/claude-redteam) is a CLOUD agent, so this is the
+    single chokepoint that previously passed RAW prompts to the cloud (the
+    Law-2 finding, spec §1). Before dispatching, `privacy_preflight` runs the
+    deterministic regex backstop + the fail-closed redactor on the prompt. A
+    LOCAL verdict means structured/CRM PII was detected → we REFUSE the cloud
+    dispatch (air-gap: the cloud key is never reached) and return a
+    blocked-notice so the graph degrades gracefully (Law 4) instead of leaking.
+    Posture is degraded-ok by default (regex is the hard gate; the CRM-name
+    redactor best-effort when PG is in scope). Set PRIVACY_PREFLIGHT_STRICT=true
+    to fail-closed when the redactor cannot be built.
+    """
+    _decision = privacy_preflight(prompt)  # task_type=None → content-only gate
+    if _decision.route is not Route.CLOUD:
+        logger.warning(
+            "[confine-PII] BLOCKED cloud dispatch cmd=%s layer=%s reason=%s",
+            cmd,
+            _decision.layer,
+            _decision.blocked_reason,
+        )
+        return (
+            f"[PII-BLOCKED layer={_decision.layer} reason={_decision.blocked_reason}] "
+            f"cloud dispatch '{cmd}' refused — prompt contains client PII (Law 2). "
+            f"This task must run on a local model."
+        )
+
     # Langfuse POC: one span per dispatched agent (gemini-search, codex, etc).
     # PII-safe: hash + length only (prompts may embed KB content).
     import hashlib as _h

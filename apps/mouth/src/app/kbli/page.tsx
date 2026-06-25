@@ -10,11 +10,11 @@ import { FunnelFrame } from "@balizero/core";
 export const metadata: Metadata = {
   title: "KBLI 2025 Navigator — Indonesia Business Classification Guide",
   description:
-    "Navigate Indonesia's 1,563 KBLI 2025 business codes. PMA investment rules, licensing requirements, and 2020→2025 transition mapping. Powered by Zantara AI.",
+    "Navigate Indonesia's 1,559 KBLI 2025 business codes. PMA investment rules, licensing requirements, and 2020→2025 transition mapping. Powered by Zantara AI.",
   openGraph: {
     title: "KBLI 2025 Navigator — Zantara by Bali Zero",
     description:
-      "The definitive guide to Indonesia's KBLI 2025 business classification. 1,563 codes, PMA rules, and AI-powered analysis.",
+      "The definitive guide to Indonesia's KBLI 2025 business classification. 1,559 codes, PMA rules, and AI-powered analysis.",
     type: "website",
   },
   alternates: {
@@ -112,7 +112,7 @@ export default async function KBLIHomePage({
 
               {/* Inline stats */}
               <p className="mt-3 text-sm text-zinc-500 tracking-wide">
-                1,563 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA
+                1,559 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA
                 rules
               </p>
 
@@ -181,9 +181,9 @@ export default async function KBLIHomePage({
         {/* ── TRUST BAR ── */}
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">
           {[
-            { num: "1,563", label: "KBLI Codes" },
+            { num: "1,559", label: "KBLI Codes" },
             { num: "22", label: "Industry Sectors" },
-            { num: "100%", label: "PMA Coverage" },
+            { num: "~30%", label: "Blocked in Bali" },
             { num: "AI", label: "Powered by Zantara" },
           ].map((t) => (
             <div

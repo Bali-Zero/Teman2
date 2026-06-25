@@ -227,19 +227,28 @@ async def test_retry_marks_failed_again_when_brevo_errors(monitor, fake_pool):
 
 @pytest.mark.asyncio
 async def test_stale_sending_unsticks_old_rows(monitor, fake_pool):
-    """Rows stuck at 'sending' for 10+ min get flipped to 'failed'
-    with retry_after=+1h."""
-    fake_pool._conn.fetch.return_value = [{"id": 1}, {"id": 2}, {"id": 3}]
+    """Rows stuck at 'sending' for 30+ min get flipped to 'failed'.
+
+    Dedup fix (2026-06-17): retry-safe types keep the +1h retry window,
+    but client-facing personalized types (NON_RESURRECTABLE) get
+    retry_after=NULL via a CASE so they escalate instead of re-sending a
+    duplicate. The RETURNING clause now includes email_type."""
+    # mix: one retry-safe (waiting_docs_team) + one client-facing (welcome)
+    fake_pool._conn.fetch.return_value = [
+        {"id": 1, "email_type": "waiting_docs_team"},
+        {"id": 2, "email_type": "welcome"},
+    ]
 
     stats = await monitor.check_stale_sendings()
 
-    assert stats == {"unstuck": 3}
-    # Verify the UPDATE ran exactly once with the right WHERE clause
+    assert stats == {"unstuck": 2}
     assert fake_pool._conn.fetch.called
     executed_sql = str(fake_pool._conn.fetch.call_args_list[0])
     assert "status = 'failed'" in executed_sql
     assert "stale_sending" in executed_sql
-    assert "INTERVAL '1 hour'" in executed_sql
+    # client-facing types must NOT be re-sent → CASE emits NULL retry_after
+    assert "CASE" in executed_sql
+    assert "INTERVAL '1 hour'" in executed_sql  # still applies to retry-safe types
 
 
 @pytest.mark.asyncio

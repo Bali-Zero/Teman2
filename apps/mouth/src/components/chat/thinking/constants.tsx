@@ -16,14 +16,14 @@ import { ThinkingPhrase } from "./types";
 
 // Collection display names for user-friendly messages
 export const COLLECTION_NAMES: Record<string, string> = {
-  visa_oracle: "documenti visti",
-  legal_unified: "normativa legale",
-  tax_genius: "regolamenti fiscali",
-  kbli_2025_final: "codici KBLI",
-  balizero_news: "aggiornamenti normativi",
-  bali_zero_pricing_hybrid: "listino prezzi",
-  training_conversations_hybrid: "conversazioni precedenti",
-  immigration_circulars: "circolari immigrazione",
+  visa_oracle: "visa documents",
+  legal_unified: "legal regulations",
+  tax_genius: "tax regulations",
+  kbli_2025_final: "KBLI codes",
+  balizero_news: "regulatory updates",
+  bali_zero_pricing_hybrid: "price list",
+  training_conversations_hybrid: "previous conversations",
+  immigration_circulars: "immigration circulars",
 };
 
 // Map tool names to icons

@@ -173,6 +173,20 @@ _AUTH = (
         Category.AUTH,
         "CSRF token generation — must be public for CSRF protection flow",
     ),
+    PublicEndpoint(
+        "/api/auth/request-magic-link",
+        Category.AUTH,
+        "Passwordless magic-link request (FASE 6) — must be public; an "
+        "unauthenticated client asks for a sign-in link. Enumeration-safe.",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/auth/verify-magic/",
+        Category.AUTH,
+        "Passwordless magic-link verify (FASE 6) — must be public; consumes the "
+        "single-use token and establishes the session. Prefix match: the token "
+        "is a path param.",
+    ),
     # 2026-05-28: removed "/api/workflow/" prefix entry. All workflow_queue routes
     # (/enqueue, /status/{job_id}, /chains) require Depends(get_current_user), so the
     # public declaration was dead+contradictory (middleware bypassed auth, route 401'd).

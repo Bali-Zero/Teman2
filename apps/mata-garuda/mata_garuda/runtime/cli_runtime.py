@@ -1,7 +1,7 @@
 """
 Mata Garuda — CLI Runtime.
 
-Subprocess wrapper per LLM CLI (claude, gemini, codex).
+Subprocess wrapper per LLM CLI/local tools (claude, gemini, codex, ollama).
 Vincolo inviolabile: MAI API HTTP, MAI SDK import.
 Tutto passa via subprocess blocking.
 
@@ -52,6 +52,8 @@ RATE_LIMIT_PATTERNS = re.compile(
 )
 
 # Mapping model -> CLI command + flags
+DEFAULT_OLLAMA_MODEL = os.environ.get("MATA_GARUDA_OLLAMA_MODEL", "qwen3.5:9b")
+
 CLI_CONFIGS: dict[str, dict] = {
     "claude": {
         "cmd": "claude",
@@ -77,6 +79,12 @@ CLI_CONFIGS: dict[str, dict] = {
     "codex": {
         "cmd": "codex",
         "print_flag": "exec",
+        "system_flag": None,
+        "model_flag": None,
+    },
+    "ollama": {
+        "cmd": "ollama",
+        "print_flag": "run",
         "system_flag": None,
         "model_flag": None,
     },
@@ -145,7 +153,7 @@ class CLIRuntime:
     """
     Subprocess wrapper per LLM CLI tools.
 
-    Supporta: claude (--print), gemini (--prompt), codex (exec).
+    Supporta: claude (--print), gemini (--prompt), codex (exec), ollama (local).
     Sempre blocking, mai interattivo.
 
     Claude multi-account fallback:
@@ -160,6 +168,13 @@ class CLIRuntime:
         timeout: int = DEFAULT_TIMEOUT,
         working_dir: Optional[str] = None,
     ):
+        self.ollama_model: str | None = None
+        if model.startswith("ollama:"):
+            self.ollama_model = model.split(":", 1)[1].strip() or DEFAULT_OLLAMA_MODEL
+            model = "ollama"
+        elif model == "ollama":
+            self.ollama_model = DEFAULT_OLLAMA_MODEL
+
         if model not in CLI_CONFIGS:
             raise ValueError(
                 f"Unknown model '{model}'. Supported: {list(CLI_CONFIGS.keys())}"
@@ -183,6 +198,17 @@ class CLIRuntime:
             cmd.append(self.config["print_flag"])
             cmd.append(prompt)
             return cmd
+
+        if self.model == "ollama":
+            combined = prompt
+            if system_prompt:
+                combined = f"<system>\n{system_prompt}\n</system>\n\n{prompt}"
+            return [
+                self.config["cmd"],
+                self.config["print_flag"],
+                self.ollama_model or DEFAULT_OLLAMA_MODEL,
+                combined,
+            ]
 
         # claude: --print "prompt" / gemini: --prompt "prompt"
         cmd.append(self.config["print_flag"])
@@ -216,6 +242,61 @@ class CLIRuntime:
             timeout=self.timeout,
             cwd=self.working_dir,
             env=env,
+        )
+
+    def _invoke_ollama(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+    ) -> CLIResult:
+        """Invoke local Ollama through the shared curl-based helper."""
+        from mata_garuda.tools.ollama_tools import generate
+
+        combined = prompt
+        if system_prompt:
+            combined = f"<system>\n{system_prompt}\n</system>\n\n{prompt}"
+
+        start = time.monotonic()
+        model_name = self.ollama_model or DEFAULT_OLLAMA_MODEL
+        try:
+            output = generate(
+                model_name,
+                combined,
+                num_predict=int(os.environ.get("MATA_GARUDA_OLLAMA_NUM_PREDICT", "700")),
+                timeout=self.timeout,
+            )
+        except Exception as exc:  # pragma: no cover - defensive local subprocess
+            elapsed = time.monotonic() - start
+            return CLIResult(
+                stdout="",
+                stderr=f"Ollama invocation failed: {type(exc).__name__}: {exc}",
+                returncode=1,
+                elapsed_seconds=round(elapsed, 2),
+                model=f"ollama:{model_name}",
+                token_used="local_ollama",
+                command=["ollama", "run", model_name, "<prompt>"],
+            )
+
+        elapsed = time.monotonic() - start
+        if output is None:
+            return CLIResult(
+                stdout="",
+                stderr=f"Ollama returned no output for {model_name}",
+                returncode=1,
+                elapsed_seconds=round(elapsed, 2),
+                model=f"ollama:{model_name}",
+                token_used="local_ollama",
+                command=["ollama", "run", model_name, "<prompt>"],
+            )
+
+        return CLIResult(
+            stdout=output,
+            stderr="",
+            returncode=0,
+            elapsed_seconds=round(elapsed, 2),
+            model=f"ollama:{model_name}",
+            token_used="local_ollama",
+            command=["ollama", "run", model_name, "<prompt>"],
         )
 
     def _invoke_single(
@@ -289,6 +370,13 @@ class CLIRuntime:
         Returns:
             CLIResult with stdout, stderr, returncode, timing
         """
+        if self.model == "ollama":
+            logger.info(
+                f"[CLIRuntime] Invoking local Ollama "
+                f"({self.ollama_model or DEFAULT_OLLAMA_MODEL})"
+            )
+            return self._invoke_ollama(prompt, system_prompt)
+
         cmd = self._build_command(prompt, system_prompt, extra_flags)
 
         # Non-Claude models: single call, no fallback chain
