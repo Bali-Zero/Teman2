@@ -1994,8 +1994,5 @@ async def extract_stage(job: dict, stage: str) -> dict:
     if isinstance(pages, str):
         pages = [pages]
     result = await extract_fields(doc_type, pages or [])
-    logger.info(
-        "extract: job=%s doc_type=%s any_low_confidence=%s",
-        job.get("id"), result["doc_type"], result["any_low_confidence"],
-    )
+    logger.info("extract: completed")
     return result
