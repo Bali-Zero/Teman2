@@ -20,30 +20,13 @@ import { logger } from "@/lib/logger";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ClientRequiredDocument } from "@/lib/types/required-documents";
-
-// Lazy: Dialog is only used inside modals (not first paint)
-const Dialog = dynamic(
-  () => import("@/components/ui/dialog").then((m) => ({ default: m.Dialog })),
-  { ssr: false },
-);
-const DialogContent = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({
-      default: m.DialogContent,
-    })),
-  { ssr: false },
-);
-const DialogHeader = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({ default: m.DialogHeader })),
-  { ssr: false },
-);
-const DialogTitle = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({ default: m.DialogTitle })),
-  { ssr: false },
-);
 
 // Lazy: FileUploadField only renders when user clicks upload (not first paint)
 const FileUploadField = dynamic(
