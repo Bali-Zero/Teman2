@@ -8,6 +8,7 @@ const path = require("path");
 const metrics = require("./metrics.cjs");
 const {
   actionBucketForRow,
+  buildDirectActionSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 } = require("./intake-buckets.cjs");
@@ -829,6 +830,9 @@ async function fetchIntakeSummary() {
     workspaceMap.set(workspaceBucket, (workspaceMap.get(workspaceBucket) || 0) + 1);
   }
 
+  const directActions = [...actionMap.entries()]
+    .map(([bucket, docs]) => ({ bucket, docs }))
+    .sort((a, b) => b.docs - a.docs);
   const toInt = (v) => parseInt(v || 0, 10);
   return {
     generated_at: new Date().toISOString(),
@@ -865,9 +869,8 @@ async function fetchIntakeSummary() {
     direct_parser: [...parserMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),
-    direct_actions: [...actionMap.entries()]
-      .map(([bucket, docs]) => ({ bucket, docs }))
-      .sort((a, b) => b.docs - a.docs),
+    direct_actions: directActions,
+    direct_action_summary: buildDirectActionSummary(directActions),
     workspace_buckets: [...workspaceMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),
