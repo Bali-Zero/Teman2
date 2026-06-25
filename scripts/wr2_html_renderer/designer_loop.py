@@ -179,6 +179,40 @@ def _is_composition_only_lever(lever_names: set[str]) -> bool:
     return bool(lever_names) and lever_names <= _COMPOSITION_LEVERS
 
 
+# A typographic-orphan marker ("sits alone", "stranded", "widow") describes a
+# TEXT element on a line. The SAME words describe a composition element ("the
+# logo sits alone", "the mark is stranded"). Superscar #3 (over-match on form,
+# not entity): "sits alone" matched a LOGO-isolation critique and mis-graded a
+# pure composition residual as a HARD typographic orphan, blocking the render.
+# Gate on the SUBJECT: an orphan claim is typographic only when it is about text
+# (word/line/title/headline/wrap/caption), not when it is about a non-text
+# layout element (logo/mark/image/photo/icon/element) with no text context.
+_ORPHAN_TEXT_SUBJECTS = (
+    # true typographic subjects — a wrap/line/word of TEXT. Deliberately excludes
+    # bare "text" (it matches "text block"/"text element" — a composition
+    # reference inside a logo/image critique, not a typographic-orphan subject).
+    "word", "line", "title", "headline", "heading", "wrap", "caption",
+    "sentence", "tail", "row", "label", "last line", "middle line",
+    "on its own line", "on the line",
+)
+_ORPHAN_NONTEXT_SUBJECTS = (
+    "logo", "mark", "image", "photo", "icon", "graphic", "element",
+    "badge", "emblem", "watermark",
+)
+
+
+def _orphan_subject_is_text(low: str) -> bool:
+    """True unless the orphan claim is clearly about a NON-text layout element.
+
+    Default-True (fail toward the existing strict behavior): only when the claim
+    names a non-text subject AND names no text subject do we treat the
+    "sits alone"/"stranded" wording as composition, not a typographic orphan.
+    """
+    has_nontext = _contains_any_word(low, _ORPHAN_NONTEXT_SUBJECTS)
+    has_text = _contains_any_word(low, _ORPHAN_TEXT_SUBJECTS)
+    return has_text or not has_nontext
+
+
 def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
     """Grade an orphan / stub / wrap-rhythm claim. Returns (is_orphan_claim, is_hard).
 
@@ -193,6 +227,10 @@ def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
     """
     if not _contains_any_word(low, _ORPHAN_MARKERS):
         return False, False  # not an orphan/stub/wrap claim at all
+    # Superscar #3 entity-gate: "sits alone"/"stranded" about a LOGO/mark/image is
+    # a composition critique, not a typographic orphan. Only text subjects qualify.
+    if not _orphan_subject_is_text(low):
+        return False, False
     # a genuine 1-word orphan is a real defect regardless of re-wrap state.
     if _contains_any_word(low, _ONE_WORD_ORPHAN_MARKERS):
         return True, True
