@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Retroactive intake catalog v2: reprocess weak proposals + backfill the watermark gap.
+"""Retroactive intake catalog v2: targeted backlog recovery modes.
 
-Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
+One-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
 
 ``--backfill``
     The wa-mirror sweeper (scripts/wa_mirror_intake_sweeper.py) seeded its
@@ -22,6 +22,13 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     BUMPED ``pipeline_version`` (default ``v2.1-retro``) so
     ``routing._make_routing_key`` yields a FRESH routing_key → a new proposal
     from the improved pipeline (phone signal + vision classify fallback).
+
+``--retry-empty-pdf-ocr``
+    Historical WhatsApp PDFs whose classify stage recorded
+    ``rasterize_failed,raw_pdf_fallback`` and zero OCR text are reset to
+    ``pending`` with a bumped pipeline version. Existing review/quarantine
+    proposals for those rows are superseded so the worker emits a fresh proposal
+    after re-OCR.
 
 Law 2 / UU-PDP: everything local (local DB, local blobs, downstream OCR is
 local Ollama). Sender phones are PII — never logged at INFO with the value.
@@ -45,13 +52,14 @@ import asyncpg
 
 # Reuse the shipped, tested enqueue core (same import shim as the sweeper).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
-from backend.services.intake.enqueue import enqueue  # noqa: E402
+from backend.services.intake.enqueue import enqueue
 
 logger = logging.getLogger("intake_reprocess_backlog")
 
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
 DEFAULT_PIPELINE_VERSION = "v2.1-retro"
 DEFAULT_STUB_REVIVE_VERSION = "v2.1-stub-revive"
+DEFAULT_EMPTY_PDF_OCR_VERSION = "v2.2-empty-pdf-ocr"
 DEFAULT_MEDIA_TYPES = ("document", "image")
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
@@ -122,6 +130,44 @@ WHERE iq.status = 'done'
       SELECT 1 FROM document_routing_proposal p WHERE p.queue_id = iq.id
   )
 ORDER BY iq.id
+"""
+
+# WhatsApp PDFs that produced zero OCR text only because preprocessing fell back
+# to the raw PDF bytes (historical pypdfium/rasterize environment failure).
+# Current Pro can rasterize the sampled PDFs again, so reset these rows to rerun
+# classify/OCR with a fresh pipeline_version. Guards are intentionally narrow:
+#   - WhatsApp only (client-facing lane).
+#   - doc_type is the anti-hallucination floor "unknown".
+#   - both rasterize_failed + raw_pdf_fallback notes present.
+#   - OCR char count is exactly zero.
+#   - no human-terminal / actively claimed proposal exists for the queue row.
+EMPTY_PDF_OCR_SELECT_SQL = """
+SELECT q.id
+FROM intake_queue q
+WHERE q.source = 'whatsapp'
+  AND COALESCE(q.stage_output->'classify'->>'doc_type', '') = 'unknown'
+  AND COALESCE(q.stage_output->'classify'->>'preprocess_notes', '') LIKE '%rasterize_failed%'
+  AND COALESCE(q.stage_output->'classify'->>'preprocess_notes', '') LIKE '%raw_pdf_fallback%'
+  AND COALESCE((
+        SELECT SUM(length(COALESCE(page->>'text', '')))
+        FROM jsonb_array_elements(
+            COALESCE(q.stage_output->'classify'->'ocr_text_per_page', '[]'::jsonb)
+        ) AS page
+      ), 0) = 0
+  AND NOT EXISTS (
+      SELECT 1
+      FROM document_routing_proposal p
+      WHERE p.queue_id = q.id
+        AND p.status NOT IN ('review_pending', 'quarantine', 'superseded')
+  )
+ORDER BY q.id
+"""
+
+EMPTY_PDF_OCR_SUPERSEDE_SQL = """
+UPDATE document_routing_proposal
+   SET status = 'superseded'
+ WHERE queue_id = ANY($1::bigint[])
+   AND status IN ('review_pending', 'quarantine')
 """
 
 # Historical inbound media with NO intake_queue row (anti-join on source_ref).
@@ -243,6 +289,56 @@ async def run_revive_stub(
     return counts
 
 
+async def run_retry_empty_pdf_ocr(
+    pool: asyncpg.Pool, pipeline_version: str, apply: bool
+) -> dict[str, int]:
+    """Reset WhatsApp PDFs whose historical classify pass had zero OCR text.
+
+    This is intentionally narrower than --reprocess: it only targets rows where
+    preprocess recorded rasterize_failed/raw_pdf_fallback, OCR text is empty,
+    and no terminal/claimed human proposal exists. Existing review_pending or
+    quarantine proposals are superseded so the rerun leaves one fresh proposal.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(EMPTY_PDF_OCR_SELECT_SQL)
+        queue_ids = [r["id"] for r in rows]
+        counts = {"queue_rows": len(queue_ids)}
+        if not apply:
+            if queue_ids:
+                proposal_count = await conn.fetchval(
+                    """
+                    SELECT count(*)
+                    FROM document_routing_proposal
+                    WHERE queue_id = ANY($1::bigint[])
+                      AND status IN ('review_pending', 'quarantine')
+                    """,
+                    queue_ids,
+                )
+            else:
+                proposal_count = 0
+            counts["active_proposals"] = int(proposal_count or 0)
+            logger.info(
+                "[retry-empty-pdf-ocr][DRY-RUN] would supersede %d review/quarantine "
+                "proposals and reset %d whatsapp PDF queue rows to pipeline_version=%s "
+                "(pass --apply)",
+                counts["active_proposals"], counts["queue_rows"], pipeline_version,
+            )
+            return counts
+
+        async with conn.transaction():
+            superseded = await conn.execute(EMPTY_PDF_OCR_SUPERSEDE_SQL, queue_ids)
+            reset = await conn.execute(REPROCESS_RESET_SQL, queue_ids, pipeline_version)
+        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[retry-empty-pdf-ocr] superseded=%d proposals, reset=%d whatsapp PDF queue "
+        "rows (pipeline_version=%s) — the intake worker will re-run classify/OCR",
+        counts.get("superseded", 0), counts.get("reset", 0), pipeline_version,
+    )
+    return counts
+
+
 async def run_backfill(
     pool: asyncpg.Pool,
     watermark: int,
@@ -264,7 +360,7 @@ async def run_backfill(
             continue
         try:
             result = await enqueue(pool, **row_to_enqueue_kwargs(r))
-        except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+        except Exception as exc:  # isolate per-row failure
             counts["errors"] += 1
             logger.error("[backfill] enqueue failed for wmc row %d: %s", r["id"], exc)
             continue
@@ -301,10 +397,14 @@ def build_parser() -> argparse.ArgumentParser:
                    help="enqueue historical wa-mirror media skipped by the watermark seed")
     p.add_argument("--revive-stub", action="store_true",
                    help="re-enqueue whatsapp docs the stub passthrough marked done with no proposal")
+    p.add_argument("--retry-empty-pdf-ocr", action="store_true",
+                   help="reset whatsapp PDFs with rasterize_failed/raw_pdf_fallback and zero OCR text")
     p.add_argument("--include-groups", action="store_true",
                    help="for --revive-stub: also revive group-chat docs (default: 1:1 direct chats only)")
     p.add_argument("--stub-pipeline-version", default=DEFAULT_STUB_REVIVE_VERSION,
                    help=f"bumped pipeline_version for --revive-stub (default {DEFAULT_STUB_REVIVE_VERSION})")
+    p.add_argument("--empty-pdf-ocr-version", default=DEFAULT_EMPTY_PDF_OCR_VERSION,
+                   help=f"bumped pipeline_version for --retry-empty-pdf-ocr (default {DEFAULT_EMPTY_PDF_OCR_VERSION})")
     p.add_argument("--apply", action="store_true",
                    help="actually write (default: dry-run, counts only)")
     p.add_argument("--pipeline-version", default=DEFAULT_PIPELINE_VERSION,
@@ -323,8 +423,16 @@ async def main(argv: list[str] | None = None) -> int:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     args = build_parser().parse_args(argv)
-    if not (args.reprocess or args.backfill or args.revive_stub):
-        logger.error("nothing to do: pass --backfill and/or --reprocess and/or --revive-stub")
+    if not (
+        args.reprocess
+        or args.backfill
+        or args.revive_stub
+        or args.retry_empty_pdf_ocr
+    ):
+        logger.error(
+            "nothing to do: pass --backfill and/or --reprocess and/or "
+            "--revive-stub and/or --retry-empty-pdf-ocr"
+        )
         return 2
 
     db_url = os.getenv(
@@ -347,6 +455,10 @@ async def main(argv: list[str] | None = None) -> int:
         if args.revive_stub:
             await run_revive_stub(
                 pool, args.stub_pipeline_version, args.include_groups, args.apply
+            )
+        if args.retry_empty_pdf_ocr:
+            await run_retry_empty_pdf_ocr(
+                pool, args.empty_pdf_ocr_version, args.apply
             )
         return 0
     finally:

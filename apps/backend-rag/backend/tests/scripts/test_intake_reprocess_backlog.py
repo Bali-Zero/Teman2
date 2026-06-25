@@ -94,7 +94,9 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.apply is False
     assert args.backfill is True
     assert args.reprocess is False
+    assert args.retry_empty_pdf_ocr is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
+    assert args.empty_pdf_ocr_version == irb.DEFAULT_EMPTY_PDF_OCR_VERSION
     assert args.watermark is None
 
 
@@ -162,3 +164,25 @@ def test_revive_stub_select_guards_are_all_present() -> None:
     assert "NOT EXISTS" in sql  # exclude rows that already carry a proposal
     assert "/groups/" in sql  # the group-chat opt-out predicate
     assert "$1::bool" in sql  # include_groups toggle
+
+
+def test_empty_pdf_ocr_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.EMPTY_PDF_OCR_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "doc_type" in sql and "'unknown'" in sql
+    assert "rasterize_failed" in sql
+    assert "raw_pdf_fallback" in sql
+    assert "ocr_text_per_page" in sql
+    assert "SUM(length" in sql
+    assert "= 0" in sql
+    assert "NOT EXISTS" in sql
+    assert "NOT IN ('review_pending', 'quarantine', 'superseded')" in sql
+
+
+def test_empty_pdf_ocr_supersede_only_touches_review_or_quarantine() -> None:
+    irb = _load()
+    sql = irb.EMPTY_PDF_OCR_SUPERSEDE_SQL
+    assert "status = 'superseded'" in sql
+    assert "queue_id = ANY($1::bigint[])" in sql
+    assert "status IN ('review_pending', 'quarantine')" in sql
