@@ -372,7 +372,7 @@
   }
 
   /* View toggle (Conversazioni / Qualità Team) */
-  .view-tabs { display: flex; gap: 4px; }
+  .view-tabs { display: flex; gap: 4px; min-width: 0; }
   .view-tab {
     background: transparent; border: 1px solid var(--wa-border);
     color: var(--wa-text-2); padding: 6px 14px; border-radius: 8px;
@@ -428,8 +428,11 @@
   .intake-card .hint { color: var(--wa-text-2); font-size: 12px; margin-top: 4px; }
   .intake-section { margin-top: 18px; }
   .intake-section h3 { color: var(--wa-text); font-size: 14px; font-weight: 600; margin: 0 0 8px; }
-  .intake-table-wrap { background: var(--wa-panel); border-radius: 8px; overflow: hidden; border: 1px solid var(--wa-divider); }
-  .intake-table { border-collapse: collapse; width: 100%; }
+  .intake-table-wrap {
+    background: var(--wa-panel); border-radius: 8px; overflow-x: auto; overflow-y: hidden;
+    border: 1px solid var(--wa-divider); max-width: 100%;
+  }
+  .intake-table { border-collapse: collapse; width: 100%; min-width: 560px; }
   .intake-table th, .intake-table td {
     padding: 9px 11px; text-align: right; font-size: 13px;
     border-bottom: 1px solid var(--wa-divider); white-space: nowrap;
@@ -692,8 +695,14 @@
   }
   @media (max-width: 860px) {
     header { gap: 10px; padding: 10px 12px; height: auto; flex-wrap: wrap; }
-    .view-tabs { order: 3; width: 100%; justify-content: flex-start; }
-    .metrics-view, .captain-view { padding: 18px 14px; }
+    .view-tabs { order: 3; width: 100%; justify-content: flex-start; overflow-x: auto; }
+    .view-tab { flex: 0 0 auto; }
+    .metrics-view, .captain-view, .intake-view { padding: 18px 14px; }
+    .intake-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .intake-card { min-width: 0; }
+    .intake-card .value { font-size: 20px; }
+    .intake-card .hint { overflow-wrap: anywhere; }
+    .intake-table { min-width: 640px; }
     .captain-hero { grid-template-columns: 1fr; }
     .captain-flow { grid-template-columns: 1fr; }
     .case-captain-card { margin: 10px 12px 0; }
@@ -1764,6 +1773,23 @@ function selectConv(conv) {
 }
 
 async function refresh() {
+  if (CURRENT_VIEW === "intake") {
+    INTAKE = null;
+    await renderIntake();
+    document.getElementById("last-refresh").textContent = "refresh: " + new Date().toLocaleTimeString("it-IT");
+    return;
+  }
+  if (CURRENT_VIEW === "metrics") {
+    await renderMetrics();
+    document.getElementById("last-refresh").textContent = "refresh: " + new Date().toLocaleTimeString("it-IT");
+    return;
+  }
+  if (CURRENT_VIEW === "training") {
+    await renderTraining(false);
+    document.getElementById("last-refresh").textContent = "refresh: " + new Date().toLocaleTimeString("it-IT");
+    return;
+  }
+
   try {
     const r = await fetch("/data.json");
     if (!r.ok) throw new Error(`data ${r.status}`);
@@ -1804,10 +1830,33 @@ async function checkHealth() {
 // === View toggle + Team Quality metrics ===
 let METRICS = null;
 let INTAKE_LOADING = false;
+let INTAKE_PROMISE = null;
 let CURRENT_VIEW = "convs";
+const VALID_VIEWS = new Set(["convs", "captain", "metrics", "intake", "training"]);
 
-function switchView(view) {
+function normalizeView(view) {
+  return VALID_VIEWS.has(view) ? view : "convs";
+}
+
+function viewFromHash() {
+  return normalizeView((window.location.hash || "").replace(/^#\/?/, ""));
+}
+
+function updateViewHash(view) {
+  const hash = view === "convs" ? "" : `#${view}`;
+  if ((window.location.hash || "") === hash) return;
+  const nextUrl = `${window.location.pathname}${window.location.search}${hash}`;
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", nextUrl);
+  } else {
+    window.location.hash = hash;
+  }
+}
+
+function switchView(view, options = {}) {
+  view = normalizeView(view);
   CURRENT_VIEW = view;
+  if (options.updateHash !== false) updateViewHash(view);
   document.getElementById("view-convs").style.display = view === "convs" ? "" : "none";
   document.getElementById("view-captain").style.display = view === "captain" ? "" : "none";
   document.getElementById("view-metrics").style.display = view === "metrics" ? "" : "none";
@@ -1960,16 +2009,22 @@ function renderRows(rows, columns, emptyLabel) {
 }
 
 async function loadIntake() {
-  if (INTAKE_LOADING) return INTAKE;
+  if (INTAKE_LOADING && INTAKE_PROMISE) return INTAKE_PROMISE;
   INTAKE_LOADING = true;
-  try {
-    const r = await fetch("/intake-summary.json");
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    INTAKE = await r.json();
-    return INTAKE;
-  } finally {
-    INTAKE_LOADING = false;
-  }
+  INTAKE_PROMISE = fetch("/intake-summary.json")
+    .then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then((payload) => {
+      INTAKE = payload;
+      return INTAKE;
+    })
+    .finally(() => {
+      INTAKE_LOADING = false;
+      INTAKE_PROMISE = null;
+    });
+  return INTAKE_PROMISE;
 }
 
 async function renderIntake() {
@@ -2266,6 +2321,10 @@ for (const b of document.querySelectorAll(".view-tab")) {
   b.addEventListener("click", () => switchView(b.dataset.view));
 }
 
+window.addEventListener("hashchange", () => {
+  switchView(viewFromHash(), { updateHash: false });
+});
+
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-view-jump]");
   if (!button) return;
@@ -2284,6 +2343,7 @@ if (corpusButton) {
   });
 }
 
+switchView(viewFromHash(), { updateHash: false });
 checkHealth();
 refresh();
 setInterval(refresh, 10000);
