@@ -124,6 +124,13 @@ export interface ExportSheetResponse {
   range: string;
 }
 
+export interface ImportCashoutResponse {
+  source_filename: string;
+  imported: number;
+  weeks: string[];
+  replaced: number;
+}
+
 const qs = (params: Record<string, string | number | undefined>): string => {
   const parts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== "")
@@ -194,5 +201,41 @@ export const accountingApi = {
     return api.post<ExportSheetResponse>(
       `/api/crm/accounting/export-sheet${qs({ week_label: weekLabel })}`,
     );
+  },
+
+  /**
+   * Import Asya's weekly cashout worksheet PDF (GABUNGAN) into the cashout log.
+   * Multipart upload — mirrors UploadApi: fetch sets the multipart boundary, we
+   * only attach CSRF + Authorization and send httpOnly cookies. Idempotent on
+   * the backend (re-uploading a file replaces that week's prior import rows).
+   * 422 if the PDF carries no "NEW CASHOUT" title / no client rows.
+   */
+  async importCashout(file: File): Promise<ImportCashoutResponse> {
+    const form = new FormData();
+    form.append("file", file);
+
+    const headers: Record<string, string> = {};
+    const csrf = api.getCsrfToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+    const token = api.getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const resp = await fetch(
+      `${api.getBaseUrl()}/api/crm/accounting/import-cashout`,
+      { method: "POST", headers, body: form, credentials: "include" },
+    );
+
+    if (!resp.ok) {
+      // surface the backend detail (e.g. "no NEW CASHOUT week title found")
+      let detail = resp.statusText;
+      try {
+        const body = await resp.json();
+        if (body?.detail) detail = String(body.detail);
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new Error(detail);
+    }
+    return resp.json() as Promise<ImportCashoutResponse>;
   },
 };

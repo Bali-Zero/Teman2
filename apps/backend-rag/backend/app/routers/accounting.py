@@ -11,18 +11,27 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
-from backend.services.accounting import cashout_service, reconcile_service
+from backend.services.accounting import (
+    cashout_import_service,
+    cashout_service,
+    reconcile_service,
+)
 from backend.services.accounting.matcher import OpenInvoice, rank_candidates
 from backend.services.accounting.reconcile_service import ReconcileError
+
+# 8 MB is generous for a digital cashout worksheet PDF (Asya's are < 1 MB).
+_MAX_CASHOUT_PDF_BYTES = 8 * 1024 * 1024
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +97,82 @@ async def get_summary(
         return await cashout_service.cashbook_summary(
             conn, period_start=period_start, period_end=period_end
         )
+
+
+# ── Cashout PDF import (Asya's weekly GABUNGAN worksheet) ────────────────────
+
+
+@router.post("/import-cashout")
+async def import_cashout_pdf(
+    file: UploadFile = File(..., description="Asya's GABUNGAN cashout worksheet PDF"),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Import a weekly cashout worksheet PDF into the cashout log.
+
+    The file is Asya's already-processed 9-column worksheet (NAME/PROCESS/PNBP/
+    URGENT/RPTKA-IMTA/MARGIN BS/FINAL PRICE/NOTE), digitally exported (parsed with
+    pdfplumber — no OCR), usually stacking several weeks each opened by a
+    "NEW CASHOUT DD MONTH YYYY" title row.
+
+    Idempotent: re-uploading the same file replaces that week's prior import rows
+    instead of duplicating them, and never touches reconciliation-linked rows.
+    """
+    _require_accounting_access(current_user)
+
+    filename = file.filename or "upload.pdf"
+    if not filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=422, detail="only .pdf cashout worksheets are accepted")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="empty file")
+    if len(data) > _MAX_CASHOUT_PDF_BYTES:
+        raise HTTPException(status_code=413, detail="file too large (max 8 MB)")
+
+    imported_by = (current_user.get("email") or "unknown").lower()
+
+    # pdfplumber needs a real path; write to a private temp file and clean up.
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(data)
+            tmp_path = Path(tmp.name)
+
+        try:
+            rows = cashout_import_service.parse_cashout_pdf_with_weeks(tmp_path)
+        except ValueError as exc:
+            # undated / non-cashout PDF — loud, not a silent empty import (superscar #2)
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        if not rows:
+            raise HTTPException(
+                status_code=422,
+                detail="no cashout rows found in the PDF (parsed 0 client rows)",
+            )
+
+        async with db_pool.acquire() as conn:
+            result = await cashout_import_service.persist_cashout_rows(
+                conn, rows, imported_by=imported_by, source_filename=filename
+            )
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+
+    # Cashout log changed → drop the same CRM caches the confirm path drops.
+    try:
+        from backend.core.cache import invalidate_cache
+
+        await invalidate_cache("zantara:crm_clients_stats:*")
+    except Exception as cache_exc:  # cache failure must not fail the import
+        logger.warning("accounting import-cashout cache invalidation failed: %s", cache_exc)
+
+    return {
+        "source_filename": filename,
+        "imported": result["imported"],
+        "weeks": result["weeks"],
+        "replaced": result["deleted"],
+    }
 
 
 # ── P1: reconciliation ──────────────────────────────────────────────────────

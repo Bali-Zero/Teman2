@@ -15,7 +15,7 @@
  * RBAC is enforced server-side (403 → error boundary). Money is IDR.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Wallet,
@@ -25,6 +25,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Sheet,
+  Upload,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -455,6 +456,8 @@ export default function AccountingPage() {
   const [cashout, setCashout] = useState<CashoutRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadCashout = useCallback(async () => {
     try {
@@ -499,6 +502,34 @@ export default function AccountingPage() {
     }
   };
 
+  const handleImportFile = async (file: File | undefined) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await accountingApi.importCashout(file);
+      const weeks = res.weeks.length ? ` (${res.weeks.join(", ")})` : "";
+      const replaced = res.replaced
+        ? `, replaced ${res.replaced} prior`
+        : "";
+      success(
+        "Cashout imported",
+        `${res.imported} row(s)${weeks}${replaced}`,
+      );
+      // refresh the table + summary so the new rows show immediately.
+      loadCashout();
+    } catch (err) {
+      // 422 = undated / non-cashout PDF; importCashout surfaces the backend
+      // `detail` as the Error's `.message`.
+      const detail =
+        (err instanceof Error && err.message) ||
+        "Import failed — is this a GABUNGAN cashout PDF?";
+      error("Import failed", detail);
+      logger.error("accounting import-cashout failed", {}, err as Error);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -506,14 +537,40 @@ export default function AccountingPage() {
           <Wallet className="h-6 w-6 text-[var(--bz-accent,#d4845a)]" />
           <h1 className="text-2xl font-semibold tracking-tight">Accounting</h1>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={exporting}>
-          {exporting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Sheet className="mr-2 h-4 w-4" />
-          )}
-          Export to Sheets
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={(e) => {
+              void handleImportFile(e.target.files?.[0]);
+              // reset so re-selecting the same file fires onChange again
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            title="Import Asya's weekly cashout worksheet PDF (GABUNGAN)"
+          >
+            {importing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="mr-2 h-4 w-4" />
+            )}
+            Import Cashout PDF
+          </Button>
+          <Button variant="outline" onClick={handleExport} disabled={exporting}>
+            {exporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sheet className="mr-2 h-4 w-4" />
+            )}
+            Export to Sheets
+          </Button>
+        </div>
       </div>
 
       <SummaryCards summary={summary} />
