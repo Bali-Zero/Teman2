@@ -97,3 +97,55 @@ async def test_upsert_client_by_phone_improves_junk_name_only() -> None:
     assert client_id == 42
     updates = [args for q, args in conn.execute_calls if "UPDATE clients" in q]
     assert updates == [("Maria Rossi", sweeper._CRM_ACTOR, 42)]
+
+
+def test_direct_chat_keeps_phone_identity_for_crm_and_routing() -> None:
+    sweeper = _load_sweeper()
+    row = {
+        "chat_type": "direct",
+        "group_jid": None,
+        "sender_phone": "+62 812-0000-1111",
+        "counterpart_phone": None,
+        "phone_number": None,
+    }
+
+    assert sweeper._is_direct_chat(row) is True
+    assert sweeper._client_identity_phone(row) == "+62 812-0000-1111"
+    assert sweeper._queue_sender_phone(row) == "+62 812-0000-1111"
+
+
+def test_group_chat_suppresses_participant_phone_identity() -> None:
+    sweeper = _load_sweeper()
+    row = {
+        "chat_type": "group",
+        "group_jid": "120363000000000000@g.us",
+        "sender_phone": "+62 812-0000-1111",
+        "counterpart_phone": None,
+        "phone_number": None,
+    }
+
+    assert sweeper._is_direct_chat(row) is False
+    assert sweeper._client_identity_phone(row) is None
+    assert sweeper._queue_sender_phone(row) is None
+
+
+def test_group_jid_wins_over_inconsistent_direct_chat_type() -> None:
+    sweeper = _load_sweeper()
+    row = {
+        "chat_type": "direct",
+        "group_jid": "120363000000000000@g.us",
+        "sender_phone": "+62 812-0000-1111",
+    }
+
+    assert sweeper._is_direct_chat(row) is False
+    assert sweeper._client_identity_phone(row) is None
+    assert sweeper._queue_sender_phone(row) is None
+
+
+def test_legacy_missing_chat_scope_preserves_direct_behavior() -> None:
+    sweeper = _load_sweeper()
+    row = {"sender_phone": "+62 812-0000-1111"}
+
+    assert sweeper._is_direct_chat(row) is True
+    assert sweeper._client_identity_phone(row) == "+62 812-0000-1111"
+    assert sweeper._queue_sender_phone(row) == "+62 812-0000-1111"

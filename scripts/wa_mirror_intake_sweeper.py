@@ -12,6 +12,11 @@ arrives, resolve an existing live client by normalized phone or create a
 placeholder ``Lead +<phone>`` row. The passport document later matches that
 same phone through the normal intake routing path.
 
+Group media is intentionally still enqueued for OCR/HITL review, but group
+participant phone numbers are NOT used as client identity hints. Internal Bali
+Zero groups often carry documents and team-member sender phones; using those
+phones as CRM identity would create false leads or false routes.
+
 Each tick it finds new inbound document/image blobs and ``enqueue()``s them into
 the SAME local intake_queue the official line uses, so the existing intake worker
 (OCR/classify/route → document_routing_proposal) processes them uniformly.
@@ -135,15 +140,56 @@ def _name_is_junk(value: object) -> bool:
 def _record_get(row: asyncpg.Record | dict, key: str) -> object:
     if isinstance(row, dict):
         return row.get(key)
-    return row[key]
+    try:
+        return row[key]
+    except KeyError:
+        return None
+
+
+def _is_direct_chat(row: asyncpg.Record | dict) -> bool:
+    """True when a wa-mirror row is a 1:1 chat, not a multi-party group."""
+    chat_type = str(_record_get(row, "chat_type") or "").strip().lower()
+    group_jid = _record_get(row, "group_jid")
+    if chat_type == "group" or group_jid:
+        return False
+    if chat_type == "direct":
+        return True
+    # Older synthetic/export rows predate chat_type/group_jid; treat them as
+    # direct to preserve the original one-to-one behavior.
+    return True
 
 
 def _candidate_phone(row: asyncpg.Record | dict) -> str | None:
+    """Phone candidate for direct-chat CRM identity only."""
     for key in ("sender_phone", "counterpart_phone", "phone_number"):
         value = _record_get(row, key)
         if value and normalize_sender_phone(value):
             return str(value)
     return None
+
+
+def _client_identity_phone(row: asyncpg.Record | dict) -> str | None:
+    """Return a CRM identity phone only for direct chats.
+
+    Group rows are intentionally review/OCR-only at this layer. A later group
+    classifier may promote known client groups, but this first sovereign intake
+    ring must not infer a client from a group participant phone.
+    """
+    if not _is_direct_chat(row):
+        return None
+    return _candidate_phone(row)
+
+
+def _queue_sender_phone(row: asyncpg.Record | dict) -> str | None:
+    """Sender phone passed to intake routing.
+
+    Routing uses sender_phone as a client-match signal. Suppress it for group
+    rows because group sender can be a Bali Zero teammate forwarding a document.
+    """
+    if not _is_direct_chat(row):
+        return None
+    value = _record_get(row, "sender_phone")
+    return str(value) if value else None
 
 
 async def _upsert_client_by_phone(
@@ -363,7 +409,7 @@ async def run_one_tick() -> int:
                 """
                 SELECT id, baileys_message_id, media_stored_path, media_mime,
                        media_type, team_member_email, sender_phone, counterpart_phone,
-                       phone_number, sender_push_name_snapshot
+                       phone_number, sender_push_name_snapshot, chat_type, group_jid
                   FROM whatsapp_message_context
                  WHERE media_stored_path IS NOT NULL
                    AND media_type = ANY($1::text[])
@@ -384,6 +430,8 @@ async def run_one_tick() -> int:
         enqueued_new = 0
         already = 0
         blob_missing = 0
+        direct_media = 0
+        group_media = 0
         max_done = watermark
 
         for r in rows:
@@ -400,23 +448,27 @@ async def run_one_tick() -> int:
                 max_done = max(max_done, rid)  # blob gone; never coming back, advance past it
                 continue
             client_id_hint = None
-            try:
-                async with pool.acquire() as conn, conn.transaction():
-                    client_id_hint = await _upsert_client_by_phone(
-                        conn,
-                        raw_phone=_candidate_phone(r),
-                        push_name=r["sender_push_name_snapshot"],
-                        assigned_to=r["team_member_email"],
-                        note_kind="media",
+            if _is_direct_chat(r):
+                direct_media += 1
+                try:
+                    async with pool.acquire() as conn, conn.transaction():
+                        client_id_hint = await _upsert_client_by_phone(
+                            conn,
+                            raw_phone=_client_identity_phone(r),
+                            push_name=r["sender_push_name_snapshot"],
+                            assigned_to=r["team_member_email"],
+                            note_kind="media",
+                        )
+                except Exception as exc:
+                    logger.error(
+                        "[wa_mirror_sweep] CRM phone upsert failed for media row %d: %s",
+                        rid,
+                        exc,
+                        exc_info=True,
                     )
-            except Exception as exc:
-                logger.error(
-                    "[wa_mirror_sweep] CRM phone upsert failed for media row %d: %s",
-                    rid,
-                    exc,
-                    exc_info=True,
-                )
-                break
+                    break
+            else:
+                group_media += 1
             try:
                 result = await enqueue(
                     pool,
@@ -426,7 +478,7 @@ async def run_one_tick() -> int:
                     client_id_hint=client_id_hint,
                     mime_type=r["media_mime"],
                     received_by=r["team_member_email"],
-                    sender_phone=r["sender_phone"],
+                    sender_phone=_queue_sender_phone(r),
                 )
             except Exception as exc:
                 logger.error(
@@ -443,8 +495,9 @@ async def run_one_tick() -> int:
         if max_done > watermark:
             _save_watermark(max_done)
         logger.info(
-            "[wa_mirror_sweep] done: scanned=%d new=%d dup=%d blob_missing=%d watermark=%d",
-            len(rows), enqueued_new, already, blob_missing, max_done,
+            "[wa_mirror_sweep] done: scanned=%d direct=%d group=%d new=%d dup=%d "
+            "blob_missing=%d watermark=%d",
+            len(rows), direct_media, group_media, enqueued_new, already, blob_missing, max_done,
         )
         return 0
     finally:
