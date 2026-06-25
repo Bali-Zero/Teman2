@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 
 const {
   actionBucketForRow,
+  buildDirectCatalogSummary,
   buildGroupKindOperationalSummary,
   buildQwenBatchGateSummary,
   buildDirectActionSummary,
@@ -44,8 +45,57 @@ assert.deepEqual(
     needs_text_parser_qwen_candidate: 306,
     needs_manual_review_short_ocr: 98,
     workspace_review_ready: 255,
+    needs_routing_proposal: 0,
+    low_confidence_review: 0,
+    already_routed: 0,
     failed_pipeline: 5,
     immediate_batch_candidates: 898,
+  },
+);
+
+assert.deepEqual(
+  buildDirectCatalogSummary(
+    {
+      needs_ocr_vision_batch: 592,
+      needs_text_parser_qwen_candidate: 306,
+      needs_manual_review_short_ocr: 98,
+      workspace_review_ready: 255,
+      needs_routing_proposal: 49,
+      low_confidence_review: 347,
+      already_routed: 16,
+      failed_pipeline: 4,
+      immediate_batch_candidates: 898,
+    },
+    {
+      direct_docs: 1667,
+      direct_known_docs: 670,
+      direct_unknown_docs: 997,
+    },
+    {
+      sampled_docs: 50,
+      kita_workspace_candidates: 25,
+      review_after_qwen: 25,
+    },
+  ),
+  {
+    status: "consistent",
+    direct_docs: 1667,
+    bucketed_docs: 1667,
+    scope_delta: 0,
+    known_doc_type_docs: 670,
+    unknown_doc_type_docs: 997,
+    already_routed_docs: 16,
+    workspace_review_ready_docs: 255,
+    routing_proposal_needed_docs: 49,
+    catalog_review_ready_docs: 304,
+    machine_batch_candidate_docs: 898,
+    qwen_text_candidate_docs: 306,
+    ocr_vision_candidate_docs: 592,
+    manual_review_docs: 445,
+    failed_pipeline_docs: 4,
+    qwen_sampled_docs: 50,
+    qwen_sample_workspace_candidates: 25,
+    qwen_sample_review_after_qwen: 25,
   },
 );
 

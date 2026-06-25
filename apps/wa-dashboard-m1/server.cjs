@@ -8,6 +8,7 @@ const path = require("path");
 const metrics = require("./metrics.cjs");
 const {
   actionBucketForRow,
+  buildDirectCatalogSummary,
   buildDirectActionSummary,
   buildGroupKindOperationalSummary,
   buildQwenBatchGateSummary,
@@ -695,7 +696,7 @@ async function fetchIntakeSummary() {
       `
       WITH group_docs AS (
         SELECT
-          w.group_jid,
+          COALESCE(w.group_jid, q.source_context->>'group_jid_hash', q.source_ref) AS group_key,
           COUNT(*) AS docs,
           COUNT(*) FILTER (WHERE q.status='done') AS done_docs,
           COUNT(*) FILTER (WHERE q.status='dead') AS dead_docs,
@@ -708,8 +709,8 @@ async function fetchIntakeSummary() {
           ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
         WHERE q.source = 'whatsapp'
           AND q.source_ref LIKE 'wa-mirror:%'
-          AND (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
-        GROUP BY w.group_jid
+          AND q.source_context->>'chat_type' = 'group'
+        GROUP BY group_key
       ),
       classified AS (
         SELECT *,
@@ -778,12 +779,12 @@ async function fetchIntakeSummary() {
           COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
           w.media_type
         FROM intake_queue q
-        JOIN whatsapp_message_context w
+        LEFT JOIN whatsapp_message_context w
           ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
         LEFT JOIN latest l ON l.queue_id = q.id
         WHERE q.source = 'whatsapp'
           AND q.source_ref LIKE 'wa-mirror:%'
-          AND NOT (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+          AND q.source_context->>'chat_type' = 'direct'
       )
       SELECT *
       FROM direct_docs
@@ -803,12 +804,12 @@ async function fetchIntakeSummary() {
              COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
              COUNT(*) AS docs
       FROM intake_queue q
-      JOIN whatsapp_message_context w
+      LEFT JOIN whatsapp_message_context w
         ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
       LEFT JOIN latest l ON l.queue_id = q.id
       WHERE q.source = 'whatsapp'
         AND q.source_ref LIKE 'wa-mirror:%'
-        AND NOT (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+        AND q.source_context->>'chat_type' = 'direct'
       GROUP BY 1,2
       ORDER BY docs DESC
       `,
@@ -850,6 +851,7 @@ async function fetchIntakeSummary() {
     .sort((a, b) => b.docs - a.docs);
   const directActionSummary = buildDirectActionSummary(directActions);
   const qwenGateSnapshot = readQwenGateSnapshot();
+  const qwenPlacementPreview = buildQwenPlacementPreviewSummary(qwenGateSnapshot);
   const toInt = (v) => parseInt(v || 0, 10);
   const groupKinds = groupKindRows.rows.map((r) => ({
     inferred_group_kind: r.inferred_group_kind,
@@ -892,9 +894,10 @@ async function fetchIntakeSummary() {
       .sort((a, b) => b.docs - a.docs),
     direct_actions: directActions,
     direct_action_summary: directActionSummary,
+    direct_catalog_summary: buildDirectCatalogSummary(directActionSummary, queue, qwenPlacementPreview),
     qwen_batch_gate: buildQwenBatchGateSummary(directActionSummary, qwenGateSnapshot),
     qwen_known_benchmark_gate: buildQwenKnownBenchmarkSummary(qwenGateSnapshot),
-    qwen_placement_preview: buildQwenPlacementPreviewSummary(qwenGateSnapshot),
+    qwen_placement_preview: qwenPlacementPreview,
     workspace_buckets: [...workspaceMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),

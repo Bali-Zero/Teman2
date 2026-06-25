@@ -506,6 +506,10 @@
     <div class="intake-table-wrap"><table class="intake-table" id="i-parser"></table></div>
   </div>
   <div class="intake-section">
+    <h3>Catalog readiness direct</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-catalog"></table></div>
+  </div>
+  <div class="intake-section">
     <h3>Gate Qwen batch</h3>
     <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-gate"></table></div>
   </div>
@@ -1022,6 +1026,8 @@ function bucketLabel(bucket) {
     manual_group_review: "Review gruppo manuale",
     aggregate_safe: "Safe aggregato",
     source_context_review: "Review source context",
+    consistent: "Conteggi coerenti",
+    scope_mismatch: "Mismatch scope",
     candidate_batch_ready: "Pronto batch",
     review_only: "Solo review",
     insufficient_sample: "Sample insufficiente",
@@ -1039,7 +1045,7 @@ function intakeStatusPill(ok, label) {
 }
 
 function qwenGatePill(status) {
-  const cls = status === "candidate_batch_ready" || status === "no_candidates" || status === "workspace_benchmark_ready"
+  const cls = status === "candidate_batch_ready" || status === "no_candidates" || status === "workspace_benchmark_ready" || status === "consistent"
     ? "ok"
     : status === "review_only" || status === "insufficient_sample" || status === "probe_required" || status === "benchmark_required"
       ? "warn"
@@ -1073,6 +1079,7 @@ async function renderIntake() {
   const subEl = document.getElementById("i-sub");
   const cardsEl = document.getElementById("i-cards");
   const parserEl = document.getElementById("i-parser");
+  const catalogEl = document.getElementById("i-catalog");
   const qwenGateEl = document.getElementById("i-qwen-gate");
   const qwenKnownEl = document.getElementById("i-qwen-known");
   const qwenPlacementEl = document.getElementById("i-qwen-placement");
@@ -1084,6 +1091,7 @@ async function renderIntake() {
     const data = await loadIntake();
     const q = data.queue || {};
     const actions = data.direct_action_summary || {};
+    const directCatalog = data.direct_catalog_summary || {};
     const qwenGate = data.qwen_batch_gate || {};
     const qwenKnown = data.qwen_known_benchmark_gate || {};
     const qwenPlacement = data.qwen_placement_preview || {};
@@ -1096,6 +1104,7 @@ async function renderIntake() {
     cardsEl.innerHTML = `
       <div class="intake-card"><div class="label">WA docs</div><div class="value">${iFmt(q.total)}</div><div class="hint">${iFmt(q.with_source_context)} con source_context</div></div>
       <div class="intake-card"><div class="label">Direct</div><div class="value">${iFmt(q.direct_docs)}</div><div class="hint">${iFmt(q.direct_known_docs)} noti (${iFmt(q.direct_high_conf_docs)} high) · ${iFmt(q.direct_unknown_ocr_empty)} no OCR · ${iFmt(q.direct_unknown_ocr_text)} OCR text</div></div>
+      <div class="intake-card"><div class="label">Catalog ready</div><div class="value">${iFmt(directCatalog.catalog_review_ready_docs)}</div><div class="hint">${iFmt(directCatalog.already_routed_docs)} routed · ${iFmt(directCatalog.routing_proposal_needed_docs)} serve routing · ${qwenGatePill(directCatalog.status || "scope_mismatch")}</div></div>
       <div class="intake-card"><div class="label">OCR/vision</div><div class="value">${iFmt(actions.needs_ocr_vision_batch)}</div><div class="hint">unknown senza OCR</div></div>
       <div class="intake-card"><div class="label">Qwen/text</div><div class="value">${iFmt(actions.needs_text_parser_qwen_candidate)}</div><div class="hint">${iFmt(actions.immediate_batch_candidates)} batch candidati</div></div>
       <div class="intake-card"><div class="label">Qwen gate</div><div class="value">${qwenGatePill(qwenGate.status || "probe_required")}</div><div class="hint">${iFmt(qwenGate.sampled_docs)} sample · ${(Number(qwenGate.candidate_rate || 0) * 100).toFixed(0)}% candidato</div></div>
@@ -1111,6 +1120,20 @@ async function renderIntake() {
       { label: "Azione", render: (r) => `<span class="intake-pill ${r.bucket === "failed_pipeline" ? "bad" : r.bucket.includes("review") || r.bucket.includes("parser") || r.bucket.includes("ocr") ? "warn" : "ok"}">${escapeHtml(bucketLabel(r.bucket))}</span>` },
       { label: "Docs", render: (r) => iFmt(r.docs) },
     ], "Nessun direct doc");
+
+    catalogEl.innerHTML = renderRows([
+      { stage: "Gia routed", docs: directCatalog.already_routed_docs, next_action: "no_action" },
+      { stage: "Pronto review workspace", docs: directCatalog.workspace_review_ready_docs, next_action: "operator_review_workspace" },
+      { stage: "Serve proposta routing", docs: directCatalog.routing_proposal_needed_docs, next_action: "create_routing_proposal" },
+      { stage: "Qwen/text parser", docs: directCatalog.qwen_text_candidate_docs, next_action: "run_qwen_text_batch" },
+      { stage: "OCR/vision batch", docs: directCatalog.ocr_vision_candidate_docs, next_action: "run_ocr_vision_batch" },
+      { stage: "Review manuale", docs: directCatalog.manual_review_docs, next_action: "manual_review" },
+      { stage: "Pipeline failed", docs: directCatalog.failed_pipeline_docs, next_action: "debug_pipeline" },
+    ], [
+      { label: "Stato catalogo", render: (r) => escapeHtml(r.stage) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+      { label: "Next", render: (r) => escapeHtml(r.next_action) },
+    ], "Nessun catalog status");
 
     qwenGateEl.innerHTML = renderRows([qwenGate], [
       { label: "Stato", render: (r) => qwenGatePill(r.status || "probe_required") },

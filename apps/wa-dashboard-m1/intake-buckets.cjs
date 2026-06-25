@@ -50,6 +50,9 @@ function buildDirectActionSummary(rows) {
     needs_text_parser_qwen_candidate: 0,
     needs_manual_review_short_ocr: 0,
     workspace_review_ready: 0,
+    needs_routing_proposal: 0,
+    low_confidence_review: 0,
+    already_routed: 0,
     failed_pipeline: 0,
     immediate_batch_candidates: 0,
   };
@@ -65,6 +68,48 @@ function buildDirectActionSummary(rows) {
   summary.immediate_batch_candidates =
     summary.needs_ocr_vision_batch + summary.needs_text_parser_qwen_candidate;
   return summary;
+}
+
+function buildDirectCatalogSummary(directActionSummary, queue, qwenPlacementPreview) {
+  const directDocs = Number(queue?.direct_docs || 0);
+  const bucketedDocs =
+    Number(directActionSummary?.needs_ocr_vision_batch || 0) +
+    Number(directActionSummary?.needs_text_parser_qwen_candidate || 0) +
+    Number(directActionSummary?.needs_manual_review_short_ocr || 0) +
+    Number(directActionSummary?.workspace_review_ready || 0) +
+    Number(directActionSummary?.needs_routing_proposal || 0) +
+    Number(directActionSummary?.low_confidence_review || 0) +
+    Number(directActionSummary?.already_routed || 0) +
+    Number(directActionSummary?.failed_pipeline || 0);
+  const scopeDelta = bucketedDocs - directDocs;
+  const workspaceReviewReadyDocs = Number(directActionSummary?.workspace_review_ready || 0);
+  const routingProposalNeededDocs = Number(directActionSummary?.needs_routing_proposal || 0);
+  const qwenTextCandidateDocs = Number(directActionSummary?.needs_text_parser_qwen_candidate || 0);
+  const ocrVisionCandidateDocs = Number(directActionSummary?.needs_ocr_vision_batch || 0);
+  const manualReviewDocs =
+    Number(directActionSummary?.needs_manual_review_short_ocr || 0) +
+    Number(directActionSummary?.low_confidence_review || 0);
+
+  return {
+    status: scopeDelta === 0 ? "consistent" : "scope_mismatch",
+    direct_docs: directDocs,
+    bucketed_docs: bucketedDocs,
+    scope_delta: scopeDelta,
+    known_doc_type_docs: Number(queue?.direct_known_docs || 0),
+    unknown_doc_type_docs: Number(queue?.direct_unknown_docs || 0),
+    already_routed_docs: Number(directActionSummary?.already_routed || 0),
+    workspace_review_ready_docs: workspaceReviewReadyDocs,
+    routing_proposal_needed_docs: routingProposalNeededDocs,
+    catalog_review_ready_docs: workspaceReviewReadyDocs + routingProposalNeededDocs,
+    machine_batch_candidate_docs: ocrVisionCandidateDocs + qwenTextCandidateDocs,
+    qwen_text_candidate_docs: qwenTextCandidateDocs,
+    ocr_vision_candidate_docs: ocrVisionCandidateDocs,
+    manual_review_docs: manualReviewDocs,
+    failed_pipeline_docs: Number(directActionSummary?.failed_pipeline || 0),
+    qwen_sampled_docs: Number(qwenPlacementPreview?.sampled_docs || 0),
+    qwen_sample_workspace_candidates: Number(qwenPlacementPreview?.kita_workspace_candidates || 0),
+    qwen_sample_review_after_qwen: Number(qwenPlacementPreview?.review_after_qwen || 0),
+  };
 }
 
 function groupKindAction(kind) {
@@ -270,6 +315,7 @@ module.exports = {
   HIGH_CONFIDENCE_THRESHOLD,
   TEXT_PARSER_MIN_CHARS,
   actionBucketForRow,
+  buildDirectCatalogSummary,
   buildDirectActionSummary,
   buildGroupKindOperationalSummary,
   buildQwenKnownBenchmarkSummary,
