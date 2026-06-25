@@ -1626,7 +1626,7 @@ def _extract_medical_insurance_label_fields(pages: list[str]) -> dict[str, dict[
         "name",
         _first_line_match(
             pages,
-            r"^(?:insured\s*(?:name)?|insured\s+person|participant\s*name|name|nama\s*(?:tertanggung|peserta)?)\s*[:\-]\s*(.+)$",
+            r"^(?:insured\s*(?:name)?|insured\s+person|participant\s*name|name|nama\s*(?:tertanggung|peserta)?)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         person_name=True,
     )
@@ -1635,7 +1635,7 @@ def _extract_medical_insurance_label_fields(pages: list[str]) -> dict[str, dict[
         "insurer",
         _first_line_match(
             pages,
-            r"^(?:insurer|insurance\s*(?:company|provider)|provider|company|penanggung)\s*[:\-]\s*(.+)$",
+            r"^(?:insurer|insurance\s*(?:company|provider)|provider|company|penanggung)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     _set_if_present(
@@ -1643,7 +1643,7 @@ def _extract_medical_insurance_label_fields(pages: list[str]) -> dict[str, dict[
         "coverage_period",
         _first_line_match(
             pages,
-            r"^(?:coverage\s*(?:period|dates?)|period\s+of\s+insurance|masa\s*(?:berlaku|pertanggungan))\s*[:\-]\s*(.+)$",
+            r"^(?:coverage\s*(?:period|dates?)|period\s+of\s+insurance|masa\s*(?:berlaku|pertanggungan))(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     _set_if_present(
@@ -1651,7 +1651,7 @@ def _extract_medical_insurance_label_fields(pages: list[str]) -> dict[str, dict[
         "expiry",
         _first_line_match(
             pages,
-            r"^(?:expiry\s*(?:date)?|expires|valid\s*(?:until|to)|end\s*date|berlaku\s*(?:hingga|sampai))\s*[:\-]\s*(.+)$",
+            r"^(?:expiry\s*(?:date)?|expires|valid\s*(?:until|to)|end\s*date|berlaku\s*(?:hingga|sampai))(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )

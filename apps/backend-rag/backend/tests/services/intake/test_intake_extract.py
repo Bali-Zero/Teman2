@@ -1190,6 +1190,35 @@ async def test_medical_insurance_label_fields_skip_model_call():
     assert out["fields"]["expiry"]["value"] == "2026-12-31"
 
 
+async def test_medical_insurance_label_fields_accept_colonless_ocr_labels():
+    """Medical insurance stays deterministic when OCR drops label separators."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "TRAVEL INSURANCE POLICY\n"
+        "Policy No POL-2026-7788\n"
+        "Insured Name MARIO ROSSI\n"
+        "Insurer Example Insurance\n"
+        "Coverage Period 2026-07-01 to 2026-12-31\n"
+        "Expiry Date 2026-12-31"
+    )
+    out = await extract.extract_fields("travel_insurance", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "medical_insurance"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["medical_insurance_labels"]
+    assert out["fields"]["policy_no"]["value"] == "POL-2026-7788"
+    assert out["fields"]["name"]["value"] == "Mario Rossi"
+    assert out["fields"]["insurer"]["value"] == "Example Insurance"
+    assert out["fields"]["coverage_period"]["value"] == "2026-07-01 to 2026-12-31"
+    assert out["fields"]["expiry"]["value"] == "2026-12-31"
+
+
 async def test_akta_pendirian_label_fields_skip_model_call():
     """Clearly-labelled deed OCR carries company establishment fields locally."""
     called = {"n": 0}
