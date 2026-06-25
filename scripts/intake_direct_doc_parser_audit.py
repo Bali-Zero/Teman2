@@ -33,6 +33,8 @@ DEFAULT_DB_URL = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_QWEN_MODEL = "qwen3.5:9b"
 DEFAULT_QWEN_OCR_MAX_CHARS = 2000
+DEFAULT_QWEN_MIN_CANDIDATE_RATE = 0.25
+DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS = 5
 HIGH_CONFIDENCE_THRESHOLD = 0.70
 TEXT_PARSER_MIN_CHARS = 100
 
@@ -305,6 +307,39 @@ def _placement_preview_rows(counter: Counter[tuple[str, str, str]]) -> list[dict
     ]
 
 
+def _qwen_acceptance_gate(
+    *,
+    classified_attempts: int,
+    kita_workspace_candidates: int,
+    min_candidate_rate: float,
+    min_classified_attempts: int,
+) -> dict[str, int | float | str]:
+    safe_min_candidate_rate = min(max(min_candidate_rate, 0.0), 1.0)
+    safe_min_classified_attempts = max(min_classified_attempts, 1)
+    candidate_rate = (
+        round(kita_workspace_candidates / classified_attempts, 4)
+        if classified_attempts > 0
+        else 0.0
+    )
+    if classified_attempts < safe_min_classified_attempts:
+        status = "insufficient_sample"
+        reason = "not_enough_classified_attempts"
+    elif candidate_rate >= safe_min_candidate_rate:
+        status = "candidate_batch_ready"
+        reason = "candidate_rate_met"
+    else:
+        status = "review_only"
+        reason = "candidate_rate_below_threshold"
+    return {
+        "status": status,
+        "reason": reason,
+        "candidate_rate": candidate_rate,
+        "min_candidate_rate": safe_min_candidate_rate,
+        "classified_attempts": classified_attempts,
+        "min_classified_attempts": safe_min_classified_attempts,
+    }
+
+
 def summarize_direct_rows(
     rows: Iterable[Mapping[str, Any] | Any], *, top_doc_types: int = 30
 ) -> dict[str, Any]:
@@ -481,6 +516,8 @@ async def run_qwen_text_sample(
     model: str,
     timeout_seconds: float,
     ocr_max_chars: int = DEFAULT_QWEN_OCR_MAX_CHARS,
+    min_candidate_rate: float = DEFAULT_QWEN_MIN_CANDIDATE_RATE,
+    min_classified_attempts: int = DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS,
 ) -> dict[str, Any]:
     """Run local Qwen over saved OCR text and return aggregate transitions only."""
     transitions: Counter[str] = Counter()
@@ -527,18 +564,25 @@ async def run_qwen_text_sample(
             else:
                 kita_workspace_candidates += 1
 
+    classified_attempts = attempted - failed_attempts
     return {
         "mode": "local_ollama_text_only_saved_ocr",
         "model": model,
         "ocr_max_chars": safe_ocr_max_chars,
         "attempted": attempted,
-        "classified_attempts": attempted - failed_attempts,
+        "classified_attempts": classified_attempts,
         "failed_attempts": failed_attempts,
         "not_classified_due_error": failed_attempts,
         "improved_unknown_to_known": improved_unknown_to_known,
         "still_unknown": still_unknown,
         "kita_workspace_candidates": kita_workspace_candidates,
         "review_after_qwen": review_after_qwen,
+        "acceptance_gate": _qwen_acceptance_gate(
+            classified_attempts=classified_attempts,
+            kita_workspace_candidates=kita_workspace_candidates,
+            min_candidate_rate=min_candidate_rate,
+            min_classified_attempts=min_classified_attempts,
+        ),
         "transitions": dict(transitions),
         "placement_preview": _placement_preview_rows(placements),
         "workspace_buckets": _count_rows(workspaces, key_name="bucket"),
@@ -556,6 +600,8 @@ async def run_audit(
     qwen_model: str = DEFAULT_QWEN_MODEL,
     qwen_timeout_seconds: float = 45.0,
     qwen_ocr_max_chars: int = DEFAULT_QWEN_OCR_MAX_CHARS,
+    qwen_min_candidate_rate: float = DEFAULT_QWEN_MIN_CANDIDATE_RATE,
+    qwen_min_classified_attempts: int = DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS,
 ) -> dict[str, Any]:
     pool = await asyncpg.create_pool(dsn=database_url, min_size=1, max_size=2)
     try:
@@ -586,6 +632,8 @@ async def run_audit(
             model=qwen_model,
             timeout_seconds=qwen_timeout_seconds,
             ocr_max_chars=qwen_ocr_max_chars,
+            min_candidate_rate=qwen_min_candidate_rate,
+            min_classified_attempts=qwen_min_classified_attempts,
         )
     return report
 
@@ -640,6 +688,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_QWEN_OCR_MAX_CHARS,
         help="maximum saved OCR characters sent to local Qwen per sampled document",
     )
+    parser.add_argument(
+        "--qwen-min-candidate-rate",
+        type=float,
+        default=DEFAULT_QWEN_MIN_CANDIDATE_RATE,
+        help="minimum non-review workspace candidate rate before marking qwen batch candidate-ready",
+    )
+    parser.add_argument(
+        "--qwen-min-classified-attempts",
+        type=int,
+        default=DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS,
+        help="minimum successful qwen classifications before evaluating candidate readiness",
+    )
     parser.add_argument("--pretty", action="store_true", help="pretty-print JSON")
     return parser
 
@@ -655,6 +715,8 @@ async def main(argv: list[str] | None = None) -> int:
         qwen_model=args.qwen_model,
         qwen_timeout_seconds=max(args.qwen_timeout_seconds, 1.0),
         qwen_ocr_max_chars=max(args.qwen_ocr_max_chars, 1),
+        qwen_min_candidate_rate=min(max(args.qwen_min_candidate_rate, 0.0), 1.0),
+        qwen_min_classified_attempts=max(args.qwen_min_classified_attempts, 1),
     )
     indent = 2 if args.pretty else None
     sys.stdout.write(json.dumps(report, indent=indent, sort_keys=True) + "\n")

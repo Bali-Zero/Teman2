@@ -251,12 +251,97 @@ def test_qwen_text_sample_reports_kita_workspace_placement_preview() -> None:
     ]
 
 
+def test_qwen_text_sample_reports_batch_acceptance_gate() -> None:
+    audit = _load()
+    answers = iter(["passport", "npwp", "unknown", "unknown"])
+
+    async def classify_sequence(*args, **kwargs):  # noqa: ANN002, ANN003
+        return next(answers)
+
+    audit._qwen_classify_text = classify_sequence
+
+    result = asyncio.run(
+        audit.run_qwen_text_sample(
+            [
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["tax text"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear a"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear b"]}}},
+            ],
+            ollama_url="http://127.0.0.1:11434",
+            model="qwen3.5:9b",
+            timeout_seconds=1.0,
+            min_candidate_rate=0.5,
+            min_classified_attempts=4,
+        )
+    )
+
+    assert result["acceptance_gate"] == {
+        "status": "candidate_batch_ready",
+        "reason": "candidate_rate_met",
+        "candidate_rate": 0.5,
+        "min_candidate_rate": 0.5,
+        "classified_attempts": 4,
+        "min_classified_attempts": 4,
+    }
+
+
+def test_qwen_text_sample_keeps_low_yield_batch_review_only() -> None:
+    audit = _load()
+    answers = iter(["birth_certificate", "unknown", "unknown", "unknown", "unknown"])
+
+    async def classify_sequence(*args, **kwargs):  # noqa: ANN002, ANN003
+        return next(answers)
+
+    audit._qwen_classify_text = classify_sequence
+
+    result = asyncio.run(
+        audit.run_qwen_text_sample(
+            [
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["birth text"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear a"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear b"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear c"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear d"]}}},
+            ],
+            ollama_url="http://127.0.0.1:11434",
+            model="qwen3.5:9b",
+            timeout_seconds=1.0,
+            min_candidate_rate=0.25,
+            min_classified_attempts=5,
+        )
+    )
+
+    assert result["acceptance_gate"] == {
+        "status": "review_only",
+        "reason": "candidate_rate_below_threshold",
+        "candidate_rate": 0.2,
+        "min_candidate_rate": 0.25,
+        "classified_attempts": 5,
+        "min_classified_attempts": 5,
+    }
+
+
 def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
     audit = _load()
-    args = audit.build_parser().parse_args(["--pretty", "--limit", "10", "--qwen-ocr-max-chars", "1200"])
+    args = audit.build_parser().parse_args(
+        [
+            "--pretty",
+            "--limit",
+            "10",
+            "--qwen-ocr-max-chars",
+            "1200",
+            "--qwen-min-candidate-rate",
+            "0.4",
+            "--qwen-min-classified-attempts",
+            "10",
+        ]
+    )
     assert args.pretty is True
     assert args.limit == 10
     assert args.qwen_ocr_max_chars == 1200
+    assert args.qwen_min_candidate_rate == 0.4
+    assert args.qwen_min_classified_attempts == 10
     assert not hasattr(args, "apply")
 
     sql_values = [
