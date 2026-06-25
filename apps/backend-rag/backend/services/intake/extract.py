@@ -1571,7 +1571,7 @@ def _extract_travel_ticket_label_fields(pages: list[str]) -> dict[str, dict[str,
         "ticket_no",
         _first_line_match(
             pages,
-            r"^(?:ticket\s*(?:no\.?|number)|e-?ticket\s*(?:no\.?|number)|boarding\s*pass\s*(?:no\.?|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
+            r"^(?:ticket\s*(?:no\.?|number)|e-?ticket\s*(?:no\.?|number)|boarding\s*pass\s*(?:no\.?|number)|nomor\s*tiket|no\.?\s*tiket)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
         ),
     )
     _set_if_present(
@@ -1588,7 +1588,7 @@ def _extract_travel_ticket_label_fields(pages: list[str]) -> dict[str, dict[str,
         "travel_date",
         _first_line_match(
             pages,
-            r"^(?:flight\s*date|travel\s*date|departure\s*date|date|tanggal\s*(?:terbang|berangkat))(?:\s*[:\-]\s*|\s+)(.+)$",
+            r"^(?:flight\s*date|travel\s*date|departure\s*date|date|tanggal\s*(?:terbang|berangkat|keberangkatan))(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
@@ -1605,7 +1605,7 @@ def _extract_travel_ticket_label_fields(pages: list[str]) -> dict[str, dict[str,
         "booking_reference",
         _first_line_match(
             pages,
-            r"^(?:booking\s*(?:reference|ref|code)|pnr|reservation\s*(?:code|number))(?:\s*[:\-]\s*|\s+)([A-Z0-9][A-Z0-9 .\-]{3,})$",
+            r"^(?:booking\s*(?:reference|ref|code)|pnr|reservation\s*(?:code|number)|kode\s*(?:booking|reservasi)|nomor\s*(?:booking|reservasi))(?:\s*[:\-]\s*|\s+)([A-Z0-9][A-Z0-9 .\-]{3,})$",
         ),
     )
     return fields

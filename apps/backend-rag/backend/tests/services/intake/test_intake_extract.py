@@ -1161,6 +1161,35 @@ async def test_travel_ticket_label_fields_accept_colonless_ocr_labels():
     assert out["fields"]["booking_reference"]["value"] == "ABC123"
 
 
+async def test_travel_ticket_label_fields_accept_indonesian_labels():
+    """Indonesian e-ticket OCR should expose booking fields without SEA-LION."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "TIKET ELEKTRONIK\n"
+        "Nama Penumpang ANTON TEST\n"
+        "Nomor Tiket 1261234567890\n"
+        "Tanggal Keberangkatan 25 JUNI 2026\n"
+        "Rute DPS-CGK\n"
+        "Kode Booking BZ9K2L"
+    )
+    out = await extract.extract_fields("e_ticket", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "travel_ticket"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["travel_ticket_labels"]
+    assert out["fields"]["ticket_no"]["value"] == "1261234567890"
+    assert out["fields"]["name"]["value"] == "Anton Test"
+    assert out["fields"]["travel_date"]["value"] == "2026-06-25"
+    assert out["fields"]["route"]["value"] == "DPS-CGK"
+    assert out["fields"]["booking_reference"]["value"] == "BZ9K2L"
+
+
 async def test_medical_insurance_label_fields_skip_model_call():
     """Medical insurance policies can expose coverage fields in labels."""
     called = {"n": 0}
