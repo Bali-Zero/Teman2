@@ -157,6 +157,58 @@ function buildQwenKnownBenchmarkSummary(probeSnapshot) {
   };
 }
 
+function sanitizeWorkspaceBuckets(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => ({
+    bucket: String(row.bucket || "review"),
+    docs: Number(row.docs || 0),
+  }));
+}
+
+function sanitizePlacementPreview(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => ({
+    from_doc_type: String(row.from_doc_type || "unknown"),
+    proposed_doc_type: String(row.proposed_doc_type || "unknown"),
+    workspace_bucket: String(row.workspace_bucket || workspaceBucketForDocType(row.proposed_doc_type)),
+    docs: Number(row.docs || 0),
+  }));
+}
+
+function buildQwenPlacementPreviewSummary(probeSnapshot) {
+  const qwenSample = probeSnapshot?.qwen_text_sample || probeSnapshot || null;
+  const gate = qwenSample?.acceptance_gate || null;
+  const generatedAt = probeSnapshot?.generated_at || null;
+
+  if (!gate) {
+    return {
+      status: "probe_required",
+      reason: "no_qwen_probe_snapshot",
+      sampled_docs: Number(qwenSample?.attempted || 0),
+      classified_attempts: Number(qwenSample?.classified_attempts || 0),
+      kita_workspace_candidates: Number(qwenSample?.kita_workspace_candidates || 0),
+      review_after_qwen: Number(qwenSample?.review_after_qwen || 0),
+      still_unknown: Number(qwenSample?.still_unknown || 0),
+      generated_at: generatedAt,
+      workspace_buckets: sanitizeWorkspaceBuckets(qwenSample?.workspace_buckets),
+      placement_preview: sanitizePlacementPreview(qwenSample?.placement_preview),
+    };
+  }
+
+  return {
+    status: String(gate.status || "probe_required"),
+    reason: String(gate.reason || "unknown"),
+    sampled_docs: Number(qwenSample.attempted || 0),
+    classified_attempts: Number(gate.classified_attempts || qwenSample.classified_attempts || 0),
+    kita_workspace_candidates: Number(qwenSample.kita_workspace_candidates || 0),
+    review_after_qwen: Number(qwenSample.review_after_qwen || 0),
+    still_unknown: Number(qwenSample.still_unknown || 0),
+    generated_at: generatedAt,
+    workspace_buckets: sanitizeWorkspaceBuckets(qwenSample.workspace_buckets),
+    placement_preview: sanitizePlacementPreview(qwenSample.placement_preview),
+  };
+}
+
 module.exports = {
   HIGH_CONFIDENCE_THRESHOLD,
   TEXT_PARSER_MIN_CHARS,
@@ -164,6 +216,7 @@ module.exports = {
   buildDirectActionSummary,
   buildQwenKnownBenchmarkSummary,
   buildQwenBatchGateSummary,
+  buildQwenPlacementPreviewSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 };

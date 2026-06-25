@@ -11,6 +11,7 @@ const {
   buildDirectActionSummary,
   buildQwenBatchGateSummary,
   buildQwenKnownBenchmarkSummary,
+  buildQwenPlacementPreviewSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 } = require("./intake-buckets.cjs");
@@ -887,6 +888,7 @@ async function fetchIntakeSummary() {
     direct_action_summary: directActionSummary,
     qwen_batch_gate: buildQwenBatchGateSummary(directActionSummary, qwenGateSnapshot),
     qwen_known_benchmark_gate: buildQwenKnownBenchmarkSummary(qwenGateSnapshot),
+    qwen_placement_preview: buildQwenPlacementPreviewSummary(qwenGateSnapshot),
     workspace_buckets: [...workspaceMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),
