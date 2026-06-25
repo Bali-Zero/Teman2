@@ -1,5 +1,4 @@
 import React from "react";
-import Link from "next/link";
 import { Newspaper, ArrowUpRight } from "lucide-react";
 import type { ArticleListItem, ArticleCategory } from "@/lib/blog/types";
 
@@ -27,6 +26,8 @@ const PRACTICE_TO_CATEGORY: Record<string, ArticleCategory> = {
   lkpm: "taxes",
   property: "property",
 };
+
+const MARKETING_ORIGIN = "https://balizero.com";
 
 export function relevantCategories(
   practiceKinds: string[] | undefined,
@@ -94,8 +95,10 @@ export function PortalNewsRail({
       <ul className="flex flex-col gap-3">
         {shown.map((a) => (
           <li key={a.id}>
-            <Link
-              href={`/${a.category}/${a.slug}`}
+            <a
+              href={`${MARKETING_ORIGIN}/${a.category}/${a.slug}`}
+              target="_blank"
+              rel="noreferrer"
               className="group flex items-start gap-3 rounded-lg p-2 -m-2 transition-colors"
             >
               <div className="flex-1 min-w-0">
@@ -121,19 +124,21 @@ export function PortalNewsRail({
                 style={{ color: "var(--bz-text-2)" }}
                 aria-hidden
               />
-            </Link>
+            </a>
           </li>
         ))}
       </ul>
 
-      <Link
-        href="/news"
+      <a
+        href={`${MARKETING_ORIGIN}/news`}
+        target="_blank"
+        rel="noreferrer"
         className="mt-3 inline-flex items-center gap-1 text-xs font-semibold"
         style={{ color: "var(--bz-accent)" }}
       >
         More from Bali Zero
         <ArrowUpRight className="w-3 h-3" aria-hidden />
-      </Link>
+      </a>
     </aside>
   );
 }
