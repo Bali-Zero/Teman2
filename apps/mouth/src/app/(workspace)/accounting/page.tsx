@@ -131,6 +131,14 @@ function CashoutTable({ rows }: { rows: CashoutRow[] }) {
                 {r.client_name ?? r.counterparty ?? "—"}
               </td>
               <td className="px-3 py-2 text-muted-foreground">
+                {r.type === "cashout_worksheet" && (
+                  <span
+                    className="mr-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                    title="Imported from Asya's worksheet PDF — pending bank reconciliation, excluded from the totals above"
+                  >
+                    Worksheet
+                  </span>
+                )}
                 {r.category ?? r.type}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
@@ -517,6 +525,21 @@ export default function AccountingPage() {
       </div>
 
       <SummaryCards summary={summary} />
+      {(() => {
+        // Worksheet rows are Asya's planning draft (excluded from the totals
+        // above) — surface how much pending money is sitting in that bucket so
+        // the gap between "what's booked" and "what's confirmed in the bank" is
+        // visible at a glance.
+        const ws = summary?.by_type?.find((t) => t.type === "cashout_worksheet");
+        if (!ws || !ws.n) return null;
+        return (
+          <p className="-mt-3 text-xs text-amber-700">
+            {ws.n} worksheet draft(s) ({formatIDR(ws.total_idr)}) imported from
+            Asya&apos;s PDF — excluded from the totals above, pending bank
+            reconciliation.
+          </p>
+        );
+      })()}
 
       <div className="flex gap-2 border-b">
         <button

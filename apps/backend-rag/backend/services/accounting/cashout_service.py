@@ -159,6 +159,13 @@ async def cashbook_summary(
         params.append(period_end)
         idx += 1
     where_sql = " AND ".join(where)
+    # Worksheet rows (type='cashout_worksheet') are Asya's planning draft, not
+    # confirmed cash — exclude them from the headline P&L totals
+    # (income/outgoing/net/margin/row_count) but KEEP them in the by_type
+    # breakdown so she can see the pending mass waiting to be reconciled into a
+    # real invoice_payment. (superscar #3 guard-over-match in reverse: a guard
+    # that *includes* draft money in confirmed income would over-state it.)
+    totals_where_sql = where_sql + " AND wc.type <> 'cashout_worksheet'"
 
     totals_row = await conn.fetchrow(
         f"""
@@ -169,7 +176,7 @@ async def cashbook_summary(
             COALESCE(SUM(pnbp_idr) FILTER (WHERE type='invoice_payment'), 0)   AS pnbp_total_idr,
             COUNT(*) AS row_count
         FROM weekly_cashout wc
-        WHERE {where_sql}
+        WHERE {totals_where_sql}
         """,
         *params,
     )
