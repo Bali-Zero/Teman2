@@ -95,8 +95,14 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.backfill is True
     assert args.reprocess is False
     assert args.retry_empty_pdf_ocr is False
+    assert args.quality_sample is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.empty_pdf_ocr_version == irb.DEFAULT_EMPTY_PDF_OCR_VERSION
+    assert args.quality_sample_size == 100
+    assert args.quality_source == "whatsapp"
+    assert args.quality_pipeline_version is None
+    assert args.quality_statuses is None
+    assert args.quality_exclude_stub is False
     assert args.watermark is None
 
 
@@ -107,6 +113,38 @@ def test_parser_pipeline_version_override() -> None:
     )
     assert args.apply is True
     assert args.pipeline_version == "v9-test"
+
+
+def test_parser_quality_sample_options_are_read_only() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--quality-sample",
+            "--quality-sample-size",
+            "25",
+            "--quality-source",
+            "drive",
+            "--quality-pipeline-version",
+            "v9-quality",
+            "--quality-statuses",
+            "done,dead",
+            "--quality-exclude-stub",
+        ]
+    )
+    assert args.apply is False
+    assert args.quality_sample is True
+    assert args.quality_sample_size == 25
+    assert args.quality_source == "drive"
+    assert args.quality_pipeline_version == "v9-quality"
+    assert args.quality_statuses == "done,dead"
+    assert args.quality_exclude_stub is True
+
+
+def test_quality_statuses_default_and_custom() -> None:
+    irb = _load()
+    assert irb._quality_statuses(None) is None
+    assert irb._quality_statuses("  ") is None
+    assert irb._quality_statuses("done, dead ") == ("done", "dead")
 
 
 # ---------------------------------------------------------------------------
@@ -201,3 +239,28 @@ def test_empty_pdf_ocr_supersede_only_touches_review_or_quarantine() -> None:
     assert "status = 'superseded'" in sql
     assert "queue_id = ANY($1::bigint[])" in sql
     assert "status IN ('review_pending', 'quarantine')" in sql
+
+
+def test_quality_sample_sql_is_bounded_and_redacted() -> None:
+    irb = _load()
+    sql = irb.QUALITY_SAMPLE_SQL
+    assert "LIMIT $3" in sql
+    assert "q.source = $1" in sql
+    assert "q.pipeline_version = $2" in sql
+    assert "q.status = ANY($4::text[])" in sql
+    assert "$5::bool IS FALSE" in sql
+    assert "ocr_text_per_page" in sql
+    assert "SUM(length" in sql
+    assert "jsonb_object_agg" in sql
+    assert "empty_ocr_unknown" in sql
+    assert "legible_unknown" in sql
+    assert "stub_stage" in sql
+    assert "unsupported_doc_type" in sql
+    assert "typed_missing_fields" in sql
+    assert "by_extract_skipped" in sql
+    assert "routed_no_match" in sql
+    assert "last_error_category" in sql
+    assert "sender_phone" not in sql
+    assert "blob_path" not in sql
+    assert "source_ref" not in sql
+    assert "media_stored_path" not in sql

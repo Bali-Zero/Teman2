@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -190,6 +191,175 @@ UPDATE document_routing_proposal
    AND status IN ('review_pending', 'quarantine')
 """
 
+# Read-only q100-style OCR/interpretation quality snapshot. The sample is chosen
+# in Postgres and the query returns aggregate counts only: no OCR text, names,
+# phone numbers, source refs, or blob paths leave the DB.
+QUALITY_SAMPLE_SQL = """
+WITH sampled AS (
+    SELECT
+        q.id,
+        q.status,
+        COALESCE(q.stage, '') AS stage,
+        q.pipeline_version,
+        q.stage_output,
+        q.last_error
+    FROM intake_queue q
+    WHERE q.source = $1
+      AND ($2::text IS NULL OR q.pipeline_version = $2)
+      AND ($4::text[] IS NULL OR q.status = ANY($4::text[]))
+      AND (
+          $5::bool IS FALSE
+          OR NOT (
+              COALESCE(q.stage_output->'classify'->>'stub', 'false') = 'true'
+              OR COALESCE(q.stage_output->'extract'->>'stub', 'false') = 'true'
+              OR COALESCE(q.stage_output->'validate'->>'stub', 'false') = 'true'
+              OR COALESCE(q.stage_output->'route'->>'stub', 'false') = 'true'
+          )
+      )
+    ORDER BY q.id DESC
+    LIMIT $3
+),
+latest_proposal AS (
+    SELECT DISTINCT ON (p.queue_id)
+        p.queue_id,
+        p.status AS proposal_status,
+        COALESCE(p.entity_resolution->>'decision', '') AS decision
+    FROM document_routing_proposal p
+    JOIN sampled s ON s.id = p.queue_id
+    ORDER BY p.queue_id, p.id DESC
+),
+derived AS (
+    SELECT
+        s.status,
+        s.stage,
+        COALESCE(NULLIF(s.stage_output->'classify'->>'doc_type', ''), 'missing') AS doc_type,
+        COALESCE(NULLIF(s.stage_output->'extract'->>'extraction_model', ''), 'missing') AS extraction_model,
+        COALESCE(NULLIF(s.stage_output->'extract'->>'skipped', ''), 'none') AS extract_skipped,
+        COALESCE(lp.proposal_status, 'missing') AS proposal_status,
+        COALESCE(NULLIF(lp.decision, ''), 'missing') AS decision,
+        (
+            COALESCE(s.stage_output->'classify'->>'stub', 'false') = 'true'
+            OR COALESCE(s.stage_output->'extract'->>'stub', 'false') = 'true'
+            OR COALESCE(s.stage_output->'validate'->>'stub', 'false') = 'true'
+            OR COALESCE(s.stage_output->'route'->>'stub', 'false') = 'true'
+        ) AS has_stub_stage,
+        COALESCE((
+            SELECT SUM(length(trim(COALESCE(page->>'text', ''))))
+            FROM jsonb_array_elements(
+                COALESCE(s.stage_output->'classify'->'ocr_text_per_page', '[]'::jsonb)
+            ) AS page
+        ), 0) AS ocr_chars,
+        COALESCE((
+            SELECT COUNT(*)
+            FROM jsonb_each(COALESCE(s.stage_output->'extract'->'fields', '{}'::jsonb)) AS field(key, value)
+            WHERE NULLIF(trim(COALESCE(value->>'value', '')), '') IS NOT NULL
+        ), 0) AS filled_fields,
+        CASE
+            WHEN s.last_error IS NULL OR trim(s.last_error) = '' THEN 'none'
+            WHEN lower(s.last_error) LIKE '%timeout%' THEN 'timeout'
+            WHEN lower(s.last_error) LIKE '%rasterize%' THEN 'rasterize'
+            WHEN lower(s.last_error) LIKE '%ollama%' THEN 'ollama'
+            WHEN lower(s.last_error) LIKE '%validate%' THEN 'validate'
+            ELSE 'other'
+        END AS last_error_category
+    FROM sampled s
+    LEFT JOIN latest_proposal lp ON lp.queue_id = s.id
+),
+buckets AS (
+    SELECT
+        *,
+        CASE
+            WHEN ocr_chars = 0 THEN '0_empty'
+            WHEN ocr_chars < 20 THEN '1_noise'
+            WHEN ocr_chars < 100 THEN '2_short'
+            ELSE '3_legible'
+        END AS ocr_bucket,
+        CASE
+            WHEN has_stub_stage THEN 'stub_stage'
+            WHEN doc_type = 'unknown' AND ocr_chars < 20 THEN 'empty_ocr_unknown'
+            WHEN doc_type = 'unknown' AND ocr_chars >= 20 THEN 'legible_unknown'
+            WHEN extract_skipped = 'unschematised_doc_type' THEN 'unsupported_doc_type'
+            WHEN doc_type NOT IN ('unknown', 'missing')
+              AND status IN ('extracted', 'validated', 'done')
+              AND filled_fields = 0 THEN 'typed_missing_fields'
+            WHEN decision = 'NO_MATCH' THEN 'routed_no_match'
+            WHEN status = 'dead' THEN 'dead'
+            ELSE 'ok_or_pending'
+        END AS quality_issue
+    FROM derived
+)
+SELECT jsonb_build_object(
+    'sample_rows', (SELECT COUNT(*) FROM buckets),
+    'source', $1,
+    'pipeline_version_filter', COALESCE($2, 'all'),
+    'by_status', COALESCE((
+        SELECT jsonb_object_agg(status, n)
+        FROM (SELECT status, COUNT(*) AS n FROM buckets GROUP BY status ORDER BY status) x
+    ), '{}'::jsonb),
+    'by_stage', COALESCE((
+        SELECT jsonb_object_agg(stage, n)
+        FROM (SELECT stage, COUNT(*) AS n FROM buckets GROUP BY stage ORDER BY stage) x
+    ), '{}'::jsonb),
+    'by_doc_type', COALESCE((
+        SELECT jsonb_object_agg(doc_type, n)
+        FROM (SELECT doc_type, COUNT(*) AS n FROM buckets GROUP BY doc_type ORDER BY n DESC, doc_type) x
+    ), '{}'::jsonb),
+    'by_ocr_bucket', COALESCE((
+        SELECT jsonb_object_agg(ocr_bucket, n)
+        FROM (SELECT ocr_bucket, COUNT(*) AS n FROM buckets GROUP BY ocr_bucket ORDER BY ocr_bucket) x
+    ), '{}'::jsonb),
+    'by_extraction_model', COALESCE((
+        SELECT jsonb_object_agg(extraction_model, n)
+        FROM (
+            SELECT extraction_model, COUNT(*) AS n
+            FROM buckets
+            GROUP BY extraction_model
+            ORDER BY n DESC, extraction_model
+        ) x
+    ), '{}'::jsonb),
+    'by_extract_skipped', COALESCE((
+        SELECT jsonb_object_agg(extract_skipped, n)
+        FROM (
+            SELECT extract_skipped, COUNT(*) AS n
+            FROM buckets
+            GROUP BY extract_skipped
+            ORDER BY n DESC, extract_skipped
+        ) x
+    ), '{}'::jsonb),
+    'by_proposal_status', COALESCE((
+        SELECT jsonb_object_agg(proposal_status, n)
+        FROM (
+            SELECT proposal_status, COUNT(*) AS n
+            FROM buckets
+            GROUP BY proposal_status
+            ORDER BY proposal_status
+        ) x
+    ), '{}'::jsonb),
+    'by_decision', COALESCE((
+        SELECT jsonb_object_agg(decision, n)
+        FROM (SELECT decision, COUNT(*) AS n FROM buckets GROUP BY decision ORDER BY decision) x
+    ), '{}'::jsonb),
+    'quality_issues', COALESCE((
+        SELECT jsonb_object_agg(quality_issue, n)
+        FROM (
+            SELECT quality_issue, COUNT(*) AS n
+            FROM buckets
+            GROUP BY quality_issue
+            ORDER BY quality_issue
+        ) x
+    ), '{}'::jsonb),
+    'last_error_category', COALESCE((
+        SELECT jsonb_object_agg(last_error_category, n)
+        FROM (
+            SELECT last_error_category, COUNT(*) AS n
+            FROM buckets
+            GROUP BY last_error_category
+            ORDER BY last_error_category
+        ) x
+    ), '{}'::jsonb)
+) AS report
+"""
+
 # Historical inbound media with NO intake_queue row (anti-join on source_ref).
 BACKFILL_SELECT_SQL = """
 SELECT w.id, w.baileys_message_id, w.media_stored_path, w.media_mime,
@@ -241,6 +411,13 @@ def _media_types(raw: str | None) -> tuple[str, ...]:
     if not raw:
         return DEFAULT_MEDIA_TYPES
     return tuple(t.strip() for t in raw.split(",") if t.strip()) or DEFAULT_MEDIA_TYPES
+
+
+def _quality_statuses(raw: str | None) -> tuple[str, ...] | None:
+    if not raw:
+        return None
+    statuses = tuple(t.strip() for t in raw.split(",") if t.strip())
+    return statuses or None
 
 
 # --- Modes -------------------------------------------------------------------
@@ -405,6 +582,35 @@ async def run_backfill(
     return counts
 
 
+async def run_quality_sample(
+    pool: asyncpg.Pool,
+    source: str,
+    pipeline_version: str | None,
+    sample_size: int,
+    statuses: tuple[str, ...] | None = None,
+    exclude_stub: bool = False,
+) -> dict[str, Any]:
+    """Return a redacted OCR/interpretation quality snapshot for recent rows."""
+    bounded_sample_size = max(1, min(sample_size, 1000))
+    async with pool.acquire() as conn:
+        raw = await conn.fetchval(
+            QUALITY_SAMPLE_SQL,
+            source,
+            pipeline_version,
+            bounded_sample_size,
+            list(statuses) if statuses else None,
+            exclude_stub,
+        )
+
+    if isinstance(raw, str):
+        report: dict[str, Any] = json.loads(raw)
+    else:
+        report = dict(raw or {})
+
+    logger.info("[quality-sample] %s", json.dumps(report, sort_keys=True))
+    return report
+
+
 # --- CLI ----------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -419,6 +625,18 @@ def build_parser() -> argparse.ArgumentParser:
                    help="re-enqueue whatsapp docs the stub passthrough marked done with no proposal")
     p.add_argument("--retry-empty-pdf-ocr", action="store_true",
                    help="reset whatsapp PDFs with rasterize_failed/raw_pdf_fallback and zero OCR text")
+    p.add_argument("--quality-sample", action="store_true",
+                   help="read-only redacted OCR/interpretation quality snapshot")
+    p.add_argument("--quality-sample-size", type=int, default=100,
+                   help="number of recent queue rows to sample for --quality-sample (default 100)")
+    p.add_argument("--quality-source", default="whatsapp",
+                   help="intake_queue.source filter for --quality-sample (default whatsapp)")
+    p.add_argument("--quality-pipeline-version", default=None,
+                   help="optional pipeline_version filter for --quality-sample")
+    p.add_argument("--quality-statuses", default=None,
+                   help="optional comma list of intake_queue statuses for --quality-sample")
+    p.add_argument("--quality-exclude-stub", action="store_true",
+                   help="for --quality-sample: exclude rows produced by stub handlers")
     p.add_argument("--include-groups", action="store_true",
                    help="for --revive-stub: also revive group-chat docs (default: 1:1 direct chats only)")
     p.add_argument("--stub-pipeline-version", default=DEFAULT_STUB_REVIVE_VERSION,
@@ -448,10 +666,11 @@ async def main(argv: list[str] | None = None) -> int:
         or args.backfill
         or args.revive_stub
         or args.retry_empty_pdf_ocr
+        or args.quality_sample
     ):
         logger.error(
             "nothing to do: pass --backfill and/or --reprocess and/or "
-            "--revive-stub and/or --retry-empty-pdf-ocr"
+            "--revive-stub and/or --retry-empty-pdf-ocr and/or --quality-sample"
         )
         return 2
 
@@ -479,6 +698,15 @@ async def main(argv: list[str] | None = None) -> int:
         if args.retry_empty_pdf_ocr:
             await run_retry_empty_pdf_ocr(
                 pool, args.empty_pdf_ocr_version, args.apply
+            )
+        if args.quality_sample:
+            await run_quality_sample(
+                pool,
+                args.quality_source,
+                args.quality_pipeline_version,
+                args.quality_sample_size,
+                _quality_statuses(args.quality_statuses),
+                args.quality_exclude_stub,
             )
         return 0
     finally:
