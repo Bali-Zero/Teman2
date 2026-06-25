@@ -322,6 +322,83 @@ def test_qwen_text_sample_keeps_low_yield_batch_review_only() -> None:
     }
 
 
+def test_qwen_known_doc_benchmark_reports_workspace_accuracy() -> None:
+    audit = _load()
+    answers = iter(["passport", "bank_statement", "travel_ticket", "unknown"])
+
+    async def classify_sequence(*args, **kwargs):  # noqa: ANN002, ANN003
+        return next(answers)
+
+    audit._qwen_classify_text = classify_sequence
+
+    result = asyncio.run(
+        audit.run_qwen_known_doc_benchmark(
+            [
+                {"doc_type": "passport", "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}}},
+                {
+                    "doc_type": "payment_receipt",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["receipt text"]}},
+                },
+                {"doc_type": "visa", "stage_output": {"classify": {"ocr_text_per_page": ["flight text"]}}},
+                {"doc_type": "npwp", "stage_output": {"classify": {"ocr_text_per_page": ["unclear tax"]}}},
+            ],
+            ollama_url="http://127.0.0.1:11434",
+            model="qwen3.5:9b",
+            timeout_seconds=1.0,
+            min_workspace_accuracy=0.7,
+            min_classified_attempts=4,
+        )
+    )
+
+    assert result["attempted"] == 4
+    assert result["classified_attempts"] == 4
+    assert result["failed_attempts"] == 0
+    assert result["exact_doc_type_matches"] == 1
+    assert result["workspace_matches"] == 3
+    assert result["unknown_predictions"] == 1
+    assert result["exact_doc_type_accuracy"] == 0.25
+    assert result["workspace_accuracy"] == 0.75
+    assert result["benchmark_gate"] == {
+        "status": "workspace_benchmark_ready",
+        "reason": "workspace_accuracy_met",
+        "workspace_accuracy": 0.75,
+        "min_workspace_accuracy": 0.7,
+        "classified_attempts": 4,
+        "min_classified_attempts": 4,
+    }
+    assert result["confusion_preview"] == [
+        {
+            "expected_doc_type": "passport",
+            "predicted_doc_type": "passport",
+            "expected_workspace_bucket": "immigration",
+            "predicted_workspace_bucket": "immigration",
+            "docs": 1,
+        },
+        {
+            "expected_doc_type": "payment_receipt",
+            "predicted_doc_type": "bank_statement",
+            "expected_workspace_bucket": "finance",
+            "predicted_workspace_bucket": "finance",
+            "docs": 1,
+        },
+        {
+            "expected_doc_type": "visa",
+            "predicted_doc_type": "travel_ticket",
+            "expected_workspace_bucket": "immigration",
+            "predicted_workspace_bucket": "immigration",
+            "docs": 1,
+        },
+        {
+            "expected_doc_type": "npwp",
+            "predicted_doc_type": "unknown",
+            "expected_workspace_bucket": "tax",
+            "predicted_workspace_bucket": "review",
+            "docs": 1,
+        },
+    ]
+    assert "receipt text" not in str(result)
+
+
 def test_dashboard_snapshot_keeps_qwen_probe_aggregate_only() -> None:
     audit = _load()
 
@@ -352,6 +429,28 @@ def test_dashboard_snapshot_keeps_qwen_probe_aggregate_only() -> None:
                 "workspace_buckets": [{"bucket": "immigration", "docs": 1}],
                 "transitions": {"unknown->birth_certificate": 1},
                 "errors": {},
+            },
+            "qwen_known_benchmark": {
+                "attempted": 4,
+                "classified_attempts": 4,
+                "workspace_accuracy": 0.75,
+                "benchmark_gate": {
+                    "status": "workspace_benchmark_ready",
+                    "reason": "workspace_accuracy_met",
+                    "workspace_accuracy": 0.75,
+                    "min_workspace_accuracy": 0.7,
+                    "classified_attempts": 4,
+                    "min_classified_attempts": 4,
+                },
+                "confusion_preview": [
+                    {
+                        "expected_doc_type": "payment_receipt",
+                        "predicted_doc_type": "bank_statement",
+                        "expected_workspace_bucket": "finance",
+                        "predicted_workspace_bucket": "finance",
+                        "docs": 1,
+                    }
+                ],
             },
             "raw_ocr_text": "SHOULD_NOT_LEAK",
             "sender_phone": "+6280000000000",
@@ -387,6 +486,28 @@ def test_dashboard_snapshot_keeps_qwen_probe_aggregate_only() -> None:
             "transitions": {"unknown->birth_certificate": 1},
             "errors": {},
         },
+        "qwen_known_benchmark": {
+            "attempted": 4,
+            "classified_attempts": 4,
+            "workspace_accuracy": 0.75,
+            "benchmark_gate": {
+                "status": "workspace_benchmark_ready",
+                "reason": "workspace_accuracy_met",
+                "workspace_accuracy": 0.75,
+                "min_workspace_accuracy": 0.7,
+                "classified_attempts": 4,
+                "min_classified_attempts": 4,
+            },
+            "confusion_preview": [
+                {
+                    "expected_doc_type": "payment_receipt",
+                    "predicted_doc_type": "bank_statement",
+                    "expected_workspace_bucket": "finance",
+                    "predicted_workspace_bucket": "finance",
+                    "docs": 1,
+                }
+            ],
+        },
     }
     assert "SHOULD_NOT_LEAK" not in str(snapshot)
     assert "+6280000000000" not in str(snapshot)
@@ -405,6 +526,10 @@ def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
             "0.4",
             "--qwen-min-classified-attempts",
             "10",
+            "--qwen-known-sample",
+            "20",
+            "--qwen-min-workspace-accuracy",
+            "0.7",
         ]
     )
     assert args.pretty is True
@@ -412,6 +537,8 @@ def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
     assert args.qwen_ocr_max_chars == 1200
     assert args.qwen_min_candidate_rate == 0.4
     assert args.qwen_min_classified_attempts == 10
+    assert args.qwen_known_sample == 20
+    assert args.qwen_min_workspace_accuracy == 0.7
     assert not hasattr(args, "apply")
 
     sql_values = [
@@ -426,3 +553,5 @@ def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
     for pii_field in ("sender_phone", "counterpart_phone", "phone_normalized", "group_subject"):
         assert pii_field not in joined
     assert "ocr_chars >= $2" in audit.DIRECT_DOC_QWEN_SAMPLE_SQL
+    assert "doc_type <> 'unknown'" in audit.DIRECT_DOC_QWEN_KNOWN_BENCHMARK_SQL
+    assert "type_confidence >= $3" in audit.DIRECT_DOC_QWEN_KNOWN_BENCHMARK_SQL

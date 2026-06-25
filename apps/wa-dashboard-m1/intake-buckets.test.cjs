@@ -6,6 +6,7 @@ const {
   actionBucketForRow,
   buildQwenBatchGateSummary,
   buildDirectActionSummary,
+  buildQwenKnownBenchmarkSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 } = require("./intake-buckets.cjs");
@@ -93,5 +94,81 @@ assert.deepEqual(
     kita_workspace_candidates: 0,
     review_after_qwen: 0,
     generated_at: null,
+  },
+);
+
+assert.deepEqual(
+  buildQwenKnownBenchmarkSummary({
+    generated_at: "2026-06-26T04:30:00.000Z",
+    qwen_known_benchmark: {
+      attempted: 10,
+      classified_attempts: 10,
+      failed_attempts: 0,
+      exact_doc_type_matches: 9,
+      workspace_matches: 9,
+      unknown_predictions: 1,
+      exact_doc_type_accuracy: 0.9,
+      workspace_accuracy: 0.9,
+      benchmark_gate: {
+        status: "workspace_benchmark_ready",
+        reason: "workspace_accuracy_met",
+        workspace_accuracy: 0.9,
+        min_workspace_accuracy: 0.7,
+        classified_attempts: 10,
+        min_classified_attempts: 5,
+      },
+      confusion_preview: [
+        {
+          expected_doc_type: "visa",
+          predicted_doc_type: "unknown",
+          expected_workspace_bucket: "immigration",
+          predicted_workspace_bucket: "review",
+          docs: 1,
+        },
+      ],
+      raw_ocr_text: "SHOULD_NOT_LEAK",
+    },
+  }),
+  {
+    status: "workspace_benchmark_ready",
+    reason: "workspace_accuracy_met",
+    sampled_docs: 10,
+    classified_attempts: 10,
+    failed_attempts: 0,
+    exact_doc_type_matches: 9,
+    workspace_matches: 9,
+    unknown_predictions: 1,
+    exact_doc_type_accuracy: 0.9,
+    workspace_accuracy: 0.9,
+    min_workspace_accuracy: 0.7,
+    generated_at: "2026-06-26T04:30:00.000Z",
+    confusion_preview: [
+      {
+        expected_doc_type: "visa",
+        predicted_doc_type: "unknown",
+        expected_workspace_bucket: "immigration",
+        predicted_workspace_bucket: "review",
+        docs: 1,
+      },
+    ],
+  },
+);
+
+assert.deepEqual(
+  buildQwenKnownBenchmarkSummary(null),
+  {
+    status: "benchmark_required",
+    reason: "no_qwen_known_benchmark_snapshot",
+    sampled_docs: 0,
+    classified_attempts: 0,
+    failed_attempts: 0,
+    exact_doc_type_matches: 0,
+    workspace_matches: 0,
+    unknown_predictions: 0,
+    exact_doc_type_accuracy: 0,
+    workspace_accuracy: 0,
+    min_workspace_accuracy: 0.7,
+    generated_at: null,
+    confusion_preview: [],
   },
 );

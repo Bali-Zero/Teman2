@@ -37,6 +37,7 @@ DEFAULT_QWEN_MODEL = "qwen3.5:9b"
 DEFAULT_QWEN_OCR_MAX_CHARS = 2000
 DEFAULT_QWEN_MIN_CANDIDATE_RATE = 0.25
 DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS = 5
+DEFAULT_QWEN_MIN_WORKSPACE_ACCURACY = 0.70
 HIGH_CONFIDENCE_THRESHOLD = 0.70
 TEXT_PARSER_MIN_CHARS = 100
 
@@ -198,6 +199,64 @@ SELECT *
  LIMIT $1
 """
 
+DIRECT_DOC_QWEN_KNOWN_BENCHMARK_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (queue_id)
+           queue_id,
+           status AS proposal_status,
+           entity_resolution->>'decision' AS entity_decision
+      FROM document_routing_proposal
+     ORDER BY queue_id, created_at DESC, id DESC
+),
+direct_docs AS (
+    SELECT
+      q.id,
+      q.status AS queue_status,
+      COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') AS doc_type,
+      CASE
+        WHEN COALESCE(q.stage_output->'classify'->>'type_confidence', '') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (q.stage_output->'classify'->>'type_confidence')::numeric
+        ELSE 0
+      END AS type_confidence,
+      COALESCE((q.stage_output ? 'extract') AND NOT COALESCE((q.stage_output->'extract'->>'stub')::boolean, false), false) AS extracted_non_stub,
+      COALESCE((q.stage_output ? 'route') AND NOT COALESCE((q.stage_output->'route'->>'stub')::boolean, false), false) AS routed_non_stub,
+      COALESCE((
+        SELECT SUM(length(
+          CASE
+            WHEN jsonb_typeof(page.value) = 'object' THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+            WHEN jsonb_typeof(page.value) = 'string' THEN trim(both '"' from page.value::text)
+            ELSE ''
+          END
+        ))
+        FROM jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+            THEN q.stage_output->'classify'->'ocr_text_per_page'
+            ELSE '[]'::jsonb
+          END
+        ) AS page(value)
+      ), 0) AS ocr_chars,
+      COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
+      COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
+      w.media_type,
+      q.stage_output
+    FROM intake_queue q
+    JOIN whatsapp_message_context w
+      ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+    LEFT JOIN latest l ON l.queue_id = q.id
+    WHERE q.source = 'whatsapp'
+      AND q.source_ref LIKE 'wa-mirror:%'
+      AND NOT (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+)
+SELECT *
+  FROM direct_docs
+ WHERE doc_type <> 'unknown'
+   AND ocr_chars >= $2
+   AND type_confidence >= $3
+ ORDER BY id DESC
+ LIMIT $1
+"""
+
 _ANSWER_RE = re.compile(r"[a-z_]+")
 
 
@@ -309,6 +368,22 @@ def _placement_preview_rows(counter: Counter[tuple[str, str, str]]) -> list[dict
     ]
 
 
+def _confusion_preview_rows(counter: Counter[tuple[str, str, str, str]]) -> list[dict[str, int | str]]:
+    positions = {key: idx for idx, key in enumerate(counter.keys())}
+    return [
+        {
+            "expected_doc_type": expected_type,
+            "predicted_doc_type": predicted_type,
+            "expected_workspace_bucket": expected_workspace,
+            "predicted_workspace_bucket": predicted_workspace,
+            "docs": count,
+        }
+        for (expected_type, predicted_type, expected_workspace, predicted_workspace), count in sorted(
+            counter.items(), key=lambda item: (-item[1], positions[item[0]])
+        )
+    ]
+
+
 def _qwen_acceptance_gate(
     *,
     classified_attempts: int,
@@ -337,6 +412,39 @@ def _qwen_acceptance_gate(
         "reason": reason,
         "candidate_rate": candidate_rate,
         "min_candidate_rate": safe_min_candidate_rate,
+        "classified_attempts": classified_attempts,
+        "min_classified_attempts": safe_min_classified_attempts,
+    }
+
+
+def _qwen_benchmark_gate(
+    *,
+    classified_attempts: int,
+    workspace_matches: int,
+    min_workspace_accuracy: float,
+    min_classified_attempts: int,
+) -> dict[str, int | float | str]:
+    safe_min_workspace_accuracy = min(max(min_workspace_accuracy, 0.0), 1.0)
+    safe_min_classified_attempts = max(min_classified_attempts, 1)
+    workspace_accuracy = (
+        round(workspace_matches / classified_attempts, 4)
+        if classified_attempts > 0
+        else 0.0
+    )
+    if classified_attempts < safe_min_classified_attempts:
+        status = "insufficient_sample"
+        reason = "not_enough_classified_attempts"
+    elif workspace_accuracy >= safe_min_workspace_accuracy:
+        status = "workspace_benchmark_ready"
+        reason = "workspace_accuracy_met"
+    else:
+        status = "workspace_benchmark_review"
+        reason = "workspace_accuracy_below_threshold"
+    return {
+        "status": status,
+        "reason": reason,
+        "workspace_accuracy": workspace_accuracy,
+        "min_workspace_accuracy": safe_min_workspace_accuracy,
         "classified_attempts": classified_attempts,
         "min_classified_attempts": safe_min_classified_attempts,
     }
@@ -592,6 +700,95 @@ async def run_qwen_text_sample(
     }
 
 
+async def run_qwen_known_doc_benchmark(
+    rows: Iterable[Mapping[str, Any] | Any],
+    *,
+    ollama_url: str,
+    model: str,
+    timeout_seconds: float,
+    ocr_max_chars: int = DEFAULT_QWEN_OCR_MAX_CHARS,
+    min_workspace_accuracy: float = DEFAULT_QWEN_MIN_WORKSPACE_ACCURACY,
+    min_classified_attempts: int = DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS,
+) -> dict[str, Any]:
+    """Benchmark local Qwen against known direct docs without exposing raw OCR."""
+    expected_workspaces: Counter[str] = Counter()
+    predicted_workspaces: Counter[str] = Counter()
+    confusion: Counter[tuple[str, str, str, str]] = Counter()
+    errors: Counter[str] = Counter()
+    attempted = 0
+    failed_attempts = 0
+    exact_doc_type_matches = 0
+    workspace_matches = 0
+    unknown_predictions = 0
+    safe_ocr_max_chars = max(ocr_max_chars, 1)
+
+    async with httpx.AsyncClient() as client:
+        for row in rows:
+            attempted += 1
+            expected_type = str(_record_get(row, "doc_type", "unknown") or "unknown").lower()
+            expected_workspace = workspace_bucket_for_doc_type(expected_type)
+            expected_workspaces[expected_workspace] += 1
+            try:
+                answer = await _qwen_classify_text(
+                    client,
+                    ollama_url=ollama_url,
+                    model=model,
+                    ocr_text=_saved_ocr_text(_record_get(row, "stage_output"), max_chars=safe_ocr_max_chars),
+                    timeout_seconds=timeout_seconds,
+                )
+            except Exception as exc:  # local diagnostic only; aggregate class name.
+                failed_attempts += 1
+                errors[type(exc).__name__] += 1
+                continue
+
+            predicted_type = answer or "unknown"
+            predicted_workspace = workspace_bucket_for_doc_type(predicted_type)
+            predicted_workspaces[predicted_workspace] += 1
+            confusion[(expected_type, predicted_type, expected_workspace, predicted_workspace)] += 1
+            if predicted_type == expected_type:
+                exact_doc_type_matches += 1
+            if predicted_workspace == expected_workspace:
+                workspace_matches += 1
+            if predicted_type == "unknown":
+                unknown_predictions += 1
+
+    classified_attempts = attempted - failed_attempts
+    exact_doc_type_accuracy = (
+        round(exact_doc_type_matches / classified_attempts, 4)
+        if classified_attempts > 0
+        else 0.0
+    )
+    workspace_accuracy = (
+        round(workspace_matches / classified_attempts, 4)
+        if classified_attempts > 0
+        else 0.0
+    )
+    return {
+        "mode": "local_ollama_text_only_known_doc_benchmark",
+        "model": model,
+        "ocr_max_chars": safe_ocr_max_chars,
+        "attempted": attempted,
+        "classified_attempts": classified_attempts,
+        "failed_attempts": failed_attempts,
+        "not_classified_due_error": failed_attempts,
+        "exact_doc_type_matches": exact_doc_type_matches,
+        "workspace_matches": workspace_matches,
+        "unknown_predictions": unknown_predictions,
+        "exact_doc_type_accuracy": exact_doc_type_accuracy,
+        "workspace_accuracy": workspace_accuracy,
+        "benchmark_gate": _qwen_benchmark_gate(
+            classified_attempts=classified_attempts,
+            workspace_matches=workspace_matches,
+            min_workspace_accuracy=min_workspace_accuracy,
+            min_classified_attempts=min_classified_attempts,
+        ),
+        "confusion_preview": _confusion_preview_rows(confusion),
+        "expected_workspace_buckets": _count_rows(expected_workspaces, key_name="bucket"),
+        "predicted_workspace_buckets": _count_rows(predicted_workspaces, key_name="bucket"),
+        "errors": dict(errors),
+    }
+
+
 async def run_audit(
     database_url: str,
     *,
@@ -604,6 +801,8 @@ async def run_audit(
     qwen_ocr_max_chars: int = DEFAULT_QWEN_OCR_MAX_CHARS,
     qwen_min_candidate_rate: float = DEFAULT_QWEN_MIN_CANDIDATE_RATE,
     qwen_min_classified_attempts: int = DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS,
+    qwen_known_sample: int = 0,
+    qwen_min_workspace_accuracy: float = DEFAULT_QWEN_MIN_WORKSPACE_ACCURACY,
 ) -> dict[str, Any]:
     pool = await asyncpg.create_pool(dsn=database_url, min_size=1, max_size=2)
     try:
@@ -615,6 +814,18 @@ async def run_audit(
             qwen_rows = (
                 _records(await conn.fetch(DIRECT_DOC_QWEN_SAMPLE_SQL, qwen_text_sample, TEXT_PARSER_MIN_CHARS))
                 if qwen_text_sample > 0
+                else []
+            )
+            qwen_known_rows = (
+                _records(
+                    await conn.fetch(
+                        DIRECT_DOC_QWEN_KNOWN_BENCHMARK_SQL,
+                        qwen_known_sample,
+                        TEXT_PARSER_MIN_CHARS,
+                        HIGH_CONFIDENCE_THRESHOLD,
+                    )
+                )
+                if qwen_known_sample > 0
                 else []
             )
     finally:
@@ -637,6 +848,16 @@ async def run_audit(
             min_candidate_rate=qwen_min_candidate_rate,
             min_classified_attempts=qwen_min_classified_attempts,
         )
+    if qwen_known_rows:
+        report["qwen_known_benchmark"] = await run_qwen_known_doc_benchmark(
+            qwen_known_rows,
+            ollama_url=ollama_url,
+            model=qwen_model,
+            timeout_seconds=qwen_timeout_seconds,
+            ocr_max_chars=qwen_ocr_max_chars,
+            min_workspace_accuracy=qwen_min_workspace_accuracy,
+            min_classified_attempts=qwen_min_classified_attempts,
+        )
     return report
 
 
@@ -649,6 +870,7 @@ def build_dashboard_snapshot(
         "generated_at": generated_at or datetime.now(timezone.utc).isoformat(),
         "pii_policy": str(report.get("pii_policy", "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr")),
         "qwen_text_sample": report.get("qwen_text_sample") or {},
+        "qwen_known_benchmark": report.get("qwen_known_benchmark") or {},
     }
 
 
@@ -715,6 +937,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="minimum successful qwen classifications before evaluating candidate readiness",
     )
     parser.add_argument(
+        "--qwen-known-sample",
+        type=int,
+        default=0,
+        help="run local Ollama/Qwen benchmark over this many known high-confidence docs",
+    )
+    parser.add_argument(
+        "--qwen-min-workspace-accuracy",
+        type=float,
+        default=DEFAULT_QWEN_MIN_WORKSPACE_ACCURACY,
+        help="minimum workspace-bucket accuracy before marking qwen benchmark ready",
+    )
+    parser.add_argument(
         "--write-dashboard-snapshot",
         default="",
         help="optional path for a non-PII qwen gate snapshot consumed by wa-dashboard",
@@ -736,6 +970,8 @@ async def main(argv: list[str] | None = None) -> int:
         qwen_ocr_max_chars=max(args.qwen_ocr_max_chars, 1),
         qwen_min_candidate_rate=min(max(args.qwen_min_candidate_rate, 0.0), 1.0),
         qwen_min_classified_attempts=max(args.qwen_min_classified_attempts, 1),
+        qwen_known_sample=max(args.qwen_known_sample, 0),
+        qwen_min_workspace_accuracy=min(max(args.qwen_min_workspace_accuracy, 0.0), 1.0),
     )
     if args.write_dashboard_snapshot:
         snapshot_path = Path(args.write_dashboard_snapshot).expanduser()

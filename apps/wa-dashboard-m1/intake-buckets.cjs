@@ -117,11 +117,52 @@ function buildQwenBatchGateSummary(directActionSummary, probeSnapshot) {
   };
 }
 
+function buildQwenKnownBenchmarkSummary(probeSnapshot) {
+  const benchmark = probeSnapshot?.qwen_known_benchmark || null;
+  const gate = benchmark?.benchmark_gate || null;
+  const generatedAt = probeSnapshot?.generated_at || null;
+
+  if (!gate) {
+    return {
+      status: "benchmark_required",
+      reason: "no_qwen_known_benchmark_snapshot",
+      sampled_docs: Number(benchmark?.attempted || 0),
+      classified_attempts: Number(benchmark?.classified_attempts || 0),
+      failed_attempts: Number(benchmark?.failed_attempts || 0),
+      exact_doc_type_matches: Number(benchmark?.exact_doc_type_matches || 0),
+      workspace_matches: Number(benchmark?.workspace_matches || 0),
+      unknown_predictions: Number(benchmark?.unknown_predictions || 0),
+      exact_doc_type_accuracy: Number(benchmark?.exact_doc_type_accuracy || 0),
+      workspace_accuracy: Number(benchmark?.workspace_accuracy || 0),
+      min_workspace_accuracy: 0.7,
+      generated_at: generatedAt,
+      confusion_preview: [],
+    };
+  }
+
+  return {
+    status: String(gate.status || "benchmark_required"),
+    reason: String(gate.reason || "unknown"),
+    sampled_docs: Number(benchmark.attempted || 0),
+    classified_attempts: Number(gate.classified_attempts || benchmark.classified_attempts || 0),
+    failed_attempts: Number(benchmark.failed_attempts || 0),
+    exact_doc_type_matches: Number(benchmark.exact_doc_type_matches || 0),
+    workspace_matches: Number(benchmark.workspace_matches || 0),
+    unknown_predictions: Number(benchmark.unknown_predictions || 0),
+    exact_doc_type_accuracy: Number(benchmark.exact_doc_type_accuracy || 0),
+    workspace_accuracy: Number(gate.workspace_accuracy || benchmark.workspace_accuracy || 0),
+    min_workspace_accuracy: Number(gate.min_workspace_accuracy || 0.7),
+    generated_at: generatedAt,
+    confusion_preview: Array.isArray(benchmark.confusion_preview) ? benchmark.confusion_preview : [],
+  };
+}
+
 module.exports = {
   HIGH_CONFIDENCE_THRESHOLD,
   TEXT_PARSER_MIN_CHARS,
   actionBucketForRow,
   buildDirectActionSummary,
+  buildQwenKnownBenchmarkSummary,
   buildQwenBatchGateSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
