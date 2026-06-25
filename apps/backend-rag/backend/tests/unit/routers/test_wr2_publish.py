@@ -277,3 +277,109 @@ def test_content_hash_is_stable_and_order_sensitive() -> None:
 
     # MagicMock import kept for parity with other router tests' tooling surface.
     assert isinstance(MagicMock(), MagicMock)
+
+
+# ── /upload-slide : PNG bytes -> public Tigris URL ─────────────────────────────
+
+# A minimal valid 1x1 PNG (magic bytes + IHDR + IEND), enough to pass the magic
+# check. The real bytes never reach Tigris in tests — upload_png is mocked.
+_PNG_1X1 = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+    b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+def test_upload_slide_returns_public_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PNG is uploaded to Tigris and the public URL is returned. upload_png is
+    mocked so no real S3 call happens; we assert the bytes + key args flow through."""
+    captured: dict[str, Any] = {}
+
+    def fake_upload_png(s3: Any, png: Any, *, draft_id: str, slide_index: int, **kw: Any):  # noqa: ANN401
+        captured["bytes_len"] = len(png)
+        captured["draft_id"] = draft_id
+        captured["slide_index"] = slide_index
+        url = f"https://nuzantara-warroom-images.fly.storage.tigris.dev/wr2-ig/{draft_id}/{slide_index:02d}.png"
+        return url, f"wr2-ig/{draft_id}/{slide_index:02d}.png"
+
+    monkeypatch.setattr(
+        "backend.services.canva_renderer_v2._tigris.get_s3_client",
+        lambda: MagicMock(),
+    )
+    monkeypatch.setattr(
+        "backend.services.canva_renderer_v2._tigris.upload_png", fake_upload_png
+    )
+
+    app = _app(ADMIN_USER)
+    try:
+        resp = TestClient(app).post(
+            "/api/war-room/upload-slide",
+            files={"file": ("01.png", _PNG_1X1, "image/png")},
+            data={"draft_id": "my-carousel", "slide_index": "0"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["url"].endswith("/wr2-ig/my-carousel/00.png")
+    assert data["slide_index"] == 0
+    assert captured["bytes_len"] == len(_PNG_1X1)
+    assert captured["draft_id"] == "my-carousel"
+
+
+def test_upload_slide_non_admin_is_forbidden() -> None:
+    app = _app(NON_ADMIN_USER)
+    try:
+        resp = TestClient(app).post(
+            "/api/war-room/upload-slide",
+            files={"file": ("01.png", _PNG_1X1, "image/png")},
+            data={"draft_id": "my-carousel", "slide_index": "0"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 403
+
+
+def test_upload_slide_rejects_non_png() -> None:
+    """A body without the PNG magic bytes is rejected 400 before touching Tigris."""
+    app = _app(ADMIN_USER)
+    try:
+        resp = TestClient(app).post(
+            "/api/war-room/upload-slide",
+            files={"file": ("evil.png", b"GIF89a not a png", "image/png")},
+            data={"draft_id": "my-carousel", "slide_index": "0"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert "not a PNG" in resp.json()["detail"]
+
+
+def test_upload_slide_tigris_failure_is_502(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A TigrisError surfaces as 502 (upstream storage failure), not a 500."""
+    from backend.services.canva_renderer_v2._tigris import TigrisError
+
+    def boom(*a: Any, **k: Any) -> None:  # noqa: ANN401
+        raise TigrisError("simulated S3 outage")
+
+    monkeypatch.setattr(
+        "backend.services.canva_renderer_v2._tigris.get_s3_client",
+        lambda: MagicMock(),
+    )
+    monkeypatch.setattr(
+        "backend.services.canva_renderer_v2._tigris.upload_png", boom
+    )
+
+    app = _app(ADMIN_USER)
+    try:
+        resp = TestClient(app).post(
+            "/api/war-room/upload-slide",
+            files={"file": ("01.png", _PNG_1X1, "image/png")},
+            data={"draft_id": "my-carousel", "slide_index": "0"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 502
+    assert "Tigris upload failed" in resp.json()["detail"]
