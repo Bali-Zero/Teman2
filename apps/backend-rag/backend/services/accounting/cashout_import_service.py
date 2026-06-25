@@ -84,17 +84,20 @@ def _parse_week_title(cell0: str) -> date | None:
 def map_cashout_row(row: CashoutRow, *, week_start: date) -> dict[str, Any]:
     """Map one parsed CashoutRow onto a weekly_cashout insert dict.
 
-    The cashout worksheet is income from confirmed work, so every row is an
-    inbound invoice payment. The two margin columns (BS + BZ) collapse into the
-    single margin_idr column. The headline number lives in total_income_idr for
-    BZ-schema rows and in final_price_idr for BS-schema rows.
+    The GABUNGAN PDF is Asya's *worksheet* — the money she is booking / expects
+    for the week — NOT confirmed cash in the bank. Every row therefore lands as
+    type 'cashout_worksheet' (a planning/draft state); a bank reconciliation
+    promotes it to a real 'invoice_payment' once the money actually lands. The
+    two margin columns (BS + BZ) collapse into the single margin_idr column. The
+    headline number lives in total_income_idr for BZ-schema rows and in
+    final_price_idr for BS-schema rows.
     """
     final = row.total_income_idr or row.final_price_idr
     return {
         "movement_date": week_start,
         "week_label": week_label_for(week_start),
         "direction": "in",
-        "type": "invoice_payment",
+        "type": "cashout_worksheet",
         "counterparty": row.client_name,
         "description": row.note or None,
         "category": row.process or None,

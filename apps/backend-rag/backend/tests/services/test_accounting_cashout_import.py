@@ -69,7 +69,9 @@ def test_map_simple_row_from_real_pdf() -> None:
     assert out["movement_date"] == date(2026, 3, 6)
     assert out["week_label"] == "2026-W10"  # 6 Mar 2026 is ISO week 10
     assert out["direction"] == "in"
-    assert out["type"] == "invoice_payment"
+    # GABUNGAN rows are Asya's worksheet (draft), not confirmed income — they
+    # land as 'cashout_worksheet' until a reconciliation promotes them.
+    assert out["type"] == "cashout_worksheet"
     assert out["counterparty"] == "ANASTASIIA KOVALENKO (RUSLANA)"
     assert out["category"] == "Bridging Visa"
     assert out["pnbp_idr"] == 1_000_000
