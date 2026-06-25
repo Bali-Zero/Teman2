@@ -73,8 +73,9 @@ async def evaluate_samples(
             expected_fields=sample["expected_fields"],
             generate_fn=generate_fn,
         )
-        if sample.get("id") is not None:
-            result["id"] = sample["id"]
+        for key in ("id", "seconds", "elapsed_s", "error", "chars"):
+            if sample.get(key) is not None:
+                result[key] = sample[key]
         results.append(result)
     return ocr_quality.summarize_evaluations(results)
 

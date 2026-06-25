@@ -73,6 +73,8 @@ def test_script_evaluates_jsonl_and_summarizes_by_provider(tmp_path: Path) -> No
                 "expiry": "2027-06-25",
                 "sponsor": "PT BALI ZERO TEST",
             },
+            "seconds": 42.5,
+            "error": None,
         },
         {
             "id": "kitas-gemini-missing",
@@ -90,6 +92,8 @@ def test_script_evaluates_jsonl_and_summarizes_by_provider(tmp_path: Path) -> No
                 "expiry": "2027-06-25",
                 "sponsor": "PT BALI ZERO TEST",
             },
+            "seconds": 18.0,
+            "error": "partial_ocr",
         },
     ]
     sample_path.write_text(
@@ -110,7 +114,12 @@ def test_script_evaluates_jsonl_and_summarizes_by_provider(tmp_path: Path) -> No
     payload = json.loads(result.stdout)
     assert payload["sample_count"] == 2
     assert payload["provider_summary"]["ollama"]["avg_field_score"] == 1.0
+    assert payload["provider_summary"]["ollama"]["elapsed_avg_s"] == 42.5
     assert payload["provider_summary"]["gemini"]["avg_field_score"] == 0.5
+    assert payload["provider_summary"]["gemini"]["error_count"] == 1
+    assert payload["provider_summary"]["gemini"]["elapsed_avg_s"] == 18.0
+    assert payload["results"][1]["seconds"] == 18.0
+    assert payload["results"][1]["error"] == "partial_ocr"
     assert payload["results"][1]["field_score"]["missing_fields"] == [
         "kitas_no",
         "sponsor",

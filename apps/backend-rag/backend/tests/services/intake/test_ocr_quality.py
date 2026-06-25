@@ -129,16 +129,22 @@ def test_summarize_evaluations_groups_by_provider():
                 "provider": "ollama",
                 "doc_type_match": True,
                 "field_score": {"score": 1.0, "matched_count": 4, "missing_count": 0},
+                "seconds": 40.0,
+                "error": None,
             },
             {
                 "provider": "ollama",
                 "doc_type_match": False,
                 "field_score": {"score": 0.25, "matched_count": 1, "missing_count": 3},
+                "elapsed_s": 20.0,
+                "error": "timeout",
             },
             {
                 "provider": "gemini",
                 "doc_type_match": True,
                 "field_score": {"score": 0.5, "matched_count": 2, "missing_count": 2},
+                "seconds": 10.0,
+                "error": "",
             },
         ]
     )
@@ -151,5 +157,12 @@ def test_summarize_evaluations_groups_by_provider():
         "avg_field_score": 0.625,
         "matched_fields": 5,
         "missing_fields": 3,
+        "error_count": 1,
+        "elapsed_total_s": 60.0,
+        "elapsed_avg_s": 30.0,
+        "elapsed_min_s": 20.0,
+        "elapsed_max_s": 40.0,
     }
     assert summary["provider_summary"]["gemini"]["avg_field_score"] == 0.5
+    assert summary["provider_summary"]["gemini"]["error_count"] == 0
+    assert summary["provider_summary"]["gemini"]["elapsed_avg_s"] == 10.0

@@ -51,6 +51,16 @@ def _candidate_field_names(name: str, doc_type: str | None) -> tuple[str, ...]:
     return (name, *aliases)
 
 
+def _elapsed_seconds(result: Mapping[str, Any]) -> float | None:
+    """Return provider runtime when benchmark rows include it."""
+    raw = result.get("elapsed_s")
+    if raw is None:
+        raw = result.get("seconds")
+    if not isinstance(raw, int | float):
+        return None
+    return float(raw)
+
+
 def _score_one_field(
     *,
     expected: Any,
@@ -187,6 +197,8 @@ def summarize_evaluations(evaluations: list[Mapping[str, Any]]) -> dict[str, Any
                 "field_score_total": 0.0,
                 "matched_fields": 0,
                 "missing_fields": 0,
+                "error_count": 0,
+                "elapsed_values": [],
             },
         )
         bucket["samples"] += 1
@@ -195,18 +207,34 @@ def summarize_evaluations(evaluations: list[Mapping[str, Any]]) -> dict[str, Any
         bucket["field_score_total"] += float(field_score.get("score") or 0.0)
         bucket["matched_fields"] += int(field_score.get("matched_count") or 0)
         bucket["missing_fields"] += int(field_score.get("missing_count") or 0)
+        if result.get("error"):
+            bucket["error_count"] += 1
+        if (elapsed_s := _elapsed_seconds(result)) is not None:
+            bucket["elapsed_values"].append(elapsed_s)
 
     provider_summary: dict[str, dict[str, Any]] = {}
     for provider, bucket in grouped.items():
         samples = bucket["samples"]
-        provider_summary[provider] = {
+        summary = {
             "samples": samples,
             "doc_type_matches": bucket["doc_type_matches"],
             "doc_type_match_rate": round(bucket["doc_type_matches"] / samples, 4),
             "avg_field_score": round(bucket["field_score_total"] / samples, 4),
             "matched_fields": bucket["matched_fields"],
             "missing_fields": bucket["missing_fields"],
+            "error_count": bucket["error_count"],
         }
+        elapsed_values = bucket["elapsed_values"]
+        if elapsed_values:
+            summary.update(
+                {
+                    "elapsed_total_s": round(sum(elapsed_values), 3),
+                    "elapsed_avg_s": round(sum(elapsed_values) / len(elapsed_values), 3),
+                    "elapsed_min_s": round(min(elapsed_values), 3),
+                    "elapsed_max_s": round(max(elapsed_values), 3),
+                }
+            )
+        provider_summary[provider] = summary
 
     return {
         "sample_count": len(evaluations),
