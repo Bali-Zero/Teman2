@@ -168,7 +168,7 @@ HARD RULES:
 - NEVER use tones "cinico" or "istituzionale_severo" (legacy WR1, FORBIDDEN)
 - Language: ENGLISH (international expat audience)
 - Headlines max 60 characters
-- Body max 280 characters
+- Body max 280 characters AND ~40 words (whichever first; ~25-35 words ideal)
 - Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
 - LAST slide = CTA to Bali Zero
 - HERO slides must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups (text-only slides do NOT need image_prompt)
@@ -245,11 +245,13 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    END of the body in the form "[Source: <law-or-doc>]" — never at the
    beginning, never as the entire body.
 
-2. Body length: TARGET ~50-70 words (≈350-450 characters). Hard cap 280
-   characters per the format constraint above. If you cannot fit the story
-   in 280 chars, cut the citation, not the story. The skill that paints
-   these onto Canva slides has fixed text boxes; longer copy will overflow
-   and look bad.
+2. Body length: TARGET ~25-35 words (≈180-250 characters). HARD cap 280
+   characters AND ~40 words — whichever is hit first. Editorial reference
+   bodies (NYT/FT carousels) cap at ~25 words / 2-3 short sentences; past
+   ~40 words a slide reads as a dense legal-fine-print "text brick" the
+   vision critic rejects, ESPECIALLY on photo slides where the body renders
+   over an image. If you cannot fit the story, cut the citation, not the
+   story. Fixed text boxes overflow and look bad with longer copy.
 
 3. Headline is the HOOK, not the topic title. "Sham Investor KITAS: The
    Clock Is Ticking" is good (urgency, stakes). "Field Inspections Are
