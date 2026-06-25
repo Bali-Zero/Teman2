@@ -290,6 +290,12 @@ def _digits_only(value: Any) -> str | None:
     return d or None
 
 
+def _looks_like_company_name(value: str) -> bool:
+    """True for common Indonesian company/entity prefixes."""
+    normalized = re.sub(r"\s+", " ", value.strip().upper())
+    return normalized.startswith(("PT ", "CV ", "UD ", "YAYASAN ", "PT."))
+
+
 def normalize_sender_phone(value: Any) -> str | None:
     """Normalise a sender phone for ``clients.phone_normalized`` matching.
 
@@ -790,10 +796,25 @@ async def resolve_entity(
         subject_name: str | None = None
         if not strong:
             company_name = _field_value(extracted_fields, "company_name")
+            account_holder = _field_value(extracted_fields, "account_holder")
+            if (
+                not company_name
+                and dt == "bank_statement"
+                and account_holder
+                and _looks_like_company_name(str(account_holder))
+            ):
+                company_name = account_holder
             person_name = (
                 _field_value(extracted_fields, "name")
                 or _field_value(extracted_fields, "full_name")
             )
+            if (
+                not person_name
+                and dt == "bank_statement"
+                and account_holder
+                and not _looks_like_company_name(str(account_holder))
+            ):
+                person_name = account_holder
             subject_name = (
                 str(company_name) if company_name
                 else (str(person_name) if person_name else None)

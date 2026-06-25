@@ -235,6 +235,85 @@ async def test_passport_partial_mrz_merges_with_model_output():
     assert out["fields"]["expiry"]["value"] == "2030-04-15"
 
 
+async def test_kitas_label_fields_skip_model_call():
+    """Clearly-labelled KITAS OCR carries routing-critical fields without SEA-LION."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "KARTU IZIN TINGGAL TERBATAS\n"
+        "No. KITAS : 2C11JE0001-X\n"
+        "Nama : MARIO ROSSI\n"
+        "Berlaku Hingga : 31 DEC 2027\n"
+        "Penjamin : PT BALI ZERO"
+    )
+    out = await extract.extract_fields("kitas", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["kitas_labels"]
+    assert out["fields"]["kitas_no"]["value"] == "2C11JE0001-X"
+    assert out["fields"]["name"]["value"] == "Mario Rossi"
+    assert out["fields"]["expiry"]["value"] == "2027-12-31"
+    assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO"
+
+
+async def test_ktp_label_fields_skip_model_call():
+    """Clearly-labelled KTP OCR extracts NIK/name without the heavy model."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PROVINSI BALI\n"
+        "NIK : 5101010101010001\n"
+        "Nama : MADE SARI\n"
+        "Tempat/Tgl Lahir : DENPASAR, 01-01-1990\n"
+        "Alamat : JL SUNSET ROAD"
+    )
+    out = await extract.extract_fields("ktp", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["ktp_labels"]
+    assert out["fields"]["nik"]["value"] == "5101010101010001"
+    assert out["fields"]["name"]["value"] == "Made Sari"
+    assert out["fields"]["dob"]["value"] == "1990-01-01"
+    assert out["fields"]["address"]["value"] == "JL SUNSET ROAD"
+
+
+async def test_bank_statement_label_fields_skip_model_call():
+    """Bank statements can expose account holder/number/balance in labels."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PT BANK CENTRAL ASIA TBK\n"
+        "Nama Rekening : MARIO ROSSI\n"
+        "No. Rekening : 1234567890\n"
+        "Periode : JUNI 2026\n"
+        "Saldo Akhir : IDR 100,000,000"
+    )
+    out = await extract.extract_fields("bank_statement", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["bank_statement_labels"]
+    assert out["fields"]["account_holder"]["value"] == "Mario Rossi"
+    assert out["fields"]["bank_name"]["value"] == "BCA"
+    assert out["fields"]["account_no"]["value"] == "1234567890"
+    assert out["fields"]["statement_period"]["value"] == "JUNI 2026"
+    assert out["fields"]["balance"]["value"] == "IDR 100,000,000"
+
+
 async def test_akta_list_fields():
     payload = {
         "company_name": {"value": "PT MAJU", "source_page": 1},

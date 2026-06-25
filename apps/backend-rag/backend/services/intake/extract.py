@@ -23,7 +23,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -64,6 +66,8 @@ _CONNECT_TIMEOUT_SECONDS: float = 5.0
 _PRESENT_CONFIDENCE: float = 0.85
 _LOW_CONFIDENCE_THRESHOLD: float = 0.60  # mirrors evidence-scoring CAUTIOUS band.
 _MRZ_CONFIDENCE: float = 0.95
+_LABEL_CONFIDENCE: float = 0.90
+_DETERMINISTIC_LABEL_MODEL: str = "deterministic_labels"
 
 # --- Persistent async HTTP client (Golden Rule #10: never per-call). ---
 _client: httpx.AsyncClient | None = None
@@ -533,6 +537,271 @@ def _merge_deterministic_fields(
             fields[name] = value
 
 
+# ---------------------------------------------------------------------------
+# Deterministic labelled-field extraction for routing-critical simple docs.
+# ---------------------------------------------------------------------------
+
+_ID_MONTHS: dict[str, int] = {
+    "JANUARI": 1,
+    "FEBRUARI": 2,
+    "MARET": 3,
+    "APRIL": 4,
+    "MEI": 5,
+    "JUNI": 6,
+    "JULI": 7,
+    "AGUSTUS": 8,
+    "AUGUSTUS": 8,
+    "SEPTEMBER": 9,
+    "OKTOBER": 10,
+    "NOVEMBER": 11,
+    "DESEMBER": 12,
+}
+
+
+def _blank_fields(doc_type: str) -> dict[str, dict[str, Any]]:
+    return {
+        name: {"value": None, "confidence": 0.0, "source_page": None}
+        for name, _is_list, _desc in DOC_TYPE_FIELDS[doc_type]
+    }
+
+
+def _clean_label_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = re.sub(r"\s+", " ", value).strip(" \t:-")
+    if not cleaned or cleaned.lower() in {"null", "none", "n/a", "-"}:
+        return None
+    return cleaned
+
+
+def _field(value: str | None, page: int) -> dict[str, Any] | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    return {"value": cleaned, "confidence": _LABEL_CONFIDENCE, "source_page": page}
+
+
+def _title_person_name(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    upper = cleaned.upper()
+    if upper.startswith("PT "):
+        rest = title_case_name(cleaned[3:])
+        return f"PT {rest}" if rest else "PT"
+    return title_case_name(cleaned) if cleaned == upper else cleaned
+
+
+def _normalise_label_date(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    direct = normalize_date(cleaned)
+    if direct:
+        return direct
+    numeric = re.fullmatch(r"(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})", cleaned)
+    if numeric:
+        day, month, year = (int(numeric.group(1)), int(numeric.group(2)), int(numeric.group(3)))
+        if year < 100:
+            year = 1900 + year if year > 50 else 2000 + year
+        try:
+            datetime(year, month, day)
+            return f"{year:04d}-{month:02d}-{day:02d}"
+        except ValueError:
+            return None
+    text = re.fullmatch(r"(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})", cleaned)
+    if text:
+        day = int(text.group(1))
+        month = _ID_MONTHS.get(text.group(2).upper())
+        year = int(text.group(3))
+        if month is not None:
+            try:
+                datetime(year, month, day)
+                return f"{year:04d}-{month:02d}-{day:02d}"
+            except ValueError:
+                return None
+    return None
+
+
+def _first_line_match(
+    pages: list[str],
+    pattern: str,
+    *,
+    flags: int = re.IGNORECASE,
+) -> tuple[str, int] | None:
+    regex = re.compile(pattern, flags)
+    for page_no, page in enumerate(pages, start=1):
+        for line in str(page or "").splitlines():
+            match = regex.search(line.strip())
+            if match:
+                value = _clean_label_value(match.group(1))
+                if value:
+                    return value, page_no
+    return None
+
+
+def _set_if_present(
+    fields: dict[str, dict[str, Any]],
+    name: str,
+    value_page: tuple[str | None, int] | None,
+    *,
+    person_name: bool = False,
+    date: bool = False,
+) -> None:
+    if value_page is None:
+        return
+    value, page = value_page
+    if person_name:
+        value = _title_person_name(value)
+    elif date:
+        value = _normalise_label_date(value)
+    parsed = _field(value, page)
+    if parsed is not None:
+        fields[name] = parsed
+
+
+def _extract_kitas_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("kitas")
+    _set_if_present(
+        fields,
+        "kitas_no",
+        _first_line_match(
+            pages,
+            r"^(?:no\.?\s*(?:kitas|itas)|nomor\s*(?:kitas|itas)|(?:kitas|itas)\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(pages, r"^(?:nama|name)\s*[:\-]\s*(?!rekening\b)(.+)$"),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "expiry",
+        _first_line_match(
+            pages,
+            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "sponsor",
+        _first_line_match(pages, r"^(?:penjamin|sponsor)\s*[:\-]\s*(.+)$"),
+    )
+    return fields
+
+
+def _extract_ktp_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("ktp")
+    _set_if_present(
+        fields,
+        "nik",
+        _first_line_match(
+            pages,
+            r"^(?:nik|nomor\s+induk\s+kependudukan)\s*[:\-]?\s*(\d[\d .\-]{10,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(pages, r"^(?:nama|name)\s*[:\-]\s*(?!rekening\b)(.+)$"),
+        person_name=True,
+    )
+    born = _first_line_match(
+        pages,
+        r"^(?:tempat\s*/?\s*tgl\s*lahir|tempat\s+tanggal\s+lahir)\s*[:\-]\s*(?:[^,]+,\s*)?(.+)$",
+    )
+    if born is None:
+        born = _first_line_match(pages, r"^(?:tanggal\s+lahir|tgl\s+lahir|dob)\s*[:\-]\s*(.+)$")
+    _set_if_present(fields, "dob", born, date=True)
+    _set_if_present(
+        fields,
+        "address",
+        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+    )
+    return fields
+
+
+def _bank_name_from_text(text: str) -> str | None:
+    upper = text.upper()
+    bank_aliases = (
+        ("BCA", ("BCA", "BANK CENTRAL ASIA")),
+        ("Mandiri", ("BANK MANDIRI", "MANDIRI")),
+        ("BNI", ("BNI", "BANK NEGARA INDONESIA")),
+        ("BRI", ("BRI", "BANK RAKYAT INDONESIA")),
+        ("CIMB Niaga", ("CIMB", "NIAGA")),
+        ("OCBC", ("OCBC",)),
+    )
+    for canonical, needles in bank_aliases:
+        if any(needle in upper for needle in needles):
+            return canonical
+    return None
+
+
+def _extract_bank_statement_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("bank_statement")
+    _set_if_present(
+        fields,
+        "account_holder",
+        _first_line_match(
+            pages,
+            r"^(?:nama\s*(?:rekening|pemilik|nasabah)|account\s*holder|customer\s*name|name)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "account_no",
+        _first_line_match(
+            pages,
+            r"^(?:no\.?\s*(?:rekening|rek|account)|account\s*(?:no|number))\s*[:\-]\s*([0-9Xx* .\-]{5,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "statement_period",
+        _first_line_match(pages, r"^(?:periode|period|statement\s*period)\s*[:\-]\s*(.+)$"),
+    )
+    _set_if_present(
+        fields,
+        "balance",
+        _first_line_match(
+            pages,
+            r"^(?:saldo\s*(?:akhir|ending)?|ending\s*balance|closing\s*balance|balance)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    combined = "\n".join(pages)
+    bank_name = _bank_name_from_text(combined)
+    if bank_name:
+        fields["bank_name"] = {"value": bank_name, "confidence": _LABEL_CONFIDENCE, "source_page": 1}
+    return fields
+
+
+def _has_any_value(fields: dict[str, dict[str, Any]], names: tuple[str, ...]) -> bool:
+    return any(fields.get(name, {}).get("value") for name in names)
+
+
+def _extract_label_fields_if_routing_useful(
+    doc_type: str,
+    pages: list[str],
+) -> tuple[dict[str, dict[str, Any]], str] | None:
+    if doc_type == "kitas":
+        fields = _extract_kitas_label_fields(pages)
+        if _has_any_value(fields, ("kitas_no", "name")):
+            return fields, "kitas_labels"
+    if doc_type == "ktp":
+        fields = _extract_ktp_label_fields(pages)
+        if _has_any_value(fields, ("nik", "name")):
+            return fields, "ktp_labels"
+    if doc_type == "bank_statement":
+        fields = _extract_bank_statement_label_fields(pages)
+        if _has_any_value(fields, ("account_holder", "account_no")):
+            return fields, "bank_statement_labels"
+    return None
+
+
 # Injectable generate fn for tests (avoids hitting Ollama). Signature mirrors a
 # subset of the Ollama /api/generate contract: (model, prompt) -> response str.
 GenerateFn = Callable[[str, str], Awaitable[str]]
@@ -642,6 +911,21 @@ async def extract_fields(
                     "deterministic_extractors": deterministic_extractors,
                     "any_low_confidence": False,
                 }
+    else:
+        labelled = _extract_label_fields_if_routing_useful(canonical, pages)
+        if labelled is not None:
+            fields, extractor_name = labelled
+            any_low = any(
+                field["confidence"] < _LOW_CONFIDENCE_THRESHOLD
+                for field in fields.values()
+            )
+            return {
+                "doc_type": canonical,
+                "fields": fields,
+                "extraction_model": _DETERMINISTIC_LABEL_MODEL,
+                "deterministic_extractors": [extractor_name],
+                "any_low_confidence": any_low,
+            }
 
     prompt = _build_prompt(canonical, pages)
     gen = generate_fn or _ollama_generate
