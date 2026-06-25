@@ -141,3 +141,51 @@ class TestNoPhantom:
             open_invoices=[],
         )
         assert out == []
+
+
+class TestZeroAmountGuard:
+    """D6: a zero/non-positive transfer or zero-amount invoice must NEVER
+    phantom-match as 'exact' (0 == 0 within tolerance would otherwise score 0.7)."""
+
+    def test_zero_transfer_no_candidate(self) -> None:
+        # A 0 IDR "transfer" against a real invoice is not a payment.
+        out = rank_candidates(
+            transfer_amount_idr=0,
+            transfer_date=date(2026, 6, 25),
+            payer_memo="X",
+            open_invoices=[_inv(1, 4_000_000, "X")],
+        )
+        assert out == []
+
+    def test_zero_amount_invoice_no_phantom_exact(self) -> None:
+        # The dangerous case: transfer 0 against a 0-amount invoice would match
+        # "exact" (abs(0) <= tolerance) without the guard. Must stay empty.
+        out = rank_candidates(
+            transfer_amount_idr=0,
+            transfer_date=date(2026, 6, 25),
+            payer_memo="X",
+            open_invoices=[_inv(1, 0, "X")],
+        )
+        assert out == []
+
+    def test_negative_transfer_no_candidate(self) -> None:
+        # A debit (money out) should never be offered as an invoice payment.
+        out = rank_candidates(
+            transfer_amount_idr=-4_000_000,
+            transfer_date=date(2026, 6, 25),
+            payer_memo="X",
+            open_invoices=[_inv(1, 4_000_000, "X")],
+        )
+        assert out == []
+
+    def test_zero_amount_invoice_ignored_real_transfer_other_matches(self) -> None:
+        # A 0-amount junk invoice is skipped, but a real invoice still matches.
+        invs = [_inv(1, 0, "Junk Row"), _inv(2, 4_000_000, "Real Client")]
+        out = rank_candidates(
+            transfer_amount_idr=4_000_000,
+            transfer_date=date(2026, 6, 25),
+            payer_memo="REAL CLIENT",
+            open_invoices=invs,
+        )
+        assert out and out[0].invoice_id == 2
+        assert all(c.invoice_id != 1 for c in out)

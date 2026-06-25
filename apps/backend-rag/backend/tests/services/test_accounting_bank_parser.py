@@ -71,6 +71,34 @@ def test_unknown_bank_raises() -> None:
         parse_csv("a,b\n1,2\n", bank_code="nope")
 
 
+def test_wrong_delimiter_raises_not_silent_empty() -> None:
+    # D7 (superscar #2 — no green-but-empty): a real CIMB export is semicolon-
+    # delimited, but a comma-delimited config would read the whole line as one
+    # column -> no date_col -> every data row skipped -> [] silently WITHOUT
+    # the guard. That must fail loudly instead.
+    cfg = BankConfig(
+        bank_code="cimb_wrongdelim",
+        date_col="Tanggal", desc_col="Keterangan",
+        debit_col="Debet", credit_col="Kredit", balance_col="Saldo",
+        decimal_comma=True, delimiter=",",  # WRONG: should be ';'
+    )
+    _CONFIGS["cimb_wrongdelim"] = cfg
+    semicolon_content = (
+        "Tanggal;Keterangan;Debet;Kredit;Saldo\n"
+        "25/06/2026;TRANSFER DARI DINA;;4.000.000,00;10.000.000,00\n"
+        "26/06/2026;BIAYA ADMIN;15.000,00;;9.985.000,00\n"
+    )
+    with pytest.raises(BankParseError, match="parsed 0 transactions"):
+        parse_csv(semicolon_content, bank_code="cimb_wrongdelim")
+
+
+def test_header_only_no_data_rows_returns_empty_not_raise() -> None:
+    # Innocence case for D7: a header with NO data rows is not a wrong-delimiter
+    # failure (skipped == 0), so it must return [] quietly, never raise.
+    out = parse_csv("Tanggal;Keterangan;Debet;Kredit;Saldo\n", bank_code="cimb_niaga")
+    assert out == []
+
+
 def test_verify_balance_ok_and_fail() -> None:
     csv_text = (
         "Tanggal;Keterangan;Debet;Kredit;Saldo\n"

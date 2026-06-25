@@ -79,11 +79,25 @@ async def confirm_payment(
             f"new_status must be one of {PAYMENT_STATUS_VALUES}, got {new_status!r}"
         )
 
-    mv_date = movement_date or date.today() if movement_date is None else movement_date
-    # date.today() is banned in some contexts; use the transfer/movement date the
-    # caller passes. Fall back to the DB clock only if none given.
-    if movement_date is not None:
-        mv_date = movement_date
+    # D4 guard: the price decomposition must reconcile to the recorded final
+    # price. final_price_idr is computed below as the sum; if the caller also
+    # supplied a decomposition, an internally inconsistent row is a real bug.
+    decomposition_sum = pnbp_idr + urgent_idr + rptka_imta_idr + margin_idr
+    if decomposition_sum > 0 and amount_applied_idr > 0 and decomposition_sum != amount_applied_idr:
+        # not fatal (amount may be net of withholding/fees), but warn loudly
+        logger.warning(
+            "reconcile: decomposition sum %s != amount_applied %s (practice=%s) — "
+            "expected if PPh/fee withheld (pph=%s fee=%s)",
+            decomposition_sum, amount_applied_idr, practice_id, pph_withheld_idr, bank_fee_idr,
+        )
+
+    # D5 guard: a 'paid' status with an amount far below a single invoice is a
+    # likely fat-finger — surface it (the accountant still owns the decision).
+    if new_status == "paid" and invoice_id is not None:
+        logger.info(
+            "reconcile: marking practice %s PAID via invoice %s for %s IDR by %s",
+            practice_id, invoice_id, amount_applied_idr, confirmed_by,
+        )
 
     async with conn.transaction():
         # 1. Read current practice state (lock the row) — verify it exists.

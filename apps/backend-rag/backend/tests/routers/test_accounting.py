@@ -143,6 +143,82 @@ class TestConfirm:
             )
         assert resp.status_code == 422
 
+    def test_confirm_success_path(self, mock_db_pool, asya_user) -> None:
+        """D3: a valid confirm returns 200, derives confirmed_by from the JWT
+        (lowercased email — never client-supplied), echoes the audit ids, and
+        invalidates the same CRM cache keys the PATCH path uses (superscar #9)."""
+        from backend.services.accounting.reconcile_service import ConfirmResult
+
+        fake_result = ConfirmResult(
+            practice_id=10,
+            invoice_id=5,
+            cashout_id=77,
+            reconciliation_log_id=88,
+            status_before="unpaid",
+            status_after="paid",
+        )
+        confirm_mock = AsyncMock(return_value=fake_result)
+        cache_mock = AsyncMock()
+
+        with patch(
+            "backend.app.routers.accounting.reconcile_service.confirm_payment", confirm_mock
+        ), patch("backend.core.cache.invalidate_cache", cache_mock):
+            client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+            resp = client.post(
+                "/api/crm/accounting/confirm",
+                json={
+                    "bank_txn_id": 3,
+                    "practice_id": 10,
+                    "invoice_id": 5,
+                    "amount_applied_idr": 4_000_000,
+                    "new_status": "paid",
+                    "payment_reference": "CIMB-REF-1",
+                    "margin_idr": 4_000_000,
+                },
+            )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["practice_id"] == 10
+        assert body["cashout_id"] == 77
+        assert body["reconciliation_log_id"] == 88
+        assert body["status_before"] == "unpaid"
+        assert body["status_after"] == "paid"
+
+        # confirmed_by comes from the JWT identity, lowercased — not the payload.
+        assert confirm_mock.await_count == 1
+        kwargs = confirm_mock.await_args.kwargs
+        assert kwargs["confirmed_by"] == "asya@balizero.com"
+        assert kwargs["practice_id"] == 10
+        assert kwargs["amount_applied_idr"] == 4_000_000
+
+        # both CRM cache namespaces invalidated.
+        invalidated = {c.args[0] for c in cache_mock.await_args_list}
+        assert "zantara:crm_practices_stats:*" in invalidated
+        assert "zantara:crm_clients_stats:*" in invalidated
+
+    def test_confirm_caps_email_case(self, mock_db_pool) -> None:
+        """confirmed_by is always lowercased even if the JWT email is mixed-case."""
+        from backend.services.accounting.reconcile_service import ConfirmResult
+
+        mixed = {"id": "asya", "email": "Asya@BaliZero.com", "role": "user"}
+        confirm_mock = AsyncMock(
+            return_value=ConfirmResult(
+                practice_id=1, invoice_id=None, cashout_id=1,
+                reconciliation_log_id=1, status_before="unpaid", status_after="paid",
+            )
+        )
+        with patch(
+            "backend.app.routers.accounting.reconcile_service.confirm_payment", confirm_mock
+        ), patch("backend.core.cache.invalidate_cache", AsyncMock()):
+            client = TestClient(_build_app(mock_db_pool, mixed), raise_server_exceptions=False)
+            resp = client.post(
+                "/api/crm/accounting/confirm",
+                json={"practice_id": 1, "amount_applied_idr": 100, "new_status": "paid"},
+            )
+        assert resp.status_code == 200
+        assert confirm_mock.await_args.kwargs["confirmed_by"] == "asya@balizero.com"
+
 
 class TestSummaryEndpoint:
     def test_summary_shape(self, mock_db_pool, asya_user) -> None:

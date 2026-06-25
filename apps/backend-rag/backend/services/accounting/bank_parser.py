@@ -191,6 +191,15 @@ def parse_csv(content: str, bank_code: str = "cimb_niaga") -> list[ParsedTxn]:
 
     if skipped:
         logger.info("bank_parser[%s]: parsed %d txns, skipped %d rows", bank_code, len(out), skipped)
+
+    # D7 (superscar #2: no green-but-empty): if the file clearly had data rows
+    # but we parsed NOTHING, that's almost certainly a wrong delimiter / wrong
+    # bank_code / unexpected layout — fail loudly instead of returning [] silently.
+    if not out and skipped > 0:
+        raise BankParseError(
+            f"parsed 0 transactions from {skipped} non-empty row(s) for bank_code={bank_code!r} "
+            f"(delimiter={cfg.delimiter!r}) — likely wrong delimiter, bank_code, or column layout"
+        )
     return out
 
 

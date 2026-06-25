@@ -65,6 +65,11 @@ def _amount_signals(transfer_idr: int, inv: OpenInvoice) -> tuple[float, list[st
     reasons: list[str] = []
     delta = transfer_idr - inv.amount_idr
 
+    # D6 guard: a zero/non-positive transfer or zero-amount invoice can never be
+    # a real payment match — never let 0==0 phantom-match as "exact".
+    if transfer_idr <= 0 or inv.amount_idr <= 0:
+        return 0.0, reasons, delta, False
+
     # Exact (within tolerance)
     if abs(delta) <= EXACT_TOLERANCE_IDR:
         reasons.append("exact amount match")

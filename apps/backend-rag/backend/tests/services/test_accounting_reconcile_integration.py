@@ -60,6 +60,34 @@ async def _try_connect() -> asyncpg.Connection | None:
     return None
 
 
+async def _fresh_db() -> tuple[asyncpg.Connection, str, str]:
+    """Create an ephemeral DB with the migration applied + minimal stubs.
+
+    Returns (conn, dbname, user). Caller is responsible for teardown via
+    _drop_db(). Skips the test if no local Postgres is reachable.
+    """
+    admin = await _try_connect()
+    if admin is None:
+        pytest.skip("no local Postgres reachable for reconcile integration test")
+    dbname = f"acc_recon_{uuid.uuid4().hex[:10]}"
+    await admin.execute(f'CREATE DATABASE "{dbname}"')
+    await admin.close()
+    user = os.environ.get("USER", "postgres")
+    conn = await asyncpg.connect(f"postgresql://{user}@localhost:5432/{dbname}")
+    await conn.execute(STUBS)
+    await conn.execute(_forward_sql())
+    return conn, dbname, user
+
+
+async def _drop_db(conn: asyncpg.Connection, dbname: str, user: str) -> None:
+    await conn.close()
+    admin2 = await asyncpg.connect(f"postgresql://{user}@localhost:5432/postgres")
+    try:
+        await admin2.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
+    finally:
+        await admin2.close()
+
+
 @pytest.mark.asyncio
 async def test_confirm_payment_full_side_effects() -> None:
     admin = await _try_connect()
@@ -153,3 +181,62 @@ async def test_confirm_payment_full_side_effects() -> None:
             await admin2.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
         finally:
             await admin2.close()
+
+
+@pytest.mark.asyncio
+async def test_confirm_payment_without_movement_date_uses_db_clock() -> None:
+    """D2: when no movement_date is passed, the cashout row is written via the
+    CURRENT_DATE SQL branch (reconcile_service.py else-path). week_label is NULL
+    (no client-supplied date to derive an ISO week), movement_date = today's DB
+    date, and the single-writer still flips practices.payment_status."""
+    conn, dbname, user = await _fresh_db()
+    try:
+        cid = await conn.fetchval("INSERT INTO clients (full_name) VALUES ('Marina P') RETURNING id")
+        pid = await conn.fetchval(
+            "INSERT INTO practices (client_id, payment_status) VALUES ($1, 'unpaid') RETURNING id", cid
+        )
+        iid = await conn.fetchval(
+            "INSERT INTO invoices (practice_id, invoice_number, amount_idr) VALUES ($1, 'INV-2', 9000000) RETURNING id",
+            pid,
+        )
+        btid = await conn.fetchval("INSERT INTO bank_statements (source_format) VALUES ('csv') RETURNING id")
+        txid = await conn.fetchval(
+            """INSERT INTO bank_transactions (statement_id, txn_date, amount_idr, direction)
+               VALUES ($1, $2, 9000000, 'credit') RETURNING id""",
+            btid, date(2026, 6, 25),
+        )
+
+        # act — NO movement_date -> CURRENT_DATE branch
+        result = await confirm_payment(
+            conn,
+            bank_txn_id=txid,
+            practice_id=pid,
+            invoice_id=iid,
+            amount_applied_idr=9_000_000,
+            new_status="paid",
+            confirmed_by="asya@balizero.com",
+            payment_reference="CIMB-REF-456",
+            margin_idr=9_000_000,
+            movement_date=None,
+        )
+
+        # single writer still flipped the status
+        prac = await conn.fetchrow("SELECT payment_status FROM practices WHERE id=$1", pid)
+        assert prac["payment_status"] == "paid"
+
+        # cashout row landed via the CURRENT_DATE branch
+        co = await conn.fetchrow(
+            "SELECT movement_date, week_label, type, direction FROM weekly_cashout WHERE id=$1",
+            result.cashout_id,
+        )
+        assert co["week_label"] is None  # no supplied date -> no ISO week label
+        today = await conn.fetchval("SELECT CURRENT_DATE")
+        assert co["movement_date"] == today
+        assert co["type"] == "invoice_payment" and co["direction"] == "in"
+
+        # audit row still written
+        rl = await conn.fetchrow("SELECT status_before, status_after FROM reconciliation_log WHERE id=$1",
+                                 result.reconciliation_log_id)
+        assert rl["status_before"] == "unpaid" and rl["status_after"] == "paid"
+    finally:
+        await _drop_db(conn, dbname, user)
