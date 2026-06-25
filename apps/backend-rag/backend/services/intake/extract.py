@@ -1273,6 +1273,75 @@ def _extract_birth_certificate_label_fields(pages: list[str]) -> dict[str, dict[
     return fields
 
 
+def _extract_marriage_certificate_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("marriage_certificate")
+    _set_if_present(
+        fields,
+        "certificate_no",
+        _first_line_match(
+            pages,
+            r"^(?:no\.?\s*(?:akta\s*)?(?:nikah|perkawinan|marriage|certificate)|nomor\s*(?:akta\s*)?(?:nikah|perkawinan|marriage|certificate)|certificate\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{2,})$",
+        ),
+    )
+
+    spouse_names: list[str] = []
+    spouse_page: int | None = None
+    for value_page in (
+        _first_line_match(pages, r"^(?:nama\s+suami|husband(?:\s+name)?)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:nama\s+istri|wife(?:\s+name)?)\s*[:\-]\s*(.+)$"),
+    ):
+        if value_page is None:
+            continue
+        value, page = value_page
+        name = _clean_label_value(_title_person_name(value))
+        if name and name not in spouse_names:
+            spouse_names.append(name)
+            if spouse_page is None:
+                spouse_page = page
+
+    if not spouse_names:
+        spouse_names_value = _first_line_match(
+            pages,
+            r"^(?:nama\s+pasangan|spouse\s*names?|spouses?)\s*[:\-]\s*(.+)$",
+        )
+        _set_list_if_present(fields, "spouse_names", spouse_names_value, person_name=True)
+        values = fields.get("spouse_names", {}).get("value")
+        if isinstance(values, list):
+            spouse_names = [str(value) for value in values if value]
+            spouse_page = fields.get("spouse_names", {}).get("source_page")
+
+    if spouse_names and spouse_page is not None:
+        fields["spouse_names"] = {
+            "value": spouse_names,
+            "confidence": _LABEL_CONFIDENCE,
+            "source_page": spouse_page,
+        }
+        fields["name"] = {
+            "value": spouse_names[0],
+            "confidence": _LABEL_CONFIDENCE,
+            "source_page": spouse_page,
+        }
+
+    _set_if_present(
+        fields,
+        "marriage_date",
+        _first_line_match(
+            pages,
+            r"^(?:tanggal\s*(?:nikah|perkawinan)|marriage\s*date|date\s+of\s+marriage)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "place",
+        _first_line_match(
+            pages,
+            r"^(?:tempat\s*(?:nikah|perkawinan)|place\s*(?:of\s*)?marriage|issuing\s*office)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    return fields
+
+
 def _bank_name_from_text(text: str) -> str | None:
     upper = text.upper()
     bank_aliases = (
@@ -1571,6 +1640,13 @@ def _extract_label_fields_if_routing_useful(
             ("name", "dob", "place_of_birth", "parents"),
         ):
             return fields, "birth_certificate_labels"
+    if doc_type == "marriage_certificate":
+        fields = _extract_marriage_certificate_label_fields(pages)
+        if fields.get("certificate_no", {}).get("value") and _has_any_value(
+            fields,
+            ("name", "spouse_names", "marriage_date", "place"),
+        ):
+            return fields, "marriage_certificate_labels"
     if doc_type == "bank_statement":
         fields = _extract_bank_statement_label_fields(pages)
         if _has_any_value(fields, ("account_holder", "account_no")):

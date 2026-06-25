@@ -542,6 +542,35 @@ async def test_birth_certificate_label_fields_skip_model_call():
     assert out["fields"]["parents"]["value"] == ["Made Parent", "Wayan Parent"]
 
 
+async def test_marriage_certificate_label_fields_skip_model_call():
+    """Clearly-labelled marriage-certificate OCR extracts spouse fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "BUKU NIKAH\n"
+        "No. Akta Nikah : MN-2026-0007\n"
+        "Nama Suami : MADE SPOUSE\n"
+        "Nama Istri : WAYAN SPOUSE\n"
+        "Tanggal Nikah : 14 Februari 2024\n"
+        "Tempat Nikah : DENPASAR"
+    )
+    out = await extract.extract_fields("buku_nikah", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "marriage_certificate"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["marriage_certificate_labels"]
+    assert out["fields"]["certificate_no"]["value"] == "MN-2026-0007"
+    assert out["fields"]["name"]["value"] == "Made Spouse"
+    assert out["fields"]["spouse_names"]["value"] == ["Made Spouse", "Wayan Spouse"]
+    assert out["fields"]["marriage_date"]["value"] == "2024-02-14"
+    assert out["fields"]["place"]["value"] == "DENPASAR"
+
+
 async def test_bank_statement_label_fields_skip_model_call():
     """Bank statements can expose account holder/number/balance in labels."""
     called = {"n": 0}
