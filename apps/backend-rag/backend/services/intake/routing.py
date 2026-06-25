@@ -754,7 +754,7 @@ async def resolve_entity(
 
         # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
         # doc-type is company-ish OR when a company strong-id is present.
-        if dt in _COMPANY_DOC_TYPES or dt == "npwp":
+        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt"}:
             strong += await _match_company_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "company"
@@ -808,6 +808,16 @@ async def resolve_entity(
                 _field_value(extracted_fields, "name")
                 or _field_value(extracted_fields, "full_name")
             )
+            if dt == "skt" and person_name and _looks_like_company_name(str(person_name)):
+                company_name = company_name or person_name
+                person_name = None
+            if not person_name and dt == "payment_receipt":
+                payer_name = _field_value(extracted_fields, "payer_name")
+                if payer_name:
+                    if _looks_like_company_name(str(payer_name)):
+                        company_name = company_name or payer_name
+                    else:
+                        person_name = payer_name
             if (
                 not person_name
                 and dt == "bank_statement"
