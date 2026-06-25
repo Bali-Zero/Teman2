@@ -1324,7 +1324,7 @@ def _extract_family_card_label_fields(pages: list[str]) -> dict[str, dict[str, A
         "name",
         _first_line_match(
             pages,
-            r"^(?:kepala\s+keluarga|nama\s+kepala\s+keluarga|head\s+of\s+family|name)\s*[:\-]\s*(.+)$",
+            r"^(?:kepala\s+keluarga|nama\s+kepala\s+keluarga|head\s+of\s+family|name)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         person_name=True,
     )
@@ -1333,14 +1333,14 @@ def _extract_family_card_label_fields(pages: list[str]) -> dict[str, dict[str, A
         "members",
         _first_line_match(
             pages,
-            r"^(?:anggota\s+keluarga|nama\s+anggota|family\s+members?|members?)\s*[:\-]\s*(.+)$",
+            r"^(?:anggota\s+keluarga|nama\s+anggota|family\s+members?|members?)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         person_name=True,
     )
     _set_if_present(
         fields,
         "address",
-        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:alamat|address)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     return fields
 

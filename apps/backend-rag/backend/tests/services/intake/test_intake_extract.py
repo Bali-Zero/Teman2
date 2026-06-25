@@ -827,6 +827,33 @@ async def test_family_card_label_fields_skip_model_call():
     assert out["fields"]["address"]["value"] == "JL SUNSET ROAD DENPASAR"
 
 
+async def test_family_card_label_fields_accept_colonless_ocr_labels():
+    """KK OCR often keeps labels but drops separators."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "KARTU KELUARGA\n"
+        "No. KK 5101010101010001\n"
+        "Kepala Keluarga MADE FAMILY\n"
+        "Anggota Keluarga MADE FAMILY; WAYAN CHILD\n"
+        "Alamat JL SUNSET ROAD DENPASAR"
+    )
+    out = await extract.extract_fields("kartu_keluarga", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "family_card"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["family_card_labels"]
+    assert out["fields"]["family_card_no"]["value"] == "5101010101010001"
+    assert out["fields"]["name"]["value"] == "Made Family"
+    assert out["fields"]["members"]["value"] == ["Made Family", "Wayan Child"]
+    assert out["fields"]["address"]["value"] == "JL SUNSET ROAD DENPASAR"
+
+
 async def test_birth_certificate_label_fields_skip_model_call():
     """Clearly-labelled birth-certificate OCR extracts child and parent fields locally."""
     called = {"n": 0}
