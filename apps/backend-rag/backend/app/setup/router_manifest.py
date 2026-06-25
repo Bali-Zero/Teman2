@@ -92,6 +92,8 @@ def _get_api_v1_prefix() -> str:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
+    # ── Accounting (cash-control for Asya) ──
+    RouterEntry(name="accounting", process_groups=_API, tags=("crm-accounting",)),
     # ── Admin ──
     RouterEntry(name="admin_conversation_cleanup", process_groups=_API, tags=("admin",)),
     RouterEntry(name="admin_crm_kg", process_groups=_API, tags=("admin", "crm-kg")),
