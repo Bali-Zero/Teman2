@@ -23,6 +23,14 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     ``routing._make_routing_key`` yields a FRESH routing_key → a new proposal
     from the improved pipeline (phone signal + vision classify fallback).
 
+``--scrub-group-phone``
+    Historical wa-mirror group documents may still carry ``intake_queue.sender_phone``
+    from before the group/direct split. Group sender numbers are participant
+    phones, often Bali Zero teammates forwarding documents, so they must not be
+    reused as client identity hints on reruns. This mode clears
+    ``sender_phone`` and ``client_id_hint`` only for queue rows joined to
+    ``whatsapp_message_context`` group chats.
+
 Law 2 / UU-PDP: everything local (local DB, local blobs, downstream OCR is
 local Ollama). Sender phones are PII — never logged at INFO with the value.
 
@@ -94,7 +102,7 @@ UPDATE intake_queue
 # Historical inbound media with NO intake_queue row (anti-join on source_ref).
 BACKFILL_SELECT_SQL = """
 SELECT w.id, w.baileys_message_id, w.media_stored_path, w.media_mime,
-       w.media_type, w.team_member_email, w.sender_phone
+       w.media_type, w.team_member_email, w.sender_phone, w.chat_type, w.group_jid
   FROM whatsapp_message_context w
  WHERE w.direction = 'inbound'
    AND w.media_stored_path IS NOT NULL
@@ -106,6 +114,39 @@ SELECT w.id, w.baileys_message_id, w.media_stored_path, w.media_mime,
          WHERE q.source_ref = 'wa-mirror:' || w.baileys_message_id
    )
  ORDER BY w.id ASC
+"""
+
+SCRUB_GROUP_PHONE_SELECT_SQL = """
+SELECT q.id, q.status
+  FROM intake_queue q
+  JOIN whatsapp_message_context w
+    ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+ WHERE q.source = 'whatsapp'
+   AND q.source_ref LIKE 'wa-mirror:%'
+   AND (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+   AND (q.sender_phone IS NOT NULL OR q.client_id_hint IS NOT NULL)
+ ORDER BY q.id
+"""
+
+SCRUB_GROUP_PHONE_APPLY_SQL = """
+WITH target AS (
+    SELECT q.id
+      FROM intake_queue q
+      JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+     WHERE q.source = 'whatsapp'
+       AND q.source_ref LIKE 'wa-mirror:%'
+       AND (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+       AND (q.sender_phone IS NOT NULL OR q.client_id_hint IS NOT NULL)
+     ORDER BY q.id
+)
+UPDATE intake_queue q
+   SET sender_phone = NULL,
+       client_id_hint = NULL,
+       updated_at = now()
+  FROM target t
+ WHERE q.id = t.id
+RETURNING q.id
 """
 
 
@@ -126,7 +167,8 @@ def row_to_enqueue_kwargs(row: Any) -> dict[str, Any]:
     """Map a whatsapp_message_context row to enqueue() keyword arguments.
 
     Mirrors the sweeper's call exactly (source_ref format is the dedup key —
-    a drifted format would break the anti-join idempotency).
+    a drifted format would break the anti-join idempotency). Group rows are
+    OCR/review-only here: do not carry participant phone into routing.
     """
     return {
         "source": _SOURCE,
@@ -134,8 +176,34 @@ def row_to_enqueue_kwargs(row: Any) -> dict[str, Any]:
         "blob_path": row["media_stored_path"],
         "mime_type": row["media_mime"],
         "received_by": row["team_member_email"],
-        "sender_phone": row["sender_phone"],
+        "sender_phone": _queue_sender_phone(row),
     }
+
+
+def _record_get(row: Any, key: str) -> Any:
+    if isinstance(row, dict):
+        return row.get(key)
+    try:
+        return row[key]
+    except KeyError:
+        return None
+
+
+def _is_direct_chat(row: Any) -> bool:
+    chat_type = str(_record_get(row, "chat_type") or "").strip().lower()
+    group_jid = _record_get(row, "group_jid")
+    if chat_type == "group" or group_jid:
+        return False
+    if chat_type == "direct":
+        return True
+    return True
+
+
+def _queue_sender_phone(row: Any) -> str | None:
+    if not _is_direct_chat(row):
+        return None
+    value = _record_get(row, "sender_phone")
+    return str(value) if value else None
 
 
 def _media_types(raw: str | None) -> tuple[str, ...]:
@@ -224,6 +292,31 @@ async def run_backfill(
     return counts
 
 
+async def run_scrub_group_phone(pool: asyncpg.Pool, apply: bool) -> dict[str, int]:
+    """Clear unsafe historical group sender phones from already-enqueued rows."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(SCRUB_GROUP_PHONE_SELECT_SQL)
+        counts = {"candidates": len(rows), "updated": 0}
+        if not apply:
+            by_status: dict[str, int] = {}
+            for row in rows:
+                status = str(row["status"] or "unknown")
+                by_status[status] = by_status.get(status, 0) + 1
+            logger.info(
+                "[scrub-group-phone][DRY-RUN] candidates=%d by_status=%s "
+                "(pass --apply to execute)",
+                counts["candidates"],
+                by_status,
+            )
+            return counts
+
+        result = await conn.fetch(SCRUB_GROUP_PHONE_APPLY_SQL)
+        counts["updated"] = len(result)
+
+    logger.info("[scrub-group-phone] updated=%d group queue rows", counts["updated"])
+    return counts
+
+
 # --- CLI ----------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -234,6 +327,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="supersede unknown/NO_MATCH review_pending proposals + reset queue rows")
     p.add_argument("--backfill", action="store_true",
                    help="enqueue historical wa-mirror media skipped by the watermark seed")
+    p.add_argument("--scrub-group-phone", action="store_true",
+                   help="clear sender_phone/client_id_hint from historical wa-mirror group queue rows")
     p.add_argument("--apply", action="store_true",
                    help="actually write (default: dry-run, counts only)")
     p.add_argument("--pipeline-version", default=DEFAULT_PIPELINE_VERSION,
@@ -252,8 +347,8 @@ async def main(argv: list[str] | None = None) -> int:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     args = build_parser().parse_args(argv)
-    if not (args.reprocess or args.backfill):
-        logger.error("nothing to do: pass --backfill and/or --reprocess")
+    if not (args.reprocess or args.backfill or args.scrub_group_phone):
+        logger.error("nothing to do: pass --backfill, --reprocess, and/or --scrub-group-phone")
         return 2
 
     db_url = os.getenv(
@@ -271,6 +366,8 @@ async def main(argv: list[str] | None = None) -> int:
                 )
                 return 2
             await run_backfill(pool, watermark, _media_types(args.media_types), args.apply)
+        if args.scrub_group_phone:
+            await run_scrub_group_phone(pool, args.apply)
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
         return 0

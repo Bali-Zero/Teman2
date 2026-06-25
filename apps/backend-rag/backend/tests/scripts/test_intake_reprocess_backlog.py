@@ -63,6 +63,8 @@ def test_row_to_enqueue_kwargs_mapping() -> None:
         "media_type": "document",
         "team_member_email": "ari@balizero.com",
         "sender_phone": "+62 812-0000-1111",
+        "chat_type": "direct",
+        "group_jid": None,
     }
     kw = irb.row_to_enqueue_kwargs(row)
     assert kw == {
@@ -73,6 +75,23 @@ def test_row_to_enqueue_kwargs_mapping() -> None:
         "received_by": "ari@balizero.com",
         "sender_phone": "+62 812-0000-1111",
     }
+
+
+def test_row_to_enqueue_kwargs_suppresses_group_sender_phone() -> None:
+    irb = _load()
+    row = {
+        "id": 123,
+        "baileys_message_id": "ABCDEF",
+        "media_stored_path": "/blobs/x.pdf",
+        "media_mime": "application/pdf",
+        "media_type": "document",
+        "team_member_email": "ari@balizero.com",
+        "sender_phone": "+62 812-0000-1111",
+        "chat_type": "group",
+        "group_jid": "120363000000000000@g.us",
+    }
+
+    assert irb.row_to_enqueue_kwargs(row)["sender_phone"] is None
 
 
 def test_media_types_default_and_custom() -> None:
@@ -90,9 +109,10 @@ def test_media_types_default_and_custom() -> None:
 
 def test_parser_defaults_are_dry_run() -> None:
     irb = _load()
-    args = irb.build_parser().parse_args(["--backfill"])
+    args = irb.build_parser().parse_args(["--backfill", "--scrub-group-phone"])
     assert args.apply is False
     assert args.backfill is True
+    assert args.scrub_group_phone is True
     assert args.reprocess is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.watermark is None
@@ -142,7 +162,23 @@ def test_backfill_select_is_anti_join_below_watermark() -> None:
     assert "w.id <= $2" in sql
     assert "direction = 'inbound'" in sql
     assert "media_stored_path IS NOT NULL" in sql
-    assert "sender_phone" in sql  # m225 rides along on the backfill
+    assert "sender_phone" in sql
+    assert "chat_type" in sql and "group_jid" in sql
+
+
+def test_scrub_group_phone_sql_only_targets_group_wa_mirror_rows() -> None:
+    irb = _load()
+    select_sql = irb.SCRUB_GROUP_PHONE_SELECT_SQL
+    apply_sql = irb.SCRUB_GROUP_PHONE_APPLY_SQL
+
+    assert "'wa-mirror:' || w.baileys_message_id" in select_sql
+    assert "q.source = 'whatsapp'" in select_sql
+    assert "q.source_ref LIKE 'wa-mirror:%'" in select_sql
+    assert "w.chat_type = 'group' OR w.group_jid IS NOT NULL" in select_sql
+    assert "q.sender_phone IS NOT NULL OR q.client_id_hint IS NOT NULL" in select_sql
+
+    assert "sender_phone = NULL" in apply_sql
+    assert "client_id_hint = NULL" in apply_sql
 
 
 def test_supersede_sql_only_touches_review_pending() -> None:
