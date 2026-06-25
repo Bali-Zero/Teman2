@@ -57,6 +57,9 @@ def _fake_vision(answer: str, calls: list[dict[str, Any]]):
         ("unknown", "unknown"),
         ("this is a passport", None),  # sentence -> rejected
         ("visa", "visa"),
+        ("family_card", "family_card"),
+        ("birth_certificate", "birth_certificate"),
+        ("marriage_certificate", "marriage_certificate"),
         ("receipt", None),  # off-list word -> rejected
         ("", None),
         (None, None),

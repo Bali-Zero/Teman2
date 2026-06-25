@@ -62,6 +62,9 @@ def test_canonical_doc_type_aliases():
     assert extract.canonical_doc_type("kitap") == "itap"
     assert extract.canonical_doc_type("itk_card") == "itk"
     assert extract.canonical_doc_type("e_ktp") == "ktp"
+    assert extract.canonical_doc_type("kk") == "family_card"
+    assert extract.canonical_doc_type("akta_kelahiran") == "birth_certificate"
+    assert extract.canonical_doc_type("buku_nikah") == "marriage_certificate"
     assert extract.canonical_doc_type("unknown_thing") is None
     assert extract.canonical_doc_type(None) is None
 
@@ -238,6 +241,41 @@ async def test_akta_list_fields():
             },
             "nik",
             "5101010101010001",
+        ),
+        (
+            "family_card",
+            {
+                "family_card_no": {"value": "5101010101010001", "source_page": 1},
+                "name": {"value": "Made Family", "source_page": 1},
+                "members": {"value": ["Made Family", "Wayan Child"], "source_page": 1},
+                "address": {"value": "Denpasar", "source_page": 1},
+            },
+            "members",
+            ["Made Family", "Wayan Child"],
+        ),
+        (
+            "birth_certificate",
+            {
+                "certificate_no": {"value": "AK-123", "source_page": 1},
+                "name": {"value": "Wayan Child", "source_page": 1},
+                "dob": {"value": "2020-01-01", "source_page": 1},
+                "place_of_birth": {"value": "Denpasar", "source_page": 1},
+                "parents": {"value": ["Made Parent", "Wayan Parent"], "source_page": 1},
+            },
+            "name",
+            "Wayan Child",
+        ),
+        (
+            "marriage_certificate",
+            {
+                "certificate_no": {"value": "MN-123", "source_page": 1},
+                "name": {"value": "Made Spouse", "source_page": 1},
+                "spouse_names": {"value": ["Made Spouse", "Wayan Spouse"], "source_page": 1},
+                "marriage_date": {"value": "2024-01-01", "source_page": 1},
+                "place": {"value": "Denpasar", "source_page": 1},
+            },
+            "spouse_names",
+            ["Made Spouse", "Wayan Spouse"],
         ),
         (
             "sk_kemenkumham",

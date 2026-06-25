@@ -221,7 +221,10 @@ CONF_FOLDER_MATCH = 0.85
 # (match against ``companies``). canonical_doc_type() upstream already maps
 # aliases (paspor->passport, akta->akta_pendirian, ...).
 _PERSON_DOC_TYPES = frozenset(
-    {"passport", "npwp", "kitas", "itk", "itas", "itap", "ktp", "visa"}
+    {
+        "passport", "npwp", "kitas", "itk", "itas", "itap", "ktp", "visa",
+        "family_card", "birth_certificate", "marriage_certificate",
+    }
 )
 _COMPANY_DOC_TYPES = frozenset(
     {"nib", "akta_pendirian", "profil_perseroan", "sk_kemenkumham"}
