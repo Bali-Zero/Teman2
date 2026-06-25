@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS bank_statements (
     id                  BIGSERIAL PRIMARY KEY,
     bank_code           TEXT NOT NULL DEFAULT 'cimb_niaga',
     account_label       TEXT,
-    uploaded_by         VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
+    uploaded_by         TEXT,  -- audit (email from JWT); not a FK (repo pattern: created_by TEXT)
     uploaded_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     source_filename     TEXT,
     source_format       TEXT NOT NULL DEFAULT 'csv',
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS weekly_cashout (
     counterparty        TEXT,
     payment_method      TEXT,
     receipt_drive_file_id TEXT,
-    recorded_by         VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
+    recorded_by         TEXT,  -- audit (email from JWT); not a FK
     recorded_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     reversed_by_id      BIGINT REFERENCES weekly_cashout(id) ON DELETE SET NULL,
     CONSTRAINT ck_cashout_direction
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS reconciliation_log (
     invoice_ids         JSONB,
     practice_id         INTEGER REFERENCES practices(id) ON DELETE SET NULL,
     cashout_id          BIGINT REFERENCES weekly_cashout(id) ON DELETE SET NULL,
-    confirmed_by        VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
+    confirmed_by        TEXT,  -- audit (email from JWT); not a FK
     confirmed_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     status_before       TEXT,
     status_after        TEXT,
