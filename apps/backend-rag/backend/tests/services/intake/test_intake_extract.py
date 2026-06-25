@@ -1074,6 +1074,35 @@ async def test_payment_receipt_label_fields_skip_model_call():
     assert out["fields"]["reference"]["value"] == "Invoice INV-1"
 
 
+async def test_payment_receipt_label_fields_accept_colonless_ocr_labels():
+    """Payment receipts stay deterministic when OCR drops label separators."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PAYMENT RECEIPT\n"
+        "Receipt No TRX-2026-00077\n"
+        "Payer Name MARIO ROSSI\n"
+        "Amount IDR 10,000,000\n"
+        "Payment Date 2026-06-01\n"
+        "Reference Invoice INV-1"
+    )
+    out = await extract.extract_fields("proof_of_payment", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "payment_receipt"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["payment_receipt_labels"]
+    assert out["fields"]["receipt_no"]["value"] == "TRX-2026-00077"
+    assert out["fields"]["payer_name"]["value"] == "Mario Rossi"
+    assert out["fields"]["amount"]["value"] == "IDR 10,000,000"
+    assert out["fields"]["payment_date"]["value"] == "2026-06-01"
+    assert out["fields"]["reference"]["value"] == "Invoice INV-1"
+
+
 async def test_travel_ticket_label_fields_skip_model_call():
     """Travel tickets can expose passenger and booking fields in labels."""
     called = {"n": 0}

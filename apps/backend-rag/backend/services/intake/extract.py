@@ -1532,7 +1532,7 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
         "payer_name",
         _first_line_match(
             pages,
-            r"^(?:payer\s*name|payer|sender\s*name|sender|nama\s+pembayar|pengirim)\s*[:\-]\s*(.+)$",
+            r"^(?:payer\s*name|payer|sender\s*name|sender|nama\s+pembayar|pengirim)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         person_name=True,
     )
@@ -1541,7 +1541,7 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
         "amount",
         _first_line_match(
             pages,
-            r"^(?:amount|total|paid\s*amount|jumlah|nominal)\s*[:\-]\s*(.+)$",
+            r"^(?:amount|total|paid\s*amount|jumlah|nominal)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     _set_if_present(
@@ -1549,7 +1549,7 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
         "payment_date",
         _first_line_match(
             pages,
-            r"^(?:payment\s*date|paid\s*date|transaction\s*date|tanggal\s*bayar|tanggal\s*transaksi)\s*[:\-]\s*(.+)$",
+            r"^(?:payment\s*date|paid\s*date|transaction\s*date|tanggal\s*bayar|tanggal\s*transaksi)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
@@ -1558,7 +1558,7 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
         "reference",
         _first_line_match(
             pages,
-            r"^(?:reference|invoice|description|keterangan|berita)\s*[:\-]\s*(.+)$",
+            r"^(?:reference|invoice|description|keterangan|berita)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     return fields
