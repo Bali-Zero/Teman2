@@ -117,6 +117,13 @@ export interface ConfirmResponse {
   status_after: string;
 }
 
+export interface ExportSheetResponse {
+  spreadsheet_id: string;
+  rows_exported: number;
+  updated_cells: number;
+  range: string;
+}
+
 const qs = (params: Record<string, string | number | undefined>): string => {
   const parts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== "")
@@ -176,5 +183,16 @@ export const accountingApi = {
   /** Confirm a payment match. Single writer of payment_status (superscar #9). */
   async confirm(payload: ConfirmRequest): Promise<ConfirmResponse> {
     return api.post<ConfirmResponse>("/api/crm/accounting/confirm", payload);
+  },
+
+  /**
+   * On-demand push of the weekly cashout to Zero's Google Sheet (NOT auto-sync).
+   * The sheet is pre-created + shared with the service account by Zero; the
+   * backend writes into it. 503 if ACCOUNTING_EXPORT_SHEET_ID is not configured.
+   */
+  async exportSheet(weekLabel?: string): Promise<ExportSheetResponse> {
+    return api.post<ExportSheetResponse>(
+      `/api/crm/accounting/export-sheet${qs({ week_label: weekLabel })}`,
+    );
   },
 };

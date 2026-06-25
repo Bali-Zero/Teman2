@@ -90,6 +90,49 @@ async def list_bank_transactions(
     return [dict(r) for r in rows]
 
 
+# Header row for the Google Sheets export — mirrors Asya's "Weekly Cashout"
+# sheet column order. Kept here (data layer) so the router stays thin.
+EXPORT_HEADERS: list[str] = [
+    "DATE",
+    "WEEK",
+    "NAME",
+    "PROCESS",
+    "PNBP",
+    "URGENT",
+    "RPTKA-IMTA",
+    "MARGIN",
+    "FINAL PRICE",
+    "NOTE",
+]
+
+
+def build_export_rows(rows: list[dict[str, Any]]) -> list[list[str]]:
+    """Format cashout rows into a 2D string matrix for Google Sheets.
+
+    Returns the header row followed by one row per cashout entry, in Asya's
+    column order. All values are strings (Sheets API expects str cells);
+    amounts are plain integer rupiah without separators so USER_ENTERED keeps
+    them numeric in the sheet.
+    """
+    out: list[list[str]] = [list(EXPORT_HEADERS)]
+    for r in rows:
+        out.append(
+            [
+                str(r.get("movement_date") or ""),
+                str(r.get("week_label") or ""),
+                str(r.get("client_name") or r.get("counterparty") or ""),
+                str(r.get("category") or r.get("type") or ""),
+                str(int(r.get("pnbp_idr") or 0)),
+                str(int(r.get("urgent_idr") or 0)),
+                str(int(r.get("rptka_imta_idr") or 0)),
+                str(int(r.get("margin_idr") or 0)),
+                str(int(r.get("final_price_idr") or r.get("amount_idr") or 0)),
+                str(r.get("description") or ""),
+            ]
+        )
+    return out
+
+
 async def cashbook_summary(
     conn: asyncpg.Connection,
     *,

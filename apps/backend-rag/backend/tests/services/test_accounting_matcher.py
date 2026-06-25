@@ -3,12 +3,18 @@
 Covers the panel-mandated behavior: exact match, PPh23-net detection, partial
 and overpayment signals, fuzzy name boost, date-window gate, ranking, and the
 critical "nothing plausible -> empty" contract (no phantom matches).
+
+Also covers the pure Sheets-export row formatter (cashout_service.build_export_rows).
 """
 
 from __future__ import annotations
 
 from datetime import date
 
+from backend.services.accounting.cashout_service import (
+    EXPORT_HEADERS,
+    build_export_rows,
+)
 from backend.services.accounting.matcher import (
     OpenInvoice,
     rank_candidates,
@@ -189,3 +195,55 @@ class TestZeroAmountGuard:
         )
         assert out and out[0].invoice_id == 2
         assert all(c.invoice_id != 1 for c in out)
+
+
+class TestExportRows:
+    """build_export_rows — pure formatter for the Google Sheets P3 export."""
+
+    def test_header_first_then_one_row_per_entry(self) -> None:
+        rows = [
+            {
+                "movement_date": "2026-06-25",
+                "week_label": "2026-W26",
+                "client_name": "Dina B",
+                "category": "KITAS",
+                "pnbp_idr": 1_000_000,
+                "urgent_idr": 0,
+                "rptka_imta_idr": 0,
+                "margin_idr": 3_000_000,
+                "final_price_idr": 4_000_000,
+                "description": "ref CIMB-1",
+            }
+        ]
+        out = build_export_rows(rows)
+        assert out[0] == EXPORT_HEADERS
+        assert len(out) == 2
+        # NAME / PROCESS / MARGIN / FINAL PRICE land in the right columns
+        assert out[1][2] == "Dina B"
+        assert out[1][3] == "KITAS"
+        assert out[1][7] == "3000000"  # margin, plain int (USER_ENTERED stays numeric)
+        assert out[1][8] == "4000000"  # final price
+
+    def test_empty_input_is_header_only(self) -> None:
+        out = build_export_rows([])
+        assert out == [EXPORT_HEADERS]
+
+    def test_falls_back_final_price_to_amount_and_counterparty(self) -> None:
+        # final_price_idr 0 -> use amount_idr; no client_name -> counterparty.
+        rows = [
+            {
+                "amount_idr": 2_500_000,
+                "final_price_idr": 0,
+                "counterparty": "Vendor X",
+                "type": "expense",
+            }
+        ]
+        out = build_export_rows(rows)
+        assert out[1][2] == "Vendor X"  # counterparty fallback
+        assert out[1][3] == "expense"  # type fallback for process
+        assert out[1][8] == "2500000"  # amount_idr fallback for final price
+
+    def test_all_cells_are_strings(self) -> None:
+        rows = [{"movement_date": "2026-06-25", "pnbp_idr": 5, "amount_idr": 5}]
+        out = build_export_rows(rows)
+        assert all(isinstance(cell, str) for row in out for cell in row)

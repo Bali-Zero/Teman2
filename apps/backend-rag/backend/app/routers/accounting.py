@@ -10,6 +10,7 @@ via is_crm_admin(). Money is IDR. See migration 232_accounting_asya.sql.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date
 from typing import Any
 
@@ -230,4 +231,71 @@ async def confirm_reconciliation(
         "reconciliation_log_id": result.reconciliation_log_id,
         "status_before": result.status_before,
         "status_after": result.status_after,
+    }
+
+
+# ── P3: Google Sheets export ────────────────────────────────────────────────
+
+# The service account cannot CREATE a Drive file (no Drive quota): Zero creates
+# the target spreadsheet, shares it with the SA email as Editor, and sets its id
+# in ACCOUNTING_EXPORT_SHEET_ID. The app only writes into that existing sheet.
+EXPORT_SHEET_ID_ENV = "ACCOUNTING_EXPORT_SHEET_ID"
+# A1 anchor; write_range overwrites from here. Tab "Cashout" must exist in the sheet.
+EXPORT_RANGE_DEFAULT = "Cashout!A1"
+
+
+@router.post("/export-sheet")
+async def export_to_sheet(
+    week_label: str | None = Query(None, description="Optional week filter"),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """On-demand push of the weekly cashout to Zero's Google Sheet.
+
+    NOT auto-sync (Zero's decision #4): Asya clicks Export. The target sheet is
+    pre-created+shared by Zero; we write into it via the existing SheetsService.
+    """
+    _require_accounting_access(current_user)
+
+    spreadsheet_id = os.environ.get(EXPORT_SHEET_ID_ENV, "").strip()
+    if not spreadsheet_id:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"{EXPORT_SHEET_ID_ENV} is not configured. Zero must create the "
+                "Google Sheet, share it with the service-account email as Editor, "
+                f"and set {EXPORT_SHEET_ID_ENV}."
+            ),
+        )
+
+    async with db_pool.acquire() as conn:
+        rows = await cashout_service.list_cashout(
+            conn, week_label=week_label, limit=1000
+        )
+    values = cashout_service.build_export_rows(rows)
+
+    try:
+        from backend.services.integrations.sheets_service import SheetsService
+
+        svc = SheetsService()
+        result = await svc.write_range(spreadsheet_id, EXPORT_RANGE_DEFAULT, values)
+    except FileNotFoundError as exc:
+        # SA credentials not present in this environment.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 — surface the Sheets API failure as 502
+        logger.error("accounting export-sheet failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Google Sheets write failed. Verify the sheet is shared with the "
+                f"service account and a 'Cashout' tab exists. ({exc})"
+            ),
+        ) from exc
+
+    # values includes the header row; data rows = len-1.
+    return {
+        "spreadsheet_id": spreadsheet_id,
+        "rows_exported": max(len(values) - 1, 0),
+        "updated_cells": result.get("updatedCells", 0),
+        "range": EXPORT_RANGE_DEFAULT,
     }

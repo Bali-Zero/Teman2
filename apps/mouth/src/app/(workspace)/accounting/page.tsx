@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   ArrowDownToLine,
   ArrowUpFromLine,
+  Sheet,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -174,8 +175,11 @@ function ConfirmModal({
   const { success, error } = useToast();
   const [busy, setBusy] = useState(false);
   const delta = txn.amount_idr - candidate.invoice_amount_idr;
-  const newStatus =
-    delta >= -1000 ? "paid" : ("partial" as "paid" | "partial");
+  // A transfer net of PPh23 withholding (delta < 0 but flagged likely_withheld)
+  // still SETTLES the invoice — the withheld tax is recorded separately, not a
+  // shortfall. Only a genuine underpayment (short, NOT withholding) is 'partial'.
+  const newStatus: "paid" | "partial" =
+    delta >= -1000 || candidate.likely_withheld ? "paid" : "partial";
 
   const handleConfirm = async () => {
     setBusy(true);
@@ -445,11 +449,12 @@ function ReconciliationInbox({ onConfirmed }: { onConfirmed: () => void }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AccountingPage() {
-  const { error } = useToast();
+  const { success, error } = useToast();
   const [tab, setTab] = useState<Tab>("cashout");
   const [summary, setSummary] = useState<CashbookSummary | null>(null);
   const [cashout, setCashout] = useState<CashoutRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   const loadCashout = useCallback(async () => {
     try {
@@ -472,6 +477,26 @@ export default function AccountingPage() {
     loadCashout();
   }, [loadCashout]);
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await accountingApi.exportSheet();
+      success(
+        "Exported to Google Sheets",
+        `${res.rows_exported} row(s) written`,
+      );
+    } catch (err) {
+      // 503 = sheet not configured yet (Zero must create + share it).
+      const detail =
+        (err as { detail?: string })?.detail ??
+        "Export failed — the sheet may not be configured yet.";
+      error("Export failed", detail);
+      logger.error("accounting export-sheet failed", {}, err as Error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -479,6 +504,14 @@ export default function AccountingPage() {
           <Wallet className="h-6 w-6 text-[var(--bz-accent,#d4845a)]" />
           <h1 className="text-2xl font-semibold tracking-tight">Accounting</h1>
         </div>
+        <Button variant="outline" onClick={handleExport} disabled={exporting}>
+          {exporting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Sheet className="mr-2 h-4 w-4" />
+          )}
+          Export to Sheets
+        </Button>
       </div>
 
       <SummaryCards summary={summary} />

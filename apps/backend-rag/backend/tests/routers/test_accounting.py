@@ -220,6 +220,82 @@ class TestConfirm:
         assert confirm_mock.await_args.kwargs["confirmed_by"] == "asya@balizero.com"
 
 
+class TestExportSheet:
+    def test_outsider_denied(self, mock_db_pool, outsider_user) -> None:
+        client = TestClient(_build_app(mock_db_pool, outsider_user), raise_server_exceptions=False)
+        resp = client.post("/api/crm/accounting/export-sheet")
+        assert resp.status_code == 403
+
+    def test_missing_env_returns_503(self, mock_db_pool, asya_user, monkeypatch) -> None:
+        # No ACCOUNTING_EXPORT_SHEET_ID -> 503 with a config hint, never a 500.
+        monkeypatch.delenv("ACCOUNTING_EXPORT_SHEET_ID", raising=False)
+        client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+        resp = client.post("/api/crm/accounting/export-sheet")
+        assert resp.status_code == 503
+        assert "ACCOUNTING_EXPORT_SHEET_ID" in resp.json()["detail"]
+
+    def test_success_writes_rows(self, mock_db_pool, asya_user, monkeypatch) -> None:
+        monkeypatch.setenv("ACCOUNTING_EXPORT_SHEET_ID", "sheet-abc-123")
+        _pool, conn = mock_db_pool
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "movement_date": "2026-06-25",
+                    "week_label": "2026-W26",
+                    "client_name": "Dina B",
+                    "category": "KITAS",
+                    "pnbp_idr": 1000000,
+                    "urgent_idr": 0,
+                    "rptka_imta_idr": 0,
+                    "margin_idr": 3000000,
+                    "final_price_idr": 4000000,
+                    "description": "ref",
+                }
+            ]
+        )
+
+        write_mock = AsyncMock(return_value={"updatedCells": 20})
+
+        class FakeSheets:
+            write_range = write_mock
+
+        with patch(
+            "backend.services.integrations.sheets_service.SheetsService",
+            FakeSheets,
+        ):
+            client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+            resp = client.post("/api/crm/accounting/export-sheet")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["spreadsheet_id"] == "sheet-abc-123"
+        assert body["rows_exported"] == 1  # header excluded
+        assert body["updated_cells"] == 20
+        # the SheetsService was actually called with our spreadsheet id
+        assert write_mock.await_count == 1
+        assert write_mock.await_args.args[0] == "sheet-abc-123"
+
+    def test_sheets_credentials_missing_returns_503(
+        self, mock_db_pool, asya_user, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("ACCOUNTING_EXPORT_SHEET_ID", "sheet-abc-123")
+        _pool, conn = mock_db_pool
+        conn.fetch = AsyncMock(return_value=[])
+
+        class FakeSheets:
+            write_range = AsyncMock(
+                side_effect=FileNotFoundError("Google credentials not found.")
+            )
+
+        with patch(
+            "backend.services.integrations.sheets_service.SheetsService",
+            FakeSheets,
+        ):
+            client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+            resp = client.post("/api/crm/accounting/export-sheet")
+        assert resp.status_code == 503
+
+
 class TestSummaryEndpoint:
     def test_summary_shape(self, mock_db_pool, asya_user) -> None:
         _pool, conn = mock_db_pool
