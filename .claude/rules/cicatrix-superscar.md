@@ -66,8 +66,8 @@ esiste ma non è merged/installed/propagated/armed/committed è **sospeso, non v
 inosservabile / required-checks disarmati) · W64/W34 (asyncpg silent-death, manca `InterfaceError`) ·
 W71 (verify_mcp_integrity glyph-bug: gira e mente) · W32 (pg-bridge morto silenzioso) · 503-RAG
 (health=200 ma RAG worker stoppato) · W70 (sentinel log_tail cieco) · W81 (Armamento Sospeso: ~20 cron
-"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok) · W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desktop` — incl. `verify-connectome` il guardiano-dei-guardiani — con `LastExitStatus=0` VERDE mentre il log dice `Operation not permitted`; il contesto **launchd ha perso il grant TCC/Full-Disk-Access** verso `~/Desktop` SENZA cambiare codice/plist/permessi — **vettore nuovo: lo stato-di-attivazione TCC è un principal separato da iTerm**; prova che il verde mente: STESSO plist su Pro dà exit 1 onesto. Antidoto: `launchd_liveness_detector.py` PR #1518 incrocia exit-code col CONTENUTO del log; cura=solo-operatore. La W81-estensione si estende ancora: leggi anche lo stato-di-attivazione **TCC**, non solo merge/install).
-**→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503/W84) + archive (W34/W32) · `scar query "esiste non armato"`
+"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok) · W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desktop` — incl. `verify-connectome` il guardiano-dei-guardiani — con `LastExitStatus=0` VERDE mentre il log dice `Operation not permitted`; il contesto **launchd ha perso il grant TCC/Full-Disk-Access** verso `~/Desktop` SENZA cambiare codice/plist/permessi — **vettore nuovo: lo stato-di-attivazione TCC è un principal separato da iTerm**; prova che il verde mente: STESSO plist su Pro dà exit 1 onesto. Antidoto: `launchd_liveness_detector.py` PR #1518 incrocia exit-code col CONTENUTO del log; cura=solo-operatore. La W81-estensione si estende ancora: leggi anche lo stato-di-attivazione **TCC**, non solo merge/install). · **W87 (Postgres access-wall, 2026-06-26: MCP `postgres-nuzantara` VERDE in lista `✔ Connected` ma morto al primo query — identità local-dev `nuzantara_dev_readonly`/`nuzantara_dev` cablata contro il proxy PROD `:15432`; ricorrente da settimane. La combo viva è `nuzantara_readonly`/`nuzantara_rag`. Antidoto: `scripts/pg.sh` PR #1745 + memory `reference_postgres_access_one_true_way`. GOTCHA: `✔ Connected` = handshake TCP, non auth+query — prova `SELECT 1` reale)**.
+**→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503/W84/**W87**) + archive (W34/W32) · `scar query "esiste non armato"`
 
 ---
 
@@ -211,8 +211,13 @@ stream, event bus, `*.last.json`) senza scope end-to-end di chi li legge.
 unificato + scansione completa dei partecipanti; mai cambiare un formato condiviso da un solo lato.
 
 **MEMBRI:** W54 (timestamp ISO-8601 schianta il check di staleness) · W53 (DLQ TERMINAL suppression gate
-mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`).
-**→ dettaglio:** archive (W53/W54/W61) · `scar query "schema drift json contract"`
+mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`) · **W86 (DOCSYNC stale —
+auto-merge-a-verde mergia il commit-feature PRIMA che il commit docs_sync bump atterri → il
+contratto-derivato `AI_ONBOARDING.md` test/router/service count resta stale su main → il gate
+`check-docs-sync` boccia la PR backend successiva, innocente. Antidoto: il `docs_sync.py` regen va
+nello STESSO commit della feature, MAI separato — con `--auto` non esiste "poi", merge al primo
+verde. 2026-06-23, PR #1670→#1672)**.
+**→ dettaglio:** cicatrix-scars.md (W86) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
 
 ---
 

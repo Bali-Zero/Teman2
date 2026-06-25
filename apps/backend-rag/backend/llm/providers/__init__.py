@@ -6,11 +6,13 @@ Used by RAGAS evaluation and integration tests.
 """
 
 from backend.llm.providers.gemini import GeminiProvider
+from backend.llm.providers.mlx import MLXProvider
 from backend.llm.providers.ollama import OllamaProvider
 from backend.llm.providers.openrouter import OpenRouterProvider
 
 __all__ = [
     "GeminiProvider",
+    "MLXProvider",
     "OllamaProvider",
     "OpenRouterProvider",
 ]

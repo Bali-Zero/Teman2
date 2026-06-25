@@ -266,6 +266,33 @@ async def test_completion_and_failure_append_receipt_safe_events() -> None:
 
 
 @pytest.mark.asyncio
+async def test_pause_appends_receipt_safe_manual_gate_event() -> None:
+    conn = FakeAsyncConnection(fetchrow_results=[{"updated_count": 1, "event_id": 53}])
+    store = _pro_store()
+
+    paused = await store.mark_run_paused(
+        conn,
+        run_id="lab-runtime-test",
+        worker_id="worker-1",
+        stage="curate",
+        checkpoint={
+            "stage": "curate",
+            "status": "paused",
+            "fingerprint": "sha256:abcd-1234",
+            "payload": {"summary": "operator gate contains derived evidence only"},
+        },
+    )
+
+    assert paused is True
+    pause_sql, pause_args = conn.fetchrow_calls[0]
+    assert "status = 'paused'" in pause_sql
+    assert "'run_paused'" in pause_sql
+    assert '"paused_at_stage": "curate"' in pause_args[2]
+    assert "operator gate contains derived evidence only" not in str(pause_args)
+    assert "evidence_fingerprint:sha256:" in str(pause_args)
+
+
+@pytest.mark.asyncio
 async def test_completion_does_not_emit_event_when_owner_update_misses() -> None:
     conn = FakeAsyncConnection(
         fetchrow_results=[
@@ -389,7 +416,11 @@ async def test_enqueue_rejects_unsafe_top_level_target_paths() -> None:
     store = AutonomousLabStateStore()
     conn = FakeAsyncConnection(fetchrow_results=[_row()])
 
-    for target_path in ("/etc/passwd", "../outside.py"):
+    for target_path in (
+        "/etc/passwd",
+        "../outside.py",
+        "apps/backend-rag/backend/services/autonomous_lab/state_store.py\nBAD",
+    ):
         with pytest.raises(ValueError, match="unsafe_target_path"):
             await store.enqueue_run(
                 conn,
@@ -468,6 +499,162 @@ async def test_append_event_uses_canonical_run_id_over_payload_run_id() -> None:
     assert event_id == 99
     assert '"run_id": "canonical-run"' in conn.fetchrow_calls[0][1][2]
     assert "spoofed-run" not in conn.fetchrow_calls[0][1][2]
+
+
+@pytest.mark.asyncio
+async def test_read_run_and_events_are_bounded_and_receipt_safe() -> None:
+    conn = FakeAsyncConnection(
+        fetchrow_results=[_row(status="paused")],
+        fetch_results=[
+            [
+                {
+                    "event_id": 7,
+                    "run_id": "lab-runtime-test",
+                    "event_type": "run_paused",
+                    "payload": {"run_id": "lab-runtime-test", "stage": "curate"},
+                    "status": "pending",
+                    "attempts": 0,
+                }
+            ]
+        ],
+    )
+    store = AutonomousLabStateStore()
+
+    record = await store.get_run(conn, run_id="lab-runtime-test")
+    events = await store.list_run_events(conn, run_id="lab-runtime-test", limit=999)
+
+    assert record is not None
+    assert record.status == LabRunStatus.PAUSED
+    assert len(events) == 1
+    assert "FROM autonomous_lab_runs" in conn.fetchrow_calls[0][0]
+    assert "FROM autonomous_lab_events_outbox" in conn.fetch_calls[0][0]
+    assert conn.fetch_calls[0][1] == ("lab-runtime-test", 500)
+    run_receipt = record.to_receipt()
+    assert run_receipt["objective_reference"].startswith("evidence_fingerprint:sha256:")
+    assert "Build receipt-safe Lab runtime" not in str(run_receipt)
+    assert events[0].to_receipt()["payload"]["stage"] == "curate"
+
+
+@pytest.mark.asyncio
+async def test_curator_decision_is_idempotent_and_notes_are_referenced() -> None:
+    conn = FakeAsyncConnection(
+        fetchrow_results=[
+            {
+                "run_id": "lab-runtime-test",
+                "status": "pending",
+                "updated_count": 1,
+                "existing_count": 0,
+                "event_id": 77,
+            }
+        ]
+    )
+    store = AutonomousLabStateStore()
+
+    result = await store.record_curator_decision(
+        conn,
+        run_id="lab-runtime-test",
+        decision="approve",
+        decision_id="lab-runtime-test:approve",
+        operator_id="operator@example.test",
+        note="token=abcdef1234567890 RAW_PRIVATE_SENTENCE_SHOULD_NOT_APPEAR",
+    )
+
+    assert result.changed is True
+    assert result.idempotent_replay is False
+    assert result.status == LabRunStatus.PENDING
+    assert result.event_id == 77
+    sql, args = conn.fetchrow_calls[0]
+    assert "status = 'paused'" in sql
+    assert "'curator_decision_recorded'" in sql
+    assert args[0:4] == (
+        "lab-runtime-test",
+        "lab-runtime-test:approve",
+        "approve",
+        "pending",
+    )
+    assert "operator@example.test" not in str(args)
+    assert "abcdef1234567890" not in str(args)
+    assert "RAW_PRIVATE_SENTENCE_SHOULD_NOT_APPEAR" not in str(args)
+    assert "evidence_fingerprint:sha256:" in str(args)
+
+
+@pytest.mark.asyncio
+async def test_curator_decision_replay_returns_idempotent_result() -> None:
+    conn = FakeAsyncConnection(
+        fetchrow_results=[
+            {
+                "run_id": "lab-runtime-test",
+                "status": "pending",
+                "updated_count": 0,
+                "existing_count": 1,
+                "event_id": None,
+            }
+        ]
+    )
+    store = AutonomousLabStateStore()
+
+    result = await store.record_curator_decision(
+        conn,
+        run_id="lab-runtime-test",
+        decision="approve",
+        decision_id="lab-runtime-test:approve",
+        operator_id="operator@example.test",
+    )
+
+    assert result.changed is False
+    assert result.idempotent_replay is True
+    assert result.event_id is None
+
+
+@pytest.mark.asyncio
+async def test_curator_decision_conflict_when_run_is_not_paused() -> None:
+    conn = FakeAsyncConnection(fetchrow_results=[None])
+    store = AutonomousLabStateStore()
+
+    result = await store.record_curator_decision(
+        conn,
+        run_id="lab-runtime-test",
+        decision="request_changes",
+        decision_id="lab-runtime-test:request_changes",
+        operator_id="operator@example.test",
+    )
+
+    assert result.changed is False
+    assert result.idempotent_replay is False
+    assert result.status is None
+
+
+@pytest.mark.asyncio
+async def test_cancel_run_is_idempotent_and_refuses_running_rows() -> None:
+    conn = FakeAsyncConnection(
+        fetchrow_results=[
+            {
+                "run_id": "lab-runtime-test",
+                "status": "cancelled",
+                "updated_count": 1,
+                "existing_count": 0,
+                "event_id": 88,
+            }
+        ]
+    )
+    store = AutonomousLabStateStore()
+
+    result = await store.cancel_run(
+        conn,
+        run_id="lab-runtime-test",
+        cancel_id="lab-runtime-test:cancel",
+        operator_id="operator@example.test",
+        reason="+62 812 3456 7890 should never persist raw",
+    )
+
+    assert result.changed is True
+    assert result.status == LabRunStatus.CANCELLED
+    sql, args = conn.fetchrow_calls[0]
+    assert "status IN ('pending', 'paused')" in sql
+    assert "'run_cancelled'" in sql
+    assert "operator@example.test" not in str(args)
+    assert "+62 812 3456 7890" not in str(args)
+    assert "evidence_fingerprint:sha256:" in str(args)
 
 
 def test_machine_placement_policy_matches_air_pro_mini_contract() -> None:

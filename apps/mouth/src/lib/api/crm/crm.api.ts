@@ -26,6 +26,7 @@ import type {
   TaxCompanyPilotKey,
   TaxCompanyPilotMap,
   AiSummaryResponse,
+  WaCaseIntelligenceResponse,
   WorkspaceAiAutoApproveResult,
   WorkspaceAiSnapshotReviewItem,
   WorkspaceAiSnapshotReviewStatus,
@@ -529,6 +530,20 @@ export class CrmApi {
   async getClientAiSummary(clientId: number): Promise<AiSummaryResponse> {
     return this.client.request<AiSummaryResponse>(
       `/api/crm/clients/${clientId}/ai-summary`,
+      undefined,
+      10000,
+    );
+  }
+
+  /**
+   * Get Zantara Captain WhatsApp case cards for a client.
+   */
+  async getClientWaCaseIntelligence(
+    clientId: number,
+    limit: number = 12,
+  ): Promise<WaCaseIntelligenceResponse> {
+    return this.client.request<WaCaseIntelligenceResponse>(
+      `/api/crm/clients/${clientId}/wa-case-intelligence?limit=${limit}`,
       undefined,
       10000,
     );

@@ -43,12 +43,32 @@ episodes present (a real failure worth alerting, NOT silent).
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# ---- Cabling to the unified A3 reflexion core (scripts/lib/reflexion.py) -----
+# A3 self-loop (research/operations/2026-06-23-self-loop-implementation-plan.md):
+# the Delta Gate + tautology alarm live in ONE place now (superscar #1 HOME-fork
+# cure — no third copy). This standalone cron may run from a deploy-worktree where
+# scripts/lib is not importable as a package, so load it by path off __file__.
+_REFLEXION_LIB = Path(__file__).resolve().parent / "lib" / "reflexion.py"
+_spec = importlib.util.spec_from_file_location("reflexion_core", str(_REFLEXION_LIB))
+reflexion_core = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(reflexion_core)
+
+# WR3 status vocabulary -> the core's loop-neutral enum. The core REJECTS unknown
+# statuses (ValueError) — defends against silently logging a typo as a valid run.
+_WR3_STATUS_TO_CORE = {
+    "SYNTHESIZED": reflexion_core.LEARNED,      # lessons written
+    "THIN_SIGNAL": reflexion_core.NO_SIGNAL,    # ran, nothing worth a lesson
+    "NO_INPUT": reflexion_core.NO_SIGNAL,       # ran honestly, no episodes
+    "LLM_FAILED": reflexion_core.LLM_FAILED,    # cascade failed with input present
+}
 
 # ---- Paths (override via env for tests / deploy-worktree) --------------------
 
@@ -310,25 +330,42 @@ def write_lessons(synthesis: dict, skill_dir: Path) -> int:
 def record_run(skill_dir: Path, *, window_days: int, episodes_found: int,
                lessons_written: int, status: str, notes: str = "") -> Path:
     """Append an auditable run record. THIS is what kills the green-cron-theater:
-    a NO_INPUT run is visible on disk, not a silent sys.exit(0)."""
-    skill_dir.mkdir(parents=True, exist_ok=True)
-    state_path = skill_dir / "_reflexion-state.json"
-    history = _load_json(state_path) if state_path.exists() else None
-    if not isinstance(history, list):
-        history = []
-    history.append({
-        "run_at": datetime.now(timezone.utc).isoformat(),
-        "window_days": window_days,
-        "episodes_found": episodes_found,
-        "lessons_written": lessons_written,
-        "status": status,
-        "notes": notes,
-    })
-    state_path.write_text(json.dumps(history[-200:], indent=2))  # cap history
-    return state_path
+    a NO_INPUT run is visible on disk, not a silent sys.exit(0).
+
+    CABLED (A3, 2026-06-24): delegates to the unified core Delta Gate
+    (reflexion_core.record_run) instead of a private copy. Two-vocabulary contract: the WR3
+    NATIVE status (NO_INPUT/SYNTHESIZED/...) is persisted on disk verbatim via `loop_status`
+    (what an operator reading _reflexion-state.json expects — unchanged from the pre-cabling
+    file), while the CANONICAL enum value drives the core's machine logic (is_tautological).
+    `episodes_found` is carried as the generic `signals_found` (no reader consumes the count
+    by name). An unmapped status raises (no silent typo). Superscar #9: the on-disk audit
+    vocabulary is preserved across the cabling — only the storage backend changed."""
+    core_status = _WR3_STATUS_TO_CORE.get(status)
+    if core_status is None:
+        raise ValueError(f"unknown WR3 reflexion status {status!r}; "
+                         f"expected one of {sorted(_WR3_STATUS_TO_CORE)}")
+    return reflexion_core.record_run(
+        skill_dir, loop="wr3", window_days=window_days,
+        signals_found=episodes_found, lessons_written=lessons_written,
+        status=core_status, loop_status=status, notes=notes,
+    )
 
 
 # ---- Main -------------------------------------------------------------------
+
+def _warn_if_tautological(skill_dir: Path) -> None:
+    """A3 cabling value-add: surface the Omeostasi-Tautologica alarm WR3 lacked.
+    If the last HOT_WINDOW runs were ALL no-learning (NO_SIGNAL/NOOP), an operator
+    should SEE 'N weeks, zero lessons' instead of mistaking a green cron for a
+    converged loop. Advisory only (never changes the exit code)."""
+    try:
+        if reflexion_core.is_tautological(skill_dir):
+            print(f"[wr3-reflexion] ⚠ TAUTOLOGY ALARM: last {reflexion_core.HOT_WINDOW} "
+                  f"runs all no-learning — green cron, zero state-delta. Investigate "
+                  f"whether episodes are actually being produced.", file=sys.stderr)
+    except Exception:
+        pass  # alarm is best-effort; never break the run
+
 
 def main() -> int:
     repo_root = _repo_root()
@@ -342,6 +379,7 @@ def main() -> int:
                    notes=f"no episodes/overrides in last {WINDOW_DAYS}d under {repo_root}")
         print(f"[wr3-reflexion] NO_INPUT — 0 episodes in last {WINDOW_DAYS}d. "
               f"Honest empty run (NOT theater); recorded to _reflexion-state.json.")
+        _warn_if_tautological(skill_dir)
         return 0
 
     prompt = build_synthesis_prompt(episodes, overrides)
@@ -360,6 +398,8 @@ def main() -> int:
                notes=synthesis.get("synthesis_notes", "")[:500])
     print(f"[wr3-reflexion] {status}: {n} lessons from {len(episodes)} episodes "
           f"(week {synthesis.get('week')}).")
+    if status == "THIN_SIGNAL":
+        _warn_if_tautological(skill_dir)  # had input but learned nothing — watch the trend
     return 0
 
 

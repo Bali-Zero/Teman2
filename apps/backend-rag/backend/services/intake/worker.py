@@ -82,6 +82,11 @@ STAGE_TRANSITIONS: dict[str, tuple[str, str]] = {
 
 # --- Defaults (overridable via env / constructor for tests). ---
 DEFAULT_LEASE_TTL_SECONDS = 900  # 15 min — must exceed the slowest stage.
+# Parallel in-flight jobs per worker process. Default 1 = legacy sequential.
+# Keep LOW: the OCR stage is bottlenecked on a single local Ollama GPU, so
+# high concurrency starves VRAM and causes empty-page timeouts. 2-3 overlaps
+# cheap stages (classify-advance/extract/route) with one in-flight OCR.
+DEFAULT_CONCURRENCY = 1
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 120  # 2 min, like workflow/queue.
 DEFAULT_POLL_INTERVAL_SECONDS = 2
 DEFAULT_BASE_BACKOFF_SECONDS = 2.0  # exponential: base * 2**(attempts-1).
@@ -138,6 +143,7 @@ class WorkerConfig:
     base_backoff_seconds: float = DEFAULT_BASE_BACKOFF_SECONDS
     max_backoff_seconds: float = DEFAULT_MAX_BACKOFF_SECONDS
     transient_backoff_seconds: float = DEFAULT_TRANSIENT_BACKOFF_SECONDS
+    concurrency: int = DEFAULT_CONCURRENCY
 
     @classmethod
     def from_env(cls) -> WorkerConfig:
@@ -165,6 +171,9 @@ class WorkerConfig:
                     "INTAKE_TRANSIENT_BACKOFF_SECONDS",
                     DEFAULT_TRANSIENT_BACKOFF_SECONDS,
                 )
+            ),
+            concurrency=max(
+                1, int(os.getenv("INTAKE_CONCURRENCY", DEFAULT_CONCURRENCY))
             ),
         )
 
@@ -576,7 +585,32 @@ class IntakeWorker:
                 WHERE status = ANY($1::text[])
                   AND next_visible_at <= now()
                   AND (lease_owner IS NULL OR lease_expires_at < now())
-                ORDER BY next_visible_at, id
+                -- Downstream stages (extract/validate/route) cost ~3ms; the
+                -- classify+OCR stage costs ~50-90s on the local VLM. Pure FIFO
+                -- lets a backlog of 'pending' jobs starve the cheap downstream
+                -- stages, so 'ocr_done' piles up and nothing reaches 'done'
+                -- (SCAR 2026-06-21). Drain near-done work FIRST: later pipeline
+                -- stages rank ahead of 'pending', then FIFO within each rank.
+                ORDER BY
+                  CASE status
+                    WHEN 'validated'    THEN 0
+                    WHEN 'extracted'    THEN 1
+                    WHEN 'ocr_done'     THEN 2
+                    WHEN 'classified'   THEN 3
+                    WHEN 'ocr'          THEN 4
+                    WHEN 'processing'   THEN 5
+                    ELSE 9  -- 'pending' last
+                  END,
+                  -- WhatsApp mirror is the client-facing intake lane. Once all
+                  -- cheap downstream stages are drained, do not let historical
+                  -- Drive backfills bury fresh WA attachments behind tens of
+                  -- thousands of pending OCR jobs.
+                  CASE
+                    WHEN status = 'pending' AND source = 'whatsapp' THEN 0
+                    WHEN status = 'pending'                         THEN 1
+                    ELSE 0
+                  END,
+                  next_visible_at, id
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
             )
@@ -629,7 +663,20 @@ class IntakeWorker:
                 if loop.time() - last_reap >= REAP_INTERVAL_SECONDS:
                     last_reap = loop.time()
                     await reap_expired_review_claims(self.pool)
-                did_work = await self.run_once()
+                n = self.config.concurrency
+                if n <= 1:
+                    did_work = await self.run_once()
+                else:
+                    # Fan out N concurrent claims. FOR UPDATE SKIP LOCKED in the
+                    # claim CTE guarantees each task grabs a distinct row (or None).
+                    results = await asyncio.gather(
+                        *(self.run_once() for _ in range(n)),
+                        return_exceptions=True,
+                    )
+                    for r in results:
+                        if isinstance(r, (asyncpg.PostgresError, asyncpg.InterfaceError, OSError)):
+                            raise r
+                    did_work = any(r is True for r in results)
                 db_failures = 0
                 if not did_work:
                     await self._sleep_or_stop(self.config.poll_interval_seconds)

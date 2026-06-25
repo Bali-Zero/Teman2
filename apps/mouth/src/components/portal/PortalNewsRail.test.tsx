@@ -75,6 +75,20 @@ describe("PortalNewsRail — rendering", () => {
     expect(screen.getAllByText(/min read/).length).toBeGreaterThan(0);
   });
 
+  it("links to marketing articles outside the portal domain without Next prefetch", () => {
+    render(<PortalNewsRail articles={articles} practiceKinds={["visa"]} />);
+    const articleLink = screen.getByRole("link", {
+      name: /New KITAS rule 2026/i,
+    });
+    expect(articleLink.getAttribute("href")).toBe(
+      "https://balizero.com/visas/slug-1",
+    );
+    expect(articleLink.getAttribute("target")).toBe("_blank");
+
+    const newsLink = screen.getByRole("link", { name: /More from Bali Zero/i });
+    expect(newsLink.getAttribute("href")).toBe("https://balizero.com/news");
+  });
+
   it("renders nothing when there are no articles", () => {
     const { container } = render(
       <PortalNewsRail articles={[]} practiceKinds={["visa"]} />,

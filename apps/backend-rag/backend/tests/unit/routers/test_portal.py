@@ -101,11 +101,26 @@ class TestDashboard:
         assert "active_visa" in data["data"]
 
     def test_dashboard_service_error(self, client, mock_portal_service):
-        """Service exception returns 500."""
+        """Generic service exception returns 500."""
         mock_portal_service.get_dashboard.side_effect = Exception("DB down")
 
         response = client.get("/api/portal/dashboard")
         assert response.status_code == 500
+
+    def test_dashboard_client_not_found_returns_404_not_500(
+        self, client, mock_portal_service
+    ):
+        """BUG C: if the portal account is linked to a soft-deleted client,
+        get_dashboard raises ValueError('Client X not found'). That is a
+        not-found condition (the client row is gone / soft-deleted), NOT an
+        internal error — it must surface as 404, not a 500 that crashes the
+        whole dashboard."""
+        mock_portal_service.get_dashboard.side_effect = ValueError(
+            "Client 42 not found"
+        )
+
+        response = client.get("/api/portal/dashboard")
+        assert response.status_code == 404
 
 
 # ============================================
@@ -334,6 +349,70 @@ class TestDocuments:
         assert call.args == (42, 10)
         assert call.kwargs["current_user"]["client_id"] == 42
 
+    def test_upload_document_forwards_purpose(self, client, mock_portal_service):
+        """FASE 5: a document_purpose form field reaches the service (trimmed)."""
+        mock_portal_service.upload_document.return_value = {"id": 10, "file_name": "passport.pdf"}
+
+        response = client.post(
+            "/api/portal/documents/upload",
+            data={"document_type": "passport", "document_purpose": "  KITAS renewal  "},
+            files={"file": ("passport.pdf", b"PDF_CONTENT", "application/pdf")},
+        )
+
+        assert response.status_code == 200
+        call = mock_portal_service.upload_document.call_args
+        assert call.kwargs["document_purpose"] == "KITAS renewal"
+
+    def test_delete_document_success(self, client, mock_portal_service):
+        """FASE 5: soft-delete returns recovery message."""
+        mock_portal_service.soft_delete_document.return_value = {
+            "id": 10,
+            "name": "passport.pdf",
+            "type": "passport",
+            "deleted": True,
+        }
+
+        response = client.delete("/api/portal/documents/10")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "restore" in data["message"].lower()
+        call = mock_portal_service.soft_delete_document.call_args
+        assert call.args == (42, 10)
+        assert call.kwargs["current_user"]["client_id"] == 42
+
+    def test_delete_document_not_found(self, client, mock_portal_service):
+        """FASE 5: soft-delete of an unknown doc returns 404."""
+        mock_portal_service.soft_delete_document.return_value = None
+
+        response = client.delete("/api/portal/documents/404")
+        assert response.status_code == 404
+
+    def test_restore_document_success(self, client, mock_portal_service):
+        """FASE 5: restore returns the recovered document."""
+        mock_portal_service.restore_document.return_value = {
+            "id": 10,
+            "name": "passport.pdf",
+            "type": "passport",
+            "deleted": False,
+        }
+
+        response = client.post("/api/portal/documents/10/restore")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        call = mock_portal_service.restore_document.call_args
+        assert call.args == (42, 10)
+
+    def test_restore_document_not_found(self, client, mock_portal_service):
+        """FASE 5: restore of a non-deleted/unknown doc returns 404."""
+        mock_portal_service.restore_document.return_value = None
+
+        response = client.post("/api/portal/documents/404/restore")
+        assert response.status_code == 404
+
 
 # ============================================
 # MESSAGE TESTS
@@ -372,6 +451,27 @@ class TestMessages:
         data = response.json()
         assert data["success"] is True
         assert data["message"] == "Message sent"
+
+    def test_send_message_accepts_camel_case_practice_id(
+        self, client, mock_portal_service
+    ):
+        """Browser payloads use camelCase, but service expects snake_case."""
+        mock_portal_service.send_message.return_value = {
+            "id": 5,
+            "content": "Need help with process",
+            "practice_id": 603,
+        }
+
+        response = client.post(
+            "/api/portal/messages",
+            json={"content": "Need help with process", "practiceId": 603},
+        )
+
+        assert response.status_code == 200
+        mock_portal_service.send_message.assert_awaited_once()
+        assert (
+            mock_portal_service.send_message.await_args.kwargs["practice_id"] == 603
+        )
 
     def test_mark_message_read(self, client, mock_portal_service):
         """Mark message as read."""

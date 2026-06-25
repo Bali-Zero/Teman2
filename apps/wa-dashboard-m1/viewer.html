@@ -449,18 +449,291 @@
   .intake-pill.warn { background: rgba(241,184,92,0.18); color: var(--wa-warning); }
   .intake-pill.bad { background: rgba(241,92,109,0.16); color: var(--wa-error); }
   .intake-note { margin-top: 12px; font-size: 12px; color: var(--wa-text-3); line-height: 1.6; }
+  .status-banner {
+    background: #fff7d6; border: 1px solid #f4d47b; color: #6f5200;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 14px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .status-banner.error { background: #fff0f1; border-color: #f4b8bd; color: #8a1f2b; }
+  .captain-view {
+    height: calc(100vh - 60px); overflow-y: auto;
+    background: var(--wa-bg); padding: 24px 32px;
+  }
+  .captain-header h2 { font-size: 20px; font-weight: 650; color: var(--wa-text); margin: 0 0 4px; }
+  .captain-sub { font-size: 13px; color: var(--wa-text-2); margin-bottom: 18px; }
+  .captain-hero {
+    display: grid; grid-template-columns: 1.15fr 0.85fr;
+    gap: 12px; margin-bottom: 14px;
+  }
+  .captain-panel {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 16px;
+  }
+  .captain-panel h3 {
+    margin: 0 0 10px; color: var(--wa-text); font-size: 15px; font-weight: 650;
+  }
+  .captain-panel p, .captain-panel li {
+    color: var(--wa-text-2); font-size: 13px; line-height: 1.45;
+  }
+  .captain-panel p { margin: 0; }
+  .captain-panel ul { margin: 0; padding-left: 18px; }
+  .captain-focus {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+  }
+  .captain-focus span {
+    background: var(--wa-panel-3); color: var(--wa-text-2);
+    border-radius: 999px; padding: 4px 9px; font-size: 12px;
+  }
+  .captain-flow {
+    display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr));
+    gap: 10px; margin: 14px 0;
+  }
+  .captain-step {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 13px; min-height: 122px;
+  }
+  .captain-step .kicker {
+    color: var(--wa-accent); font-size: 11px; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 7px;
+  }
+  .captain-step .title { color: var(--wa-text); font-weight: 650; margin-bottom: 5px; }
+  .captain-step .copy { color: var(--wa-text-2); font-size: 12px; line-height: 1.4; }
+  .captain-case-grid {
+    display: grid; grid-template-columns: 0.95fr 1.05fr 1fr;
+    gap: 12px; margin: 14px 0;
+  }
+  .case-captain-card {
+    margin: 12px 8% 0;
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-left: 4px solid var(--wa-accent);
+    border-radius: 8px; padding: 12px 14px;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.08);
+  }
+  .case-captain-card .case-title,
+  .captain-case-title {
+    font-weight: 650; color: var(--wa-text); margin-bottom: 7px;
+  }
+  .case-title-row {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; margin-bottom: 9px;
+  }
+  .case-title-row .case-title { margin-bottom: 0; }
+  .case-shadow-pill {
+    color: #246455; background: #e8f5f1; border: 1px solid #b7ded1;
+    border-radius: 999px; padding: 3px 8px; font-size: 11px; white-space: nowrap;
+  }
+  .case-captain-card .case-grid-mini {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .case-mini {
+    background: var(--wa-panel-3); border-radius: 8px; padding: 9px;
+  }
+  .case-mini .label {
+    color: var(--wa-text-3); font-size: 10px; text-transform: uppercase; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .case-mini .value {
+    color: var(--wa-text); font-size: 12px; line-height: 1.35;
+  }
+  .case-local-context {
+    margin-top: 10px; background: #f7f8f8; border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 10px;
+  }
+  .case-local-context .label {
+    color: var(--wa-text-3); font-size: 10px; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 4px;
+  }
+  .case-local-context .value {
+    color: var(--wa-text); font-size: 12.5px; line-height: 1.4;
+    white-space: pre-wrap; max-height: 86px; overflow: hidden;
+  }
+  .case-reasoning-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
+  }
+  .case-reasoning-grid .case-local-context { margin-top: 0; }
+  .case-reasoning-grid .case-local-context .value {
+    max-height: 132px; overflow: auto;
+  }
+  .case-local-context.case-ideal {
+    background: #e8f5f1; border-color: #b7ded1;
+  }
+  .case-local-context.case-ideal .value { max-height: 132px; }
+  .case-signal-list {
+    margin: 0; padding-left: 17px; color: var(--wa-text); font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .case-signal-list li { margin: 2px 0; }
+  .local-mode-banner {
+    background: #e8f5f1; border: 1px solid #b7ded1; color: #246455;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 14px;
+    font-size: 13px; line-height: 1.45;
+  }
+  .captain-evidence {
+    display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px;
+  }
+  .captain-evidence .quote {
+    background: var(--wa-panel-3); border-radius: 8px; padding: 9px;
+    color: var(--wa-text); font-size: 12.5px; line-height: 1.4;
+    white-space: pre-wrap; max-height: 120px; overflow: auto;
+  }
+  .captain-action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .captain-action-row button {
+    background: var(--wa-accent); color: #fff; border: 1px solid var(--wa-accent);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; font-family: inherit; font-size: 13px;
+  }
+  .captain-action-row button.secondary {
+    background: var(--wa-panel); color: var(--wa-text-2); border-color: var(--wa-border);
+  }
+  .captain-table-note {
+    color: var(--wa-text-3); font-size: 12px; margin-top: 10px; line-height: 1.5;
+  }
+  .training-top {
+    display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr));
+    gap: 10px; margin: 18px 0;
+  }
+  .training-card {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 12px; min-height: 78px;
+  }
+  .training-card .label { color: var(--wa-text-2); font-size: 11px; text-transform: uppercase; font-weight: 600; }
+  .training-card .value { color: var(--wa-text); font-size: 24px; font-weight: 600; margin-top: 6px; }
+  .training-card .sub { color: var(--wa-text-3); font-size: 12px; margin-top: 2px; }
+  .training-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .training-actions button {
+    background: var(--wa-accent); color: #fff; border: 1px solid var(--wa-accent);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; font-family: inherit; font-size: 13px;
+  }
+  .training-actions button.secondary { background: var(--wa-panel); color: var(--wa-text-2); border-color: var(--wa-border); }
+  .human-strip {
+    display: grid; grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 10px; margin: 18px 0;
+  }
+  .human-card {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 14px; min-height: 108px;
+  }
+  .human-card h3 { margin: 0 0 8px; font-size: 14px; color: var(--wa-text); }
+  .human-card p { margin: 0; color: var(--wa-text-2); line-height: 1.45; font-size: 13px; }
+  .human-card strong { color: var(--wa-text); font-weight: 600; }
+  .learning-flow {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 8px; margin-bottom: 18px;
+  }
+  .flow-step {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 12px; min-height: 100px;
+  }
+  .flow-step .num {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--wa-accent);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; margin-bottom: 8px;
+  }
+  .flow-step .title { font-weight: 600; color: var(--wa-text); margin-bottom: 4px; }
+  .flow-step .copy { color: var(--wa-text-2); font-size: 12px; line-height: 1.4; }
+  .training-filterbar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 12px;
+  }
+  .training-filterbar input {
+    background: var(--wa-panel); border: 1px solid var(--wa-border);
+    border-radius: 8px; padding: 8px 10px; min-width: 260px;
+    font: inherit; color: var(--wa-text); outline: none;
+  }
+  .filter-chip {
+    border: 1px solid var(--wa-border); background: var(--wa-panel); color: var(--wa-text-2);
+    border-radius: 999px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 12px;
+  }
+  .filter-chip.active { background: var(--wa-accent); color: #fff; border-color: var(--wa-accent); }
+  .training-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 10px; margin-bottom: 18px;
+  }
+  .training-category {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-left: 4px solid var(--wa-accent); border-radius: 8px; padding: 12px;
+  }
+  .training-category.blue { border-left-color: #3b82f6; }
+  .training-category.cyan { border-left-color: #06b6d4; }
+  .training-category.gold { border-left-color: #fbbf24; }
+  .training-category.violet { border-left-color: #a855f7; }
+  .training-category.orange { border-left-color: #f59e0b; }
+  .training-category.slate { border-left-color: #64748b; }
+  .training-category .title { font-weight: 600; color: var(--wa-text); font-size: 14px; }
+  .training-category .meta { color: var(--wa-text-3); font-size: 12px; margin-top: 4px; }
+  .training-kv { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .training-kv span {
+    background: var(--wa-panel-3); color: var(--wa-text-2); border-radius: 10px;
+    padding: 2px 7px; font-size: 11px;
+  }
+  .training-table td.path { color: var(--wa-text-3); font-size: 12px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+  .training-table-wrap { overflow-x: auto; }
+  .training-table { table-layout: fixed; min-width: 980px; }
+  .training-table th, .training-table td {
+    text-align: left; white-space: normal; vertical-align: top;
+  }
+  .training-table th:nth-child(1) { width: 24%; }
+  .training-table th:nth-child(2) { width: 16%; }
+  .training-table th:nth-child(3) { width: 12%; }
+  .training-table th:nth-child(4) { width: 28%; }
+  .training-table th:nth-child(5) { width: 20%; }
+  .training-table td.path {
+    max-width: none; overflow: visible; text-overflow: clip; word-break: break-word;
+  }
+  .training-table .metric-chip {
+    display: inline-block; background: var(--wa-panel-3); color: var(--wa-text-2);
+    border-radius: 10px; padding: 2px 7px; margin: 1px; font-size: 11px;
+  }
+  @media (max-width: 1200px) {
+    main { grid-template-columns: 220px 340px 1fr; }
+    .captain-flow { grid-template-columns: repeat(3, 1fr); }
+    .captain-case-grid { grid-template-columns: 1fr; }
+    .case-reasoning-grid { grid-template-columns: 1fr; }
+    .training-top { grid-template-columns: repeat(3, 1fr); }
+    .training-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  }
+  @media (max-width: 860px) {
+    header { gap: 10px; padding: 10px 12px; height: auto; flex-wrap: wrap; }
+    .view-tabs { order: 3; width: 100%; justify-content: flex-start; }
+    .metrics-view, .captain-view { padding: 18px 14px; }
+    .captain-hero { grid-template-columns: 1fr; }
+    .captain-flow { grid-template-columns: 1fr; }
+    .case-captain-card { margin: 10px 12px 0; }
+    .case-captain-card .case-grid-mini { grid-template-columns: 1fr; }
+    .training-top { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+    .training-grid { grid-template-columns: 1fr; }
+    .human-strip { grid-template-columns: 1fr; }
+    .learning-flow { grid-template-columns: repeat(2, 1fr); }
+    .training-filterbar input { min-width: 100%; }
+    .training-table { min-width: 0; }
+    .training-table thead { display: none; }
+    .training-table tbody, .training-table tr, .training-table td { display: block; width: 100%; box-sizing: border-box; }
+    .training-table tr { border-bottom: 1px solid var(--wa-divider); padding: 10px 12px; }
+    .training-table td {
+      border-bottom: 0; padding: 5px 0 5px 96px; min-height: 26px;
+      text-align: left; white-space: normal; position: relative;
+    }
+    .training-table td::before {
+      content: attr(data-label); position: absolute; left: 0; top: 5px; width: 84px;
+      color: var(--wa-text-3); font-size: 11px; text-transform: uppercase; font-weight: 600;
+    }
+    .training-table td.path {
+      max-width: none; overflow: visible; text-overflow: clip; word-break: break-word;
+    }
+  }
 </style>
 </head>
 <body>
 <header>
   <div class="brand">
     <div class="brand-icon">BZ</div>
-    <span>WhatsApp Dashboard</span>
+    <span>Zantara Case Captain</span>
   </div>
   <div class="view-tabs">
-    <button class="view-tab active" data-view="convs">Conversazioni</button>
-    <button class="view-tab" data-view="metrics">Qualità Team</button>
+    <button class="view-tab active" data-view="convs">Conversazioni live</button>
+    <button class="view-tab" data-view="captain">Zantara risolve</button>
+    <button class="view-tab" data-view="training">Training academy</button>
+    <button class="view-tab" data-view="metrics">Team</button>
     <button class="view-tab" data-view="intake">Intake</button>
+
   </div>
   <div class="meta">
     <span id="health-pill" class="badge">read-only</span>
@@ -470,21 +743,30 @@
 </header>
 <main id="view-convs">
   <div class="col" id="col-teams">
-    <div class="col-header">Team</div>
+    <div class="col-header">1 · Team</div>
     <div class="loader">Caricamento team…</div>
   </div>
   <div class="col" id="col-convs">
-    <div class="col-header">Conversazioni</div>
+    <div class="col-header">2 · Conversazioni live</div>
     <div class="empty">Seleziona un team member</div>
   </div>
   <div class="col" id="col-thread">
     <div class="empty-wa">
-      <div class="icon">💬</div>
-      <div class="text">BZ WhatsApp Dashboard</div>
-      <div class="sub">Seleziona una conversazione per leggere i messaggi.</div>
+      <div class="icon">Z</div>
+      <div class="text">Conversazioni live</div>
+      <div class="sub">Team a sinistra, conversazioni al centro, messaggi qui.</div>
     </div>
   </div>
 </main>
+<section id="view-captain" class="captain-view" style="display:none">
+  <div class="captain-header">
+    <h2>Zantara risolve il caso</h2>
+    <div class="captain-sub" id="c-sub">Shadow mode: diagnosi, piano, bozza e controllo umano. Nessun invio WhatsApp, nessuna scrittura CRM.</div>
+  </div>
+  <div id="c-root">
+    <div class="loader">Caricamento ragionamento…</div>
+  </div>
+</section>
 <section id="view-metrics" class="metrics-view" style="display:none">
   <div class="metrics-header">
     <h2>Qualità conversazioni — ultimi <span id="m-window">30</span> giorni</h2>
@@ -537,6 +819,19 @@
     Aggregati Pro-bound. Nessun telefono, subject gruppo o identificatore cliente viene esposto in questa vista.
   </div>
 </section>
+<section id="view-training" class="metrics-view" style="display:none">
+  <div class="metrics-header">
+    <h2>Zantara training locale</h2>
+    <div class="metrics-sub" id="t-sub">Caricamento…</div>
+    <div class="training-actions">
+      <button id="t-refresh">Aggiorna</button>
+      <button id="t-open-corpus" class="secondary">Corpus locale</button>
+    </div>
+  </div>
+  <div id="t-root">
+    <div class="loader">Caricamento training…</div>
+  </div>
+</section>
 <script>
 let DATA = null;
 let SELECTED_TEAM = null;
@@ -545,6 +840,10 @@ let THREAD_SEARCH = "";
 let THREAD_CACHE = null;
 let THREAD_CACHE_KEY = null;
 let INTAKE = null;
+let TRAINING = null;
+let TRAINING_FILTER = "all";
+let TRAINING_QUERY = "";
+
 const KITA_BASE = "https://kita.balizero.com";
 
 const colTeams = document.getElementById("col-teams");
@@ -563,6 +862,24 @@ function fmtTime(iso) {
   const y = new Date(now); y.setDate(y.getDate()-1);
   if (d.toDateString() === y.toDateString()) return "ieri " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
   return d.toLocaleDateString("it-IT", { day:"2-digit", month:"2-digit" }) + " " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("it-IT", { day:"2-digit", month:"2-digit", year:"2-digit" })
+    + " " + d.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" });
+}
+
+function compactMetricLabel(label) {
+  return String(label || "")
+    .replace("Human Approval Required", "Approval")
+    .replace("Awaiting Owner Decision", "Owner wait")
+    .replace("Training Examples", "Examples")
+    .replace("Replay Scenarios", "Replays")
+    .replace("Whatsapp Sends", "WA sends")
+    .replace("Crm Mutations", "CRM writes");
 }
 
 function fmtPreview(c) {
@@ -596,6 +913,558 @@ function companyBadgeLabel(m) {
   return "BZ";
 }
 
+function sortedConvsForTeam(pd) {
+  if (!pd?.convs) return [];
+  return [...pd.convs].sort((a,b) => {
+    const aHigh = a.attention_priority === "HIGH" ? 1 : 0;
+    const bHigh = b.attention_priority === "HIGH" ? 1 : 0;
+    if (aHigh !== bHigh) return bHigh - aHigh;
+    return new Date(b.last_at) - new Date(a.last_at);
+  });
+}
+
+function selectedConversationExists() {
+  const pd = SELECTED_TEAM ? DATA?.by_phone?.[SELECTED_TEAM] : null;
+  return Boolean(pd?.convs?.some((c) => c.counterpart === SELECTED_CONV));
+}
+
+function selectFirstConversationForTeam(phone) {
+  const pd = DATA?.by_phone?.[phone];
+  const first = sortedConvsForTeam(pd)[0];
+  SELECTED_CONV = first?.counterpart || null;
+  THREAD_SEARCH = "";
+  THREAD_CACHE = null;
+  THREAD_CACHE_KEY = null;
+  return Boolean(SELECTED_CONV);
+}
+
+function ensureVisibleCaseSelected() {
+  if (!DATA || DATA.degraded || !DATA.team?.length) return false;
+  if (!SELECTED_TEAM) SELECTED_TEAM = DATA.team[0].phone;
+  if (!selectedConversationExists()) return selectFirstConversationForTeam(SELECTED_TEAM);
+  return true;
+}
+
+function currentCaseContext() {
+  if (!DATA || !SELECTED_TEAM) return { member: null, pd: null, conv: null };
+  const member = DATA.team.find((m) => m.phone === SELECTED_TEAM) || null;
+  const pd = DATA.by_phone[SELECTED_TEAM] || null;
+  const conv = pd && SELECTED_CONV ? pd.convs.find((c) => c.counterpart === SELECTED_CONV) || null : null;
+  return { member, pd, conv };
+}
+
+function caseKindLabel(conv) {
+  if (!conv) return "Nessun caso";
+  if (conv.kind === "group") return conv.crm_match ? "Gruppo cliente" : "Gruppo operativo";
+  if (conv.tag === "internal") return "Thread interno";
+  if (conv.crm_match) return "Cliente CRM";
+  return "Prospect / lead";
+}
+
+function caseUrgencyLabel(conv) {
+  if (!conv) return "—";
+  if (conv.attention_priority === "HIGH") return "Alta: richiede gestione prima delle code normali";
+  if (conv.attention_priority === "MEDIUM") return "Media: va chiarita o sbloccata";
+  if (conv.unread_count) return "Aperta: ci sono messaggi non ancora chiusi";
+  return "Monitor: nessun segnale urgente dal mirror";
+}
+
+function messageSnippet(text, max = 260) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  return clean.length > max ? clean.slice(0, max - 1) + "…" : clean;
+}
+
+function messageTextForEvidence(message) {
+  if (!message) return "";
+  if (message.body && message.body.trim()) return message.body;
+  if (message.media_type && MEDIA_TYPES.has(message.media_type)) return `[${message.media_type}]`;
+  return "";
+}
+
+function textLooksLikeThanks(text) {
+  return /\b(thank you|thanks|thx|appreciate|terima kasih|makasih|makasi|suksma|grazie)\b/i.test(String(text || ""));
+}
+
+function textLooksLikeQuestion(text) {
+  return /[?¿]|\b(can|could|should|when|what|how|where|why|is it|are you|bisa|apakah|kapan|dimana|di mana|berapa|bagaimana|quando|come|dove|quanto|posso|puoi)\b/i.test(String(text || ""));
+}
+
+function detectReplyLanguage(text) {
+  const t = String(text || "").toLowerCase();
+  if (/\b(grazie|ciao|buongiorno|buonasera|posso|puoi|quando|come|quanto)\b/.test(t)) return "it";
+  if (/\b(terima kasih|makasih|baik|bisa|apakah|kapan|berapa|pak|bu|mohon)\b/.test(t)) return "id";
+  return "en";
+}
+
+function caseFirstName(conv) {
+  const clean = String(conv?.display_name || "").trim();
+  if (!clean) return "";
+  return clean.split(/\s+/)[0].replace(/[^\p{L}\p{N}'-]/gu, "");
+}
+
+function detectConversationTopics(text, mediaTypes = []) {
+  const t = String(text || "").toLowerCase();
+  const topics = [];
+  if (/\b(visa|kitas|kitap|stay permit|immigration|imigrasi|e-voa|voa|permit)\b/.test(t)) topics.push("visa/immigrazione");
+  if (/\b(flight|ticket|depart|departure|arriv|arrival|leav|leaving|re-?enter|return|airport|dps|sin|bkk|cgk|jakarta|bali)\b/.test(t)) topics.push("viaggio/re-entry");
+  if (/\b(passport|ktp|npwp|akta|document|dokumen|file|photo|image|pdf|scan|screenshot)\b/.test(t) || mediaTypes.length) topics.push("documenti/media");
+  if (/\b(invoice|payment|paid|transfer|bank|price|quote|quotation|fee|harga|biaya|fattura|pagamento)\b/.test(t)) topics.push("pagamenti/quote");
+  if (/\b(company|pt |pma|director|shareholder|tax|oss|kbli|società|azienda)\b/.test(t)) topics.push("società/tax");
+  if (/\b(meeting|appointment|call|zoom|visit|schedule|jadwal|appuntamento|chiamata)\b/.test(t)) topics.push("appuntamento/call");
+  if (/\b(villa|property|land|lease|freehold|real estate|terreno|immobile)\b/.test(t)) topics.push("property");
+  return [...new Set(topics)];
+}
+
+function deriveThreadEvidence(payload, conv) {
+  const messages = payload?.messages || [];
+  const recentMessages = messages.slice(-12);
+  const inboundMessages = messages.filter((m) => m.direction !== "outbound" && messageTextForEvidence(m));
+  const outboundMessages = messages.filter((m) => m.direction === "outbound" && messageTextForEvidence(m));
+  const allTexts = messages.map(messageTextForEvidence).filter(Boolean);
+  const allInboundTexts = inboundMessages.map(messageTextForEvidence).filter(Boolean);
+  const allOutboundTexts = outboundMessages.map(messageTextForEvidence).filter(Boolean);
+  const lastInbound = [...inboundMessages].reverse()[0];
+  const lastOutbound = [...outboundMessages].reverse()[0];
+  const lastAny = [...messages].reverse().find((m) => messageTextForEvidence(m));
+  const firstInbound = inboundMessages[0];
+  const questionMessages = inboundMessages.filter((m) => textLooksLikeQuestion(messageTextForEvidence(m)));
+  const thanksMessages = inboundMessages.filter((m) => textLooksLikeThanks(messageTextForEvidence(m)));
+  const lastMeaningfulInbound = [...inboundMessages].reverse().find((m) => {
+    const text = messageTextForEvidence(m);
+    return text && !textLooksLikeThanks(text) && !/^\[[a-z]+\]$/i.test(text);
+  });
+  const lastInboundAt = lastInbound?.message_date ? new Date(lastInbound.message_date).getTime() : 0;
+  const lastOutboundAt = lastOutbound?.message_date ? new Date(lastOutbound.message_date).getTime() : 0;
+  const openQuestionMessages = questionMessages.filter((m) => {
+    const at = m?.message_date ? new Date(m.message_date).getTime() : 0;
+    return !lastOutboundAt || at > lastOutboundAt;
+  });
+  const recentInboundTexts = recentMessages
+    .filter((m) => m.direction !== "outbound")
+    .map(messageTextForEvidence)
+    .filter(Boolean);
+  const recentOutboundTexts = recentMessages
+    .filter((m) => m.direction === "outbound")
+    .map(messageTextForEvidence)
+    .filter(Boolean);
+  const mediaTypes = [...new Set(messages.filter((m) => MEDIA_TYPES.has(m.media_type)).map((m) => m.media_type))];
+  const recentMediaTypes = [...new Set(recentMessages.filter((m) => MEDIA_TYPES.has(m.media_type)).map((m) => m.media_type))];
+  const lastInboundText = messageTextForEvidence(lastInbound);
+  const lastOutboundText = messageTextForEvidence(lastOutbound);
+  const recapRaw = conv?.strategic_recap || conv?.sender_strategic_recap || "";
+  const recapSource = conv?.strategic_recap_source || (conv?.sender_strategic_recap ? "wa_thread" : "");
+  const topics = detectConversationTopics([...allTexts, recapRaw].join(" "), mediaTypes);
+  const openAttention = messages.filter((m) => m.attention_priority && !m.attention_resolved_at);
+  const openQuestions = [...openQuestionMessages]
+    .reverse()
+    .map((m) => messageSnippet(messageTextForEvidence(m), 180))
+    .filter(Boolean)
+    .slice(0, 3);
+  const count = payload?.count || conv?.n || messages.length || 0;
+  return {
+    count,
+    inbound_count: inboundMessages.length,
+    outbound_count: outboundMessages.length,
+    question_count: questionMessages.length,
+    open_question_count: openQuestionMessages.length,
+    thanks_count: thanksMessages.length,
+    open_attention_count: openAttention.length,
+    latest_direction: lastAny?.direction || null,
+    latest_at: lastAny?.message_date || conv?.last_at || null,
+    last_inbound_at: lastInbound?.message_date || null,
+    last_outbound_at: lastOutbound?.message_date || null,
+    last_inbound_sender: lastInbound?.sender_display || lastInbound?.sender_phone || "",
+    last_outbound_sender: lastOutbound?.sender_display || lastOutbound?.sender_phone || "",
+    first_inbound: messageSnippet(messageTextForEvidence(firstInbound), 260),
+    last_inbound: messageSnippet(lastInboundText, 360),
+    last_outbound: messageSnippet(lastOutboundText, 260),
+    last_question: openQuestions[0] || "",
+    open_questions: openQuestions,
+    last_meaningful_customer_info: messageSnippet(messageTextForEvidence(lastMeaningfulInbound), 360),
+    whole_thread_inbound: messageSnippet(allInboundTexts.join(" · "), 900),
+    whole_thread_outbound: messageSnippet(allOutboundTexts.join(" · "), 720),
+    recent_inbound: messageSnippet(recentInboundTexts.join(" · "), 520),
+    recent_outbound: messageSnippet(recentOutboundTexts.join(" · "), 420),
+    media_types: mediaTypes,
+    recent_media_types: recentMediaTypes,
+    last_inbound_is_media_only: /^\[[a-z]+\]$/i.test(lastInboundText),
+    topics,
+    recap: messageSnippet(recapRaw, 700),
+    recap_source: recapSource,
+    whole_thread_summary: recapRaw
+      ? messageSnippet(recapRaw, 700)
+      : `Analisi locale su ${count} messaggi: ${inboundMessages.length} cliente/inbound, ${outboundMessages.length} team/outbound${topics.length ? `, topic ${topics.join(", ")}` : ""}.`,
+    has_question: questionMessages.length > 0,
+    has_thanks: textLooksLikeThanks(lastInboundText),
+    needs_reply: Boolean(conv?.unread_count) || (lastInboundAt > lastOutboundAt),
+  };
+}
+
+function buildIdealReply(conv, evidence, intent) {
+  const lang = detectReplyLanguage(evidence.last_meaningful_customer_info || evidence.last_inbound || evidence.whole_thread_inbound);
+  const name = caseFirstName(conv);
+  const hi = name ? ` ${name}` : "";
+  const lastInfo = messageSnippet(evidence.last_meaningful_customer_info || evidence.last_inbound, 120);
+  const lastQuestion = messageSnippet(evidence.last_question || evidence.open_questions?.[0] || "", 120);
+  const hasMedia = Boolean(evidence.recent_media_types?.length || evidence.media_types?.length);
+  const mediaLabel = lang === "id"
+    ? (hasMedia ? "file/foto yang kamu kirim" : "ini")
+    : lang === "it"
+      ? (hasMedia ? "il file/la foto che hai inviato" : "questo")
+      : (hasMedia ? "the file/photo you sent" : "this");
+
+  if (intent === "thanks") {
+    if (lang === "id") return `Sama-sama${hi}. Sudah kami terima. Kami monitor case ini dan akan update di sini kalau ada yang perlu dilengkapi.`;
+    if (lang === "it") return `Figurati${hi}. Abbiamo ricevuto tutto. Teniamo monitorato il caso e ti aggiorniamo qui se serve altro.`;
+    return `You're welcome${hi}. We received it. We'll keep this case monitored and update you here if anything else is needed.`;
+  }
+  if (intent === "question") {
+    if (lang === "id") return `Terima kasih${hi}. Saya cek dulu poin ini${lastQuestion ? `: "${lastQuestion}"` : ""}, lalu saya konfirmasi next step yang tepat di sini.`;
+    if (lang === "it") return `Grazie${hi}. Verifico questo punto${lastQuestion ? `: "${lastQuestion}"` : ""} sulla tua pratica e ti confermo qui il prossimo passaggio corretto.`;
+    return `Thanks${hi}. I'll check this point${lastQuestion ? `: "${lastQuestion}"` : ""} against your case and confirm the correct next step here.`;
+  }
+  if (intent === "info") {
+    if (lang === "id") return `Terima kasih${hi}, saya catat: "${lastInfo}". Kami pakai info ini untuk case kamu dan update next step di sini.`;
+    if (lang === "it") return `Grazie${hi}, ho segnato: "${lastInfo}". Usiamo questa informazione sulla pratica e ti aggiorniamo qui sul prossimo passaggio.`;
+    return `Thanks${hi}, noted: "${lastInfo}". We'll use this for your case and update you here with the next step.`;
+  }
+  if (intent === "media") {
+    if (lang === "id") return `Terima kasih${hi}, ${mediaLabel} sudah kami terima. Kami cek dulu, lalu update next step di sini.`;
+    if (lang === "it") return `Grazie${hi}, abbiamo ricevuto ${mediaLabel}. Lo controlliamo e ti aggiorniamo qui sul prossimo passaggio.`;
+    return `Thanks${hi}, we received ${mediaLabel}. We'll check it and update you here with the next step.`;
+  }
+  if (intent === "internal") {
+    return "Owner: confirm who decides this. Blocker: name the missing item. Next check: set one time and update the thread.";
+  }
+  if (intent === "already_replied") {
+    return "No new message needed right now. Keep monitoring; reply only if the client asks again or the promised next step changes.";
+  }
+  if (intent === "recap_monitor") {
+    return "No client message needed right now. Use the existing recap to prepare the next operator/owner update if the case status changes.";
+  }
+  if (lang === "id") return `Terima kasih${hi}. Kami sedang cek statusnya dan akan update di sini dengan next step yang jelas.`;
+  if (lang === "it") return `Grazie${hi}. Stiamo verificando lo stato e ti aggiorniamo qui con il prossimo passaggio chiaro.`;
+  return `Thanks${hi}. We're checking the status and will update you here with the clear next step.`;
+}
+
+function buildSpecificCaseAnalysis(conv, evidence) {
+  const media = evidence.recent_media_types?.length ? evidence.recent_media_types : evidence.media_types || [];
+  const mediaLabel = media.length ? media.join(", ") : "";
+  const specificSignals = [];
+  specificSignals.push(`${evidence.count || 0} messaggi analizzati: ${evidence.inbound_count || 0} inbound / ${evidence.outbound_count || 0} outbound`);
+  if (evidence.recap) specificSignals.push(`Recap già presente (${evidence.recap_source || "CRM/WA"}): "${messageSnippet(evidence.recap, 120)}"`);
+  if (evidence.topics?.length) specificSignals.push(`Topic letti nel thread: ${evidence.topics.join(", ")}`);
+  if (evidence.question_count) specificSignals.push(`Domande cliente nel thread: ${evidence.question_count}`);
+  if (evidence.open_question_count) specificSignals.push(`Domande ancora aperte dopo ultimo team reply: ${evidence.open_question_count}`);
+  if (evidence.open_attention_count) specificSignals.push(`Alert locali aperti: ${evidence.open_attention_count}`);
+  if (evidence.last_meaningful_customer_info) specificSignals.push(`Ultimo dato cliente utile: "${messageSnippet(evidence.last_meaningful_customer_info, 92)}"`);
+  else if (evidence.last_inbound) specificSignals.push(`Ultimo inbound: "${messageSnippet(evidence.last_inbound, 92)}"`);
+  if (evidence.last_outbound) specificSignals.push(`Ultimo outbound team: "${messageSnippet(evidence.last_outbound, 92)}"`);
+  if (mediaLabel) specificSignals.push(`Media nel thread: ${mediaLabel}`);
+  if (evidence.has_thanks) specificSignals.push("L'ultimo inbound è un ringraziamento/conferma");
+  specificSignals.push(evidence.needs_reply ? "Palla al team: ultimo inbound/non letto da chiudere" : "Team già intervenuto dopo l'ultimo inbound");
+
+  let intent = "status";
+  if (conv?.tag === "internal") intent = "internal";
+  else if (evidence.needs_reply && evidence.open_questions?.length) intent = "question";
+  else if (evidence.needs_reply && evidence.last_meaningful_customer_info) intent = "info";
+  else if (evidence.has_thanks) intent = "thanks";
+  else if (evidence.needs_reply && evidence.last_inbound_is_media_only) intent = "media";
+  else if (evidence.recap) intent = "recap_monitor";
+  else if (!evidence.needs_reply) intent = "already_replied";
+
+  const stateByIntent = {
+    thanks: "Ringraziamento ricevuto: chiusura morbida",
+    question: "Domanda cliente aperta: risposta puntuale",
+    info: "Dato operativo ricevuto: integrare nel caso",
+    media: "Documento/media ricevuto: verifica e next step",
+    internal: "Coordinamento interno: owner e blocco",
+    recap_monitor: "Recap strategico presente: monitoraggio informato",
+    already_replied: "Già risposto: monitoraggio",
+    status: conv?.crm_match ? "Cliente CRM: update da chiarire" : "Lead/prospect: qualificazione",
+  };
+  const recapClause = evidence.recap
+    ? ` Usa anche il recap già salvato (${evidence.recap_source || "CRM/WA"}): "${messageSnippet(evidence.recap, 150)}".`
+    : " Non trova un recap già salvato, quindi costruisce la lettura dal thread locale.";
+  const threadClause = `Zantara ha letto tutto il thread disponibile (${evidence.count || 0} messaggi: ${evidence.inbound_count || 0} inbound, ${evidence.outbound_count || 0} outbound).`;
+  const reasoningByIntent = {
+    thanks: `${threadClause}${recapClause} L'ultimo inbound è un ringraziamento/conferma: la risposta ideale è breve, conferma ricezione e lascia aperto l'update se serve.`,
+    question: `${threadClause}${recapClause} Nel thread ci sono ${evidence.question_count || 1} domanda/e cliente: non deve chiudere con un messaggio generico, deve rispondere al punto preciso e collegarlo alla pratica.`,
+    info: `${threadClause}${recapClause} L'ultimo dato cliente utile non è solo cortesia o allegato: va confermato, annotato e collegato al prossimo passaggio della pratica.`,
+    media: `${threadClause}${recapClause} Ha visto media/documenti nel thread (${mediaLabel}). Il passaggio corretto è confermare ricezione, controllare il contenuto e promettere un next step verificabile.`,
+    internal: `${threadClause}${recapClause} Questa è una chat di coordinamento interno: non risposta cliente, ma owner, blocco, decisione richiesta e prossimo controllo.`,
+    recap_monitor: `${threadClause} Parte dal recap strategico già salvato (${evidence.recap_source || "CRM/WA"}) e controlla che non ci sia una palla cliente più recente. In assenza di nuova domanda, deve monitorare o preparare un update interno.`,
+    already_replied: `${threadClause}${recapClause} Il team è già intervenuto dopo l'ultimo inbound: non deve spingere un nuovo messaggio, deve monitorare fino a nuova domanda o scadenza.`,
+    status: evidence.needs_reply
+      ? `${threadClause}${recapClause} Vede una palla aperta sul team: serve un update concreto, non una frase generica.`
+      : `${threadClause}${recapClause} La conversazione è stabile: serve solo monitoraggio o un update programmato.`,
+  };
+  const nextByIntent = {
+    thanks: "Rispondere con acknowledgement breve; niente escalation.",
+    question: "Verificare la pratica e rispondere alla domanda, con prossimo step chiaro.",
+    info: "Confermare il dato ricevuto e spiegare che verrà usato nel caso.",
+    media: "Confermare ricezione del media/documento e dire quando arriva l'update.",
+    internal: "Scrivere owner brief: richiesta, blocco, decisione, prossimo controllo.",
+    recap_monitor: "Usare il recap come base; non inviare finché non c'è nuova domanda o cambio stato.",
+    already_replied: "Non inviare ora; monitorare e riaprire solo se cambia lo stato.",
+    status: evidence.needs_reply ? "Preparare update cliente con stato, blocco e prossimo passaggio." : "Tenere in monitoraggio e aggiornare solo se serve.",
+  };
+
+  return {
+    state: stateByIntent[intent],
+    reasoning: reasoningByIntent[intent],
+    next: nextByIntent[intent],
+    ideal_reply: buildIdealReply(conv, evidence, intent),
+    intent,
+    specificSignals,
+  };
+}
+
+function zantaraCaseDiagnosis(conv, pd, evidence = {}) {
+  if (!conv) {
+    return {
+      state: "Nessuna conversazione selezionata",
+      reasoning: "Zantara resta in attesa di un caso live.",
+      next: "Aprire una conversazione per costruire diagnosi e piano di chiusura.",
+      draft: "Nessuna bozza generata.",
+      ideal_reply: "Nessuna bozza generata.",
+      gate: "Shadow mode attivo.",
+      signals: ["0 invii WhatsApp", "0 scritture CRM", "approval umano richiesto"],
+      specificSignals: [],
+    };
+  }
+
+  const signals = [];
+  if (conv.crm_match) signals.push(`Aggancio CRM #${conv.client_id || "presente"}`);
+  else signals.push("Nessun aggancio CRM: qualificazione lead/prospect");
+  if (conv.assigned_to) signals.push(`Owner operativo: ${conv.assigned_to.replace("@balizero.com", "")}`);
+  if (conv.tax_consultant) signals.push(`Tax: ${conv.tax_consultant}`);
+  if (conv.unread_count) signals.push(`${conv.unread_count} messaggi da chiudere`);
+  if (conv.attention_priority) signals.push(`Priorità ${conv.attention_priority}`);
+  if (conv.kind === "group") signals.push("Thread gruppo: serve sintesi decisionale");
+  if (pd?.team?.name) signals.push(`Operatore: ${pd.team.name}`);
+  if (evidence.last_inbound) signals.push("Ultimo inbound letto nel thread locale");
+  if (evidence.needs_reply) signals.push("Probabile palla al team: serve risposta o update");
+  const specific = buildSpecificCaseAnalysis(conv, evidence);
+  const mergedSignals = [...specific.specificSignals, ...signals].slice(0, 9);
+
+  if (conv.tag === "internal") {
+    return {
+      state: specific.state,
+      reasoning: specific.reasoning,
+      next: specific.next,
+      draft: specific.ideal_reply,
+      ideal_reply: specific.ideal_reply,
+      gate: "Non esce su WhatsApp cliente.",
+      signals: mergedSignals,
+      specificSignals: specific.specificSignals,
+    };
+  }
+
+  if (conv.kind === "group") {
+    return {
+      state: conv.crm_match ? `Gruppo cliente: ${specific.state}` : `Gruppo operativo: ${specific.state}`,
+      reasoning: specific.reasoning,
+      next: specific.next,
+      draft: specific.ideal_reply,
+      ideal_reply: specific.ideal_reply,
+      gate: "Invio solo dopo approvazione operatore/owner.",
+      signals: mergedSignals,
+      specificSignals: specific.specificSignals,
+    };
+  }
+
+  if (!conv.crm_match) {
+    return {
+      state: specific.state,
+      reasoning: specific.reasoning,
+      next: specific.next,
+      draft: specific.ideal_reply,
+      ideal_reply: specific.ideal_reply,
+      gate: "Nessuna creazione CRM automatica.",
+      signals: mergedSignals,
+      specificSignals: specific.specificSignals,
+    };
+  }
+
+  return {
+    state: specific.state,
+    reasoning: specific.reasoning,
+    next: specific.next,
+    draft: specific.ideal_reply,
+    ideal_reply: specific.ideal_reply,
+    gate: "Invio e CRM write restano manuali.",
+    signals: mergedSignals,
+    specificSignals: specific.specificSignals,
+  };
+}
+
+function renderCaseCaptainCard(conv, pd, payload) {
+  const evidence = deriveThreadEvidence(payload, conv);
+  const d = zantaraCaseDiagnosis(conv, pd, evidence);
+  const type = caseKindLabel(conv);
+  const urgency = caseUrgencyLabel(conv);
+  const signals = (d.specificSignals?.length ? d.specificSignals : d.signals || []).slice(0, 6);
+  const topicLabel = evidence.topics?.length ? evidence.topics.join(", ") : "nessun topic forte";
+  return `<div class="case-captain-card">
+    <div class="case-title-row">
+      <div class="case-title">Zantara legge tutta la conversazione</div>
+      <div class="case-shadow-pill">bozza non inviata</div>
+    </div>
+    <div class="case-grid-mini">
+      <div class="case-mini"><div class="label">Conversazione</div><div class="value">${escapeHtml(type)} · ${evidence.count || conv.n || 0} messaggi</div></div>
+      <div class="case-mini"><div class="label">Analisi</div><div class="value">${escapeHtml(`${evidence.inbound_count || 0} cliente/inbound · ${evidence.outbound_count || 0} team/outbound · ${topicLabel}`)}</div></div>
+      <div class="case-mini"><div class="label">Stato Zantara</div><div class="value">${escapeHtml(d.state)} · ${escapeHtml(urgency)}</div></div>
+      <div class="case-mini"><div class="label">Prossima mossa</div><div class="value">${escapeHtml(d.next)}</div></div>
+    </div>
+    ${evidence.recap ? `<div class="case-local-context">
+      <div class="label">Recap già trovato nel corpus</div>
+      <div class="value">${escapeHtml(evidence.recap)}</div>
+    </div>` : ""}
+    <div class="case-reasoning-grid">
+      <div class="case-local-context">
+        <div class="label">Perché lo pensa su questa chat</div>
+        <div class="value">${escapeHtml(d.reasoning)}</div>
+      </div>
+      <div class="case-local-context case-ideal">
+        <div class="label">Risposta ideale shadow</div>
+        <div class="value">${escapeHtml(d.ideal_reply || d.draft)}</div>
+      </div>
+    </div>
+    <div class="case-local-context">
+      <div class="label">Segnali specifici letti</div>
+      <ul class="case-signal-list">${signals.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+    </div>
+  </div>`;
+}
+
+function renderCaptainFlow() {
+  const steps = [
+    ["1", "Conversazione", "Legge il thread live e separa cliente, gruppo, prospect o interno."],
+    ["2", "Contesto", "Aggancia CRM, owner, priorità, non letti e recap strategico se esiste."],
+    ["3", "Diagnosi", "Capisce cosa blocca il caso: requisito mancante, decisione, rischio o update."],
+    ["4", "Piano", "Produce prossima azione, owner brief e bozza shadow."],
+    ["5", "Chiusura", "Passa da umano: invio WA e CRM write restano a zero finché approvati."],
+  ];
+  return `<div class="captain-flow">${steps.map((s) => `
+    <div class="captain-step">
+      <div class="kicker">Step ${escapeHtml(s[0])}</div>
+      <div class="title">${escapeHtml(s[1])}</div>
+      <div class="copy">${escapeHtml(s[2])}</div>
+    </div>`).join("")}</div>`;
+}
+
+function renderCaptainPanel(threadPayload) {
+  const root = document.getElementById("c-root");
+  const subEl = document.getElementById("c-sub");
+  if (!root || !subEl) return;
+  const { member, pd, conv } = currentCaseContext();
+  const evidence = deriveThreadEvidence(threadPayload, conv);
+  const d = zantaraCaseDiagnosis(conv, pd, evidence);
+  const trainingCards = TRAINING?.total_cards || {
+    training_examples: "—", replay_scenarios: "—", shadow_drafts: "—",
+    owner_queue: "—", whatsapp_sends: "0", crm_mutations: "0",
+  };
+  const caseName = conv ? conv.display_name : "Nessun caso selezionato";
+  const caseMeta = conv
+    ? `${caseKindLabel(conv)} · ${member?.name || "team"} · ${conv.n || 0} messaggi · ${caseUrgencyLabel(conv)}`
+    : "Apri Conversazioni live, scegli team e thread: qui appare la diagnosi del caso.";
+
+  subEl.textContent = `${caseName} — ${caseMeta}`;
+  root.innerHTML = `
+    <div class="local-mode-banner">Local Pro mode: qui la PII è visibile perché resta dentro la webapp locale. Non viene copiata in PR, report, log lunghi o chiamate cloud.</div>
+    <div class="captain-hero">
+      <div class="captain-panel">
+        <h3>Dal messaggio alla chiusura</h3>
+        <p>Zantara non è una lista di chat: è un processo shadow. Prende una conversazione, ricostruisce contesto e blocco, propone la prossima azione, poi lascia invio e CRM all'umano.</p>
+        <div class="captain-focus">
+          <span>${escapeHtml(trainingCards.training_examples)} esempi</span>
+          <span>${escapeHtml(trainingCards.shadow_drafts)} shadow draft</span>
+          <span>${escapeHtml(trainingCards.owner_queue)} segnali owner</span>
+          <span>${escapeHtml(trainingCards.whatsapp_sends)} WA sends</span>
+          <span>${escapeHtml(trainingCards.crm_mutations)} CRM writes</span>
+        </div>
+        <div class="captain-action-row">
+          <button data-view-jump="convs">Conversazioni live</button>
+          <button class="secondary" data-view-jump="training">Training academy</button>
+        </div>
+      </div>
+      <div class="captain-panel">
+        <h3>Caso selezionato</h3>
+        <p><strong>${escapeHtml(caseName)}</strong></p>
+        <div class="captain-focus">
+          <span>${escapeHtml(caseKindLabel(conv))}</span>
+          <span>${escapeHtml(d.state)}</span>
+          <span>${escapeHtml(d.gate)}</span>
+        </div>
+      </div>
+    </div>
+    ${renderCaptainFlow()}
+    <div class="captain-case-grid">
+      <div class="captain-panel">
+        <h3>Segnali letti</h3>
+        <ul>${d.signals.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+      </div>
+      <div class="captain-panel">
+        <h3>Contesto reale locale</h3>
+        <div class="captain-evidence">
+          <div>
+            <p><strong>Ultimo inbound</strong>${evidence.last_inbound_sender ? ` · ${escapeHtml(evidence.last_inbound_sender)}` : ""}</p>
+            <div class="quote">${escapeHtml(evidence.last_inbound || "Nessun inbound testuale disponibile nel thread caricato.")}</div>
+          </div>
+          <div>
+            <p><strong>Ultimo outbound</strong>${evidence.last_outbound_sender ? ` · ${escapeHtml(evidence.last_outbound_sender)}` : ""}</p>
+            <div class="quote">${escapeHtml(evidence.last_outbound || "Nessun outbound testuale disponibile nel thread caricato.")}</div>
+          </div>
+        </div>
+      </div>
+      <div class="captain-panel">
+        <h3>Come ragiona</h3>
+        <p>${escapeHtml(d.reasoning)}</p>
+        <div class="captain-table-note">Non mostra chain-of-thought interna: espone diagnosi operativa verificabile.</div>
+      </div>
+      <div class="captain-panel">
+        <h3>Come risolve</h3>
+        <p><strong>Next best action:</strong> ${escapeHtml(d.next)}</p>
+        <p style="margin-top:10px"><strong>Risposta ideale shadow:</strong> ${escapeHtml(d.ideal_reply || d.draft)}</p>
+      </div>
+    </div>
+    <div class="status-banner">Contratto: shadow mode locale. La webapp legge mirror e summary, non invia messaggi, non scrive CRM e non sostituisce l'approvazione owner.</div>`;
+}
+
+async function ensureCurrentThreadPayload() {
+  if (!SELECTED_TEAM || !SELECTED_CONV) return null;
+  const cacheKey = `${SELECTED_TEAM}|${SELECTED_CONV}`;
+  if (THREAD_CACHE_KEY === cacheKey && THREAD_CACHE) return THREAD_CACHE;
+  const r = await fetch(`/thread.json?member=${encodeURIComponent(SELECTED_TEAM)}&conv=${encodeURIComponent(SELECTED_CONV)}`);
+  if (!r.ok) throw new Error(`thread ${r.status}`);
+  const payload = await r.json();
+  THREAD_CACHE = payload;
+  THREAD_CACHE_KEY = cacheKey;
+  return payload;
+}
+
+async function renderCaptain() {
+  const root = document.getElementById("c-root");
+  if (!root) return;
+  ensureVisibleCaseSelected();
+  if (!TRAINING) {
+    try {
+      const r = await fetch("/training.json");
+      if (r.ok) TRAINING = await r.json();
+    } catch {}
+  }
+  let threadPayload = null;
+  try {
+    threadPayload = await ensureCurrentThreadPayload();
+  } catch (err) {
+    root.innerHTML = `<div class="status-banner error">Thread non leggibile: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
+  renderCaptainPanel(threadPayload);
+}
+
 function renderTeams() {
   if (!DATA) return;
   // 2026-05-26 sort: ZERO first, then Bali Zero, then Bayu Santera (company hierarchy)
@@ -603,7 +1472,7 @@ function renderTeams() {
     const rank = (m) => m.contact_kind === "zero" ? 0 : m.contact_kind === "team_bayu" ? 2 : 1;
     return rank(a) - rank(b);
   });
-  let html = `<div class="col-header">Team · ${DATA.team.length}</div>`;
+  let html = `<div class="col-header">1 · Team · ${DATA.team.length}</div>`;
   for (const m of teamOrder) {
     const pd = DATA.by_phone[m.phone] || { total:0, direct_count:0, group_count:0, crm_count:0, attention:{high:0,medium:0} };
     const selected = SELECTED_TEAM === m.phone ? " selected" : "";
@@ -643,23 +1512,24 @@ function renderTeams() {
 }
 
 function renderConvs() {
-  const pd = SELECTED_TEAM ? DATA.by_phone[SELECTED_TEAM] : null;
-  if (!pd) {
-    colConvs.innerHTML = `<div class="col-header">Conversazioni</div><div class="empty">Seleziona un team member</div>`;
+  if (DATA && DATA.degraded) {
+    colConvs.innerHTML = `<div class="col-header">2 · Conversazioni live</div>
+      <div class="empty">
+        DB locale non raggiungibile.<br/>
+        ${escapeHtml(DATA.error || "Le conversazioni sono temporaneamente offline.")}
+      </div>`;
     return;
   }
-  // Sort: HIGH always first, then strictly by last_at DESC (most recent wins, regardless of MEDIUM tag)
-  // Rationale: a group msg of 5 min ago is more relevant than a 3-day-old MEDIUM-flagged direct.
-  const convs = [...pd.convs].sort((a,b) => {
-    const aHigh = a.attention_priority === "HIGH" ? 1 : 0;
-    const bHigh = b.attention_priority === "HIGH" ? 1 : 0;
-    if (aHigh !== bHigh) return bHigh - aHigh;
-    return new Date(b.last_at) - new Date(a.last_at);
-  });
+  const pd = SELECTED_TEAM ? DATA.by_phone[SELECTED_TEAM] : null;
+  if (!pd) {
+    colConvs.innerHTML = `<div class="col-header">2 · Conversazioni live</div><div class="empty">Seleziona un team member</div>`;
+    return;
+  }
+  const convs = sortedConvsForTeam(pd);
   const headerExtra = pd.attention.high || pd.attention.medium
     ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} HIGH</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} MED</span>` : ""}`
     : "";
-  let html = `<div class="col-header">${convs.length} conversazioni${headerExtra}</div>`;
+  let html = `<div class="col-header">2 · ${convs.length} conversazioni${headerExtra}</div>`;
   if (!convs.length) {
     html += `<div class="empty">Nessuna conversazione</div>`;
   } else {
@@ -745,8 +1615,17 @@ function highlightMatch(text, query) {
 }
 
 async function renderThread() {
+  if (DATA && DATA.degraded) {
+    colThread.innerHTML = `<div class="empty-wa">
+      <div class="icon">DB</div>
+      <div class="text">Database offline</div>
+      <div class="sub">La webapp resta attiva; Training e salute servizio sono ancora disponibili.</div>
+    </div>`;
+    THREAD_CACHE = null; THREAD_CACHE_KEY = null;
+    return;
+  }
   if (!SELECTED_TEAM || !SELECTED_CONV) {
-    colThread.innerHTML = `<div class="col-header">Messaggi</div><div class="empty">Seleziona una conversazione</div>`;
+    colThread.innerHTML = `<div class="col-header">3 · Messaggi + Zantara</div><div class="empty">Seleziona una conversazione</div>`;
     THREAD_CACHE = null; THREAD_CACHE_KEY = null;
     return;
   }
@@ -787,6 +1666,7 @@ async function renderThread() {
 
   const convDisplay = conv ? conv.display_name : SELECTED_CONV;
   const headerAvatarClass = conv?.kind === "group" ? "group" : conv?.tag === "crm" ? "crm" : conv?.tag === "prospect" ? "prospect" : "";
+  const captainHtml = conv ? renderCaseCaptainCard(conv, pd, payload) : "";
 
   // Filter messages by search query (case-insensitive, matches body + sender)
   const q = THREAD_SEARCH.trim().toLowerCase();
@@ -814,6 +1694,7 @@ async function renderThread() {
         ${q ? `<button id="thread-search-clear" title="Esc per pulire" style="background:transparent;border:none;color:var(--wa-text-3);cursor:pointer;font-size:14px">✕</button>` : ""}
       </div>
     </div>
+    ${captainHtml}
     ${recapHtml}
     <div class="thread-body">`;
   let lastDay = "";
@@ -871,28 +1752,31 @@ async function renderThread() {
 function selectTeam(phone) {
   if (SELECTED_TEAM === phone) return;
   SELECTED_TEAM = phone;
-  SELECTED_CONV = null;
-  THREAD_SEARCH = "";
-  THREAD_CACHE = null; THREAD_CACHE_KEY = null;
+  selectFirstConversationForTeam(phone);
   renderTeams(); renderConvs(); renderThread();
+  if (CURRENT_VIEW === "captain") renderCaptain();
 }
 function selectConv(conv) {
   SELECTED_CONV = conv;
   THREAD_SEARCH = "";
   renderConvs(); renderThread();
+  if (CURRENT_VIEW === "captain") renderCaptain();
 }
 
 async function refresh() {
   try {
     const r = await fetch("/data.json");
+    if (!r.ok) throw new Error(`data ${r.status}`);
     DATA = await r.json();
     document.getElementById("last-refresh").textContent = "refresh: " + new Date(DATA.generated_at).toLocaleTimeString("it-IT");
-    if (!SELECTED_TEAM && DATA.team.length) SELECTED_TEAM = DATA.team[0].phone;
+    ensureVisibleCaseSelected();
     renderTeams(); renderConvs(); renderThread();
     if (CURRENT_VIEW === "intake") {
       INTAKE = null;
       renderIntake();
     }
+    if (CURRENT_VIEW === "captain") renderCaptain();
+
   } catch (err) {
     colTeams.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
   }
@@ -901,11 +1785,18 @@ async function refresh() {
 async function checkHealth() {
   try {
     const r = await fetch("/health.json");
+    if (!r.ok) throw new Error(`health ${r.status}`);
     const h = await r.json();
-    if (h.ok) {
-      document.getElementById("db-host").textContent = "DB: " + h.db_url_host;
-      document.getElementById("health-pill").style.background = "rgba(90,212,138,0.18)";
-      document.getElementById("health-pill").style.color = "var(--bz-success)";
+    const pill = document.getElementById("health-pill");
+    document.getElementById("db-host").textContent = "DB: " + (h.db_url_host || "unknown");
+    if (h.db_ok) {
+      pill.textContent = "read-only";
+      pill.style.background = "rgba(90,212,138,0.18)";
+      pill.style.color = "var(--bz-success)";
+    } else {
+      pill.textContent = "degraded";
+      pill.style.background = "rgba(240,170,0,0.18)";
+      pill.style.color = "var(--wa-warning)";
     }
   } catch {}
 }
@@ -918,11 +1809,17 @@ let CURRENT_VIEW = "convs";
 function switchView(view) {
   CURRENT_VIEW = view;
   document.getElementById("view-convs").style.display = view === "convs" ? "" : "none";
+  document.getElementById("view-captain").style.display = view === "captain" ? "" : "none";
   document.getElementById("view-metrics").style.display = view === "metrics" ? "" : "none";
   document.getElementById("view-intake").style.display = view === "intake" ? "" : "none";
+  document.getElementById("view-training").style.display = view === "training" ? "" : "none";
+
   for (const b of document.querySelectorAll(".view-tab")) b.classList.toggle("active", b.dataset.view === view);
+  if (view === "captain") renderCaptain();
   if (view === "metrics") renderMetrics();
   if (view === "intake") renderIntake();
+  if (view === "training") renderTraining();
+
 }
 
 function mFmt(v, suffix) { return v == null ? "—" : v + (suffix || ""); }
@@ -1194,13 +2091,204 @@ async function renderIntake() {
   }
 }
 
+function trainingCard(label, value, sub) {
+  return `<div class="training-card">
+    <div class="label">${escapeHtml(label)}</div>
+    <div class="value">${escapeHtml(value)}</div>
+    <div class="sub">${escapeHtml(sub || "")}</div>
+  </div>`;
+}
+
+function renderTrainingCategory(c) {
+  const kv = Object.entries(c.top_metrics || {})
+    .slice(0, 4)
+    .map(([key, value]) => `<span>${escapeHtml(key.replace(/_/g, " "))}: ${escapeHtml(value)}</span>`)
+    .join("");
+  return `<div class="training-category ${escapeHtml(c.tone || "slate")}">
+    <div class="title">${escapeHtml(c.label)}</div>
+    <div class="meta">${c.count} summary · latest ${escapeHtml(fmtDateTime(c.latest_generated_at || c.latest_mtime))}</div>
+    ${kv ? `<div class="training-kv">${kv}</div>` : ""}
+  </div>`;
+}
+
+function renderTrainingTable(artifacts) {
+  if (!artifacts.length) {
+    return `<div class="metrics-table-wrap training-table-wrap"><table class="metrics-table training-table">
+      <tbody><tr><td class="op">Nessun summary trovato nel corpus locale.</td></tr></tbody>
+    </table></div>`;
+  }
+  let html = `<div class="metrics-table-wrap training-table-wrap"><table class="metrics-table training-table">
+    <thead><tr>
+      <th class="op">Artifact</th><th>Tipo</th><th>Generato</th><th>Metriche</th><th class="op">Path</th>
+    </tr></thead><tbody>`;
+  for (const a of artifacts) {
+    const chips = (a.key_metrics || []).slice(0, 6)
+      .map((m) => `<span class="metric-chip">${escapeHtml(compactMetricLabel(m.label))}: ${escapeHtml(m.display_value)}</span>`)
+      .join("");
+    html += `<tr>
+      <td class="op" data-label="Artifact">${escapeHtml(a.title)}</td>
+      <td data-label="Tipo">${escapeHtml(a.category_label)}</td>
+      <td data-label="Generato">${escapeHtml(fmtDateTime(a.generated_at || a.mtime))}</td>
+      <td data-label="Metriche">${chips || "—"}</td>
+      <td class="op path" data-label="Path" title="${escapeHtml(a.relative_path)}">${escapeHtml(a.relative_path)}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function filteredTrainingArtifacts() {
+  const all = TRAINING?.artifacts || [];
+  const q = TRAINING_QUERY.trim().toLowerCase();
+  return all.filter((a) => {
+    if (TRAINING_FILTER !== "all" && a.category_id !== TRAINING_FILTER) return false;
+    if (!q) return true;
+    const haystack = `${a.title} ${a.category_label} ${a.relative_path}`.toLowerCase();
+    return haystack.includes(q);
+  });
+}
+
+function renderLearningFlow(t) {
+  const cards = [
+    ["1", "Raccoglie", `${t.artifact_count || 0} summary locali già prodotti dal corpus WhatsApp/Drive.`],
+    ["2", "Trasforma", `${t.total_cards.training_examples} esempi e ${t.total_cards.replay_scenarios} replay diventano palestra operativa.`],
+    ["3", "Lavora in shadow", `${t.total_cards.shadow_drafts} bozze/diagnosi senza inviare messaggi.`],
+    ["4", "Porta all'owner", `${t.total_cards.owner_queue} segnali owner restano in coda finché l'umano non approva.`],
+    ["5", "Resta sicura", `${t.total_cards.whatsapp_sends} invii WA e ${t.total_cards.crm_mutations} scritture CRM dagli artifact.`],
+  ];
+  return `<div class="learning-flow">${cards.map((c) => `
+    <div class="flow-step">
+      <div class="num">${escapeHtml(c[0])}</div>
+      <div class="title">${escapeHtml(c[1])}</div>
+      <div class="copy">${escapeHtml(c[2])}</div>
+    </div>`).join("")}</div>`;
+}
+
+function renderHumanStrip(t) {
+  const examples = t.total_cards.training_examples;
+  const shadow = t.total_cards.shadow_drafts;
+  const ownerQueue = t.total_cards.owner_queue;
+  return `<div class="human-strip">
+    <div class="human-card">
+      <h3>Cosa sta imparando</h3>
+      <p>Zantara non sta leggendo a caso: sta convertendo casi passati in <strong>pattern di diagnosi, priorità, prossima azione e replay</strong>. Il training resta locale e nasce dai summary sicuri.</p>
+    </div>
+    <div class="human-card">
+      <h3>Quanto è pronta</h3>
+      <p><strong>${escapeHtml(examples)}</strong> esempi academy, <strong>${escapeHtml(shadow)}</strong> shadow draft e <strong>${escapeHtml(ownerQueue)}</strong> segnali owner aggregati. Questo indica capacità di triage, non autonomia di invio.</p>
+    </div>
+    <div class="human-card">
+      <h3>Cosa non fa da sola</h3>
+      <p>Gli artifact devono restare a <strong>0 invii WhatsApp</strong> e <strong>0 mutazioni CRM</strong>. La macchina prepara, spiega e mette in coda; la chiusura esterna resta approvata da un umano.</p>
+    </div>
+  </div>`;
+}
+
+function renderTrainingFilters() {
+  const categories = TRAINING?.categories || [];
+  const chips = [{ id: "all", label: "Tutto", count: TRAINING?.artifact_count || 0 }, ...categories.map((c) => ({ id: c.id, label: c.label, count: c.count }))];
+  return `<div class="training-filterbar">
+    <input id="t-search" type="search" placeholder="Cerca summary, owner, shadow, replay…" value="${escapeHtml(TRAINING_QUERY)}" />
+    ${chips.map((c) => `<button class="filter-chip ${TRAINING_FILTER === c.id ? "active" : ""}" data-filter="${escapeHtml(c.id)}">${escapeHtml(c.label)} · ${c.count}</button>`).join("")}
+  </div>`;
+}
+
+function wireTrainingControls() {
+  const search = document.getElementById("t-search");
+  if (search) {
+    search.addEventListener("input", (e) => {
+      TRAINING_QUERY = e.target.value;
+      renderTrainingPanel();
+      requestAnimationFrame(() => {
+        const el = document.getElementById("t-search");
+        if (el) { el.focus(); el.setSelectionRange(TRAINING_QUERY.length, TRAINING_QUERY.length); }
+      });
+    });
+  }
+  for (const chip of document.querySelectorAll(".filter-chip")) {
+    chip.addEventListener("click", () => {
+      TRAINING_FILTER = chip.dataset.filter || "all";
+      renderTrainingPanel();
+    });
+  }
+}
+
+function renderTrainingPanel() {
+  const root = document.getElementById("t-root");
+  const subEl = document.getElementById("t-sub");
+  if (!root || !subEl || !TRAINING) return;
+  const filtered = filteredTrainingArtifacts();
+  const cards = [
+    trainingCard("Summary", String(TRAINING.artifact_count || 0), "artifact locali"),
+    trainingCard("Training examples", TRAINING.total_cards.training_examples, "academy"),
+    trainingCard("Replay scenarios", TRAINING.total_cards.replay_scenarios, "valutazione"),
+    trainingCard("Shadow drafts", TRAINING.total_cards.shadow_drafts, "bozze zero-send"),
+    trainingCard("Owner signals", TRAINING.total_cards.owner_queue, "approval items"),
+    trainingCard("WA / CRM writes", `${TRAINING.total_cards.whatsapp_sends} / ${TRAINING.total_cards.crm_mutations}`, "devono restare 0"),
+  ].join("");
+  const bannerClass = TRAINING.exists ? "status-banner" : "status-banner error";
+  const bannerText = TRAINING.exists
+    ? `Indice locale read-only: legge solo Markdown summary, non JSONL/SQLite/raw chat. Ultimo aggiornamento ${fmtDateTime(TRAINING.generated_at)}.`
+    : `Corpus non trovato: ${TRAINING.base_dir}`;
+  const categories = (TRAINING.categories || []).map(renderTrainingCategory).join("");
+  root.innerHTML = `
+    <div class="${bannerClass}">${escapeHtml(bannerText)}</div>
+    ${renderHumanStrip(TRAINING)}
+    <div class="training-top">${cards}</div>
+    ${renderLearningFlow(TRAINING)}
+    <div class="training-grid">${categories}</div>
+    ${renderTrainingFilters()}
+    ${renderTrainingTable(filtered)}
+    <div class="metrics-legend">
+      <b>Contratto</b>: locale, read-only, no raw artifact exposure. I training futuri compaiono qui appena producono un nuovo <code>*_summary.md</code>.
+    </div>`;
+  subEl.textContent = `${filtered.length} di ${TRAINING.artifact_count || 0} summary · ${TRAINING.categories.length || 0} categorie · ${TRAINING.base_dir}`;
+  wireTrainingControls();
+}
+
+async function renderTraining(force) {
+  const root = document.getElementById("t-root");
+  const subEl = document.getElementById("t-sub");
+  if (!root || !subEl) return;
+  if (!TRAINING || force) root.innerHTML = `<div class="loader">Caricamento training…</div>`;
+  try {
+    const r = await fetch("/training.json");
+    if (!r.ok) throw new Error(`training ${r.status}`);
+    TRAINING = await r.json();
+    renderTrainingPanel();
+  } catch (err) {
+    root.innerHTML = `<div class="status-banner error">Errore Training: ${escapeHtml(err.message)}</div>`;
+    subEl.textContent = "Errore";
+  }
+}
+
 for (const b of document.querySelectorAll(".view-tab")) {
   b.addEventListener("click", () => switchView(b.dataset.view));
+}
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-view-jump]");
+  if (!button) return;
+  switchView(button.dataset.viewJump);
+});
+
+const trainingRefresh = document.getElementById("t-refresh");
+if (trainingRefresh) trainingRefresh.addEventListener("click", () => renderTraining(true));
+const corpusButton = document.getElementById("t-open-corpus");
+if (corpusButton) {
+  corpusButton.addEventListener("click", async () => {
+    if (!TRAINING?.base_dir || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(TRAINING.base_dir);
+    corpusButton.textContent = "Path copiato";
+    setTimeout(() => { corpusButton.textContent = "Corpus locale"; }, 1400);
+  });
 }
 
 checkHealth();
 refresh();
 setInterval(refresh, 10000);
+setInterval(() => { if (CURRENT_VIEW === "captain") renderCaptain(); }, 30000);
+setInterval(() => { if (CURRENT_VIEW === "training") renderTraining(false); }, 30000);
 </script>
 </body>
 </html>

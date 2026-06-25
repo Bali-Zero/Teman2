@@ -31,7 +31,7 @@ class TestClockTemplates:
             trigger_type=trigger_type,
             visa_type="E33G",
             expiry_date="1 Dec 2026",
-            whatsapp_url="https://wa.me/6282264599868?text=hi",
+            whatsapp_url="https://wa.me/6282210302328?text=hi",
             unsubscribe_url="https://balizero.com/unsub/tok",
         )
         assert "E33G" in r.subject
@@ -55,7 +55,7 @@ class TestMatchPreArrival:
         r = render_match_prearrival(
             recommended_visa="E33G",
             arrival_date="1 Dec 2026",
-            whatsapp_url="https://wa.me/6282264599868",
+            whatsapp_url="https://wa.me/6282210302328",
             pre_arrival_steps=["Passport valid", "Bank statement", "Health insurance"],
             unsubscribe_url="https://balizero.com/unsub/tok",
         )

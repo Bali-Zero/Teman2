@@ -24,7 +24,7 @@ const SEPARATOR_BY_LOCALE: Record<Locale, string> = {
 const STATS: Stat[] = [
   { value: 5000, suffix: "+", labelKey: "book.stats.clientsServed" },
   { value: 20, suffix: "+", labelKey: "book.stats.yearsOfHistory" },
-  { value: 1563, suffix: "", labelKey: "book.stats.kbliNavigatorCodes" },
+  { value: 1559, suffix: "", labelKey: "book.stats.kbliNavigatorCodes" },
   { value: 4, suffix: "", labelKey: "book.stats.aiChannelsActive" },
 ];
 
