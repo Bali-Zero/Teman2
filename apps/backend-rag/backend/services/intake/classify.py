@@ -577,9 +577,11 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("bukti pembayaran", 0.6),
         ("payment receipt", 0.6),
         ("bukti transfer", 0.55),
+        ("bukti transaksi", 0.55),
         ("transfer berhasil", 0.5),
         ("kwitansi", 0.5),
         ("tanda terima", 0.5),
+        ("nomor referensi", 0.35),
         ("transaction id", 0.35),
         ("transaction date", 0.3),
         ("jumlah pembayaran", 0.35),
@@ -592,10 +594,13 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("boarding pass", 0.6),
         ("flight itinerary", 0.55),
         ("e-ticket", 0.55),
+        ("tiket elektronik", 0.55),
         ("eticket", 0.5),
         ("ticket number", 0.45),
         ("booking reference", 0.4),
         ("booking code", 0.35),
+        ("kode booking", 0.35),
+        ("nomor penerbangan", 0.25),
         ("passenger", 0.25),
         ("departure", 0.2),
         ("arrival", 0.2),
@@ -618,11 +623,13 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("medical insurance", 0.6),
         ("health insurance", 0.5),
         ("insurance policy", 0.5),
+        ("polis asuransi", 0.55),
+        ("asuransi kesehatan", 0.5),
         ("policy number", 0.35),
         ("nomor polis", 0.35),
         ("insured person", 0.3),
         ("sum insured", 0.3),
-        ("asuransi", 0.35),
+        ("asuransi", 0.25),
         ("insurance", 0.25),
     ],
     "akta_pendirian": [
@@ -663,6 +670,13 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
 }
 
 
+def _evidence_phrase_matches(text: str, phrase: str) -> bool:
+    """Return true when an evidence phrase is present in normalized OCR text."""
+    if phrase == "nik":
+        return re.search(r"(?<![a-z0-9])nik(?![a-z0-9])", text) is not None
+    return phrase in text
+
+
 def _score_types(text: str) -> dict[str, float]:
     """Sum keyword-evidence weights per type over the OCR text (lowercased)."""
     low = text.lower()
@@ -670,7 +684,7 @@ def _score_types(text: str) -> dict[str, float]:
     for dtype, evidence in _TYPE_EVIDENCE.items():
         s = 0.0
         for phrase, weight in evidence:
-            if phrase in low:
+            if _evidence_phrase_matches(low, phrase):
                 s += weight
         if s > 0:
             scores[dtype] = round(min(s, 1.0), 3)

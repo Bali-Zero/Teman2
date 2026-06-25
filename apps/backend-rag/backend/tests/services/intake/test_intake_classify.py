@@ -165,12 +165,33 @@ async def test_support_documents_classified(text, expected_type):
 
 
 @pytest.mark.asyncio
+async def test_indonesian_electronic_ticket_classified_without_nik_false_positive():
+    r = await cls.classify_document(
+        "TIKET ELEKTRONIK Penumpang ANTON TEST Nomor Penerbangan GA421 "
+        "Tanggal Keberangkatan 25 JUN 2026 Kode Booking BZ9K2L"
+    )
+    assert r["type"] == "travel_ticket"
+    assert r["confidence"] >= 0.30
+    assert "ktp" not in r["scores"]
+
+
+@pytest.mark.asyncio
+async def test_indonesian_transaction_receipt_classified():
+    r = await cls.classify_document(
+        "BUKTI TRANSAKSI BERHASIL Nomor Referensi 123456 Jumlah Rp 500.000"
+    )
+    assert r["type"] == "payment_receipt"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "text",
     [
         "bank meeting note",
         "ticket discussion in whatsapp",
         "insurance question from client",
+        "pertanyaan asuransi dari client di whatsapp",
         "payment note without proof",
     ],
 )
