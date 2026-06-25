@@ -9,6 +9,7 @@ const metrics = require("./metrics.cjs");
 const {
   actionBucketForRow,
   buildDirectActionSummary,
+  buildGroupKindOperationalSummary,
   buildQwenBatchGateSummary,
   buildQwenKnownBenchmarkSummary,
   buildQwenPlacementPreviewSummary,
@@ -725,6 +726,7 @@ async function fetchIntakeSummary() {
              SUM(docs) AS docs,
              SUM(done_docs) AS done_docs,
              SUM(dead_docs) AS dead_docs,
+             SUM(CASE WHEN has_unsafe_sender_phone OR has_unsafe_client_hint THEN 1 ELSE 0 END) AS unsafe_groups,
              SUM(CASE WHEN has_unsafe_sender_phone THEN 1 ELSE 0 END) AS unsafe_sender_groups,
              SUM(CASE WHEN has_unsafe_client_hint THEN 1 ELSE 0 END) AS unsafe_hint_groups,
              percentile_disc(0.5) WITHIN GROUP (ORDER BY docs) AS median_docs_per_group,
@@ -849,6 +851,19 @@ async function fetchIntakeSummary() {
   const directActionSummary = buildDirectActionSummary(directActions);
   const qwenGateSnapshot = readQwenGateSnapshot();
   const toInt = (v) => parseInt(v || 0, 10);
+  const groupKinds = groupKindRows.rows.map((r) => ({
+    inferred_group_kind: r.inferred_group_kind,
+    groups: toInt(r.groups),
+    docs: toInt(r.docs),
+    done_docs: toInt(r.done_docs),
+    dead_docs: toInt(r.dead_docs),
+    unsafe_groups: toInt(r.unsafe_groups),
+    unsafe_sender_groups: toInt(r.unsafe_sender_groups),
+    unsafe_hint_groups: toInt(r.unsafe_hint_groups),
+    median_docs_per_group: toInt(r.median_docs_per_group),
+    max_docs_per_group: toInt(r.max_docs_per_group),
+  }));
+  const groupOperationalSummary = buildGroupKindOperationalSummary(groupKinds);
   return {
     generated_at: new Date().toISOString(),
     pii_policy: "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr",
@@ -870,17 +885,8 @@ async function fetchIntakeSummary() {
       group_unsafe_sender_phone: toInt(queue.group_unsafe_sender_phone),
       group_unsafe_client_hint: toInt(queue.group_unsafe_client_hint),
     },
-    group_kinds: groupKindRows.rows.map((r) => ({
-      inferred_group_kind: r.inferred_group_kind,
-      groups: toInt(r.groups),
-      docs: toInt(r.docs),
-      done_docs: toInt(r.done_docs),
-      dead_docs: toInt(r.dead_docs),
-      unsafe_sender_groups: toInt(r.unsafe_sender_groups),
-      unsafe_hint_groups: toInt(r.unsafe_hint_groups),
-      median_docs_per_group: toInt(r.median_docs_per_group),
-      max_docs_per_group: toInt(r.max_docs_per_group),
-    })),
+    group_kinds: groupKinds,
+    group_operational_summary: groupOperationalSummary,
     direct_parser: [...parserMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),

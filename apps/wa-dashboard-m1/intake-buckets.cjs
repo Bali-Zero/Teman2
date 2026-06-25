@@ -67,6 +67,63 @@ function buildDirectActionSummary(rows) {
   return summary;
 }
 
+function groupKindAction(kind) {
+  switch (kind) {
+    case "small_client_group_likely":
+      return "review_client_group";
+    case "multi_party_case_likely":
+      return "review_case_group";
+    case "large_or_broadcast_group":
+      return "quarantine_broadcast_group";
+    case "team_coordination_likely":
+      return "exclude_team_coordination";
+    default:
+      return "manual_group_review";
+  }
+}
+
+function buildGroupKindOperationalSummary(rows) {
+  const groupKinds = (rows || []).map((row) => {
+    const unsafeGroups = Number(
+      row.unsafe_groups ?? Math.max(Number(row.unsafe_sender_groups || 0), Number(row.unsafe_hint_groups || 0)),
+    );
+    return {
+      inferred_group_kind: String(row.inferred_group_kind || "unknown"),
+      intake_action: groupKindAction(row.inferred_group_kind),
+      safety_status: unsafeGroups > 0 ? "source_context_review" : "aggregate_safe",
+      auto_attach_allowed: false,
+      groups: Number(row.groups || 0),
+      docs: Number(row.docs || 0),
+      done_docs: Number(row.done_docs || 0),
+      dead_docs: Number(row.dead_docs || 0),
+      unsafe_groups: unsafeGroups,
+      unsafe_sender_groups: Number(row.unsafe_sender_groups || 0),
+      unsafe_hint_groups: Number(row.unsafe_hint_groups || 0),
+      median_docs_per_group: Number(row.median_docs_per_group || 0),
+      max_docs_per_group: Number(row.max_docs_per_group || 0),
+    };
+  });
+
+  const totals = groupKinds.reduce(
+    (acc, row) => {
+      acc.total_groups += row.groups;
+      acc.total_docs += row.docs;
+      acc.unsafe_groups += row.unsafe_groups;
+      return acc;
+    },
+    { total_groups: 0, total_docs: 0, unsafe_groups: 0 },
+  );
+
+  return {
+    status: totals.unsafe_groups > 0 ? "source_context_review" : "aggregate_safe",
+    total_groups: totals.total_groups,
+    total_docs: totals.total_docs,
+    unsafe_groups: totals.unsafe_groups,
+    auto_attach_allowed: false,
+    group_kinds: groupKinds,
+  };
+}
+
 function buildQwenBatchGateSummary(directActionSummary, probeSnapshot) {
   const candidateDocs = Number(directActionSummary?.needs_text_parser_qwen_candidate || 0);
   const qwenSample = probeSnapshot?.qwen_text_sample || probeSnapshot || null;
@@ -214,6 +271,7 @@ module.exports = {
   TEXT_PARSER_MIN_CHARS,
   actionBucketForRow,
   buildDirectActionSummary,
+  buildGroupKindOperationalSummary,
   buildQwenKnownBenchmarkSummary,
   buildQwenBatchGateSummary,
   buildQwenPlacementPreviewSummary,
