@@ -51,6 +51,34 @@ _CAROUSEL_ROOT = Path(
 )
 
 
+def _sweep_stale_slide_pngs(slides_dir: Path) -> int:
+    """Delete stale numbered slide PNGs (``<digits>.png``) before re-rendering.
+
+    WHY (2026-06-25 bug): the production renderer writes zero-padded ``NN.png``
+    (``01.png``…``08.png``, composer.py). But carousels rendered by an older path
+    carry single-digit ``N.png`` (``1.png``…``8.png``). Both schemes satisfy the
+    app's ``<digits>.png`` slide filter, and the app sorts by ``Int(stem)`` — so
+    ``01.png`` and ``1.png`` BOTH read as "slide 1" → the gallery shows duplicates.
+    A re-render that only writes the new scheme leaves the old files orphaned. So
+    we sweep every numbered slide PNG first: the re-render then truly REPLACES.
+
+    Only ``<digits>.png`` are removed — hero jpgs (``NN-hero.jpg``), html, fonts,
+    logo, and any non-numeric-stem png are left untouched. Returns count removed.
+    """
+    removed = 0
+    if not slides_dir.is_dir():
+        return 0
+    for p in slides_dir.glob("*.png"):
+        stem = p.stem
+        if stem.isdigit():  # 1.png, 01.png, 12.png — a numbered slide, any padding
+            try:
+                p.unlink()
+                removed += 1
+            except OSError as exc:  # noqa: PERF203
+                logger.warning("could not remove stale slide png %s: %s", p.name, exc)
+    return removed
+
+
 def _load_slides(carousel_dir: Path) -> list[dict[str, Any]]:
     sj = carousel_dir / "slides.json"
     if not sj.is_file():
@@ -78,6 +106,14 @@ async def rerender(slug: str, *, use_vision: bool = False) -> int:
     out_dir = carousel_dir  # render in place; slides/ is the canonical PNG slot
     slides_dir = out_dir / "slides"
     slides_dir.mkdir(parents=True, exist_ok=True)
+
+    # Sweep stale numbered slide PNGs FIRST so the re-render REPLACES rather than
+    # duplicates. Without this, a carousel that already has single-digit `N.png`
+    # ends up with both `N.png` (old) and `0N.png` (new) — the app reads both as
+    # the same slide number and shows doubles (bug seen 2026-06-25).
+    swept = _sweep_stale_slide_pngs(slides_dir)
+    if swept:
+        logger.info("swept %s stale slide PNG(s) before re-render", swept)
 
     from wr2_html_renderer.composer import _stage_assets, make_slide_render_fn
 
