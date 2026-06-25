@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import asyncio
 import fcntl
+import hashlib
 import logging
 import os
 import sys
@@ -146,6 +147,16 @@ def _record_get(row: asyncpg.Record | dict, key: str) -> object:
         return None
 
 
+def _hash_token(value: object) -> str | None:
+    """Stable correlation token for PII-ish transport ids without copying raw values."""
+    if value is None:
+        return None
+    text = " ".join(str(value).split()).strip().lower()
+    if not text:
+        return None
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def _is_direct_chat(row: asyncpg.Record | dict) -> bool:
     """True when a wa-mirror row is a 1:1 chat, not a multi-party group."""
     chat_type = str(_record_get(row, "chat_type") or "").strip().lower()
@@ -190,6 +201,44 @@ def _queue_sender_phone(row: asyncpg.Record | dict) -> str | None:
         return None
     value = _record_get(row, "sender_phone")
     return str(value) if value else None
+
+
+def _source_context(row: asyncpg.Record | dict) -> dict[str, object]:
+    """PII-safe WA mirror source context persisted outside stage_output.
+
+    No raw phone is added here: direct sender phone already has a dedicated
+    queue column, and group participant phones are suppressed entirely. No raw
+    group JID/subject is copied either; hashes are enough for local correlation.
+    """
+    if _is_direct_chat(row):
+        return {
+            "transport": "wa-mirror",
+            "context_version": "wa-mirror-v1",
+            "chat_type": "direct",
+            "crm_identity_policy": "phone_keyed_direct_chat",
+            "routing_identity_policy": "sender_phone_enabled",
+            "sender_phone_forwarded": _queue_sender_phone(row) is not None,
+        }
+
+    context: dict[str, object] = {
+        "transport": "wa-mirror",
+        "context_version": "wa-mirror-v1",
+        "chat_type": "group",
+        "group_scope": "unclassified",
+        "crm_identity_policy": "disabled_for_group",
+        "routing_identity_policy": "group_participant_phone_suppressed",
+        "sender_phone_forwarded": False,
+    }
+    group_jid_hash = _hash_token(_record_get(row, "group_jid"))
+    if group_jid_hash:
+        context["group_jid_hash"] = group_jid_hash
+    group_subject_hash = _hash_token(_record_get(row, "group_subject_snapshot"))
+    if group_subject_hash:
+        context["group_subject_present"] = True
+        context["group_subject_hash"] = group_subject_hash
+    else:
+        context["group_subject_present"] = False
+    return context
 
 
 async def _upsert_client_by_phone(
@@ -409,7 +458,8 @@ async def run_one_tick() -> int:
                 """
                 SELECT id, baileys_message_id, media_stored_path, media_mime,
                        media_type, team_member_email, sender_phone, counterpart_phone,
-                       phone_number, sender_push_name_snapshot, chat_type, group_jid
+                       phone_number, sender_push_name_snapshot, chat_type, group_jid,
+                       group_subject_snapshot
                   FROM whatsapp_message_context
                  WHERE media_stored_path IS NOT NULL
                    AND media_type = ANY($1::text[])
@@ -479,6 +529,7 @@ async def run_one_tick() -> int:
                     mime_type=r["media_mime"],
                     received_by=r["team_member_email"],
                     sender_phone=_queue_sender_phone(r),
+                    source_context=_source_context(r),
                 )
             except Exception as exc:
                 logger.error(

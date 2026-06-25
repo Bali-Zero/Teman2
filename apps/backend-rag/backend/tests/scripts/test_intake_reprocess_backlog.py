@@ -65,6 +65,7 @@ def test_row_to_enqueue_kwargs_mapping() -> None:
         "sender_phone": "+62 812-0000-1111",
         "chat_type": "direct",
         "group_jid": None,
+        "group_subject_snapshot": None,
     }
     kw = irb.row_to_enqueue_kwargs(row)
     assert kw == {
@@ -74,6 +75,14 @@ def test_row_to_enqueue_kwargs_mapping() -> None:
         "mime_type": "application/pdf",
         "received_by": "ari@balizero.com",
         "sender_phone": "+62 812-0000-1111",
+        "source_context": {
+            "transport": "wa-mirror",
+            "context_version": "wa-mirror-v1",
+            "chat_type": "direct",
+            "crm_identity_policy": "phone_keyed_direct_chat",
+            "routing_identity_policy": "sender_phone_enabled",
+            "sender_phone_forwarded": True,
+        },
     }
 
 
@@ -89,9 +98,20 @@ def test_row_to_enqueue_kwargs_suppresses_group_sender_phone() -> None:
         "sender_phone": "+62 812-0000-1111",
         "chat_type": "group",
         "group_jid": "120363000000000000@g.us",
+        "group_subject_snapshot": "Bali Zero Team Internal",
     }
 
-    assert irb.row_to_enqueue_kwargs(row)["sender_phone"] is None
+    kw = irb.row_to_enqueue_kwargs(row)
+    assert kw["sender_phone"] is None
+    context = kw["source_context"]
+    assert context["chat_type"] == "group"
+    assert context["crm_identity_policy"] == "disabled_for_group"
+    assert context["routing_identity_policy"] == "group_participant_phone_suppressed"
+    assert context["sender_phone_forwarded"] is False
+    assert "group_jid_hash" in context
+    assert "group_subject_hash" in context
+    assert "120363000000000000@g.us" not in str(context)
+    assert "Bali Zero Team Internal" not in str(context)
 
 
 def test_media_types_default_and_custom() -> None:
@@ -113,9 +133,17 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.apply is False
     assert args.backfill is True
     assert args.scrub_group_phone is True
+    assert args.backfill_source_context is False
     assert args.reprocess is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.watermark is None
+
+
+def test_parser_backfill_source_context_is_dry_run() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--backfill-source-context"])
+    assert args.apply is False
+    assert args.backfill_source_context is True
 
 
 def test_parser_pipeline_version_override() -> None:
@@ -164,6 +192,7 @@ def test_backfill_select_is_anti_join_below_watermark() -> None:
     assert "media_stored_path IS NOT NULL" in sql
     assert "sender_phone" in sql
     assert "chat_type" in sql and "group_jid" in sql
+    assert "group_subject_snapshot" in sql
 
 
 def test_scrub_group_phone_sql_only_targets_group_wa_mirror_rows() -> None:
@@ -179,6 +208,19 @@ def test_scrub_group_phone_sql_only_targets_group_wa_mirror_rows() -> None:
 
     assert "sender_phone = NULL" in apply_sql
     assert "client_id_hint = NULL" in apply_sql
+
+
+def test_source_context_backfill_sql_targets_unannotated_wa_mirror_rows() -> None:
+    irb = _load()
+    select_sql = irb.SOURCE_CONTEXT_BACKFILL_SELECT_SQL
+    apply_sql = irb.SOURCE_CONTEXT_BACKFILL_APPLY_SQL
+
+    assert "'wa-mirror:' || w.baileys_message_id" in select_sql
+    assert "q.source = 'whatsapp'" in select_sql
+    assert "q.source_ref LIKE 'wa-mirror:%'" in select_sql
+    assert "q.source_context = '{}'::jsonb" in select_sql
+    assert "group_subject_snapshot" in select_sql
+    assert "source_context = $2::jsonb" in apply_sql
 
 
 def test_supersede_sql_only_touches_review_pending() -> None:
