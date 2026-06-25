@@ -62,7 +62,10 @@ def test_no_input_records_delta_gate_not_silent_exit(env, monkeypatch):
     state = json.loads((skill / "_reflexion-state.json").read_text())
     assert len(state) == 1
     assert state[0]["status"] == "NO_INPUT"
-    assert state[0]["episodes_found"] == 0
+    # A3 cabling (2026-06-24): record_run delegates to the unified core, which records the
+    # episode count under the loop-neutral key `signals_found` (was `episodes_found`). No
+    # reader consumes the count by name — only `status` is read — so the rename is safe.
+    assert state[0]["signals_found"] == 0
     assert state[0]["lessons_written"] == 0
 
 

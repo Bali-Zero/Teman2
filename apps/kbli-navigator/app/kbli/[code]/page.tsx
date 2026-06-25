@@ -12,6 +12,8 @@ import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
+import { BaliStatusBadge } from "@/components/kbli/BaliStatusBadge";
+import { getBaliL4 } from "@/lib/kbli-bali-l4";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import { KBLICodeJsonLd } from "@/components/kbli/KBLIStructuredData";
 import { LicensingSection } from "@/components/kbli/LicensingSection";
@@ -9342,6 +9344,7 @@ export default async function KBLICodePage({
   const gold = getGoldContent(kbli.code);
   const related = getRelatedCodes(kbli.code, 6);
   const sectionMeta = kbli.section ? getSectionMeta(kbli.section) : null;
+  const baliL4 = getBaliL4(kbli.code); // L4: Bali-specific registrability (null if unknown)
 
   const breadcrumbs = [
     { label: "KBLI Navigator", href: "/kbli" },
@@ -9478,6 +9481,14 @@ export default async function KBLICodePage({
                 <RiskBadge category={kbli.licensing[0].riskCategory} />
               )}
               <TransitionBadge status={kbli.transition.mappingStatus} />
+              {baliL4 && (
+                <BaliStatusBadge
+                  status={baliL4.status}
+                  reason={baliL4.reason}
+                  confidence={baliL4.confidence}
+                  needsReview={baliL4.needsReview}
+                />
+              )}
             </div>
           </div>
         </div>

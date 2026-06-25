@@ -1,0 +1,69 @@
+---
+title: "The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA"
+slug: "the-honest-map-blocked-bali-codes"
+excerpt: "This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and counts them. How much of the Bali business map is actually walled off to foreign investment? Not as a slogan, but as a number you can audit."
+coverImage: "/static/news/kbli2025-the-honest-map-blocked-bali-codes-cover.png"
+coverImageAlt: "The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA"
+category: "business_regulations"
+tags: ["business_regulations", "kbli", "kbli-2025", "bali", "pma"]
+publishedAt: "2026-06-23"
+author:
+  name: "Bali Zero"
+  avatar: /static/zantara-avatar.png
+trending: false
+featured: false
+readingTime: 4
+difficulty: "intermediate"
+seoTitle: "The Honest Map: Nearly a Third of Bali Business Codes Are Bl"
+seoDescription: "This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and co"
+aiGenerated: true
+aiConfidenceScore: 0.9
+locale: "en"
+---
+
+This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and counts them. How much of the Bali business map is actually walled off to foreign investment? Not as a slogan, but as a number you can audit.
+
+So we counted. And because the honest thing to do is show our work, here is exactly what we measured — and where our own first estimate turned out to be too high.
+
+## The method
+
+We took the cleaned 2025 classification dataset — the same ground-truth file that every article in this series looked up codes against — and counted, mechanically, every code carrying a Bali-status verdict. The dataset holds **1,559 classified codes**, each tagged with whether a foreign-owned PT PMA can register it in Bali (a simple `blocked: true / false` flag derived from the code's national status and its OSS risk class under the 13 May 2026 moratorium).
+
+The count is not a vibe. It is a filter over a file.
+
+## The number
+
+**Of 1,559 classified KBLI codes, 465 are blocked for a foreign PT PMA in Bali. That is 29.8% — just under one in three.**
+
+That is the honest headline. Not "half the economy," not a scare figure — but not small either. **Nearly a third** of the business activities a foreigner might reasonably consider are, in 2026 Bali, off-limits to foreign ownership.
+
+And here is the part most counts hide: those 465 break down into distinct *kinds* of "no" —
+
+- **373 — blocked by risk class** (`BLOCCATO_CLASSE_RISCHIO`): nationally open, but low/medium-low risk, so the moratorium catches them. This is the dominant category — the café, the jewellery wholesaler, the general retailer.
+- **63 — blocked pending OSS scope review** (`NEEDS_REVIEW_NO_OSS_SCOPE`): the system shows no clear registrable scope; treat as blocked until verified live.
+- **20 — blocked by "no large-scale row"** (`CHIUSO_PMA_NO_BESAR`): reserved for UMKM, no Usaha Besar slot, so a PMA (large by law) cannot register. This is the villa's exact trap.
+- **8 — closed outright** (`TERTUTUP`): reserved for Indonesian nationals, 0% foreign — the minimarket family.
+- **1 — specifically closed** (`CHIUSO_BALI`): the early consulting closure (70209).
+
+The walls are not one wall. They are five different walls, and a foreigner can hit any of them.
+
+## Where our own estimate was too high
+
+Early in planning this series we carried a working figure of "about 945 codes, roughly 39% blocked." We are correcting it in public, because a series built on *verify-don't-presume* cannot quietly keep a number it can no longer defend.
+
+The 945/39% figure came from a **larger, looser count** — the full 2,422-row OSS export, which includes multiple scope and sub-scale rows per activity, so a single business code can appear several times. Counting at that granularity inflates both the numerator and the denominator and mixes scope-rows with activity-codes. When we count at the level that actually matters to a founder — **one verdict per business code**, across the 1,559 cleaned codes — the rate settles at **29.8%.**
+
+Both statements describe the same reality (a large, structural block on low-risk foreign investment). But the figure you can stand behind, code-by-code, is **465 of 1,559 — 29.8%**, not 39%. The lower number is the more honest one, and it is still big enough to reshape almost every foreigner's plan.
+
+## What the map actually tells you
+
+Two readings follow from the count, and they point the same way:
+
+- **Nearly a third closed** means do not assume your idea is registrable. The base rate of "blocked" is high enough that hope is not a strategy.
+- **Just over two-thirds open** (1,094 codes survive) means the door you want is *probably* findable — usually as the higher-risk sibling of the code you first reached for. The pivot exists more often than not.
+
+The map is not "Bali is closed." It is "Bali is closed to the *easy, low-risk* version of most things, and open to the *serious, higher-risk* version of many of them." That single sentence, backed by 465 counted codes, is the whole moratorium in one line.
+
+We will keep this count current as the OSS data and the moratorium evolve — and we will keep showing the arithmetic, because the moment a number can't be reproduced from the file, it stops being journalism and starts being a rumour.
+
+*Don't take the aggregate on faith — check your own exact code against the live count on the Bali Zero KBLI Navigator at balizero.com, where every code's national status and Bali verdict sit side by side, drawn from the same data this article counted.*

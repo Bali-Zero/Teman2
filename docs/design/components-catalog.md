@@ -166,6 +166,7 @@
   - `sessionId`: `string`
   - `pdfHref`: `string | undefined`
   - `onZantaraClick`: `MouseEventHandler<HTMLButtonElement> | undefined`
+  - `onWhatsAppClick`: `MouseEventHandler<HTMLAnchorElement> | undefined`
   - `payload`: `Record<string, unknown> | undefined`
 - **example**: `<CTAHandoff source={/* string */} sessionId={/* string */} />`
 

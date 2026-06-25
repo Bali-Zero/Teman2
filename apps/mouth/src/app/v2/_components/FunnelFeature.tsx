@@ -112,7 +112,7 @@ const CONFIGS: Record<
       "Instant access to the complete Indonesian business classification with bilingual search, 4-level risk assessment, PMA status, minimum capital, required licenses.",
     features: [
       "AI narrows down. Our licensed notaries file.",
-      "1,563 codes · bilingual search (EN/ID)",
+      "1,559 codes · bilingual search (EN/ID)",
       "4-level risk + PMA eligibility + minimum capital",
       "Hub-and-spoke linked to our PT PMA guides",
     ],

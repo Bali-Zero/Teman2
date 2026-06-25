@@ -26,9 +26,13 @@ _DEFAULT_LOCK_PATH: Path = _DIR / "db_nlm_sync.lock"
 
 # --- Notebook IDs (populated after creation via `nlm notebook create`) ---
 # These will be set on first run or via CLI args.
-NB_OPS_ID: str = "2072e518-e6f9-437d-93ea-f9037ec54052"       # NB-11: Bali Zero Ops Live
-NB_INTEL_ID: str = "5c2c3d90-eed2-4755-86b1-269e637e51e1"      # NB-12: Bali Zero Business Intelligence
-NB_TELEMETRY_ID: str = "53441d9e-fb11-44cc-8dd8-4d70637b651f"  # NB-13: Bali Zero System Telemetry
+# Post-2026-05-18 UUID switch: NBs recreated on zero@balizero.com Workspace.
+# Old antonellosiano@ src UUIDs (2072e518/5c2c3d90/53441d9e) are dead -> ops_briefing
+# failed "NB-11 (ops) ID not found in sync state". New uuid_dst from
+# ~/logs/nb-migration-mapping.json (mapping). Pairing verified 2026-06-21.
+NB_OPS_ID: str = "446cc343-63ae-4b08-ab69-7ed916081356"       # NB-11: Bali Zero Ops Live
+NB_INTEL_ID: str = "40266e02-3588-4edd-ad74-0829aa2ead26"     # NB-12: Bali Zero Business Intelligence
+NB_TELEMETRY_ID: str = "66423f18-888e-4cec-8a35-686ef512761f"  # NB-13: Bali Zero System Telemetry
 
 # --- Source slots per notebook ---
 MAX_SOURCES_PER_NB: int = 15

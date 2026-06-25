@@ -419,6 +419,27 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     tier: assignTier(code),
     keywords: extractKeywords(raw.judul, raw.uraian),
     intel_2026: raw.intel_2026,
+    // L4 — Bali sovereign-local status (national PMA openness != Bali registrability).
+    // Mirrors the transform in kbli-data.server.ts; this is the module the
+    // /kbli/[code] page actually consumes via getCode()/getAllCodes().
+    baliL4: raw.l4_bali?.status
+      ? {
+          status: raw.l4_bali.status,
+          reason: raw.l4_bali.reason || "",
+          confidence: raw.l4_bali.confidence || "MEDIUM",
+          needsReview: !!raw.l4_bali.needs_review,
+          blocked: !!raw.l4_bali.blocked,
+          from2020: raw.l4_bali.from_2020 ?? null,
+          moratorium: raw.l4_bali.moratorium
+            ? {
+                rule: raw.l4_bali.moratorium.rule || "",
+                effective: raw.l4_bali.moratorium.effective || "",
+                source: raw.l4_bali.moratorium.source || "",
+                virtualOffice: raw.l4_bali.moratorium.virtual_office || "",
+              }
+            : undefined,
+        }
+      : undefined,
   };
 }
 

@@ -8,6 +8,7 @@ import argparse
 import json
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -22,11 +23,12 @@ if str(BACKEND_ROOT) not in sys.path:
 from autonomous_lab_draft import build_run, load_input
 from backend.services.autonomous_lab.command_policy import (
     CommandExecutionPlan,
+    is_allowed_verification_command,
     plan_for_allowlisted_command as build_allowlisted_command_plan,
     refusal_reason,
 )
-
-OUTPUT_MAX_CHARS = 12_000
+from backend.services.autonomous_lab.receipt_safety import receipt_safe_evidence
+from backend.services.autonomous_lab.sandbox_runner import LocalWorktreeSandboxRunner
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -53,8 +55,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint."""
     args = parse_args(argv)
-    payload = load_input(args.input)
-    _, run = build_run(payload)
+    try:
+        payload = load_input(args.input)
+        _, run = build_run(payload)
+    except (OSError, TypeError, ValueError) as exc:
+        json.dump(
+            summarize_input_validation_error(
+                exc,
+                execute_verification=args.execute_verification,
+            ),
+            sys.stdout,
+            indent=2,
+            sort_keys=True,
+        )
+        sys.stdout.write("\n")
+        return 1
+
     verification = build_verification_summary(
         run.simulation_plan.verification_commands,
         execute=args.execute_verification,
@@ -81,15 +97,24 @@ def build_verification_summary(
     *,
     execute: bool,
 ) -> dict[str, Any]:
-    """Return dry-run or execution results for planner verification commands."""
-    command_plans = [plan_for_allowlisted_command(command) for command in commands]
+    """Return dry-run or execution results for planner verification commands.
+
+    Whether a command is *allowed* is a policy decision
+    (``is_allowed_verification_command``) and is independent of whether the
+    executor binary happens to exist on this host. A dry run must never depend
+    on the executor being present, otherwise a legitimately allowlisted command
+    is misclassified as refused on a clean checkout (e.g. CI without a local
+    ``.venv/bin/pytest``). Binary resolution via ``plan_for_allowlisted_command``
+    only matters on the execute path, where the command is actually shelled out.
+    """
+    allowed_flags = [is_allowed_verification_command(command) for command in commands]
     refused = [
         {
-            "command": command,
+            "command": _receipt_command_reference(command, allowed=allowed),
             "reason": refusal_reason(command),
         }
-        for command, plan in zip(commands, command_plans, strict=True)
-        if plan is None
+        for command, allowed in zip(commands, allowed_flags, strict=True)
+        if not allowed
     ]
 
     if not execute:
@@ -98,12 +123,12 @@ def build_verification_summary(
             "refused_commands": refused,
             "results": [
                 {
-                    "command": command,
-                    "allowed": plan is not None,
+                    "command": _receipt_command_reference(command, allowed=allowed),
+                    "allowed": allowed,
                     "executed": False,
                     "returncode": None,
                 }
-                for command, plan in zip(commands, command_plans, strict=True)
+                for command, allowed in zip(commands, allowed_flags, strict=True)
             ],
         }
 
@@ -113,12 +138,12 @@ def build_verification_summary(
             "refused_commands": refused,
             "results": [
                 {
-                    "command": command,
-                    "allowed": plan is not None,
+                    "command": _receipt_command_reference(command, allowed=allowed),
+                    "allowed": allowed,
                     "executed": False,
                     "returncode": None,
                 }
-                for command, plan in zip(commands, command_plans, strict=True)
+                for command, allowed in zip(commands, allowed_flags, strict=True)
             ],
         }
 
@@ -127,7 +152,7 @@ def build_verification_summary(
         "refused_commands": [],
         "results": [
             execute_command_plan(plan)
-            for plan in command_plans
+            for plan in (plan_for_allowlisted_command(command) for command in commands)
             if plan is not None
         ],
     }
@@ -159,9 +184,34 @@ def summarize_run(
         "verification_failed": verification_failed,
         "run_id": run.run_id,
         "worktree_command": run.simulation_plan.worktree_command,
-        "verification_commands": run.simulation_plan.verification_commands,
+        "verification_commands": [
+            _receipt_verification_command_reference(command)
+            for command in run.simulation_plan.verification_commands
+        ],
         "verification": verification,
-        "receipt": run.to_receipt(),
+        "receipt": _receipt_with_safe_verification_commands(run.to_receipt()),
+    }
+
+
+def summarize_input_validation_error(
+    exc: BaseException,
+    *,
+    execute_verification: bool,
+) -> dict[str, Any]:
+    """Build a receipt-safe CLI error when the input cannot form a Lab run."""
+    return {
+        "ok": False,
+        "mode": "execute-verification" if execute_verification else "dry-run",
+        "blocked": True,
+        "failed_blockers": ["input_validation"],
+        "unsafe_verification_refused": False,
+        "verification_failed": False,
+        "error_reference": receipt_safe_evidence(str(exc), force_fingerprint=True),
+        "verification": {
+            "execute_requested": execute_verification,
+            "refused_commands": [],
+            "results": [],
+        },
     }
 
 
@@ -174,32 +224,48 @@ def plan_for_allowlisted_command(command: str) -> CommandExecutionPlan | None:
     )
 
 
+def _receipt_command_reference(command: str, *, allowed: bool) -> str:
+    if allowed:
+        return command
+    return receipt_safe_evidence(command, force_fingerprint=True)
+
+
+def _receipt_verification_command_reference(command: str) -> str:
+    return _receipt_command_reference(
+        command,
+        allowed=plan_for_allowlisted_command(command) is not None,
+    )
+
+
+def _receipt_with_safe_verification_commands(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {
+            str(key): _receipt_with_safe_verification_commands_for_key(str(key), child)
+            for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [_receipt_with_safe_verification_commands(child) for child in value]
+    return value
+
+
+def _receipt_with_safe_verification_commands_for_key(key: str, value: Any) -> Any:
+    if key in {"verification_commands", "planned_only_commands"} and isinstance(value, list):
+        return [
+            _receipt_verification_command_reference(command)
+            if isinstance(command, str)
+            else _receipt_with_safe_verification_commands(command)
+            for command in value
+        ]
+    return _receipt_with_safe_verification_commands(value)
+
+
 def execute_command_plan(plan: CommandExecutionPlan) -> dict[str, Any]:
     """Execute an allowlisted command plan without a shell."""
-    completed = subprocess.run(
-        plan.argv,
-        cwd=plan.cwd,
-        env=plan.env,
-        capture_output=True,
-        text=True,
-        check=False,
+    runner = LocalWorktreeSandboxRunner(
+        repo_root=REPO_ROOT,
+        run_func=subprocess.run,
     )
-    return {
-        "command": plan.command,
-        "allowed": True,
-        "executed": True,
-        "argv": plan.argv,
-        "cwd": str(plan.cwd),
-        "returncode": completed.returncode,
-        "stdout": _bounded_output(completed.stdout),
-        "stderr": _bounded_output(completed.stderr),
-    }
-
-
-def _bounded_output(value: str) -> str:
-    if len(value) <= OUTPUT_MAX_CHARS:
-        return value
-    return value[: OUTPUT_MAX_CHARS - 3] + "..."
+    return runner.run(plan).to_receipt()
 
 
 if __name__ == "__main__":

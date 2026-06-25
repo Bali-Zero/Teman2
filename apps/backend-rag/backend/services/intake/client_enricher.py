@@ -23,8 +23,9 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from datetime import date, datetime
-from typing import Any, Callable
+from typing import Any
 
 import asyncpg
 
@@ -69,6 +70,24 @@ def _clean_str(value: Any) -> str | None:
     return s or None
 
 
+def _name_is_junk(value: Any) -> bool:
+    if value is None:
+        return True
+    name = " ".join(str(value).split()).strip().lower()
+    if not name:
+        return True
+    if name == "unknown" or name.startswith("lead +") or name.startswith("lead+"):
+        return True
+    return name.replace("+", "").replace(" ", "").replace("-", "").isdigit()
+
+
+def _name_is_better(new: Any, current: Any) -> bool:
+    candidate = _clean_str(new)
+    if not candidate or _name_is_junk(candidate):
+        return False
+    return _name_is_junk(current)
+
+
 def _unwrap(raw: Any) -> Any:
     """Pull the scalar out of an intake-extract field.
 
@@ -90,6 +109,7 @@ def _unwrap(raw: Any) -> Any:
 # them with KITAS (columns exist; no manual endpoint enriched them before).
 ENRICHMENT_MAP: dict[str, list[tuple[str, str, Callable[[Any], Any]]]] = {
     "passport": [
+        ("name", "full_name", _clean_str),
         ("passport_no", "passport_number", _clean_str),
         ("expiry", "passport_expiry", _to_date),
         ("dob", "date_of_birth", _to_date),
@@ -149,6 +169,7 @@ async def enrich_client_from_extracted_fields(
             "WHERE table_name = 'clients' AND table_schema = current_schema()"
         )
     }
+    current_full_name: str | None = None
 
     written: dict[str, Any] = {}
     set_parts: list[str] = []
@@ -163,6 +184,12 @@ async def enrich_client_from_extracted_fields(
         value = coerce(raw)
         if value is None:
             continue
+        if column == "full_name":
+            if current_full_name is None:
+                row = await conn.fetchrow("SELECT full_name FROM clients WHERE id = $1", client_id)
+                current_full_name = row["full_name"] if row else None
+            if not _name_is_better(value, current_full_name):
+                continue
         set_parts.append(f"{column} = ${idx}")
         params.append(value)
         written[column] = value

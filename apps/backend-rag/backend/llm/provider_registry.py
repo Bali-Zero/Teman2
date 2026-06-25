@@ -77,6 +77,13 @@ def _register_builtin_providers():
     except ImportError:
         pass
 
+    try:
+        from backend.llm.providers.mlx import MLXProvider
+
+        register_provider("mlx", MLXProvider)
+    except ImportError:
+        pass
+
 
 # Auto-register built-in providers on module import
 _register_builtin_providers()

@@ -97,6 +97,89 @@ async def test_sk_kemenkumham_classified():
 
 
 @pytest.mark.asyncio
+async def test_evisa_classified():
+    r = await cls.classify_document(
+        "REPUBLIC OF INDONESIA E-VISA VISA INDEX B211A "
+        "DIRECTORATE GENERAL OF IMMIGRATION"
+    )
+    assert r["type"] == "visa"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_generic_visa_word_alone_stays_unknown():
+    r = await cls.classify_document("visa consultation payment note")
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_family_card_classified():
+    r = await cls.classify_document(
+        "KARTU KELUARGA Nomor Kartu Keluarga No. KK Kepala Keluarga"
+    )
+    assert r["type"] == "family_card"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_birth_certificate_classified():
+    r = await cls.classify_document(
+        "KUTIPAN AKTA KELAHIRAN Dinas Kependudukan dan Pencatatan Sipil"
+    )
+    assert r["type"] == "birth_certificate"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_marriage_certificate_classified():
+    r = await cls.classify_document(
+        "BUKU NIKAH AKTA NIKAH Kantor Urusan Agama tanggal pernikahan"
+    )
+    assert r["type"] == "marriage_certificate"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_generic_family_word_alone_stays_unknown():
+    r = await cls.classify_document("family whatsapp note")
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text, expected_type",
+    [
+        ("BUKTI PEMBAYARAN transfer berhasil Transaction ID 123", "payment_receipt"),
+        ("BOARDING PASS Passenger Departure Arrival Seat 12A", "travel_ticket"),
+        ("BANK STATEMENT Statement of Account saldo awal saldo akhir", "bank_statement"),
+        ("TRAVEL INSURANCE policy number sum insured", "medical_insurance"),
+    ],
+)
+async def test_support_documents_classified(text, expected_type):
+    r = await cls.classify_document(text)
+    assert r["type"] == expected_type
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "bank meeting note",
+        "ticket discussion in whatsapp",
+        "insurance question from client",
+        "payment note without proof",
+    ],
+)
+async def test_generic_support_words_stay_unknown(text):
+    r = await cls.classify_document(text)
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
 async def test_source_page_attribution():
     # Evidence lives on page 1 (index 1), not page 0.
     pages = [
@@ -106,6 +189,67 @@ async def test_source_page_attribution():
     r = await cls.classify_document(None, pages)
     assert r["type"] == "nib"
     assert r["source_page"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Stay-permit disambiguation (ITK / ITAS / ITAP) -- live defect 2026-06-17
+# (proposals 12937 / 15368 / 12694: izin-tinggal cards misfiled as passport
+# because the card prints a "Passport Number" field -> passport 0.8 > kitas 0.75)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_stay_permit_itas_not_passport():
+    # Electronic limited stay permit. Note it DOES carry a "Passport Number"
+    # field (the exact thing that fooled the scorer into passport:0.8).
+    r = await cls.classify_document(
+        "IZIN TINGGAL TERBATAS ELEKTRONIK / ELECTRONIC LIMITED STAY PERMIT\n"
+        "DIREKTORAT JENDERAL IMIGRASI REPUBLIK INDONESIA\n"
+        "Passport Number: <redacted>  Stay Permit Index: <redacted>"
+    )
+    assert r["type"] == "itas"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
+    assert r["confidence"] >= 0.55
+
+
+@pytest.mark.asyncio
+async def test_stay_permit_itk_not_passport():
+    r = await cls.classify_document(
+        "IZIN TINGGAL KUNJUNGAN / VISIT STAY PERMIT\n"
+        "DIREKTORAT JENDERAL IMIGRASI\n"
+        "Passport Number: <redacted>  Permit Number: 99/ITK/2026"
+    )
+    assert r["type"] == "itk"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
+
+
+@pytest.mark.asyncio
+async def test_stay_permit_itap_not_passport():
+    r = await cls.classify_document(
+        "IZIN TINGGAL TETAP / PERMANENT STAY PERMIT\n"
+        "DIREKTORAT JENDERAL IMIGRASI\n"
+        "Passport Number: <redacted>  Stay Permit Index: II C"
+    )
+    assert r["type"] == "itap"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
+
+
+@pytest.mark.asyncio
+async def test_real_passport_still_passport_innocence():
+    # INNOCENCE: a genuine passport (proposal 12927 head "PASSPORT / AUSTRALIA")
+    # carries NO izin-tinggal / stay-permit marker, so the override must NOT
+    # fire and the doc must STILL classify as passport.
+    r = await cls.classify_document(
+        "PASSPORT  AUSTRALIA  PASSEPORT\n"
+        "P<AUSCITIZEN<<JANE<<<<<<<<<<<<<<<<<<<<<<<<<<\n"
+        "Type P  Date of expiry 12 JAN 2030"
+    )
+    assert r["type"] == "passport"
+    assert r.get("via") != "stay_permit_override"
+    assert r["confidence"] >= 0.30
 
 
 # ---------------------------------------------------------------------------

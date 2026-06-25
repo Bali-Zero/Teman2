@@ -47,7 +47,14 @@ _EMAIL_API_URL = os.getenv(
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
-STALE_SENDING_THRESHOLD = timedelta(minutes=10)
+# Raised 10→30 min (2026-06-17, dedup fix). A row stuck at 'sending'
+# usually means the send to Brevo SUCCEEDED but the worker died before
+# writing 'sent' (observed: rows created 04:00 marked sent 08:13 — a
+# 4h DB-write lag, not a real failure). At 10 min the stale sweep was
+# firing on emails Brevo had already accepted → the retry path re-sent
+# them → clients received duplicates ([RETRY] body). 30 min covers the
+# real worker-restart window without re-sending already-delivered mail.
+STALE_SENDING_THRESHOLD = timedelta(minutes=30)
 MAX_ATTEMPTS = 3
 _DAILY_REPORT_STATE_KEY = "email_health_monitor_last_report_utc"
 
@@ -236,6 +243,23 @@ class EmailHealthMonitor:
         """
         cutoff = datetime.now(tz=timezone.utc) - STALE_SENDING_THRESHOLD
 
+        # A stale 'sending' row almost always means the send to Brevo
+        # already SUCCEEDED but the worker died before writing 'sent'.
+        # For client-facing personalized types (welcome / invoice_client /
+        # waiting_docs_client — NON_RESURRECTABLE) we therefore do NOT
+        # queue a re-send: re-sending would deliver a confusing duplicate
+        # ([RETRY]) of a mail the client most likely already received.
+        # Instead retry_after stays NULL → escalate_unrecoverable() pages
+        # the owner for a one-time manual check. Retry-safe types
+        # (team notifications, hr_bonus) keep the +1h retry window.
+        # Lazy import (consistent with this module's other email_audit
+        # imports) to avoid a circular import at module load time.
+        from backend.services.notifications.email_audit import (
+            NON_RESURRECTABLE_EMAIL_TYPES,
+        )
+
+        nonresurrectable = tuple(NON_RESURRECTABLE_EMAIL_TYPES)
+
         async with self.db_pool.acquire() as conn:
             updated = await conn.fetch(
                 """
@@ -243,17 +267,27 @@ class EmailHealthMonitor:
                    SET status = 'failed',
                        provider = 'unknown',
                        error_message = 'stale_sending: worker_crash_or_timeout',
-                       retry_after = NOW() + INTERVAL '1 hour'
+                       retry_after = CASE
+                           WHEN email_type = ANY($2::text[]) THEN NULL
+                           ELSE NOW() + INTERVAL '1 hour'
+                       END
                  WHERE status = 'sending'
                    AND created_at < $1
-                 RETURNING id
+                 RETURNING id, email_type
                 """,
                 cutoff,
+                list(nonresurrectable),
             )
 
         count = len(updated)
         if count:
-            logger.warning("EmailHealthMonitor: unstuck %d stale 'sending' rows", count)
+            no_resend = sum(1 for r in updated if r["email_type"] in NON_RESURRECTABLE_EMAIL_TYPES)
+            logger.warning(
+                "EmailHealthMonitor: unstuck %d stale 'sending' rows "
+                "(%d client-facing → escalate not re-send)",
+                count,
+                no_resend,
+            )
         return {"unstuck": count}
 
     # ------------------------------------------------------------------

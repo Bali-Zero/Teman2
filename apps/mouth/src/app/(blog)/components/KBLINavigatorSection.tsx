@@ -36,7 +36,7 @@ export default function KBLINavigatorSection() {
               KBLI 2025 Navigator
             </h2>
             <p className="text-white/70 text-lg mb-8 leading-relaxed">
-              Instant access to all 1,563 KBLI 2025 codes with intelligent
+              Instant access to all 1,559 KBLI 2025 codes with intelligent
               search, 4-level risk assessment, PMA status tracking, and
               AI-powered guidance.
             </p>

@@ -1,0 +1,21 @@
+{
+  "_source": "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json (PricingTool canonical)",
+  "_note": "SYNCED COPY — do not hand-edit. Regenerate via scripts/sync_frontend_prices.py. Parity enforced by apps/mouth/src/lib/bali-zero-prices.test.ts.",
+  "company_services": {
+    "company-pma": {
+      "name": "New Company (PT PMA)",
+      "price": "20.000.000 IDR",
+      "icon_id": "company-pma"
+    },
+    "company-virtual": {
+      "name": "Virtual Office",
+      "price": "5.000.000 IDR",
+      "icon_id": "company-virtual"
+    },
+    "company-akta": {
+      "name": "Akta Perubahan (Revision Company)",
+      "price": "Depend (Contact for quote)",
+      "icon_id": "company-akta"
+    }
+  }
+}

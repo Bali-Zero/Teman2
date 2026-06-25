@@ -22,6 +22,14 @@
   <dict>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- DURABLE repo-root (reconciled 2026-06-20, 5-bug heal chain): the reader runs    -->
+    <!-- from the MAIN checkout, NOT a deploy worktree. The 2026-06-19 Pro reboot         -->
+    <!-- evaporated the deploy-worktree .venv (py3.14, unresolvable google-cloud matrix)  -->
+    <!-- and the wrapper crash-looped. The live plist was hand-repointed to the main      -->
+    <!-- checkout that night; this makes that durable so a reinstall never reverts to     -->
+    <!-- the broken deploy-worktree path. The wrapper also self-falls-back to this venv.  -->
+    <key>INTAKE_REVIEW_REPO_ROOT</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
     <!-- All secrets (JWT_SECRET_KEY / API_KEYS / DSN / X-Bridge-Auth) come from the    -->
     <!-- 0600 env-file ~/.cell-bridge-state/intake-review-reader.env, sourced by the    -->
     <!-- wrapper at runtime. NONE are set here.                                         -->

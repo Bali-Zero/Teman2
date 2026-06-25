@@ -188,7 +188,7 @@ on top of the existing `price` / `duration` / `validity` / `notes`
 fields. The legacy `text` markdown field is gone.
 
 Contact metadata moved to ``metadata.contact``: ``zero@balizero.com`` /
-``+62 822 6459 9868`` / ``Kerobokan`` / ``balizero.com``.
+``+62 822 1030 2328`` / ``Kerobokan`` / ``balizero.com``.
 
 The 2025 file is kept on disk for rollback; deletion is a follow-up PR
 once 2026 has run unblocked in prod for a few weeks.

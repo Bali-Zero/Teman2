@@ -169,6 +169,26 @@ edges:
       status: BY_DESIGN_OFF,
       notes: "HTML cutover",
     }
+  - {
+      id: com.balizero.skill-coach.daily,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      consumer: "scripts/skill-coach-daily.sh",
+      notes: "launchctl disable + bootout + plist renamed .disabled-W84-2026-06-22 (W84 TCC: launchd lacks Full-Disk-Access for ~/Desktop on Pro -> exit 127 can't open input file). Migrated to crontab (see pro-crontab-skill-coach-daily)",
+    }
+  - id: pro-crontab-skill-coach-daily
+    kind: cron
+    machine: pro
+    status: SCHEDULED_ALIVE
+    consumer: "scripts/skill-coach-daily.sh via scripts/cron-runner.sh (02:20 daily WITA)"
+    notes: "migrated from launchd com.balizero.skill-coach.daily (W84 TCC firebreak). Verified live exit 0 status=ok 2026-06-21"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: "crontab -l | grep -F skill-coach-daily.sh",
+      }
   # ── DISARMED (loaded, no trigger — on-demand kickstart targets) ──
   - {
       id: com.balizero.sota.m13-collect,
@@ -298,7 +318,8 @@ edges:
       id: com.nuzantara.codex-spark-loop,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: BY_DESIGN_OFF,
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
     }
   - { id: com.balizero.wa-viewer, kind: launchd, machine: pro, status: ALIVE }
   - {
@@ -416,8 +437,9 @@ edges:
       id: com.nuzantara.codex-spark-harvester,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: BY_DESIGN_OFF,
       producer: "180s",
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
     }
   - {
       id: com.nuzantara.merge-train,
@@ -993,8 +1015,10 @@ edges:
       id: com.balizero.l5-2-phase2b-trigger,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: BY_DESIGN_OFF,
       producer: "daily 9:00",
+      notes: "unloaded; target l5_2_phase2b_auto_analyzer.py removed from repo — retired 2026-06-20, restore script before re-arming",
+      oneshot_sentinel: "~/.agent/l5-2-phase2b-fired.sentinel",
     }
   - {
       id: com.balizero.sota.m13-checkpoint,
@@ -1042,15 +1066,17 @@ edges:
       id: com.nuzantara.codex-overnight-feeder,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: BY_DESIGN_OFF,
       producer: "daily 21:30",
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
     }
   - {
       id: com.nuzantara.codex-overnight-runner,
       kind: launchd,
       machine: pro,
-      status: ALIVE,
+      status: BY_DESIGN_OFF,
       producer: "daily 22:00",
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
     }
   - {
       id: com.nuzantara.automations-reference,
