@@ -653,6 +653,28 @@ async function fetchIntakeSummary() {
             ELSE 'unknown'
           END AS scope,
           q.status,
+          COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') AS doc_type,
+          CASE
+            WHEN COALESCE(q.stage_output->'classify'->>'type_confidence', '') ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (q.stage_output->'classify'->>'type_confidence')::numeric
+            ELSE 0
+          END AS type_confidence,
+          COALESCE((
+            SELECT SUM(length(
+              CASE
+                WHEN jsonb_typeof(page.value) = 'object' THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                WHEN jsonb_typeof(page.value) = 'string' THEN trim(both '"' from page.value::text)
+                ELSE ''
+              END
+            ))
+            FROM jsonb_array_elements(
+              CASE
+                WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                THEN q.stage_output->'classify'->'ocr_text_per_page'
+                ELSE '[]'::jsonb
+              END
+            ) AS page(value)
+          ), 0) AS ocr_chars,
           q.sender_phone,
           q.client_id_hint,
           q.source_context
@@ -667,6 +689,12 @@ async function fetchIntakeSummary() {
         COUNT(*) FILTER (WHERE scope='unknown') AS unknown_context_docs,
         COUNT(*) FILTER (WHERE status='done') AS done_docs,
         COUNT(*) FILTER (WHERE status='dead') AS dead_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type <> 'unknown') AS direct_known_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type = 'unknown') AS direct_unknown_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type <> 'unknown' AND type_confidence >= 0.70) AS direct_high_conf_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type <> 'unknown' AND type_confidence < 0.70) AS direct_low_conf_known_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type = 'unknown' AND ocr_chars = 0) AS direct_unknown_ocr_empty,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type = 'unknown' AND ocr_chars > 0) AS direct_unknown_ocr_text,
         COUNT(*) FILTER (WHERE source_context <> '{}'::jsonb) AS with_source_context,
         COUNT(*) FILTER (WHERE scope='group' AND sender_phone IS NOT NULL) AS group_unsafe_sender_phone,
         COUNT(*) FILTER (WHERE scope='group' AND client_id_hint IS NOT NULL) AS group_unsafe_client_hint
@@ -819,6 +847,12 @@ async function fetchIntakeSummary() {
       unknown_context_docs: toInt(queue.unknown_context_docs),
       done_docs: toInt(queue.done_docs),
       dead_docs: toInt(queue.dead_docs),
+      direct_known_docs: toInt(queue.direct_known_docs),
+      direct_unknown_docs: toInt(queue.direct_unknown_docs),
+      direct_high_conf_docs: toInt(queue.direct_high_conf_docs),
+      direct_low_conf_known_docs: toInt(queue.direct_low_conf_known_docs),
+      direct_unknown_ocr_empty: toInt(queue.direct_unknown_ocr_empty),
+      direct_unknown_ocr_text: toInt(queue.direct_unknown_ocr_text),
       with_source_context: toInt(queue.with_source_context),
       group_unsafe_sender_phone: toInt(queue.group_unsafe_sender_phone),
       group_unsafe_client_hint: toInt(queue.group_unsafe_client_hint),
