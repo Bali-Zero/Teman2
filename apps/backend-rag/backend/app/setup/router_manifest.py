@@ -92,6 +92,8 @@ def _get_api_v1_prefix() -> str:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
+    # ── Accounting (cash-control for Asya) ──
+    RouterEntry(name="accounting", process_groups=_API, tags=("crm-accounting",)),
     # ── Admin ──
     RouterEntry(name="admin_conversation_cleanup", process_groups=_API, tags=("admin",)),
     RouterEntry(name="admin_crm_kg", process_groups=_API, tags=("admin", "crm-kg")),
@@ -339,6 +341,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         name="war_room_dashboard",
         process_groups=_API,
         tags=("war-room", "admin"),
+    ),
+    # ── WR2 IG Publish (server-side operator-gated carousel publish, Legge 5) ──
+    RouterEntry(
+        name="wr2_publish",
+        process_groups=_API,
+        tags=("war-room", "wr2", "publish", "admin"),
     ),
     # ── Webhooks ──
     RouterEntry(name="webhooks", process_groups=_API, tags=("channels",)),

@@ -748,6 +748,39 @@ def test_document_upload_base64_model():
 
 
 @pytest.mark.asyncio
+async def test_upload_document_base64_can_use_preverified_client_access(
+    mock_db_pool,
+    mock_current_user,
+):
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    verify_client_access = AsyncMock()
+
+    with patch(
+        "backend.app.routers.crm_enhanced_documents.verify_client_access",
+        new=verify_client_access,
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="not-base64",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                access_already_verified=True,
+            )
+
+    assert exc_info.value.status_code == 400
+    verify_client_access.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_upload_document_base64_mirrors_company_upload_to_company_documents(
     mock_db_pool,
     mock_current_user,
