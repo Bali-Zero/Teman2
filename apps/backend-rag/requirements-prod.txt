@@ -51,6 +51,7 @@ pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 reportlab>=4.2.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
 beautifulsoup4>=4.14.3  # Security and stability updates
 python-magic>=0.4.27  # MIME type detection from file content
+rapidfuzz>=3.14.0  # Fuzzy name matching for accounting bank-statement reconciliation (P1)
 
 # OCR (Gemini Vision based - same as passport box)
 # Uses google-genai already included above
