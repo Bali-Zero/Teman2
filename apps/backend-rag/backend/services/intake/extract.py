@@ -830,7 +830,7 @@ def _extract_nib_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "company_name",
         _first_line_match(
             pages,
-            r"^(?:nama\s+pelaku\s+usaha|nama\s+perusahaan|company\s+name|business\s+name)\s*[:\-]\s*(.+)$",
+            r"^(?:nama\s+pelaku\s+usaha|nama\s+perusahaan|company\s+name|business\s+name)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
 
@@ -846,14 +846,14 @@ def _extract_nib_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     _set_if_present(
         fields,
         "address",
-        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:alamat|address)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     _set_if_present(
         fields,
         "issue_date",
         _first_line_match(
             pages,
-            r"^(?:tanggal\s*(?:terbit|diterbitkan)|issue\s*date|date\s*of\s*issue)\s*[:\-]\s*(.+)$",
+            r"^(?:tanggal\s*(?:terbit|diterbitkan)|issue\s*date|date\s*of\s*issue)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
@@ -877,13 +877,13 @@ def _extract_npwp_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "name",
         _first_line_match(
             pages,
-            r"^(?:nama\s*(?:wajib\s+pajak)?|taxpayer\s*name|name)\s*[:\-]\s*(.+)$",
+            r"^(?:nama\s*(?:wajib\s+pajak)?|taxpayer\s*name|name)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     _set_if_present(
         fields,
         "address",
-        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:alamat|address)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     return fields
 

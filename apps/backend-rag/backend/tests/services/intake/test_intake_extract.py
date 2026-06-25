@@ -294,6 +294,35 @@ async def test_nib_label_fields_skip_model_call():
     assert out["fields"]["issue_date"]["value"] == "2026-06-20"
 
 
+async def test_nib_label_fields_accept_colonless_ocr_labels():
+    """NIB OCR often drops separators but still carries deterministic company fields."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "NOMOR INDUK BERUSAHA\n"
+        "NIB 8123456789012\n"
+        "Nama Perusahaan PT CONTOH MAJU BERSAMA\n"
+        "KBLI 62019 AKTIVITAS PEMROGRAMAN KOMPUTER LAINNYA\n"
+        "Alamat JL. MERDEKA NO. 5, DENPASAR\n"
+        "Tanggal Terbit 12 MEI 2026"
+    )
+    out = await extract.extract_fields("oss", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "nib"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["nib_labels"]
+    assert out["fields"]["nib_number"]["value"] == "8123456789012"
+    assert out["fields"]["company_name"]["value"] == "PT CONTOH MAJU BERSAMA"
+    assert out["fields"]["kbli_codes"]["value"] == ["62019"]
+    assert out["fields"]["address"]["value"] == "JL. MERDEKA NO. 5, DENPASAR"
+    assert out["fields"]["issue_date"]["value"] == "2026-05-12"
+
+
 async def test_npwp_label_fields_skip_model_call():
     """Clearly-labelled NPWP OCR carries taxpayer fields locally."""
     called = {"n": 0}
@@ -317,6 +346,32 @@ async def test_npwp_label_fields_skip_model_call():
     assert out["fields"]["npwp_number"]["value"] == "098765432901000"
     assert out["fields"]["name"]["value"] == "PT ZANTARA TEST MANDIRI"
     assert out["fields"]["address"]["value"] == "JALAN RAYA CANGGU NO 10 BADUNG"
+
+
+async def test_npwp_label_fields_accept_colonless_ocr_labels():
+    """NPWP OCR often omits separators while preserving taxpayer identity fields."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "KARTU NPWP\n"
+        "NPWP 09.876.543.2-901.000\n"
+        "Nama PT CONTOH MAJU BERSAMA\n"
+        "Alamat JL. RAYA UBUD NO. 10, GIANYAR\n"
+        "KPP PRATAMA GIANYAR"
+    )
+    out = await extract.extract_fields("npwp_company", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "npwp"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["npwp_labels"]
+    assert out["fields"]["npwp_number"]["value"] == "098765432901000"
+    assert out["fields"]["name"]["value"] == "PT CONTOH MAJU BERSAMA"
+    assert out["fields"]["address"]["value"] == "JL. RAYA UBUD NO. 10, GIANYAR"
 
 
 async def test_skt_label_fields_skip_model_call():
