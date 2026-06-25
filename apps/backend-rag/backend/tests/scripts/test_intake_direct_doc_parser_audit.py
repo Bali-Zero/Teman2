@@ -322,6 +322,76 @@ def test_qwen_text_sample_keeps_low_yield_batch_review_only() -> None:
     }
 
 
+def test_dashboard_snapshot_keeps_qwen_probe_aggregate_only() -> None:
+    audit = _load()
+
+    snapshot = audit.build_dashboard_snapshot(
+        {
+            "pii_policy": "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr",
+            "qwen_text_sample": {
+                "attempted": 5,
+                "classified_attempts": 5,
+                "kita_workspace_candidates": 1,
+                "review_after_qwen": 4,
+                "acceptance_gate": {
+                    "status": "review_only",
+                    "reason": "candidate_rate_below_threshold",
+                    "candidate_rate": 0.2,
+                    "min_candidate_rate": 0.25,
+                    "classified_attempts": 5,
+                    "min_classified_attempts": 5,
+                },
+                "placement_preview": [
+                    {
+                        "from_doc_type": "unknown",
+                        "proposed_doc_type": "birth_certificate",
+                        "workspace_bucket": "immigration",
+                        "docs": 1,
+                    }
+                ],
+                "workspace_buckets": [{"bucket": "immigration", "docs": 1}],
+                "transitions": {"unknown->birth_certificate": 1},
+                "errors": {},
+            },
+            "raw_ocr_text": "SHOULD_NOT_LEAK",
+            "sender_phone": "+6280000000000",
+        },
+        generated_at="2026-06-26T04:00:00+00:00",
+    )
+
+    assert snapshot == {
+        "generated_at": "2026-06-26T04:00:00+00:00",
+        "pii_policy": "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr",
+        "qwen_text_sample": {
+            "attempted": 5,
+            "classified_attempts": 5,
+            "kita_workspace_candidates": 1,
+            "review_after_qwen": 4,
+            "acceptance_gate": {
+                "status": "review_only",
+                "reason": "candidate_rate_below_threshold",
+                "candidate_rate": 0.2,
+                "min_candidate_rate": 0.25,
+                "classified_attempts": 5,
+                "min_classified_attempts": 5,
+            },
+            "placement_preview": [
+                {
+                    "from_doc_type": "unknown",
+                    "proposed_doc_type": "birth_certificate",
+                    "workspace_bucket": "immigration",
+                    "docs": 1,
+                }
+            ],
+            "workspace_buckets": [{"bucket": "immigration", "docs": 1}],
+            "transitions": {"unknown->birth_certificate": 1},
+            "errors": {},
+        },
+    }
+    assert "SHOULD_NOT_LEAK" not in str(snapshot)
+    assert "+6280000000000" not in str(snapshot)
+
+
 def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
     audit = _load()
     args = audit.build_parser().parse_args(

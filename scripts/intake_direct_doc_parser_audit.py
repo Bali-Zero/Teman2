@@ -24,6 +24,8 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import asyncpg
@@ -638,6 +640,18 @@ async def run_audit(
     return report
 
 
+def build_dashboard_snapshot(
+    report: Mapping[str, Any],
+    *,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "generated_at": generated_at or datetime.now(timezone.utc).isoformat(),
+        "pii_policy": str(report.get("pii_policy", "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr")),
+        "qwen_text_sample": report.get("qwen_text_sample") or {},
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Read-only WA Mirror direct-doc parser audit")
     parser.add_argument(
@@ -700,6 +714,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS,
         help="minimum successful qwen classifications before evaluating candidate readiness",
     )
+    parser.add_argument(
+        "--write-dashboard-snapshot",
+        default="",
+        help="optional path for a non-PII qwen gate snapshot consumed by wa-dashboard",
+    )
     parser.add_argument("--pretty", action="store_true", help="pretty-print JSON")
     return parser
 
@@ -718,6 +737,13 @@ async def main(argv: list[str] | None = None) -> int:
         qwen_min_candidate_rate=min(max(args.qwen_min_candidate_rate, 0.0), 1.0),
         qwen_min_classified_attempts=max(args.qwen_min_classified_attempts, 1),
     )
+    if args.write_dashboard_snapshot:
+        snapshot_path = Path(args.write_dashboard_snapshot).expanduser()
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        snapshot_path.write_text(
+            json.dumps(build_dashboard_snapshot(report), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     indent = 2 if args.pretty else None
     sys.stdout.write(json.dumps(report, indent=indent, sort_keys=True) + "\n")
     return 0

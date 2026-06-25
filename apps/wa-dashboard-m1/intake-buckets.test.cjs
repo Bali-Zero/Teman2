@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 
 const {
   actionBucketForRow,
+  buildQwenBatchGateSummary,
   buildDirectActionSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
@@ -42,5 +43,55 @@ assert.deepEqual(
     workspace_review_ready: 255,
     failed_pipeline: 5,
     immediate_batch_candidates: 898,
+  },
+);
+
+assert.deepEqual(
+  buildQwenBatchGateSummary(
+    { needs_text_parser_qwen_candidate: 306 },
+    {
+      generated_at: "2026-06-26T04:00:00.000Z",
+      qwen_text_sample: {
+        attempted: 5,
+        kita_workspace_candidates: 1,
+        review_after_qwen: 4,
+        acceptance_gate: {
+          status: "review_only",
+          reason: "candidate_rate_below_threshold",
+          candidate_rate: 0.2,
+          min_candidate_rate: 0.25,
+          classified_attempts: 5,
+          min_classified_attempts: 5,
+        },
+      },
+    },
+  ),
+  {
+    status: "review_only",
+    reason: "candidate_rate_below_threshold",
+    candidate_docs: 306,
+    sampled_docs: 5,
+    classified_attempts: 5,
+    candidate_rate: 0.2,
+    min_candidate_rate: 0.25,
+    kita_workspace_candidates: 1,
+    review_after_qwen: 4,
+    generated_at: "2026-06-26T04:00:00.000Z",
+  },
+);
+
+assert.deepEqual(
+  buildQwenBatchGateSummary({ needs_text_parser_qwen_candidate: 306 }, null),
+  {
+    status: "probe_required",
+    reason: "no_qwen_probe_snapshot",
+    candidate_docs: 306,
+    sampled_docs: 0,
+    classified_attempts: 0,
+    candidate_rate: 0,
+    min_candidate_rate: 0.25,
+    kita_workspace_candidates: 0,
+    review_after_qwen: 0,
+    generated_at: null,
   },
 );
