@@ -633,6 +633,7 @@ def _stay_permit_subtype(text: str) -> str | None:
 # Confidence CAP for a vision-only classification: always in the review band,
 # NEVER enough to auto-commit (the gate needs >= human review on vision alone).
 VISION_CLASSIFY_CONF = 0.55
+VISION_CLASSIFY_MAX_PAGES = 3
 
 # One constrained call. qwen2.5vl:7b is used directly (NOT the qwen3-vl
 # primary): the 2026-06-04 empirical finding above shows qwen3-vl buries its
@@ -669,8 +670,8 @@ def _parse_vision_answer(raw: str | None) -> str | None:
     return cleaned if cleaned in DOC_TYPES else None
 
 
-async def _vision_classify_first_page(png_bytes: bytes) -> str | None:
-    """ONE local vision call to type a document the keywords could not.
+async def _vision_classify_page(png_bytes: bytes) -> str | None:
+    """ONE local vision call to type a document page the keywords could not.
 
     Returns a DOC_TYPES member or None. NEVER raises: any error/timeout/
     non-conforming answer degrades to None (caller keeps "unknown").
@@ -696,11 +697,29 @@ async def _vision_classify_first_page(png_bytes: bytes) -> str | None:
     return answer
 
 
+async def _vision_classify_pages(pages: list[bytes]) -> tuple[str | None, int | None]:
+    """Try up to VISION_CLASSIFY_MAX_PAGES pages, returning (type, page_offset).
+
+    The fallback is intentionally sequential and capped: it runs only after the
+    keyword floor fails, and every vision-only type remains review-band. Page 1
+    is often a cover/blank scan in WhatsApp uploads; letting page 2/3 answer
+    rescues those without guessing from text.
+    """
+    for offset, png in enumerate(pages[:VISION_CLASSIFY_MAX_PAGES]):
+        if not png:
+            continue
+        answer = await _vision_classify_page(png)
+        if answer and answer != "unknown":
+            return answer, offset
+    return None, None
+
+
 async def classify_document(
     ocr_text: str | None,
     pages: list[dict[str, Any]] | None = None,
     *,
     first_page_png: bytes | None = None,
+    vision_page_pngs: list[bytes] | None = None,
 ) -> dict[str, Any]:
     """Classify a document from OCR text. Local-only, anti-hallucination.
 
@@ -708,10 +727,12 @@ async def classify_document(
         ocr_text: concatenated OCR text (all pages). If None, derived from pages.
         pages: per-page OCR dicts from ``ocr_pages`` (used to attribute the
                winning evidence to a specific source page).
-        first_page_png: optional raw PNG bytes of the FIRST page. When the
-               keyword score lands below the unknown floor, ONE constrained
-               local vision call (:func:`_vision_classify_first_page`) gets a
-               chance to type the document — confidence capped at
+        first_page_png: backward-compatible shortcut for a single first-page
+               fallback image.
+        vision_page_pngs: optional raw PNG bytes for the first candidate pages.
+               When the keyword score lands below the unknown floor, capped
+               local vision calls (:func:`_vision_classify_pages`) get a
+               chance to type the document -- confidence capped at
                ``VISION_CLASSIFY_CONF`` (review band, never auto-commit).
 
     Returns:
@@ -747,15 +768,25 @@ async def classify_document(
             }
 
     # Anti-hallucination floor: weak keyword evidence -> NOT a guess. One local
-    # vision attempt (catalog v2) may still type it — capped in the review band.
+    # vision pass (catalog v2) may still type it -- capped in the review band.
     if best_type is None or best_score < 0.30:
-        if first_page_png is not None:
-            vtype = await _vision_classify_first_page(first_page_png)
+        candidate_pngs = vision_page_pngs or (
+            [first_page_png] if first_page_png is not None else []
+        )
+        if candidate_pngs:
+            vtype, page_offset = await _vision_classify_pages(candidate_pngs)
             if vtype and vtype != "unknown":
+                source_page = None
+                if page_offset is not None:
+                    source_page = (
+                        pages[page_offset].get("page")
+                        if page_offset < len(pages)
+                        else page_offset
+                    )
                 return {
                     "type": vtype,
                     "confidence": VISION_CLASSIFY_CONF,
-                    "source_page": pages[0].get("page") if pages else None,
+                    "source_page": source_page,
                     "scores": scores,
                     "via": "vision_fallback",
                 }
@@ -882,7 +913,17 @@ async def _run_classify_stage(pool: asyncpg.Pool, job: dict) -> dict:
     ocr = await ocr_pages(pre.pages)
     full_text = "\n".join(p["text"] for p in ocr)
     first_png = getattr(pre.pages[0], "png_bytes", None) if pre.pages else None
-    cls = await classify_document(full_text, ocr, first_page_png=first_png)
+    vision_pngs = [
+        getattr(page, "png_bytes", b"")
+        for page in pre.pages[:VISION_CLASSIFY_MAX_PAGES]
+        if getattr(page, "png_bytes", b"")
+    ]
+    cls = await classify_document(
+        full_text,
+        ocr,
+        first_page_png=first_png,
+        vision_page_pngs=vision_pngs,
+    )
 
     return {
         "doc_type": cls["type"],
