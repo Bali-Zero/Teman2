@@ -518,6 +518,9 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
         ("itap", "immigration", "01_Immigration"),
         ("itk", "immigration", "01_Immigration"),
         ("ktp", "personal", "00_Profile"),
+        ("family_card", "family", "04_Family"),
+        ("birth_certificate", "family", "04_Family"),
+        ("marriage_certificate", "family", "04_Family"),
         ("npwp", "tax", "03_Tax"),
     ],
 )

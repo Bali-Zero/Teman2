@@ -114,6 +114,40 @@ async def test_generic_visa_word_alone_stays_unknown():
 
 
 @pytest.mark.asyncio
+async def test_family_card_classified():
+    r = await cls.classify_document(
+        "KARTU KELUARGA Nomor Kartu Keluarga No. KK Kepala Keluarga"
+    )
+    assert r["type"] == "family_card"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_birth_certificate_classified():
+    r = await cls.classify_document(
+        "KUTIPAN AKTA KELAHIRAN Dinas Kependudukan dan Pencatatan Sipil"
+    )
+    assert r["type"] == "birth_certificate"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_marriage_certificate_classified():
+    r = await cls.classify_document(
+        "BUKU NIKAH AKTA NIKAH Kantor Urusan Agama tanggal pernikahan"
+    )
+    assert r["type"] == "marriage_certificate"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_generic_family_word_alone_stays_unknown():
+    r = await cls.classify_document("family whatsapp note")
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
 async def test_source_page_attribution():
     # Evidence lives on page 1 (index 1), not page 0.
     pages = [

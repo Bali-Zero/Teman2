@@ -128,11 +128,12 @@ def test_fuzzy_only_path_unchanged() -> None:
     assert cands[0]["id"] == 5
 
 
-def test_ktp_and_visa_are_person_doc_types() -> None:
-    assert "ktp" in rt._PERSON_DOC_TYPES
-    assert "ktp" not in rt._COMPANY_DOC_TYPES
-    assert "visa" in rt._PERSON_DOC_TYPES
-    assert "visa" not in rt._COMPANY_DOC_TYPES
+def test_person_document_types_are_not_company_doc_types() -> None:
+    for doc_type in (
+        "ktp", "visa", "family_card", "birth_certificate", "marriage_certificate"
+    ):
+        assert doc_type in rt._PERSON_DOC_TYPES
+        assert doc_type not in rt._COMPANY_DOC_TYPES
 
 
 # ---------------------------------------------------------------------------

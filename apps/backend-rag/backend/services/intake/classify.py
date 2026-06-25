@@ -358,6 +358,9 @@ DOC_TYPES: tuple[str, ...] = (
     "visa",
     "skt",
     "ktp",
+    "family_card",
+    "birth_certificate",
+    "marriage_certificate",
     "unknown",
 )
 
@@ -384,6 +387,36 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("golongan darah", 0.2),
         ("kewarganegaraan", 0.15),
         ("tempat/tgl lahir", 0.3),  # KTP-specific field label
+    ],
+    "family_card": [
+        ("kartu keluarga", 0.6),
+        ("family card", 0.6),
+        ("nomor kartu keluarga", 0.55),
+        ("no. kk", 0.45),
+        ("no kk", 0.45),
+        ("kepala keluarga", 0.35),
+        ("daftar anggota keluarga", 0.35),
+        ("susunan keluarga", 0.3),
+    ],
+    "birth_certificate": [
+        ("kutipan akta kelahiran", 0.7),
+        ("akta kelahiran", 0.6),
+        ("birth certificate", 0.6),
+        ("certificate of birth", 0.6),
+        ("dinas kependudukan dan pencatatan sipil", 0.25),
+        ("kelahiran", 0.25),
+        ("anak ke", 0.25),
+    ],
+    "marriage_certificate": [
+        ("kutipan akta perkawinan", 0.7),
+        ("akta perkawinan", 0.6),
+        ("akta nikah", 0.6),
+        ("buku nikah", 0.55),
+        ("marriage certificate", 0.6),
+        ("certificate of marriage", 0.6),
+        ("kantor urusan agama", 0.35),
+        ("pernikahan", 0.35),
+        ("perkawinan", 0.35),
     ],
     "npwp": [
         ("nomor pokok wajib pajak", 0.6),
