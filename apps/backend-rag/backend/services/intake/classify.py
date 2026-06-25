@@ -145,6 +145,7 @@ _THINK_PREAMBLE = re.compile(
     r"(transcrib\w+|read|look at).*?[:.]\s*",
     re.IGNORECASE | re.DOTALL,
 )
+_FENCED_BLOCK = re.compile(r"^```(?:[a-zA-Z0-9_-]+)?\s*\n(?P<body>.*?)\n?```$", re.DOTALL)
 
 
 def _salvage_thinking(thinking: str) -> str:
@@ -167,6 +168,9 @@ def _clean_ocr_response(text: str) -> str:
     raw = text.strip()
     if not raw:
         return ""
+    fenced = _FENCED_BLOCK.fullmatch(raw)
+    if fenced:
+        raw = fenced.group("body").strip()
 
     try:
         parsed = json.loads(raw)

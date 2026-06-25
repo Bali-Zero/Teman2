@@ -299,6 +299,17 @@ async def test_ocr_pages_unwraps_json_line_list_response(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_ocr_pages_unwraps_fenced_json_line_list_response(monkeypatch):
+    async def fake_vision(model, b64):
+        return ('```json\n["VISA INDEX : E33G", "Expiry Date : 2026-12-24"]\n```', "")
+
+    monkeypatch.setattr(cls, "_ollama_vision", fake_vision)
+    out = await cls.ocr_pages([_FakePage(0, b"x")])
+    assert out[0]["via"] == "response"
+    assert out[0]["text"] == "VISA INDEX : E33G\nExpiry Date : 2026-12-24"
+
+
+@pytest.mark.asyncio
 async def test_ocr_pages_unwraps_json_text_object_response(monkeypatch):
     async def fake_vision(model, b64):
         return ('{"text": "PAYMENT RECEIPT\\nReceipt No : TRX-2026-00077"}', "")
