@@ -45,35 +45,44 @@ def _forward_sql() -> str:
     return re.split(r"^-- === ROLLBACK ===\s*$", text, maxsplit=1, flags=re.MULTILINE)[0]
 
 
+def _base_dsn() -> str:
+    """One DSN for every connection in this test.
+
+    CI provides a password-protected Postgres service and sets TEST_DATABASE_URL
+    (postgresql://test:test@localhost/nuzantara_test) — every connect MUST carry
+    those credentials. On a dev box TEST_DATABASE_URL is unset and we fall back to
+    the local peer/trust-auth socket (passwordless $USER@localhost). asyncpg lets
+    us reuse this base DSN and only override the `database=` per connection, so we
+    never rebuild a passwordless `{user}@localhost` DSN that auth-fails in CI.
+    """
+    return os.environ.get(
+        "TEST_DATABASE_URL",
+        f"postgresql://{os.environ.get('USER', 'postgres')}@localhost:5432/postgres",
+    )
+
+
 async def _try_connect() -> asyncpg.Connection | None:
-    dsn = os.environ.get("TEST_DATABASE_URL")
-    candidates = [dsn] if dsn else []
-    user = os.environ.get("USER", "postgres")
-    candidates += [f"postgresql://{user}@localhost:5432/postgres", "postgresql://localhost:5432/postgres"]
-    for c in candidates:
-        if not c:
-            continue
-        try:
-            return await asyncpg.connect(c)
-        except Exception:
-            continue
-    return None
+    try:
+        # connect to the admin/maintenance DB (postgres) using the base creds
+        return await asyncpg.connect(_base_dsn(), database="postgres")
+    except Exception:
+        return None
 
 
 async def _fresh_db() -> tuple[asyncpg.Connection, str, str]:
     """Create an ephemeral DB with the migration applied + minimal stubs.
 
     Returns (conn, dbname, user). Caller is responsible for teardown via
-    _drop_db(). Skips the test if no local Postgres is reachable.
+    _drop_db(). Skips the test if no Postgres is reachable.
     """
     admin = await _try_connect()
     if admin is None:
-        pytest.skip("no local Postgres reachable for reconcile integration test")
+        pytest.skip("no Postgres reachable for reconcile integration test")
     dbname = f"acc_recon_{uuid.uuid4().hex[:10]}"
     await admin.execute(f'CREATE DATABASE "{dbname}"')
     await admin.close()
     user = os.environ.get("USER", "postgres")
-    conn = await asyncpg.connect(f"postgresql://{user}@localhost:5432/{dbname}")
+    conn = await asyncpg.connect(_base_dsn(), database=dbname)
     await conn.execute(STUBS)
     await conn.execute(_forward_sql())
     return conn, dbname, user
@@ -81,7 +90,7 @@ async def _fresh_db() -> tuple[asyncpg.Connection, str, str]:
 
 async def _drop_db(conn: asyncpg.Connection, dbname: str, user: str) -> None:
     await conn.close()
-    admin2 = await asyncpg.connect(f"postgresql://{user}@localhost:5432/postgres")
+    admin2 = await asyncpg.connect(_base_dsn(), database="postgres")
     try:
         await admin2.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
     finally:
@@ -90,20 +99,8 @@ async def _drop_db(conn: asyncpg.Connection, dbname: str, user: str) -> None:
 
 @pytest.mark.asyncio
 async def test_confirm_payment_full_side_effects() -> None:
-    admin = await _try_connect()
-    if admin is None:
-        pytest.skip("no local Postgres reachable for reconcile integration test")
-
-    dbname = f"acc_recon_{uuid.uuid4().hex[:10]}"
-    await admin.execute(f'CREATE DATABASE "{dbname}"')
-    await admin.close()
-
-    user = os.environ.get("USER", "postgres")
-    conn = await asyncpg.connect(f"postgresql://{user}@localhost:5432/{dbname}")
+    conn, dbname, user = await _fresh_db()
     try:
-        await conn.execute(STUBS)
-        await conn.execute(_forward_sql())
-
         # seed
         cid = await conn.fetchval("INSERT INTO clients (full_name) VALUES ('Dina B') RETURNING id")
         pid = await conn.fetchval(
@@ -175,12 +172,7 @@ async def test_confirm_payment_full_side_effects() -> None:
         assert int(rl["amount_applied_idr"]) == 4_000_000
         assert rl["practice_id"] == pid
     finally:
-        await conn.close()
-        admin2 = await asyncpg.connect(f"postgresql://{user}@localhost:5432/postgres")
-        try:
-            await admin2.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
-        finally:
-            await admin2.close()
+        await _drop_db(conn, dbname, user)
 
 
 @pytest.mark.asyncio
