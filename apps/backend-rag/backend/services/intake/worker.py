@@ -601,6 +601,15 @@ class IntakeWorker:
                     WHEN 'processing'   THEN 5
                     ELSE 9  -- 'pending' last
                   END,
+                  -- WhatsApp mirror is the client-facing intake lane. Once all
+                  -- cheap downstream stages are drained, do not let historical
+                  -- Drive backfills bury fresh WA attachments behind tens of
+                  -- thousands of pending OCR jobs.
+                  CASE
+                    WHEN status = 'pending' AND source = 'whatsapp' THEN 0
+                    WHEN status = 'pending'                         THEN 1
+                    ELSE 0
+                  END,
                   next_visible_at, id
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
