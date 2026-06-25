@@ -100,6 +100,18 @@ def _unique(values: list[Any]) -> list[str]:
     return ordered
 
 
+_LOCAL_OCR_VIAS = {"response", "thinking", "fallback"}
+
+
+def _provider_error(provider: str, ocr_text: str, vias: list[str]) -> str | None:
+    """Return a benchmark-visible provider failure marker, if any."""
+    if not ocr_text:
+        return "empty_ocr_text"
+    if provider == "gemini" and "gemini" not in vias and any(via in _LOCAL_OCR_VIAS for via in vias):
+        return "provider_fallback_to_local_ocr"
+    return None
+
+
 def _row_from_pages(
     sample: ProviderSample,
     *,
@@ -108,6 +120,10 @@ def _row_from_pages(
     error: str | None,
 ) -> ProviderRow:
     ocr_text = "\n\n".join(str(page.get("text", "")) for page in pages if page.get("text"))
+    models = _unique([page.get("model") for page in pages])
+    vias = _unique([page.get("via") for page in pages])
+    if error is None:
+        error = _provider_error(provider, ocr_text, vias)
     return {
         "id": sample["id"],
         "provider": provider,
@@ -116,8 +132,8 @@ def _row_from_pages(
         "expected_fields": sample["expected_fields"],
         "chars": len(ocr_text),
         "page_count": len(pages),
-        "models": _unique([page.get("model") for page in pages]),
-        "vias": _unique([page.get("via") for page in pages]),
+        "models": models,
+        "vias": vias,
         "error": error,
     }
 
