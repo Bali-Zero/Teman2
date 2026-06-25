@@ -191,8 +191,8 @@ def test_recoverable_unschematised_doc_types_follow_current_extract_schemas() ->
     assert "sk_kemenkumham" in doc_types
     assert "oss" in doc_types  # classifier emits oss, extract canonicalizes to nib
     assert "itas" in doc_types  # classifier emits itas, extract canonicalizes to kitas
+    assert "skt" in doc_types
     assert "unknown" not in doc_types
-    assert "skt" not in doc_types  # classifier knows it, extraction still does not
 
 
 # ---------------------------------------------------------------------------

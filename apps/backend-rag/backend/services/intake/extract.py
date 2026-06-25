@@ -121,6 +121,13 @@ DOC_TYPE_FIELDS: dict[str, list[_FieldSpec]] = {
         ("name", False, "name of the taxpayer (person or company)"),
         ("address", False, "registered address"),
     ],
+    "skt": [
+        ("skt_number", False, "SKT / Surat Keterangan Terdaftar registration number"),
+        ("npwp_number", False, "15- or 16-digit NPWP tax number"),
+        ("name", False, "name of the registered taxpayer (person or company)"),
+        ("address", False, "registered taxpayer address"),
+        ("registration_date", False, "tax registration date (prefer YYYY-MM-DD)"),
+    ],
     "akta_pendirian": [
         ("company_name", False, "full legal company name being established"),
         ("directors", True, "list of director (Direktur) full names"),
@@ -822,6 +829,52 @@ def _extract_npwp_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         fields,
         "address",
         _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+    )
+    return fields
+
+
+def _extract_skt_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("skt")
+    _set_if_present(
+        fields,
+        "skt_number",
+        _first_line_match(
+            pages,
+            r"^(?:nomor|no\.?\s*(?:skt)?|skt\s*(?:no\.?|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
+        ),
+    )
+
+    npwp_number = _first_line_match(
+        pages,
+        r"^(?:npwp|nomor\s+pokok\s+wajib\s+pajak|no\.?\s*npwp)\s*[:\-]?\s*([\d .\-]{12,})$",
+    )
+    if npwp_number is not None:
+        value, page = npwp_number
+        parsed = _field(_clean_npwp_number(value), page)
+        if parsed is not None:
+            fields["npwp_number"] = parsed
+
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(
+            pages,
+            r"^(?:nama\s*(?:wajib\s+pajak)?|taxpayer\s*name|name)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "address",
+        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+    )
+    _set_if_present(
+        fields,
+        "registration_date",
+        _first_line_match(
+            pages,
+            r"^(?:tanggal\s*(?:terdaftar|registrasi)|registered\s*date|registration\s*date)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
     )
     return fields
 
@@ -1584,6 +1637,10 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_npwp_label_fields(pages)
         if _has_any_value(fields, ("npwp_number", "name")):
             return fields, "npwp_labels"
+    if doc_type == "skt":
+        fields = _extract_skt_label_fields(pages)
+        if _has_any_value(fields, ("skt_number", "npwp_number", "name")):
+            return fields, "skt_labels"
     if doc_type == "sk_kemenkumham":
         fields = _extract_sk_kemenkumham_label_fields(pages)
         if _has_any_value(fields, ("sk_number", "company_name")):

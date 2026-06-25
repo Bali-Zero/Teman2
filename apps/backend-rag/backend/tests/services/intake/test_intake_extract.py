@@ -54,6 +54,7 @@ def test_canonical_doc_type_aliases():
     assert extract.canonical_doc_type("nib") == "nib"
     assert extract.canonical_doc_type("NIB_OSS") == "nib"
     assert extract.canonical_doc_type("oss") == "nib"
+    assert extract.canonical_doc_type("skt") == "skt"
     assert extract.canonical_doc_type("akta") == "akta_pendirian"
     assert extract.canonical_doc_type("sk_menkumham") == "sk_kemenkumham"
     assert extract.canonical_doc_type("paspor") == "passport"
@@ -288,6 +289,35 @@ async def test_npwp_label_fields_skip_model_call():
     assert out["fields"]["npwp_number"]["value"] == "098765432901000"
     assert out["fields"]["name"]["value"] == "PT ZANTARA TEST MANDIRI"
     assert out["fields"]["address"]["value"] == "JALAN RAYA CANGGU NO 10 BADUNG"
+
+
+async def test_skt_label_fields_skip_model_call():
+    """Clearly-labelled SKT OCR carries tax-registration fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "SURAT KETERANGAN TERDAFTAR\n"
+        "Nomor : PEM-00123/WPJ.12/KP.0103/2026\n"
+        "NPWP : 09.876.543.2-901.000\n"
+        "Nama : PT ZANTARA TEST MANDIRI\n"
+        "Alamat : JALAN RAYA CANGGU NO 10 BADUNG\n"
+        "Tanggal Terdaftar : 15 Mei 2026"
+    )
+    out = await extract.extract_fields("skt", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "skt"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["skt_labels"]
+    assert out["fields"]["skt_number"]["value"] == "PEM-00123/WPJ.12/KP.0103/2026"
+    assert out["fields"]["npwp_number"]["value"] == "098765432901000"
+    assert out["fields"]["name"]["value"] == "PT ZANTARA TEST MANDIRI"
+    assert out["fields"]["address"]["value"] == "JALAN RAYA CANGGU NO 10 BADUNG"
+    assert out["fields"]["registration_date"]["value"] == "2026-05-15"
 
 
 async def test_sk_kemenkumham_label_fields_skip_model_call():
