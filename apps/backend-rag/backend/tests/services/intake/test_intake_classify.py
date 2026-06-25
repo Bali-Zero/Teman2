@@ -288,6 +288,28 @@ async def test_ocr_pages_uses_primary_response(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_ocr_pages_unwraps_json_line_list_response(monkeypatch):
+    async def fake_vision(model, b64):
+        return ('["PASSPORT / PASPOR", "Passport No: YA1234567"]', "")
+
+    monkeypatch.setattr(cls, "_ollama_vision", fake_vision)
+    out = await cls.ocr_pages([_FakePage(0, b"x")])
+    assert out[0]["via"] == "response"
+    assert out[0]["text"] == "PASSPORT / PASPOR\nPassport No: YA1234567"
+
+
+@pytest.mark.asyncio
+async def test_ocr_pages_unwraps_json_text_object_response(monkeypatch):
+    async def fake_vision(model, b64):
+        return ('{"text": "PAYMENT RECEIPT\\nReceipt No : TRX-2026-00077"}', "")
+
+    monkeypatch.setattr(cls, "_ollama_vision", fake_vision)
+    out = await cls.ocr_pages([_FakePage(0, b"x")])
+    assert out[0]["via"] == "response"
+    assert out[0]["text"] == "PAYMENT RECEIPT\nReceipt No : TRX-2026-00077"
+
+
+@pytest.mark.asyncio
 async def test_ocr_pages_salvages_thinking_when_response_empty(monkeypatch):
     async def fake_vision(model, b64):
         # qwen3-vl pattern: empty response, transcription buried in thinking.

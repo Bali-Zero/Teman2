@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import os
 import re
@@ -161,6 +162,35 @@ def _salvage_thinking(thinking: str) -> str:
     return stripped if len(stripped) >= 20 else ""
 
 
+def _clean_ocr_response(text: str) -> str:
+    """Normalize common VLM wrapper formats while preserving visible text."""
+    raw = text.strip()
+    if not raw:
+        return ""
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+    if isinstance(parsed, list):
+        lines = [str(item).strip() for item in parsed if str(item).strip()]
+        return "\n".join(lines) if lines else raw
+
+    if isinstance(parsed, dict):
+        for key in ("text", "transcription", "ocr_text"):
+            value = parsed.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        for key in ("lines", "ocr_lines"):
+            value = parsed.get(key)
+            if isinstance(value, list):
+                lines = [str(item).strip() for item in value if str(item).strip()]
+                return "\n".join(lines) if lines else raw
+
+    return raw
+
+
 async def _ollama_vision(
     model: str,
     png_b64: str,
@@ -182,7 +212,10 @@ async def _ollama_vision(
     r = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
     r.raise_for_status()
     data = r.json()
-    return (data.get("response") or "").strip(), (data.get("thinking") or "").strip()
+    return (
+        _clean_ocr_response(data.get("response") or ""),
+        _clean_ocr_response(data.get("thinking") or ""),
+    )
 
 
 def _heuristic_confidence(text: str) -> float:
@@ -296,6 +329,8 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
             resp, thinking = await asyncio.wait_for(
                 _ollama_vision(primary, b64), timeout=OCR_PAGE_TIMEOUT_SECONDS
             )
+            resp = _clean_ocr_response(resp)
+            thinking = _clean_ocr_response(thinking or "")
             if resp:
                 text, via = resp, "response"
             else:
@@ -320,6 +355,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                     _ollama_vision(_OCR_FALLBACK, b64),
                     timeout=OCR_PAGE_TIMEOUT_SECONDS,
                 )
+                resp = _clean_ocr_response(resp)
                 if resp:
                     text, via, model_used = resp, "fallback", _OCR_FALLBACK
             except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
