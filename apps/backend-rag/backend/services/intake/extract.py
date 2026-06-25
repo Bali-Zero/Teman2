@@ -1047,6 +1047,53 @@ def _extract_travel_ticket_label_fields(pages: list[str]) -> dict[str, dict[str,
     return fields
 
 
+def _extract_medical_insurance_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("medical_insurance")
+    _set_if_present(
+        fields,
+        "policy_no",
+        _first_line_match(
+            pages,
+            r"^(?:policy\s*(?:no\.?|number)|certificate\s*(?:no\.?|number)|nomor\s+polis|no\.?\s*polis)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(
+            pages,
+            r"^(?:insured\s*(?:name)?|insured\s+person|participant\s*name|name|nama\s*(?:tertanggung|peserta)?)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "insurer",
+        _first_line_match(
+            pages,
+            r"^(?:insurer|insurance\s*(?:company|provider)|provider|company|penanggung)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "coverage_period",
+        _first_line_match(
+            pages,
+            r"^(?:coverage\s*(?:period|dates?)|period\s+of\s+insurance|masa\s*(?:berlaku|pertanggungan))\s*[:\-]\s*(.+)$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "expiry",
+        _first_line_match(
+            pages,
+            r"^(?:expiry\s*(?:date)?|expires|valid\s*(?:until|to)|end\s*date|berlaku\s*(?:hingga|sampai))\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    return fields
+
+
 def _has_any_value(fields: dict[str, dict[str, Any]], names: tuple[str, ...]) -> bool:
     return any(fields.get(name, {}).get("value") for name in names)
 
@@ -1073,6 +1120,12 @@ def _travel_ticket_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> b
     has_ticket_identifier = _has_any_value(fields, ("ticket_no", "booking_reference"))
     has_travel_context = _has_any_value(fields, ("name", "travel_date", "route"))
     return has_ticket_identifier and has_travel_context
+
+
+def _medical_insurance_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
+    has_policy_identifier = bool(fields.get("policy_no", {}).get("value"))
+    has_policy_context = _has_any_value(fields, ("name", "insurer", "coverage_period", "expiry"))
+    return has_policy_identifier and has_policy_context
 
 
 def _extract_label_fields_if_routing_useful(
@@ -1111,6 +1164,10 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_travel_ticket_label_fields(pages)
         if _travel_ticket_labels_routing_useful(fields):
             return fields, "travel_ticket_labels"
+    if doc_type == "medical_insurance":
+        fields = _extract_medical_insurance_label_fields(pages)
+        if _medical_insurance_labels_routing_useful(fields):
+            return fields, "medical_insurance_labels"
     return None
 
 
