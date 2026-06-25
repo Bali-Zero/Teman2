@@ -19,12 +19,18 @@ from pathlib import Path
 
 import asyncpg
 import pytest
+from asyncpg.exceptions import CheckViolationError
 
+from backend.services.accounting.cashout_service import cashbook_summary
 from backend.services.accounting.reconcile_service import confirm_payment
 
-MIGRATION = (
+MIGRATION_238 = (
     Path(__file__).resolve().parents[2]
     / "db" / "migrations_v2" / "238_accounting_asya.sql"
+)
+MIGRATION_239 = (
+    Path(__file__).resolve().parents[2]
+    / "db" / "migrations_v2" / "239_cashout_worksheet_type.sql"
 )
 
 STUBS = """
@@ -39,8 +45,8 @@ CREATE TABLE IF NOT EXISTS invoices (
 """
 
 
-def _forward_sql() -> str:
-    text = MIGRATION.read_text(encoding="utf-8")
+def _forward_sql_of(migration: Path) -> str:
+    text = migration.read_text(encoding="utf-8")
     # apply only the part before the ROLLBACK marker (mirrors the runner)
     return re.split(r"^-- === ROLLBACK ===\s*$", text, maxsplit=1, flags=re.MULTILINE)[0]
 
@@ -84,7 +90,8 @@ async def _fresh_db() -> tuple[asyncpg.Connection, str, str]:
     user = os.environ.get("USER", "postgres")
     conn = await asyncpg.connect(_base_dsn(), database=dbname)
     await conn.execute(STUBS)
-    await conn.execute(_forward_sql())
+    await conn.execute(_forward_sql_of(MIGRATION_238))
+    await conn.execute(_forward_sql_of(MIGRATION_239))
     return conn, dbname, user
 
 
@@ -230,5 +237,76 @@ async def test_confirm_payment_without_movement_date_uses_db_clock() -> None:
         rl = await conn.fetchrow("SELECT status_before, status_after FROM reconciliation_log WHERE id=$1",
                                  result.reconciliation_log_id)
         assert rl["status_before"] == "unpaid" and rl["status_after"] == "paid"
+    finally:
+        await _drop_db(conn, dbname, user)
+
+
+@pytest.mark.asyncio
+async def test_cashbook_summary_excludes_worksheet_from_totals() -> None:
+    """Worksheet rows (type='cashout_worksheet') are Asya's planning draft, not
+    confirmed cash: they MUST be excluded from the headline P&L totals
+    (income/net/margin) but KEPT in the by_type breakdown so she sees the pending
+    mass. A confirmed invoice_payment of 4M plus a worksheet draft of 5M must
+    report income=4M (not 9M), margin only from the confirmed row, while by_type
+    still lists both."""
+    conn, dbname, user = await _fresh_db()
+    try:
+        await conn.execute(
+            """INSERT INTO weekly_cashout
+                 (movement_date, week_label, direction, type, amount_idr,
+                  pnbp_idr, margin_idr, final_price_idr)
+               VALUES
+                 ($1, '2026-W10', 'in', 'invoice_payment', 4000000,
+                  1000000, 1000000, 4000000),
+                 ($1, '2026-W10', 'in', 'cashout_worksheet', 5000000,
+                  0, 2000000, 5000000)""",
+            date(2026, 3, 6),
+        )
+
+        summary = await cashbook_summary(conn)
+
+        # headline totals exclude the worksheet draft entirely
+        assert summary["income_idr"] == 4_000_000   # not 9M
+        assert summary["outgoing_idr"] == 0
+        assert summary["net_idr"] == 4_000_000       # not 9M
+        assert summary["margin_total_idr"] == 1_000_000  # only confirmed row
+        assert summary["row_count"] == 1             # only confirmed row counted
+
+        # by_type breakdown still surfaces the pending worksheet mass
+        by_type = {row["type"]: row for row in summary["by_type"]}
+        assert "invoice_payment" in by_type
+        assert "cashout_worksheet" in by_type
+        assert int(by_type["cashout_worksheet"]["total_idr"]) == 5_000_000
+    finally:
+        await _drop_db(conn, dbname, user)
+
+
+@pytest.mark.asyncio
+async def test_cashout_worksheet_type_accepted_by_constraint() -> None:
+    """Migration 239 widens ck_cashout_type to accept 'cashout_worksheet', keeps
+    every existing value, and still rejects anything off the list. (Contract test
+    for the DROP+re-ADD; PG has no ALTER-CHECK-value so this guards the rewrite.)
+    """
+    conn, dbname, user = await _fresh_db()
+    try:
+        # new value accepted (migration 239's whole point)
+        await conn.execute(
+            "INSERT INTO weekly_cashout (movement_date, direction, type, amount_idr) "
+            "VALUES ($1, 'in', 'cashout_worksheet', 100)",
+            date(2026, 3, 6),
+        )
+        # a pre-existing value still accepted (the rewrite didn't drop any)
+        await conn.execute(
+            "INSERT INTO weekly_cashout (movement_date, direction, type, amount_idr) "
+            "VALUES ($1, 'in', 'invoice_payment', 100)",
+            date(2026, 3, 6),
+        )
+        # a bogus value is still rejected by the CHECK
+        with pytest.raises(CheckViolationError):
+            await conn.execute(
+                "INSERT INTO weekly_cashout (movement_date, direction, type, amount_idr) "
+                "VALUES ($1, 'in', 'bogus_type', 100)",
+                date(2026, 3, 6),
+            )
     finally:
         await _drop_db(conn, dbname, user)
