@@ -62,8 +62,13 @@ def _load_slides(carousel_dir: Path) -> list[dict[str, Any]]:
     return slides
 
 
-async def rerender(slug: str, *, use_vision: bool = True) -> int:
-    """Re-render <slug> from its slides.json. Returns process exit code."""
+async def rerender(slug: str, *, use_vision: bool = False) -> int:
+    """Re-render <slug> from its slides.json. Returns process exit code.
+
+    DEFAULT is the fast, deterministic, no-vision path — matching the CLI
+    (`--vision` is opt-in via store_true). Keep this default in sync with the
+    argparse default so a direct importer and a CLI caller behave identically.
+    """
     carousel_dir = _CAROUSEL_ROOT / slug
     if not carousel_dir.is_dir():
         logger.error("carousel dir not found: %s", carousel_dir)
