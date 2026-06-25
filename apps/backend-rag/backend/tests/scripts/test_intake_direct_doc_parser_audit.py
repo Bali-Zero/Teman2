@@ -60,6 +60,21 @@ def test_parser_bucket_explains_direct_doc_next_action() -> None:
     assert audit.parser_bucket_for_row({"doc_type": "passport", "type_confidence": 0.8}) == "needs_routing_proposal"
 
 
+def test_action_bucket_splits_unknown_docs_by_ocr_readiness() -> None:
+    audit = _load()
+    assert audit.action_bucket_for_row({"queue_status": "dead", "doc_type": "unknown", "ocr_chars": 500}) == "failed_pipeline"
+    assert audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 0}) == "needs_ocr_vision_batch"
+    assert audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 99}) == "needs_manual_review_short_ocr"
+    assert audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 100}) == "needs_text_parser_qwen_candidate"
+    assert audit.action_bucket_for_row({"doc_type": "passport", "type_confidence": 0.55}) == "low_confidence_review"
+    assert (
+        audit.action_bucket_for_row(
+            {"doc_type": "passport", "type_confidence": 0.8, "entity_decision": "AUTO_ATTACH"}
+        )
+        == "workspace_review_ready"
+    )
+
+
 def test_summarize_direct_rows_is_aggregate_only_and_sorts_counts() -> None:
     audit = _load()
     summary = audit.summarize_direct_rows(
@@ -108,6 +123,9 @@ def test_summarize_direct_rows_is_aggregate_only_and_sorts_counts() -> None:
     assert summary["direct_parser"][0] == {"bucket": "workspace_review_ready", "docs": 1}
     assert {"bucket": "needs_doc_type_parser", "docs": 1} in summary["direct_parser"]
     assert {"bucket": "low_confidence_review", "docs": 1} in summary["direct_parser"]
+    assert {"bucket": "needs_ocr_vision_batch", "docs": 1} in summary["direct_actions"]
+    assert {"bucket": "workspace_review_ready", "docs": 1} in summary["direct_actions"]
+    assert {"bucket": "low_confidence_review", "docs": 1} in summary["direct_actions"]
     assert summary["workspace_buckets"] == [
         {"bucket": "immigration", "docs": 1},
         {"bucket": "review", "docs": 1},
@@ -144,3 +162,4 @@ def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
         assert forbidden not in joined
     for pii_field in ("sender_phone", "counterpart_phone", "phone_normalized", "group_subject"):
         assert pii_field not in joined
+    assert "ocr_chars >= $2" in audit.DIRECT_DOC_QWEN_SAMPLE_SQL

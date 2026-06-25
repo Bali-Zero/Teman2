@@ -6,6 +6,11 @@ const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
 const metrics = require("./metrics.cjs");
+const {
+  actionBucketForRow,
+  parserBucketForRow,
+  workspaceBucketForDocType,
+} = require("./intake-buckets.cjs");
 
 const PORT = parseInt(process.env.PORT || "7790", 10);
 const HOST = process.env.HOST || "0.0.0.0"; // bind also Tailnet (parity with wa-viewer:7777)
@@ -611,36 +616,6 @@ async function fetchOverview() {
   return result;
 }
 
-function workspaceBucketForDocType(docType) {
-  const key = String(docType || "unknown").toLowerCase();
-  if (["passport", "kitas", "itas", "itap", "itk", "visa", "birth_certificate", "medical_insurance", "travel_ticket"].includes(key)) {
-    return "immigration";
-  }
-  if (["nib", "akta_pendirian", "oss", "sk_kemenkumham", "profil_perseroan", "skt"].includes(key)) {
-    return "company";
-  }
-  if (["npwp"].includes(key)) return "tax";
-  if (["bank_statement", "payment_receipt"].includes(key)) return "finance";
-  if (["ktp"].includes(key)) return "identity";
-  return "review";
-}
-
-function parserBucketForRow(row) {
-  const docType = row.doc_type || "unknown";
-  const proposalStatus = row.proposal_status || "NO_PROPOSAL";
-  const decision = row.entity_decision || "NO_PROPOSAL";
-  const highConfidence = Number(row.type_confidence || 0) >= 0.7;
-  const hasNonStubRoute = !!row.routed_non_stub;
-  if (row.queue_status === "dead") return "failed_pipeline";
-  if (docType === "unknown") return "needs_doc_type_parser";
-  if (!highConfidence) return "low_confidence_review";
-  if (proposalStatus === "routed") return "already_routed";
-  if (decision === "AUTO_ATTACH" || decision === "LINK_CANDIDATE" || hasNonStubRoute) {
-    return "workspace_review_ready";
-  }
-  return "needs_routing_proposal";
-}
-
 async function fetchIntakeSummary() {
   const [queueRows, groupKindRows, directRows, routingRows] = await Promise.all([
     pool.query(
@@ -767,6 +742,22 @@ async function fetchIntakeSummary() {
           END AS type_confidence,
           COALESCE((q.stage_output ? 'extract') AND NOT COALESCE((q.stage_output->'extract'->>'stub')::boolean, false), false) AS extracted_non_stub,
           COALESCE((q.stage_output ? 'route') AND NOT COALESCE((q.stage_output->'route'->>'stub')::boolean, false), false) AS routed_non_stub,
+          COALESCE((
+            SELECT SUM(length(
+              CASE
+                WHEN jsonb_typeof(page.value) = 'object' THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                WHEN jsonb_typeof(page.value) = 'string' THEN trim(both '"' from page.value::text)
+                ELSE ''
+              END
+            ))
+            FROM jsonb_array_elements(
+              CASE
+                WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                THEN q.stage_output->'classify'->'ocr_text_per_page'
+                ELSE '[]'::jsonb
+              END
+            ) AS page(value)
+          ), 0) AS ocr_chars,
           COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
           COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
           w.media_type
@@ -811,11 +802,13 @@ async function fetchIntakeSummary() {
   const queue = queueRows.rows[0] || {};
   const docTypeMap = new Map();
   const parserMap = new Map();
+  const actionMap = new Map();
   const workspaceMap = new Map();
   for (const row of directRows.rows) {
     const docType = row.doc_type || "unknown";
     const workspaceBucket = workspaceBucketForDocType(docType);
     const parserBucket = parserBucketForRow(row);
+    const actionBucket = actionBucketForRow(row);
     const docKey = `${docType}|${workspaceBucket}`;
     const existingDoc = docTypeMap.get(docKey) || {
       doc_type: docType,
@@ -832,13 +825,14 @@ async function fetchIntakeSummary() {
     docTypeMap.set(docKey, existingDoc);
 
     parserMap.set(parserBucket, (parserMap.get(parserBucket) || 0) + 1);
+    actionMap.set(actionBucket, (actionMap.get(actionBucket) || 0) + 1);
     workspaceMap.set(workspaceBucket, (workspaceMap.get(workspaceBucket) || 0) + 1);
   }
 
   const toInt = (v) => parseInt(v || 0, 10);
   return {
     generated_at: new Date().toISOString(),
-    pii_policy: "aggregate_only_no_raw_phone_no_raw_group_subject",
+    pii_policy: "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr",
     source: "intake_queue + whatsapp_message_context",
     queue: {
       total: toInt(queue.total),
@@ -869,6 +863,9 @@ async function fetchIntakeSummary() {
       max_docs_per_group: toInt(r.max_docs_per_group),
     })),
     direct_parser: [...parserMap.entries()]
+      .map(([bucket, docs]) => ({ bucket, docs }))
+      .sort((a, b) => b.docs - a.docs),
+    direct_actions: [...actionMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),
     workspace_buckets: [...workspaceMap.entries()]

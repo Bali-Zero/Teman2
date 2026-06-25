@@ -33,6 +33,7 @@ DEFAULT_DB_URL = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_QWEN_MODEL = "qwen3.5:9b"
 HIGH_CONFIDENCE_THRESHOLD = 0.70
+TEXT_PARSER_MIN_CHARS = 100
 
 DOC_TYPES: tuple[str, ...] = (
     "passport",
@@ -156,6 +157,22 @@ direct_docs AS (
       END AS type_confidence,
       COALESCE((q.stage_output ? 'extract') AND NOT COALESCE((q.stage_output->'extract'->>'stub')::boolean, false), false) AS extracted_non_stub,
       COALESCE((q.stage_output ? 'route') AND NOT COALESCE((q.stage_output->'route'->>'stub')::boolean, false), false) AS routed_non_stub,
+      COALESCE((
+        SELECT SUM(length(
+          CASE
+            WHEN jsonb_typeof(page.value) = 'object' THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+            WHEN jsonb_typeof(page.value) = 'string' THEN trim(both '"' from page.value::text)
+            ELSE ''
+          END
+        ))
+        FROM jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+            THEN q.stage_output->'classify'->'ocr_text_per_page'
+            ELSE '[]'::jsonb
+          END
+        ) AS page(value)
+      ), 0) AS ocr_chars,
       COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
       COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
       w.media_type,
@@ -167,17 +184,11 @@ direct_docs AS (
     WHERE q.source = 'whatsapp'
       AND q.source_ref LIKE 'wa-mirror:%'
       AND NOT (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
-      AND (
-        COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') = 'unknown'
-        OR CASE
-             WHEN COALESCE(q.stage_output->'classify'->>'type_confidence', '') ~ '^[0-9]+(\\.[0-9]+)?$'
-             THEN (q.stage_output->'classify'->>'type_confidence')::numeric
-             ELSE 0
-           END < 0.70
-      )
 )
 SELECT *
   FROM direct_docs
+ WHERE doc_type = 'unknown'
+   AND ocr_chars >= $2
  ORDER BY id DESC
  LIMIT $1
 """
@@ -243,6 +254,23 @@ def parser_bucket_for_row(row: Mapping[str, Any] | Any) -> str:
     return "needs_routing_proposal"
 
 
+def action_bucket_for_row(row: Mapping[str, Any] | Any) -> str:
+    """Return the operational next action, splitting unknown docs by OCR readiness."""
+    if _record_get(row, "queue_status") == "dead":
+        return "failed_pipeline"
+
+    doc_type = str(_record_get(row, "doc_type", "unknown") or "unknown")
+    if doc_type != "unknown":
+        return parser_bucket_for_row(row)
+
+    ocr_chars = int(_to_float(_record_get(row, "ocr_chars", 0)))
+    if ocr_chars <= 0:
+        return "needs_ocr_vision_batch"
+    if ocr_chars < TEXT_PARSER_MIN_CHARS:
+        return "needs_manual_review_short_ocr"
+    return "needs_text_parser_qwen_candidate"
+
+
 def parse_qwen_doc_type_answer(raw: str | None) -> str | None:
     """Accept only a single known document type token from local Qwen."""
     if not raw:
@@ -266,6 +294,7 @@ def summarize_direct_rows(
 ) -> dict[str, Any]:
     """Aggregate direct-document parser and workspace placement state."""
     parser_counts: Counter[str] = Counter()
+    action_counts: Counter[str] = Counter()
     workspace_counts: Counter[str] = Counter()
     doc_type_counts: dict[tuple[str, str], dict[str, Any]] = {}
     doc_type_positions: dict[tuple[str, str], int] = {}
@@ -292,6 +321,7 @@ def summarize_direct_rows(
         confidence = _to_float(_record_get(row, "type_confidence", 0))
         workspace = workspace_bucket_for_doc_type(doc_type)
         parser_bucket = parser_bucket_for_row(row)
+        action_bucket = action_bucket_for_row(row)
 
         if doc_type == "unknown":
             totals["unknown_doc_type"] += 1
@@ -313,6 +343,7 @@ def summarize_direct_rows(
                 totals["low_confidence_known"] += 1
 
         parser_counts[parser_bucket] += 1
+        action_counts[action_bucket] += 1
         workspace_counts[workspace] += 1
         matrix[(workspace, parser_bucket)] = matrix.get((workspace, parser_bucket), 0) + 1
 
@@ -341,6 +372,7 @@ def summarize_direct_rows(
     return {
         "totals": totals,
         "unknown_ocr_quality": unknown_ocr_quality,
+        "direct_actions": _count_rows(action_counts, key_name="bucket"),
         "direct_parser": _count_rows(parser_counts, key_name="bucket"),
         "workspace_buckets": _count_rows(workspace_counts, key_name="bucket"),
         "placement_matrix": [
@@ -495,7 +527,7 @@ async def run_audit(
             else:
                 direct_rows = _records(await conn.fetch(DIRECT_DOC_ROWS_SQL))
             qwen_rows = (
-                _records(await conn.fetch(DIRECT_DOC_QWEN_SAMPLE_SQL, qwen_text_sample))
+                _records(await conn.fetch(DIRECT_DOC_QWEN_SAMPLE_SQL, qwen_text_sample, TEXT_PARSER_MIN_CHARS))
                 if qwen_text_sample > 0
                 else []
             )
@@ -545,7 +577,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--qwen-text-sample",
         type=int,
         default=0,
-        help="run local Ollama/Qwen over this many unknown/low-confidence saved-OCR docs",
+        help="run local Ollama/Qwen over this many unknown docs with enough saved OCR text",
     )
     parser.add_argument(
         "--ollama-url",

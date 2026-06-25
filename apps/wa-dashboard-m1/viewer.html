@@ -986,6 +986,9 @@ function bucketLabel(bucket) {
   const labels = {
     workspace_review_ready: "Pronti review workspace",
     needs_doc_type_parser: "Da classificare",
+    needs_ocr_vision_batch: "Serve OCR/vision",
+    needs_manual_review_short_ocr: "OCR corto/review",
+    needs_text_parser_qwen_candidate: "Qwen/text parser",
     low_confidence_review: "Bassa confidenza",
     needs_routing_proposal: "Senza proposta routing",
     already_routed: "Gia routed",
@@ -1045,13 +1048,13 @@ async function renderIntake() {
     subEl.textContent = `Aggiornato ${new Date(data.generated_at).toLocaleTimeString("it-IT")} · ${data.pii_policy}`;
     cardsEl.innerHTML = `
       <div class="intake-card"><div class="label">WA docs</div><div class="value">${iFmt(q.total)}</div><div class="hint">${iFmt(q.with_source_context)} con source_context</div></div>
-      <div class="intake-card"><div class="label">Direct</div><div class="value">${iFmt(q.direct_docs)}</div><div class="hint">${iFmt(q.direct_known_docs)} noti (${iFmt(q.direct_high_conf_docs)} high) · ${iFmt(q.direct_unknown_docs)} parser · ${iFmt(q.direct_unknown_ocr_empty)} no OCR</div></div>
+      <div class="intake-card"><div class="label">Direct</div><div class="value">${iFmt(q.direct_docs)}</div><div class="hint">${iFmt(q.direct_known_docs)} noti (${iFmt(q.direct_high_conf_docs)} high) · ${iFmt(q.direct_unknown_ocr_empty)} no OCR · ${iFmt(q.direct_unknown_ocr_text)} OCR text</div></div>
       <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(q.group_docs)}</div><div class="hint">${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, "unsafe")}</div></div>
       <div class="intake-card"><div class="label">Pipeline</div><div class="value">${iFmt(q.done_docs)}</div><div class="hint">${iFmt(q.dead_docs)} dead · ${iFmt(q.unknown_context_docs)} no context</div></div>
     `;
 
-    parserEl.innerHTML = renderRows(data.direct_parser, [
-      { label: "Bucket", render: (r) => `<span class="intake-pill ${r.bucket === "failed_pipeline" ? "bad" : r.bucket.includes("review") || r.bucket.includes("parser") ? "warn" : "ok"}">${escapeHtml(bucketLabel(r.bucket))}</span>` },
+    parserEl.innerHTML = renderRows(data.direct_actions || data.direct_parser, [
+      { label: "Azione", render: (r) => `<span class="intake-pill ${r.bucket === "failed_pipeline" ? "bad" : r.bucket.includes("review") || r.bucket.includes("parser") || r.bucket.includes("ocr") ? "warn" : "ok"}">${escapeHtml(bucketLabel(r.bucket))}</span>` },
       { label: "Docs", render: (r) => iFmt(r.docs) },
     ], "Nessun direct doc");
 
