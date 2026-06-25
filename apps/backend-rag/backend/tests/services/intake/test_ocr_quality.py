@@ -158,11 +158,57 @@ def test_summarize_evaluations_groups_by_provider():
         "matched_fields": 5,
         "missing_fields": 3,
         "error_count": 1,
+        "clean_samples": 1,
+        "clean_doc_type_matches": 1,
+        "clean_doc_type_match_rate": 1.0,
+        "clean_avg_field_score": 1.0,
+        "clean_matched_fields": 4,
+        "clean_missing_fields": 0,
         "elapsed_total_s": 60.0,
         "elapsed_avg_s": 30.0,
         "elapsed_min_s": 20.0,
         "elapsed_max_s": 40.0,
+        "clean_elapsed_total_s": 40.0,
+        "clean_elapsed_avg_s": 40.0,
+        "clean_elapsed_min_s": 40.0,
+        "clean_elapsed_max_s": 40.0,
     }
     assert summary["provider_summary"]["gemini"]["avg_field_score"] == 0.5
     assert summary["provider_summary"]["gemini"]["error_count"] == 0
     assert summary["provider_summary"]["gemini"]["elapsed_avg_s"] == 10.0
+
+
+def test_summarize_evaluations_reports_clean_metrics_separately():
+    summary = ocr_quality.summarize_evaluations(
+        [
+            {
+                "provider": "gemini",
+                "doc_type_match": True,
+                "field_score": {"score": 1.0, "matched_count": 4, "missing_count": 0},
+                "seconds": 30.0,
+                "error": "provider_fallback_to_local_ocr",
+            },
+            {
+                "provider": "gemini",
+                "doc_type_match": False,
+                "field_score": {"score": 0.25, "matched_count": 1, "missing_count": 3},
+                "seconds": 10.0,
+                "error": None,
+            },
+        ]
+    )
+
+    gemini = summary["provider_summary"]["gemini"]
+    assert gemini["samples"] == 2
+    assert gemini["doc_type_matches"] == 1
+    assert gemini["avg_field_score"] == 0.625
+    assert gemini["error_count"] == 1
+
+    assert gemini["clean_samples"] == 1
+    assert gemini["clean_doc_type_matches"] == 0
+    assert gemini["clean_doc_type_match_rate"] == 0.0
+    assert gemini["clean_avg_field_score"] == 0.25
+    assert gemini["clean_matched_fields"] == 1
+    assert gemini["clean_missing_fields"] == 3
+    assert gemini["clean_elapsed_avg_s"] == 10.0
+    assert gemini["clean_elapsed_max_s"] == 10.0

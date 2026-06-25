@@ -198,7 +198,13 @@ def summarize_evaluations(evaluations: list[Mapping[str, Any]]) -> dict[str, Any
                 "matched_fields": 0,
                 "missing_fields": 0,
                 "error_count": 0,
+                "clean_samples": 0,
+                "clean_doc_type_matches": 0,
+                "clean_field_score_total": 0.0,
+                "clean_matched_fields": 0,
+                "clean_missing_fields": 0,
                 "elapsed_values": [],
+                "clean_elapsed_values": [],
             },
         )
         bucket["samples"] += 1
@@ -209,12 +215,22 @@ def summarize_evaluations(evaluations: list[Mapping[str, Any]]) -> dict[str, Any
         bucket["missing_fields"] += int(field_score.get("missing_count") or 0)
         if result.get("error"):
             bucket["error_count"] += 1
+        else:
+            bucket["clean_samples"] += 1
+            if result.get("doc_type_match"):
+                bucket["clean_doc_type_matches"] += 1
+            bucket["clean_field_score_total"] += float(field_score.get("score") or 0.0)
+            bucket["clean_matched_fields"] += int(field_score.get("matched_count") or 0)
+            bucket["clean_missing_fields"] += int(field_score.get("missing_count") or 0)
         if (elapsed_s := _elapsed_seconds(result)) is not None:
             bucket["elapsed_values"].append(elapsed_s)
+            if not result.get("error"):
+                bucket["clean_elapsed_values"].append(elapsed_s)
 
     provider_summary: dict[str, dict[str, Any]] = {}
     for provider, bucket in grouped.items():
         samples = bucket["samples"]
+        clean_samples = bucket["clean_samples"]
         summary = {
             "samples": samples,
             "doc_type_matches": bucket["doc_type_matches"],
@@ -223,6 +239,20 @@ def summarize_evaluations(evaluations: list[Mapping[str, Any]]) -> dict[str, Any
             "matched_fields": bucket["matched_fields"],
             "missing_fields": bucket["missing_fields"],
             "error_count": bucket["error_count"],
+            "clean_samples": clean_samples,
+            "clean_doc_type_matches": bucket["clean_doc_type_matches"],
+            "clean_doc_type_match_rate": (
+                round(bucket["clean_doc_type_matches"] / clean_samples, 4)
+                if clean_samples
+                else 0.0
+            ),
+            "clean_avg_field_score": (
+                round(bucket["clean_field_score_total"] / clean_samples, 4)
+                if clean_samples
+                else 0.0
+            ),
+            "clean_matched_fields": bucket["clean_matched_fields"],
+            "clean_missing_fields": bucket["clean_missing_fields"],
         }
         elapsed_values = bucket["elapsed_values"]
         if elapsed_values:
@@ -232,6 +262,18 @@ def summarize_evaluations(evaluations: list[Mapping[str, Any]]) -> dict[str, Any
                     "elapsed_avg_s": round(sum(elapsed_values) / len(elapsed_values), 3),
                     "elapsed_min_s": round(min(elapsed_values), 3),
                     "elapsed_max_s": round(max(elapsed_values), 3),
+                }
+            )
+        clean_elapsed_values = bucket["clean_elapsed_values"]
+        if clean_elapsed_values:
+            summary.update(
+                {
+                    "clean_elapsed_total_s": round(sum(clean_elapsed_values), 3),
+                    "clean_elapsed_avg_s": round(
+                        sum(clean_elapsed_values) / len(clean_elapsed_values), 3
+                    ),
+                    "clean_elapsed_min_s": round(min(clean_elapsed_values), 3),
+                    "clean_elapsed_max_s": round(max(clean_elapsed_values), 3),
                 }
             )
         provider_summary[provider] = summary
