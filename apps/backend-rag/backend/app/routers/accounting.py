@@ -240,8 +240,23 @@ async def confirm_reconciliation(
 # the target spreadsheet, shares it with the SA email as Editor, and sets its id
 # in ACCOUNTING_EXPORT_SHEET_ID. The app only writes into that existing sheet.
 EXPORT_SHEET_ID_ENV = "ACCOUNTING_EXPORT_SHEET_ID"
-# A1 anchor; write_range overwrites from here. Tab "Cashout" must exist in the sheet.
-EXPORT_RANGE_DEFAULT = "Cashout!A1"
+# Which tab to write into. Defaults to "Cashout"; override via env for a fresh
+# sheet whose tab is still "Sheet1"/"Foglio1" (no need to rename the tab).
+EXPORT_SHEET_TAB_ENV = "ACCOUNTING_EXPORT_SHEET_TAB"
+EXPORT_SHEET_TAB_DEFAULT = "Cashout"
+
+
+def _export_range() -> str:
+    """Build the A1 write anchor for the configured tab.
+
+    Tab names with spaces or special chars must be single-quoted in A1 notation
+    (e.g. 'Weekly Cashout'!A1); embedded single quotes are doubled per the API.
+    """
+    tab = (os.environ.get(EXPORT_SHEET_TAB_ENV, "") or EXPORT_SHEET_TAB_DEFAULT).strip()
+    if not tab:
+        tab = EXPORT_SHEET_TAB_DEFAULT
+    safe = tab.replace("'", "''")
+    return f"'{safe}'!A1"
 
 
 @router.post("/export-sheet")
@@ -268,6 +283,8 @@ async def export_to_sheet(
             ),
         )
 
+    export_range = _export_range()
+
     async with db_pool.acquire() as conn:
         rows = await cashout_service.list_cashout(
             conn, week_label=week_label, limit=1000
@@ -278,7 +295,7 @@ async def export_to_sheet(
         from backend.services.integrations.sheets_service import SheetsService
 
         svc = SheetsService()
-        result = await svc.write_range(spreadsheet_id, EXPORT_RANGE_DEFAULT, values)
+        result = await svc.write_range(spreadsheet_id, export_range, values)
     except FileNotFoundError as exc:
         # SA credentials not present in this environment.
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -288,7 +305,8 @@ async def export_to_sheet(
             status_code=502,
             detail=(
                 "Google Sheets write failed. Verify the sheet is shared with the "
-                f"service account and a 'Cashout' tab exists. ({exc})"
+                f"service account and the tab {export_range.split('!')[0]} exists "
+                f"(override with {EXPORT_SHEET_TAB_ENV}). ({exc})"
             ),
         ) from exc
 
@@ -297,5 +315,5 @@ async def export_to_sheet(
         "spreadsheet_id": spreadsheet_id,
         "rows_exported": max(len(values) - 1, 0),
         "updated_cells": result.get("updatedCells", 0),
-        "range": EXPORT_RANGE_DEFAULT,
+        "range": export_range,
     }

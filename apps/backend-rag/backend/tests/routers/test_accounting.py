@@ -275,6 +275,32 @@ class TestExportSheet:
         assert write_mock.await_count == 1
         assert write_mock.await_args.args[0] == "sheet-abc-123"
 
+    def test_custom_tab_env_used_in_write_range(
+        self, mock_db_pool, asya_user, monkeypatch
+    ) -> None:
+        # ACCOUNTING_EXPORT_SHEET_TAB overrides the default 'Cashout' tab, so a
+        # fresh sheet whose tab is still 'Sheet1' works without renaming.
+        monkeypatch.setenv("ACCOUNTING_EXPORT_SHEET_ID", "sheet-abc-123")
+        monkeypatch.setenv("ACCOUNTING_EXPORT_SHEET_TAB", "Sheet1")
+        _pool, conn = mock_db_pool
+        conn.fetch = AsyncMock(return_value=[])
+
+        write_mock = AsyncMock(return_value={"updatedCells": 10})
+
+        class FakeSheets:
+            write_range = write_mock
+
+        with patch(
+            "backend.services.integrations.sheets_service.SheetsService",
+            FakeSheets,
+        ):
+            client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+            resp = client.post("/api/crm/accounting/export-sheet")
+
+        assert resp.status_code == 200
+        # write_range(spreadsheet_id, range_, values) — range is positional arg 1
+        assert write_mock.await_args.args[1] == "'Sheet1'!A1"
+
     def test_sheets_credentials_missing_returns_503(
         self, mock_db_pool, asya_user, monkeypatch
     ) -> None:
