@@ -486,9 +486,11 @@ export default function AccountingPage() {
         `${res.rows_exported} row(s) written`,
       );
     } catch (err) {
-      // 503 = sheet not configured yet (Zero must create + share it).
+      // 503 = sheet not configured yet (Zero must create + share it). The api
+      // client throws the backend `detail` as the Error's `.message` (see
+      // lib/api/client.ts), so read .message — not .detail (always undefined).
       const detail =
-        (err as { detail?: string })?.detail ??
+        (err instanceof Error && err.message) ||
         "Export failed — the sheet may not be configured yet.";
       error("Export failed", detail);
       logger.error("accounting export-sheet failed", {}, err as Error);
