@@ -290,6 +290,21 @@ def _count_rows(counter: Counter[str], *, key_name: str) -> list[dict[str, int |
     ]
 
 
+def _placement_preview_rows(counter: Counter[tuple[str, str, str]]) -> list[dict[str, int | str]]:
+    positions = {key: idx for idx, key in enumerate(counter.keys())}
+    return [
+        {
+            "from_doc_type": old_type,
+            "proposed_doc_type": new_type,
+            "workspace_bucket": workspace,
+            "docs": count,
+        }
+        for (old_type, new_type, workspace), count in sorted(
+            counter.items(), key=lambda item: (-item[1], positions[item[0]])
+        )
+    ]
+
+
 def summarize_direct_rows(
     rows: Iterable[Mapping[str, Any] | Any], *, top_doc_types: int = 30
 ) -> dict[str, Any]:
@@ -470,11 +485,14 @@ async def run_qwen_text_sample(
     """Run local Qwen over saved OCR text and return aggregate transitions only."""
     transitions: Counter[str] = Counter()
     workspaces: Counter[str] = Counter()
+    placements: Counter[tuple[str, str, str]] = Counter()
     errors: Counter[str] = Counter()
     attempted = 0
     failed_attempts = 0
     improved_unknown_to_known = 0
     still_unknown = 0
+    kita_workspace_candidates = 0
+    review_after_qwen = 0
     safe_ocr_max_chars = max(ocr_max_chars, 1)
 
     async with httpx.AsyncClient() as client:
@@ -496,12 +514,18 @@ async def run_qwen_text_sample(
                 continue
 
             new_type = answer or "unknown"
+            workspace = workspace_bucket_for_doc_type(new_type)
             transitions[f"{old_type}->{new_type}"] += 1
-            workspaces[workspace_bucket_for_doc_type(new_type)] += 1
+            workspaces[workspace] += 1
+            placements[(old_type, new_type, workspace)] += 1
             if old_type == "unknown" and new_type != "unknown":
                 improved_unknown_to_known += 1
             if new_type == "unknown":
                 still_unknown += 1
+            if workspace == "review":
+                review_after_qwen += 1
+            else:
+                kita_workspace_candidates += 1
 
     return {
         "mode": "local_ollama_text_only_saved_ocr",
@@ -513,7 +537,10 @@ async def run_qwen_text_sample(
         "not_classified_due_error": failed_attempts,
         "improved_unknown_to_known": improved_unknown_to_known,
         "still_unknown": still_unknown,
+        "kita_workspace_candidates": kita_workspace_candidates,
+        "review_after_qwen": review_after_qwen,
         "transitions": dict(transitions),
+        "placement_preview": _placement_preview_rows(placements),
         "workspace_buckets": _count_rows(workspaces, key_name="bucket"),
         "errors": dict(errors),
     }
