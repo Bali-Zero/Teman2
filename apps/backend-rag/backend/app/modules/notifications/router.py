@@ -68,6 +68,11 @@ class SendEmailRequest(BaseModel):
     cc: str | None = None  # comma-separated CC addresses
     bcc: str | None = None  # comma-separated BCC addresses
     attachments: list[EmailAttachment] | None = None
+    # Context for the @balizero.com CC hard rule (Antonello 2026-06-17):
+    # invoice → asya@, everything else → the practice's assigned lead.
+    # Both optional so legacy callers still work (they fall back to asya@).
+    email_type: str | None = None  # e.g. "invoice_client", "welcome", "waiting_docs_client"
+    assigned_to: str | None = None  # the practice's assigned team-member email
 
     @field_validator("subject", "body")
     @classmethod
@@ -294,6 +299,74 @@ async def send_pending_alerts(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# Accounting owns invoices; everything else falls back to accounting too
+# when no assigned lead is known, so the rule can never be silently void.
+_ACCOUNTING_CC = "asya@balizero.com"
+_INVOICE_EMAIL_TYPES = frozenset({"invoice_client", "invoice", "invoice_team"})
+
+
+def _is_balizero(addr: str) -> bool:
+    """True iff ``addr`` is on the @balizero.com domain (suffix match,
+    case-insensitive). Never a bare substring — superscar #3: match the
+    entity, not the text. So ``x@balizero.com.evil.com`` is NOT a match."""
+    return addr.strip().lower().endswith("@balizero.com")
+
+
+def _pick_balizero_cc(email_type: str | None, assigned_to: str | None) -> str:
+    """Choose WHICH Bali Zero address to copy, per Antonello's rule
+    (2026-06-17): invoices → accounting (asya@); everything else → the
+    practice's assigned lead; if no assigned lead is known, fall back to
+    accounting so a client mail is never sent with nobody copied."""
+    if email_type and email_type.strip().lower() in _INVOICE_EMAIL_TYPES:
+        return _ACCOUNTING_CC
+    if assigned_to and _is_balizero(assigned_to):
+        return assigned_to.strip()
+    return _ACCOUNTING_CC
+
+
+def _enforce_balizero_cc(
+    to: str,
+    cc_list: list[str] | None,
+    bcc_list: list[str] | None,
+    email_type: str | None = None,
+    assigned_to: str | None = None,
+) -> list[str] | None:
+    """Guarantee at least one @balizero.com address is in the loop.
+
+    HARD RULE (Antonello 2026-06-17): a client must never receive an
+    email without a Bali Zero address copied in. Structural enforcement
+    at the single send choke-point.
+
+    Logic:
+    - If the recipient (``to``) is itself ``@balizero.com`` → intra-team
+      mail, nothing to add.
+    - If any existing cc/bcc is already ``@balizero.com`` → compliant,
+      leave untouched (respects the caller's explicit choice).
+    - Otherwise (external recipient, nobody from Bali Zero copied) →
+      append the contextual address from :func:`_pick_balizero_cc`
+      (invoice → asya@, else assigned lead, else asya@) and log it.
+
+    Returns the (possibly augmented) cc_list.
+    """
+    if _is_balizero(to):
+        return cc_list
+    existing = (cc_list or []) + (bcc_list or [])
+    if any(_is_balizero(a) for a in existing):
+        return cc_list
+
+    chosen = _pick_balizero_cc(email_type, assigned_to)
+    augmented = list(cc_list or [])
+    augmented.append(chosen)
+    logger.warning(
+        "send-email: no @balizero.com in to/cc/bcc for external recipient %s "
+        "(email_type=%s) — forcing %s into CC (hard rule)",
+        to,
+        email_type,
+        chosen,
+    )
+    return augmented
+
+
 @router.post("/send-email", response_model=SendEmailResponse)
 async def send_direct_email(
     request: SendEmailRequest,
@@ -312,6 +385,14 @@ async def send_direct_email(
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
     bcc_list = [b.strip() for b in request.bcc.split(",")] if request.bcc else None
     attachments = [a.model_dump() for a in request.attachments] if request.attachments else None
+
+    # HARD RULE (Antonello 2026-06-17): a client never receives an email
+    # without at least one @balizero.com address in the loop. Enforced
+    # here — the single send choke-point — so no caller can bypass it.
+    # Contextual CC: invoice → asya@, else the assigned lead, else asya@.
+    cc_list = _enforce_balizero_cc(
+        request.to, cc_list, bcc_list, request.email_type, request.assigned_to
+    )
 
     # Provider chain (NB-E 2026-04-29):
     #   intra-domain (@balizero.com): Zoho SMTP → Brevo

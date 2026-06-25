@@ -195,6 +195,50 @@ def _heuristic_confidence(text: str) -> float:
     return round(max(0.0, base - penalty), 3)
 
 
+# qwen2.5vl in Ollama (>=0.20.x) crashes its runner on two classes of input,
+# both surfacing as HTTP 500 -> page chars=0 -> job stalls at ocr_done forever
+# (SCAR 2026-06-20: this silently froze the intake tail for 33h):
+#   1. "height:N or width:N must be larger than factor:28" — SmartResize panic
+#      on any dimension below the 28px patch factor.
+#   2. "image: unknown format" — non-PNG/odd-encoded bytes (HEIC/WebP/TIFF or a
+#      mis-rendered page) Ollama's Go image decoder cannot parse.
+# Fix: re-encode EVERY page through PIL to a canonical RGB PNG and pad it up to
+# MIN_OCR_DIM. This normalizes format AND size in one pass. PIL handles far more
+# formats than Ollama's decoder, so "unknown format" pages become valid PNGs.
+MIN_OCR_DIM = 32  # one patch above the 28px factor, safe margin
+
+
+def _ensure_min_size(png: bytes) -> bytes:
+    """Re-encode any image to a canonical RGB PNG and pad to >= MIN_OCR_DIM.
+    Normalizes both format ('unknown format') and size (SmartResize panic).
+    Degrades to original bytes if PIL cannot parse it at all (never crash)."""
+    try:
+        import io
+
+        from PIL import Image
+
+        with Image.open(io.BytesIO(png)) as im:
+            im = im.convert("RGB")
+            w, h = im.size
+            new_w, new_h = max(w, MIN_OCR_DIM), max(h, MIN_OCR_DIM)
+            if (new_w, new_h) != (w, h):
+                canvas = Image.new("RGB", (new_w, new_h), (255, 255, 255))
+                canvas.paste(im, (0, 0))
+                im = canvas
+            out = io.BytesIO()
+            im.save(out, format="PNG")
+            data = out.getvalue()
+            if (new_w, new_h) != (w, h) or len(data) != len(png):
+                logger.info(
+                    "intake OCR normalized page %dx%d -> %dx%d PNG (size/format safe for qwen25vl)",
+                    w, h, new_w, new_h,
+                )
+            return data
+    except Exception as exc:  # never let normalization break OCR
+        logger.warning("intake OCR _ensure_min_size skipped (unparseable): %s", exc)
+        return png
+
+
 async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
     """OCR each preprocessed page LOCALLY. Returns one dict per page.
 
@@ -240,7 +284,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
             )
             continue
 
-        b64 = base64.b64encode(png).decode("ascii")
+        b64 = base64.b64encode(_ensure_min_size(png)).decode("ascii")
 
         text = ""
         via = "empty"
@@ -305,6 +349,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
 DOC_TYPES: tuple[str, ...] = (
     "passport",
     "akta_pendirian",
+    "profil_perseroan",
     "nib",
     "npwp",
     "kitas",
@@ -363,6 +408,15 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("anggaran dasar", 0.4),
         ("akta nomor", 0.3),
     ],
+    "profil_perseroan": [
+        ("profil perseroan", 0.6),
+        ("company profile", 0.45),
+        ("profil pt", 0.5),
+        ("profile perseroan", 0.5),
+        ("bidang usaha", 0.2),
+        ("struktur permodalan", 0.3),
+        ("susunan pengurus", 0.25),
+    ],
     "sk_kemenkumham": [
         ("kementerian hukum dan hak asasi manusia", 0.5),
         ("keputusan menteri", 0.4),
@@ -397,6 +451,73 @@ def _score_types(text: str) -> dict[str, float]:
         if s > 0:
             scores[dtype] = round(min(s, 1.0), 3)
     return scores
+
+
+# ---------------------------------------------------------------------------
+# Stay-permit disambiguation (ITK / ITAS / ITAP) -- deterministic OVERRIDE
+# ---------------------------------------------------------------------------
+#
+# WHY (live defect, proposals 12937 / 15368 / 12694, 2026-06-17): an Indonesian
+# electronic stay-permit card (izin tinggal) prints a "Passport Number" field on
+# its face. The keyword scorer therefore credits ``passport`` ("passport" 0.5 +
+# "republik indonesia" 0.2 = 0.7-0.8) ABOVE ``kitas`` (0.75) and ``max(scores)``
+# files the stay permit under the passport category -- a real misfile.
+#
+# A genuine passport NEVER carries an "izin tinggal" / "stay permit" title, so
+# gating the override on those markers is innocent toward real passports (see
+# the innocence test in test_intake_classify.py). When a marker is present the
+# document IS a stay permit; we then pick the SPECIFIC subtype and emit
+# itk/itas/itap -- never passport.
+
+# Presence markers: ANY of these in the OCR text means "this is a stay permit".
+# Lower-cased substring match (the scorer convention). Kept broad on purpose --
+# a real passport lacks every one of them, so breadth costs no false-positive.
+_STAY_PERMIT_MARKERS: tuple[str, ...] = (
+    "izin tinggal",
+    "stay permit",
+    "stay/multiple entries permit",
+    "stay permit index",
+    "permit number",
+    "electronic limited stay",
+    "izin tinggal terbatas",
+    "izin tinggal tetap",
+    "izin tinggal kunjungan",
+)
+
+# Subtype markers, most-specific first. The first family whose ANY marker is
+# present wins. itk = visit, itas = limited, itap = permanent.
+_STAY_PERMIT_SUBTYPES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("itap", ("izin tinggal tetap", "permanent stay", "itap", "kitap")),
+    ("itk", ("izin tinggal kunjungan", "visit stay", "itk")),
+    (
+        "itas",
+        (
+            "izin tinggal terbatas",
+            "limited stay",
+            "electronic limited stay",
+            "itas",
+            "kitas",
+        ),
+    ),
+)
+
+
+def _stay_permit_subtype(text: str) -> str | None:
+    """Return itk/itas/itap if OCR text is an izin-tinggal card, else None.
+
+    Deterministic, text-only, no model. A document is a stay permit iff it
+    carries ANY :data:`_STAY_PERMIT_MARKERS` token. The subtype is then chosen
+    by :data:`_STAY_PERMIT_SUBTYPES` (most-specific family first); if a permit
+    is detected but no subtype family matches, we default to ``itas`` (the most
+    common card) -- but we NEVER fall back to passport.
+    """
+    low = text.lower()
+    if not any(m in low for m in _STAY_PERMIT_MARKERS):
+        return None
+    for subtype, markers in _STAY_PERMIT_SUBTYPES:
+        if any(m in low for m in markers):
+            return subtype
+    return "itas"
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +570,7 @@ async def _vision_classify_first_page(png_bytes: bytes) -> str | None:
     non-conforming answer degrades to None (caller keeps "unknown").
     """
     try:
-        b64 = base64.b64encode(png_bytes).decode("ascii")
+        b64 = base64.b64encode(_ensure_min_size(png_bytes)).decode("ascii")
         resp, thinking = await asyncio.wait_for(
             _ollama_vision(
                 _VISION_CLASSIFY_MODEL,
@@ -500,6 +621,24 @@ async def classify_document(
     scores = _score_types(ocr_text) if ocr_text and ocr_text.strip() else {}
     best_type = max(scores, key=scores.get) if scores else None
     best_score = scores[best_type] if best_type is not None else 0.0
+
+    # Stay-permit OVERRIDE (deterministic, runs BEFORE the score winner is
+    # honoured). An izin-tinggal card prints a "Passport Number" field, so the
+    # scorer wrongly ranks passport (0.8) above kitas (0.75). If the OCR carries
+    # a stay-permit marker the document is NOT a passport -- emit the specific
+    # itk/itas/itap subtype. Real passports lack these markers (innocence test).
+    if ocr_text and ocr_text.strip():
+        stay_subtype = _stay_permit_subtype(ocr_text)
+        if stay_subtype is not None:
+            return {
+                # Confidence: keyword score for kitas if present, else the
+                # marker-detection floor (still review-band, > unknown floor).
+                "type": stay_subtype,
+                "confidence": max(scores.get("kitas", 0.0), 0.55),
+                "source_page": _attribute_source_page("kitas", pages),
+                "scores": scores,
+                "via": "stay_permit_override",
+            }
 
     # Anti-hallucination floor: weak keyword evidence -> NOT a guess. One local
     # vision attempt (catalog v2) may still type it — capped in the review band.

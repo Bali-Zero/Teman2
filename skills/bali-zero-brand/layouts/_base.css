@@ -1,0 +1,192 @@
+/*
+ * Shared base CSS for all WR2 carousel layouts.
+ * Auto-injected by the renderer from tokens.json — do NOT hardcode values here.
+ * The renderer reads tokens.json and produces this :root block dynamically.
+ *
+ * This file is the canonical example of what gets injected.
+ * Layouts must reference var(--token-name) only, never hex codes.
+ */
+
+:root {
+  /* Colors — derived from tokens.json color.* */
+  --color-bg-antracite: #2C2F38;
+  --color-bg-black: #000000;
+  --color-text-white: #FFFFFF;
+  --color-text-muted: #9CA3AF;
+  --color-accent-yellow: #F4C430;
+  --color-status-red: #C8102E;
+  --color-overlay-darken-60: rgba(0,0,0,0.6);
+  --color-overlay-darken-40: rgba(0,0,0,0.4);
+
+  /* Typography — derived from tokens.json font.* */
+  --font-family-primary: 'Montserrat', 'Inter', 'Poppins', sans-serif;
+  --font-family-mono: 'IBM Plex Mono', monospace;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-size-headline-cover: 84px;
+  --font-size-headline-slide: 60px;
+  --font-size-subheadline: 36px;
+  --font-size-body-lg: 32px;
+  --font-size-body-md: 28px;
+  --font-size-source: 14px;
+  --font-size-statement-bomb: 72px;
+  --font-size-statement-bomb-shrunk: 56px;
+  --letter-spacing-title: 0.02em;
+  --letter-spacing-body: 0em;
+  --line-height-tight: 1.05;
+  --line-height-snug: 1.2;
+  --line-height-normal: 1.4;
+
+  /* Spacing — derived from tokens.json spacing.* */
+  --spacing-edge-margin: 60px;
+  --spacing-logo-bottom: 70px;
+  --spacing-section-gap: 40px;
+  --spacing-list-gap: 16px;
+
+  /* Canvas */
+  --canvas-width: 1080px;
+  --canvas-height: 1350px;
+
+  /* Logo */
+  --logo-diameter: 80px;
+
+  /* SOTA pattern adoptions (added 2026-05-12, see _external-bench-2026-05.md) */
+  --swipe-indicator-size: 12px;
+  --swipe-indicator-offset: 32px;
+  --regulation-badge-size: 16px;
+  --regulation-badge-padding: 6px 12px;
+  --regulation-badge-offset: 32px;
+  --regulation-badge-radius: 4px;
+  --qr-closing-size: 120px;
+  --qr-closing-offset: 60px;
+  --qr-closing-border-width: 2px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  background: var(--color-bg-antracite);
+  font-family: var(--font-family-primary);
+  overflow: hidden;
+  position: relative;
+}
+
+.logo {
+  position: absolute;
+  bottom: var(--spacing-logo-bottom);
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--logo-diameter);
+  height: var(--logo-diameter);
+  background-image: url('logo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: transparent;
+  /* Hide any text fallback children */
+  font-size: 0;
+  color: transparent;
+  text-indent: -9999px;
+  border-radius: 0;
+}
+
+/* SOTA Pattern #10 — swipe indicator (slides 2..N-1 only, signals carousel continuation) */
+.swipe-indicator {
+  position: absolute;
+  right: var(--swipe-indicator-offset);
+  bottom: var(--swipe-indicator-offset);
+  width: var(--swipe-indicator-size);
+  height: var(--swipe-indicator-size);
+  background-color: var(--color-accent-yellow);
+  border-radius: 50%;
+  z-index: 5;
+}
+/* Variant: arrow shape for slides that prefer directionality */
+.swipe-indicator--arrow {
+  width: 0; height: 0;
+  background: transparent;
+  border-radius: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 12px solid var(--color-accent-yellow);
+}
+
+/* SOTA Pattern #3 — regulation badge top-right (cover only, when brief.primary_regulation_code present)
+ *
+ * REVISED 2026-05-13: bg red → yellow, text white → black. Reason: WCAG audit
+ * (research/wr2-design-sota/2026-05-13-best-bg-color-editorial-publisher.md)
+ * found red #C8102E vs antracite #2C2F38 = 2.27:1 (FAIL). Yellow #F4C430 vs
+ * antracite = 8.14:1 (AAA). Black text on yellow = 12.79:1 (AAA inside).
+ * Yellow now unifies regulation badge with Article 6.9 anchor highlights as
+ * the family color for "verifiable facts" (numbers, codes, regulations).
+ */
+.regulation-badge {
+  position: absolute;
+  top: var(--regulation-badge-offset);
+  right: var(--regulation-badge-offset);
+  background-color: var(--color-accent-yellow);
+  color: var(--color-bg-black);
+  font-family: var(--font-family-mono);
+  font-size: var(--regulation-badge-size);
+  font-weight: var(--font-weight-bold);
+  padding: var(--regulation-badge-padding);
+  border-radius: var(--regulation-badge-radius);
+  letter-spacing: 0.04em;
+  z-index: 10;
+}
+
+/* SOTA Pattern #25 — QR code closing (elegant-close only, when brief.primary_source_url present)
+ * QR PNG generated server-side by _qr_renderer.py (segno + Pillow) at layout-composer
+ * Step 3.5; output lands at <slides_dir>/qr.png. CSS uses relative path so the file
+ * must be co-located with the elegant-close HTML.
+ */
+.qr-closing {
+  position: absolute;
+  right: var(--qr-closing-offset);
+  bottom: var(--qr-closing-offset);
+  width: var(--qr-closing-size);
+  height: var(--qr-closing-size);
+  background-color: var(--color-text-white);
+  border: var(--qr-closing-border-width) solid var(--color-status-red);
+  padding: 6px;
+  /* Default: load qr.png from same dir; override via inline style if needed */
+  background-image: var(--qr-image-url, url('qr.png'));
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 8;
+}
+.qr-closing__caption {
+  position: absolute;
+  right: var(--qr-closing-offset);
+  bottom: calc(var(--qr-closing-offset) + var(--qr-closing-size) + 8px);
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: right;
+  max-width: var(--qr-closing-size);
+}
+
+/* SOTA Pattern #11 — source-citation footer (small white at bottom-left on inner slides + dedicated source-citation layout) */
+.source-citation-footer {
+  position: absolute;
+  left: var(--spacing-edge-margin);
+  bottom: var(--swipe-indicator-offset);
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  color: var(--color-text-white);
+  opacity: 0.85;
+  max-width: 540px;
+  line-height: 1.3;
+}
+/* Optional red line divider above source-footer */
+.source-citation-footer::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 2px;
+  background-color: var(--color-status-red);
+  margin-bottom: 6px;
+}

@@ -45,7 +45,7 @@ export function PublicFooter() {
                 </svg>
               </a>
               <a
-                href="https://wa.me/6282264599868"
+                href="https://wa.me/6282210302328"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors"
@@ -131,12 +131,12 @@ export function PublicFooter() {
               </li>
               <li>
                 <a
-                  href="https://wa.me/6282264599868"
+                  href="https://wa.me/6282210302328"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-white/50 hover:text-white transition-colors"
                 >
-                  +62 822 6459 9868
+                  +62 822 1030 2328
                 </a>
               </li>
               <li>

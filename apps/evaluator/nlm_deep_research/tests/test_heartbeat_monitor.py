@@ -26,6 +26,7 @@ from apps.evaluator.nlm_deep_research.heartbeat_monitor import (
     _classify_staleness,
     _format_last_run,
     _read_heartbeat_state,
+    _send_telegram,
     check_all_heartbeats,
     check_memory_pressure,
     load_registry,
@@ -428,3 +429,56 @@ class TestFormatLastRun:
 
     def test_invalid(self) -> None:
         assert _format_last_run("not-a-date") == "invalid"
+
+
+# ---------------------------------------------------------------------------
+# _send_telegram retry / network-flap (#8) — regression for DLQ run_heartbeat_check
+# ---------------------------------------------------------------------------
+
+
+def _cm_resp(status=200):
+    """A urlopen return value usable as a context manager (with ... as resp)."""
+    resp = MagicMock()
+    resp.status = status
+    resp.__enter__ = MagicMock(return_value=resp)
+    resp.__exit__ = MagicMock(return_value=False)
+    return resp
+
+
+def test_send_telegram_retries_then_succeeds(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "x:y")
+    calls = {"n": 0}
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise TimeoutError("read timed out")
+        return _cm_resp(200)
+
+    with patch(
+        "apps.evaluator.nlm_deep_research.heartbeat_monitor.urllib.request.urlopen",
+        side_effect=flaky,
+    ), patch(
+        "apps.evaluator.nlm_deep_research.heartbeat_monitor.time.sleep"
+    ) as sleep:
+        assert _send_telegram("hi") is True
+    assert calls["n"] == 3
+    assert sleep.call_count == 2
+
+
+def test_send_telegram_bare_timeout_does_not_crash(monkeypatch):
+    # Regression: old except caught only urllib.error.URLError, so a bare
+    # TimeoutError escaped and crashed the --check run (DLQ run_heartbeat_check).
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "x:y")
+    with patch(
+        "apps.evaluator.nlm_deep_research.heartbeat_monitor.urllib.request.urlopen",
+        side_effect=TimeoutError("boom"),
+    ), patch(
+        "apps.evaluator.nlm_deep_research.heartbeat_monitor.time.sleep"
+    ):
+        assert _send_telegram("hi") is False  # returns False, never raises
+
+
+def test_send_telegram_no_token_returns_false(monkeypatch):
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    assert _send_telegram("hi") is False

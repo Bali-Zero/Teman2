@@ -18,11 +18,17 @@ grounding:
 
 ## 0. Frame
 
-Objective: build a source-agnostic autonomous lab that continuously ingests
-research material, normalizes it, composes hypotheses and operational specs,
-simulates changes against prod-like Nuzantara contexts, applies experiments in
-isolated worktrees, verifies them, and surfaces only decision-grade candidates
-for operator promotion.
+Objective: build a source-agnostic autonomous lab that continuously watches AI
+research, model releases, SDK/framework changes, and software implementation
+patterns; ingests the useful material; normalizes it; composes hypotheses and
+operational specs; simulates changes against prod-like Nuzantara contexts;
+applies experiments in isolated worktrees; verifies them; and surfaces only
+decision-grade candidates for operator promotion.
+
+This is not a CI helper. The lab is a research-to-implementation loop: every
+fresh signal must become either an explicit idle receipt or a bounded
+Nuzantara experiment candidate with provenance, sandbox plan, verification, and
+manual promotion gate.
 
 Smallest useful output in this pass:
 
@@ -43,6 +49,7 @@ Non-goals for v0:
 
 | Step | Stage | Input | Output | Gate |
 | --- | --- | --- | --- | --- |
+| 0 | Watch | AI papers, model releases, SDK/framework changelogs, agent/tooling updates, repo signals | `FrontierSignal` envelopes or idle tick receipt | Fresh sources or explicit idle receipt |
 | 1 | Intake | URL, repo file, dataset, CLI result, operator note, Drive metadata, chat metadata | `ResearchMaterial` envelope | Source adapter allowlist and provenance captured |
 | 2 | Normalize | Raw or semi-structured material | `NormalizedMaterial` with checksum, summary, tags, claims, risks | Raw text not persisted in lab receipt |
 | 3 | Compose | Normalized materials plus current repo map | Hypotheses, implementation spec, operational brief | Evidence quorum and conflict labels |
@@ -59,6 +66,7 @@ MCP, or backend endpoints can feed this same contract later.
 | Component | Responsibility | Existing anchor | v0 status |
 | --- | --- | --- | --- |
 | Source adapters | Wrap heterogeneous inputs into one material contract | `backend/services/research/*`, `infra/skills/regulatory-ingest.md` | Contract only |
+| AI/software watchtower | Continuously rank fresh AI research, model/tool releases, SDK/framework changes, and implementation patterns by Nuzantara applicability | `scripts/ai-dispatch.sh research`, NB-9 Research Lab, web/repo source adapters | Planned, bounded by receipts |
 | Normalizer | Strip raw content, derive summary/tags/claims/checksum | New `backend/services/autonomous_lab/planner.py` | Implemented |
 | Composer | Convert materials into hypotheses and specs | `ConsiglioV1`, `LiteratureAgent` | Planned |
 | Prod-like context builder | Rebuild relevant runtime context from git, fixtures, config allowlist, and schemas | WR2/WR3 specs, backend tests | Planned |
@@ -86,6 +94,7 @@ fields unless a future adapter is explicitly approved for archival.
 
 | Agent/job | Trigger | Runs where | Output |
 | --- | --- | --- | --- |
+| `ai-software-watchtower` | H24 tick or manual scout | Pro/Mini scheduler, execution on Pro | Fresh `FrontierSignal` envelopes or idle tick receipt |
 | `lab-intake-sweeper` | Scheduled or manual | Pro/Mini H24 lane | Material envelopes |
 | `lab-normalizer` | New material | Backend service or CLI | Normalized material receipt |
 | `lab-composer` | Enough related material | LLM council when justified | Hypotheses and specs |
@@ -109,6 +118,8 @@ Hard blockers:
 - No experiment outside an `agent_start.py` worktree.
 - No promotion without manual operator decision.
 - No pricing or visa claims without their existing canonical tools/references.
+- No continuous source watch without source allowlist, cost/rate bounds, and a
+  receipt for both fresh-signal and idle ticks.
 
 Soft warnings:
 
@@ -116,6 +127,7 @@ Soft warnings:
 - Missing prod-like fixture.
 - Verification command cannot be inferred.
 - Failure analysis absent after a failed check.
+- Fresh AI/software signal has no plausible Nuzantara implementation target.
 
 ## 6. Prod-Like Simulation
 
@@ -177,6 +189,7 @@ pieces:
 | `operational_queue` | Implemented foundation | Foundation | `skip_locked_or_equivalent_claim` |
 | `events_outbox` | Implemented foundation | Foundation | `ack_after_success` |
 | `source_adapters` | Planned | Ingestion | `no_raw_receipt_persistence` |
+| `ai_software_watchtower` | Planned | Ingestion | `fresh_sources_or_explicit_idle_receipt_and_notebook_route` |
 | `composer` | Planned | Reasoning | `evidence_quorum_or_warning` |
 | `prod_like_context_builder` | Planned | Reasoning | `no_secret_values` |
 | `worktree_experiment_runner` | Planned | Execution | `worktree_isolation` |
@@ -188,14 +201,30 @@ pieces:
 Parallelization rule:
 
 - Serial first: `operational_queue` and `events_outbox`.
-- Parallel after shared envelope contract: `source_adapters`, `composer`,
-  `prod_like_context_builder`.
+- Parallel after shared envelope contract: `source_adapters`,
+  `ai_software_watchtower`, `composer`, `prod_like_context_builder`.
 - Parallel after worktree contract: `worktree_experiment_runner`,
   `verification_runner`.
 - Parallel read-only visibility and curation: `curator_decision_gate`,
   `dashboard_api`.
 - Last/manual gate: `scheduler_daemon`, because H24 automation amplifies every
   upstream mistake.
+
+NotebookLM routing for the watchtower is now explicit:
+
+- `frontier_radar`: `NB-INTEL-AIResearch — Daily AI Intelligence`
+  (`dc5d01cd-e99f-4c8f-aae4-75060b43d0de`), observed at 493/500 sources on
+  2026-06-16. Use it as the read path for daily AI/software novelty.
+- `agent_engineering_core`: `NB-LAB-AGENT-ENGINEERING-2026 — AI Coding Core`
+  (`dff45303-4b51-45ad-8718-502d4f8a8e3f`), the consolidated engineering
+  memory from NB-AGENTS plus the MATA GARUDA agent notebooks.
+- `ai_research_overflow`: `NB-INTEL-AIResearch-2 — Daily AI Intelligence
+  Overflow` (`069f009c-ce74-42e5-b75c-e584aa18feb1`). New sources go here while
+  the frontier radar remains near the source cap.
+
+The watchtower must emit either a fresh-signal receipt that names the NotebookLM
+route, or an explicit idle receipt. Experiment proposals need frontier novelty
+plus engineering-pattern grounding before they advance to the prod-like sandbox.
 
 ## 7.2 2026-06-09 v1 Runtime Foundation
 
