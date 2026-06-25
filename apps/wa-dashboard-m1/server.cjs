@@ -611,6 +611,246 @@ async function fetchOverview() {
   return result;
 }
 
+function workspaceBucketForDocType(docType) {
+  const key = String(docType || "unknown").toLowerCase();
+  if (["passport", "kitas", "itas", "itap", "itk", "visa", "birth_certificate", "medical_insurance", "travel_ticket"].includes(key)) {
+    return "immigration";
+  }
+  if (["nib", "akta_pendirian", "oss", "sk_kemenkumham", "profil_perseroan", "skt"].includes(key)) {
+    return "company";
+  }
+  if (["npwp"].includes(key)) return "tax";
+  if (["bank_statement", "payment_receipt"].includes(key)) return "finance";
+  if (["ktp"].includes(key)) return "identity";
+  return "review";
+}
+
+function parserBucketForRow(row) {
+  const docType = row.doc_type || "unknown";
+  const proposalStatus = row.proposal_status || "NO_PROPOSAL";
+  const decision = row.entity_decision || "NO_PROPOSAL";
+  const highConfidence = Number(row.type_confidence || 0) >= 0.7;
+  const hasNonStubRoute = !!row.routed_non_stub;
+  if (row.queue_status === "dead") return "failed_pipeline";
+  if (docType === "unknown") return "needs_doc_type_parser";
+  if (!highConfidence) return "low_confidence_review";
+  if (proposalStatus === "routed") return "already_routed";
+  if (decision === "AUTO_ATTACH" || decision === "LINK_CANDIDATE" || hasNonStubRoute) {
+    return "workspace_review_ready";
+  }
+  return "needs_routing_proposal";
+}
+
+async function fetchIntakeSummary() {
+  const [queueRows, groupKindRows, directRows, routingRows] = await Promise.all([
+    pool.query(
+      `
+      WITH docs AS (
+        SELECT
+          CASE
+            WHEN q.source_context->>'chat_type' = 'direct' THEN 'direct'
+            WHEN q.source_context->>'chat_type' = 'group' THEN 'group'
+            ELSE 'unknown'
+          END AS scope,
+          q.status,
+          q.sender_phone,
+          q.client_id_hint,
+          q.source_context
+        FROM intake_queue q
+        WHERE q.source = 'whatsapp'
+          AND q.source_ref LIKE 'wa-mirror:%'
+      )
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE scope='direct') AS direct_docs,
+        COUNT(*) FILTER (WHERE scope='group') AS group_docs,
+        COUNT(*) FILTER (WHERE scope='unknown') AS unknown_context_docs,
+        COUNT(*) FILTER (WHERE status='done') AS done_docs,
+        COUNT(*) FILTER (WHERE status='dead') AS dead_docs,
+        COUNT(*) FILTER (WHERE source_context <> '{}'::jsonb) AS with_source_context,
+        COUNT(*) FILTER (WHERE scope='group' AND sender_phone IS NOT NULL) AS group_unsafe_sender_phone,
+        COUNT(*) FILTER (WHERE scope='group' AND client_id_hint IS NOT NULL) AS group_unsafe_client_hint
+      FROM docs
+      `,
+    ),
+    pool.query(
+      `
+      WITH group_docs AS (
+        SELECT
+          w.group_jid,
+          COUNT(*) AS docs,
+          COUNT(*) FILTER (WHERE q.status='done') AS done_docs,
+          COUNT(*) FILTER (WHERE q.status='dead') AS dead_docs,
+          BOOL_OR(q.sender_phone IS NOT NULL) AS has_unsafe_sender_phone,
+          BOOL_OR(q.client_id_hint IS NOT NULL) AS has_unsafe_client_hint,
+          COUNT(DISTINCT w.sender_phone) FILTER (WHERE COALESCE(w.sender_phone,'') <> '') AS distinct_senders,
+          COUNT(DISTINCT w.team_member_phone) FILTER (WHERE COALESCE(w.team_member_phone,'') <> '') AS team_accounts_seen
+        FROM intake_queue q
+        JOIN whatsapp_message_context w
+          ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+        WHERE q.source = 'whatsapp'
+          AND q.source_ref LIKE 'wa-mirror:%'
+          AND (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+        GROUP BY w.group_jid
+      ),
+      classified AS (
+        SELECT *,
+          CASE
+            WHEN team_accounts_seen >= 3 AND distinct_senders <= 3 THEN 'team_coordination_likely'
+            WHEN distinct_senders <= 2 THEN 'small_client_group_likely'
+            WHEN distinct_senders BETWEEN 3 AND 6 THEN 'multi_party_case_likely'
+            ELSE 'large_or_broadcast_group'
+          END AS inferred_group_kind
+        FROM group_docs
+      )
+      SELECT inferred_group_kind,
+             COUNT(*) AS groups,
+             SUM(docs) AS docs,
+             SUM(done_docs) AS done_docs,
+             SUM(dead_docs) AS dead_docs,
+             SUM(CASE WHEN has_unsafe_sender_phone THEN 1 ELSE 0 END) AS unsafe_sender_groups,
+             SUM(CASE WHEN has_unsafe_client_hint THEN 1 ELSE 0 END) AS unsafe_hint_groups,
+             percentile_disc(0.5) WITHIN GROUP (ORDER BY docs) AS median_docs_per_group,
+             MAX(docs) AS max_docs_per_group
+      FROM classified
+      GROUP BY inferred_group_kind
+      ORDER BY docs DESC
+      `,
+    ),
+    pool.query(
+      `
+      WITH latest AS (
+        SELECT DISTINCT ON (queue_id)
+               queue_id,
+               status AS proposal_status,
+               entity_resolution->>'decision' AS entity_decision
+        FROM document_routing_proposal
+        ORDER BY queue_id, created_at DESC, id DESC
+      ),
+      direct_docs AS (
+        SELECT
+          q.id,
+          q.status AS queue_status,
+          COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') AS doc_type,
+          CASE
+            WHEN COALESCE(q.stage_output->'classify'->>'type_confidence', '') ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (q.stage_output->'classify'->>'type_confidence')::numeric
+            ELSE 0
+          END AS type_confidence,
+          COALESCE((q.stage_output ? 'extract') AND NOT COALESCE((q.stage_output->'extract'->>'stub')::boolean, false), false) AS extracted_non_stub,
+          COALESCE((q.stage_output ? 'route') AND NOT COALESCE((q.stage_output->'route'->>'stub')::boolean, false), false) AS routed_non_stub,
+          COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
+          COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
+          w.media_type
+        FROM intake_queue q
+        JOIN whatsapp_message_context w
+          ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+        LEFT JOIN latest l ON l.queue_id = q.id
+        WHERE q.source = 'whatsapp'
+          AND q.source_ref LIKE 'wa-mirror:%'
+          AND NOT (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+      )
+      SELECT *
+      FROM direct_docs
+      `,
+    ),
+    pool.query(
+      `
+      WITH latest AS (
+        SELECT DISTINCT ON (queue_id)
+               queue_id,
+               status AS proposal_status,
+               entity_resolution->>'decision' AS entity_decision
+        FROM document_routing_proposal
+        ORDER BY queue_id, created_at DESC, id DESC
+      )
+      SELECT COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
+             COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
+             COUNT(*) AS docs
+      FROM intake_queue q
+      JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+      LEFT JOIN latest l ON l.queue_id = q.id
+      WHERE q.source = 'whatsapp'
+        AND q.source_ref LIKE 'wa-mirror:%'
+        AND NOT (w.chat_type = 'group' OR w.group_jid IS NOT NULL)
+      GROUP BY 1,2
+      ORDER BY docs DESC
+      `,
+    ),
+  ]);
+
+  const queue = queueRows.rows[0] || {};
+  const docTypeMap = new Map();
+  const parserMap = new Map();
+  const workspaceMap = new Map();
+  for (const row of directRows.rows) {
+    const docType = row.doc_type || "unknown";
+    const workspaceBucket = workspaceBucketForDocType(docType);
+    const parserBucket = parserBucketForRow(row);
+    const docKey = `${docType}|${workspaceBucket}`;
+    const existingDoc = docTypeMap.get(docKey) || {
+      doc_type: docType,
+      workspace_bucket: workspaceBucket,
+      docs: 0,
+      high_confidence: 0,
+      extracted_non_stub: 0,
+      routed_non_stub: 0,
+    };
+    existingDoc.docs += 1;
+    if (Number(row.type_confidence || 0) >= 0.7) existingDoc.high_confidence += 1;
+    if (row.extracted_non_stub) existingDoc.extracted_non_stub += 1;
+    if (row.routed_non_stub) existingDoc.routed_non_stub += 1;
+    docTypeMap.set(docKey, existingDoc);
+
+    parserMap.set(parserBucket, (parserMap.get(parserBucket) || 0) + 1);
+    workspaceMap.set(workspaceBucket, (workspaceMap.get(workspaceBucket) || 0) + 1);
+  }
+
+  const toInt = (v) => parseInt(v || 0, 10);
+  return {
+    generated_at: new Date().toISOString(),
+    pii_policy: "aggregate_only_no_raw_phone_no_raw_group_subject",
+    source: "intake_queue + whatsapp_message_context",
+    queue: {
+      total: toInt(queue.total),
+      direct_docs: toInt(queue.direct_docs),
+      group_docs: toInt(queue.group_docs),
+      unknown_context_docs: toInt(queue.unknown_context_docs),
+      done_docs: toInt(queue.done_docs),
+      dead_docs: toInt(queue.dead_docs),
+      with_source_context: toInt(queue.with_source_context),
+      group_unsafe_sender_phone: toInt(queue.group_unsafe_sender_phone),
+      group_unsafe_client_hint: toInt(queue.group_unsafe_client_hint),
+    },
+    group_kinds: groupKindRows.rows.map((r) => ({
+      inferred_group_kind: r.inferred_group_kind,
+      groups: toInt(r.groups),
+      docs: toInt(r.docs),
+      done_docs: toInt(r.done_docs),
+      dead_docs: toInt(r.dead_docs),
+      unsafe_sender_groups: toInt(r.unsafe_sender_groups),
+      unsafe_hint_groups: toInt(r.unsafe_hint_groups),
+      median_docs_per_group: toInt(r.median_docs_per_group),
+      max_docs_per_group: toInt(r.max_docs_per_group),
+    })),
+    direct_parser: [...parserMap.entries()]
+      .map(([bucket, docs]) => ({ bucket, docs }))
+      .sort((a, b) => b.docs - a.docs),
+    workspace_buckets: [...workspaceMap.entries()]
+      .map(([bucket, docs]) => ({ bucket, docs }))
+      .sort((a, b) => b.docs - a.docs),
+    direct_doc_types: [...docTypeMap.values()]
+      .sort((a, b) => b.docs - a.docs)
+      .slice(0, 30),
+    direct_routing: routingRows.rows.map((r) => ({
+      entity_decision: r.entity_decision,
+      proposal_status: r.proposal_status,
+      docs: toInt(r.docs),
+    })),
+  };
+}
+
 // === Thread query (Feature #4 wa_contact_name fallback in messages) ===
 async function fetchThread(memberPhone, convKey) {
   const member = TEAM.find((m) => m.e164 === memberPhone);
@@ -758,6 +998,16 @@ app.get("/data.json", async (_req, res) => {
   } catch (err) {
     console.error("[data.json]", err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/intake-summary.json", async (_req, res) => {
+  try {
+    const payload = await fetchIntakeSummary();
+    res.json(payload);
+  } catch (err) {
+    console.error("[intake-summary.json]", err);
+    res.status(500).json({ error: "intake summary query failed" });
   }
 });
 
