@@ -724,6 +724,16 @@ def _clean_npwp_number(value: str | None) -> str | None:
     return candidate
 
 
+def _clean_family_card_number(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    candidate = re.sub(r"\D", "", cleaned)
+    if len(candidate) != 16:
+        return None
+    return candidate
+
+
 def _extract_kbli_codes_from_labels(pages: list[str]) -> tuple[list[str], int] | None:
     codes: list[str] = []
     first_page: int | None = None
@@ -1183,6 +1193,44 @@ def _extract_ktp_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     return fields
 
 
+def _extract_family_card_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("family_card")
+    family_card_no = _first_line_match(
+        pages,
+        r"^(?:no\.?\s*(?:kk|kartu\s+keluarga)|nomor\s*(?:kk|kartu\s+keluarga)|kk)\s*[:\-]?\s*(\d[\d .\-]{10,})$",
+    )
+    if family_card_no is not None:
+        value, page = family_card_no
+        parsed = _field(_clean_family_card_number(value), page)
+        if parsed is not None:
+            fields["family_card_no"] = parsed
+
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(
+            pages,
+            r"^(?:kepala\s+keluarga|nama\s+kepala\s+keluarga|head\s+of\s+family|name)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    _set_list_if_present(
+        fields,
+        "members",
+        _first_line_match(
+            pages,
+            r"^(?:anggota\s+keluarga|nama\s+anggota|family\s+members?|members?)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "address",
+        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+    )
+    return fields
+
+
 def _bank_name_from_text(text: str) -> str | None:
     upper = text.upper()
     bank_aliases = (
@@ -1467,6 +1515,13 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_ktp_label_fields(pages)
         if _has_any_value(fields, ("nik", "name")):
             return fields, "ktp_labels"
+    if doc_type == "family_card":
+        fields = _extract_family_card_label_fields(pages)
+        if fields.get("family_card_no", {}).get("value") and _has_any_value(
+            fields,
+            ("name", "members", "address"),
+        ):
+            return fields, "family_card_labels"
     if doc_type == "bank_statement":
         fields = _extract_bank_statement_label_fields(pages)
         if _has_any_value(fields, ("account_holder", "account_no")):
