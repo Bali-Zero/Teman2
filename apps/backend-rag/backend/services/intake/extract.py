@@ -718,7 +718,7 @@ def _set_list_if_present(
         return
     parts = [
         part
-        for part in re.split(r"\s*(?:;|\||\bdan\b|\band\b)\s*", cleaned, flags=re.IGNORECASE)
+        for part in re.split(r"\s*(?:;|,|\||\bdan\b|\band\b)\s*", cleaned, flags=re.IGNORECASE)
         if part
     ]
     values = [_title_person_name(part) if person_name else _clean_label_value(part) for part in parts]

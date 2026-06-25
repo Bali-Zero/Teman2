@@ -639,6 +639,27 @@ async def test_birth_certificate_label_fields_skip_model_call():
     assert out["fields"]["parents"]["value"] == ["Made Parent", "Wayan Parent"]
 
 
+async def test_birth_certificate_label_fields_split_comma_separated_parents():
+    """OCR often emits parent lists as comma-separated label values."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "AKTA KELAHIRAN\n"
+        "No. Akta : AK-2026-0001\n"
+        "Nama Anak : WAYAN CHILD\n"
+        "Tanggal Lahir : 01 Januari 2020\n"
+        "Nama Orang Tua : MADE PARENT, WAYAN PARENT"
+    )
+    out = await extract.extract_fields("akta_kelahiran", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["fields"]["parents"]["value"] == ["Made Parent", "Wayan Parent"]
+
+
 async def test_marriage_certificate_label_fields_skip_model_call():
     """Clearly-labelled marriage-certificate OCR extracts spouse fields locally."""
     called = {"n": 0}
