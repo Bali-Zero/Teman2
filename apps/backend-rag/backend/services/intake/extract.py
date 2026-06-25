@@ -979,14 +979,14 @@ def _extract_akta_pendirian_label_fields(pages: list[str]) -> dict[str, dict[str
     _set_if_present(
         fields,
         "notary",
-        _first_line_match(pages, r"^(?:notaris|notary)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:notaris|notary)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     _set_if_present(
         fields,
         "capital",
         _first_line_match(
             pages,
-            r"^(?:modal\s*(?:dasar|disetor|ditempatkan)?|capital)\s*[:\-]\s*(.+)$",
+            r"^(?:modal\s*(?:dasar|disetor|ditempatkan)?|capital)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     _set_if_present(
@@ -994,7 +994,7 @@ def _extract_akta_pendirian_label_fields(pages: list[str]) -> dict[str, dict[str
         "date",
         _first_line_match(
             pages,
-            r"^(?:tanggal\s*(?:akta|pendirian)?|deed\s*date|date)\s*[:\-]\s*(.+)$",
+            r"^(?:tanggal\s*(?:akta|pendirian)?|deed\s*date|date)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
