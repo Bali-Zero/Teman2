@@ -265,6 +265,31 @@ async def test_nib_label_fields_skip_model_call():
     assert out["fields"]["issue_date"]["value"] == "2026-06-20"
 
 
+async def test_npwp_label_fields_skip_model_call():
+    """Clearly-labelled NPWP OCR carries taxpayer fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "KARTU NOMOR POKOK WAJIB PAJAK\n"
+        "NPWP : 09.876.543.2-901.000\n"
+        "Nama : PT ZANTARA TEST MANDIRI\n"
+        "Alamat : JALAN RAYA CANGGU NO 10 BADUNG"
+    )
+    out = await extract.extract_fields("npwp_company", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "npwp"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["npwp_labels"]
+    assert out["fields"]["npwp_number"]["value"] == "098765432901000"
+    assert out["fields"]["name"]["value"] == "PT ZANTARA TEST MANDIRI"
+    assert out["fields"]["address"]["value"] == "JALAN RAYA CANGGU NO 10 BADUNG"
+
+
 async def test_passport_label_fields_skip_model_call():
     """Clearly-labelled passport OCR carries routing-critical fields locally."""
     called = {"n": 0}

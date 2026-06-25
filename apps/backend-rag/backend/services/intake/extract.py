@@ -690,6 +690,16 @@ def _clean_nib_number(value: str | None) -> str | None:
     return candidate
 
 
+def _clean_npwp_number(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    candidate = re.sub(r"\D", "", cleaned)
+    if len(candidate) not in {15, 16}:
+        return None
+    return candidate
+
+
 def _extract_kbli_codes_from_labels(pages: list[str]) -> tuple[list[str], int] | None:
     codes: list[str] = []
     first_page: int | None = None
@@ -750,6 +760,34 @@ def _extract_nib_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
             r"^(?:tanggal\s*(?:terbit|diterbitkan)|issue\s*date|date\s*of\s*issue)\s*[:\-]\s*(.+)$",
         ),
         date=True,
+    )
+    return fields
+
+
+def _extract_npwp_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("npwp")
+    npwp_number = _first_line_match(
+        pages,
+        r"^(?:npwp|nomor\s+pokok\s+wajib\s+pajak|no\.?\s*npwp)\s*[:\-]?\s*([\d .\-]{12,})$",
+    )
+    if npwp_number is not None:
+        value, page = npwp_number
+        parsed = _field(_clean_npwp_number(value), page)
+        if parsed is not None:
+            fields["npwp_number"] = parsed
+
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(
+            pages,
+            r"^(?:nama\s*(?:wajib\s+pajak)?|taxpayer\s*name|name)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "address",
+        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
     )
     return fields
 
@@ -1243,6 +1281,10 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_nib_label_fields(pages)
         if _has_any_value(fields, ("nib_number", "company_name")):
             return fields, "nib_labels"
+    if doc_type == "npwp":
+        fields = _extract_npwp_label_fields(pages)
+        if _has_any_value(fields, ("npwp_number", "name")):
+            return fields, "npwp_labels"
     if doc_type == "passport":
         fields = _extract_passport_label_fields(pages)
         if _passport_labels_routing_useful(fields):
