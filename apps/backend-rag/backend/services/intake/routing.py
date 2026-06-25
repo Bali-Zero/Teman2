@@ -445,6 +445,29 @@ async def _match_company_strong(
                     "matched_value": norm,
                 })
 
+    sk_number = (
+        _field_value(extracted, "sk_number")
+        or _field_value(extracted, "sk_menhumkam_no")
+        or _field_value(extracted, "sk_menkumham_no")
+    )
+    if sk_number:
+        norm = _normalize_id(sk_number)
+        if norm:
+            rows = await conn.fetch(
+                """
+                SELECT id, company_name
+                FROM companies
+                WHERE UPPER(REGEXP_REPLACE(sk_menhumkam_no, '[\\s.\\-/]', '', 'g')) = $1
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "companies", "id": r["id"], "name": r["company_name"],
+                    "method": "sk_menhumkam_no", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
     return candidates
 
 

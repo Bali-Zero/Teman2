@@ -21,16 +21,20 @@ class FakeConn:
         self,
         *,
         company_npwp_rows: list[dict[str, Any]] | None = None,
+        company_sk_rows: list[dict[str, Any]] | None = None,
         client_fuzzy_rows: list[dict[str, Any]] | None = None,
         company_fuzzy_rows: list[dict[str, Any]] | None = None,
     ) -> None:
         self.company_npwp_rows = company_npwp_rows or []
+        self.company_sk_rows = company_sk_rows or []
         self.client_fuzzy_rows = client_fuzzy_rows or []
         self.company_fuzzy_rows = company_fuzzy_rows or []
         self.queries: list[str] = []
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:  # noqa: ARG002
         self.queries.append(query)
+        if "sk_menhumkam_no" in query:
+            return self.company_sk_rows
         if "npwp_company" in query:
             return self.company_npwp_rows
         if "similarity" in query and "FROM clients" in query:
@@ -116,3 +120,22 @@ async def test_skt_npwp_number_strong_matches_company_destination() -> None:
     assert out["candidates"][0]["table"] == "companies"
     assert out["candidates"][0]["id"] == 33
     assert out["candidates"][0]["method"] == "npwp_company"
+
+
+@pytest.mark.asyncio
+async def test_sk_kemenkumham_number_strong_matches_company_destination() -> None:
+    conn = FakeConn(
+        company_sk_rows=[{"id": 44, "company_name": "PT ZANTARA TEST MANDIRI"}]
+    )
+
+    out = await rt.resolve_entity(
+        {"sk_number": {"value": "AHU-0012345.AH.01.01.TAHUN 2026"}},
+        "sk_kemenkumham",
+        FakePool(conn),
+    )
+
+    assert out["decision"] == rt.DECISION_AUTO_ATTACH
+    assert out["subject_kind"] == "company"
+    assert out["candidates"][0]["table"] == "companies"
+    assert out["candidates"][0]["id"] == 44
+    assert out["candidates"][0]["method"] == "sk_menhumkam_no"
