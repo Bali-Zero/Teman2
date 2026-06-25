@@ -452,6 +452,27 @@ class TestMessages:
         assert data["success"] is True
         assert data["message"] == "Message sent"
 
+    def test_send_message_accepts_camel_case_practice_id(
+        self, client, mock_portal_service
+    ):
+        """Browser payloads use camelCase, but service expects snake_case."""
+        mock_portal_service.send_message.return_value = {
+            "id": 5,
+            "content": "Need help with process",
+            "practice_id": 603,
+        }
+
+        response = client.post(
+            "/api/portal/messages",
+            json={"content": "Need help with process", "practiceId": 603},
+        )
+
+        assert response.status_code == 200
+        mock_portal_service.send_message.assert_awaited_once()
+        assert (
+            mock_portal_service.send_message.await_args.kwargs["practice_id"] == 603
+        )
+
     def test_mark_message_read(self, client, mock_portal_service):
         """Mark message as read."""
         mock_portal_service.mark_message_read.return_value = None
