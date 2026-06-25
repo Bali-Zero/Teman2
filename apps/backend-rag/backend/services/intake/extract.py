@@ -660,6 +660,82 @@ def _set_if_present(
         fields[name] = parsed
 
 
+def _clean_passport_number(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    candidate = re.sub(r"[\s.\-]", "", cleaned).upper()
+    if not re.fullmatch(r"[A-Z0-9]{6,12}", candidate):
+        return None
+    return candidate
+
+
+def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("passport")
+    passport_no = _first_line_match(
+        pages,
+        r"^(?:passport\s*(?:no\.?|number)|paspor\s*(?:no\.?|number)|no\.?\s*paspor|nomor\s+paspor)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-]{5,})$",
+    )
+    if passport_no is not None:
+        value, page = passport_no
+        parsed = _field(_clean_passport_number(value), page)
+        if parsed is not None:
+            fields["passport_no"] = parsed
+
+    surname = _first_line_match(
+        pages,
+        r"^(?:surname|family\s+name|last\s+name|cognome|nama\s+belakang)\s*[:\-]\s*(.+)$",
+    )
+    given = _first_line_match(
+        pages,
+        r"^(?:given\s*names?|given\s+name|first\s+names?|nama\s+depan)\s*[:\-]\s*(.+)$",
+    )
+    if surname is not None and given is not None:
+        surname_value, surname_page = surname
+        given_value, given_page = given
+        name = _title_person_name(f"{given_value} {surname_value}")
+        parsed = _field(name, min(surname_page, given_page))
+        if parsed is not None:
+            fields["name"] = parsed
+    else:
+        _set_if_present(
+            fields,
+            "name",
+            _first_line_match(pages, r"^(?:name|full\s+name|nama)\s*[:\-]\s*(.+)$"),
+            person_name=True,
+        )
+
+    nationality = _first_line_match(
+        pages,
+        r"^(?:nationality|kewarganegaraan|warga\s+negara)\s*[:\-]\s*(.+)$",
+    )
+    if nationality is not None:
+        value, page = nationality
+        parsed = _field(normalize_nationality(value), page)
+        if parsed is not None:
+            fields["nationality"] = parsed
+
+    _set_if_present(
+        fields,
+        "dob",
+        _first_line_match(
+            pages,
+            r"^(?:date\s+of\s+birth|birth\s+date|dob|tanggal\s+lahir|tgl\s+lahir)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "expiry",
+        _first_line_match(
+            pages,
+            r"^(?:date\s+of\s+expiry|expiry\s+date|expires|valid\s*(?:until|to)|berlaku\s*(?:hingga|sampai))\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    return fields
+
+
 def _extract_kitas_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     fields = _blank_fields("kitas")
     _set_if_present(
@@ -783,10 +859,20 @@ def _has_any_value(fields: dict[str, dict[str, Any]], names: tuple[str, ...]) ->
     return any(fields.get(name, {}).get("value") for name in names)
 
 
+def _passport_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
+    has_number = bool(fields.get("passport_no", {}).get("value"))
+    has_identity_context = _has_any_value(fields, ("name", "dob", "expiry"))
+    return has_number and has_identity_context
+
+
 def _extract_label_fields_if_routing_useful(
     doc_type: str,
     pages: list[str],
 ) -> tuple[dict[str, dict[str, Any]], str] | None:
+    if doc_type == "passport":
+        fields = _extract_passport_label_fields(pages)
+        if _passport_labels_routing_useful(fields):
+            return fields, "passport_labels"
     if doc_type == "kitas":
         fields = _extract_kitas_label_fields(pages)
         if _has_any_value(fields, ("kitas_no", "name")):
@@ -911,21 +997,24 @@ async def extract_fields(
                     "deterministic_extractors": deterministic_extractors,
                     "any_low_confidence": False,
                 }
-    else:
-        labelled = _extract_label_fields_if_routing_useful(canonical, pages)
-        if labelled is not None:
-            fields, extractor_name = labelled
-            any_low = any(
-                field["confidence"] < _LOW_CONFIDENCE_THRESHOLD
-                for field in fields.values()
-            )
-            return {
-                "doc_type": canonical,
-                "fields": fields,
-                "extraction_model": _DETERMINISTIC_LABEL_MODEL,
-                "deterministic_extractors": [extractor_name],
-                "any_low_confidence": any_low,
-            }
+
+    labelled = _extract_label_fields_if_routing_useful(canonical, pages)
+    if labelled is not None:
+        fields, extractor_name = labelled
+        if deterministic_fields:
+            _merge_deterministic_fields(fields, deterministic_fields)
+        deterministic_extractors.append(extractor_name)
+        any_low = any(
+            field["confidence"] < _LOW_CONFIDENCE_THRESHOLD
+            for field in fields.values()
+        )
+        return {
+            "doc_type": canonical,
+            "fields": fields,
+            "extraction_model": _DETERMINISTIC_LABEL_MODEL,
+            "deterministic_extractors": deterministic_extractors,
+            "any_low_confidence": any_low,
+        }
 
     prompt = _build_prompt(canonical, pages)
     gen = generate_fn or _ollama_generate

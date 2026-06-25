@@ -235,6 +235,36 @@ async def test_passport_partial_mrz_merges_with_model_output():
     assert out["fields"]["expiry"]["value"] == "2030-04-15"
 
 
+async def test_passport_label_fields_skip_model_call():
+    """Clearly-labelled passport OCR carries routing-critical fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "REPUBLIC OF EXAMPLAND\n"
+        "PASSPORT\n"
+        "Surname: ROSSI\n"
+        "Given Names: MARIO LUCA\n"
+        "Passport No.: XK1234567\n"
+        "Nationality: ITALIAN\n"
+        "Date of Birth: 1987-05-13\n"
+        "Date of Expiry: 2031-09-22"
+    )
+    out = await extract.extract_fields("passport", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["passport_labels"]
+    assert out["fields"]["passport_no"]["value"] == "XK1234567"
+    assert out["fields"]["name"]["value"] == "Mario Luca Rossi"
+    assert out["fields"]["nationality"]["value"] == "Italian"
+    assert out["fields"]["dob"]["value"] == "1987-05-13"
+    assert out["fields"]["expiry"]["value"] == "2031-09-22"
+
+
 async def test_kitas_label_fields_skip_model_call():
     """Clearly-labelled KITAS OCR carries routing-critical fields without SEA-LION."""
     called = {"n": 0}
