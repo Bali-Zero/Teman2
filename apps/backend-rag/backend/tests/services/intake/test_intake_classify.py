@@ -148,6 +148,38 @@ async def test_generic_family_word_alone_stays_unknown():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text, expected_type",
+    [
+        ("BUKTI PEMBAYARAN transfer berhasil Transaction ID 123", "payment_receipt"),
+        ("BOARDING PASS Passenger Departure Arrival Seat 12A", "travel_ticket"),
+        ("BANK STATEMENT Statement of Account saldo awal saldo akhir", "bank_statement"),
+        ("TRAVEL INSURANCE policy number sum insured", "medical_insurance"),
+    ],
+)
+async def test_support_documents_classified(text, expected_type):
+    r = await cls.classify_document(text)
+    assert r["type"] == expected_type
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "bank meeting note",
+        "ticket discussion in whatsapp",
+        "insurance question from client",
+        "payment note without proof",
+    ],
+)
+async def test_generic_support_words_stay_unknown(text):
+    r = await cls.classify_document(text)
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
 async def test_source_page_attribution():
     # Evidence lives on page 1 (index 1), not page 0.
     pages = [
