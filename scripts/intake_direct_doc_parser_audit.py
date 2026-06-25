@@ -32,6 +32,7 @@ import httpx
 DEFAULT_DB_URL = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_QWEN_MODEL = "qwen3.5:9b"
+DEFAULT_QWEN_OCR_MAX_CHARS = 2000
 HIGH_CONFIDENCE_THRESHOLD = 0.70
 TEXT_PARSER_MIN_CHARS = 100
 
@@ -464,14 +465,17 @@ async def run_qwen_text_sample(
     ollama_url: str,
     model: str,
     timeout_seconds: float,
+    ocr_max_chars: int = DEFAULT_QWEN_OCR_MAX_CHARS,
 ) -> dict[str, Any]:
     """Run local Qwen over saved OCR text and return aggregate transitions only."""
     transitions: Counter[str] = Counter()
     workspaces: Counter[str] = Counter()
     errors: Counter[str] = Counter()
     attempted = 0
+    failed_attempts = 0
     improved_unknown_to_known = 0
     still_unknown = 0
+    safe_ocr_max_chars = max(ocr_max_chars, 1)
 
     async with httpx.AsyncClient() as client:
         for row in rows:
@@ -482,11 +486,13 @@ async def run_qwen_text_sample(
                     client,
                     ollama_url=ollama_url,
                     model=model,
-                    ocr_text=_saved_ocr_text(_record_get(row, "stage_output")),
+                    ocr_text=_saved_ocr_text(_record_get(row, "stage_output"), max_chars=safe_ocr_max_chars),
                     timeout_seconds=timeout_seconds,
                 )
             except Exception as exc:  # local diagnostic only; aggregate class name.
+                failed_attempts += 1
                 errors[type(exc).__name__] += 1
+                transitions[f"{old_type}->error"] += 1
                 continue
 
             new_type = answer or "unknown"
@@ -500,7 +506,11 @@ async def run_qwen_text_sample(
     return {
         "mode": "local_ollama_text_only_saved_ocr",
         "model": model,
+        "ocr_max_chars": safe_ocr_max_chars,
         "attempted": attempted,
+        "classified_attempts": attempted - failed_attempts,
+        "failed_attempts": failed_attempts,
+        "not_classified_due_error": failed_attempts,
         "improved_unknown_to_known": improved_unknown_to_known,
         "still_unknown": still_unknown,
         "transitions": dict(transitions),
@@ -518,6 +528,7 @@ async def run_audit(
     ollama_url: str = DEFAULT_OLLAMA_URL,
     qwen_model: str = DEFAULT_QWEN_MODEL,
     qwen_timeout_seconds: float = 45.0,
+    qwen_ocr_max_chars: int = DEFAULT_QWEN_OCR_MAX_CHARS,
 ) -> dict[str, Any]:
     pool = await asyncpg.create_pool(dsn=database_url, min_size=1, max_size=2)
     try:
@@ -547,6 +558,7 @@ async def run_audit(
             ollama_url=ollama_url,
             model=qwen_model,
             timeout_seconds=qwen_timeout_seconds,
+            ocr_max_chars=qwen_ocr_max_chars,
         )
     return report
 
@@ -595,6 +607,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=45.0,
         help="per-document timeout for optional qwen text sample",
     )
+    parser.add_argument(
+        "--qwen-ocr-max-chars",
+        type=int,
+        default=DEFAULT_QWEN_OCR_MAX_CHARS,
+        help="maximum saved OCR characters sent to local Qwen per sampled document",
+    )
     parser.add_argument("--pretty", action="store_true", help="pretty-print JSON")
     return parser
 
@@ -609,6 +627,7 @@ async def main(argv: list[str] | None = None) -> int:
         ollama_url=args.ollama_url,
         qwen_model=args.qwen_model,
         qwen_timeout_seconds=max(args.qwen_timeout_seconds, 1.0),
+        qwen_ocr_max_chars=max(args.qwen_ocr_max_chars, 1),
     )
     indent = 2 if args.pretty else None
     sys.stdout.write(json.dumps(report, indent=indent, sort_keys=True) + "\n")

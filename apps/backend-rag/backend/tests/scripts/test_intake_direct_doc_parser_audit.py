@@ -7,6 +7,7 @@ raw client documents.
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 from pathlib import Path
 
@@ -144,11 +145,72 @@ def test_qwen_answer_parser_accepts_only_known_doc_type_tokens() -> None:
     assert audit.parse_qwen_doc_type_answer("driver_license") is None
 
 
+def test_qwen_text_sample_counts_classifier_errors_as_unclassified() -> None:
+    audit = _load()
+
+    async def fail_classify(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise TimeoutError("local model timeout")
+
+    audit._qwen_classify_text = fail_classify
+
+    result = asyncio.run(
+        audit.run_qwen_text_sample(
+            [
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["KITAS example text"]}},
+                }
+            ],
+            ollama_url="http://127.0.0.1:11434",
+            model="qwen3.5:9b",
+            timeout_seconds=1.0,
+        )
+    )
+
+    assert result["attempted"] == 1
+    assert result["failed_attempts"] == 1
+    assert result["not_classified_due_error"] == 1
+    assert result["errors"] == {"TimeoutError": 1}
+    assert result["transitions"] == {"unknown->error": 1}
+    assert result["still_unknown"] == 0
+
+
+def test_qwen_text_sample_uses_configurable_saved_ocr_limit() -> None:
+    audit = _load()
+    captured: list[str] = []
+
+    async def capture_text(*args, ocr_text: str, **kwargs):  # noqa: ANN002, ANN003
+        captured.append(ocr_text)
+        return "passport"
+
+    audit._qwen_classify_text = capture_text
+
+    result = asyncio.run(
+        audit.run_qwen_text_sample(
+            [
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["A" * 50]}},
+                }
+            ],
+            ollama_url="http://127.0.0.1:11434",
+            model="qwen3.5:9b",
+            timeout_seconds=1.0,
+            ocr_max_chars=12,
+        )
+    )
+
+    assert captured == ["A" * 12]
+    assert result["ocr_max_chars"] == 12
+    assert result["transitions"] == {"unknown->passport": 1}
+
+
 def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
     audit = _load()
-    args = audit.build_parser().parse_args(["--pretty", "--limit", "10"])
+    args = audit.build_parser().parse_args(["--pretty", "--limit", "10", "--qwen-ocr-max-chars", "1200"])
     assert args.pretty is True
     assert args.limit == 10
+    assert args.qwen_ocr_max_chars == 1200
     assert not hasattr(args, "apply")
 
     sql_values = [
