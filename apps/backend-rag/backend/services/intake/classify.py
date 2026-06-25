@@ -1,20 +1,21 @@
 """Document-intake OCR + classification stage (FASE 3a).
 
-Two responsibilities, both 100% local (Symbiosis Law 2 / UU-PDP):
+Two responsibilities, local by default (Symbiosis Law 2 / UU-PDP):
 
-  1. ``ocr_pages``        -- run a LOCAL vision model over preprocessed pages,
+  1. ``ocr_pages``        -- run a vision model over preprocessed pages,
                             returning per-page transcribed text + confidence.
   2. ``classify_document`` -- decide the document TYPE from the OCR text, with a
                             hard anti-hallucination floor: undeterminable ->
                             {"type": "unknown", "confidence": 0.0}, never a guess.
 
-STRICT-LOCAL / 0-byte-to-cloud
-------------------------------
-Forked from ``backend.app.routers.crm_enhanced`` Attempt-1 (Ollama vision) but
-the cloud-LLM fallback (Attempt-2) is DROPPED entirely. There is no cloud path,
-no external-CLI subprocess, no external API. The intake spec verifies the
-absence of any cloud token over this file. PII (passport, KTP, akta) is read
-from local images and sent ONLY to localhost:11434 (Ollama on the Pro).
+OCR provider contract
+---------------------
+Default runtime is strict local: ``INTAKE_OCR_PROVIDER`` unset -> Ollama
+``qwen2.5vl:7b`` on localhost. Gemini OCR is opt-in only:
+``INTAKE_OCR_PROVIDER=gemini`` AND ``OCR_ALLOW_CLOUD_VISION=true``. If either
+condition is absent, the document image is not sent to cloud OCR. If Gemini is
+enabled but returns no usable text or errors, the path falls back to the local
+Ollama cascade below.
 
 Model choice (FASE 0 registry role ``ocr_vision``)
 --------------------------------------------------
@@ -64,6 +65,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.llm.config import ModelName
 from backend.services.intake.model_roles import resolve_model_role
 
 logger = logging.getLogger("zantara.intake.classify")
@@ -85,6 +87,7 @@ _OCR_PRIMARY_DEFAULT = "qwen2.5vl:7b"  # ocr_vision role
 _OCR_FALLBACK = "qwen2.5vl:7b"
 
 OLLAMA_URL = os.getenv("INTAKE_OLLAMA_URL", os.getenv("OLLAMA_URL", "http://localhost:11434"))
+_GEMINI_OCR_MODEL = os.getenv("INTAKE_GEMINI_OCR_MODEL", ModelName.FALLBACK)
 
 # Per-page hard cap. CLAUDE.md OCR rule: 120s for >3 pages -- but we OCR one page
 # per request, so this is the single-page ceiling (reasoning VLM is slow).
@@ -105,6 +108,26 @@ _OCR_PROMPT = (
 def _resolve_ocr_model() -> str:
     """Prefer the FASE-0 registry ``ocr_vision`` role; else the hardcoded default."""
     return resolve_model_role("ocr_vision", _OCR_PRIMARY_DEFAULT)
+
+
+def _ocr_provider() -> str:
+    """Return the configured OCR primary provider; fail closed to local Ollama."""
+    provider = os.getenv("INTAKE_OCR_PROVIDER", "ollama").strip().lower()
+    return "gemini" if provider in {"gemini", "gemini_first", "gemini-first"} else "ollama"
+
+
+def _cloud_vision_allowed() -> bool:
+    """Lazy wrapper for tests and fail-closed cloud OCR gating."""
+    from backend.services.multimodal.cloud_vision_gate import cloud_vision_allowed
+
+    return cloud_vision_allowed()
+
+
+def _note_cloud_ocr_blocked(context: str) -> None:
+    """Lazy wrapper so intake uses the shared cloud OCR audit signal."""
+    from backend.services.multimodal.cloud_vision_gate import note_cloud_ocr_blocked
+
+    note_cloud_ocr_blocked(context)
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +256,32 @@ async def _ollama_vision(
     )
 
 
+async def _gemini_vision(
+    png_b64: str,
+    prompt: str = _OCR_PROMPT,
+    num_predict: int = OCR_NUM_PREDICT,
+) -> str:
+    """Single gated Gemini Vision OCR call through the shared GenAI client."""
+    from backend.llm.genai_client import get_genai_client
+
+    client = get_genai_client()
+    if not getattr(client, "is_available", False):
+        return ""
+
+    result = await client.generate_content(
+        contents=[
+            {"text": prompt},
+            {"inline_data": {"mime_type": "image/png", "data": png_b64}},
+        ],
+        model=_GEMINI_OCR_MODEL,
+        max_output_tokens=num_predict,
+        temperature=0.0,
+        timeout_ms=int(OCR_PAGE_TIMEOUT_SECONDS * 1000),
+        endpoint="intake_ocr",
+    )
+    return _clean_ocr_response((result or {}).get("text") or "")
+
+
 def _heuristic_confidence(text: str) -> float:
     """Confidence for OCR text: length + low [unreadable] density. 0.0 if empty."""
     if not text:
@@ -338,24 +387,42 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
         via = "empty"
         model_used = primary
 
+        # Optional cloud OCR primary. This is disabled by default and requires
+        # both INTAKE_OCR_PROVIDER=gemini and the shared cloud vision gate.
+        if _ocr_provider() == "gemini":
+            if _cloud_vision_allowed():
+                try:
+                    resp = await asyncio.wait_for(
+                        _gemini_vision(b64),
+                        timeout=OCR_PAGE_TIMEOUT_SECONDS,
+                    )
+                    resp = _clean_ocr_response(resp)
+                    if resp:
+                        text, via, model_used = resp, "gemini", _GEMINI_OCR_MODEL
+                except Exception as exc:
+                    logger.warning("OCR Gemini primary failed on page %d: %r", idx, exc)
+            else:
+                _note_cloud_ocr_blocked("intake.classify.ocr_pages")
+
         # (a) resolved primary: prefer response, salvage thinking (no-op for
         # non-reasoning VLMs like qwen2.5vl).
-        try:
-            resp, thinking = await asyncio.wait_for(
-                _ollama_vision(primary, b64), timeout=OCR_PAGE_TIMEOUT_SECONDS
-            )
-            resp = _clean_ocr_response(resp)
-            thinking = _clean_ocr_response(thinking or "")
-            if resp:
-                text, via = resp, "response"
-            else:
-                salvaged = _salvage_thinking(thinking or "")
-                if salvaged:
-                    text, via = salvaged, "thinking"
-        except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
-            # %r, not %s: a bare ReadTimeout/HTTPError can str() to "" and the
-            # log line carried zero diagnostic signal (W70 blind-log class).
-            logger.warning("OCR primary %s failed on page %d: %r", primary, idx, exc)
+        if not text:
+            try:
+                resp, thinking = await asyncio.wait_for(
+                    _ollama_vision(primary, b64), timeout=OCR_PAGE_TIMEOUT_SECONDS
+                )
+                resp = _clean_ocr_response(resp)
+                thinking = _clean_ocr_response(thinking or "")
+                if resp:
+                    text, via = resp, "response"
+                else:
+                    salvaged = _salvage_thinking(thinking or "")
+                    if salvaged:
+                        text, via = salvaged, "thinking"
+            except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
+                # %r, not %s: a bare ReadTimeout/HTTPError can str() to "" and the
+                # log line carried zero diagnostic signal (W70 blind-log class).
+                logger.warning("OCR primary %s failed on page %d: %r", primary, idx, exc)
 
         # (b) cascade to _OCR_FALLBACK when primary yielded nothing usable.
         # With today's topology primary == fallback, so this is a same-model
