@@ -834,6 +834,39 @@ def _extract_kitas_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     return fields
 
 
+def _extract_itap_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("itap")
+    _set_if_present(
+        fields,
+        "itap_no",
+        _first_line_match(
+            pages,
+            r"^(?:no\.?\s*(?:kitap|itap)|nomor\s*(?:kitap|itap)|(?:kitap|itap)\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(pages, r"^(?:nama|name)\s*[:\-]\s*(?!rekening\b)(.+)$"),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "expiry",
+        _first_line_match(
+            pages,
+            r"^(?:berlaku\s*(?:hingga|sampai)|valid\s*(?:until|thru|to)|expiry|expired)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "sponsor",
+        _first_line_match(pages, r"^(?:penjamin|sponsor)\s*[:\-]\s*(.+)$"),
+    )
+    return fields
+
+
 def _extract_ktp_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     fields = _blank_fields("ktp")
     _set_if_present(
@@ -952,6 +985,10 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_kitas_label_fields(pages)
         if _has_any_value(fields, ("kitas_no", "name")):
             return fields, "kitas_labels"
+    if doc_type == "itap":
+        fields = _extract_itap_label_fields(pages)
+        if _has_any_value(fields, ("itap_no", "name")):
+            return fields, "itap_labels"
     if doc_type == "ktp":
         fields = _extract_ktp_label_fields(pages)
         if _has_any_value(fields, ("nik", "name")):

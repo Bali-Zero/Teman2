@@ -322,6 +322,34 @@ async def test_kitas_label_fields_skip_model_call():
     assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO"
 
 
+async def test_itap_label_fields_skip_model_call():
+    """Clearly-labelled KITAP/ITAP OCR carries routing-critical fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "REPUBLIK INDONESIA\n"
+        "KARTU IZIN TINGGAL TETAP\n"
+        "No. ITAP : 2C-123456\n"
+        "Nama : MARIO ROSSI\n"
+        "Berlaku Hingga : 2030-05-31\n"
+        "Penjamin : PT BALI ZERO"
+    )
+    out = await extract.extract_fields("kitap", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "itap"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["itap_labels"]
+    assert out["fields"]["itap_no"]["value"] == "2C-123456"
+    assert out["fields"]["name"]["value"] == "Mario Rossi"
+    assert out["fields"]["expiry"]["value"] == "2030-05-31"
+    assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO"
+
+
 async def test_ktp_label_fields_skip_model_call():
     """Clearly-labelled KTP OCR extracts NIK/name without the heavy model."""
     called = {"n": 0}
