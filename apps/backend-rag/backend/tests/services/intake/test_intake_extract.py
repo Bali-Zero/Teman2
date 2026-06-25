@@ -265,6 +265,37 @@ async def test_passport_label_fields_skip_model_call():
     assert out["fields"]["expiry"]["value"] == "2031-09-22"
 
 
+async def test_visa_label_fields_skip_model_call():
+    """Clearly-labelled e-visa OCR carries routing-critical fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "REPUBLIC OF INDONESIA\n"
+        "ELECTRONIC VISA\n"
+        "Visa No. : EV-2026-000123\n"
+        "Visa Index : C1\n"
+        "Name : MARIO ROSSI\n"
+        "Passport No. : XK1234567\n"
+        "Valid Until : 2026-09-30\n"
+        "Sponsor : PT BALI ZERO"
+    )
+    out = await extract.extract_fields("e-visa", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["visa_labels"]
+    assert out["fields"]["visa_no"]["value"] == "EV-2026-000123"
+    assert out["fields"]["visa_index"]["value"] == "C1"
+    assert out["fields"]["name"]["value"] == "Mario Rossi"
+    assert out["fields"]["passport_no"]["value"] == "XK1234567"
+    assert out["fields"]["expiry"]["value"] == "2026-09-30"
+    assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO"
+
+
 async def test_kitas_label_fields_skip_model_call():
     """Clearly-labelled KITAS OCR carries routing-critical fields without SEA-LION."""
     called = {"n": 0}

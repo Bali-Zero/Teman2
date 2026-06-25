@@ -670,6 +670,16 @@ def _clean_passport_number(value: str | None) -> str | None:
     return candidate
 
 
+def _clean_visa_index(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    candidate = re.sub(r"\s+", "", cleaned).upper()
+    if not re.fullmatch(r"[A-Z][0-9][A-Z0-9]{0,3}", candidate):
+        return None
+    return candidate
+
+
 def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     fields = _blank_fields("passport")
     passport_no = _first_line_match(
@@ -732,6 +742,61 @@ def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]
             r"^(?:date\s+of\s+expiry|expiry\s+date|expires|valid\s*(?:until|to)|berlaku\s*(?:hingga|sampai))\s*[:\-]\s*(.+)$",
         ),
         date=True,
+    )
+    return fields
+
+
+def _extract_visa_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("visa")
+    _set_if_present(
+        fields,
+        "visa_no",
+        _first_line_match(
+            pages,
+            r"^(?:visa\s*(?:no\.?|number)|e-?visa\s*(?:no\.?|number)|nomor\s+visa)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
+        ),
+    )
+
+    visa_index = _first_line_match(
+        pages,
+        r"^(?:visa\s*(?:index|type)|index\s+visa|jenis\s+visa)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-]{1,})$",
+    )
+    if visa_index is not None:
+        value, page = visa_index
+        parsed = _field(_clean_visa_index(value), page)
+        if parsed is not None:
+            fields["visa_index"] = parsed
+
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(pages, r"^(?:name|full\s+name|nama)\s*[:\-]\s*(.+)$"),
+        person_name=True,
+    )
+
+    passport_no = _first_line_match(
+        pages,
+        r"^(?:passport\s*(?:no\.?|number)|paspor\s*(?:no\.?|number)|no\.?\s*paspor|nomor\s+paspor)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-]{5,})$",
+    )
+    if passport_no is not None:
+        value, page = passport_no
+        parsed = _field(_clean_passport_number(value), page)
+        if parsed is not None:
+            fields["passport_no"] = parsed
+
+    _set_if_present(
+        fields,
+        "expiry",
+        _first_line_match(
+            pages,
+            r"^(?:valid\s*(?:until|to)|expiry|expiry\s+date|date\s+of\s+expiry|berlaku\s*(?:hingga|sampai))\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "sponsor",
+        _first_line_match(pages, r"^(?:sponsor|penjamin)\s*[:\-]\s*(.+)$"),
     )
     return fields
 
@@ -865,6 +930,12 @@ def _passport_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
     return has_number and has_identity_context
 
 
+def _visa_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
+    has_visa_identifier = _has_any_value(fields, ("visa_no", "visa_index"))
+    has_identity_context = _has_any_value(fields, ("name", "passport_no", "expiry", "sponsor"))
+    return has_visa_identifier and has_identity_context
+
+
 def _extract_label_fields_if_routing_useful(
     doc_type: str,
     pages: list[str],
@@ -873,6 +944,10 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_passport_label_fields(pages)
         if _passport_labels_routing_useful(fields):
             return fields, "passport_labels"
+    if doc_type == "visa":
+        fields = _extract_visa_label_fields(pages)
+        if _visa_labels_routing_useful(fields):
+            return fields, "visa_labels"
     if doc_type == "kitas":
         fields = _extract_kitas_label_fields(pages)
         if _has_any_value(fields, ("kitas_no", "name")):
