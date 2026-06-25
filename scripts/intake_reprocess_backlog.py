@@ -32,6 +32,14 @@ One-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     their original ``created_at`` rather than ``now()``; otherwise this targeted
     recovery sits behind newer pending WhatsApp jobs.
 
+``--retry-unschematised-supported``
+    Historical WhatsApp rows whose extract stage skipped
+    ``unschematised_doc_type`` even though today's extractor can canonicalize
+    the classified type (for example ``itap``/``itk``/``ktp``/``oss``/``itas``)
+    are reset to ``pending`` with a bumped pipeline version. Existing
+    review/quarantine proposals are superseded so the worker emits a fresh
+    extracted/routed proposal after rerun.
+
 Law 2 / UU-PDP: everything local (local DB, local blobs, downstream OCR is
 local Ollama). Sender phones are PII — never logged at INFO with the value.
 
@@ -43,6 +51,7 @@ Environment:
 from __future__ import annotations
 
 import argparse
+import ast
 import asyncio
 import json
 import logging
@@ -59,10 +68,14 @@ from backend.services.intake.enqueue import enqueue
 
 logger = logging.getLogger("intake_reprocess_backlog")
 
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent / "apps" / "backend-rag" / "backend"
+_INTAKE_SERVICES_DIR = _BACKEND_ROOT / "services" / "intake"
+
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
 DEFAULT_PIPELINE_VERSION = "v2.1-retro"
 DEFAULT_STUB_REVIVE_VERSION = "v2.1-stub-revive"
 DEFAULT_EMPTY_PDF_OCR_VERSION = "v2.2-empty-pdf-ocr"
+DEFAULT_UNSCHEMATISED_RECOVERY_VERSION = "v2.3-unschematised-retry"
 DEFAULT_MEDIA_TYPES = ("document", "image")
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
@@ -185,6 +198,31 @@ ORDER BY q.id
 """
 
 EMPTY_PDF_OCR_SUPERSEDE_SQL = """
+UPDATE document_routing_proposal
+   SET status = 'superseded'
+ WHERE queue_id = ANY($1::bigint[])
+   AND status IN ('review_pending', 'quarantine')
+"""
+
+UNSCHEMATISED_SUPPORTED_SELECT_SQL = """
+SELECT q.id
+FROM intake_queue q
+CROSS JOIN LATERAL (
+    SELECT COALESCE(q.stage_output->'classify'->>'doc_type', '') AS doc_type
+) classified
+WHERE q.source = 'whatsapp'
+  AND COALESCE(q.stage_output->'extract'->>'skipped', '') = 'unschematised_doc_type'
+  AND classified.doc_type = ANY($1::text[])
+  AND NOT EXISTS (
+      SELECT 1
+      FROM document_routing_proposal p
+      WHERE p.queue_id = q.id
+        AND p.status NOT IN ('review_pending', 'quarantine', 'superseded')
+  )
+ORDER BY q.id
+"""
+
+UNSCHEMATISED_SUPPORTED_SUPERSEDE_SQL = """
 UPDATE document_routing_proposal
    SET status = 'superseded'
  WHERE queue_id = ANY($1::bigint[])
@@ -348,6 +386,32 @@ SELECT jsonb_build_object(
             ORDER BY quality_issue
         ) x
     ), '{}'::jsonb),
+    'quality_issue_by_doc_type', COALESCE((
+        SELECT jsonb_object_agg(quality_issue, doc_counts)
+        FROM (
+            SELECT quality_issue, jsonb_object_agg(doc_type, n) AS doc_counts
+            FROM (
+                SELECT quality_issue, doc_type, COUNT(*) AS n
+                FROM buckets
+                GROUP BY quality_issue, doc_type
+                ORDER BY quality_issue, n DESC, doc_type
+            ) issue_docs
+            GROUP BY quality_issue
+        ) x
+    ), '{}'::jsonb),
+    'extract_skipped_by_doc_type', COALESCE((
+        SELECT jsonb_object_agg(extract_skipped, doc_counts)
+        FROM (
+            SELECT extract_skipped, jsonb_object_agg(doc_type, n) AS doc_counts
+            FROM (
+                SELECT extract_skipped, doc_type, COUNT(*) AS n
+                FROM buckets
+                GROUP BY extract_skipped, doc_type
+                ORDER BY extract_skipped, n DESC, doc_type
+            ) skipped_docs
+            GROUP BY extract_skipped
+        ) x
+    ), '{}'::jsonb),
     'last_error_category', COALESCE((
         SELECT jsonb_object_agg(last_error_category, n)
         FROM (
@@ -418,6 +482,52 @@ def _quality_statuses(raw: str | None) -> tuple[str, ...] | None:
         return None
     statuses = tuple(t.strip() for t in raw.split(",") if t.strip())
     return statuses or None
+
+
+def _literal_assigned_value(module_path: Path, name: str) -> Any:
+    """Read a literal module constant without importing app settings."""
+    tree = ast.parse(module_path.read_text(), filename=str(module_path))
+    for node in tree.body:
+        value: ast.expr | None = None
+        if isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
+                value = node.value
+        elif isinstance(node, ast.AnnAssign):
+            if isinstance(node.target, ast.Name) and node.target.id == name:
+                value = node.value
+        if value is not None:
+            return ast.literal_eval(value)
+    raise RuntimeError(f"{name} not found in {module_path}")
+
+
+def _canonical_doc_type(
+    doc_type: str | None,
+    doc_type_fields: dict[str, Any],
+    aliases: dict[str, str],
+) -> str | None:
+    if not doc_type:
+        return None
+    key = doc_type.strip().lower()
+    key = aliases.get(key, key)
+    return key if key in doc_type_fields else None
+
+
+def _recoverable_unschematised_doc_types() -> tuple[str, ...]:
+    """Classify doc_type values that today's extractor can canonicalize."""
+    doc_types = _literal_assigned_value(_INTAKE_SERVICES_DIR / "classify.py", "DOC_TYPES")
+    doc_type_fields = _literal_assigned_value(
+        _INTAKE_SERVICES_DIR / "extract.py", "DOC_TYPE_FIELDS"
+    )
+    aliases = _literal_assigned_value(_INTAKE_SERVICES_DIR / "extract.py", "_DOC_TYPE_ALIASES")
+    candidates = set(doc_types) | set(doc_type_fields) | set(aliases)
+    return tuple(
+        sorted(
+            doc_type
+            for doc_type in candidates
+            if doc_type != "unknown"
+            and _canonical_doc_type(doc_type, doc_type_fields, aliases) is not None
+        )
+    )
 
 
 # --- Modes -------------------------------------------------------------------
@@ -536,6 +646,60 @@ async def run_retry_empty_pdf_ocr(
     return counts
 
 
+async def run_retry_unschematised_supported(
+    pool: asyncpg.Pool, pipeline_version: str, apply: bool
+) -> dict[str, int]:
+    """Reset WhatsApp rows skipped as unschematised but now schema-supported."""
+    doc_types = _recoverable_unschematised_doc_types()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(UNSCHEMATISED_SUPPORTED_SELECT_SQL, list(doc_types))
+        queue_ids = [r["id"] for r in rows]
+        counts = {"queue_rows": len(queue_ids), "doc_types": len(doc_types)}
+        if not apply:
+            if queue_ids:
+                proposal_count = await conn.fetchval(
+                    """
+                    SELECT count(*)
+                    FROM document_routing_proposal
+                    WHERE queue_id = ANY($1::bigint[])
+                      AND status IN ('review_pending', 'quarantine')
+                    """,
+                    queue_ids,
+                )
+            else:
+                proposal_count = 0
+            counts["active_proposals"] = int(proposal_count or 0)
+            logger.info(
+                "[retry-unschematised-supported][DRY-RUN] would supersede %d "
+                "review/quarantine proposals and reset %d whatsapp queue rows "
+                "across %d supported doc_type labels to pipeline_version=%s "
+                "(pass --apply)",
+                counts["active_proposals"],
+                counts["queue_rows"],
+                counts["doc_types"],
+                pipeline_version,
+            )
+            return counts
+
+        async with conn.transaction():
+            superseded = await conn.execute(
+                UNSCHEMATISED_SUPPORTED_SUPERSEDE_SQL, queue_ids
+            )
+            reset = await conn.execute(PRIORITY_RETRY_RESET_SQL, queue_ids, pipeline_version)
+        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[retry-unschematised-supported] superseded=%d proposals, reset=%d "
+        "whatsapp queue rows (pipeline_version=%s) — the intake worker will "
+        "re-run extract/validate/route",
+        counts.get("superseded", 0),
+        counts.get("reset", 0),
+        pipeline_version,
+    )
+    return counts
+
+
 async def run_backfill(
     pool: asyncpg.Pool,
     watermark: int,
@@ -625,6 +789,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="re-enqueue whatsapp docs the stub passthrough marked done with no proposal")
     p.add_argument("--retry-empty-pdf-ocr", action="store_true",
                    help="reset whatsapp PDFs with rasterize_failed/raw_pdf_fallback and zero OCR text")
+    p.add_argument("--retry-unschematised-supported", action="store_true",
+                   help="reset whatsapp docs skipped as unschematised but now extract-schema supported")
     p.add_argument("--quality-sample", action="store_true",
                    help="read-only redacted OCR/interpretation quality snapshot")
     p.add_argument("--quality-sample-size", type=int, default=100,
@@ -643,6 +809,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help=f"bumped pipeline_version for --revive-stub (default {DEFAULT_STUB_REVIVE_VERSION})")
     p.add_argument("--empty-pdf-ocr-version", default=DEFAULT_EMPTY_PDF_OCR_VERSION,
                    help=f"bumped pipeline_version for --retry-empty-pdf-ocr (default {DEFAULT_EMPTY_PDF_OCR_VERSION})")
+    p.add_argument("--unschematised-pipeline-version", default=DEFAULT_UNSCHEMATISED_RECOVERY_VERSION,
+                   help=f"bumped pipeline_version for --retry-unschematised-supported (default {DEFAULT_UNSCHEMATISED_RECOVERY_VERSION})")
     p.add_argument("--apply", action="store_true",
                    help="actually write (default: dry-run, counts only)")
     p.add_argument("--pipeline-version", default=DEFAULT_PIPELINE_VERSION,
@@ -666,11 +834,13 @@ async def main(argv: list[str] | None = None) -> int:
         or args.backfill
         or args.revive_stub
         or args.retry_empty_pdf_ocr
+        or args.retry_unschematised_supported
         or args.quality_sample
     ):
         logger.error(
             "nothing to do: pass --backfill and/or --reprocess and/or "
-            "--revive-stub and/or --retry-empty-pdf-ocr and/or --quality-sample"
+            "--revive-stub and/or --retry-empty-pdf-ocr and/or "
+            "--retry-unschematised-supported and/or --quality-sample"
         )
         return 2
 
@@ -698,6 +868,10 @@ async def main(argv: list[str] | None = None) -> int:
         if args.retry_empty_pdf_ocr:
             await run_retry_empty_pdf_ocr(
                 pool, args.empty_pdf_ocr_version, args.apply
+            )
+        if args.retry_unschematised_supported:
+            await run_retry_unschematised_supported(
+                pool, args.unschematised_pipeline_version, args.apply
             )
         if args.quality_sample:
             await run_quality_sample(

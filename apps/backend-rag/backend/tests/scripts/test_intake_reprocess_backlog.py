@@ -9,6 +9,9 @@ constants. The DB-side effects run on the Pro at rollout (dry-run first).
 from __future__ import annotations
 
 import importlib.util
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 # test file: apps/backend-rag/backend/tests/scripts/<this>
@@ -22,6 +25,23 @@ def _load():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def test_script_help_does_not_require_app_settings() -> None:
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "PYTHONPATH": str(_REPO_ROOT / "apps" / "backend-rag"),
+    }
+    result = subprocess.run(
+        [sys.executable, str(_SCRIPT_PATH), "--help"],
+        cwd=_REPO_ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "--retry-unschematised-supported" in result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -95,9 +115,11 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.backfill is True
     assert args.reprocess is False
     assert args.retry_empty_pdf_ocr is False
+    assert args.retry_unschematised_supported is False
     assert args.quality_sample is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.empty_pdf_ocr_version == irb.DEFAULT_EMPTY_PDF_OCR_VERSION
+    assert args.unschematised_pipeline_version == irb.DEFAULT_UNSCHEMATISED_RECOVERY_VERSION
     assert args.quality_sample_size == 100
     assert args.quality_source == "whatsapp"
     assert args.quality_pipeline_version is None
@@ -140,11 +162,37 @@ def test_parser_quality_sample_options_are_read_only() -> None:
     assert args.quality_exclude_stub is True
 
 
+def test_parser_retry_unschematised_supported_options_are_dry_run() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--retry-unschematised-supported",
+            "--unschematised-pipeline-version",
+            "v9-unschematised",
+        ]
+    )
+    assert args.apply is False
+    assert args.retry_unschematised_supported is True
+    assert args.unschematised_pipeline_version == "v9-unschematised"
+
+
 def test_quality_statuses_default_and_custom() -> None:
     irb = _load()
     assert irb._quality_statuses(None) is None
     assert irb._quality_statuses("  ") is None
     assert irb._quality_statuses("done, dead ") == ("done", "dead")
+
+
+def test_recoverable_unschematised_doc_types_follow_current_extract_schemas() -> None:
+    irb = _load()
+    doc_types = irb._recoverable_unschematised_doc_types()
+    assert "itap" in doc_types
+    assert "ktp" in doc_types
+    assert "sk_kemenkumham" in doc_types
+    assert "oss" in doc_types  # classifier emits oss, extract canonicalizes to nib
+    assert "itas" in doc_types  # classifier emits itas, extract canonicalizes to kitas
+    assert "unknown" not in doc_types
+    assert "skt" not in doc_types  # classifier knows it, extraction still does not
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +289,24 @@ def test_empty_pdf_ocr_supersede_only_touches_review_or_quarantine() -> None:
     assert "status IN ('review_pending', 'quarantine')" in sql
 
 
+def test_unschematised_supported_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.UNSCHEMATISED_SUPPORTED_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "unschematised_doc_type" in sql
+    assert "doc_type = ANY($1::text[])" in sql
+    assert "NOT EXISTS" in sql
+    assert "NOT IN ('review_pending', 'quarantine', 'superseded')" in sql
+
+
+def test_unschematised_supported_supersede_only_review_or_quarantine() -> None:
+    irb = _load()
+    sql = irb.UNSCHEMATISED_SUPPORTED_SUPERSEDE_SQL
+    assert "status = 'superseded'" in sql
+    assert "queue_id = ANY($1::bigint[])" in sql
+    assert "status IN ('review_pending', 'quarantine')" in sql
+
+
 def test_quality_sample_sql_is_bounded_and_redacted() -> None:
     irb = _load()
     sql = irb.QUALITY_SAMPLE_SQL
@@ -258,6 +324,8 @@ def test_quality_sample_sql_is_bounded_and_redacted() -> None:
     assert "unsupported_doc_type" in sql
     assert "typed_missing_fields" in sql
     assert "by_extract_skipped" in sql
+    assert "quality_issue_by_doc_type" in sql
+    assert "extract_skipped_by_doc_type" in sql
     assert "routed_no_match" in sql
     assert "last_error_category" in sql
     assert "sender_phone" not in sql
