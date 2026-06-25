@@ -34,6 +34,24 @@ def test_score_expected_fields_counts_matches_missing_and_mismatches():
     assert result["mismatched_fields"] == ["sponsor"]
 
 
+def test_score_expected_fields_treats_equivalent_date_formats_as_match():
+    fields = {
+        "expiry": {"value": "2031-06-25"},
+    }
+
+    result = ocr_quality.score_expected_fields(
+        {
+            "expiry": "25 JUN 2031",
+        },
+        fields,
+    )
+
+    assert result["score"] == 1.0
+    assert result["matched_fields"] == ["expiry"]
+    assert result["missing_fields"] == []
+    assert result["mismatched_fields"] == []
+
+
 async def test_evaluate_ocr_text_runs_current_intake_pipeline_without_live_vision():
     called = {"n": 0}
 

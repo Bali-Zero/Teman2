@@ -12,6 +12,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 from backend.services.intake import classify, extract
+from backend.utils.passport_normalize import normalize_date
 
 GenerateFn = Callable[[str, str], Awaitable[str]]
 
@@ -46,6 +47,15 @@ def _normalize_for_match(value: Any) -> str:
     return re.sub(r"\s+", " ", text)
 
 
+def _normalize_date_for_match(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return normalize_date(text)
+
+
 def _candidate_field_names(name: str, doc_type: str | None) -> tuple[str, ...]:
     aliases = _EXPECTED_FIELD_ALIASES_BY_DOC_TYPE.get(doc_type or "", {}).get(name, ())
     return (name, *aliases)
@@ -68,6 +78,7 @@ def _score_one_field(
     candidate_names: tuple[str, ...],
 ) -> tuple[str, Any, str | None]:
     expected_norm = _normalize_for_match(expected)
+    expected_date = _normalize_date_for_match(expected)
     first_actual: Any = None
     first_actual_name: str | None = None
 
@@ -79,7 +90,10 @@ def _score_one_field(
         if first_actual_name is None:
             first_actual = actual
             first_actual_name = candidate_name
-        if actual_norm == expected_norm:
+        actual_date = _normalize_date_for_match(actual)
+        if actual_norm == expected_norm or (
+            expected_date is not None and actual_date == expected_date
+        ):
             return "matched", actual, candidate_name
 
     if first_actual_name is None:
