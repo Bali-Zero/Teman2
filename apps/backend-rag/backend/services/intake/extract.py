@@ -1231,6 +1231,48 @@ def _extract_family_card_label_fields(pages: list[str]) -> dict[str, dict[str, A
     return fields
 
 
+def _extract_birth_certificate_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("birth_certificate")
+    _set_if_present(
+        fields,
+        "certificate_no",
+        _first_line_match(
+            pages,
+            r"^(?:no\.?\s*(?:akta|register|certificate)|nomor\s*(?:akta|register|certificate)|certificate\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{2,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(
+            pages,
+            r"^(?:nama\s*(?:anak|bayi)?|child\s*name|name)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "dob",
+        _first_line_match(pages, r"^(?:tanggal\s+lahir|tgl\s+lahir|date\s+of\s+birth|dob)\s*[:\-]\s*(.+)$"),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "place_of_birth",
+        _first_line_match(pages, r"^(?:tempat\s+lahir|place\s+of\s+birth)\s*[:\-]\s*(.+)$"),
+    )
+    _set_list_if_present(
+        fields,
+        "parents",
+        _first_line_match(
+            pages,
+            r"^(?:nama\s+orang\s+tua|orang\s+tua|parents?|father\s*/\s*mother)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    return fields
+
+
 def _bank_name_from_text(text: str) -> str | None:
     upper = text.upper()
     bank_aliases = (
@@ -1522,6 +1564,13 @@ def _extract_label_fields_if_routing_useful(
             ("name", "members", "address"),
         ):
             return fields, "family_card_labels"
+    if doc_type == "birth_certificate":
+        fields = _extract_birth_certificate_label_fields(pages)
+        if fields.get("certificate_no", {}).get("value") and _has_any_value(
+            fields,
+            ("name", "dob", "place_of_birth", "parents"),
+        ):
+            return fields, "birth_certificate_labels"
     if doc_type == "bank_statement":
         fields = _extract_bank_statement_label_fields(pages)
         if _has_any_value(fields, ("account_holder", "account_no")):
