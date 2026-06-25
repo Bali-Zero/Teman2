@@ -54,12 +54,38 @@ import logging
 import os
 import re
 import socket
+import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from types import ModuleType
 
 import asyncpg
 
 logger = logging.getLogger("zantara.intake.worker")
+
+
+def _install_canonical_main_alias(
+    module_name: str,
+    package: str | None,
+    modules: dict[str, ModuleType],
+) -> str | None:
+    """Keep ``python -m ...worker`` from duplicating this module.
+
+    Launchd runs this file as ``python -m backend.services.intake.worker``, which
+    executes it as ``__main__``. Later, ``stages.py`` imports
+    ``backend.services.intake.worker.TransientStageError``. Without this alias,
+    Python loads a second copy of worker.py, producing a distinct
+    ``TransientStageError`` class; transient Ollama timeouts then miss the
+    worker's ``except TransientStageError`` branch and burn retry attempts.
+    """
+    if module_name != "__main__" or not package:
+        return None
+    canonical = f"{package}.worker"
+    modules[canonical] = modules[module_name]
+    return canonical
+
+
+_install_canonical_main_alias(__name__, __package__, sys.modules)
 
 # --- Claimable status set (mirrors idx_iq_claimable in migration 224). ---
 CLAIMABLE_STATUSES: tuple[str, ...] = (

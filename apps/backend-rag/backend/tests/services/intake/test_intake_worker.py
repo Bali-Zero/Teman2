@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
+from types import ModuleType
 
 import asyncpg
 import pytest
@@ -30,6 +31,7 @@ from backend.services.intake.worker import (
     STAGE_TRANSITIONS,
     IntakeWorker,
     WorkerConfig,
+    _install_canonical_main_alias,
     reap_expired_review_claims,
     remap_legacy_statuses,
 )
@@ -41,6 +43,29 @@ _DB_URL = os.environ.get(
 
 # Number of stub stages from 'pending' to 'done'.
 _N_STAGES = len(STAGE_TRANSITIONS)
+
+
+def test_main_module_alias_prevents_transient_error_class_duplication() -> None:
+    """``python -m`` must not make stages.py import a second worker module copy."""
+    main_mod = ModuleType("__main__")
+    modules = {"__main__": main_mod}
+
+    alias = _install_canonical_main_alias(
+        "__main__", "backend.services.intake", modules
+    )
+
+    assert alias == "backend.services.intake.worker"
+    assert modules["backend.services.intake.worker"] is main_mod
+
+
+def test_main_module_alias_is_noop_on_normal_import() -> None:
+    modules = {"backend.services.intake.worker": ModuleType("worker")}
+
+    alias = _install_canonical_main_alias(
+        "backend.services.intake.worker", "backend.services.intake", modules
+    )
+
+    assert alias is None
 
 
 @pytest_asyncio.fixture
