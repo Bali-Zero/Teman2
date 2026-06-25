@@ -148,6 +148,17 @@ _THINK_PREAMBLE = re.compile(
 _FENCED_BLOCK = re.compile(r"^```(?:[a-zA-Z0-9_-]+)?\s*\n(?P<body>.*?)\n?```$", re.DOTALL)
 
 
+def _ocr_line_from_item(item: Any) -> str:
+    """Extract visible OCR text from a JSON list item."""
+    if isinstance(item, dict):
+        for key in ("text", "line", "value"):
+            value = item.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
+    return str(item).strip()
+
+
 def _salvage_thinking(thinking: str) -> str:
     """Best-effort extraction of transcription text from a reasoning preamble.
 
@@ -178,7 +189,7 @@ def _clean_ocr_response(text: str) -> str:
         return raw
 
     if isinstance(parsed, list):
-        lines = [str(item).strip() for item in parsed if str(item).strip()]
+        lines = [line for item in parsed if (line := _ocr_line_from_item(item))]
         return "\n".join(lines) if lines else raw
 
     if isinstance(parsed, dict):
@@ -189,7 +200,7 @@ def _clean_ocr_response(text: str) -> str:
         for key in ("lines", "ocr_lines"):
             value = parsed.get(key)
             if isinstance(value, list):
-                lines = [str(item).strip() for item in value if str(item).strip()]
+                lines = [line for item in value if (line := _ocr_line_from_item(item))]
                 return "\n".join(lines) if lines else raw
 
     return raw

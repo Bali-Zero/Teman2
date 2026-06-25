@@ -310,6 +310,20 @@ async def test_ocr_pages_unwraps_fenced_json_line_list_response(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_ocr_pages_unwraps_json_line_object_list_response(monkeypatch):
+    async def fake_vision(model, b64):
+        return (
+            '[{"text": "Passport No: YA1234567"}, {"line": "Name : MARIO LUCA ROSSI"}]',
+            "",
+        )
+
+    monkeypatch.setattr(cls, "_ollama_vision", fake_vision)
+    out = await cls.ocr_pages([_FakePage(0, b"x")])
+    assert out[0]["via"] == "response"
+    assert out[0]["text"] == "Passport No: YA1234567\nName : MARIO LUCA ROSSI"
+
+
+@pytest.mark.asyncio
 async def test_ocr_pages_unwraps_json_text_object_response(monkeypatch):
     async def fake_vision(model, b64):
         return ('{"text": "PAYMENT RECEIPT\\nReceipt No : TRX-2026-00077"}', "")
