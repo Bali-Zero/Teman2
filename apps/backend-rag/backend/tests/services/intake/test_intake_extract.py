@@ -498,6 +498,33 @@ async def test_sk_kemenkumham_label_fields_skip_model_call():
     assert out["fields"]["date"]["value"] == "2026-05-05"
 
 
+async def test_sk_kemenkumham_label_fields_accept_colonless_company_label():
+    """SK Kemenkumham OCR often keeps the company label but drops the separator."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "KEPUTUSAN MENTERI HUKUM DAN HAK ASASI MANUSIA REPUBLIK INDONESIA\n"
+        "Nomor AHU-0012345.AH.01.01.TAHUN 2026\n"
+        "Tentang Pengesahan Pendirian Badan Hukum Perseroan Terbatas\n"
+        "Nama Perseroan PT BALI ZERO SUKSES\n"
+        "Ditetapkan di Jakarta\n"
+        "Pada tanggal 05 Mei 2026"
+    )
+    out = await extract.extract_fields("sk_menkumham", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "sk_kemenkumham"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["sk_kemenkumham_labels"]
+    assert out["fields"]["sk_number"]["value"] == "AHU-0012345.AH.01.01.TAHUN 2026"
+    assert out["fields"]["company_name"]["value"] == "PT BALI ZERO SUKSES"
+    assert out["fields"]["date"]["value"] == "2026-05-05"
+
+
 async def test_passport_label_fields_skip_model_call():
     """Clearly-labelled passport OCR carries routing-critical fields locally."""
     called = {"n": 0}
