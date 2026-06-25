@@ -1000,6 +1000,53 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
     return fields
 
 
+def _extract_travel_ticket_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("travel_ticket")
+    _set_if_present(
+        fields,
+        "ticket_no",
+        _first_line_match(
+            pages,
+            r"^(?:ticket\s*(?:no\.?|number)|e-?ticket\s*(?:no\.?|number)|boarding\s*pass\s*(?:no\.?|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "name",
+        _first_line_match(
+            pages,
+            r"^(?:passenger\s*(?:name)?|passenger|name|nama\s*penumpang)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "travel_date",
+        _first_line_match(
+            pages,
+            r"^(?:flight\s*date|travel\s*date|departure\s*date|date|tanggal\s*(?:terbang|berangkat))\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "route",
+        _first_line_match(
+            pages,
+            r"^(?:route|rute|from\s*/\s*to|origin\s*/\s*destination)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "booking_reference",
+        _first_line_match(
+            pages,
+            r"^(?:booking\s*(?:reference|ref|code)|pnr|reservation\s*(?:code|number))\s*[:\-]\s*([A-Z0-9][A-Z0-9 .\-]{3,})$",
+        ),
+    )
+    return fields
+
+
 def _has_any_value(fields: dict[str, dict[str, Any]], names: tuple[str, ...]) -> bool:
     return any(fields.get(name, {}).get("value") for name in names)
 
@@ -1020,6 +1067,12 @@ def _payment_receipt_labels_routing_useful(fields: dict[str, dict[str, Any]]) ->
     has_payment_identifier = _has_any_value(fields, ("receipt_no", "reference"))
     has_payment_context = _has_any_value(fields, ("amount", "payment_date", "payer_name"))
     return has_payment_identifier and has_payment_context
+
+
+def _travel_ticket_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
+    has_ticket_identifier = _has_any_value(fields, ("ticket_no", "booking_reference"))
+    has_travel_context = _has_any_value(fields, ("name", "travel_date", "route"))
+    return has_ticket_identifier and has_travel_context
 
 
 def _extract_label_fields_if_routing_useful(
@@ -1054,6 +1107,10 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_payment_receipt_label_fields(pages)
         if _payment_receipt_labels_routing_useful(fields):
             return fields, "payment_receipt_labels"
+    if doc_type == "travel_ticket":
+        fields = _extract_travel_ticket_label_fields(pages)
+        if _travel_ticket_labels_routing_useful(fields):
+            return fields, "travel_ticket_labels"
     return None
 
 
