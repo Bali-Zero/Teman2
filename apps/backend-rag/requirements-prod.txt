@@ -126,6 +126,12 @@ openinference-instrumentation-anthropic>=0.1.14  # Anthropic SDK auto-trace
 openinference-instrumentation-google-genai>=0.1.16  # Auto-trace Gemini SDK
 openinference-instrumentation-openai>=0.1.45  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
+# Fuzzy name matching for accounting bank-statement reconciliation (P1).
+# MUST stay in sync with requirements.txt — the prod Docker image installs from
+# requirements-prod.lock.txt, NOT requirements.txt, so a dep added only there
+# crashes the app at boot (matcher.py: from rapidfuzz import fuzz).
+rapidfuzz>=3.14.0
+
 # Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
 # Skill, Metabolic, HGT). Editable install; path is resolved relative to the
 # working directory where `pip install -r` runs. In the Dockerfile that is
