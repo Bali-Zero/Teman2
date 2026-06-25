@@ -28,7 +28,9 @@ One-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     ``rasterize_failed,raw_pdf_fallback`` and zero OCR text are reset to
     ``pending`` with a bumped pipeline version. Existing review/quarantine
     proposals for those rows are superseded so the worker emits a fresh proposal
-    after re-OCR.
+    after re-OCR. The reset preserves FIFO urgency by making the rows visible at
+    their original ``created_at`` rather than ``now()``; otherwise this targeted
+    recovery sits behind newer pending WhatsApp jobs.
 
 Law 2 / UU-PDP: everything local (local DB, local blobs, downstream OCR is
 local Ollama). Sender phones are PII — never logged at INFO with the value.
@@ -95,6 +97,24 @@ UPDATE intake_queue
        lease_expires_at = NULL,
        attempts         = 0,
        next_visible_at  = now(),
+       stage_output     = '{}'::jsonb,
+       pipeline_version = $2
+ WHERE id = ANY($1::bigint[])
+"""
+
+# Same v2 reset contract, but for targeted retry lanes that must be observable
+# immediately in production tests. The worker orders pending WhatsApp jobs by
+# next_visible_at, so resetting historical rows to now() parks them behind newer
+# pending backlog. Using created_at preserves their original FIFO position while
+# keeping future-dated rows safe.
+PRIORITY_RETRY_RESET_SQL = """
+UPDATE intake_queue
+   SET status           = 'pending',
+       stage            = NULL,
+       lease_owner      = NULL,
+       lease_expires_at = NULL,
+       attempts         = 0,
+       next_visible_at  = LEAST(COALESCE(created_at, now()), now()),
        stage_output     = '{}'::jsonb,
        pipeline_version = $2
  WHERE id = ANY($1::bigint[])
@@ -327,7 +347,7 @@ async def run_retry_empty_pdf_ocr(
 
         async with conn.transaction():
             superseded = await conn.execute(EMPTY_PDF_OCR_SUPERSEDE_SQL, queue_ids)
-            reset = await conn.execute(REPROCESS_RESET_SQL, queue_ids, pipeline_version)
+            reset = await conn.execute(PRIORITY_RETRY_RESET_SQL, queue_ids, pipeline_version)
         counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
         counts["reset"] = int(reset.split()[-1]) if reset else 0
 

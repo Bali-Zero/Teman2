@@ -136,6 +136,21 @@ def test_reset_sql_matches_v2_worker_contract() -> None:
     assert "pipeline_version = $2" in sql  # the bump that mints fresh routing keys
 
 
+def test_priority_retry_reset_frontloads_historical_rows() -> None:
+    irb = _load()
+    sql = irb.PRIORITY_RETRY_RESET_SQL
+    # Same reset shape, but targeted OCR retry must not sit behind newer pending
+    # WhatsApp backlog; created_at preserves FIFO urgency for historical rows.
+    assert "status           = 'pending'" in sql
+    assert "stage            = NULL" in sql
+    assert "lease_owner      = NULL" in sql
+    assert "lease_expires_at = NULL" in sql
+    assert "attempts         = 0" in sql
+    assert "next_visible_at  = LEAST(COALESCE(created_at, now()), now())" in sql
+    assert "'{}'::jsonb" in sql
+    assert "pipeline_version = $2" in sql
+
+
 def test_backfill_select_is_anti_join_below_watermark() -> None:
     irb = _load()
     sql = irb.BACKFILL_SELECT_SQL
