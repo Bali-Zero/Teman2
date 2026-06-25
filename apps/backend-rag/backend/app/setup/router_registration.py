@@ -159,6 +159,7 @@ def include_routers(api: FastAPI) -> None:
         workflow_queue,
         workspace_analytics,
         workspace_inbox,  # /api/workspace/inbox unified team feed (wa-mirror, telegram, email)
+        wr2_publish,  # [WR2 LEGGE 5] /api/war-room/publish-ig server-side operator-gated IG publish
         zoho_email,
     )
 
@@ -276,6 +277,7 @@ def include_routers(api: FastAPI) -> None:
     # Analytics routers (Admin/reporting)
     api.include_router(analytics.router)
     api.include_router(war_room_dashboard.router)
+    api.include_router(wr2_publish.router)  # [WR2 LEGGE 5] /api/war-room/publish-ig
     api.include_router(workspace_analytics.router)
 
     # SOTA research controls (kill-switch guarded)
@@ -593,6 +595,7 @@ def include_light_routers(api: FastAPI) -> None:
         workflow_queue,
         workspace_analytics,
         workspace_inbox,  # /api/workspace/inbox unified team feed
+        wr2_publish,  # [WR2 LEGGE 5] /api/war-room/publish-ig server-side operator-gated IG publish
         zoho_email,
     )
 
@@ -697,6 +700,7 @@ def include_light_routers(api: FastAPI) -> None:
     # Analytics routers
     api.include_router(analytics.router)
     api.include_router(war_room_dashboard.router)
+    api.include_router(wr2_publish.router)  # [WR2 LEGGE 5] /api/war-room/publish-ig
     api.include_router(workspace_analytics.router)
 
     # SOTA research controls (kill-switch guarded)
