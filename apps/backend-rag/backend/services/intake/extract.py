@@ -972,7 +972,7 @@ def _extract_akta_pendirian_label_fields(pages: list[str]) -> dict[str, dict[str
         "company_name",
         _first_line_match(
             pages,
-            r"^(?:nama\s+perseroan|nama\s+perusahaan|company\s+name)\s*[:\-]\s*(PT\s+.+)$",
+            r"^(?:nama\s+perseroan|nama\s+perusahaan|company\s+name)(?:\s*[:\-]\s*|\s+)(PT\s+.+)$",
         )
         or _first_line_match(pages, r"^(PT\s+[A-Z0-9][A-Z0-9 .,&'/-]{2,})$"),
     )
@@ -1008,7 +1008,7 @@ def _extract_profil_perseroan_label_fields(pages: list[str]) -> dict[str, dict[s
         "company_name",
         _first_line_match(
             pages,
-            r"^(?:nama\s+perseroan|nama\s+perusahaan|company\s+name)\s*[:\-]\s*(PT\s+.+)$",
+            r"^(?:nama\s+perseroan|nama\s+perusahaan|company\s+name)(?:\s*[:\-]\s*|\s+)(PT\s+.+)$",
         )
         or _first_line_match(pages, r"^(PT\s+[A-Z0-9][A-Z0-9 .,&'/-]{2,})$"),
     )
