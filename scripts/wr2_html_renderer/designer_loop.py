@@ -179,38 +179,41 @@ def _is_composition_only_lever(lever_names: set[str]) -> bool:
     return bool(lever_names) and lever_names <= _COMPOSITION_LEVERS
 
 
-# A typographic-orphan marker ("sits alone", "stranded", "widow") describes a
-# TEXT element on a line. The SAME words describe a composition element ("the
-# logo sits alone", "the mark is stranded"). Superscar #3 (over-match on form,
-# not entity): "sits alone" matched a LOGO-isolation critique and mis-graded a
-# pure composition residual as a HARD typographic orphan, blocking the render.
-# Gate on the SUBJECT: an orphan claim is typographic only when it is about text
-# (word/line/title/headline/wrap/caption), not when it is about a non-text
-# layout element (logo/mark/image/photo/icon/element) with no text context.
-_ORPHAN_TEXT_SUBJECTS = (
-    # true typographic subjects — a wrap/line/word of TEXT. Deliberately excludes
-    # bare "text" (it matches "text block"/"text element" — a composition
-    # reference inside a logo/image critique, not a typographic-orphan subject).
-    "word", "line", "title", "headline", "heading", "wrap", "caption",
-    "sentence", "tail", "row", "label", "last line", "middle line",
-    "on its own line", "on the line",
+# Superscar #3 cure (4th over-match): identify a typographic orphan POSITIVELY,
+# don't blacklist metaphors. A real orphan is a unit of running TEXT that wrapped
+# or landed badly on a line. "decorative orphan", "logo sits alone", "image
+# stranded", "divider stranded" reuse the same words for SPATIAL isolation of a
+# layout element — they carry no text-unit, so they are composition, not orphans.
+
+# A unit of running text that can wrap badly.
+_ORPHAN_TEXT_UNITS = (
+    "word", "line", "title", "headline", "heading", "sentence",
+    "tail", "caption", "body copy",
 )
-_ORPHAN_NONTEXT_SUBJECTS = (
-    "logo", "mark", "image", "photo", "icon", "graphic", "element",
-    "badge", "emblem", "watermark",
+# How that text unit failed to land — the "bad-landing" predicate.
+_ORPHAN_BAD_LANDING = (
+    "orphan", "stub", "widow", "stranded", "sits alone",
+    "alone on line", "alone on the line", "dangling", "ragged",
+    "short tail", "short last line", "wraps", "wrapped", "wrap",
+    "rewrap", "re-wrap", "extra line", "line stub", "3-line", "4-line",
+    "two-line", "three-line", "on its own line", "on the line",
 )
 
 
-def _orphan_subject_is_text(low: str) -> bool:
-    """True unless the orphan claim is clearly about a NON-text layout element.
+def _is_typographic_orphan(low: str) -> bool:
+    """Positive identification of a TEXT orphan (superscar #3 cure).
 
-    Default-True (fail toward the existing strict behavior): only when the claim
-    names a non-text subject AND names no text subject do we treat the
-    "sits alone"/"stranded" wording as composition, not a typographic orphan.
+    True iff an explicit one-word marker is present, OR a text-unit token
+    co-occurs with a bad-landing predicate. A bare bad-landing word with no
+    text-unit ("decorative orphan", "logo sits alone", "divider stranded") is a
+    composition metaphor, not a typographic orphan — keys on INTENT, not phrase.
     """
-    has_nontext = _contains_any_word(low, _ORPHAN_NONTEXT_SUBJECTS)
-    has_text = _contains_any_word(low, _ORPHAN_TEXT_SUBJECTS)
-    return has_text or not has_nontext
+    if _contains_any_word(low, _ONE_WORD_ORPHAN_MARKERS):
+        return True
+    return (
+        _contains_any_word(low, _ORPHAN_TEXT_UNITS)
+        and _contains_any_word(low, _ORPHAN_BAD_LANDING)
+    )
 
 
 def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
@@ -225,12 +228,8 @@ def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
       - if NO re-wrap was attempted, an orphan claim is a real unfixed defect
         → HARD (fail-safe toward the strict gate).
     """
-    if not _contains_any_word(low, _ORPHAN_MARKERS):
-        return False, False  # not an orphan/stub/wrap claim at all
-    # Superscar #3 entity-gate: "sits alone"/"stranded" about a LOGO/mark/image is
-    # a composition critique, not a typographic orphan. Only text subjects qualify.
-    if not _orphan_subject_is_text(low):
-        return False, False
+    if not _is_typographic_orphan(low):
+        return False, False  # not a TEXT orphan (or a composition metaphor)
     # a genuine 1-word orphan is a real defect regardless of re-wrap state.
     if _contains_any_word(low, _ONE_WORD_ORPHAN_MARKERS):
         return True, True
