@@ -4,7 +4,7 @@ Portal Billing Router.
 Exposes invoice data to client portal via PortalService.
 """
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import asyncpg
@@ -14,7 +14,11 @@ from fastapi.responses import Response
 from backend.app.dependencies import get_database_pool
 from backend.app.routers.portal import get_current_client
 from backend.app.utils.logging_utils import get_logger
-from backend.services.portal import PortalService
+
+if TYPE_CHECKING:
+    from backend.services.portal import PortalService
+else:
+    PortalService = Any
 
 logger = get_logger(__name__)
 
@@ -22,7 +26,9 @@ router = APIRouter(prefix="/api/portal/billing", tags=["portal-billing"])
 
 
 def _get_portal_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> PortalService:
-    return PortalService(db_pool)
+    from backend.services.portal import PortalService as _PortalService
+
+    return _PortalService(db_pool)
 
 
 @router.get("")

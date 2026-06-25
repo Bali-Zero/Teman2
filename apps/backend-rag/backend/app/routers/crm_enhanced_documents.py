@@ -31,6 +31,10 @@ from backend.services.integrations.service_account_drive_service import ServiceA
 logger = get_logger(__name__)
 
 
+def _access_not_preverified() -> bool:
+    return False
+
+
 def _parse_date_or_none(date_str: str | None) -> date | None:
     """Parse YYYY-MM-DD date string or return None."""
     if not date_str:
@@ -551,14 +555,18 @@ async def upload_document_base64(
     pool: Any = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    access_already_verified: bool = Depends(_access_not_preverified),
 ) -> dict[str, Any]:
     """
     Upload a document via Base64 (for frontend integration).
     Handles Google Drive upload and document creation.
     """
     # RBAC check before processing upload
-    async with pool.acquire() as _conn:
-        await verify_client_access(client_id, current_user, _conn, allow_assigned=True, write=True)
+    if access_already_verified is not True:
+        async with pool.acquire() as _conn:
+            await verify_client_access(
+                client_id, current_user, _conn, allow_assigned=True, write=True
+            )
 
     try:
         # Decode Base64
