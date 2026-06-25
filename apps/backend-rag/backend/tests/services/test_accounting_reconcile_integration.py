@@ -1,6 +1,6 @@
 """Integration test for the reconcile confirm service against a real Postgres.
 
-Applies migration 232 to an ephemeral DB, seeds a practice + invoice + bank
+Applies migration 238 to an ephemeral DB, seeds a practice + invoice + bank
 transaction, runs confirm_payment(), and asserts every side effect: practice
 status/paid_amount, invoice payment fields, bank txn reconciled, weekly_cashout
 row with decomposition, and the immutable reconciliation_log row.
@@ -24,7 +24,7 @@ from backend.services.accounting.reconcile_service import confirm_payment
 
 MIGRATION = (
     Path(__file__).resolve().parents[2]
-    / "db" / "migrations_v2" / "232_accounting_asya.sql"
+    / "db" / "migrations_v2" / "238_accounting_asya.sql"
 )
 
 STUBS = """

@@ -1,6 +1,6 @@
 """
 Accounting Module Data Layer
-SQLModel models for the cash-control workflow (migration 232_accounting_asya.sql).
+SQLModel models for the cash-control workflow (migration 238_accounting_asya.sql).
 
 Single-entry, cash-basis, IDR-native (USD per-line with explicit FX). Mirrors
 Asya's real "Weekly Cashout 2026" Google Sheet. See

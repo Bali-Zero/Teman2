@@ -4,7 +4,7 @@ P0: read-only views (cashout log, bank transactions, cashbook summary).
 P1 adds: statement upload, reconciliation matching, payment confirm.
 
 RBAC: gated to CRM admins (asya@balizero.com is already in CRM_EXTRA_ADMIN_EMAILS)
-via is_crm_admin(). Money is IDR. See migration 232_accounting_asya.sql.
+via is_crm_admin(). Money is IDR. See migration 238_accounting_asya.sql.
 """
 
 from __future__ import annotations
