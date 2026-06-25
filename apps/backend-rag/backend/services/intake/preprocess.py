@@ -349,6 +349,14 @@ _WORD_MIMES = frozenset(
     }
 )
 
+_TEXT_MIMES = frozenset(
+    {
+        "text/plain",
+        "text/csv",
+        "application/csv",
+    }
+)
+
 
 def _extract_docx_text_sync(blob_path: str) -> str | None:
     """Extract the text layer from a .docx via python-docx. None on failure.
@@ -366,6 +374,23 @@ def _extract_docx_text_sync(blob_path: str) -> str | None:
     except Exception as exc:  # broad: any parse failure -> graceful fallthrough
         logger.warning("docx text extract failed for %s: %s", blob_path, exc)
         return None
+
+
+def _decode_plain_text_sync(raw: bytes) -> str | None:
+    """Decode local text-ish blobs into a born-digital text layer.
+
+    WhatsApp/Drive can deliver .txt/.csv intake evidence as plain files. Treating
+    those bytes as an image sends garbage to the VLM and lands real text in
+    unknown. Decode locally and let ocr_pages consume it like a PDF text layer.
+    """
+    for encoding in ("utf-8-sig", "utf-16", "latin-1"):
+        try:
+            text = raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        if text and text.strip():
+            return text
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -444,7 +469,7 @@ async def preprocess_blob(
         # review), never a stage crash.
         text = await asyncio.to_thread(_extract_docx_text_sync, blob_path)
         if text is None:
-            logger.warning("preprocess: word doc unreadable %s (mime=%s)", blob_path, mime)
+            logger.warning("preprocess: word doc unreadable (mime=%s)", mime)
             return PreprocessResult(
                 pages=[PageImage(index=0, png_bytes=b"", enhanced=False, text=None)],
                 n_pages=1,
@@ -456,6 +481,22 @@ async def preprocess_blob(
             n_pages=1,
             mime=mime,
             notes="word_textlayer",
+        )
+    elif mime in _TEXT_MIMES:
+        text = await asyncio.to_thread(_decode_plain_text_sync, raw)
+        if text is None:
+            logger.warning("preprocess: text blob unreadable (mime=%s)", mime)
+            return PreprocessResult(
+                pages=[PageImage(index=0, png_bytes=b"", enhanced=False, text=None)],
+                n_pages=1,
+                mime=mime,
+                notes="text_extract_failed",
+            )
+        return PreprocessResult(
+            pages=[PageImage(index=0, png_bytes=b"", enhanced=False, text=text)],
+            n_pages=1,
+            mime=mime,
+            notes="text_textlayer",
         )
     else:
         # Unknown/unsupported format -- pass raw bytes through; OCR may cope.
