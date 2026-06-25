@@ -76,6 +76,7 @@ DEFAULT_PIPELINE_VERSION = "v2.1-retro"
 DEFAULT_STUB_REVIVE_VERSION = "v2.1-stub-revive"
 DEFAULT_EMPTY_PDF_OCR_VERSION = "v2.2-empty-pdf-ocr"
 DEFAULT_UNSCHEMATISED_RECOVERY_VERSION = "v2.3-unschematised-retry"
+DEFAULT_TYPED_MISSING_FIELDS_VERSION = "v2.4-typed-fields-retry"
 DEFAULT_MEDIA_TYPES = ("document", "image")
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
@@ -223,6 +224,39 @@ ORDER BY q.id
 """
 
 UNSCHEMATISED_SUPPORTED_SUPERSEDE_SQL = """
+UPDATE document_routing_proposal
+   SET status = 'superseded'
+ WHERE queue_id = ANY($1::bigint[])
+   AND status IN ('review_pending', 'quarantine')
+"""
+
+TYPED_MISSING_FIELDS_SELECT_SQL = """
+SELECT q.id
+FROM intake_queue q
+CROSS JOIN LATERAL (
+    SELECT
+        COALESCE(NULLIF(q.stage_output->'classify'->>'doc_type', ''), 'missing') AS doc_type,
+        COALESCE((
+            SELECT COUNT(*)
+            FROM jsonb_each(COALESCE(q.stage_output->'extract'->'fields', '{}'::jsonb)) AS field(key, value)
+            WHERE NULLIF(trim(COALESCE(value->>'value', '')), '') IS NOT NULL
+        ), 0) AS filled_fields
+) extracted
+WHERE q.source = 'whatsapp'
+  AND q.status IN ('extracted', 'validated', 'done')
+  AND extracted.doc_type = ANY($1::text[])
+  AND extracted.doc_type NOT IN ('unknown', 'missing')
+  AND extracted.filled_fields = 0
+  AND NOT EXISTS (
+      SELECT 1
+      FROM document_routing_proposal p
+      WHERE p.queue_id = q.id
+        AND p.status NOT IN ('review_pending', 'quarantine', 'superseded')
+  )
+ORDER BY q.id
+"""
+
+TYPED_MISSING_FIELDS_SUPERSEDE_SQL = """
 UPDATE document_routing_proposal
    SET status = 'superseded'
  WHERE queue_id = ANY($1::bigint[])
@@ -492,9 +526,12 @@ def _literal_assigned_value(module_path: Path, name: str) -> Any:
         if isinstance(node, ast.Assign):
             if any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
                 value = node.value
-        elif isinstance(node, ast.AnnAssign):
-            if isinstance(node.target, ast.Name) and node.target.id == name:
-                value = node.value
+        elif (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == name
+        ):
+            value = node.value
         if value is not None:
             return ast.literal_eval(value)
     raise RuntimeError(f"{name} not found in {module_path}")
@@ -700,6 +737,60 @@ async def run_retry_unschematised_supported(
     return counts
 
 
+async def run_retry_typed_missing_fields(
+    pool: asyncpg.Pool, pipeline_version: str, apply: bool
+) -> dict[str, int]:
+    """Reset WhatsApp rows with known doc_type but zero extracted fields."""
+    doc_types = _recoverable_unschematised_doc_types()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(TYPED_MISSING_FIELDS_SELECT_SQL, list(doc_types))
+        queue_ids = [r["id"] for r in rows]
+        counts = {"queue_rows": len(queue_ids), "doc_types": len(doc_types)}
+        if not apply:
+            if queue_ids:
+                proposal_count = await conn.fetchval(
+                    """
+                    SELECT count(*)
+                    FROM document_routing_proposal
+                    WHERE queue_id = ANY($1::bigint[])
+                      AND status IN ('review_pending', 'quarantine')
+                    """,
+                    queue_ids,
+                )
+            else:
+                proposal_count = 0
+            counts["active_proposals"] = int(proposal_count or 0)
+            logger.info(
+                "[retry-typed-missing-fields][DRY-RUN] would supersede %d "
+                "review/quarantine proposals and reset %d typed whatsapp rows "
+                "with zero extracted fields across %d supported doc_type labels "
+                "to pipeline_version=%s (pass --apply)",
+                counts["active_proposals"],
+                counts["queue_rows"],
+                counts["doc_types"],
+                pipeline_version,
+            )
+            return counts
+
+        async with conn.transaction():
+            superseded = await conn.execute(
+                TYPED_MISSING_FIELDS_SUPERSEDE_SQL, queue_ids
+            )
+            reset = await conn.execute(PRIORITY_RETRY_RESET_SQL, queue_ids, pipeline_version)
+        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[retry-typed-missing-fields] superseded=%d proposals, reset=%d "
+        "typed whatsapp rows with zero extracted fields (pipeline_version=%s) — "
+        "the intake worker will re-run extract/validate/route",
+        counts.get("superseded", 0),
+        counts.get("reset", 0),
+        pipeline_version,
+    )
+    return counts
+
+
 async def run_backfill(
     pool: asyncpg.Pool,
     watermark: int,
@@ -791,6 +882,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="reset whatsapp PDFs with rasterize_failed/raw_pdf_fallback and zero OCR text")
     p.add_argument("--retry-unschematised-supported", action="store_true",
                    help="reset whatsapp docs skipped as unschematised but now extract-schema supported")
+    p.add_argument("--retry-typed-missing-fields", action="store_true",
+                   help="reset typed whatsapp docs whose extract stage produced zero fields")
     p.add_argument("--quality-sample", action="store_true",
                    help="read-only redacted OCR/interpretation quality snapshot")
     p.add_argument("--quality-sample-size", type=int, default=100,
@@ -811,6 +904,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help=f"bumped pipeline_version for --retry-empty-pdf-ocr (default {DEFAULT_EMPTY_PDF_OCR_VERSION})")
     p.add_argument("--unschematised-pipeline-version", default=DEFAULT_UNSCHEMATISED_RECOVERY_VERSION,
                    help=f"bumped pipeline_version for --retry-unschematised-supported (default {DEFAULT_UNSCHEMATISED_RECOVERY_VERSION})")
+    p.add_argument("--typed-missing-fields-version", default=DEFAULT_TYPED_MISSING_FIELDS_VERSION,
+                   help=f"bumped pipeline_version for --retry-typed-missing-fields (default {DEFAULT_TYPED_MISSING_FIELDS_VERSION})")
     p.add_argument("--apply", action="store_true",
                    help="actually write (default: dry-run, counts only)")
     p.add_argument("--pipeline-version", default=DEFAULT_PIPELINE_VERSION,
@@ -835,12 +930,14 @@ async def main(argv: list[str] | None = None) -> int:
         or args.revive_stub
         or args.retry_empty_pdf_ocr
         or args.retry_unschematised_supported
+        or args.retry_typed_missing_fields
         or args.quality_sample
     ):
         logger.error(
             "nothing to do: pass --backfill and/or --reprocess and/or "
             "--revive-stub and/or --retry-empty-pdf-ocr and/or "
-            "--retry-unschematised-supported and/or --quality-sample"
+            "--retry-unschematised-supported and/or --retry-typed-missing-fields "
+            "and/or --quality-sample"
         )
         return 2
 
@@ -872,6 +969,10 @@ async def main(argv: list[str] | None = None) -> int:
         if args.retry_unschematised_supported:
             await run_retry_unschematised_supported(
                 pool, args.unschematised_pipeline_version, args.apply
+            )
+        if args.retry_typed_missing_fields:
+            await run_retry_typed_missing_fields(
+                pool, args.typed_missing_fields_version, args.apply
             )
         if args.quality_sample:
             await run_quality_sample(

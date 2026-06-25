@@ -42,6 +42,7 @@ def test_script_help_does_not_require_app_settings() -> None:
     )
     assert result.returncode == 0, result.stderr + result.stdout
     assert "--retry-unschematised-supported" in result.stdout
+    assert "--retry-typed-missing-fields" in result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -116,10 +117,12 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.reprocess is False
     assert args.retry_empty_pdf_ocr is False
     assert args.retry_unschematised_supported is False
+    assert args.retry_typed_missing_fields is False
     assert args.quality_sample is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.empty_pdf_ocr_version == irb.DEFAULT_EMPTY_PDF_OCR_VERSION
     assert args.unschematised_pipeline_version == irb.DEFAULT_UNSCHEMATISED_RECOVERY_VERSION
+    assert args.typed_missing_fields_version == irb.DEFAULT_TYPED_MISSING_FIELDS_VERSION
     assert args.quality_sample_size == 100
     assert args.quality_source == "whatsapp"
     assert args.quality_pipeline_version is None
@@ -174,6 +177,20 @@ def test_parser_retry_unschematised_supported_options_are_dry_run() -> None:
     assert args.apply is False
     assert args.retry_unschematised_supported is True
     assert args.unschematised_pipeline_version == "v9-unschematised"
+
+
+def test_parser_retry_typed_missing_fields_options_are_dry_run() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--retry-typed-missing-fields",
+            "--typed-missing-fields-version",
+            "v9-typed-fields",
+        ]
+    )
+    assert args.apply is False
+    assert args.retry_typed_missing_fields is True
+    assert args.typed_missing_fields_version == "v9-typed-fields"
 
 
 def test_quality_statuses_default_and_custom() -> None:
@@ -302,6 +319,27 @@ def test_unschematised_supported_select_guards_are_all_present() -> None:
 def test_unschematised_supported_supersede_only_review_or_quarantine() -> None:
     irb = _load()
     sql = irb.UNSCHEMATISED_SUPPORTED_SUPERSEDE_SQL
+    assert "status = 'superseded'" in sql
+    assert "queue_id = ANY($1::bigint[])" in sql
+    assert "status IN ('review_pending', 'quarantine')" in sql
+
+
+def test_typed_missing_fields_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.TYPED_MISSING_FIELDS_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "status IN ('extracted', 'validated', 'done')" in sql
+    assert "doc_type = ANY($1::text[])" in sql
+    assert "NOT IN ('unknown', 'missing')" in sql
+    assert "jsonb_each" in sql
+    assert "filled_fields = 0" in sql
+    assert "NOT EXISTS" in sql
+    assert "NOT IN ('review_pending', 'quarantine', 'superseded')" in sql
+
+
+def test_typed_missing_fields_supersede_only_review_or_quarantine() -> None:
+    irb = _load()
+    sql = irb.TYPED_MISSING_FIELDS_SUPERSEDE_SQL
     assert "status = 'superseded'" in sql
     assert "queue_id = ANY($1::bigint[])" in sql
     assert "status IN ('review_pending', 'quarantine')" in sql
