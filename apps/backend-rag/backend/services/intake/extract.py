@@ -1360,27 +1360,33 @@ def _extract_birth_certificate_label_fields(pages: list[str]) -> dict[str, dict[
         "name",
         _first_line_match(
             pages,
-            r"^(?:nama\s*(?:anak|bayi)?|child\s*name|name)\s*[:\-]\s*(.+)$",
+            r"^(?:nama\s*(?:anak|bayi)?|child\s*name|name)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         person_name=True,
     )
     _set_if_present(
         fields,
         "dob",
-        _first_line_match(pages, r"^(?:tanggal\s+lahir|tgl\s+lahir|date\s+of\s+birth|dob)\s*[:\-]\s*(.+)$"),
+        _first_line_match(
+            pages,
+            r"^(?:tanggal\s+lahir|tgl\s+lahir|date\s+of\s+birth|dob)(?:\s*[:\-]\s*|\s+)(.+)$",
+        ),
         date=True,
     )
     _set_if_present(
         fields,
         "place_of_birth",
-        _first_line_match(pages, r"^(?:tempat\s+lahir|place\s+of\s+birth)\s*[:\-]\s*(.+)$"),
+        _first_line_match(
+            pages,
+            r"^(?:tempat\s+lahir|place\s+of\s+birth)(?:\s*[:\-]\s*|\s+)(.+)$",
+        ),
     )
     _set_list_if_present(
         fields,
         "parents",
         _first_line_match(
             pages,
-            r"^(?:nama\s+orang\s+tua|orang\s+tua|parents?|father\s*/\s*mother)\s*[:\-]\s*(.+)$",
+            r"^(?:nama\s+orang\s+tua|orang\s+tua|parents?|father\s*/\s*mother)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         person_name=True,
     )

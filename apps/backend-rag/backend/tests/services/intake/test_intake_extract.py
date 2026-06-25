@@ -883,6 +883,35 @@ async def test_birth_certificate_label_fields_skip_model_call():
     assert out["fields"]["parents"]["value"] == ["Made Parent", "Wayan Parent"]
 
 
+async def test_birth_certificate_label_fields_accept_colonless_ocr_labels():
+    """Birth-certificate OCR often keeps labels but drops separators."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "AKTA KELAHIRAN\n"
+        "No. Akta AK-2026-0001\n"
+        "Nama Anak WAYAN CHILD\n"
+        "Tempat Lahir DENPASAR\n"
+        "Tanggal Lahir 01 Januari 2020\n"
+        "Nama Orang Tua MADE PARENT; WAYAN PARENT"
+    )
+    out = await extract.extract_fields("akta_kelahiran", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "birth_certificate"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["birth_certificate_labels"]
+    assert out["fields"]["certificate_no"]["value"] == "AK-2026-0001"
+    assert out["fields"]["name"]["value"] == "Wayan Child"
+    assert out["fields"]["dob"]["value"] == "2020-01-01"
+    assert out["fields"]["place_of_birth"]["value"] == "DENPASAR"
+    assert out["fields"]["parents"]["value"] == ["Made Parent", "Wayan Parent"]
+
+
 async def test_birth_certificate_label_fields_split_comma_separated_parents():
     """OCR often emits parent lists as comma-separated label values."""
     called = {"n": 0}
