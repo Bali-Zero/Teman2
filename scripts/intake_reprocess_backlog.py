@@ -32,7 +32,7 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     ``whatsapp_message_context`` group chats.
 
 ``--backfill-source-context``
-    Existing wa-mirror queue rows may predate migration 232. This mode annotates
+    Existing wa-mirror queue rows may predate migration 240. This mode annotates
     them with PII-safe transport context (direct/group + identity policy) without
     copying raw group JIDs, raw group subjects, or extra phone values.
 

@@ -1,4 +1,4 @@
--- Migration 232: intake_queue.source_context — PII-safe transport provenance.
+-- Migration 240: intake_queue.source_context — PII-safe transport provenance.
 --
 -- `stage_output` belongs to the OCR/classify/extract/validate/route pipeline and
 -- is deliberately reset when a document is reprocessed. Transport provenance is
@@ -11,16 +11,16 @@
 --   - no raw group subject, because subjects can contain client/team names;
 --   - hashes/booleans/policy labels only.
 --
--- On the Pro apply manually like 212-231:
+-- On the Pro apply manually like 212-239:
 --   psql postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev \
---     -f apps/backend-rag/backend/db/migrations_v2/232_intake_queue_source_context.sql
+--     -f apps/backend-rag/backend/db/migrations_v2/240_intake_queue_source_context.sql
 -- === FORWARD ===
 
 ALTER TABLE intake_queue
     ADD COLUMN IF NOT EXISTS source_context JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 COMMENT ON COLUMN intake_queue.source_context IS
-    'PII-safe source provenance and routing policy context (migration 232), e.g. WA mirror direct/group scope. No raw group JID/subject/extra phone data.';
+    'PII-safe source provenance and routing policy context (migration 240), e.g. WA mirror direct/group scope. No raw group JID/subject/extra phone data.';
 
 CREATE INDEX IF NOT EXISTS idx_iq_source_context_chat_type
     ON intake_queue ((source_context->>'chat_type'))

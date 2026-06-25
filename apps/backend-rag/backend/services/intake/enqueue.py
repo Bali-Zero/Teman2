@@ -151,7 +151,7 @@ async def enqueue(
             #    source_path (m227) records WHERE the blob came from relative to
             #    the watched Drive root (folder name = client-name signal; NULL
             #    for whatsapp/zoho).
-            #    source_context (m232) records PII-safe transport context such as
+            #    source_context (m240) records PII-safe transport context such as
             #    WA mirror direct/group scope. It is NOT stage output and survives
             #    worker reprocess resets.
             queue_id = await conn.fetchval(
