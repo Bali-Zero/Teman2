@@ -1132,6 +1132,35 @@ async def test_travel_ticket_label_fields_skip_model_call():
     assert out["fields"]["booking_reference"]["value"] == "ABC123"
 
 
+async def test_travel_ticket_label_fields_accept_colonless_ocr_labels():
+    """Travel tickets stay deterministic when OCR drops label separators."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "BOARDING PASS\n"
+        "Passenger Name MARIO ROSSI\n"
+        "Ticket No TKT-2026-12345\n"
+        "Flight Date 2026-07-01\n"
+        "Route DPS-SIN\n"
+        "Booking Reference ABC123"
+    )
+    out = await extract.extract_fields("boarding_pass", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "travel_ticket"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["travel_ticket_labels"]
+    assert out["fields"]["ticket_no"]["value"] == "TKT-2026-12345"
+    assert out["fields"]["name"]["value"] == "Mario Rossi"
+    assert out["fields"]["travel_date"]["value"] == "2026-07-01"
+    assert out["fields"]["route"]["value"] == "DPS-SIN"
+    assert out["fields"]["booking_reference"]["value"] == "ABC123"
+
+
 async def test_medical_insurance_label_fields_skip_model_call():
     """Medical insurance policies can expose coverage fields in labels."""
     called = {"n": 0}
