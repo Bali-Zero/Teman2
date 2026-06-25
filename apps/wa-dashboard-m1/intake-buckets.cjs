@@ -67,11 +67,62 @@ function buildDirectActionSummary(rows) {
   return summary;
 }
 
+function buildQwenBatchGateSummary(directActionSummary, probeSnapshot) {
+  const candidateDocs = Number(directActionSummary?.needs_text_parser_qwen_candidate || 0);
+  const qwenSample = probeSnapshot?.qwen_text_sample || probeSnapshot || null;
+  const gate = qwenSample?.acceptance_gate || null;
+  const generatedAt = probeSnapshot?.generated_at || null;
+
+  if (!candidateDocs) {
+    return {
+      status: "no_candidates",
+      reason: "no_text_parser_candidates",
+      candidate_docs: 0,
+      sampled_docs: Number(qwenSample?.attempted || 0),
+      classified_attempts: Number(gate?.classified_attempts || qwenSample?.classified_attempts || 0),
+      candidate_rate: Number(gate?.candidate_rate || 0),
+      min_candidate_rate: Number(gate?.min_candidate_rate || 0.25),
+      kita_workspace_candidates: Number(qwenSample?.kita_workspace_candidates || 0),
+      review_after_qwen: Number(qwenSample?.review_after_qwen || 0),
+      generated_at: generatedAt,
+    };
+  }
+
+  if (!gate) {
+    return {
+      status: "probe_required",
+      reason: "no_qwen_probe_snapshot",
+      candidate_docs: candidateDocs,
+      sampled_docs: 0,
+      classified_attempts: 0,
+      candidate_rate: 0,
+      min_candidate_rate: 0.25,
+      kita_workspace_candidates: 0,
+      review_after_qwen: 0,
+      generated_at: null,
+    };
+  }
+
+  return {
+    status: String(gate.status || "probe_required"),
+    reason: String(gate.reason || "unknown"),
+    candidate_docs: candidateDocs,
+    sampled_docs: Number(qwenSample.attempted || 0),
+    classified_attempts: Number(gate.classified_attempts || qwenSample.classified_attempts || 0),
+    candidate_rate: Number(gate.candidate_rate || 0),
+    min_candidate_rate: Number(gate.min_candidate_rate || 0.25),
+    kita_workspace_candidates: Number(qwenSample.kita_workspace_candidates || 0),
+    review_after_qwen: Number(qwenSample.review_after_qwen || 0),
+    generated_at: generatedAt,
+  };
+}
+
 module.exports = {
   HIGH_CONFIDENCE_THRESHOLD,
   TEXT_PARSER_MIN_CHARS,
   actionBucketForRow,
   buildDirectActionSummary,
+  buildQwenBatchGateSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 };

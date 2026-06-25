@@ -9,6 +9,7 @@ const metrics = require("./metrics.cjs");
 const {
   actionBucketForRow,
   buildDirectActionSummary,
+  buildQwenBatchGateSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 } = require("./intake-buckets.cjs");
@@ -30,6 +31,8 @@ const ACCOUNTS_JSON =
 
 const MEDIA_ROOT = process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
 const TEAM_AVATAR_DIR = process.env.WA_TEAM_AVATAR_DIR || "/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/static/team";
+const QWEN_GATE_SNAPSHOT =
+  process.env.INTAKE_QWEN_GATE_SNAPSHOT || "/tmp/intake-qwen-gate-snapshot.json";
 
 // Team members hidden from views (parity with conversations columns; Law-2 perimeter).
 const HIDE_TEAM_NAMES = new Set(
@@ -54,6 +57,14 @@ const TEAM = (() => {
 const TEAM_BY_PHONE = new Map();
 for (const m of TEAM) {
   if (m.e164) TEAM_BY_PHONE.set(m.e164, m);
+}
+
+function readQwenGateSnapshot() {
+  try {
+    return JSON.parse(fs.readFileSync(QWEN_GATE_SNAPSHOT, "utf8"));
+  } catch (_err) {
+    return null;
+  }
 }
 
 // === Contact kind/color taxonomy (2026-05-26 naming + color coding) ===
@@ -833,6 +844,8 @@ async function fetchIntakeSummary() {
   const directActions = [...actionMap.entries()]
     .map(([bucket, docs]) => ({ bucket, docs }))
     .sort((a, b) => b.docs - a.docs);
+  const directActionSummary = buildDirectActionSummary(directActions);
+  const qwenGateSnapshot = readQwenGateSnapshot();
   const toInt = (v) => parseInt(v || 0, 10);
   return {
     generated_at: new Date().toISOString(),
@@ -870,7 +883,8 @@ async function fetchIntakeSummary() {
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),
     direct_actions: directActions,
-    direct_action_summary: buildDirectActionSummary(directActions),
+    direct_action_summary: directActionSummary,
+    qwen_batch_gate: buildQwenBatchGateSummary(directActionSummary, qwenGateSnapshot),
     workspace_buckets: [...workspaceMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),

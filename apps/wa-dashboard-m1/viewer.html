@@ -506,6 +506,10 @@
     <div class="intake-table-wrap"><table class="intake-table" id="i-parser"></table></div>
   </div>
   <div class="intake-section">
+    <h3>Gate Qwen batch</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-gate"></table></div>
+  </div>
+  <div class="intake-section">
     <h3>Destinazione workspace prevista</h3>
     <div class="intake-table-wrap"><table class="intake-table" id="i-workspace"></table></div>
   </div>
@@ -1003,12 +1007,26 @@ function bucketLabel(bucket) {
     small_client_group_likely: "Piccolo gruppo cliente",
     multi_party_case_likely: "Case multiparte",
     team_coordination_likely: "Coordinamento team",
+    candidate_batch_ready: "Pronto batch",
+    review_only: "Solo review",
+    insufficient_sample: "Sample insufficiente",
+    probe_required: "Probe richiesto",
+    no_candidates: "Nessun candidato",
   };
   return labels[bucket] || bucket || "unknown";
 }
 
 function intakeStatusPill(ok, label) {
   return `<span class="intake-pill ${ok ? "ok" : "bad"}">${escapeHtml(label)}</span>`;
+}
+
+function qwenGatePill(status) {
+  const cls = status === "candidate_batch_ready" || status === "no_candidates"
+    ? "ok"
+    : status === "review_only" || status === "insufficient_sample" || status === "probe_required"
+      ? "warn"
+      : "bad";
+  return `<span class="intake-pill ${cls}">${escapeHtml(bucketLabel(status))}</span>`;
 }
 
 function renderRows(rows, columns, emptyLabel) {
@@ -1037,6 +1055,7 @@ async function renderIntake() {
   const subEl = document.getElementById("i-sub");
   const cardsEl = document.getElementById("i-cards");
   const parserEl = document.getElementById("i-parser");
+  const qwenGateEl = document.getElementById("i-qwen-gate");
   const workspaceEl = document.getElementById("i-workspace");
   const docTypesEl = document.getElementById("i-doc-types");
   const groupsEl = document.getElementById("i-groups");
@@ -1045,6 +1064,7 @@ async function renderIntake() {
     const data = await loadIntake();
     const q = data.queue || {};
     const actions = data.direct_action_summary || {};
+    const qwenGate = data.qwen_batch_gate || {};
     const safeGroups = !q.group_unsafe_sender_phone && !q.group_unsafe_client_hint;
     subEl.textContent = `Aggiornato ${new Date(data.generated_at).toLocaleTimeString("it-IT")} · ${data.pii_policy}`;
     cardsEl.innerHTML = `
@@ -1052,6 +1072,7 @@ async function renderIntake() {
       <div class="intake-card"><div class="label">Direct</div><div class="value">${iFmt(q.direct_docs)}</div><div class="hint">${iFmt(q.direct_known_docs)} noti (${iFmt(q.direct_high_conf_docs)} high) · ${iFmt(q.direct_unknown_ocr_empty)} no OCR · ${iFmt(q.direct_unknown_ocr_text)} OCR text</div></div>
       <div class="intake-card"><div class="label">OCR/vision</div><div class="value">${iFmt(actions.needs_ocr_vision_batch)}</div><div class="hint">unknown senza OCR</div></div>
       <div class="intake-card"><div class="label">Qwen/text</div><div class="value">${iFmt(actions.needs_text_parser_qwen_candidate)}</div><div class="hint">${iFmt(actions.immediate_batch_candidates)} batch candidati</div></div>
+      <div class="intake-card"><div class="label">Qwen gate</div><div class="value">${qwenGatePill(qwenGate.status || "probe_required")}</div><div class="hint">${iFmt(qwenGate.sampled_docs)} sample · ${(Number(qwenGate.candidate_rate || 0) * 100).toFixed(0)}% candidato</div></div>
       <div class="intake-card"><div class="label">OCR corto</div><div class="value">${iFmt(actions.needs_manual_review_short_ocr)}</div><div class="hint">review manuale</div></div>
       <div class="intake-card"><div class="label">Workspace review</div><div class="value">${iFmt(actions.workspace_review_ready)}</div><div class="hint">${iFmt(actions.failed_pipeline)} failed pipeline</div></div>
       <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(q.group_docs)}</div><div class="hint">${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, "unsafe")}</div></div>
@@ -1062,6 +1083,17 @@ async function renderIntake() {
       { label: "Azione", render: (r) => `<span class="intake-pill ${r.bucket === "failed_pipeline" ? "bad" : r.bucket.includes("review") || r.bucket.includes("parser") || r.bucket.includes("ocr") ? "warn" : "ok"}">${escapeHtml(bucketLabel(r.bucket))}</span>` },
       { label: "Docs", render: (r) => iFmt(r.docs) },
     ], "Nessun direct doc");
+
+    qwenGateEl.innerHTML = renderRows([qwenGate], [
+      { label: "Stato", render: (r) => qwenGatePill(r.status || "probe_required") },
+      { label: "Candidati", render: (r) => iFmt(r.candidate_docs) },
+      { label: "Sample", render: (r) => iFmt(r.sampled_docs) },
+      { label: "Classificati", render: (r) => iFmt(r.classified_attempts) },
+      { label: "Kita", render: (r) => iFmt(r.kita_workspace_candidates) },
+      { label: "Review", render: (r) => iFmt(r.review_after_qwen) },
+      { label: "Rate", render: (r) => `${(Number(r.candidate_rate || 0) * 100).toFixed(0)}% / ${(Number(r.min_candidate_rate || 0) * 100).toFixed(0)}%` },
+      { label: "Aggiornato", render: (r) => r.generated_at ? escapeHtml(new Date(r.generated_at).toLocaleString("it-IT")) : "non eseguito" },
+    ], "Nessun gate Qwen");
 
     workspaceEl.innerHTML = renderRows(data.workspace_buckets, [
       { label: "Workspace bucket", render: (r) => escapeHtml(bucketLabel(r.bucket)) },
