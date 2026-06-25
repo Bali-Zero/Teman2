@@ -342,6 +342,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         process_groups=_API,
         tags=("war-room", "admin"),
     ),
+    # ── WR2 IG Publish (server-side operator-gated carousel publish, Legge 5) ──
+    RouterEntry(
+        name="wr2_publish",
+        process_groups=_API,
+        tags=("war-room", "wr2", "publish", "admin"),
+    ),
     # ── Webhooks ──
     RouterEntry(name="webhooks", process_groups=_API, tags=("channels",)),
     # ── WebSocket ──
