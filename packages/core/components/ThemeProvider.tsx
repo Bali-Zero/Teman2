@@ -52,22 +52,42 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [funnel, setFunnelState] = useState<Funnel>(defaultFunnel);
 
-  // On mount: read localStorage and sync to state + DOM.
+  // On mount: reconcile React state with the DOM/localStorage source of truth.
+  //
+  // Precedence (matches the pre-paint themeInitScript in app/layout.tsx):
+  //   1. localStorage('theme')  — explicit user choice, wins everywhere
+  //   2. the data-theme the pre-paint script ALREADY set, persona-aware by
+  //      hostname (my./zantara. → operative-light, kita./prime. → operative-dark,
+  //      public → editorial). We must NOT clobber it with `defaultTheme`.
+  //   3. defaultTheme prop — only when neither of the above is present.
+  //
+  // The previous code wrote `defaultTheme` whenever localStorage was empty,
+  // which silently overrode the persona-aware decision after hydration (the
+  // portal showed navy instead of paper). Reading the pre-paint value back
+  // keeps the provider hostname-aware for free.
   useEffect(() => {
+    const isTheme = (v: string | null | undefined): v is Theme =>
+      v === "dark" ||
+      v === "light" ||
+      v === "editorial" ||
+      v === "operative-light" ||
+      v === "operative-dark";
+
     const stored =
       typeof window !== "undefined" ? localStorage.getItem("theme") : null;
-    if (
-      stored === "dark" ||
-      stored === "light" ||
-      stored === "editorial" ||
-      stored === "operative-light" ||
-      stored === "operative-dark"
-    ) {
-      setThemeState(stored as Theme);
-      document.documentElement.dataset.theme = stored;
-    } else {
-      document.documentElement.dataset.theme = defaultTheme;
-    }
+    const prePaint =
+      typeof document !== "undefined"
+        ? document.documentElement.dataset.theme
+        : null;
+
+    const resolved: Theme = isTheme(stored)
+      ? stored
+      : isTheme(prePaint)
+        ? prePaint
+        : defaultTheme;
+
+    setThemeState(resolved);
+    document.documentElement.dataset.theme = resolved;
   }, [defaultTheme]);
 
   const setTheme = useCallback((next: Theme) => {

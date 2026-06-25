@@ -86,6 +86,23 @@ class TestB1_NoUndocumentedPublicRoutes:
         req = self._mock_request("/api/lead/capture/admin")
         assert not middleware.is_public_endpoint(req)
 
+    def test_magic_link_endpoints_are_public(self, middleware):
+        """Regression (FASE 6): the passwordless magic-link endpoints must be
+        public. They were registered as routes but missing from this registry,
+        so prod returned 401 to unauthenticated clients requesting a link —
+        the feature was dead-on-arrival until added here."""
+        # Request: exact match, must not open sibling paths.
+        assert middleware.is_public_endpoint(
+            self._mock_request("/api/auth/request-magic-link")
+        )
+        assert not middleware.is_public_endpoint(
+            self._mock_request("/api/auth/request-magic-link/extra")
+        )
+        # Verify: prefix match (token is a path param).
+        assert middleware.is_public_endpoint(
+            self._mock_request("/api/auth/verify-magic/some-raw-token")
+        )
+
     def test_non_registered_paths_require_auth(self, middleware):
         """A selection of sensitive paths must NOT be public."""
         sensitive = [

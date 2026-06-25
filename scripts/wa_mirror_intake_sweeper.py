@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""wa-mirror media → intake sweeper (Anello 1-bis, team lines, sovereign-local).
+"""wa-mirror media → CRM lead + intake sweeper (Anello 1-bis, sovereign-local).
 
 The official Bali Zero line (Anello 1) flows via Meta Cloud API. The TEAM
 members' personal WhatsApp lines are mirrored by wa-mirror (Baileys/WhatsApp-Web)
 which ALREADY downloads + decrypts + saves media blobs to disk at receive time
 and records the path in ``whatsapp_message_context.media_stored_path`` (LOCAL
-Postgres ``nuzantara_dev`` on the Pro). This sweeper is a READ-ONLY consumer of
-that table: it never touches wa-mirror's code or writes back to its table.
+Postgres ``nuzantara_dev`` on the Pro). This sweeper never touches wa-mirror's
+code or writes back to its table. It does write to the local CRM ``clients``
+table in one narrow, phone-keyed path: when a direct inbound WA message/media
+arrives, resolve an existing live client by normalized phone or create a
+placeholder ``Lead +<phone>`` row. The passport document later matches that
+same phone through the normal intake routing path.
 
 Each tick it finds new inbound document/image blobs and ``enqueue()``s them into
 the SAME local intake_queue the official line uses, so the existing intake worker
 (OCR/classify/route → document_routing_proposal) processes them uniformly.
 
-Law 2 / UU-PDP: everything is local — LOCAL DB read, LOCAL blob read, LOCAL
-intake enqueue. No cloud, no Fly. Downstream OCR is local Ollama. Sender phones
-and emails are PII — never logged at INFO with the value; only counts + row ids.
+Law 2 / UU-PDP: everything is local — LOCAL DB read/write, LOCAL blob read,
+LOCAL intake enqueue. No cloud, no Fly. Downstream OCR is local Ollama. Sender
+phones, names, and emails are PII — never logged at INFO with the value; only
+counts + row ids.
 
 PRO-HALF cadence: the watermark is seeded to the CURRENT max id on first run, so
 the Pro processes ONLY NEW arrivals. The historical backlog (id ≤ seed) is the
@@ -29,6 +34,8 @@ Environment:
 - WA_MIRROR_SWEEP_START_ID            (optional — seed watermark on first run;
                                        if unset, first run seeds to current max id = new-only)
 - WA_MIRROR_MEDIA_TYPES              (default "document,image" — comma list)
+- WA_MIRROR_TEXT_SWEEP_BATCH          (default 100 — direct text rows promoted per tick)
+- WA_MIRROR_TEXT_START_ID             (optional — same seed semantics for text rows)
 """
 from __future__ import annotations
 
@@ -43,16 +50,21 @@ import asyncpg
 
 # Reuse the shipped, tested enqueue core.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
-from backend.services.intake.enqueue import enqueue  # noqa: E402
+from backend.services.intake.enqueue import enqueue
+from backend.services.intake.routing import normalize_sender_phone
 
 logger = logging.getLogger("wa_mirror_sweeper")
 
 STATE_DIR = Path.home() / ".cell-bridge-state"
 LAST_ID_FILE = STATE_DIR / "wa_mirror_sweep_last_id.txt"
+TEXT_LAST_ID_FILE = STATE_DIR / "wa_mirror_text_sweep_last_id.txt"
 LOCK_FILE = STATE_DIR / "wa_mirror_sweep.lock"
 
 _SOURCE = "whatsapp"
 _DEFAULT_BATCH = 25
+_DEFAULT_TEXT_BATCH = 100
+_CRM_ACTOR = "wa-mirror-crm-writer@balizero.com"
+_LEAD_SOURCE = "whatsapp_auto"
 
 
 def _acquire_lock_or_exit() -> int:
@@ -70,6 +82,148 @@ def _acquire_lock_or_exit() -> int:
 def _media_types() -> tuple[str, ...]:
     raw = os.getenv("WA_MIRROR_MEDIA_TYPES", "document,image")
     return tuple(t.strip() for t in raw.split(",") if t.strip())
+
+
+def _load_int(path: Path) -> int | None:
+    if not path.exists():
+        return None
+    try:
+        return int(path.read_text().strip() or "0")
+    except (ValueError, OSError) as exc:
+        logger.warning("[wa_mirror_sweep] cursor unreadable, treating as unseeded: %s", exc)
+        return None
+
+
+def _save_int(path: Path, value: int) -> None:
+    STATE_DIR.mkdir(exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(str(int(value)))
+    tmp.replace(path)
+
+
+def _clean_push_name(value: object) -> str | None:
+    if value is None:
+        return None
+    name = " ".join(str(value).split()).strip()
+    if len(name) < 2 or len(name) > 160:
+        return None
+    lowered = name.lower()
+    if lowered in {"unknown", "null", "none"}:
+        return None
+    if "@s.whatsapp.net" in lowered or "@lid" in lowered:
+        return None
+    if normalize_sender_phone(name):
+        return None
+    return name
+
+
+def _lead_name(push_name: object, normalized_phone: str) -> str:
+    return _clean_push_name(push_name) or f"Lead +{normalized_phone}"
+
+
+def _name_is_junk(value: object) -> bool:
+    if value is None:
+        return True
+    name = " ".join(str(value).split()).strip().lower()
+    if not name:
+        return True
+    if name == "unknown" or name.startswith("lead +") or name.startswith("lead+"):
+        return True
+    return name.replace("+", "").replace(" ", "").replace("-", "").isdigit()
+
+
+def _record_get(row: asyncpg.Record | dict, key: str) -> object:
+    if isinstance(row, dict):
+        return row.get(key)
+    return row[key]
+
+
+def _candidate_phone(row: asyncpg.Record | dict) -> str | None:
+    for key in ("sender_phone", "counterpart_phone", "phone_number"):
+        value = _record_get(row, key)
+        if value and normalize_sender_phone(value):
+            return str(value)
+    return None
+
+
+async def _upsert_client_by_phone(
+    conn: asyncpg.Connection,
+    *,
+    raw_phone: str | None,
+    push_name: object = None,
+    assigned_to: str | None = None,
+    note_kind: str = "message",
+) -> int | None:
+    """Resolve/create a local CRM client from a WA sender phone.
+
+    The CRM identity key is the normalized phone. Existing live clients win. If
+    none exists, create a minimal lead with a placeholder name that later
+    passport enrichment may improve. Never stores raw message text.
+    """
+    phone = normalize_sender_phone(raw_phone)
+    if not phone:
+        return None
+    name = _lead_name(push_name, phone)
+
+    await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", phone)
+    rows = await conn.fetch(
+        """
+        SELECT id, full_name
+          FROM clients
+         WHERE deleted_at IS NULL
+           AND (
+                phone_normalized IN ($1, $2)
+             OR REGEXP_REPLACE(COALESCE(whatsapp, ''), '\\D', '', 'g') = $1
+             OR REGEXP_REPLACE(COALESCE(phone, ''), '\\D', '', 'g') = $1
+           )
+         ORDER BY updated_at DESC NULLS LAST, id
+         LIMIT 3
+         FOR UPDATE
+        """,
+        phone,
+        "+" + phone,
+    )
+    if rows:
+        first = rows[0]
+        current_name = first["full_name"]
+        if _name_is_junk(current_name) and not _name_is_junk(name):
+            await conn.execute(
+                """
+                UPDATE clients
+                   SET full_name = $1, updated_at = NOW(), updated_by = $2
+                 WHERE id = $3
+                """,
+                name,
+                _CRM_ACTOR,
+                first["id"],
+            )
+        return int(first["id"])
+
+    note = (
+        "WA mirror auto-intake: phone-keyed lead created from inbound "
+        f"{note_kind}; raw message content not stored."
+    )
+    new_id = await conn.fetchval(
+        """
+        INSERT INTO clients (
+          full_name, phone, whatsapp, phone_normalized,
+          status, client_type, lead_source, assigned_to,
+          created_by, updated_by, notes
+        ) VALUES (
+          $1, '+' || $2, '+' || $2, $2,
+          'lead', 'individual', $3, $4,
+          $5, $5, $6
+        )
+        RETURNING id
+        """,
+        name,
+        phone,
+        _LEAD_SOURCE,
+        assigned_to,
+        _CRM_ACTOR,
+        note,
+    )
+    return int(new_id) if new_id is not None else None
 
 
 async def _resolve_seed(conn: asyncpg.Connection, media_types: tuple[str, ...]) -> int:
@@ -98,20 +252,84 @@ async def _resolve_seed(conn: asyncpg.Connection, media_types: tuple[str, ...]) 
 
 
 def _load_watermark() -> int | None:
-    if not LAST_ID_FILE.exists():
-        return None
-    try:
-        return int(LAST_ID_FILE.read_text().strip() or "0")
-    except (ValueError, OSError) as exc:
-        logger.warning("[wa_mirror_sweep] watermark unreadable, treating as unseeded: %s", exc)
-        return None
+    return _load_int(LAST_ID_FILE)
 
 
 def _save_watermark(last_id: int) -> None:
-    STATE_DIR.mkdir(exist_ok=True)
-    tmp = LAST_ID_FILE.with_suffix(".tmp")
-    tmp.write_text(str(int(last_id)))
-    tmp.replace(LAST_ID_FILE)
+    _save_int(LAST_ID_FILE, last_id)
+
+
+async def _resolve_text_seed(conn: asyncpg.Connection) -> int:
+    env = os.getenv("WA_MIRROR_TEXT_START_ID", "").strip()
+    if env:
+        try:
+            return int(env)
+        except ValueError:
+            logger.warning("[wa_mirror_sweep] bad WA_MIRROR_TEXT_START_ID=%r, ignoring", env)
+    cur_max = await conn.fetchval(
+        """
+        SELECT COALESCE(max(id), 0) FROM whatsapp_message_context
+         WHERE direction = 'inbound'
+           AND (chat_type = 'direct' OR (chat_type IS NULL AND group_jid IS NULL))
+           AND COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) IS NOT NULL
+        """
+    )
+    return int(cur_max or 0)
+
+
+async def _sweep_text_clients(pool: asyncpg.Pool, batch: int) -> dict[str, int]:
+    counters = {"scanned": 0, "resolved": 0, "skipped": 0}
+    async with pool.acquire() as conn:
+        watermark = _load_int(TEXT_LAST_ID_FILE)
+        if watermark is None:
+            watermark = await _resolve_text_seed(conn)
+            _save_int(TEXT_LAST_ID_FILE, watermark)
+            logger.info("[wa_mirror_sweep] first text run, watermark seeded to %d", watermark)
+
+        rows = await conn.fetch(
+            """
+            SELECT id, team_member_email, sender_phone, counterpart_phone, phone_number,
+                   sender_push_name_snapshot
+              FROM whatsapp_message_context
+             WHERE direction = 'inbound'
+               AND (chat_type = 'direct' OR (chat_type IS NULL AND group_jid IS NULL))
+               AND COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) IS NOT NULL
+               AND id > $1
+             ORDER BY id ASC
+             LIMIT $2
+            """,
+            int(watermark),
+            int(batch),
+        )
+
+        max_done = watermark
+        for row in rows:
+            rid = int(row["id"])
+            counters["scanned"] += 1
+            try:
+                async with conn.transaction():
+                    client_id = await _upsert_client_by_phone(
+                        conn,
+                        raw_phone=_candidate_phone(row),
+                        push_name=row["sender_push_name_snapshot"],
+                        assigned_to=row["team_member_email"],
+                        note_kind="direct message",
+                    )
+            except Exception as exc:
+                logger.error(
+                    "[wa_mirror_sweep] CRM phone upsert failed for text row %d: %s",
+                    rid, exc, exc_info=True,
+                )
+                break
+            if client_id is None:
+                counters["skipped"] += 1
+            else:
+                counters["resolved"] += 1
+            max_done = max(max_done, rid)
+
+        if max_done > watermark:
+            _save_int(TEXT_LAST_ID_FILE, max_done)
+    return counters
 
 
 async def run_one_tick() -> int:
@@ -120,10 +338,20 @@ async def run_one_tick() -> int:
         os.getenv("DATABASE_URL", "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"),
     )
     batch = int(os.getenv("WA_MIRROR_SWEEP_BATCH", str(_DEFAULT_BATCH)))
+    text_batch = int(os.getenv("WA_MIRROR_TEXT_SWEEP_BATCH", str(_DEFAULT_TEXT_BATCH)))
     media_types = _media_types()
 
     pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=3)
     try:
+        text_counts = await _sweep_text_clients(pool, text_batch)
+        if text_counts["scanned"]:
+            logger.info(
+                "[wa_mirror_sweep] text CRM pass: scanned=%d resolved=%d skipped=%d",
+                text_counts["scanned"],
+                text_counts["resolved"],
+                text_counts["skipped"],
+            )
+
         async with pool.acquire() as conn:
             watermark = _load_watermark()
             if watermark is None:
@@ -134,7 +362,8 @@ async def run_one_tick() -> int:
             rows = await conn.fetch(
                 """
                 SELECT id, baileys_message_id, media_stored_path, media_mime,
-                       media_type, team_member_email, sender_phone
+                       media_type, team_member_email, sender_phone, counterpart_phone,
+                       phone_number, sender_push_name_snapshot
                   FROM whatsapp_message_context
                  WHERE media_stored_path IS NOT NULL
                    AND media_type = ANY($1::text[])
@@ -170,17 +399,36 @@ async def run_one_tick() -> int:
                 logger.warning("[wa_mirror_sweep] row %d blob missing on disk, skipping", rid)
                 max_done = max(max_done, rid)  # blob gone; never coming back, advance past it
                 continue
+            client_id_hint = None
+            try:
+                async with pool.acquire() as conn, conn.transaction():
+                    client_id_hint = await _upsert_client_by_phone(
+                        conn,
+                        raw_phone=_candidate_phone(r),
+                        push_name=r["sender_push_name_snapshot"],
+                        assigned_to=r["team_member_email"],
+                        note_kind="media",
+                    )
+            except Exception as exc:
+                logger.error(
+                    "[wa_mirror_sweep] CRM phone upsert failed for media row %d: %s",
+                    rid,
+                    exc,
+                    exc_info=True,
+                )
+                break
             try:
                 result = await enqueue(
                     pool,
                     source=_SOURCE,
                     source_ref=f"wa-mirror:{bmid}",
                     blob_path=blob_path,
+                    client_id_hint=client_id_hint,
                     mime_type=r["media_mime"],
                     received_by=r["team_member_email"],
                     sender_phone=r["sender_phone"],
                 )
-            except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+            except Exception as exc:
                 logger.error(
                     "[wa_mirror_sweep] enqueue failed for row %d: %s", rid, exc, exc_info=True
                 )
@@ -216,7 +464,7 @@ async def main() -> int:
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             os.close(lock_fd)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
 

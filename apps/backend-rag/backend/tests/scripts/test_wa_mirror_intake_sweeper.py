@@ -42,6 +42,16 @@ def _load_sweeper():
     return mod
 
 
+async def _noop_text_sweep(_pool: asyncpg.Pool, _batch: int) -> dict[str, int]:
+    return {"scanned": 0, "resolved": 0, "skipped": 0}
+
+
+def _load_sweeper_no_text(monkeypatch: pytest.MonkeyPatch):
+    mod = _load_sweeper()
+    monkeypatch.setattr(mod, "_sweep_text_clients", _noop_text_sweep)
+    return mod
+
+
 async def _wmc_schema_is_complete(conn: asyncpg.Connection) -> bool:
     """True iff whatsapp_message_context is the FULL wa-mirror runtime schema.
 
@@ -91,7 +101,7 @@ async def pool() -> asyncpg.Pool:
 @pytest_asyncio.fixture
 async def wmc_rows(pool: asyncpg.Pool):
     """Track synthetic whatsapp_message_context baileys ids + intake blob_hashes for cleanup."""
-    state: dict = {"baileys_ids": [], "blob_hashes": []}
+    state: dict = {"baileys_ids": [], "blob_hashes": [], "phone_normalized": []}
     yield state
     async with pool.acquire() as conn:
         if state["blob_hashes"]:
@@ -112,6 +122,15 @@ async def wmc_rows(pool: asyncpg.Pool):
             await conn.execute(
                 "DELETE FROM whatsapp_message_context WHERE baileys_message_id = ANY($1::text[])",
                 state["baileys_ids"],
+            )
+        if state["phone_normalized"]:
+            await conn.execute(
+                """
+                DELETE FROM clients
+                 WHERE created_by = 'wa-mirror-crm-writer@balizero.com'
+                   AND phone_normalized = ANY($1::text[])
+                """,
+                state["phone_normalized"],
             )
 
 
@@ -158,7 +177,7 @@ def _write_blob(tmp_path: Path, name: str) -> tuple[str, str]:
 
 @pytest.mark.asyncio
 async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool, wmc_rows):
-    wms = _load_sweeper()
+    wms = _load_sweeper_no_text(monkeypatch)
 
     # Two eligible inbound rows (document + image) + one OUTBOUND (must be skipped).
     doc_path, doc_sha = _write_blob(tmp_path, "passport.pdf")
@@ -170,11 +189,14 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     bid_img = f"wamir-img-{uuid.uuid4()}"
     bid_out = f"wamir-out-{uuid.uuid4()}"
     wmc_rows["baileys_ids"] += [bid_doc, bid_img, bid_out]
+    phone_digits = f"62899{uuid.uuid4().int % 10**8:08d}"
+    sender_phone = f"+{phone_digits}"
+    wmc_rows["phone_normalized"].append(phone_digits)
 
     id_doc = await _insert_wmc(
         pool, baileys_id=bid_doc, blob_path=doc_path, media_type="document",
         media_mime="application/pdf", team_email="ari@balizero.com",
-        sender_phone="+62 812-0000-1111",
+        sender_phone=sender_phone,
     )
     id_img = await _insert_wmc(
         pool, baileys_id=bid_img, blob_path=img_path, media_type="image",
@@ -198,7 +220,7 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     # Both inbound rows enqueued with wa-mirror: source_ref + received_by=email.
     async with pool.acquire() as conn:
         doc_row = await conn.fetchrow(
-            "SELECT source, source_ref, received_by, sender_phone"
+            "SELECT source, source_ref, received_by, sender_phone, client_id_hint"
             " FROM intake_queue WHERE blob_hash=$1",
             doc_sha,
         )
@@ -215,7 +237,8 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     assert doc_row["source_ref"] == f"wa-mirror:{bid_doc}"
     assert doc_row["received_by"] == "ari@balizero.com"
     # m225: the raw transport sender phone is carried onto the queue row.
-    assert doc_row["sender_phone"] == "+62 812-0000-1111"
+    assert doc_row["sender_phone"] == sender_phone
+    assert doc_row["client_id_hint"] is not None
 
     assert img_row is not None
     assert img_row["source_ref"] == f"wa-mirror:{bid_img}"
@@ -232,7 +255,7 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
 
 @pytest.mark.asyncio
 async def test_sweep_idempotent_rerun(monkeypatch, tmp_path, pool, wmc_rows):
-    wms = _load_sweeper()
+    wms = _load_sweeper_no_text(monkeypatch)
 
     doc_path, doc_sha = _write_blob(tmp_path, "again.pdf")
     wmc_rows["blob_hashes"].append(doc_sha)
@@ -267,7 +290,7 @@ async def test_sweep_idempotent_rerun(monkeypatch, tmp_path, pool, wmc_rows):
 
 @pytest.mark.asyncio
 async def test_sweep_skips_missing_blob_without_crash(monkeypatch, tmp_path, pool, wmc_rows):
-    wms = _load_sweeper()
+    wms = _load_sweeper_no_text(monkeypatch)
 
     # Row points at a path that does not exist on disk.
     bid = f"wamir-missing-{uuid.uuid4()}"
@@ -292,7 +315,7 @@ async def test_sweep_skips_missing_blob_without_crash(monkeypatch, tmp_path, poo
 
 @pytest.mark.asyncio
 async def test_sweep_excludes_sticker_and_audio(monkeypatch, tmp_path, pool, wmc_rows):
-    wms = _load_sweeper()
+    wms = _load_sweeper_no_text(monkeypatch)
 
     stk_path, stk_sha = _write_blob(tmp_path, "fun.webp")
     wmc_rows["blob_hashes"].append(stk_sha)
@@ -319,7 +342,7 @@ async def test_sweep_excludes_sticker_and_audio(monkeypatch, tmp_path, pool, wmc
 @pytest.mark.asyncio
 async def test_sweep_first_run_seeds_to_max_id(monkeypatch, pool):
     """With no watermark file and no START_ID env, seed to current max eligible id."""
-    wms = _load_sweeper()
+    wms = _load_sweeper_no_text(monkeypatch)
 
     monkeypatch.setenv("INTAKE_DATABASE_URL", _DB_URL)
     monkeypatch.delenv("WA_MIRROR_SWEEP_START_ID", raising=False)

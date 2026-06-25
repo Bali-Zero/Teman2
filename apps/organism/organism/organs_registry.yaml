@@ -363,6 +363,17 @@ organs:
       label: com.balizero.intel.nightly
     severity_on_silence: warning
     cicatrix_refs: []
+    # A2 Heartbeat-Semantico opt-in (first pilot, 2026-06-23). The nightly intel job
+    # EXISTS to add scraped articles; its output artifact's CONTENT grows on real work.
+    # A2 flags 'starved' if the artifact's [size, sha256] is unchanged across
+    # STARVED_TICKS=3 ticks — i.e. 3 consecutive nights of ZERO new articles, a real
+    # stall the bare heartbeat (ts fresh + status ok) cannot see. CONTENT-hash, not
+    # mtime: run_intel_pipeline.py rewrites published_articles.json UNCONDITIONALLY even
+    # on a zero-article night (L1899), so an mtime signal would re-stamp every tick and
+    # NEVER starve — hashing the content makes an unchanged rewrite a non-advance (the
+    # green!=working trap, corrected in _progress_value). CAVEAT (operator-accepted):
+    # repo-tracked, so a real content edit resets the streak — unlikely over 3 nights.
+    output_artifact: ~/Desktop/nuzantara/apps/bali-intel-scraper/data/published_articles.json
     bridge_source:
       type: state_file
       path: ~/.agent/decisions/state/intel_scraper.last.json
@@ -1171,6 +1182,14 @@ organs:
     type: cron
     expected_hb_seconds: 1800
     owner_module: apps/war-room/scripts/wr2_fact_extractor.py
+    # A2 Heartbeat Semantico (self-loop Anello 2). fact_extractor appends ONE JSONL
+    # line per successfully fact-checked draft and writes NOTHING on a no-work run
+    # (no ready drafts -> early return BEFORE _log_telemetry). So a frozen [size,sha256]
+    # across STARVED_TICKS=3 ticks = 3 consecutive runs that fact-checked zero drafts
+    # while the cron still fires green — the green!=working stall the bare heartbeat
+    # (ts fresh + status ok) cannot see. CONTENT-hash, not mtime: per-line work ts
+    # only, no top-level run-timestamp, so an unchanged file stays byte-identical.
+    output_artifact: ~/logs/wr2_fact_extractor_telemetry.jsonl
     dependencies:
       - wr2.supervisor
       - infra.postgres

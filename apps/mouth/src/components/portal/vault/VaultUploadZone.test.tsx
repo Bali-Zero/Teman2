@@ -45,7 +45,31 @@ describe("VaultUploadZone", () => {
     fireEvent.change(input);
     expect(mockUpload).toHaveBeenCalledTimes(1);
     expect(mockUpload.mock.calls[0][0]).toBe(file);
-    expect(mockUpload.mock.calls[0][1]).toEqual({ practiceId: 42 });
+    // FASE 5: purpose is now part of the upload options (empty when untouched).
+    expect(mockUpload.mock.calls[0][1]).toEqual({
+      practiceId: 42,
+      purpose: "",
+    });
+  });
+
+  it("forwards the typed purpose to upload()", () => {
+    render(<VaultUploadZone practiceId={42} />);
+    const purposeInput = screen.getByLabelText(
+      /what is this document for/i,
+    ) as HTMLInputElement;
+    fireEvent.change(purposeInput, {
+      target: { value: "Passport for KITAS renewal" },
+    });
+    const input = screen.getByLabelText(
+      "Choose file to upload",
+    ) as HTMLInputElement;
+    const file = new File(["x"], "a.pdf", { type: "application/pdf" });
+    Object.defineProperty(input, "files", { value: [file] });
+    fireEvent.change(input);
+    expect(mockUpload.mock.calls[0][1]).toEqual({
+      practiceId: 42,
+      purpose: "Passport for KITAS renewal",
+    });
   });
 
   it("renders error state when upload state is error", () => {

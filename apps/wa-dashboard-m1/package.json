@@ -6,7 +6,8 @@
   "main": "server.cjs",
   "scripts": {
     "start": "node server.cjs",
-    "dev": "PORT=7790 node server.cjs"
+    "dev": "PORT=7790 node server.cjs",
+    "publish:case-intel": "node publish-case-intelligence.cjs"
   },
   "dependencies": {
     "express": "^4.21.0",

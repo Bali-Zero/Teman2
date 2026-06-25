@@ -27,6 +27,7 @@ is Phase 3 (gated by the 4-LLM panel).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -543,6 +544,57 @@ def _balance_headline(
     return "<br>".join(" ".join(line) for line in lines)
 
 
+def _emphasize_key_numbers(body: str) -> str:
+    """Wrap KEY regulatory numbers in the body in <span class="emphasis"> so they
+    render in the brand accent yellow (Article 6.9 anchor-highlight: yellow is the
+    family color for verifiable facts — numbers, codes, regulations).
+
+    Why: the Claude vision critic explicitly checks "do key numbers stand out?"
+    (claude_vision.py) and was failing fresh drafts on slides where the crux
+    number ("183 days", "Day 184") rendered in the same weight/color as the
+    surrounding body — a missed-hierarchy reject. Yellowing the number is the
+    brand-sanctioned way to make it pop (operator decision 2026-06-24, option C).
+
+    Conservative + deterministic + brand-drift-safe:
+      - matches a numeral (optionally with a thousands sep / decimal / %) that is
+        either a standalone quantity or immediately followed by a unit noun
+        (days, day, months, %, IDR/USD/Rp amounts, year forms) — i.e. the kind of
+        number that carries regulatory weight, NOT every stray digit.
+      - matches at most the first 2 such numbers per body (avoids a christmas-tree
+        of yellow that would itself flatten hierarchy).
+      - NEVER touches a body that already contains markup (`<span`, `<`), so it is
+        a strict no-op on facts-block / pre-emphasized bodies and cannot produce
+        nested or broken spans.
+      - operates on the verbatim body BEFORE it is substituted into the skeleton
+        (the composer fills via plain .replace, so the literal span renders).
+    """
+    if not body or "<" in body:
+        return body
+    # numeral core: 183 | 1,000 | 12.5 | 30% ; optionally a currency prefix or a
+    # unit-noun suffix gives it "regulatory" weight worth highlighting.
+    num = r"\d[\d,.]*"
+    pattern = re.compile(
+        r"(?<![\w>])"                                  # not mid-word / not inside a tag
+        r"("
+        r"(?:(?:Rp|IDR|USD|\$|€|£)\s?" + num + r")"    # currency amounts
+        r"|(?:" + num + r"\s?%)"                        # percentages
+        r"|(?:" + num + r"\s?(?:days?|months?|years?|hari|bulan|tahun|hours?|jam))"  # durations
+        r"|(?:Day\s?" + num + r")"                      # "Day 184"
+        r")",
+        re.IGNORECASE,
+    )
+    count = 0
+
+    def _wrap(m: "re.Match[str]") -> str:
+        nonlocal count
+        if count >= 2:
+            return m.group(0)
+        count += 1
+        return f'<span class="emphasis">{m.group(0)}</span>'
+
+    return pattern.sub(_wrap, body)
+
+
 def _deorphan_numbers_in_headline(text: str) -> str:
     """ALWAYS-ON, deterministic, PIXEL-INDEPENDENT number-orphan correction.
 
@@ -836,6 +888,89 @@ def _facts_block_html(pairs: list[tuple[str, str]], source_text: str | None) -> 
     return "\n".join(rows)
 
 
+# Storyboarder→template field aliases for {{#each}} loops. The layout templates
+# iterate a canonical variable (`items`, `facts`, `citations`, `events`) but the
+# storyboarder emits domain-named arrays (`list_items`, …). Map the alias to the
+# template's variable so the loop binds instead of shipping raw {{#each items}}.
+_EACH_ALIASES: dict[str, tuple[str, ...]] = {
+    "items": ("list_items", "items"),          # dark-status-list
+    "facts": ("facts", "fact_items"),          # evidence-carved
+    "citations": ("citations", "sources"),     # source-citation
+    "events": ("events", "timeline", "list_items"),  # timeline-pinboard
+}
+
+
+def _resolve_each_rows(var: str, slide: dict[str, Any]) -> list[Any] | None:
+    """Find the array a {{#each <var>}} loop should iterate, honoring aliases."""
+    for key in _EACH_ALIASES.get(var, (var,)):
+        rows = slide.get(key)
+        if isinstance(rows, list) and rows:
+            return rows
+    return None
+
+
+def _expand_each_blocks(html: str, slide: dict[str, Any]) -> str:
+    """Expand Handlebars-style ``{{#each <var>}}…{{/each}}`` blocks.
+
+    For each row, the inner template's ``{{field}}`` placeholders are filled from
+    that row dict (``{{this}}`` → the row itself when it is a scalar), and a nested
+    ``{{#if field}}…{{/if}}`` keeps its body only when the row has a truthy field.
+    Field values are HTML-escaped (rows carry user copy). A block whose array is
+    missing/empty is removed entirely (no raw mustache shipped) — this is the bug
+    fix: previously the whole ``{{#each}}`` block reached the renderer verbatim.
+    """
+    each_re = re.compile(r"\{\{#each\s+([a-z_]+)\}\}(.*?)\{\{/each\}\}", re.DOTALL)
+
+    def _render_block(m: re.Match[str]) -> str:
+        var, inner = m.group(1), m.group(2)
+        rows = _resolve_each_rows(var, slide)
+        if not rows:
+            return ""  # no data → drop the block (never ship raw {{#each}})
+        out: list[str] = []
+        for row in rows:
+            chunk = inner
+            if isinstance(row, dict):
+                # nested {{#if field}}…{{/if}} per row
+                def _if_sub(mi: re.Match[str], _row: dict[str, Any] = row) -> str:
+                    return mi.group(2) if _row.get(mi.group(1)) else ""
+                chunk = re.sub(
+                    r"\{\{#if\s+([a-z_]+)\}\}(.*?)\{\{/if\}\}", _if_sub, chunk,
+                    flags=re.DOTALL,
+                )
+                for fk, fv in row.items():
+                    chunk = chunk.replace("{{%s}}" % fk, _html_escape(str(fv)))
+                chunk = chunk.replace("{{this}}", _html_escape(str(row)))
+            else:
+                # scalar row: {{this}} is the value
+                chunk = chunk.replace("{{this}}", _html_escape(str(row)))
+            # strip any leftover {{field}} the row didn't supply (no raw mustache)
+            chunk = re.sub(r"\{\{[a-z_]+\}\}", "", chunk)
+            out.append(chunk)
+        return "".join(out)
+
+    return each_re.sub(_render_block, html)
+
+
+def _qa_dialogue_fields(slide: dict[str, Any]) -> dict[str, str]:
+    """Adapt the storyboarder's ``qa_pairs`` array to qa-dialogue's flat fields.
+
+    The qa-dialogue template wants ``voice_a_label/voice_a_quote/voice_b_*`` but
+    the storyboarder emits ``qa_pairs: [{voice, line}, …]``. Map the first two
+    pairs onto the two voices. Returns {} when qa_pairs is absent (template then
+    falls back to whatever flat fields the slide already carries).
+    """
+    pairs = slide.get("qa_pairs")
+    if not isinstance(pairs, list) or len(pairs) < 1:
+        return {}
+    out: dict[str, str] = {}
+    for idx, key in ((0, "a"), (1, "b")):
+        if idx < len(pairs) and isinstance(pairs[idx], dict):
+            p = pairs[idx]
+            out["voice_%s_label" % key] = str(p.get("voice") or p.get("label") or "")
+            out["voice_%s_quote" % key] = str(p.get("line") or p.get("quote") or "")
+    return out
+
+
 def _fill_placeholders(
     html: str,
     slide: dict[str, Any],
@@ -894,6 +1029,12 @@ def _fill_placeholders(
         if pairs:
             body_html = _facts_block_html(pairs, source_text)
             facts_block = True
+        else:
+            # Plain-paragraph body: yellow the crux regulatory number(s) so the
+            # key fact pops (Art 6.9 anchor-highlight; option C 2026-06-24). The
+            # facts-block path above already emphasizes its lead value, so this is
+            # the non-facts branch only. No-op if the body has no key number.
+            body_html = _emphasize_key_numbers(body_html)
 
     # {{#if regulation_code}} ... {{/if}}
     if reg:
@@ -919,6 +1060,11 @@ def _fill_placeholders(
         else:
             statement_emphasis_html = f'<span class="emphasis">{words[0]}</span>'
 
+    # Expand {{#each <var>}} list blocks FIRST (dark-status-list / evidence-carved /
+    # source-citation / timeline-pinboard) so the loop rows are materialized before
+    # the scalar placeholder pass. Previously unhandled → raw mustache shipped.
+    html = _expand_each_blocks(html, slide)
+
     replacements = {
         "{{heading}}": headline,
         "{{subheading}}": subhead,
@@ -928,6 +1074,9 @@ def _fill_placeholders(
         "{{statement}}": statement,
         "{{statement_html_with_emphasis_span}}": statement_emphasis_html,
     }
+    # qa-dialogue: map qa_pairs → the template's flat voice_a/voice_b fields.
+    for fk, fv in _qa_dialogue_fields(slide).items():
+        replacements["{{%s}}" % fk] = _html_escape(fv)
     for k, v in replacements.items():
         html = html.replace(k, v)
 
@@ -1169,15 +1318,37 @@ def expect_hero_for_index(slide: dict[str, Any], index: int) -> bool:
 
 
 async def _download_hero(client: Any, url: str, dest: Path) -> bool:
-    try:
-        resp = await client.get(url, follow_redirects=True, timeout=30.0)
-    except Exception as exc:
-        logger.warning("hero GET failed url=%s err=%s", url, exc)
-        return False
-    if resp.status_code != 200 or not resp.headers.get("content-type", "").startswith("image/"):
-        logger.warning("hero bad response url=%s status=%s ctype=%s", url, resp.status_code, resp.headers.get("content-type"))
-        return False
-    if not resp.content:
-        return False
-    dest.write_bytes(resp.content)
-    return True
+    # Retry with backoff: the hero lives on Fly/Tigris storage and a single transient
+    # network flap ("No route to host" / ConnectTimeout) on the Pro would otherwise burn
+    # an html_render_attempt and fail the whole carousel render. Superscar #8 (network
+    # flap / proxy fragility): wrap the point download in a retry-loop with backoff.
+    attempts = 3
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = await client.get(url, follow_redirects=True, timeout=30.0)
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "hero GET failed url=%s err=%s (attempt %d/%d)", url, exc, attempt, attempts
+            )
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))  # 1s, 2s
+            continue
+        if resp.status_code != 200 or not resp.headers.get("content-type", "").startswith("image/"):
+            logger.warning(
+                "hero bad response url=%s status=%s ctype=%s (attempt %d/%d)",
+                url, resp.status_code, resp.headers.get("content-type"), attempt, attempts,
+            )
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))
+            continue
+        if not resp.content:
+            logger.warning("hero empty body url=%s (attempt %d/%d)", url, attempt, attempts)
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))
+            continue
+        dest.write_bytes(resp.content)
+        return True
+    logger.error("hero download exhausted %d attempts url=%s last_err=%s", attempts, url, last_exc)
+    return False

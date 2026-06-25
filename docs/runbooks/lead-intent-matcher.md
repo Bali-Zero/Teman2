@@ -73,7 +73,7 @@ rm ~/Library/LaunchAgents/com.nuzantara.lead-intent-matcher.plist
   phone + 30-min-window fallback. `clients.lead_metadata.match_method`
   records which pass matched ("lead_id" | "phone_window").
 - **Coverage caveat**: the CTA deeplink currently targets the personal
-  number `6282264599868`, whose inbound traffic lands in NO readable table —
+  number `6282210302328`, whose inbound traffic lands in NO readable table —
   so pass 1 only sees Lead IDs sent to the Meta business number. Pointing
   the CTA at the business number (env `WA_BUSINESS_NUMBER` on Fly + the
   frontend fallback constants) is the pending operator decision that fully

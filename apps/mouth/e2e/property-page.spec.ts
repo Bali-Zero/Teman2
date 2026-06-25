@@ -17,7 +17,7 @@ test.describe("Property Landing Page", () => {
   });
 
   test("has WhatsApp CTA link", async ({ page }) => {
-    const whatsappLinks = page.locator('a[href*="wa.me/6282264599868"]');
+    const whatsappLinks = page.locator('a[href*="wa.me/6282210302328"]');
     const count = await whatsappLinks.count();
     expect(count).toBeGreaterThanOrEqual(1);
   });

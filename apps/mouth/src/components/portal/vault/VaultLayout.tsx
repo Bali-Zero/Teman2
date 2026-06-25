@@ -6,10 +6,17 @@ import { VaultSearchBar } from "./VaultSearchBar";
 import { VaultUploadZone } from "./VaultUploadZone";
 import { VaultErrorBoundary } from "./VaultErrorBoundary";
 import { useVaultFiles } from "@/hooks/useVaultFiles";
+import { useVaultDocumentActions } from "@/hooks/useVaultDocumentActions";
 import type { VaultFile } from "@/lib/schemas/vault";
 
 export function VaultLayout() {
   const { data, error, isLoading, mutate } = useVaultFiles();
+  const {
+    remove,
+    restore,
+    pendingId,
+    error: actionError,
+  } = useVaultDocumentActions(() => mutate());
   const [practiceFilter, setPracticeFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -79,8 +86,19 @@ export function VaultLayout() {
                 </button>
               </div>
             )}
+            {actionError && (
+              <p role="alert" className="text-xs text-[#c94a4a] mb-2">
+                {actionError}
+              </p>
+            )}
             {data && (
-              <VaultFileGrid files={filtered} onDownload={handleDownload} />
+              <VaultFileGrid
+                files={filtered}
+                onDownload={handleDownload}
+                onDelete={(f) => remove(f.id)}
+                onRestore={(f) => restore(f.id)}
+                pendingId={pendingId}
+              />
             )}
           </div>
         </div>

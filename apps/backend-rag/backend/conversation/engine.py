@@ -122,12 +122,18 @@ class ConversationEngine:
                 )
 
             # 3. Stream through orchestrator
+            # Pass message.channel so build_channel_context() injects the
+            # per-channel overlay (plain text, length cap, no markdown for
+            # instagram/whatsapp). Without this the orchestrator defaults to
+            # "webapp" → markdown + 800-word answers that render as raw symbols
+            # and get truncated mid-sentence on Instagram/WhatsApp DMs.
             async for event in self.orchestrator.stream_query(
                 query=query_text,
                 user_id=message.user_id,
                 session_id=message.session_id,
                 conversation_history=conversation_history,
                 images=message.media,
+                channel=message.channel,
             ):
                 # Convert orchestrator events → ChannelResponse
                 response = self._convert_event_to_response(event)

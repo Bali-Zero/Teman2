@@ -53,10 +53,9 @@ export async function generateMetadata({
       ],
     },
     company: {
-      title:
-        "Company Registration Bali 2026 | PT PMA, Business License Indonesia | Bali Zero",
+      title: "Business License in Indonesia (2026 Guide) | Bali Zero",
       description:
-        "Register your company in Bali — PT PMA setup, business license Indonesia, KBLI classification, NIB & OSS permits. Transparent pricing from IDR 20M. 5000+ businesses established.",
+        "Need a business license in Indonesia? We handle PT PMA setup, OSS licensing, and NIB permits end-to-end. 5,000+ businesses registered since 2019.",
       keywords: [
         "company registration bali",
         "business license indonesia",

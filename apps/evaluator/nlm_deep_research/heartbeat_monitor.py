@@ -31,9 +31,11 @@ import argparse
 import json
 import logging
 import os
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -165,14 +167,32 @@ def _read_heartbeat_state(
     """
     sdir = state_dir or STATE_DIR
     target = sdir / f"heartbeat_{pipeline_name}.json"
-    if not target.exists():
-        return None
-    try:
-        with open(target, encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Failed to read heartbeat state for %s: %s", pipeline_name, exc)
-        return None
+    if target.exists():
+        try:
+            with open(target, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read heartbeat state for %s: %s", pipeline_name, exc)
+    # Fallback: cron-runner run-state files. Many healthy jobs never call --record
+    # (they only write run_<name>.last.json), so a missing heartbeat_*.json is NOT
+    # proof the job never ran — that produced ~5 false NEVER_RANs. Treat status=="ok"
+    # with a positive ts as a success heartbeat (source of truth for those jobs).
+    for cand in (f"run_{pipeline_name}.last.json", f"{pipeline_name}.last.json",
+                 f"nlm_{pipeline_name}.last.json"):
+        rf = sdir / cand
+        if not rf.exists():
+            continue
+        try:
+            d = json.loads(rf.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        ts = d.get("ts")
+        if d.get("status") == "ok" and isinstance(ts, (int, float)) and ts > 0:
+            return {
+                "pipeline": pipeline_name,
+                "last_success": datetime.fromtimestamp(ts, tz=WITA).isoformat(),
+            }
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -407,16 +427,24 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            if resp.status == 200:
-                logger.info("Telegram alert sent successfully")
-                return True
-            logger.warning("Telegram API returned status %d", resp.status)
-            return False
-    except urllib.error.URLError as exc:
-        logger.error("Failed to send Telegram alert: %s", exc)
-        return False
+    # #8 network-flap: api.telegram.org can read-stall. The old URLError-only
+    # except let a bare TimeoutError escape and crash the --check run (DLQ
+    # run_heartbeat_check). Retry with backoff + catch the transport-level errors.
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status == 200:
+                    logger.info("Telegram alert sent successfully")
+                    return True
+                logger.warning("Telegram API returned status %d", resp.status)
+                return False
+        except (urllib.error.URLError, TimeoutError, socket.timeout, OSError) as exc:
+            last_exc = exc
+            if attempt < 3:
+                time.sleep(2 ** (attempt - 1))
+    logger.error("Failed to send Telegram alert after 3 attempts: %s", last_exc)
+    return False
 
 
 def _format_last_run(last_success: str | None) -> str:

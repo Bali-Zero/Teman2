@@ -113,6 +113,11 @@ export const VaultFile = z.object({
 
   // `.isoformat()` of DB `created_at` (NOT NULL, defaults to NOW()).
   created_at: z.string(),
+
+  // FASE 5 — client-facing note on why this document was provided (DB
+  // `document_purpose`). Distinct from the internal `notes` column. Null when
+  // not set; absent for rows predating the migration.
+  purpose: z.string().nullable().optional(),
 });
 export type VaultFile = z.infer<typeof VaultFile>;
 

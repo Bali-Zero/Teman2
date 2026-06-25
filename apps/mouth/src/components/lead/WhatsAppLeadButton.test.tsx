@@ -16,7 +16,7 @@ describe("WhatsAppLeadButton", () => {
       ok: true,
       json: async () => ({
         lead_intent_id: "li_1",
-        whatsapp_url: "https://wa.me/6282264599868?text=tracked",
+        whatsapp_url: "https://wa.me/6282210302328?text=tracked",
       }),
     })) as unknown as typeof fetch;
     // stub window.location.href assignment
@@ -71,7 +71,7 @@ describe("WhatsAppLeadButton", () => {
 
     await waitFor(() => {
       expect(window.location.href).toBe(
-        "https://wa.me/6282264599868?text=tracked",
+        "https://wa.me/6282210302328?text=tracked",
       );
     });
   });

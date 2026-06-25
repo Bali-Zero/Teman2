@@ -53,4 +53,37 @@ describe("VaultFileGrid", () => {
     expect(onDownload).toHaveBeenCalledTimes(1);
     expect(onDownload).toHaveBeenCalledWith(file);
   });
+
+  // FASE 5 — purpose + soft-delete/restore
+  it("renders the document purpose when present", () => {
+    const file = makeFile({ purpose: "Passport for KITAS renewal" });
+    render(<VaultFileGrid files={[file]} />);
+    expect(screen.getByText(/Passport for KITAS renewal/)).toBeInTheDocument();
+  });
+
+  it("omits Remove button when onDelete is not provided", () => {
+    render(<VaultFileGrid files={[makeFile()]} />);
+    expect(
+      screen.queryByRole("button", { name: /remove/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("fires onDelete and then shows an Undo affordance", async () => {
+    const onDelete = vi.fn().mockResolvedValue(true);
+    const onRestore = vi.fn().mockResolvedValue(true);
+    const file = makeFile({ id: 7, name: "kitas.pdf" });
+    render(
+      <VaultFileGrid
+        files={[file]}
+        onDelete={onDelete}
+        onRestore={onRestore}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /remove kitas\.pdf/i }));
+    expect(onDelete).toHaveBeenCalledWith(file);
+    // Undo card appears after the delete resolves
+    const undo = await screen.findByRole("button", { name: /undo/i });
+    fireEvent.click(undo);
+    expect(onRestore).toHaveBeenCalledWith(file);
+  });
 });

@@ -68,3 +68,29 @@ async def test_main_uses_stub_when_env_set(captured, monkeypatch):
     await worker_mod.main()
     # Stub path: main() does NOT pass stage_handler → IntakeWorker default (None here).
     assert captured["stage_handler"] is None
+
+
+@pytest.mark.asyncio
+async def test_claim_prioritizes_pending_whatsapp_before_drive_backfill():
+    """WA mirror attachments must not sit behind the historical Drive backlog."""
+
+    class _FakeConn:
+        sql: str | None = None
+        args: tuple | None = None
+
+        async def fetchrow(self, sql, *args):  # noqa: ANN001, ANN202
+            self.sql = sql
+            self.args = args
+            return None
+
+    conn = _FakeConn()
+    worker = worker_mod.IntakeWorker(_FakePool())
+
+    await worker._claim_with_inbound(conn)
+
+    assert conn.sql is not None
+    assert "WHEN status = 'pending' AND source = 'whatsapp' THEN 0" in conn.sql
+    assert "WHEN status = 'pending'                         THEN 1" in conn.sql
+    assert conn.sql.index("WHEN 'ocr_done'") < conn.sql.index(
+        "WHEN status = 'pending' AND source = 'whatsapp' THEN 0"
+    )

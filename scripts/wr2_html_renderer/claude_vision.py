@@ -257,11 +257,19 @@ def claude_design_critic(png_path: Path, slide: dict[str, Any], context: dict[st
         return Critique(tier="vision", passed=True, issues=["vision unavailable — skipped"], levers=[])
     levers = [l for l in obj.get("levers", []) if l.get("lever") in _ALLOWED_LEVERS]
     issues = list(obj.get("issues", []))
-    if not obj.get("readable", True):
+    # Read the structured boolean verdict the critic JSON already emits. These are
+    # the authoritative, non-reformulable signal the designer-loop uses to decide
+    # accept-as-composition-debt (see designer_loop._classify_residual_issues).
+    readable = bool(obj.get("readable", True))
+    hierarchy_ok = bool(obj.get("hierarchy_ok", True))
+    balanced = bool(obj.get("balanced", True))
+    # Keep the synthetic prose markers too — they remain useful as human-readable
+    # explanations and as a fallback for any path that still reads issues only.
+    if not readable:
         issues.append("vision: text not easily readable")
-    if not obj.get("hierarchy_ok", True):
+    if not hierarchy_ok:
         issues.append("vision: weak hierarchy")
-    if not obj.get("balanced", True):
+    if not balanced:
         issues.append("vision: unbalanced/crammed")
     return Critique(
         tier="vision",
@@ -269,6 +277,9 @@ def claude_design_critic(png_path: Path, slide: dict[str, Any], context: dict[st
         issues=issues,
         levers=levers,
         score=float(obj.get("score", 0.0)),
+        readable=readable,
+        hierarchy_ok=hierarchy_ok,
+        balanced=balanced,
     )
 
 

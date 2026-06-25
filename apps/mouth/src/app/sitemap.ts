@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
  * - Service pages (4 main services)
  * - News categories (8 categories)
  * - Blog articles (all published articles)
- * - KBLI 2025 codes (1,563 pages)
+ * - KBLI 2025 codes (1,559 pages)
  * - KBLI sectors index + individual sector pages (~22)
  * Priority scale:
  * - 1.0: Homepage
@@ -194,7 +194,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
   }
 
-  // 5. KBLI Codes (1,563 pages)
+  // 5. KBLI Codes (1,559 pages)
   try {
     const codes = getAllCodes();
     const kbliPages = codes.map((c) => ({

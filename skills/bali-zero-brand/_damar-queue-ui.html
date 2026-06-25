@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WR2 Damar Queue</title>
+<style>
+  :root {
+    --color-bg-antracite: #2C2F38;
+    --color-bg-black: #000000;
+    --color-text-white: #FFFFFF;
+    --color-text-muted: #9CA3AF;
+    --color-accent-yellow: #F4C430;
+    --color-status-red: #C8102E;
+    --color-status-green: #4ADE80;
+    --color-card-bg: #1C1F26;
+    --font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--color-bg-antracite);
+    color: var(--color-text-white);
+    font-family: var(--font-family);
+    padding: 24px;
+    min-height: 100vh;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px; padding-bottom: 16px;
+    border-bottom: 2px solid var(--color-accent-yellow);
+  }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; }
+  h1 .accent { color: var(--color-accent-yellow); }
+  .stats { display: flex; gap: 24px; font-size: 14px; }
+  .stats span { color: var(--color-text-muted); }
+  .stats span b { color: var(--color-text-white); font-weight: 700; margin-left: 6px; }
+
+  .empty {
+    text-align: center; padding: 80px 24px;
+    color: var(--color-text-muted); font-size: 18px;
+  }
+
+  .queue { display: flex; flex-direction: column; gap: 16px; }
+
+  .item {
+    background: var(--color-card-bg);
+    border-left: 4px solid var(--color-text-muted);
+    padding: 20px 24px;
+    border-radius: 4px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+  }
+  .item.state-drafted { border-left-color: var(--color-accent-yellow); }
+  .item.state-drafted_needs_human_edit {
+    border-left-color: var(--color-accent-yellow);
+    border: 2px solid var(--color-accent-yellow);
+    background: linear-gradient(90deg, rgba(244,196,48,0.08) 0%, var(--color-card-bg) 40%);
+  }
+  .item.state-published { border-left-color: var(--color-status-green); opacity: 0.6; }
+  .item.state-published_with_edits { border-left-color: var(--color-status-green); opacity: 0.7; }
+  .item.state-rejected { border-left-color: var(--color-status-red); opacity: 0.5; }
+
+  .pill-needs-edit {
+    display: inline-block;
+    background: var(--color-accent-yellow);
+    color: var(--color-bg-black);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .item .meta {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .item .topic {
+    font-size: 18px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.02em;
+  }
+  .item .submeta {
+    font-size: 13px; color: var(--color-text-muted);
+    display: flex; gap: 12px;
+  }
+  .item .submeta b { color: var(--color-text-white); }
+  .item .critic-summary {
+    font-size: 13px; color: var(--color-text-muted);
+    margin-top: 8px; max-width: 760px;
+  }
+  .item .critic-summary b { color: var(--color-accent-yellow); }
+
+  .preview-strip {
+    display: flex; gap: 6px; margin-top: 12px;
+    overflow-x: auto; padding-bottom: 4px;
+  }
+  .preview-strip img {
+    width: 96px; height: 120px; object-fit: cover;
+    border-radius: 3px; flex-shrink: 0;
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .preview-strip img:hover { transform: scale(1.05); border: 1px solid var(--color-accent-yellow); }
+
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; cursor: pointer;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 90vw; max-height: 90vh; object-fit: contain; }
+
+  .actions {
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: stretch; min-width: 220px;
+  }
+  .actions a, .actions button {
+    background: transparent; color: var(--color-text-white);
+    border: 1px solid var(--color-text-muted);
+    padding: 8px 16px; border-radius: 4px;
+    font-family: var(--font-family); font-weight: 700;
+    font-size: 13px; letter-spacing: 0.04em;
+    text-transform: uppercase; text-decoration: none; text-align: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .actions a:hover, .actions button:hover {
+    background: var(--color-text-white); color: var(--color-bg-antracite);
+  }
+  .actions .primary {
+    background: var(--color-accent-yellow); color: var(--color-bg-black);
+    border-color: var(--color-accent-yellow);
+  }
+  .actions .primary:hover {
+    background: var(--color-text-white); border-color: var(--color-text-white);
+  }
+  .actions .danger { border-color: var(--color-status-red); color: var(--color-status-red); }
+  .actions .danger:hover { background: var(--color-status-red); color: var(--color-text-white); }
+
+  .help {
+    margin-top: 40px; padding: 16px 20px;
+    background: var(--color-bg-black); border-radius: 4px;
+    font-size: 13px; color: var(--color-text-muted);
+    line-height: 1.6;
+  }
+  .help code {
+    background: var(--color-bg-antracite); padding: 2px 6px;
+    border-radius: 2px; color: var(--color-accent-yellow);
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WR2 <span class="accent">QUEUE</span></h1>
+  <div style="display: flex; align-items: center; gap: 24px;">
+    <div class="stats">
+      <span>Drafted <b id="stat-drafted">0</b></span>
+      <span>Reviewed <b id="stat-reviewed">0</b></span>
+      <span>Published <b id="stat-published">0</b></span>
+      <span>Total <b id="stat-total">0</b></span>
+    </div>
+    <a href="/inject" style="background: var(--color-accent-yellow); color: var(--color-bg-black); padding: 10px 18px; border-radius: 4px; text-decoration: none; font-weight: 800; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;">+ Inject Topic</a>
+  </div>
+</header>
+
+<div id="queue-root" class="empty">Loading queue.json...</div>
+
+<div class="help">
+<b>How to use</b>:
+<ol style="margin: 8px 0 0 24px;">
+  <li>Click <code>OPEN IN CANVA</code> to review the carousel.</li>
+  <li>(Optional) Edit any slide directly in Canva.</li>
+  <li>Publish the carousel on Instagram <code>@balizero0</code>.</li>
+  <li>Come back here, click <code>PUBLISH ON IG</code>, paste the post URL when prompted.</li>
+  <li>Or click <code>REJECT</code> if you don't want to publish — pick a reason from the list.</li>
+</ol>
+<p style="margin-top: 12px; color: var(--color-text-muted);">
+  No terminal needed. All actions happen via this page.
+  Server runs at <code>http://localhost:8765</code> — start it with
+  <code>python3 ~/.claude/skills/bali-zero-brand/_damar-queue-server.py</code> if not already running.
+</p>
+</div>
+
+<script>
+async function loadQueue() {
+  const root = document.getElementById('queue-root');
+  try {
+    const res = await fetch('./queue.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const queue = await res.json();
+    render(queue);
+  } catch (e) {
+    root.innerHTML = `<div class="empty">Failed to load queue.json — ${e.message}<br><br>Try <code>python3 -m http.server</code> from the queue/ directory.</div>`;
+  }
+}
+
+function render(queue) {
+  const root = document.getElementById('queue-root');
+  if (!queue || queue.length === 0) {
+    root.className = 'empty';
+    root.innerHTML = 'Queue empty. No carousels awaiting review.';
+    updateStats({drafted: 0, reviewed: 0, published: 0, total: 0});
+    return;
+  }
+
+  // Sort: needs-edit first (most urgent), then drafted, then reviewed, then others
+  const stateOrder = {drafted_needs_human_edit: 0, drafted: 1, reviewed: 2, published_with_edits: 3, published: 4, rejected: 5, ignored: 6, withdrawn: 7};
+  queue.sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9));
+
+  root.className = 'queue';
+  root.innerHTML = queue.map(item => `
+    <div class="item state-${escapeHtml(item.state)}" data-item-id="${escapeHtml(item.id)}">
+      <div>
+        <div class="meta">
+          <div class="topic">${escapeHtml(item.topic_slug || 'untitled')}${item.state === 'drafted_needs_human_edit' ? '<span class="pill-needs-edit">needs human edit</span>' : ''}</div>
+          <div class="submeta">
+            <span>State <b>${escapeHtml(item.state)}</b></span>
+            <span>Drafted <b>${formatDate(item.drafted_at)}</b></span>
+            ${item.critic_overall_verdict ? `<span>Critic <b>${escapeHtml(item.critic_overall_verdict)}</b></span>` : ''}
+          </div>
+        </div>
+        ${item.critic_summary ? `<div class="critic-summary"><b>Critic:</b> ${escapeHtml(item.critic_summary)}</div>` : ''}
+        ${item.agent_recommendation ? `<div class="critic-summary"><b>Recommendation:</b> ${escapeHtml(item.agent_recommendation)}</div>` : ''}
+        ${item.damar_notes ? `<div class="critic-summary"><b>Damar notes:</b> ${escapeHtml(item.damar_notes)}</div>` : ''}
+        ${item.instagram_post_url ? `<div class="critic-summary"><b>Posted:</b> <a href="${escapeHtml(item.instagram_post_url)}" target="_blank" style="color:#F4C430">${escapeHtml(item.instagram_post_url)}</a></div>` : ''}
+        ${item.slide_count && !item.canva_design_url ? renderPreviewStrip(item) : ''}
+      </div>
+      <div class="actions">
+        ${item.canva_design_url ? `<a class="primary" href="${escapeHtml(item.canva_design_url)}" target="_blank">OPEN IN CANVA</a>` : ''}
+        ${item.slides_dir && !item.canva_design_url ? `<button class="primary" onclick="openFolder('${escapeJs(item.slides_dir)}')">OPEN FOLDER</button>` : ''}
+        ${actionButtonsForState(item)}
+      </div>
+    </div>
+  `).join('');
+
+  const stats = {
+    drafted: queue.filter(i => i.state === 'drafted').length,
+    reviewed: queue.filter(i => i.state === 'reviewed').length,
+    published: queue.filter(i => i.state === 'published' || i.state === 'published_with_edits').length,
+    total: queue.length,
+  };
+  updateStats(stats);
+}
+
+function updateStats(s) {
+  document.getElementById('stat-drafted').textContent = s.drafted;
+  document.getElementById('stat-reviewed').textContent = s.reviewed;
+  document.getElementById('stat-published').textContent = s.published;
+  document.getElementById('stat-total').textContent = s.total;
+}
+
+function renderPreviewStrip(item) {
+  const n = item.slide_count || 8;
+  const id = escapeJs(item.id);
+  let html = '<div class="preview-strip">';
+  for (let i = 1; i <= n; i++) {
+    const filename = String(i).padStart(2, '0') + '.png';
+    const url = `/carousel-preview/${encodeURIComponent(item.id)}/${filename}`;
+    html += `<img src="${url}" alt="slide ${i}" onclick="lightboxOpen('${url}')">`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function lightboxOpen(url) {
+  const lb = document.getElementById('lightbox') || createLightbox();
+  lb.querySelector('img').src = url;
+  lb.classList.add('open');
+}
+function createLightbox() {
+  const lb = document.createElement('div');
+  lb.id = 'lightbox';
+  lb.className = 'lightbox';
+  lb.onclick = () => lb.classList.remove('open');
+  lb.innerHTML = '<img src="" alt="">';
+  document.body.appendChild(lb);
+  return lb;
+}
+async function openFolder(path) {
+  // Try backend Finder open first; fall back to clipboard.
+  try {
+    const itemEl = event.target.closest('.item');
+    const itemId = itemEl ? itemEl.dataset.itemId : null;
+    if (itemId) {
+      const res = await fetch('/api/open-folder', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({item_id: itemId}),
+      });
+      if (res.ok) return;
+    }
+  } catch (e) {}
+  // Fallback
+  alert(`Could not auto-open. Copy this path and paste in Finder (Cmd+Shift+G):\n\n${path}`);
+  navigator.clipboard.writeText(path).catch(() => {});
+}
+
+function actionButtonsForState(item) {
+  const id = escapeJs(item.id);
+  if (item.state === 'drafted') {
+    return `
+      <button onclick="markReviewed('${id}')">MARK REVIEWED</button>
+      <button class="primary" onclick="markPublishedFlow('${id}')">PUBLISH ON IG</button>
+      <button class="danger" onclick="rejectFlow('${id}')">REJECT</button>
+    `;
+  }
+  if (item.state === 'reviewed') {
+    return `
+      <button class="primary" onclick="markPublishedFlow('${id}')">PUBLISH ON IG</button>
+      <button class="danger" onclick="rejectFlow('${id}')">REJECT</button>
+    `;
+  }
+  if (item.state === 'published' || item.state === 'published_with_edits') {
+    return `<button onclick="refreshMetrics('${id}')">REFRESH IG METRICS</button>`;
+  }
+  return '';  // rejected / ignored / withdrawn — no actions
+}
+
+async function api(path, payload) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+async function markReviewed(id) {
+  try {
+    await api('/api/capture-delta', {item_id: id});
+    await loadQueue();
+  } catch (e) {
+    alert(`Failed to mark reviewed: ${e.message}`);
+  }
+}
+
+async function markPublishedFlow(id) {
+  const ig_url = prompt('Paste the Instagram post URL (https://www.instagram.com/p/...):');
+  if (!ig_url) return;
+  if (!ig_url.startsWith('https://')) {
+    alert('URL must start with https://');
+    return;
+  }
+  try {
+    const result = await api('/api/mark-published', {item_id: id, ig_url});
+    await loadQueue();
+    alert(`Marked as ${result.new_state}.`);
+  } catch (e) {
+    alert(`Publish failed: ${e.message}`);
+  }
+}
+
+async function rejectFlow(id) {
+  const validTags = ['factually-wrong', 'tone-off', 'image-bad', 'topic-stale',
+                     'legal-risk', 'client-conflict', 'other'];
+  const tag = prompt(`Reason tag — pick one:\n${validTags.join('\n')}\n\nType the tag exactly:`);
+  if (!tag) return;
+  if (!validTags.includes(tag)) {
+    alert(`Invalid tag. Must be one of:\n${validTags.join(', ')}`);
+    return;
+  }
+  const notes = prompt('Optional notes (free text, can leave blank):') || '';
+  try {
+    await api('/api/mark-rejected', {item_id: id, reason_tag: tag, notes});
+    await loadQueue();
+  } catch (e) {
+    alert(`Reject failed: ${e.message}`);
+  }
+}
+
+async function refreshMetrics(id) {
+  if (!confirm('Refresh IG metrics for this carousel? Takes ~30s.')) return;
+  try {
+    await api('/api/refresh-metrics', {item_id: id});
+    alert('Metrics refresh triggered. Reload in a minute to see updated counts.');
+    await loadQueue();
+  } catch (e) {
+    alert(`Refresh failed: ${e.message}`);
+  }
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeJs(s) { return String(s).replace(/['\\]/g, c => '\\' + c); }
+function formatDate(iso) {
+  if (!iso) return '?';
+  const d = new Date(iso);
+  return d.toLocaleString('en-GB', {dateStyle: 'short', timeStyle: 'short'});
+}
+
+loadQueue();
+setInterval(loadQueue, 30000);  // re-poll every 30s
+</script>
+
+</body>
+</html>

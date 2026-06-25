@@ -366,6 +366,30 @@ class PulseEngine:
         _severity = {"green": 0, "yellow": 1, "red": 2}
         worst = max(sensor_statuses, key=lambda s: _severity.get(s, 0))
         status = HealthStatus(worst)
+
+        # Observability: name each sensor's status so a non-green pulse names its
+        # driver instead of forcing a code read (2026-06-24 — Cell ran 'yellow'
+        # for hours with every metadata field green; the flat sensor_statuses list
+        # hid WHICH sensor was the worst). Logs only when not green, to stay quiet.
+        if status is not HealthStatus.GREEN:
+            _named = {"http": http_status.value}
+            if self._db_sensor is not None:
+                _named["db"] = db_reading.status  # type: ignore[possibly-undefined]
+            if self._qdrant_sensor is not None:
+                _named["qdrant"] = qdrant_reading.status  # type: ignore[possibly-undefined]
+            if self._error_rate_sensor is not None:
+                _named["error_rate"] = error_reading.status  # type: ignore[possibly-undefined]
+            _named["ollama"] = ollama_status
+            _named["backup"] = backup_status
+            _named["cron"] = cron_status
+            _named["vercel"] = vercel_status
+            _named["outbox"] = outbox_status
+            if self._ai_intel_sensor is not None and "ai_intel" in sensor_metadata:
+                # ai_reading may be unbound if the read raised; guard on its presence
+                _named["ai_intel"] = locals().get("ai_reading").status if locals().get("ai_reading") is not None else "yellow"
+            _drivers = {k: v for k, v in _named.items() if v != "green"}
+            logger.info(f"Pulse health={status.value} DRIVERS={_drivers} all={_named}")
+
         if _m:
             _m.record_phase(_cell, "sense", time.monotonic() - _t0)
             if self._homeostatic:
