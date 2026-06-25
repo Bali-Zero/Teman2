@@ -888,6 +888,89 @@ def _facts_block_html(pairs: list[tuple[str, str]], source_text: str | None) -> 
     return "\n".join(rows)
 
 
+# Storyboarder→template field aliases for {{#each}} loops. The layout templates
+# iterate a canonical variable (`items`, `facts`, `citations`, `events`) but the
+# storyboarder emits domain-named arrays (`list_items`, …). Map the alias to the
+# template's variable so the loop binds instead of shipping raw {{#each items}}.
+_EACH_ALIASES: dict[str, tuple[str, ...]] = {
+    "items": ("list_items", "items"),          # dark-status-list
+    "facts": ("facts", "fact_items"),          # evidence-carved
+    "citations": ("citations", "sources"),     # source-citation
+    "events": ("events", "timeline", "list_items"),  # timeline-pinboard
+}
+
+
+def _resolve_each_rows(var: str, slide: dict[str, Any]) -> list[Any] | None:
+    """Find the array a {{#each <var>}} loop should iterate, honoring aliases."""
+    for key in _EACH_ALIASES.get(var, (var,)):
+        rows = slide.get(key)
+        if isinstance(rows, list) and rows:
+            return rows
+    return None
+
+
+def _expand_each_blocks(html: str, slide: dict[str, Any]) -> str:
+    """Expand Handlebars-style ``{{#each <var>}}…{{/each}}`` blocks.
+
+    For each row, the inner template's ``{{field}}`` placeholders are filled from
+    that row dict (``{{this}}`` → the row itself when it is a scalar), and a nested
+    ``{{#if field}}…{{/if}}`` keeps its body only when the row has a truthy field.
+    Field values are HTML-escaped (rows carry user copy). A block whose array is
+    missing/empty is removed entirely (no raw mustache shipped) — this is the bug
+    fix: previously the whole ``{{#each}}`` block reached the renderer verbatim.
+    """
+    each_re = re.compile(r"\{\{#each\s+([a-z_]+)\}\}(.*?)\{\{/each\}\}", re.DOTALL)
+
+    def _render_block(m: re.Match[str]) -> str:
+        var, inner = m.group(1), m.group(2)
+        rows = _resolve_each_rows(var, slide)
+        if not rows:
+            return ""  # no data → drop the block (never ship raw {{#each}})
+        out: list[str] = []
+        for row in rows:
+            chunk = inner
+            if isinstance(row, dict):
+                # nested {{#if field}}…{{/if}} per row
+                def _if_sub(mi: re.Match[str], _row: dict[str, Any] = row) -> str:
+                    return mi.group(2) if _row.get(mi.group(1)) else ""
+                chunk = re.sub(
+                    r"\{\{#if\s+([a-z_]+)\}\}(.*?)\{\{/if\}\}", _if_sub, chunk,
+                    flags=re.DOTALL,
+                )
+                for fk, fv in row.items():
+                    chunk = chunk.replace("{{%s}}" % fk, _html_escape(str(fv)))
+                chunk = chunk.replace("{{this}}", _html_escape(str(row)))
+            else:
+                # scalar row: {{this}} is the value
+                chunk = chunk.replace("{{this}}", _html_escape(str(row)))
+            # strip any leftover {{field}} the row didn't supply (no raw mustache)
+            chunk = re.sub(r"\{\{[a-z_]+\}\}", "", chunk)
+            out.append(chunk)
+        return "".join(out)
+
+    return each_re.sub(_render_block, html)
+
+
+def _qa_dialogue_fields(slide: dict[str, Any]) -> dict[str, str]:
+    """Adapt the storyboarder's ``qa_pairs`` array to qa-dialogue's flat fields.
+
+    The qa-dialogue template wants ``voice_a_label/voice_a_quote/voice_b_*`` but
+    the storyboarder emits ``qa_pairs: [{voice, line}, …]``. Map the first two
+    pairs onto the two voices. Returns {} when qa_pairs is absent (template then
+    falls back to whatever flat fields the slide already carries).
+    """
+    pairs = slide.get("qa_pairs")
+    if not isinstance(pairs, list) or len(pairs) < 1:
+        return {}
+    out: dict[str, str] = {}
+    for idx, key in ((0, "a"), (1, "b")):
+        if idx < len(pairs) and isinstance(pairs[idx], dict):
+            p = pairs[idx]
+            out["voice_%s_label" % key] = str(p.get("voice") or p.get("label") or "")
+            out["voice_%s_quote" % key] = str(p.get("line") or p.get("quote") or "")
+    return out
+
+
 def _fill_placeholders(
     html: str,
     slide: dict[str, Any],
@@ -977,6 +1060,11 @@ def _fill_placeholders(
         else:
             statement_emphasis_html = f'<span class="emphasis">{words[0]}</span>'
 
+    # Expand {{#each <var>}} list blocks FIRST (dark-status-list / evidence-carved /
+    # source-citation / timeline-pinboard) so the loop rows are materialized before
+    # the scalar placeholder pass. Previously unhandled → raw mustache shipped.
+    html = _expand_each_blocks(html, slide)
+
     replacements = {
         "{{heading}}": headline,
         "{{subheading}}": subhead,
@@ -986,6 +1074,9 @@ def _fill_placeholders(
         "{{statement}}": statement,
         "{{statement_html_with_emphasis_span}}": statement_emphasis_html,
     }
+    # qa-dialogue: map qa_pairs → the template's flat voice_a/voice_b fields.
+    for fk, fv in _qa_dialogue_fields(slide).items():
+        replacements["{{%s}}" % fk] = _html_escape(fv)
     for k, v in replacements.items():
         html = html.replace(k, v)
 
