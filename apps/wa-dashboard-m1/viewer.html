@@ -1045,7 +1045,7 @@ async function renderIntake() {
     subEl.textContent = `Aggiornato ${new Date(data.generated_at).toLocaleTimeString("it-IT")} · ${data.pii_policy}`;
     cardsEl.innerHTML = `
       <div class="intake-card"><div class="label">WA docs</div><div class="value">${iFmt(q.total)}</div><div class="hint">${iFmt(q.with_source_context)} con source_context</div></div>
-      <div class="intake-card"><div class="label">Direct</div><div class="value">${iFmt(q.direct_docs)}</div><div class="hint">phone-keyed CRM/prospect parser</div></div>
+      <div class="intake-card"><div class="label">Direct</div><div class="value">${iFmt(q.direct_docs)}</div><div class="hint">${iFmt(q.direct_known_docs)} noti (${iFmt(q.direct_high_conf_docs)} high) · ${iFmt(q.direct_unknown_docs)} parser · ${iFmt(q.direct_unknown_ocr_empty)} no OCR</div></div>
       <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(q.group_docs)}</div><div class="hint">${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, "unsafe")}</div></div>
       <div class="intake-card"><div class="label">Pipeline</div><div class="value">${iFmt(q.done_docs)}</div><div class="hint">${iFmt(q.dead_docs)} dead · ${iFmt(q.unknown_context_docs)} no context</div></div>
     `;
