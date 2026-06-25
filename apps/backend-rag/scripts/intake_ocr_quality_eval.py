@@ -24,8 +24,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from backend.services.intake import ocr_quality
-
 
 async def _offline_empty_model(_model: str, _prompt: str) -> str:
     return "{}"
@@ -62,6 +60,8 @@ async def evaluate_samples(
     *,
     allow_model_calls: bool = False,
 ) -> dict[str, Any]:
+    from backend.services.intake import ocr_quality
+
     generate_fn = None if allow_model_calls else _offline_empty_model
     results: list[dict[str, Any]] = []
     for index, sample in enumerate(samples, start=1):

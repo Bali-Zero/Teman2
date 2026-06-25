@@ -17,18 +17,29 @@ _APP_ROOT = _REPO_ROOT / "apps" / "backend-rag"
 _SCRIPT_PATH = _APP_ROOT / "scripts" / "intake_ocr_quality_eval.py"
 
 
-def _env() -> dict[str, str]:
+def _clean_env() -> dict[str, str]:
     return {
         "PATH": os.environ.get("PATH", ""),
         "PYTHONPATH": str(_APP_ROOT),
     }
 
 
+def _app_env() -> dict[str, str]:
+    env = _clean_env()
+    env.update(
+        {
+            "JWT_SECRET_KEY": "test-jwt-secret-key-for-ocr-quality-eval",
+            "API_KEYS": "test-api-key-for-ocr-quality-eval",
+        }
+    )
+    return env
+
+
 def test_script_help_does_not_require_model_or_app_settings() -> None:
     result = subprocess.run(
         [sys.executable, str(_SCRIPT_PATH), "--help"],
         cwd=_APP_ROOT,
-        env=_env(),
+        env=_clean_env(),
         text=True,
         capture_output=True,
         check=False,
@@ -37,6 +48,8 @@ def test_script_help_does_not_require_model_or_app_settings() -> None:
     assert result.returncode == 0, result.stderr + result.stdout
     assert "--input" in result.stdout
     assert "--allow-model-calls" in result.stdout
+    assert "JWT_SECRET_KEY" not in result.stderr
+    assert "API_KEYS" not in result.stderr
 
 
 def test_script_evaluates_jsonl_and_summarizes_by_provider(tmp_path: Path) -> None:
@@ -87,7 +100,7 @@ def test_script_evaluates_jsonl_and_summarizes_by_provider(tmp_path: Path) -> No
     result = subprocess.run(
         [sys.executable, str(_SCRIPT_PATH), "--input", str(sample_path)],
         cwd=_APP_ROOT,
-        env=_env(),
+        env=_app_env(),
         text=True,
         capture_output=True,
         check=False,
