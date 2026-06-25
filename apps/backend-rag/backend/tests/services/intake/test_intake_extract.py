@@ -65,6 +65,10 @@ def test_canonical_doc_type_aliases():
     assert extract.canonical_doc_type("kk") == "family_card"
     assert extract.canonical_doc_type("akta_kelahiran") == "birth_certificate"
     assert extract.canonical_doc_type("buku_nikah") == "marriage_certificate"
+    assert extract.canonical_doc_type("proof_of_payment") == "payment_receipt"
+    assert extract.canonical_doc_type("boarding_pass") == "travel_ticket"
+    assert extract.canonical_doc_type("rekening_koran") == "bank_statement"
+    assert extract.canonical_doc_type("travel_insurance") == "medical_insurance"
     assert extract.canonical_doc_type("unknown_thing") is None
     assert extract.canonical_doc_type(None) is None
 
@@ -276,6 +280,54 @@ async def test_akta_list_fields():
             },
             "spouse_names",
             ["Made Spouse", "Wayan Spouse"],
+        ),
+        (
+            "payment_receipt",
+            {
+                "receipt_no": {"value": "TRX-123", "source_page": 1},
+                "payer_name": {"value": "Mario Rossi", "source_page": 1},
+                "amount": {"value": "IDR 10,000,000", "source_page": 1},
+                "payment_date": {"value": "2026-06-01", "source_page": 1},
+                "reference": {"value": "Invoice INV-1", "source_page": 1},
+            },
+            "amount",
+            "IDR 10,000,000",
+        ),
+        (
+            "travel_ticket",
+            {
+                "ticket_no": {"value": "TKT-123", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "travel_date": {"value": "2026-07-01", "source_page": 1},
+                "route": {"value": "DPS-SIN", "source_page": 1},
+                "booking_reference": {"value": "ABC123", "source_page": 1},
+            },
+            "booking_reference",
+            "ABC123",
+        ),
+        (
+            "bank_statement",
+            {
+                "account_holder": {"value": "Mario Rossi", "source_page": 1},
+                "bank_name": {"value": "BCA", "source_page": 1},
+                "account_no": {"value": "****1234", "source_page": 1},
+                "statement_period": {"value": "2026-06", "source_page": 1},
+                "balance": {"value": "IDR 100,000,000", "source_page": 1},
+            },
+            "bank_name",
+            "BCA",
+        ),
+        (
+            "medical_insurance",
+            {
+                "policy_no": {"value": "POL-123", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "insurer": {"value": "Example Insurance", "source_page": 1},
+                "coverage_period": {"value": "2026", "source_page": 1},
+                "expiry": {"value": "2026-12-31", "source_page": 1},
+            },
+            "policy_no",
+            "POL-123",
         ),
         (
             "sk_kemenkumham",
