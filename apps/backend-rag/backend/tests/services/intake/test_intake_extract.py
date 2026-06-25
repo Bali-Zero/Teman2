@@ -717,6 +717,33 @@ async def test_ktp_label_fields_skip_model_call():
     assert out["fields"]["address"]["value"] == "JL SUNSET ROAD"
 
 
+async def test_ktp_label_fields_accept_colonless_ocr_labels():
+    """KTP OCR often drops separators but still carries client identity fields."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PROVINSI BALI\n"
+        "NIK 5101010101010001\n"
+        "Nama MADE SARI\n"
+        "Tempat/Tgl Lahir DENPASAR, 01-01-1990\n"
+        "Alamat JL SUNSET ROAD"
+    )
+    out = await extract.extract_fields("e_ktp", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "ktp"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["ktp_labels"]
+    assert out["fields"]["nik"]["value"] == "5101010101010001"
+    assert out["fields"]["name"]["value"] == "Made Sari"
+    assert out["fields"]["dob"]["value"] == "1990-01-01"
+    assert out["fields"]["address"]["value"] == "JL SUNSET ROAD"
+
+
 async def test_family_card_label_fields_skip_model_call():
     """Clearly-labelled KK OCR extracts family routing fields locally."""
     called = {"n": 0}

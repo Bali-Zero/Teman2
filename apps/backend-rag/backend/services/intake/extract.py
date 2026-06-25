@@ -1286,20 +1286,23 @@ def _extract_ktp_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     _set_if_present(
         fields,
         "name",
-        _first_line_match(pages, r"^(?:nama|name)\s*[:\-]\s*(?!rekening\b)(.+)$"),
+        _first_line_match(pages, r"^(?:nama|name)(?:\s*[:\-]\s*|\s+)(?!rekening\b)(.+)$"),
         person_name=True,
     )
     born = _first_line_match(
         pages,
-        r"^(?:tempat\s*/?\s*tgl\s*lahir|tempat\s+tanggal\s+lahir)\s*[:\-]\s*(?:[^,]+,\s*)?(.+)$",
+        r"^(?:tempat\s*/?\s*tgl\s*lahir|tempat\s+tanggal\s+lahir)(?:\s*[:\-]\s*|\s+)(?:[^,]+,\s*)?(.+)$",
     )
     if born is None:
-        born = _first_line_match(pages, r"^(?:tanggal\s+lahir|tgl\s+lahir|dob)\s*[:\-]\s*(.+)$")
+        born = _first_line_match(
+            pages,
+            r"^(?:tanggal\s+lahir|tgl\s+lahir|dob)(?:\s*[:\-]\s*|\s+)(.+)$",
+        )
     _set_if_present(fields, "dob", born, date=True)
     _set_if_present(
         fields,
         "address",
-        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:alamat|address)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     return fields
 
