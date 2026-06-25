@@ -561,9 +561,16 @@ export default function PortalProcessPage() {
   );
 
   // Load profile and documents — stable reference, no toast dependency in deps
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: {
+    showLoading?: boolean;
+    showErrorToast?: boolean;
+  }) => {
+    const showLoading = options?.showLoading ?? true;
+    const showErrorToast = options?.showErrorToast ?? true;
     try {
-      setIsLoading(true);
+      if (showLoading) {
+        setIsLoading(true);
+      }
 
       // Get profile
       const profileData = await api.portal.getProfile();
@@ -576,10 +583,14 @@ export default function PortalProcessPage() {
         (await api.portal.getMyRequiredDocuments()) as ClientRequiredDocument[];
       setDocuments(docs);
     } catch (err) {
-      toastRef.current.error("Failed to load data", "Please try again later");
+      if (showErrorToast) {
+        toastRef.current.error("Failed to load data", "Please try again later");
+      }
       logger.error("Failed to load process data", {}, err as Error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, []); // stable — no deps that change every render
 
@@ -604,12 +615,24 @@ export default function PortalProcessPage() {
         notes,
       });
 
+      setDocuments((currentDocuments) =>
+        currentDocuments.map((doc) =>
+          doc.id === uploadDoc.id
+            ? {
+                ...doc,
+                uploaded_by_client: true,
+                status: "uploaded",
+                client_notes: notes || doc.client_notes,
+              }
+            : doc,
+        ),
+      );
       toastRef.current.success(
         "Document uploaded",
         "Your document has been submitted for review",
       );
       setUploadDoc(null);
-      await loadData(); // Refresh data
+      void loadData({ showLoading: false, showErrorToast: false });
     } catch (err) {
       toastRef.current.error("Upload failed", "Please try again");
       logger.error("Failed to upload document", {}, err as Error);
