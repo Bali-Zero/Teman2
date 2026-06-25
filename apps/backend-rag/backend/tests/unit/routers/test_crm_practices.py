@@ -1241,6 +1241,7 @@ class TestUploadClientDocument:
         assert upload_kwargs["client_id"] == 42
         assert upload_kwargs["pool"] is mock_db_pool
         assert upload_kwargs["current_user"] is admin_user
+        assert upload_kwargs["access_already_verified"] is True
         assert upload_kwargs["data"].file_name == "passport.pdf"
         assert upload_kwargs["data"].document_type == "passport"
         assert upload_kwargs["data"].practice_id == 7

@@ -2196,6 +2196,7 @@ async def upload_client_document(
             pool=db_pool,
             current_user=current_user,
             background_tasks=background_tasks,
+            access_already_verified=True,
         )
         doc_id = upload_result["document_id"]
 
