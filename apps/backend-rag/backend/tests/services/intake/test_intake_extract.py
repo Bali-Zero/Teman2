@@ -403,6 +403,35 @@ async def test_bank_statement_label_fields_skip_model_call():
     assert out["fields"]["balance"]["value"] == "IDR 100,000,000"
 
 
+async def test_payment_receipt_label_fields_skip_model_call():
+    """Payment receipts can expose transaction fields in labels."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PAYMENT RECEIPT\n"
+        "Receipt No : TRX-2026-00077\n"
+        "Payer Name : MARIO ROSSI\n"
+        "Amount : IDR 10,000,000\n"
+        "Payment Date : 2026-06-01\n"
+        "Reference : Invoice INV-1"
+    )
+    out = await extract.extract_fields("proof_of_payment", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "payment_receipt"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["payment_receipt_labels"]
+    assert out["fields"]["receipt_no"]["value"] == "TRX-2026-00077"
+    assert out["fields"]["payer_name"]["value"] == "Mario Rossi"
+    assert out["fields"]["amount"]["value"] == "IDR 10,000,000"
+    assert out["fields"]["payment_date"]["value"] == "2026-06-01"
+    assert out["fields"]["reference"]["value"] == "Invoice INV-1"
+
+
 async def test_akta_list_fields():
     payload = {
         "company_name": {"value": "PT MAJU", "source_page": 1},

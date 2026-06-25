@@ -953,6 +953,53 @@ def _extract_bank_statement_label_fields(pages: list[str]) -> dict[str, dict[str
     return fields
 
 
+def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("payment_receipt")
+    _set_if_present(
+        fields,
+        "receipt_no",
+        _first_line_match(
+            pages,
+            r"^(?:receipt\s*(?:no\.?|number)|transaction\s*(?:no\.?|id)|trx\s*id|invoice\s*(?:no\.?|number)|reference\s*(?:no\.?|number)|nomor\s+bukti|no\.?\s*bukti)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "payer_name",
+        _first_line_match(
+            pages,
+            r"^(?:payer\s*name|payer|sender\s*name|sender|nama\s+pembayar|pengirim)\s*[:\-]\s*(.+)$",
+        ),
+        person_name=True,
+    )
+    _set_if_present(
+        fields,
+        "amount",
+        _first_line_match(
+            pages,
+            r"^(?:amount|total|paid\s*amount|jumlah|nominal)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "payment_date",
+        _first_line_match(
+            pages,
+            r"^(?:payment\s*date|paid\s*date|transaction\s*date|tanggal\s*bayar|tanggal\s*transaksi)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    _set_if_present(
+        fields,
+        "reference",
+        _first_line_match(
+            pages,
+            r"^(?:reference|invoice|description|keterangan|berita)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    return fields
+
+
 def _has_any_value(fields: dict[str, dict[str, Any]], names: tuple[str, ...]) -> bool:
     return any(fields.get(name, {}).get("value") for name in names)
 
@@ -967,6 +1014,12 @@ def _visa_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
     has_visa_identifier = _has_any_value(fields, ("visa_no", "visa_index"))
     has_identity_context = _has_any_value(fields, ("name", "passport_no", "expiry", "sponsor"))
     return has_visa_identifier and has_identity_context
+
+
+def _payment_receipt_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
+    has_payment_identifier = _has_any_value(fields, ("receipt_no", "reference"))
+    has_payment_context = _has_any_value(fields, ("amount", "payment_date", "payer_name"))
+    return has_payment_identifier and has_payment_context
 
 
 def _extract_label_fields_if_routing_useful(
@@ -997,6 +1050,10 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_bank_statement_label_fields(pages)
         if _has_any_value(fields, ("account_holder", "account_no")):
             return fields, "bank_statement_labels"
+    if doc_type == "payment_receipt":
+        fields = _extract_payment_receipt_label_fields(pages)
+        if _payment_receipt_labels_routing_useful(fields):
+            return fields, "payment_receipt_labels"
     return None
 
 
