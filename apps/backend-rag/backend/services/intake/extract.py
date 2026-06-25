@@ -914,20 +914,20 @@ def _extract_skt_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "name",
         _first_line_match(
             pages,
-            r"^(?:nama\s*(?:wajib\s+pajak)?|taxpayer\s*name|name)\s*[:\-]\s*(.+)$",
+            r"^(?:nama\s*(?:wajib\s+pajak)?|taxpayer\s*name|name)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     _set_if_present(
         fields,
         "address",
-        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:alamat|address)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     _set_if_present(
         fields,
         "registration_date",
         _first_line_match(
             pages,
-            r"^(?:tanggal\s*(?:terdaftar|registrasi)|registered\s*date|registration\s*date)\s*[:\-]\s*(.+)$",
+            r"^(?:tanggal\s*(?:terdaftar|registrasi)|registered\s*date|registration\s*date)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )

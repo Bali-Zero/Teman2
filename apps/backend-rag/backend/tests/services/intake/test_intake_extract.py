@@ -403,6 +403,35 @@ async def test_skt_label_fields_skip_model_call():
     assert out["fields"]["registration_date"]["value"] == "2026-05-15"
 
 
+async def test_skt_label_fields_accept_colonless_ocr_labels():
+    """SKT OCR often drops separators on taxpayer fields."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "SURAT KETERANGAN TERDAFTAR\n"
+        "Nomor PEM-00123/WPJ.12/KP.0103/2026\n"
+        "NPWP 09.876.543.2-901.000\n"
+        "Nama PT ZANTARA TEST MANDIRI\n"
+        "Alamat JALAN RAYA CANGGU NO 10 BADUNG\n"
+        "Tanggal Terdaftar 15 Mei 2026"
+    )
+    out = await extract.extract_fields("skt", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "skt"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["skt_labels"]
+    assert out["fields"]["skt_number"]["value"] == "PEM-00123/WPJ.12/KP.0103/2026"
+    assert out["fields"]["npwp_number"]["value"] == "098765432901000"
+    assert out["fields"]["name"]["value"] == "PT ZANTARA TEST MANDIRI"
+    assert out["fields"]["address"]["value"] == "JALAN RAYA CANGGU NO 10 BADUNG"
+    assert out["fields"]["registration_date"]["value"] == "2026-05-15"
+
+
 async def test_skt_model_alias_fields_map_to_canonical_schema():
     """LLM alias names for SKT are preserved as canonical fields."""
     payload = {
