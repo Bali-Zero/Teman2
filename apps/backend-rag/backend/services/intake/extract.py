@@ -680,6 +680,80 @@ def _clean_visa_index(value: str | None) -> str | None:
     return candidate
 
 
+def _clean_nib_number(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    candidate = re.sub(r"\D", "", cleaned)
+    if len(candidate) != 13:
+        return None
+    return candidate
+
+
+def _extract_kbli_codes_from_labels(pages: list[str]) -> tuple[list[str], int] | None:
+    codes: list[str] = []
+    first_page: int | None = None
+    for page_no, page in enumerate(pages, start=1):
+        for line in str(page or "").splitlines():
+            if "KBLI" not in line.upper():
+                continue
+            for code in re.findall(r"\b\d{5}\b", line):
+                if code not in codes:
+                    codes.append(code)
+                    if first_page is None:
+                        first_page = page_no
+    if not codes or first_page is None:
+        return None
+    return codes, first_page
+
+
+def _extract_nib_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("nib")
+    nib_number = _first_line_match(
+        pages,
+        r"^(?:nib|nomor\s+induk\s+berusaha(?:\s*\(nib\))?)\s*[:\-]?\s*(\d[\d .\-]{10,})$",
+    )
+    if nib_number is not None:
+        value, page = nib_number
+        parsed = _field(_clean_nib_number(value), page)
+        if parsed is not None:
+            fields["nib_number"] = parsed
+
+    _set_if_present(
+        fields,
+        "company_name",
+        _first_line_match(
+            pages,
+            r"^(?:nama\s+pelaku\s+usaha|nama\s+perusahaan|company\s+name|business\s+name)\s*[:\-]\s*(.+)$",
+        ),
+    )
+
+    kbli_codes = _extract_kbli_codes_from_labels(pages)
+    if kbli_codes is not None:
+        codes, page = kbli_codes
+        fields["kbli_codes"] = {
+            "value": codes,
+            "confidence": _LABEL_CONFIDENCE,
+            "source_page": page,
+        }
+
+    _set_if_present(
+        fields,
+        "address",
+        _first_line_match(pages, r"^(?:alamat|address)\s*[:\-]\s*(.+)$"),
+    )
+    _set_if_present(
+        fields,
+        "issue_date",
+        _first_line_match(
+            pages,
+            r"^(?:tanggal\s*(?:terbit|diterbitkan)|issue\s*date|date\s*of\s*issue)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    return fields
+
+
 def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     fields = _blank_fields("passport")
     passport_no = _first_line_match(
@@ -1165,6 +1239,10 @@ def _extract_label_fields_if_routing_useful(
     doc_type: str,
     pages: list[str],
 ) -> tuple[dict[str, dict[str, Any]], str] | None:
+    if doc_type == "nib":
+        fields = _extract_nib_label_fields(pages)
+        if _has_any_value(fields, ("nib_number", "company_name")):
+            return fields, "nib_labels"
     if doc_type == "passport":
         fields = _extract_passport_label_fields(pages)
         if _passport_labels_routing_useful(fields):

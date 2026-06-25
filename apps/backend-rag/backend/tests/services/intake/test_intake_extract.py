@@ -235,6 +235,36 @@ async def test_passport_partial_mrz_merges_with_model_output():
     assert out["fields"]["expiry"]["value"] == "2030-04-15"
 
 
+async def test_nib_label_fields_skip_model_call():
+    """Clearly-labelled OSS/NIB OCR carries routing-critical company fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "LEMBAGA OSS REPUBLIK INDONESIA\n"
+        "NOMOR INDUK BERUSAHA (NIB)\n"
+        "NIB : 1234567890123\n"
+        "Nama Pelaku Usaha : PT BALI ZERO SUKSES\n"
+        "KBLI : 70209 Aktivitas Konsultasi Manajemen Lainnya\n"
+        "Alamat : Jl Sunset Road 88, Kuta\n"
+        "Tanggal Terbit : 20 Juni 2026"
+    )
+    out = await extract.extract_fields("oss", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "nib"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["nib_labels"]
+    assert out["fields"]["nib_number"]["value"] == "1234567890123"
+    assert out["fields"]["company_name"]["value"] == "PT BALI ZERO SUKSES"
+    assert out["fields"]["kbli_codes"]["value"] == ["70209"]
+    assert out["fields"]["address"]["value"] == "Jl Sunset Road 88, Kuta"
+    assert out["fields"]["issue_date"]["value"] == "2026-06-20"
+
+
 async def test_passport_label_fields_skip_model_call():
     """Clearly-labelled passport OCR carries routing-critical fields locally."""
     called = {"n": 0}
