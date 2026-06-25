@@ -181,6 +181,60 @@ async def test_empty_ocr_yields_all_null_without_model_call():
         assert out["fields"][name]["value"] is None
 
 
+async def test_passport_mrz_complete_skips_model_call():
+    """A valid TD3 MRZ is enough to extract passport fields deterministically."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PASSPORT\n"
+        "P<ITAERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\n"
+        "L898902C36ITA7408122F3004157ZE184226B<<<<<10"
+    )
+    out = await extract.extract_fields("passport", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "passport_mrz"
+    assert out["deterministic_extractors"] == ["passport_mrz"]
+    assert out["any_low_confidence"] is False
+    assert out["fields"]["passport_no"]["value"] == "L898902C3"
+    assert out["fields"]["name"]["value"] == "Eriksson Anna Maria"
+    assert out["fields"]["nationality"]["value"] == "Italian"
+    assert out["fields"]["dob"]["value"] == "1974-08-12"
+    assert out["fields"]["expiry"]["value"] == "2030-04-15"
+    assert out["fields"]["name"]["confidence"] >= 0.9
+
+
+async def test_passport_partial_mrz_merges_with_model_output():
+    """Partial trusted MRZ fields supplement SEA-LION output instead of guessing."""
+    payload = {
+        "passport_no": {"value": "MODEL123", "source_page": 1},
+        "name": {"value": None, "source_page": None},
+        "nationality": {"value": None, "source_page": None},
+        "dob": {"value": None, "source_page": None},
+        "expiry": {"value": None, "source_page": None},
+    }
+    # Passport-number check digit is deliberately wrong (5 instead of 6), while
+    # DOB + expiry check digits are valid. The MRZ pair is trusted enough to
+    # provide name/dates/nationality, but not passport_no.
+    ocr = (
+        "P<ITAERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\n"
+        "L898902C35ITA7408122F3004157ZE184226B<<<<<10"
+    )
+    out = await extract.extract_fields("passport", [ocr], generate_fn=_fake_gen(payload))
+
+    assert out["extraction_model"] == "sea-lion"
+    assert out["deterministic_extractors"] == ["passport_mrz"]
+    assert out["fields"]["passport_no"]["value"] == "MODEL123"
+    assert out["fields"]["name"]["value"] == "Eriksson Anna Maria"
+    assert out["fields"]["nationality"]["value"] == "Italian"
+    assert out["fields"]["dob"]["value"] == "1974-08-12"
+    assert out["fields"]["expiry"]["value"] == "2030-04-15"
+
+
 async def test_akta_list_fields():
     payload = {
         "company_name": {"value": "PT MAJU", "source_page": 1},

@@ -29,6 +29,11 @@ from typing import Any
 import httpx
 
 from backend.services.intake.model_roles import resolve_model_role
+from backend.utils.passport_normalize import (
+    normalize_date,
+    normalize_nationality,
+    title_case_name,
+)
 
 logger = logging.getLogger("zantara.intake.extract")
 
@@ -58,6 +63,7 @@ _CONNECT_TIMEOUT_SECONDS: float = 5.0
 # "present-and-evidenced" confidence rather than a fake fine-grained score.
 _PRESENT_CONFIDENCE: float = 0.85
 _LOW_CONFIDENCE_THRESHOLD: float = 0.60  # mirrors evidence-scoring CAUTIOUS band.
+_MRZ_CONFIDENCE: float = 0.95
 
 # --- Persistent async HTTP client (Golden Rule #10: never per-call). ---
 _client: httpx.AsyncClient | None = None
@@ -383,6 +389,150 @@ def _coerce_field(
     return {"value": value, "confidence": round(confidence, 2), "source_page": source_page}
 
 
+# ---------------------------------------------------------------------------
+# Deterministic passport MRZ extraction.
+# ---------------------------------------------------------------------------
+
+_MRZ_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<"
+_MRZ_VALUES = {ch: i for i, ch in enumerate("0123456789")}
+_MRZ_VALUES.update({chr(ord("A") + i): 10 + i for i in range(26)})
+_MRZ_VALUES["<"] = 0
+_MRZ_WEIGHTS = (7, 3, 1)
+
+
+def _normalise_mrz_candidate(line: str) -> str:
+    """Return a compact MRZ-ish line, dropping OCR spaces/punctuation."""
+    cleaned = (
+        line.upper()
+        .replace("«", "<")
+        .replace("‹", "<")
+        .replace(" ", "")
+    )
+    return "".join(ch for ch in cleaned if ch in _MRZ_CHARS)
+
+
+def _mrz_check_digit(value: str) -> int:
+    """ICAO 9303 MRZ check digit."""
+    total = 0
+    for idx, ch in enumerate(value):
+        total += _MRZ_VALUES.get(ch, 0) * _MRZ_WEIGHTS[idx % len(_MRZ_WEIGHTS)]
+    return total % 10
+
+
+def _mrz_check_ok(line: str, start: int, end: int, check_pos: int) -> bool:
+    check = line[check_pos] if len(line) > check_pos else ""
+    return check.isdigit() and _mrz_check_digit(line[start:end]) == int(check)
+
+
+def _find_td3_mrz_pair(pages: list[str]) -> tuple[str, str, int] | None:
+    """Find a passport TD3 MRZ pair in OCR pages.
+
+    Returns (line1, line2, source_page). source_page is 1-based to match the
+    extraction-stage field contract.
+    """
+    for page_idx, text in enumerate(pages, start=1):
+        candidates = [
+            _normalise_mrz_candidate(line)
+            for line in str(text or "").splitlines()
+        ]
+        candidates = [line for line in candidates if len(line) >= 20 and "<" in line]
+        for idx, line1 in enumerate(candidates):
+            if not line1.startswith("P<"):
+                continue
+            for line2 in candidates[idx + 1 : idx + 4]:
+                if len(line2) < 30:
+                    continue
+                l1 = (line1 + ("<" * 44))[:44]
+                l2 = (line2 + ("<" * 44))[:44]
+                valid_checks = sum(
+                    (
+                        _mrz_check_ok(l2, 0, 9, 9),
+                        _mrz_check_ok(l2, 13, 19, 19),
+                        _mrz_check_ok(l2, 21, 27, 27),
+                    )
+                )
+                # Two independent check digits are enough to trust the pair.
+                # Below that, treat it as OCR noise and keep the model path.
+                if valid_checks >= 2:
+                    return l1, l2, page_idx
+    return None
+
+
+def _extract_passport_mrz_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    """Extract passport fields from a TD3 MRZ pair without an LLM."""
+    pair = _find_td3_mrz_pair(pages)
+    if pair is None:
+        return {}
+    line1, line2, source_page = pair
+    out: dict[str, dict[str, Any]] = {}
+
+    raw_name = line1[5:44].rstrip("<")
+    name = title_case_name(raw_name)
+    if name:
+        out["name"] = {
+            "value": name,
+            "confidence": _MRZ_CONFIDENCE,
+            "source_page": source_page,
+        }
+
+    if _mrz_check_ok(line2, 0, 9, 9):
+        passport_no = line2[0:9].replace("<", "").strip()
+        if passport_no:
+            out["passport_no"] = {
+                "value": passport_no,
+                "confidence": _MRZ_CONFIDENCE,
+                "source_page": source_page,
+            }
+
+    nationality = normalize_nationality(line2[10:13].replace("<", "").strip())
+    if nationality:
+        out["nationality"] = {
+            "value": nationality,
+            "confidence": _MRZ_CONFIDENCE,
+            "source_page": source_page,
+        }
+
+    if _mrz_check_ok(line2, 13, 19, 19):
+        dob = normalize_date(line2[13:19])
+        if dob:
+            out["dob"] = {
+                "value": dob,
+                "confidence": _MRZ_CONFIDENCE,
+                "source_page": source_page,
+            }
+
+    if _mrz_check_ok(line2, 21, 27, 27):
+        expiry = normalize_date(line2[21:27])
+        if expiry:
+            out["expiry"] = {
+                "value": expiry,
+                "confidence": _MRZ_CONFIDENCE,
+                "source_page": source_page,
+            }
+
+    return out
+
+
+def _passport_mrz_complete(fields: dict[str, dict[str, Any]]) -> bool:
+    """True when MRZ supplied the full passport extraction schema."""
+    return all(
+        fields.get(name, {}).get("value")
+        for name, _is_list, _desc in DOC_TYPE_FIELDS["passport"]
+    )
+
+
+def _merge_deterministic_fields(
+    fields: dict[str, dict[str, Any]],
+    deterministic: dict[str, dict[str, Any]],
+) -> None:
+    """Prefer stronger deterministic fields over model/null fields in-place."""
+    for name, value in deterministic.items():
+        current = fields.get(name)
+        current_conf = current.get("confidence", 0.0) if isinstance(current, dict) else 0.0
+        if current is None or current.get("value") is None or current_conf < value["confidence"]:
+            fields[name] = value
+
+
 # Injectable generate fn for tests (avoids hitting Ollama). Signature mirrors a
 # subset of the Ollama /api/generate contract: (model, prompt) -> response str.
 GenerateFn = Callable[[str, str], Awaitable[str]]
@@ -473,6 +623,26 @@ async def extract_fields(
             "any_low_confidence": True,
         }
 
+    deterministic_fields: dict[str, dict[str, Any]] = {}
+    deterministic_extractors: list[str] = []
+    if canonical == "passport":
+        deterministic_fields = _extract_passport_mrz_fields(pages)
+        if deterministic_fields:
+            deterministic_extractors.append("passport_mrz")
+            if _passport_mrz_complete(deterministic_fields):
+                fields = {
+                    name: {"value": None, "confidence": 0.0, "source_page": None}
+                    for name, _is_list, _desc in DOC_TYPE_FIELDS[canonical]
+                }
+                _merge_deterministic_fields(fields, deterministic_fields)
+                return {
+                    "doc_type": canonical,
+                    "fields": fields,
+                    "extraction_model": "passport_mrz",
+                    "deterministic_extractors": deterministic_extractors,
+                    "any_low_confidence": False,
+                }
+
     prompt = _build_prompt(canonical, pages)
     gen = generate_fn or _ollama_generate
     raw_response = await gen(_resolve_extraction_model(), prompt)
@@ -485,15 +655,21 @@ async def extract_fields(
     for name, is_list, _desc in specs:
         field = _coerce_field(is_list, parsed.get(name), num_pages)
         fields[name] = field
+    if deterministic_fields:
+        _merge_deterministic_fields(fields, deterministic_fields)
+    for field in fields.values():
         if field["confidence"] < _LOW_CONFIDENCE_THRESHOLD:
             any_low = True
 
-    return {
+    result = {
         "doc_type": canonical,
         "fields": fields,
         "extraction_model": EXTRACTION_MODEL_LABEL,
         "any_low_confidence": any_low,
     }
+    if deterministic_extractors:
+        result["deterministic_extractors"] = deterministic_extractors
+    return result
 
 
 # ---------------------------------------------------------------------------
