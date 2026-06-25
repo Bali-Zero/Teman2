@@ -20,30 +20,13 @@ import { logger } from "@/lib/logger";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ClientRequiredDocument } from "@/lib/types/required-documents";
-
-// Lazy: Dialog is only used inside modals (not first paint)
-const Dialog = dynamic(
-  () => import("@/components/ui/dialog").then((m) => ({ default: m.Dialog })),
-  { ssr: false },
-);
-const DialogContent = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({
-      default: m.DialogContent,
-    })),
-  { ssr: false },
-);
-const DialogHeader = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({ default: m.DialogHeader })),
-  { ssr: false },
-);
-const DialogTitle = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({ default: m.DialogTitle })),
-  { ssr: false },
-);
 
 // Lazy: FileUploadField only renders when user clicks upload (not first paint)
 const FileUploadField = dynamic(
@@ -132,6 +115,17 @@ const PROCESS_STATUS_CONFIG: Record<string, { label: string; color: string }> =
 const PROCESS_STATUS_LABELS: Record<string, string> = Object.fromEntries(
   Object.entries(PROCESS_STATUS_CONFIG).map(([k, v]) => [k, v.label]),
 );
+
+const PORTAL_CARD_STYLE = {
+  background: "var(--bz-elevated)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
+} as const;
+
+const PORTAL_CARD_MUTED_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+} as const;
 
 interface ProcessGroup {
   practiceId: number;
@@ -308,11 +302,8 @@ function ProcessCard({
 
   return (
     <div
-      className="rounded-xl border shadow-2xl overflow-hidden backdrop-blur-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
-      style={{
-        background: "rgba(30,30,35,0.7)",
-        borderColor: "rgba(255,255,255,0.05)",
-      }}
+      className="rounded-xl border overflow-hidden backdrop-blur-xl transition-all duration-300"
+      style={PORTAL_CARD_STYLE}
     >
       {/* Header */}
       <button
@@ -322,16 +313,18 @@ function ProcessCard({
         className="w-full p-4 flex items-center justify-between transition-colors"
         style={{ background: "transparent" }}
         onMouseEnter={(e) =>
-          (e.currentTarget.style.background = "rgba(45,45,50,0.5)")
+          (e.currentTarget.style.background = "var(--bz-card-hover)")
         }
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
-            <FolderOpen className="w-5 h-5 text-[var(--accent)]" />
+          <div className="w-10 h-10 rounded-lg bg-[var(--bz-accent)]/10 flex items-center justify-center">
+            <FolderOpen className="w-5 h-5 text-[var(--bz-accent)]" />
           </div>
           <div className="text-left">
-            <h3 className="font-semibold">{process.processName}</h3>
+            <h3 className="font-semibold text-[var(--bz-text-1)]">
+              {process.processName}
+            </h3>
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PROCESS_STATUS_CONFIG[process.processStatus]?.color || "bg-slate-500/10 text-slate-400"}`}
             >
@@ -357,7 +350,7 @@ function ProcessCard({
               style={{ background: "var(--bz-border)" }}
             >
               <div
-                className="h-full bg-[var(--accent)] rounded-full transition-all"
+                className="h-full bg-[var(--bz-accent)] rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -374,7 +367,7 @@ function ProcessCard({
       {isExpanded && (
         <div
           className="px-4 py-2 border-t"
-          style={{ borderColor: "rgba(255,255,255,0.05)" }}
+          style={{ borderColor: "var(--bz-border)" }}
         >
           <button
             onClick={() => setShowTimeline(!showTimeline)}
@@ -666,10 +659,7 @@ export default function PortalProcessPage() {
             <div
               key={i}
               className="rounded-xl border p-4 h-20 animate-pulse"
-              style={{
-                background: "rgba(30,30,35,0.7)",
-                borderColor: "rgba(255,255,255,0.05)",
-              }}
+              style={PORTAL_CARD_MUTED_STYLE}
             />
           ))}
         </div>
@@ -678,10 +668,7 @@ export default function PortalProcessPage() {
             <div
               key={i}
               className="rounded-xl border p-5 h-28 animate-pulse"
-              style={{
-                background: "rgba(30,30,35,0.7)",
-                borderColor: "rgba(255,255,255,0.05)",
-              }}
+              style={PORTAL_CARD_MUTED_STYLE}
             />
           ))}
         </div>
@@ -704,10 +691,7 @@ export default function PortalProcessPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div
             className="rounded-xl border p-4 backdrop-blur-md shadow-lg"
-            style={{
-              background: "rgba(30,30,35,0.6)",
-              borderColor: "rgba(255,255,255,0.05)",
-            }}
+            style={PORTAL_CARD_STYLE}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Active Processes
@@ -716,11 +700,7 @@ export default function PortalProcessPage() {
           </div>
           <div
             className="rounded-xl border p-4"
-            style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(24px)",
-            }}
+            style={{ ...PORTAL_CARD_STYLE, backdropFilter: "blur(24px)" }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Documents Required
@@ -729,11 +709,7 @@ export default function PortalProcessPage() {
           </div>
           <div
             className="rounded-xl border p-4"
-            style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(24px)",
-            }}
+            style={{ ...PORTAL_CARD_STYLE, backdropFilter: "blur(24px)" }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Pending Upload
@@ -742,11 +718,7 @@ export default function PortalProcessPage() {
           </div>
           <div
             className="rounded-xl border p-4"
-            style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(24px)",
-            }}
+            style={{ ...PORTAL_CARD_STYLE, backdropFilter: "blur(24px)" }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Completion
@@ -762,10 +734,7 @@ export default function PortalProcessPage() {
       {processGroups.length === 0 ? (
         <div
           className="rounded-xl border p-12 text-center backdrop-blur-lg"
-          style={{
-            background: "rgba(30,30,35,0.5)",
-            borderColor: "rgba(255,255,255,0.05)",
-          }}
+          style={PORTAL_CARD_STYLE}
         >
           <FolderOpen
             className="w-16 h-16 mx-auto mb-4"
