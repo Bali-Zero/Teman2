@@ -690,6 +690,7 @@ def _set_if_present(
     *,
     person_name: bool = False,
     date: bool = False,
+    cleaner: Callable[[str | None], str | None] | None = None,
 ) -> None:
     if value_page is None:
         return
@@ -698,6 +699,8 @@ def _set_if_present(
         value = _title_person_name(value)
     elif date:
         value = _normalise_label_date(value)
+    elif cleaner is not None:
+        value = cleaner(value)
     parsed = _field(value, page)
     if parsed is not None:
         fields[name] = parsed
@@ -763,6 +766,22 @@ def _clean_npwp_number(value: str | None) -> str | None:
         return None
     candidate = re.sub(r"\D", "", cleaned)
     if len(candidate) not in {15, 16}:
+        return None
+    return candidate
+
+
+def _clean_residence_permit_number(value: str | None) -> str | None:
+    cleaned = _clean_label_value(value)
+    if cleaned is None:
+        return None
+    candidate = re.sub(
+        r"^(?:no\.?\s*)?(?:kitas|itas|kitap|itap|itk)(?:\s*(?:no|number))?(?::|\s)+",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+    candidate = re.sub(r"\s+", "", candidate).upper()
+    if not re.fullmatch(r"[A-Z0-9][A-Z0-9.\-/]{4,}", candidate):
         return None
     return candidate
 
@@ -1161,6 +1180,7 @@ def _extract_kitas_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
             pages,
             r"^(?:no\.?\s*(?:kitas|itas)|nomor\s*(?:kitas|itas)|(?:kitas|itas)\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
         ),
+        cleaner=_clean_residence_permit_number,
     )
     _set_if_present(
         fields,
@@ -1194,6 +1214,7 @@ def _extract_itap_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
             pages,
             r"^(?:no\.?\s*(?:kitap|itap)|nomor\s*(?:kitap|itap)|(?:kitap|itap)\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
         ),
+        cleaner=_clean_residence_permit_number,
     )
     _set_if_present(
         fields,
@@ -1227,6 +1248,7 @@ def _extract_itk_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
             pages,
             r"^(?:no\.?\s*itk|nomor\s*itk|itk\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
         ),
+        cleaner=_clean_residence_permit_number,
     )
     _set_if_present(
         fields,

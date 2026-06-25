@@ -501,6 +501,26 @@ async def test_kitas_label_fields_skip_model_call():
     assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO"
 
 
+async def test_kitas_label_number_drops_ocr_prefix_inside_value():
+    """Vision OCR may include the ITAS/KITAS label inside the captured number."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "KARTU IZIN TINGGAL TERBATAS\n"
+        "No. ITAS : ITAS 2C11AB98765\n"
+        "Nama : MARIO LUCA ROSSI"
+    )
+    out = await extract.extract_fields("kitas", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["fields"]["kitas_no"]["value"] == "2C11AB98765"
+
+
 async def test_itap_label_fields_skip_model_call():
     """Clearly-labelled KITAP/ITAP OCR carries routing-critical fields locally."""
     called = {"n": 0}
