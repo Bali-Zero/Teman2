@@ -691,6 +691,35 @@ async def test_kitas_label_fields_accept_colonless_ocr_labels():
     assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO NUSANTARA"
 
 
+async def test_kitas_label_fields_accept_permit_number_label():
+    """Vision OCR can transcribe ITAS cards with the English Permit No. label."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "REPUBLIK INDONESIA\n"
+        "IZIN TINGGAL TERBATAS\n"
+        "Permit No: 2C11AB98765\n"
+        "Name: MARIO LUCA ROSSI\n"
+        "Nationality: ITALIA\n"
+        "Valid Until: 2027-06-25\n"
+        "Sponsor: PT BALI ZERO TEST"
+    )
+    out = await extract.extract_fields("itas", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "kitas"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["kitas_labels"]
+    assert out["fields"]["kitas_no"]["value"] == "2C11AB98765"
+    assert out["fields"]["name"]["value"] == "Mario Luca Rossi"
+    assert out["fields"]["expiry"]["value"] == "2027-06-25"
+    assert out["fields"]["sponsor"]["value"] == "PT BALI ZERO TEST"
+
+
 async def test_itap_label_fields_skip_model_call():
     """Clearly-labelled KITAP/ITAP OCR carries routing-critical fields locally."""
     called = {"n": 0}

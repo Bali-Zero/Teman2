@@ -775,7 +775,7 @@ def _clean_residence_permit_number(value: str | None) -> str | None:
     if cleaned is None:
         return None
     candidate = re.sub(
-        r"^(?:no\.?\s*)?(?:kitas|itas|kitap|itap|itk)(?:\s*(?:no|number))?(?::|\s)+",
+        r"^(?:(?:no\.?\s*)?(?:kitas|itas|kitap|itap|itk)(?:\s*(?:no|number))?|permit\s*(?:no\.?|number))(?::|\s)+",
         "",
         cleaned,
         flags=re.IGNORECASE,
@@ -1178,7 +1178,7 @@ def _extract_kitas_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
         "kitas_no",
         _first_line_match(
             pages,
-            r"^(?:no\.?\s*(?:kitas|itas)|nomor\s*(?:kitas|itas)|(?:kitas|itas)\s*(?:no|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
+            r"^(?:no\.?\s*(?:kitas|itas)|nomor\s*(?:kitas|itas)|(?:kitas|itas)\s*(?:no|number)|permit\s*(?:no\.?|number))\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{4,})$",
         ),
         cleaner=_clean_residence_permit_number,
     )
