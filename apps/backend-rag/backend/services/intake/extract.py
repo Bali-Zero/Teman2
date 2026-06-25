@@ -1485,7 +1485,7 @@ def _extract_bank_statement_label_fields(pages: list[str]) -> dict[str, dict[str
         "account_holder",
         _first_line_match(
             pages,
-            r"^(?:nama\s*(?:rekening|pemilik|nasabah)|account\s*holder|customer\s*name|name)\s*[:\-]\s*(.+)$",
+            r"^(?:nama\s*(?:rekening|pemilik|nasabah)|account\s*holder|customer\s*name|name)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         person_name=True,
     )
@@ -1494,20 +1494,20 @@ def _extract_bank_statement_label_fields(pages: list[str]) -> dict[str, dict[str
         "account_no",
         _first_line_match(
             pages,
-            r"^(?:no\.?\s*(?:rekening|rek|account)|account\s*(?:no|number))\s*[:\-]\s*([0-9Xx* .\-]{5,})$",
+            r"^(?:no\.?\s*(?:rekening|rek|account)|account\s*(?:no|number))(?:\s*[:\-]\s*|\s+)([0-9Xx* .\-]{5,})$",
         ),
     )
     _set_if_present(
         fields,
         "statement_period",
-        _first_line_match(pages, r"^(?:periode|period|statement\s*period)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:periode|period|statement\s*period)(?:\s*[:\-]\s*|\s+)(.+)$"),
     )
     _set_if_present(
         fields,
         "balance",
         _first_line_match(
             pages,
-            r"^(?:saldo\s*(?:akhir|ending)?|ending\s*balance|closing\s*balance|balance)\s*[:\-]\s*(.+)$",
+            r"^(?:saldo\s*(?:akhir|ending)?|ending\s*balance|closing\s*balance|balance)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     combined = "\n".join(pages)

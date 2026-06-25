@@ -1018,6 +1018,33 @@ async def test_bank_statement_label_fields_skip_model_call():
     assert out["fields"]["balance"]["value"] == "IDR 100,000,000"
 
 
+async def test_bank_statement_label_fields_accept_colonless_ocr_labels():
+    """Bank-statement OCR often drops separators after account labels."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "PT BANK CENTRAL ASIA TBK\n"
+        "Nama Rekening MARIO ROSSI\n"
+        "No. Rekening 1234567890\n"
+        "Periode JUNI 2026\n"
+        "Saldo Akhir IDR 100,000,000"
+    )
+    out = await extract.extract_fields("bank_statement", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["bank_statement_labels"]
+    assert out["fields"]["account_holder"]["value"] == "Mario Rossi"
+    assert out["fields"]["bank_name"]["value"] == "BCA"
+    assert out["fields"]["account_no"]["value"] == "1234567890"
+    assert out["fields"]["statement_period"]["value"] == "JUNI 2026"
+    assert out["fields"]["balance"]["value"] == "IDR 100,000,000"
+
+
 async def test_payment_receipt_label_fields_skip_model_call():
     """Payment receipts can expose transaction fields in labels."""
     called = {"n": 0}
