@@ -7,6 +7,7 @@ const {
   buildQwenBatchGateSummary,
   buildDirectActionSummary,
   buildQwenKnownBenchmarkSummary,
+  buildQwenPlacementPreviewSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 } = require("./intake-buckets.cjs");
@@ -94,6 +95,89 @@ assert.deepEqual(
     kita_workspace_candidates: 0,
     review_after_qwen: 0,
     generated_at: null,
+  },
+);
+
+assert.deepEqual(
+  buildQwenPlacementPreviewSummary({
+    generated_at: "2026-06-26T05:00:00.000Z",
+    qwen_text_sample: {
+      attempted: 50,
+      classified_attempts: 50,
+      still_unknown: 25,
+      kita_workspace_candidates: 25,
+      review_after_qwen: 25,
+      acceptance_gate: {
+        status: "candidate_batch_ready",
+        reason: "candidate_rate_met",
+      },
+      workspace_buckets: [
+        { bucket: "review", docs: 25 },
+        { bucket: "immigration", docs: 15 },
+        { bucket: "finance", docs: 10 },
+      ],
+      placement_preview: [
+        {
+          from_doc_type: "unknown",
+          proposed_doc_type: "travel_ticket",
+          workspace_bucket: "immigration",
+          docs: 9,
+        },
+        {
+          from_doc_type: "unknown",
+          proposed_doc_type: "payment_receipt",
+          workspace_bucket: "finance",
+          docs: 6,
+        },
+      ],
+      raw_ocr_text: "SHOULD_NOT_LEAK",
+      sender_phone: "+6280000000000",
+    },
+  }),
+  {
+    status: "candidate_batch_ready",
+    reason: "candidate_rate_met",
+    sampled_docs: 50,
+    classified_attempts: 50,
+    kita_workspace_candidates: 25,
+    review_after_qwen: 25,
+    still_unknown: 25,
+    generated_at: "2026-06-26T05:00:00.000Z",
+    workspace_buckets: [
+      { bucket: "review", docs: 25 },
+      { bucket: "immigration", docs: 15 },
+      { bucket: "finance", docs: 10 },
+    ],
+    placement_preview: [
+      {
+        from_doc_type: "unknown",
+        proposed_doc_type: "travel_ticket",
+        workspace_bucket: "immigration",
+        docs: 9,
+      },
+      {
+        from_doc_type: "unknown",
+        proposed_doc_type: "payment_receipt",
+        workspace_bucket: "finance",
+        docs: 6,
+      },
+    ],
+  },
+);
+
+assert.deepEqual(
+  buildQwenPlacementPreviewSummary(null),
+  {
+    status: "probe_required",
+    reason: "no_qwen_probe_snapshot",
+    sampled_docs: 0,
+    classified_attempts: 0,
+    kita_workspace_candidates: 0,
+    review_after_qwen: 0,
+    still_unknown: 0,
+    generated_at: null,
+    workspace_buckets: [],
+    placement_preview: [],
   },
 );
 
