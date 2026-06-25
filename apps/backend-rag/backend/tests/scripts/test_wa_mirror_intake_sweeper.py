@@ -16,6 +16,7 @@ rows and clean them (+ the intake rows) in teardown.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import uuid
 from pathlib import Path
@@ -225,7 +226,7 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     # Both inbound rows enqueued with wa-mirror: source_ref + received_by=email.
     async with pool.acquire() as conn:
         doc_row = await conn.fetchrow(
-            "SELECT source, source_ref, received_by, sender_phone, client_id_hint"
+            "SELECT source, source_ref, received_by, sender_phone, client_id_hint, source_context"
             " FROM intake_queue WHERE blob_hash=$1",
             doc_sha,
         )
@@ -244,6 +245,13 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     # m225: the raw transport sender phone is carried onto the queue row.
     assert doc_row["sender_phone"] == sender_phone
     assert doc_row["client_id_hint"] is not None
+    direct_context = doc_row["source_context"]
+    if isinstance(direct_context, str):
+        direct_context = json.loads(direct_context)
+    assert direct_context["chat_type"] == "direct"
+    assert direct_context["crm_identity_policy"] == "phone_keyed_direct_chat"
+    assert direct_context["routing_identity_policy"] == "sender_phone_enabled"
+    assert direct_context["sender_phone_forwarded"] is True
 
     assert img_row is not None
     assert img_row["source_ref"] == f"wa-mirror:{bid_img}"
@@ -290,7 +298,7 @@ async def test_sweep_enqueues_group_media_without_phone_identity(
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT source_ref, received_by, sender_phone, client_id_hint"
+            "SELECT source_ref, received_by, sender_phone, client_id_hint, source_context"
             " FROM intake_queue WHERE blob_hash=$1",
             doc_sha,
         )
@@ -300,6 +308,15 @@ async def test_sweep_enqueues_group_media_without_phone_identity(
     assert row["received_by"] == "ari@balizero.com"
     assert row["sender_phone"] is None
     assert row["client_id_hint"] is None
+    context = row["source_context"]
+    if isinstance(context, str):
+        context = json.loads(context)
+    assert context["chat_type"] == "group"
+    assert context["crm_identity_policy"] == "disabled_for_group"
+    assert context["routing_identity_policy"] == "group_participant_phone_suppressed"
+    assert context["sender_phone_forwarded"] is False
+    assert "group_jid_hash" in context
+    assert "120363" not in str(context)
     assert saved.get("wm") == rid
 
 

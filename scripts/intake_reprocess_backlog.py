@@ -31,6 +31,11 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     ``sender_phone`` and ``client_id_hint`` only for queue rows joined to
     ``whatsapp_message_context`` group chats.
 
+``--backfill-source-context``
+    Existing wa-mirror queue rows may predate migration 232. This mode annotates
+    them with PII-safe transport context (direct/group + identity policy) without
+    copying raw group JIDs, raw group subjects, or extra phone values.
+
 Law 2 / UU-PDP: everything local (local DB, local blobs, downstream OCR is
 local Ollama). Sender phones are PII — never logged at INFO with the value.
 
@@ -43,6 +48,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
+import json
 import logging
 import os
 import sys
@@ -53,7 +60,7 @@ import asyncpg
 
 # Reuse the shipped, tested enqueue core (same import shim as the sweeper).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
-from backend.services.intake.enqueue import enqueue  # noqa: E402
+from backend.services.intake.enqueue import enqueue
 
 logger = logging.getLogger("intake_reprocess_backlog")
 
@@ -102,7 +109,8 @@ UPDATE intake_queue
 # Historical inbound media with NO intake_queue row (anti-join on source_ref).
 BACKFILL_SELECT_SQL = """
 SELECT w.id, w.baileys_message_id, w.media_stored_path, w.media_mime,
-       w.media_type, w.team_member_email, w.sender_phone, w.chat_type, w.group_jid
+       w.media_type, w.team_member_email, w.sender_phone, w.chat_type, w.group_jid,
+       w.group_subject_snapshot
   FROM whatsapp_message_context w
  WHERE w.direction = 'inbound'
    AND w.media_stored_path IS NOT NULL
@@ -149,6 +157,29 @@ UPDATE intake_queue q
 RETURNING q.id
 """
 
+SOURCE_CONTEXT_BACKFILL_SELECT_SQL = """
+SELECT q.id AS queue_id, q.status,
+       w.chat_type, w.group_jid, w.group_subject_snapshot, w.sender_phone
+  FROM intake_queue q
+  JOIN whatsapp_message_context w
+    ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+ WHERE q.source = 'whatsapp'
+   AND q.source_ref LIKE 'wa-mirror:%'
+   AND (
+        q.source_context = '{}'::jsonb
+        OR q.source_context IS NULL
+        OR q.source_context->>'transport' IS DISTINCT FROM 'wa-mirror'
+       )
+ ORDER BY q.id
+"""
+
+SOURCE_CONTEXT_BACKFILL_APPLY_SQL = """
+UPDATE intake_queue
+   SET source_context = $2::jsonb,
+       updated_at = now()
+ WHERE id = $1
+"""
+
 
 # --- Pure helpers (unit-testable without PG) --------------------------------
 
@@ -177,6 +208,7 @@ def row_to_enqueue_kwargs(row: Any) -> dict[str, Any]:
         "mime_type": row["media_mime"],
         "received_by": row["team_member_email"],
         "sender_phone": _queue_sender_phone(row),
+        "source_context": _source_context(row),
     }
 
 
@@ -204,6 +236,48 @@ def _queue_sender_phone(row: Any) -> str | None:
         return None
     value = _record_get(row, "sender_phone")
     return str(value) if value else None
+
+
+def _hash_token(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = " ".join(str(value).split()).strip().lower()
+    if not text:
+        return None
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _source_context(row: Any) -> dict[str, object]:
+    """PII-safe WA mirror context matching the live sweeper contract."""
+    if _is_direct_chat(row):
+        return {
+            "transport": "wa-mirror",
+            "context_version": "wa-mirror-v1",
+            "chat_type": "direct",
+            "crm_identity_policy": "phone_keyed_direct_chat",
+            "routing_identity_policy": "sender_phone_enabled",
+            "sender_phone_forwarded": _queue_sender_phone(row) is not None,
+        }
+
+    context: dict[str, object] = {
+        "transport": "wa-mirror",
+        "context_version": "wa-mirror-v1",
+        "chat_type": "group",
+        "group_scope": "unclassified",
+        "crm_identity_policy": "disabled_for_group",
+        "routing_identity_policy": "group_participant_phone_suppressed",
+        "sender_phone_forwarded": False,
+    }
+    group_jid_hash = _hash_token(_record_get(row, "group_jid"))
+    if group_jid_hash:
+        context["group_jid_hash"] = group_jid_hash
+    group_subject_hash = _hash_token(_record_get(row, "group_subject_snapshot"))
+    if group_subject_hash:
+        context["group_subject_present"] = True
+        context["group_subject_hash"] = group_subject_hash
+    else:
+        context["group_subject_present"] = False
+    return context
 
 
 def _media_types(raw: str | None) -> tuple[str, ...]:
@@ -267,7 +341,7 @@ async def run_backfill(
             continue
         try:
             result = await enqueue(pool, **row_to_enqueue_kwargs(r))
-        except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+        except Exception as exc:
             counts["errors"] += 1
             logger.error("[backfill] enqueue failed for wmc row %d: %s", r["id"], exc)
             continue
@@ -317,6 +391,39 @@ async def run_scrub_group_phone(pool: asyncpg.Pool, apply: bool) -> dict[str, in
     return counts
 
 
+async def run_backfill_source_context(pool: asyncpg.Pool, apply: bool) -> dict[str, int]:
+    """Annotate existing wa-mirror queue rows with direct/group source context."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(SOURCE_CONTEXT_BACKFILL_SELECT_SQL)
+        counts = {"candidates": len(rows), "direct": 0, "group": 0, "updated": 0}
+        for row in rows:
+            if _is_direct_chat(row):
+                counts["direct"] += 1
+            else:
+                counts["group"] += 1
+        if not apply:
+            logger.info(
+                "[backfill-source-context][DRY-RUN] candidates=%d direct=%d group=%d "
+                "(pass --apply to execute)",
+                counts["candidates"], counts["direct"], counts["group"],
+            )
+            return counts
+
+        for row in rows:
+            await conn.execute(
+                SOURCE_CONTEXT_BACKFILL_APPLY_SQL,
+                row["queue_id"],
+                json.dumps(_source_context(row), sort_keys=True),
+            )
+            counts["updated"] += 1
+
+    logger.info(
+        "[backfill-source-context] updated=%d direct=%d group=%d",
+        counts["updated"], counts["direct"], counts["group"],
+    )
+    return counts
+
+
 # --- CLI ----------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -329,6 +436,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="enqueue historical wa-mirror media skipped by the watermark seed")
     p.add_argument("--scrub-group-phone", action="store_true",
                    help="clear sender_phone/client_id_hint from historical wa-mirror group queue rows")
+    p.add_argument("--backfill-source-context", action="store_true",
+                   help="populate PII-safe direct/group source_context for wa-mirror queue rows")
     p.add_argument("--apply", action="store_true",
                    help="actually write (default: dry-run, counts only)")
     p.add_argument("--pipeline-version", default=DEFAULT_PIPELINE_VERSION,
@@ -347,8 +456,14 @@ async def main(argv: list[str] | None = None) -> int:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     args = build_parser().parse_args(argv)
-    if not (args.reprocess or args.backfill or args.scrub_group_phone):
-        logger.error("nothing to do: pass --backfill, --reprocess, and/or --scrub-group-phone")
+    if not (
+        args.reprocess or args.backfill or args.scrub_group_phone
+        or args.backfill_source_context
+    ):
+        logger.error(
+            "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
+            "and/or --backfill-source-context"
+        )
         return 2
 
     db_url = os.getenv(
@@ -368,6 +483,8 @@ async def main(argv: list[str] | None = None) -> int:
             await run_backfill(pool, watermark, _media_types(args.media_types), args.apply)
         if args.scrub_group_phone:
             await run_scrub_group_phone(pool, args.apply)
+        if args.backfill_source_context:
+            await run_backfill_source_context(pool, args.apply)
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
         return 0
