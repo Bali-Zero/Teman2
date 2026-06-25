@@ -113,3 +113,45 @@ async def evaluate_ocr_text(
         "field_score": score_expected_fields(expected_fields, extraction["fields"]),
         "fields": extraction["fields"],
     }
+
+
+def summarize_evaluations(evaluations: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-sample OCR quality results by provider."""
+    grouped: dict[str, dict[str, Any]] = {}
+    for result in evaluations:
+        provider = str(result.get("provider") or "unknown")
+        field_score = result.get("field_score") or {}
+        bucket = grouped.setdefault(
+            provider,
+            {
+                "samples": 0,
+                "doc_type_matches": 0,
+                "field_score_total": 0.0,
+                "matched_fields": 0,
+                "missing_fields": 0,
+            },
+        )
+        bucket["samples"] += 1
+        if result.get("doc_type_match"):
+            bucket["doc_type_matches"] += 1
+        bucket["field_score_total"] += float(field_score.get("score") or 0.0)
+        bucket["matched_fields"] += int(field_score.get("matched_count") or 0)
+        bucket["missing_fields"] += int(field_score.get("missing_count") or 0)
+
+    provider_summary: dict[str, dict[str, Any]] = {}
+    for provider, bucket in grouped.items():
+        samples = bucket["samples"]
+        provider_summary[provider] = {
+            "samples": samples,
+            "doc_type_matches": bucket["doc_type_matches"],
+            "doc_type_match_rate": round(bucket["doc_type_matches"] / samples, 4),
+            "avg_field_score": round(bucket["field_score_total"] / samples, 4),
+            "matched_fields": bucket["matched_fields"],
+            "missing_fields": bucket["missing_fields"],
+        }
+
+    return {
+        "sample_count": len(evaluations),
+        "provider_summary": provider_summary,
+        "results": list(evaluations),
+    }

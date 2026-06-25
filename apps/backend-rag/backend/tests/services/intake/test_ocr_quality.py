@@ -89,3 +89,36 @@ async def test_evaluate_ocr_text_scores_unknown_without_crashing():
     assert result["doc_type_match"] is False
     assert result["field_score"]["score"] == 0.0
     assert result["field_score"]["missing_fields"] == ["passport_no", "name"]
+
+
+def test_summarize_evaluations_groups_by_provider():
+    summary = ocr_quality.summarize_evaluations(
+        [
+            {
+                "provider": "ollama",
+                "doc_type_match": True,
+                "field_score": {"score": 1.0, "matched_count": 4, "missing_count": 0},
+            },
+            {
+                "provider": "ollama",
+                "doc_type_match": False,
+                "field_score": {"score": 0.25, "matched_count": 1, "missing_count": 3},
+            },
+            {
+                "provider": "gemini",
+                "doc_type_match": True,
+                "field_score": {"score": 0.5, "matched_count": 2, "missing_count": 2},
+            },
+        ]
+    )
+
+    assert summary["sample_count"] == 3
+    assert summary["provider_summary"]["ollama"] == {
+        "samples": 2,
+        "doc_type_matches": 1,
+        "doc_type_match_rate": 0.5,
+        "avg_field_score": 0.625,
+        "matched_fields": 5,
+        "missing_fields": 3,
+    }
+    assert summary["provider_summary"]["gemini"]["avg_field_score"] == 0.5
