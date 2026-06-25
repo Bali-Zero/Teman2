@@ -404,11 +404,16 @@ def _coerce_field(
     if is_list:
         if not isinstance(value, list):
             value = [value]
-        cleaned = [
-            str(v).strip()
-            for v in value
-            if v is not None and str(v).strip().lower() not in {"", "null", "none", "n/a", "-"}
-        ]
+        cleaned = []
+        for item in value:
+            if isinstance(item, dict) and "value" in item:
+                item = item.get("value")
+            if item is None:
+                continue
+            text = str(item).strip()
+            if text.lower() in {"", "null", "none", "n/a", "-"}:
+                continue
+            cleaned.append(text)
         if not cleaned:
             return null_field
         value = cleaned

@@ -128,6 +128,34 @@ async def test_golden_rule_illegible_field_becomes_null():
     assert out["fields"]["nib_number"]["value"] == "9876543210987"
 
 
+async def test_list_field_accepts_model_value_objects():
+    """List fields may arrive as [{value, source_page}] objects from local models."""
+    payload = {
+        "certificate_no": {"value": "AL-2026-0001", "source_page": 1},
+        "name": {"value": "TEST CHILD", "source_page": 1},
+        "dob": {"value": "2020-05-06", "source_page": 1},
+        "place_of_birth": {"value": "DENPASAR", "source_page": 1},
+        "parents": {
+            "value": [
+                {"value": "TEST FATHER", "source_page": 1},
+                {"value": "TEST MOTHER", "source_page": 1},
+            ],
+            "source_page": 1,
+        },
+    }
+
+    out = await extract.extract_fields(
+        "birth_certificate",
+        ["birth certificate OCR fragment without deterministic labels"],
+        generate_fn=_fake_gen(payload),
+    )
+
+    assert out["fields"]["parents"]["value"] == ["TEST FATHER", "TEST MOTHER"]
+    assert out["fields"]["parents"]["source_page"] == 1
+    assert out["fields"]["parents"]["confidence"] >= 0.6
+    assert out["any_low_confidence"] is False
+
+
 async def test_empty_string_sentinels_coerced_to_null():
     payload = {
         "nib_number": {"value": "", "source_page": 1},
