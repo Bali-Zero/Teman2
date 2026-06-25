@@ -144,6 +144,8 @@ async def _insert_wmc(
     team_email: str,
     direction: str = "inbound",
     sender_phone: str | None = None,
+    chat_type: str | None = "direct",
+    group_jid: str | None = None,
 ) -> int:
     """Insert one synthetic row, return its id (the watermark cursor key)."""
     async with pool.acquire() as conn:
@@ -151,8 +153,9 @@ async def _insert_wmc(
             """
             INSERT INTO whatsapp_message_context
                 (baileys_message_id, media_stored_path, media_type, media_mime,
-                 team_member_email, direction, sender_phone, message_date)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+                 team_member_email, direction, sender_phone, chat_type, group_jid,
+                 message_date)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
             RETURNING id
             """,
             baileys_id,
@@ -162,6 +165,8 @@ async def _insert_wmc(
             team_email,
             direction,
             sender_phone,
+            chat_type,
+            group_jid,
         )
 
 
@@ -251,6 +256,51 @@ async def test_sweep_enqueues_inbound_doc_and_image(monkeypatch, tmp_path, pool,
     # never enters `rows` and never advances the watermark. The watermark lands
     # on the highest INBOUND id scanned = id_img (the image row, inserted 2nd).
     assert saved.get("wm") == id_img
+
+
+@pytest.mark.asyncio
+async def test_sweep_enqueues_group_media_without_phone_identity(
+    monkeypatch, tmp_path, pool, wmc_rows
+):
+    wms = _load_sweeper_no_text(monkeypatch)
+
+    doc_path, doc_sha = _write_blob(tmp_path, "group-passport.pdf")
+    wmc_rows["blob_hashes"].append(doc_sha)
+    bid = f"wamir-group-{uuid.uuid4()}"
+    wmc_rows["baileys_ids"].append(bid)
+    sender_phone = f"+62877{uuid.uuid4().int % 10**8:08d}"
+    rid = await _insert_wmc(
+        pool,
+        baileys_id=bid,
+        blob_path=doc_path,
+        media_type="document",
+        media_mime="application/pdf",
+        team_email="ari@balizero.com",
+        sender_phone=sender_phone,
+        chat_type="group",
+        group_jid=f"120363{uuid.uuid4().int % 10**10:010d}@g.us",
+    )
+
+    monkeypatch.setenv("INTAKE_DATABASE_URL", _DB_URL)
+    monkeypatch.setattr(wms, "_load_watermark", lambda: rid - 1)
+    saved: dict = {}
+    monkeypatch.setattr(wms, "_save_watermark", lambda v: saved.__setitem__("wm", v))
+
+    assert await wms.run_one_tick() == 0
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT source_ref, received_by, sender_phone, client_id_hint"
+            " FROM intake_queue WHERE blob_hash=$1",
+            doc_sha,
+        )
+
+    assert row is not None
+    assert row["source_ref"] == f"wa-mirror:{bid}"
+    assert row["received_by"] == "ari@balizero.com"
+    assert row["sender_phone"] is None
+    assert row["client_id_hint"] is None
+    assert saved.get("wm") == rid
 
 
 @pytest.mark.asyncio
