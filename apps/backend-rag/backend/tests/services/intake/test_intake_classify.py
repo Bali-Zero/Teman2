@@ -335,6 +335,21 @@ async def test_ocr_pages_unwraps_json_text_object_response(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_ocr_pages_unwraps_json_pages_object_response(monkeypatch):
+    async def fake_vision(model, b64):
+        return (
+            '{"pages": [{"text": "KITAS No : 2C11AB98765"}, '
+            '{"text": "Name : MARIO LUCA ROSSI"}]}',
+            "",
+        )
+
+    monkeypatch.setattr(cls, "_ollama_vision", fake_vision)
+    out = await cls.ocr_pages([_FakePage(0, b"x")])
+    assert out[0]["via"] == "response"
+    assert out[0]["text"] == "KITAS No : 2C11AB98765\nName : MARIO LUCA ROSSI"
+
+
+@pytest.mark.asyncio
 async def test_ocr_pages_salvages_thinking_when_response_empty(monkeypatch):
     async def fake_vision(model, b64):
         # qwen3-vl pattern: empty response, transcription buried in thinking.

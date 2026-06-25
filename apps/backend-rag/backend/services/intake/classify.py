@@ -197,7 +197,7 @@ def _clean_ocr_response(text: str) -> str:
             value = parsed.get(key)
             if isinstance(value, str) and value.strip():
                 return value.strip()
-        for key in ("lines", "ocr_lines"):
+        for key in ("lines", "ocr_lines", "pages"):
             value = parsed.get(key)
             if isinstance(value, list):
                 lines = [line for item in value if (line := _ocr_line_from_item(item))]
