@@ -54,7 +54,7 @@ import uuid
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
@@ -324,6 +324,75 @@ async def _ledger_record_result(
             await conn.close()
     except Exception as exc:  # bookkeeping must never crash a live post
         logger.warning("wr2_publish: ledger result update failed (non-fatal): %s", exc)
+
+
+# ── Slide upload (PNG bytes → public Tigris URL) ───────────────────────────────
+
+
+# Cap per slide PNG. The production renderer writes ~100KB–2.5MB slides; 8MB is a
+# generous ceiling that still rejects a runaway/garbage body before it hits Tigris.
+_MAX_SLIDE_BYTES = 8 * 1024 * 1024
+
+
+@router.post("/upload-slide")
+async def upload_slide(
+    file: UploadFile = File(..., description="A single carousel slide PNG."),
+    draft_id: str = Form(..., description="Groups all slides of one carousel post."),
+    slide_index: int = Form(..., ge=0, le=9, description="0-based slide ordinal (0=cover)."),
+) -> dict[str, Any]:
+    """Upload ONE carousel slide PNG to Tigris, return its public Graph-fetchable URL.
+
+    The WR2 Control app renders slides locally on M5, where the Tigris creds do NOT
+    live — only the Fly backend has them. So the app POSTs each slide's bytes here;
+    this admin-gated endpoint puts them on Tigris (``public-read``) and returns the
+    URL the operator then passes to ``/publish-ig`` as one of ``image_urls``.
+
+    Mirrors the exact ``upload_png`` path the live dry-run exercised (2026-06-26):
+    deterministic key ``wr2-ig/<draft_id>/<NN>.png``, ContentType ``image/png``,
+    HEAD-verified. The endpoint NEVER publishes — it only hosts bytes. LEGGE 5 is
+    enforced at ``/publish-ig`` (the ``confirm`` flag), not here.
+    """
+    from backend.services.canva_renderer_v2._tigris import (
+        TigrisError,
+        get_s3_client,
+        upload_png,
+    )
+
+    ct = (file.content_type or "").lower()
+    if ct not in ("image/png", "application/octet-stream", ""):
+        raise HTTPException(status_code=415, detail=f"expected image/png, got {ct!r}")
+
+    body = await file.read()
+    if not body:
+        raise HTTPException(status_code=400, detail="empty file")
+    if len(body) > _MAX_SLIDE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"slide too large ({len(body)} bytes, max {_MAX_SLIDE_BYTES})",
+        )
+    # Magic-byte check: reject anything that is not actually a PNG before we put it
+    # on a public bucket (Graph rejects non-PNG anyway; fail fast + honest 400).
+    if body[:8] != b"\x89PNG\r\n\x1a\n":
+        raise HTTPException(status_code=400, detail="body is not a PNG (bad magic bytes)")
+
+    safe_draft = "".join(c for c in draft_id if c.isalnum() or c in "-_").strip()
+    if not safe_draft:
+        raise HTTPException(status_code=400, detail="draft_id must be alphanumeric/-/_")
+
+    try:
+        s3 = get_s3_client()
+        public_url, key = upload_png(
+            s3, body, draft_id=safe_draft, slide_index=slide_index
+        )
+    except TigrisError as exc:
+        logger.error("wr2_publish: slide upload to Tigris failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Tigris upload failed: {exc}") from exc
+
+    logger.info(
+        "wr2_publish: slide uploaded draft=%s idx=%d key=%s bytes=%d",
+        safe_draft, slide_index, key, len(body),
+    )
+    return {"ok": True, "url": public_url, "key": key, "slide_index": slide_index}
 
 
 # ── Endpoint ───────────────────────────────────────────────────────────────────
