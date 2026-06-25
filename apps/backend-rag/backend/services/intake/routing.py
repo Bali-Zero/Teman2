@@ -98,17 +98,16 @@ CONF_STRONG_EXACT = 0.99
 # noise. 20 mirrors classify._normalize_ocr_text's own legibility floor (a page
 # transcript shorter than 20 chars is treated as empty there too).
 QUARANTINE_MIN_OCR_CHARS = 20
-# Kill-switch: with the flag OFF (default) the route stage NEVER emits
-# 'quarantine' — every proposal lands in review_pending exactly as before. Flip
-# to truthy to arm the parking. Read at call time so tests/ops can toggle it.
+# Kill-switch: quarantine is ON by default for empty-OCR unknown noise. Set
+# INTAKE_QUARANTINE_ENABLED=0/false/no/off (or empty) to disable parking and
+# send every proposal to review_pending exactly as before. Read at call time so
+# tests/ops can toggle it.
 def quarantine_enabled() -> bool:
-    """True only if INTAKE_QUARANTINE_ENABLED is explicitly truthy (default OFF)."""
-    return os.environ.get("INTAKE_QUARANTINE_ENABLED", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    """True unless INTAKE_QUARANTINE_ENABLED is explicitly falsy."""
+    raw = os.environ.get("INTAKE_QUARANTINE_ENABLED")
+    if raw is None:
+        return True
+    return raw.strip().lower() not in {"", "0", "false", "no", "off"}
 
 
 def _ocr_char_count(classify_out: dict[str, Any]) -> int:
@@ -222,9 +221,14 @@ CONF_FOLDER_MATCH = 0.85
 # (match against ``companies``). canonical_doc_type() upstream already maps
 # aliases (paspor->passport, akta->akta_pendirian, ...).
 _PERSON_DOC_TYPES = frozenset(
-    {"passport", "npwp", "kitas", "itk", "itas", "itap"}
+    {
+        "passport", "npwp", "kitas", "itk", "itas", "itap", "ktp", "visa",
+        "family_card", "birth_certificate", "marriage_certificate",
+    }
 )
-_COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian", "profil_perseroan"})
+_COMPANY_DOC_TYPES = frozenset(
+    {"nib", "akta_pendirian", "profil_perseroan", "sk_kemenkumham"}
+)
 
 # NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
 # match first when the npwp resolves a company row, else fall back to person.
@@ -344,7 +348,13 @@ async def _match_person_strong(
                     "matched_value": norm,
                 })
 
-    kitas = _field_value(extracted, "kitas_no") or _field_value(extracted, "kitas_number")
+    kitas = (
+        _field_value(extracted, "kitas_no")
+        or _field_value(extracted, "kitas_number")
+        or _field_value(extracted, "itap_no")
+        or _field_value(extracted, "itk_no")
+        or _field_value(extracted, "stay_permit_no")
+    )
     if kitas:
         norm = _normalize_id(kitas)
         if norm:
