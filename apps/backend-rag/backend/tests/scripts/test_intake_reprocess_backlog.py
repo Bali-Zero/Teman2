@@ -236,6 +236,7 @@ def test_reset_sql_matches_v2_worker_contract() -> None:
     assert "attempts         = 0" in sql
     assert "next_visible_at  = now()" in sql
     assert "'{}'::jsonb" in sql
+    assert "last_error      = NULL" in sql
     assert "pipeline_version = $2" in sql  # the bump that mints fresh routing keys
 
 
@@ -251,6 +252,7 @@ def test_priority_retry_reset_frontloads_historical_rows() -> None:
     assert "attempts         = 0" in sql
     assert "next_visible_at  = LEAST(COALESCE(created_at, now()), now())" in sql
     assert "'{}'::jsonb" in sql
+    assert "last_error      = NULL" in sql
     assert "pipeline_version = $2" in sql
 
 

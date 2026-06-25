@@ -113,6 +113,7 @@ UPDATE intake_queue
        attempts         = 0,
        next_visible_at  = now(),
        stage_output     = '{}'::jsonb,
+       last_error      = NULL,
        pipeline_version = $2
  WHERE id = ANY($1::bigint[])
 """
@@ -131,6 +132,7 @@ UPDATE intake_queue
        attempts         = 0,
        next_visible_at  = LEAST(COALESCE(created_at, now()), now()),
        stage_output     = '{}'::jsonb,
+       last_error      = NULL,
        pipeline_version = $2
  WHERE id = ANY($1::bigint[])
 """
