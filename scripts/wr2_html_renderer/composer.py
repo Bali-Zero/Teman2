@@ -27,6 +27,7 @@ is Phase 3 (gated by the 4-LLM panel).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -543,6 +544,57 @@ def _balance_headline(
     return "<br>".join(" ".join(line) for line in lines)
 
 
+def _emphasize_key_numbers(body: str) -> str:
+    """Wrap KEY regulatory numbers in the body in <span class="emphasis"> so they
+    render in the brand accent yellow (Article 6.9 anchor-highlight: yellow is the
+    family color for verifiable facts — numbers, codes, regulations).
+
+    Why: the Claude vision critic explicitly checks "do key numbers stand out?"
+    (claude_vision.py) and was failing fresh drafts on slides where the crux
+    number ("183 days", "Day 184") rendered in the same weight/color as the
+    surrounding body — a missed-hierarchy reject. Yellowing the number is the
+    brand-sanctioned way to make it pop (operator decision 2026-06-24, option C).
+
+    Conservative + deterministic + brand-drift-safe:
+      - matches a numeral (optionally with a thousands sep / decimal / %) that is
+        either a standalone quantity or immediately followed by a unit noun
+        (days, day, months, %, IDR/USD/Rp amounts, year forms) — i.e. the kind of
+        number that carries regulatory weight, NOT every stray digit.
+      - matches at most the first 2 such numbers per body (avoids a christmas-tree
+        of yellow that would itself flatten hierarchy).
+      - NEVER touches a body that already contains markup (`<span`, `<`), so it is
+        a strict no-op on facts-block / pre-emphasized bodies and cannot produce
+        nested or broken spans.
+      - operates on the verbatim body BEFORE it is substituted into the skeleton
+        (the composer fills via plain .replace, so the literal span renders).
+    """
+    if not body or "<" in body:
+        return body
+    # numeral core: 183 | 1,000 | 12.5 | 30% ; optionally a currency prefix or a
+    # unit-noun suffix gives it "regulatory" weight worth highlighting.
+    num = r"\d[\d,.]*"
+    pattern = re.compile(
+        r"(?<![\w>])"                                  # not mid-word / not inside a tag
+        r"("
+        r"(?:(?:Rp|IDR|USD|\$|€|£)\s?" + num + r")"    # currency amounts
+        r"|(?:" + num + r"\s?%)"                        # percentages
+        r"|(?:" + num + r"\s?(?:days?|months?|years?|hari|bulan|tahun|hours?|jam))"  # durations
+        r"|(?:Day\s?" + num + r")"                      # "Day 184"
+        r")",
+        re.IGNORECASE,
+    )
+    count = 0
+
+    def _wrap(m: "re.Match[str]") -> str:
+        nonlocal count
+        if count >= 2:
+            return m.group(0)
+        count += 1
+        return f'<span class="emphasis">{m.group(0)}</span>'
+
+    return pattern.sub(_wrap, body)
+
+
 def _deorphan_numbers_in_headline(text: str) -> str:
     """ALWAYS-ON, deterministic, PIXEL-INDEPENDENT number-orphan correction.
 
@@ -894,6 +946,12 @@ def _fill_placeholders(
         if pairs:
             body_html = _facts_block_html(pairs, source_text)
             facts_block = True
+        else:
+            # Plain-paragraph body: yellow the crux regulatory number(s) so the
+            # key fact pops (Art 6.9 anchor-highlight; option C 2026-06-24). The
+            # facts-block path above already emphasizes its lead value, so this is
+            # the non-facts branch only. No-op if the body has no key number.
+            body_html = _emphasize_key_numbers(body_html)
 
     # {{#if regulation_code}} ... {{/if}}
     if reg:
@@ -1169,15 +1227,37 @@ def expect_hero_for_index(slide: dict[str, Any], index: int) -> bool:
 
 
 async def _download_hero(client: Any, url: str, dest: Path) -> bool:
-    try:
-        resp = await client.get(url, follow_redirects=True, timeout=30.0)
-    except Exception as exc:
-        logger.warning("hero GET failed url=%s err=%s", url, exc)
-        return False
-    if resp.status_code != 200 or not resp.headers.get("content-type", "").startswith("image/"):
-        logger.warning("hero bad response url=%s status=%s ctype=%s", url, resp.status_code, resp.headers.get("content-type"))
-        return False
-    if not resp.content:
-        return False
-    dest.write_bytes(resp.content)
-    return True
+    # Retry with backoff: the hero lives on Fly/Tigris storage and a single transient
+    # network flap ("No route to host" / ConnectTimeout) on the Pro would otherwise burn
+    # an html_render_attempt and fail the whole carousel render. Superscar #8 (network
+    # flap / proxy fragility): wrap the point download in a retry-loop with backoff.
+    attempts = 3
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = await client.get(url, follow_redirects=True, timeout=30.0)
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "hero GET failed url=%s err=%s (attempt %d/%d)", url, exc, attempt, attempts
+            )
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))  # 1s, 2s
+            continue
+        if resp.status_code != 200 or not resp.headers.get("content-type", "").startswith("image/"):
+            logger.warning(
+                "hero bad response url=%s status=%s ctype=%s (attempt %d/%d)",
+                url, resp.status_code, resp.headers.get("content-type"), attempt, attempts,
+            )
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))
+            continue
+        if not resp.content:
+            logger.warning("hero empty body url=%s (attempt %d/%d)", url, attempt, attempts)
+            if attempt < attempts:
+                await asyncio.sleep(2 ** (attempt - 1))
+            continue
+        dest.write_bytes(resp.content)
+        return True
+    logger.error("hero download exhausted %d attempts url=%s last_err=%s", attempts, url, last_exc)
+    return False
