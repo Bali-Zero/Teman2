@@ -1407,8 +1407,8 @@ def _extract_marriage_certificate_label_fields(pages: list[str]) -> dict[str, di
     spouse_names: list[str] = []
     spouse_page: int | None = None
     for value_page in (
-        _first_line_match(pages, r"^(?:nama\s+suami|husband(?:\s+name)?)\s*[:\-]\s*(.+)$"),
-        _first_line_match(pages, r"^(?:nama\s+istri|wife(?:\s+name)?)\s*[:\-]\s*(.+)$"),
+        _first_line_match(pages, r"^(?:nama\s+suami|husband(?:\s+name)?)(?:\s*[:\-]\s*|\s+)(.+)$"),
+        _first_line_match(pages, r"^(?:nama\s+istri|wife(?:\s+name)?)(?:\s*[:\-]\s*|\s+)(.+)$"),
     ):
         if value_page is None:
             continue
@@ -1422,7 +1422,7 @@ def _extract_marriage_certificate_label_fields(pages: list[str]) -> dict[str, di
     if not spouse_names:
         spouse_names_value = _first_line_match(
             pages,
-            r"^(?:nama\s+pasangan|spouse\s*names?|spouses?)\s*[:\-]\s*(.+)$",
+            r"^(?:nama\s+pasangan|spouse\s*names?|spouses?)(?:\s*[:\-]\s*|\s+)(.+)$",
         )
         _set_list_if_present(fields, "spouse_names", spouse_names_value, person_name=True)
         values = fields.get("spouse_names", {}).get("value")
@@ -1447,7 +1447,7 @@ def _extract_marriage_certificate_label_fields(pages: list[str]) -> dict[str, di
         "marriage_date",
         _first_line_match(
             pages,
-            r"^(?:tanggal\s*(?:nikah|perkawinan)|marriage\s*date|date\s+of\s+marriage)\s*[:\-]\s*(.+)$",
+            r"^(?:tanggal\s*(?:nikah|perkawinan)|marriage\s*date|date\s+of\s+marriage)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
@@ -1456,7 +1456,7 @@ def _extract_marriage_certificate_label_fields(pages: list[str]) -> dict[str, di
         "place",
         _first_line_match(
             pages,
-            r"^(?:tempat\s*(?:nikah|perkawinan)|place\s*(?:of\s*)?marriage|issuing\s*office)\s*[:\-]\s*(.+)$",
+            r"^(?:tempat\s*(?:nikah|perkawinan)|place\s*(?:of\s*)?marriage|issuing\s*office)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     return fields
