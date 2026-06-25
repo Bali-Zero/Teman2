@@ -44,10 +44,34 @@ function actionBucketForRow(row) {
   return "needs_text_parser_qwen_candidate";
 }
 
+function buildDirectActionSummary(rows) {
+  const summary = {
+    needs_ocr_vision_batch: 0,
+    needs_text_parser_qwen_candidate: 0,
+    needs_manual_review_short_ocr: 0,
+    workspace_review_ready: 0,
+    failed_pipeline: 0,
+    immediate_batch_candidates: 0,
+  };
+
+  for (const row of rows || []) {
+    const bucket = row.bucket;
+    const docs = Number(row.docs || 0);
+    if (Object.prototype.hasOwnProperty.call(summary, bucket)) {
+      summary[bucket] += docs;
+    }
+  }
+
+  summary.immediate_batch_candidates =
+    summary.needs_ocr_vision_batch + summary.needs_text_parser_qwen_candidate;
+  return summary;
+}
+
 module.exports = {
   HIGH_CONFIDENCE_THRESHOLD,
   TEXT_PARSER_MIN_CHARS,
   actionBucketForRow,
+  buildDirectActionSummary,
   parserBucketForRow,
   workspaceBucketForDocType,
 };
