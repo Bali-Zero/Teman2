@@ -1015,6 +1015,13 @@ function bucketLabel(bucket) {
     small_client_group_likely: "Piccolo gruppo cliente",
     multi_party_case_likely: "Case multiparte",
     team_coordination_likely: "Coordinamento team",
+    review_client_group: "Review gruppo cliente",
+    review_case_group: "Review case multiparte",
+    quarantine_broadcast_group: "Broadcast in quarantena",
+    exclude_team_coordination: "Escludi coordinamento team",
+    manual_group_review: "Review gruppo manuale",
+    aggregate_safe: "Safe aggregato",
+    source_context_review: "Review source context",
     candidate_batch_ready: "Pronto batch",
     review_only: "Solo review",
     insufficient_sample: "Sample insufficiente",
@@ -1080,7 +1087,11 @@ async function renderIntake() {
     const qwenGate = data.qwen_batch_gate || {};
     const qwenKnown = data.qwen_known_benchmark_gate || {};
     const qwenPlacement = data.qwen_placement_preview || {};
-    const safeGroups = !q.group_unsafe_sender_phone && !q.group_unsafe_client_hint;
+    const groupOps = data.group_operational_summary || {};
+    const groupRows = groupOps.group_kinds || data.group_kinds || [];
+    const groupTotalGroups = Number(groupOps.total_groups || groupRows.reduce((sum, row) => sum + Number(row.groups || 0), 0));
+    const groupTotalDocs = Number(groupOps.total_docs || q.group_docs || 0);
+    const safeGroups = groupOps.status !== "source_context_review";
     subEl.textContent = `Aggiornato ${new Date(data.generated_at).toLocaleTimeString("it-IT")} · ${data.pii_policy}`;
     cardsEl.innerHTML = `
       <div class="intake-card"><div class="label">WA docs</div><div class="value">${iFmt(q.total)}</div><div class="hint">${iFmt(q.with_source_context)} con source_context</div></div>
@@ -1092,7 +1103,7 @@ async function renderIntake() {
       <div class="intake-card"><div class="label">Qwen propone</div><div class="value">${iFmt(qwenPlacement.kita_workspace_candidates)}</div><div class="hint">${iFmt(qwenPlacement.review_after_qwen)} review · ${iFmt(qwenPlacement.still_unknown)} unknown</div></div>
       <div class="intake-card"><div class="label">OCR corto</div><div class="value">${iFmt(actions.needs_manual_review_short_ocr)}</div><div class="hint">review manuale</div></div>
       <div class="intake-card"><div class="label">Workspace review</div><div class="value">${iFmt(actions.workspace_review_ready)}</div><div class="hint">${iFmt(actions.failed_pipeline)} failed pipeline</div></div>
-      <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(q.group_docs)}</div><div class="hint">${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, "unsafe")}</div></div>
+      <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(groupTotalGroups)}</div><div class="hint">${iFmt(groupTotalDocs)} docs · ${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, `${iFmt(groupOps.unsafe_groups)} review`)}</div></div>
       <div class="intake-card"><div class="label">Pipeline</div><div class="value">${iFmt(q.done_docs)}</div><div class="hint">${iFmt(q.dead_docs)} dead · ${iFmt(q.unknown_context_docs)} no context</div></div>
     `;
 
@@ -1145,13 +1156,14 @@ async function renderIntake() {
       { label: "Routed", render: (r) => iFmt(r.routed_non_stub) },
     ], "Nessun tipo documento");
 
-    groupsEl.innerHTML = renderRows(data.group_kinds, [
+    groupsEl.innerHTML = renderRows(groupRows, [
       { label: "Genere inferito", render: (r) => escapeHtml(bucketLabel(r.inferred_group_kind)) },
+      { label: "Azione", render: (r) => escapeHtml(bucketLabel(r.intake_action || "manual_group_review")) },
       { label: "Gruppi", render: (r) => iFmt(r.groups) },
       { label: "Docs", render: (r) => iFmt(r.docs) },
       { label: "Median", render: (r) => iFmt(r.median_docs_per_group) },
       { label: "Max", render: (r) => iFmt(r.max_docs_per_group) },
-      { label: "Safety", render: (r) => intakeStatusPill(!r.unsafe_sender_groups && !r.unsafe_hint_groups, (!r.unsafe_sender_groups && !r.unsafe_hint_groups) ? "safe" : "unsafe") },
+      { label: "Safety", render: (r) => intakeStatusPill(r.safety_status !== "source_context_review", r.safety_status === "source_context_review" ? `${iFmt(r.unsafe_groups)} review` : "safe") },
     ], "Nessun gruppo");
   } catch (err) {
     subEl.textContent = "Errore intake";

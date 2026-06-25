@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 
 const {
   actionBucketForRow,
+  buildGroupKindOperationalSummary,
   buildQwenBatchGateSummary,
   buildDirectActionSummary,
   buildQwenKnownBenchmarkSummary,
@@ -45,6 +46,75 @@ assert.deepEqual(
     workspace_review_ready: 255,
     failed_pipeline: 5,
     immediate_batch_candidates: 898,
+  },
+);
+
+assert.deepEqual(
+  buildGroupKindOperationalSummary([
+    {
+      inferred_group_kind: "small_client_group_likely",
+      groups: 44,
+      docs: 409,
+      done_docs: 407,
+      dead_docs: 0,
+      unsafe_groups: 1,
+      unsafe_sender_groups: 1,
+      unsafe_hint_groups: 0,
+      median_docs_per_group: 2,
+      max_docs_per_group: 80,
+      group_subject: "SHOULD_NOT_LEAK",
+    },
+    {
+      inferred_group_kind: "team_coordination_likely",
+      groups: 12,
+      docs: 173,
+      done_docs: 171,
+      dead_docs: 2,
+      unsafe_groups: 0,
+      unsafe_sender_groups: 0,
+      unsafe_hint_groups: 0,
+      median_docs_per_group: 12,
+      max_docs_per_group: 31,
+    },
+  ]),
+  {
+    status: "source_context_review",
+    total_groups: 56,
+    total_docs: 582,
+    unsafe_groups: 1,
+    auto_attach_allowed: false,
+    group_kinds: [
+      {
+        inferred_group_kind: "small_client_group_likely",
+        intake_action: "review_client_group",
+        safety_status: "source_context_review",
+        auto_attach_allowed: false,
+        groups: 44,
+        docs: 409,
+        done_docs: 407,
+        dead_docs: 0,
+        unsafe_groups: 1,
+        unsafe_sender_groups: 1,
+        unsafe_hint_groups: 0,
+        median_docs_per_group: 2,
+        max_docs_per_group: 80,
+      },
+      {
+        inferred_group_kind: "team_coordination_likely",
+        intake_action: "exclude_team_coordination",
+        safety_status: "aggregate_safe",
+        auto_attach_allowed: false,
+        groups: 12,
+        docs: 173,
+        done_docs: 171,
+        dead_docs: 2,
+        unsafe_groups: 0,
+        unsafe_sender_groups: 0,
+        unsafe_hint_groups: 0,
+        median_docs_per_group: 12,
+        max_docs_per_group: 31,
+      },
+    ],
   },
 );
 
