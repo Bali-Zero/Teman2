@@ -1103,6 +1103,35 @@ async def test_payment_receipt_label_fields_accept_colonless_ocr_labels():
     assert out["fields"]["reference"]["value"] == "Invoice INV-1"
 
 
+async def test_payment_receipt_label_fields_accept_indonesian_reference_number():
+    """Indonesian transaction receipts should expose Nomor Referensi locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "BUKTI TRANSAKSI BERHASIL\n"
+        "Nomor Referensi 1234567890\n"
+        "Pengirim ANTON TEST\n"
+        "Jumlah Rp 500.000\n"
+        "Tanggal Transaksi 25 JUNI 2026\n"
+        "Keterangan Invoice INV-42"
+    )
+    out = await extract.extract_fields("bukti_transfer", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "payment_receipt"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["payment_receipt_labels"]
+    assert out["fields"]["receipt_no"]["value"] == "1234567890"
+    assert out["fields"]["payer_name"]["value"] == "Anton Test"
+    assert out["fields"]["amount"]["value"] == "Rp 500.000"
+    assert out["fields"]["payment_date"]["value"] == "2026-06-25"
+    assert out["fields"]["reference"]["value"] == "Invoice INV-42"
+
+
 async def test_travel_ticket_label_fields_skip_model_call():
     """Travel tickets can expose passenger and booking fields in labels."""
     called = {"n": 0}

@@ -1524,7 +1524,7 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
         "receipt_no",
         _first_line_match(
             pages,
-            r"^(?:receipt\s*(?:no\.?|number)|transaction\s*(?:no\.?|id)|trx\s*id|invoice\s*(?:no\.?|number)|reference\s*(?:no\.?|number)|nomor\s+bukti|no\.?\s*bukti)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
+            r"^(?:receipt\s*(?:no\.?|number)|transaction\s*(?:no\.?|id)|trx\s*id|invoice\s*(?:no\.?|number)|reference\s*(?:no\.?|number)|nomor\s+referensi|no\.?\s*referensi|nomor\s+bukti|no\.?\s*bukti)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
         ),
     )
     _set_if_present(
