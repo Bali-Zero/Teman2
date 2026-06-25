@@ -19,7 +19,7 @@ WHATSAPP_OPENCLAW_BRIDGE_SECRET="$(tr -d '\n\r' < "$SECRET_FILE")"
 # `claude --dangerously-skip-permissions` on the Pro. UNSET in the bridge env
 # = deny-all (feature disabled). Default to the owner number; override by
 # exporting WA_ARMY_OWNERS before launch.
-export WA_ARMY_OWNERS="${WA_ARMY_OWNERS:-6282264599868}"
+export WA_ARMY_OWNERS="${WA_ARMY_OWNERS:-6282210302328}"
 
 exec "$UVICORN_BIN" \
   --app-dir "$HOME/.openclaw/bin" \

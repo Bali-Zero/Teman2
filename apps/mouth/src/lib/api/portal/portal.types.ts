@@ -474,9 +474,15 @@ export interface DriveFolder {
   name: string;
 }
 
+export interface DriveFile {
+  id: string;
+  name: string;
+}
+
 export interface DriveFilesResponse {
   root_id?: string;
   root_name?: string;
+  files: DriveFile[];
   folders: DriveFolder[];
   total_files: number;
   total_size_bytes?: number;

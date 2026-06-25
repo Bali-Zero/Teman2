@@ -80,6 +80,21 @@ export interface KBLIRawCode {
     legacy_bridge?: string;
     bali_nuance?: string;
   };
+  // L4 Bali sovereign-local layer (injected from schema-v2: OSS L0 + Perpres L2 + Bali moratorium)
+  l4_bali?: {
+    status: string;
+    reason?: string;
+    confidence?: "HIGH" | "MEDIUM" | "LOW";
+    needs_review?: boolean;
+    blocked?: boolean;
+    from_2020?: string | null;
+    moratorium?: {
+      rule?: string;
+      effective?: string;
+      source?: string;
+      virtual_office?: string;
+    };
+  };
 }
 
 /** Top-level structure of KBLI_2025_FINAL_CLEAN.json */
@@ -175,6 +190,24 @@ export interface KBLICode {
     baliContext?: string;
     youllAlsoNeed?: string;
     coverImage?: string | null;
+  };
+  /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
+  baliL4?: KBLIBaliL4;
+}
+
+/** L4 Bali status — the sovereign-local layer (moratorium B.27.000/642, 2026-05-13). */
+export interface KBLIBaliL4 {
+  status: string;
+  reason: string;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  needsReview: boolean;
+  blocked: boolean;
+  from2020?: string | null;
+  moratorium?: {
+    rule?: string;
+    effective?: string;
+    source?: string;
+    virtualOffice?: string;
   };
 }
 

@@ -127,8 +127,27 @@ class InstagramChannelAdapter(BaseChannel):
             raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
-        """Instagram doesn't support typing indicators."""
-        pass
+        """Send a typing indicator so the user gets an ack during the ~50s
+        RAG round-trip instead of dead silence.
+
+        Instagram's Graph messaging API DOES support sender_action (same
+        endpoint + auth we already use for mark_seen in send_response). Best
+        effort — never raise: a missing typing bubble must not block or fail
+        the actual reply. router.py calls this with status="processing" right
+        before handing the message to the conversation engine.
+        """
+        account_id = self.instagram_config.instagram_account_id
+        url = f"https://graph.instagram.com/{GRAPH_API_VERSION}/{account_id}/messages"
+        payload = {
+            "recipient": {"id": channel_id},
+            "sender_action": "typing_on",
+        }
+        headers = {"Authorization": f"Bearer {self.instagram_config.access_token}"}
+        try:
+            resp = await self.client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+        except Exception as e:
+            logger.debug("Instagram typing_on non-critical failure: %s", e)
 
     async def stream_response(
         self,

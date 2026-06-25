@@ -228,3 +228,15 @@ def test_supersede_sql_only_touches_review_pending() -> None:
     sql = irb.REPROCESS_SUPERSEDE_SQL
     assert "'superseded'" in sql
     assert "status = 'review_pending'" in sql  # never clobbers claimed/routed rows
+
+
+def test_revive_stub_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.REVIVE_STUB_SELECT_SQL
+    # Every guard is load-bearing — losing one widens the recovery scope wrongly.
+    assert "stage_output->'route'->>'stub' = 'true'" in sql  # stub passthrough only
+    assert "iq.source = 'whatsapp'" in sql  # own-channel, not the admin Drive dump
+    assert "iq.sender_phone IS NOT NULL" in sql  # a real owner exists
+    assert "NOT EXISTS" in sql  # exclude rows that already carry a proposal
+    assert "/groups/" in sql  # the group-chat opt-out predicate
+    assert "$1::bool" in sql  # include_groups toggle

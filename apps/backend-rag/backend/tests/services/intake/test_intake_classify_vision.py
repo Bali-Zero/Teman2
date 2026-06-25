@@ -4,7 +4,7 @@ The Ollama vision helper is monkeypatched — no GPU/model needed. Locked
 behaviours:
 
   * the fallback fires ONLY when the keyword score is below the 0.30 floor
-    AND a first-page image is available;
+    AND at least one candidate page image is available;
   * only an EXACT DOC_TYPES member (case-insensitive, single token) is
     accepted — a sentence or an off-list word degrades to unknown;
   * confidence is CAPPED at VISION_CLASSIFY_CONF (review band — a vision-only
@@ -42,6 +42,20 @@ def _fake_vision(answer: str, calls: list[dict[str, Any]]):
     return fake
 
 
+def _fake_vision_sequence(answers: list[str], calls: list[dict[str, Any]]):
+    async def fake(
+        model: str,
+        png_b64: str,
+        prompt: str = "",
+        num_predict: int = 0,
+    ) -> tuple[str, str | None]:
+        calls.append({"model": model, "prompt": prompt, "num_predict": num_predict})
+        answer = answers.pop(0) if answers else "unknown"
+        return answer, ""
+
+    return fake
+
+
 # ---------------------------------------------------------------------------
 # _parse_vision_answer — exact-member contract
 # ---------------------------------------------------------------------------
@@ -56,7 +70,15 @@ def _fake_vision(answer: str, calls: list[dict[str, Any]]):
         ("akta_pendirian", "akta_pendirian"),
         ("unknown", "unknown"),
         ("this is a passport", None),  # sentence -> rejected
-        ("visa", None),  # off-list word -> rejected
+        ("visa", "visa"),
+        ("family_card", "family_card"),
+        ("birth_certificate", "birth_certificate"),
+        ("marriage_certificate", "marriage_certificate"),
+        ("payment_receipt", "payment_receipt"),
+        ("travel_ticket", "travel_ticket"),
+        ("bank_statement", "bank_statement"),
+        ("medical_insurance", "medical_insurance"),
+        ("receipt", None),  # off-list word -> rejected
         ("", None),
         (None, None),
     ],
@@ -82,6 +104,47 @@ async def test_vision_fires_below_floor_and_caps_confidence(monkeypatch):
     assert r["via"] == "vision_fallback"
     assert len(calls) == 1  # exactly ONE vision call
     assert "EXACTLY ONE word" in calls[0]["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_vision_scans_candidate_pages_until_known_type(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        cls,
+        "_ollama_vision",
+        _fake_vision_sequence(["unknown", "travel_ticket", "passport"], calls),
+    )
+
+    r = await cls.classify_document(
+        _WEAK_TEXT,
+        pages=[
+            {"page": 0, "text": ""},
+            {"page": 1, "text": ""},
+            {"page": 2, "text": ""},
+        ],
+        vision_page_pngs=[b"page-1", b"page-2", b"page-3"],
+    )
+
+    assert r["type"] == "travel_ticket"
+    assert r["confidence"] == cls.VISION_CLASSIFY_CONF
+    assert r["source_page"] == 1
+    assert r["via"] == "vision_fallback"
+    assert len(calls) == 2  # stops as soon as a typed page answers
+
+
+@pytest.mark.asyncio
+async def test_vision_candidate_pages_are_capped(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(cls, "_ollama_vision", _fake_vision("unknown", calls))
+
+    r = await cls.classify_document(
+        _WEAK_TEXT,
+        vision_page_pngs=[b"page-1", b"page-2", b"page-3", b"page-4"],
+    )
+
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+    assert len(calls) == cls.VISION_CLASSIFY_MAX_PAGES
 
 
 @pytest.mark.asyncio
@@ -175,6 +238,12 @@ async def test_generic_mrz_lead_in_scores_passport():
 
 @pytest.mark.asyncio
 async def test_english_kitas_title_classifies():
+    # An English-title "LIMITED STAY PERMIT CARD" is a KITAS = an *itas* card.
+    # Since the 2026-06-17 stay-permit override, the classifier emits the
+    # SPECIFIC subtype (itas) rather than the generic "kitas" — the override
+    # fires on the "stay permit" / "limited stay" markers and never on passport.
     r = await cls.classify_document("LIMITED STAY PERMIT CARD REPUBLIC OF INDONESIA")
-    assert r["type"] == "kitas"
+    assert r["type"] == "itas"
+    assert r["type"] != "passport"
+    assert r["via"] == "stay_permit_override"
     assert r["confidence"] >= 0.30

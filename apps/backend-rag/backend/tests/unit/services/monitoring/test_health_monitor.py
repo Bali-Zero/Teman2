@@ -578,6 +578,7 @@ class TestDBPoolSaturation:
         mock_pool = MagicMock()
         mock_pool.get_size.return_value = 5
         mock_pool.get_max_size.return_value = 20
+        mock_pool.get_idle_size.return_value = 0  # in_use = 5/20 = 25% < 85
         app_state = MagicMock()
         app_state.db_pool = mock_pool
         monitor.app_state = app_state
@@ -593,6 +594,7 @@ class TestDBPoolSaturation:
         mock_pool = MagicMock()
         mock_pool.get_size.return_value = 18
         mock_pool.get_max_size.return_value = 20
+        mock_pool.get_idle_size.return_value = 0  # in_use = 18/20 = 90% > 85
         app_state = MagicMock()
         app_state.db_pool = mock_pool
         monitor.app_state = app_state
@@ -618,14 +620,17 @@ class TestPGHealth:
         await monitor._check_pg_health()
 
     @pytest.mark.asyncio
-    async def test_dead_tuples_above_10k(
+    async def test_dead_tuples_high_ratio_crit(
         self,
         monitor: HealthMonitor,
         mock_alert_service: MagicMock,
     ) -> None:
+        # A table whose dead tuples are 2.5x its own autovacuum trigger → crit alert.
         mock_conn = AsyncMock()
-        # First fetchval = dead tuples, second = WAL
-        mock_conn.fetchval = AsyncMock(side_effect=[15000, 100 * 1024 * 1024])
+        mock_conn.fetchrow = AsyncMock(
+            return_value={"relname": "big_table", "n_dead_tup": 60000, "frac": 2.5}
+        )
+        mock_conn.fetchval = AsyncMock(return_value=100 * 1024 * 1024)  # WAL
         mock_conn.execute = AsyncMock()
 
         mock_pool = MagicMock()
@@ -639,13 +644,17 @@ class TestPGHealth:
         mock_alert_service.send_resource_alert.assert_awaited()
 
     @pytest.mark.asyncio
-    async def test_dead_tuples_warning_level(
+    async def test_dead_tuples_ratio_warn(
         self,
         monitor: HealthMonitor,
         mock_alert_service: MagicMock,
     ) -> None:
+        # Dead tuples at 1.5x the autovacuum trigger → warning-band alert.
         mock_conn = AsyncMock()
-        mock_conn.fetchval = AsyncMock(side_effect=[7000, 50 * 1024 * 1024])
+        mock_conn.fetchrow = AsyncMock(
+            return_value={"relname": "warn_table", "n_dead_tup": 3000, "frac": 1.5}
+        )
+        mock_conn.fetchval = AsyncMock(return_value=50 * 1024 * 1024)
 
         mock_pool = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -660,8 +669,11 @@ class TestPGHealth:
     @pytest.mark.asyncio
     async def test_wal_privilege_error(self, monitor: HealthMonitor) -> None:
         mock_conn = AsyncMock()
-        # dead_tuples ok, WAL query raises
-        mock_conn.fetchval = AsyncMock(side_effect=[100, Exception("permission denied")])
+        # dead-tuple ratio low (no alert); WAL query raises (privilege denied)
+        mock_conn.fetchrow = AsyncMock(
+            return_value={"relname": "t", "n_dead_tup": 5, "frac": 0.01}
+        )
+        mock_conn.fetchval = AsyncMock(side_effect=Exception("permission denied"))
 
         mock_pool = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -679,7 +691,11 @@ class TestPGHealth:
         mock_alert_service: MagicMock,
     ) -> None:
         mock_conn = AsyncMock()
-        mock_conn.fetchval = AsyncMock(side_effect=[100, 600 * 1024 * 1024])  # 600MB WAL
+        # Low dead-tuple ratio (no dead-tuple alert); 600MB WAL → WAL alert.
+        mock_conn.fetchrow = AsyncMock(
+            return_value={"relname": "t", "n_dead_tup": 5, "frac": 0.01}
+        )
+        mock_conn.fetchval = AsyncMock(return_value=600 * 1024 * 1024)  # 600MB WAL
 
         mock_pool = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -711,8 +727,10 @@ class TestUpdateResourceMetrics:
 
     def test_metrics_import_error(self, monitor: HealthMonitor) -> None:
         with patch.dict("sys.modules", {"backend.app.metrics": None}):
-            # Should not raise
-            monitor._update_resource_metrics(500.0, 12.2, 5.0)
+            # Import of backend.app.metrics fails inside the method → must degrade
+            # gracefully (no raise) and return None.
+            result = monitor._update_resource_metrics(500.0, 12.2, 5.0)
+        assert result is None
 
 
 # --------------------------------------------------------------------------- #

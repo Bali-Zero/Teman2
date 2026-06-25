@@ -34,7 +34,7 @@ If a new reference to the 2025 file appears anywhere else, that is a bug.
 | `consultant_services` | absent | **NEW** — 7 entries (Close PMA, NPWPD, BPJS×2, NPWP Personal, Update Data, EFIN) |
 | Service entry shape | `price`, `notes`, `text` (markdown), `duration`, `validity` | adds `name`, `description_en`, `icon_id`, `tier_range` (list of 2 strings or `null`); the `text` field was DROPPED |
 | `tier_range` semantics | absent | when non-null, replaces single `price` with a low–high range (e.g. `["1.800.000 IDR", "2.000.000 IDR"]`) |
-| Contact metadata | `info@balizero.com` / `+62 813 3805 1876` / `Canggu` | `zero@balizero.com` / `+62 822 6459 9868` / `Kerobokan` / `balizero.com` |
+| Contact metadata | `info@balizero.com` / `+62 813 3805 1876` / `Canggu` | `zero@balizero.com` / `+62 822 1030 2328` / `Kerobokan` / `balizero.com` |
 | Total services | ~57 | 98 |
 
 ## When can the 2025 file be deleted?

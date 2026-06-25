@@ -7,6 +7,7 @@ export interface CTAHandoffProps {
   sessionId: string;
   pdfHref?: string;
   onZantaraClick?: MouseEventHandler<HTMLButtonElement>;
+  onWhatsAppClick?: MouseEventHandler<HTMLAnchorElement>;
   payload?: Record<string, unknown>;
 }
 
@@ -15,6 +16,7 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
   sessionId,
   pdfHref,
   onZantaraClick,
+  onWhatsAppClick,
   payload,
 }) => {
   const waUrl = buildWaDeeplink({ source, sessionId, payload });
@@ -48,6 +50,7 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
       ) : null}
       <a
         href={waUrl}
+        onClick={onWhatsAppClick}
         className="btn btn-primary"
         target="_blank"
         rel="noreferrer"

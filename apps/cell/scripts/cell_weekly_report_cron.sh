@@ -17,6 +17,11 @@ SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
 if [ -f "${SECRETS_FILE}" ]; then
     set -a; source "${SECRETS_FILE}"; set +a
 fi
+# Honour the fallback this script's own comment promises ("CELL_DATABASE_URL or
+# DATABASE_URL key"): the generic DATABASE_URL points at the same Fly Postgres,
+# so use it when the cell-specific var is absent. Without this the report failed
+# every Sunday since 2026-05-10 (exit 3) despite the DSN being present in secrets.
+: "${CELL_DATABASE_URL:=${DATABASE_URL:-}}"
 if [ -z "${CELL_DATABASE_URL:-}" ]; then
     echo "[cell-weekly-report] FATAL: CELL_DATABASE_URL not set." >&2
     echo "[cell-weekly-report]        Add it to ${SECRETS_FILE} or export before running." >&2

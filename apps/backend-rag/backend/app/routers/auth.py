@@ -56,6 +56,12 @@ class LoginResponse(BaseModel):
     data: dict[str, Any] | None = None
 
 
+class MagicLinkRequest(BaseModel):
+    """Request body for passwordless magic-link login (FASE 6)."""
+
+    email: EmailStr
+
+
 # ============================================================================
 # Database Dependencies
 # ============================================================================
@@ -437,6 +443,189 @@ async def login(
             failure_reason=f"System error: {e!s}",
         )
         raise HTTPException(status_code=500, detail="Authentication service unavailable") from e
+
+
+# ============================================================================
+# Passwordless magic-link login (FASE 6)
+# ============================================================================
+
+
+async def _send_magic_link_email(to_email: str, name: str | None, link_url: str) -> bool:
+    """Send the magic-link email via Brevo (from=zantara@balizero.com — fixed rule).
+
+    Returns True on success; never raises (a send failure must not change the
+    enumeration-safe HTTP response).
+    """
+    import os
+
+    import httpx
+
+    greeting = f"Hello {name}," if name else "Hello,"
+    html_body = (
+        f"{greeting}<br><br>"
+        "Use the secure link below to sign in to your Bali Zero client portal. "
+        f"This link works once and expires in 15 minutes.<br><br>"
+        f'<a href="{link_url}">Sign in to my.balizero.com</a><br><br>'
+        "If you didn't request this, you can safely ignore this email — your "
+        "account stays protected.<br><br>"
+        "— Bali Zero"
+    )
+    api_url = os.getenv(
+        "INTERNAL_EMAIL_API_URL",
+        "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+    )
+    api_key = os.getenv("NUZANTARA_API_KEY", "")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            resp = await http_client.post(
+                api_url,
+                headers={"X-API-Key": api_key},
+                json={
+                    "to": to_email,
+                    "subject": "Your Bali Zero portal sign-in link",
+                    "body": html_body,
+                },
+            )
+            resp.raise_for_status()
+        logger.info("📧 Magic-link email dispatched via Brevo")
+        return True
+    except Exception as e:
+        logger.warning("Magic-link email send failed: %s", e)
+        return False
+
+
+@router.post("/request-magic-link")
+async def request_magic_link(
+    body: MagicLinkRequest,
+    req: Request,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """
+    Request a passwordless sign-in link for a registered portal client.
+
+    Enumeration-safe: the response is identical whether or not the email maps to
+    a portal account. A link is emailed only when the email IS an active portal
+    client (and is not rate-limited).
+    """
+    from backend.services.portal.magic_link_service import MagicLinkService
+
+    client_ip = req.client.host if req and req.client else None
+    service = MagicLinkService(db_pool)
+
+    try:
+        result = await service.request_magic_link(body.email, created_ip=client_ip)
+    except Exception as e:
+        # Don't leak internals; still answer with the generic message.
+        log_error(logger, "Magic-link request error", error=e)
+        result = {"token": None}
+
+    raw_token = result.get("token")
+    if raw_token:
+        import os
+
+        base = os.getenv("PORTAL_BASE_URL", "https://my.balizero.com").rstrip("/")
+        link_url = f"{base}/portal/magic?token={raw_token}"
+        spawn(
+            _send_magic_link_email(result["email"], result.get("name"), link_url),
+            name="magic-link-email",
+        )
+
+    # Always the same body — never reveal account existence.
+    return {
+        "success": True,
+        "message": "If an account exists for that email, a sign-in link is on its way.",
+    }
+
+
+@router.get("/verify-magic/{token}", response_model=LoginResponse)
+async def verify_magic_link(
+    token: str,
+    req: Request,
+    response: Response,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> LoginResponse:
+    """
+    Verify a magic-link token and establish a portal session.
+
+    On success issues the SAME JWT + httpOnly cookie + CSRF token as a PIN login,
+    so the client lands authenticated. The token is single-use and consumed here.
+    """
+    from backend.services.monitoring.audit_service import get_audit_service
+    from backend.services.portal.magic_link_service import MagicLinkService
+
+    client_ip = req.client.host if req and req.client else None
+    user_agent = req.headers.get("user-agent") if req else None
+
+    service = MagicLinkService(db_pool)
+    user = await service.verify_magic_link(token)
+
+    audit_service = get_audit_service()
+    if not audit_service.pool:
+        try:
+            await audit_service.connect()
+        except Exception:
+            pass
+
+    if not user:
+        try:
+            await audit_service.log_auth_event(
+                email="unknown",
+                action="failed_login",
+                success=False,
+                ip_address=client_ip,
+                user_agent=user_agent,
+                failure_reason="Invalid or expired magic link",
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=401, detail="This sign-in link is invalid or expired.")
+
+    # Issue the session — mirror the PIN-login path exactly.
+    jwt_data = {
+        "sub": str(user["id"]),
+        "email": user["email"],
+        "role": user["role"],
+    }
+    access_token = create_access_token(
+        data=jwt_data,
+        expires_delta=timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS),
+    )
+
+    try:
+        await audit_service.log_auth_event(
+            email=user["email"],
+            action="login",
+            success=True,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            user_id=str(user["id"]),
+        )
+    except Exception:
+        pass
+
+    csrf_token = set_auth_cookies(
+        response=response,
+        jwt_token=access_token,
+        max_age_hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS,
+    )
+
+    return LoginResponse(
+        success=True,
+        message="Login successful",
+        data={
+            "token": access_token,
+            "token_type": "Bearer",
+            "expiresIn": JWT_ACCESS_TOKEN_EXPIRE_HOURS * 3600,
+            "user": {
+                "id": str(user["id"]),
+                "email": user["email"],
+                "name": user["name"],
+                "role": user["role"],
+            },
+            "csrfToken": csrf_token,
+            "redirectTo": "/portal",
+        },
+    )
 
 
 @router.get("/profile", response_model=UserProfile)

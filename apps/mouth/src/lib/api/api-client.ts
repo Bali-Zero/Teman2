@@ -315,6 +315,10 @@ export class ApiClient extends ApiClientBase {
     return this.authApi.login(email, pin);
   }
 
+  async verifyMagicLink(token: string): Promise<LoginResponse> {
+    return this.authApi.verifyMagicLink(token);
+  }
+
   async logout(): Promise<void> {
     return this.authApi.logout();
   }

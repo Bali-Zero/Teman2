@@ -17,7 +17,7 @@ describe("AppWhatsAppCTA", () => {
       ok: true,
       json: async () => ({
         lead_intent_id: "li_1",
-        whatsapp_url: "https://wa.me/6282264599868?text=hi",
+        whatsapp_url: "https://wa.me/6282210302328?text=hi",
       }),
     })) as any;
     // jsdom has no IntersectionObserver — stub it
@@ -69,7 +69,7 @@ describe("AppWhatsAppCTA", () => {
     await waitFor(() => {
       expect(onCaptured).toHaveBeenCalledWith({
         leadIntentId: "li_1",
-        whatsappUrl: "https://wa.me/6282264599868?text=hi",
+        whatsappUrl: "https://wa.me/6282210302328?text=hi",
       });
     });
   });

@@ -25,7 +25,7 @@ const EVENT_NAME = {
 export function HeaderWhatsAppCTA({ funnel }: { funnel: HeaderFunnel }) {
   return (
     <a
-      href="https://wa.me/6282264599868"
+      href="https://wa.me/6282210302328"
       onClick={() =>
         void trackFunnelEvent(EVENT_NAME[funnel], {
           sessionId: getOrCreateSessionId(),

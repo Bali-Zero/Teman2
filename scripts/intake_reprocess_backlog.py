@@ -66,6 +66,7 @@ logger = logging.getLogger("intake_reprocess_backlog")
 
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
 DEFAULT_PIPELINE_VERSION = "v2.1-retro"
+DEFAULT_STUB_REVIVE_VERSION = "v2.1-stub-revive"
 DEFAULT_MEDIA_TYPES = ("document", "image")
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
@@ -104,6 +105,38 @@ UPDATE intake_queue
        stage_output     = '{}'::jsonb,
        pipeline_version = $2
  WHERE id = ANY($1::bigint[])
+"""
+
+# WhatsApp docs the stub passthrough stage (worker._stub_stage) marked 'done'
+# with NO real OCR/classify/route — so no proposal was ever created and the doc
+# never reached /review (silently lost). Created during the 2026-06 stub-handler
+# window. Recover them by applying the SAME v2 reset contract so the live worker
+# (real handlers) re-runs them end-to-end and emits a fresh proposal.
+#
+# Scope guards (each load-bearing, verified live 2026-06-21 against nuzantara_dev):
+#   - source='whatsapp'                       → own-channel docs only, never the
+#                                               Drive/Dropbox admin dump.
+#   - sender_phone present                    → a real sender exists (an owner).
+#   - NO proposal at all (NOT EXISTS)         → exclude rows that already carry a
+#                                               proposal (399 had a LIVE one, in
+#                                               /review); re-enqueuing dups them.
+#   - $1 include_groups OR not under /groups/ → 1:1 direct chats by default; group
+#                                               docs are mixed-confidence (client
+#                                               groups AND team/vendor noise) and
+#                                               can flood a reviewer's /review, so
+#                                               they are opt-in only.
+REVIVE_STUB_SELECT_SQL = """
+SELECT iq.id
+FROM intake_queue iq
+WHERE iq.status = 'done'
+  AND iq.stage_output->'route'->>'stub' = 'true'
+  AND iq.source = 'whatsapp'
+  AND iq.sender_phone IS NOT NULL AND iq.sender_phone <> ''
+  AND ($1::bool OR iq.blob_path NOT LIKE '%/groups/%')
+  AND NOT EXISTS (
+      SELECT 1 FROM document_routing_proposal p WHERE p.queue_id = iq.id
+  )
+ORDER BY iq.id
 """
 
 # Historical inbound media with NO intake_queue row (anti-join on source_ref).
@@ -320,6 +353,38 @@ async def run_reprocess(
     return counts
 
 
+async def run_revive_stub(
+    pool: asyncpg.Pool, pipeline_version: str, include_groups: bool, apply: bool
+) -> dict[str, int]:
+    """Re-enqueue whatsapp docs the stub passthrough marked done with no proposal.
+
+    Applies the v2 worker reset contract (same as --reprocess) so the live worker
+    re-runs OCR/classify/route end-to-end and emits a fresh proposal into /review.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(REVIVE_STUB_SELECT_SQL, include_groups)
+        queue_ids = [r["id"] for r in rows]
+        counts = {"queue_rows": len(queue_ids)}
+        if not apply:
+            logger.info(
+                "[revive-stub][DRY-RUN] would reset %d stub-skipped whatsapp queue "
+                "rows (include_groups=%s) to pipeline_version=%s (pass --apply)",
+                counts["queue_rows"], include_groups, pipeline_version,
+            )
+            return counts
+
+        async with conn.transaction():
+            reset = await conn.execute(REPROCESS_RESET_SQL, queue_ids, pipeline_version)
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[revive-stub] reset=%d stub-skipped whatsapp queue rows (include_groups=%s, "
+        "pipeline_version=%s) — the intake worker will re-OCR + re-route them",
+        counts.get("reset", 0), include_groups, pipeline_version,
+    )
+    return counts
+
+
 async def run_backfill(
     pool: asyncpg.Pool,
     watermark: int,
@@ -438,6 +503,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="clear sender_phone/client_id_hint from historical wa-mirror group queue rows")
     p.add_argument("--backfill-source-context", action="store_true",
                    help="populate PII-safe direct/group source_context for wa-mirror queue rows")
+    p.add_argument("--revive-stub", action="store_true",
+                   help="re-enqueue whatsapp docs the stub passthrough marked done with no proposal")
+    p.add_argument("--include-groups", action="store_true",
+                   help="for --revive-stub: also revive group-chat docs (default: 1:1 direct chats only)")
+    p.add_argument("--stub-pipeline-version", default=DEFAULT_STUB_REVIVE_VERSION,
+                   help=f"bumped pipeline_version for --revive-stub (default {DEFAULT_STUB_REVIVE_VERSION})")
     p.add_argument("--apply", action="store_true",
                    help="actually write (default: dry-run, counts only)")
     p.add_argument("--pipeline-version", default=DEFAULT_PIPELINE_VERSION,
@@ -458,11 +529,11 @@ async def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if not (
         args.reprocess or args.backfill or args.scrub_group_phone
-        or args.backfill_source_context
+        or args.backfill_source_context or args.revive_stub
     ):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
-            "and/or --backfill-source-context"
+            "--backfill-source-context, and/or --revive-stub"
         )
         return 2
 
@@ -487,6 +558,10 @@ async def main(argv: list[str] | None = None) -> int:
             await run_backfill_source_context(pool, args.apply)
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
+        if args.revive_stub:
+            await run_revive_stub(
+                pool, args.stub_pipeline_version, args.include_groups, args.apply
+            )
         return 0
     finally:
         await pool.close()
