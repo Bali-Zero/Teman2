@@ -15,6 +15,22 @@ from backend.services.intake import classify, extract
 
 GenerateFn = Callable[[str, str], Awaitable[str]]
 
+_EXPECTED_FIELD_ALIASES_BY_DOC_TYPE: dict[str, dict[str, tuple[str, ...]]] = {
+    "nib": {
+        "nib": ("nib_number",),
+    },
+    "payment_receipt": {
+        "reference": ("receipt_no",),
+        "payer": ("payer_name",),
+        "date": ("payment_date",),
+    },
+    "travel_ticket": {
+        "passenger": ("name",),
+        "booking_ref": ("booking_reference",),
+        "date": ("travel_date",),
+    },
+}
+
 
 def _field_value(fields: Mapping[str, Any], name: str) -> Any:
     raw = fields.get(name)
@@ -30,9 +46,42 @@ def _normalize_for_match(value: Any) -> str:
     return re.sub(r"\s+", " ", text)
 
 
+def _candidate_field_names(name: str, doc_type: str | None) -> tuple[str, ...]:
+    aliases = _EXPECTED_FIELD_ALIASES_BY_DOC_TYPE.get(doc_type or "", {}).get(name, ())
+    return (name, *aliases)
+
+
+def _score_one_field(
+    *,
+    expected: Any,
+    extracted_fields: Mapping[str, Any],
+    candidate_names: tuple[str, ...],
+) -> tuple[str, Any, str | None]:
+    expected_norm = _normalize_for_match(expected)
+    first_actual: Any = None
+    first_actual_name: str | None = None
+
+    for candidate_name in candidate_names:
+        actual = _field_value(extracted_fields, candidate_name)
+        actual_norm = _normalize_for_match(actual)
+        if not actual_norm:
+            continue
+        if first_actual_name is None:
+            first_actual = actual
+            first_actual_name = candidate_name
+        if actual_norm == expected_norm:
+            return "matched", actual, candidate_name
+
+    if first_actual_name is None:
+        return "missing", None, None
+    return "mismatched", first_actual, first_actual_name
+
+
 def score_expected_fields(
     expected_fields: Mapping[str, Any],
     extracted_fields: Mapping[str, Any],
+    *,
+    doc_type: str | None = None,
 ) -> dict[str, Any]:
     """Score extracted field values against expected values.
 
@@ -47,19 +96,24 @@ def score_expected_fields(
     details: dict[str, dict[str, Any]] = {}
 
     for name, expected in expected_fields.items():
-        actual = _field_value(extracted_fields, name)
-        expected_norm = _normalize_for_match(expected)
-        actual_norm = _normalize_for_match(actual)
-        if not actual_norm:
+        candidate_names = _candidate_field_names(name, doc_type)
+        status, actual, actual_field = _score_one_field(
+            expected=expected,
+            extracted_fields=extracted_fields,
+            candidate_names=candidate_names,
+        )
+        if status == "missing":
             missing.append(name)
-            status = "missing"
-        elif actual_norm == expected_norm:
+        elif status == "matched":
             matched.append(name)
-            status = "matched"
         else:
             mismatched.append(name)
-            status = "mismatched"
-        details[name] = {"expected": expected, "actual": actual, "status": status}
+        details[name] = {
+            "expected": expected,
+            "actual": actual,
+            "actual_field": actual_field,
+            "status": status,
+        }
 
     total = len(expected_fields)
     score = round(len(matched) / total, 4) if total else 1.0
@@ -94,7 +148,7 @@ async def evaluate_ocr_text(
             "extracted_doc_type": "unknown",
             "expected_doc_type": expected_canonical,
             "doc_type_match": False,
-            "field_score": score_expected_fields(expected_fields, {}),
+            "field_score": score_expected_fields(expected_fields, {}, doc_type=expected_canonical),
             "fields": {},
         }
 
@@ -110,7 +164,11 @@ async def evaluate_ocr_text(
         "extracted_doc_type": extracted_doc_type,
         "expected_doc_type": expected_canonical,
         "doc_type_match": extracted_doc_type == expected_canonical,
-        "field_score": score_expected_fields(expected_fields, extraction["fields"]),
+        "field_score": score_expected_fields(
+            expected_fields,
+            extraction["fields"],
+            doc_type=expected_canonical,
+        ),
         "fields": extraction["fields"],
     }
 

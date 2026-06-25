@@ -174,6 +174,7 @@ DOC_TYPE_FIELDS: dict[str, list[_FieldSpec]] = {
     ],
     "travel_ticket": [
         ("ticket_no", False, "ticket number when visible"),
+        ("flight_no", False, "flight number when visible"),
         ("name", False, "passenger full name"),
         ("travel_date", False, "departure / travel date (prefer YYYY-MM-DD)"),
         ("route", False, "origin-destination route"),
@@ -1549,7 +1550,7 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
         "payment_date",
         _first_line_match(
             pages,
-            r"^(?:payment\s*date|paid\s*date|transaction\s*date|tanggal\s*bayar|tanggal\s*transaksi)(?:\s*[:\-]\s*|\s+)(.+)$",
+            r"^(?:payment\s*date|paid\s*date|transaction\s*date|date|tanggal\s*bayar|tanggal\s*transaksi|tanggal)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
         date=True,
     )
@@ -1558,7 +1559,7 @@ def _extract_payment_receipt_label_fields(pages: list[str]) -> dict[str, dict[st
         "reference",
         _first_line_match(
             pages,
-            r"^(?:reference|invoice|description|keterangan|berita)(?:\s*[:\-]\s*|\s+)(.+)$",
+            r"^(?:reference(?!\s*(?:no\.?|number)\b)|invoice|description|keterangan|berita)(?:\s*[:\-]\s*|\s+)(.+)$",
         ),
     )
     return fields
@@ -1572,6 +1573,14 @@ def _extract_travel_ticket_label_fields(pages: list[str]) -> dict[str, dict[str,
         _first_line_match(
             pages,
             r"^(?:ticket\s*(?:no\.?|number)|e-?ticket\s*(?:no\.?|number)|boarding\s*pass\s*(?:no\.?|number)|nomor\s*tiket|no\.?\s*tiket)\s*[:\-]?\s*([A-Z0-9][A-Z0-9 .\-/]{3,})$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "flight_no",
+        _first_line_match(
+            pages,
+            r"^(?:flight\s*(?:no\.?|number)|flight|nomor\s*penerbangan|no\.?\s*penerbangan)\s*[:\-]?\s*([A-Z0-9]{2,3}\s*[0-9]{1,4}[A-Z]?)$",
         ),
     )
     _set_if_present(
@@ -1681,7 +1690,7 @@ def _payment_receipt_labels_routing_useful(fields: dict[str, dict[str, Any]]) ->
 
 
 def _travel_ticket_labels_routing_useful(fields: dict[str, dict[str, Any]]) -> bool:
-    has_ticket_identifier = _has_any_value(fields, ("ticket_no", "booking_reference"))
+    has_ticket_identifier = _has_any_value(fields, ("ticket_no", "flight_no", "booking_reference"))
     has_travel_context = _has_any_value(fields, ("name", "travel_date", "route"))
     return has_ticket_identifier and has_travel_context
 

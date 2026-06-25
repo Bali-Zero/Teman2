@@ -76,6 +76,37 @@ async def test_evaluate_ocr_text_runs_current_intake_pipeline_without_live_visio
     ]
 
 
+async def test_evaluate_ocr_text_scores_expected_alias_fields_for_benchmark_docs():
+    result = await ocr_quality.evaluate_ocr_text(
+        provider="gemini-agy",
+        ocr_text=(
+            "BUKTI TRANSFER\n"
+            "Reference No: TRX-2026-778899\n"
+            "Payer: MARIO LUCA ROSSI\n"
+            "Amount: IDR 15,000,000\n"
+            "Date: 2026-06-25\n"
+            "Bank: BCA"
+        ),
+        expected_doc_type="payment_receipt",
+        expected_fields={
+            "reference": "TRX-2026-778899",
+            "payer": "Mario Luca Rossi",
+            "amount": "IDR 15,000,000",
+            "date": "2026-06-25",
+        },
+        generate_fn=lambda _model, _prompt: "{}",
+    )
+
+    assert result["doc_type_match"] is True
+    assert result["field_score"]["score"] == 1.0
+    assert result["field_score"]["matched_fields"] == [
+        "reference",
+        "payer",
+        "amount",
+        "date",
+    ]
+
+
 async def test_evaluate_ocr_text_scores_unknown_without_crashing():
     result = await ocr_quality.evaluate_ocr_text(
         provider="gemini",

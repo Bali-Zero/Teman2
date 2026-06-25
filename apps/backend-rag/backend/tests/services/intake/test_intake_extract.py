@@ -1161,6 +1161,35 @@ async def test_payment_receipt_label_fields_accept_indonesian_reference_number()
     assert out["fields"]["reference"]["value"] == "Invoice INV-42"
 
 
+async def test_payment_receipt_benchmark_reference_no_and_bare_date_without_model_call():
+    """Benchmark-style transfer OCR should not misread Reference No as narrative text."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "BUKTI TRANSFER\n"
+        "Reference No: TRX-2026-778899\n"
+        "Payer: MARIO LUCA ROSSI\n"
+        "Amount: IDR 15,000,000\n"
+        "Date: 2026-06-25\n"
+        "Bank: BCA"
+    )
+    out = await extract.extract_fields("payment_receipt", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "payment_receipt"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["payment_receipt_labels"]
+    assert out["fields"]["receipt_no"]["value"] == "TRX-2026-778899"
+    assert out["fields"]["payer_name"]["value"] == "Mario Luca Rossi"
+    assert out["fields"]["amount"]["value"] == "IDR 15,000,000"
+    assert out["fields"]["payment_date"]["value"] == "2026-06-25"
+    assert out["fields"]["reference"]["value"] is None
+
+
 async def test_travel_ticket_label_fields_skip_model_call():
     """Travel tickets can expose passenger and booking fields in labels."""
     called = {"n": 0}
@@ -1188,6 +1217,35 @@ async def test_travel_ticket_label_fields_skip_model_call():
     assert out["fields"]["travel_date"]["value"] == "2026-07-01"
     assert out["fields"]["route"]["value"] == "DPS-SIN"
     assert out["fields"]["booking_reference"]["value"] == "ABC123"
+
+
+async def test_travel_ticket_benchmark_flight_number_without_model_call():
+    """Benchmark-style e-ticket OCR should expose Flight No as structured data."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "E-TICKET ITINERARY\n"
+        "Passenger: MARIO LUCA ROSSI\n"
+        "Booking Ref: BZ8K22\n"
+        "Flight No: GA409\n"
+        "Route: DPS - CGK\n"
+        "Date: 2026-07-10"
+    )
+    out = await extract.extract_fields("travel_ticket", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "travel_ticket"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["travel_ticket_labels"]
+    assert out["fields"]["name"]["value"] == "Mario Luca Rossi"
+    assert out["fields"]["booking_reference"]["value"] == "BZ8K22"
+    assert out["fields"]["flight_no"]["value"] == "GA409"
+    assert out["fields"]["route"]["value"] == "DPS - CGK"
+    assert out["fields"]["travel_date"]["value"] == "2026-07-10"
 
 
 async def test_travel_ticket_label_fields_accept_colonless_ocr_labels():
