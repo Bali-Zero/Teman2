@@ -600,6 +600,33 @@ async def test_medical_insurance_label_fields_skip_model_call():
     assert out["fields"]["expiry"]["value"] == "2026-12-31"
 
 
+async def test_akta_pendirian_label_fields_skip_model_call():
+    """Clearly-labelled deed OCR carries company establishment fields locally."""
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    ocr = (
+        "AKTA PENDIRIAN PERSEROAN TERBATAS\n"
+        "Nama Perseroan : PT BALI ZERO SUKSES\n"
+        "Notaris : Made Sutrisna, S.H., M.Kn.\n"
+        "Modal Dasar : Rp 1.000.000.000\n"
+        "Tanggal Akta : 05 Mei 2026"
+    )
+    out = await extract.extract_fields("akta", [ocr], generate_fn=_gen)
+
+    assert called["n"] == 0
+    assert out["doc_type"] == "akta_pendirian"
+    assert out["extraction_model"] == "deterministic_labels"
+    assert out["deterministic_extractors"] == ["akta_pendirian_labels"]
+    assert out["fields"]["company_name"]["value"] == "PT BALI ZERO SUKSES"
+    assert out["fields"]["notary"]["value"] == "Made Sutrisna, S.H., M.Kn."
+    assert out["fields"]["capital"]["value"] == "Rp 1.000.000.000"
+    assert out["fields"]["date"]["value"] == "2026-05-05"
+
+
 async def test_akta_list_fields():
     payload = {
         "company_name": {"value": "PT MAJU", "source_page": 1},

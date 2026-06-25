@@ -823,6 +823,42 @@ def _extract_sk_kemenkumham_label_fields(pages: list[str]) -> dict[str, dict[str
     return fields
 
 
+def _extract_akta_pendirian_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
+    fields = _blank_fields("akta_pendirian")
+    _set_if_present(
+        fields,
+        "company_name",
+        _first_line_match(
+            pages,
+            r"^(?:nama\s+perseroan|nama\s+perusahaan|company\s+name)\s*[:\-]\s*(PT\s+.+)$",
+        )
+        or _first_line_match(pages, r"^(PT\s+[A-Z0-9][A-Z0-9 .,&'/-]{2,})$"),
+    )
+    _set_if_present(
+        fields,
+        "notary",
+        _first_line_match(pages, r"^(?:notaris|notary)\s*[:\-]\s*(.+)$"),
+    )
+    _set_if_present(
+        fields,
+        "capital",
+        _first_line_match(
+            pages,
+            r"^(?:modal\s*(?:dasar|disetor|ditempatkan)?|capital)\s*[:\-]\s*(.+)$",
+        ),
+    )
+    _set_if_present(
+        fields,
+        "date",
+        _first_line_match(
+            pages,
+            r"^(?:tanggal\s*(?:akta|pendirian)?|deed\s*date|date)\s*[:\-]\s*(.+)$",
+        ),
+        date=True,
+    )
+    return fields
+
+
 def _extract_passport_label_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
     fields = _blank_fields("passport")
     passport_no = _first_line_match(
@@ -1320,6 +1356,13 @@ def _extract_label_fields_if_routing_useful(
         fields = _extract_sk_kemenkumham_label_fields(pages)
         if _has_any_value(fields, ("sk_number", "company_name")):
             return fields, "sk_kemenkumham_labels"
+    if doc_type == "akta_pendirian":
+        fields = _extract_akta_pendirian_label_fields(pages)
+        if fields.get("company_name", {}).get("value") and _has_any_value(
+            fields,
+            ("notary", "date", "capital"),
+        ):
+            return fields, "akta_pendirian_labels"
     if doc_type == "passport":
         fields = _extract_passport_label_fields(pages)
         if _passport_labels_routing_useful(fields):
