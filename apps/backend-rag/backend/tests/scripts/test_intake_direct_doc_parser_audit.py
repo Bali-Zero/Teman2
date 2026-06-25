@@ -205,6 +205,52 @@ def test_qwen_text_sample_uses_configurable_saved_ocr_limit() -> None:
     assert result["transitions"] == {"unknown->passport": 1}
 
 
+def test_qwen_text_sample_reports_kita_workspace_placement_preview() -> None:
+    audit = _load()
+    answers = iter(["passport", "npwp", "unknown"])
+
+    async def classify_sequence(*args, **kwargs):  # noqa: ANN002, ANN003
+        return next(answers)
+
+    audit._qwen_classify_text = classify_sequence
+
+    result = asyncio.run(
+        audit.run_qwen_text_sample(
+            [
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["tax text"]}}},
+                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear"]}}},
+            ],
+            ollama_url="http://127.0.0.1:11434",
+            model="qwen3.5:9b",
+            timeout_seconds=1.0,
+        )
+    )
+
+    assert result["kita_workspace_candidates"] == 2
+    assert result["review_after_qwen"] == 1
+    assert result["placement_preview"] == [
+        {
+            "from_doc_type": "unknown",
+            "proposed_doc_type": "passport",
+            "workspace_bucket": "immigration",
+            "docs": 1,
+        },
+        {
+            "from_doc_type": "unknown",
+            "proposed_doc_type": "npwp",
+            "workspace_bucket": "tax",
+            "docs": 1,
+        },
+        {
+            "from_doc_type": "unknown",
+            "proposed_doc_type": "unknown",
+            "workspace_bucket": "review",
+            "docs": 1,
+        },
+    ]
+
+
 def test_sql_and_parser_are_read_only_and_pii_safe_by_shape() -> None:
     audit = _load()
     args = audit.build_parser().parse_args(["--pretty", "--limit", "10", "--qwen-ocr-max-chars", "1200"])
