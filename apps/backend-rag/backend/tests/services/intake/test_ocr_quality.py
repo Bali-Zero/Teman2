@@ -1,0 +1,91 @@
+"""Provider-agnostic OCR quality checks for intake samples.
+
+These tests keep provider benchmarking offline: feed OCR text that a provider
+already produced, then score the same classify/extract pipeline against expected
+fields. CI never calls Ollama or Gemini here.
+"""
+
+from __future__ import annotations
+
+from backend.services.intake import ocr_quality
+
+
+def test_score_expected_fields_counts_matches_missing_and_mismatches():
+    fields = {
+        "name": {"value": "MARIO   LUCA ROSSI"},
+        "passport_no": {"value": "x1234567"},
+        "expiry": {"value": None},
+        "sponsor": {"value": "PT OTHER"},
+    }
+
+    result = ocr_quality.score_expected_fields(
+        {
+            "name": "Mario Luca Rossi",
+            "passport_no": "X1234567",
+            "expiry": "2031-12-24",
+            "sponsor": "PT BALI ZERO TEST",
+        },
+        fields,
+    )
+
+    assert result["score"] == 0.5
+    assert result["matched_fields"] == ["name", "passport_no"]
+    assert result["missing_fields"] == ["expiry"]
+    assert result["mismatched_fields"] == ["sponsor"]
+
+
+async def test_evaluate_ocr_text_runs_current_intake_pipeline_without_live_vision():
+    called = {"n": 0}
+
+    async def _gen(model, prompt):  # noqa: ARG001
+        called["n"] += 1
+        return "{}"
+
+    result = await ocr_quality.evaluate_ocr_text(
+        provider="ollama",
+        ocr_text=(
+            "REPUBLIK INDONESIA\n"
+            "IZIN TINGGAL TERBATAS\n"
+            "Permit No: 2C11AB98765\n"
+            "Name: MARIO LUCA ROSSI\n"
+            "Nationality: ITALIA\n"
+            "Valid Until: 2027-06-25\n"
+            "Sponsor: PT BALI ZERO TEST"
+        ),
+        expected_doc_type="kitas",
+        expected_fields={
+            "kitas_no": "2C11AB98765",
+            "name": "Mario Luca Rossi",
+            "expiry": "2027-06-25",
+            "sponsor": "PT BALI ZERO TEST",
+        },
+        generate_fn=_gen,
+    )
+
+    assert called["n"] == 0
+    assert result["provider"] == "ollama"
+    assert result["classification"]["type"] == "itas"
+    assert result["extracted_doc_type"] == "kitas"
+    assert result["doc_type_match"] is True
+    assert result["field_score"]["score"] == 1.0
+    assert result["field_score"]["matched_fields"] == [
+        "kitas_no",
+        "name",
+        "expiry",
+        "sponsor",
+    ]
+
+
+async def test_evaluate_ocr_text_scores_unknown_without_crashing():
+    result = await ocr_quality.evaluate_ocr_text(
+        provider="gemini",
+        ocr_text="blurred unreadable fragment",
+        expected_doc_type="passport",
+        expected_fields={"passport_no": "X1234567", "name": "Mario Luca Rossi"},
+    )
+
+    assert result["classification"]["type"] == "unknown"
+    assert result["extracted_doc_type"] == "unknown"
+    assert result["doc_type_match"] is False
+    assert result["field_score"]["score"] == 0.0
+    assert result["field_score"]["missing_fields"] == ["passport_no", "name"]
