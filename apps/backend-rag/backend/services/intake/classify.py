@@ -107,6 +107,7 @@ OCR_PAGE_TIMEOUT_SECONDS = 120.0
 # Token budget for transcription. Generous because qwen3-vl spends most of it on
 # (discarded) thinking before -- sometimes -- emitting text.
 OCR_NUM_PREDICT = 2048
+OCR_MAX_IMAGE_DIM = 0  # disabled by default; set INTAKE_OCR_MAX_IMAGE_DIM to bound latency
 
 _OCR_PROMPT = (
     "Transcribe ALL legible text from this document image verbatim. "
@@ -119,6 +120,32 @@ _OCR_PROMPT = (
 def _resolve_ocr_model() -> str:
     """Prefer the FASE-0 registry ``ocr_vision`` role; else the hardcoded default."""
     return resolve_model_role("ocr_vision", _OCR_PRIMARY_DEFAULT)
+
+
+def _positive_env_int(name: str, default: int) -> int:
+    """Read a positive integer env override; return default on unset/invalid."""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("invalid %s=%r; using %d", name, raw, default)
+        return default
+    if value <= 0:
+        logger.warning("invalid %s=%r; using %d", name, raw, default)
+        return default
+    return value
+
+
+def _ocr_num_predict() -> int:
+    """Runtime OCR token budget, configurable for benchmark/worker tuning."""
+    return _positive_env_int("INTAKE_OCR_NUM_PREDICT", OCR_NUM_PREDICT)
+
+
+def _ocr_max_image_dim() -> int:
+    """Runtime max page dimension; 0 means no downscale."""
+    return _positive_env_int("INTAKE_OCR_MAX_IMAGE_DIM", OCR_MAX_IMAGE_DIM)
 
 
 def _ocr_provider() -> str:
@@ -250,15 +277,16 @@ async def _ollama_vision(
     model: str,
     png_b64: str,
     prompt: str = _OCR_PROMPT,
-    num_predict: int = OCR_NUM_PREDICT,
+    num_predict: int | None = None,
 ) -> tuple[str, str | None]:
     """Single /api/generate vision call. Returns (response_text, thinking_text)."""
+    resolved_num_predict = num_predict if num_predict is not None else _ocr_num_predict()
     payload: dict[str, Any] = {
         "model": model,
         "prompt": prompt,
         "images": [png_b64],
         "stream": False,
-        "options": {"temperature": 0.0, "num_predict": num_predict},
+        "options": {"temperature": 0.0, "num_predict": resolved_num_predict},
         # CLAUDE.md S9: qwen 3.x family needs think:false. qwen3-vl ignores it
         # for vision (empirically still reasons) but qwen2.5vl honours it.
         "think": False,
@@ -276,7 +304,7 @@ async def _ollama_vision(
 async def _gemini_vision(
     png_b64: str,
     prompt: str = _OCR_PROMPT,
-    num_predict: int = OCR_NUM_PREDICT,
+    num_predict: int | None = None,
 ) -> str:
     """Single gated Gemini Vision OCR call through the shared GenAI client."""
     from backend.llm.genai_client import get_genai_client
@@ -291,7 +319,7 @@ async def _gemini_vision(
             {"inline_data": {"mime_type": "image/png", "data": png_b64}},
         ],
         model=_GEMINI_OCR_MODEL,
-        max_output_tokens=num_predict,
+        max_output_tokens=num_predict if num_predict is not None else _ocr_num_predict(),
         temperature=0.0,
         timeout_ms=int(OCR_PAGE_TIMEOUT_SECONDS * 1000),
         endpoint="intake_ocr",
@@ -339,6 +367,13 @@ def _ensure_min_size(png: bytes) -> bytes:
                 canvas = Image.new("RGB", (new_w, new_h), (255, 255, 255))
                 canvas.paste(im, (0, 0))
                 im = canvas
+            max_image_dim = _ocr_max_image_dim()
+            if max_image_dim >= MIN_OCR_DIM and max(new_w, new_h) > max_image_dim:
+                scale = max_image_dim / max(new_w, new_h)
+                target_w = max(MIN_OCR_DIM, round(new_w * scale))
+                target_h = max(MIN_OCR_DIM, round(new_h * scale))
+                im = im.resize((target_w, target_h), Image.LANCZOS)
+                new_w, new_h = target_w, target_h
             out = io.BytesIO()
             im.save(out, format="PNG")
             data = out.getvalue()

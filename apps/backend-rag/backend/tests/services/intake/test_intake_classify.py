@@ -13,6 +13,7 @@ exercised separately by the on-Pro E2E run, not here.
 
 from __future__ import annotations
 
+import io
 import json
 import re
 from pathlib import Path
@@ -295,6 +296,55 @@ class _FakePage:
         self.index = index
         self.png_bytes = data
         self.enhanced = False
+
+
+def _png_bytes(width: int, height: int) -> bytes:
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (width, height), "white").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _png_size(png: bytes) -> tuple[int, int]:
+    from PIL import Image
+
+    with Image.open(io.BytesIO(png)) as im:
+        return im.size
+
+
+def test_ensure_min_size_downscales_when_max_dimension_is_configured(monkeypatch):
+    monkeypatch.setenv("INTAKE_OCR_MAX_IMAGE_DIM", "1000")
+
+    out = cls._ensure_min_size(_png_bytes(4000, 2000))
+
+    assert _png_size(out) == (1000, 500)
+
+
+@pytest.mark.asyncio
+async def test_ollama_vision_uses_configured_num_predict(monkeypatch):
+    calls = []
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"response": "OCR TEXT", "thinking": ""}
+
+    class _FakeClient:
+        async def post(self, _url, json):
+            calls.append(json)
+            return _FakeResponse()
+
+    monkeypatch.setenv("INTAKE_OCR_NUM_PREDICT", "512")
+    monkeypatch.setattr(cls, "_get_client", lambda: _FakeClient())
+
+    response, thinking = await cls._ollama_vision("qwen2.5vl:7b", "Zm9v")
+
+    assert response == "OCR TEXT"
+    assert thinking == ""
+    assert calls[0]["options"]["num_predict"] == 512
 
 
 @pytest.mark.asyncio
