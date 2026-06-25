@@ -31,7 +31,7 @@ html, body { background: var(--color-bg-black); margin: 0; padding: 0; }
 .content-bottom { position: absolute; left: var(--spacing-edge-margin); right: var(--spacing-edge-margin); bottom: 200px; color: var(--color-text-white); }
 .subheading { font-weight: var(--font-weight-extrabold); font-size: var(--font-size-subheadline); line-height: var(--line-height-snug); letter-spacing: var(--letter-spacing-title); color: var(--color-accent-yellow); text-transform: uppercase; margin-bottom: 18px; }
 .heading { font-weight: var(--font-weight-extrabold); font-size: var(--font-size-headline-slide); line-height: var(--line-height-tight); letter-spacing: var(--letter-spacing-title); color: var(--color-text-white); text-transform: uppercase; text-wrap: balance; text-shadow: 0 2px 18px rgba(0,0,0,0.55); }
-.body { font-weight: var(--font-weight-bold); font-size: 38px; line-height: var(--line-height-normal); letter-spacing: var(--letter-spacing-body); color: var(--color-text-white); text-transform: uppercase; text-shadow: 0 1px 12px rgba(0,0,0,0.6); }
+.body { font-weight: var(--font-weight-bold); font-size: 38px; line-height: var(--line-height-normal); letter-spacing: var(--letter-spacing-body); color: var(--color-text-white); text-shadow: 0 1px 12px rgba(0,0,0,0.6); }  /* text-transform:uppercase removed 2026-06-25: mixed-case body forced to ALL-CAPS reads as illegible text-brick (critic HARD-rejects), esp. over photos. Same fix as evidence-carved.md 2026-05-22. Keeps bold+shadow. */
 </style></head>
 <body>
   <div class="hero" data-zone-type="hero-photo"></div>
