@@ -510,6 +510,10 @@
     <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-gate"></table></div>
   </div>
   <div class="intake-section">
+    <h3>Benchmark Qwen known docs</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-known"></table></div>
+  </div>
+  <div class="intake-section">
     <h3>Destinazione workspace prevista</h3>
     <div class="intake-table-wrap"><table class="intake-table" id="i-workspace"></table></div>
   </div>
@@ -1012,6 +1016,9 @@ function bucketLabel(bucket) {
     insufficient_sample: "Sample insufficiente",
     probe_required: "Probe richiesto",
     no_candidates: "Nessun candidato",
+    workspace_benchmark_ready: "Benchmark OK",
+    workspace_benchmark_review: "Benchmark review",
+    benchmark_required: "Benchmark richiesto",
   };
   return labels[bucket] || bucket || "unknown";
 }
@@ -1021,9 +1028,9 @@ function intakeStatusPill(ok, label) {
 }
 
 function qwenGatePill(status) {
-  const cls = status === "candidate_batch_ready" || status === "no_candidates"
+  const cls = status === "candidate_batch_ready" || status === "no_candidates" || status === "workspace_benchmark_ready"
     ? "ok"
-    : status === "review_only" || status === "insufficient_sample" || status === "probe_required"
+    : status === "review_only" || status === "insufficient_sample" || status === "probe_required" || status === "benchmark_required"
       ? "warn"
       : "bad";
   return `<span class="intake-pill ${cls}">${escapeHtml(bucketLabel(status))}</span>`;
@@ -1056,6 +1063,7 @@ async function renderIntake() {
   const cardsEl = document.getElementById("i-cards");
   const parserEl = document.getElementById("i-parser");
   const qwenGateEl = document.getElementById("i-qwen-gate");
+  const qwenKnownEl = document.getElementById("i-qwen-known");
   const workspaceEl = document.getElementById("i-workspace");
   const docTypesEl = document.getElementById("i-doc-types");
   const groupsEl = document.getElementById("i-groups");
@@ -1065,6 +1073,7 @@ async function renderIntake() {
     const q = data.queue || {};
     const actions = data.direct_action_summary || {};
     const qwenGate = data.qwen_batch_gate || {};
+    const qwenKnown = data.qwen_known_benchmark_gate || {};
     const safeGroups = !q.group_unsafe_sender_phone && !q.group_unsafe_client_hint;
     subEl.textContent = `Aggiornato ${new Date(data.generated_at).toLocaleTimeString("it-IT")} · ${data.pii_policy}`;
     cardsEl.innerHTML = `
@@ -1073,6 +1082,7 @@ async function renderIntake() {
       <div class="intake-card"><div class="label">OCR/vision</div><div class="value">${iFmt(actions.needs_ocr_vision_batch)}</div><div class="hint">unknown senza OCR</div></div>
       <div class="intake-card"><div class="label">Qwen/text</div><div class="value">${iFmt(actions.needs_text_parser_qwen_candidate)}</div><div class="hint">${iFmt(actions.immediate_batch_candidates)} batch candidati</div></div>
       <div class="intake-card"><div class="label">Qwen gate</div><div class="value">${qwenGatePill(qwenGate.status || "probe_required")}</div><div class="hint">${iFmt(qwenGate.sampled_docs)} sample · ${(Number(qwenGate.candidate_rate || 0) * 100).toFixed(0)}% candidato</div></div>
+      <div class="intake-card"><div class="label">Qwen benchmark</div><div class="value">${qwenGatePill(qwenKnown.status || "benchmark_required")}</div><div class="hint">${iFmt(qwenKnown.sampled_docs)} sample · ${(Number(qwenKnown.workspace_accuracy || 0) * 100).toFixed(0)}% workspace</div></div>
       <div class="intake-card"><div class="label">OCR corto</div><div class="value">${iFmt(actions.needs_manual_review_short_ocr)}</div><div class="hint">review manuale</div></div>
       <div class="intake-card"><div class="label">Workspace review</div><div class="value">${iFmt(actions.workspace_review_ready)}</div><div class="hint">${iFmt(actions.failed_pipeline)} failed pipeline</div></div>
       <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(q.group_docs)}</div><div class="hint">${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, "unsafe")}</div></div>
@@ -1094,6 +1104,18 @@ async function renderIntake() {
       { label: "Rate", render: (r) => `${(Number(r.candidate_rate || 0) * 100).toFixed(0)}% / ${(Number(r.min_candidate_rate || 0) * 100).toFixed(0)}%` },
       { label: "Aggiornato", render: (r) => r.generated_at ? escapeHtml(new Date(r.generated_at).toLocaleString("it-IT")) : "non eseguito" },
     ], "Nessun gate Qwen");
+
+    qwenKnownEl.innerHTML = renderRows([qwenKnown], [
+      { label: "Stato", render: (r) => qwenGatePill(r.status || "benchmark_required") },
+      { label: "Sample", render: (r) => iFmt(r.sampled_docs) },
+      { label: "Classificati", render: (r) => iFmt(r.classified_attempts) },
+      { label: "Errori", render: (r) => iFmt(r.failed_attempts) },
+      { label: "Workspace OK", render: (r) => iFmt(r.workspace_matches) },
+      { label: "Doc type OK", render: (r) => iFmt(r.exact_doc_type_matches) },
+      { label: "Unknown", render: (r) => iFmt(r.unknown_predictions) },
+      { label: "Accuracy", render: (r) => `${(Number(r.workspace_accuracy || 0) * 100).toFixed(0)}% / ${(Number(r.min_workspace_accuracy || 0) * 100).toFixed(0)}%` },
+      { label: "Aggiornato", render: (r) => r.generated_at ? escapeHtml(new Date(r.generated_at).toLocaleString("it-IT")) : "non eseguito" },
+    ], "Nessun benchmark Qwen");
 
     workspaceEl.innerHTML = renderRows(data.workspace_buckets, [
       { label: "Workspace bucket", render: (r) => escapeHtml(bucketLabel(r.bucket)) },
