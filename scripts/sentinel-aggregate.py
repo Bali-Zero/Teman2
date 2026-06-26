@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import subprocess
 import sys
@@ -61,7 +62,49 @@ DEAD_MULTIPLIER = 3.0
 # a registry-declared progress field is byte-identical across the last N ticks.
 # HOW from the study (effective-harnesses-for-long-running-agents + StuckLoopDetection):
 # the validated default for "unchanged across N ticks" is N≈3.
-STARVED_TICKS = 3  # consecutive no-delta ticks before flagging starved
+STARVED_TICKS = 3  # consecutive no-delta ticks before flagging starved (frequency-blind floor)
+
+# A2 frequency-aware threshold (Opzione A, 2026-06-27 census fix). The bare STARVED_TICKS
+# counts SENTINEL ticks (this aggregator runs every SENTINEL_INTERVAL_SECONDS), NOT the
+# organ's own work-occasions. For a daemon (hb 60-300s) 3 ticks ≈ 15 min = many occasions —
+# fine. For a weekly cron (hb ≈ 8 days) 3 ticks = 15 min → it would be flagged 'starved' 15
+# minutes after a run while legitimately idle until the NEXT run a week later: a structural
+# false positive (census 2026-06-27 found 7/8 candidate loops in this trap). The cure: an
+# organ MAY declare `starved_after_periods: N` and, with a known expected_hb_seconds, the
+# tick-threshold becomes N work-periods expressed in sentinel ticks. Never drops BELOW the
+# frequency-blind floor (so high-frequency daemons keep the validated N≈3). Opt-in: organs
+# that don't declare it are classified exactly as before.
+SENTINEL_INTERVAL_SECONDS = 300  # this aggregator's StartInterval (see module docstring)
+DEFAULT_STARVED_AFTER_PERIODS = 2  # missed work-occasions before starved, when declared
+
+
+def _starved_threshold_ticks(organ: dict[str, Any]) -> int:
+    """How many consecutive no-delta sentinel ticks before this organ is 'starved'.
+
+    Default = STARVED_TICKS (frequency-blind floor, unchanged behaviour). If the organ
+    declares `starved_after_periods: N` AND has a positive expected_hb_seconds, translate
+    N work-periods into sentinel ticks: ceil(N * expected_hb / SENTINEL_INTERVAL). The
+    result is floored at STARVED_TICKS so the cure can only ever RAISE the bar for slow
+    crons, never lower it for fast daemons. Fail-safe: any bad/missing value → the floor."""
+    floor = STARVED_TICKS
+    n = organ.get("starved_after_periods")
+    if n is None:
+        return floor
+    try:
+        periods = float(n)
+    except (TypeError, ValueError):
+        return floor
+    if periods <= 0:
+        return floor
+    expected_hb = organ.get("expected_hb_seconds") or 0
+    try:
+        expected_hb = float(expected_hb)
+    except (TypeError, ValueError):
+        return floor
+    if expected_hb <= 0:
+        return floor  # no period to scale against → frequency-blind floor
+    ticks = math.ceil(periods * expected_hb / SENTINEL_INTERVAL_SECONDS)
+    return max(floor, int(ticks))
 
 
 def _read_prior_snapshot() -> dict[str, dict[str, Any]]:
@@ -223,7 +266,7 @@ def _apply_starved_axis(
         starved_streak = 0  # output advanced (or first observation) → not starved
     result["progress_value"] = prog
     result["starved_streak"] = starved_streak
-    if starved_streak >= STARVED_TICKS:
+    if starved_streak >= _starved_threshold_ticks(organ):
         result["status"] = "starved"
         # raise visibility: a starved organ must not stay 'info'
         if result.get("severity") in (None, "info"):
@@ -326,7 +369,7 @@ def _classify(
                 starved_streak = prior_streak + 1
             else:
                 starved_streak = 0  # output advanced (or first observation) → not starved
-            if starved_streak >= STARVED_TICKS:
+            if starved_streak >= _starved_threshold_ticks(organ):
                 status = "starved"
 
         result = {
