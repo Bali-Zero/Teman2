@@ -137,6 +137,132 @@ def test_auto_attach_disabled_when_falsy(monkeypatch):
         assert auto_attach.auto_attach_enabled() is False
 
 
+def test_direct_phone_auto_attach_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED", raising=False)
+    assert auto_attach.direct_phone_auto_attach_enabled() is False
+
+
+def test_direct_phone_auto_attach_enabled_when_truthy(monkeypatch):
+    for val in ("1", "true", "yes", "on", "ON"):
+        monkeypatch.setenv("INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED", val)
+        assert auto_attach.direct_phone_auto_attach_enabled() is True
+
+
+# --------------------------------------------------------------------------- #
+# direct WA phone-only gate — opt-in post-routing catalog, not FASE-4 auto attach
+# --------------------------------------------------------------------------- #
+_DIRECT_SOURCE_CONTEXT = {
+    "transport": "wa-mirror",
+    "chat_type": "direct",
+    "routing_identity_policy": "sender_phone_enabled",
+}
+
+
+@pytest.mark.asyncio
+async def test_guilt_direct_phone_link_candidate_is_concordant(monkeypatch):
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "X"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match (no strong identifier, no fuzzy name >= 0.40)"},
+    )
+    assert v["concordant"] is True
+    assert v["phone_client_id"] == 42
+    assert v["phone_match_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_rejects_group_context(monkeypatch):
+    _patch_phone(monkeypatch, [{"id": 42}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="0812...",
+        source_context={
+            "chat_type": "group",
+            "routing_identity_policy": "group_participant_phone_suppressed",
+        },
+        reason={"reason": "sender phone match (legacy row)"},
+    )
+    assert v["concordant"] is False
+    assert "direct-chat" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_rejects_unknown_doc_type(monkeypatch):
+    _patch_phone(monkeypatch, [{"id": 42}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="unknown",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match (no strong identifier, no fuzzy name >= 0.40)"},
+    )
+    assert v["concordant"] is False
+    assert "no Kita category" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_rejects_subject_mismatch(monkeypatch):
+    _patch_phone(monkeypatch, [{"id": 42}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={
+            "reason": "sender phone matched a FORWARDER, not the OCR subject",
+            "sender_subject_mismatch": True,
+        },
+    )
+    assert v["concordant"] is False
+    assert "forwarder" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_rejects_shared_phone(monkeypatch):
+    _patch_phone(monkeypatch, [{"id": 42}, {"id": 99}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match (no strong identifier, no fuzzy name >= 0.40)"},
+    )
+    assert v["concordant"] is False
+    assert v["phone_match_count"] == 2
+    assert "shared" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_rejects_phone_disagreement(monkeypatch):
+    _patch_phone(monkeypatch, [{"id": 99}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match (no strong identifier, no fuzzy name >= 0.40)"},
+    )
+    assert v["concordant"] is False
+    assert v["phone_client_id"] == 99
+    assert "DISAGREE" in v["reason"]
+
+
 # --------------------------------------------------------------------------- #
 # try_auto_attach short-circuits — both flags must be ON before any DB touch
 # --------------------------------------------------------------------------- #
@@ -155,5 +281,42 @@ async def test_try_auto_attach_noop_when_writer_off(monkeypatch):
     monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
     proposal = {"id": 1, "routing": {"client_id": 42}, "entity_resolution": {"decision": "AUTO_ATTACH"}}
     out = await auto_attach.try_auto_attach(proposal, pool=None, sender_phone="0812")
+    assert out["committed"] is False
+    assert out["skipped"] == "writer_off"
+
+
+@pytest.mark.asyncio
+async def test_try_direct_phone_auto_attach_noop_when_killswitch_off(monkeypatch):
+    monkeypatch.delenv("INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED", raising=False)
+    proposal = {
+        "id": 1,
+        "routing": {"client_id": 42, "doc_type": "passport"},
+        "entity_resolution": {"decision": "LINK_CANDIDATE"},
+    }
+    out = await auto_attach.try_direct_phone_auto_attach(
+        proposal,
+        pool=None,
+        sender_phone="0812",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+    )
+    assert out["committed"] is False
+    assert out["skipped"] == "direct_phone_killswitch_off"
+
+
+@pytest.mark.asyncio
+async def test_try_direct_phone_auto_attach_noop_when_writer_off(monkeypatch):
+    monkeypatch.setenv("INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED", "1")
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
+    proposal = {
+        "id": 1,
+        "routing": {"client_id": 42, "doc_type": "passport"},
+        "entity_resolution": {"decision": "LINK_CANDIDATE"},
+    }
+    out = await auto_attach.try_direct_phone_auto_attach(
+        proposal,
+        pool=None,
+        sender_phone="0812",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+    )
     assert out["committed"] is False
     assert out["skipped"] == "writer_off"

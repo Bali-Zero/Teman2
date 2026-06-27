@@ -59,6 +59,28 @@ from backend.services.intake.enqueue import PIPELINE_VERSION
 
 logger = logging.getLogger("zantara.intake.writer")
 
+DOCUMENT_CATEGORY_MAP = {
+    "passport": "immigration",
+    "kitas": "immigration",
+    "visa": "immigration",
+    "itap": "immigration",
+    "itk": "immigration",
+    "ktp": "personal",
+    "family_card": "family",
+    "birth_certificate": "family",
+    "marriage_certificate": "family",
+    "payment_receipt": "other",
+    "travel_ticket": "other",
+    "bank_statement": "other",
+    "medical_insurance": "other",
+    "npwp": "tax",
+    "nib": "pma",
+    "oss": "pma",
+    "akta_pendirian": "pma",
+    "profil_perseroan": "pma",
+    "sk_kemenkumham": "pma",
+}
+
 
 # --------------------------------------------------------------------------- #
 # Feature flag (P0 guardrail §6a) — DEFAULT OFF.
@@ -231,28 +253,7 @@ def _document_payload(
     # silently fall through to the "99_Misc" default at crm_enhanced_documents.py and file NIB/akta
     # into the Misc folder instead of 02_Company. Canonical value verified by
     # tests/unit/app/services/portal/test_documents_mixin.py:45.
-    category_map = {
-        "passport": "immigration",
-        "kitas": "immigration",
-        "visa": "immigration",
-        "itap": "immigration",
-        "itk": "immigration",
-        "ktp": "personal",
-        "family_card": "family",
-        "birth_certificate": "family",
-        "marriage_certificate": "family",
-        "payment_receipt": "other",
-        "travel_ticket": "other",
-        "bank_statement": "other",
-        "medical_insurance": "other",
-        "npwp": "tax",
-        "nib": "pma",
-        "oss": "pma",
-        "akta_pendirian": "pma",
-        "profil_perseroan": "pma",
-        "sk_kemenkumham": "pma",
-    }
-    category = category_map.get(doc_type)
+    category = DOCUMENT_CATEGORY_MAP.get(doc_type)
 
     file_name = stage_output.get("file_name") or f"{doc_type}-{source_ref}"
 

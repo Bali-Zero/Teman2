@@ -154,6 +154,7 @@ async def test_route_stage_consumes_auto_attach_result(monkeypatch, pool, seeded
         proposal,
         pool,
         sender_phone,
+        source_context,
         effective_status,
     ):
         calls.append(
@@ -161,6 +162,7 @@ async def test_route_stage_consumes_auto_attach_result(monkeypatch, pool, seeded
                 "proposal_id": proposal_id,
                 "decision": proposal["entity_resolution"]["decision"],
                 "sender_phone": sender_phone,
+                "source_context": source_context,
                 "effective_status": effective_status,
             }
         )
@@ -191,6 +193,7 @@ async def test_route_stage_consumes_auto_attach_result(monkeypatch, pool, seeded
             "proposal_id": r["proposal_id"],
             "decision": "AUTO_ATTACH",
             "sender_phone": "+6281200000000",
+            "source_context": None,
             "effective_status": "review_pending",
         }
     ]
