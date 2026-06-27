@@ -46,6 +46,24 @@ export interface KBLIScaleEntry {
   fiktif_positif: boolean;
 }
 
+/** Raw l4_bali block as it ships inside the live KBLI data file (snake_case).
+ *  `blocked` is the authoritative "a PT PMA cannot register this in Bali" flag. */
+export interface KBLIRawBaliL4 {
+  status: string;
+  reason?: string;
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+  needs_review?: boolean;
+  blocked?: boolean;
+  from_2020?: string | null;
+  verdict?: string;
+  moratorium?: {
+    rule?: string;
+    effective?: string;
+    source?: string;
+    virtual_office?: string;
+  };
+}
+
 /** Raw KBLI code record — exact match to JSON structure */
 export interface KBLIRawCode {
   kode_kbli_2025: string;
@@ -56,11 +74,17 @@ export interface KBLIRawCode {
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
   pma_status: KBLIPmaRawStatus;
-  pma_max_asing: number;
+  pma_max_asing: number | 'special'; // "special" = open-with-special-conditions (47221-class), no clean %
   pma_kondisi: string | null;
   pma_prioritas: boolean;
   pma_nota: string | null;
   pma_source: string | null;
+  // PMA cap provenance (synced from the native app dataset, 2026-06-27)
+  pma_cap_special?: boolean; // true => special-distribution condition, render "special conditions" not "Closed 0%"
+  pma_cap_verified?: boolean; // false => TERBATAS cap % is not source-backed, render "≈N% unverified"
+  pma_route_to?: string; // sibling private code when a govt code is closed to PMA
+  pma_official_basis?: string;
+  l4_bali?: KBLIRawBaliL4 | null; // Bali-specific registrability, synced as a record field
   _source: string;
   // Optional fields (present on some records)
   aggregation_note?: string;
@@ -113,11 +137,15 @@ export type KBLIMatchType =
 /** PMA (foreign investment) details — processed */
 export interface KBLIPmaInfo {
   status: KBLIPmaStatus;
-  maxForeign: number;
+  maxForeign: number | 'special';
   condition: string | null;
   isPriority: boolean;
   note: string | null;
   source: string | null;
+  // Synced from native app (2026-06-27): provenance flags that change the label.
+  capSpecial: boolean; // special-distribution condition (47221) → "special conditions", not "Closed 0%"
+  capVerified: boolean; // false → TERBATAS % not source-backed → "≈N% unverified"
+  routeTo: string | null; // sibling private code when a govt code is closed to PMA (e.g. 86101 → 86103)
 }
 
 /** Processed licensing entry for a specific business scale */
