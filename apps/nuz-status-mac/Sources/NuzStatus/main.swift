@@ -125,6 +125,10 @@ final class StatusModel: ObservableObject {
         payload?.overall.uppercased() ?? "UNKNOWN"
     }
 
+    var enabledActions: [StatusPayload.Action] {
+        payload?.actions.filter { $0.enabled } ?? []
+    }
+
     func refresh() {
         isLoading = true
         lastError = nil
@@ -171,6 +175,36 @@ final class StatusModel: ObservableObject {
         }
     }
 
+    func runAllEnabledFixes() {
+        let targets = enabledActions.map(\.target)
+        guard !targets.isEmpty else { return }
+
+        isLoading = true
+        lastError = nil
+        fixOutput = nil
+        let root = repoRoot
+
+        Task.detached {
+            do {
+                var outputs: [String] = []
+                for target in targets {
+                    outputs.append(try Self.safeFix(repoRoot: root, target: target))
+                }
+                let outputText = outputs.joined(separator: "\n\n")
+                await MainActor.run {
+                    self.fixOutput = outputText
+                    self.isLoading = false
+                    self.refresh()
+                }
+            } catch {
+                await MainActor.run {
+                    self.lastError = error.localizedDescription
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+
     nonisolated private static func loadStatus(repoRoot: String, includeNetwork: Bool) throws -> StatusPayload {
         let root = URL(fileURLWithPath: repoRoot)
         let script = root.appendingPathComponent("scripts/nuz_status.py")
@@ -186,11 +220,15 @@ final class StatusModel: ObservableObject {
         }
 
         let output = try runProcess(executable: "/usr/bin/python3", arguments: arguments, cwd: root)
-        guard output.status == 0 else {
-            throw StatusError.commandFailed(output.stderr.isEmpty ? output.stdout : output.stderr)
-        }
         let data = Data(output.stdout.utf8)
-        return try JSONDecoder().decode(StatusPayload.self, from: data)
+        do {
+            return try JSONDecoder().decode(StatusPayload.self, from: data)
+        } catch {
+            if output.status != 0 {
+                throw StatusError.commandFailed(output.stderr.isEmpty ? output.stdout : output.stderr)
+            }
+            throw error
+        }
     }
 
     nonisolated private static func safeFix(repoRoot: String, target: String) throws -> String {
@@ -330,6 +368,14 @@ struct DashboardView: View {
                 .font(.headline)
 
             if let actions = model.payload?.actions, !actions.isEmpty {
+                Button {
+                    model.runAllEnabledFixes()
+                } label: {
+                    Label("Run enabled fixes", systemImage: "wand.and.stars")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(model.enabledActions.isEmpty || model.isLoading)
+
                 ForEach(actions) { action in
                     Button {
                         model.runFix(target: action.target)
