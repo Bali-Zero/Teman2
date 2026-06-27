@@ -38,6 +38,13 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     to ``ocr_done``, and lets the normal worker continue extract/validate/route.
     This avoids re-running vision OCR and avoids churn for still-unknown docs.
 
+``--auto-attach-eligible``
+    Selects existing wa-mirror ``review_pending`` proposals whose commit gate
+    already says ``auto_attach_eligible=true`` and feeds them through the SAME
+    double-concordance auto-attach module used by route_stage. Dry-run counts
+    candidates only; ``--apply`` still honors ``INTAKE_AUTO_ATTACH_ENABLED`` and
+    ``INTAKE_WRITER_ENABLED`` kill-switches before any CRM write can happen.
+
 ``--scrub-group-phone``
     Historical wa-mirror group documents may still carry ``intake_queue.sender_phone``
     from before the group/direct split. Group sender numbers are participant
@@ -83,6 +90,7 @@ from backend.services.intake.classify import (
     _parse_doc_type_answer,
     _text_llm_classify_prompt,
 )
+from backend.services.intake.auto_attach import try_auto_attach
 from backend.services.intake.enqueue import enqueue
 
 logger = logging.getLogger("intake_reprocess_backlog")
@@ -98,6 +106,7 @@ DEFAULT_AUTOCATALOG_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_AUTOCATALOG_TEXT_MODEL = "qwen3.5:9b"
 DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS = 45.0
 DEFAULT_AUTOCATALOG_OCR_MAX_CHARS = 6000
+DEFAULT_AUTO_ATTACH_LIMIT = 500
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
 WATERMARK_FILE = Path.home() / ".cell-bridge-state" / "wa_mirror_sweep_last_id.txt"
@@ -335,6 +344,19 @@ UPDATE intake_queue
        stage_output     = jsonb_build_object('classify', $2::jsonb),
        pipeline_version = $3
  WHERE id = $1
+"""
+
+AUTO_ATTACH_ELIGIBLE_SELECT_SQL = """
+SELECT p.id, p.queue_id, p.doc_index, p.pipeline_version, p.status,
+       p.entity_resolution, p.routing, p.commit_gate,
+       q.sender_phone
+  FROM document_routing_proposal p
+  JOIN intake_queue q ON q.id = p.queue_id
+ WHERE q.source = 'whatsapp'
+   AND p.status = 'review_pending'
+   AND COALESCE((p.commit_gate->>'auto_attach_eligible')::boolean, false) = true
+ ORDER BY p.id
+ LIMIT $1
 """
 
 
@@ -904,6 +926,74 @@ async def run_autocatalog_preclassify_saved_ocr(
     return counts
 
 
+async def run_auto_attach_eligible(
+    pool: asyncpg.Pool,
+    limit: int,
+    apply: bool,
+) -> dict[str, Any]:
+    """Run existing eligible review proposals through the auto-attach gate.
+
+    This is only a backlog bridge for proposals born before route_stage consumed
+    the gate. It does not bypass the double kill-switch: ``try_auto_attach``
+    remains the only writer path.
+    """
+    safe_limit = max(limit, 1)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(AUTO_ATTACH_ELIGIBLE_SELECT_SQL, safe_limit)
+
+    counts: dict[str, Any] = {
+        "candidates": len(rows),
+        "attempted": 0,
+        "committed": 0,
+        "errors": 0,
+        "limit": safe_limit,
+        "skipped": {},
+        "outcomes": {},
+    }
+    if not apply:
+        logger.info(
+            "[auto-attach-eligible][DRY-RUN] would try %d review_pending "
+            "eligible proposals through the double-concordance gate (pass --apply)",
+            counts["candidates"],
+        )
+        return counts
+
+    skipped: Counter[str] = Counter()
+    outcomes: Counter[str] = Counter()
+    by_error: Counter[str] = Counter()
+    for row in rows:
+        counts["attempted"] += 1
+        try:
+            verdict = await try_auto_attach(row, pool, sender_phone=row["sender_phone"])
+        except Exception as exc:  # aggregate only; no proposal payload / no PII.
+            counts["errors"] += 1
+            by_error[type(exc).__name__] += 1
+            continue
+
+        if verdict.get("committed"):
+            counts["committed"] += 1
+        if verdict.get("skipped"):
+            skipped[str(verdict["skipped"])] += 1
+        if verdict.get("outcome"):
+            outcomes[str(verdict["outcome"])] += 1
+
+    counts["skipped"] = dict(skipped)
+    counts["outcomes"] = dict(outcomes)
+    counts["by_error"] = dict(by_error)
+    logger.info(
+        "[auto-attach-eligible] candidates=%d attempted=%d committed=%d "
+        "skipped=%s outcomes=%s errors=%d by_error=%s",
+        counts["candidates"],
+        counts["attempted"],
+        counts["committed"],
+        counts["skipped"],
+        counts["outcomes"],
+        counts["errors"],
+        counts["by_error"],
+    )
+    return counts
+
+
 # --- CLI ----------------------------------------------------------------------
 
 
@@ -945,6 +1035,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--autocatalog-preclassify-saved-ocr",
         action="store_true",
         help="use saved OCR + local Qwen now, then resume known answers at ocr_done without re-OCR",
+    )
+    p.add_argument(
+        "--auto-attach-eligible",
+        action="store_true",
+        help="try existing review_pending proposals whose gate already marks them auto_attach_eligible",
     )
     p.add_argument(
         "--include-groups",
@@ -1004,6 +1099,12 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"saved OCR chars sent to local Qwen per doc (default {DEFAULT_AUTOCATALOG_OCR_MAX_CHARS})",
     )
     p.add_argument(
+        "--auto-attach-limit",
+        type=int,
+        default=DEFAULT_AUTO_ATTACH_LIMIT,
+        help=f"maximum eligible review proposals processed by one auto-attach run (default {DEFAULT_AUTO_ATTACH_LIMIT})",
+    )
+    p.add_argument(
         "--watermark",
         type=int,
         default=None,
@@ -1030,11 +1131,13 @@ async def main(argv: list[str] | None = None) -> int:
         or args.revive_stub
         or args.autocatalog_direct_unknown_text
         or args.autocatalog_preclassify_saved_ocr
+        or args.auto_attach_eligible
     ):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, and/or "
-            "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr"
+            "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr/"
+            "--auto-attach-eligible"
         )
         return 2
 
@@ -1075,6 +1178,8 @@ async def main(argv: list[str] | None = None) -> int:
                 timeout_seconds=max(args.autocatalog_timeout_seconds, 1.0),
                 ocr_max_chars=max(args.autocatalog_ocr_max_chars, 1),
             )
+        if args.auto_attach_eligible:
+            await run_auto_attach_eligible(pool, max(args.auto_attach_limit, 1), args.apply)
         if args.revive_stub:
             await run_revive_stub(pool, args.stub_pipeline_version, args.include_groups, args.apply)
         return 0

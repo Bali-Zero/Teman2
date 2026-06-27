@@ -18,6 +18,7 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
+from backend.services.intake import routing as intake_routing
 from backend.services.intake.routing import backfill_received_by, route_stage
 
 _DB_URL = os.environ.get(
@@ -36,6 +37,12 @@ async def pool():
         yield p
     finally:
         await p.close()
+
+
+@pytest.fixture(autouse=True)
+def _auto_attach_killswitches_off(monkeypatch):
+    monkeypatch.delenv("INTAKE_AUTO_ATTACH_ENABLED", raising=False)
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
 
 
 @pytest_asyncio.fixture
@@ -122,6 +129,7 @@ async def test_auto_attach_passport_exact(pool, seeded):
     r = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
     assert r["decision"] == "AUTO_ATTACH"
     assert r["requires_human"] is False
+    assert r["auto_attach"]["skipped"] == "killswitch_off"
     row = await _proposal(pool, q)
     er = _j(row["entity_resolution"])
     assert er["subject_kind"] == "person"
@@ -129,6 +137,66 @@ async def test_auto_attach_passport_exact(pool, seeded):
     assert er["candidates"][0]["id"] == seeded["c_auto"]
     assert _j(row["routing"])["client_id"] == seeded["c_auto"]
     assert row["status"] == "review_pending"
+
+
+@pytest.mark.asyncio
+async def test_route_stage_consumes_auto_attach_result(monkeypatch, pool, seeded):
+    """route_stage must arm the dormant AUTO_ATTACH flag after proposal insert.
+
+    The helper is patched so this test covers the route-stage contract without
+    executing the real writer path.
+    """
+    calls = []
+
+    async def _fake_auto_attach(
+        *,
+        proposal_id,
+        proposal,
+        pool,
+        sender_phone,
+        effective_status,
+    ):
+        calls.append(
+            {
+                "proposal_id": proposal_id,
+                "decision": proposal["entity_resolution"]["decision"],
+                "sender_phone": sender_phone,
+                "effective_status": effective_status,
+            }
+        )
+        async with pool.acquire() as c:
+            await c.execute(
+                "UPDATE document_routing_proposal SET status='auto_routed' WHERE id=$1",
+                proposal_id,
+            )
+        return {"committed": True, "status": "auto_routed", "outcome": "committed"}
+
+    monkeypatch.setattr(
+        intake_routing, "_try_auto_attach_after_route", _fake_auto_attach
+    )
+
+    q = await _seed_queue(
+        pool,
+        "passport",
+        {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"},
+    )
+    r = await route_stage(
+        {"id": q, "pipeline_version": "v1", "sender_phone": "+6281200000000"},
+        "route",
+        pool,
+    )
+
+    assert calls == [
+        {
+            "proposal_id": r["proposal_id"],
+            "decision": "AUTO_ATTACH",
+            "sender_phone": "+6281200000000",
+            "effective_status": "review_pending",
+        }
+    ]
+    assert r["routed"] is True
+    assert r["status"] == "auto_routed"
+    assert (await _proposal(pool, q))["status"] == "auto_routed"
 
 
 @pytest.mark.asyncio
