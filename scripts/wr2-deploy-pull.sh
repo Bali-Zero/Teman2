@@ -97,56 +97,52 @@ is_git_worktree() {
   [[ -d "$dir/.git" || -f "$dir/.git" ]]
 }
 
-bootstrap_deploy_worktree() {
-  local remote_ref="origin/main"
-
+# 2026-06-27: -deploy is now a full CLONE (not a worktree) — council Q1, isolated object
+# store immune to the main's sibling-race (W63/#5). The clone is cheap: HEAD tree ~0.9GB
+# (the 45G "repo" was venv+node_modules+.worktrees, which a clone never materializes).
+# Bootstrap = git clone from the REAL origin (GitHub), so a vanished main cannot block it.
+bootstrap_deploy_clone() {
   if [[ -e "$DEPLOY_DIR" ]]; then
-    log "ERROR: deploy path exists but is not a git worktree: ${DEPLOY_DIR}"
+    log "ERROR: deploy path exists but is not a git checkout: ${DEPLOY_DIR}"
     return 1
   fi
-  if ! is_git_worktree "$SOURCE_REPO"; then
-    log "ERROR: source repo missing or not a git worktree: ${SOURCE_REPO}"
-    return 1
+  # Resolve the GitHub origin from the source repo (fallback if source is gone).
+  local origin_url
+  origin_url="$(git -C "$SOURCE_REPO" remote get-url origin 2>/dev/null)"
+  if [[ -z "$origin_url" ]]; then
+    origin_url="${WR2_DEPLOY_ORIGIN:-https://github.com/Balizero1987/Teman2.git}"
+    log "source origin unknown; falling back to ${origin_url}"
   fi
 
-  log "deploy worktree missing at ${DEPLOY_DIR}; attempting bootstrap from ${SOURCE_REPO}"
-  git -C "$SOURCE_REPO" worktree prune >>"$LOG" 2>&1 || true
-
-  if ! git -C "$SOURCE_REPO" fetch --quiet origin main 2>>"$LOG"; then
-    if ! git -C "$SOURCE_REPO" fetch --quiet origin "$EXPECTED_BRANCH" 2>>"$LOG"; then
-      log "ERROR: bootstrap fetch failed for origin/main and origin/${EXPECTED_BRANCH}"
+  log "deploy clone missing at ${DEPLOY_DIR}; cloning ${EXPECTED_BRANCH} from ${origin_url}"
+  # --no-hardlinks not relevant for a network clone; branch points at the runtime branch.
+  if ! git clone --quiet --branch "$EXPECTED_BRANCH" "$origin_url" "$DEPLOY_DIR" 2>>"$LOG"; then
+    # branch may not exist on origin yet -> clone main then create the branch
+    if ! git clone --quiet "$origin_url" "$DEPLOY_DIR" 2>>"$LOG"; then
+      log "ERROR: git clone failed for ${DEPLOY_DIR} from ${origin_url}"
       return 1
     fi
-  fi
-
-  if git -C "$SOURCE_REPO" rev-parse --verify --quiet "origin/${EXPECTED_BRANCH}" >/dev/null; then
-    remote_ref="origin/${EXPECTED_BRANCH}"
-  fi
-
-  if ! git -C "$SOURCE_REPO" show-ref --verify --quiet "refs/heads/${EXPECTED_BRANCH}"; then
-    if ! git -C "$SOURCE_REPO" branch "$EXPECTED_BRANCH" "$remote_ref" 2>>"$LOG"; then
-      log "ERROR: failed to create local branch ${EXPECTED_BRANCH} from ${remote_ref}"
-      return 1
-    fi
-  fi
-
-  if ! git -C "$SOURCE_REPO" worktree add "$DEPLOY_DIR" "$EXPECTED_BRANCH" >>"$LOG" 2>&1; then
-    log "ERROR: git worktree add failed for ${DEPLOY_DIR} on ${EXPECTED_BRANCH}"
-    return 1
+    git -C "$DEPLOY_DIR" checkout -B "$EXPECTED_BRANCH" origin/main >>"$LOG" 2>&1 || true
   fi
 
   state_set "last_bootstrap_ts" "$(now_epoch)"
-  log "OK: bootstrapped missing deploy worktree at ${DEPLOY_DIR} on ${EXPECTED_BRANCH}"
+  log "OK: bootstrapped deploy CLONE at ${DEPLOY_DIR} on ${EXPECTED_BRANCH}"
   return 0
 }
 
 log "deploy-pull start dir=${DEPLOY_DIR}"
 
-if ! is_git_worktree "$DEPLOY_DIR"; then
-  if ! bootstrap_deploy_worktree; then
-    log "ERROR: deploy worktree missing at ${DEPLOY_DIR}"
+# A clone has .git as a DIR; a worktree as a FILE. We REQUIRE a clone now: if .git is a
+# file (someone re-created a worktree) treat it as missing and re-bootstrap a clone.
+if [[ ! -d "$DEPLOY_DIR/.git" ]]; then
+  if [[ -f "$DEPLOY_DIR/.git" ]]; then
+    log "WARN: ${DEPLOY_DIR} is a worktree (.git is a file), not the required clone — removing + recloning"
+    rm -rf "$DEPLOY_DIR" 2>>"$LOG"; git -C "$SOURCE_REPO" worktree prune 2>>"$LOG" || true
+  fi
+  if ! bootstrap_deploy_clone; then
+    log "ERROR: deploy clone missing at ${DEPLOY_DIR}"
     send_telegram "deploy_missing" \
-      "WR2 deploy worktree MISSING. Expected at \`${DEPLOY_DIR}\`. Self-heal from \`${SOURCE_REPO}\` failed. Run: \`cd ~/Desktop/nuzantara && git worktree add ~/Desktop/nuzantara-deploy deploy/main\`"
+      "WR2 deploy CLONE missing at \`${DEPLOY_DIR}\`. Self-heal failed. Run: \`git clone --branch deploy/main https://github.com/Balizero1987/Teman2.git ~/Desktop/nuzantara-deploy\`"
     exit 1
   fi
 fi
