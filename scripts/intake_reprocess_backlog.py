@@ -38,6 +38,14 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     to ``ocr_done``, and lets the normal worker continue extract/validate/route.
     This avoids re-running vision OCR and avoids churn for still-unknown docs.
 
+``--autocatalog-preclassify-vision``
+    Local vision variant for the direct unknown review bucket. It reads the
+    original blob from local disk, rasterizes through the normal preprocessing
+    path, downsizes pages for type classification (not OCR), asks local
+    Qwen2.5VL for exactly one doc_type, and only resumes rows whose answer is a
+    Kita-supported type. Unknown/errors are marked with PII-free attempt
+    metadata so batches do not loop.
+
 ``--auto-attach-eligible``
     Selects existing wa-mirror ``review_pending`` proposals whose commit gate
     already says ``auto_attach_eligible=true`` and feeds them through the SAME
@@ -94,7 +102,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import hashlib
+import io
 import json
 import logging
 import os
@@ -110,10 +120,15 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from backend.services.intake.classify import (
+    VISION_CLASSIFY_CONF,
     TEXT_LLM_CLASSIFY_CONF,
+    _VISION_CLASSIFY_NUM_PREDICT,
+    _VISION_CLASSIFY_PROMPT,
     _parse_doc_type_answer,
+    _parse_vision_answer,
     _text_llm_classify_prompt,
 )
+from backend.services.intake.preprocess import preprocess_blob
 from backend.services.intake.auto_attach import try_auto_attach, try_direct_phone_auto_attach
 from backend.services.intake.enqueue import enqueue
 from backend.services.intake.writer import DOCUMENT_CATEGORY_MAP
@@ -134,6 +149,9 @@ DEFAULT_AUTOCATALOG_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_AUTOCATALOG_TEXT_MODEL = "qwen3.5:9b"
 DEFAULT_AUTOCATALOG_MLX_BASE_URL = "http://127.0.0.1:8080/v1"
 DEFAULT_AUTOCATALOG_MLX_MODEL = "mlx-community/Qwen3-8B-4bit"
+DEFAULT_AUTOCATALOG_VISION_MODEL = "qwen2.5vl:7b"
+DEFAULT_AUTOCATALOG_VISION_MAX_PAGES = 2
+DEFAULT_AUTOCATALOG_VISION_IMAGE_MAX_SIDE = 960
 DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS = 45.0
 DEFAULT_AUTOCATALOG_OCR_MAX_CHARS = 6000
 DEFAULT_AUTO_ATTACH_LIMIT = 500
@@ -410,6 +428,85 @@ UPDATE intake_queue
        '{classify,local_text_llm_preclassify_attempts}',
        COALESCE(
            stage_output->'classify'->'local_text_llm_preclassify_attempts',
+           '[]'::jsonb
+       ) || jsonb_build_array($2::jsonb),
+       true
+   )
+ WHERE id = $1
+"""
+
+SAVED_VISION_PRECLASSIFY_SELECT_SQL = """
+WITH candidate_rows AS (
+    SELECT q.id AS queue_id,
+           (
+             SELECT ARRAY_REMOVE(ARRAY_AGG(p.id), NULL)
+               FROM document_routing_proposal p
+              WHERE p.queue_id = q.id
+                AND p.status = 'review_pending'
+           ) AS proposal_ids,
+           q.stage_output,
+           q.blob_path,
+           w.media_mime,
+           (
+             SELECT COALESCE(SUM(LENGTH(
+               CASE
+                 WHEN jsonb_typeof(page.value) = 'object'
+                 THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                 WHEN jsonb_typeof(page.value) = 'string'
+                 THEN trim(both '"' from page.value::text)
+                 ELSE ''
+               END
+             )), 0)
+               FROM jsonb_array_elements(
+                 CASE
+                   WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                   THEN q.stage_output->'classify'->'ocr_text_per_page'
+                   ELSE '[]'::jsonb
+                 END
+               ) AS page(value)
+           ) AS ocr_chars
+      FROM intake_queue q
+      JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+     WHERE q.source = 'whatsapp'
+       AND q.source_ref LIKE 'wa-mirror:%'
+       AND q.status <> 'dead'
+       AND q.blob_path IS NOT NULL
+       AND COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') = 'unknown'
+       AND (w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL)
+       AND EXISTS (
+           SELECT 1
+             FROM document_routing_proposal p
+            WHERE p.queue_id = q.id
+              AND p.status = 'review_pending'
+       )
+       AND NOT COALESCE(
+           q.stage_output->'classify'->'local_vision_preclassify_attempts',
+           '[]'::jsonb
+       ) @> jsonb_build_array(
+           jsonb_build_object('model', $2::text, 'pipeline_version', $3::text)
+       )
+)
+SELECT queue_id, proposal_ids, stage_output, blob_path, media_mime, ocr_chars
+  FROM candidate_rows
+ WHERE ocr_chars >= $1
+ ORDER BY CASE
+              WHEN media_mime LIKE 'image/%' THEN 0
+              WHEN media_mime = 'application/pdf' THEN 1
+              ELSE 2
+          END,
+          ocr_chars,
+          queue_id
+ LIMIT $4
+"""
+
+SAVED_VISION_PRECLASSIFY_ATTEMPT_SQL = """
+UPDATE intake_queue
+   SET stage_output = jsonb_set(
+       COALESCE(stage_output, '{}'::jsonb),
+       '{classify,local_vision_preclassify_attempts}',
+       COALESCE(
+           stage_output->'classify'->'local_vision_preclassify_attempts',
            '[]'::jsonb
        ) || jsonb_build_array($2::jsonb),
        true
@@ -917,6 +1014,156 @@ def _build_saved_ocr_preclassify_attempt_payload(
     return payload
 
 
+def _build_saved_vision_preclassify_payload(
+    stage_output: Any,
+    *,
+    doc_type: str,
+    model: str,
+    source_page: int | None,
+    max_pages: int,
+    image_max_side: int,
+) -> dict[str, Any]:
+    """Build a classify-stage payload from preserved OCR and a local vision type."""
+    pages = _saved_ocr_pages(stage_output)
+    return {
+        "doc_type": doc_type,
+        "type_confidence": VISION_CLASSIFY_CONF,
+        "ocr_text_per_page": pages,
+        "n_pages": len(pages),
+        "source_page": source_page,
+        "model": model,
+        "provider": "ollama-vision",
+        "type_scores": {doc_type: VISION_CLASSIFY_CONF},
+        "classified_via": "saved_blob_local_vision_preclassify",
+        "classify_vision_model": model,
+        "classify_vision_provider": "ollama",
+        "vision_max_pages": max(max_pages, 1),
+        "vision_image_max_side": max(image_max_side, 1),
+        "_metric": {
+            "model": model,
+            "provider": "ollama-vision",
+            "confidence": VISION_CLASSIFY_CONF,
+        },
+    }
+
+
+def _build_saved_vision_preclassify_attempt_payload(
+    *,
+    model: str,
+    pipeline_version: str,
+    outcome: str,
+    max_pages: int,
+    image_max_side: int,
+    error_type: str | None = None,
+) -> dict[str, Any]:
+    """Build a PII-free local-vision attempt marker."""
+    payload: dict[str, Any] = {
+        "provider": "ollama-vision",
+        "model": model,
+        "pipeline_version": pipeline_version,
+        "outcome": outcome,
+        "classified_via": "saved_blob_local_vision_preclassify",
+        "vision_max_pages": max(max_pages, 1),
+        "vision_image_max_side": max(image_max_side, 1),
+    }
+    if error_type:
+        payload["error_type"] = error_type
+    return payload
+
+
+def _resize_png_for_vision_classify(png_bytes: bytes, *, max_side: int) -> bytes:
+    """Downsize a page for doc-type classification while keeping it local."""
+    safe_max_side = max(max_side, 32)
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(png_bytes)) as im:
+            im = im.convert("RGB")
+            width, height = im.size
+            if max(width, height) > safe_max_side:
+                scale = safe_max_side / float(max(width, height))
+                new_size = (
+                    max(32, int(width * scale)),
+                    max(32, int(height * scale)),
+                )
+                resample = getattr(Image, "Resampling", Image).LANCZOS
+                im = im.resize(new_size, resample)
+            out = io.BytesIO()
+            im.save(out, format="PNG", optimize=True)
+            return out.getvalue()
+    except Exception:
+        return png_bytes
+
+
+async def _classify_vision_png(
+    client: httpx.AsyncClient,
+    *,
+    ollama_url: str,
+    model: str,
+    png_bytes: bytes,
+    timeout_seconds: float,
+    image_max_side: int,
+) -> str | None:
+    """Classify one local PNG via Ollama vision; exact DOC_TYPES answer only."""
+    if not png_bytes:
+        return None
+    resized = _resize_png_for_vision_classify(png_bytes, max_side=image_max_side)
+    b64 = base64.b64encode(resized).decode("ascii")
+    response = await client.post(
+        f"{ollama_url.rstrip('/')}/api/generate",
+        json={
+            "model": model,
+            "prompt": _VISION_CLASSIFY_PROMPT,
+            "images": [b64],
+            "stream": False,
+            "think": False,
+            "options": {
+                "temperature": 0.0,
+                "num_predict": _VISION_CLASSIFY_NUM_PREDICT,
+            },
+        },
+        timeout=timeout_seconds,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return _parse_vision_answer(data.get("response") or data.get("thinking"))
+
+
+async def _classify_vision_pages(
+    client: httpx.AsyncClient,
+    pages: list[Any],
+    *,
+    ollama_url: str,
+    model: str,
+    timeout_seconds: float,
+    max_pages: int,
+    image_max_side: int,
+) -> tuple[str | None, int | None, str]:
+    """Try capped preprocessed pages, returning (doc_type, page_index, outcome)."""
+    saw_unknown = False
+    attempted = 0
+    for page in pages[: max(max_pages, 1)]:
+        png_bytes = getattr(page, "png_bytes", b"")
+        if not png_bytes:
+            continue
+        attempted += 1
+        answer = await _classify_vision_png(
+            client,
+            ollama_url=ollama_url,
+            model=model,
+            png_bytes=png_bytes,
+            timeout_seconds=timeout_seconds,
+            image_max_side=image_max_side,
+        )
+        if answer and answer != "unknown":
+            return answer, getattr(page, "index", None), "known"
+        if answer == "unknown":
+            saw_unknown = True
+    if saw_unknown:
+        return "unknown", None, "unknown"
+    return None, None, "malformed" if attempted else "no_image"
+
+
 async def _classify_saved_ocr_text_ollama(
     client: httpx.AsyncClient,
     *,
@@ -1038,6 +1285,35 @@ async def _mark_saved_ocr_preclassify_attempt(
     async with pool.acquire() as conn:
         updated = await conn.execute(
             SAVED_OCR_PRECLASSIFY_ATTEMPT_SQL,
+            queue_id,
+            json.dumps(payload, sort_keys=True),
+    )
+    return int(updated.split()[-1]) if updated else 0
+
+
+async def _mark_saved_vision_preclassify_attempt(
+    pool: asyncpg.Pool,
+    *,
+    queue_id: int,
+    model: str,
+    pipeline_version: str,
+    outcome: str,
+    max_pages: int,
+    image_max_side: int,
+    error_type: str | None = None,
+) -> int:
+    """Persist a PII-free local-vision attempt marker for a queue row."""
+    payload = _build_saved_vision_preclassify_attempt_payload(
+        model=model,
+        pipeline_version=pipeline_version,
+        outcome=outcome,
+        max_pages=max_pages,
+        image_max_side=image_max_side,
+        error_type=error_type,
+    )
+    async with pool.acquire() as conn:
+        updated = await conn.execute(
+            SAVED_VISION_PRECLASSIFY_ATTEMPT_SQL,
             queue_id,
             json.dumps(payload, sort_keys=True),
         )
@@ -1458,6 +1734,188 @@ async def run_autocatalog_preclassify_saved_ocr(
     return counts
 
 
+async def run_autocatalog_preclassify_vision(
+    pool: asyncpg.Pool,
+    pipeline_version: str,
+    min_ocr_chars: int,
+    limit: int,
+    apply: bool,
+    *,
+    ollama_url: str,
+    model: str,
+    timeout_seconds: float,
+    max_pages: int,
+    image_max_side: int,
+) -> dict[str, int]:
+    """Classify direct unknown review docs with local vision on downsized pages.
+
+    Only known local-Qwen vision answers mutate queue rows. Unknowns, empty
+    images, malformed answers, and model errors leave the existing review
+    proposal untouched and add only PII-free attempt metadata.
+    """
+    safe_min_ocr_chars = max(min_ocr_chars, 0)
+    safe_limit = max(limit, 1)
+    safe_timeout = max(timeout_seconds, 1.0)
+    safe_max_pages = max(max_pages, 1)
+    safe_image_max_side = max(image_max_side, 32)
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            SAVED_VISION_PRECLASSIFY_SELECT_SQL,
+            safe_min_ocr_chars,
+            model,
+            pipeline_version,
+            safe_limit,
+        )
+
+    counts = {
+        "candidates": len(rows),
+        "attempted": 0,
+        "known_answers": 0,
+        "unknown_answers": 0,
+        "malformed_answers": 0,
+        "no_image": 0,
+        "unsupported_answers": 0,
+        "errors": 0,
+        "marked_attempts": 0,
+        "updated": 0,
+        "superseded": 0,
+        "min_ocr_chars": safe_min_ocr_chars,
+        "limit": safe_limit,
+    }
+    if not apply:
+        logger.info(
+            "[autocatalog-preclassify-vision][DRY-RUN] would local-vision-classify "
+            "%d direct review_pending unknown docs and resume known answers at "
+            "status=ocr_done model=%s max_pages=%d image_max_side=%d "
+            "pipeline_version=%s (pass --apply)",
+            counts["candidates"],
+            model,
+            safe_max_pages,
+            safe_image_max_side,
+            pipeline_version,
+        )
+        return counts
+
+    by_doc_type: Counter[str] = Counter()
+    by_error: Counter[str] = Counter()
+    async with httpx.AsyncClient() as client:
+        for row in rows:
+            counts["attempted"] += 1
+            try:
+                preprocessed = await preprocess_blob(
+                    row["blob_path"],
+                    declared_mime=row["media_mime"],
+                )
+                answer, source_page, outcome = await _classify_vision_pages(
+                    client,
+                    preprocessed.pages,
+                    ollama_url=ollama_url,
+                    model=model,
+                    timeout_seconds=safe_timeout,
+                    max_pages=safe_max_pages,
+                    image_max_side=safe_image_max_side,
+                )
+            except Exception as exc:  # aggregate only; no raw blob/OCR/path.
+                counts["errors"] += 1
+                by_error[type(exc).__name__] += 1
+                counts["marked_attempts"] += await _mark_saved_vision_preclassify_attempt(
+                    pool,
+                    queue_id=row["queue_id"],
+                    model=model,
+                    pipeline_version=pipeline_version,
+                    outcome="error",
+                    max_pages=safe_max_pages,
+                    image_max_side=safe_image_max_side,
+                    error_type=type(exc).__name__,
+                )
+                continue
+
+            if answer is None or outcome in {"malformed", "no_image"}:
+                bucket = "no_image" if outcome == "no_image" else "malformed_answers"
+                counts[bucket] += 1
+                counts["marked_attempts"] += await _mark_saved_vision_preclassify_attempt(
+                    pool,
+                    queue_id=row["queue_id"],
+                    model=model,
+                    pipeline_version=pipeline_version,
+                    outcome=outcome,
+                    max_pages=safe_max_pages,
+                    image_max_side=safe_image_max_side,
+                )
+                continue
+            if answer == "unknown":
+                counts["unknown_answers"] += 1
+                counts["marked_attempts"] += await _mark_saved_vision_preclassify_attempt(
+                    pool,
+                    queue_id=row["queue_id"],
+                    model=model,
+                    pipeline_version=pipeline_version,
+                    outcome="unknown",
+                    max_pages=safe_max_pages,
+                    image_max_side=safe_image_max_side,
+                )
+                continue
+            if answer not in DOCUMENT_CATEGORY_MAP:
+                counts["unsupported_answers"] += 1
+                counts["marked_attempts"] += await _mark_saved_vision_preclassify_attempt(
+                    pool,
+                    queue_id=row["queue_id"],
+                    model=model,
+                    pipeline_version=pipeline_version,
+                    outcome="unsupported",
+                    max_pages=safe_max_pages,
+                    image_max_side=safe_image_max_side,
+                )
+                continue
+
+            counts["known_answers"] += 1
+            by_doc_type[answer] += 1
+            proposal_ids = sorted({pid for pid in (row["proposal_ids"] or []) if pid is not None})
+            payload = _build_saved_vision_preclassify_payload(
+                row["stage_output"],
+                doc_type=answer,
+                model=model,
+                source_page=source_page,
+                max_pages=safe_max_pages,
+                image_max_side=safe_image_max_side,
+            )
+            async with pool.acquire() as conn, conn.transaction():
+                if proposal_ids:
+                    superseded = await conn.execute(REPROCESS_SUPERSEDE_SQL, proposal_ids)
+                    counts["superseded"] += int(superseded.split()[-1]) if superseded else 0
+                updated = await conn.execute(
+                    SAVED_OCR_PRECLASSIFY_UPDATE_SQL,
+                    row["queue_id"],
+                    json.dumps(payload, sort_keys=True),
+                    pipeline_version,
+                )
+                counts["updated"] += int(updated.split()[-1]) if updated else 0
+
+    logger.info(
+        "[autocatalog-preclassify-vision] candidates=%d attempted=%d known=%d "
+        "unknown=%d malformed=%d no_image=%d unsupported=%d errors=%d marked_attempts=%d "
+        "updated=%d superseded=%d by_doc_type=%s by_error=%s model=%s "
+        "pipeline_version=%s",
+        counts["candidates"],
+        counts["attempted"],
+        counts["known_answers"],
+        counts["unknown_answers"],
+        counts["malformed_answers"],
+        counts["no_image"],
+        counts["unsupported_answers"],
+        counts["errors"],
+        counts["marked_attempts"],
+        counts["updated"],
+        counts["superseded"],
+        dict(by_doc_type),
+        dict(by_error),
+        model,
+        pipeline_version,
+    )
+    return counts
+
+
 async def run_auto_attach_eligible(
     pool: asyncpg.Pool,
     limit: int,
@@ -1788,6 +2246,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="use saved OCR + local Qwen now, then resume known answers at ocr_done without re-OCR",
     )
     p.add_argument(
+        "--autocatalog-preclassify-vision",
+        action="store_true",
+        help="use local Qwen vision on downsized saved blobs, then resume known answers at ocr_done",
+    )
+    p.add_argument(
         "--auto-attach-eligible",
         action="store_true",
         help="try existing review_pending proposals whose gate already marks them auto_attach_eligible",
@@ -1881,6 +2344,32 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--autocatalog-vision-model",
+        default=DEFAULT_AUTOCATALOG_VISION_MODEL,
+        help=(
+            "local Ollama vision model for --autocatalog-preclassify-vision "
+            f"(default {DEFAULT_AUTOCATALOG_VISION_MODEL})"
+        ),
+    )
+    p.add_argument(
+        "--autocatalog-vision-max-pages",
+        type=int,
+        default=DEFAULT_AUTOCATALOG_VISION_MAX_PAGES,
+        help=(
+            "maximum preprocessed pages per doc for --autocatalog-preclassify-vision "
+            f"(default {DEFAULT_AUTOCATALOG_VISION_MAX_PAGES})"
+        ),
+    )
+    p.add_argument(
+        "--autocatalog-vision-image-max-side",
+        type=int,
+        default=DEFAULT_AUTOCATALOG_VISION_IMAGE_MAX_SIDE,
+        help=(
+            "max resized image side for --autocatalog-preclassify-vision "
+            f"(default {DEFAULT_AUTOCATALOG_VISION_IMAGE_MAX_SIDE})"
+        ),
+    )
+    p.add_argument(
         "--autocatalog-timeout-seconds",
         type=float,
         default=DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS,
@@ -1933,6 +2422,7 @@ async def main(argv: list[str] | None = None) -> int:
         or args.revive_stub
         or args.autocatalog_direct_unknown_text
         or args.autocatalog_preclassify_saved_ocr
+        or args.autocatalog_preclassify_vision
         or args.auto_attach_eligible
         or args.auto_attach_direct_phone
         or args.promote_direct_new_prospects
@@ -1942,6 +2432,7 @@ async def main(argv: list[str] | None = None) -> int:
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, and/or "
             "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr/"
+            "--autocatalog-preclassify-vision/"
             "--auto-attach-eligible/--auto-attach-direct-phone/"
             "--promote-direct-new-prospects/--review-backlog-report"
         )
@@ -1990,6 +2481,19 @@ async def main(argv: list[str] | None = None) -> int:
                 model=autocatalog_model,
                 timeout_seconds=max(args.autocatalog_timeout_seconds, 1.0),
                 ocr_max_chars=max(args.autocatalog_ocr_max_chars, 1),
+            )
+        if args.autocatalog_preclassify_vision:
+            await run_autocatalog_preclassify_vision(
+                pool,
+                args.autocatalog_pipeline_version,
+                max(args.autocatalog_min_ocr_chars, 0),
+                max(args.autocatalog_limit, 1),
+                args.apply,
+                ollama_url=args.autocatalog_ollama_url,
+                model=args.autocatalog_vision_model,
+                timeout_seconds=max(args.autocatalog_timeout_seconds, 1.0),
+                max_pages=max(args.autocatalog_vision_max_pages, 1),
+                image_max_side=max(args.autocatalog_vision_image_max_side, 32),
             )
         if args.auto_attach_eligible:
             await run_auto_attach_eligible(pool, max(args.auto_attach_limit, 1), args.apply)
