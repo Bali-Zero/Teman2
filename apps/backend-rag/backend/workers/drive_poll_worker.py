@@ -31,6 +31,7 @@ class DrivePollWorkerConfig:
     database_url: str
     interval_seconds: int
     jitter_seconds: int
+    timeout_seconds: int
     inline_ocr: bool
     once: bool
 
@@ -80,6 +81,12 @@ def load_config(argv: list[str] | None = None) -> DrivePollWorkerConfig:
             default=10,
             minimum=0,
             maximum=120,
+        ),
+        timeout_seconds=_env_int(
+            "DRIVE_POLL_WORKER_TIMEOUT_SECONDS",
+            default=840,
+            minimum=60,
+            maximum=86_400,
         ),
         inline_ocr=_env_bool("DRIVE_POLL_WORKER_INLINE_OCR", default=False),
         once=args.once or _env_bool("DRIVE_POLL_WORKER_ONCE", default=False),
@@ -136,9 +143,12 @@ async def run_once(config: DrivePollWorkerConfig) -> dict[str, Any]:
     pool = await asyncpg.create_pool(config.database_url, min_size=1, max_size=1)
     try:
         await _record_state(pool, status="running", started_at=started_at)
-        result = await poll_drive_changes(
-            inline_ocr=config.inline_ocr,
-            acquire_advisory_lock=True,
+        result = await asyncio.wait_for(
+            poll_drive_changes(
+                inline_ocr=config.inline_ocr,
+                acquire_advisory_lock=True,
+            ),
+            timeout=config.timeout_seconds,
         )
         status = str(result.get("status", "unknown"))
         await _record_state(
@@ -149,6 +159,20 @@ async def run_once(config: DrivePollWorkerConfig) -> dict[str, Any]:
         )
         logger.info("Drive poll worker cycle finished: %s", result)
         return result
+    except TimeoutError:
+        error = f"Drive poll worker exceeded {config.timeout_seconds}s"
+        logger.error(error)
+        await _record_state(
+            pool,
+            status="timeout",
+            error=error,
+            finished_at=_utc_now_iso(),
+        )
+        return {
+            "status": "timeout",
+            "error": error,
+            "timeout_seconds": config.timeout_seconds,
+        }
     except Exception as exc:
         logger.exception("Drive poll worker cycle failed")
         await _record_state(

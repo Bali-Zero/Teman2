@@ -112,6 +112,43 @@ async def test_drive_poll_status_redacts_worker_error_details() -> None:
 
 
 @pytest.mark.asyncio
+async def test_drive_poll_status_treats_worker_timeout_as_unhealthy() -> None:
+    pool = FakePool(
+        [
+            {
+                "key": "drive_poll_worker_heartbeat_at",
+                "value": "2099-01-01T00:00:00+00:00",
+                "updated_at": None,
+            },
+            {
+                "key": "drive_poll_worker_last_status",
+                "value": "timeout",
+                "updated_at": None,
+            },
+            {
+                "key": "drive_poll_worker_last_finished_at",
+                "value": "2099-01-01T00:14:00+00:00",
+                "updated_at": None,
+            },
+            {
+                "key": "drive_poll_worker_last_error",
+                "value": "Drive poll worker exceeded 840s",
+                "updated_at": None,
+            },
+        ],
+    )
+
+    with patch.dict("os.environ", {"DRIVE_POLL_API_MODE": ""}, clear=False):
+        result = await drive_poll_status(_request_with_pool(pool))
+
+    assert result["status"] == "stale"
+    assert result["result"]["status"] == "timeout"
+    assert result["result"]["healthy"] is False
+    assert result["result"]["stale"] is False
+    assert result["result"]["last_error_present"] is True
+
+
+@pytest.mark.asyncio
 async def test_trigger_drive_poll_defaults_to_worker_status_without_polling() -> None:
     poll_drive_changes = AsyncMock(return_value={"status": "ok", "processed": 2})
     pool = FakePool(
