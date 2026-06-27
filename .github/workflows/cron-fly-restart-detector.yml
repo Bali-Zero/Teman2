@@ -73,10 +73,15 @@ jobs:
             mv "${STATE}.tmp" "$STATE"
           }
 
+          was_alerted() {
+            local key="$1"
+            grep -q "^${key}:" "$STATE" 2>/dev/null
+          }
+
           for app in nuzantara-rag nuzantara-postgres; do
             RAW=$(flyctl status --json -a "$app" 2>&1 || true)
             SUMMARY=$(RAW="$RAW" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
-          import json, os, sys
+          import hashlib, json, os, sys
           try:
               d = json.loads(os.environ.get("RAW", ""))
           except Exception:
@@ -100,7 +105,6 @@ jobs:
           for m in machines:
               machine_id = m.get("id", "?")
               last_exit = None
-              saw_oom = False
               for e in (m.get("events") or []):  # events are newest-first
                   req = e.get("request") or {}
                   ee = req.get("exit_event") or {}
@@ -111,11 +115,12 @@ jobs:
                       or str(oom_killed).lower() == "true"
                       or str(exit_code) == "137"
                   ):
-                      saw_oom = True
+                      event_sig = hashlib.sha256(
+                          json.dumps(e, sort_keys=True, default=str).encode("utf-8")
+                      ).hexdigest()[:12]
+                      oom.append(f"{machine_id}:{event_sig}")
                   if last_exit is None and "exit_code" in ee and ee.get("exit_code") is not None:
                       last_exit = exit_code
-              if saw_oom:
-                  oom.append(machine_id)
               if m.get("state") == "stopped" and last_exit is not None and str(last_exit) != "0":
                   crashed.append(machine_id)
           print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}|oom={','.join(oom) or 'none'}")
@@ -148,12 +153,17 @@ jobs:
               fi
             fi
             # Surface OOM/restart events even if Fly already restarted the
-            # machine and the current health check is green.
+            # machine and the current health check is green. Deduplicate by
+            # event fingerprint so an old event does not alert every cooldown,
+            # while a fresh OOM on the same machine still gets surfaced.
             if [ "${OOM:-none}" != "none" ] && [ -n "${OOM}" ]; then
-              for mid in $(echo "$OOM" | tr ',' ' '); do
-                if should_alert "${app}_oom_${mid}"; then
+              for entry in $(echo "$OOM" | tr ',' ' '); do
+                mid="${entry%%:*}"
+                sig="${entry##*:}"
+                key="${app}_oom_${mid}_${sig}"
+                if ! was_alerted "$key"; then
                   ALERTS="${ALERTS}OOM <b>${app}</b>: recent oom_killed/exit_code=137 on machine ${mid}"$'\n'
-                  mark_alerted "${app}_oom_${mid}"
+                  mark_alerted "$key"
                 fi
               done
             fi
