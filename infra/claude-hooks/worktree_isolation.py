@@ -170,9 +170,28 @@ def _worktree_is_dirty(wt: pathlib.Path) -> bool:
 
 
 def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
-    """Resolve a path token to a concrete `<repo>/.worktrees/<name>` dir, else None."""
+    """Resolve a path token to a concrete `<repo>/.worktrees/<name>` dir, else None.
+
+    Conservative by design (superscar #3): a removal command names the worktree
+    EXPLICITLY, and that name always contains the `.worktrees/` segment (absolute
+    or repo-relative). We require it. This refuses to auto-incriminate the current
+    worktree from a bare/relative junk token: when cwd is itself inside
+    `.worktrees/<x>`, resolving a stray token like `2>/dev/null` or `&&` against it
+    would fall under <x> and falsely flag it. So we (a) drop tokens that carry
+    shell metacharacters (never a real path arg here) and (b) demand the literal
+    `.worktrees` segment in the token before resolving relative to cwd.
+    """
     token = token.strip().strip("'\"")
     if not token or token.startswith("-"):
+        return None
+    # Shell-structure residue that survived noise-strip is NOT a path.
+    if any(ch in token for ch in (">", "<", "&", "|", ";", "$", "*", "`")):
+        return None
+    # The remove target must explicitly name the worktrees dir (the W83 lesson:
+    # match the command's INTENT — a real `worktree remove`/`rm` arg points at
+    # `.worktrees/<x>`; a bare relative token does not and must not be resolved
+    # against a cwd that happens to sit inside a worktree).
+    if ".worktrees/" not in token and not token.endswith(".worktrees"):
         return None
     base = pathlib.Path(cwd) if cwd else pathlib.Path(REPO_ROOT)
     p = pathlib.Path(token)

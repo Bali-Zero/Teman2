@@ -112,6 +112,16 @@ def evaluate() -> list[str]:
         clean = _add_worktree(root, "clean")
         if _run_hook(hook, f"git worktree remove {clean}", rr, rr) == 2:
             fails.append("BIT-INNOCENT: remove CLEAN worktree → expected ALLOW")
+
+        # 4) OVER-MATCH regression (superscar #3): a noisy command run FROM INSIDE a
+        #    dirty worktree, where the only `git worktree remove` has its path empty
+        #    after quote-stripping and trailing shell residue (`2>/dev/null && echo`).
+        #    A stray token resolved against the cwd-worktree must NOT auto-incriminate
+        #    it. cwd = the dirty worktree itself; expect ALLOW (no explicit target).
+        noisy = f'git -C "{rr}" worktree remove --force "" 2>/dev/null && echo done'
+        if _run_hook(hook, noisy, str(dirty), rr) == 2:
+            fails.append("BIT-INNOCENT (over-match): empty-target remove + shell residue "
+                         "from inside a dirty worktree → expected ALLOW")
     finally:
         # best-effort: prune worktrees then nuke tmp
         try:
