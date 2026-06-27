@@ -47,11 +47,40 @@ DEFAULT_SIDECAR_DIR = os.path.expanduser("~/.organism/last_seen")
 DEFAULT_ALERTS_FILE = os.path.expanduser("~/.organism/alerts/open.jsonl")
 DEFAULT_STALE_DAYS = 7
 
+# Statuses that mean "the organ is breathing but reporting trouble".
+UNHEALTHY_STATUSES: frozenset[str] = frozenset({"failed", "fail", "degraded", "error"})
+
+# Organs whose status=failed/degraded is a KNOWN false-positive — do NOT surface
+# them (would cause alert-fatigue = the next blindness). Established by the
+# 2026-06-28 triage of all 14 fresh-but-failed organs. Each entry is here because
+# the failure is benign, with the documented reason:
+#   - codex.spark_*        : intentionally disabled by the W81 firebreak (runaway loop)
+#   - wr2.telegram_gate    : decommissioned 2026-06-11 (.removed-*), genome not pruned
+#   - wr2.carousel_dispatcher: decommissioned 2026-06-11 (.removed-*), genome not pruned
+#   - wr3.reflexion_weekly : launchctl-disabled on purpose (the dead twin of wr2's)
+#   - pro.agent_library_evolver_* : intentionally disabled (deploy-drift quarantine)
+#   - pro.audit_launchd_daily : exit 1 BY DESIGN = "N unhealthy jobs found" (a true report)
+# The bridge tags all of these "failed" because it has no `disabled`/`expected_exit`
+# concept (HEALTHY_EXIT_CODES={0}). Curing the bridge is a separate hot-zone PR;
+# this allow-list is the safe downstream filter. Audit this list when an organ is
+# re-enabled — a re-enabled organ that genuinely fails must NOT stay suppressed.
+KNOWN_BENIGN_FAILED: frozenset[str] = frozenset({
+    "codex.spark_loop",
+    "codex.spark_harvester",
+    "codex.spark_alarm",
+    "wr2.telegram_gate",
+    "wr2.carousel_dispatcher",
+    "wr3.reflexion_weekly",
+    "pro.agent_library_evolver_daily",
+    "pro.agent_library_evolver_weekly",
+    "pro.audit_launchd_daily",
+})
+
 
 @dataclass
 class StaleFinding:
     organ_id: str
-    kind: str  # "stale" | "dead_channel" | "corrupt"
+    kind: str  # "stale" | "dead_channel" | "corrupt" | "unhealthy"
     age_days: float = field(default=-1.0)
     status: str = field(default="?")
     detail: str = field(default="")
@@ -169,6 +198,64 @@ def scan_sidecars(
     return findings
 
 
+def scan_sidecars_status(
+    sidecar_dir: str = DEFAULT_SIDECAR_DIR,
+    stale_days: float = DEFAULT_STALE_DAYS,
+    now: float | None = None,
+    benign: frozenset[str] = KNOWN_BENIGN_FAILED,
+    expect_core: tuple[str, ...] | None = None,
+) -> list[StaleFinding]:
+    """Full receptor scan: stale/dead/corrupt (via scan_sidecars) PLUS unhealthy.
+
+    An "unhealthy" finding is a FRESH organ (it IS breathing) whose status is in
+    UNHEALTHY_STATUSES and which is NOT in the benign allow-list. Stale dominates:
+    a stale organ is reported once as stale, never also as unhealthy (the frozen
+    channel is the headline, not its last-reported status).
+
+    This is the status-aware extension (2026-06-28): the prior receptor saw the
+    mute organs but ignored the ones crying for help.
+    """
+    now = time.time() if now is None else now
+    findings = scan_sidecars(
+        sidecar_dir, stale_days=stale_days, now=now, expect_core=expect_core
+    )
+    already = {f.organ_id for f in findings}  # don't double-count stale/corrupt
+
+    if not os.path.isdir(sidecar_dir):
+        return findings
+
+    for fname in sorted(os.listdir(sidecar_dir)):
+        if not fname.endswith(".json"):
+            continue
+        organ_id = fname[: -len(".json")]
+        if organ_id in already or organ_id in benign:
+            continue
+        path = os.path.join(sidecar_dir, fname)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            continue  # corrupt already handled by scan_sidecars
+        status = str(payload.get("status", "")).lower()
+        if status in UNHEALTHY_STATUSES:
+            note = ""
+            md = payload.get("metadata") or {}
+            if isinstance(md, dict):
+                note = str(md.get("note") or md.get("last_error") or "")
+            findings.append(
+                StaleFinding(
+                    organ_id=organ_id,
+                    kind="unhealthy",
+                    age_days=0.0,
+                    status=status,
+                    detail=f"breathing but status={status}"
+                    + (f" — {note[:120]}" if note else ""),
+                )
+            )
+
+    return findings
+
+
 def emit_alerts(findings: list[StaleFinding], alerts_file: str = DEFAULT_ALERTS_FILE) -> str:
     """Overwrite the open-alerts file with current findings (idempotent snapshot).
 
@@ -190,17 +277,25 @@ def emit_alerts(findings: list[StaleFinding], alerts_file: str = DEFAULT_ALERTS_
 
 def _human_report(findings: list[StaleFinding]) -> str:
     if not findings:
-        return "✅ organism heartbeat: all organs breathing (no stale/dead channels)"
-    lines = [f"⚠️ ORGANISM: {len(findings)} organ(s) not breathing:"]
-    for f in sorted(findings, key=lambda x: x.age_days, reverse=True):
-        if f.kind == "dead_channel":
-            lines.append(f"  💀 {f.organ_id}: NO heartbeat sidecar (core guardian)")
-        elif f.kind == "corrupt":
-            lines.append(f"  ❓ {f.organ_id}: corrupt sidecar — {f.detail}")
-        else:
-            lines.append(
-                f"  🫥 {f.organ_id}: stale {f.age_days:.1f}d (status={f.status})"
-            )
+        return "✅ organism heartbeat: all organs breathing + healthy (no findings)"
+    not_breathing = [f for f in findings if f.kind != "unhealthy"]
+    unhealthy = [f for f in findings if f.kind == "unhealthy"]
+    lines = [f"⚠️ ORGANISM: {len(findings)} organ finding(s):"]
+    if not_breathing:
+        lines.append(f"  — not breathing ({len(not_breathing)}):")
+        for f in sorted(not_breathing, key=lambda x: x.age_days, reverse=True):
+            if f.kind == "dead_channel":
+                lines.append(f"    💀 {f.organ_id}: NO heartbeat sidecar (core guardian)")
+            elif f.kind == "corrupt":
+                lines.append(f"    ❓ {f.organ_id}: corrupt sidecar — {f.detail}")
+            else:
+                lines.append(
+                    f"    🫥 {f.organ_id}: stale {f.age_days:.1f}d (status={f.status})"
+                )
+    if unhealthy:
+        lines.append(f"  — breathing but unhealthy ({len(unhealthy)}):")
+        for f in sorted(unhealthy, key=lambda x: x.organ_id):
+            lines.append(f"    🤒 {f.organ_id}: {f.detail}")
     return "\n".join(lines)
 
 
@@ -212,7 +307,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     args = ap.parse_args(argv)
 
-    findings = scan_sidecars(args.dir, stale_days=args.stale_days)
+    findings = scan_sidecars_status(args.dir, stale_days=args.stale_days)
 
     if args.emit:
         path = emit_alerts(findings)
