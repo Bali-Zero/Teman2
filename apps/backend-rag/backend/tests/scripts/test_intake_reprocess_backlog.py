@@ -254,10 +254,31 @@ def test_parser_autocatalog_preclassify_saved_ocr_defaults() -> None:
     assert args.apply is False
     assert args.autocatalog_preclassify_saved_ocr is True
     assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
+    assert args.autocatalog_provider == irb.DEFAULT_AUTOCATALOG_PROVIDER
     assert args.autocatalog_model == irb.DEFAULT_AUTOCATALOG_TEXT_MODEL
     assert args.autocatalog_ollama_url == irb.DEFAULT_AUTOCATALOG_OLLAMA_URL
+    assert args.autocatalog_mlx_base_url == irb.DEFAULT_AUTOCATALOG_MLX_BASE_URL
+    assert args.autocatalog_mlx_model == irb.DEFAULT_AUTOCATALOG_MLX_MODEL
     assert args.autocatalog_timeout_seconds == irb.DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS
     assert args.autocatalog_ocr_max_chars == irb.DEFAULT_AUTOCATALOG_OCR_MAX_CHARS
+
+
+def test_parser_autocatalog_preclassify_saved_ocr_mlx_overrides() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--autocatalog-preclassify-saved-ocr",
+            "--autocatalog-provider",
+            "mlx",
+            "--autocatalog-mlx-base-url",
+            "http://mini:8080/v1",
+            "--autocatalog-mlx-model",
+            "mlx-community/Qwen3-8B-4bit",
+        ]
+    )
+    assert args.autocatalog_provider == "mlx"
+    assert args.autocatalog_mlx_base_url == "http://mini:8080/v1"
+    assert args.autocatalog_mlx_model == "mlx-community/Qwen3-8B-4bit"
 
 
 def test_parser_auto_attach_eligible_defaults() -> None:
@@ -343,6 +364,7 @@ def test_saved_ocr_preclassify_payload_preserves_ocr_and_marks_review_band() -> 
     assert payload["ocr_text_per_page"] == [{"page": 0, "text": "boarding pass"}]
     assert payload["_metric"] == {
         "model": "qwen3.5:9b",
+        "provider": irb.DEFAULT_AUTOCATALOG_PROVIDER,
         "confidence": irb.TEXT_LLM_CLASSIFY_CONF,
     }
 
@@ -350,12 +372,14 @@ def test_saved_ocr_preclassify_payload_preserves_ocr_and_marks_review_band() -> 
 def test_saved_ocr_preclassify_attempt_payload_has_no_document_content() -> None:
     irb = _load()
     payload = irb._build_saved_ocr_preclassify_attempt_payload(
+        provider="ollama",
         model="qwen2.5vl:7b",
         pipeline_version="v2.2-qwen-text-autocatalog",
         outcome="unknown",
         ocr_max_chars=1000,
     )
     assert payload == {
+        "provider": "ollama",
         "model": "qwen2.5vl:7b",
         "pipeline_version": "v2.2-qwen-text-autocatalog",
         "outcome": "unknown",

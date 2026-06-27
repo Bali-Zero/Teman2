@@ -129,8 +129,11 @@ DEFAULT_STUB_REVIVE_VERSION = "v2.1-stub-revive"
 DEFAULT_MEDIA_TYPES = ("document", "image")
 DEFAULT_AUTOCATALOG_TEXT_MIN_CHARS = 100
 DEFAULT_AUTOCATALOG_LIMIT = 500
+DEFAULT_AUTOCATALOG_PROVIDER = "ollama"
 DEFAULT_AUTOCATALOG_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_AUTOCATALOG_TEXT_MODEL = "qwen3.5:9b"
+DEFAULT_AUTOCATALOG_MLX_BASE_URL = "http://127.0.0.1:8080/v1"
+DEFAULT_AUTOCATALOG_MLX_MODEL = "mlx-community/Qwen3-8B-4bit"
 DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS = 45.0
 DEFAULT_AUTOCATALOG_OCR_MAX_CHARS = 6000
 DEFAULT_AUTO_ATTACH_LIMIT = 500
@@ -869,6 +872,7 @@ def _build_saved_ocr_preclassify_payload(
     *,
     doc_type: str,
     model: str,
+    provider: str = DEFAULT_AUTOCATALOG_PROVIDER,
     ocr_max_chars: int = DEFAULT_AUTOCATALOG_OCR_MAX_CHARS,
 ) -> dict[str, Any]:
     """Build a classify-stage payload from preserved OCR and a local Qwen type."""
@@ -880,16 +884,19 @@ def _build_saved_ocr_preclassify_payload(
         "n_pages": len(pages),
         "source_page": None,
         "model": model,
+        "provider": provider,
         "type_scores": {doc_type: TEXT_LLM_CLASSIFY_CONF},
         "classified_via": "saved_ocr_local_text_llm_preclassify",
         "classify_llm_model": model,
+        "classify_llm_provider": provider,
         "ocr_max_chars": max(ocr_max_chars, 1),
-        "_metric": {"model": model, "confidence": TEXT_LLM_CLASSIFY_CONF},
+        "_metric": {"model": model, "provider": provider, "confidence": TEXT_LLM_CLASSIFY_CONF},
     }
 
 
 def _build_saved_ocr_preclassify_attempt_payload(
     *,
+    provider: str,
     model: str,
     pipeline_version: str,
     outcome: str,
@@ -898,6 +905,7 @@ def _build_saved_ocr_preclassify_attempt_payload(
 ) -> dict[str, Any]:
     """Build a PII-free marker so failed local attempts do not block batches."""
     payload: dict[str, Any] = {
+        "provider": provider,
         "model": model,
         "pipeline_version": pipeline_version,
         "outcome": outcome,
@@ -909,7 +917,7 @@ def _build_saved_ocr_preclassify_attempt_payload(
     return payload
 
 
-async def _classify_saved_ocr_text(
+async def _classify_saved_ocr_text_ollama(
     client: httpx.AsyncClient,
     *,
     ollama_url: str,
@@ -936,10 +944,82 @@ async def _classify_saved_ocr_text(
     return _parse_doc_type_answer(data.get("response") or data.get("thinking"))
 
 
+def _openai_chat_completions_url(base_url: str) -> str:
+    """Return a /chat/completions URL from a bare or /v1 base URL."""
+    normalized = base_url.rstrip("/")
+    if normalized.endswith("/chat/completions"):
+        return normalized
+    if normalized.endswith("/v1"):
+        return f"{normalized}/chat/completions"
+    return f"{normalized}/v1/chat/completions"
+
+
+async def _classify_saved_ocr_text_mlx(
+    client: httpx.AsyncClient,
+    *,
+    mlx_base_url: str,
+    model: str,
+    ocr_text: str,
+    timeout_seconds: float,
+) -> str | None:
+    """Classify saved OCR text with local MLX OpenAI-compatible chat endpoint."""
+    if not ocr_text.strip():
+        return None
+    response = await client.post(
+        _openai_chat_completions_url(mlx_base_url),
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": _text_llm_classify_prompt(ocr_text)}],
+            "temperature": 0.0,
+            "max_tokens": 24,
+            "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False},
+        },
+        timeout=timeout_seconds,
+    )
+    response.raise_for_status()
+    data = response.json()
+    choices = data.get("choices") or []
+    first = choices[0] if choices else {}
+    message = first.get("message") or {}
+    return _parse_doc_type_answer(message.get("content") or first.get("text"))
+
+
+async def _classify_saved_ocr_text(
+    client: httpx.AsyncClient,
+    *,
+    provider: str,
+    ollama_url: str,
+    mlx_base_url: str,
+    model: str,
+    ocr_text: str,
+    timeout_seconds: float,
+) -> str | None:
+    """Classify saved OCR with a local provider."""
+    if provider == "ollama":
+        return await _classify_saved_ocr_text_ollama(
+            client,
+            ollama_url=ollama_url,
+            model=model,
+            ocr_text=ocr_text,
+            timeout_seconds=timeout_seconds,
+        )
+    if provider == "mlx":
+        return await _classify_saved_ocr_text_mlx(
+            client,
+            mlx_base_url=mlx_base_url,
+            model=model,
+            ocr_text=ocr_text,
+            timeout_seconds=timeout_seconds,
+        )
+    raise ValueError(f"unsupported autocatalog provider: {provider}")
+
+
 async def _mark_saved_ocr_preclassify_attempt(
     pool: asyncpg.Pool,
     *,
     queue_id: int,
+    provider: str,
     model: str,
     pipeline_version: str,
     outcome: str,
@@ -948,6 +1028,7 @@ async def _mark_saved_ocr_preclassify_attempt(
 ) -> int:
     """Persist a PII-free local-LLM attempt marker for a queue row."""
     payload = _build_saved_ocr_preclassify_attempt_payload(
+        provider=provider,
         model=model,
         pipeline_version=pipeline_version,
         outcome=outcome,
@@ -1220,7 +1301,9 @@ async def run_autocatalog_preclassify_saved_ocr(
     limit: int,
     apply: bool,
     *,
+    provider: str,
     ollama_url: str,
+    mlx_base_url: str,
     model: str,
     timeout_seconds: float,
     ocr_max_chars: int,
@@ -1235,6 +1318,9 @@ async def run_autocatalog_preclassify_saved_ocr(
     safe_limit = max(limit, 1)
     safe_ocr_max_chars = max(ocr_max_chars, 1)
     safe_timeout = max(timeout_seconds, 1.0)
+    safe_provider = provider.strip().lower()
+    if safe_provider not in {"ollama", "mlx"}:
+        raise ValueError("autocatalog provider must be 'ollama' or 'mlx'")
 
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -1262,8 +1348,11 @@ async def run_autocatalog_preclassify_saved_ocr(
         logger.info(
             "[autocatalog-preclassify-saved-ocr][DRY-RUN] would local-classify "
             "%d direct review_pending unknown docs with saved OCR and resume "
-            "known answers at status=ocr_done pipeline_version=%s (pass --apply)",
+            "known answers at status=ocr_done provider=%s model=%s "
+            "pipeline_version=%s (pass --apply)",
             counts["candidates"],
+            safe_provider,
+            model,
             pipeline_version,
         )
         return counts
@@ -1278,7 +1367,9 @@ async def run_autocatalog_preclassify_saved_ocr(
             try:
                 answer = await _classify_saved_ocr_text(
                     client,
+                    provider=safe_provider,
                     ollama_url=ollama_url,
+                    mlx_base_url=mlx_base_url,
                     model=model,
                     ocr_text=ocr_text,
                     timeout_seconds=safe_timeout,
@@ -1289,6 +1380,7 @@ async def run_autocatalog_preclassify_saved_ocr(
                 counts["marked_attempts"] += await _mark_saved_ocr_preclassify_attempt(
                     pool,
                     queue_id=row["queue_id"],
+                    provider=safe_provider,
                     model=model,
                     pipeline_version=pipeline_version,
                     outcome="error",
@@ -1302,6 +1394,7 @@ async def run_autocatalog_preclassify_saved_ocr(
                 counts["marked_attempts"] += await _mark_saved_ocr_preclassify_attempt(
                     pool,
                     queue_id=row["queue_id"],
+                    provider=safe_provider,
                     model=model,
                     pipeline_version=pipeline_version,
                     outcome="malformed",
@@ -1313,6 +1406,7 @@ async def run_autocatalog_preclassify_saved_ocr(
                 counts["marked_attempts"] += await _mark_saved_ocr_preclassify_attempt(
                     pool,
                     queue_id=row["queue_id"],
+                    provider=safe_provider,
                     model=model,
                     pipeline_version=pipeline_version,
                     outcome="unknown",
@@ -1326,6 +1420,7 @@ async def run_autocatalog_preclassify_saved_ocr(
             payload = _build_saved_ocr_preclassify_payload(
                 row["stage_output"],
                 doc_type=answer,
+                provider=safe_provider,
                 model=model,
                 ocr_max_chars=safe_ocr_max_chars,
             )
@@ -1344,7 +1439,7 @@ async def run_autocatalog_preclassify_saved_ocr(
     logger.info(
         "[autocatalog-preclassify-saved-ocr] candidates=%d attempted=%d "
         "known=%d unknown=%d malformed=%d errors=%d marked_attempts=%d updated=%d superseded=%d "
-        "by_doc_type=%s by_error=%s pipeline_version=%s",
+        "by_doc_type=%s by_error=%s provider=%s model=%s pipeline_version=%s",
         counts["candidates"],
         counts["attempted"],
         counts["known_answers"],
@@ -1356,6 +1451,8 @@ async def run_autocatalog_preclassify_saved_ocr(
         counts["superseded"],
         dict(by_doc_type),
         dict(by_error),
+        safe_provider,
+        model,
         pipeline_version,
     )
     return counts
@@ -1749,6 +1846,15 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"maximum rows touched by one autocatalog run (default {DEFAULT_AUTOCATALOG_LIMIT})",
     )
     p.add_argument(
+        "--autocatalog-provider",
+        choices=("ollama", "mlx"),
+        default=DEFAULT_AUTOCATALOG_PROVIDER,
+        help=(
+            "local provider for --autocatalog-preclassify-saved-ocr "
+            f"(default {DEFAULT_AUTOCATALOG_PROVIDER})"
+        ),
+    )
+    p.add_argument(
         "--autocatalog-ollama-url",
         default=DEFAULT_AUTOCATALOG_OLLAMA_URL,
         help=f"local Ollama URL for --autocatalog-preclassify-saved-ocr (default {DEFAULT_AUTOCATALOG_OLLAMA_URL})",
@@ -1757,6 +1863,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--autocatalog-model",
         default=DEFAULT_AUTOCATALOG_TEXT_MODEL,
         help=f"local text model for --autocatalog-preclassify-saved-ocr (default {DEFAULT_AUTOCATALOG_TEXT_MODEL})",
+    )
+    p.add_argument(
+        "--autocatalog-mlx-base-url",
+        default=DEFAULT_AUTOCATALOG_MLX_BASE_URL,
+        help=(
+            "local MLX OpenAI-compatible base URL for --autocatalog-provider mlx "
+            f"(default {DEFAULT_AUTOCATALOG_MLX_BASE_URL})"
+        ),
+    )
+    p.add_argument(
+        "--autocatalog-mlx-model",
+        default=DEFAULT_AUTOCATALOG_MLX_MODEL,
+        help=(
+            "local MLX model for --autocatalog-provider mlx "
+            f"(default {DEFAULT_AUTOCATALOG_MLX_MODEL})"
+        ),
     )
     p.add_argument(
         "--autocatalog-timeout-seconds",
@@ -1851,14 +1973,21 @@ async def main(argv: list[str] | None = None) -> int:
                 args.apply,
             )
         if args.autocatalog_preclassify_saved_ocr:
+            autocatalog_model = (
+                args.autocatalog_mlx_model
+                if args.autocatalog_provider == "mlx"
+                else args.autocatalog_model
+            )
             await run_autocatalog_preclassify_saved_ocr(
                 pool,
                 args.autocatalog_pipeline_version,
                 max(args.autocatalog_min_ocr_chars, 1),
                 max(args.autocatalog_limit, 1),
                 args.apply,
+                provider=args.autocatalog_provider,
                 ollama_url=args.autocatalog_ollama_url,
-                model=args.autocatalog_model,
+                mlx_base_url=args.autocatalog_mlx_base_url,
+                model=autocatalog_model,
                 timeout_seconds=max(args.autocatalog_timeout_seconds, 1.0),
                 ocr_max_chars=max(args.autocatalog_ocr_max_chars, 1),
             )
