@@ -8,6 +8,7 @@ import type {
   KBLILicenseByScale,
   KBLIPmaInfo,
 } from "@/lib/kbli-types";
+import { formatTimeframe } from "@/lib/kbli-derive";
 import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
@@ -193,7 +194,8 @@ function KeyFacts({
     },
     {
       label: "Processing",
-      value: primary.timeframe || "Not specified",
+      value: formatTimeframe(primary.timeframe) ?? "Through OSS",
+      // green accent for instant issuance (raw "Otomatis" → formatted "Instant")
       accent: primary.timeframe?.toLowerCase().includes("otomatis")
         ? "var(--kbli-pma-open)"
         : undefined,

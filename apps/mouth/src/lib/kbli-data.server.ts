@@ -6,6 +6,7 @@ import type {
   KBLISection,
   KBLIGoldContent,
 } from "./kbli-types";
+import { resolveLicenseType } from "./kbli-derive";
 
 // Section names mapping
 const SECTION_NAMES_EN: Record<string, string> = {
@@ -240,7 +241,9 @@ function transformCode(
     licensing: (raw.per_skala || []).map((s) => ({
       scales: s.skala_usaha,
       riskCategory: s.kategori_risiko,
-      licenseType: s.perizinan,
+      // Derive the license from the risk tier when `perizinan` is empty (Pasal 124(4)) —
+      // a flat "NIB" understated the 937 high-risk codes. Parity with the Swift app.
+      licenseType: resolveLicenseType(s.perizinan, s.kategori_risiko),
       requirements: s.persyaratan,
       timeframe: s.jangka_waktu,
       obligations: s.kewajiban,
