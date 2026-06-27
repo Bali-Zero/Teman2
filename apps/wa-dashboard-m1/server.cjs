@@ -8,6 +8,7 @@ const path = require("path");
 const metrics = require("./metrics.cjs");
 const {
   actionBucketForRow,
+  buildAutocatalogPlanSummary,
   buildDirectCatalogSummary,
   buildDirectActionSummary,
   buildGroupKindOperationalSummary,
@@ -857,6 +858,14 @@ async function fetchIntakeSummary() {
   const directActionSummary = buildDirectActionSummary(directActions);
   const qwenGateSnapshot = readQwenGateSnapshot();
   const qwenPlacementPreview = buildQwenPlacementPreviewSummary(qwenGateSnapshot);
+  const qwenBatchGate = buildQwenBatchGateSummary(directActionSummary, qwenGateSnapshot);
+  const qwenKnownBenchmarkGate = buildQwenKnownBenchmarkSummary(qwenGateSnapshot);
+  const autocatalogPlan = buildAutocatalogPlanSummary(
+    directActionSummary,
+    qwenBatchGate,
+    qwenKnownBenchmarkGate,
+    qwenPlacementPreview,
+  );
   const toInt = (v) => parseInt(v || 0, 10);
   const groupKinds = groupKindRows.rows.map((r) => ({
     inferred_group_kind: r.inferred_group_kind,
@@ -900,9 +909,10 @@ async function fetchIntakeSummary() {
     direct_actions: directActions,
     direct_action_summary: directActionSummary,
     direct_catalog_summary: buildDirectCatalogSummary(directActionSummary, queue, qwenPlacementPreview),
-    qwen_batch_gate: buildQwenBatchGateSummary(directActionSummary, qwenGateSnapshot),
-    qwen_known_benchmark_gate: buildQwenKnownBenchmarkSummary(qwenGateSnapshot),
+    qwen_batch_gate: qwenBatchGate,
+    qwen_known_benchmark_gate: qwenKnownBenchmarkGate,
     qwen_placement_preview: qwenPlacementPreview,
+    autocatalog_plan: autocatalogPlan,
     workspace_buckets: [...workspaceMap.entries()]
       .map(([bucket, docs]) => ({ bucket, docs }))
       .sort((a, b) => b.docs - a.docs),

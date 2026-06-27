@@ -23,6 +23,14 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     ``routing._make_routing_key`` yields a FRESH routing_key → a new proposal
     from the improved pipeline (phone signal + vision classify fallback).
 
+``--autocatalog-direct-unknown-text``
+    Selects wa-mirror DIRECT-chat queue rows whose saved classify payload is still
+    ``doc_type=unknown`` but whose saved OCR has enough text for the local Qwen
+    text classifier. It supersedes any existing ``review_pending`` proposal for
+    those rows and applies the same v2 reset contract with a bumped pipeline
+    version. The worker must run with ``INTAKE_TEXT_LLM_CLASSIFY_ENABLED=1`` so
+    the rerun can promote doc_type into a normal Kita routing proposal.
+
 ``--scrub-group-phone``
     Historical wa-mirror group documents may still carry ``intake_queue.sender_phone``
     from before the group/direct split. Group sender numbers are participant
@@ -44,6 +52,7 @@ DRY-RUN BY DEFAULT: prints counts only. Pass ``--apply`` to execute.
 Environment:
 - INTAKE_DATABASE_URL / DATABASE_URL (default postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,8 +75,11 @@ logger = logging.getLogger("intake_reprocess_backlog")
 
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
 DEFAULT_PIPELINE_VERSION = "v2.1-retro"
+DEFAULT_AUTOCATALOG_PIPELINE_VERSION = "v2.2-qwen-text-autocatalog"
 DEFAULT_STUB_REVIVE_VERSION = "v2.1-stub-revive"
 DEFAULT_MEDIA_TYPES = ("document", "image")
+DEFAULT_AUTOCATALOG_TEXT_MIN_CHARS = 100
+DEFAULT_AUTOCATALOG_LIMIT = 500
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
 WATERMARK_FILE = Path.home() / ".cell-bridge-state" / "wa_mirror_sweep_last_id.txt"
@@ -213,8 +225,49 @@ UPDATE intake_queue
  WHERE id = $1
 """
 
+DIRECT_UNKNOWN_TEXT_AUTOCATALOG_SELECT_SQL = """
+WITH candidate_rows AS (
+    SELECT q.id AS queue_id,
+           ARRAY_REMOVE(ARRAY_AGG(p.id), NULL) AS proposal_ids,
+           COALESCE(SUM(LENGTH(
+             CASE
+               WHEN jsonb_typeof(page.value) = 'object'
+               THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+               WHEN jsonb_typeof(page.value) = 'string'
+               THEN trim(both '"' from page.value::text)
+               ELSE ''
+             END
+           )), 0) AS ocr_chars
+      FROM intake_queue q
+      JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+      LEFT JOIN document_routing_proposal p
+        ON p.queue_id = q.id
+       AND p.status = 'review_pending'
+      LEFT JOIN LATERAL jsonb_array_elements(
+        CASE
+          WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+          THEN q.stage_output->'classify'->'ocr_text_per_page'
+          ELSE '[]'::jsonb
+        END
+      ) AS page(value) ON TRUE
+     WHERE q.source = 'whatsapp'
+       AND q.source_ref LIKE 'wa-mirror:%'
+       AND q.status <> 'dead'
+       AND COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') = 'unknown'
+       AND (w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL)
+     GROUP BY q.id
+)
+SELECT queue_id, proposal_ids, ocr_chars
+  FROM candidate_rows
+ WHERE ocr_chars >= $1
+ ORDER BY queue_id
+ LIMIT $2
+"""
+
 
 # --- Pure helpers (unit-testable without PG) --------------------------------
+
 
 def read_watermark(path: Path = WATERMARK_FILE) -> int | None:
     """Read the sweeper watermark file; None when absent/unreadable."""
@@ -321,9 +374,8 @@ def _media_types(raw: str | None) -> tuple[str, ...]:
 
 # --- Modes -------------------------------------------------------------------
 
-async def run_reprocess(
-    pool: asyncpg.Pool, pipeline_version: str, apply: bool
-) -> dict[str, int]:
+
+async def run_reprocess(pool: asyncpg.Pool, pipeline_version: str, apply: bool) -> dict[str, int]:
     """Supersede unknown/NO_MATCH review_pending proposals + reset their queue rows."""
     async with pool.acquire() as conn:
         rows = await conn.fetch(REPROCESS_SELECT_SQL)
@@ -335,7 +387,9 @@ async def run_reprocess(
             logger.info(
                 "[reprocess][DRY-RUN] would supersede %d proposals and reset %d "
                 "queue rows to pipeline_version=%s (pass --apply to execute)",
-                counts["proposals"], counts["queue_rows"], pipeline_version,
+                counts["proposals"],
+                counts["queue_rows"],
+                pipeline_version,
             )
             return counts
 
@@ -348,7 +402,9 @@ async def run_reprocess(
     logger.info(
         "[reprocess] superseded=%d proposals, reset=%d queue rows "
         "(pipeline_version=%s) — the intake worker will re-run them",
-        counts.get("superseded", 0), counts.get("reset", 0), pipeline_version,
+        counts.get("superseded", 0),
+        counts.get("reset", 0),
+        pipeline_version,
     )
     return counts
 
@@ -369,7 +425,9 @@ async def run_revive_stub(
             logger.info(
                 "[revive-stub][DRY-RUN] would reset %d stub-skipped whatsapp queue "
                 "rows (include_groups=%s) to pipeline_version=%s (pass --apply)",
-                counts["queue_rows"], include_groups, pipeline_version,
+                counts["queue_rows"],
+                include_groups,
+                pipeline_version,
             )
             return counts
 
@@ -380,7 +438,9 @@ async def run_revive_stub(
     logger.info(
         "[revive-stub] reset=%d stub-skipped whatsapp queue rows (include_groups=%s, "
         "pipeline_version=%s) — the intake worker will re-OCR + re-route them",
-        counts.get("reset", 0), include_groups, pipeline_version,
+        counts.get("reset", 0),
+        include_groups,
+        pipeline_version,
     )
     return counts
 
@@ -395,8 +455,13 @@ async def run_backfill(
     async with pool.acquire() as conn:
         rows = await conn.fetch(BACKFILL_SELECT_SQL, list(media_types), watermark)
 
-    counts = {"candidates": len(rows), "blob_missing": 0,
-              "enqueued_new": 0, "already": 0, "errors": 0}
+    counts = {
+        "candidates": len(rows),
+        "blob_missing": 0,
+        "enqueued_new": 0,
+        "already": 0,
+        "errors": 0,
+    }
 
     for r in rows:
         if not os.path.exists(r["media_stored_path"]):
@@ -419,14 +484,19 @@ async def run_backfill(
         logger.info(
             "[backfill][DRY-RUN] candidates=%d (id <= %d), blob_missing=%d, "
             "would_enqueue=%d (pass --apply to execute)",
-            counts["candidates"], watermark, counts["blob_missing"],
+            counts["candidates"],
+            watermark,
+            counts["blob_missing"],
             counts["candidates"] - counts["blob_missing"],
         )
     else:
         logger.info(
             "[backfill] candidates=%d new=%d dup=%d blob_missing=%d errors=%d",
-            counts["candidates"], counts["enqueued_new"], counts["already"],
-            counts["blob_missing"], counts["errors"],
+            counts["candidates"],
+            counts["enqueued_new"],
+            counts["already"],
+            counts["blob_missing"],
+            counts["errors"],
         )
     return counts
 
@@ -442,8 +512,7 @@ async def run_scrub_group_phone(pool: asyncpg.Pool, apply: bool) -> dict[str, in
                 status = str(row["status"] or "unknown")
                 by_status[status] = by_status.get(status, 0) + 1
             logger.info(
-                "[scrub-group-phone][DRY-RUN] candidates=%d by_status=%s "
-                "(pass --apply to execute)",
+                "[scrub-group-phone][DRY-RUN] candidates=%d by_status=%s (pass --apply to execute)",
                 counts["candidates"],
                 by_status,
             )
@@ -470,7 +539,9 @@ async def run_backfill_source_context(pool: asyncpg.Pool, apply: bool) -> dict[s
             logger.info(
                 "[backfill-source-context][DRY-RUN] candidates=%d direct=%d group=%d "
                 "(pass --apply to execute)",
-                counts["candidates"], counts["direct"], counts["group"],
+                counts["candidates"],
+                counts["direct"],
+                counts["group"],
             )
             return counts
 
@@ -484,39 +555,154 @@ async def run_backfill_source_context(pool: asyncpg.Pool, apply: bool) -> dict[s
 
     logger.info(
         "[backfill-source-context] updated=%d direct=%d group=%d",
-        counts["updated"], counts["direct"], counts["group"],
+        counts["updated"],
+        counts["direct"],
+        counts["group"],
+    )
+    return counts
+
+
+async def run_autocatalog_direct_unknown_text(
+    pool: asyncpg.Pool,
+    pipeline_version: str,
+    min_ocr_chars: int,
+    limit: int,
+    apply: bool,
+) -> dict[str, int]:
+    """Reset direct unknown OCR-ready WA rows so local text LLM can classify them.
+
+    This does not attach documents to CRM/Kita directly. It only restarts the v2
+    worker path for a tightly scoped set; route still emits review proposals.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            DIRECT_UNKNOWN_TEXT_AUTOCATALOG_SELECT_SQL,
+            min_ocr_chars,
+            limit,
+        )
+        queue_ids = [r["queue_id"] for r in rows]
+        proposal_ids = sorted(
+            {pid for row in rows for pid in (row["proposal_ids"] or []) if pid is not None}
+        )
+        counts = {
+            "queue_rows": len(queue_ids),
+            "review_pending_proposals": len(proposal_ids),
+            "min_ocr_chars": min_ocr_chars,
+            "limit": limit,
+        }
+        if not apply:
+            logger.info(
+                "[autocatalog-direct-unknown-text][DRY-RUN] would reset %d direct "
+                "unknown OCR-ready queue rows and supersede %d review_pending "
+                "proposals to pipeline_version=%s; worker requires "
+                "INTAKE_TEXT_LLM_CLASSIFY_ENABLED=1 (pass --apply)",
+                counts["queue_rows"],
+                counts["review_pending_proposals"],
+                pipeline_version,
+            )
+            return counts
+
+        async with conn.transaction():
+            if proposal_ids:
+                superseded = await conn.execute(REPROCESS_SUPERSEDE_SQL, proposal_ids)
+            else:
+                superseded = "UPDATE 0"
+            reset = await conn.execute(REPROCESS_RESET_SQL, queue_ids, pipeline_version)
+        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[autocatalog-direct-unknown-text] reset=%d queue rows, superseded=%d "
+        "proposals (pipeline_version=%s). Ensure worker env "
+        "INTAKE_TEXT_LLM_CLASSIFY_ENABLED=1.",
+        counts.get("reset", 0),
+        counts.get("superseded", 0),
+        pipeline_version,
     )
     return counts
 
 
 # --- CLI ----------------------------------------------------------------------
 
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Retroactive intake catalog v2 (dry-run by default; --apply to execute)."
     )
-    p.add_argument("--reprocess", action="store_true",
-                   help="supersede unknown/NO_MATCH review_pending proposals + reset queue rows")
-    p.add_argument("--backfill", action="store_true",
-                   help="enqueue historical wa-mirror media skipped by the watermark seed")
-    p.add_argument("--scrub-group-phone", action="store_true",
-                   help="clear sender_phone/client_id_hint from historical wa-mirror group queue rows")
-    p.add_argument("--backfill-source-context", action="store_true",
-                   help="populate PII-safe direct/group source_context for wa-mirror queue rows")
-    p.add_argument("--revive-stub", action="store_true",
-                   help="re-enqueue whatsapp docs the stub passthrough marked done with no proposal")
-    p.add_argument("--include-groups", action="store_true",
-                   help="for --revive-stub: also revive group-chat docs (default: 1:1 direct chats only)")
-    p.add_argument("--stub-pipeline-version", default=DEFAULT_STUB_REVIVE_VERSION,
-                   help=f"bumped pipeline_version for --revive-stub (default {DEFAULT_STUB_REVIVE_VERSION})")
-    p.add_argument("--apply", action="store_true",
-                   help="actually write (default: dry-run, counts only)")
-    p.add_argument("--pipeline-version", default=DEFAULT_PIPELINE_VERSION,
-                   help=f"bumped pipeline_version for --reprocess (default {DEFAULT_PIPELINE_VERSION})")
-    p.add_argument("--watermark", type=int, default=None,
-                   help="backfill ceiling id (default: read the sweeper watermark file)")
-    p.add_argument("--media-types", default=None,
-                   help="comma list for --backfill (default document,image)")
+    p.add_argument(
+        "--reprocess",
+        action="store_true",
+        help="supersede unknown/NO_MATCH review_pending proposals + reset queue rows",
+    )
+    p.add_argument(
+        "--backfill",
+        action="store_true",
+        help="enqueue historical wa-mirror media skipped by the watermark seed",
+    )
+    p.add_argument(
+        "--scrub-group-phone",
+        action="store_true",
+        help="clear sender_phone/client_id_hint from historical wa-mirror group queue rows",
+    )
+    p.add_argument(
+        "--backfill-source-context",
+        action="store_true",
+        help="populate PII-safe direct/group source_context for wa-mirror queue rows",
+    )
+    p.add_argument(
+        "--revive-stub",
+        action="store_true",
+        help="re-enqueue whatsapp docs the stub passthrough marked done with no proposal",
+    )
+    p.add_argument(
+        "--autocatalog-direct-unknown-text",
+        action="store_true",
+        help="reset direct wa-mirror unknown docs with enough saved OCR for local Qwen text classification",
+    )
+    p.add_argument(
+        "--include-groups",
+        action="store_true",
+        help="for --revive-stub: also revive group-chat docs (default: 1:1 direct chats only)",
+    )
+    p.add_argument(
+        "--stub-pipeline-version",
+        default=DEFAULT_STUB_REVIVE_VERSION,
+        help=f"bumped pipeline_version for --revive-stub (default {DEFAULT_STUB_REVIVE_VERSION})",
+    )
+    p.add_argument(
+        "--apply", action="store_true", help="actually write (default: dry-run, counts only)"
+    )
+    p.add_argument(
+        "--pipeline-version",
+        default=DEFAULT_PIPELINE_VERSION,
+        help=f"bumped pipeline_version for --reprocess (default {DEFAULT_PIPELINE_VERSION})",
+    )
+    p.add_argument(
+        "--autocatalog-pipeline-version",
+        default=DEFAULT_AUTOCATALOG_PIPELINE_VERSION,
+        help=f"bumped pipeline_version for --autocatalog-direct-unknown-text (default {DEFAULT_AUTOCATALOG_PIPELINE_VERSION})",
+    )
+    p.add_argument(
+        "--autocatalog-min-ocr-chars",
+        type=int,
+        default=DEFAULT_AUTOCATALOG_TEXT_MIN_CHARS,
+        help=f"minimum saved OCR chars for --autocatalog-direct-unknown-text (default {DEFAULT_AUTOCATALOG_TEXT_MIN_CHARS})",
+    )
+    p.add_argument(
+        "--autocatalog-limit",
+        type=int,
+        default=DEFAULT_AUTOCATALOG_LIMIT,
+        help=f"maximum rows reset by one --autocatalog-direct-unknown-text run (default {DEFAULT_AUTOCATALOG_LIMIT})",
+    )
+    p.add_argument(
+        "--watermark",
+        type=int,
+        default=None,
+        help="backfill ceiling id (default: read the sweeper watermark file)",
+    )
+    p.add_argument(
+        "--media-types", default=None, help="comma list for --backfill (default document,image)"
+    )
     return p
 
 
@@ -528,18 +714,21 @@ async def main(argv: list[str] | None = None) -> int:
     )
     args = build_parser().parse_args(argv)
     if not (
-        args.reprocess or args.backfill or args.scrub_group_phone
-        or args.backfill_source_context or args.revive_stub
+        args.reprocess
+        or args.backfill
+        or args.scrub_group_phone
+        or args.backfill_source_context
+        or args.revive_stub
+        or args.autocatalog_direct_unknown_text
     ):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
-            "--backfill-source-context, and/or --revive-stub"
+            "--backfill-source-context, --revive-stub, and/or "
+            "--autocatalog-direct-unknown-text"
         )
         return 2
 
-    db_url = os.getenv(
-        "INTAKE_DATABASE_URL", os.getenv("DATABASE_URL", DEFAULT_DSN)
-    )
+    db_url = os.getenv("INTAKE_DATABASE_URL", os.getenv("DATABASE_URL", DEFAULT_DSN))
     pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=3)
     try:
         # Backfill FIRST (puts historical rows in the queue), then reprocess
@@ -547,9 +736,7 @@ async def main(argv: list[str] | None = None) -> int:
         if args.backfill:
             watermark = args.watermark if args.watermark is not None else read_watermark()
             if watermark is None:
-                logger.error(
-                    "no watermark: %s missing and --watermark not given", WATERMARK_FILE
-                )
+                logger.error("no watermark: %s missing and --watermark not given", WATERMARK_FILE)
                 return 2
             await run_backfill(pool, watermark, _media_types(args.media_types), args.apply)
         if args.scrub_group_phone:
@@ -558,10 +745,16 @@ async def main(argv: list[str] | None = None) -> int:
             await run_backfill_source_context(pool, args.apply)
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
-        if args.revive_stub:
-            await run_revive_stub(
-                pool, args.stub_pipeline_version, args.include_groups, args.apply
+        if args.autocatalog_direct_unknown_text:
+            await run_autocatalog_direct_unknown_text(
+                pool,
+                args.autocatalog_pipeline_version,
+                max(args.autocatalog_min_ocr_chars, 1),
+                max(args.autocatalog_limit, 1),
+                args.apply,
             )
+        if args.revive_stub:
+            await run_revive_stub(pool, args.stub_pipeline_version, args.include_groups, args.apply)
         return 0
     finally:
         await pool.close()

@@ -801,6 +801,10 @@
     <div class="intake-table-wrap"><table class="intake-table" id="i-catalog"></table></div>
   </div>
   <div class="intake-section">
+    <h3>Auto-catalog plan</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-autocatalog"></table></div>
+  </div>
+  <div class="intake-section">
     <h3>Gate Qwen batch</h3>
     <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-gate"></table></div>
   </div>
@@ -1982,6 +1986,18 @@ function bucketLabel(bucket) {
     workspace_benchmark_ready: "Benchmark OK",
     workspace_benchmark_review: "Benchmark review",
     benchmark_required: "Benchmark richiesto",
+    ready_for_staged_autocatalog: "Pronto auto-catalog",
+    needs_known_doc_benchmark: "Serve benchmark",
+    needs_qwen_text_probe: "Serve probe Qwen",
+    text_batch_review_only: "Batch solo review",
+    benchmark_review: "Benchmark review",
+    needs_more_sampling: "Serve altro sample",
+    no_text_candidates: "Nessun testo candidate",
+    qwen_text_autocatalog: "Qwen text auto-catalog",
+    vision_ocr_autocatalog: "Vision OCR auto-catalog",
+    short_ocr_resolution: "Risoluzione OCR corto",
+    known_doc_routing: "Routing doc noti",
+    workspace_operator_review: "Review workspace",
   };
   return labels[bucket] || bucket || "unknown";
 }
@@ -1991,9 +2007,9 @@ function intakeStatusPill(ok, label) {
 }
 
 function qwenGatePill(status) {
-  const cls = status === "candidate_batch_ready" || status === "no_candidates" || status === "workspace_benchmark_ready" || status === "consistent"
+  const cls = status === "candidate_batch_ready" || status === "no_candidates" || status === "workspace_benchmark_ready" || status === "consistent" || status === "ready_for_staged_autocatalog" || status === "no_text_candidates"
     ? "ok"
-    : status === "review_only" || status === "insufficient_sample" || status === "probe_required" || status === "benchmark_required"
+    : status === "review_only" || status === "insufficient_sample" || status === "probe_required" || status === "benchmark_required" || status === "needs_known_doc_benchmark" || status === "needs_qwen_text_probe" || status === "text_batch_review_only" || status === "needs_more_sampling"
       ? "warn"
       : "bad";
   return `<span class="intake-pill ${cls}">${escapeHtml(bucketLabel(status))}</span>`;
@@ -2032,6 +2048,7 @@ async function renderIntake() {
   const cardsEl = document.getElementById("i-cards");
   const parserEl = document.getElementById("i-parser");
   const catalogEl = document.getElementById("i-catalog");
+  const autocatalogEl = document.getElementById("i-autocatalog");
   const qwenGateEl = document.getElementById("i-qwen-gate");
   const qwenKnownEl = document.getElementById("i-qwen-known");
   const qwenPlacementEl = document.getElementById("i-qwen-placement");
@@ -2047,6 +2064,7 @@ async function renderIntake() {
     const qwenGate = data.qwen_batch_gate || {};
     const qwenKnown = data.qwen_known_benchmark_gate || {};
     const qwenPlacement = data.qwen_placement_preview || {};
+    const autocatalogPlan = data.autocatalog_plan || {};
     const groupOps = data.group_operational_summary || {};
     const groupRows = groupOps.group_kinds || data.group_kinds || [];
     const groupTotalGroups = Number(groupOps.total_groups || groupRows.reduce((sum, row) => sum + Number(row.groups || 0), 0));
@@ -2062,6 +2080,7 @@ async function renderIntake() {
       <div class="intake-card"><div class="label">Qwen gate</div><div class="value">${qwenGatePill(qwenGate.status || "probe_required")}</div><div class="hint">${iFmt(qwenGate.sampled_docs)} sample · ${(Number(qwenGate.candidate_rate || 0) * 100).toFixed(0)}% candidato</div></div>
       <div class="intake-card"><div class="label">Qwen benchmark</div><div class="value">${qwenGatePill(qwenKnown.status || "benchmark_required")}</div><div class="hint">${iFmt(qwenKnown.sampled_docs)} sample · ${(Number(qwenKnown.workspace_accuracy || 0) * 100).toFixed(0)}% workspace</div></div>
       <div class="intake-card"><div class="label">Qwen propone</div><div class="value">${iFmt(qwenPlacement.kita_workspace_candidates)}</div><div class="hint">${iFmt(qwenPlacement.review_after_qwen)} review · ${iFmt(qwenPlacement.still_unknown)} unknown</div></div>
+      <div class="intake-card"><div class="label">Auto-catalog</div><div class="value">${qwenGatePill(autocatalogPlan.status || "needs_more_sampling")}</div><div class="hint">${iFmt(autocatalogPlan.totals?.projected_qwen_text_to_kita_docs)} stimati Kita · ${escapeHtml(autocatalogPlan.write_mode || "proposal-only")}</div></div>
       <div class="intake-card"><div class="label">OCR corto</div><div class="value">${iFmt(actions.needs_manual_review_short_ocr)}</div><div class="hint">review manuale</div></div>
       <div class="intake-card"><div class="label">Workspace review</div><div class="value">${iFmt(actions.workspace_review_ready)}</div><div class="hint">${iFmt(actions.failed_pipeline)} failed pipeline</div></div>
       <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(groupTotalGroups)}</div><div class="hint">${iFmt(groupTotalDocs)} docs · ${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, `${iFmt(groupOps.unsafe_groups)} review`)}</div></div>
@@ -2086,6 +2105,23 @@ async function renderIntake() {
       { label: "Docs", render: (r) => iFmt(r.docs) },
       { label: "Next", render: (r) => escapeHtml(r.next_action) },
     ], "Nessun catalog status");
+
+    autocatalogEl.innerHTML = renderRows([
+      {
+        stage: "status",
+        docs: Number(autocatalogPlan.totals?.qwen_text_candidate_docs || 0),
+        destination: autocatalogPlan.reason || "unknown",
+        status: autocatalogPlan.status || "needs_more_sampling",
+      },
+      ...(autocatalogPlan.stages || []),
+    ], [
+      { label: "Stage", render: (r) => r.stage === "status" ? qwenGatePill(r.status) : escapeHtml(bucketLabel(r.stage)) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+      { label: "Destinazione", render: (r) => escapeHtml(bucketLabel(r.destination || r.source_bucket || "review")) },
+      { label: "Expected Kita", render: (r) => iFmt(r.expected_kita_docs) },
+      { label: "Expected review", render: (r) => iFmt(r.expected_review_docs) },
+      { label: "Auto attach", render: (r) => r.auto_attach_allowed ? intakeStatusPill(true, "si") : `<span class="intake-pill">no</span>` },
+    ], "Nessun piano auto-catalog");
 
     qwenGateEl.innerHTML = renderRows([qwenGate], [
       { label: "Stato", render: (r) => qwenGatePill(r.status || "probe_required") },

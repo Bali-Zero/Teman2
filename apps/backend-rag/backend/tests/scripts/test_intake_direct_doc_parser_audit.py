@@ -39,7 +39,10 @@ def test_parser_bucket_explains_direct_doc_next_action() -> None:
     audit = _load()
     assert audit.parser_bucket_for_row({"queue_status": "dead"}) == "failed_pipeline"
     assert audit.parser_bucket_for_row({"doc_type": "unknown"}) == "needs_doc_type_parser"
-    assert audit.parser_bucket_for_row({"doc_type": "passport", "type_confidence": 0.55}) == "low_confidence_review"
+    assert (
+        audit.parser_bucket_for_row({"doc_type": "passport", "type_confidence": 0.55})
+        == "low_confidence_review"
+    )
     assert (
         audit.parser_bucket_for_row(
             {"doc_type": "passport", "type_confidence": 0.8, "entity_decision": "AUTO_ATTACH"}
@@ -58,16 +61,36 @@ def test_parser_bucket_explains_direct_doc_next_action() -> None:
         )
         == "already_routed"
     )
-    assert audit.parser_bucket_for_row({"doc_type": "passport", "type_confidence": 0.8}) == "needs_routing_proposal"
+    assert (
+        audit.parser_bucket_for_row({"doc_type": "passport", "type_confidence": 0.8})
+        == "needs_routing_proposal"
+    )
 
 
 def test_action_bucket_splits_unknown_docs_by_ocr_readiness() -> None:
     audit = _load()
-    assert audit.action_bucket_for_row({"queue_status": "dead", "doc_type": "unknown", "ocr_chars": 500}) == "failed_pipeline"
-    assert audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 0}) == "needs_ocr_vision_batch"
-    assert audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 99}) == "needs_manual_review_short_ocr"
-    assert audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 100}) == "needs_text_parser_qwen_candidate"
-    assert audit.action_bucket_for_row({"doc_type": "passport", "type_confidence": 0.55}) == "low_confidence_review"
+    assert (
+        audit.action_bucket_for_row(
+            {"queue_status": "dead", "doc_type": "unknown", "ocr_chars": 500}
+        )
+        == "failed_pipeline"
+    )
+    assert (
+        audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 0})
+        == "needs_ocr_vision_batch"
+    )
+    assert (
+        audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 99})
+        == "needs_manual_review_short_ocr"
+    )
+    assert (
+        audit.action_bucket_for_row({"doc_type": "unknown", "ocr_chars": 100})
+        == "needs_text_parser_qwen_candidate"
+    )
+    assert (
+        audit.action_bucket_for_row({"doc_type": "passport", "type_confidence": 0.55})
+        == "low_confidence_review"
+    )
     assert (
         audit.action_bucket_for_row(
             {"doc_type": "passport", "type_confidence": 0.8, "entity_decision": "AUTO_ATTACH"}
@@ -217,9 +240,18 @@ def test_qwen_text_sample_reports_kita_workspace_placement_preview() -> None:
     result = asyncio.run(
         audit.run_qwen_text_sample(
             [
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["tax text"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear"]}}},
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["tax text"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear"]}},
+                },
             ],
             ollama_url="http://127.0.0.1:11434",
             model="qwen3.5:9b",
@@ -263,10 +295,22 @@ def test_qwen_text_sample_reports_batch_acceptance_gate() -> None:
     result = asyncio.run(
         audit.run_qwen_text_sample(
             [
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["tax text"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear a"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear b"]}}},
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["tax text"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear a"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear b"]}},
+                },
             ],
             ollama_url="http://127.0.0.1:11434",
             model="qwen3.5:9b",
@@ -298,11 +342,26 @@ def test_qwen_text_sample_keeps_low_yield_batch_review_only() -> None:
     result = asyncio.run(
         audit.run_qwen_text_sample(
             [
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["birth text"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear a"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear b"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear c"]}}},
-                {"doc_type": "unknown", "stage_output": {"classify": {"ocr_text_per_page": ["unclear d"]}}},
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["birth text"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear a"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear b"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear c"]}},
+                },
+                {
+                    "doc_type": "unknown",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear d"]}},
+                },
             ],
             ollama_url="http://127.0.0.1:11434",
             model="qwen3.5:9b",
@@ -334,13 +393,22 @@ def test_qwen_known_doc_benchmark_reports_workspace_accuracy() -> None:
     result = asyncio.run(
         audit.run_qwen_known_doc_benchmark(
             [
-                {"doc_type": "passport", "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}}},
+                {
+                    "doc_type": "passport",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["passport text"]}},
+                },
                 {
                     "doc_type": "payment_receipt",
                     "stage_output": {"classify": {"ocr_text_per_page": ["receipt text"]}},
                 },
-                {"doc_type": "visa", "stage_output": {"classify": {"ocr_text_per_page": ["flight text"]}}},
-                {"doc_type": "npwp", "stage_output": {"classify": {"ocr_text_per_page": ["unclear tax"]}}},
+                {
+                    "doc_type": "visa",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["flight text"]}},
+                },
+                {
+                    "doc_type": "npwp",
+                    "stage_output": {"classify": {"ocr_text_per_page": ["unclear tax"]}},
+                },
             ],
             ollama_url="http://127.0.0.1:11434",
             model="qwen3.5:9b",
@@ -397,6 +465,113 @@ def test_qwen_known_doc_benchmark_reports_workspace_accuracy() -> None:
         },
     ]
     assert "receipt text" not in str(result)
+
+
+def test_autocatalog_plan_promotes_only_gate_passing_qwen_batches() -> None:
+    audit = _load()
+
+    plan = audit.build_autocatalog_plan(
+        {
+            "direct_actions": [
+                {"bucket": "needs_text_parser_qwen_candidate", "docs": 306},
+                {"bucket": "needs_ocr_vision_batch", "docs": 592},
+                {"bucket": "needs_manual_review_short_ocr", "docs": 98},
+                {"bucket": "needs_routing_proposal", "docs": 48},
+                {"bucket": "workspace_review_ready", "docs": 255},
+                {"bucket": "low_confidence_review", "docs": 347},
+            ],
+            "qwen_text_sample": {
+                "classified_attempts": 50,
+                "workspace_buckets": [
+                    {"bucket": "review", "docs": 25},
+                    {"bucket": "immigration", "docs": 15},
+                    {"bucket": "finance", "docs": 10},
+                ],
+                "placement_preview": [
+                    {
+                        "from_doc_type": "unknown",
+                        "proposed_doc_type": "travel_ticket",
+                        "workspace_bucket": "immigration",
+                        "docs": 9,
+                    },
+                    {
+                        "from_doc_type": "unknown",
+                        "proposed_doc_type": "payment_receipt",
+                        "workspace_bucket": "finance",
+                        "docs": 6,
+                    },
+                ],
+                "acceptance_gate": {
+                    "status": "candidate_batch_ready",
+                    "reason": "candidate_rate_met",
+                    "candidate_rate": 0.5,
+                    "classified_attempts": 50,
+                },
+            },
+            "qwen_known_benchmark": {
+                "benchmark_gate": {
+                    "status": "workspace_benchmark_ready",
+                    "reason": "workspace_accuracy_met",
+                    "workspace_accuracy": 0.9,
+                    "classified_attempts": 10,
+                }
+            },
+        }
+    )
+
+    assert plan["status"] == "ready_for_staged_autocatalog"
+    assert plan["write_mode"] == "proposal_only_no_crm_mutation"
+    assert plan["worker_required_env"] == {
+        "INTAKE_TEXT_LLM_CLASSIFY_ENABLED": "1",
+        "INTAKE_TEXT_LLM_MODEL": "qwen3.5:9b",
+        "INTAKE_TEXT_LLM_MIN_CHARS": "100",
+        "INTAKE_TEXT_LLM_TIMEOUT_SECONDS": "45",
+    }
+    assert plan["dry_run_command"].endswith(
+        "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text"
+    )
+    assert plan["apply_command"].endswith(
+        "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text --apply"
+    )
+    assert plan["safe_to_apply_without_existing_gate"] is False
+    assert plan["can_create_kita_proposals"] is True
+    assert plan["can_auto_attach_without_review"] is False
+    assert plan["totals"]["qwen_text_candidate_docs"] == 306
+    assert plan["totals"]["ocr_vision_candidate_docs"] == 592
+    assert plan["totals"]["projected_qwen_text_to_kita_docs"] == 153
+    assert plan["totals"]["projected_qwen_text_to_review_docs"] == 153
+    assert plan["projected_qwen_workspace_buckets"] == [
+        {"bucket": "review", "sample_docs": 25, "projected_docs": 153},
+        {"bucket": "immigration", "sample_docs": 15, "projected_docs": 92},
+        {"bucket": "finance", "sample_docs": 10, "projected_docs": 61},
+    ]
+    assert plan["stages"][0]["stage"] == "qwen_text_autocatalog"
+    assert (
+        plan["stages"][0]["destination"]
+        == "document_routing_proposal_then_kita_workspace_by_doc_type"
+    )
+
+
+def test_autocatalog_plan_stays_review_only_when_benchmark_is_missing() -> None:
+    audit = _load()
+
+    plan = audit.build_autocatalog_plan(
+        {
+            "direct_actions": [{"bucket": "needs_text_parser_qwen_candidate", "docs": 10}],
+            "qwen_text_sample": {
+                "acceptance_gate": {
+                    "status": "candidate_batch_ready",
+                    "reason": "candidate_rate_met",
+                    "candidate_rate": 0.8,
+                    "classified_attempts": 5,
+                }
+            },
+        }
+    )
+
+    assert plan["status"] == "needs_known_doc_benchmark"
+    assert plan["can_create_kita_proposals"] is False
+    assert plan["can_auto_attach_without_review"] is False
 
 
 def test_dashboard_snapshot_keeps_qwen_probe_aggregate_only() -> None:
@@ -458,56 +633,144 @@ def test_dashboard_snapshot_keeps_qwen_probe_aggregate_only() -> None:
         generated_at="2026-06-26T04:00:00+00:00",
     )
 
-    assert snapshot == {
-        "generated_at": "2026-06-26T04:00:00+00:00",
-        "pii_policy": "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr",
-        "qwen_text_sample": {
-            "attempted": 5,
+    assert snapshot["generated_at"] == "2026-06-26T04:00:00+00:00"
+    assert snapshot["pii_policy"] == "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr"
+    assert snapshot["qwen_text_sample"] == {
+        "attempted": 5,
+        "classified_attempts": 5,
+        "kita_workspace_candidates": 1,
+        "review_after_qwen": 4,
+        "acceptance_gate": {
+            "status": "review_only",
+            "reason": "candidate_rate_below_threshold",
+            "candidate_rate": 0.2,
+            "min_candidate_rate": 0.25,
             "classified_attempts": 5,
-            "kita_workspace_candidates": 1,
-            "review_after_qwen": 4,
-            "acceptance_gate": {
-                "status": "review_only",
-                "reason": "candidate_rate_below_threshold",
-                "candidate_rate": 0.2,
-                "min_candidate_rate": 0.25,
-                "classified_attempts": 5,
-                "min_classified_attempts": 5,
-            },
-            "placement_preview": [
-                {
-                    "from_doc_type": "unknown",
-                    "proposed_doc_type": "birth_certificate",
-                    "workspace_bucket": "immigration",
-                    "docs": 1,
-                }
-            ],
-            "workspace_buckets": [{"bucket": "immigration", "docs": 1}],
-            "transitions": {"unknown->birth_certificate": 1},
-            "errors": {},
+            "min_classified_attempts": 5,
         },
-        "qwen_known_benchmark": {
-            "attempted": 4,
-            "classified_attempts": 4,
+        "placement_preview": [
+            {
+                "from_doc_type": "unknown",
+                "proposed_doc_type": "birth_certificate",
+                "workspace_bucket": "immigration",
+                "docs": 1,
+            }
+        ],
+        "workspace_buckets": [{"bucket": "immigration", "docs": 1}],
+        "transitions": {"unknown->birth_certificate": 1},
+        "errors": {},
+    }
+    assert snapshot["qwen_known_benchmark"] == {
+        "attempted": 4,
+        "classified_attempts": 4,
+        "workspace_accuracy": 0.75,
+        "benchmark_gate": {
+            "status": "workspace_benchmark_ready",
+            "reason": "workspace_accuracy_met",
             "workspace_accuracy": 0.75,
-            "benchmark_gate": {
-                "status": "workspace_benchmark_ready",
-                "reason": "workspace_accuracy_met",
-                "workspace_accuracy": 0.75,
-                "min_workspace_accuracy": 0.7,
-                "classified_attempts": 4,
-                "min_classified_attempts": 4,
-            },
-            "confusion_preview": [
-                {
-                    "expected_doc_type": "payment_receipt",
-                    "predicted_doc_type": "bank_statement",
-                    "expected_workspace_bucket": "finance",
-                    "predicted_workspace_bucket": "finance",
-                    "docs": 1,
-                }
-            ],
+            "min_workspace_accuracy": 0.7,
+            "classified_attempts": 4,
+            "min_classified_attempts": 4,
         },
+        "confusion_preview": [
+            {
+                "expected_doc_type": "payment_receipt",
+                "predicted_doc_type": "bank_statement",
+                "expected_workspace_bucket": "finance",
+                "predicted_workspace_bucket": "finance",
+                "docs": 1,
+            }
+        ],
+    }
+    assert snapshot["autocatalog_plan"] == {
+        "status": "no_text_candidates",
+        "reason": "no_unknown_direct_docs_with_enough_saved_ocr",
+        "scope": "direct_whatsapp_docs_only_groups_excluded",
+        "write_mode": "proposal_only_no_crm_mutation",
+        "worker_required_env": {
+            "INTAKE_TEXT_LLM_CLASSIFY_ENABLED": "1",
+            "INTAKE_TEXT_LLM_MODEL": "qwen3.5:9b",
+            "INTAKE_TEXT_LLM_MIN_CHARS": "100",
+            "INTAKE_TEXT_LLM_TIMEOUT_SECONDS": "45",
+        },
+        "dry_run_command": audit.AUTOCATALOG_DRY_RUN_COMMAND,
+        "apply_command": audit.AUTOCATALOG_APPLY_COMMAND,
+        "safe_to_apply_without_existing_gate": False,
+        "can_create_kita_proposals": False,
+        "can_auto_attach_without_review": False,
+        "qwen_text_gate_status": "review_only",
+        "known_doc_benchmark_status": "workspace_benchmark_ready",
+        "totals": {
+            "qwen_text_candidate_docs": 0,
+            "ocr_vision_candidate_docs": 0,
+            "short_ocr_review_docs": 0,
+            "low_confidence_review_docs": 0,
+            "routing_proposal_needed_docs": 0,
+            "workspace_review_ready_docs": 0,
+            "already_routed_docs": 0,
+            "failed_pipeline_docs": 0,
+            "projected_qwen_text_to_kita_docs": 0,
+            "projected_qwen_text_to_review_docs": 0,
+        },
+        "projected_qwen_workspace_buckets": [],
+        "projected_qwen_placements": [],
+        "stages": [
+            {
+                "stage": "qwen_text_autocatalog",
+                "docs": 0,
+                "source_bucket": "needs_text_parser_qwen_candidate",
+                "llm": "qwen3.5:9b",
+                "destination": "document_routing_proposal_then_kita_workspace_by_doc_type",
+                "allowed_when": "candidate_batch_ready_and_workspace_benchmark_ready",
+                "expected_kita_docs": 0,
+                "expected_review_docs": 0,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "vision_ocr_autocatalog",
+                "docs": 0,
+                "source_bucket": "needs_ocr_vision_batch",
+                "llm": "qwen2.5vl_local_ocr_then_qwen_text_router",
+                "destination": "same_proposal_path_after_ocr",
+                "allowed_when": "local_vision_ocr_available_on_pro",
+                "expected_kita_docs": 0,
+                "expected_review_docs": 0,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "short_ocr_resolution",
+                "docs": 0,
+                "source_bucket": "needs_manual_review_short_ocr",
+                "llm": "vision_retry_or_manual_review",
+                "destination": "review_or_same_proposal_path_after_better_ocr",
+                "allowed_when": "ocr_text_below_threshold",
+                "expected_kita_docs": 0,
+                "expected_review_docs": 0,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "known_doc_routing",
+                "docs": 0,
+                "source_bucket": "needs_routing_proposal",
+                "llm": "none",
+                "destination": "document_routing_proposal_review_pending",
+                "allowed_when": "known_doc_type_high_confidence",
+                "expected_kita_docs": 0,
+                "expected_review_docs": 0,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "workspace_operator_review",
+                "docs": 0,
+                "source_bucket": "workspace_review_ready_or_low_confidence_review",
+                "llm": "none",
+                "destination": "kita_review_queue",
+                "allowed_when": "operator_or_existing_auto_attach_gate",
+                "expected_kita_docs": 0,
+                "expected_review_docs": 0,
+                "auto_attach_allowed": False,
+            },
+        ],
     }
     assert "SHOULD_NOT_LEAK" not in str(snapshot)
     assert "+6280000000000" not in str(snapshot)
