@@ -9,6 +9,7 @@ import {
   getHeroStyle,
 } from "@/lib/kbli-data";
 import { getGoldContent } from "@/lib/kbli-data.server";
+import { formatTimeframe } from "@/lib/kbli-derive";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
@@ -795,7 +796,8 @@ export default async function KBLICodePage({
                             Processing
                           </span>
                           <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {kbli.licensing[0].timeframe || "Otomatis"}
+                            {formatTimeframe(kbli.licensing[0].timeframe) ??
+                              "Through OSS"}
                           </span>
                         </div>
                       </div>
