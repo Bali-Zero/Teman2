@@ -114,6 +114,13 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash(f"git -C {WT} checkout main"), "ALLOW", "git mutate inside worktree via -C"),
         (bash("grep -rn 'cp ' infra/ | head"), "ALLOW", "the word cp inside a grep pattern"),
         (bash("echo 'use tee to split output' "), "ALLOW", "the word tee inside a quoted string"),
+        # W80 arm-before-remove — INNOCENCE tripwires (no git state needed; these
+        # resolve to non-dirty / out-of-scope targets so the guard must stay silent).
+        (bash("rm -rf /tmp/scratch-dir"), "ALLOW", "rm -rf outside .worktrees → not a worktree removal"),
+        (bash("rm -rf node_modules"), "ALLOW", "rm -rf a non-worktree dir in repo"),
+        (bash(f"echo 'rm -rf {WT}'"), "ALLOW", "rm of a worktree path inside a quoted echo (W83 noise-strip)"),
+        (bash("git worktree list"), "ALLOW", "git worktree list is read-only, never a removal"),
+        (bash(f"git worktree remove {WT}-does-not-exist"), "ALLOW", "remove of a non-existent worktree → nothing to lose"),
         # GUILT — must still BLOCK
         (bash("git checkout main"), "BLOCK", "git checkout in main checkout"),
         (bash("git add ."), "BLOCK", "git add . in main"),
