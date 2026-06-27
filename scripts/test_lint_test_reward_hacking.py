@@ -138,3 +138,76 @@ def test_helper_function_not_flagged_for_no_assert():
     """A non-test_ helper that asserts nothing must NOT trigger RH005."""
     src = "def helper_compute():\n    return 42\n"
     assert "RH005" not in _codes(src)
+
+
+# ─── merge-commit guard (scar #3 over-match): a test inherited unchanged from a
+#     merge parent must NOT be linted — only tests THIS commit introduces ──────
+
+
+def test_merge_parents_empty_without_merge_head(monkeypatch):
+    """_merge_parents() returns [] on an ordinary commit (no MERGE_HEAD) — so the
+    merge-guard is a no-op and normal-commit behavior is unchanged."""
+    from scripts import lint_test_reward_hacking as L
+
+    class _R:
+        returncode = 1
+        stdout = ""
+
+    monkeypatch.setattr(L.subprocess, "run", lambda *a, **k: _R())
+    assert L._merge_parents() == []
+
+
+def test_merge_parents_lists_head_and_merge_head(monkeypatch):
+    """When MERGE_HEAD resolves, parents = HEAD + each MERGE_HEAD sha (octopus-safe)."""
+    from scripts import lint_test_reward_hacking as L
+
+    class _R:
+        returncode = 0
+        stdout = "abc123\ndef456\n"
+
+    monkeypatch.setattr(L.subprocess, "run", lambda *a, **k: _R())
+    assert L._merge_parents() == ["HEAD", "abc123", "def456"]
+
+
+def test_merge_guard_drops_inherited_test(monkeypatch):
+    """A staged test whose blob equals a parent's blob (inherited via merge, never
+    touched by this branch) is dropped from the lint set — the #1732 false-positive."""
+    from scripts import lint_test_reward_hacking as L
+
+    # one staged test file
+    class _Diff:
+        returncode = 0
+        stdout = "apps/backend-rag/backend/tests/x_test.py\n"
+
+    monkeypatch.setattr(L.subprocess, "run", lambda *a, **k: _Diff())
+    monkeypatch.setattr(L, "_is_test_file", lambda p: True)
+    # active merge with one parent
+    monkeypatch.setattr(L, "_merge_parents", lambda: ["HEAD"])
+    # staged blob == HEAD blob → inherited, must be dropped
+    monkeypatch.setattr(
+        L, "_git_blob",
+        lambda ref, path: "SAMESHA",  # both ":0" (index) and "HEAD" return same
+    )
+    assert L._staged_test_files() == []
+
+
+def test_merge_guard_keeps_introduced_test(monkeypatch):
+    """A staged test whose blob differs from every parent (genuinely changed by this
+    commit) is KEPT — the guard must not blind the linter to real cheats in a merge."""
+    from scripts import lint_test_reward_hacking as L
+
+    class _Diff:
+        returncode = 0
+        stdout = "apps/backend-rag/backend/tests/x_test.py\n"
+
+    monkeypatch.setattr(L.subprocess, "run", lambda *a, **k: _Diff())
+    monkeypatch.setattr(L, "_is_test_file", lambda p: True)
+    monkeypatch.setattr(L, "_merge_parents", lambda: ["HEAD"])
+
+    def _blob(ref, path):
+        return "INDEXSHA" if ref == ":0" else "PARENTSHA"
+
+    monkeypatch.setattr(L, "_git_blob", _blob)
+    assert [str(p) for p in L._staged_test_files()] == [
+        "apps/backend-rag/backend/tests/x_test.py"
+    ]
