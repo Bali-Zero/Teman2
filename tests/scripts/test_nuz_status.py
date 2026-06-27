@@ -22,6 +22,13 @@ def test_machine_role_air_m5_for_balizero() -> None:
     assert nuz_status.machine_role("Air-M5", "balizero") == "Air-M5"
 
 
+def test_default_peer_alias_follows_machine_role() -> None:
+    assert nuz_status.default_peer_alias("Pro") == "mini"
+    assert nuz_status.default_peer_alias("Mini") == "pro"
+    assert nuz_status.default_peer_alias("Air-M5") == "pro"
+    assert nuz_status.default_peer_alias("Unknown") == "pro"
+
+
 def test_http_json_handles_error_without_raising() -> None:
     with patch("nuz_status.urllib.request.urlopen", side_effect=OSError("offline")):
         result = nuz_status.http_json("https://example.invalid")
@@ -92,6 +99,50 @@ def test_collect_status_marks_drive_401_without_key_as_warning() -> None:
     drive_check = next(check for check in payload["checks"] if check["id"] == "drive_worker")
     assert drive_check["status"] == "warn"
     assert "NUZANTARA_API_KEY" in drive_check["summary"]
+
+
+def test_collect_status_defaults_pro_peer_to_mini() -> None:
+    args = Namespace(
+        refresh=False,
+        offline=False,
+        peer=None,
+        fly_health_url="https://example.invalid/health",
+        drive_status_url="https://example.invalid/drive",
+    )
+
+    def fake_http_json(url: str, **_kwargs: object) -> dict[str, object]:
+        if url.endswith("/health"):
+            return {"ok": True, "status_code": 200, "body": {"status": "healthy"}}
+        return {"ok": True, "status_code": 200, "body": {"status": "ok"}}
+
+    with (
+        patch("nuz_status.repo_root", return_value=Path.cwd()),
+        patch("nuz_status.getpass.getuser", return_value="nuzantara"),
+        patch("nuz_status.socket.gethostname", return_value="Nuzantara"),
+        patch(
+            "nuz_status.git_status",
+            return_value={
+                "branch": "main",
+                "head": "abc123",
+                "head_full": "abc123full",
+                "origin_main": "abc123",
+                "origin_main_full": "abc123full",
+                "ahead": 0,
+                "behind": 0,
+                "dirty": False,
+                "dirty_count": 0,
+                "dirty_preview": [],
+            },
+        ),
+        patch("nuz_status.peer_git_status", return_value={"reachable": True, "branch": "main"}) as peer_git,
+        patch("nuz_status.gh_latest_run", return_value={"available": False}),
+        patch("nuz_status.http_json", side_effect=fake_http_json),
+    ):
+        payload = nuz_status.collect_status(args)
+
+    assert payload["machine"]["role"] == "Pro"
+    assert payload["peer"] == "mini"
+    peer_git.assert_called_once_with("mini", refresh=False)
 
 
 def test_collect_status_offline_skips_network() -> None:
