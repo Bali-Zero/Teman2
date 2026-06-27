@@ -347,6 +347,25 @@ def test_saved_ocr_preclassify_payload_preserves_ocr_and_marks_review_band() -> 
     }
 
 
+def test_saved_ocr_preclassify_attempt_payload_has_no_document_content() -> None:
+    irb = _load()
+    payload = irb._build_saved_ocr_preclassify_attempt_payload(
+        model="qwen2.5vl:7b",
+        pipeline_version="v2.2-qwen-text-autocatalog",
+        outcome="unknown",
+        ocr_max_chars=1000,
+    )
+    assert payload == {
+        "model": "qwen2.5vl:7b",
+        "pipeline_version": "v2.2-qwen-text-autocatalog",
+        "outcome": "unknown",
+        "classified_via": "saved_ocr_local_text_llm_preclassify",
+        "ocr_max_chars": 1000,
+    }
+    assert "ocr_text_per_page" not in payload
+    assert "text" not in payload
+
+
 # ---------------------------------------------------------------------------
 # SQL constants — load-bearing predicates
 # ---------------------------------------------------------------------------
@@ -465,7 +484,9 @@ def test_saved_ocr_preclassify_sql_targets_review_pending_direct_unknowns() -> N
     assert "w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL" in sql
     assert "stage_output" in sql
     assert "AND EXISTS" in sql
-    assert "LIMIT $2" in sql
+    assert "local_text_llm_preclassify_attempts" in sql
+    assert "jsonb_build_object('model', $2::text, 'pipeline_version', $3::text)" in sql
+    assert "LIMIT $4" in sql
 
 
 def test_saved_ocr_preclassify_update_resumes_after_classify_without_reocr() -> None:
@@ -478,6 +499,17 @@ def test_saved_ocr_preclassify_update_resumes_after_classify_without_reocr() -> 
     assert "attempts         = 0" in sql
     assert "stage_output     = jsonb_build_object('classify', $2::jsonb)" in sql
     assert "pipeline_version = $3" in sql
+
+
+def test_saved_ocr_preclassify_attempt_update_preserves_review_state() -> None:
+    irb = _load()
+    sql = irb.SAVED_OCR_PRECLASSIFY_ATTEMPT_SQL
+    assert "local_text_llm_preclassify_attempts" in sql
+    assert "jsonb_set" in sql
+    assert "jsonb_build_array($2::jsonb)" in sql
+    assert "WHERE id = $1" in sql
+    assert "status           = 'ocr_done'" not in sql
+    assert "document_routing_proposal" not in sql
 
 
 def test_auto_attach_eligible_sql_targets_safe_review_bucket() -> None:

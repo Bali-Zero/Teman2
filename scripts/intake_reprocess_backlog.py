@@ -373,12 +373,18 @@ WITH candidate_rows AS (
             WHERE p.queue_id = q.id
               AND p.status = 'review_pending'
        )
+       AND NOT COALESCE(
+           q.stage_output->'classify'->'local_text_llm_preclassify_attempts',
+           '[]'::jsonb
+       ) @> jsonb_build_array(
+           jsonb_build_object('model', $2::text, 'pipeline_version', $3::text)
+       )
 )
 SELECT queue_id, proposal_ids, stage_output, ocr_chars
   FROM candidate_rows
  WHERE ocr_chars >= $1
  ORDER BY queue_id
- LIMIT $2
+ LIMIT $4
 """
 
 SAVED_OCR_PRECLASSIFY_UPDATE_SQL = """
@@ -391,6 +397,20 @@ UPDATE intake_queue
        next_visible_at  = now(),
        stage_output     = jsonb_build_object('classify', $2::jsonb),
        pipeline_version = $3
+ WHERE id = $1
+"""
+
+SAVED_OCR_PRECLASSIFY_ATTEMPT_SQL = """
+UPDATE intake_queue
+   SET stage_output = jsonb_set(
+       COALESCE(stage_output, '{}'::jsonb),
+       '{classify,local_text_llm_preclassify_attempts}',
+       COALESCE(
+           stage_output->'classify'->'local_text_llm_preclassify_attempts',
+           '[]'::jsonb
+       ) || jsonb_build_array($2::jsonb),
+       true
+   )
  WHERE id = $1
 """
 
@@ -868,6 +888,27 @@ def _build_saved_ocr_preclassify_payload(
     }
 
 
+def _build_saved_ocr_preclassify_attempt_payload(
+    *,
+    model: str,
+    pipeline_version: str,
+    outcome: str,
+    ocr_max_chars: int,
+    error_type: str | None = None,
+) -> dict[str, Any]:
+    """Build a PII-free marker so failed local attempts do not block batches."""
+    payload: dict[str, Any] = {
+        "model": model,
+        "pipeline_version": pipeline_version,
+        "outcome": outcome,
+        "classified_via": "saved_ocr_local_text_llm_preclassify",
+        "ocr_max_chars": max(ocr_max_chars, 1),
+    }
+    if error_type:
+        payload["error_type"] = error_type
+    return payload
+
+
 async def _classify_saved_ocr_text(
     client: httpx.AsyncClient,
     *,
@@ -893,6 +934,33 @@ async def _classify_saved_ocr_text(
     response.raise_for_status()
     data = response.json()
     return _parse_doc_type_answer(data.get("response") or data.get("thinking"))
+
+
+async def _mark_saved_ocr_preclassify_attempt(
+    pool: asyncpg.Pool,
+    *,
+    queue_id: int,
+    model: str,
+    pipeline_version: str,
+    outcome: str,
+    ocr_max_chars: int,
+    error_type: str | None = None,
+) -> int:
+    """Persist a PII-free local-LLM attempt marker for a queue row."""
+    payload = _build_saved_ocr_preclassify_attempt_payload(
+        model=model,
+        pipeline_version=pipeline_version,
+        outcome=outcome,
+        ocr_max_chars=ocr_max_chars,
+        error_type=error_type,
+    )
+    async with pool.acquire() as conn:
+        updated = await conn.execute(
+            SAVED_OCR_PRECLASSIFY_ATTEMPT_SQL,
+            queue_id,
+            json.dumps(payload, sort_keys=True),
+        )
+    return int(updated.split()[-1]) if updated else 0
 
 
 # --- Modes -------------------------------------------------------------------
@@ -1172,6 +1240,8 @@ async def run_autocatalog_preclassify_saved_ocr(
         rows = await conn.fetch(
             SAVED_OCR_PRECLASSIFY_SELECT_SQL,
             safe_min_ocr_chars,
+            model,
+            pipeline_version,
             safe_limit,
         )
 
@@ -1182,6 +1252,7 @@ async def run_autocatalog_preclassify_saved_ocr(
         "unknown_answers": 0,
         "malformed_answers": 0,
         "errors": 0,
+        "marked_attempts": 0,
         "updated": 0,
         "superseded": 0,
         "min_ocr_chars": safe_min_ocr_chars,
@@ -1215,13 +1286,38 @@ async def run_autocatalog_preclassify_saved_ocr(
             except Exception as exc:  # aggregate only; no raw OCR / no row payload.
                 counts["errors"] += 1
                 by_error[type(exc).__name__] += 1
+                counts["marked_attempts"] += await _mark_saved_ocr_preclassify_attempt(
+                    pool,
+                    queue_id=row["queue_id"],
+                    model=model,
+                    pipeline_version=pipeline_version,
+                    outcome="error",
+                    ocr_max_chars=safe_ocr_max_chars,
+                    error_type=type(exc).__name__,
+                )
                 continue
 
             if answer is None:
                 counts["malformed_answers"] += 1
+                counts["marked_attempts"] += await _mark_saved_ocr_preclassify_attempt(
+                    pool,
+                    queue_id=row["queue_id"],
+                    model=model,
+                    pipeline_version=pipeline_version,
+                    outcome="malformed",
+                    ocr_max_chars=safe_ocr_max_chars,
+                )
                 continue
             if answer == "unknown":
                 counts["unknown_answers"] += 1
+                counts["marked_attempts"] += await _mark_saved_ocr_preclassify_attempt(
+                    pool,
+                    queue_id=row["queue_id"],
+                    model=model,
+                    pipeline_version=pipeline_version,
+                    outcome="unknown",
+                    ocr_max_chars=safe_ocr_max_chars,
+                )
                 continue
 
             counts["known_answers"] += 1
@@ -1247,7 +1343,7 @@ async def run_autocatalog_preclassify_saved_ocr(
 
     logger.info(
         "[autocatalog-preclassify-saved-ocr] candidates=%d attempted=%d "
-        "known=%d unknown=%d malformed=%d errors=%d updated=%d superseded=%d "
+        "known=%d unknown=%d malformed=%d errors=%d marked_attempts=%d updated=%d superseded=%d "
         "by_doc_type=%s by_error=%s pipeline_version=%s",
         counts["candidates"],
         counts["attempted"],
@@ -1255,6 +1351,7 @@ async def run_autocatalog_preclassify_saved_ocr(
         counts["unknown_answers"],
         counts["malformed_answers"],
         counts["errors"],
+        counts["marked_attempts"],
         counts["updated"],
         counts["superseded"],
         dict(by_doc_type),
