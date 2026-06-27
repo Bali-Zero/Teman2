@@ -91,25 +91,21 @@ breaches=0
 note() { breaches=$((breaches+1)); log "INVARIANT BREACH: $*"; }
 
 # --- Invariant 1: the deploy runtime checkout must exist (the W81 check) ---
-# .git is a DIR in a clone, a FILE in a worktree — accept both (test -e, not -d).
-# (P1 reality 2026-06-27: the disk was 98% full / 18GB of UNMERGED sibling work could not
-#  be reaped without W80, so the council's "full clone" Q1 was not physically affordable.
-#  The existing puller bootstraps a WORKTREE, which is what is live. Clone is a tracked
-#  debt — revisit when free disk > 60GB. See runbook "Known gap: runtime root is a worktree".)
 deploy_exists=true
 if [[ ! -e "$DEPLOY_DIR/.git" ]]; then
   deploy_exists=false
   note "deploy runtime checkout missing: $DEPLOY_DIR (W81 vector)"
 fi
 
-# --- Invariant 2 (DEBT, warn-only): deploy SHOULD be a full clone (council Q1), but is a
-# worktree today (disk-bound, see above). A worktree shares the main's .git object store, so
-# a corrupted/prune'd main can take it down (scar W63/#5). We DO NOT count this as a breach
-# while the disk forbids a clone — we only log it so the debt stays visible (superscar #2:
-# built-but-degraded is suspended, not hidden). Flip to note() once the clone lands.
+# --- Invariant 2: deploy is a CLONE, not a worktree sharing the dirty main's .git ---
+# (council decision Q1: full clone, never worktree — isolates the runtime from the main's
+#  sibling-race / .git churn, scar W63/#5). A clone has .git as a DIR; a worktree as a FILE.
+# 2026-06-27: the clone IS feasible (HEAD tree is only ~0.9GB; the 45G repo was venv +
+#  node_modules + .worktrees which a clone does NOT materialize). Done — so a worktree here
+#  is now a real regression, not the disk-bound compromise it briefly was.
 if $deploy_exists; then
   if [[ -f "$DEPLOY_DIR/.git" ]]; then
-    log "DEBT (not a breach): deploy is a git WORKTREE, not a clone — shares main .git (W63/#5). Clone deferred: disk-bound (P1 2026-06-27)."
+    note "deploy checkout is a git WORKTREE (.git is a file) — must be a full clone (scar W63/#5)"
   fi
 fi
 
