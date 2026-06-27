@@ -69,6 +69,30 @@ rules:
       { actuator: restart_agent, params: { agent_ref: "{payload.organ_id}" } }
     confidence: 0.85
 
+  # A2 Heartbeat Semantico — close signal→action for the sentinel's heartbeat_silent
+  # events (TAC self-loop 2026-06-27; council/GLM caught these had NO matching rule and
+  # dead-lettered to defer_to_human). The sentinel emits kind=heartbeat_silent with
+  # payload.status in {dead, starved}. Routed DIFFERENTLY on purpose:
+  #   - dead    -> restart_agent (a dead organ should be kickstarted, like organ_silent)
+  #   - starved -> notify_telegram, NOT restart: a starved organ is ALIVE but its OUTPUT is
+  #     frozen (e.g. a dedup ledger that grew but produced nothing). Auto-restarting could
+  #     interrupt in-flight work or restart-storm (#7), and restart rarely fixes the ROOT
+  #     (the frozen pipeline). Operator escalation is the correct, safe action (L6 boundary,
+  #     not a silent dead-letter). Verified live on the real RuleMatcher: dead->restart_agent,
+  #     starved->notify_telegram, ok->no-match.
+  - id: heartbeat_silent_dead_kickstart
+    match: { kind: heartbeat_silent, payload.status: dead }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "{payload.organ_id}" } }
+    confidence: 0.90
+  - id: heartbeat_silent_starved_alert
+    match: { kind: heartbeat_silent, payload.status: starved }
+    action:
+      actuator: notify_telegram
+      params:
+        message: "🫀 A2 starved organ (alive but output frozen): {payload.organ_id} — owner {payload.owner_module}, age {payload.age_seconds}s. Auto-restart withheld (could interrupt mid-work); operator needs eyes on the frozen pipeline."
+    confidence: 0.85
+
   # W27 Path A (2026-05-23): Cell pulse went RED for ≥3 consecutive pulses
   # (~3 min wall time at 60s cadence) → start any stopped Fly machine for
   # the target app via fly_machines_start (idempotent on already-running
