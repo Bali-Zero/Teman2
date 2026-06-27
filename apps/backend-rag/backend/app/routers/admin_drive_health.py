@@ -249,7 +249,7 @@ async def _read_drive_poll_worker_status(pool: Any | None) -> dict[str, Any]:
             "healthy": False,
             "stale": False,
             "stale_after_seconds": stale_after_seconds,
-            "message": str(e)[:200],
+            "message": "Drive poll worker status unavailable",
         }
 
     values = {row["key"]: row["value"] for row in rows}
@@ -283,7 +283,12 @@ async def _read_drive_poll_worker_status(pool: Any | None) -> dict[str, Any]:
         "stale_after_seconds": stale_after_seconds,
         "last_started_at": values.get("drive_poll_worker_last_started_at"),
         "last_finished_at": values.get("drive_poll_worker_last_finished_at"),
-        "last_error": values.get("drive_poll_worker_last_error"),
+        "last_error_present": bool(values.get("drive_poll_worker_last_error")),
+        "last_error_message": (
+            "Last Drive poll worker run failed; see server logs"
+            if values.get("drive_poll_worker_last_error")
+            else None
+        ),
         "last_result": last_result,
     }
 
@@ -447,7 +452,7 @@ async def trigger_drive_poll(request: Request) -> dict[str, Any]:
         ) from e
     except Exception as e:
         logger.error("Drive poll failed: %s", e, exc_info=True)
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "Drive poll failed"}
 
 
 @router.post("/backfill")
