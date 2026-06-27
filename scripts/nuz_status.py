@@ -26,6 +26,7 @@ DEFAULT_FLY_HEALTH_URL = "https://nuzantara-rag.fly.dev/health"
 DEFAULT_DRIVE_STATUS_URL = "https://nuzantara-rag.fly.dev/api/admin/drive/poll/status"
 DEFAULT_PEER_ALIAS = "pro"
 DEFAULT_PEER_REPO = "~/Desktop/nuzantara"
+PEER_AUTOSTASH_ENV = "NUZ_STATUS_ALLOW_PEER_AUTOSTASH"
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,10 @@ def machine_role(hostname: str, username: str) -> str:
 
 def check_status(status: str, summary: str, **details: Any) -> dict[str, Any]:
     return {"status": status, "summary": summary, "details": details}
+
+
+def peer_autostash_allowed() -> bool:
+    return os.getenv(PEER_AUTOSTASH_ENV, "").strip() == "1"
 
 
 def git_status(path: Path, *, refresh: bool = False) -> dict[str, Any]:
@@ -319,17 +324,20 @@ def build_checks(
                     "target": "pro-main",
                 },
             )
+            autostash_allowed = peer_autostash_allowed()
             actions.append(
                 {
                     "id": "stash_and_sync_pro_main",
-                    "label": "Stash + sync Pro main",
+                    "label": "Stash + sync Pro main (manual override)",
                     "enabled": (
-                        peer_git.get("branch") == "main"
+                        autostash_allowed
+                        and peer_git.get("branch") == "main"
                         and bool(peer_git.get("dirty"))
                         and bool(peer_git.get("behind"))
                         and not peer_git.get("ahead")
                     ),
                     "target": "pro-main-autostash",
+                    "requires_env": f"{PEER_AUTOSTASH_ENV}=1",
                 },
             )
 
@@ -462,6 +470,14 @@ def safe_fix(target: str, *, peer: str) -> dict[str, Any]:
         }
 
     if target == "pro-main-autostash":
+        if not peer_autostash_allowed():
+            return {
+                "target": target,
+                "ok": False,
+                "returncode": 2,
+                "stdout": "",
+                "stderr": f"refusing peer autostash without {PEER_AUTOSTASH_ENV}=1",
+            }
         stash_name = f"nuz-status-auto-stash-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
         remote = (
             f"cd {DEFAULT_PEER_REPO} && "
