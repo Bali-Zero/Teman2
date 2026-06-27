@@ -31,12 +31,10 @@ human ``routed`` terminal) and one ``intake_commit_audit`` row records it. Undo
 is the existing ``rollback_commit`` — every auto-attach is reversible.
 
 The Pro→Fly DELIVERY leg (placing the file in the client's Drive folder so it is
-visible in kita) is NOT performed here: that endpoint authenticates with the
-reviewer's bearer JWT, which a headless auto-commit does not hold. Delivery is
-left to the system-credential push path (the same ``X-CRM-Write-Key`` bridge
-work tracked separately) — until that is wired, an auto-attached document is
-committed to the LOCAL Pro CRM and flagged for delivery, never silently
-"in kita". This module NEVER claims delivery it did not perform.
+visible in kita) runs only AFTER the local commit succeeds and reuses the shared
+``crm_delivery`` service. Headless delivery authenticates with the scoped
+``X-CRM-Write-Key`` bridge; if the key is absent or Fly rejects it, the returned
+verdict says so and never claims the document is in Kita.
 
 PII / Symbiosis Law 2: everything here runs against the LOCAL Postgres only.
 """
@@ -49,6 +47,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.intake import crm_delivery as intake_crm_delivery
 from backend.services.intake import writer as intake_writer
 from backend.services.intake.routing import _match_sender_phone
 
@@ -376,6 +375,14 @@ async def try_auto_attach(
             )
 
     committed = result.outcome == "committed"
+    delivery = None
+    if committed:
+        delivery = await intake_crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=result,
+        )
     logger.info(
         "auto_attach.%s proposal=%s client=%s doc=%s phone_client=%s",
         "COMMITTED" if committed else result.outcome,
@@ -388,7 +395,7 @@ async def try_auto_attach(
         "client_id": client_id,
         "doc_id": result.doc_id,
         "status": AUTO_ROUTED_STATUS if committed else None,
-        "delivery": "pending_system_credential",  # honest: local commit only, see module docstring
+        "delivery": delivery or {"status": "not_committed"},
         "result": result.to_dict(),
     }
 
@@ -491,6 +498,14 @@ async def try_direct_phone_auto_attach(
             )
 
     committed = result.outcome == "committed"
+    delivery = None
+    if committed:
+        delivery = await intake_crm_delivery.deliver_committed_to_crm(
+            pool=pool,
+            queue_id=plan.queue_id,
+            plan=plan,
+            result=result,
+        )
     logger.info(
         "direct_phone_auto_attach.%s proposal=%s client=%s doc=%s phone_client=%s",
         "COMMITTED" if committed else result.outcome,
@@ -506,6 +521,6 @@ async def try_direct_phone_auto_attach(
         "client_id": routing.get("client_id"),
         "doc_id": result.doc_id,
         "status": AUTO_ROUTED_STATUS if committed else None,
-        "delivery": "pending_system_credential",
+        "delivery": delivery or {"status": "not_committed"},
         "result": result.to_dict(),
     }

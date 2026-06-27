@@ -845,3 +845,40 @@ async def test_upload_document_base64_mirrors_company_upload_to_company_document
     assert any(
         "INSERT INTO company_documents" in call.args[0] for call in conn.fetchval.await_args_list
     )
+
+
+@pytest.mark.asyncio
+async def test_internal_upload_reuses_base64_upload_with_preverified_access(mock_db_pool):
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers import crm_enhanced_documents
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64_internal,
+    )
+
+    upload = AsyncMock(return_value={"success": True, "document_id": 99})
+    data = DocumentUploadBase64(
+        file="ZmlsZQ==",
+        file_name="passport.pdf",
+        document_type="passport",
+        document_category="immigration",
+    )
+
+    with patch.object(crm_enhanced_documents, "upload_document_base64", new=upload):
+        result = await upload_document_base64_internal(
+            client_id=1,
+            data=data,
+            pool=mock_db_pool,
+            actor="wa-mirror-crm-writer@balizero.com",
+            background_tasks=BackgroundTasks(),
+        )
+
+    assert result == {"success": True, "document_id": 99}
+    upload.assert_awaited_once()
+    kwargs = upload.await_args.kwargs
+    assert kwargs["client_id"] == 1
+    assert kwargs["data"] is data
+    assert kwargs["pool"] is mock_db_pool
+    assert kwargs["access_already_verified"] is True
+    assert kwargs["current_user"]["email"] == "wa-mirror-crm-writer@balizero.com"
