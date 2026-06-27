@@ -229,8 +229,14 @@ SQUASH-merged o riportato per rework È GIÀ su main per CONTENUTO mentre SHA e 
 sarebbero REGREDITI se rebasati. Antidoto MANDATORIO: deletable-safe SOLO se `git diff origin/main...<br>`
 è VUOTO o pura-cancellazione (subset) — verifica per CONTENUTO, MAI per patch-equivalenza/ancestor-solo.
 Reso eseguibile in `scripts/branch_graveyard_cleanup.sh::content_on_main()` + nuova categoria
-"Content-on-main & deletable". GOTCHA: il `git diff` per-branch è O(N)-lento → usa `--quiet` (early-exit)
-+ `--numstat` (no context-lines), non il diff materializzato)**.
+"Content-on-main & deletable". GOTCHA-NEL-GOTCHA (stesso giorno, il fix è ricaduto nella malattia che
+curava): la PRIMA versione del check usava `git diff origin/main...branch` (THREE-DOT) — ma post-squash
+il merge-base è ARRETRATO, quindi il three-dot conta come "branch-only" ogni riga che main ha cambiato
+dopo quel base → FALSO NEGATIVO. Prova vissuta: un file con blob byte-identico su main dava lo stesso
+"+155 added" sotto three-dot. Il three-dot è ESSO STESSO un proxy che mente — la trappola W88 al secondo
+grado. Cura definitiva: confronto **blob-per-file** sui soli file che il branch ha autorato dal merge-base
+(`git rev-parse branch:f == main:f`), MAI il three-dot. Il check buggato trovava 2 content-on-main, quello
+corretto ne trova 9 (i 7 persi erano i falsi negativi))**.
 **→ dettaglio:** cicatrix-scars.md (W86) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
 
 ---

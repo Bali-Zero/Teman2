@@ -5,11 +5,13 @@
 #
 # Categories:
 #   1. Merged & deletable     : branch SHA is an ancestor of main, any age, safe
-#   2. Content-on-main & del.  : SHA NOT ancestor BUT `git diff main...branch` is
-#                                empty or pure-deletion -> squash-merged / reworked
-#                                onto main / strict-subset; safe to delete. This is
-#                                the MANDATORY antidote to the "git cherry says +
-#                                so it must be unmerged" trap (see content_on_main).
+#   2. Content-on-main & del.  : SHA NOT ancestor BUT every file the branch
+#                                authored has the SAME blob on main (squash-merged
+#                                / reworked / strict-subset) -> safe to delete.
+#                                MANDATORY antidote to "git cherry says + so it
+#                                must be unmerged" — verified by per-file blob, NOT
+#                                by three-dot diff (which lies post-squash). See
+#                                content_on_main().
 #   3. Zombie claude/*        : claude/* branch, >30d, content NOT on main -> report
 #   4. Stale others           : any branch, >90d, content NOT on main -> report
 #
@@ -133,30 +135,33 @@ git for-each-ref \
 #   "orphan report" had ~5 truly-live branches; the rest were squash-merged
 #   or reworked onto main, several REGRESSING published content if rebased).
 #
-# THE RULE (mandatory, never bypass): a branch is deletable-safe ONLY when its
-# CONTENT is on main — i.e. `git diff origin/main...<branch>` is EMPTY. Verify
-# by CONTENT, never by patch-equivalence / ancestor-only. A non-empty diff that
-# is purely DELETIONS (branch is a strict subset / older revision of main) is
-# ALSO content-on-main: keeping it would only regress. This function encodes
-# exactly that test.
+# THE RULE (mandatory, never bypass): a branch is deletable-safe ONLY when every
+# file the branch AUTHORED (changed since its merge-base) has the SAME blob on
+# main. Verify by per-file CONTENT, never by patch-equivalence / ancestor-only.
+#
+# WHY NOT three-dot diff (`git diff main...branch`): after a SQUASH-merge the
+# merge-base is STALE, so the three-dot diff reports as "branch-only" every line
+# main changed independently since that old base — a FALSE POSITIVE for unmerged
+# work. Verified 2026-06-27: a squash-merged branch whose single file had a
+# byte-identical blob on main still showed "+155 added" under three-dot. The
+# three-dot signal is itself a proxy that lies post-squash — the exact W88 trap.
+# The only honest test is blob equality on the files the branch actually touched.
 #
 # Returns 0 (content already on main, safe to delete) / 1 (genuine unmerged work).
 content_on_main() {
-    local branch="$1"
-    # Fast path: --quiet exits 0 on EMPTY diff (stops at first hunk, never
-    # materializes output) => every line of the branch is already on main
-    # (covers squash-merge, rework, cherry-picked-elsewhere). Authoritative.
-    if git diff --quiet "$MAIN_REF...$branch" 2>/dev/null; then
-        return 0
-    fi
-    # Non-empty diff. Only ONE more question matters: does the branch ADD any
-    # line main lacks? If it adds nothing (pure-deletion / strict-subset / stale
-    # revision), it is still fully represented on main and rebasing it would only
-    # regress => treat as content-on-main. `git diff --numstat` is cheap (no
-    # context lines); summing the "added" column is enough — 0 added => subset.
-    local added
-    added=$(git diff --numstat "$MAIN_REF...$branch" 2>/dev/null | awk '{a += $1} END {print a + 0}')
-    [[ "$added" -eq 0 ]]
+    local branch="$1" mb f bh mh
+    mb=$(git merge-base "$MAIN_REF" "$branch" 2>/dev/null) || return 1
+    # Files the branch changed since its merge-base (two-dot from the REAL base —
+    # NOT three-dot from main). For each, the branch's blob must equal main's
+    # blob. A file the branch DELETED (absent on branch) must also be absent on
+    # main. Any surviving difference => genuine unmerged content.
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        bh=$(git rev-parse "$branch:$f" 2>/dev/null || echo __ABSENT_BRANCH__)
+        mh=$(git rev-parse "$MAIN_REF:$f" 2>/dev/null || echo __ABSENT_MAIN__)
+        [[ "$bh" != "$mh" ]] && return 1
+    done < <(git diff --name-only "$mb" "$branch" 2>/dev/null)
+    return 0
 }
 
 # === Classify ===
