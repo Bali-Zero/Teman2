@@ -195,6 +195,7 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.reprocess is False
     assert args.autocatalog_direct_unknown_text is False
     assert args.autocatalog_preclassify_saved_ocr is False
+    assert args.autocatalog_preclassify_vision is False
     assert args.auto_attach_eligible is False
     assert args.auto_attach_direct_phone is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
@@ -279,6 +280,42 @@ def test_parser_autocatalog_preclassify_saved_ocr_mlx_overrides() -> None:
     assert args.autocatalog_provider == "mlx"
     assert args.autocatalog_mlx_base_url == "http://mini:8080/v1"
     assert args.autocatalog_mlx_model == "mlx-community/Qwen3-8B-4bit"
+
+
+def test_parser_autocatalog_preclassify_vision_defaults() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--autocatalog-preclassify-vision"])
+    assert args.apply is False
+    assert args.autocatalog_preclassify_vision is True
+    assert args.autocatalog_vision_model == irb.DEFAULT_AUTOCATALOG_VISION_MODEL
+    assert args.autocatalog_vision_max_pages == irb.DEFAULT_AUTOCATALOG_VISION_MAX_PAGES
+    assert (
+        args.autocatalog_vision_image_max_side
+        == irb.DEFAULT_AUTOCATALOG_VISION_IMAGE_MAX_SIDE
+    )
+    assert args.autocatalog_ollama_url == irb.DEFAULT_AUTOCATALOG_OLLAMA_URL
+    assert args.autocatalog_timeout_seconds == irb.DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS
+
+
+def test_parser_autocatalog_preclassify_vision_overrides() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--autocatalog-preclassify-vision",
+            "--autocatalog-vision-model",
+            "qwen2.5vl:7b",
+            "--autocatalog-vision-max-pages",
+            "1",
+            "--autocatalog-vision-image-max-side",
+            "640",
+            "--autocatalog-timeout-seconds",
+            "9",
+        ]
+    )
+    assert args.autocatalog_vision_model == "qwen2.5vl:7b"
+    assert args.autocatalog_vision_max_pages == 1
+    assert args.autocatalog_vision_image_max_side == 640
+    assert args.autocatalog_timeout_seconds == 9
 
 
 def test_parser_auto_attach_eligible_defaults() -> None:
@@ -387,6 +424,53 @@ def test_saved_ocr_preclassify_attempt_payload_has_no_document_content() -> None
         "ocr_max_chars": 1000,
     }
     assert "ocr_text_per_page" not in payload
+    assert "text" not in payload
+
+
+def test_saved_vision_preclassify_payload_preserves_ocr_and_marks_review_band() -> None:
+    irb = _load()
+    payload = irb._build_saved_vision_preclassify_payload(
+        {"classify": {"ocr_text_per_page": [{"page": 0, "text": "image text"}]}},
+        doc_type="passport",
+        model="qwen2.5vl:7b",
+        source_page=0,
+        max_pages=2,
+        image_max_side=960,
+    )
+    assert payload["doc_type"] == "passport"
+    assert payload["type_confidence"] == irb.VISION_CLASSIFY_CONF
+    assert payload["classified_via"] == "saved_blob_local_vision_preclassify"
+    assert payload["classify_vision_model"] == "qwen2.5vl:7b"
+    assert payload["ocr_text_per_page"] == [{"page": 0, "text": "image text"}]
+    assert payload["vision_max_pages"] == 2
+    assert payload["vision_image_max_side"] == 960
+    assert payload["_metric"] == {
+        "model": "qwen2.5vl:7b",
+        "provider": "ollama-vision",
+        "confidence": irb.VISION_CLASSIFY_CONF,
+    }
+
+
+def test_saved_vision_preclassify_attempt_payload_has_no_document_content() -> None:
+    irb = _load()
+    payload = irb._build_saved_vision_preclassify_attempt_payload(
+        model="qwen2.5vl:7b",
+        pipeline_version="v2.2-qwen-vision-autocatalog",
+        outcome="unknown",
+        max_pages=2,
+        image_max_side=960,
+    )
+    assert payload == {
+        "provider": "ollama-vision",
+        "model": "qwen2.5vl:7b",
+        "pipeline_version": "v2.2-qwen-vision-autocatalog",
+        "outcome": "unknown",
+        "classified_via": "saved_blob_local_vision_preclassify",
+        "vision_max_pages": 2,
+        "vision_image_max_side": 960,
+    }
+    assert "ocr_text_per_page" not in payload
+    assert "blob_path" not in payload
     assert "text" not in payload
 
 
@@ -529,6 +613,39 @@ def test_saved_ocr_preclassify_attempt_update_preserves_review_state() -> None:
     irb = _load()
     sql = irb.SAVED_OCR_PRECLASSIFY_ATTEMPT_SQL
     assert "local_text_llm_preclassify_attempts" in sql
+    assert "jsonb_set" in sql
+    assert "jsonb_build_array($2::jsonb)" in sql
+    assert "WHERE id = $1" in sql
+    assert "status           = 'ocr_done'" not in sql
+    assert "document_routing_proposal" not in sql
+
+
+def test_saved_vision_preclassify_sql_targets_review_pending_direct_unknowns() -> None:
+    irb = _load()
+    sql = irb.SAVED_VISION_PRECLASSIFY_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "q.source_ref LIKE 'wa-mirror:%'" in sql
+    assert "'wa-mirror:' || w.baileys_message_id" in sql
+    assert "p.status = 'review_pending'" in sql
+    assert "q.status <> 'dead'" in sql
+    assert "q.blob_path IS NOT NULL" in sql
+    assert "w.media_mime" in sql
+    assert "doc_type', 'unknown') = 'unknown'" in sql
+    assert "ocr_text_per_page" in sql
+    assert "ocr_chars >= $1" in sql
+    assert "w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL" in sql
+    assert "stage_output" in sql
+    assert "AND EXISTS" in sql
+    assert "local_vision_preclassify_attempts" in sql
+    assert "jsonb_build_object('model', $2::text, 'pipeline_version', $3::text)" in sql
+    assert "WHEN media_mime LIKE 'image/%' THEN 0" in sql
+    assert "LIMIT $4" in sql
+
+
+def test_saved_vision_preclassify_attempt_update_preserves_review_state() -> None:
+    irb = _load()
+    sql = irb.SAVED_VISION_PRECLASSIFY_ATTEMPT_SQL
+    assert "local_vision_preclassify_attempts" in sql
     assert "jsonb_set" in sql
     assert "jsonb_build_array($2::jsonb)" in sql
     assert "WHERE id = $1" in sql
