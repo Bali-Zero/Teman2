@@ -64,18 +64,45 @@ alert() {
   echo "$now" > "$ALERT_STAMP"
 }
 
+# A3 (reflexion-che-impara) call-site: when a breach is a VERIFIED failure of the organism,
+# persist it as a promoted lesson to MOS (type=pattern, importance>=7 → auto-loaded at next
+# SessionStart = the cross-session retrieval half for free). This is the loop-closing half A3
+# lacked: save_lesson_mos had ZERO live callers (TAC 2026-06-27). A reconcile breach is the
+# textbook "verified failure" — it only fires after the invariant checks actually ran on disk,
+# so it satisfies the promote-gate (no hallucinated lesson auto-persists). Best-effort: never
+# fatal if mem CLI is absent (graceful degradation, same as the reflexion lib's except path).
+MEM_CLI="${HOME}/.claude/scripts/mem"
+LESSON_STAMP="${HOME}/.agent/decisions/state/runtime_reconcile.lesson"
+LESSON_COOLDOWN_SEC="${RUNTIME_RECONCILE_LESSON_COOLDOWN_SEC:-86400}"   # 1 lesson/day max
+save_lesson() {
+  local lesson="$1"
+  [[ -x "$MEM_CLI" ]] || return 0
+  local now; now="$(date +%s)"
+  if [[ -f "$LESSON_STAMP" ]]; then
+    local last; last="$(cat "$LESSON_STAMP" 2>/dev/null || echo 0)"
+    (( now - last < LESSON_COOLDOWN_SEC )) && return 0   # dedup: don't re-learn the same breach daily
+  fi
+  "$MEM_CLI" save pattern "[reflexion:runtime_reconcile] ${lesson}" 7 >/dev/null 2>&1 || true
+  echo "$now" > "$LESSON_STAMP"
+  log "A3: persisted breach lesson to MOS (auto-loads next SessionStart)"
+}
+
 breaches=0
 note() { breaches=$((breaches+1)); log "INVARIANT BREACH: $*"; }
 
 # --- Invariant 1: the deploy runtime checkout must exist (the W81 check) ---
 deploy_exists=true
-if [[ ! -d "$DEPLOY_DIR/.git" ]]; then
+if [[ ! -e "$DEPLOY_DIR/.git" ]]; then
   deploy_exists=false
   note "deploy runtime checkout missing: $DEPLOY_DIR (W81 vector)"
 fi
 
 # --- Invariant 2: deploy is a CLONE, not a worktree sharing the dirty main's .git ---
-# (council decision Q1: full clone, never worktree). A worktree has .git as a FILE.
+# (council decision Q1: full clone, never worktree — isolates the runtime from the main's
+#  sibling-race / .git churn, scar W63/#5). A clone has .git as a DIR; a worktree as a FILE.
+# 2026-06-27: the clone IS feasible (HEAD tree is only ~0.9GB; the 45G repo was venv +
+#  node_modules + .worktrees which a clone does NOT materialize). Done — so a worktree here
+#  is now a real regression, not the disk-bound compromise it briefly was.
 if $deploy_exists; then
   if [[ -f "$DEPLOY_DIR/.git" ]]; then
     note "deploy checkout is a git WORKTREE (.git is a file) — must be a full clone (scar W63/#5)"
@@ -106,6 +133,8 @@ printf '{"ts":"%s","status":"%s","note":"breaches=%d deploy_exists=%s strict=%s"
   "$ts" "$status" "$breaches" "$deploy_exists" "$STRICT" > "$STATE" 2>/dev/null || true
 
 if (( breaches > 0 )); then
+  # A3: a confirmed breach is a verified organism failure → learn it (cooldown-deduped).
+  save_lesson "runtime-root breach detected (deploy_exists=${deploy_exists}, breaches=${breaches}). W81 vector recurred — check ~/Desktop/nuzantara-deploy + the deploy-puller before trusting any merge reached the live organs."
   if [[ "$STRICT" == "1" ]]; then
     alert "$breaches invariant breach(es) — see $LOG"
     exit 1

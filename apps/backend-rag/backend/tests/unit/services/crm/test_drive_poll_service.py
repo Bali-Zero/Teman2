@@ -336,6 +336,8 @@ class TestPollDriveChanges:
                 },
             ],
             "new_page_token": "next-token",
+            "more_pages": True,
+            "pages_fetched": 1,
         }
         drive_service.get_file_metadata.return_value = {"size": "0"}
 
@@ -367,9 +369,17 @@ class TestPollDriveChanges:
         ):
             result = await _do_poll_drive_changes(acquire_advisory_lock=False)
 
+        assert result["status"] == "partial"
         assert result["processed"] == 1
+        assert result["more_pages"] is True
+        assert result["pages_fetched"] == 1
         assert result["ocr_dispatched"] == 1
         assert result["guardian_queue"]["inserted"] == 1
+        drive_service.list_changes_since.assert_awaited_once_with(
+            "start-token",
+            max_pages=1,
+            page_size=10,
+        )
         guardian_enqueue.assert_awaited_once()
         ocr_dispatch.assert_awaited_once_with(
             db_pool=fake_pool,

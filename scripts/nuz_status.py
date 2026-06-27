@@ -94,7 +94,9 @@ def git_status(path: Path, *, refresh: bool = False) -> dict[str, Any]:
 
     branch = run_command(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=path)
     head = run_command(["git", "rev-parse", "--short=12", "HEAD"], cwd=path)
+    head_full = run_command(["git", "rev-parse", "HEAD"], cwd=path)
     origin = run_command(["git", "rev-parse", "--short=12", "origin/main"], cwd=path)
+    origin_full = run_command(["git", "rev-parse", "origin/main"], cwd=path)
     status = run_command(["git", "status", "--porcelain"], cwd=path)
     ahead = run_command(["git", "rev-list", "--count", "origin/main..HEAD"], cwd=path)
     behind = run_command(["git", "rev-list", "--count", "HEAD..origin/main"], cwd=path)
@@ -103,7 +105,9 @@ def git_status(path: Path, *, refresh: bool = False) -> dict[str, Any]:
     return {
         "branch": branch.stdout.strip() if branch.returncode == 0 else "unknown",
         "head": head.stdout.strip() if head.returncode == 0 else "",
+        "head_full": head_full.stdout.strip() if head_full.returncode == 0 else "",
         "origin_main": origin.stdout.strip() if origin.returncode == 0 else "",
+        "origin_main_full": origin_full.stdout.strip() if origin_full.returncode == 0 else "",
         "ahead": int(ahead.stdout.strip() or 0) if ahead.returncode == 0 else None,
         "behind": int(behind.stdout.strip() or 0) if behind.returncode == 0 else None,
         "dirty": bool(dirty_lines),
@@ -118,7 +122,9 @@ def peer_git_status(peer: str, *, refresh: bool = False) -> dict[str, Any]:
         f"cd {DEFAULT_PEER_REPO} && {fetch}"
         "printf 'branch=%s\\n' \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null)\" && "
         "printf 'head=%s\\n' \"$(git rev-parse --short=12 HEAD 2>/dev/null)\" && "
+        "printf 'head_full=%s\\n' \"$(git rev-parse HEAD 2>/dev/null)\" && "
         "printf 'origin_main=%s\\n' \"$(git rev-parse --short=12 origin/main 2>/dev/null)\" && "
+        "printf 'origin_main_full=%s\\n' \"$(git rev-parse origin/main 2>/dev/null)\" && "
         "printf 'ahead=%s\\n' \"$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)\" && "
         "printf 'behind=%s\\n' \"$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)\" && "
         "printf 'dirty_count=%s\\n' \"$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')\""
@@ -222,21 +228,21 @@ def curl_json(
     return payload
 
 
-def gh_latest_run(workflow: str) -> dict[str, Any]:
-    result = run_command(
-        [
-            "gh",
-            "run",
-            "list",
-            "--workflow",
-            workflow,
-            "--limit",
-            "1",
-            "--json",
-            "status,conclusion,createdAt,updatedAt,url",
-        ],
-        timeout=12,
-    )
+def gh_latest_run(workflow: str, *, commit: str | None = None) -> dict[str, Any]:
+    command = [
+        "gh",
+        "run",
+        "list",
+        "--workflow",
+        workflow,
+        "--limit",
+        "1",
+        "--json",
+        "status,conclusion,createdAt,updatedAt,url,headSha",
+    ]
+    if commit:
+        command.extend(["--commit", commit])
+    result = run_command(command, timeout=12)
     if result.returncode != 0:
         return {"available": False, "error": (result.stderr or result.stdout).strip()[:300]}
     try:
@@ -313,6 +319,19 @@ def build_checks(
                     "target": "pro-main",
                 },
             )
+            actions.append(
+                {
+                    "id": "stash_and_sync_pro_main",
+                    "label": "Stash + sync Pro main",
+                    "enabled": (
+                        peer_git.get("branch") == "main"
+                        and bool(peer_git.get("dirty"))
+                        and bool(peer_git.get("behind"))
+                        and not peer_git.get("ahead")
+                    ),
+                    "target": "pro-main-autostash",
+                },
+            )
 
     if offline:
         checks.append({"id": "fly_health", **check_status("unknown", "offline mode")})
@@ -365,7 +384,7 @@ def build_checks(
     if offline:
         checks.append({"id": "github_tests", **check_status("unknown", "offline mode")})
     else:
-        tests = gh_latest_run("Tests & Coverage")
+        tests = gh_latest_run("Tests & Coverage", commit=local_git.get("origin_main_full") or None)
         if not tests.get("available"):
             checks.append(
                 {
@@ -442,6 +461,26 @@ def safe_fix(target: str, *, peer: str) -> dict[str, Any]:
             "stderr": result.stderr[-4000:],
         }
 
+    if target == "pro-main-autostash":
+        stash_name = f"nuz-status-auto-stash-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+        remote = (
+            f"cd {DEFAULT_PEER_REPO} && "
+            "test \"$(git rev-parse --abbrev-ref HEAD)\" = main && "
+            "git fetch --quiet origin main && "
+            "test \"$(git rev-list --count origin/main..HEAD)\" = 0 && "
+            f"git stash push -u -m {stash_name!r} && "
+            "git merge --ff-only origin/main && "
+            "git status --short --branch"
+        )
+        result = run_command(["ssh", "-o", "ConnectTimeout=3", peer, remote], timeout=120)
+        return {
+            "target": target,
+            "ok": result.returncode == 0,
+            "returncode": result.returncode,
+            "stdout": result.stdout[-4000:],
+            "stderr": result.stderr[-4000:],
+        }
+
     if target == "local-main":
         root = repo_root(Path.cwd())
         guard_branch = run_command(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=root)
@@ -494,7 +533,11 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--drive-status-url", default=DEFAULT_DRIVE_STATUS_URL)
 
     fix = sub.add_parser("fix", help="Run a safe automated fix")
-    fix.add_argument("--target", required=True, choices=["pro-main", "local-main"])
+    fix.add_argument(
+        "--target",
+        required=True,
+        choices=["pro-main", "pro-main-autostash", "local-main"],
+    )
     fix.add_argument("--peer", default=DEFAULT_PEER_ALIAS)
     fix.add_argument("--json", action="store_true")
 

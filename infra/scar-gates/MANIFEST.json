@@ -1,0 +1,335 @@
+{
+  "_doc": "A1 / Loop-B scar-gate manifest. Maps every cicatrix W-scar to its executable regression gate (ARMED) or declares it prose_only (visible Loop-B DEBT = WARN, never silent-zero). check_scar_test(gate) in scripts/verify_the_verifiers.py runs each. Built from the scar corpus 2026-06-27 (TAC self-loop A1). To ARM a scar: write infra/scar-gates/test_W<N>_*.py (exit 0 = disease still dead), then flip prose_only:false + set target.",
+  "generated": "2026-06-27",
+  "total": 65,
+  "armed": 1,
+  "prose_only_debt": 64,
+  "gates": [
+    {
+      "id": "scar_W1",
+      "w_number": "W1",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W4",
+      "w_number": "W4",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W5",
+      "w_number": "W5",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W6",
+      "w_number": "W6",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W7",
+      "w_number": "W7",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W8",
+      "w_number": "W8",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W9",
+      "w_number": "W9",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W10",
+      "w_number": "W10",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W18",
+      "w_number": "W18",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W19",
+      "w_number": "W19",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W25",
+      "w_number": "W25",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W27",
+      "w_number": "W27",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W29",
+      "w_number": "W29",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W31",
+      "w_number": "W31",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W32",
+      "w_number": "W32",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W33",
+      "w_number": "W33",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W34",
+      "w_number": "W34",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W35",
+      "w_number": "W35",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W36",
+      "w_number": "W36",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W37",
+      "w_number": "W37",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W38",
+      "w_number": "W38",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W39",
+      "w_number": "W39",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W40",
+      "w_number": "W40",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W41",
+      "w_number": "W41",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W42",
+      "w_number": "W42",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W47",
+      "w_number": "W47",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W48",
+      "w_number": "W48",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W49",
+      "w_number": "W49",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W50",
+      "w_number": "W50",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W51",
+      "w_number": "W51",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W52",
+      "w_number": "W52",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W53",
+      "w_number": "W53",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W54",
+      "w_number": "W54",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W55",
+      "w_number": "W55",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W56",
+      "w_number": "W56",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W57",
+      "w_number": "W57",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W58",
+      "w_number": "W58",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W59",
+      "w_number": "W59",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W60",
+      "w_number": "W60",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W61",
+      "w_number": "W61",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W62",
+      "w_number": "W62",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W63",
+      "w_number": "W63",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W64",
+      "w_number": "W64",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W65",
+      "w_number": "W65",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W67",
+      "w_number": "W67",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W68",
+      "w_number": "W68",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W69",
+      "w_number": "W69",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W70",
+      "w_number": "W70",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W71",
+      "w_number": "W71",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W72",
+      "w_number": "W72",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W73",
+      "w_number": "W73",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W74",
+      "w_number": "W74",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W75",
+      "w_number": "W75",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W76",
+      "w_number": "W76",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W77",
+      "w_number": "W77",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W78",
+      "w_number": "W78",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W79",
+      "w_number": "W79",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W80",
+      "w_number": "W80",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W81",
+      "w_number": "W81",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W82",
+      "w_number": "W82",
+      "target": "test_W82_content_freshness_undermatch.py",
+      "prose_only": false
+    },
+    {
+      "id": "scar_W83",
+      "w_number": "W83",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W84",
+      "w_number": "W84",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W85",
+      "w_number": "W85",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W86",
+      "w_number": "W86",
+      "prose_only": true
+    },
+    {
+      "id": "scar_W87",
+      "w_number": "W87",
+      "prose_only": true
+    }
+  ]
+}

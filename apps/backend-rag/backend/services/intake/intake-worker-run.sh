@@ -24,6 +24,38 @@ if ! flock -n 9; then
 fi
 
 cd "${BACKEND}"
+
+# Self-heal the venv before trusting it (scar W81b "venv-SKELETON", 2026-06-27).
+# The deploy worktree's venv has been left unusable three distinct ways: a dead
+# python symlink (pyenv target moved), a corrupt vendored pip, and a skeleton
+# with zero deps after a venv recreate that never ran `pip install`. Each kills
+# the worker silently with ModuleNotFoundError while launchctl shows green — the
+# WhatsApp/Drive intake then stalls for hours with no alarm. One probe covers all
+# three: if the venv python can't import asyncpg (the worker's first import), the
+# venv is unusable → rebuild it from scratch + install from requirements.txt
+# (NOT requirements.lock.txt: its editable cell-core + hashes are mutually
+# exclusive in pip). Idempotent: a healthy venv skips straight past this.
+VENV_PY=".venv/bin/python"
+if ! "${VENV_PY}" -c "import asyncpg" >/dev/null 2>&1; then
+    echo "[intake-worker] venv unusable (asyncpg import failed) — rebuilding (scar W81b)" >&2
+    PYBASE="$(command -v python3.11 || echo /Users/nuzantara/.pyenv/versions/3.11.11/bin/python3.11)"
+    rm -rf .venv
+    if ! "${PYBASE}" -m venv .venv; then
+        echo "[intake-worker] FATAL: venv create failed with ${PYBASE}" >&2
+        exit 78
+    fi
+    .venv/bin/python -m pip install --quiet --upgrade pip >&2 || true
+    if ! .venv/bin/python -m pip install --quiet --disable-pip-version-check -r requirements.txt >&2; then
+        echo "[intake-worker] FATAL: dependency install failed" >&2
+        exit 78
+    fi
+    if ! "${VENV_PY}" -c "import asyncpg" >/dev/null 2>&1; then
+        echo "[intake-worker] FATAL: venv still broken after rebuild — not starting" >&2
+        exit 78
+    fi
+    echo "[intake-worker] venv rebuilt OK" >&2
+fi
+
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
