@@ -126,6 +126,8 @@ from backend.services.intake.classify import (
     _VISION_CLASSIFY_PROMPT,
     _parse_doc_type_answer,
     _parse_vision_answer,
+    _score_types,
+    _stay_permit_subtype,
     _text_llm_classify_prompt,
 )
 from backend.services.intake.preprocess import preprocess_blob
@@ -152,8 +154,12 @@ DEFAULT_AUTOCATALOG_MLX_MODEL = "mlx-community/Qwen3-8B-4bit"
 DEFAULT_AUTOCATALOG_VISION_MODEL = "qwen2.5vl:7b"
 DEFAULT_AUTOCATALOG_VISION_MAX_PAGES = 2
 DEFAULT_AUTOCATALOG_VISION_IMAGE_MAX_SIDE = 960
+DEFAULT_AUTOCATALOG_VISION_OCR_MAX_CHARS = 1500
 DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS = 45.0
 DEFAULT_AUTOCATALOG_OCR_MAX_CHARS = 6000
+KEYWORD_CLASSIFY_MIN_CONFIDENCE = 0.30
+KEYWORD_CLASSIFY_MODEL = "deterministic-keyword-v1"
+KEYWORD_CLASSIFY_PROVIDER = "keyword"
 DEFAULT_AUTO_ATTACH_LIMIT = 500
 DEFAULT_NEW_PROSPECT_PIPELINE_VERSION = "v2.3-direct-prospect-promote"
 DEFAULT_CRM_PUSH_BASE_URL = "https://nuzantara-rag.fly.dev"
@@ -964,6 +970,27 @@ def _ocr_text_from_pages(pages: list[dict[str, Any]], *, max_chars: int) -> str:
     return "\n".join(chunks).strip()[: max(max_chars, 1)]
 
 
+def _keyword_classify_saved_ocr_text(ocr_text: str) -> tuple[str | None, float, dict[str, float]]:
+    """Classify saved OCR with the production deterministic scorer, no model call."""
+    text = ocr_text.strip()
+    if not text:
+        return None, 0.0, {}
+
+    scores = _score_types(text)
+    stay_subtype = _stay_permit_subtype(text)
+    if stay_subtype and stay_subtype in DOCUMENT_CATEGORY_MAP:
+        confidence = max(scores.get("kitas", 0.0), 0.55)
+        return stay_subtype, round(confidence, 3), scores
+
+    if not scores:
+        return None, 0.0, {}
+    best_type = max(scores, key=scores.get)
+    best_score = scores[best_type]
+    if best_score >= KEYWORD_CLASSIFY_MIN_CONFIDENCE and best_type in DOCUMENT_CATEGORY_MAP:
+        return best_type, best_score, scores
+    return None, best_score, scores
+
+
 def _build_saved_ocr_preclassify_payload(
     stage_output: Any,
     *,
@@ -971,24 +998,34 @@ def _build_saved_ocr_preclassify_payload(
     model: str,
     provider: str = DEFAULT_AUTOCATALOG_PROVIDER,
     ocr_max_chars: int = DEFAULT_AUTOCATALOG_OCR_MAX_CHARS,
+    confidence: float = TEXT_LLM_CLASSIFY_CONF,
+    type_scores: dict[str, float] | None = None,
+    classified_via: str = "saved_ocr_local_text_llm_preclassify",
 ) -> dict[str, Any]:
     """Build a classify-stage payload from preserved OCR and a local Qwen type."""
     pages = _saved_ocr_pages(stage_output)
-    return {
+    safe_confidence = round(max(min(confidence, 1.0), 0.0), 3)
+    payload: dict[str, Any] = {
         "doc_type": doc_type,
-        "type_confidence": TEXT_LLM_CLASSIFY_CONF,
+        "type_confidence": safe_confidence,
         "ocr_text_per_page": pages,
         "n_pages": len(pages),
         "source_page": None,
         "model": model,
         "provider": provider,
-        "type_scores": {doc_type: TEXT_LLM_CLASSIFY_CONF},
-        "classified_via": "saved_ocr_local_text_llm_preclassify",
-        "classify_llm_model": model,
-        "classify_llm_provider": provider,
+        "type_scores": type_scores or {doc_type: safe_confidence},
+        "classified_via": classified_via,
         "ocr_max_chars": max(ocr_max_chars, 1),
-        "_metric": {"model": model, "provider": provider, "confidence": TEXT_LLM_CLASSIFY_CONF},
+        "_metric": {"model": model, "provider": provider, "confidence": safe_confidence},
     }
+    if classified_via == "saved_ocr_keyword_preclassify":
+        payload["classify_keyword_model"] = model
+        payload["classify_keyword_provider"] = provider
+        payload["classify_keyword_min_confidence"] = KEYWORD_CLASSIFY_MIN_CONFIDENCE
+    else:
+        payload["classify_llm_model"] = model
+        payload["classify_llm_provider"] = provider
+    return payload
 
 
 def _build_saved_ocr_preclassify_attempt_payload(
@@ -1095,12 +1132,30 @@ def _resize_png_for_vision_classify(png_bytes: bytes, *, max_side: int) -> bytes
         return png_bytes
 
 
+def _vision_preclassify_prompt(ocr_text: str) -> str:
+    """Build a local-only doc-type prompt from image plus saved OCR excerpt."""
+    prompt = (
+        _VISION_CLASSIFY_PROMPT
+        + " Use the visual document layout first. The OCR excerpt below may be noisy; "
+        "use it only to identify the document category, never to infer identity. "
+        "Common cues: bank statement means account/balance/transaction pages; "
+        "payment_receipt means proof of transfer/payment; travel_ticket means boarding "
+        "pass/itinerary/ticket; medical_insurance means policy/insurance card; "
+        "passport means passport booklet/MRZ; visa means visa/e-visa/permit notice."
+    )
+    excerpt = ocr_text.strip()[:DEFAULT_AUTOCATALOG_VISION_OCR_MAX_CHARS]
+    if excerpt:
+        prompt += "\n\nOCR excerpt:\n" + excerpt
+    return prompt
+
+
 async def _classify_vision_png(
     client: httpx.AsyncClient,
     *,
     ollama_url: str,
     model: str,
     png_bytes: bytes,
+    ocr_text: str,
     timeout_seconds: float,
     image_max_side: int,
 ) -> str | None:
@@ -1113,7 +1168,7 @@ async def _classify_vision_png(
         f"{ollama_url.rstrip('/')}/api/generate",
         json={
             "model": model,
-            "prompt": _VISION_CLASSIFY_PROMPT,
+            "prompt": _vision_preclassify_prompt(ocr_text),
             "images": [b64],
             "stream": False,
             "think": False,
@@ -1135,6 +1190,7 @@ async def _classify_vision_pages(
     *,
     ollama_url: str,
     model: str,
+    ocr_text: str,
     timeout_seconds: float,
     max_pages: int,
     image_max_side: int,
@@ -1152,6 +1208,7 @@ async def _classify_vision_pages(
             ollama_url=ollama_url,
             model=model,
             png_bytes=png_bytes,
+            ocr_text=ocr_text,
             timeout_seconds=timeout_seconds,
             image_max_side=image_max_side,
         )
@@ -1598,17 +1655,44 @@ async def run_autocatalog_preclassify_saved_ocr(
     if safe_provider not in {"ollama", "mlx"}:
         raise ValueError("autocatalog provider must be 'ollama' or 'mlx'")
 
+    fetch_limit = min(max(safe_limit * 20, safe_limit), 5000)
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             SAVED_OCR_PRECLASSIFY_SELECT_SQL,
             safe_min_ocr_chars,
             model,
             pipeline_version,
-            safe_limit,
+            fetch_limit,
         )
 
+    ranked_rows: list[dict[str, Any]] = []
+    for row in rows:
+        pages = _saved_ocr_pages(row["stage_output"])
+        ocr_text = _ocr_text_from_pages(pages, max_chars=safe_ocr_max_chars)
+        keyword_answer, keyword_confidence, keyword_scores = _keyword_classify_saved_ocr_text(
+            ocr_text
+        )
+        ranked_rows.append(
+            {
+                "row": row,
+                "pages": pages,
+                "ocr_text": ocr_text,
+                "keyword_answer": keyword_answer,
+                "keyword_confidence": keyword_confidence,
+                "keyword_scores": keyword_scores,
+            }
+        )
+    ranked_rows.sort(
+        key=lambda item: (
+            -float(item["keyword_confidence"]),
+            int(item["row"]["queue_id"]),
+        )
+    )
+    selected_rows = ranked_rows[:safe_limit]
+
     counts = {
-        "candidates": len(rows),
+        "candidates": len(selected_rows),
+        "candidate_pool": len(rows),
         "attempted": 0,
         "known_answers": 0,
         "unknown_answers": 0,
@@ -1617,16 +1701,18 @@ async def run_autocatalog_preclassify_saved_ocr(
         "marked_attempts": 0,
         "updated": 0,
         "superseded": 0,
+        "keyword_answers": 0,
         "min_ocr_chars": safe_min_ocr_chars,
         "limit": safe_limit,
     }
     if not apply:
         logger.info(
             "[autocatalog-preclassify-saved-ocr][DRY-RUN] would local-classify "
-            "%d direct review_pending unknown docs with saved OCR and resume "
+            "%d direct review_pending unknown docs from pool=%d with saved OCR and resume "
             "known answers at status=ocr_done provider=%s model=%s "
             "pipeline_version=%s (pass --apply)",
             counts["candidates"],
+            counts["candidate_pool"],
             safe_provider,
             model,
             pipeline_version,
@@ -1636,10 +1722,44 @@ async def run_autocatalog_preclassify_saved_ocr(
     by_doc_type: Counter[str] = Counter()
     by_error: Counter[str] = Counter()
     async with httpx.AsyncClient() as client:
-        for row in rows:
-            pages = _saved_ocr_pages(row["stage_output"])
-            ocr_text = _ocr_text_from_pages(pages, max_chars=safe_ocr_max_chars)
+        for item in selected_rows:
+            row = item["row"]
+            ocr_text = item["ocr_text"]
             counts["attempted"] += 1
+            keyword_answer = item["keyword_answer"]
+            keyword_confidence = item["keyword_confidence"]
+            keyword_scores = item["keyword_scores"]
+            if keyword_answer:
+                counts["known_answers"] += 1
+                counts["keyword_answers"] += 1
+                by_doc_type[keyword_answer] += 1
+                proposal_ids = sorted(
+                    {pid for pid in (row["proposal_ids"] or []) if pid is not None}
+                )
+                payload = _build_saved_ocr_preclassify_payload(
+                    row["stage_output"],
+                    doc_type=keyword_answer,
+                    provider=KEYWORD_CLASSIFY_PROVIDER,
+                    model=KEYWORD_CLASSIFY_MODEL,
+                    ocr_max_chars=safe_ocr_max_chars,
+                    confidence=keyword_confidence,
+                    type_scores=keyword_scores,
+                    classified_via="saved_ocr_keyword_preclassify",
+                )
+                async with pool.acquire() as conn, conn.transaction():
+                    if proposal_ids:
+                        superseded = await conn.execute(REPROCESS_SUPERSEDE_SQL, proposal_ids)
+                        counts["superseded"] += (
+                            int(superseded.split()[-1]) if superseded else 0
+                        )
+                    updated = await conn.execute(
+                        SAVED_OCR_PRECLASSIFY_UPDATE_SQL,
+                        row["queue_id"],
+                        json.dumps(payload, sort_keys=True),
+                        pipeline_version,
+                    )
+                    counts["updated"] += int(updated.split()[-1]) if updated else 0
+                continue
             try:
                 answer = await _classify_saved_ocr_text(
                     client,
@@ -1714,11 +1834,14 @@ async def run_autocatalog_preclassify_saved_ocr(
 
     logger.info(
         "[autocatalog-preclassify-saved-ocr] candidates=%d attempted=%d "
-        "known=%d unknown=%d malformed=%d errors=%d marked_attempts=%d updated=%d superseded=%d "
+        "pool=%d known=%d keyword=%d unknown=%d malformed=%d errors=%d marked_attempts=%d "
+        "updated=%d superseded=%d "
         "by_doc_type=%s by_error=%s provider=%s model=%s pipeline_version=%s",
         counts["candidates"],
         counts["attempted"],
+        counts["candidate_pool"],
         counts["known_answers"],
+        counts["keyword_answers"],
         counts["unknown_answers"],
         counts["malformed_answers"],
         counts["errors"],
@@ -1807,11 +1930,17 @@ async def run_autocatalog_preclassify_vision(
                     row["blob_path"],
                     declared_mime=row["media_mime"],
                 )
+                saved_pages = _saved_ocr_pages(row["stage_output"])
+                ocr_text = _ocr_text_from_pages(
+                    saved_pages,
+                    max_chars=DEFAULT_AUTOCATALOG_VISION_OCR_MAX_CHARS,
+                )
                 answer, source_page, outcome = await _classify_vision_pages(
                     client,
                     preprocessed.pages,
                     ollama_url=ollama_url,
                     model=model,
+                    ocr_text=ocr_text,
                     timeout_seconds=safe_timeout,
                     max_pages=safe_max_pages,
                     image_max_side=safe_image_max_side,
