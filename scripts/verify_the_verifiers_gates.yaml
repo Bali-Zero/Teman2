@@ -365,15 +365,11 @@ gates:
       Superscar #2 (Esiste != Armato) at the OUTPUT level. The sentinel classically
       asks "did the organ RUN?" (ts fresh, status ok, launchctl PID). A2 adds the
       missing axis "did the organ's OUTPUT ADVANCE?": an organ green-on-schedule whose
-      registry-declared progress_field is byte-identical across the starved-threshold is
-      'starved'. Threshold is frequency-aware (census 2026-06-27, Opzione A): STARVED_TICKS=3
-      is the floor; an organ MAY declare `starved_after_periods: N` so a slow cron is judged
-      over N work-periods, not N sentinel ticks (kills the weekly-cron false positive). This
-      test asserts innocence (advancing output / no progress_field / first-run / a real dead
-      organ / a weekly cron frozen only at the old floor are NEVER mislabelled starved) AND
-      guilt (frozen output past the scaled threshold flips to starved, one advance clears it).
-      Green = green-but-no-delta stays detectable. Opt-in + fail-open (no schema regression,
-      superscar #9).
+      registry-declared progress_field is byte-identical across STARVED_TICKS=3 ticks is
+      'starved'. This test asserts innocence (advancing output / no progress_field /
+      first-run / a real dead organ are NEVER mislabelled starved) AND guilt (frozen
+      output for N ticks flips to starved, one advance clears it). Green = green-but-no-
+      delta stays detectable. Opt-in + fail-open (no schema regression, superscar #9).
 
   - id: scar_A3_reflexion_delta_gate
     kind: scar_test
