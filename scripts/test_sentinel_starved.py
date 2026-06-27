@@ -219,7 +219,60 @@ def main() -> int:
     check("hbless innocence: no output_artifact in launchctl branch -> classic ok, no progress_value",
           rp["status"] == "ok" and "progress_value" not in rp)
 
-    total = 20
+    # ======================================================================
+    # FREQUENCY-AWARE THRESHOLD (Opzione A, census 2026-06-27). STARVED_TICKS counts
+    # SENTINEL ticks (every SENTINEL_INTERVAL_SECONDS), not the organ's work-occasions.
+    # A weekly cron would be flagged 'starved' 15 min after a run while legitimately idle
+    # until next week. The cure: `starved_after_periods: N` scales the tick-threshold to
+    # N work-periods, floored at STARVED_TICKS so fast daemons are unchanged.
+    # ======================================================================
+    SI = S.SENTINEL_INTERVAL_SECONDS
+
+    # UNIT 1: no declaration -> frequency-blind floor (back-compat, the 2 live pilots).
+    check("threshold: organ without starved_after_periods -> STARVED_TICKS floor",
+          S._starved_threshold_ticks({"expected_hb_seconds": 90000}) == S.STARVED_TICKS)
+
+    # UNIT 2: a weekly cron (8d) with N=2 -> ceil(2*691200/300)=4608 ticks, never the floor.
+    weekly = {"expected_hb_seconds": 691200, "starved_after_periods": 2}
+    expect_weekly = -(-(2 * 691200) // SI)  # ceil division
+    check("threshold: weekly cron N=2 scales to N-periods of ticks (not the floor)",
+          S._starved_threshold_ticks(weekly) == expect_weekly and expect_weekly > S.STARVED_TICKS)
+
+    # UNIT 3: a fast daemon (hb 60s) with N=2 -> ceil(120/300)=1 tick, FLOORED at STARVED_TICKS.
+    fast = {"expected_hb_seconds": 60, "starved_after_periods": 2}
+    check("threshold: fast daemon never drops below STARVED_TICKS floor",
+          S._starved_threshold_ticks(fast) == S.STARVED_TICKS)
+
+    # UNIT 4: fail-safe — bad / zero / missing expected_hb -> floor, never a crash.
+    check("threshold: bad starved_after_periods -> floor (fail-safe)",
+          S._starved_threshold_ticks({"expected_hb_seconds": 90000, "starved_after_periods": "x"}) == S.STARVED_TICKS)
+    check("threshold: zero periods -> floor",
+          S._starved_threshold_ticks({"expected_hb_seconds": 90000, "starved_after_periods": 0}) == S.STARVED_TICKS)
+    check("threshold: no expected_hb_seconds -> floor (nothing to scale against)",
+          S._starved_threshold_ticks({"starved_after_periods": 5}) == S.STARVED_TICKS)
+
+    # INTEGRATION (the census false-positive): a weekly cron frozen for STARVED_TICKS=3
+    # ticks (~15 min) must STAY OK — it is legitimately idle between weekly runs.
+    def _weekly_artifact_organ():
+        return {"id": "demo.weekly", "runtime": "pro_launchd", "type": "cron",
+                "expected_hb_seconds": 691200, "severity_on_silence": "warning",
+                "output_artifact": str(art2), "starved_after_periods": 2}
+    art2.write_text("frozen\n")
+    pv_w = S._progress_value(None, _weekly_artifact_organ())
+    # streak already at the OLD floor (3) — pre-cure this WOULD flag starved; post-cure must not.
+    rw = S._classify(_weekly_artifact_organ(), None, LC_PID, NOW,
+                     {"progress_value": pv_w, "starved_streak": S.STARVED_TICKS})
+    check("INTEGRATION: weekly cron frozen at old-floor ticks is NOT starved (false-positive cured)",
+          rw["status"] == "ok")
+
+    # GUILT (the cure still catches a genuinely-dead weekly cron): frozen PAST its scaled
+    # threshold -> starved. Proves the cure raised the bar, it did not remove the alarm.
+    rw_guilt = S._classify(_weekly_artifact_organ(), None, LC_PID, NOW,
+                           {"progress_value": pv_w, "starved_streak": expect_weekly - 1})
+    check("INTEGRATION guilt: weekly cron frozen past its SCALED threshold -> starved",
+          rw_guilt["status"] == "starved")
+
+    total = 29
     print(f"\n=== {'ALL ' + str(total) + ' PASS' if not fails else str(fails) + ' FAIL'} ===")
     return 1 if fails else 0
 
