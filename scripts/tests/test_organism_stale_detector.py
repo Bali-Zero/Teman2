@@ -109,3 +109,78 @@ def test_finding_is_serializable(tmp_path):
     findings = scan_sidecars(d, stale_days=7)
     blob = json.dumps([f.to_dict() for f in findings])
     assert "pro.x" in blob
+
+
+# ---------------------------------------------------------------------------
+# Status-aware detection (2026-06-28 extension): a fresh organ that reports
+# status=failed/degraded is "breathing but crying". The receptor must surface
+# the genuine ones WITHOUT injecting the known false-positives (organs
+# intentionally disabled, decommissioned, or exit-1-by-design) the triage found
+# — else every session gets alert-fatigue (the next blindness).
+# ---------------------------------------------------------------------------
+
+from organism_stale_detector import (  # noqa: E402
+    KNOWN_BENIGN_FAILED,
+    scan_sidecars_status,
+)
+
+
+def test_fresh_failed_organ_flagged_unhealthy(tmp_path):
+    """GUILT: a fresh organ reporting failed (not in allow-list) is flagged."""
+    d = str(tmp_path)
+    _write(d, "mata_garuda.consumer_lag_check", {"ts": time.time(), "status": "failed"})
+    findings = scan_sidecars_status(d, now=time.time())
+    ids = {f.organ_id for f in findings if f.kind == "unhealthy"}
+    assert "mata_garuda.consumer_lag_check" in ids
+
+
+def test_fresh_ok_organ_not_flagged_unhealthy(tmp_path):
+    """INNOCENCE: a fresh organ reporting ok is not an unhealthy finding."""
+    d = str(tmp_path)
+    _write(d, "pro.something", {"ts": time.time(), "status": "ok"})
+    findings = scan_sidecars_status(d, now=time.time())
+    assert [f for f in findings if f.kind == "unhealthy"] == []
+
+
+def test_known_benign_failed_suppressed(tmp_path):
+    """INNOCENCE: an intentionally-disabled organ reporting failed is NOT flagged.
+
+    These are the false-positives from the triage (codex.spark_*, decommissioned
+    wr2 organs, by-design exit-1 auditors). Flagging them = alert-fatigue = the next
+    blindness. The allow-list must suppress them.
+    """
+    d = str(tmp_path)
+    for organ in ("codex.spark_loop", "wr2.telegram_gate", "pro.audit_launchd_daily"):
+        _write(d, organ, {"ts": time.time(), "status": "failed"})
+    findings = scan_sidecars_status(d, now=time.time())
+    flagged = {f.organ_id for f in findings if f.kind == "unhealthy"}
+    assert flagged == set(), f"benign organs wrongly flagged: {flagged}"
+
+
+def test_degraded_status_flagged(tmp_path):
+    """degraded (not just failed) is also surfaced if not benign."""
+    d = str(tmp_path)
+    _write(d, "pro.real_degraded", {"ts": time.time(), "status": "degraded"})
+    findings = scan_sidecars_status(d, now=time.time())
+    assert any(f.organ_id == "pro.real_degraded" and f.kind == "unhealthy" for f in findings)
+
+
+def test_stale_failed_not_double_counted(tmp_path):
+    """A STALE failed organ is a stale finding, not also an unhealthy one.
+
+    Stale dominates: if it hasn't breathed in days, the heartbeat-channel problem
+    is the headline, not the last-reported status."""
+    d = str(tmp_path)
+    old = time.time() - 30 * 86400
+    _write(d, "pro.old_and_failed", {"ts": old, "status": "failed"})
+    findings = scan_sidecars_status(d, now=time.time())
+    kinds = {f.kind for f in findings if f.organ_id == "pro.old_and_failed"}
+    assert kinds == {"stale"}, f"expected only stale, got {kinds}"
+
+
+def test_allow_list_is_documented_not_empty():
+    """The allow-list must be non-empty (the triage found several) and each entry
+    should be a real organ_id string, so drift is auditable."""
+    assert isinstance(KNOWN_BENIGN_FAILED, (set, frozenset, tuple))
+    assert len(KNOWN_BENIGN_FAILED) >= 6
+    assert "codex.spark_loop" in KNOWN_BENIGN_FAILED
