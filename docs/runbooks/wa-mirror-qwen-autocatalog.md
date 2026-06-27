@@ -82,5 +82,43 @@ PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py --auto-at
 PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py --auto-attach-direct-phone --auto-attach-limit 500
 ```
 
+## Promote Direct New Prospects
+
+This is the safe bridge for the `direct_new_prospect_candidate` bucket. It
+creates or resolves a local CRM lead from the direct-chat sender phone, supersedes
+the stale `NO_MATCH` proposal, and resets the queue row to `validated` so the
+normal worker runs only the route stage. It does not upload documents to Kita.
+
+Dry-run first:
+
+```sh
+PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py \
+  --promote-direct-new-prospects --auto-attach-limit 500
+```
+
+Apply the prospect promotion only after the aggregate count matches the reviewed
+bucket:
+
+```sh
+PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py \
+  --promote-direct-new-prospects --auto-attach-limit 500 --apply
+```
+
+Then run the intake worker against only the promoted rows. The launcher keeps
+writer and auto-attach flags off by default:
+
+```sh
+INTAKE_PIPELINE_VERSION_FILTER=v2.3-direct-prospect-promote \
+INTAKE_QWEN_RUN_SECONDS=300 \
+scripts/intake_qwen_autocatalog_worker.sh
+```
+
+Finally re-check the direct-phone attach dry-run:
+
+```sh
+PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py \
+  --auto-attach-direct-phone --auto-attach-limit 500
+```
+
 Do not pass `--apply` until the CRM/Kita writer endpoint and production flags are
 verified for the deployed commit.

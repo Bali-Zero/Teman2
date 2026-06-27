@@ -236,6 +236,15 @@ def test_parser_auto_attach_direct_phone_reuses_limit() -> None:
     assert args.auto_attach_limit == 23
 
 
+def test_parser_promote_direct_new_prospects_defaults() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--promote-direct-new-prospects"])
+    assert args.apply is False
+    assert args.promote_direct_new_prospects is True
+    assert args.new_prospect_pipeline_version == irb.DEFAULT_NEW_PROSPECT_PIPELINE_VERSION
+    assert args.auto_attach_limit == irb.DEFAULT_AUTO_ATTACH_LIMIT
+
+
 def test_parser_review_backlog_report_defaults() -> None:
     irb = _load()
     args = irb.build_parser().parse_args(["--review-backlog-report"])
@@ -436,6 +445,33 @@ def test_direct_phone_auto_attach_sql_targets_safe_direct_bucket() -> None:
     assert "p.routing->>'doc_type' = ANY($2::text[])" in sql
     assert "LIKE 'sender phone%'" in sql
     assert "LIMIT $1" in sql
+
+
+def test_direct_new_prospect_sql_targets_safe_direct_no_match_bucket() -> None:
+    irb = _load()
+    sql = irb.DIRECT_NEW_PROSPECT_SELECT_SQL
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "q.source = 'whatsapp'" in sql
+    assert "LEFT JOIN whatsapp_message_context w" in sql
+    assert "latest.status = 'review_pending'" in sql
+    assert "decision = 'NO_MATCH'" in sql
+    assert "chat_type = 'direct'" in sql
+    assert "sender_phone IS NOT NULL" in sql
+    assert "doc_type = ANY($2::text[])" in sql
+    assert "LIMIT $1" in sql
+
+
+def test_direct_new_prospect_reset_resumes_route_only() -> None:
+    irb = _load()
+    sql = irb.DIRECT_NEW_PROSPECT_RESET_SQL
+    assert "status           = 'validated'" in sql
+    assert "stage            = 'validate'" in sql
+    assert "client_id_hint   = $2" in sql
+    assert "source_context   = CASE" in sql
+    assert "pipeline_version = $4" in sql
+    assert "lease_owner      = NULL" in sql
+    assert "lease_expires_at = NULL" in sql
+    assert "attempts         = 0" in sql
 
 
 def test_review_backlog_report_sql_is_latest_aggregate_and_pii_safe() -> None:

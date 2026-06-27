@@ -52,6 +52,14 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     still honors ``INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED`` and
     ``INTAKE_WRITER_ENABLED`` before any CRM write can happen.
 
+``--promote-direct-new-prospects``
+    Selects wa-mirror direct-chat ``NO_MATCH`` proposals with a sender phone and
+    a Kita-supported doc_type. It reuses the live sweeper's phone-keyed CRM lead
+    upsert, supersedes the stale NO_MATCH proposal, and resumes the queue row at
+    ``validated`` with a bumped pipeline version so the normal worker re-routes
+    it as a direct-phone candidate. Dry-run counts only; document writes still
+    require the separate direct-phone auto-attach gates after re-route.
+
 ``--review-backlog-report``
     Read-only triage of the current wa-mirror review queue. It collapses to the
     latest proposal per queue row and reports aggregate automation buckets:
@@ -100,6 +108,7 @@ import httpx
 
 # Reuse the shipped, tested enqueue core (same import shim as the sweeper).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from backend.services.intake.classify import (
     TEXT_LLM_CLASSIFY_CONF,
     _parse_doc_type_answer,
@@ -108,6 +117,8 @@ from backend.services.intake.classify import (
 from backend.services.intake.auto_attach import try_auto_attach, try_direct_phone_auto_attach
 from backend.services.intake.enqueue import enqueue
 from backend.services.intake.writer import DOCUMENT_CATEGORY_MAP
+from wa_mirror_intake_sweeper import _source_context as _wa_mirror_source_context
+from wa_mirror_intake_sweeper import _upsert_client_by_phone as _upsert_wa_client_by_phone
 
 logger = logging.getLogger("intake_reprocess_backlog")
 
@@ -123,6 +134,7 @@ DEFAULT_AUTOCATALOG_TEXT_MODEL = "qwen3.5:9b"
 DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS = 45.0
 DEFAULT_AUTOCATALOG_OCR_MAX_CHARS = 6000
 DEFAULT_AUTO_ATTACH_LIMIT = 500
+DEFAULT_NEW_PROSPECT_PIPELINE_VERSION = "v2.3-direct-prospect-promote"
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
 WATERMARK_FILE = Path.home() / ".cell-bridge-state" / "wa_mirror_sweep_last_id.txt"
@@ -414,6 +426,80 @@ SELECT p.id, p.queue_id, p.doc_index, p.pipeline_version, p.status,
        ) LIKE 'sender phone%'
  ORDER BY p.id
  LIMIT $1
+"""
+
+DIRECT_NEW_PROSPECT_SELECT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id,
+           p.queue_id,
+           p.status,
+           p.entity_resolution,
+           p.routing,
+           p.commit_gate,
+           p.created_at,
+           q.sender_phone,
+           q.source_context,
+           q.source_ref,
+           w.team_member_email,
+           w.sender_push_name_snapshot,
+           w.chat_type AS mirror_chat_type,
+           w.group_jid AS mirror_group_jid,
+           w.group_subject_snapshot
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+      LEFT JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+     WHERE q.source = 'whatsapp'
+     ORDER BY q.id, p.created_at DESC, p.id DESC
+),
+review AS (
+    SELECT latest.*,
+           COALESCE(latest.entity_resolution->>'decision', latest.commit_gate->>'decision', 'proposal_only') AS decision,
+           COALESCE(latest.routing->>'doc_type', '<missing>') AS doc_type,
+           COALESCE(
+               NULLIF(latest.source_context->>'chat_type', ''),
+               CASE
+                   WHEN latest.mirror_chat_type = 'group' OR latest.mirror_group_jid IS NOT NULL
+                   THEN 'group'
+                   WHEN latest.source_ref LIKE 'wa-mirror:%' AND latest.mirror_chat_type IS NOT NULL
+                   THEN 'direct'
+                   ELSE '<missing>'
+               END
+           ) AS chat_type
+      FROM latest
+     WHERE latest.status = 'review_pending'
+)
+SELECT proposal_id, queue_id, sender_phone, source_context, team_member_email,
+       sender_push_name_snapshot, chat_type, mirror_group_jid,
+       group_subject_snapshot, doc_type
+  FROM review
+ WHERE decision = 'NO_MATCH'
+   AND chat_type = 'direct'
+   AND sender_phone IS NOT NULL
+   AND sender_phone <> ''
+   AND doc_type = ANY($2::text[])
+ ORDER BY proposal_id
+ LIMIT $1
+"""
+
+DIRECT_NEW_PROSPECT_RESET_SQL = """
+UPDATE intake_queue
+   SET status           = 'validated',
+       stage            = 'validate',
+       lease_owner      = NULL,
+       lease_expires_at = NULL,
+       attempts         = 0,
+       next_visible_at  = now(),
+       client_id_hint   = $2,
+       source_context   = CASE
+                            WHEN source_context IS NULL OR source_context = '{}'::jsonb
+                            THEN $3::jsonb
+                            ELSE source_context
+                          END,
+       pipeline_version = $4,
+       updated_at       = now()
+ WHERE id = $1
 """
 
 REVIEW_BACKLOG_REPORT_SQL = """
@@ -1241,6 +1327,108 @@ async def run_direct_phone_auto_attach(
     return counts
 
 
+async def run_promote_direct_new_prospects(
+    pool: asyncpg.Pool,
+    pipeline_version: str,
+    limit: int,
+    apply: bool,
+) -> dict[str, Any]:
+    """Create/resolve phone-keyed local leads for direct NO_MATCH backlog rows.
+
+    This mode deliberately stops before document commit. It only makes the stale
+    NO_MATCH rows routable by the existing sender-phone policy; the worker then
+    emits a fresh LINK_CANDIDATE proposal, and ``--auto-attach-direct-phone`` is
+    the only path that can write the document to Kita.
+    """
+    safe_limit = max(limit, 1)
+    supported_doc_types = sorted(DOCUMENT_CATEGORY_MAP)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            DIRECT_NEW_PROSPECT_SELECT_SQL,
+            safe_limit,
+            supported_doc_types,
+        )
+
+    counts: dict[str, Any] = {
+        "candidates": len(rows),
+        "attempted": 0,
+        "promoted": 0,
+        "superseded": 0,
+        "reset": 0,
+        "errors": 0,
+        "limit": safe_limit,
+        "pipeline_version": pipeline_version,
+        "by_error": {},
+    }
+    if not apply:
+        logger.info(
+            "[promote-direct-new-prospects][DRY-RUN] would upsert %d direct "
+            "phone-keyed leads and re-route their NO_MATCH docs with "
+            "pipeline_version=%s (pass --apply)",
+            counts["candidates"],
+            pipeline_version,
+        )
+        return counts
+
+    by_error: Counter[str] = Counter()
+    for row in rows:
+        counts["attempted"] += 1
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                client_id = await _upsert_wa_client_by_phone(
+                    conn,
+                    raw_phone=row["sender_phone"],
+                    push_name=row["sender_push_name_snapshot"],
+                    assigned_to=row["team_member_email"],
+                    note_kind="historical media backlog",
+                )
+                if client_id is None:
+                    by_error["no_phone"] += 1
+                    continue
+
+                superseded = await conn.execute(
+                    REPROCESS_SUPERSEDE_SQL,
+                    [row["proposal_id"]],
+                )
+                source_context = _wa_mirror_source_context(
+                    {
+                        "chat_type": row["chat_type"],
+                        "group_jid": row["mirror_group_jid"],
+                        "group_subject_snapshot": row["group_subject_snapshot"],
+                        "sender_phone": row["sender_phone"],
+                    }
+                )
+                reset = await conn.execute(
+                    DIRECT_NEW_PROSPECT_RESET_SQL,
+                    row["queue_id"],
+                    client_id,
+                    json.dumps(source_context, sort_keys=True),
+                    pipeline_version,
+                )
+
+            counts["promoted"] += 1
+            counts["superseded"] += int(superseded.split()[-1]) if superseded else 0
+            counts["reset"] += int(reset.split()[-1]) if reset else 0
+        except Exception as exc:  # aggregate only; no phone/proposal payload.
+            counts["errors"] += 1
+            by_error[type(exc).__name__] += 1
+
+    counts["by_error"] = dict(by_error)
+    logger.info(
+        "[promote-direct-new-prospects] candidates=%d attempted=%d promoted=%d "
+        "superseded=%d reset=%d errors=%d by_error=%s pipeline_version=%s",
+        counts["candidates"],
+        counts["attempted"],
+        counts["promoted"],
+        counts["superseded"],
+        counts["reset"],
+        counts["errors"],
+        counts["by_error"],
+        pipeline_version,
+    )
+    return counts
+
+
 async def run_review_backlog_report(
     pool: asyncpg.Pool,
     min_ocr_chars: int,
@@ -1333,6 +1521,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="try direct wa-mirror phone LINK_CANDIDATE proposals through the opt-in gate",
     )
     p.add_argument(
+        "--promote-direct-new-prospects",
+        action="store_true",
+        help=(
+            "upsert local phone-keyed leads for direct wa-mirror NO_MATCH docs, "
+            "then re-route them through the normal worker"
+        ),
+    )
+    p.add_argument(
         "--review-backlog-report",
         action="store_true",
         help="read-only aggregate triage of current wa-mirror review buckets",
@@ -1401,6 +1597,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"maximum eligible review proposals processed by one auto-attach run (default {DEFAULT_AUTO_ATTACH_LIMIT})",
     )
     p.add_argument(
+        "--new-prospect-pipeline-version",
+        default=DEFAULT_NEW_PROSPECT_PIPELINE_VERSION,
+        help=(
+            "bumped pipeline_version for --promote-direct-new-prospects "
+            f"(default {DEFAULT_NEW_PROSPECT_PIPELINE_VERSION})"
+        ),
+    )
+    p.add_argument(
         "--watermark",
         type=int,
         default=None,
@@ -1429,13 +1633,15 @@ async def main(argv: list[str] | None = None) -> int:
         or args.autocatalog_preclassify_saved_ocr
         or args.auto_attach_eligible
         or args.auto_attach_direct_phone
+        or args.promote_direct_new_prospects
         or args.review_backlog_report
     ):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, and/or "
             "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr/"
-            "--auto-attach-eligible/--auto-attach-direct-phone/--review-backlog-report"
+            "--auto-attach-eligible/--auto-attach-direct-phone/"
+            "--promote-direct-new-prospects/--review-backlog-report"
         )
         return 2
 
@@ -1480,6 +1686,13 @@ async def main(argv: list[str] | None = None) -> int:
             await run_auto_attach_eligible(pool, max(args.auto_attach_limit, 1), args.apply)
         if args.auto_attach_direct_phone:
             await run_direct_phone_auto_attach(pool, max(args.auto_attach_limit, 1), args.apply)
+        if args.promote_direct_new_prospects:
+            await run_promote_direct_new_prospects(
+                pool,
+                args.new_prospect_pipeline_version,
+                max(args.auto_attach_limit, 1),
+                args.apply,
+            )
         if args.review_backlog_report:
             await run_review_backlog_report(pool, max(args.autocatalog_min_ocr_chars, 1))
         if args.revive_stub:
