@@ -62,19 +62,53 @@ _TERMINAL_STATUSES = (
 )
 
 
-def _blob_root() -> Path:
-    return Path(
-        os.environ.get("INTAKE_BLOB_ROOT", os.path.expanduser("~/.nuzantara/intake-blobs"))
-    ).resolve()
+def _blob_roots() -> list[Path]:
+    """The set of directories whose blobs this job is allowed to unlink.
+
+    Defence-in-depth: a blob is only ever unlinked if it resolves strictly
+    under ONE of these roots — never an arbitrary path from the DB row.
+
+    Two managed roots by default:
+    - the Drive/Dropbox intake cache (``~/.nuzantara/intake-blobs``)
+    - the WhatsApp mirror media dir (``~/wa-mirror-media``) — historically
+      *outside* the single root, so WA blobs were skipped forever and grew
+      unbounded (2.0 GB / 5.6k files, 2026-06-27). They are terminal-status
+      copies whose extracted value already lives in the DB, so they obey the
+      same TTL contract as every other intake blob.
+
+    Override the whole set with ``INTAKE_BLOB_ROOTS`` (os.pathsep-separated).
+    ``INTAKE_BLOB_ROOT`` (singular, legacy) still overrides the first root.
+    """
+    multi = os.environ.get("INTAKE_BLOB_ROOTS")
+    if multi:
+        raw = [p for p in multi.split(os.pathsep) if p.strip()]
+    else:
+        raw = [
+            os.environ.get("INTAKE_BLOB_ROOT", os.path.expanduser("~/.nuzantara/intake-blobs")),
+            os.path.expanduser("~/wa-mirror-media"),
+        ]
+    roots: list[Path] = []
+    for r in raw:
+        try:
+            roots.append(Path(r).expanduser().resolve())
+        except OSError:
+            continue
+    return roots
 
 
-def _is_under_root(path: Path, root: Path) -> bool:
-    """True iff `path` is strictly under `root` (defence-in-depth before unlink)."""
+def _is_under_any_root(path: Path, roots: list[Path]) -> bool:
+    """True iff `path` is strictly under ANY managed root (defence-in-depth)."""
     try:
-        path.resolve().relative_to(root)
-        return True
-    except (ValueError, OSError):
+        resolved = path.resolve()
+    except OSError:
         return False
+    for root in roots:
+        try:
+            resolved.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 async def reclaim(pool: asyncpg.Pool, *, ttl_days: int, apply: bool) -> dict[str, int]:
@@ -86,11 +120,11 @@ async def reclaim(pool: asyncpg.Pool, *, ttl_days: int, apply: bool) -> dict[str
         "outside_root": 0,
         "errors": 0,
     }
-    root = _blob_root()
+    roots = _blob_roots()
 
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            f"""
+            """
             SELECT q.id, q.blob_path, q.status, di.byte_size
             FROM intake_queue q
             JOIN document_instances di ON di.id = q.instance_id
@@ -108,9 +142,9 @@ async def reclaim(pool: asyncpg.Pool, *, ttl_days: int, apply: bool) -> dict[str
         if not blob_path:
             continue
         p = Path(blob_path)
-        if not _is_under_root(p, root):
+        if not _is_under_any_root(p, roots):
             counters["outside_root"] += 1
-            logger.warning("retention: blob_path outside INTAKE_BLOB_ROOT, skipping: %s", blob_path)
+            logger.warning("retention: blob_path outside managed blob roots, skipping: %s", blob_path)
             continue
         if not p.exists():
             counters["already_gone"] += 1

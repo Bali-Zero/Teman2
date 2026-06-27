@@ -135,7 +135,7 @@ def test_collect_status_offline_skips_network() -> None:
     http_json.assert_not_called()
 
 
-def test_collect_status_offers_reversible_pro_autostash_when_dirty_and_behind() -> None:
+def test_collect_status_disables_peer_autostash_without_explicit_override() -> None:
     args = Namespace(
         refresh=False,
         offline=False,
@@ -181,11 +181,26 @@ def test_collect_status_offers_reversible_pro_autostash_when_dirty_and_behind() 
         ),
         patch("nuz_status.gh_latest_run", return_value={"available": False}),
         patch("nuz_status.http_json", side_effect=fake_http_json),
+        patch.dict("os.environ", {"NUZ_STATUS_ALLOW_PEER_AUTOSTASH": ""}, clear=False),
     ):
         payload = nuz_status.collect_status(args)
 
     autostash = next(action for action in payload["actions"] if action["id"] == "stash_and_sync_pro_main")
     clean_sync = next(action for action in payload["actions"] if action["id"] == "sync_pro_main")
-    assert autostash["enabled"] is True
+    assert autostash["enabled"] is False
     assert autostash["target"] == "pro-main-autostash"
+    assert autostash["requires_env"] == "NUZ_STATUS_ALLOW_PEER_AUTOSTASH=1"
     assert clean_sync["enabled"] is False
+
+
+def test_safe_fix_refuses_peer_autostash_without_explicit_override() -> None:
+    with (
+        patch.dict("os.environ", {"NUZ_STATUS_ALLOW_PEER_AUTOSTASH": ""}, clear=False),
+        patch("nuz_status.run_command") as run_command,
+    ):
+        result = nuz_status.safe_fix("pro-main-autostash", peer="pro")
+
+    assert result["ok"] is False
+    assert result["returncode"] == 2
+    assert "NUZ_STATUS_ALLOW_PEER_AUTOSTASH=1" in result["stderr"]
+    run_command.assert_not_called()

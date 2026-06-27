@@ -12,16 +12,16 @@ sit `pending` forever. This wires the loop so SEND works.
 
 ## Verified facts
 
-| Fact | Value |
-|---|---|
-| Unit of work | `process_outbox_once(pool, whatsapp_service, bot_generate_fn) -> str` |
-| Returns | `idle / sent / aborted_human / window_closed / retry / failed` |
-| `whatsapp_service` | singleton `backend.services.integrations.whatsapp_service.whatsapp_service`, has `async send_message(phone, text, reply_to_message_id=None)` |
-| `api` process group | always-on (`auto_stop='off'`, `min_machines_running=1`), single-worker (fly.toml comment: 2 workers duplicate background loops → keep single) |
-| `rag` process group | no `[[services]]` block; not guaranteed always-on |
-| Existing bg-loop host | `main_api.py::lifespan_light` already runs Notification Scheduler in an `asyncio.create_task`, gated by `DISABLE_BACKGROUND_WORKERS` |
-| Existing bg-loop precedent | `app_factory.py::lifespan` (full/rag) runs `run_worker`, `legal_run_worker` |
-| claim lease | `wa_outbox.claim_expires_at`, `FOR UPDATE SKIP LOCKED` → double-worker is safe (no double-send) but wasteful |
+| Fact                       | Value                                                                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit of work               | `process_outbox_once(pool, whatsapp_service, bot_generate_fn) -> str`                                                                         |
+| Returns                    | `idle / sent / aborted_human / window_closed / retry / failed`                                                                                |
+| `whatsapp_service`         | singleton `backend.services.integrations.whatsapp_service.whatsapp_service`, has `async send_message(phone, text, reply_to_message_id=None)`  |
+| `api` process group        | always-on (`auto_stop='off'`, `min_machines_running=1`), single-worker (fly.toml comment: 2 workers duplicate background loops → keep single) |
+| `rag` process group        | no `[[services]]` block; not guaranteed always-on                                                                                             |
+| Existing bg-loop host      | `main_api.py::lifespan_light` already runs Notification Scheduler in an `asyncio.create_task`, gated by `DISABLE_BACKGROUND_WORKERS`          |
+| Existing bg-loop precedent | `app_factory.py::lifespan` (full/rag) runs `run_worker`, `legal_run_worker`                                                                   |
+| claim lease                | `wa_outbox.claim_expires_at`, `FOR UPDATE SKIP LOCKED` → double-worker is safe (no double-send) but wasteful                                  |
 
 ## Design
 
@@ -30,6 +30,7 @@ sit `pending` forever. This wires the loop so SEND works.
 Add the scheduler as an `asyncio.create_task` in `main_api.py::lifespan_light`,
 inside the existing `DISABLE_BACKGROUND_WORKERS` else-block, right after the
 Notification Scheduler. Rationale:
+
 - `api` is the only always-on, single-worker group → exactly one loop, never
   stopped, no double-worker waste.
 - `lifespan_light` already owns `app.state.db_pool` and one bg loop — same
@@ -81,6 +82,8 @@ prepare/monitor + human reply before publication), B as a follow-up.
 ## Kill switch & ops
 
 - `DISABLE_BACKGROUND_WORKERS=1` already disables it (shared with other loops).
+- `WA_OUTBOX_SCHEDULER_ENABLED=0` disables only the WA outbox scheduler while
+  leaving the API-side Notification Scheduler and other background workers on.
 - `WA_OUTBOX_POLL_SECONDS` (default 3) tunes cadence.
 - Loop logs each non-idle status at INFO; exceptions at EXCEPTION (never crashes
   the app — the lifespan task swallows and backs off).
@@ -99,5 +102,6 @@ prepare/monitor + human reply before publication), B as a follow-up.
 
 ## Rollback
 
-Additive: the loop is one task gated by an env var. Revert = unset/disable or
-revert the diff. No schema, no data change.
+Additive: the loop is one task gated by env vars. Revert = set
+`WA_OUTBOX_SCHEDULER_ENABLED=0`, use the broader `DISABLE_BACKGROUND_WORKERS=1`,
+or revert the diff. No schema, no data change.

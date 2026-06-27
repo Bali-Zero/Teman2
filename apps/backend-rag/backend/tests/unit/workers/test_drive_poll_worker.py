@@ -85,6 +85,10 @@ async def test_run_once_records_heartbeat_and_result() -> None:
     assert "drive_poll_worker_heartbeat_at" in written_keys
     assert "drive_poll_worker_last_status" in written_keys
     assert "drive_poll_worker_last_result" in written_keys
+    written = {
+        call.args[1]: call.args[2] for call in fake_pool.conn.execute.await_args_list
+    }
+    assert written["drive_poll_worker_last_error"] == ""
 
 
 @pytest.mark.asyncio

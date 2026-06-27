@@ -155,6 +155,7 @@ async def run_once(config: DrivePollWorkerConfig) -> dict[str, Any]:
             pool,
             status=status,
             result=result,
+            error="",
             finished_at=_utc_now_iso(),
         )
         logger.info("Drive poll worker cycle finished: %s", result)
