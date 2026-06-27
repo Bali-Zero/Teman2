@@ -225,7 +225,7 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
 async def test_claim_filter_limits_worker_to_source_and_pipeline(pool, tmp_path):
     """A filtered maintenance worker claims only the staged rollout rows."""
     qids = await _make_jobs(pool, tmp_path, 3, "filter")
-    version = f"test-filter-{uuid.uuid4().hex}"
+    version = f"flt-{uuid.uuid4().hex[:12]}"
     target, wrong_version, wrong_source = qids
     try:
         async with pool.acquire() as conn:
