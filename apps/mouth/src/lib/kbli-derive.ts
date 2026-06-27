@@ -36,12 +36,24 @@ export function licenseForRisk(risk: string | null | undefined): string {
 
 /**
  * Resolve the license type for a scale: the explicit value if present, else derived from risk.
- * `perizinan` may be the legacy scalar OR a " · "-joined distinct list already assembled upstream.
+ *
+ * IMPORTANT: in the real dataset `perizinan` is an ARRAY on ~99.5% of scales (the legacy
+ * `string` type in kbli-types was a lie — it is a `string[]`, frequently empty `[]`), and a
+ * bare `string` on the ~20 legacy records. Handle BOTH: join the distinct non-empty array
+ * entries; fall back to the scalar; and when nothing is explicit (empty array / empty string),
+ * derive from the risk tier. Mirrors the Swift app's permitText (scalar → array → derive).
  */
 export function resolveLicenseType(
-  perizinan: string | null | undefined,
+  perizinan: string | string[] | null | undefined,
   risk: string | null | undefined,
 ): string {
+  if (Array.isArray(perizinan)) {
+    const distinct = Array.from(
+      new Set(perizinan.map((x) => (x || "").trim()).filter(Boolean)),
+    );
+    if (distinct.length > 0) return distinct.join(" · ");
+    return licenseForRisk(risk);
+  }
   const p = (perizinan || "").trim();
   if (p) return p;
   return licenseForRisk(risk);

@@ -33,6 +33,22 @@ describe("resolveLicenseType (explicit value wins, else derive)", () => {
     expect(resolveLicenseType("", "Tinggi")).toBe("NIB + Izin");
     expect(resolveLicenseType(null, "Rendah")).toBe("NIB");
   });
+
+  // The real dataset stores perizinan as an ARRAY on ~99.5% of scales (often empty []).
+  // A naive (perizinan || "").trim() crashed at runtime — these guard that regression.
+  it("handles the array form: joins distinct non-empty entries", () => {
+    expect(resolveLicenseType(["NIB", "Izin", "NIB"], "Tinggi")).toBe(
+      "NIB · Izin",
+    );
+    expect(
+      resolveLicenseType(["", null as unknown as string, "NIB"], "Tinggi"),
+    ).toBe("NIB");
+  });
+
+  it("handles the array form: derives from risk when the array is empty", () => {
+    expect(resolveLicenseType([], "Tinggi")).toBe("NIB + Izin");
+    expect(resolveLicenseType([], "Rendah")).toBe("NIB");
+  });
 });
 
 describe("formatTimeframe (clean display of jangka_waktu)", () => {
