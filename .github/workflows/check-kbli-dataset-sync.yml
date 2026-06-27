@@ -1,0 +1,74 @@
+name: check-kbli-dataset-sync
+
+# Superscar #1 (HOME-fork) antidote, made executable.
+#
+# The KBLI_2025_FINAL_CLEAN.json dataset has lived in 6 physical copies + 1 broken
+# symlink, drifting silently: the RAG chatbot read a stale/poor copy (86101 = TERBUKA/
+# 100, no OSS source, no l4_bali) while balizero.com/kbli + the native app served the
+# corrected rich OSS-base. The structural cure for the whole #1 family is a CI lint that
+# FAILS if a tracked consumer copy diverges (`cmp -s`) from the single canonical file.
+#
+# CANONICAL = source_documents/KBLI_2025_FINAL_CLEAN.json (repo ROOT, git-tracked) — the
+# path the RAG actually reads (kbli_eye.py default db_path + reindex parents[4]).
+#
+# This job runs `scripts/sync_kbli_dataset.sh --check`, which byte-compares canonical to
+# every consumer. Gitignored consumers (the RAG runtime copies) that are absent on a
+# fresh CI checkout are skipped — they're materialised at build time by the same script;
+# only git-TRACKED consumers must always be present & identical.
+#
+# Path-scoped: only runs when a dataset copy, the sync script, or this workflow changes —
+# a PR that touches none of them has nothing to check (no pending-forever, W69 BUCO #1).
+# NON-REQUIRED by design: a brand-new signal observes for a review cycle before it can
+# block; flip to required only after it proves zero false-positive.
+on:
+  pull_request:
+    paths:
+      - "source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+      - "scripts/sync_kbli_dataset.sh"
+      - ".github/workflows/check-kbli-dataset-sync.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+      - "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+      - "scripts/sync_kbli_dataset.sh"
+      - ".github/workflows/check-kbli-dataset-sync.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-kbli-dataset-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-kbli-dataset-sync:
+    name: check-kbli-dataset-sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Canonical dataset is a real file (not a symlink, not missing)
+        run: |
+          set -uo pipefail
+          C=source_documents/KBLI_2025_FINAL_CLEAN.json
+          if [ -L "$C" ]; then
+            echo "::error::$C is a SYMLINK — the canonical KBLI dataset must be a physical file (HOME-fork #1)."
+            exit 1
+          fi
+          if [ ! -f "$C" ]; then
+            echo "::error::$C is missing — the canonical KBLI dataset must exist at repo root."
+            exit 1
+          fi
+          echo "OK: canonical $C present as a physical file."
+
+      - name: All tracked consumer copies are byte-identical to canonical
+        run: |
+          set -uo pipefail
+          chmod +x scripts/sync_kbli_dataset.sh
+          scripts/sync_kbli_dataset.sh --check
