@@ -18,6 +18,9 @@ export interface BaliL4 {
   reason: string;
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   needsReview: boolean;
+  /** Authoritative "a PT PMA cannot register this in Bali" flag from the dataset.
+   *  undefined when the source (schema-v2) predates the flag → fall back to status list. */
+  blocked?: boolean;
   from2020?: string;
   moratorium: { rule: string; effective: string; source: string; virtualOffice: string };
 }
@@ -50,6 +53,7 @@ function loadFromLiveData(): Record<string, BaliL4> | null {
       reason: l4.reason ?? '',
       confidence: l4.confidence ?? 'MEDIUM',
       needsReview: !!l4.needs_review,
+      blocked: typeof l4.blocked === 'boolean' ? l4.blocked : undefined,
       from2020: l4.from_2020 ?? undefined,
       moratorium: {
         rule: m.rule ?? '',
@@ -109,9 +113,13 @@ export function getBaliL4(kode: string): BaliL4 | null {
   return loadSchema()[kode] ?? null;
 }
 
-/** True if a PMA (foreign-owned) company is effectively blocked in Bali for this code. */
+/** True if a PMA (foreign-owned) company is effectively blocked in Bali for this code.
+ *  Prefer the authoritative `blocked` flag from the dataset (covers NEEDS_REVIEW_NO_OSS_SCOPE,
+ *  CHIUSO_PMA_NO_BESAR, etc. that a status-name list would miss — superscar #3); fall back to the
+ *  status list only when the source has no explicit flag (schema-v2). */
 export function isBlockedInBali(kode: string): boolean {
   const l4 = getBaliL4(kode);
   if (!l4) return false;
+  if (typeof l4.blocked === 'boolean') return l4.blocked;
   return ['BLOCCATO_CLASSE_RISCHIO', 'CHIUSO_BALI', 'TERTUTUP'].includes(l4.status);
 }
