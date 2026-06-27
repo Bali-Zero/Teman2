@@ -15,7 +15,7 @@
  * RBAC is enforced server-side (403 → error boundary). Money is IDR.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Wallet,
@@ -25,6 +25,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Sheet,
+  Upload,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,14 @@ function CashoutTable({ rows }: { rows: CashoutRow[] }) {
                 {r.client_name ?? r.counterparty ?? "—"}
               </td>
               <td className="px-3 py-2 text-muted-foreground">
+                {r.type === "cashout_worksheet" && (
+                  <span
+                    className="mr-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                    title="Imported from Asya's worksheet PDF — pending bank reconciliation, excluded from the totals above"
+                  >
+                    Worksheet
+                  </span>
+                )}
                 {r.category ?? r.type}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
@@ -455,6 +464,8 @@ export default function AccountingPage() {
   const [cashout, setCashout] = useState<CashoutRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadCashout = useCallback(async () => {
     try {
@@ -499,6 +510,28 @@ export default function AccountingPage() {
     }
   };
 
+  const handleImportFile = async (file: File | undefined) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await accountingApi.importCashout(file);
+      const weeks = res.weeks.length ? ` (${res.weeks.join(", ")})` : "";
+      const replaced = res.replaced ? `, replaced ${res.replaced} prior` : "";
+      success("Cashout imported", `${res.imported} row(s)${weeks}${replaced}`);
+      loadCashout();
+    } catch (err) {
+      // 422 = undated / non-cashout PDF; importCashout surfaces the backend
+      // `detail` as the Error's `.message`.
+      const detail =
+        (err instanceof Error && err.message) ||
+        "Import failed — is this a GABUNGAN cashout PDF?";
+      error("Import failed", detail);
+      logger.error("accounting import-cashout failed", {}, err as Error);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -506,17 +539,57 @@ export default function AccountingPage() {
           <Wallet className="h-6 w-6 text-[var(--bz-accent,#d4845a)]" />
           <h1 className="text-2xl font-semibold tracking-tight">Accounting</h1>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={exporting}>
-          {exporting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Sheet className="mr-2 h-4 w-4" />
-          )}
-          Export to Sheets
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={(e) => {
+              void handleImportFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            title="Import Asya's weekly cashout worksheet PDF (GABUNGAN)"
+          >
+            {importing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="mr-2 h-4 w-4" />
+            )}
+            Import Cashout PDF
+          </Button>
+          <Button variant="outline" onClick={handleExport} disabled={exporting}>
+            {exporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sheet className="mr-2 h-4 w-4" />
+            )}
+            Export to Sheets
+          </Button>
+        </div>
       </div>
 
       <SummaryCards summary={summary} />
+      {(() => {
+        // Worksheet rows are Asya's planning draft (excluded from the totals
+        // above) — surface how much pending money is sitting in that bucket so
+        // the gap between "what's booked" and "what's confirmed in the bank" is
+        // visible at a glance.
+        const ws = summary?.by_type?.find((t) => t.type === "cashout_worksheet");
+        if (!ws || !ws.n) return null;
+        return (
+          <p className="-mt-3 text-xs text-amber-700">
+            {ws.n} worksheet draft(s) ({formatIDR(ws.total_idr)}) imported from
+            Asya&apos;s PDF — excluded from the totals above, pending bank
+            reconciliation.
+          </p>
+        );
+      })()}
 
       <div className="flex gap-2 border-b">
         <button

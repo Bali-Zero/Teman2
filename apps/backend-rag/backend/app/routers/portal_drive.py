@@ -2,7 +2,7 @@
 Portal Drive Proxy Router.
 
 Provides scoped access to a client's Google Drive folder.
-Clients can only see files in their own drive_folder_id.
+Clients can only see a safe projection of their own google_drive_folder_id.
 """
 
 from typing import Any
@@ -29,18 +29,35 @@ async def _list_client_drive_files(
     drive_service: ServiceAccountDriveService,
     client_id: int,
 ) -> dict[str, Any] | None:
-    """Return a client-safe placeholder without exposing Drive navigation."""
+    """Return a client-safe projection of the configured Drive folder."""
     async with pool.acquire() as conn:
-        await conn.fetchval(
-            "SELECT drive_folder_id FROM clients WHERE id = $1 AND deleted_at IS NULL",
+        folder_id = await conn.fetchval(
+            "SELECT google_drive_folder_id FROM clients WHERE id = $1 AND deleted_at IS NULL",
             client_id,
         )
 
+    if not folder_id:
+        return {
+            "files": [],
+            "folders": [],
+            "total_files": 0,
+            "message": "No client Drive folder is configured",
+        }
+
+    structure = await drive_service.get_folder_structure(folder_id)
+    folders = [
+        {"id": folder["id"], "name": folder["name"]}
+        for folder in structure.get("folders", [])
+        if folder.get("id") and folder.get("name")
+    ]
+
     return {
+        "root_id": structure.get("root_id", folder_id),
+        "root_name": structure.get("root_name"),
         "files": [],
-        "folders": [],
-        "total_files": 0,
-        "message": "Drive navigation is not exposed in the client portal",
+        "folders": folders,
+        "total_files": structure.get("total_files", 0),
+        "total_size_bytes": structure.get("total_size_bytes", 0),
     }
 
 

@@ -14,6 +14,7 @@ import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
 import { BaliStatusBadge } from "@/components/kbli/BaliStatusBadge";
+import { cn } from "@/lib/utils";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import {
   KBLICodeJsonLd,
@@ -57,7 +58,9 @@ export async function generateMetadata({
     kbli.pma.status === "open"
       ? "100% Foreign Ownership"
       : kbli.pma.status === "restricted"
-        ? `Restricted (max ${kbli.pma.maxForeign}% foreign)`
+        ? kbli.pma.capSpecial
+          ? "Restricted (special distribution conditions)"
+          : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
         : "Closed to Foreign Investment";
 
   const title = `KBLI ${kbli.code}: ${kbli.titleEn} — Indonesia Business Guide 2025`;
@@ -238,11 +241,62 @@ export default async function KBLICodePage({
                 </p>
               )}
 
+              {/* PMA verdict banner — the binding answer for a PT PMA, aligned with the native app */}
+              {(() => {
+                const baliBlocked = !!kbli.baliL4?.blocked;
+                const nationallyClosed =
+                  !kbli.pma.capSpecial &&
+                  (kbli.pma.status === "closed" || kbli.pma.maxForeign === 0);
+                const pmaBlocked = baliBlocked || nationallyClosed;
+                return (
+                  <>
+                    <div
+                      className={cn(
+                        "mt-5 rounded-xl border px-4 py-3",
+                        pmaBlocked
+                          ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
+                          : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]",
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "text-base font-semibold",
+                          pmaBlocked
+                            ? "text-[var(--kbli-pma-closed)]"
+                            : "text-[var(--kbli-pma-open)]",
+                        )}
+                      >
+                        {nationallyClosed
+                          ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
+                          : baliBlocked
+                            ? "In Bali: a PT PMA cannot register this code"
+                            : "In Bali: open to a PT PMA"}
+                      </p>
+                    </div>
+                    {baliBlocked && !nationallyClosed && (
+                      <div className="mt-3 rounded-xl border border-[var(--kbli-pma-restricted)]/30 bg-[var(--kbli-pma-restricted-bg)] px-4 py-3">
+                        <p className="text-sm font-semibold text-[var(--kbli-pma-restricted)]">
+                          National procedure — does not apply to a PT PMA in
+                          Bali
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
+                          In Bali this activity is reserved for MSMEs; a PT PMA
+                          (large enterprise) cannot register it. The national
+                          procedure below applies only to non-PMA operators.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
               {/* Badge strip */}
               <div className="mt-5 flex flex-wrap gap-2.5">
                 <PMABadge
                   status={kbli.pma.status}
                   maxForeign={kbli.pma.maxForeign}
+                  capSpecial={kbli.pma.capSpecial}
+                  capVerified={kbli.pma.capVerified}
                 />
                 {kbli.licensing[0] && (
                   <RiskBadge category={kbli.licensing[0].riskCategory} />
@@ -722,11 +776,15 @@ export default async function KBLICodePage({
                             Foreign Ownership
                           </span>
                           <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {kbli.pma.status === "open"
-                              ? `${kbli.pma.maxForeign}% Open`
-                              : kbli.pma.status === "restricted"
-                                ? `Max ${kbli.pma.maxForeign}%`
-                                : "Closed"}
+                            {kbli.pma.capSpecial
+                              ? "Restricted · special conditions"
+                              : kbli.pma.status === "open"
+                                ? `${kbli.pma.maxForeign}% Open`
+                                : kbli.pma.status === "restricted"
+                                  ? kbli.pma.capVerified
+                                    ? `Max ${kbli.pma.maxForeign}%`
+                                    : `≈${kbli.pma.maxForeign}% (unverified)`
+                                  : "Closed"}
                           </span>
                         </div>
                         <div
@@ -821,7 +879,9 @@ export default async function KBLICodePage({
                       {kbli.pma.status === "open"
                         ? `Yes. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBUKA — open to 100% foreign ownership through a PT PMA company. You do not need a local Indonesian partner.`
                         : kbli.pma.status === "restricted"
-                          ? `Partially. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBATAS — foreign ownership is capped at ${kbli.pma.maxForeign}%. You will need an Indonesian partner for the remaining shares.${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
+                          ? kbli.pma.capSpecial
+                            ? `Conditionally. KBLI ${kbli.code} (${kbli.titleId}) is TERBATAS with special distribution conditions (open to foreign ownership but subject to a special distribution-network/location requirement — verify the exact terms in OSS).${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
+                            : `Partially. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBATAS — foreign ownership is ${kbli.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${kbli.pma.maxForeign}%. You will need an Indonesian partner for the remaining shares.${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
                           : `No. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERTUTUP — closed to foreign investment. This business activity is reserved for Indonesian nationals.`}
                     </div>
                   </details>

@@ -7,6 +7,7 @@ three read endpoints, and query-param validation.
 
 from __future__ import annotations
 
+import io
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -15,6 +16,31 @@ from fastapi.testclient import TestClient
 
 import backend.app.routers.accounting as accounting_module
 from backend.app.dependencies import get_current_user, get_database_pool
+
+
+def _gabungan_pdf_bytes() -> bytes:
+    """A minimal 2-week GABUNGAN cashout worksheet PDF (gridded so pdfplumber
+    sees the tables the way it sees Asya's spreadsheet export)."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4)
+    header = ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "MARGIN BS", "FINAL PRICE", "NOTE"]
+    data = [
+        ["NEW CASHOUT 6 MARCH 2026", "", "", "", "", "", "", ""],
+        header,
+        ["CLIENT ONE", "C1", "Rp1.000.000", "", "", "Rp600.000", "Rp2.300.000", ""],
+        ["CLIENT TWO", "C1 - Urgent", "Rp1.000.000", "Rp800.000", "", "Rp600.000", "Rp3.300.000", ""],
+        ["NEW CASHOUT 13 MARCH 2026", "", "", "", "", "", "", ""],
+        header,
+        ["CLIENT THREE", "C1", "Rp1.000.000", "", "", "Rp600.000", "Rp2.300.000", ""],
+    ]
+    table = Table(data)
+    table.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.5, colors.black)]))
+    doc.build([table])
+    return buf.getvalue()
 
 
 @pytest.fixture
@@ -320,6 +346,82 @@ class TestExportSheet:
             client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
             resp = client.post("/api/crm/accounting/export-sheet")
         assert resp.status_code == 503
+
+
+class TestImportCashout:
+    def test_outsider_denied(self, mock_db_pool, outsider_user) -> None:
+        client = TestClient(_build_app(mock_db_pool, outsider_user), raise_server_exceptions=False)
+        resp = client.post(
+            "/api/crm/accounting/import-cashout",
+            files={"file": ("GABUNGAN.pdf", b"%PDF-1.4 fake", "application/pdf")},
+        )
+        assert resp.status_code == 403
+
+    def test_non_pdf_rejected_422(self, mock_db_pool, asya_user) -> None:
+        client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+        resp = client.post(
+            "/api/crm/accounting/import-cashout",
+            files={"file": ("ledger.csv", b"a,b,c", "text/csv")},
+        )
+        assert resp.status_code == 422
+
+    def test_undated_pdf_fails_loud_422(self, mock_db_pool, asya_user) -> None:
+        # A PDF with no "NEW CASHOUT" title must 422, never a silent 0-row import.
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4)
+        t = Table([["NAME", "PROCESS", "PNBP"], ["JOHN", "C1", "Rp1.000.000"]])
+        t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.5, colors.black)]))
+        doc.build([t])
+
+        client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+        resp = client.post(
+            "/api/crm/accounting/import-cashout",
+            files={"file": ("no-title.pdf", buf.getvalue(), "application/pdf")},
+        )
+        assert resp.status_code == 422
+
+    def test_import_success_persists_rows(self, mock_db_pool, asya_user) -> None:
+        """A real 2-week GABUNGAN PDF imports 3 client rows over 2 weeks, writes
+        them with the import sentinel, and reports the weeks back."""
+        _pool, conn = mock_db_pool
+        # asyncpg-style command tags: delete reports 0 prior rows, each insert 1.
+        conn.execute = AsyncMock(side_effect=lambda *a, **k: (
+            "DELETE 0" if "DELETE" in a[0] else "INSERT 0 1"
+        ))
+
+        with patch("backend.core.cache.invalidate_cache", AsyncMock()):
+            client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+            resp = client.post(
+                "/api/crm/accounting/import-cashout",
+                files={"file": ("GABUNGAN BS.pdf", _gabungan_pdf_bytes(), "application/pdf")},
+            )
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["imported"] == 3
+        assert body["weeks"] == ["2026-W10", "2026-W11"]
+        assert body["source_filename"] == "GABUNGAN BS.pdf"
+
+        # two DELETE (one per week) + three INSERT calls hit the connection.
+        calls = [c.args[0] for c in conn.execute.await_args_list]
+        assert sum("DELETE FROM weekly_cashout" in q for q in calls) == 2
+        assert sum("INSERT INTO weekly_cashout" in q for q in calls) == 3
+        # every insert carries the import sentinel as recorded_by, never the real
+        # row content as a different writer (scope safety for idempotent re-import).
+        insert_args = [c.args for c in conn.execute.await_args_list if "INSERT" in c.args[0]]
+        assert all(args[-1] == "cashout-pdf-import" for args in insert_args)
+
+    def test_empty_file_rejected_422(self, mock_db_pool, asya_user) -> None:
+        client = TestClient(_build_app(mock_db_pool, asya_user), raise_server_exceptions=False)
+        resp = client.post(
+            "/api/crm/accounting/import-cashout",
+            files={"file": ("GABUNGAN.pdf", b"", "application/pdf")},
+        )
+        assert resp.status_code == 422
 
 
 class TestSummaryEndpoint:

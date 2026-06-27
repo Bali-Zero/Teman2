@@ -383,6 +383,9 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     isPriority: raw.pma_prioritas,
     note: raw.pma_nota,
     source: raw.pma_source,
+    capSpecial: raw.pma_cap_special === true,
+    capVerified: raw.pma_cap_verified !== false, // default true unless explicitly flagged unverified
+    routeTo: raw.pma_route_to ?? null,
   };
 
   const licensing: KBLILicenseByScale[] = (raw.per_skala ?? []).map(

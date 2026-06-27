@@ -589,7 +589,13 @@ class ServiceAccountDriveService:
         result = await asyncio.to_thread(request.execute)
         return result["startPageToken"]
 
-    async def list_changes_since(self, page_token: str) -> dict[str, Any]:
+    async def list_changes_since(
+        self,
+        page_token: str,
+        *,
+        max_pages: int | None = None,
+        page_size: int = 100,
+    ) -> dict[str, Any]:
         """
         List file changes since the given page token.
 
@@ -597,10 +603,18 @@ class ServiceAccountDriveService:
             {
                 "changes": [{"fileId": "...", "file": {...}, "removed": bool}],
                 "new_page_token": "...",
+                "more_pages": bool,
+                "pages_fetched": int,
             }
         """
-        all_changes: list[dict] = []
+        bounded_page_size = max(1, min(page_size, 1000))
+        bounded_max_pages = max(1, max_pages) if max_pages is not None else None
+        all_changes: list[dict[str, Any]] = []
         current_token = page_token
+        pages_fetched = 0
+        more_pages = False
+        next_page_token: str | None = None
+        new_page_token = page_token
 
         while True:
             request = self.service.changes().list(
@@ -608,19 +622,30 @@ class ServiceAccountDriveService:
                 fields="nextPageToken, newStartPageToken, changes(fileId, file(id, name, mimeType, parents, trashed), removed)",
                 supportsAllDrives=True,
                 includeItemsFromAllDrives=True,
-                pageSize=100,
+                pageSize=bounded_page_size,
             )
             result = await asyncio.to_thread(request.execute)
+            pages_fetched += 1
 
             changes = result.get("changes", [])
             all_changes.extend(changes)
 
-            if "nextPageToken" in result:
-                current_token = result["nextPageToken"]
-            else:
+            next_page_token = result.get("nextPageToken")
+            if not next_page_token:
+                new_page_token = result.get("newStartPageToken", page_token)
                 break
+
+            if bounded_max_pages is not None and pages_fetched >= bounded_max_pages:
+                more_pages = True
+                new_page_token = next_page_token
+                break
+
+            current_token = next_page_token
 
         return {
             "changes": all_changes,
-            "new_page_token": result.get("newStartPageToken", page_token),
+            "new_page_token": new_page_token,
+            "more_pages": more_pages,
+            "pages_fetched": pages_fetched,
+            "next_page_token": next_page_token,
         }

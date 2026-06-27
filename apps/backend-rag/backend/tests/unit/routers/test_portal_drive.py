@@ -15,8 +15,8 @@ from backend.app.routers.portal_drive import (
 
 
 @pytest.mark.asyncio
-async def test_list_files_returns_client_safe_empty_projection() -> None:
-    """Portal Drive endpoint must not expose navigable Drive folder metadata."""
+async def test_list_files_returns_client_safe_drive_projection() -> None:
+    """Portal Drive endpoint exposes a safe projection of the configured folder."""
     mock_conn = AsyncMock()
     mock_conn.fetchval.return_value = "folder_abc123"
 
@@ -38,12 +38,18 @@ async def test_list_files_returns_client_safe_empty_projection() -> None:
     result = await _list_client_drive_files(mock_pool, mock_drive, client_id=1)
 
     assert result == {
+        "root_id": "folder_abc123",
+        "root_name": "Client_John",
         "files": [],
-        "folders": [],
-        "total_files": 0,
-        "message": "Drive navigation is not exposed in the client portal",
+        "folders": [{"id": "sub1", "name": "Documents"}, {"id": "sub2", "name": "Final"}],
+        "total_files": 5,
+        "total_size_bytes": 1024000,
     }
-    mock_drive.get_folder_structure.assert_not_called()
+    mock_conn.fetchval.assert_awaited_once_with(
+        "SELECT google_drive_folder_id FROM clients WHERE id = $1 AND deleted_at IS NULL",
+        1,
+    )
+    mock_drive.get_folder_structure.assert_awaited_once_with("folder_abc123")
 
 
 def test_get_drive_service_returns_service_account_drive_service(
@@ -152,6 +158,6 @@ async def test_list_files_returns_same_safe_projection_when_no_folder() -> None:
         "files": [],
         "folders": [],
         "total_files": 0,
-        "message": "Drive navigation is not exposed in the client portal",
+        "message": "No client Drive folder is configured",
     }
     mock_drive.get_folder_structure.assert_not_called()
