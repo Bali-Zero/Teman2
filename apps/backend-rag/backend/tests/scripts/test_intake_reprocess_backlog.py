@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import os
 from pathlib import Path
 
 import httpx
@@ -126,8 +127,40 @@ def test_media_types_default_and_custom() -> None:
     assert irb._media_types("  ") == ("document", "image")
 
 
+def test_load_scoped_wa_mirror_delivery_env_uses_allowlist(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    irb = _load()
+    for name in irb.SCOPED_WA_MIRROR_DELIVERY_ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    env_file = tmp_path / ".wa-mirror.env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "WA_MIRROR_CRM_WRITE_KEY='wa-secret'",
+                "INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED=true",
+                "WA_MIRROR_SESSION_LABEL=Bali Zero Main",
+                "INTAKE_DATABASE_URL=postgresql://wrong/db",
+            ]
+        )
+    )
+
+    loaded = irb.load_scoped_wa_mirror_delivery_env(env_file)
+
+    assert loaded == (
+        "WA_MIRROR_CRM_WRITE_KEY",
+        "INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED",
+    )
+    assert os.environ["WA_MIRROR_CRM_WRITE_KEY"] == "wa-secret"
+    assert os.environ["INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED"] == "true"
+    assert "WA_MIRROR_SESSION_LABEL" not in os.environ
+    assert "INTAKE_DATABASE_URL" not in os.environ
+
+
 def test_crm_push_write_key_prefers_intake_specific_key(monkeypatch: pytest.MonkeyPatch) -> None:
     irb = _load()
+    monkeypatch.setattr(irb, "WA_MIRROR_ENV_FILE", Path("/tmp/does-not-exist-wa-env"))
     monkeypatch.setenv("WA_MIRROR_CRM_WRITE_KEY", "wa-key")
     monkeypatch.setenv("INTAKE_CRM_PUSH_WRITE_KEY", "intake-key")
     assert irb._crm_push_write_key_from_env() == "intake-key"
@@ -142,6 +175,7 @@ def test_crm_service_write_preflight_status_contract() -> None:
 
 def test_crm_service_write_preflight_requires_key(monkeypatch: pytest.MonkeyPatch) -> None:
     irb = _load()
+    monkeypatch.setattr(irb, "WA_MIRROR_ENV_FILE", Path("/tmp/does-not-exist-wa-env"))
     monkeypatch.delenv("WA_MIRROR_CRM_WRITE_KEY", raising=False)
     monkeypatch.delenv("INTAKE_CRM_PUSH_WRITE_KEY", raising=False)
 
@@ -153,6 +187,7 @@ def test_crm_service_write_preflight_accepts_validation_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     irb = _load()
+    monkeypatch.setattr(irb, "WA_MIRROR_ENV_FILE", Path("/tmp/does-not-exist-wa-env"))
     monkeypatch.setenv("WA_MIRROR_CRM_WRITE_KEY", "secret")
 
     async def run() -> None:
@@ -167,6 +202,7 @@ def test_crm_service_write_preflight_rejects_auth_middleware(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     irb = _load()
+    monkeypatch.setattr(irb, "WA_MIRROR_ENV_FILE", Path("/tmp/does-not-exist-wa-env"))
     monkeypatch.setenv("WA_MIRROR_CRM_WRITE_KEY", "secret")
 
     async def run() -> None:
@@ -178,6 +214,42 @@ def test_crm_service_write_preflight_rejects_auth_middleware(
                 await irb.assert_crm_service_write_preflight(client=client)
 
     asyncio.run(run())
+
+
+def test_delivery_readiness_report_masks_secrets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    irb = _load()
+    for name in irb.SCOPED_WA_MIRROR_DELIVERY_ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    env_file = tmp_path / ".wa-mirror.env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "WA_MIRROR_CRM_WRITE_KEY=super-secret",
+                "INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED=1",
+                "INTAKE_CRM_PUSH_BASE_URL=https://example.test",
+            ]
+        )
+    )
+    monkeypatch.setattr(irb, "WA_MIRROR_ENV_FILE", env_file)
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+
+    async def run() -> dict:
+        transport = httpx.MockTransport(lambda request: httpx.Response(422, json={}))
+        async with httpx.AsyncClient(transport=transport) as client:
+            return await irb.run_delivery_readiness_report(client=client)
+
+    report = asyncio.run(run())
+
+    assert report["preflight"] == "accepted"
+    assert report["crm_write_key_present"] is True
+    assert report["direct_phone_auto_attach_enabled"] is True
+    assert report["intake_writer_enabled"] is True
+    assert report["auto_attach_enabled"] is True
+    assert "super-secret" not in str(report)
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +270,7 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.autocatalog_preclassify_vision is False
     assert args.auto_attach_eligible is False
     assert args.auto_attach_direct_phone is False
+    assert args.delivery_readiness_report is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
     assert args.watermark is None

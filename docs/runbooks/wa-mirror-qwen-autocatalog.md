@@ -127,6 +127,24 @@ verified for the deployed commit. The bulk script now runs this preflight
 automatically before committing any auto-attach candidate:
 
 ```sh
+PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py \
+  --delivery-readiness-report
+```
+
+Expected readiness state before bulk apply:
+
+- `crm_write_key_present=true`
+- `intake_writer_enabled=true`
+- `direct_phone_auto_attach_enabled=true` for the direct-phone bucket
+- `preflight=accepted`
+
+The worker runner imports only the scoped delivery allowlist from
+`~/.wa-mirror.env` (`WA_MIRROR_CRM_WRITE_KEY`, optional
+`INTAKE_CRM_PUSH_*`, optional `INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED`). It must
+not source the whole file because that file is not shell-safe and contains
+unrelated WA Mirror settings.
+
+```sh
 curl -sS -o /tmp/kita-preflight.json -w "%{http_code}\n" \
   -X POST https://nuzantara-rag.fly.dev/api/crm/internal/clients/1/documents/upload \
   -H "X-CRM-Write-Key: ${WA_MIRROR_CRM_WRITE_KEY}" \

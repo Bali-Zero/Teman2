@@ -76,6 +76,12 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     review, missing context, and remaining human review. It never logs client
     names, phones, blob paths, OCR text, or proposal payloads.
 
+``--delivery-readiness-report``
+    Read-only Pro→Fly/Kita readiness check for auto-attach delivery. It imports
+    only the scoped WA Mirror delivery allowlist from ``~/.wa-mirror.env``, never
+    logs secret values, reports writer/gate state, and sends the same empty-body
+    service-write preflight used before bulk ``--apply``. It does not need DB.
+
 ``--scrub-group-phone``
     Historical wa-mirror group documents may still carry ``intake_queue.sender_phone``
     from before the group/direct split. Group sender numbers are participant
@@ -164,6 +170,14 @@ DEFAULT_AUTO_ATTACH_LIMIT = 500
 DEFAULT_NEW_PROSPECT_PIPELINE_VERSION = "v2.3-direct-prospect-promote"
 DEFAULT_CRM_PUSH_BASE_URL = "https://nuzantara-rag.fly.dev"
 DEFAULT_CRM_PUSH_PREFLIGHT_TIMEOUT_SECONDS = 12.0
+WA_MIRROR_ENV_FILE = Path.home() / ".wa-mirror.env"
+SCOPED_WA_MIRROR_DELIVERY_ENV_NAMES = (
+    "WA_MIRROR_CRM_WRITE_KEY",
+    "INTAKE_CRM_PUSH_WRITE_KEY",
+    "INTAKE_CRM_PUSH_BASE_URL",
+    "INTAKE_CRM_PUSH_ENABLED",
+    "INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED",
+)
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
 WATERMARK_FILE = Path.home() / ".cell-bridge-state" / "wa_mirror_sweep_last_id.txt"
@@ -853,6 +867,43 @@ def _media_types(raw: str | None) -> tuple[str, ...]:
     return tuple(t.strip() for t in raw.split(",") if t.strip()) or DEFAULT_MEDIA_TYPES
 
 
+def _strip_env_file_value(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def load_scoped_wa_mirror_delivery_env(path: Path | None = None) -> tuple[str, ...]:
+    """Load only the WA Mirror delivery keys from the local env file.
+
+    ``~/.wa-mirror.env`` is consumed by historical WA scripts via manual parsing,
+    not shell ``source``; it can contain spaces and unrelated values. Bulk intake
+    delivery needs only the scoped CRM write bridge and its delivery flags, so
+    import this tight allowlist and never log values.
+    """
+    env_path = path or WA_MIRROR_ENV_FILE
+    if not env_path.exists():
+        return ()
+
+    allowed = set(SCOPED_WA_MIRROR_DELIVERY_ENV_NAMES)
+    loaded: list[str] = []
+    for raw in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        name = name.strip()
+        if name not in allowed or os.environ.get(name):
+            continue
+        value = _strip_env_file_value(value)
+        if not value:
+            continue
+        os.environ[name] = value
+        loaded.append(name)
+    return tuple(loaded)
+
+
 class CrmServiceWritePreflightError(RuntimeError):
     """Raised when a bulk auto-attach apply would not be deliverable to Kita."""
 
@@ -866,6 +917,7 @@ def _crm_push_base_url() -> str:
 
 
 def _crm_push_write_key_from_env() -> str | None:
+    load_scoped_wa_mirror_delivery_env()
     for name in ("INTAKE_CRM_PUSH_WRITE_KEY", "WA_MIRROR_CRM_WRITE_KEY"):
         value = os.environ.get(name, "").strip()
         if value:
@@ -893,6 +945,7 @@ async def assert_crm_service_write_preflight(
     sends no document and no PII: a valid service route should authenticate the
     request, then reject the empty JSON body with HTTP 422.
     """
+    load_scoped_wa_mirror_delivery_env()
     if not _env_enabled_default_on("INTAKE_CRM_PUSH_ENABLED"):
         raise CrmServiceWritePreflightError("INTAKE_CRM_PUSH_ENABLED is disabled")
 
@@ -928,6 +981,45 @@ async def assert_crm_service_write_preflight(
         "CRM service-write preflight failed: "
         f"HTTP {response.status_code}: {_compact_http_detail(response.text)}"
     )
+
+
+def _env_enabled_default_off(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+async def run_delivery_readiness_report(
+    *, client: httpx.AsyncClient | None = None
+) -> dict[str, Any]:
+    """Read-only delivery readiness report for WA Mirror -> Kita bulk attach."""
+    loaded = load_scoped_wa_mirror_delivery_env()
+    report: dict[str, Any] = {
+        "base_url": _crm_push_base_url(),
+        "loaded_env_names": [name for name in loaded if not name.endswith("_KEY")],
+        "crm_push_enabled": _env_enabled_default_on("INTAKE_CRM_PUSH_ENABLED"),
+        "crm_write_key_present": _crm_push_write_key_from_env() is not None,
+        "intake_writer_enabled": _env_enabled_default_off("INTAKE_WRITER_ENABLED"),
+        "auto_attach_enabled": _env_enabled_default_off("INTAKE_AUTO_ATTACH_ENABLED"),
+        "direct_phone_auto_attach_enabled": _env_enabled_default_off(
+            "INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED"
+        ),
+        "preflight": "not_run",
+    }
+    if not report["crm_push_enabled"] or not report["crm_write_key_present"]:
+        report["preflight"] = "skipped"
+    else:
+        try:
+            await assert_crm_service_write_preflight(client=client)
+        except CrmServiceWritePreflightError as exc:
+            report["preflight"] = "failed"
+            report["preflight_error"] = _compact_http_detail(str(exc), max_chars=240)
+        else:
+            report["preflight"] = "accepted"
+
+    logger.info(
+        "[delivery-readiness-report] %s",
+        json.dumps(report, sort_keys=True, separators=(",", ":")),
+    )
+    return report
 
 
 def _stage_output_dict(value: Any) -> dict[str, Any]:
@@ -2403,6 +2495,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="read-only aggregate triage of current wa-mirror review buckets",
     )
     p.add_argument(
+        "--delivery-readiness-report",
+        action="store_true",
+        help="read-only check of CRM/Kita delivery env, gates, and service-write preflight",
+    )
+    p.add_argument(
         "--include-groups",
         action="store_true",
         help="for --revive-stub: also revive group-chat docs (default: 1:1 direct chats only)",
@@ -2543,7 +2640,7 @@ async def main(argv: list[str] | None = None) -> int:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     args = build_parser().parse_args(argv)
-    if not (
+    needs_db = (
         args.reprocess
         or args.backfill
         or args.scrub_group_phone
@@ -2556,16 +2653,23 @@ async def main(argv: list[str] | None = None) -> int:
         or args.auto_attach_direct_phone
         or args.promote_direct_new_prospects
         or args.review_backlog_report
-    ):
+    )
+    if not (needs_db or args.delivery_readiness_report):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, and/or "
             "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr/"
             "--autocatalog-preclassify-vision/"
             "--auto-attach-eligible/--auto-attach-direct-phone/"
-            "--promote-direct-new-prospects/--review-backlog-report"
+            "--promote-direct-new-prospects/--review-backlog-report/"
+            "--delivery-readiness-report"
         )
         return 2
+
+    if args.delivery_readiness_report:
+        await run_delivery_readiness_report()
+        if not needs_db:
+            return 0
 
     db_url = os.getenv("INTAKE_DATABASE_URL", os.getenv("DATABASE_URL", DEFAULT_DSN))
     pool = await asyncpg.create_pool(dsn=db_url, min_size=1, max_size=3)
