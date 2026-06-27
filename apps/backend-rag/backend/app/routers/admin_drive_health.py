@@ -2,10 +2,12 @@
 Admin endpoint per verificare stato Google Drive e triggerare drive poll.
 """
 
+import asyncio
 import logging
+import os
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +138,28 @@ def _infer_type(filename: str) -> str:
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 
 
+def _env_flag(name: str, *, default: bool = False) -> bool:
+    """Parse common env truthy values."""
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _drive_poll_api_timeout_seconds() -> float:
+    """Return server-side timeout for the cron-triggered Drive poll."""
+    raw_value = os.getenv("DRIVE_POLL_API_TIMEOUT_SECONDS", "100")
+    try:
+        timeout = float(raw_value)
+    except ValueError:
+        logger.warning(
+            "Invalid DRIVE_POLL_API_TIMEOUT_SECONDS=%r; falling back to 100",
+            raw_value,
+        )
+        return 100.0
+    return max(5.0, min(timeout, 115.0))
+
+
 @router.get("/health")
 async def drive_health(request: Request) -> dict[str, Any]:
     """Verifica stato Drive integration (public endpoint).
@@ -206,17 +230,42 @@ async def drive_health(request: Request) -> dict[str, Any]:
 @router.post("/poll")
 async def trigger_drive_poll(request: Request) -> dict[str, Any]:
     """Trigger Google Drive changes poll (for cron jobs / OpenClaw automation)."""
+    inline_ocr = _env_flag("DRIVE_POLL_INLINE_OCR", default=False)
+    timeout_seconds = _drive_poll_api_timeout_seconds()
     try:
         from backend.services.crm.drive_poll_service import poll_drive_changes
 
-        result = await poll_drive_changes()
+        result = await asyncio.wait_for(
+            poll_drive_changes(inline_ocr=inline_ocr),
+            timeout=timeout_seconds,
+        )
         processed = result.get("processed", 0)
-        logger.info("Drive poll triggered via API: %s new files processed", processed)
+        logger.info(
+            "Drive poll triggered via API: %s new files processed (inline_ocr=%s)",
+            processed,
+            inline_ocr,
+        )
         return {
             "status": "ok",
             "processed": processed,
+            "inline_ocr": inline_ocr,
             "result": result,
         }
+    except TimeoutError as e:
+        logger.error(
+            "Drive poll timed out after %.1fs (inline_ocr=%s)",
+            timeout_seconds,
+            inline_ocr,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail={
+                "status": "timeout",
+                "message": f"Drive poll exceeded {timeout_seconds:.1f}s",
+                "inline_ocr": inline_ocr,
+            },
+        ) from e
     except Exception as e:
         logger.error("Drive poll failed: %s", e, exc_info=True)
         return {"status": "error", "message": str(e)}
