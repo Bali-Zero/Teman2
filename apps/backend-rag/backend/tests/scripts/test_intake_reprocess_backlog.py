@@ -138,6 +138,7 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.autocatalog_direct_unknown_text is False
     assert args.autocatalog_preclassify_saved_ocr is False
     assert args.auto_attach_eligible is False
+    assert args.auto_attach_direct_phone is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
     assert args.watermark is None
@@ -216,6 +217,23 @@ def test_parser_auto_attach_eligible_override() -> None:
     )
     assert args.apply is True
     assert args.auto_attach_limit == 17
+
+
+def test_parser_auto_attach_direct_phone_defaults() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--auto-attach-direct-phone"])
+    assert args.apply is False
+    assert args.auto_attach_direct_phone is True
+    assert args.auto_attach_limit == irb.DEFAULT_AUTO_ATTACH_LIMIT
+
+
+def test_parser_auto_attach_direct_phone_reuses_limit() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        ["--auto-attach-direct-phone", "--apply", "--auto-attach-limit", "23"]
+    )
+    assert args.apply is True
+    assert args.auto_attach_limit == 23
 
 
 def test_saved_ocr_pages_normalizes_downstream_shape() -> None:
@@ -392,4 +410,19 @@ def test_auto_attach_eligible_sql_targets_safe_review_bucket() -> None:
     assert "q.source = 'whatsapp'" in sql
     assert "p.status = 'review_pending'" in sql
     assert "auto_attach_eligible" in sql
+    assert "LIMIT $1" in sql
+
+
+def test_direct_phone_auto_attach_sql_targets_safe_direct_bucket() -> None:
+    irb = _load()
+    sql = irb.DIRECT_PHONE_AUTO_ATTACH_SELECT_SQL
+    assert "JOIN intake_queue q ON q.id = p.queue_id" in sql
+    assert "q.source = 'whatsapp'" in sql
+    assert "p.status = 'review_pending'" in sql
+    assert "p.entity_resolution->>'decision' = 'LINK_CANDIDATE'" in sql
+    assert "q.source_context->>'chat_type' = 'direct'" in sql
+    assert "q.source_context->>'routing_identity_policy' = 'sender_phone_enabled'" in sql
+    assert "p.routing->>'client_id' IS NOT NULL" in sql
+    assert "p.routing->>'doc_type' = ANY($2::text[])" in sql
+    assert "LIKE 'sender phone%'" in sql
     assert "LIMIT $1" in sql

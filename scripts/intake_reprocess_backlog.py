@@ -45,6 +45,13 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     candidates only; ``--apply`` still honors ``INTAKE_AUTO_ATTACH_ENABLED`` and
     ``INTAKE_WRITER_ENABLED`` kill-switches before any CRM write can happen.
 
+``--auto-attach-direct-phone``
+    Selects existing wa-mirror direct-chat ``LINK_CANDIDATE`` proposals whose
+    routing target came from the sender-phone policy and whose doc_type already
+    maps to a known Kita category. Dry-run counts candidates only; ``--apply``
+    still honors ``INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED`` and
+    ``INTAKE_WRITER_ENABLED`` before any CRM write can happen.
+
 ``--scrub-group-phone``
     Historical wa-mirror group documents may still carry ``intake_queue.sender_phone``
     from before the group/direct split. Group sender numbers are participant
@@ -90,8 +97,9 @@ from backend.services.intake.classify import (
     _parse_doc_type_answer,
     _text_llm_classify_prompt,
 )
-from backend.services.intake.auto_attach import try_auto_attach
+from backend.services.intake.auto_attach import try_auto_attach, try_direct_phone_auto_attach
 from backend.services.intake.enqueue import enqueue
+from backend.services.intake.writer import DOCUMENT_CATEGORY_MAP
 
 logger = logging.getLogger("intake_reprocess_backlog")
 
@@ -355,6 +363,29 @@ SELECT p.id, p.queue_id, p.doc_index, p.pipeline_version, p.status,
  WHERE q.source = 'whatsapp'
    AND p.status = 'review_pending'
    AND COALESCE((p.commit_gate->>'auto_attach_eligible')::boolean, false) = true
+ ORDER BY p.id
+ LIMIT $1
+"""
+
+DIRECT_PHONE_AUTO_ATTACH_SELECT_SQL = """
+SELECT p.id, p.queue_id, p.doc_index, p.pipeline_version, p.status,
+       p.entity_resolution, p.routing, p.commit_gate,
+       q.sender_phone, q.source_context
+  FROM document_routing_proposal p
+  JOIN intake_queue q ON q.id = p.queue_id
+ WHERE q.source = 'whatsapp'
+   AND p.status = 'review_pending'
+   AND p.entity_resolution->>'decision' = 'LINK_CANDIDATE'
+   AND q.source_context->>'chat_type' = 'direct'
+   AND q.source_context->>'routing_identity_policy' = 'sender_phone_enabled'
+   AND p.routing->>'client_id' IS NOT NULL
+   AND p.routing->>'doc_type' = ANY($2::text[])
+   AND COALESCE(
+        p.entity_resolution->'reason'->>'reason',
+        p.commit_gate->>'reason',
+        p.routing->>'reason',
+        ''
+       ) LIKE 'sender phone%'
  ORDER BY p.id
  LIMIT $1
 """
@@ -994,6 +1025,80 @@ async def run_auto_attach_eligible(
     return counts
 
 
+async def run_direct_phone_auto_attach(
+    pool: asyncpg.Pool,
+    limit: int,
+    apply: bool,
+) -> dict[str, Any]:
+    """Run existing direct-chat phone candidates through the opt-in gate."""
+    safe_limit = max(limit, 1)
+    supported_doc_types = sorted(DOCUMENT_CATEGORY_MAP)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            DIRECT_PHONE_AUTO_ATTACH_SELECT_SQL,
+            safe_limit,
+            supported_doc_types,
+        )
+
+    counts: dict[str, Any] = {
+        "candidates": len(rows),
+        "attempted": 0,
+        "committed": 0,
+        "errors": 0,
+        "limit": safe_limit,
+        "skipped": {},
+        "outcomes": {},
+    }
+    if not apply:
+        logger.info(
+            "[auto-attach-direct-phone][DRY-RUN] would try %d direct wa-mirror "
+            "phone LINK_CANDIDATE proposals through the direct-phone gate "
+            "(pass --apply)",
+            counts["candidates"],
+        )
+        return counts
+
+    skipped: Counter[str] = Counter()
+    outcomes: Counter[str] = Counter()
+    by_error: Counter[str] = Counter()
+    for row in rows:
+        counts["attempted"] += 1
+        try:
+            verdict = await try_direct_phone_auto_attach(
+                row,
+                pool,
+                sender_phone=row["sender_phone"],
+                source_context=row["source_context"],
+            )
+        except Exception as exc:  # aggregate only; no proposal payload / no PII.
+            counts["errors"] += 1
+            by_error[type(exc).__name__] += 1
+            continue
+
+        if verdict.get("committed"):
+            counts["committed"] += 1
+        if verdict.get("skipped"):
+            skipped[str(verdict["skipped"])] += 1
+        if verdict.get("outcome"):
+            outcomes[str(verdict["outcome"])] += 1
+
+    counts["skipped"] = dict(skipped)
+    counts["outcomes"] = dict(outcomes)
+    counts["by_error"] = dict(by_error)
+    logger.info(
+        "[auto-attach-direct-phone] candidates=%d attempted=%d committed=%d "
+        "skipped=%s outcomes=%s errors=%d by_error=%s",
+        counts["candidates"],
+        counts["attempted"],
+        counts["committed"],
+        counts["skipped"],
+        counts["outcomes"],
+        counts["errors"],
+        counts["by_error"],
+    )
+    return counts
+
+
 # --- CLI ----------------------------------------------------------------------
 
 
@@ -1040,6 +1145,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--auto-attach-eligible",
         action="store_true",
         help="try existing review_pending proposals whose gate already marks them auto_attach_eligible",
+    )
+    p.add_argument(
+        "--auto-attach-direct-phone",
+        action="store_true",
+        help="try direct wa-mirror phone LINK_CANDIDATE proposals through the opt-in gate",
     )
     p.add_argument(
         "--include-groups",
@@ -1132,12 +1242,13 @@ async def main(argv: list[str] | None = None) -> int:
         or args.autocatalog_direct_unknown_text
         or args.autocatalog_preclassify_saved_ocr
         or args.auto_attach_eligible
+        or args.auto_attach_direct_phone
     ):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, and/or "
             "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr/"
-            "--auto-attach-eligible"
+            "--auto-attach-eligible/--auto-attach-direct-phone"
         )
         return 2
 
@@ -1180,6 +1291,8 @@ async def main(argv: list[str] | None = None) -> int:
             )
         if args.auto_attach_eligible:
             await run_auto_attach_eligible(pool, max(args.auto_attach_limit, 1), args.apply)
+        if args.auto_attach_direct_phone:
+            await run_direct_phone_auto_attach(pool, max(args.auto_attach_limit, 1), args.apply)
         if args.revive_stub:
             await run_revive_stub(pool, args.stub_pipeline_version, args.include_groups, args.apply)
         return 0

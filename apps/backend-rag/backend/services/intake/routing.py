@@ -1025,9 +1025,10 @@ async def _try_auto_attach_after_route(
     proposal: dict[str, Any],
     pool: asyncpg.Pool,
     sender_phone: str | None,
+    source_context: dict[str, Any] | None,
     effective_status: str,
 ) -> dict[str, Any] | None:
-    """Consume the dormant AUTO_ATTACH flag after a reviewable proposal exists.
+    """Consume opt-in auto-catalog gates after a reviewable proposal exists.
 
     The import stays local to avoid a module-load cycle: ``auto_attach`` reuses
     this module's phone matcher. With the default kill-switches OFF this returns
@@ -1036,17 +1037,27 @@ async def _try_auto_attach_after_route(
     if proposal_id is None or effective_status != "review_pending":
         return None
 
-    from backend.services.intake.auto_attach import try_auto_attach
-
-    return await try_auto_attach(
-        {
-            "id": proposal_id,
-            "routing": proposal["routing"],
-            "entity_resolution": proposal["entity_resolution"],
-        },
-        pool,
-        sender_phone=sender_phone,
+    decision = proposal["entity_resolution"]["decision"]
+    from backend.services.intake.auto_attach import (
+        try_auto_attach,
+        try_direct_phone_auto_attach,
     )
+
+    payload = {
+        "id": proposal_id,
+        "routing": proposal["routing"],
+        "entity_resolution": proposal["entity_resolution"],
+    }
+    if decision == DECISION_AUTO_ATTACH:
+        return await try_auto_attach(payload, pool, sender_phone=sender_phone)
+    if decision == DECISION_LINK_CANDIDATE:
+        return await try_direct_phone_auto_attach(
+            payload,
+            pool,
+            sender_phone=sender_phone,
+            source_context=source_context,
+        )
+    return None
 
 
 async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noqa: ARG001 — StageHandler contract
@@ -1085,12 +1096,16 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         # reach _make_routing_key, else the old routing_key collides and
         # ON CONFLICT silently drops the fresh proposal.
         qrow = await conn.fetchrow(
-            "SELECT sender_phone, source_path, pipeline_version"
+            "SELECT sender_phone, source_path, pipeline_version, source_context"
             " FROM intake_queue WHERE id = $1",
             queue_id,
         )
         sender_phone = job.get("sender_phone") or (qrow["sender_phone"] if qrow else None)
         source_path = job.get("source_path") or (qrow["source_path"] if qrow else None)
+        source_context = (
+            job.get("source_context")
+            or (dict(qrow["source_context"]) if qrow and isinstance(qrow["source_context"], dict) else None)
+        )
         pipeline_version = (
             job.get("pipeline_version")
             or (qrow["pipeline_version"] if qrow else None)
@@ -1213,6 +1228,7 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         proposal=proposal,
         pool=pool,
         sender_phone=sender_phone,
+        source_context=source_context,
         effective_status=effective_status,
     )
     auto_attached = bool(auto_attach_result and auto_attach_result.get("committed"))
