@@ -4,12 +4,17 @@
 # Identify stale branches on origin and (optionally) delete merged-safe ones.
 #
 # Categories:
-#   1. Merged & deletable: branch fully merged to main, any age, safe to delete
-#   2. Zombie claude/*    : claude/* branch, >30d, NOT merged -> report only
-#   3. Stale others       : any branch, >90d, NOT merged -> report only
+#   1. Merged & deletable     : branch SHA is an ancestor of main, any age, safe
+#   2. Content-on-main & del.  : SHA NOT ancestor BUT `git diff main...branch` is
+#                                empty or pure-deletion -> squash-merged / reworked
+#                                onto main / strict-subset; safe to delete. This is
+#                                the MANDATORY antidote to the "git cherry says +
+#                                so it must be unmerged" trap (see content_on_main).
+#   3. Zombie claude/*        : claude/* branch, >30d, content NOT on main -> report
+#   4. Stale others           : any branch, >90d, content NOT on main -> report
 #
-# Defaults to DRY-RUN. Use --apply to delete category 1 (merged-safe) only.
-# NEVER deletes category 2 or 3 without explicit human review.
+# Defaults to DRY-RUN. Use --apply to delete categories 1 AND 2 (both verified
+# safe by CONTENT). NEVER deletes category 3 or 4 without explicit human review.
 #
 # Output: formatted Markdown report on stdout + optional --output <file>
 #
@@ -41,7 +46,7 @@ usage() {
 Usage: $0 [--apply] [--output <file>] [--telegram-alert]
 
 Options:
-  --apply             Execute deletion of category 1 (merged-safe) branches
+  --apply             Execute deletion of categories 1 + 2 (verified safe by content)
   --output <file>     Write report to file (default: stdout only)
   --telegram-alert    Send Telegram alert if zombie count > $TELEGRAM_THRESHOLD
   --help              Show this help
@@ -66,7 +71,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-REPO_ROOT="${REPOMAP_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+# Path-aware: M5 user is `balizero` (/Users/balizero), Pro/Mini are `nuzantara`.
+# A hardcoded /Users/nuzantara/... is DEAD on M5 (superscar #1 HOME-fork). Resolve
+# from the repo containing THIS script unless overridden.
+if [[ -n "${REPOMAP_REPO_ROOT:-}" ]]; then
+    REPO_ROOT="$REPOMAP_REPO_ROOT"
+else
+    REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
 cd "$REPO_ROOT" || { echo "FATAL: cd $REPO_ROOT failed" >&2; exit 1; }
 
 NOW_EPOCH=$(date +%s)
@@ -89,12 +101,13 @@ MAIN_SHA=$(git rev-parse "$MAIN_REF")
 # === Tmp state files (bash 3.2 portable, no mapfile/arrays) ===
 BRANCHES_TSV="/tmp/branch_cleanup_branches.$$"
 MERGED_TSV="/tmp/branch_cleanup_merged.$$"
+CONTENT_TSV="/tmp/branch_cleanup_content.$$"
 ZOMBIE_TSV="/tmp/branch_cleanup_zombie.$$"
 STALE_TSV="/tmp/branch_cleanup_stale.$$"
 REPORT_TMP="/tmp/branch_cleanup_report.$$"
 
 cleanup_tmp() {
-    rm -f "$BRANCHES_TSV" "$MERGED_TSV" "$ZOMBIE_TSV" "$STALE_TSV" "$REPORT_TMP"
+    rm -f "$BRANCHES_TSV" "$MERGED_TSV" "$CONTENT_TSV" "$ZOMBIE_TSV" "$STALE_TSV" "$REPORT_TMP"
 }
 trap cleanup_tmp EXIT
 
@@ -108,8 +121,47 @@ git for-each-ref \
     $1 != main && $1 != bare && $1 !~ /\/HEAD$/ { print }
 ' > "$BRANCHES_TSV"
 
+# === Content-on-main check (MANDATORY — superscar #1/#9 antidote) ===
+#
+# WHY THIS EXISTS — read before touching:
+#   `git merge-base --is-ancestor` (and `git cherry`) classify a branch as
+#   "not on main" the moment the branch SHA is not an ancestor — but a
+#   SQUASH-merged branch, or one whose content reached main via rework, is
+#   ALREADY ON MAIN by content while its SHA is NOT an ancestor and its
+#   patch-id diverges. Trusting the ancestor/cherry signal alone produces a
+#   graveyard report that is ~80% stale (verified 2026-06-27: a 28-branch
+#   "orphan report" had ~5 truly-live branches; the rest were squash-merged
+#   or reworked onto main, several REGRESSING published content if rebased).
+#
+# THE RULE (mandatory, never bypass): a branch is deletable-safe ONLY when its
+# CONTENT is on main — i.e. `git diff origin/main...<branch>` is EMPTY. Verify
+# by CONTENT, never by patch-equivalence / ancestor-only. A non-empty diff that
+# is purely DELETIONS (branch is a strict subset / older revision of main) is
+# ALSO content-on-main: keeping it would only regress. This function encodes
+# exactly that test.
+#
+# Returns 0 (content already on main, safe to delete) / 1 (genuine unmerged work).
+content_on_main() {
+    local branch="$1"
+    # Fast path: --quiet exits 0 on EMPTY diff (stops at first hunk, never
+    # materializes output) => every line of the branch is already on main
+    # (covers squash-merge, rework, cherry-picked-elsewhere). Authoritative.
+    if git diff --quiet "$MAIN_REF...$branch" 2>/dev/null; then
+        return 0
+    fi
+    # Non-empty diff. Only ONE more question matters: does the branch ADD any
+    # line main lacks? If it adds nothing (pure-deletion / strict-subset / stale
+    # revision), it is still fully represented on main and rebasing it would only
+    # regress => treat as content-on-main. `git diff --numstat` is cheap (no
+    # context lines); summing the "added" column is enough — 0 added => subset.
+    local added
+    added=$(git diff --numstat "$MAIN_REF...$branch" 2>/dev/null | awk '{a += $1} END {print a + 0}')
+    [[ "$added" -eq 0 ]]
+}
+
 # === Classify ===
 : > "$MERGED_TSV"
+: > "$CONTENT_TSV"
 : > "$ZOMBIE_TSV"
 : > "$STALE_TSV"
 
@@ -117,9 +169,16 @@ while IFS=$'\t' read -r branch ts sha; do
     [[ -z "$branch" ]] && continue
     age_days=$(( (NOW_EPOCH - ts) / 86400 ))
     short="${branch#$REMOTE/}"
-    # Merged check via merge-base ancestor lookup against main
+    # Merged check via merge-base ancestor lookup against main (fast path:
+    # true/ff merges where the branch SHA IS an ancestor of main).
     if git merge-base --is-ancestor "$sha" "$MAIN_SHA" 2>/dev/null; then
         printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$MERGED_TSV"
+        continue
+    fi
+    # Ancestor-check FAILED — but the content may still be on main via squash /
+    # rework. MANDATORY second check by CONTENT, never trust ancestor alone.
+    if content_on_main "$branch"; then
+        printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$CONTENT_TSV"
         continue
     fi
     # claude/* zombies
@@ -134,13 +193,14 @@ while IFS=$'\t' read -r branch ts sha; do
 done < "$BRANCHES_TSV"
 
 # === Sort each category by age descending (in-place) ===
-for f in "$MERGED_TSV" "$ZOMBIE_TSV" "$STALE_TSV"; do
+for f in "$MERGED_TSV" "$CONTENT_TSV" "$ZOMBIE_TSV" "$STALE_TSV"; do
     if [[ -s "$f" ]]; then
         sort -t$'\t' -k2 -n -r -o "$f" "$f"
     fi
 done
 
 MERGED_COUNT=$(wc -l < "$MERGED_TSV" | tr -d ' ')
+CONTENT_COUNT=$(wc -l < "$CONTENT_TSV" | tr -d ' ')
 ZOMBIE_COUNT=$(wc -l < "$ZOMBIE_TSV" | tr -d ' ')
 STALE_COUNT=$(wc -l < "$STALE_TSV" | tr -d ' ')
 
@@ -170,14 +230,16 @@ emit_section() {
     fi
     echo ""
     echo "Summary:"
-    echo "- Merged & deletable: $MERGED_COUNT"
-    echo "- Zombie claude/* (>${CLAUDE_AGE_DAYS}d, unmerged): $ZOMBIE_COUNT"
-    echo "- Stale others (>${STALE_AGE_DAYS}d, unmerged): $STALE_COUNT"
+    echo "- Merged & deletable (SHA ancestor of main): $MERGED_COUNT"
+    echo "- Content-on-main & deletable (squash/rework, verified by diff): $CONTENT_COUNT"
+    echo "- Zombie claude/* (>${CLAUDE_AGE_DAYS}d, content NOT on main): $ZOMBIE_COUNT"
+    echo "- Stale others (>${STALE_AGE_DAYS}d, content NOT on main): $STALE_COUNT"
     echo ""
 
-    emit_section "Merged & deletable (safe to remove)" "$MERGED_TSV" "merged,"
-    emit_section "Zombie claude/* (>${CLAUDE_AGE_DAYS}d not merged) — REPORT ONLY" "$ZOMBIE_TSV" "last commit"
-    emit_section "Stale others (>${STALE_AGE_DAYS}d not merged) — REPORT ONLY" "$STALE_TSV" "last commit"
+    emit_section "Merged & deletable (SHA ancestor of main, safe to remove)" "$MERGED_TSV" "merged,"
+    emit_section "Content-on-main & deletable (squash/rework — diff vs main is empty or pure-deletion, safe to remove)" "$CONTENT_TSV" "last commit"
+    emit_section "Zombie claude/* (>${CLAUDE_AGE_DAYS}d, content NOT on main) — REPORT ONLY" "$ZOMBIE_TSV" "last commit"
+    emit_section "Stale others (>${STALE_AGE_DAYS}d, content NOT on main) — REPORT ONLY" "$STALE_TSV" "last commit"
 } > "$REPORT_TMP"
 
 cat "$REPORT_TMP"
@@ -186,22 +248,34 @@ if [[ -n "$OUTPUT_FILE" ]]; then
     echo "[branch_cleanup] report written to $OUTPUT_FILE" >&2
 fi
 
-# === Apply phase (only category 1) ===
+# === Apply phase: delete BOTH safe categories (ancestor-merged + content-on-main) ===
+# Content-on-main is verified by `git diff` being empty / pure-deletion, so it is
+# exactly as safe to delete as an ancestor-merge — never trust patch-id/ancestor
+# alone (see content_on_main() above). Zombie/stale stay REPORT-ONLY.
+delete_tsv() {
+    local tsv="$1" label="$2" count
+    count=$(wc -l < "$tsv" | tr -d ' ')
+    [[ "$count" -eq 0 ]] && return 0
+    echo "" >&2
+    echo "[branch_cleanup] --apply: deleting $count $label branches on $REMOTE..." >&2
+    while IFS=$'\t' read -r branch age sha short; do
+        [[ -z "$short" ]] && continue
+        echo "  -> git push $REMOTE --delete $short" >&2
+        if git push "$REMOTE" --delete "$short" >&2 2>&1; then
+            echo "     OK" >&2
+        else
+            echo "     FAIL (continuing)" >&2
+        fi
+    done < "$tsv"
+}
+
 if $APPLY; then
-    if [[ "$MERGED_COUNT" -eq 0 ]]; then
+    if [[ "$MERGED_COUNT" -eq 0 && "$CONTENT_COUNT" -eq 0 ]]; then
         echo "" >&2
         echo "[branch_cleanup] --apply: nothing to delete." >&2
     else
-        echo "" >&2
-        echo "[branch_cleanup] --apply: deleting $MERGED_COUNT merged branches on $REMOTE..." >&2
-        while IFS=$'\t' read -r branch age sha short; do
-            echo "  -> git push $REMOTE --delete $short" >&2
-            if git push "$REMOTE" --delete "$short" >&2 2>&1; then
-                echo "     OK" >&2
-            else
-                echo "     FAIL (continuing)" >&2
-            fi
-        done < "$MERGED_TSV"
+        delete_tsv "$MERGED_TSV"  "ancestor-merged"
+        delete_tsv "$CONTENT_TSV" "content-on-main (squash/rework)"
     fi
 fi
 
