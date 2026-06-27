@@ -12,6 +12,10 @@ name: cron - fly restart loop detector (every 15 min)
 # until manual `fly machine start`). The detector now force-starts ONLY machines
 # in that crashed-stopped state, with its own cooldown, and alerts on the action.
 # Idle autostop machines (clean stop / exit_code 0) are left untouched.
+#
+# 2026-06-27 (infra/fly-oom-detector): also alerts on recent OOM/restart events
+# even when Fly successfully restarts the machine and all checks are green again.
+# Without this, an API OOM can be operationally invisible after recovery.
 
 on:
   schedule:
@@ -92,18 +96,29 @@ jobs:
           # clean idle autostop (no exit_event / exit_code 0). These are the
           # machines that will NOT self-recover from a later fixing deploy.
           crashed = []
+          oom = []
           for m in machines:
-              if m.get("state") != "stopped":
-                  continue
+              machine_id = m.get("id", "?")
               last_exit = None
+              saw_oom = False
               for e in (m.get("events") or []):  # events are newest-first
-                  ee = (e.get("request") or {}).get("exit_event") or {}
-                  if "exit_code" in ee and ee.get("exit_code") is not None:
-                      last_exit = ee.get("exit_code")
-                      break
-              if last_exit is not None and last_exit != 0:
-                  crashed.append(m.get("id", "?"))
-          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}")
+                  req = e.get("request") or {}
+                  ee = req.get("exit_event") or {}
+                  oom_killed = ee.get("oom_killed", req.get("oom_killed", e.get("oom_killed")))
+                  exit_code = ee.get("exit_code")
+                  if (
+                      oom_killed is True
+                      or str(oom_killed).lower() == "true"
+                      or str(exit_code) == "137"
+                  ):
+                      saw_oom = True
+                  if last_exit is None and "exit_code" in ee and ee.get("exit_code") is not None:
+                      last_exit = exit_code
+              if saw_oom:
+                  oom.append(machine_id)
+              if m.get("state") == "stopped" and last_exit is not None and str(last_exit) != "0":
+                  crashed.append(machine_id)
+          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}|oom={','.join(oom) or 'none'}")
           PY
           )
             echo "[$app] $SUMMARY"
@@ -119,6 +134,7 @@ jobs:
             BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
             UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
             CRASHED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^crashed= | cut -d= -f2)
+            OOM=$(echo "$SUMMARY" | tr '|' '\n' | grep ^oom= | cut -d= -f2)
             if [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
               if should_alert "${app}_state"; then
                 ALERTS="${ALERTS}🔴 <b>${app}</b>: $((TOTAL-STARTED))/${TOTAL} machines NOT started (${BAD})"$'\n'
@@ -130,6 +146,16 @@ jobs:
                 ALERTS="${ALERTS}❤️‍🩹 <b>${app}</b>: ${UNHEALTHY} unhealthy health checks"$'\n'
                 mark_alerted "${app}_health"
               fi
+            fi
+            # Surface OOM/restart events even if Fly already restarted the
+            # machine and the current health check is green.
+            if [ "${OOM:-none}" != "none" ] && [ -n "${OOM}" ]; then
+              for mid in $(echo "$OOM" | tr ',' ' '); do
+                if should_alert "${app}_oom_${mid}"; then
+                  ALERTS="${ALERTS}OOM <b>${app}</b>: recent oom_killed/exit_code=137 on machine ${mid}"$'\n'
+                  mark_alerted "${app}_oom_${mid}"
+                fi
+              done
             fi
             # Queue crashed-stopped machines for auto-recovery (own cooldown per machine).
             if [ "${CRASHED:-none}" != "none" ] && [ -n "${CRASHED}" ]; then
