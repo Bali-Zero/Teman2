@@ -271,7 +271,8 @@ async def _read_drive_poll_worker_status(pool: Any | None) -> dict[str, Any]:
             last_result = {"raw": raw_result[:500], "parse_error": True}
 
     status = values.get("drive_poll_worker_last_status") or "never_seen"
-    healthy = heartbeat_at is not None and not stale and status not in {"error"}
+    unhealthy_statuses = {"error", "timeout"}
+    healthy = heartbeat_at is not None and not stale and status not in unhealthy_statuses
     return {
         "mode": "worker",
         "available": True,
