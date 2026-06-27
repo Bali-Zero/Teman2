@@ -2,7 +2,11 @@ import { cn } from "@/lib/utils";
 
 interface PMABadgeProps {
   status: "open" | "restricted" | "closed" | "unknown";
-  maxForeign: number;
+  maxForeign: number | "special";
+  /** true => special-distribution condition (47221-class): "· special conditions", not "Closed 0%" */
+  capSpecial?: boolean;
+  /** false => TERBATAS cap % not source-backed: render "· ≈N% unverified" */
+  capVerified?: boolean;
   size?: "sm" | "md";
 }
 
@@ -32,8 +36,30 @@ const config = {
   },
 };
 
-export function PMABadge({ status, maxForeign, size = "md" }: PMABadgeProps) {
+export function PMABadge({
+  status,
+  maxForeign,
+  capSpecial = false,
+  capVerified = true,
+  size = "md",
+}: PMABadgeProps) {
   const c = config[status] || config.open;
+  const numeric = typeof maxForeign === "number" ? maxForeign : null;
+
+  // Qualifying suffix, aligned with the native app:
+  //  - special-distribution → "· special conditions" (never a %)
+  //  - restricted & unverified % → "· ≈N% unverified"
+  //  - restricted & verified % → "· Max N%"
+  //  - open 100% → "· 100% Foreign"
+  let suffix: string | null = null;
+  if (capSpecial) {
+    suffix = "· special conditions";
+  } else if (status === "open" && numeric === 100) {
+    suffix = "· 100% Foreign";
+  } else if (status === "restricted" && numeric !== null && numeric < 100) {
+    suffix = capVerified ? `· Max ${numeric}%` : `· ≈${numeric}% unverified`;
+  }
+
   return (
     <span
       className={cn(
@@ -44,12 +70,7 @@ export function PMABadge({ status, maxForeign, size = "md" }: PMABadgeProps) {
     >
       <span>{c.icon}</span>
       <span>{c.label}</span>
-      {status === "open" && maxForeign === 100 && (
-        <span className="opacity-70">· 100% Foreign</span>
-      )}
-      {status === "restricted" && maxForeign < 100 && (
-        <span className="opacity-70">· Max {maxForeign}%</span>
-      )}
+      {suffix && <span className="opacity-70">{suffix}</span>}
     </span>
   );
 }
