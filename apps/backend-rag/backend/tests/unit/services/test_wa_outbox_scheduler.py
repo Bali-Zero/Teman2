@@ -24,6 +24,34 @@ import pytest
 from backend.app import main_api
 
 
+def test_wa_outbox_scheduler_enabled_defaults_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("WA_OUTBOX_SCHEDULER_ENABLED", raising=False)
+
+    assert main_api._wa_outbox_scheduler_enabled() is True
+
+
+@pytest.mark.parametrize("value", ["0", "false", "False", " no ", "OFF"])
+def test_wa_outbox_scheduler_enabled_false_values(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", value)
+
+    assert main_api._wa_outbox_scheduler_enabled() is False
+
+
+@pytest.mark.parametrize("value", ["1", "true", "yes", "enabled", ""])
+def test_wa_outbox_scheduler_enabled_true_values(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", value)
+
+    assert main_api._wa_outbox_scheduler_enabled() is True
+
+
 @pytest.mark.asyncio
 async def test_bot_generator_flag_off_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     # Default (flag off) → the closure raises so the worker never sends a wrong
