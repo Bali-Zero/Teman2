@@ -794,3 +794,6 @@ research/nb-health/nb-inventory-live.json
 s7-yield-drafts-local/
 research/crm/*-drafts-local/
 .agent-task.json
+
+# arm_keep_worktrees.py: human-readable quarantine receipts (recovery aid, never tracked)
+.agent-receipts/
