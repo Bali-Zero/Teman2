@@ -22,6 +22,15 @@ init_sentry()
 logger = logging.getLogger("zantara.backend")
 
 
+def _wa_outbox_scheduler_enabled() -> bool:
+    return os.getenv("WA_OUTBOX_SCHEDULER_ENABLED", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
 def _make_wa_bot_generate(app: FastAPI):
     """Build the bot_generate_fn for the wa_outbox scheduler.
 
@@ -113,7 +122,12 @@ async def lifespan_light(app: FastAPI):
             # lifespan) because app.state.db_pool is only set above, inside this
             # background init task; an outer-lifespan task could start with
             # db_pool=None (panel race-fix 2026-06-04). Guard on a real pool.
-            if getattr(app.state, "db_pool", None) is not None:
+            if not _wa_outbox_scheduler_enabled():
+                app.state._wa_outbox_scheduler_task = None
+                logger.warning(
+                    "⚠️ WA outbox scheduler disabled by WA_OUTBOX_SCHEDULER_ENABLED",
+                )
+            elif getattr(app.state, "db_pool", None) is not None:
                 app.state._wa_outbox_scheduler_task = asyncio.create_task(
                     _run_wa_outbox_scheduler(app)
                 )
