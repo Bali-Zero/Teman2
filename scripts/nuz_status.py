@@ -18,13 +18,18 @@ import sys
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 DEFAULT_FLY_HEALTH_URL = "https://nuzantara-rag.fly.dev/health"
 DEFAULT_DRIVE_STATUS_URL = "https://nuzantara-rag.fly.dev/api/admin/drive/poll/status"
 DEFAULT_PEER_ALIAS = "pro"
+DEFAULT_PEER_ALIAS_BY_ROLE = {
+    "Pro": "mini",
+    "Mini": "pro",
+    "Air-M5": "pro",
+}
 DEFAULT_PEER_REPO = "~/Desktop/nuzantara"
 PEER_AUTOSTASH_ENV = "NUZ_STATUS_ALLOW_PEER_AUTOSTASH"
 
@@ -37,7 +42,7 @@ class CommandResult:
 
 
 def utc_now() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def run_command(
@@ -83,6 +88,10 @@ def machine_role(hostname: str, username: str) -> str:
     if hostname in {"Air-M5", "air-m5"} or username == "balizero":
         return "Air-M5"
     return "Unknown"
+
+
+def default_peer_alias(role: str) -> str:
+    return DEFAULT_PEER_ALIAS_BY_ROLE.get(role, DEFAULT_PEER_ALIAS)
 
 
 def check_status(status: str, summary: str, **details: Any) -> dict[str, Any]:
@@ -293,7 +302,7 @@ def build_checks(
             checks.append(
                 {
                     "id": "git_peer",
-                    **check_status("fail", "Pro peer unreachable", **peer_git),
+                    **check_status("fail", f"{peer} peer unreachable", **peer_git),
                 },
             )
         else:
@@ -314,7 +323,7 @@ def build_checks(
             actions.append(
                 {
                     "id": "sync_pro_main",
-                    "label": "Sync Pro main",
+                    "label": f"Sync {peer} main",
                     "enabled": (
                         peer_git.get("branch") == "main"
                         and not peer_git.get("dirty")
@@ -419,11 +428,13 @@ def collect_status(args: argparse.Namespace) -> dict[str, Any]:
     root = repo_root(Path.cwd())
     username = getpass.getuser()
     hostname = socket.gethostname().split(".")[0]
+    role = machine_role(hostname, username)
+    peer = args.peer or default_peer_alias(role)
     checks, actions = build_checks(
         root=root,
         refresh=bool(args.refresh),
         offline=bool(args.offline),
-        peer=args.peer,
+        peer=peer,
         fly_health_url=args.fly_health_url,
         drive_status_url=args.drive_status_url,
     )
@@ -443,8 +454,9 @@ def collect_status(args: argparse.Namespace) -> dict[str, Any]:
         "machine": {
             "user": username,
             "hostname": hostname,
-            "role": machine_role(hostname, username),
+            "role": role,
         },
+        "peer": peer,
         "repo_root": str(root),
         "checks": checks,
         "actions": actions,
@@ -478,7 +490,7 @@ def safe_fix(target: str, *, peer: str) -> dict[str, Any]:
                 "stdout": "",
                 "stderr": f"refusing peer autostash without {PEER_AUTOSTASH_ENV}=1",
             }
-        stash_name = f"nuz-status-auto-stash-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+        stash_name = f"nuz-status-auto-stash-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
         remote = (
             f"cd {DEFAULT_PEER_REPO} && "
             "test \"$(git rev-parse --abbrev-ref HEAD)\" = main && "
@@ -544,7 +556,7 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--json", action="store_true", help="Emit JSON")
     status.add_argument("--refresh", action="store_true", help="Fetch fresh Git refs")
     status.add_argument("--offline", action="store_true", help="Skip network and SSH checks")
-    status.add_argument("--peer", default=DEFAULT_PEER_ALIAS)
+    status.add_argument("--peer", default=None)
     status.add_argument("--fly-health-url", default=DEFAULT_FLY_HEALTH_URL)
     status.add_argument("--drive-status-url", default=DEFAULT_DRIVE_STATUS_URL)
 
@@ -554,7 +566,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         choices=["pro-main", "pro-main-autostash", "local-main"],
     )
-    fix.add_argument("--peer", default=DEFAULT_PEER_ALIAS)
+    fix.add_argument("--peer", default=None)
     fix.add_argument("--json", action="store_true")
 
     return parser
@@ -569,7 +581,7 @@ def main(argv: list[str] | None = None) -> int:
             args.json = False
             args.refresh = False
             args.offline = False
-            args.peer = DEFAULT_PEER_ALIAS
+            args.peer = None
             args.fly_health_url = DEFAULT_FLY_HEALTH_URL
             args.drive_status_url = DEFAULT_DRIVE_STATUS_URL
         payload = collect_status(args)
@@ -582,7 +594,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if payload["overall"] in {"ok", "unknown", "warn"} else 1
 
     if args.command == "fix":
-        payload = safe_fix(args.target, peer=args.peer)
+        username = getpass.getuser()
+        hostname = socket.gethostname().split(".")[0]
+        peer = args.peer or default_peer_alias(machine_role(hostname, username))
+        payload = safe_fix(args.target, peer=peer)
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
