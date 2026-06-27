@@ -205,10 +205,16 @@ drop) · W32 (interface error ignorato silenzioso) · W47.
 lettori non allineati a valle si rompono.
 
 **SEGNALE-PRECOCE:** modifica "veloce" ai dati intermedi passati su code-path disaccoppiati (DLQ, redis
-stream, event bus, `*.last.json`) senza scope end-to-end di chi li legge.
+stream, event bus, `*.last.json`) senza scope end-to-end di chi li legge; **un segnale di STATO (merged?
+stale? fresh?) letto da un proxy (SHA-ancestor, patch-id, timestamp, substring) invece che dal CONTENUTO
+reale** — `git cherry`/`--is-ancestor` che dicono "non-mergiato" su un branch già-su-main per squash (W88).
 
 **ANTIDOTO:** i cambi di schema sui contratti inter-servizio (incluso file di stato) richiedono deploy
 unificato + scansione completa dei partecipanti; mai cambiare un formato condiviso da un solo lato.
+**Regola-stato (W88, MANDATORIA):** quando decidi "X è già su main / già fatto / stale", verifica per
+**CONTENUTO** (diff vuoto/subset), **mai** per patch-equivalenza, SHA-ancestor o timestamp — il proxy
+mente quando il contenuto è arrivato per un'altra via (squash/rework). Reso eseguibile, non solo documentato:
+`scripts/branch_graveyard_cleanup.sh::content_on_main()`.
 
 **MEMBRI:** W54 (timestamp ISO-8601 schianta il check di staleness) · W53 (DLQ TERMINAL suppression gate
 mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`) · **W86 (DOCSYNC stale —
@@ -216,7 +222,21 @@ auto-merge-a-verde mergia il commit-feature PRIMA che il commit docs_sync bump a
 contratto-derivato `AI_ONBOARDING.md` test/router/service count resta stale su main → il gate
 `check-docs-sync` boccia la PR backend successiva, innocente. Antidoto: il `docs_sync.py` regen va
 nello STESSO commit della feature, MAI separato — con `--auto` non esiste "poi", merge al primo
-verde. 2026-06-23, PR #1670→#1672)**.
+verde. 2026-06-23, PR #1670→#1672)** · **W88 (cherry-mente-sul-contenuto, 2026-06-27: `git merge-base
+--is-ancestor` / `git cherry` segnano un branch "non su main" appena lo SHA non è antenato — ma un branch
+SQUASH-merged o riportato per rework È GIÀ su main per CONTENUTO mentre SHA e patch-id divergono. Un
+"orphan report" di 28 worktree era ~80% stale: ~5 vivi veri, il resto già su main, e 3 capitoli KBLI
+sarebbero REGREDITI se rebasati. Antidoto MANDATORIO: deletable-safe SOLO se `git diff origin/main...<br>`
+è VUOTO o pura-cancellazione (subset) — verifica per CONTENUTO, MAI per patch-equivalenza/ancestor-solo.
+Reso eseguibile in `scripts/branch_graveyard_cleanup.sh::content_on_main()` + nuova categoria
+"Content-on-main & deletable". GOTCHA-NEL-GOTCHA (stesso giorno, il fix è ricaduto nella malattia che
+curava): la PRIMA versione del check usava `git diff origin/main...branch` (THREE-DOT) — ma post-squash
+il merge-base è ARRETRATO, quindi il three-dot conta come "branch-only" ogni riga che main ha cambiato
+dopo quel base → FALSO NEGATIVO. Prova vissuta: un file con blob byte-identico su main dava lo stesso
+"+155 added" sotto three-dot. Il three-dot è ESSO STESSO un proxy che mente — la trappola W88 al secondo
+grado. Cura definitiva: confronto **blob-per-file** sui soli file che il branch ha autorato dal merge-base
+(`git rev-parse branch:f == main:f`), MAI il three-dot. Il check buggato trovava 2 content-on-main, quello
+corretto ne trova 9 (i 7 persi erano i falsi negativi))**.
 **→ dettaglio:** cicatrix-scars.md (W86) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
 
 ---
