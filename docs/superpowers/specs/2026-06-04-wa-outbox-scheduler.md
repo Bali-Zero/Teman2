@@ -81,6 +81,8 @@ prepare/monitor + human reply before publication), B as a follow-up.
 ## Kill switch & ops
 
 - `DISABLE_BACKGROUND_WORKERS=1` already disables it (shared with other loops).
+- `WA_OUTBOX_SCHEDULER_ENABLED=0` disables only the WA outbox scheduler while
+  leaving the API-side Notification Scheduler and other background workers on.
 - `WA_OUTBOX_POLL_SECONDS` (default 3) tunes cadence.
 - Loop logs each non-idle status at INFO; exceptions at EXCEPTION (never crashes
   the app — the lifespan task swallows and backs off).
@@ -99,5 +101,6 @@ prepare/monitor + human reply before publication), B as a follow-up.
 
 ## Rollback
 
-Additive: the loop is one task gated by an env var. Revert = unset/disable or
-revert the diff. No schema, no data change.
+Additive: the loop is one task gated by env vars. Revert = set
+`WA_OUTBOX_SCHEDULER_ENABLED=0`, use the broader `DISABLE_BACKGROUND_WORKERS=1`,
+or revert the diff. No schema, no data change.

@@ -16,12 +16,102 @@ iterations by cancelling the task after the scripted statuses are consumed.
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
+import sys
+from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
 
 from backend.app import main_api
+
+
+def test_wa_outbox_scheduler_enabled_defaults_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("WA_OUTBOX_SCHEDULER_ENABLED", raising=False)
+
+    assert main_api._wa_outbox_scheduler_enabled() is True
+
+
+@pytest.mark.parametrize("value", ["0", "false", "False", " no ", "OFF"])
+def test_wa_outbox_scheduler_enabled_false_values(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", value)
+
+    assert main_api._wa_outbox_scheduler_enabled() is False
+
+
+@pytest.mark.parametrize("value", ["1", "true", "yes", "enabled", ""])
+def test_wa_outbox_scheduler_enabled_true_values(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", value)
+
+    assert main_api._wa_outbox_scheduler_enabled() is True
+
+
+@pytest.mark.asyncio
+async def test_lifespan_light_disables_only_wa_outbox_scheduler(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakePool:
+        async def close(self) -> None:
+            pass
+
+    async def fake_initialize_services_light(app: Any) -> None:
+        app.state.db_pool = FakePool()
+
+    async def fake_init_scheduler(pool: Any) -> str:
+        return "notification-scheduler"
+
+    async def fake_close() -> None:
+        pass
+
+    def fail_run_wa_outbox_scheduler(app: Any) -> None:
+        raise AssertionError("WA outbox scheduler should not start")
+
+    initializer_mod = ModuleType("backend.app.setup.service_initializer")
+    scheduler_mod = ModuleType("backend.app.modules.notifications.scheduler")
+    rag_proxy_mod = ModuleType("backend.app.rag_proxy")
+    wa_inbox_bot_mod = ModuleType("backend.services.integrations.wa_inbox_bot")
+    setattr(initializer_mod, "initialize_services_light", fake_initialize_services_light)
+    setattr(scheduler_mod, "init_scheduler", fake_init_scheduler)
+    setattr(rag_proxy_mod, "close_proxy_client", fake_close)
+    setattr(wa_inbox_bot_mod, "close_rag_client", fake_close)
+
+    monkeypatch.delenv("DISABLE_BACKGROUND_WORKERS", raising=False)
+    monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", "0")
+    monkeypatch.setitem(
+        sys.modules,
+        "backend.app.setup.service_initializer",
+        initializer_mod,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "backend.app.modules.notifications.scheduler",
+        scheduler_mod,
+    )
+    monkeypatch.setitem(sys.modules, "backend.app.rag_proxy", rag_proxy_mod)
+    monkeypatch.setitem(
+        sys.modules,
+        "backend.services.integrations.wa_inbox_bot",
+        wa_inbox_bot_mod,
+    )
+    monkeypatch.setattr(
+        main_api,
+        "_run_wa_outbox_scheduler",
+        fail_run_wa_outbox_scheduler,
+    )
+
+    app = SimpleNamespace(state=SimpleNamespace())
+
+    async with main_api.lifespan_light(app):
+        await app.state._init_task
+        assert app.state.notification_scheduler == "notification-scheduler"
+        assert app.state._wa_outbox_scheduler_task is None
 
 
 @pytest.mark.asyncio
