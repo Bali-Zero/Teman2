@@ -52,6 +52,14 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     still honors ``INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED`` and
     ``INTAKE_WRITER_ENABLED`` before any CRM write can happen.
 
+``--review-backlog-report``
+    Read-only triage of the current wa-mirror review queue. It collapses to the
+    latest proposal per queue row and reports aggregate automation buckets:
+    already eligible auto-attach, direct-phone auto-catalog, direct new-prospect
+    candidates, direct unknowns ready for local Qwen reclassification, group
+    review, missing context, and remaining human review. It never logs client
+    names, phones, blob paths, OCR text, or proposal payloads.
+
 ``--scrub-group-phone``
     Historical wa-mirror group documents may still carry ``intake_queue.sender_phone``
     from before the group/direct split. Group sender numbers are participant
@@ -263,35 +271,44 @@ UPDATE intake_queue
 DIRECT_UNKNOWN_TEXT_AUTOCATALOG_SELECT_SQL = """
 WITH candidate_rows AS (
     SELECT q.id AS queue_id,
-           ARRAY_REMOVE(ARRAY_AGG(p.id), NULL) AS proposal_ids,
-           COALESCE(SUM(LENGTH(
-             CASE
-               WHEN jsonb_typeof(page.value) = 'object'
-               THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
-               WHEN jsonb_typeof(page.value) = 'string'
-               THEN trim(both '"' from page.value::text)
-               ELSE ''
-             END
-           )), 0) AS ocr_chars
+           (
+             SELECT ARRAY_REMOVE(ARRAY_AGG(p.id), NULL)
+               FROM document_routing_proposal p
+              WHERE p.queue_id = q.id
+                AND p.status = 'review_pending'
+           ) AS proposal_ids,
+           (
+             SELECT COALESCE(SUM(LENGTH(
+               CASE
+                 WHEN jsonb_typeof(page.value) = 'object'
+                 THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                 WHEN jsonb_typeof(page.value) = 'string'
+                 THEN trim(both '"' from page.value::text)
+                 ELSE ''
+               END
+             )), 0)
+               FROM jsonb_array_elements(
+                 CASE
+                   WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                   THEN q.stage_output->'classify'->'ocr_text_per_page'
+                   ELSE '[]'::jsonb
+                 END
+               ) AS page(value)
+           ) AS ocr_chars
       FROM intake_queue q
       JOIN whatsapp_message_context w
         ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
-      LEFT JOIN document_routing_proposal p
-        ON p.queue_id = q.id
-       AND p.status = 'review_pending'
-      LEFT JOIN LATERAL jsonb_array_elements(
-        CASE
-          WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
-          THEN q.stage_output->'classify'->'ocr_text_per_page'
-          ELSE '[]'::jsonb
-        END
-      ) AS page(value) ON TRUE
      WHERE q.source = 'whatsapp'
        AND q.source_ref LIKE 'wa-mirror:%'
        AND q.status <> 'dead'
        AND COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') = 'unknown'
        AND (w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL)
-     GROUP BY q.id
+       AND EXISTS (
+           SELECT 1
+             FROM document_routing_proposal p
+            WHERE p.queue_id = q.id
+              AND p.status = 'review_pending'
+       )
 )
 SELECT queue_id, proposal_ids, ocr_chars
   FROM candidate_rows
@@ -303,36 +320,45 @@ SELECT queue_id, proposal_ids, ocr_chars
 SAVED_OCR_PRECLASSIFY_SELECT_SQL = """
 WITH candidate_rows AS (
     SELECT q.id AS queue_id,
-           ARRAY_REMOVE(ARRAY_AGG(DISTINCT p.id), NULL) AS proposal_ids,
+           (
+             SELECT ARRAY_REMOVE(ARRAY_AGG(p.id), NULL)
+               FROM document_routing_proposal p
+              WHERE p.queue_id = q.id
+                AND p.status = 'review_pending'
+           ) AS proposal_ids,
            q.stage_output,
-           COALESCE(SUM(LENGTH(
-             CASE
-               WHEN jsonb_typeof(page.value) = 'object'
-               THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
-               WHEN jsonb_typeof(page.value) = 'string'
-               THEN trim(both '"' from page.value::text)
-               ELSE ''
-             END
-           )), 0) AS ocr_chars
+           (
+             SELECT COALESCE(SUM(LENGTH(
+               CASE
+                 WHEN jsonb_typeof(page.value) = 'object'
+                 THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                 WHEN jsonb_typeof(page.value) = 'string'
+                 THEN trim(both '"' from page.value::text)
+                 ELSE ''
+               END
+             )), 0)
+               FROM jsonb_array_elements(
+                 CASE
+                   WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                   THEN q.stage_output->'classify'->'ocr_text_per_page'
+                   ELSE '[]'::jsonb
+                 END
+               ) AS page(value)
+           ) AS ocr_chars
       FROM intake_queue q
       JOIN whatsapp_message_context w
         ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
-      JOIN document_routing_proposal p
-        ON p.queue_id = q.id
-       AND p.status = 'review_pending'
-      LEFT JOIN LATERAL jsonb_array_elements(
-        CASE
-          WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
-          THEN q.stage_output->'classify'->'ocr_text_per_page'
-          ELSE '[]'::jsonb
-        END
-      ) AS page(value) ON TRUE
      WHERE q.source = 'whatsapp'
        AND q.source_ref LIKE 'wa-mirror:%'
        AND q.status <> 'dead'
        AND COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') = 'unknown'
        AND (w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL)
-     GROUP BY q.id, q.stage_output
+       AND EXISTS (
+           SELECT 1
+             FROM document_routing_proposal p
+            WHERE p.queue_id = q.id
+              AND p.status = 'review_pending'
+       )
 )
 SELECT queue_id, proposal_ids, stage_output, ocr_chars
   FROM candidate_rows
@@ -388,6 +414,122 @@ SELECT p.id, p.queue_id, p.doc_index, p.pipeline_version, p.status,
        ) LIKE 'sender phone%'
  ORDER BY p.id
  LIMIT $1
+"""
+
+REVIEW_BACKLOG_REPORT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id,
+           p.queue_id,
+           p.status,
+           p.entity_resolution,
+           p.routing,
+           p.commit_gate,
+           p.created_at,
+           q.source_context,
+           q.source_ref,
+           q.sender_phone,
+           q.stage_output,
+           w.chat_type AS mirror_chat_type,
+           w.group_jid AS mirror_group_jid
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+      LEFT JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+     WHERE q.source = 'whatsapp'
+     ORDER BY q.id, p.created_at DESC, p.id DESC
+),
+review AS (
+    SELECT latest.*,
+           COALESCE(latest.entity_resolution->>'decision', latest.commit_gate->>'decision', 'proposal_only') AS decision,
+           COALESCE(latest.routing->>'doc_type', '<missing>') AS doc_type,
+           COALESCE(
+               NULLIF(latest.source_context->>'chat_type', ''),
+               CASE
+                   WHEN latest.mirror_chat_type = 'group' OR latest.mirror_group_jid IS NOT NULL
+                   THEN 'group'
+                   WHEN latest.source_ref LIKE 'wa-mirror:%' AND latest.mirror_chat_type IS NOT NULL
+                   THEN 'direct'
+                   ELSE '<missing>'
+               END
+           ) AS chat_type,
+           COALESCE(ocr.ocr_chars, 0) AS ocr_chars,
+           COALESCE(
+               latest.entity_resolution->'reason'->>'reason',
+               latest.commit_gate->>'reason',
+               latest.routing->>'reason',
+               ''
+           ) AS reason_text
+      FROM latest
+      LEFT JOIN LATERAL (
+          SELECT COALESCE(SUM(LENGTH(
+              CASE
+                  WHEN jsonb_typeof(page.value) = 'object'
+                  THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                  WHEN jsonb_typeof(page.value) = 'string'
+                  THEN trim(both '"' from page.value::text)
+                  ELSE ''
+              END
+          )), 0)::integer AS ocr_chars
+            FROM jsonb_array_elements(
+                CASE
+                    WHEN jsonb_typeof(latest.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                    THEN latest.stage_output->'classify'->'ocr_text_per_page'
+                    ELSE '[]'::jsonb
+                END
+            ) AS page(value)
+      ) AS ocr ON TRUE
+     WHERE latest.status = 'review_pending'
+),
+bucketed AS (
+    SELECT *,
+           CASE
+               WHEN COALESCE((commit_gate->>'auto_attach_eligible')::boolean, false) = true
+               THEN 'auto_attach_eligible'
+               WHEN chat_type = 'direct'
+                    AND decision = 'LINK_CANDIDATE'
+                    AND routing->>'client_id' IS NOT NULL
+                    AND doc_type = ANY($2::text[])
+                    AND source_context->>'routing_identity_policy' = 'sender_phone_enabled'
+                    AND reason_text LIKE 'sender phone%'
+               THEN 'direct_phone_auto_catalog'
+               WHEN chat_type = 'direct'
+                    AND decision = 'NO_MATCH'
+                    AND sender_phone IS NOT NULL
+                    AND doc_type = ANY($2::text[])
+               THEN 'direct_new_prospect_candidate'
+               WHEN chat_type = 'direct'
+                    AND doc_type = 'unknown'
+                    AND ocr_chars >= $1
+               THEN 'direct_unknown_reclassify'
+               WHEN chat_type = 'group'
+               THEN 'group_human_review'
+               WHEN chat_type = '<missing>'
+               THEN 'missing_context_review'
+               ELSE 'remaining_human_review'
+           END AS automation_bucket
+      FROM review
+)
+SELECT 'total' AS section, 'latest_review' AS key, COUNT(*)::integer AS count
+  FROM bucketed
+UNION ALL
+SELECT 'decision' AS section, decision AS key, COUNT(*)::integer AS count
+  FROM bucketed
+ GROUP BY decision
+UNION ALL
+SELECT 'chat_decision' AS section, chat_type || ':' || decision AS key, COUNT(*)::integer AS count
+  FROM bucketed
+ GROUP BY chat_type, decision
+UNION ALL
+SELECT 'automation_bucket' AS section, automation_bucket AS key, COUNT(*)::integer AS count
+  FROM bucketed
+ GROUP BY automation_bucket
+UNION ALL
+SELECT 'unknown' AS section, decision || ':' || chat_type AS key, COUNT(*)::integer AS count
+  FROM bucketed
+ WHERE doc_type = 'unknown'
+ GROUP BY decision, chat_type
+ORDER BY section, count DESC, key
 """
 
 
@@ -1099,6 +1241,45 @@ async def run_direct_phone_auto_attach(
     return counts
 
 
+async def run_review_backlog_report(
+    pool: asyncpg.Pool,
+    min_ocr_chars: int,
+) -> dict[str, Any]:
+    """Report the current wa-mirror review backlog as aggregate automation buckets.
+
+    The report intentionally uses the latest proposal per queue row so the count
+    mirrors the review surface rather than historical/superseded proposals. It
+    is read-only and PII-safe: rows contain only section/key/count aggregates.
+    """
+    safe_min_ocr_chars = max(min_ocr_chars, 1)
+    supported_doc_types = sorted(DOCUMENT_CATEGORY_MAP)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            REVIEW_BACKLOG_REPORT_SQL,
+            safe_min_ocr_chars,
+            supported_doc_types,
+        )
+
+    report_rows = [
+        {
+            "section": str(row["section"]),
+            "key": str(row["key"]),
+            "count": int(row["count"]),
+        }
+        for row in rows
+    ]
+    counts: dict[str, Any] = {
+        "min_ocr_chars": safe_min_ocr_chars,
+        "supported_doc_types": len(supported_doc_types),
+        "rows": report_rows,
+    }
+    logger.info(
+        "[review-backlog-report] %s",
+        json.dumps(counts, sort_keys=True, separators=(",", ":")),
+    )
+    return counts
+
+
 # --- CLI ----------------------------------------------------------------------
 
 
@@ -1150,6 +1331,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--auto-attach-direct-phone",
         action="store_true",
         help="try direct wa-mirror phone LINK_CANDIDATE proposals through the opt-in gate",
+    )
+    p.add_argument(
+        "--review-backlog-report",
+        action="store_true",
+        help="read-only aggregate triage of current wa-mirror review buckets",
     )
     p.add_argument(
         "--include-groups",
@@ -1243,12 +1429,13 @@ async def main(argv: list[str] | None = None) -> int:
         or args.autocatalog_preclassify_saved_ocr
         or args.auto_attach_eligible
         or args.auto_attach_direct_phone
+        or args.review_backlog_report
     ):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, and/or "
             "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr/"
-            "--auto-attach-eligible/--auto-attach-direct-phone"
+            "--auto-attach-eligible/--auto-attach-direct-phone/--review-backlog-report"
         )
         return 2
 
@@ -1293,6 +1480,8 @@ async def main(argv: list[str] | None = None) -> int:
             await run_auto_attach_eligible(pool, max(args.auto_attach_limit, 1), args.apply)
         if args.auto_attach_direct_phone:
             await run_direct_phone_auto_attach(pool, max(args.auto_attach_limit, 1), args.apply)
+        if args.review_backlog_report:
+            await run_review_backlog_report(pool, max(args.autocatalog_min_ocr_chars, 1))
         if args.revive_stub:
             await run_revive_stub(pool, args.stub_pipeline_version, args.include_groups, args.apply)
         return 0
