@@ -41,9 +41,23 @@ const DOC_TYPE_DESTINATIONS: Record<
 > = {
   passport: { group: "immigration", categoryCode: "passport" },
   kitas: { group: "immigration", categoryCode: "itas" },
+  itas: { group: "immigration", categoryCode: "itas" },
+  itap: { group: "immigration", categoryCode: "itap" },
+  itk: { group: "immigration", categoryCode: "itk" },
+  visa: { group: "immigration", categoryCode: "e_visa" },
+  birth_certificate: { group: "personal", categoryCode: "birth_cert" },
+  medical_insurance: { group: "personal", categoryCode: "" },
+  travel_ticket: { group: "immigration", categoryCode: "" },
   npwp: { group: "tax", categoryCode: "npwp" },
+  skt: { group: "tax", categoryCode: "skt" },
+  ktp: { group: "personal", categoryCode: "" },
   nib: { group: "pma", categoryCode: "nib" },
   akta_pendirian: { group: "pma", categoryCode: "akta_pendirian" },
+  oss: { group: "pma", categoryCode: "oss_certificate" },
+  sk_kemenkumham: { group: "pma", categoryCode: "sk_kemenkumham" },
+  profil_perseroan: { group: "pma", categoryCode: "" },
+  bank_statement: { group: "personal", categoryCode: "bank_statement" },
+  payment_receipt: { group: "other", categoryCode: "receipt" },
 };
 
 function normalizeCode(value: string | null | undefined): string {
