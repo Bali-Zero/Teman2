@@ -20,10 +20,21 @@
 ## P0 artifacts (all in `scripts/`, all inert, all kill-switchable)
 
 ### `runtime-reconcile.sh` — anti-W81 watchdog (signaller, not actuator)
-Asserts: `-deploy` exists, is a clone (not a worktree), on the right branch, pulled recently.
-P0 default `RUNTIME_RECONCILE_STRICT=0` → records breaches to log + heartbeat, does NOT page.
-P1 flips `STRICT=1` → P0 Telegram on any breach. Kill: `NUZ_RUNTIME_RECONCILE_DISABLED=1`.
+Asserts: `-deploy` exists (`.git` as dir OR file — clone or worktree), on the right branch,
+pulled recently. P0 default `RUNTIME_RECONCILE_STRICT=0` → records breaches to log + heartbeat,
+does NOT page. P1 flips `STRICT=1` → P0 Telegram on any breach. Kill: `NUZ_RUNTIME_RECONCILE_DISABLED=1`.
 Heartbeat: `~/.organism/last_seen/pro.runtime_reconcile.json` (A2-observable).
+
+> **P1 reality (2026-06-27): runtime root is a WORKTREE, not a clone.** The council Q1 design
+> was a full clone (isolation from the main's `.git` churn — W63/#5). On execution the Pro disk
+> was **98% full (8GB free), and the ~18GB of `.worktrees/*` were all UNMERGED sibling work**
+> (`ahead≥1`, many dirty, 2 with live procs) — un-reapable without scar W80. So the clone was not
+> physically affordable. The existing `wr2-deploy-pull.sh` bootstraps a worktree, which is what
+> was armed. The reconcile logs this as a **visible DEBT, not a breach**. **Clone is deferred
+> until free disk > 60GB** (needs an external archive target for the sibling worktrees, or those
+> PRs merged). Until then deploy shares the main's object store — a corrupted/prune'd main can
+> take it down. `deploy/main` is a separate branch, so ref-churn is mitigated; object-store
+> coupling is not.
 ```
 bash scripts/runtime-reconcile.sh          # warn-only
 RUNTIME_RECONCILE_STRICT=1 bash scripts/runtime-reconcile.sh   # pages on breach (P1)
