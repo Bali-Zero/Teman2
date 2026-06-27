@@ -120,5 +120,38 @@ PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py \
   --auto-attach-direct-phone --auto-attach-limit 500
 ```
 
+## Apply Auto-Attach To Kita
+
 Do not pass `--apply` until the CRM/Kita writer endpoint and production flags are
-verified for the deployed commit.
+verified for the deployed commit. The bulk script now runs this preflight
+automatically before committing any auto-attach candidate:
+
+```sh
+curl -sS -o /tmp/kita-preflight.json -w "%{http_code}\n" \
+  -X POST https://nuzantara-rag.fly.dev/api/crm/internal/clients/1/documents/upload \
+  -H "X-CRM-Write-Key: ${WA_MIRROR_CRM_WRITE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Expected safe result: `422` with a missing-field validation body. That means
+HybridAuth let the request reach the service-write route and no file was written.
+
+Blocked result: `401 {"detail":"Authentication required"}`. That means the
+service-write upload route is not deployed/allowlisted yet, even if the same key
+works for `/api/crm/clients/upsert-by-phone`. Do not apply auto-attach in that
+state: it could commit locally without delivering the document to Kita.
+
+Once the preflight returns `422`, start with a tiny applied batch:
+
+```sh
+INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED=1 \
+INTAKE_WRITER_ENABLED=1 \
+INTAKE_CRM_PUSH_ENABLED=1 \
+PYTHONPATH=apps/backend-rag \
+python scripts/intake_reprocess_backlog.py \
+  --auto-attach-direct-phone --auto-attach-limit 5 --apply
+```
+
+Then verify aggregate delivery status from `intake_commit_audit` before scaling
+the limit.
