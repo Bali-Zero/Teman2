@@ -48,12 +48,23 @@ if [ "$ENABLED" != "true" ]; then
 fi
 
 # Single-instance lock (a long backfill run keeps it; later cron ticks skip).
+# Validate the locked PID is OUR script, not just any live PID. The kernel
+# recycles PIDs: a stale lock pointing at a number later reassigned to an
+# unrelated process (e.g. syncthing) would make every tick exit 0 forever,
+# silently freezing the flow while the state-file goes stale and the sentinel
+# stays blind. Trust the lock only if the live process is dropbox-intake-sync.
+# (scar #2 "esiste ≠ armato" — recycled-PID stale-lock, 2026-06-27)
+LOCK_TAG="dropbox-intake-sync"
 if [ -f "$LOCK_FILE" ]; then
   PID=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
   if [ -n "$PID" ] && ps -p "$PID" >/dev/null 2>&1; then
-    log "another run alive (PID $PID) — exit 0"
-    exit 0
+    if ps -p "$PID" -o command= 2>/dev/null | grep -q "$LOCK_TAG"; then
+      log "another run alive (PID $PID) — exit 0"
+      exit 0
+    fi
+    log "stale lock: PID $PID alive but not $LOCK_TAG (recycled PID) — reclaiming"
   fi
+  rm -f "$LOCK_FILE"
 fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
