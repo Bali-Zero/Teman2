@@ -521,19 +521,31 @@ def _emit_organism_event(event: dict[str, Any]) -> None:
         pass
 
 
+# Statuses that mean "the organ is not delivering its work" and MUST reach the
+# supervisor regardless of nominal severity. 'starved' is the A2 keystone: fresh
+# heartbeat but frozen output (the whole point of the Heartbeat Semantico). Before
+# 2026-06-27 'starved' had ZERO live consumers — _emit filtered status!='dead' AND
+# severity in (critical,error), so a starved organ (and a 'dead' organ whose registry
+# severity was only 'warning', e.g. wr2.supervisor dead 31h) escalated NOTHING. That
+# made A2 a write-only engine: the cure for "green≠working" itself silently green.
+# (TAC of the 4 self-loop rings, 2026-06-27 — this closes the A2 half.)
+_ESCALATE_STATUSES = ("dead", "starved")
+
+
 def _emit_dead_organs_to_supervisor(results: list[dict[str, Any]]) -> int:
-    """For every organ classified as dead with critical/error severity,
-    emit a heartbeat_silent Event onto the organism bus. Returns count
-    of events emitted. Wave-5 closes Layer 3 (sentinel→supervisor)."""
+    """For every organ that is dead OR starved (output frozen), emit a
+    heartbeat_silent Event onto the organism bus regardless of nominal severity.
+    Returns count of events emitted. Wave-5 closes Layer 3 (sentinel→supervisor);
+    the 2026-06-27 A2 fix lets 'starved' and severity<error 'dead' through."""
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     emitted = 0
     for o in results:
-        if o.get("status") != "dead":
+        status = o.get("status")
+        if status not in _ESCALATE_STATUSES:
             continue
+        # severity rides along in the event but no longer SUPPRESSES escalation:
+        # a dead/starved organ is failing whatever its registry severity says (W84).
         sev = (o.get("severity") or "warning").lower()
-        # Only escalate the ones the registry wants escalated.
-        if sev not in ("critical", "error"):
-            continue
         organ_id = o.get("id", "")
         if not organ_id:
             continue
