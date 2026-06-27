@@ -41,6 +41,7 @@ W70 (path-drift `Projects/nuzantara` Air) · W76 (repomap cron su checkout stale
 copiati con path `/Users/nuzantara/`) · TAC wa-mirror 2026-06-14 (HOME-fork 510+ righe non promosse) ·
 W81 (deploy worktree `~/Desktop/nuzantara-deploy` sparito → ~20 cron critici armati a vuoto su host morto, 2026-06-15).
 **→ dettaglio:** archive (W50/51/52) + cicatrix-scars.md (W68/W70/W76/M5-dev-env) · `scar query "home-fork"`
+
 > _Nota cross-famiglia:_ **W84** (TCC-dead launchd cron, vedi #2) è imparentata: il wrapper vive sotto `~/Desktop` (path-HOME TCC-protetto) ed è quella collocazione a renderlo decertificabile. Antidoto HOME-fork applicabile: rilocare i wrapper fuori da `~/Desktop` (come fanno i 2 cron sani).
 
 ---

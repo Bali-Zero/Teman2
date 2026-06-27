@@ -4,10 +4,11 @@ When a reviewer APPROVES an intake proposal with the writer armed, the local
 (Pro Postgres) commit is the source of truth for the approve outcome. This
 module is the best-effort DELIVERY leg that runs AFTER that commit: it pushes
 the original blob to the existing Fly base64 upload endpoint
-(``POST /api/crm/clients/{client_id}/documents/upload`` —
-``crm_enhanced_documents.upload_document_base64``), which resolves/creates the
-client's Google Drive folder, uploads the file, INSERTs the canonical
-``documents`` row on the Fly Postgres (the CRM kita reads) and dispatches OCR.
+(``POST /api/crm/clients/{client_id}/documents/upload`` for reviewer JWTs, or
+``POST /api/crm/internal/clients/{client_id}/documents/upload`` for scoped WA
+Mirror service writes), which resolves/creates the client's Google Drive folder,
+uploads the file, INSERTs the canonical ``documents`` row on the Fly Postgres
+(the CRM kita reads) and dispatches OCR.
 
 PII note: the blob transits Pro→Fly→Google Drive. That is the CRM's sanctioned
 storage path — identical to a manual upload from the kita frontend — so this
@@ -116,6 +117,7 @@ def _parse_drive_file_id(file_url: str | None) -> str | None:
 async def push_committed_document(
     *,
     bearer_token: str | None,
+    crm_write_key: str | None = None,
     client_id: int,
     file_name: str,
     document_type: str,
@@ -136,15 +138,20 @@ async def push_committed_document(
     ``family_member_id`` / ``practice_id``. Fields the endpoint does not
     accept (e.g. extracted_fields) are deliberately NOT sent.
 
-    Auth: the reviewer's own ``Authorization: Bearer <jwt>`` — the Fly endpoint
-    enforces ``get_current_user`` + ``verify_client_access(write=True)``.
+    Auth: prefer the reviewer's own ``Authorization: Bearer <jwt>``. Headless
+    auto-attach can instead pass ``crm_write_key`` for the scoped internal upload
+    endpoint gated by ``WA_MIRROR_CRM_WRITE_ENABLED``.
 
     Retry: ONE retry on transient failures (connect/read errors, 5xx).
     401/403 → ``denied_rbac`` (no retry). Other 4xx → ``rejected``.
     NEVER raises for delivery failures — always returns a CrmPushResult.
     """
-    if not bearer_token:
-        return CrmPushResult(ok=False, status="no_token", detail="no bearer token on request")
+    if not bearer_token and not crm_write_key:
+        return CrmPushResult(
+            ok=False,
+            status="no_token",
+            detail="no bearer token or CRM service-write key available",
+        )
 
     path = Path(blob_path)
     try:
@@ -177,8 +184,13 @@ async def push_committed_document(
     }
     payload.update({key: value for key, value in optional_fields.items() if value is not None})
 
-    url = f"{(base_url or _push_base_url()).rstrip('/')}/api/crm/clients/{client_id}/documents/upload"
-    headers = {"Authorization": f"Bearer {bearer_token}"}
+    base = (base_url or _push_base_url()).rstrip("/")
+    if bearer_token:
+        url = f"{base}/api/crm/clients/{client_id}/documents/upload"
+        headers = {"Authorization": f"Bearer {bearer_token}"}
+    else:
+        url = f"{base}/api/crm/internal/clients/{client_id}/documents/upload"
+        headers = {"X-CRM-Write-Key": crm_write_key or ""}
     client = _get_client()
 
     try:

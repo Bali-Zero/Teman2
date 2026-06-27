@@ -6,8 +6,9 @@ on-Pro integration suite (test_intake_routing.py).
 
 Locked behaviours:
   * normalize_sender_phone: +62 / leading-0 / bare-8 / spaces / separators.
-  * _classify_decision slotting: strong > phone > fuzzy; phone NEVER
-    auto-attaches; agree=boost, disagree=both surfaced, shared-phone=AMBIGUOUS.
+  * _classify_decision slotting: strong > phone > fuzzy; phone NEVER becomes
+    AUTO_ATTACH in FASE-4; agree=boost, disagree=both surfaced,
+    shared-phone=AMBIGUOUS.
   * resolve_entity wiring: phone query only when no strong identifier matched.
 """
 

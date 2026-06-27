@@ -23,6 +23,7 @@ SwiftUI + AppKit + PDFKit, compilata con `build.sh` (swiftc + plugin macro Xcode
 
 **Lo stesso `.app` gira nativo su tutte e 3 le macchine** (icona vera, doppio-click). NON è un'app remota:
 è un binario arm64 locale su ogni Mac. Due risorse, due politiche:
+
 - **Dati (Cerca + Media)** = **bundlati nel `.app`** → 100% locali, veloci, offline su OGNI Mac. Nessuna rete.
 - **Chat (Zantara-OpenClaw)** = **un solo cervello, sul Mini** (FASE 0). L'`OpenClawRunner` è **dual-mode**:
   - **sul Mini** → invoca `~/.openclaw/bin/openclaw agent ... --json` diretto (locale).
@@ -43,6 +44,7 @@ SwiftUI + AppKit + PDFKit, compilata con `build.sh` (swiftc + plugin macro Xcode
 L'app è un **client** del runtime OpenClaw, esattamente come il bridge WhatsApp
 (`~/.openclaw/bin/openclaw_whatsapp_bridge.py:1741` → `openclaw agent ... --json` → `finalAssistantVisibleText`).
 Prima che l'app possa parlare con Zantara, sul Mini serve (verificato 2026-06-23):
+
 - **Gateway daemon H24** (LaunchAgent) — oggi `pgrep openclaw` = vuoto, va armato.
 - **`openclaw.json` ripulito** — 3 errori live: `OPENROUTER_API_KEY`/`DEEPSEEK_API_KEY` env mancanti (rimuovere o rendere opzionali), `models.providers.openai-codex.models.0.contextTokens` key non riconosciuta, `channels.telegram.streaming` valore invalido. Tenere il provider codex/GPT-5.5 (auth già presente: `~/.codex/auth.json` ✅).
 - **Agent `zantara-kbli`** — nuovo agent con system-prompt "Zantara, esperta KBLI 2025 + moratorium Bali" (modello GPT-5.5 via OpenClaw). Agenti già presenti: `main`, `coder`, `telegram-codex`.
@@ -54,6 +56,7 @@ Prima che l'app possa parlare con Zantara, sul Mini serve (verificato 2026-06-23
 `KBLI_2025_FINAL_CLEAN.json` **v10.0-L2-oss-risk** (1559 codici), copiato al build da
 `/.worktrees/intel-kbli-rag-source-align/apps/mouth/data/`. Questa versione (≠ v8.0 del 28-mar) ha
 **tutti i campi** che servono:
+
 - `kode_kbli_2025`, `judul`, `uraian`, `ruang_lingkup` (scope OSS, 1338/1559)
 - `per_skala[]` — per scala: `kategori_risiko`, `perizinan`, `kewajiban[]`, `sanksi_*`
 - `pma_status`, `pma_max_asing`, `pma_kondisi`, `intel_2026`
@@ -76,6 +79,7 @@ Debounce via `.task(id: query)`.
 colorato a sinistra + `kode` mono + `judul`.
 
 **Scheda dettaglio** (`ScrollView` + sezioni `GroupBox` su material, NO righe divisorie):
+
 - **Header**: `kode` grande + `judul` + **badge status-Bali grande** (verde `OK_or_HIGHER_RISK` `circle.fill` /
   rosso `BLOCCATO_*`/`CHIUSO_*`/`TERTUTUP` `xmark.octagon.fill` / grigio `NEEDS_REVIEW` `questionmark.circle`) + badge PMA nazionale.
 - **Callout Moratorium** (solo se `l4_bali.blocked`): riquadro amber `exclamationmark.triangle` con
@@ -87,34 +91,37 @@ colorato a sinistra + `kode` mono + `judul`.
 ## 4. Sezione "Media"
 
 `MediaLibrary` enumera da `Resources/`: 20 articoli + 13 capitoli (lista → detail markdown renderizzato)
-+ 2 PDF libro (`Bali-Threshold-2026.pdf` EN, `-ID.pdf`) con `PDFViewer` (NSViewRepresentable PDFKit),
-toggle EN/ID. **Markdown reso da mini block-renderer vendorato** (~120 righe): heading `#/##/###`,
-bullet `- `, blockquote `>`, paragrafi, inline bold/italic/link via `AttributedString(markdown:)` per-riga.
+
+- 2 PDF libro (`Bali-Threshold-2026.pdf` EN, `-ID.pdf`) con `PDFViewer` (NSViewRepresentable PDFKit),
+  toggle EN/ID. **Markdown reso da mini block-renderer vendorato** (~120 righe): heading `#/##/###`,
+  bullet `- `, blockquote `>`, paragrafi, inline bold/italic/link via `AttributedString(markdown:)` per-riga.
 
 ## 5. Sezione "Chat" (Zantara KBLI · GPT-5.5 via OpenClaw)
 
 **Identità del bot: un "NLM focalizzato sui KBLI con la scioltezza di GPT"** — cioè un assistente
-*grounded* sui contenuti reali Bali Zero (come NotebookLM: cita le fonti, non inventa codici/numeri/norme)
+_grounded_ sui contenuti reali Bali Zero (come NotebookLM: cita le fonti, non inventa codici/numeri/norme)
 MA conversazionale e fluido (come GPT, non un retriever rigido che sputa snippet).
 
 `OpenClawRunner` (NON clone di `codex exec` — vedi §9 F1) è **dual-mode** (vedi §2 distribuzione 3-Mac):
+
 - **sul Mini**: spawna `~/.openclaw/bin/openclaw agent --agent zantara-kbli --message <q> --json --session-id <s>` (locale).
 - **su M5/Pro**: spawna `ssh mini ~/.openclaw/bin/openclaw agent --agent zantara-kbli --message <q> --json --session-id <s>`.
-Legge `result.finalAssistantVisibleText` (testo pulito, no banner/hook). GPT-5.5 dietro OpenClaw, **un solo cervello sul Mini**.
-Streaming/poll → `ChatView` (fork chirurgico da WR2). PII: nessuna (codici pubblici). L'host si rileva a runtime (`hostname`).
+  Legge `result.finalAssistantVisibleText` (testo pulito, no banner/hook). GPT-5.5 dietro OpenClaw, **un solo cervello sul Mini**.
+  Streaming/poll → `ChatView` (fork chirurgico da WR2). PII: nessuna (codici pubblici). L'host si rileva a runtime (`hostname`).
 
 **Grounding NLM-style (il cuore del "non inventa"):**
+
 - **Corpus di grounding = i contenuti già su disco**: 1559 record KBLI (`l4_bali`, `per_skala`, `uraian`),
   20 articoli + 13 capitoli, libro PDF. Stessi contenuti della sezione Media → l'app è coerente con sé stessa.
 - **Iniezione contesto**: quando l'utente chiede (o arriva dal bottone scheda), l'app fa una **retrieval locale**
   (riusa il `KBLIStore.search` + match su articoli) e inietta i passaggi rilevanti nel `--message` come
-  blocco "FONTI" + la domanda. Il system-prompt dell'agent `zantara-kbli` impone: *rispondi SOLO su queste
-  fonti, cita il codice/articolo, se non è nelle fonti dillo, mai inventare un codice o uno status Bali*.
+  blocco "FONTI" + la domanda. Il system-prompt dell'agent `zantara-kbli` impone: _rispondi SOLO su queste
+  fonti, cita il codice/articolo, se non è nelle fonti dillo, mai inventare un codice o uno status Bali_.
 - **Scioltezza GPT**: il system-prompt NON forza un formato rigido — Zantara spiega in linguaggio naturale,
   bilingue, con tono Bali Zero ("Pragmatic Sherpa"), ma ancorata. È il pattern **bipolar verifier** invertito:
   GPT per la forma, le fonti-on-disk per la verità.
 - **Confine**: il grounding è retrieval LOCALE (no rete, no PII — codici pubblici). NotebookLM vero NON è
-  coinvolto (sarebbe rete + account); "NLM-style" = il *comportamento* grounded, replicato sul corpus locale.
+  coinvolto (sarebbe rete + account); "NLM-style" = il _comportamento_ grounded, replicato sul corpus locale.
 
 Se OpenClaw/gateway assente/offline → chat disabilitata con avviso chiaro; Cerca + Media restano intatte.
 
@@ -180,9 +187,9 @@ kbli-navigator-app/
 
 ## 9. Findings review 4-LLM (REV 2) — incorporati sopra
 
-Panel severo 2026-06-23: Gemini agy (REDESIGN) + DeepSeek V4 Pro (FIX-FIRST) + Codex GPT-5.5 (output solo-rumore → *prova* di F1). Verdetto sintesi: **FIX-FIRST**. Tutti i findings verificati empiricamente in-turn, non assunti.
+Panel severo 2026-06-23: Gemini agy (REDESIGN) + DeepSeek V4 Pro (FIX-FIRST) + Codex GPT-5.5 (output solo-rumore → _prova_ di F1). Verdetto sintesi: **FIX-FIRST**. Tutti i findings verificati empiricamente in-turn, non assunti.
 
-- **F1 [FATAL→risolto] codex nudo ≠ chat-backend.** Verificato: `codex exec` per 1 domanda → 718KB output, banner+hook, *esegue ssh/git* (agentic). **Fix**: backend = **OpenClaw `agent --json`** (GPT-5.5 dietro gateway → testo pulito, come bridge WhatsApp `openclaw_whatsapp_bridge.py:1741`). Prereq = FASE 0 (§2).
+- **F1 [FATAL→risolto] codex nudo ≠ chat-backend.** Verificato: `codex exec` per 1 domanda → 718KB output, banner+hook, _esegue ssh/git_ (agentic). **Fix**: backend = **OpenClaw `agent --json`** (GPT-5.5 dietro gateway → testo pulito, come bridge WhatsApp `openclaw_whatsapp_bridge.py:1741`). Prereq = FASE 0 (§2).
 - **F2 [FATAL] ad-hoc sig + rsync → Gatekeeper block sul Mini.** WR2 fa `codesign -s -` ma **mai deployato sul Mini** (verificato: `NO-WR2-APP-ON-MINI`) → mai provato. **Fix**: deploy-script con `xattr -cr` + re-`codesign --force --sign -` **eseguito sul Mini** post-rsync; acceptance #9.
 - **F3 [FATAL] markdown 120-righe insufficiente** per articoli con tabelle/liste-annidate. **Fix**: renderer serio single-file vendorato O pre-render `.md`→HTML a build + `WKWebView` (decisione in fase plan).
 - **S1 [SERIOUS→risolto] SwiftUI senza WindowServer crasha.** Verificato: Mini ha `nuzantara console` + `WindowServer up` → OK.
