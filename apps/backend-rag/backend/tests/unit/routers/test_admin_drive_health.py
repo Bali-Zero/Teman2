@@ -81,6 +81,37 @@ async def test_drive_poll_status_is_stale_without_heartbeat() -> None:
 
 
 @pytest.mark.asyncio
+async def test_drive_poll_status_redacts_worker_error_details() -> None:
+    pool = FakePool(
+        [
+            {
+                "key": "drive_poll_worker_heartbeat_at",
+                "value": "2099-01-01T00:00:00+00:00",
+                "updated_at": None,
+            },
+            {
+                "key": "drive_poll_worker_last_status",
+                "value": "error",
+                "updated_at": None,
+            },
+            {
+                "key": "drive_poll_worker_last_error",
+                "value": "Traceback: secret internal path",
+                "updated_at": None,
+            },
+        ],
+    )
+
+    with patch.dict("os.environ", {"DRIVE_POLL_API_MODE": ""}, clear=False):
+        result = await drive_poll_status(_request_with_pool(pool))
+
+    assert result["status"] == "stale"
+    assert result["result"]["last_error_present"] is True
+    assert result["result"]["last_error_message"] == "Last Drive poll worker run failed; see server logs"
+    assert "secret internal path" not in str(result)
+
+
+@pytest.mark.asyncio
 async def test_trigger_drive_poll_defaults_to_worker_status_without_polling() -> None:
     poll_drive_changes = AsyncMock(return_value={"status": "ok", "processed": 2})
     pool = FakePool(

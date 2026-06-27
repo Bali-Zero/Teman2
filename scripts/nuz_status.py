@@ -339,6 +339,7 @@ def build_checks(
         drive = http_json(drive_status_url, headers=drive_headers)
         drive_body = drive.get("body") if isinstance(drive.get("body"), dict) else {}
         drive_status = drive_body.get("status", "unknown")
+        summary = f"worker endpoint={drive_status}"
         if not drive.get("ok") and drive.get("status_code") == 401 and not drive_api_key:
             state = "warn"
             summary = "worker auth required: set NUZANTARA_API_KEY"
@@ -350,8 +351,6 @@ def build_checks(
             state = "ok"
         else:
             state = "warn"
-        if not (drive.get("status_code") == 401 and not drive_api_key):
-            summary = f"worker endpoint={drive_status}"
         checks.append(
             {
                 "id": "drive_worker",
