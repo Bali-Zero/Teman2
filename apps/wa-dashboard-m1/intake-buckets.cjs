@@ -2,6 +2,11 @@
 
 const HIGH_CONFIDENCE_THRESHOLD = 0.7;
 const TEXT_PARSER_MIN_CHARS = 100;
+const DEFAULT_QWEN_MODEL = "qwen3.5:9b";
+const AUTOCATALOG_DRY_RUN_COMMAND =
+  "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
+  "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text";
+const AUTOCATALOG_APPLY_COMMAND = `${AUTOCATALOG_DRY_RUN_COMMAND} --apply`;
 
 function workspaceBucketForDocType(docType) {
   const key = String(docType || "unknown").toLowerCase();
@@ -109,6 +114,168 @@ function buildDirectCatalogSummary(directActionSummary, queue, qwenPlacementPrev
     qwen_sampled_docs: Number(qwenPlacementPreview?.sampled_docs || 0),
     qwen_sample_workspace_candidates: Number(qwenPlacementPreview?.kita_workspace_candidates || 0),
     qwen_sample_review_after_qwen: Number(qwenPlacementPreview?.review_after_qwen || 0),
+  };
+}
+
+function projectRows(rows, totalDocs, denominator, keyFields) {
+  const safeTotal = Number(totalDocs || 0);
+  const safeDenominator = Number(denominator || 0);
+  if (safeTotal <= 0 || safeDenominator <= 0 || !Array.isArray(rows)) return [];
+  return rows
+    .map((row) => {
+      const sampleDocs = Number(row.docs || 0);
+      const projected = {};
+      for (const field of keyFields) projected[field] = String(row[field] || "");
+      projected.sample_docs = sampleDocs;
+      projected.projected_docs = Math.round((safeTotal * sampleDocs) / safeDenominator);
+      return projected;
+    })
+    .filter((row) => row.sample_docs > 0);
+}
+
+function buildAutocatalogPlanSummary(
+  directActionSummary,
+  qwenBatchGate,
+  qwenKnownBenchmark,
+  qwenPlacementPreview,
+) {
+  const qwenTextDocs = Number(directActionSummary?.needs_text_parser_qwen_candidate || 0);
+  const visionDocs = Number(directActionSummary?.needs_ocr_vision_batch || 0);
+  const shortOcrDocs = Number(directActionSummary?.needs_manual_review_short_ocr || 0);
+  const lowConfidenceDocs = Number(directActionSummary?.low_confidence_review || 0);
+  const routingDocs = Number(directActionSummary?.needs_routing_proposal || 0);
+  const workspaceReviewDocs = Number(directActionSummary?.workspace_review_ready || 0);
+  const alreadyRoutedDocs = Number(directActionSummary?.already_routed || 0);
+  const failedDocs = Number(directActionSummary?.failed_pipeline || 0);
+  const qwenStatus = String(qwenBatchGate?.status || "probe_required");
+  const benchmarkStatus = String(qwenKnownBenchmark?.status || "benchmark_required");
+
+  let status = "needs_more_sampling";
+  let reason = "qwen_gates_inconclusive";
+  if (qwenTextDocs <= 0) {
+    status = "no_text_candidates";
+    reason = "no_unknown_direct_docs_with_enough_saved_ocr";
+  } else if (qwenStatus === "candidate_batch_ready" && benchmarkStatus === "workspace_benchmark_ready") {
+    status = "ready_for_staged_autocatalog";
+    reason = "qwen_text_gate_and_known_doc_benchmark_passed";
+  } else if (qwenStatus === "probe_required") {
+    status = "needs_qwen_text_probe";
+    reason = "qwen_text_probe_missing";
+  } else if (benchmarkStatus === "benchmark_required") {
+    status = "needs_known_doc_benchmark";
+    reason = "known_doc_benchmark_missing";
+  } else if (qwenStatus === "insufficient_sample" || qwenStatus === "review_only") {
+    status = "text_batch_review_only";
+    reason = String(qwenBatchGate?.reason || "qwen_text_gate_not_ready");
+  } else if (benchmarkStatus !== "workspace_benchmark_ready") {
+    status = "benchmark_review";
+    reason = String(qwenKnownBenchmark?.reason || "qwen_known_doc_benchmark_not_ready");
+  }
+
+  const denominator = Number(qwenBatchGate?.classified_attempts || qwenPlacementPreview?.classified_attempts || 0);
+  const candidateRate = Number(qwenBatchGate?.candidate_rate || 0);
+  const projectedKitaDocs = denominator > 0 ? Math.round(qwenTextDocs * candidateRate) : 0;
+  const projectedReviewDocs = denominator > 0 ? Math.max(qwenTextDocs - projectedKitaDocs, 0) : qwenTextDocs;
+
+  return {
+    status,
+    reason,
+    scope: "direct_whatsapp_docs_only_groups_excluded",
+    write_mode: "proposal_only_no_crm_mutation",
+    worker_required_env: {
+      INTAKE_TEXT_LLM_CLASSIFY_ENABLED: "1",
+      INTAKE_TEXT_LLM_MODEL: DEFAULT_QWEN_MODEL,
+      INTAKE_TEXT_LLM_MIN_CHARS: String(TEXT_PARSER_MIN_CHARS),
+      INTAKE_TEXT_LLM_TIMEOUT_SECONDS: "45",
+    },
+    dry_run_command: AUTOCATALOG_DRY_RUN_COMMAND,
+    apply_command: AUTOCATALOG_APPLY_COMMAND,
+    safe_to_apply_without_existing_gate: false,
+    can_create_kita_proposals: status === "ready_for_staged_autocatalog",
+    can_auto_attach_without_review: false,
+    qwen_text_gate_status: qwenStatus,
+    known_doc_benchmark_status: benchmarkStatus,
+    totals: {
+      qwen_text_candidate_docs: qwenTextDocs,
+      ocr_vision_candidate_docs: visionDocs,
+      short_ocr_review_docs: shortOcrDocs,
+      low_confidence_review_docs: lowConfidenceDocs,
+      routing_proposal_needed_docs: routingDocs,
+      workspace_review_ready_docs: workspaceReviewDocs,
+      already_routed_docs: alreadyRoutedDocs,
+      failed_pipeline_docs: failedDocs,
+      projected_qwen_text_to_kita_docs: projectedKitaDocs,
+      projected_qwen_text_to_review_docs: projectedReviewDocs,
+    },
+    projected_qwen_workspace_buckets: projectRows(
+      qwenPlacementPreview?.workspace_buckets || [],
+      qwenTextDocs,
+      denominator,
+      ["bucket"],
+    ),
+    projected_qwen_placements: projectRows(
+      qwenPlacementPreview?.placement_preview || [],
+      qwenTextDocs,
+      denominator,
+      ["from_doc_type", "proposed_doc_type", "workspace_bucket"],
+    ),
+    stages: [
+      {
+        stage: "qwen_text_autocatalog",
+        docs: qwenTextDocs,
+        source_bucket: "needs_text_parser_qwen_candidate",
+        llm: DEFAULT_QWEN_MODEL,
+        destination: "document_routing_proposal_then_kita_workspace_by_doc_type",
+        allowed_when: "candidate_batch_ready_and_workspace_benchmark_ready",
+        expected_kita_docs: projectedKitaDocs,
+        expected_review_docs: projectedReviewDocs,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "vision_ocr_autocatalog",
+        docs: visionDocs,
+        source_bucket: "needs_ocr_vision_batch",
+        llm: "qwen2.5vl_local_ocr_then_qwen_text_router",
+        destination: "same_proposal_path_after_ocr",
+        allowed_when: "local_vision_ocr_available_on_pro",
+        expected_kita_docs: 0,
+        expected_review_docs: visionDocs,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "short_ocr_resolution",
+        docs: shortOcrDocs,
+        source_bucket: "needs_manual_review_short_ocr",
+        llm: "vision_retry_or_manual_review",
+        destination: "review_or_same_proposal_path_after_better_ocr",
+        allowed_when: "ocr_text_below_threshold",
+        expected_kita_docs: 0,
+        expected_review_docs: shortOcrDocs,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "known_doc_routing",
+        docs: routingDocs,
+        source_bucket: "needs_routing_proposal",
+        llm: "none",
+        destination: "document_routing_proposal_review_pending",
+        allowed_when: "known_doc_type_high_confidence",
+        expected_kita_docs: routingDocs,
+        expected_review_docs: 0,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "workspace_operator_review",
+        docs: workspaceReviewDocs + lowConfidenceDocs,
+        source_bucket: "workspace_review_ready_or_low_confidence_review",
+        llm: "none",
+        destination: "kita_review_queue",
+        allowed_when: "operator_or_existing_auto_attach_gate",
+        expected_kita_docs: workspaceReviewDocs,
+        expected_review_docs: lowConfidenceDocs,
+        auto_attach_allowed: false,
+      },
+    ],
   };
 }
 
@@ -316,6 +483,7 @@ module.exports = {
   TEXT_PARSER_MIN_CHARS,
   actionBucketForRow,
   buildDirectCatalogSummary,
+  buildAutocatalogPlanSummary,
   buildDirectActionSummary,
   buildGroupKindOperationalSummary,
   buildQwenKnownBenchmarkSummary,

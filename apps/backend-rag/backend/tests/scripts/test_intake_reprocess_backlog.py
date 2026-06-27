@@ -135,7 +135,9 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.scrub_group_phone is True
     assert args.backfill_source_context is False
     assert args.reprocess is False
+    assert args.autocatalog_direct_unknown_text is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
+    assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
     assert args.watermark is None
 
 
@@ -153,6 +155,36 @@ def test_parser_pipeline_version_override() -> None:
     )
     assert args.apply is True
     assert args.pipeline_version == "v9-test"
+
+
+def test_parser_autocatalog_direct_unknown_text_defaults() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--autocatalog-direct-unknown-text"])
+    assert args.apply is False
+    assert args.autocatalog_direct_unknown_text is True
+    assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
+    assert args.autocatalog_min_ocr_chars == irb.DEFAULT_AUTOCATALOG_TEXT_MIN_CHARS
+    assert args.autocatalog_limit == irb.DEFAULT_AUTOCATALOG_LIMIT
+
+
+def test_parser_autocatalog_direct_unknown_text_overrides() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--autocatalog-direct-unknown-text",
+            "--apply",
+            "--autocatalog-pipeline-version",
+            "v9-qwen",
+            "--autocatalog-min-ocr-chars",
+            "250",
+            "--autocatalog-limit",
+            "25",
+        ]
+    )
+    assert args.apply is True
+    assert args.autocatalog_pipeline_version == "v9-qwen"
+    assert args.autocatalog_min_ocr_chars == 250
+    assert args.autocatalog_limit == 25
 
 
 # ---------------------------------------------------------------------------
@@ -240,3 +272,19 @@ def test_revive_stub_select_guards_are_all_present() -> None:
     assert "NOT EXISTS" in sql  # exclude rows that already carry a proposal
     assert "/groups/" in sql  # the group-chat opt-out predicate
     assert "$1::bool" in sql  # include_groups toggle
+
+
+def test_direct_unknown_text_autocatalog_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.DIRECT_UNKNOWN_TEXT_AUTOCATALOG_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "q.source_ref LIKE 'wa-mirror:%'" in sql
+    assert "'wa-mirror:' || w.baileys_message_id" in sql
+    assert "q.status <> 'dead'" in sql
+    assert "doc_type', 'unknown') = 'unknown'" in sql
+    assert "ocr_text_per_page" in sql
+    assert "jsonb_typeof(page.value) = 'string'" in sql
+    assert "ocr_chars >= $1" in sql
+    assert "w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL" in sql
+    assert "p.status = 'review_pending'" in sql
+    assert "LIMIT $2" in sql

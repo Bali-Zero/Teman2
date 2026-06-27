@@ -40,6 +40,11 @@ DEFAULT_QWEN_MIN_CLASSIFIED_ATTEMPTS = 5
 DEFAULT_QWEN_MIN_WORKSPACE_ACCURACY = 0.70
 HIGH_CONFIDENCE_THRESHOLD = 0.70
 TEXT_PARSER_MIN_CHARS = 100
+AUTOCATALOG_DRY_RUN_COMMAND = (
+    "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && "
+    "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text"
+)
+AUTOCATALOG_APPLY_COMMAND = f"{AUTOCATALOG_DRY_RUN_COMMAND} --apply"
 
 DOC_TYPES: tuple[str, ...] = (
     "passport",
@@ -368,7 +373,9 @@ def _placement_preview_rows(counter: Counter[tuple[str, str, str]]) -> list[dict
     ]
 
 
-def _confusion_preview_rows(counter: Counter[tuple[str, str, str, str]]) -> list[dict[str, int | str]]:
+def _confusion_preview_rows(
+    counter: Counter[tuple[str, str, str, str]],
+) -> list[dict[str, int | str]]:
     positions = {key: idx for idx, key in enumerate(counter.keys())}
     return [
         {
@@ -378,9 +385,12 @@ def _confusion_preview_rows(counter: Counter[tuple[str, str, str, str]]) -> list
             "predicted_workspace_bucket": predicted_workspace,
             "docs": count,
         }
-        for (expected_type, predicted_type, expected_workspace, predicted_workspace), count in sorted(
-            counter.items(), key=lambda item: (-item[1], positions[item[0]])
-        )
+        for (
+            expected_type,
+            predicted_type,
+            expected_workspace,
+            predicted_workspace,
+        ), count in sorted(counter.items(), key=lambda item: (-item[1], positions[item[0]]))
     ]
 
 
@@ -427,9 +437,7 @@ def _qwen_benchmark_gate(
     safe_min_workspace_accuracy = min(max(min_workspace_accuracy, 0.0), 1.0)
     safe_min_classified_attempts = max(min_classified_attempts, 1)
     workspace_accuracy = (
-        round(workspace_matches / classified_attempts, 4)
-        if classified_attempts > 0
-        else 0.0
+        round(workspace_matches / classified_attempts, 4) if classified_attempts > 0 else 0.0
     )
     if classified_attempts < safe_min_classified_attempts:
         status = "insufficient_sample"
@@ -447,6 +455,183 @@ def _qwen_benchmark_gate(
         "min_workspace_accuracy": safe_min_workspace_accuracy,
         "classified_attempts": classified_attempts,
         "min_classified_attempts": safe_min_classified_attempts,
+    }
+
+
+def _bucket_docs(rows: Iterable[Mapping[str, Any]], bucket: str) -> int:
+    return sum(int(_to_float(row.get("docs", 0))) for row in rows if row.get("bucket") == bucket)
+
+
+def _project_rows(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    total_docs: int,
+    denominator: int,
+    key_fields: tuple[str, ...],
+) -> list[dict[str, int | str]]:
+    if total_docs <= 0 or denominator <= 0:
+        return []
+    projected: list[dict[str, int | str]] = []
+    for row in rows:
+        sample_docs = int(_to_float(row.get("docs", 0)))
+        if sample_docs <= 0:
+            continue
+        item: dict[str, int | str] = {field: str(row.get(field, "")) for field in key_fields}
+        item["sample_docs"] = sample_docs
+        item["projected_docs"] = round(total_docs * sample_docs / denominator)
+        projected.append(item)
+    return projected
+
+
+def build_autocatalog_plan(report: Mapping[str, Any]) -> dict[str, Any]:
+    """Build an aggregate-only plan for moving unknown direct docs toward Kita buckets."""
+    direct_actions = list(report.get("direct_actions") or [])
+    qwen_sample = report.get("qwen_text_sample") or {}
+    qwen_gate = qwen_sample.get("acceptance_gate") or {}
+    qwen_known = report.get("qwen_known_benchmark") or {}
+    benchmark_gate = qwen_known.get("benchmark_gate") or {}
+
+    qwen_text_docs = _bucket_docs(direct_actions, "needs_text_parser_qwen_candidate")
+    vision_docs = _bucket_docs(direct_actions, "needs_ocr_vision_batch")
+    short_ocr_docs = _bucket_docs(direct_actions, "needs_manual_review_short_ocr")
+    low_confidence_docs = _bucket_docs(direct_actions, "low_confidence_review")
+    routing_docs = _bucket_docs(direct_actions, "needs_routing_proposal")
+    workspace_review_docs = _bucket_docs(direct_actions, "workspace_review_ready")
+    already_routed_docs = _bucket_docs(direct_actions, "already_routed")
+    failed_docs = _bucket_docs(direct_actions, "failed_pipeline")
+
+    qwen_status = str(qwen_gate.get("status") or "probe_required")
+    benchmark_status = str(benchmark_gate.get("status") or "benchmark_required")
+    if qwen_text_docs <= 0:
+        status = "no_text_candidates"
+        reason = "no_unknown_direct_docs_with_enough_saved_ocr"
+    elif qwen_status == "candidate_batch_ready" and benchmark_status == "workspace_benchmark_ready":
+        status = "ready_for_staged_autocatalog"
+        reason = "qwen_text_gate_and_known_doc_benchmark_passed"
+    elif qwen_status == "probe_required":
+        status = "needs_qwen_text_probe"
+        reason = "qwen_text_probe_missing"
+    elif benchmark_status == "benchmark_required":
+        status = "needs_known_doc_benchmark"
+        reason = "known_doc_benchmark_missing"
+    elif qwen_status in {"insufficient_sample", "review_only"}:
+        status = "text_batch_review_only"
+        reason = str(qwen_gate.get("reason") or "qwen_text_gate_not_ready")
+    elif benchmark_status != "workspace_benchmark_ready":
+        status = "benchmark_review"
+        reason = str(benchmark_gate.get("reason") or "qwen_known_doc_benchmark_not_ready")
+    else:
+        status = "needs_more_sampling"
+        reason = "qwen_gates_inconclusive"
+
+    denominator = int(
+        _to_float(qwen_gate.get("classified_attempts", qwen_sample.get("classified_attempts", 0)))
+    )
+    candidate_rate = _to_float(qwen_gate.get("candidate_rate", 0))
+    projected_kita_docs = round(qwen_text_docs * candidate_rate) if denominator > 0 else 0
+    projected_review_docs = (
+        max(qwen_text_docs - projected_kita_docs, 0) if denominator > 0 else qwen_text_docs
+    )
+
+    return {
+        "status": status,
+        "reason": reason,
+        "scope": "direct_whatsapp_docs_only_groups_excluded",
+        "write_mode": "proposal_only_no_crm_mutation",
+        "worker_required_env": {
+            "INTAKE_TEXT_LLM_CLASSIFY_ENABLED": "1",
+            "INTAKE_TEXT_LLM_MODEL": DEFAULT_QWEN_MODEL,
+            "INTAKE_TEXT_LLM_MIN_CHARS": str(TEXT_PARSER_MIN_CHARS),
+            "INTAKE_TEXT_LLM_TIMEOUT_SECONDS": "45",
+        },
+        "dry_run_command": AUTOCATALOG_DRY_RUN_COMMAND,
+        "apply_command": AUTOCATALOG_APPLY_COMMAND,
+        "safe_to_apply_without_existing_gate": False,
+        "can_create_kita_proposals": status == "ready_for_staged_autocatalog",
+        "can_auto_attach_without_review": False,
+        "qwen_text_gate_status": qwen_status,
+        "known_doc_benchmark_status": benchmark_status,
+        "totals": {
+            "qwen_text_candidate_docs": qwen_text_docs,
+            "ocr_vision_candidate_docs": vision_docs,
+            "short_ocr_review_docs": short_ocr_docs,
+            "low_confidence_review_docs": low_confidence_docs,
+            "routing_proposal_needed_docs": routing_docs,
+            "workspace_review_ready_docs": workspace_review_docs,
+            "already_routed_docs": already_routed_docs,
+            "failed_pipeline_docs": failed_docs,
+            "projected_qwen_text_to_kita_docs": projected_kita_docs,
+            "projected_qwen_text_to_review_docs": projected_review_docs,
+        },
+        "projected_qwen_workspace_buckets": _project_rows(
+            qwen_sample.get("workspace_buckets") or [],
+            total_docs=qwen_text_docs,
+            denominator=denominator,
+            key_fields=("bucket",),
+        ),
+        "projected_qwen_placements": _project_rows(
+            qwen_sample.get("placement_preview") or [],
+            total_docs=qwen_text_docs,
+            denominator=denominator,
+            key_fields=("from_doc_type", "proposed_doc_type", "workspace_bucket"),
+        ),
+        "stages": [
+            {
+                "stage": "qwen_text_autocatalog",
+                "docs": qwen_text_docs,
+                "source_bucket": "needs_text_parser_qwen_candidate",
+                "llm": DEFAULT_QWEN_MODEL,
+                "destination": "document_routing_proposal_then_kita_workspace_by_doc_type",
+                "allowed_when": "candidate_batch_ready_and_workspace_benchmark_ready",
+                "expected_kita_docs": projected_kita_docs,
+                "expected_review_docs": projected_review_docs,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "vision_ocr_autocatalog",
+                "docs": vision_docs,
+                "source_bucket": "needs_ocr_vision_batch",
+                "llm": "qwen2.5vl_local_ocr_then_qwen_text_router",
+                "destination": "same_proposal_path_after_ocr",
+                "allowed_when": "local_vision_ocr_available_on_pro",
+                "expected_kita_docs": 0,
+                "expected_review_docs": vision_docs,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "short_ocr_resolution",
+                "docs": short_ocr_docs,
+                "source_bucket": "needs_manual_review_short_ocr",
+                "llm": "vision_retry_or_manual_review",
+                "destination": "review_or_same_proposal_path_after_better_ocr",
+                "allowed_when": "ocr_text_below_threshold",
+                "expected_kita_docs": 0,
+                "expected_review_docs": short_ocr_docs,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "known_doc_routing",
+                "docs": routing_docs,
+                "source_bucket": "needs_routing_proposal",
+                "llm": "none",
+                "destination": "document_routing_proposal_review_pending",
+                "allowed_when": "known_doc_type_high_confidence",
+                "expected_kita_docs": routing_docs,
+                "expected_review_docs": 0,
+                "auto_attach_allowed": False,
+            },
+            {
+                "stage": "workspace_operator_review",
+                "docs": workspace_review_docs + low_confidence_docs,
+                "source_bucket": "workspace_review_ready_or_low_confidence_review",
+                "llm": "none",
+                "destination": "kita_review_queue",
+                "allowed_when": "operator_or_existing_auto_attach_gate",
+                "expected_kita_docs": workspace_review_docs,
+                "expected_review_docs": low_confidence_docs,
+                "auto_attach_allowed": False,
+            },
+        ],
     }
 
 
@@ -651,7 +836,9 @@ async def run_qwen_text_sample(
                     client,
                     ollama_url=ollama_url,
                     model=model,
-                    ocr_text=_saved_ocr_text(_record_get(row, "stage_output"), max_chars=safe_ocr_max_chars),
+                    ocr_text=_saved_ocr_text(
+                        _record_get(row, "stage_output"), max_chars=safe_ocr_max_chars
+                    ),
                     timeout_seconds=timeout_seconds,
                 )
             except Exception as exc:  # local diagnostic only; aggregate class name.
@@ -733,7 +920,9 @@ async def run_qwen_known_doc_benchmark(
                     client,
                     ollama_url=ollama_url,
                     model=model,
-                    ocr_text=_saved_ocr_text(_record_get(row, "stage_output"), max_chars=safe_ocr_max_chars),
+                    ocr_text=_saved_ocr_text(
+                        _record_get(row, "stage_output"), max_chars=safe_ocr_max_chars
+                    ),
                     timeout_seconds=timeout_seconds,
                 )
             except Exception as exc:  # local diagnostic only; aggregate class name.
@@ -754,14 +943,10 @@ async def run_qwen_known_doc_benchmark(
 
     classified_attempts = attempted - failed_attempts
     exact_doc_type_accuracy = (
-        round(exact_doc_type_matches / classified_attempts, 4)
-        if classified_attempts > 0
-        else 0.0
+        round(exact_doc_type_matches / classified_attempts, 4) if classified_attempts > 0 else 0.0
     )
     workspace_accuracy = (
-        round(workspace_matches / classified_attempts, 4)
-        if classified_attempts > 0
-        else 0.0
+        round(workspace_matches / classified_attempts, 4) if classified_attempts > 0 else 0.0
     )
     return {
         "mode": "local_ollama_text_only_known_doc_benchmark",
@@ -812,7 +997,11 @@ async def run_audit(
             else:
                 direct_rows = _records(await conn.fetch(DIRECT_DOC_ROWS_SQL))
             qwen_rows = (
-                _records(await conn.fetch(DIRECT_DOC_QWEN_SAMPLE_SQL, qwen_text_sample, TEXT_PARSER_MIN_CHARS))
+                _records(
+                    await conn.fetch(
+                        DIRECT_DOC_QWEN_SAMPLE_SQL, qwen_text_sample, TEXT_PARSER_MIN_CHARS
+                    )
+                )
                 if qwen_text_sample > 0
                 else []
             )
@@ -858,6 +1047,7 @@ async def run_audit(
             min_workspace_accuracy=qwen_min_workspace_accuracy,
             min_classified_attempts=qwen_min_classified_attempts,
         )
+    report["autocatalog_plan"] = build_autocatalog_plan(report)
     return report
 
 
@@ -868,9 +1058,12 @@ def build_dashboard_snapshot(
 ) -> dict[str, Any]:
     return {
         "generated_at": generated_at or datetime.now(timezone.utc).isoformat(),
-        "pii_policy": str(report.get("pii_policy", "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr")),
+        "pii_policy": str(
+            report.get("pii_policy", "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr")
+        ),
         "qwen_text_sample": report.get("qwen_text_sample") or {},
         "qwen_known_benchmark": report.get("qwen_known_benchmark") or {},
+        "autocatalog_plan": report.get("autocatalog_plan") or build_autocatalog_plan(report),
     }
 
 

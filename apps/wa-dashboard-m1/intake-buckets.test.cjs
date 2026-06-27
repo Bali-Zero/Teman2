@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 
 const {
   actionBucketForRow,
+  buildAutocatalogPlanSummary,
   buildDirectCatalogSummary,
   buildGroupKindOperationalSummary,
   buildQwenBatchGateSummary,
@@ -375,4 +376,182 @@ assert.deepEqual(
     generated_at: null,
     confusion_preview: [],
   },
+);
+
+assert.deepEqual(
+  buildAutocatalogPlanSummary(
+    {
+      needs_ocr_vision_batch: 592,
+      needs_text_parser_qwen_candidate: 306,
+      needs_manual_review_short_ocr: 98,
+      workspace_review_ready: 255,
+      needs_routing_proposal: 48,
+      low_confidence_review: 347,
+      already_routed: 16,
+      failed_pipeline: 5,
+    },
+    {
+      status: "candidate_batch_ready",
+      reason: "candidate_rate_met",
+      candidate_docs: 306,
+      sampled_docs: 50,
+      classified_attempts: 50,
+      candidate_rate: 0.5,
+      kita_workspace_candidates: 25,
+      review_after_qwen: 25,
+    },
+    {
+      status: "workspace_benchmark_ready",
+      reason: "workspace_accuracy_met",
+      classified_attempts: 10,
+      workspace_accuracy: 0.9,
+    },
+    {
+      classified_attempts: 50,
+      workspace_buckets: [
+        { bucket: "review", docs: 25 },
+        { bucket: "immigration", docs: 15 },
+        { bucket: "finance", docs: 10 },
+      ],
+      placement_preview: [
+        {
+          from_doc_type: "unknown",
+          proposed_doc_type: "travel_ticket",
+          workspace_bucket: "immigration",
+          docs: 9,
+        },
+        {
+          from_doc_type: "unknown",
+          proposed_doc_type: "payment_receipt",
+          workspace_bucket: "finance",
+          docs: 6,
+        },
+      ],
+      raw_ocr_text: "SHOULD_NOT_LEAK",
+      sender_phone: "+6280000000000",
+    },
+  ),
+  {
+    status: "ready_for_staged_autocatalog",
+    reason: "qwen_text_gate_and_known_doc_benchmark_passed",
+    scope: "direct_whatsapp_docs_only_groups_excluded",
+    write_mode: "proposal_only_no_crm_mutation",
+    worker_required_env: {
+      INTAKE_TEXT_LLM_CLASSIFY_ENABLED: "1",
+      INTAKE_TEXT_LLM_MODEL: "qwen3.5:9b",
+      INTAKE_TEXT_LLM_MIN_CHARS: "100",
+      INTAKE_TEXT_LLM_TIMEOUT_SECONDS: "45",
+    },
+    dry_run_command:
+      "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
+      "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text",
+    apply_command:
+      "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
+      "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text --apply",
+    safe_to_apply_without_existing_gate: false,
+    can_create_kita_proposals: true,
+    can_auto_attach_without_review: false,
+    qwen_text_gate_status: "candidate_batch_ready",
+    known_doc_benchmark_status: "workspace_benchmark_ready",
+    totals: {
+      qwen_text_candidate_docs: 306,
+      ocr_vision_candidate_docs: 592,
+      short_ocr_review_docs: 98,
+      low_confidence_review_docs: 347,
+      routing_proposal_needed_docs: 48,
+      workspace_review_ready_docs: 255,
+      already_routed_docs: 16,
+      failed_pipeline_docs: 5,
+      projected_qwen_text_to_kita_docs: 153,
+      projected_qwen_text_to_review_docs: 153,
+    },
+    projected_qwen_workspace_buckets: [
+      { bucket: "review", sample_docs: 25, projected_docs: 153 },
+      { bucket: "immigration", sample_docs: 15, projected_docs: 92 },
+      { bucket: "finance", sample_docs: 10, projected_docs: 61 },
+    ],
+    projected_qwen_placements: [
+      {
+        from_doc_type: "unknown",
+        proposed_doc_type: "travel_ticket",
+        workspace_bucket: "immigration",
+        sample_docs: 9,
+        projected_docs: 55,
+      },
+      {
+        from_doc_type: "unknown",
+        proposed_doc_type: "payment_receipt",
+        workspace_bucket: "finance",
+        sample_docs: 6,
+        projected_docs: 37,
+      },
+    ],
+    stages: [
+      {
+        stage: "qwen_text_autocatalog",
+        docs: 306,
+        source_bucket: "needs_text_parser_qwen_candidate",
+        llm: "qwen3.5:9b",
+        destination: "document_routing_proposal_then_kita_workspace_by_doc_type",
+        allowed_when: "candidate_batch_ready_and_workspace_benchmark_ready",
+        expected_kita_docs: 153,
+        expected_review_docs: 153,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "vision_ocr_autocatalog",
+        docs: 592,
+        source_bucket: "needs_ocr_vision_batch",
+        llm: "qwen2.5vl_local_ocr_then_qwen_text_router",
+        destination: "same_proposal_path_after_ocr",
+        allowed_when: "local_vision_ocr_available_on_pro",
+        expected_kita_docs: 0,
+        expected_review_docs: 592,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "short_ocr_resolution",
+        docs: 98,
+        source_bucket: "needs_manual_review_short_ocr",
+        llm: "vision_retry_or_manual_review",
+        destination: "review_or_same_proposal_path_after_better_ocr",
+        allowed_when: "ocr_text_below_threshold",
+        expected_kita_docs: 0,
+        expected_review_docs: 98,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "known_doc_routing",
+        docs: 48,
+        source_bucket: "needs_routing_proposal",
+        llm: "none",
+        destination: "document_routing_proposal_review_pending",
+        allowed_when: "known_doc_type_high_confidence",
+        expected_kita_docs: 48,
+        expected_review_docs: 0,
+        auto_attach_allowed: false,
+      },
+      {
+        stage: "workspace_operator_review",
+        docs: 602,
+        source_bucket: "workspace_review_ready_or_low_confidence_review",
+        llm: "none",
+        destination: "kita_review_queue",
+        allowed_when: "operator_or_existing_auto_attach_gate",
+        expected_kita_docs: 255,
+        expected_review_docs: 347,
+        auto_attach_allowed: false,
+      },
+    ],
+  },
+);
+
+assert.equal(
+  buildAutocatalogPlanSummary(
+    { needs_text_parser_qwen_candidate: 10 },
+    { status: "candidate_batch_ready", candidate_rate: 0.8, classified_attempts: 5 },
+    { status: "benchmark_required" },
+    { classified_attempts: 5 },
+  ).status,
+  "needs_known_doc_benchmark",
 );
