@@ -236,6 +236,14 @@ def test_parser_auto_attach_direct_phone_reuses_limit() -> None:
     assert args.auto_attach_limit == 23
 
 
+def test_parser_review_backlog_report_defaults() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--review-backlog-report"])
+    assert args.apply is False
+    assert args.review_backlog_report is True
+    assert args.autocatalog_min_ocr_chars == irb.DEFAULT_AUTOCATALOG_TEXT_MIN_CHARS
+
+
 def test_saved_ocr_pages_normalizes_downstream_shape() -> None:
     irb = _load()
     pages = irb._saved_ocr_pages(
@@ -372,6 +380,7 @@ def test_direct_unknown_text_autocatalog_select_guards_are_all_present() -> None
     assert "ocr_chars >= $1" in sql
     assert "w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL" in sql
     assert "p.status = 'review_pending'" in sql
+    assert "AND EXISTS" in sql
     assert "LIMIT $2" in sql
 
 
@@ -388,6 +397,7 @@ def test_saved_ocr_preclassify_sql_targets_review_pending_direct_unknowns() -> N
     assert "ocr_chars >= $1" in sql
     assert "w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL" in sql
     assert "stage_output" in sql
+    assert "AND EXISTS" in sql
     assert "LIMIT $2" in sql
 
 
@@ -426,3 +436,23 @@ def test_direct_phone_auto_attach_sql_targets_safe_direct_bucket() -> None:
     assert "p.routing->>'doc_type' = ANY($2::text[])" in sql
     assert "LIKE 'sender phone%'" in sql
     assert "LIMIT $1" in sql
+
+
+def test_review_backlog_report_sql_is_latest_aggregate_and_pii_safe() -> None:
+    irb = _load()
+    sql = irb.REVIEW_BACKLOG_REPORT_SQL
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "q.source = 'whatsapp'" in sql
+    assert "LEFT JOIN whatsapp_message_context w" in sql
+    assert "latest.mirror_chat_type = 'group'" in sql
+    assert "latest.status = 'review_pending'" in sql
+    assert "auto_attach_eligible" in sql
+    assert "direct_phone_auto_catalog" in sql
+    assert "direct_new_prospect_candidate" in sql
+    assert "direct_unknown_reclassify" in sql
+    assert "group_human_review" in sql
+    assert "missing_context_review" in sql
+    assert "doc_type = ANY($2::text[])" in sql
+    assert "ocr_chars >= $1" in sql
+    assert "sender phone%" in sql
+    assert "SELECT 'automation_bucket'" in sql

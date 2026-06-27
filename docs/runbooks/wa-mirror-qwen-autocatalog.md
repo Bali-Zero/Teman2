@@ -37,6 +37,27 @@ tmux new -s wa-qwen-autocatalog 'cd /Users/nuzantara/Desktop/nuzantara && script
 
 Use aggregate counts only; do not print raw paths, phones, OCR, or client names.
 
+First classify the current review backlog into automation buckets:
+
+```sh
+PYTHONPATH=apps/backend-rag python scripts/intake_reprocess_backlog.py --review-backlog-report
+```
+
+Bucket meaning:
+
+- `auto_attach_eligible`: strong-ID concordance already says it can be attached,
+  still gated by `INTAKE_AUTO_ATTACH_ENABLED` and `INTAKE_WRITER_ENABLED`.
+- `direct_phone_auto_catalog`: direct WhatsApp chat, existing CRM client resolved
+  by sender-phone policy, doc type supported by Kita; still gated by
+  `INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED` and `INTAKE_WRITER_ENABLED`.
+- `direct_new_prospect_candidate`: direct WhatsApp chat with no CRM match yet and
+  a supported doc type. This is the next safe automation target, but it needs a
+  separate create-client/prospect gate before any document can be attached.
+- `direct_unknown_reclassify`: direct WhatsApp unknown doc with enough saved OCR
+  for local Qwen text reclassification.
+- `group_human_review` / `missing_context_review` / `remaining_human_review`:
+  keep gated until a stronger identity signal exists.
+
 ```sh
 psql -X -qAt postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev <<'SQL'
 SELECT pipeline_version || E'\t' || status || E'\t' || COALESCE(stage,'<null>') || E'\t' || COUNT(*)
