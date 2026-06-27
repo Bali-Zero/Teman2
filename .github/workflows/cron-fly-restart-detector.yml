@@ -102,8 +102,20 @@ jobs:
           # machines that will NOT self-recover from a later fixing deploy.
           crashed = []
           oom = []
+
+          def process_group(machine):
+              config = machine.get("config") or {}
+              metadata = config.get("metadata") or {}
+              return (
+                  machine.get("process_group")
+                  or metadata.get("fly_process_group")
+                  or metadata.get("process_group")
+                  or "unknown"
+              )
+
           for m in machines:
               machine_id = m.get("id", "?")
+              group = process_group(m)
               last_exit = None
               for e in (m.get("events") or []):  # events are newest-first
                   req = e.get("request") or {}
@@ -118,7 +130,7 @@ jobs:
                       event_sig = hashlib.sha256(
                           json.dumps(e, sort_keys=True, default=str).encode("utf-8")
                       ).hexdigest()[:12]
-                      oom.append(f"{machine_id}:{event_sig}")
+                      oom.append(f"{machine_id}:{group}:{event_sig}")
                   if last_exit is None and "exit_code" in ee and ee.get("exit_code") is not None:
                       last_exit = exit_code
               if m.get("state") == "stopped" and last_exit is not None and str(last_exit) != "0":
@@ -158,11 +170,14 @@ jobs:
             # while a fresh OOM on the same machine still gets surfaced.
             if [ "${OOM:-none}" != "none" ] && [ -n "${OOM}" ]; then
               for entry in $(echo "$OOM" | tr ',' ' '); do
-                mid="${entry%%:*}"
-                sig="${entry##*:}"
+                IFS=: read -r mid group sig <<< "$entry"
+                if [ -z "${sig:-}" ]; then
+                  sig="${group:-unknown}"
+                  group="unknown"
+                fi
                 key="${app}_oom_${mid}_${sig}"
                 if ! was_alerted "$key"; then
-                  ALERTS="${ALERTS}OOM <b>${app}</b>: recent oom_killed/exit_code=137 on machine ${mid}"$'\n'
+                  ALERTS="${ALERTS}OOM <b>${app}</b>: recent oom_killed/exit_code=137 on machine ${mid} (${group})"$'\n'
                   mark_alerted "$key"
                 fi
               done
