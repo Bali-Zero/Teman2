@@ -406,6 +406,41 @@ def test_saved_ocr_preclassify_payload_preserves_ocr_and_marks_review_band() -> 
     }
 
 
+def test_keyword_classify_saved_ocr_uses_existing_scorer_floor() -> None:
+    irb = _load()
+    doc_type, confidence, scores = irb._keyword_classify_saved_ocr_text(
+        "BANK STATEMENT\nStatement of Account\nAccount Statement"
+    )
+    assert doc_type == "bank_statement"
+    assert confidence >= irb.KEYWORD_CLASSIFY_MIN_CONFIDENCE
+    assert scores["bank_statement"] >= confidence
+
+    weak_type, weak_confidence, weak_scores = irb._keyword_classify_saved_ocr_text(
+        "Passenger name only"
+    )
+    assert weak_type is None
+    assert weak_confidence < irb.KEYWORD_CLASSIFY_MIN_CONFIDENCE
+    assert weak_scores["travel_ticket"] == weak_confidence
+
+
+def test_saved_ocr_keyword_preclassify_payload_marks_keyword_provider() -> None:
+    irb = _load()
+    payload = irb._build_saved_ocr_preclassify_payload(
+        {"classify": {"ocr_text_per_page": [{"page": 0, "text": "bank statement"}]}},
+        doc_type="bank_statement",
+        provider=irb.KEYWORD_CLASSIFY_PROVIDER,
+        model=irb.KEYWORD_CLASSIFY_MODEL,
+        confidence=0.6,
+        type_scores={"bank_statement": 0.6},
+        classified_via="saved_ocr_keyword_preclassify",
+    )
+    assert payload["classified_via"] == "saved_ocr_keyword_preclassify"
+    assert payload["classify_keyword_model"] == irb.KEYWORD_CLASSIFY_MODEL
+    assert payload["classify_keyword_provider"] == irb.KEYWORD_CLASSIFY_PROVIDER
+    assert payload["type_scores"] == {"bank_statement": 0.6}
+    assert "classify_llm_model" not in payload
+
+
 def test_saved_ocr_preclassify_attempt_payload_has_no_document_content() -> None:
     irb = _load()
     payload = irb._build_saved_ocr_preclassify_attempt_payload(
@@ -472,6 +507,18 @@ def test_saved_vision_preclassify_attempt_payload_has_no_document_content() -> N
     assert "ocr_text_per_page" not in payload
     assert "blob_path" not in payload
     assert "text" not in payload
+
+
+def test_vision_preclassify_prompt_uses_bounded_ocr_hint() -> None:
+    irb = _load()
+    ocr_text = "BANK STATEMENT\n" + ("transaction " * 300)
+    prompt = irb._vision_preclassify_prompt(ocr_text)
+
+    assert "OCR excerpt:" in prompt
+    assert "Use the visual document layout first" in prompt
+    assert "bank statement means account/balance/transaction pages" in prompt
+    assert len(prompt) < len(irb._VISION_CLASSIFY_PROMPT) + len(ocr_text)
+    assert "transaction" in prompt
 
 
 # ---------------------------------------------------------------------------
