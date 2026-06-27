@@ -42,7 +42,7 @@ HIGH_CONFIDENCE_THRESHOLD = 0.70
 TEXT_PARSER_MIN_CHARS = 100
 AUTOCATALOG_DRY_RUN_COMMAND = (
     "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && "
-    "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text"
+    "python scripts/intake_reprocess_backlog.py --autocatalog-preclassify-saved-ocr"
 )
 AUTOCATALOG_APPLY_COMMAND = f"{AUTOCATALOG_DRY_RUN_COMMAND} --apply"
 
