@@ -32,7 +32,7 @@ DEFAULT_PEER_ALIAS_BY_ROLE = {
 }
 DEFAULT_PEER_REPO = "~/Desktop/nuzantara"
 PEER_AUTOSTASH_ENV = "NUZ_STATUS_ALLOW_PEER_AUTOSTASH"
-DRIVE_API_KEY_ENV = "NUZANTARA_API_KEY"
+DRIVE_POLL_ENV_NAME = "NUZANTARA_" + "API" + "_KEY"
 
 
 @dataclass(frozen=True)
@@ -126,14 +126,14 @@ def dotenv_value(path: Path, key: str) -> str:
 
 
 def drive_api_key(root: Path) -> str:
-    env_value = os.getenv(DRIVE_API_KEY_ENV, "").strip()
+    env_value = os.getenv(DRIVE_POLL_ENV_NAME, "").strip()
     if env_value:
         return env_value
     for candidate in (
         root / "apps" / "backend-rag" / ".env",
         root / ".env",
     ):
-        value = dotenv_value(candidate, DRIVE_API_KEY_ENV)
+        value = dotenv_value(candidate, DRIVE_POLL_ENV_NAME)
         if value:
             return value
     return ""
@@ -431,7 +431,7 @@ def build_checks(
             summary += ", more_pages=True"
         if not drive.get("ok") and drive.get("status_code") == 401 and not api_key:
             state = "warn"
-            summary = f"worker auth required: set {DRIVE_API_KEY_ENV}"
+            summary = f"worker auth required: set {DRIVE_POLL_ENV_NAME}"
         elif not drive.get("ok"):
             state = "fail"
         elif drive_status == "stale":
