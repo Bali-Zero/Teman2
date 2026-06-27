@@ -59,7 +59,7 @@ jobs:
           python-version: "3.11"
       - name: install pyyaml
         if: steps.relevant.outputs.run == 'true'
-        run: pip install "pyyaml>=6" "httpx>=0.27" pytest
+        run: pip install "pyyaml>=6" "httpx>=0.27" pytest "pytest-asyncio>=1.3.0"
       # ENFORCING gate — this step blocks the PR if it fails. continue-on-error: false.
       - name: P3 static gates
         if: steps.relevant.outputs.run == 'true'
