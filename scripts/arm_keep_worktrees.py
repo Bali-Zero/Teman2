@@ -56,7 +56,17 @@ def _git(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProces
 
 
 def _slug(path: Path) -> str:
-    return str(path).strip("/").replace("/", "_")
+    # Canonicalize first: the same physical worktree must yield the SAME slug no
+    # matter how the path was written (relative, trailing slash, or the macOS
+    # /var → /private/var symlink). Otherwise the quarantine ref a reader looks
+    # for (e.g. the arm-before-remove hook) misses the one the writer created,
+    # and recovery silently breaks. resolve() with a fallback for non-existent
+    # paths (dry-run / already-removed) so it never raises.
+    try:
+        canon = path.resolve()
+    except Exception:
+        canon = path
+    return str(canon).strip("/").replace("/", "_")
 
 
 def _worktrees() -> list[dict]:
