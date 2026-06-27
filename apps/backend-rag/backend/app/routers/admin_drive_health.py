@@ -3,8 +3,10 @@ Admin endpoint per verificare stato Google Drive e triggerare drive poll.
 """
 
 import asyncio
+import json
 import logging
 import os
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -160,6 +162,132 @@ def _drive_poll_api_timeout_seconds() -> float:
     return max(5.0, min(timeout, 115.0))
 
 
+def _drive_poll_api_mode() -> str:
+    """Return Drive poll API mode.
+
+    worker: HTTP only reports worker state; the Fly drive process owns polling.
+    direct: legacy behavior; the request runs the poll synchronously.
+    """
+    raw_value = os.getenv("DRIVE_POLL_API_MODE", "worker").strip().lower()
+    if raw_value in {"direct", "legacy"}:
+        return "direct"
+    return "worker"
+
+
+def _drive_poll_worker_stale_seconds() -> int:
+    raw_value = os.getenv("DRIVE_POLL_WORKER_STALE_SECONDS", "900")
+    try:
+        value = int(raw_value)
+    except ValueError:
+        logger.warning(
+            "Invalid DRIVE_POLL_WORKER_STALE_SECONDS=%r; falling back to 900",
+            raw_value,
+        )
+        return 900
+    return max(60, min(value, 86_400))
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _get_request_pool(request: Request) -> Any | None:
+    app = getattr(request, "app", None)
+    state = getattr(app, "state", None)
+    pool = getattr(state, "db_pool", None)
+    if pool is not None and hasattr(pool, "acquire"):
+        return pool
+    return None
+
+
+async def _read_drive_poll_worker_status(pool: Any | None) -> dict[str, Any]:
+    """Read Drive worker heartbeat keys from system_settings."""
+    stale_after_seconds = _drive_poll_worker_stale_seconds()
+    if pool is None:
+        return {
+            "mode": "worker",
+            "available": False,
+            "status": "unknown",
+            "healthy": False,
+            "stale": False,
+            "stale_after_seconds": stale_after_seconds,
+            "message": "db_pool unavailable",
+        }
+
+    keys = [
+        "drive_poll_worker_heartbeat_at",
+        "drive_poll_worker_last_status",
+        "drive_poll_worker_last_started_at",
+        "drive_poll_worker_last_finished_at",
+        "drive_poll_worker_last_result",
+        "drive_poll_worker_last_error",
+    ]
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT key, value, updated_at
+                FROM system_settings
+                WHERE key = ANY($1::text[])
+                """,
+                keys,
+            )
+    except Exception as e:
+        logger.warning("Drive poll worker status read failed: %s", e)
+        return {
+            "mode": "worker",
+            "available": False,
+            "status": "unknown",
+            "healthy": False,
+            "stale": False,
+            "stale_after_seconds": stale_after_seconds,
+            "message": str(e)[:200],
+        }
+
+    values = {row["key"]: row["value"] for row in rows}
+    heartbeat_at = _parse_iso_datetime(values.get("drive_poll_worker_heartbeat_at"))
+    age_seconds: float | None = None
+    stale = False
+    if heartbeat_at is not None:
+        age_seconds = max(0.0, (datetime.now(UTC) - heartbeat_at).total_seconds())
+        stale = age_seconds > stale_after_seconds
+
+    last_result: dict[str, Any] | None = None
+    raw_result = values.get("drive_poll_worker_last_result")
+    if raw_result:
+        try:
+            decoded = json.loads(raw_result)
+            if isinstance(decoded, dict):
+                last_result = decoded
+        except Exception:
+            last_result = {"raw": raw_result[:500], "parse_error": True}
+
+    status = values.get("drive_poll_worker_last_status") or "never_seen"
+    healthy = heartbeat_at is not None and not stale and status not in {"error"}
+    return {
+        "mode": "worker",
+        "available": True,
+        "status": status,
+        "healthy": healthy,
+        "stale": stale,
+        "heartbeat_at": heartbeat_at.isoformat() if heartbeat_at else None,
+        "heartbeat_age_seconds": age_seconds,
+        "stale_after_seconds": stale_after_seconds,
+        "last_started_at": values.get("drive_poll_worker_last_started_at"),
+        "last_finished_at": values.get("drive_poll_worker_last_finished_at"),
+        "last_error": values.get("drive_poll_worker_last_error"),
+        "last_result": last_result,
+    }
+
+
 @router.get("/health")
 async def drive_health(request: Request) -> dict[str, Any]:
     """Verifica stato Drive integration (public endpoint).
@@ -227,9 +355,60 @@ async def drive_health(request: Request) -> dict[str, Any]:
     }
 
 
+@router.get("/poll/status")
+async def drive_poll_status(request: Request) -> dict[str, Any]:
+    """Read Drive poll owner status without doing Drive or OCR work."""
+    mode = _drive_poll_api_mode()
+    if mode == "direct":
+        return {
+            "status": "direct",
+            "mode": "direct",
+            "worker_owned": False,
+            "message": "Drive poll API is in legacy direct mode",
+        }
+    worker_status = await _read_drive_poll_worker_status(_get_request_pool(request))
+    top_status = "ok"
+    if (
+        not worker_status.get("healthy")
+        or worker_status.get("stale")
+        or worker_status.get("status") == "error"
+    ):
+        top_status = "stale"
+    return {
+        "status": top_status,
+        "mode": "worker",
+        "worker_owned": True,
+        "result": worker_status,
+    }
+
+
 @router.post("/poll")
 async def trigger_drive_poll(request: Request) -> dict[str, Any]:
     """Trigger Google Drive changes poll (for cron jobs / OpenClaw automation)."""
+    mode = _drive_poll_api_mode()
+    if mode != "direct":
+        worker_status = await _read_drive_poll_worker_status(_get_request_pool(request))
+        top_status = "ok"
+        if (
+            not worker_status.get("healthy")
+            or worker_status.get("stale")
+            or worker_status.get("status") == "error"
+        ):
+            top_status = "stale"
+        logger.info(
+            "Drive poll POST handled in worker mode: status=%s stale=%s",
+            worker_status.get("status"),
+            worker_status.get("stale"),
+        )
+        return {
+            "status": top_status,
+            "processed": 0,
+            "inline_ocr": False,
+            "mode": "worker",
+            "worker_owned": True,
+            "result": worker_status,
+        }
+
     inline_ocr = _env_flag("DRIVE_POLL_INLINE_OCR", default=False)
     timeout_seconds = _drive_poll_api_timeout_seconds()
     try:
