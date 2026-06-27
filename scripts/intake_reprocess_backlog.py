@@ -135,6 +135,8 @@ DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS = 45.0
 DEFAULT_AUTOCATALOG_OCR_MAX_CHARS = 6000
 DEFAULT_AUTO_ATTACH_LIMIT = 500
 DEFAULT_NEW_PROSPECT_PIPELINE_VERSION = "v2.3-direct-prospect-promote"
+DEFAULT_CRM_PUSH_BASE_URL = "https://nuzantara-rag.fly.dev"
+DEFAULT_CRM_PUSH_PREFLIGHT_TIMEOUT_SECONDS = 12.0
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
 WATERMARK_FILE = Path.home() / ".cell-bridge-state" / "wa_mirror_sweep_last_id.txt"
@@ -725,6 +727,83 @@ def _media_types(raw: str | None) -> tuple[str, ...]:
     return tuple(t.strip() for t in raw.split(",") if t.strip()) or DEFAULT_MEDIA_TYPES
 
 
+class CrmServiceWritePreflightError(RuntimeError):
+    """Raised when a bulk auto-attach apply would not be deliverable to Kita."""
+
+
+def _env_enabled_default_on(name: str) -> bool:
+    return os.environ.get(name, "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _crm_push_base_url() -> str:
+    return os.environ.get("INTAKE_CRM_PUSH_BASE_URL", "").strip() or DEFAULT_CRM_PUSH_BASE_URL
+
+
+def _crm_push_write_key_from_env() -> str | None:
+    for name in ("INTAKE_CRM_PUSH_WRITE_KEY", "WA_MIRROR_CRM_WRITE_KEY"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return None
+
+
+def _crm_service_write_preflight_accepted(status_code: int) -> bool:
+    # Empty JSON with valid service-write auth must reach FastAPI body validation.
+    return status_code == 422
+
+
+def _compact_http_detail(text: str, *, max_chars: int = 200) -> str:
+    return " ".join(text.split())[:max_chars]
+
+
+async def assert_crm_service_write_preflight(
+    *, client: httpx.AsyncClient | None = None
+) -> None:
+    """Fail before bulk auto-attach commits if Kita service-write is not ready.
+
+    The auto-attach service treats Pro->Fly delivery as best-effort after the
+    local commit. That is appropriate for human approvals, but unsafe for a bulk
+    backlog run whose goal is specifically to put the file in Kita. This preflight
+    sends no document and no PII: a valid service route should authenticate the
+    request, then reject the empty JSON body with HTTP 422.
+    """
+    if not _env_enabled_default_on("INTAKE_CRM_PUSH_ENABLED"):
+        raise CrmServiceWritePreflightError("INTAKE_CRM_PUSH_ENABLED is disabled")
+
+    key = _crm_push_write_key_from_env()
+    if not key:
+        raise CrmServiceWritePreflightError(
+            "missing INTAKE_CRM_PUSH_WRITE_KEY/WA_MIRROR_CRM_WRITE_KEY"
+        )
+
+    base = _crm_push_base_url().rstrip("/")
+    url = f"{base}/api/crm/internal/clients/1/documents/upload"
+    owns_client = client is None
+    if client is None:
+        client = httpx.AsyncClient(
+            timeout=httpx.Timeout(DEFAULT_CRM_PUSH_PREFLIGHT_TIMEOUT_SECONDS)
+        )
+    try:
+        try:
+            response = await client.post(url, headers={"X-CRM-Write-Key": key}, json={})
+        except httpx.HTTPError as exc:
+            raise CrmServiceWritePreflightError(
+                f"CRM service-write preflight unreachable: {type(exc).__name__}: {exc}"
+            ) from exc
+    finally:
+        if owns_client:
+            await client.aclose()
+
+    if _crm_service_write_preflight_accepted(response.status_code):
+        logger.info("[crm-push-preflight] service-write route accepted auth at %s", base)
+        return
+
+    raise CrmServiceWritePreflightError(
+        "CRM service-write preflight failed: "
+        f"HTTP {response.status_code}: {_compact_http_detail(response.text)}"
+    )
+
+
 def _stage_output_dict(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
@@ -1216,6 +1295,8 @@ async def run_auto_attach_eligible(
             counts["candidates"],
         )
         return counts
+    if counts["candidates"]:
+        await assert_crm_service_write_preflight()
 
     skipped: Counter[str] = Counter()
     outcomes: Counter[str] = Counter()
@@ -1285,6 +1366,8 @@ async def run_direct_phone_auto_attach(
             counts["candidates"],
         )
         return counts
+    if counts["candidates"]:
+        await assert_crm_service_write_preflight()
 
     skipped: Counter[str] = Counter()
     outcomes: Counter[str] = Counter()

@@ -8,8 +8,12 @@ constants. The DB-side effects run on the Pro at rollout (dry-run first).
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 from pathlib import Path
+
+import httpx
+import pytest
 
 # test file: apps/backend-rag/backend/tests/scripts/<this>
 # parents: [0]=scripts [1]=tests [2]=backend [3]=backend-rag [4]=apps [5]=repo root
@@ -120,6 +124,60 @@ def test_media_types_default_and_custom() -> None:
     assert irb._media_types("document") == ("document",)
     assert irb._media_types(" a , b ") == ("a", "b")
     assert irb._media_types("  ") == ("document", "image")
+
+
+def test_crm_push_write_key_prefers_intake_specific_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    irb = _load()
+    monkeypatch.setenv("WA_MIRROR_CRM_WRITE_KEY", "wa-key")
+    monkeypatch.setenv("INTAKE_CRM_PUSH_WRITE_KEY", "intake-key")
+    assert irb._crm_push_write_key_from_env() == "intake-key"
+
+
+def test_crm_service_write_preflight_status_contract() -> None:
+    irb = _load()
+    assert irb._crm_service_write_preflight_accepted(422) is True
+    assert irb._crm_service_write_preflight_accepted(401) is False
+    assert irb._crm_service_write_preflight_accepted(404) is False
+
+
+def test_crm_service_write_preflight_requires_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    irb = _load()
+    monkeypatch.delenv("WA_MIRROR_CRM_WRITE_KEY", raising=False)
+    monkeypatch.delenv("INTAKE_CRM_PUSH_WRITE_KEY", raising=False)
+
+    with pytest.raises(irb.CrmServiceWritePreflightError, match="missing"):
+        asyncio.run(irb.assert_crm_service_write_preflight())
+
+
+def test_crm_service_write_preflight_accepts_validation_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    irb = _load()
+    monkeypatch.setenv("WA_MIRROR_CRM_WRITE_KEY", "secret")
+
+    async def run() -> None:
+        transport = httpx.MockTransport(lambda request: httpx.Response(422, json={}))
+        async with httpx.AsyncClient(transport=transport) as client:
+            await irb.assert_crm_service_write_preflight(client=client)
+
+    asyncio.run(run())
+
+
+def test_crm_service_write_preflight_rejects_auth_middleware(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    irb = _load()
+    monkeypatch.setenv("WA_MIRROR_CRM_WRITE_KEY", "secret")
+
+    async def run() -> None:
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(401, json={"detail": "Authentication required"})
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(irb.CrmServiceWritePreflightError, match="HTTP 401"):
+                await irb.assert_crm_service_write_preflight(client=client)
+
+    asyncio.run(run())
 
 
 # ---------------------------------------------------------------------------
