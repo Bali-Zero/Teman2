@@ -693,6 +693,15 @@ async def list_clients(
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
     nationality: str | None = Query(None, description="Filter by nationality"),
+    unnamed: bool = Query(
+        False,
+        description=(
+            "When true, return ONLY phone-keyed leads whose full_name is still a "
+            "placeholder (`Lead +<digits>`, `wa:<digits>`, bare digits, or empty) — "
+            "the WA-mirror auto-created leads an operator must still name. "
+            "Combine with assigned_to (or rely on RBAC) to scope to one operator."
+        ),
+    ),
     passport_expiring_days: int | None = Query(
         None,
         ge=0,
@@ -808,6 +817,22 @@ async def list_clients(
                 query_parts.append(f" AND c.status = ${param_index}")
                 params.append(status)
                 param_index += 1
+
+            # Unnamed phone-keyed leads: full_name is still a placeholder the
+            # WA-mirror sweeper assigned (`Lead +628…`, `wa:+…`, bare digits) or
+            # empty. Mirrors JUNK_NAME_PATTERNS in apps/wa-dashboard-m1/server.cjs
+            # so both surfaces agree on "this contact still needs a human name".
+            # No bound params (constant predicate) → param_index unchanged.
+            if unnamed:
+                query_parts.append(
+                    " AND ("
+                    "c.full_name IS NULL"
+                    " OR btrim(c.full_name) = ''"
+                    " OR c.full_name ~* '^lead\\s*\\+?[0-9]+$'"
+                    " OR c.full_name ~* '^wa:\\s*\\+?[0-9]+$'"
+                    " OR c.full_name ~ '^\\+?[0-9]{8,}$'"
+                    ")",
+                )
 
             # Optional filter by assigned_to (admin users can filter by any team member)
             if assigned_to:
