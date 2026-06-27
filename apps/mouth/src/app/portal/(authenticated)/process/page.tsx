@@ -20,30 +20,13 @@ import { logger } from "@/lib/logger";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ClientRequiredDocument } from "@/lib/types/required-documents";
-
-// Lazy: Dialog is only used inside modals (not first paint)
-const Dialog = dynamic(
-  () => import("@/components/ui/dialog").then((m) => ({ default: m.Dialog })),
-  { ssr: false },
-);
-const DialogContent = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({
-      default: m.DialogContent,
-    })),
-  { ssr: false },
-);
-const DialogHeader = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({ default: m.DialogHeader })),
-  { ssr: false },
-);
-const DialogTitle = dynamic(
-  () =>
-    import("@/components/ui/dialog").then((m) => ({ default: m.DialogTitle })),
-  { ssr: false },
-);
 
 // Lazy: FileUploadField only renders when user clicks upload (not first paint)
 const FileUploadField = dynamic(
@@ -61,6 +44,10 @@ const ProcessStepper = dynamic(
   { ssr: false },
 );
 import { usePortalProcessTimeline } from "@/hooks/usePortalProcessTimeline";
+import {
+  PracticeBaton,
+  statusToBaton,
+} from "@/components/portal/PracticeBaton";
 
 // Status configurations
 const STATUS_CONFIG = {
@@ -128,6 +115,17 @@ const PROCESS_STATUS_CONFIG: Record<string, { label: string; color: string }> =
 const PROCESS_STATUS_LABELS: Record<string, string> = Object.fromEntries(
   Object.entries(PROCESS_STATUS_CONFIG).map(([k, v]) => [k, v.label]),
 );
+
+const PORTAL_CARD_STYLE = {
+  background: "var(--bz-elevated)",
+  borderColor: "var(--bz-border)",
+  boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
+} as const;
+
+const PORTAL_CARD_MUTED_STYLE = {
+  background: "var(--bz-card)",
+  borderColor: "var(--bz-border)",
+} as const;
 
 interface ProcessGroup {
   practiceId: number;
@@ -304,11 +302,8 @@ function ProcessCard({
 
   return (
     <div
-      className="rounded-xl border shadow-2xl overflow-hidden backdrop-blur-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
-      style={{
-        background: "rgba(30,30,35,0.7)",
-        borderColor: "rgba(255,255,255,0.05)",
-      }}
+      className="rounded-xl border overflow-hidden backdrop-blur-xl transition-all duration-300"
+      style={PORTAL_CARD_STYLE}
     >
       {/* Header */}
       <button
@@ -318,16 +313,18 @@ function ProcessCard({
         className="w-full p-4 flex items-center justify-between transition-colors"
         style={{ background: "transparent" }}
         onMouseEnter={(e) =>
-          (e.currentTarget.style.background = "rgba(45,45,50,0.5)")
+          (e.currentTarget.style.background = "var(--bz-card-hover)")
         }
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
-            <FolderOpen className="w-5 h-5 text-[var(--accent)]" />
+          <div className="w-10 h-10 rounded-lg bg-[var(--bz-accent)]/10 flex items-center justify-center">
+            <FolderOpen className="w-5 h-5 text-[var(--bz-accent)]" />
           </div>
           <div className="text-left">
-            <h3 className="font-semibold">{process.processName}</h3>
+            <h3 className="font-semibold text-[var(--bz-text-1)]">
+              {process.processName}
+            </h3>
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PROCESS_STATUS_CONFIG[process.processStatus]?.color || "bg-slate-500/10 text-slate-400"}`}
             >
@@ -337,16 +334,23 @@ function ProcessCard({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Your Turn / Our Turn baton — derived from the practice status.
+              The single signal that tells the client whether THEY must act. */}
+          <PracticeBaton
+            status={process.processStatus}
+            compact
+            className="hidden sm:flex"
+          />
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium">
               {verifiedCount}/{totalCount} documents
             </p>
             <div
-              className="w-24 h-1.5 rounded-full mt-1 border border-[rgba(255,255,255,0.05)]"
-              style={{ background: "rgba(255,255,255,0.05)" }}
+              className="w-24 h-1.5 rounded-full mt-1 border border-[var(--bz-border)]"
+              style={{ background: "var(--bz-border)" }}
             >
               <div
-                className="h-full bg-[var(--accent)] rounded-full transition-all"
+                className="h-full bg-[var(--bz-accent)] rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -363,7 +367,7 @@ function ProcessCard({
       {isExpanded && (
         <div
           className="px-4 py-2 border-t"
-          style={{ borderColor: "rgba(255,255,255,0.05)" }}
+          style={{ borderColor: "var(--bz-border)" }}
         >
           <button
             onClick={() => setShowTimeline(!showTimeline)}
@@ -408,9 +412,49 @@ function ProcessCard({
       {/* Documents List */}
       {isExpanded && (
         <div
-          className="border-t divide-y divide-[rgba(255,255,255,0.05)]"
-          style={{ borderColor: "rgba(255,255,255,0.05)" }}
+          className="border-t divide-y divide-[var(--bz-border)]"
+          style={{ borderColor: "var(--bz-border)" }}
         >
+          {/* Your Turn / Our Turn full banner — the hard dependency made explicit.
+              When it's the client's turn, surface the concrete next action
+              (the first pending document) so they know exactly what to do. */}
+          {(() => {
+            const baton = statusToBaton(process.processStatus);
+            const firstPending = process.documents.find(
+              (d) => d.status === "pending" || d.status === "rejected",
+            );
+            const statusLabel =
+              PROCESS_STATUS_CONFIG[process.processStatus]?.label ||
+              process.processStatus;
+            return (
+              <div
+                className="p-4"
+                style={{ borderBottom: "1px solid var(--bz-border)" }}
+              >
+                <PracticeBaton
+                  status={process.processStatus}
+                  statusLabel={statusLabel}
+                  nextActionLabel={
+                    baton === "your_turn"
+                      ? firstPending
+                        ? `Upload: ${firstPending.document_label}`
+                        : "Review what's needed below"
+                      : undefined
+                  }
+                  onAction={() => {
+                    if (firstPending) {
+                      document
+                        .getElementById(`doc-${firstPending.id}`)
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                    }
+                  }}
+                />
+              </div>
+            );
+          })()}
           {process.documents.length === 0 ? (
             <div
               className="p-6 text-center"
@@ -423,6 +467,7 @@ function ProcessCard({
             process.documents.map((doc) => (
               <div
                 key={doc.id}
+                id={`doc-${doc.id}`}
                 className={`p-4 flex items-start justify-between gap-3 ${
                   doc.is_required ? "border-l-2 border-l-amber-500" : ""
                 }`}
@@ -516,9 +561,16 @@ export default function PortalProcessPage() {
   );
 
   // Load profile and documents — stable reference, no toast dependency in deps
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: {
+    showLoading?: boolean;
+    showErrorToast?: boolean;
+  }) => {
+    const showLoading = options?.showLoading ?? true;
+    const showErrorToast = options?.showErrorToast ?? true;
     try {
-      setIsLoading(true);
+      if (showLoading) {
+        setIsLoading(true);
+      }
 
       // Get profile
       const profileData = await api.portal.getProfile();
@@ -531,10 +583,14 @@ export default function PortalProcessPage() {
         (await api.portal.getMyRequiredDocuments()) as ClientRequiredDocument[];
       setDocuments(docs);
     } catch (err) {
-      toastRef.current.error("Failed to load data", "Please try again later");
+      if (showErrorToast) {
+        toastRef.current.error("Failed to load data", "Please try again later");
+      }
       logger.error("Failed to load process data", {}, err as Error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, []); // stable — no deps that change every render
 
@@ -559,12 +615,24 @@ export default function PortalProcessPage() {
         notes,
       });
 
+      setDocuments((currentDocuments) =>
+        currentDocuments.map((doc) =>
+          doc.id === uploadDoc.id
+            ? {
+                ...doc,
+                uploaded_by_client: true,
+                status: "uploaded",
+                client_notes: notes || doc.client_notes,
+              }
+            : doc,
+        ),
+      );
       toastRef.current.success(
         "Document uploaded",
         "Your document has been submitted for review",
       );
       setUploadDoc(null);
-      await loadData(); // Refresh data
+      void loadData({ showLoading: false, showErrorToast: false });
     } catch (err) {
       toastRef.current.error("Upload failed", "Please try again");
       logger.error("Failed to upload document", {}, err as Error);
@@ -614,10 +682,7 @@ export default function PortalProcessPage() {
             <div
               key={i}
               className="rounded-xl border p-4 h-20 animate-pulse"
-              style={{
-                background: "rgba(30,30,35,0.7)",
-                borderColor: "rgba(255,255,255,0.05)",
-              }}
+              style={PORTAL_CARD_MUTED_STYLE}
             />
           ))}
         </div>
@@ -626,10 +691,7 @@ export default function PortalProcessPage() {
             <div
               key={i}
               className="rounded-xl border p-5 h-28 animate-pulse"
-              style={{
-                background: "rgba(30,30,35,0.7)",
-                borderColor: "rgba(255,255,255,0.05)",
-              }}
+              style={PORTAL_CARD_MUTED_STYLE}
             />
           ))}
         </div>
@@ -652,10 +714,7 @@ export default function PortalProcessPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div
             className="rounded-xl border p-4 backdrop-blur-md shadow-lg"
-            style={{
-              background: "rgba(30,30,35,0.6)",
-              borderColor: "rgba(255,255,255,0.05)",
-            }}
+            style={PORTAL_CARD_STYLE}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Active Processes
@@ -664,11 +723,7 @@ export default function PortalProcessPage() {
           </div>
           <div
             className="rounded-xl border p-4"
-            style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(24px)",
-            }}
+            style={{ ...PORTAL_CARD_STYLE, backdropFilter: "blur(24px)" }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Documents Required
@@ -677,11 +732,7 @@ export default function PortalProcessPage() {
           </div>
           <div
             className="rounded-xl border p-4"
-            style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(24px)",
-            }}
+            style={{ ...PORTAL_CARD_STYLE, backdropFilter: "blur(24px)" }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Pending Upload
@@ -690,11 +741,7 @@ export default function PortalProcessPage() {
           </div>
           <div
             className="rounded-xl border p-4"
-            style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(24px)",
-            }}
+            style={{ ...PORTAL_CARD_STYLE, backdropFilter: "blur(24px)" }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Completion
@@ -710,10 +757,7 @@ export default function PortalProcessPage() {
       {processGroups.length === 0 ? (
         <div
           className="rounded-xl border p-12 text-center backdrop-blur-lg"
-          style={{
-            background: "rgba(30,30,35,0.5)",
-            borderColor: "rgba(255,255,255,0.05)",
-          }}
+          style={PORTAL_CARD_STYLE}
         >
           <FolderOpen
             className="w-16 h-16 mx-auto mb-4"

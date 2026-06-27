@@ -51,14 +51,24 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 from typing import Any
 
 import asyncpg
 
+from backend.services.intake.enqueue import PIPELINE_VERSION
+
 logger = logging.getLogger("zantara.intake.routing")
 
-PIPELINE_VERSION_DEFAULT = "v1"
+# SSOT: the pipeline version is defined ONCE in enqueue.PIPELINE_VERSION and
+# imported everywhere. Historically routing defined its own "v1" while enqueue
+# used "intake-v1" — a silent drift that made routing_key
+# (= sha256(queue_id|doc_index|pipeline_version)) diverge between the row that
+# was enqueued and the route stage that should match it. A re-process that
+# bumped the version on the queue row but left a reader on the old constant
+# produced orphaned/duplicate proposals. Keep this an ALIAS, never a literal.
+PIPELINE_VERSION_DEFAULT = PIPELINE_VERSION
 
 # --- Decision-matrix C4 outcomes ---
 DECISION_AUTO_ATTACH = "AUTO_ATTACH"
@@ -73,6 +83,110 @@ AMBIGUITY_MARGIN = 0.15            # top1 - top2 < margin → AMBIGUOUS (homonym
 
 # Confidence assigned to a strong-identifier exact match.
 CONF_STRONG_EXACT = 0.99
+
+# --- LEVA 1: noise pre-filter → quarantine ---------------------------------- #
+# A proposal is NOISE (→ status 'quarantine', parked out of the review feed) when
+# the document classified as 'unknown' AND OCR produced effectively no legible
+# text: nothing classified it AND nothing is readable. This is the empty-OCR
+# class that poisoned 782 review_pending rows in the 2026-06-12 backlog run —
+# screenshots, blurred photos, stickers, illegible scans. CONSERVATIVE by design:
+# an 'unknown' doc that DOES carry text (a real document the classifier merely
+# failed to type) stays in normal review — only the genuinely-empty noise is
+# parked. Quarantine is consultable and recoverable (never deleted).
+#
+# Minimum total OCR chars (across all pages) below which an 'unknown' doc is
+# noise. 20 mirrors classify._normalize_ocr_text's own legibility floor (a page
+# transcript shorter than 20 chars is treated as empty there too).
+QUARANTINE_MIN_OCR_CHARS = 20
+# Kill-switch: quarantine is ON by default for empty-OCR unknown noise. Set
+# INTAKE_QUARANTINE_ENABLED=0/false/no/off (or empty) to disable parking and
+# send every proposal to review_pending exactly as before. Read at call time so
+# tests/ops can toggle it.
+def quarantine_enabled() -> bool:
+    """True unless INTAKE_QUARANTINE_ENABLED is explicitly falsy."""
+    raw = os.environ.get("INTAKE_QUARANTINE_ENABLED")
+    if raw is None:
+        return True
+    return raw.strip().lower() not in {"", "0", "false", "no", "off"}
+
+
+def _ocr_char_count(classify_out: dict[str, Any]) -> int:
+    """Total legible OCR chars across all pages recorded by the classify stage.
+
+    Reads ``classify.ocr_text_per_page`` (list of ``{"text": str, ...}``) — the
+    verbatim transcript the OCR stage stored. Whitespace-only text counts as 0.
+    """
+    pages = classify_out.get("ocr_text_per_page") or []
+    total = 0
+    for p in pages:
+        if isinstance(p, dict):
+            text = p.get("text") or ""
+            total += len((text if isinstance(text, str) else "").strip())
+    return total
+
+
+def is_noise_proposal(doc_type: str, classify_out: dict[str, Any]) -> bool:
+    """LEVA-1 noise verdict: unknown doc-type AND no legible OCR text.
+
+    Pure function of the classify output (no DB, no re-OCR). Returns True only
+    when BOTH hold — an unknown-but-legible document is NOT noise (it may be a
+    real doc the classifier failed to type) and must stay in human review.
+    """
+    if doc_type != "unknown":
+        return False
+    return _ocr_char_count(classify_out) < QUARANTINE_MIN_OCR_CHARS
+
+
+# --- LEVA 3: dedup wall — already-on-profile pre-filter ---------------------- #
+# A document whose subject is ALREADY matched to a CRM client AND that client
+# ALREADY carries a document of the same type on their kita profile is a
+# RE-ARRIVAL of something already filed. It must NOT re-enter the /review queue
+# for a human to catalog again — it is born 'duplicate' (out of the feed,
+# consultable for audit). This is the wall Zero asked for: "quando approviamo
+# non deve arrivare in pending se è già matchato col profilo e i docs su kita".
+#
+# Scoped to TYPED docs only (doc_type != 'unknown'): an unknown doc has no type
+# to dedup against, and noise is already handled by LEVA 1.
+#
+# Kill-switch (default OFF): INTAKE_DEDUP_WALL_ENABLED. Read at call time.
+def dedup_wall_enabled() -> bool:
+    """True only if INTAKE_DEDUP_WALL_ENABLED is explicitly truthy (default OFF)."""
+    return os.environ.get("INTAKE_DEDUP_WALL_ENABLED", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+async def client_already_has_doc_type(
+    conn: asyncpg.Connection, client_id: int | None, doc_type: str
+) -> bool:
+    """True if ``client_id`` already carries a ``documents`` row of ``doc_type``
+    (already filed on their kita profile).
+
+    The dedup key is (client_id, document_type) — the SAME logical document
+    re-arriving (a fresh photo, a different blob_hash) is caught here, where the
+    blob-level idempotency key (writer.compute_idempotency_key) would not.
+    Returns False for an unresolved client or an unknown type (nothing to dedup).
+
+    NB: the ``documents`` table has NO ``deleted_at`` column (hard-delete only,
+    verified 2026-06-21) — do not add a soft-delete filter here.
+    """
+    if client_id is None or not doc_type or doc_type == "unknown":
+        return False
+    row = await conn.fetchrow(
+        """
+        SELECT 1
+        FROM documents
+        WHERE client_id = $1
+          AND document_type = $2
+        LIMIT 1
+        """,
+        client_id,
+        doc_type,
+    )
+    return row is not None
 
 # Sender-phone exact match (m225). High confidence but NEVER auto-attach: a
 # phone can be shared by spouse/agent — the sender is not always the subject.
@@ -107,9 +221,14 @@ CONF_FOLDER_MATCH = 0.85
 # (match against ``companies``). canonical_doc_type() upstream already maps
 # aliases (paspor->passport, akta->akta_pendirian, ...).
 _PERSON_DOC_TYPES = frozenset(
-    {"passport", "npwp", "kitas", "itk", "itas", "itap"}
+    {
+        "passport", "npwp", "kitas", "itk", "itas", "itap", "ktp", "visa",
+        "family_card", "birth_certificate", "marriage_certificate",
+    }
 )
-_COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian"})
+_COMPANY_DOC_TYPES = frozenset(
+    {"nib", "akta_pendirian", "profil_perseroan", "sk_kemenkumham"}
+)
 
 # NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
 # match first when the npwp resolves a company row, else fall back to person.
@@ -229,7 +348,13 @@ async def _match_person_strong(
                     "matched_value": norm,
                 })
 
-    kitas = _field_value(extracted, "kitas_no") or _field_value(extracted, "kitas_number")
+    kitas = (
+        _field_value(extracted, "kitas_no")
+        or _field_value(extracted, "kitas_number")
+        or _field_value(extracted, "itap_no")
+        or _field_value(extracted, "itk_no")
+        or _field_value(extracted, "stay_permit_no")
+    )
     if kitas:
         norm = _normalize_id(kitas)
         if norm:
@@ -948,12 +1073,40 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             source_path=source_path,
         )
 
+        # LEVA 1 — noise pre-filter. When the doc is unreadable noise (unknown
+        # type + no legible OCR) AND the parking is armed, the proposal is born
+        # in 'quarantine' (parked out of the review feed, consultable +
+        # recoverable), never review_pending. The verdict is recorded on the
+        # commit_gate either way so the reason is auditable.
+        noise = is_noise_proposal(doc_type, classify_out)
+        proposal["commit_gate"]["noise"] = noise
+
+        # LEVA 3 — dedup wall (Zero 2026-06-21). If the resolved client ALREADY
+        # carries a document of this type on their kita profile, this is a
+        # re-arrival of something already filed: it must NOT re-enter /review for
+        # a human to re-catalog. Born 'duplicate' (parked, consultable), never
+        # review_pending. Scoped to typed docs with a resolved client; armed by
+        # INTAKE_DEDUP_WALL_ENABLED (default OFF). Checked AFTER noise so genuine
+        # noise still wins the 'quarantine' label.
+        resolved_client_id = proposal["routing"]["client_id"]
+        is_dup = False
+        if not noise:
+            is_dup = await client_already_has_doc_type(conn, resolved_client_id, doc_type)
+        proposal["commit_gate"]["dedup_already_on_profile"] = is_dup
+
+        if noise and quarantine_enabled():
+            initial_status = "quarantine"
+        elif is_dup and dedup_wall_enabled():
+            initial_status = "duplicate"
+        else:
+            initial_status = "review_pending"
+
         proposal_id = await conn.fetchval(
             """
             INSERT INTO document_routing_proposal
                 (queue_id, doc_index, pipeline_version, routing_key,
                  entity_resolution, routing, commit_gate, status)
-            VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, 'review_pending')
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8)
             ON CONFLICT (routing_key) DO NOTHING
             RETURNING id
             """,
@@ -964,16 +1117,53 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             json.dumps(proposal["entity_resolution"]),
             json.dumps(proposal["routing"]),
             json.dumps(proposal["commit_gate"]),
+            initial_status,
         )
 
         if proposal_id is None:
-            # Conflict: proposal already existed (idempotent re-run).
+            # Conflict: a proposal with this routing_key already existed.
             existing = await conn.fetchrow(
-                "SELECT id FROM document_routing_proposal WHERE routing_key = $1",
+                "SELECT id, status FROM document_routing_proposal WHERE routing_key = $1",
                 proposal["routing_key"],
             )
             proposal_id = existing["id"] if existing else None
             already = True
+
+            # ANTI-DEADLOCK GUARD (done-deadlock fix). The bare ON CONFLICT DO
+            # NOTHING above silently dropped the fresh proposal whenever the key
+            # collided. If the surviving row is 'superseded' (a re-process bumped
+            # the version, marked the old proposal superseded, but the same key
+            # was re-derived) the document would be lost: the queue advances to
+            # 'done' while NO live proposal exists, so it never appears in
+            # /review and the worker (which only claims non-'done' rows) never
+            # revisits it. Revive a superseded survivor back to 'review_pending'
+            # so a re-route always leaves a reviewable proposal. 'rejected'/
+            # 'routed'/'review_pending'/'review_claimed' are intentional human
+            # (or in-flight) states and are left untouched.
+            if existing is not None and existing["status"] == "superseded":
+                await conn.execute(
+                    """
+                    UPDATE document_routing_proposal
+                       SET status           = 'review_pending',
+                           entity_resolution = $2::jsonb,
+                           routing           = $3::jsonb,
+                           commit_gate       = $4::jsonb,
+                           lease_owner       = NULL,
+                           lease_expires_at  = NULL,
+                           claim_token       = NULL
+                     WHERE id = $1
+                       AND status = 'superseded'
+                    """,
+                    proposal_id,
+                    json.dumps(proposal["entity_resolution"]),
+                    json.dumps(proposal["routing"]),
+                    json.dumps(proposal["commit_gate"]),
+                )
+                logger.warning(
+                    "route(FASE4): revived superseded-orphan proposal_id=%s "
+                    "queue=%s back to review_pending (anti-deadlock guard)",
+                    proposal_id, queue_id,
+                )
         else:
             already = False
 
@@ -986,10 +1176,11 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
     decision = proposal["entity_resolution"]["decision"]
     logger.info(
         "route(FASE4): job=%s proposal_id=%s decision=%s requires_human=%s "
-        "client_id=%s (0 CRM writes)",
+        "client_id=%s status=%s noise=%s dedup=%s (0 CRM writes)",
         queue_id, proposal_id, decision,
         proposal["commit_gate"]["requires_human"],
         proposal["routing"]["client_id"],
+        initial_status, noise, is_dup,
     )
     return {
         "routed": False,
@@ -998,6 +1189,9 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         "doc_type": doc_type,
         "decision": decision,
         "requires_human": proposal["commit_gate"]["requires_human"],
+        "status": initial_status,
+        "noise": noise,
+        "dedup_already_on_profile": is_dup,
         "idempotent_skip": already,
         "received_by_backfilled": backfilled_owner,
         "_metric": {"model": "entity-resolution-fase4", "confidence": 1.0},

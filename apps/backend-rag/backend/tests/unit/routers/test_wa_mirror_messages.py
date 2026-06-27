@@ -83,7 +83,7 @@ def message_row(**overrides: object) -> dict[str, object]:
         "client_id": 42,
         "practice_id": 88,
         "direction": "inbound",
-        "team_member_phone": "+6282264599868",
+        "team_member_phone": "+6282210302328",
         "counterpart_phone": "+6281234567890",
         "body": "Client asked for renewal timing",
         "message_text": "legacy duplicate text",

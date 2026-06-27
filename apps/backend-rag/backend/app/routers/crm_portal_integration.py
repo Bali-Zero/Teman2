@@ -13,7 +13,7 @@ This creates the "intradinamici" connection between Team and Portal.
 Created: 2025-12-30
 """
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,8 +23,13 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_crm_user_filter
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
-from backend.services.portal import InviteService, PortalService
 from backend.services.portal._rbac import ClientContext
+
+if TYPE_CHECKING:
+    from backend.services.portal import InviteService, PortalService
+else:
+    InviteService = Any
+    PortalService = Any
 
 
 def _team_impersonation_ctx(client_id: int, current_user: dict) -> ClientContext:
@@ -106,12 +111,16 @@ def require_team_auth(current_user: dict = Depends(get_current_user)) -> dict:
 
 def get_invite_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> InviteService:
     """Dependency injection for InviteService"""
-    return InviteService(db_pool)
+    from backend.services.portal import InviteService as _InviteService
+
+    return _InviteService(db_pool)
 
 
 def get_portal_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> PortalService:
     """Dependency injection for PortalService"""
-    return PortalService(db_pool)
+    from backend.services.portal import PortalService as _PortalService
+
+    return _PortalService(db_pool)
 
 
 # ================================================

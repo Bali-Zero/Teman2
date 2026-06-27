@@ -184,4 +184,129 @@ describe("ReviewPage", () => {
       expect((approveCall![1] as { client_id?: number }).client_id).toBe(999);
     });
   });
+
+  // ── View-first / read-only-on-409 (the PROD "Could not open the document"
+  //    bug: claiming a terminal `routed` proposal 409'd before any view) ──────
+  // Placeholder ids only — never real client PII (UU PDP, intake is PII-L2).
+  const ROUTED_DETAIL = {
+    proposal_id: 1,
+    doc_type: "passport",
+    decision: "AUTO_ATTACH",
+    source: "whatsapp",
+    status: "routed",
+    received_by: "adit@balizero.com",
+    entity_candidates: [{ client_id: 21, full_name: "Client One" }],
+    extracted_fields: {},
+    created_at: "2026-06-15T09:00:00Z",
+    routing: {},
+  };
+  const PENDING_DETAIL = { ...ROUTED_DETAIL, status: "review_pending" };
+
+  it("opens a terminal (routed) proposal READ-ONLY without an error and without claiming", async () => {
+    // The detail GET for proposal 1 reports a terminal status (it turned
+    // `routed` between the pending-queue load and the click — the PROD repro).
+    const baseGet = apiMock.get.getMockImplementation()!;
+    apiMock.get.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/api/intake/review/1") return ROUTED_DETAIL;
+      if (/^\/api\/intake\/review\/clients\//.test(endpoint))
+        return { items: [] };
+      return baseGet(endpoint);
+    });
+
+    render(<ReviewPage />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+
+    // Read-only notice is shown…
+    expect(await screen.findByText(/already filed — view only/i)).toBeVisible();
+    // …the generic failure toast is NOT shown…
+    expect(
+      screen.queryByText("Could not open the document."),
+    ).not.toBeInTheDocument();
+    // …and we NEVER attempted to claim a terminal proposal.
+    expect(apiMock.post).not.toHaveBeenCalled();
+
+    // Actions are disabled in read-only mode.
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+
+    // …and the now-terminal row is PRUNED from the in-memory queue so it can no
+    // longer be reopened as a zombie (it turned terminal mid-session — a full
+    // loadQueue() would also drop it, this does it eagerly). The list started
+    // with two cards (proposal 1 + the NO_MATCH proposal); after opening the
+    // terminal one, only the NO_MATCH 'Review' button remains.
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "Review" })).toHaveLength(1),
+    );
+  });
+
+  it("falls back to read-only 'claimed by another reviewer' on a live-claim 409", async () => {
+    const baseGet = apiMock.get.getMockImplementation()!;
+    apiMock.get.mockImplementation(async (endpoint: string) => {
+      // Detail still says claimable…
+      if (endpoint === "/api/intake/review/1") return PENDING_DETAIL;
+      if (/^\/api\/intake\/review\/clients\//.test(endpoint))
+        return { items: [] };
+      return baseGet(endpoint);
+    });
+    // …but the claim races and 409s, surfacing the FastAPI detail verbatim.
+    apiMock.post.mockReset();
+    apiMock.post.mockRejectedValueOnce(
+      new Error(
+        "Proposal not claimable (status=review_claimed, lease_owner=other@balizero.com)",
+      ),
+    );
+
+    render(<ReviewPage />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+
+    expect(
+      await screen.findByText(/claimed by another reviewer — view only/i),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("Could not open the document."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+  });
+
+  it("claims and enables actions when the proposal is genuinely claimable", async () => {
+    const baseGet = apiMock.get.getMockImplementation()!;
+    apiMock.get.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/api/intake/review/1") return PENDING_DETAIL;
+      if (/^\/api\/intake\/review\/clients\//.test(endpoint))
+        return { items: [] };
+      return baseGet(endpoint);
+    });
+    // beforeEach's apiMock.post already returns a claim_token on /claim.
+
+    render(<ReviewPage />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+
+    // The claim was attempted exactly once on the claim endpoint.
+    await waitFor(() => expect(apiMock.post).toHaveBeenCalledTimes(1));
+    expect(apiMock.post).toHaveBeenCalledWith("/api/intake/review/1/claim", {});
+    // No read-only notice, and a candidate is pre-selected → Approve enabled.
+    expect(screen.queryByText(/view only/i)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled(),
+    );
+    expect(screen.getByRole("button", { name: "Reject" })).toBeEnabled();
+  });
+
+  it("shows the generic failure only when the detail GET itself fails", async () => {
+    const baseGet = apiMock.get.getMockImplementation()!;
+    apiMock.get.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/api/intake/review/1") throw new Error("HTTP 500");
+      return baseGet(endpoint);
+    });
+
+    render(<ReviewPage />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[0]);
+
+    expect(
+      await screen.findByText("Could not open the document."),
+    ).toBeVisible();
+    // The detail GET failed before any claim attempt.
+    expect(apiMock.post).not.toHaveBeenCalled();
+  });
 });

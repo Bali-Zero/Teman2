@@ -53,6 +53,7 @@ def include_routers(api: FastAPI) -> None:
         crm_enhanced_documents,
         crm_guardian_drive,
         crm_intelligence,
+        accounting,  # [P0] cash-control workflow for Asya (reconciliation + cashout)
         crm_interactions,
         crm_notifications,
         crm_portal_integration,
@@ -158,6 +159,7 @@ def include_routers(api: FastAPI) -> None:
         workflow_queue,
         workspace_analytics,
         workspace_inbox,  # /api/workspace/inbox unified team feed (wa-mirror, telegram, email)
+        wr2_publish,  # [WR2 LEGGE 5] /api/war-room/publish-ig server-side operator-gated IG publish
         zoho_email,
     )
 
@@ -219,6 +221,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_guardian_drive.router)
     api.include_router(crm_enhanced_alerts.router)
     api.include_router(crm_intelligence.router)
+    api.include_router(accounting.router)
     api.include_router(crm_interactions.router)
     api.include_router(crm_notifications.router)
     api.include_router(crm_practices.router)
@@ -274,6 +277,7 @@ def include_routers(api: FastAPI) -> None:
     # Analytics routers (Admin/reporting)
     api.include_router(analytics.router)
     api.include_router(war_room_dashboard.router)
+    api.include_router(wr2_publish.router)  # [WR2 LEGGE 5] /api/war-room/publish-ig
     api.include_router(workspace_analytics.router)
 
     # SOTA research controls (kill-switch guarded)
@@ -476,6 +480,7 @@ def include_light_routers(api: FastAPI) -> None:
         api: FastAPI application instance
     """
     from backend.app.routers import (
+        accounting,  # [P0] accounting cash-control (Asya) — _API
         admin_conversation_cleanup,
         admin_crm_kg,
         admin_drive_auth,
@@ -590,10 +595,12 @@ def include_light_routers(api: FastAPI) -> None:
         workflow_queue,
         workspace_analytics,
         workspace_inbox,  # /api/workspace/inbox unified team feed
+        wr2_publish,  # [WR2 LEGGE 5] /api/war-room/publish-ig server-side operator-gated IG publish
         zoho_email,
     )
 
     # Core routers
+    api.include_router(accounting.router)  # [P0] accounting cash-control (Asya)
     api.include_router(auth.router)
     api.include_router(health.router)
     api.include_router(nusantara_health.router)
@@ -693,6 +700,7 @@ def include_light_routers(api: FastAPI) -> None:
     # Analytics routers
     api.include_router(analytics.router)
     api.include_router(war_room_dashboard.router)
+    api.include_router(wr2_publish.router)  # [WR2 LEGGE 5] /api/war-room/publish-ig
     api.include_router(workspace_analytics.router)
 
     # SOTA research controls (kill-switch guarded)

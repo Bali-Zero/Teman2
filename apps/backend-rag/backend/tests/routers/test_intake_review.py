@@ -75,7 +75,7 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         created["clients"] += [cid_owner, cid_other]
 
         async def mk_proposal(
-            entity_resolution: dict, source: str = "drive", received_by: str | None = None,
+            entity_resolution: dict, source: str = "whatsapp", received_by: str | None = None,
             stage_output: dict | None = None,
         ) -> int:
             bh = uuid.uuid4().hex + uuid.uuid4().hex  # 64-char
@@ -135,9 +135,11 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         p_nomatch = await mk_proposal(
             {"decision": "NO_MATCH", "candidates": []},
             received_by=TEAM_OWNER["email"])
+        # p_null is a Drive doc on the shared line (received_by=NULL) — admin-only
+        # AND now also source-gated OUT of the WhatsApp-only review queue.
         p_null = await mk_proposal(
             {"decision": "NO_MATCH", "candidates": []},
-            received_by=None)
+            source="drive", received_by=None)
         # CURRENT pipeline: OCR text lives in classify.ocr_text_per_page; the
         # ocr stage only writes a marker with NO pages. The detail reader must
         # still surface the text (regression for the empty-review-area bug).
@@ -201,17 +203,16 @@ async def _crm_counts(pool: asyncpg.Pool) -> tuple[int, int]:
 
 # --------------------------------------------------------------------------- #
 async def test_queue_admin_sees_all(pool, seed):
-    """Admin sees the ENTIRE queue — every worker's docs, incl. NULL-received_by.
+    """Admin sees every WhatsApp doc — every worker's, incl. NULL-received_by —
+    but NOT Drive docs (source-gated out of the WhatsApp-only review queue).
 
     Robust to nuzantara_dev size: the queue endpoint orders by ``created_at ASC``
     and caps ``limit`` at 200, so the freshly-seeded (newest) rows live at the
-    TAIL of a live DB that holds thousands of real ``review_pending`` drive rows.
-    A single ``limit=200, offset=0`` window returns the 200 OLDEST and would miss
-    the seeds deterministically once the table outgrows 200 rows. We therefore
-    page through the WHOLE ``source=drive`` queue (the endpoint reports ``total``)
-    and assert the seeds appear SOMEWHERE in the admin's view — verifying the
-    RBAC scope (admin sees every worker's docs incl. NULL received_by) without
-    depending on the seeds being in the first N rows.
+    TAIL of a live DB. We page through the WHOLE WhatsApp queue (the endpoint
+    reports ``total``) and assert the three WhatsApp seeds appear SOMEWHERE in
+    the admin's view, while the Drive seed (p_null) is absent — verifying both
+    the RBAC scope (admin sees every worker's WhatsApp docs incl. NULL
+    received_by) AND the source gate.
     """
     app = _make_app(pool, ADMIN)
     ids: set[int] = set()
@@ -219,9 +220,10 @@ async def test_queue_admin_sees_all(pool, seed):
         offset = 0
         page_size = 200
         while True:
+            # No explicit ?source= → the WhatsApp-only allowlist default applies.
             r = await cl.get(
                 "/api/intake/review/queue",
-                params={"source": "drive", "limit": page_size, "offset": offset},
+                params={"limit": page_size, "offset": offset},
             )
             assert r.status_code == 200, r.text
             body = r.json()
@@ -233,7 +235,54 @@ async def test_queue_admin_sees_all(pool, seed):
             # BEFORE pagination, so it is the authoritative stop condition.
             if len(items) < page_size or offset >= body["total"]:
                 break
-    assert {seed["p_owner"], seed["p_other"], seed["p_nomatch"], seed["p_null"]} <= ids
+    # The three WhatsApp seeds are visible to the admin…
+    assert {seed["p_owner"], seed["p_other"], seed["p_nomatch"]} <= ids
+    # …but the Drive doc is gated out of the review queue (still in the DB).
+    assert seed["p_null"] not in ids
+
+
+async def test_queue_drive_source_gated_out(pool, seed):
+    """An explicit ?source=drive is OUTSIDE the WhatsApp-only allowlist → empty
+    page, never the Drive proposal. The Dropbox→Drive archive stays catalogued in
+    the DB but is kept out of the team/admin review list (Zero, 2026-06-19)."""
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.get(
+            "/api/intake/review/queue",
+            params={"source": "drive", "limit": 200},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["total"] == 0
+    assert body["items"] == []
+
+
+async def test_queue_source_allowlist_env_readmits_drive(pool, seed, monkeypatch):
+    """INTAKE_REVIEW_SOURCES re-admits a source without a code change ('for now'
+    is a config, not a hardcode).
+
+    Asserted by the GATE, not by finding the seed: against the live nuzantara_dev
+    (thousands of real Drive rows), ?source=drive returns total=0 by DEFAULT and
+    total>0 once drive is admitted. We never page the whole Drive backlog (that is
+    slow and races the live drain cron); the total flip is the contract.
+    """
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        # Default allowlist (whatsapp only): Drive is gated → empty.
+        r_default = await cl.get(
+            "/api/intake/review/queue", params={"source": "drive", "limit": 1}
+        )
+        assert r_default.status_code == 200, r_default.text
+        assert r_default.json()["total"] == 0
+
+        # Re-admit drive via env → the same query now reports the real backlog.
+        monkeypatch.setenv("INTAKE_REVIEW_SOURCES", "whatsapp,drive")
+        r_admitted = await cl.get(
+            "/api/intake/review/queue", params={"source": "drive", "limit": 1}
+        )
+        assert r_admitted.status_code == 200, r_admitted.text
+        # The seeded p_null (source=drive) guarantees at least one row exists.
+        assert r_admitted.json()["total"] >= 1
 
 
 async def test_queue_team_rbac_filter(pool, seed):

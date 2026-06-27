@@ -148,11 +148,11 @@ def run_agent_loop(
 
         if not tool_calls:
             # No tool calls — check for case resolution in plain text
-            if "Case resolved" in output or "case_resolved" in output.lower():
+            if "Case resolved." in output:
                 logger.info(f"[MetaChain] {agent.name} resolved the case")
                 break
 
-            if "Case not resolved" in output or "case_not_resolved" in output.lower():
+            if "Case not resolved." in output:
                 logger.info(f"[MetaChain] {agent.name} could not resolve the case")
                 break
 

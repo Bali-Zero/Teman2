@@ -55,6 +55,20 @@ class TeamDriveService:
         """Check if Drive service is configured (auth manager available)."""
         return self.auth is not None
 
+    @property
+    def service_account_available(self) -> bool:
+        """Return True if a service-account credential is ready for upload.
+
+        Delegates to DriveAuthManager.  The documents mixin uses this as a
+        fallback check when OAuth is unavailable (see _upload_to_drive).
+        If the auth manager itself is absent, we conservatively return False.
+        """
+        if self.auth is None:
+            return False
+        # DriveAuthManager exposes service_account_available if configured
+        return bool(getattr(self.auth, "service_account_available", False))
+
+
     async def close(self) -> None:
         """
         Garantisce la chiusura corretta del connection pool HTTPX.

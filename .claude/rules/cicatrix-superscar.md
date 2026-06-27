@@ -66,8 +66,8 @@ esiste ma non è merged/installed/propagated/armed/committed è **sospeso, non v
 inosservabile / required-checks disarmati) · W64/W34 (asyncpg silent-death, manca `InterfaceError`) ·
 W71 (verify_mcp_integrity glyph-bug: gira e mente) · W32 (pg-bridge morto silenzioso) · 503-RAG
 (health=200 ma RAG worker stoppato) · W70 (sentinel log_tail cieco) · W81 (Armamento Sospeso: ~20 cron
-"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok) · W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desktop` — incl. `verify-connectome` il guardiano-dei-guardiani — con `LastExitStatus=0` VERDE mentre il log dice `Operation not permitted`; il contesto **launchd ha perso il grant TCC/Full-Disk-Access** verso `~/Desktop` SENZA cambiare codice/plist/permessi — **vettore nuovo: lo stato-di-attivazione TCC è un principal separato da iTerm**; prova che il verde mente: STESSO plist su Pro dà exit 1 onesto. Antidoto: `launchd_liveness_detector.py` PR #1518 incrocia exit-code col CONTENUTO del log; cura=solo-operatore. La W81-estensione si estende ancora: leggi anche lo stato-di-attivazione **TCC**, non solo merge/install).
-**→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503/W84) + archive (W34/W32) · `scar query "esiste non armato"`
+"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok) · W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desktop` — incl. `verify-connectome` il guardiano-dei-guardiani — con `LastExitStatus=0` VERDE mentre il log dice `Operation not permitted`; il contesto **launchd ha perso il grant TCC/Full-Disk-Access** verso `~/Desktop` SENZA cambiare codice/plist/permessi — **vettore nuovo: lo stato-di-attivazione TCC è un principal separato da iTerm**; prova che il verde mente: STESSO plist su Pro dà exit 1 onesto. Antidoto: `launchd_liveness_detector.py` PR #1518 incrocia exit-code col CONTENUTO del log; cura=solo-operatore. La W81-estensione si estende ancora: leggi anche lo stato-di-attivazione **TCC**, non solo merge/install). · **W87 (Postgres access-wall, 2026-06-26: MCP `postgres-nuzantara` VERDE in lista `✔ Connected` ma morto al primo query — identità local-dev `nuzantara_dev_readonly`/`nuzantara_dev` cablata contro il proxy PROD `:15432`; ricorrente da settimane. La combo viva è `nuzantara_readonly`/`nuzantara_rag`. Antidoto: `scripts/pg.sh` PR #1745 + memory `reference_postgres_access_one_true_way`. GOTCHA: `✔ Connected` = handshake TCP, non auth+query — prova `SELECT 1` reale)**.
+**→ dettaglio:** cicatrix-scars.md (W64/W69/W70/W71/W74/503/W84/**W87**) + archive (W34/W32) · `scar query "esiste non armato"`
 
 ---
 
@@ -205,14 +205,39 @@ drop) · W32 (interface error ignorato silenzioso) · W47.
 lettori non allineati a valle si rompono.
 
 **SEGNALE-PRECOCE:** modifica "veloce" ai dati intermedi passati su code-path disaccoppiati (DLQ, redis
-stream, event bus, `*.last.json`) senza scope end-to-end di chi li legge.
+stream, event bus, `*.last.json`) senza scope end-to-end di chi li legge; **un segnale di STATO (merged?
+stale? fresh?) letto da un proxy (SHA-ancestor, patch-id, timestamp, substring) invece che dal CONTENUTO
+reale** — `git cherry`/`--is-ancestor` che dicono "non-mergiato" su un branch già-su-main per squash (W88).
 
 **ANTIDOTO:** i cambi di schema sui contratti inter-servizio (incluso file di stato) richiedono deploy
 unificato + scansione completa dei partecipanti; mai cambiare un formato condiviso da un solo lato.
+**Regola-stato (W88, MANDATORIA):** quando decidi "X è già su main / già fatto / stale", verifica per
+**CONTENUTO** (diff vuoto/subset), **mai** per patch-equivalenza, SHA-ancestor o timestamp — il proxy
+mente quando il contenuto è arrivato per un'altra via (squash/rework). Reso eseguibile, non solo documentato:
+`scripts/branch_graveyard_cleanup.sh::content_on_main()`.
 
 **MEMBRI:** W54 (timestamp ISO-8601 schianta il check di staleness) · W53 (DLQ TERMINAL suppression gate
-mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`).
-**→ dettaglio:** archive (W53/W54/W61) · `scar query "schema drift json contract"`
+mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`) · **W86 (DOCSYNC stale —
+auto-merge-a-verde mergia il commit-feature PRIMA che il commit docs_sync bump atterri → il
+contratto-derivato `AI_ONBOARDING.md` test/router/service count resta stale su main → il gate
+`check-docs-sync` boccia la PR backend successiva, innocente. Antidoto: il `docs_sync.py` regen va
+nello STESSO commit della feature, MAI separato — con `--auto` non esiste "poi", merge al primo
+verde. 2026-06-23, PR #1670→#1672)** · **W88 (cherry-mente-sul-contenuto, 2026-06-27: `git merge-base
+--is-ancestor` / `git cherry` segnano un branch "non su main" appena lo SHA non è antenato — ma un branch
+SQUASH-merged o riportato per rework È GIÀ su main per CONTENUTO mentre SHA e patch-id divergono. Un
+"orphan report" di 28 worktree era ~80% stale: ~5 vivi veri, il resto già su main, e 3 capitoli KBLI
+sarebbero REGREDITI se rebasati. Antidoto MANDATORIO: deletable-safe SOLO se `git diff origin/main...<br>`
+è VUOTO o pura-cancellazione (subset) — verifica per CONTENUTO, MAI per patch-equivalenza/ancestor-solo.
+Reso eseguibile in `scripts/branch_graveyard_cleanup.sh::content_on_main()` + nuova categoria
+"Content-on-main & deletable". GOTCHA-NEL-GOTCHA (stesso giorno, il fix è ricaduto nella malattia che
+curava): la PRIMA versione del check usava `git diff origin/main...branch` (THREE-DOT) — ma post-squash
+il merge-base è ARRETRATO, quindi il three-dot conta come "branch-only" ogni riga che main ha cambiato
+dopo quel base → FALSO NEGATIVO. Prova vissuta: un file con blob byte-identico su main dava lo stesso
+"+155 added" sotto three-dot. Il three-dot è ESSO STESSO un proxy che mente — la trappola W88 al secondo
+grado. Cura definitiva: confronto **blob-per-file** sui soli file che il branch ha autorato dal merge-base
+(`git rev-parse branch:f == main:f`), MAI il three-dot. Il check buggato trovava 2 content-on-main, quello
+corretto ne trova 9 (i 7 persi erano i falsi negativi))**.
+**→ dettaglio:** cicatrix-scars.md (W86) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
 
 ---
 

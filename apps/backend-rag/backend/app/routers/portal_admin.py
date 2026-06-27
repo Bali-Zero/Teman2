@@ -32,13 +32,13 @@ async def search_clients(
     dependency is enforced here rather than via Depends so we can return a
     consistent JSON shape (the frontend treats 403 as "hide the search bar").
     """
-    from backend.app.routers.portal import SUPERUSER_EMAILS
+    from backend.app.routers.portal import _superuser_emails
 
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
     email = (user.get("email") or "").lower()
-    if email not in SUPERUSER_EMAILS:
+    if email not in _superuser_emails():
         raise HTTPException(status_code=403, detail="Not a superuser")
 
     limit = max(1, min(int(limit or 20), 50))
@@ -87,11 +87,11 @@ async def whoami(request: Request) -> dict:
     the impersonation search bar. Never throws on non-superuser — just
     returns is_superuser=false so the UI stays silent.
     """
-    from backend.app.routers.portal import SUPERUSER_EMAILS
+    from backend.app.routers.portal import _superuser_emails
 
     user = getattr(request.state, "user", None)
     email = (user.get("email") if user else "") or ""
-    is_superuser = email.lower() in SUPERUSER_EMAILS
+    is_superuser = email.lower() in _superuser_emails()
     return {
         "success": True,
         "is_superuser": is_superuser,

@@ -233,6 +233,9 @@ function transformCode(
       isPriority: raw.pma_prioritas || false,
       note: raw.pma_nota,
       source: raw.pma_source,
+      capSpecial: raw.pma_cap_special === true,
+      capVerified: raw.pma_cap_verified !== false,
+      routeTo: raw.pma_route_to ?? null,
     },
     licensing: (raw.per_skala || []).map((s) => ({
       scales: s.skala_usaha,
@@ -251,6 +254,25 @@ function transformCode(
       aggregationNote: raw.aggregation_note || undefined,
     },
     intel,
+    // L4 — Bali sovereign-local status (national PMA openness != Bali registrability)
+    baliL4: raw.l4_bali?.status
+      ? {
+          status: raw.l4_bali.status,
+          reason: raw.l4_bali.reason || "",
+          confidence: raw.l4_bali.confidence || "MEDIUM",
+          needsReview: !!raw.l4_bali.needs_review,
+          blocked: !!raw.l4_bali.blocked,
+          from2020: raw.l4_bali.from_2020 ?? null,
+          moratorium: raw.l4_bali.moratorium
+            ? {
+                rule: raw.l4_bali.moratorium.rule || "",
+                effective: raw.l4_bali.moratorium.effective || "",
+                source: raw.l4_bali.moratorium.source || "",
+                virtualOffice: raw.l4_bali.moratorium.virtual_office || "",
+              }
+            : undefined,
+        }
+      : undefined,
     tier: goldEntry ? "gold" : "bronze",
     keywords: [],
   };

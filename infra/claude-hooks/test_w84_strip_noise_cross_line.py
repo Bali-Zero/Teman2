@@ -105,6 +105,19 @@ def main() -> int:
         ("echo x > " + W + "/f.py", M, False),
         # write outside repo — must NOT block
         ("echo x > /tmp/scratch", "/tmp", False),
+        # --- superscar #3 STRUCTURAL CURE (path-plausibility) — 2026-06-23 ---
+        # The W83/84/85 treadmill: each over-match was a new way code-residue leaked a
+        # bare `>` past the noise-stripper. Instead of patch-per-shape, a target now
+        # survives only if it is a PLAUSIBLE PATH. These are the new shapes (python -c
+        # multiline + awk/perl/jq bodies) that a 4th puntual patch would have missed:
+        ('python3 -c "\nfor s in vals:\n  if s>=0.9: b[0]+=1\n"', M, False),
+        ('python3 -c "\nx=0.6\nif x>=0.5: pass\n"', M, False),
+        ("awk '{if ($1 > 5) print}' file.txt", M, False),
+        ('perl -e "print 1 if 2>1"', M, False),
+        ("cat f | jq 'select(.n > 5)'", M, False),
+        ('echo "score >= threshold"', M, False),
+        # genuine writes with NO extension but a dir separator — must STILL block
+        ("echo x > apps/build/Makefile", M, True),
     ]
 
     fails = 0

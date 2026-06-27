@@ -164,7 +164,7 @@ EMAIL_TEMPLATES: dict[str, dict[AlertType, dict[str, str]]] = {
 </p>
 
 <p><strong>Emergency Contacts — respond immediately:</strong><br>
-📱 WhatsApp: <a href="https://wa.me/6282264599868">+62 821-4745-1775</a> (fastest)<br>
+📱 WhatsApp: <a href="https://wa.me/6282210302328">+62 821-4745-1775</a> (fastest)<br>
 📧 Email: support@balizero.com</p>
 
 <p><strong>Bali Zero Team</strong></p>
@@ -342,7 +342,7 @@ EMAIL_TEMPLATES: dict[str, dict[AlertType, dict[str, str]]] = {
 </p>
 
 <p><strong>Contatti di emergenza — rispondi subito:</strong><br>
-📱 WhatsApp: <a href="https://wa.me/6282264599868">+62 821-4745-1775</a> (più veloce)<br>
+📱 WhatsApp: <a href="https://wa.me/6282210302328">+62 821-4745-1775</a> (più veloce)<br>
 📧 Email: support@balizero.com</p>
 
 <p><strong>Team Bali Zero</strong></p>
@@ -513,7 +513,7 @@ EMAIL_TEMPLATES: dict[str, dict[AlertType, dict[str, str]]] = {
 </p>
 
 <p><strong>Kontak Darurat — segera hubungi:</strong><br>
-📱 WhatsApp: <a href="https://wa.me/6282264599868">+62 821-4745-1775</a> (tercepat)<br>
+📱 WhatsApp: <a href="https://wa.me/6282210302328">+62 821-4745-1775</a> (tercepat)<br>
 📧 Email: support@balizero.com</p>
 
 <p><strong>Tim Bali Zero</strong></p>

@@ -126,8 +126,8 @@ SCORE_KEYWORD_MATCH = 2.0
 SCORE_DURATION_FIT = 1.5
 SCORE_FAMILY_MATCH = 1.0
 
-WHATSAPP_NUMBER = "+62 822 6459 9868"
-WHATSAPP_BASE_URL = "https://wa.me/6282264599868"
+WHATSAPP_NUMBER = "+62 821 3465 159"
+WHATSAPP_BASE_URL = "https://wa.me/6282210302328"
 
 
 # ---------------------------------------------------------------------------

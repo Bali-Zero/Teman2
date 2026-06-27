@@ -252,3 +252,131 @@ class TestSessionEndpoints:
         response = TestClient(application, raise_server_exceptions=False).get("/api/auth/profile")
 
         assert response.status_code == 401
+
+
+def _audit_mock() -> MagicMock:
+    audit = MagicMock()
+    audit.pool = object()
+    audit.connect = AsyncMock()
+    audit.log_auth_event = AsyncMock()
+    return audit
+
+
+class TestMagicLink:
+    @pytest.mark.unit
+    def test_router_exposes_magic_link_routes(self) -> None:
+        paths = {route.path for route in auth_module.router.routes}
+        assert "/api/auth/request-magic-link" in paths
+        assert "/api/auth/verify-magic/{token}" in paths
+
+    @pytest.mark.integration
+    def test_request_magic_link_is_enumeration_safe(self, client: TestClient) -> None:
+        """The response body is generic and identical regardless of account."""
+        svc = MagicMock()
+        svc.request_magic_link = AsyncMock(return_value={"token": None, "is_client": False})
+
+        with (
+            patch(
+                "backend.services.portal.magic_link_service.MagicLinkService",
+                return_value=svc,
+            ),
+            patch("backend.app.routers.auth.spawn") as spawn_mock,
+        ):
+            response = client.post(
+                "/api/auth/request-magic-link",
+                json={"email": "stranger@example.com"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        # No email dispatched for a non-client.
+        spawn_mock.assert_not_called()
+
+    @pytest.mark.integration
+    def test_request_magic_link_dispatches_email_for_client(self, client: TestClient) -> None:
+        svc = MagicMock()
+        svc.request_magic_link = AsyncMock(
+            return_value={
+                "token": "raw-token-xyz",
+                "is_client": True,
+                "email": "client@example.com",
+                "name": "Client One",
+            }
+        )
+
+        with (
+            patch(
+                "backend.services.portal.magic_link_service.MagicLinkService",
+                return_value=svc,
+            ),
+            patch("backend.app.routers.auth.spawn") as spawn_mock,
+            patch("backend.app.routers.auth._send_magic_link_email", new=AsyncMock()),
+        ):
+            response = client.post(
+                "/api/auth/request-magic-link",
+                json={"email": "client@example.com"},
+            )
+
+        assert response.status_code == 200
+        # Generic body — never reveals the account exists.
+        assert "account exists" in response.json()["message"].lower()
+        spawn_mock.assert_called_once()
+
+    @pytest.mark.integration
+    def test_request_magic_link_validates_email(self, client: TestClient) -> None:
+        response = client.post("/api/auth/request-magic-link", json={"email": "not-an-email"})
+        assert response.status_code == 422
+
+    @pytest.mark.integration
+    def test_verify_magic_link_success_sets_cookies(self, client: TestClient) -> None:
+        svc = MagicMock()
+        svc.verify_magic_link = AsyncMock(
+            return_value={
+                "id": "7",
+                "email": "client@example.com",
+                "name": "Client One",
+                "role": "client",
+            }
+        )
+
+        with (
+            patch(
+                "backend.services.portal.magic_link_service.MagicLinkService",
+                return_value=svc,
+            ),
+            patch(
+                "backend.services.monitoring.audit_service.get_audit_service",
+                return_value=_audit_mock(),
+            ),
+        ):
+            response = client.get("/api/auth/verify-magic/raw-token-xyz")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["data"]["user"]["email"] == "client@example.com"
+        assert payload["data"]["redirectTo"] == "/portal"
+        assert response.cookies.get("nz_access_token")
+        assert response.cookies.get("nz_csrf_token")
+
+    @pytest.mark.integration
+    def test_verify_magic_link_rejects_invalid_token(self, client: TestClient) -> None:
+        svc = MagicMock()
+        svc.verify_magic_link = AsyncMock(return_value=None)
+
+        with (
+            patch(
+                "backend.services.portal.magic_link_service.MagicLinkService",
+                return_value=svc,
+            ),
+            patch(
+                "backend.services.monitoring.audit_service.get_audit_service",
+                return_value=_audit_mock(),
+            ),
+        ):
+            response = client.get("/api/auth/verify-magic/bad-token")
+
+        assert response.status_code == 401
+        assert "invalid or expired" in response.json()["detail"].lower()
+
+        assert response.status_code == 401

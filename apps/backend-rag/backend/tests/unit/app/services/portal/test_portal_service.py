@@ -574,16 +574,32 @@ class TestPortalServiceMessaging:
         now = datetime.now(timezone.utc)
         mock_conn.fetchrow.side_effect = [
             {"email": "client@test.com"},
-            {"id": 42, "created_at": now},
+            {
+                "id": 42,
+                "subject": "Visa question",
+                "content": "Need help with visa",
+                "direction": "client_to_team",
+                "sent_by": "client@test.com",
+                "read_at": None,
+                "created_at": now,
+                "practice_id": 603,
+            },
         ]
 
         result = await portal_service.send_message(
             client_id=1,
             content="Need help with visa",
             subject="Visa question",
+            practice_id=603,
             current_user=ctx_client_1,
         )
         assert result["id"] == 42
+        assert result["content"] == "Need help with visa"
+        assert result["from_team"] is False
+        assert result["sent_by"] == "client@test.com"
+        assert result["is_read"] is False
+        assert result["practice_id"] == 603
+        assert result["created_at"] == now.isoformat()
 
     @pytest.mark.asyncio
     async def test_mark_message_read_success(

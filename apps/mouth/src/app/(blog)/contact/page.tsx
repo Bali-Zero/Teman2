@@ -14,7 +14,7 @@ const CHANNELS = [
   {
     icon: MessageCircle,
     title: "WhatsApp",
-    value: "+62 822 6459 9868",
+    value: "+62 822 1030 2328",
     href: buildWhatsAppLink("home"),
     note: "Fastest response — usually under 15 minutes.",
     accent: "#22c55e",

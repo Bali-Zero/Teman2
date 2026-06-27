@@ -38,6 +38,17 @@ uv.lock
 # so it never counts as a local change.
 .venv-wr2-html/
 **/.venv-wr2-html/
+# Catch-all for venv SIBLINGS/BACKUPS that org self-heal creates (.venv.broken-<ts>,
+# .venv.bak, .venv-<name>) — same scar class as html-venv above. 2026-06-27 a
+# backend self-heal left apps/backend-rag/.venv.broken-210424/ in the -deploy CLONE,
+# which made `git status` dirty and the puller REFUSED to fast-forward → #1779 (and
+# every later merge) could not reach the live organs. The bare `.venv`/`.venv/`
+# patterns miss the `.venv.<suffix>` / `.venv-<suffix>` names. Cover the whole family
+# so a generated venv variant can never again wedge the runtime checkout (anti-W81).
+.venv.*
+**/.venv.*
+.venv-*
+**/.venv-*
 # apps/backend-rag/data/ holds large logs + raw assets we don't ship, BUT
 # apps/backend-rag/data/evaluation/ holds small static golden-query fixtures
 # that tests import at collection time — CI needs them in the repo.
@@ -782,3 +793,4 @@ research/nb-health/nb-inventory-live.json
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/
 research/crm/*-drafts-local/
+.agent-task.json

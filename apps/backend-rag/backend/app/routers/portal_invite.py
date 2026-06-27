@@ -9,6 +9,7 @@ Handles client invitation and registration:
 Created: 2025-12-30
 """
 
+from html import escape
 from typing import Any
 
 import asyncpg
@@ -17,8 +18,8 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.services.internal_email import send_internal_email
 from backend.app.utils.logging_utils import get_logger
-from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.portal import InviteService
 
 logger = get_logger(__name__)
@@ -86,13 +87,11 @@ def get_invite_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> In
     return InviteService(db_pool)
 
 
-def get_email_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> ZohoEmailService:
-    """Dependency injection for ZohoEmailService"""
-    return ZohoEmailService(db_pool)
-
-
 def build_invite_email_html(client_name: str, invite_url: str) -> str:
     """Build HTML email for client invitation."""
+    safe_client_name = escape(client_name, quote=True)
+    safe_invite_url = escape(invite_url, quote=True)
+
     return f"""
 <!DOCTYPE html>
 <html>
@@ -109,7 +108,7 @@ def build_invite_email_html(client_name: str, invite_url: str) -> str:
                         Welcome to Bali Zero Portal
                     </h1>
                     <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                        Hello {client_name},
+                        Hello {safe_client_name},
                     </p>
                     <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                         You've been invited to access your client portal where you can:
@@ -120,7 +119,7 @@ def build_invite_email_html(client_name: str, invite_url: str) -> str:
                         <li>Access and upload documents</li>
                         <li>Communicate with our team</li>
                     </ul>
-                    <a href="{invite_url}" style="display: inline-block; background-color: #059669; color: white; padding: 14px 28px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                    <a href="{safe_invite_url}" style="display: inline-block; background-color: #059669; color: white; padding: 14px 28px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
                         Activate Your Portal
                     </a>
                     <p style="color: #94a3b8; font-size: 13px; margin: 30px 0 0 0;">
@@ -138,6 +137,27 @@ def build_invite_email_html(client_name: str, invite_url: str) -> str:
 """
 
 
+async def send_portal_invite_email(
+    *,
+    to: str,
+    client_name: str,
+    invite_url: str,
+    db_pool: asyncpg.Pool,
+    client_id: int,
+) -> None:
+    """Send a client portal invite through the canonical Brevo adapter."""
+    await send_internal_email(
+        to=to,
+        subject="Welcome to Bali Zero Client Portal",
+        body=build_invite_email_html(client_name=client_name, invite_url=invite_url),
+        log_context=f"portal invite client={client_id}",
+        raise_on_failure=True,
+        email_type="welcome",
+        pool=db_pool,
+        client_id=client_id,
+    )
+
+
 # ================================================
 # TEAM-SIDE ENDPOINTS (Require team auth)
 # ================================================
@@ -148,12 +168,12 @@ async def send_invitation(
     request: SendInviteRequest,
     current_user: dict = Depends(get_current_user),
     invite_service: InviteService = Depends(get_invite_service),
-    email_service: ZohoEmailService = Depends(get_email_service),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Send invitation to a client (team member action).
 
-    Requires team authentication. Creates invite token and sends email via Zoho.
+    Requires team authentication. Creates invite token and sends email via Brevo.
     """
     # Verify team member role (not client)
     if current_user.get("role") == "client":
@@ -173,25 +193,19 @@ async def send_invitation(
         base_url = settings.frontend_portal_url
         full_invite_url = f"{base_url}{result['invite_url']}"
 
-        # Try to send email via Zoho (using current user's connected account)
+        # Try to send email via the canonical Brevo adapter.
         email_sent = False
         email_error = None
         try:
-            user_email = current_user.get("email", "")
-            if user_email:
-                html_content = build_invite_email_html(
-                    client_name=result["client_name"],
-                    invite_url=full_invite_url,
-                )
-                await email_service.send_email(
-                    user_id=user_email,
-                    to=[request.email],
-                    subject="Welcome to Bali Zero Client Portal",
-                    content=html_content,
-                    is_html=True,
-                )
-                email_sent = True
-                logger.info(f"Invitation email sent to {request.email}")
+            await send_portal_invite_email(
+                to=str(request.email),
+                client_name=result["client_name"],
+                invite_url=full_invite_url,
+                db_pool=db_pool,
+                client_id=request.client_id,
+            )
+            email_sent = True
+            logger.info(f"Invitation email sent to {request.email}")
         except Exception as email_err:
             email_error = str(email_err)
             logger.warning("Failed to send invitation email: %s", email_err)
@@ -203,7 +217,7 @@ async def send_invitation(
         return {
             "success": True,
             "message": "Invitation created"
-            + (" and email sent" if email_sent else " (email not sent - check Zoho connection)"),
+            + (" and email sent" if email_sent else " (email not sent - check email service)"),
             "email_sent": email_sent,
             "email_error": email_error if not email_sent else None,
             "data": {

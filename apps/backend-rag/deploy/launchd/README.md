@@ -1,7 +1,7 @@
-# Cost Advisor launchd plists (Pro only)
+# Launchd plists (Pro only)
 
-Two macOS launchd agents for the weekly CostAdvisor pipeline. They run on
-the Pro machine (dev/server), NOT on Fly.io (which never sees these).
+macOS launchd agents for Pro-side jobs. They run on the Pro machine
+(dev/server), NOT on Fly.io (which never sees these).
 
 ## Install
 
@@ -42,4 +42,38 @@ launchctl load ~/Library/LaunchAgents/com.nuzantara.cost-advisor-daily-cap.plist
 launchctl unload ~/Library/LaunchAgents/com.nuzantara.cost-advisor-weekly.plist
 launchctl unload ~/Library/LaunchAgents/com.nuzantara.cost-advisor-daily-cap.plist
 rm ~/Library/LaunchAgents/com.nuzantara.cost-advisor-*.plist
+```
+
+## WA mirror intake sweeper
+
+Pro-side cron shim for `wa-mirror`: resolves/creates phone-keyed CRM leads from
+new inbound direct messages, then pushes new inbound document/image media into
+`intake_queue`. It never writes back to `whatsapp_message_context`. The
+historical backlog is handled separately by the reprocess script.
+
+### Install
+
+```bash
+cp apps/backend-rag/deploy/launchd/com.nuzantara.wa-mirror-intake-sweeper.plist \
+   ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.nuzantara.wa-mirror-intake-sweeper.plist
+```
+
+### Schedule
+
+- Every 5 minutes
+- Seeds watermark from the current max id on first run
+- Uses local Postgres only
+- Single-instance via flock in the script
+- Does not store raw WhatsApp message text in CRM notes
+
+### Logs
+
+- `/Users/nuzantara/logs/wa-mirror-intake-sweeper.log`
+
+### Uninstall
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.nuzantara.wa-mirror-intake-sweeper.plist
+rm ~/Library/LaunchAgents/com.nuzantara.wa-mirror-intake-sweeper.plist
 ```

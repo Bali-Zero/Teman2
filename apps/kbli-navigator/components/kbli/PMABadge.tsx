@@ -2,7 +2,11 @@ import { cn } from '@/lib/utils';
 
 interface PMABadgeProps {
   status: 'open' | 'restricted' | 'closed';
-  maxForeign: number;
+  maxForeign: number | 'special';
+  /** true => special-distribution condition (47221-class): "Restricted · special conditions", not "Closed 0%" */
+  capSpecial?: boolean;
+  /** false => TERBATAS cap % is not source-backed: render "≈N% (unverified)" */
+  capVerified?: boolean;
   size?: 'sm' | 'md';
 }
 
@@ -27,14 +31,36 @@ const config = {
   },
 };
 
-export function PMABadge({ status, maxForeign, size = 'md' }: PMABadgeProps) {
+export function PMABadge({
+  status,
+  maxForeign,
+  capSpecial = false,
+  capVerified = true,
+  size = 'md',
+}: PMABadgeProps) {
   const c = config[status];
+  const numeric = typeof maxForeign === 'number' ? maxForeign : null;
 
-  const ariaLabel =
-    status === 'open' && maxForeign === 100
+  // Suffix that qualifies the badge, aligned with the native app:
+  //  - special-distribution: "· special conditions" (never a %)
+  //  - restricted & unverified %: "· ≈N% unverified"
+  //  - restricted & verified %: "· Max N%"
+  //  - open 100%: "· 100% Foreign"
+  let suffix: string | null = null;
+  if (capSpecial) {
+    suffix = '· special conditions';
+  } else if (status === 'open' && numeric === 100) {
+    suffix = '· 100% Foreign';
+  } else if (status === 'restricted' && numeric !== null && numeric < 100) {
+    suffix = capVerified ? `· Max ${numeric}%` : `· ≈${numeric}% unverified`;
+  }
+
+  const ariaLabel = capSpecial
+    ? 'PMA status: Restricted, open with special distribution conditions'
+    : status === 'open' && numeric === 100
       ? 'PMA status: Open for foreign investment, 100% foreign ownership allowed'
-      : status === 'restricted' && maxForeign < 100
-        ? `PMA status: Restricted, maximum ${maxForeign}% foreign ownership`
+      : status === 'restricted' && numeric !== null && numeric < 100
+        ? `PMA status: Restricted, maximum ${numeric}% foreign ownership${capVerified ? '' : ' (unverified cap)'}`
         : `PMA status: ${c.label}`;
 
   return (
@@ -48,14 +74,9 @@ export function PMABadge({ status, maxForeign, size = 'md' }: PMABadgeProps) {
     >
       <span aria-hidden="true">{c.icon}</span>
       <span>{c.label}</span>
-      {status === 'open' && maxForeign === 100 && (
+      {suffix && (
         <span className="opacity-70" aria-hidden="true">
-          · 100% Foreign
-        </span>
-      )}
-      {status === 'restricted' && maxForeign < 100 && (
-        <span className="opacity-70" aria-hidden="true">
-          · Max {maxForeign}%
+          {suffix}
         </span>
       )}
     </span>
