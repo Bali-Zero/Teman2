@@ -99,6 +99,43 @@ class DriveCircuitBreaker:
 # Singleton circuit breaker (persiste tra i poll della stessa sessione)
 _drive_circuit_breaker = DriveCircuitBreaker()
 _DRIVE_POLL_ADVISORY_LOCK_ID = 614_238_904_711
+_DEFAULT_DRIVE_POLL_PAGE_SIZE = 10
+_DEFAULT_DRIVE_POLL_MAX_PAGES_PER_CYCLE = 1
+
+
+def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    """Read a bounded positive integer from env without making startup fragile."""
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("%s must be an integer; using default %s", name, default)
+        return default
+    if value < minimum or value > maximum:
+        bounded = max(minimum, min(value, maximum))
+        logger.warning("%s=%s outside [%s,%s]; using %s", name, value, minimum, maximum, bounded)
+        return bounded
+    return value
+
+
+def _drive_poll_page_size() -> int:
+    return _env_int(
+        "DRIVE_POLL_PAGE_SIZE",
+        _DEFAULT_DRIVE_POLL_PAGE_SIZE,
+        minimum=1,
+        maximum=1000,
+    )
+
+
+def _drive_poll_max_pages_per_cycle() -> int:
+    return _env_int(
+        "DRIVE_POLL_MAX_PAGES_PER_CYCLE",
+        _DEFAULT_DRIVE_POLL_MAX_PAGES_PER_CYCLE,
+        minimum=1,
+        maximum=50,
+    )
 
 
 def _send_telegram_alert(message: str) -> None:
@@ -319,10 +356,26 @@ async def _do_poll_drive_changes(
                     "ocr_dispatched": 0,
                 }
 
-        # 2. Get changes since last poll
-        result = await drive_service.list_changes_since(page_token)
+        # 2. Get a bounded slice of changes since last poll. If Drive returns
+        # nextPageToken, persist that token after this slice is processed so the
+        # worker drains a large backlog across short cycles instead of timing out.
+        page_size = _drive_poll_page_size()
+        max_pages = _drive_poll_max_pages_per_cycle()
+        logger.info(
+            "Drive poll: fetching changes page_token=%s page_size=%s max_pages=%s",
+            page_token,
+            page_size,
+            max_pages,
+        )
+        result = await drive_service.list_changes_since(
+            page_token,
+            max_pages=max_pages,
+            page_size=page_size,
+        )
         changes = result["changes"]
         new_token = result["new_page_token"]
+        more_pages = bool(result.get("more_pages"))
+        pages_fetched = int(result.get("pages_fetched") or 0)
 
         if not changes:
             # Save new token even if no changes
@@ -333,10 +386,15 @@ async def _do_poll_drive_changes(
                     new_token,
                 )
             return {
-                "status": "no_changes",
+                "status": "partial" if more_pages else "no_changes",
                 "processed": 0,
+                "changes": 0,
+                "skipped": 0,
                 "inline_ocr": inline_ocr,
                 "ocr_dispatched": 0,
+                "more_pages": more_pages,
+                "pages_fetched": pages_fetched,
+                "page_size": page_size,
             }
 
         # 3. Build lookup maps: subfolder_id → (client_id, subfolder_name)
@@ -647,23 +705,29 @@ async def _do_poll_drive_changes(
             )
 
         logger.info(
-            "Drive poll: processed %s, skipped %s, ocr_dispatched=%s, inline_ocr=%s, "
-            "guardian_queue=%s from %s changes",
+            "Drive poll: status=%s processed=%s skipped=%s ocr_dispatched=%s inline_ocr=%s "
+            "guardian_queue=%s from %s changes pages_fetched=%s more_pages=%s",
+            "partial" if more_pages else "ok",
             processed,
             skipped,
             ocr_dispatched,
             inline_ocr,
             guardian_queue,
             len(changes),
+            pages_fetched,
+            more_pages,
         )
         return {
-            "status": "ok",
+            "status": "partial" if more_pages else "ok",
             "changes": len(changes),
             "processed": processed,
             "skipped": skipped,
             "inline_ocr": inline_ocr,
             "ocr_dispatched": ocr_dispatched,
             "guardian_queue": guardian_queue,
+            "more_pages": more_pages,
+            "pages_fetched": pages_fetched,
+            "page_size": page_size,
         }
 
     except (HttpError, asyncpg.PostgresError, OSError, KeyError) as e:
