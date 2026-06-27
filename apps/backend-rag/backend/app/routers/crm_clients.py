@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_crm_user_filter
+from backend.app.deps.crm_service_write import verify_crm_write_key
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (
@@ -1067,26 +1068,6 @@ def _name_is_better(new: str | None, current: str | None) -> bool:
     if not new or _name_is_junk(new):
         return False
     return _name_is_junk(current)
-
-
-async def verify_crm_write_key(request: Request) -> str:
-    """Auth for POST /upsert-by-phone — a DEDICATED scoped service key
-    (`settings.wa_mirror_crm_write_key`, header `X-CRM-Write-Key`), DISTINCT from the
-    broad `wa_mirror_internal_key`. Least-privilege: this key authorizes ONLY phone-keyed
-    lead upsert, nothing else. Hard-gated by `settings.wa_mirror_crm_write_enabled`
-    (default False) — a kill-switch that 503s the endpoint when the feature is off.
-
-    Returns the service-actor label used for created_by/updated_by audit.
-    """
-    from backend.app.core.config import settings as _settings
-
-    if not getattr(_settings, "wa_mirror_crm_write_enabled", False):
-        raise HTTPException(status_code=503, detail="crm service-write disabled")
-    provided = (request.headers.get("X-CRM-Write-Key") or "").strip()
-    configured = (getattr(_settings, "wa_mirror_crm_write_key", None) or "").strip()
-    if not configured or not provided or provided != configured:
-        raise HTTPException(status_code=401, detail="invalid or missing X-CRM-Write-Key")
-    return "wa-mirror-crm-writer@balizero.com"
 
 
 class ClientUpsertByPhone(BaseModel):

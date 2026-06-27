@@ -124,6 +124,27 @@ async def test_success_parses_doc_id_file_url_and_drive_file_id(mock_client, blo
     assert "family_member_id" not in body
 
 
+async def test_service_key_uses_internal_upload_endpoint(mock_client, blob):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"success": True, "document_id": 322, "file_url": DRIVE_URL},
+        )
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(blob, bearer_token=None, crm_write_key="service-key-abc")
+    )
+
+    assert result.ok is True
+    assert result.status == "pushed"
+    assert len(requests) == 1
+    req = requests[0]
+    assert req.url.path == f"/api/crm/internal/clients/{CLIENT_ID}/documents/upload"
+    assert req.headers["x-crm-write-key"] == "service-key-abc"
+    assert "authorization" not in req.headers
+
+
 async def test_403_denied_rbac_no_retry(mock_client, blob):
     requests = mock_client(lambda r: httpx.Response(403, json={"detail": "nope"}))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
