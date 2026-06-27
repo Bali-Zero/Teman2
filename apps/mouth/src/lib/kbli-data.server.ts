@@ -233,6 +233,9 @@ function transformCode(
       isPriority: raw.pma_prioritas || false,
       note: raw.pma_nota,
       source: raw.pma_source,
+      capSpecial: raw.pma_cap_special === true,
+      capVerified: raw.pma_cap_verified !== false,
+      routeTo: raw.pma_route_to ?? null,
     },
     licensing: (raw.per_skala || []).map((s) => ({
       scales: s.skala_usaha,

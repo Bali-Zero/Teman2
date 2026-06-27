@@ -72,7 +72,9 @@ def test_collect_status_marks_drive_401_without_key_as_warning() -> None:
             return_value={
                 "branch": "main",
                 "head": "abc123",
+                "head_full": "abc123full",
                 "origin_main": "abc123",
+                "origin_main_full": "abc123full",
                 "ahead": 0,
                 "behind": 0,
                 "dirty": False,
@@ -107,7 +109,9 @@ def test_collect_status_offline_skips_network() -> None:
             return_value={
                 "branch": "main",
                 "head": "abc123",
+                "head_full": "abc123full",
                 "origin_main": "abc123",
+                "origin_main_full": "abc123full",
                 "ahead": 0,
                 "behind": 0,
                 "dirty": False,
@@ -129,3 +133,59 @@ def test_collect_status_offline_skips_network() -> None:
     }
     peer_git.assert_not_called()
     http_json.assert_not_called()
+
+
+def test_collect_status_offers_reversible_pro_autostash_when_dirty_and_behind() -> None:
+    args = Namespace(
+        refresh=False,
+        offline=False,
+        peer="pro",
+        fly_health_url="https://example.invalid/health",
+        drive_status_url="https://example.invalid/drive",
+    )
+
+    def fake_http_json(url: str, **_kwargs: object) -> dict[str, object]:
+        if url.endswith("/health"):
+            return {"ok": True, "status_code": 200, "body": {"status": "healthy"}}
+        return {"ok": True, "status_code": 200, "body": {"status": "ok"}}
+
+    with (
+        patch("nuz_status.repo_root", return_value=Path.cwd()),
+        patch(
+            "nuz_status.git_status",
+            return_value={
+                "branch": "agent/air-m5/infra/complete-control",
+                "head": "abc123",
+                "head_full": "abc123full",
+                "origin_main": "abc123",
+                "origin_main_full": "abc123full",
+                "ahead": 0,
+                "behind": 0,
+                "dirty": False,
+                "dirty_count": 0,
+                "dirty_preview": [],
+            },
+        ),
+        patch(
+            "nuz_status.peer_git_status",
+            return_value={
+                "reachable": True,
+                "branch": "main",
+                "head": "old123",
+                "origin_main": "abc123",
+                "ahead": 0,
+                "behind": 12,
+                "dirty": True,
+                "dirty_count": 3,
+            },
+        ),
+        patch("nuz_status.gh_latest_run", return_value={"available": False}),
+        patch("nuz_status.http_json", side_effect=fake_http_json),
+    ):
+        payload = nuz_status.collect_status(args)
+
+    autostash = next(action for action in payload["actions"] if action["id"] == "stash_and_sync_pro_main")
+    clean_sync = next(action for action in payload["actions"] if action["id"] == "sync_pro_main")
+    assert autostash["enabled"] is True
+    assert autostash["target"] == "pro-main-autostash"
+    assert clean_sync["enabled"] is False

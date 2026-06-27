@@ -198,11 +198,14 @@ function KeyFacts({
     },
     {
       label: "Foreign Ownership",
-      value:
-        pma.status === "open"
+      value: pma.capSpecial
+        ? "Restricted · special conditions"
+        : pma.status === "open"
           ? "100% Open"
           : pma.status === "restricted"
-            ? `Max ${pma.maxForeign}%`
+            ? pma.capVerified
+              ? `Max ${pma.maxForeign}%`
+              : `≈${pma.maxForeign}% (unverified)`
             : "Closed (0%)",
       accent:
         pma.status === "open"
