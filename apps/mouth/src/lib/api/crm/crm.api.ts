@@ -326,6 +326,7 @@ export class CrmApi {
       assigned_to?: string;
       nationality?: string;
       passport_expiring_days?: number;
+      unnamed?: boolean;
       limit?: number;
       offset?: number;
     } = {},
@@ -335,6 +336,7 @@ export class CrmApi {
     if (params.status) queryParams.append("status", params.status);
     if (params.assigned_to)
       queryParams.append("assigned_to", params.assigned_to);
+    if (params.unnamed) queryParams.append("unnamed", "true");
     if (params.nationality)
       queryParams.append("nationality", params.nationality);
     if (params.passport_expiring_days !== undefined)
