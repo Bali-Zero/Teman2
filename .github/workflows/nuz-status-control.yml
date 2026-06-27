@@ -1,0 +1,46 @@
+name: Nuz Status Control
+
+on:
+  pull_request:
+    paths:
+      - "scripts/nuz"
+      - "scripts/nuz_status.py"
+      - "tests/scripts/test_nuz_status.py"
+      - "apps/nuz-status-mac/**"
+      - ".github/workflows/nuz-status-control.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/nuz"
+      - "scripts/nuz_status.py"
+      - "tests/scripts/test_nuz_status.py"
+      - "apps/nuz-status-mac/**"
+      - ".github/workflows/nuz-status-control.yml"
+  workflow_dispatch:
+
+jobs:
+  nuz-status:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install test runner
+        run: python -m pip install pytest
+
+      - name: Unit tests
+        run: python -m pytest tests/scripts/test_nuz_status.py -q
+
+      - name: Offline status smoke
+        run: scripts/nuz status --json --offline
+
+      - name: Swift package build
+        run: |
+          if [ -f apps/nuz-status-mac/Package.swift ]; then
+            cd apps/nuz-status-mac
+            swift build
+          fi
