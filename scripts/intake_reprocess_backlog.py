@@ -31,6 +31,13 @@ Two one-shot modes (combinable; run on the Pro against LOCAL nuzantara_dev):
     version. The worker must run with ``INTAKE_TEXT_LLM_CLASSIFY_ENABLED=1`` so
     the rerun can promote doc_type into a normal Kita routing proposal.
 
+``--autocatalog-preclassify-saved-ocr``
+    Safer/faster variant for the same review bucket: it keeps the saved OCR,
+    calls local Qwen text classification immediately, writes a fresh
+    ``stage_output.classify`` payload only for known answers, sets the queue row
+    to ``ocr_done``, and lets the normal worker continue extract/validate/route.
+    This avoids re-running vision OCR and avoids churn for still-unknown docs.
+
 ``--scrub-group-phone``
     Historical wa-mirror group documents may still carry ``intake_queue.sender_phone``
     from before the group/direct split. Group sender numbers are participant
@@ -62,13 +69,20 @@ import json
 import logging
 import os
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import asyncpg
+import httpx
 
 # Reuse the shipped, tested enqueue core (same import shim as the sweeper).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
+from backend.services.intake.classify import (
+    TEXT_LLM_CLASSIFY_CONF,
+    _parse_doc_type_answer,
+    _text_llm_classify_prompt,
+)
 from backend.services.intake.enqueue import enqueue
 
 logger = logging.getLogger("intake_reprocess_backlog")
@@ -80,6 +94,10 @@ DEFAULT_STUB_REVIVE_VERSION = "v2.1-stub-revive"
 DEFAULT_MEDIA_TYPES = ("document", "image")
 DEFAULT_AUTOCATALOG_TEXT_MIN_CHARS = 100
 DEFAULT_AUTOCATALOG_LIMIT = 500
+DEFAULT_AUTOCATALOG_OLLAMA_URL = "http://127.0.0.1:11434"
+DEFAULT_AUTOCATALOG_TEXT_MODEL = "qwen3.5:9b"
+DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS = 45.0
+DEFAULT_AUTOCATALOG_OCR_MAX_CHARS = 6000
 
 # Sweeper watermark file (the backfill ceiling: rows ABOVE it are the sweeper's).
 WATERMARK_FILE = Path.home() / ".cell-bridge-state" / "wa_mirror_sweep_last_id.txt"
@@ -265,6 +283,60 @@ SELECT queue_id, proposal_ids, ocr_chars
  LIMIT $2
 """
 
+SAVED_OCR_PRECLASSIFY_SELECT_SQL = """
+WITH candidate_rows AS (
+    SELECT q.id AS queue_id,
+           ARRAY_REMOVE(ARRAY_AGG(DISTINCT p.id), NULL) AS proposal_ids,
+           q.stage_output,
+           COALESCE(SUM(LENGTH(
+             CASE
+               WHEN jsonb_typeof(page.value) = 'object'
+               THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+               WHEN jsonb_typeof(page.value) = 'string'
+               THEN trim(both '"' from page.value::text)
+               ELSE ''
+             END
+           )), 0) AS ocr_chars
+      FROM intake_queue q
+      JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+      JOIN document_routing_proposal p
+        ON p.queue_id = q.id
+       AND p.status = 'review_pending'
+      LEFT JOIN LATERAL jsonb_array_elements(
+        CASE
+          WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+          THEN q.stage_output->'classify'->'ocr_text_per_page'
+          ELSE '[]'::jsonb
+        END
+      ) AS page(value) ON TRUE
+     WHERE q.source = 'whatsapp'
+       AND q.source_ref LIKE 'wa-mirror:%'
+       AND q.status <> 'dead'
+       AND COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') = 'unknown'
+       AND (w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL)
+     GROUP BY q.id, q.stage_output
+)
+SELECT queue_id, proposal_ids, stage_output, ocr_chars
+  FROM candidate_rows
+ WHERE ocr_chars >= $1
+ ORDER BY queue_id
+ LIMIT $2
+"""
+
+SAVED_OCR_PRECLASSIFY_UPDATE_SQL = """
+UPDATE intake_queue
+   SET status           = 'ocr_done',
+       stage            = 'classify',
+       lease_owner      = NULL,
+       lease_expires_at = NULL,
+       attempts         = 0,
+       next_visible_at  = now(),
+       stage_output     = jsonb_build_object('classify', $2::jsonb),
+       pipeline_version = $3
+ WHERE id = $1
+"""
+
 
 # --- Pure helpers (unit-testable without PG) --------------------------------
 
@@ -370,6 +442,97 @@ def _media_types(raw: str | None) -> tuple[str, ...]:
     if not raw:
         return DEFAULT_MEDIA_TYPES
     return tuple(t.strip() for t in raw.split(",") if t.strip()) or DEFAULT_MEDIA_TYPES
+
+
+def _stage_output_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _saved_ocr_pages(stage_output: Any) -> list[dict[str, Any]]:
+    """Return saved classify OCR pages in the shape downstream routing expects."""
+    stage = _stage_output_dict(stage_output)
+    classify = _stage_output_dict(stage.get("classify"))
+    raw_pages = classify.get("ocr_text_per_page") or []
+    if isinstance(raw_pages, str):
+        raw_pages = [raw_pages]
+    if not isinstance(raw_pages, list):
+        return []
+
+    pages: list[dict[str, Any]] = []
+    for idx, item in enumerate(raw_pages):
+        if isinstance(item, dict):
+            page = dict(item)
+            text = page.get("text") or page.get("ocr_text") or ""
+            page["text"] = str(text)
+            page.setdefault("page", idx)
+        else:
+            page = {"page": idx, "text": str(item or "")}
+        pages.append(page)
+    return pages
+
+
+def _ocr_text_from_pages(pages: list[dict[str, Any]], *, max_chars: int) -> str:
+    chunks = [str(page.get("text") or "") for page in pages]
+    return "\n".join(chunks).strip()[: max(max_chars, 1)]
+
+
+def _build_saved_ocr_preclassify_payload(
+    stage_output: Any,
+    *,
+    doc_type: str,
+    model: str,
+    ocr_max_chars: int = DEFAULT_AUTOCATALOG_OCR_MAX_CHARS,
+) -> dict[str, Any]:
+    """Build a classify-stage payload from preserved OCR and a local Qwen type."""
+    pages = _saved_ocr_pages(stage_output)
+    return {
+        "doc_type": doc_type,
+        "type_confidence": TEXT_LLM_CLASSIFY_CONF,
+        "ocr_text_per_page": pages,
+        "n_pages": len(pages),
+        "source_page": None,
+        "model": model,
+        "type_scores": {doc_type: TEXT_LLM_CLASSIFY_CONF},
+        "classified_via": "saved_ocr_local_text_llm_preclassify",
+        "classify_llm_model": model,
+        "ocr_max_chars": max(ocr_max_chars, 1),
+        "_metric": {"model": model, "confidence": TEXT_LLM_CLASSIFY_CONF},
+    }
+
+
+async def _classify_saved_ocr_text(
+    client: httpx.AsyncClient,
+    *,
+    ollama_url: str,
+    model: str,
+    ocr_text: str,
+    timeout_seconds: float,
+) -> str | None:
+    """Classify saved OCR text with local Ollama; exact-token answer only."""
+    if not ocr_text.strip():
+        return None
+    response = await client.post(
+        f"{ollama_url.rstrip('/')}/api/generate",
+        json={
+            "model": model,
+            "prompt": _text_llm_classify_prompt(ocr_text),
+            "stream": False,
+            "think": False,
+            "options": {"temperature": 0.0, "num_predict": 24},
+        },
+        timeout=timeout_seconds,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return _parse_doc_type_answer(data.get("response") or data.get("thinking"))
 
 
 # --- Modes -------------------------------------------------------------------
@@ -622,6 +785,125 @@ async def run_autocatalog_direct_unknown_text(
     return counts
 
 
+async def run_autocatalog_preclassify_saved_ocr(
+    pool: asyncpg.Pool,
+    pipeline_version: str,
+    min_ocr_chars: int,
+    limit: int,
+    apply: bool,
+    *,
+    ollama_url: str,
+    model: str,
+    timeout_seconds: float,
+    ocr_max_chars: int,
+) -> dict[str, int]:
+    """Classify saved OCR once, then resume the normal worker at ``ocr_done``.
+
+    Only known local-Qwen answers mutate queue rows. ``unknown`` or malformed
+    answers leave the existing review proposal untouched, preventing review churn.
+    Raw OCR text is sent only to local Ollama and is never logged.
+    """
+    safe_min_ocr_chars = max(min_ocr_chars, 1)
+    safe_limit = max(limit, 1)
+    safe_ocr_max_chars = max(ocr_max_chars, 1)
+    safe_timeout = max(timeout_seconds, 1.0)
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            SAVED_OCR_PRECLASSIFY_SELECT_SQL,
+            safe_min_ocr_chars,
+            safe_limit,
+        )
+
+    counts = {
+        "candidates": len(rows),
+        "attempted": 0,
+        "known_answers": 0,
+        "unknown_answers": 0,
+        "malformed_answers": 0,
+        "errors": 0,
+        "updated": 0,
+        "superseded": 0,
+        "min_ocr_chars": safe_min_ocr_chars,
+        "limit": safe_limit,
+    }
+    if not apply:
+        logger.info(
+            "[autocatalog-preclassify-saved-ocr][DRY-RUN] would local-classify "
+            "%d direct review_pending unknown docs with saved OCR and resume "
+            "known answers at status=ocr_done pipeline_version=%s (pass --apply)",
+            counts["candidates"],
+            pipeline_version,
+        )
+        return counts
+
+    by_doc_type: Counter[str] = Counter()
+    by_error: Counter[str] = Counter()
+    async with httpx.AsyncClient() as client:
+        for row in rows:
+            pages = _saved_ocr_pages(row["stage_output"])
+            ocr_text = _ocr_text_from_pages(pages, max_chars=safe_ocr_max_chars)
+            counts["attempted"] += 1
+            try:
+                answer = await _classify_saved_ocr_text(
+                    client,
+                    ollama_url=ollama_url,
+                    model=model,
+                    ocr_text=ocr_text,
+                    timeout_seconds=safe_timeout,
+                )
+            except Exception as exc:  # aggregate only; no raw OCR / no row payload.
+                counts["errors"] += 1
+                by_error[type(exc).__name__] += 1
+                continue
+
+            if answer is None:
+                counts["malformed_answers"] += 1
+                continue
+            if answer == "unknown":
+                counts["unknown_answers"] += 1
+                continue
+
+            counts["known_answers"] += 1
+            by_doc_type[answer] += 1
+            proposal_ids = sorted({pid for pid in (row["proposal_ids"] or []) if pid is not None})
+            payload = _build_saved_ocr_preclassify_payload(
+                row["stage_output"],
+                doc_type=answer,
+                model=model,
+                ocr_max_chars=safe_ocr_max_chars,
+            )
+            async with pool.acquire() as conn, conn.transaction():
+                if proposal_ids:
+                    superseded = await conn.execute(REPROCESS_SUPERSEDE_SQL, proposal_ids)
+                    counts["superseded"] += int(superseded.split()[-1]) if superseded else 0
+                updated = await conn.execute(
+                    SAVED_OCR_PRECLASSIFY_UPDATE_SQL,
+                    row["queue_id"],
+                    json.dumps(payload, sort_keys=True),
+                    pipeline_version,
+                )
+                counts["updated"] += int(updated.split()[-1]) if updated else 0
+
+    logger.info(
+        "[autocatalog-preclassify-saved-ocr] candidates=%d attempted=%d "
+        "known=%d unknown=%d malformed=%d errors=%d updated=%d superseded=%d "
+        "by_doc_type=%s by_error=%s pipeline_version=%s",
+        counts["candidates"],
+        counts["attempted"],
+        counts["known_answers"],
+        counts["unknown_answers"],
+        counts["malformed_answers"],
+        counts["errors"],
+        counts["updated"],
+        counts["superseded"],
+        dict(by_doc_type),
+        dict(by_error),
+        pipeline_version,
+    )
+    return counts
+
+
 # --- CLI ----------------------------------------------------------------------
 
 
@@ -660,6 +942,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="reset direct wa-mirror unknown docs with enough saved OCR for local Qwen text classification",
     )
     p.add_argument(
+        "--autocatalog-preclassify-saved-ocr",
+        action="store_true",
+        help="use saved OCR + local Qwen now, then resume known answers at ocr_done without re-OCR",
+    )
+    p.add_argument(
         "--include-groups",
         action="store_true",
         help="for --revive-stub: also revive group-chat docs (default: 1:1 direct chats only)",
@@ -692,7 +979,29 @@ def build_parser() -> argparse.ArgumentParser:
         "--autocatalog-limit",
         type=int,
         default=DEFAULT_AUTOCATALOG_LIMIT,
-        help=f"maximum rows reset by one --autocatalog-direct-unknown-text run (default {DEFAULT_AUTOCATALOG_LIMIT})",
+        help=f"maximum rows touched by one autocatalog run (default {DEFAULT_AUTOCATALOG_LIMIT})",
+    )
+    p.add_argument(
+        "--autocatalog-ollama-url",
+        default=DEFAULT_AUTOCATALOG_OLLAMA_URL,
+        help=f"local Ollama URL for --autocatalog-preclassify-saved-ocr (default {DEFAULT_AUTOCATALOG_OLLAMA_URL})",
+    )
+    p.add_argument(
+        "--autocatalog-model",
+        default=DEFAULT_AUTOCATALOG_TEXT_MODEL,
+        help=f"local text model for --autocatalog-preclassify-saved-ocr (default {DEFAULT_AUTOCATALOG_TEXT_MODEL})",
+    )
+    p.add_argument(
+        "--autocatalog-timeout-seconds",
+        type=float,
+        default=DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS,
+        help=f"per-document timeout for --autocatalog-preclassify-saved-ocr (default {DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS})",
+    )
+    p.add_argument(
+        "--autocatalog-ocr-max-chars",
+        type=int,
+        default=DEFAULT_AUTOCATALOG_OCR_MAX_CHARS,
+        help=f"saved OCR chars sent to local Qwen per doc (default {DEFAULT_AUTOCATALOG_OCR_MAX_CHARS})",
     )
     p.add_argument(
         "--watermark",
@@ -720,11 +1029,12 @@ async def main(argv: list[str] | None = None) -> int:
         or args.backfill_source_context
         or args.revive_stub
         or args.autocatalog_direct_unknown_text
+        or args.autocatalog_preclassify_saved_ocr
     ):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, and/or "
-            "--autocatalog-direct-unknown-text"
+            "--autocatalog-direct-unknown-text/--autocatalog-preclassify-saved-ocr"
         )
         return 2
 
@@ -752,6 +1062,18 @@ async def main(argv: list[str] | None = None) -> int:
                 max(args.autocatalog_min_ocr_chars, 1),
                 max(args.autocatalog_limit, 1),
                 args.apply,
+            )
+        if args.autocatalog_preclassify_saved_ocr:
+            await run_autocatalog_preclassify_saved_ocr(
+                pool,
+                args.autocatalog_pipeline_version,
+                max(args.autocatalog_min_ocr_chars, 1),
+                max(args.autocatalog_limit, 1),
+                args.apply,
+                ollama_url=args.autocatalog_ollama_url,
+                model=args.autocatalog_model,
+                timeout_seconds=max(args.autocatalog_timeout_seconds, 1.0),
+                ocr_max_chars=max(args.autocatalog_ocr_max_chars, 1),
             )
         if args.revive_stub:
             await run_revive_stub(pool, args.stub_pipeline_version, args.include_groups, args.apply)

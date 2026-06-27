@@ -136,6 +136,7 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.backfill_source_context is False
     assert args.reprocess is False
     assert args.autocatalog_direct_unknown_text is False
+    assert args.autocatalog_preclassify_saved_ocr is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
     assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
     assert args.watermark is None
@@ -185,6 +186,54 @@ def test_parser_autocatalog_direct_unknown_text_overrides() -> None:
     assert args.autocatalog_pipeline_version == "v9-qwen"
     assert args.autocatalog_min_ocr_chars == 250
     assert args.autocatalog_limit == 25
+
+
+def test_parser_autocatalog_preclassify_saved_ocr_defaults() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--autocatalog-preclassify-saved-ocr"])
+    assert args.apply is False
+    assert args.autocatalog_preclassify_saved_ocr is True
+    assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
+    assert args.autocatalog_model == irb.DEFAULT_AUTOCATALOG_TEXT_MODEL
+    assert args.autocatalog_ollama_url == irb.DEFAULT_AUTOCATALOG_OLLAMA_URL
+    assert args.autocatalog_timeout_seconds == irb.DEFAULT_AUTOCATALOG_TIMEOUT_SECONDS
+    assert args.autocatalog_ocr_max_chars == irb.DEFAULT_AUTOCATALOG_OCR_MAX_CHARS
+
+
+def test_saved_ocr_pages_normalizes_downstream_shape() -> None:
+    irb = _load()
+    pages = irb._saved_ocr_pages(
+        {
+            "classify": {
+                "ocr_text_per_page": [
+                    {"page": 3, "ocr_text": "Nomor Induk Berusaha"},
+                    "PASSPORT",
+                ]
+            }
+        }
+    )
+    assert pages == [
+        {"page": 3, "ocr_text": "Nomor Induk Berusaha", "text": "Nomor Induk Berusaha"},
+        {"page": 1, "text": "PASSPORT"},
+    ]
+
+
+def test_saved_ocr_preclassify_payload_preserves_ocr_and_marks_review_band() -> None:
+    irb = _load()
+    payload = irb._build_saved_ocr_preclassify_payload(
+        {"classify": {"ocr_text_per_page": [{"page": 0, "text": "boarding pass"}]}},
+        doc_type="travel_ticket",
+        model="qwen3.5:9b",
+    )
+    assert payload["doc_type"] == "travel_ticket"
+    assert payload["type_confidence"] == irb.TEXT_LLM_CLASSIFY_CONF
+    assert payload["classified_via"] == "saved_ocr_local_text_llm_preclassify"
+    assert payload["classify_llm_model"] == "qwen3.5:9b"
+    assert payload["ocr_text_per_page"] == [{"page": 0, "text": "boarding pass"}]
+    assert payload["_metric"] == {
+        "model": "qwen3.5:9b",
+        "confidence": irb.TEXT_LLM_CLASSIFY_CONF,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -288,3 +337,31 @@ def test_direct_unknown_text_autocatalog_select_guards_are_all_present() -> None
     assert "w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL" in sql
     assert "p.status = 'review_pending'" in sql
     assert "LIMIT $2" in sql
+
+
+def test_saved_ocr_preclassify_sql_targets_review_pending_direct_unknowns() -> None:
+    irb = _load()
+    sql = irb.SAVED_OCR_PRECLASSIFY_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "q.source_ref LIKE 'wa-mirror:%'" in sql
+    assert "'wa-mirror:' || w.baileys_message_id" in sql
+    assert "p.status = 'review_pending'" in sql
+    assert "q.status <> 'dead'" in sql
+    assert "doc_type', 'unknown') = 'unknown'" in sql
+    assert "ocr_text_per_page" in sql
+    assert "ocr_chars >= $1" in sql
+    assert "w.chat_type IS DISTINCT FROM 'group' AND w.group_jid IS NULL" in sql
+    assert "stage_output" in sql
+    assert "LIMIT $2" in sql
+
+
+def test_saved_ocr_preclassify_update_resumes_after_classify_without_reocr() -> None:
+    irb = _load()
+    sql = irb.SAVED_OCR_PRECLASSIFY_UPDATE_SQL
+    assert "status           = 'ocr_done'" in sql
+    assert "stage            = 'classify'" in sql
+    assert "lease_owner      = NULL" in sql
+    assert "lease_expires_at = NULL" in sql
+    assert "attempts         = 0" in sql
+    assert "stage_output     = jsonb_build_object('classify', $2::jsonb)" in sql
+    assert "pipeline_version = $3" in sql

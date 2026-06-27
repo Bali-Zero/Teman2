@@ -528,10 +528,10 @@ def test_autocatalog_plan_promotes_only_gate_passing_qwen_batches() -> None:
         "INTAKE_TEXT_LLM_TIMEOUT_SECONDS": "45",
     }
     assert plan["dry_run_command"].endswith(
-        "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text"
+        "python scripts/intake_reprocess_backlog.py --autocatalog-preclassify-saved-ocr"
     )
     assert plan["apply_command"].endswith(
-        "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text --apply"
+        "python scripts/intake_reprocess_backlog.py --autocatalog-preclassify-saved-ocr --apply"
     )
     assert plan["safe_to_apply_without_existing_gate"] is False
     assert plan["can_create_kita_proposals"] is True
