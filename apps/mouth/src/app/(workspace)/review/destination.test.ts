@@ -22,6 +22,12 @@ const categories = [
     has_expiry: true,
   },
   {
+    code: "e_visa",
+    name: "E-Visa",
+    category_group: "immigration",
+    has_expiry: true,
+  },
+  {
     code: "npwp",
     name: "NPWP",
     category_group: "tax",
@@ -39,6 +45,24 @@ const categories = [
     category_group: "pma",
     has_expiry: false,
   },
+  {
+    code: "sk_kemenkumham",
+    name: "SK Kemenkumham",
+    category_group: "pma",
+    has_expiry: false,
+  },
+  {
+    code: "bank_statement",
+    name: "Bank Statement",
+    category_group: "personal",
+    has_expiry: false,
+  },
+  {
+    code: "receipt",
+    name: "Receipt/Payment Proof",
+    category_group: "other",
+    has_expiry: false,
+  },
 ];
 
 describe("intake review destination helpers", () => {
@@ -54,6 +78,22 @@ describe("intake review destination helpers", () => {
     expect(inferDestinationFromDocType("nib", categories)).toEqual({
       group: "pma",
       categoryCode: "nib",
+    });
+    expect(inferDestinationFromDocType("visa", categories)).toEqual({
+      group: "immigration",
+      categoryCode: "e_visa",
+    });
+    expect(inferDestinationFromDocType("payment_receipt", categories)).toEqual({
+      group: "other",
+      categoryCode: "receipt",
+    });
+    expect(inferDestinationFromDocType("bank_statement", categories)).toEqual({
+      group: "personal",
+      categoryCode: "bank_statement",
+    });
+    expect(inferDestinationFromDocType("sk_kemenkumham", categories)).toEqual({
+      group: "pma",
+      categoryCode: "sk_kemenkumham",
     });
   });
 
@@ -78,12 +118,18 @@ describe("intake review destination helpers", () => {
       group: "immigration",
       categoryCode: "",
     });
+
+    expect(inferDestinationFromDocType("travel_ticket", categories)).toEqual({
+      group: "immigration",
+      categoryCode: "",
+    });
   });
 
   it("filters category options by profile group", () => {
     expect(categoriesForGroup(categories, "pma").map((c) => c.code)).toEqual([
       "nib",
       "akta_pendirian",
+      "sk_kemenkumham",
     ]);
   });
 

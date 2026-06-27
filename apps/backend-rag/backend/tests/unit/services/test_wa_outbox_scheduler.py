@@ -77,10 +77,10 @@ async def test_lifespan_light_disables_only_wa_outbox_scheduler(
     scheduler_mod = ModuleType("backend.app.modules.notifications.scheduler")
     rag_proxy_mod = ModuleType("backend.app.rag_proxy")
     wa_inbox_bot_mod = ModuleType("backend.services.integrations.wa_inbox_bot")
-    setattr(initializer_mod, "initialize_services_light", fake_initialize_services_light)
-    setattr(scheduler_mod, "init_scheduler", fake_init_scheduler)
-    setattr(rag_proxy_mod, "close_proxy_client", fake_close)
-    setattr(wa_inbox_bot_mod, "close_rag_client", fake_close)
+    initializer_mod.initialize_services_light = fake_initialize_services_light
+    scheduler_mod.init_scheduler = fake_init_scheduler
+    rag_proxy_mod.close_proxy_client = fake_close
+    wa_inbox_bot_mod.close_rag_client = fake_close
 
     monkeypatch.delenv("DISABLE_BACKGROUND_WORKERS", raising=False)
     monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", "0")

@@ -6,6 +6,18 @@ const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
 const metrics = require("./metrics.cjs");
+const {
+  actionBucketForRow,
+  buildAutocatalogPlanSummary,
+  buildDirectCatalogSummary,
+  buildDirectActionSummary,
+  buildGroupKindOperationalSummary,
+  buildQwenBatchGateSummary,
+  buildQwenKnownBenchmarkSummary,
+  buildQwenPlacementPreviewSummary,
+  parserBucketForRow,
+  workspaceBucketForDocType,
+} = require("./intake-buckets.cjs");
 const training = require("./training.cjs");
 
 const PORT = parseInt(process.env.PORT || "7790", 10);
@@ -25,6 +37,8 @@ const ACCOUNTS_JSON =
 
 const MEDIA_ROOT = process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
 const TEAM_AVATAR_DIR = process.env.WA_TEAM_AVATAR_DIR || "/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/static/team";
+const QWEN_GATE_SNAPSHOT =
+  process.env.INTAKE_QWEN_GATE_SNAPSHOT || "/tmp/intake-qwen-gate-snapshot.json";
 
 // Team members hidden from views (parity with conversations columns; Law-2 perimeter).
 const HIDE_TEAM_NAMES = new Set(
@@ -49,6 +63,14 @@ const TEAM = (() => {
 const TEAM_BY_PHONE = new Map();
 for (const m of TEAM) {
   if (m.e164) TEAM_BY_PHONE.set(m.e164, m);
+}
+
+function readQwenGateSnapshot() {
+  try {
+    return JSON.parse(fs.readFileSync(QWEN_GATE_SNAPSHOT, "utf8"));
+  } catch (_err) {
+    return null;
+  }
 }
 
 // === Contact kind/color taxonomy (2026-05-26 naming + color coding) ===
@@ -616,6 +638,295 @@ async function fetchOverview() {
   return result;
 }
 
+async function fetchIntakeSummary() {
+  const [queueRows, groupKindRows, directRows, routingRows] = await Promise.all([
+    pool.query(
+      `
+      WITH docs AS (
+        SELECT
+          CASE
+            WHEN q.source_context->>'chat_type' = 'direct' THEN 'direct'
+            WHEN q.source_context->>'chat_type' = 'group' THEN 'group'
+            ELSE 'unknown'
+          END AS scope,
+          q.status,
+          COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') AS doc_type,
+          CASE
+            WHEN COALESCE(q.stage_output->'classify'->>'type_confidence', '') ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (q.stage_output->'classify'->>'type_confidence')::numeric
+            ELSE 0
+          END AS type_confidence,
+          COALESCE((
+            SELECT SUM(length(
+              CASE
+                WHEN jsonb_typeof(page.value) = 'object' THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                WHEN jsonb_typeof(page.value) = 'string' THEN trim(both '"' from page.value::text)
+                ELSE ''
+              END
+            ))
+            FROM jsonb_array_elements(
+              CASE
+                WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                THEN q.stage_output->'classify'->'ocr_text_per_page'
+                ELSE '[]'::jsonb
+              END
+            ) AS page(value)
+          ), 0) AS ocr_chars,
+          q.sender_phone,
+          q.client_id_hint,
+          q.source_context
+        FROM intake_queue q
+        WHERE q.source = 'whatsapp'
+          AND q.source_ref LIKE 'wa-mirror:%'
+      )
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE scope='direct') AS direct_docs,
+        COUNT(*) FILTER (WHERE scope='group') AS group_docs,
+        COUNT(*) FILTER (WHERE scope='unknown') AS unknown_context_docs,
+        COUNT(*) FILTER (WHERE status='done') AS done_docs,
+        COUNT(*) FILTER (WHERE status='dead') AS dead_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type <> 'unknown') AS direct_known_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type = 'unknown') AS direct_unknown_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type <> 'unknown' AND type_confidence >= 0.70) AS direct_high_conf_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type <> 'unknown' AND type_confidence < 0.70) AS direct_low_conf_known_docs,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type = 'unknown' AND ocr_chars = 0) AS direct_unknown_ocr_empty,
+        COUNT(*) FILTER (WHERE scope='direct' AND doc_type = 'unknown' AND ocr_chars > 0) AS direct_unknown_ocr_text,
+        COUNT(*) FILTER (WHERE source_context <> '{}'::jsonb) AS with_source_context,
+        COUNT(*) FILTER (WHERE scope='group' AND sender_phone IS NOT NULL) AS group_unsafe_sender_phone,
+        COUNT(*) FILTER (WHERE scope='group' AND client_id_hint IS NOT NULL) AS group_unsafe_client_hint
+      FROM docs
+      `,
+    ),
+    pool.query(
+      `
+      WITH group_docs AS (
+        SELECT
+          COALESCE(w.group_jid, q.source_context->>'group_jid_hash', q.source_ref) AS group_key,
+          COUNT(*) AS docs,
+          COUNT(*) FILTER (WHERE q.status='done') AS done_docs,
+          COUNT(*) FILTER (WHERE q.status='dead') AS dead_docs,
+          BOOL_OR(q.sender_phone IS NOT NULL) AS has_unsafe_sender_phone,
+          BOOL_OR(q.client_id_hint IS NOT NULL) AS has_unsafe_client_hint,
+          COUNT(DISTINCT w.sender_phone) FILTER (WHERE COALESCE(w.sender_phone,'') <> '') AS distinct_senders,
+          COUNT(DISTINCT w.team_member_phone) FILTER (WHERE COALESCE(w.team_member_phone,'') <> '') AS team_accounts_seen
+        FROM intake_queue q
+        JOIN whatsapp_message_context w
+          ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+        WHERE q.source = 'whatsapp'
+          AND q.source_ref LIKE 'wa-mirror:%'
+          AND q.source_context->>'chat_type' = 'group'
+        GROUP BY group_key
+      ),
+      classified AS (
+        SELECT *,
+          CASE
+            WHEN team_accounts_seen >= 3 AND distinct_senders <= 3 THEN 'team_coordination_likely'
+            WHEN distinct_senders <= 2 THEN 'small_client_group_likely'
+            WHEN distinct_senders BETWEEN 3 AND 6 THEN 'multi_party_case_likely'
+            ELSE 'large_or_broadcast_group'
+          END AS inferred_group_kind
+        FROM group_docs
+      )
+      SELECT inferred_group_kind,
+             COUNT(*) AS groups,
+             SUM(docs) AS docs,
+             SUM(done_docs) AS done_docs,
+             SUM(dead_docs) AS dead_docs,
+             SUM(CASE WHEN has_unsafe_sender_phone OR has_unsafe_client_hint THEN 1 ELSE 0 END) AS unsafe_groups,
+             SUM(CASE WHEN has_unsafe_sender_phone THEN 1 ELSE 0 END) AS unsafe_sender_groups,
+             SUM(CASE WHEN has_unsafe_client_hint THEN 1 ELSE 0 END) AS unsafe_hint_groups,
+             percentile_disc(0.5) WITHIN GROUP (ORDER BY docs) AS median_docs_per_group,
+             MAX(docs) AS max_docs_per_group
+      FROM classified
+      GROUP BY inferred_group_kind
+      ORDER BY docs DESC
+      `,
+    ),
+    pool.query(
+      `
+      WITH latest AS (
+        SELECT DISTINCT ON (queue_id)
+               queue_id,
+               status AS proposal_status,
+               entity_resolution->>'decision' AS entity_decision
+        FROM document_routing_proposal
+        ORDER BY queue_id, created_at DESC, id DESC
+      ),
+      direct_docs AS (
+        SELECT
+          q.id,
+          q.status AS queue_status,
+          COALESCE(q.stage_output->'classify'->>'doc_type', 'unknown') AS doc_type,
+          CASE
+            WHEN COALESCE(q.stage_output->'classify'->>'type_confidence', '') ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (q.stage_output->'classify'->>'type_confidence')::numeric
+            ELSE 0
+          END AS type_confidence,
+          COALESCE((q.stage_output ? 'extract') AND NOT COALESCE((q.stage_output->'extract'->>'stub')::boolean, false), false) AS extracted_non_stub,
+          COALESCE((q.stage_output ? 'route') AND NOT COALESCE((q.stage_output->'route'->>'stub')::boolean, false), false) AS routed_non_stub,
+          COALESCE((
+            SELECT SUM(length(
+              CASE
+                WHEN jsonb_typeof(page.value) = 'object' THEN COALESCE(page.value->>'text', page.value->>'ocr_text', '')
+                WHEN jsonb_typeof(page.value) = 'string' THEN trim(both '"' from page.value::text)
+                ELSE ''
+              END
+            ))
+            FROM jsonb_array_elements(
+              CASE
+                WHEN jsonb_typeof(q.stage_output->'classify'->'ocr_text_per_page') = 'array'
+                THEN q.stage_output->'classify'->'ocr_text_per_page'
+                ELSE '[]'::jsonb
+              END
+            ) AS page(value)
+          ), 0) AS ocr_chars,
+          COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
+          COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
+          w.media_type
+        FROM intake_queue q
+        LEFT JOIN whatsapp_message_context w
+          ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+        LEFT JOIN latest l ON l.queue_id = q.id
+        WHERE q.source = 'whatsapp'
+          AND q.source_ref LIKE 'wa-mirror:%'
+          AND q.source_context->>'chat_type' = 'direct'
+      )
+      SELECT *
+      FROM direct_docs
+      `,
+    ),
+    pool.query(
+      `
+      WITH latest AS (
+        SELECT DISTINCT ON (queue_id)
+               queue_id,
+               status AS proposal_status,
+               entity_resolution->>'decision' AS entity_decision
+        FROM document_routing_proposal
+        ORDER BY queue_id, created_at DESC, id DESC
+      )
+      SELECT COALESCE(l.entity_decision, 'NO_PROPOSAL') AS entity_decision,
+             COALESCE(l.proposal_status, 'NO_PROPOSAL') AS proposal_status,
+             COUNT(*) AS docs
+      FROM intake_queue q
+      LEFT JOIN whatsapp_message_context w
+        ON q.source_ref = 'wa-mirror:' || w.baileys_message_id
+      LEFT JOIN latest l ON l.queue_id = q.id
+      WHERE q.source = 'whatsapp'
+        AND q.source_ref LIKE 'wa-mirror:%'
+        AND q.source_context->>'chat_type' = 'direct'
+      GROUP BY 1,2
+      ORDER BY docs DESC
+      `,
+    ),
+  ]);
+
+  const queue = queueRows.rows[0] || {};
+  const docTypeMap = new Map();
+  const parserMap = new Map();
+  const actionMap = new Map();
+  const workspaceMap = new Map();
+  for (const row of directRows.rows) {
+    const docType = row.doc_type || "unknown";
+    const workspaceBucket = workspaceBucketForDocType(docType);
+    const parserBucket = parserBucketForRow(row);
+    const actionBucket = actionBucketForRow(row);
+    const docKey = `${docType}|${workspaceBucket}`;
+    const existingDoc = docTypeMap.get(docKey) || {
+      doc_type: docType,
+      workspace_bucket: workspaceBucket,
+      docs: 0,
+      high_confidence: 0,
+      extracted_non_stub: 0,
+      routed_non_stub: 0,
+    };
+    existingDoc.docs += 1;
+    if (Number(row.type_confidence || 0) >= 0.7) existingDoc.high_confidence += 1;
+    if (row.extracted_non_stub) existingDoc.extracted_non_stub += 1;
+    if (row.routed_non_stub) existingDoc.routed_non_stub += 1;
+    docTypeMap.set(docKey, existingDoc);
+
+    parserMap.set(parserBucket, (parserMap.get(parserBucket) || 0) + 1);
+    actionMap.set(actionBucket, (actionMap.get(actionBucket) || 0) + 1);
+    workspaceMap.set(workspaceBucket, (workspaceMap.get(workspaceBucket) || 0) + 1);
+  }
+
+  const directActions = [...actionMap.entries()]
+    .map(([bucket, docs]) => ({ bucket, docs }))
+    .sort((a, b) => b.docs - a.docs);
+  const directActionSummary = buildDirectActionSummary(directActions);
+  const qwenGateSnapshot = readQwenGateSnapshot();
+  const qwenPlacementPreview = buildQwenPlacementPreviewSummary(qwenGateSnapshot);
+  const qwenBatchGate = buildQwenBatchGateSummary(directActionSummary, qwenGateSnapshot);
+  const qwenKnownBenchmarkGate = buildQwenKnownBenchmarkSummary(qwenGateSnapshot);
+  const autocatalogPlan = buildAutocatalogPlanSummary(
+    directActionSummary,
+    qwenBatchGate,
+    qwenKnownBenchmarkGate,
+    qwenPlacementPreview,
+  );
+  const toInt = (v) => parseInt(v || 0, 10);
+  const groupKinds = groupKindRows.rows.map((r) => ({
+    inferred_group_kind: r.inferred_group_kind,
+    groups: toInt(r.groups),
+    docs: toInt(r.docs),
+    done_docs: toInt(r.done_docs),
+    dead_docs: toInt(r.dead_docs),
+    unsafe_groups: toInt(r.unsafe_groups),
+    unsafe_sender_groups: toInt(r.unsafe_sender_groups),
+    unsafe_hint_groups: toInt(r.unsafe_hint_groups),
+    median_docs_per_group: toInt(r.median_docs_per_group),
+    max_docs_per_group: toInt(r.max_docs_per_group),
+  }));
+  const groupOperationalSummary = buildGroupKindOperationalSummary(groupKinds);
+  return {
+    generated_at: new Date().toISOString(),
+    pii_policy: "aggregate_only_no_raw_phone_no_raw_group_subject_no_raw_ocr",
+    source: "intake_queue + whatsapp_message_context",
+    queue: {
+      total: toInt(queue.total),
+      direct_docs: toInt(queue.direct_docs),
+      group_docs: toInt(queue.group_docs),
+      unknown_context_docs: toInt(queue.unknown_context_docs),
+      done_docs: toInt(queue.done_docs),
+      dead_docs: toInt(queue.dead_docs),
+      direct_known_docs: toInt(queue.direct_known_docs),
+      direct_unknown_docs: toInt(queue.direct_unknown_docs),
+      direct_high_conf_docs: toInt(queue.direct_high_conf_docs),
+      direct_low_conf_known_docs: toInt(queue.direct_low_conf_known_docs),
+      direct_unknown_ocr_empty: toInt(queue.direct_unknown_ocr_empty),
+      direct_unknown_ocr_text: toInt(queue.direct_unknown_ocr_text),
+      with_source_context: toInt(queue.with_source_context),
+      group_unsafe_sender_phone: toInt(queue.group_unsafe_sender_phone),
+      group_unsafe_client_hint: toInt(queue.group_unsafe_client_hint),
+    },
+    group_kinds: groupKinds,
+    group_operational_summary: groupOperationalSummary,
+    direct_parser: [...parserMap.entries()]
+      .map(([bucket, docs]) => ({ bucket, docs }))
+      .sort((a, b) => b.docs - a.docs),
+    direct_actions: directActions,
+    direct_action_summary: directActionSummary,
+    direct_catalog_summary: buildDirectCatalogSummary(directActionSummary, queue, qwenPlacementPreview),
+    qwen_batch_gate: qwenBatchGate,
+    qwen_known_benchmark_gate: qwenKnownBenchmarkGate,
+    qwen_placement_preview: qwenPlacementPreview,
+    autocatalog_plan: autocatalogPlan,
+    workspace_buckets: [...workspaceMap.entries()]
+      .map(([bucket, docs]) => ({ bucket, docs }))
+      .sort((a, b) => b.docs - a.docs),
+    direct_doc_types: [...docTypeMap.values()]
+      .sort((a, b) => b.docs - a.docs)
+      .slice(0, 30),
+    direct_routing: routingRows.rows.map((r) => ({
+      entity_decision: r.entity_decision,
+      proposal_status: r.proposal_status,
+      docs: toInt(r.docs),
+    })),
+  };
+}
+
 // === Thread query (Feature #4 wa_contact_name fallback in messages) ===
 async function fetchThread(memberPhone, convKey) {
   const member = TEAM.find((m) => m.e164 === memberPhone);
@@ -796,6 +1107,16 @@ app.get("/training.json", (_req, res) => {
   } catch (err) {
     console.error("[training.json]", err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get("/intake-summary.json", async (_req, res) => {
+  try {
+    const payload = await fetchIntakeSummary();
+    res.json(payload);
+  } catch (err) {
+    console.error("[intake-summary.json]", err);
+    res.status(500).json({ error: "intake summary query failed" });
   }
 });
 

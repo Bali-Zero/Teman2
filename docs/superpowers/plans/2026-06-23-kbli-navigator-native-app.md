@@ -17,13 +17,14 @@
 - **Content source:** `~/Desktop/KBLI-2025-Content/` (20 articles, 13 book-chapters, 2 PDFs EN/ID).
 - **PII:** none (public codes). All grounding/retrieval local.
 - **After each Task:** severe 4-LLM/Codex review of the diff + run tests. Operator gate stays with parent (verify on disk in-turn).
-- **Markdown renderer (F3 decision):** vendored block renderer handling `#/##/###`, `- `/`* ` bullets (1 level nesting), `> ` blockquote, `**bold**`/`*italic*`/`[link](url)` inline via per-line `AttributedString(markdown:)`, paragraph spacing, fenced ``` code. Target the article corpus shape, not full GFM (no tables — articles use them sparsely; render raw `|` rows monospaced as fallback, logged).
+- **Markdown renderer (F3 decision):** vendored block renderer handling `#/##/###`, `- `/`* ` bullets (1 level nesting), `> ` blockquote, `**bold**`/`*italic*`/`[link](url)` inline via per-line `AttributedString(markdown:)`, paragraph spacing, fenced ```code. Target the article corpus shape, not full GFM (no tables — articles use them sparsely; render raw`|` rows monospaced as fallback, logged).
 
 ---
 
 ### Task 0: Repo scaffold + build.sh + empty app launches
 
 **Files:**
+
 - Create: `~/Desktop/kbli-navigator-app/build.sh` (adapt from wr2-control-app)
 - Create: `~/Desktop/kbli-navigator-app/Info.plist`
 - Create: `~/Desktop/kbli-navigator-app/Sources/KBLINavigatorApp.swift`
@@ -31,6 +32,7 @@
 - Create: `~/Desktop/kbli-navigator-app/.gitignore` (`build/`)
 
 **Interfaces:**
+
 - Produces: a buildable `.app` skeleton; `Theme` enum (colors/fonts) reused by all views.
 
 - [ ] **Step 1:** `git init` repo, copy `Theme.swift` verbatim from `~/Desktop/wr2-control-app/Sources/Theme.swift`, copy+adapt `build.sh` (rename APP_NAME="KBLI Navigator", EXEC="KBLINavigator"), copy `Info.plist` (bundle id `com.balizero.kbli-navigator`).
@@ -44,12 +46,14 @@
 ### Task 1: Models + KBLIStore (load 1559, search ranking)
 
 **Files:**
+
 - Create: `Sources/Models.swift` — `KBLI`, `PerSkala`, `L4Bali`, `Moratorium` (Codable, map JSON keys)
 - Create: `Sources/KBLIStore.swift` — `final class KBLIStore: ObservableObject`, loads bundled JSON, `func search(_ q: String) -> [KBLI]` (ranked), `func code(_ k: String) -> KBLI?`
 - Create: `Tests/storetest/main.swift` — standalone executable test
 - Resource: copy `KBLI_2025_FINAL_CLEAN.json` into `Resources/`
 
 **Interfaces:**
+
 - Produces: `KBLI { kode: String, judul: String, uraian: String, ruangLingkup: String?, perSkala: [PerSkala], pmaStatus: String?, l4Bali: L4Bali? }`; `L4Bali { status: String, reason: String?, blocked: Bool, moratorium: Moratorium? }`; `KBLIStore.search(q) -> [KBLI]` ranked exact-code>prefix-code>judul-prefix>substring; `KBLIStore.code(k) -> KBLI?`.
 
 - [ ] **Step 1:** Write `Tests/storetest/main.swift`: load JSON from `Resources/`, assert `store.all.count == 1559`, `store.code("55203")?.l4Bali?.status == "CHIUSO_PMA_NO_BESAR"`, `store.code("55203")?.l4Bali?.blocked == true`, `store.search("55203").first?.kode == "55203"`, `store.search("villa").contains{$0.kode=="55203"}`.
@@ -63,6 +67,7 @@
 ### Task 2: NavigationSplitView shell + AppState (surgical fork) + search list
 
 **Files:**
+
 - Create: `Sources/AppState.swift` — slim KBLI `ObservableObject` (selectedKBLI, query, chat state) — NO WarRoom/QueueWriter
 - Create: `Sources/Localization.swift` — copy LanguageManager from WR2, replace keys with KBLI ones (IT/EN/ID)
 - Create: `Sources/Views/RootView.swift` — `NavigationSplitView` 3-col (sidebar Section enum / search list / detail)
@@ -70,6 +75,7 @@
 - Modify: `KBLINavigatorApp.swift` — wire AppState + RootView
 
 **Interfaces:**
+
 - Consumes: `KBLIStore.search`, `KBLI`.
 - Produces: `enum Section { search, media, chat }`; `AppState { @Published query, @Published selected: KBLI?, store: KBLIStore }`; `statusColor(_ status:String)->Color` + `statusSymbol(_:)->String` helpers.
 
@@ -84,9 +90,11 @@
 ### Task 3: KBLIDetailView (editorial card + moratorium callout)
 
 **Files:**
+
 - Create: `Sources/Views/KBLIDetailView.swift`
 
 **Interfaces:**
+
 - Consumes: `KBLI`, `L4Bali`, status helpers.
 - Produces: detail view rendering header(badge+kode+judul+pma) / moratorium callout (if `l4Bali.blocked`) / uraian+scope / per-skala GroupBoxes / "Ask Zantara" toolbar button → `AppState.openChat(forCode:)`.
 
@@ -101,6 +109,7 @@
 ### Task 4: MediaLibrary + MarkdownView + PDFViewer
 
 **Files:**
+
 - Create: `Sources/MediaLibrary.swift` — enumerate articles/chapters/pdf from Resources
 - Create: `Sources/MarkdownView.swift` — vendored block renderer (per Global Constraints)
 - Create: `Sources/Views/MediaView.swift` — list + markdown detail + PDF tab (PDFKit NSViewRepresentable, bg-thread load)
@@ -108,6 +117,7 @@
 - Test: `Tests/mediatest/main.swift`
 
 **Interfaces:**
+
 - Consumes: bundled Resources.
 - Produces: `MediaLibrary { articles:[MediaItem], chapters:[MediaItem], books:[PDFItem] }`; `MarkdownView(text:)` rendering blocks; `PDFViewer(url:)`.
 
@@ -122,12 +132,14 @@
 ### Task 5: FASE 0 — arm OpenClaw on Mini (gateway + zantara-kbli agent)
 
 **Files (on Mini, via ssh):**
+
 - Fix `~/.openclaw/openclaw.json` (remove 3 invalid keys / make env optional)
 - Create agent `zantara-kbli` (system-prompt: KBLI 2025 + Bali moratorium, grounded, GPT-5.5)
 - Create: `~/Desktop/kbli-navigator-app/deploy/arm-openclaw-mini.sh` (idempotent, documents the steps)
 - LaunchAgent for gateway H24 (or document `--local` fallback)
 
 **Interfaces:**
+
 - Produces: working `~/.openclaw/bin/openclaw agent --agent zantara-kbli --message <q> --json` → JSON with `result.finalAssistantVisibleText`.
 
 - [ ] **Step 1:** `ssh mini` validate current `openclaw config validate` errors; back up `openclaw.json` (chmod 0600).
@@ -141,12 +153,14 @@
 ### Task 6: OpenClawRunner (dual-mode) + grounding + ChatView fork
 
 **Files:**
+
 - Create: `Sources/OpenClawRunner.swift` — dual-mode (local on Mini / `ssh mini` from M5/Pro), parse JSON `finalAssistantVisibleText`
 - Create: `Sources/Grounding.swift` — local retrieval → "FONTI" block from KBLIStore + articles
 - Create: `Sources/Views/ChatView.swift` — fork of WR2 ChatView, wired to AppState (no WarRoom)
 - Test: `Tests/runnertest/main.swift`
 
 **Interfaces:**
+
 - Consumes: `KBLIStore` (grounding), `AppState`.
 - Produces: `OpenClawRunner.ask(prompt:, sources:, onReply:, onError:)`; `Grounding.sources(for query:, code:) -> String`; `OpenClawRunner.hostMode -> .local | .ssh`.
 
@@ -161,6 +175,7 @@
 ### Task 7: 3-Mac deploy + Gatekeeper fix (F2) + final QA
 
 **Files:**
+
 - Create: `deploy/install-3mac.sh` — build once, rsync to M5+Pro+Mini, `xattr -cr` + `codesign --force --sign -` on each
 - Create: `PROVENANCE.md` — WR2 reuse + dataset provenance + research + panel
 - Create: `README.md`
