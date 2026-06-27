@@ -42,6 +42,7 @@ primary_region = 'sin'
   RAG_WORKER_URL = 'http://rag.process.nuzantara-rag.internal:8080'
   DRIVE_POLL_API_MODE = 'worker'
   DRIVE_POLL_WORKER_INTERVAL_SECONDS = '300'
+  DRIVE_POLL_WORKER_TIMEOUT_SECONDS = '840'
   DRIVE_POLL_WORKER_INLINE_OCR = 'false'
   ZANTARA_ALLOWED_ORIGINS = 'https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://mail.balizero.com,https://calendar.balizero.com,https://drive.balizero.com,https://knowledge.balizero.com,https://nuzantara-mouth.vercel.app'
   # SQLite persistence paths (mounted volume /data on api process, PR #75)
