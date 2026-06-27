@@ -1,8 +1,8 @@
 {
   "_doc": "A1 / Loop-B scar-gate manifest. Maps every cicatrix W-scar to its executable regression gate (ARMED) or declares it prose_only (visible Loop-B DEBT = WARN, never silent-zero). check_scar_test(gate) in scripts/verify_the_verifiers.py runs each. Built from the scar corpus 2026-06-27 (TAC self-loop A1). To ARM a scar: write infra/scar-gates/test_W<N>_*.py (exit 0 = disease still dead), then flip prose_only:false + set target.",
   "generated": "2026-06-27",
-  "total": 65,
-  "armed": 1,
+  "total": 66,
+  "armed": 2,
   "prose_only_debt": 64,
   "gates": [
     {
@@ -330,6 +330,12 @@
       "id": "scar_W87",
       "w_number": "W87",
       "prose_only": true
+    },
+    {
+      "id": "scar_homefork",
+      "w_number": "#1-HOMEFORK",
+      "target": "test_W_homefork_live_vs_tracked.py",
+      "prose_only": false
     }
   ]
 }
