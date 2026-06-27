@@ -8,7 +8,13 @@ set -uo pipefail
 
 DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/Desktop/nuzantara-deploy}"
 SOURCE_REPO="${WR2_SOURCE_REPO:-${HOME}/Desktop/nuzantara}"
-EXPECTED_BRANCH="${WR2_DEPLOY_BRANCH:-deploy/main}"
+# 2026-06-27: track `main` directly. The old `deploy/main` intermediate branch made sense
+# only when -deploy was a WORKTREE (to isolate its HEAD from the main checkout's branch).
+# Now -deploy is an isolated CLONE, so a separate branch is pure overhead — and it caused a
+# STERILE pull: origin/deploy/main lagged origin/main by 3 commits and nobody advanced it, so
+# the puller saw "up-to-date" against a phantom ref while the real merges (incl. #1766) never
+# reached the live organs. Tracking main directly is the cure. (TAC self-loop anti-sterility.)
+EXPECTED_BRANCH="${WR2_DEPLOY_BRANCH:-main}"
 LOG="${HOME}/logs/wr2-deploy-pull.log"
 STATE="${HOME}/.agent/decisions/state/wr2_deploy_pull.state"
 LOCK="${HOME}/.agent/decisions/state/wr2_deploy_pull.lock"
