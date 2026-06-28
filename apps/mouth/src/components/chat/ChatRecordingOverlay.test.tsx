@@ -1,9 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import {
   ChatRecordingOverlay,
   ChatRecordingOverlayProps,
 } from "./ChatRecordingOverlay";
+
+// Mock useChatLocale to return 'en' by default
+vi.mock("@/hooks/useChatLocale", () => ({
+  useChatLocale: vi.fn(() => "en"),
+}));
 
 describe("ChatRecordingOverlay", () => {
   const defaultProps: ChatRecordingOverlayProps = {
@@ -22,6 +27,29 @@ describe("ChatRecordingOverlay", () => {
     it("should render when recording", () => {
       render(<ChatRecordingOverlay {...defaultProps} isRecording={true} />);
       expect(screen.getByText("Release to send")).toBeInTheDocument();
+    });
+  });
+
+  describe("A11y and Localization", () => {
+    it("should have role='status' and aria-live='polite'", () => {
+      render(<ChatRecordingOverlay {...defaultProps} isRecording={true} />);
+      const status = screen.getByRole("status");
+      expect(status).toBeInTheDocument();
+      expect(status).toHaveAttribute("aria-live", "polite");
+    });
+
+    it("should have a screen reader only recording label", () => {
+      render(<ChatRecordingOverlay {...defaultProps} isRecording={true} />);
+      expect(screen.getByText("Recording")).toBeInTheDocument();
+      expect(screen.getByText("Recording")).toHaveClass("sr-only");
+    });
+
+    it("should have aria-hidden='true' on the pulsing dot", () => {
+      const { container } = render(
+        <ChatRecordingOverlay {...defaultProps} isRecording={true} />,
+      );
+      const dot = container.querySelector(".bg-red-500");
+      expect(dot).toHaveAttribute("aria-hidden", "true");
     });
   });
 

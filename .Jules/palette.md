@@ -54,3 +54,7 @@
 ## 2026-06-16 - [Safe Exit Animations for Streaming UI]
 **Learning:** Exit animations in streaming interfaces (e.g., transitions from a 'thinking' state to a 'response' state) can feel abrupt if elements simply disappear. Wrapping conditional status indicators in `AnimatePresence` ensures a smooth visual handoff. However, avoid implementing live timers with `aria-live="polite"` as it creates excessive screen reader noise; prioritize silent visual progress for frequent updates.
 **Action:** Always use `AnimatePresence` for smooth transitions between streaming states. Avoid frequent `aria-live` updates for rapidly changing values like timers.
+
+## 2026-06-17 - [Accessible and Localized Status Overlays]
+**Learning:** Real-time status indicators that appear as overlays (e.g., voice recording) require `role="status"` and `aria-live="polite"` to be announced by screen readers without interrupting flow. They should also include a visually hidden (`sr-only`) label describing the active state to provide immediate context upon appearance.
+**Action:** Apply `role="status"` and `aria-live="polite"` to ephemeral status overlays. Ensure they contain localized `sr-only` labels for the state and localized instruction text for the user.
