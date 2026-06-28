@@ -85,6 +85,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
         <PMABadge
           status={code.pma.status}
           maxForeign={code.pma.maxForeign}
+          baliBlocked={!!code.baliL4?.blocked}
           size="sm"
         />
         {code.licensing[0] && (
