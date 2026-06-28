@@ -72,6 +72,56 @@ _DEFAULT_TEXT_BATCH = 100
 _CRM_ACTOR = "wa-mirror-crm-writer@balizero.com"
 _LEAD_SOURCE = "whatsapp_auto"
 
+# --------------------------------------------------------------------------- #
+# Internal-sender guard (2026-06-29).
+#
+# A 1:1 WhatsApp chat is NOT proof that the sender IS the document subject. When
+# a Bali Zero OPERATOR receives a client's document (in person / other channel)
+# and forwards it from their own phone, the direct-chat sender phone is the
+# OPERATOR's, not the client's. Keying CRM identity on it mis-attributes the
+# document to the staff member (lived incident 2026-06-28: a Spanish client's
+# birth certificate was attached to operator "Ari Firda"). The existing group
+# suppression does NOT cover this — the operator chat is `chat_type='direct'`.
+#
+# Fix: treat a sender phone that belongs to a known internal/operator line the
+# same way group senders are treated — review/OCR only, never a client-identity
+# signal. The catalog is the consecutive business-SIM series 628213454-72x plus
+# known personal/business lines, loadable/extendable via env so HR can maintain
+# it without a code change.
+# --------------------------------------------------------------------------- #
+_INTERNAL_PHONES_BUILTIN: tuple[str, ...] = (
+    # Bali Zero business-SIM series (consecutive batch) — Ari/Sahira/Adit/Damar/Vino/Rina
+    "628213454721", "628213454722", "628213454723", "628213454724",
+    "628213454725", "628213454726", "628213454727", "628213454728",
+    # other named business lines
+    "628133946856",   # Surya - Bali Zero
+    "6282326357501",  # Krisna - Bali Zero
+    # confirmed personal lines used to forward client docs
+    "6281299967842",  # Ari Firda (personal) — confirmed by Zero
+)
+
+
+def _internal_phones() -> frozenset[str]:
+    """Digits-only set of internal/operator phones (builtin + ``WA_MIRROR_INTERNAL_PHONES`` env).
+
+    The env var is a comma/space-separated list of extra internal numbers, so HR
+    can extend the catalog without a code change. Both builtin and env values are
+    normalized to bare digits to match ``normalize_sender_phone`` output.
+    """
+    extra = os.getenv("WA_MIRROR_INTERNAL_PHONES", "")
+    out: set[str] = set()
+    for raw in (*_INTERNAL_PHONES_BUILTIN, *extra.replace(",", " ").split()):
+        norm = normalize_sender_phone(raw)
+        if norm:
+            out.add(norm)
+    return frozenset(out)
+
+
+def _is_internal_phone(value: object) -> bool:
+    """True when ``value`` normalizes to a known internal/operator phone."""
+    norm = normalize_sender_phone(value) if value is not None else None
+    return bool(norm) and norm in _internal_phones()
+
 
 def _acquire_lock_or_exit() -> int:
     STATE_DIR.mkdir(exist_ok=True)
@@ -184,22 +234,31 @@ def _client_identity_phone(row: asyncpg.Record | dict) -> str | None:
 
     Group rows are intentionally review/OCR-only at this layer. A later group
     classifier may promote known client groups, but this first sovereign intake
-    ring must not infer a client from a group participant phone.
+    ring must not infer a client from a group participant phone. An internal
+    operator line in a 1:1 chat (a teammate forwarding a client document) is
+    suppressed for the SAME reason — sender ≠ subject.
     """
     if not _is_direct_chat(row):
         return None
-    return _candidate_phone(row)
+    phone = _candidate_phone(row)
+    if _is_internal_phone(phone):
+        return None
+    return phone
 
 
 def _queue_sender_phone(row: asyncpg.Record | dict) -> str | None:
     """Sender phone passed to intake routing.
 
     Routing uses sender_phone as a client-match signal. Suppress it for group
-    rows because group sender can be a Bali Zero teammate forwarding a document.
+    rows because group sender can be a Bali Zero teammate forwarding a document —
+    and, by the same logic, for a known internal/operator line even in a 1:1 chat
+    (a teammate forwarding a client document from their own phone).
     """
     if not _is_direct_chat(row):
         return None
     value = _record_get(row, "sender_phone")
+    if _is_internal_phone(value):
+        return None
     return str(value) if value else None
 
 
@@ -209,15 +268,26 @@ def _source_context(row: asyncpg.Record | dict) -> dict[str, object]:
     No raw phone is added here: direct sender phone already has a dedicated
     queue column, and group participant phones are suppressed entirely. No raw
     group JID/subject is copied either; hashes are enough for local correlation.
+
+    Internal-sender 1:1 chats (an operator forwarding a client document) keep
+    ``chat_type='direct'`` but flip the routing identity policy to a suppressed
+    state so the downstream auto-attach gate never treats the operator's phone as
+    a client-match signal — same protection groups already get.
     """
     if _is_direct_chat(row):
+        internal_sender = _is_internal_phone(_record_get(row, "sender_phone"))
         return {
             "transport": "wa-mirror",
             "context_version": "wa-mirror-v1",
             "chat_type": "direct",
-            "crm_identity_policy": "phone_keyed_direct_chat",
-            "routing_identity_policy": "sender_phone_enabled",
+            "crm_identity_policy": (
+                "disabled_internal_sender" if internal_sender else "phone_keyed_direct_chat"
+            ),
+            "routing_identity_policy": (
+                "internal_sender_suppressed" if internal_sender else "sender_phone_enabled"
+            ),
             "sender_phone_forwarded": _queue_sender_phone(row) is not None,
+            "internal_sender": internal_sender,
         }
 
     context: dict[str, object] = {
