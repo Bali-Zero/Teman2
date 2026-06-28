@@ -177,9 +177,11 @@ const SECTION_STYLES: Record<
 function KeyFacts({
   licensing,
   pma,
+  baliBlocked = false,
 }: {
   licensing: KBLILicenseByScale[];
   pma: KBLIPmaInfo;
+  baliBlocked?: boolean;
 }) {
   const primary = licensing[0];
   if (!primary) return null;
@@ -203,18 +205,27 @@ function KeyFacts({
     },
     {
       label: "Foreign Ownership",
+      // National PMA openness != Bali registrability. When the code is open
+      // nationally but blocked for a PT PMA in Bali (l4_bali.blocked), don't
+      // headline a green "100% Open" — qualify it, and drop the green accent.
       value:
         pma.status === "open"
-          ? "100% Open"
+          ? baliBlocked
+            ? "100% nat'l · blocked in Bali"
+            : "100% Open"
           : pma.status === "restricted"
             ? `Max ${pma.maxForeign}%`
             : "Closed (0%)",
       accent:
-        pma.status === "open"
+        pma.status === "open" && !baliBlocked
           ? "var(--kbli-pma-open)"
           : pma.status === "restricted"
             ? "var(--kbli-pma-restricted)"
-            : "var(--kbli-pma-closed)",
+            : pma.status === "open"
+              ? "var(--kbli-pma-closed)"
+              : pma.status === "closed"
+                ? "var(--kbli-pma-closed)"
+                : undefined,
     },
     {
       label: "Authority",
@@ -840,7 +851,11 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
       )}
 
       {/* ── KEY FACTS AT A GLANCE ── */}
-      <KeyFacts licensing={kbli.licensing} pma={kbli.pma} />
+      <KeyFacts
+        licensing={kbli.licensing}
+        pma={kbli.pma}
+        baliBlocked={baliBlocked}
+      />
 
       {/* ── PP28 RAW DATA (collapsible) ── */}
       {currentTier && (

@@ -298,6 +298,7 @@ export default async function KBLICodePage({
                   maxForeign={kbli.pma.maxForeign}
                   capSpecial={kbli.pma.capSpecial}
                   capVerified={kbli.pma.capVerified}
+                  baliBlocked={!!kbli.baliL4?.blocked}
                 />
                 {kbli.licensing[0] && (
                   <RiskBadge category={kbli.licensing[0].riskCategory} />
