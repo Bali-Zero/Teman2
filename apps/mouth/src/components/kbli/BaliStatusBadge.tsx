@@ -5,9 +5,12 @@ import { cn } from "@/lib/utils";
 // Gubernur letter B.27.000/642/PM/DPMPTSP).
 export type BaliStatus =
   | "OK_or_HIGHER_RISK"
+  | "APERTO_BALI_RISCHIO_ALTO"
   | "BLOCCATO_CLASSE_RISCHIO"
   | "BLOCCATO_DIPENDE_SCOPE"
   | "CHIUSO_PMA_NO_BESAR"
+  | "CHIUSO_MORATORIA_BALI"
+  | "CHIUSO_REGOLATORE_SETTORIALE"
   | "NEEDS_REVIEW_NO_OSS_SCOPE"
   | "CHIUSO_BALI"
   | "CHIUSO_BALI_PROPOSTO"
@@ -29,8 +32,29 @@ const config: Record<
   { label: string; icon: string; tone: "ok" | "warn" | "block" }
 > = {
   OK_or_HIGHER_RISK: { label: "Registrable in Bali", icon: "✅", tone: "ok" },
+  // Nationally TERBUKA and the Besar scale is Menengah-Tinggi/Tinggi → survives the
+  // Bali risk-class moratorium → registrable by a PT PMA in Bali (#1814 risk-tier pass).
+  APERTO_BALI_RISCHIO_ALTO: {
+    label: "Open in Bali (high-risk tier)",
+    icon: "✅",
+    tone: "ok",
+  },
   BLOCCATO_CLASSE_RISCHIO: {
     label: "Blocked in Bali (risk-class moratorium)",
+    icon: "🚫",
+    tone: "block",
+  },
+  // Nationally TERBUKA but the Besar scale is Rendah/Menengah-Rendah → blocked by the
+  // 2026 Bali PMA moratorium (Gov. letter B.27.000/642). Resolved by #1814 risk-tier pass.
+  CHIUSO_MORATORIA_BALI: {
+    label: "Closed in Bali (2026 moratorium)",
+    icon: "🚫",
+    tone: "block",
+  },
+  // Closed by a national sector regulator regardless of risk tier (e.g. Bank Indonesia,
+  // BAPETEN) — structurally closed to private/PMA capital. Resolved by #1814.
+  CHIUSO_REGOLATORE_SETTORIALE: {
+    label: "Closed (sector regulator)",
     icon: "🚫",
     tone: "block",
   },
