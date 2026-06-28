@@ -1,0 +1,70 @@
+**Review: Mata Garuda Stage 1 (Canonical Redis & Split‑Brain Cure)**  
+
+This spec correctly diagnoses the root cause (two divergent Redis instances, not concurrent overlap) and prescribes the right primary cure (single canonical Redis). The layered design is sensible, but it can be simplified and hardened for a solo operator with 2–3 Macs. Below are concrete improvements, edge‑case call‑outs, and the three gate decisions you requested.
+
+---
+
+### 1. Simplifications & hardening
+
+**a) Collapse the canonical declaration**  
+Introducing a new `GARUDA_CANONICAL_REDIS` constant adds a moving part. Instead:  
+- Change the fallback in `base_worker.py` from `127.0.0.1` to a hardcoded canonical host (e.g. `"mini.tailnet-name:6379"`).  
+- Set `GARUDA_REDIS_HOST` explicitly in every `com.matagaruda*.plist` (overriding the default).  
+This one‑line change is the tightest defence: even a missed plist still hits the canonical Redis, never localhost.  
+
+**b) Remove layer 3c (advisory‑lock) entirely**  
+After (a) and the “assigned node” pattern below, concurrent runs are not a real failure mode:  
+- Each organ is **assigned to exactly one host** (disable the plist on the other host).  
+- `launchd` already prevents double‑launch of the same label (plus ThrottleInterval).  
+Adding a lock would introduce either a new PG dependency or a local‑only `flock` that doesn’t cross hosts. If, against all odds, a double‑run ever occurs, a trivial Redis lock (`SETNX` with TTL on the canonical Redis) can be added in minutes — no PG required.  
+
+**c) Assign organs explicitly (close the “two consumers” hole)**  
+The spec says “the non‑canonical host’s mata_garuda crons … are disabled on that host.” Make this concrete:  
+- Produce a table mapping every cron (organ) to its designated host.  
+- Use the `Disabled` key in the plist on the non‑assigned host.  
+Without this, you may still have two consumers reading the same stream, causing duplicated work (not split‑brain, but still undesirable).  
+
+**d) Fix the detector’s `redis-cli` path once**  
+Use `shutil.which("redis-cli")` with fallback list (e.g. `/opt/homebrew/bin/redis-cli`). Hard‑coding one absolute path is brittle across machines.  
+
+**e) Clarify the SPOF introduced**  
+Pointing both hosts at one Redis over Tailscale creates a single point of failure. The spec should state this explicitly:  
+> If the canonical Redis is unreachable, ALL crons stop. This is an acceptable trade‑off for a solo operator, because the previous split‑brain silently corrupted data. Future stages may add Redis replication if uptime becomes a problem.  
+
+For a pragmatic operator with a mostly‑on Mini (server H24), **I’d suggest making Mini the canonical Redis host** — it is always‑on, reducing the blast radius of a laptop sleep/reboot. Zero can still decide, but this increases availability with no extra work.
+
+---
+
+### 2. Gate recommendations
+
+**G2 — advisory‑lock (PG) vs flock vs nothing**  
+**Recommendation: nothing.**  
+With organs assigned to a single host and `launchd`’s own instance management, accidental double‑runs are extremely unlikely. Introducing a lock now adds complexity and a new dependency (PG) or a cross‑machine gap (`flock`). Keep the door open to a Redis‑based lock *if* a double‑run is ever observed.
+
+**G3 — fold heartbeat (3d) into Stage 1 or defer**  
+**Recommendation: fold it in.**  
+The heartbeat is ~10 lines reusing the existing sidecar channel (`~/.organism/last_seen/`). It gives immediate, cheap observability that each cron actually did work (rows processed → alive), not just that it exited. This directly helps validate the split‑brain cure during the 7‑day metric window. No reason to delay.
+
+**§7 q3 — back‑merge 37‑day divergence or declare canonical‑going‑forward**  
+**Recommendation: declare canonical‑going‑forward; do not merge.**  
+Reconciling two divergent Redis histories is error‑prone and the data is likely stale bulk‑OSINT, not critical state. Instead:  
+1. Take a `SAVE` dump of the stale Redis (or a `redis-cli --rdb` backup) and archive it.  
+2. Switch all consumers to the canonical Redis; accept that the stale fork’s data will not be processed.  
+3. The operator can manually extract anything valuable from the backup later.  
+This keeps Stage 1 minimal and eliminates whole new failure surfaces.
+
+---
+
+### 3. Smallest possible version that cures the bug
+
+1. **Change one line** in `base_worker.py`: `os.environ.get("GARUDA_REDIS_HOST", "mini.tailnet-name:6379")`.  
+2. **Set `GARUDA_REDIS_HOST`** in every plist to that same canonical host (overriding the default, explicit is good).  
+3. **Disable** all crons on the non‑canonical host (or assign by organ).  
+4. **Fix `redis-cli` path** and fire `check_redis_split_brain.py` hourly on the canonical host.  
+5. **Optionally add the 10‑line heartbeat** to each important singleton (gap_consumer, nlm_feeder) so you can see they’re alive.  
+
+That’s it. No new constants, no PG, no lockfiles, no merge. Exactly what a solo operator can oversee on 2–3 Macs without building new infrastructure.
+
+---
+
+**VERDICT: GO‑WITH‑FIXES** (the fixes above are small, purely subtractive, and make the plan more defensible for a solo operator)
