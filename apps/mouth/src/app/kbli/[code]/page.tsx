@@ -1032,10 +1032,21 @@ export default async function KBLICodePage({
                   title: kbli.titleEn,
                   section: kbli.section ?? "",
                 }}
-                opener={
-                  gold?.zantaraOpener ??
-                  `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`
-                }
+                opener={(() => {
+                  const fallback = `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`;
+                  const op = gold?.zantaraOpener ?? fallback;
+                  // The gold/intel openers were written before the 2026 Bali moratorium
+                  // and cheerfully promise a "PT PMA setup" on codes now blocked for a
+                  // PT PMA in Bali. Don't greet a blocked code with a PMA go-ahead — use
+                  // a neutral Bali-aware opener instead.
+                  if (
+                    kbli.baliL4?.blocked &&
+                    /\b(PT PMA|100% foreign|foreign-owned)\b/i.test(op)
+                  ) {
+                    return `Looking at KBLI ${kbli.code} — ${kbli.titleEn}? Note this code is currently blocked for a PT PMA in Bali (reserved UMKM / 2026 moratorium). Ask me about the national procedure, the Bali restriction, or alternatives.`;
+                  }
+                  return op;
+                })()}
                 suggestions={[
                   `What do I need to start a ${kbli.titleEn.toLowerCase()} business?`,
                   `Can foreigners own this business?`,
