@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RiskBadge } from "./RiskBadge";
 import type {
+  KBLIBusinessScale,
   KBLICode,
   KBLIGoldContent,
   KBLILicenseByScale,
@@ -559,7 +560,65 @@ const STEP_COLORS = [
   },
 ];
 
-function StepList({ body }: { body: string }) {
+/**
+ * Company-incorporation step is SCALE-aware, not PMA-centric. The KBLI Navigator
+ * speaks to everyone (Zero, 2026-06-29):
+ *   Mikro / Kecil / Menengah → WNI → PT PMDN / CV / Perorangan (local)
+ *   Besar                    → WNI or WNA → PT PMDN (local) or PT PMA (foreign)
+ * The old gold text hardcoded "PT PMA incorporation" as step 1 for EVERY code —
+ * which excludes the WNI small-business reader, and on a Bali-blocked code flatly
+ * contradicts the "reserved for UMKM / closed to a PT PMA" verdict above it.
+ * `scales` is the currently-selected TierTab's scale array.
+ */
+function companyFormForScale(scales: KBLIBusinessScale[]): {
+  label: string;
+  desc: string;
+} {
+  const isBesar = scales.includes("Besar");
+  if (isBesar) {
+    return {
+      label: "Company incorporation",
+      desc: "PT PMDN (local) or PT PMA (foreign) — notary deed, AHU registration",
+    };
+  }
+  return {
+    label: "Company incorporation",
+    desc: "PT PMDN / CV / Perorangan (local, WNI) — notary deed, AHU registration",
+  };
+}
+
+/** A step whose label/desc names a company-incorporation form (PT PMA / PT PMDN / CV). */
+function isIncorporationStep(label: string, desc: string): boolean {
+  const t = `${label} ${desc}`.toLowerCase();
+  return (
+    t.includes("incorporation") ||
+    t.includes("pt pma") ||
+    t.includes("pt pmdn") ||
+    t.includes("pendirian")
+  );
+}
+
+/**
+ * Rewrite the "PMA: Fully open — 100% foreign ownership allowed" trailing line when
+ * the code is Bali-blocked. The 100% openness is a NATIONAL fact, but printed bare
+ * under a Bali-blocked verdict it reads as "you can own 100% here". Qualify it.
+ */
+function rewritePmaLineForBali(line: string, baliBlocked: boolean): string {
+  if (!baliBlocked) return line;
+  if (!/\*\*PMA:\*\*/i.test(line) && !/^PMA:/i.test(line)) return line;
+  if (!/fully open|100%|foreign ownership/i.test(line)) return line;
+  return "**PMA:** 100% open nationally — but BLOCKED for a PT PMA in Bali (reserved UMKM / moratorium). See Bali status above.";
+}
+
+function StepList({
+  body,
+  activeScales = [],
+  baliBlocked = false,
+}: {
+  body: string;
+  activeScales?: KBLIBusinessScale[];
+  baliBlocked?: boolean;
+}) {
   const lines = body.split("\n");
   const steps: { num: number; label: string; desc: string }[] = [];
   let otherContent: string[] = [];
@@ -569,16 +628,24 @@ function StepList({ body }: { body: string }) {
     const stepMatch = line.match(/^(\d+)\.\s+\*\*([^*]+)\*\*\s*(.*)/);
     if (stepMatch) {
       const num = parseInt(stepMatch[1]);
-      const label = stepMatch[2].trim();
+      let label = stepMatch[2].trim();
       // Everything after **label** — split on em-dash to get parenthetical + desc
       const afterLabel = stepMatch[3].trim();
       const dashIdx = afterLabel.search(/[—–]/);
-      const desc =
+      let desc =
         dashIdx >= 0 ? afterLabel.slice(dashIdx + 1).trim() : afterLabel;
       const paren = dashIdx >= 0 ? afterLabel.slice(0, dashIdx).trim() : "";
-      steps.push({ num, label: paren ? `${label} ${paren}` : label, desc });
+      label = paren ? `${label} ${paren}` : label;
+      // SCALE-aware company form: replace the hardcoded "PT PMA incorporation"
+      // step with the form that actually fits the selected business scale.
+      if (isIncorporationStep(label, desc)) {
+        const form = companyFormForScale(activeScales);
+        label = form.label;
+        desc = form.desc;
+      }
+      steps.push({ num, label, desc });
     } else if (line.trim()) {
-      otherContent.push(line);
+      otherContent.push(rewritePmaLineForBali(line, baliBlocked));
     }
   }
 
@@ -641,10 +708,14 @@ function ContentSection({
   title,
   body,
   type,
+  activeScales = [],
+  baliBlocked = false,
 }: {
   title: string;
   body: string;
   type: SectionType;
+  activeScales?: KBLIBusinessScale[];
+  baliBlocked?: boolean;
 }) {
   if (!body.trim()) return null;
 
@@ -705,7 +776,11 @@ function ContentSection({
       {type === "authority" ? (
         <AuthorityFlow body={body} />
       ) : isStepByStep ? (
-        <StepList body={body} />
+        <StepList
+          body={body}
+          activeScales={activeScales}
+          baliBlocked={baliBlocked}
+        />
       ) : (
         <div className="kbli-prose">
           <ReactMarkdown>{body}</ReactMarkdown>
@@ -862,6 +937,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               title={sec.title}
               body={sec.body}
               type={detectSectionType(sec.title)}
+              activeScales={currentTier?.scales ?? []}
+              baliBlocked={baliBlocked}
             />
           ))}
         </div>
