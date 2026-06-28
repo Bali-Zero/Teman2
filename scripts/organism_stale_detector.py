@@ -60,6 +60,12 @@ UNHEALTHY_STATUSES: frozenset[str] = frozenset({"failed", "fail", "degraded", "e
 #   - wr3.reflexion_weekly : launchctl-disabled on purpose (the dead twin of wr2's)
 #   - pro.agent_library_evolver_* : intentionally disabled (deploy-drift quarantine)
 #   - pro.audit_launchd_daily : exit 1 BY DESIGN = "N unhealthy jobs found" (a true report)
+#   - infra.ollama_pro : launchd job exits 1 because the real `ollama serve` already
+#       owns :11434 (port collision, two program paths) — the daemon is ALIVE and serving
+#       (6 models on :11434). The bridge reads the launchd exit code, not the live socket.
+#       (Live triage 2026-06-28. NOTE: pro.curiosity_weekly was triaged the same day as a
+#       REAL failure — W84 TCC-dead on ~/Desktop — and is deliberately NOT suppressed here:
+#       it must stay visible as an operator-boundary finding, not be hidden.)
 # The bridge tags all of these "failed" because it has no `disabled`/`expected_exit`
 # concept (HEALTHY_EXIT_CODES={0}). Curing the bridge is a separate hot-zone PR;
 # this allow-list is the safe downstream filter. Audit this list when an organ is
@@ -74,6 +80,7 @@ KNOWN_BENIGN_FAILED: frozenset[str] = frozenset({
     "pro.agent_library_evolver_daily",
     "pro.agent_library_evolver_weekly",
     "pro.audit_launchd_daily",
+    "infra.ollama_pro",
 })
 
 

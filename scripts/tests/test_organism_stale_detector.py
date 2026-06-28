@@ -184,3 +184,22 @@ def test_allow_list_is_documented_not_empty():
     assert isinstance(KNOWN_BENIGN_FAILED, (set, frozenset, tuple))
     assert len(KNOWN_BENIGN_FAILED) >= 6
     assert "codex.spark_loop" in KNOWN_BENIGN_FAILED
+
+
+def test_ollama_pro_program_path_collision_suppressed(tmp_path):
+    """INNOCENCE: infra.ollama_pro reports failed (launchd exit 1) while the daemon
+    is actually alive — the launchd job binds the same :11434 the real `ollama serve`
+    already owns, so it exits 1 and keepalive re-spawns forever. The bridge tags it
+    'failed' from the launchd exit code, but the organ breathes (6 models served on
+    :11434). This is the same family as the other bridge false-positives: a non-zero
+    launchd exit that does NOT mean the organ is dead. (Live triage 2026-06-28.)
+    """
+    d = str(tmp_path)
+    _write(
+        d,
+        "infra.ollama_pro",
+        {"ts": time.time(), "status": "failed", "last_error": "daemon not running"},
+    )
+    findings = scan_sidecars_status(d, now=time.time())
+    flagged = {f.organ_id for f in findings if f.kind == "unhealthy"}
+    assert "infra.ollama_pro" not in flagged, f"ollama false-positive not suppressed: {flagged}"
