@@ -80,7 +80,11 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
             A card showing only "Open · 100% Foreign" would teach the national truth
             and hide the Bali moratorium block. Show the Bali verdict up front. */}
         {code.baliL4?.status && (
-          <BaliStatusBadge status={code.baliL4.status} size="sm" />
+          <BaliStatusBadge
+            status={code.baliL4.status}
+            pmaStatus={code.pma.status}
+            size="sm"
+          />
         )}
         <PMABadge
           status={code.pma.status}

@@ -310,6 +310,7 @@ export default async function KBLICodePage({
                     reason={kbli.baliL4.reason}
                     confidence={kbli.baliL4.confidence}
                     needsReview={kbli.baliL4.needsReview}
+                    pmaStatus={kbli.pma.status}
                   />
                 )}
               </div>

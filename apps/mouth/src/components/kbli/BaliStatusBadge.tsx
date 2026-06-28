@@ -24,6 +24,12 @@ interface BaliStatusBadgeProps {
   reason?: string;
   confidence?: "HIGH" | "MEDIUM" | "LOW";
   needsReview?: boolean;
+  /**
+   * National PMA status. When "closed" (TERTUTUP / 0% foreign), it overrides a
+   * moratorium-only "ok" l4 verdict: a nationally-closed code is not registrable
+   * in Bali, no matter the Besar risk tier the #1814 pass scored.
+   */
+  pmaStatus?: "open" | "restricted" | "closed" | "unknown";
   size?: "sm" | "md";
 }
 
@@ -114,10 +120,27 @@ export function BaliStatusBadge({
   reason,
   confidence,
   needsReview,
+  pmaStatus,
   size = "md",
 }: BaliStatusBadgeProps) {
-  const c = config[status];
+  let c = config[status];
   if (!c) return null; // unknown status → render nothing rather than a broken badge
+  // National-closed dominates Bali registrability. The #1814 risk-tier pass computes
+  // l4 status from the Besar risk ALONE, so 58 codes that are nationally TERTUTUP
+  // (0% foreign — e.g. 84111 Lembaga Legislatif, 60311 govt news agency) still got
+  // l4 = OK_or_HIGHER_RISK → "✅ Registrable in Bali". A code closed to foreigners
+  // nationwide is NOT registrable in Bali. When pmaStatus is closed, force the
+  // verdict to "closed" regardless of the moratorium-only l4 status.
+  if (
+    pmaStatus === "closed" &&
+    (c.tone === "ok" || status === "OK_or_HIGHER_RISK")
+  ) {
+    c = {
+      label: "Closed to foreigners (national)",
+      icon: "🚫",
+      tone: "block",
+    };
+  }
   return (
     <span
       className={cn(
