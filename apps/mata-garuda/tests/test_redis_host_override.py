@@ -174,3 +174,45 @@ class TestRedisCliPath:
         monkeypatch.setattr(base_worker.shutil, "which", lambda _: None)
         monkeypatch.setattr(base_worker.os.path, "exists", lambda _: False)
         assert base_worker._resolve_redis_cli() == "redis-cli"
+
+
+class TestRedisAuth:
+    """Stage 1 cutover (2026-06-29): the canonical Pro Redis is exposed on the
+    Tailscale interface and therefore REQUIRES a password. base_worker must pass
+    it via the REDISCLI_AUTH env var — NOT as `-a <pw>` on the command line, which
+    would leak the secret into `ps`/argv (cicatrix #4: secret in the clear)."""
+
+    def test_password_passed_via_env_not_argv(self, monkeypatch):
+        from mata_garuda.workers import base_worker
+
+        monkeypatch.setenv("GARUDA_REDIS_PASSWORD", "s3cr3t-pw")
+        monkeypatch.setenv("GARUDA_REDIS_HOST", "nuzantara.tail461666.ts.net")
+
+        with patch.object(base_worker.subprocess, "run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="PONG", stderr="")
+            base_worker.redis_cmd("PING")
+
+        # password must NOT appear anywhere in the argv
+        called_cmd = mock_run.call_args[0][0]
+        assert "s3cr3t-pw" not in called_cmd
+        assert "-a" not in called_cmd
+        # it must be passed through the subprocess env as REDISCLI_AUTH
+        passed_env = mock_run.call_args.kwargs.get("env")
+        assert passed_env is not None, "redis_cmd must pass an explicit env when a password is set"
+        assert passed_env.get("REDISCLI_AUTH") == "s3cr3t-pw"
+
+    def test_no_password_no_env_override(self, monkeypatch):
+        from mata_garuda.workers import base_worker
+
+        monkeypatch.delenv("GARUDA_REDIS_PASSWORD", raising=False)
+        monkeypatch.delenv("GARUDA_REDIS_HOST", raising=False)
+        monkeypatch.delenv("GARUDA_CANONICAL_REDIS_HOST", raising=False)
+
+        with patch.object(base_worker.subprocess, "run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="PONG", stderr="")
+            base_worker.redis_cmd("PING")
+
+        # no password set → no REDISCLI_AUTH injected (env stays None or lacks the key)
+        passed_env = mock_run.call_args.kwargs.get("env")
+        if passed_env is not None:
+            assert "REDISCLI_AUTH" not in passed_env

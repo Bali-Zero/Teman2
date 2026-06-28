@@ -85,12 +85,29 @@ def _redis_host_args() -> list[str]:
     return args
 
 
+def _redis_env() -> dict[str, str] | None:
+    """Return a subprocess env carrying REDISCLI_AUTH when a password is set.
+
+    Stage 1 cutover (2026-06-29): the canonical Pro Redis is exposed on the
+    Tailscale interface and requires a password. We pass it via REDISCLI_AUTH
+    (redis-cli reads it natively) rather than `-a <pw>` on argv, which would
+    leak the secret into `ps`/argv (cicatrix #4: secret in the clear).
+    Returns None when no password is set, so the default env is used.
+    """
+    pw = (os.environ.get("GARUDA_REDIS_PASSWORD") or "").strip()
+    if not pw:
+        return None
+    env = dict(os.environ)
+    env["REDISCLI_AUTH"] = pw
+    return env
+
+
 def redis_cmd(*args: str, timeout: int = 10) -> str:
     """Execute a redis-cli command and return output."""
     cmd = [REDIS_CLI] + _redis_host_args() + list(args)
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout
+            cmd, capture_output=True, text=True, timeout=timeout, env=_redis_env()
         )
         if result.returncode != 0:
             return f"[ERROR] redis-cli: {result.stderr.strip()}"
