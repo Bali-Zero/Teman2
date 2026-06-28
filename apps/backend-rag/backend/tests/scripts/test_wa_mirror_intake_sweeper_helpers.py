@@ -119,7 +119,66 @@ def test_direct_chat_keeps_phone_identity_for_crm_and_routing() -> None:
         "crm_identity_policy": "phone_keyed_direct_chat",
         "routing_identity_policy": "sender_phone_enabled",
         "sender_phone_forwarded": True,
+        "internal_sender": False,
     }
+
+
+def test_internal_operator_sender_in_direct_chat_suppresses_identity() -> None:
+    """GUILT: an operator (Ari business line) forwarding a client doc from a 1:1
+    chat must NOT key CRM identity on the operator phone — same protection groups
+    get. The lived incident: a Spanish client's birth cert attached to 'Ari'."""
+    sweeper = _load_sweeper()
+    row = {
+        "chat_type": "direct",
+        "group_jid": None,
+        "sender_phone": "+62 821-3454-721",  # Ari - Bali Zero business line
+        "counterpart_phone": None,
+        "phone_number": None,
+    }
+
+    assert sweeper._is_direct_chat(row) is True  # still a 1:1 chat
+    assert sweeper._is_internal_phone("+62 821-3454-721") is True
+    # but identity + routing phone are suppressed because sender is internal
+    assert sweeper._client_identity_phone(row) is None
+    assert sweeper._queue_sender_phone(row) is None
+    ctx = sweeper._source_context(row)
+    assert ctx["chat_type"] == "direct"
+    assert ctx["internal_sender"] is True
+    assert ctx["crm_identity_policy"] == "disabled_internal_sender"
+    assert ctx["routing_identity_policy"] == "internal_sender_suppressed"
+    assert ctx["sender_phone_forwarded"] is False
+
+
+def test_internal_personal_line_also_suppressed() -> None:
+    """GUILT: Ari's PERSONAL line (the one that caused the incident) is internal too."""
+    sweeper = _load_sweeper()
+    row = {"chat_type": "direct", "group_jid": None, "sender_phone": "+62 812-9996-7842"}
+    assert sweeper._is_internal_phone("+62 812-9996-7842") is True
+    assert sweeper._client_identity_phone(row) is None
+    assert sweeper._queue_sender_phone(row) is None
+
+
+def test_real_client_in_direct_chat_keeps_identity() -> None:
+    """INNOCENCE: a genuine client phone (not in the internal catalog) is NOT
+    suppressed — the normal 'client sends their own document' path is unchanged."""
+    sweeper = _load_sweeper()
+    row = {"chat_type": "direct", "group_jid": None, "sender_phone": "+62 896-5073-3020"}
+    assert sweeper._is_internal_phone("+62 896-5073-3020") is False
+    assert sweeper._client_identity_phone(row) == "+62 896-5073-3020"
+    assert sweeper._queue_sender_phone(row) == "+62 896-5073-3020"
+    ctx = sweeper._source_context(row)
+    assert ctx["internal_sender"] is False
+    assert ctx["routing_identity_policy"] == "sender_phone_enabled"
+
+
+def test_internal_phones_env_extends_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An extra internal number via WA_MIRROR_INTERNAL_PHONES is honored (HR can
+    extend the catalog without a code change)."""
+    sweeper = _load_sweeper()
+    assert sweeper._is_internal_phone("+62 811-1111-1111") is False
+    monkeypatch.setenv("WA_MIRROR_INTERNAL_PHONES", "+62 811-1111-1111, 628222222222")
+    assert sweeper._is_internal_phone("+62 811-1111-1111") is True
+    assert sweeper._is_internal_phone("628222222222") is True
 
 
 def test_group_chat_suppresses_participant_phone_identity() -> None:
