@@ -1,0 +1,67 @@
+warning: Skill descriptions were shortened to fit the 2% skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+context compacted
+hook: PostCompact
+hook: PostCompact Completed
+codex
+[Air-M5] Repo-only review. `ssh pro` was unreachable from this sandbox, so I verified code and repo artifacts only, not live Pro launchd/Redis state.
+
+**Per-Claim**
+
+| Claim | Result | Evidence |
+|---|---:|---|
+| (a) `base_worker.py` uses `redis-cli` subprocess and `GARUDA_REDIS_HOST` falls back to localhost | TRUE | `REDIS_CLI = "redis-cli"` at [base_worker.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/mata_garuda/workers/base_worker.py:21); env parsing at [base_worker.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/mata_garuda/workers/base_worker.py:24); subprocess call at [base_worker.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/mata_garuda/workers/base_worker.py:40). Nuance: it does not explicitly set `127.0.0.1`; it omits `-h`, relying on `redis-cli` default localhost. Tests assert this at [test_redis_host_override.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/tests/test_redis_host_override.py:14). |
+| `GARUDA_REDIS_HOST` is unset in current Mata Garuda plists | TRUE in repo | I found 13 `infra/launchagents/com.matagaruda*.plist` plus 1 docs plist; `rg GARUDA_REDIS_HOST` returned no plist hits. |
+| (b) “Mata Garuda has zero Postgres access today” | FALSE as written | Mata Garuda has a Pro-only Postgres invalidation sweeper: `pg_notify`/Postgres role in [cell.yaml](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/cell.yaml:40); asyncpg connection in [mata_garuda_invalidation_sweep.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/mata_garuda_invalidation_sweep.py:55); `DATABASE_URL` CLI/env default at [mata_garuda_invalidation_sweep.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/mata_garuda_invalidation_sweep.py:182); wrapper requires `DATABASE_URL` at [mata_garuda_invalidation_sweep_wrapper.sh](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/mata_garuda_invalidation_sweep_wrapper.sh:36); plist documents Pro-local PostgreSQL at [com.matagaruda.invalidation-sweep.plist](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/infra/launchagents/com.matagaruda.invalidation-sweep.plist:13). More precise claim would be: the stream workers such as `gap_consumer`/`nlm_feeder` do not currently have PG locking access. |
+| (c) `migration_manager.py` advisory-lock pattern exists as cited | TRUE | Session-scoped advisory lock notes at [migration_manager.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/backend-rag/backend/db/migration_manager.py:328); dedicated connection and `pg_try_advisory_lock` at [migration_manager.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/backend-rag/backend/db/migration_manager.py:364); unlock on same session at [migration_manager.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/backend-rag/backend/db/migration_manager.py:381). |
+| (d) `~/.organism/last_seen` sidecar writer is reusable | TRUE, with schema caveat | Receptor default dir at [organism_stale_detector.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/organism_stale_detector.py:46); reusable Python writer at [heartbeat.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/lib/heartbeat.py:26); shell writer at [heartbeat.sh](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/lib/heartbeat.sh:20); richer Cell emitter with metadata at [organ_emitter.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/cell/cell/utils/organ_emitter.py:40). Caveat: `scripts/lib/heartbeat.py` only writes `ts/status/note`; for `{rows_processed, run_id}`, use the metadata-capable emitter or extend the helper. |
+
+**Spec Mismatches**
+
+`check_redis_split_brain.py` really does use bare `redis-cli` and fails in a non-login PATH: [check_redis_split_brain.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/scripts/check_redis_split_brain.py:36). A clean env smoke reproduced `FileNotFoundError: redis-cli`.
+
+The claim “wired to no cron” is too absolute. Current source has stale/secondary references to `com.matagaruda.redis-split-brain.check` in [launchagent-state-bridge.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/launchagent-state-bridge.py:152), [01-inventory.md](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/agent-library/01-inventory.md:513), and an old audit snapshot. But I found no current plist/wrapper file in the worktree, so the deployable cron wiring appears absent.
+
+“Files touched: `check_redis_split_brain.py` (cron wiring)” is inaccurate. Cron wiring likely requires adding/restoring an `infra/launchagents` plist and wrapper, not only editing the detector script.
+
+**Implementation Risks**
+
+Canonical Redis is implementable, but `GARUDA_CANONICAL_REDIS` needs a precise format and parser. Existing code uses separate `GARUDA_REDIS_HOST`/`GARUDA_REDIS_PORT`, and tests currently assert the no-host localhost behavior.
+
+The advisory lock is implementable, but it does not cure split-brain by itself. For `gap_consumer`/`nlm_feeder`, PG would still be a new dependency even though Mata Garuda has another PG-using sweeper today. `flock` remains lower blast radius for one-shot overlap protection.
+
+Pointing both hosts to one Redis creates a canonical Redis/Tailscale SPOF. Add loud preflight failures for consumers, not just `nlm_feeder`, or Redis outages may still look like empty queues.
+
+VERDICT: GO-WITH-FIXES
+
+
+tokens used
+265.109
+[Air-M5] Repo-only review. `ssh pro` was unreachable from this sandbox, so I verified code and repo artifacts only, not live Pro launchd/Redis state.
+
+**Per-Claim**
+
+| Claim | Result | Evidence |
+|---|---:|---|
+| (a) `base_worker.py` uses `redis-cli` subprocess and `GARUDA_REDIS_HOST` falls back to localhost | TRUE | `REDIS_CLI = "redis-cli"` at [base_worker.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/mata_garuda/workers/base_worker.py:21); env parsing at [base_worker.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/mata_garuda/workers/base_worker.py:24); subprocess call at [base_worker.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/mata_garuda/workers/base_worker.py:40). Nuance: it does not explicitly set `127.0.0.1`; it omits `-h`, relying on `redis-cli` default localhost. Tests assert this at [test_redis_host_override.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/tests/test_redis_host_override.py:14). |
+| `GARUDA_REDIS_HOST` is unset in current Mata Garuda plists | TRUE in repo | I found 13 `infra/launchagents/com.matagaruda*.plist` plus 1 docs plist; `rg GARUDA_REDIS_HOST` returned no plist hits. |
+| (b) “Mata Garuda has zero Postgres access today” | FALSE as written | Mata Garuda has a Pro-only Postgres invalidation sweeper: `pg_notify`/Postgres role in [cell.yaml](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/cell.yaml:40); asyncpg connection in [mata_garuda_invalidation_sweep.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/mata_garuda_invalidation_sweep.py:55); `DATABASE_URL` CLI/env default at [mata_garuda_invalidation_sweep.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/mata_garuda_invalidation_sweep.py:182); wrapper requires `DATABASE_URL` at [mata_garuda_invalidation_sweep_wrapper.sh](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/mata_garuda_invalidation_sweep_wrapper.sh:36); plist documents Pro-local PostgreSQL at [com.matagaruda.invalidation-sweep.plist](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/infra/launchagents/com.matagaruda.invalidation-sweep.plist:13). More precise claim would be: the stream workers such as `gap_consumer`/`nlm_feeder` do not currently have PG locking access. |
+| (c) `migration_manager.py` advisory-lock pattern exists as cited | TRUE | Session-scoped advisory lock notes at [migration_manager.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/backend-rag/backend/db/migration_manager.py:328); dedicated connection and `pg_try_advisory_lock` at [migration_manager.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/backend-rag/backend/db/migration_manager.py:364); unlock on same session at [migration_manager.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/backend-rag/backend/db/migration_manager.py:381). |
+| (d) `~/.organism/last_seen` sidecar writer is reusable | TRUE, with schema caveat | Receptor default dir at [organism_stale_detector.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/organism_stale_detector.py:46); reusable Python writer at [heartbeat.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/lib/heartbeat.py:26); shell writer at [heartbeat.sh](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/lib/heartbeat.sh:20); richer Cell emitter with metadata at [organ_emitter.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/cell/cell/utils/organ_emitter.py:40). Caveat: `scripts/lib/heartbeat.py` only writes `ts/status/note`; for `{rows_processed, run_id}`, use the metadata-capable emitter or extend the helper. |
+
+**Spec Mismatches**
+
+`check_redis_split_brain.py` really does use bare `redis-cli` and fails in a non-login PATH: [check_redis_split_brain.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/apps/mata-garuda/scripts/check_redis_split_brain.py:36). A clean env smoke reproduced `FileNotFoundError: redis-cli`.
+
+The claim “wired to no cron” is too absolute. Current source has stale/secondary references to `com.matagaruda.redis-split-brain.check` in [launchagent-state-bridge.py](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/scripts/launchagent-state-bridge.py:152), [01-inventory.md](/Users/balizero/Desktop/nuzantara/.worktrees/ops-organism-status-detector/agent-library/01-inventory.md:513), and an old audit snapshot. But I found no current plist/wrapper file in the worktree, so the deployable cron wiring appears absent.
+
+“Files touched: `check_redis_split_brain.py` (cron wiring)” is inaccurate. Cron wiring likely requires adding/restoring an `infra/launchagents` plist and wrapper, not only editing the detector script.
+
+**Implementation Risks**
+
+Canonical Redis is implementable, but `GARUDA_CANONICAL_REDIS` needs a precise format and parser. Existing code uses separate `GARUDA_REDIS_HOST`/`GARUDA_REDIS_PORT`, and tests currently assert the no-host localhost behavior.
+
+The advisory lock is implementable, but it does not cure split-brain by itself. For `gap_consumer`/`nlm_feeder`, PG would still be a new dependency even though Mata Garuda has another PG-using sweeper today. `flock` remains lower blast radius for one-shot overlap protection.
+
+Pointing both hosts to one Redis creates a canonical Redis/Tailscale SPOF. Add loud preflight failures for consumers, not just `nlm_feeder`, or Redis outages may still look like empty queues.
+
+VERDICT: GO-WITH-FIXES
