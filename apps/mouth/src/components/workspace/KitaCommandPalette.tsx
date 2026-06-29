@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CommandPalette, type CommandAction } from "@balizero/core";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { isCRMAdmin } from "@/lib/crm/admin";
 
 // /inbox is owner-only (Zero) — keep its palette shortcut off everyone else.
 const INBOX_OWNER_EMAIL = "zero@balizero.com";
@@ -31,8 +32,10 @@ export function KitaCommandPalette() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const profile = api.getUserProfile();
   const isInboxOwner =
-    (api.getUserProfile()?.email || "").toLowerCase() === INBOX_OWNER_EMAIL;
+    (profile?.email || "").toLowerCase() === INBOX_OWNER_EMAIL;
+  const isAccountingAdmin = isCRMAdmin(profile);
 
   const actions: CommandAction[] = useMemo(
     () => [
@@ -43,6 +46,16 @@ export function KitaCommandPalette() {
               label: t("commandPalette.actions.goInbox"),
               group: t("commandPalette.groups.navigation"),
               run: () => router.push("/inbox"),
+            },
+          ]
+        : []),
+      ...(isAccountingAdmin
+        ? [
+            {
+              id: "go-accounting",
+              label: "Accounting · Weekly Cashout",
+              group: t("commandPalette.groups.navigation"),
+              run: () => router.push("/accounting"),
             },
           ]
         : []),
@@ -90,7 +103,7 @@ export function KitaCommandPalette() {
         run: () => router.push("/analytics/funnel"),
       },
     ],
-    [router, t, isInboxOwner],
+    [router, t, isInboxOwner, isAccountingAdmin],
   );
 
   return (

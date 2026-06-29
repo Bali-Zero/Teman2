@@ -3,7 +3,7 @@
 import { RefObject, useRef, useCallback, useEffect, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./MessageBubble";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -265,16 +265,18 @@ export function ChatMessageListVirtualized({
           </div>
 
           {/* Thinking Indicator */}
-          {isLoading && (
-            <div className="max-w-3xl mx-auto px-4 pb-6">
-              <ThinkingIndicator
-                isVisible={isLoading}
-                currentStatus={messages[messages.length - 1]?.currentStatus}
-                steps={messages[messages.length - 1]?.steps}
-                elapsedTime={thinkingElapsedTime}
-              />
-            </div>
-          )}
+          <AnimatePresence>
+            {isLoading && (
+              <div className="max-w-3xl mx-auto px-4 pb-6">
+                <ThinkingIndicator
+                  isVisible={isLoading}
+                  currentStatus={messages[messages.length - 1]?.currentStatus}
+                  steps={messages[messages.length - 1]?.steps}
+                  elapsedTime={thinkingElapsedTime}
+                />
+              </div>
+            )}
+          </AnimatePresence>
 
           <div ref={messagesEndRef} />
         </div>
@@ -314,14 +316,16 @@ export function ChatMessageListVirtualized({
           })}
 
           {/* Thinking Indicator */}
-          {isLoading && (
-            <ThinkingIndicator
-              isVisible={isLoading}
-              currentStatus={messages[messages.length - 1]?.currentStatus}
-              steps={messages[messages.length - 1]?.steps}
-              elapsedTime={thinkingElapsedTime}
-            />
-          )}
+          <AnimatePresence>
+            {isLoading && (
+              <ThinkingIndicator
+                isVisible={isLoading}
+                currentStatus={messages[messages.length - 1]?.currentStatus}
+                steps={messages[messages.length - 1]?.steps}
+                elapsedTime={thinkingElapsedTime}
+              />
+            )}
+          </AnimatePresence>
 
           <div ref={messagesEndRef} />
         </div>

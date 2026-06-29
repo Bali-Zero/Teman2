@@ -52,6 +52,7 @@ Pillow>=11.0.0  # Updated 2026-03-24: CVE fixes for image parsers (was 10.0.0)
 EbookLib>=0.20
 beautifulsoup4>=4.14.3  # Security and stability updates
 reportlab>=4.2.0  # PDF generation (LKPM ready-pack, invoices); also in -prod.txt
+rapidfuzz>=3.14.0  # Fuzzy name matching for accounting bank-statement reconciliation (P1)
 
 # OCR and Advanced Document Processing (Gemini Vision based)
 # Uses PDFVisionService with Gemini-2.0-flash for OCR (same as passport box)
@@ -83,6 +84,7 @@ webdriver-manager>=4.0.0
 # Authentication
 PyJWT>=2.12.0  # Security fix: CVE-2026-32597 crit header validation
 python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
+cryptography>=48.0.1  # GHSA-537c-gmf6-5ccf fix (vulnerable static OpenSSL in wheels) — pins transitive python-jose dep above the advisory
 bcrypt>=5.0.0  # Security and performance improvements
 passlib[bcrypt]>=1.7.4
 

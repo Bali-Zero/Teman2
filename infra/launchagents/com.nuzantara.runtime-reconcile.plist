@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.runtime-reconcile — anti-W81 runtime-root watchdog (P1, 2026-06-27).
+  Asserts ~/Desktop/nuzantara-deploy exists + is pulled-recently + on the right branch, and
+  PAGES Telegram on breach (STRICT=1). Runs the wrapper from ~/scripts/ (OUTSIDE both checkouts)
+  by intent: a vanished main must not take its own watchdog down (superscar #1 HOME-fork + the
+  exact W81 it guards). The ~/scripts copy is cmp-checked against the repo source of truth
+  (scripts/runtime-reconcile.sh) at install time. StartInterval 1800s = checks well inside the
+  2h pull-staleness window. Kill: NUZ_RUNTIME_RECONCILE_DISABLED=1 (env) or unload this plist.
+-->
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>RUNTIME_RECONCILE_STRICT</key>
+		<string>1</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.nuzantara.runtime-reconcile</string>
+	<key>Program</key>
+	<string>/bin/bash</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/nuzantara/scripts/runtime-reconcile.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/runtime-reconcile.err</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/runtime-reconcile.out</string>
+	<key>StartInterval</key>
+	<integer>1800</integer>
+</dict>
+</plist>

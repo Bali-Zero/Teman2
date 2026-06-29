@@ -48,6 +48,14 @@ DEFAULT_GAP_AGENT_MODEL = os.environ.get(
     "MATA_GARUDA_GAP_AGENT_MODEL",
     "ollama:qwen3.5:9b",
 )
+DEFAULT_REGULATION_AGENT_MODEL = os.environ.get(
+    "MATA_GARUDA_REGULATION_AGENT_MODEL",
+    "agy:gemini-3.5-flash",
+)
+
+PUBLIC_RESEARCH_AGENT_MODELS: dict[str, str] = {
+    "Regulation Watcher": DEFAULT_REGULATION_AGENT_MODEL,
+}
 
 # Gap type → agent name (None = Phase 2, skipped with ack)
 #
@@ -155,7 +163,8 @@ def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[st
     agent = get_agent(agent_name)
     if agent is None:
         return {"case_resolved": False, "reason": f"agent {agent_name!r} not registered"}
-    agent = agent.model_copy(update={"model": DEFAULT_GAP_AGENT_MODEL})
+    agent_model = PUBLIC_RESEARCH_AGENT_MODELS.get(agent_name, DEFAULT_GAP_AGENT_MODEL)
+    agent = agent.model_copy(update={"model": agent_model})
 
     # Format payload as a query string the agent can understand
     query = json.dumps(payload, ensure_ascii=False)
@@ -423,7 +432,18 @@ def main() -> None:
     # the import chain) so the split routing is the only behaviour.
     root.handlers = [stdout_h, stderr_h]
 
-    run_gap_consumer()
+    stats = run_gap_consumer()
+
+    # Stage 1 heartbeat (2026-06-29): write the organism sidecar at END of real
+    # work so the receptor surfaces the green-but-dead case (read a backlog,
+    # ack'd ~none) as `unhealthy` instead of it being invisible. Best-effort.
+    from mata_garuda.workers.heartbeat import emit_heartbeat, status_from_stats
+
+    emit_heartbeat(
+        "mata_garuda.gap_consumer",
+        status_from_stats(stats or {}),
+        metadata=dict(stats or {}),
+    )
 
 
 if __name__ == "__main__":

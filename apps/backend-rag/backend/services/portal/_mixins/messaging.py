@@ -115,7 +115,7 @@ class PortalMessagingMixin:
                     client_id, practice_id, subject, direction, content, sent_by
                 )
                 VALUES ($1, $2, $3, 'client_to_team', $4, $5)
-                RETURNING id, created_at
+                RETURNING id, subject, content, direction, sent_by, read_at, created_at, practice_id
                 """,
                 client_id,
                 practice_id,
@@ -126,6 +126,13 @@ class PortalMessagingMixin:
 
             return {
                 "id": message["id"],
+                "subject": message["subject"],
+                "content": message["content"],
+                "from_team": message["direction"] == "team_to_client",
+                "sent_by": message["sent_by"],
+                "is_read": message["read_at"] is not None,
+                "practice_id": message["practice_id"],
+                "practice_name": None,
                 "created_at": message["created_at"].isoformat(),
             }
 

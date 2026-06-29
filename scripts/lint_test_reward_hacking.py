@@ -161,6 +161,36 @@ def lint_source(path: Path, source: str) -> list[Finding]:
     return findings
 
 
+def _git_blob(ref: str, path: str) -> str | None:
+    """sha of <path> at <ref>, or None if absent. Used to decide whether a
+    staged file is genuinely changed by THIS commit vs inherited from a parent."""
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", f"{ref}:{path}"],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def _merge_parents() -> list[str]:
+    """Return the parent refs of an in-progress merge (HEAD + MERGE_HEAD entries),
+    or [] when this is an ordinary (non-merge) commit."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--quiet", "--verify", "MERGE_HEAD"],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return []
+    if out.returncode != 0 or not out.stdout.strip():
+        return []
+    # MERGE_HEAD can hold multiple parents (octopus merge), one sha per line.
+    parents = ["HEAD"] + [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+    return parents
+
+
 def _staged_test_files() -> list[Path]:
     try:
         out = subprocess.run(
@@ -169,7 +199,24 @@ def _staged_test_files() -> list[Path]:
         ).stdout
     except (subprocess.SubprocessError, OSError):
         return []
-    return [Path(p) for p in out.splitlines() if p.endswith(".py") and _is_test_file(Path(p))]
+    staged = [p for p in out.splitlines() if p.endswith(".py") and _is_test_file(Path(p))]
+
+    # MERGE-COMMIT GUARD (scar #3 over-match, W88-adjacent): on a merge commit, git
+    # stages EVERY file of the incoming side, so a test that is byte-identical to one
+    # of the merge parents — never touched by this branch — gets falsely flagged.
+    # Lint ONLY the tests this commit genuinely introduces: drop any staged file whose
+    # blob equals a parent's blob (i.e. inherited unchanged from HEAD or MERGE_HEAD).
+    parents = _merge_parents()
+    if parents:
+        kept = []
+        for p in staged:
+            staged_sha = _git_blob(":0", p)  # index (what will be committed)
+            if staged_sha is not None and any(_git_blob(par, p) == staged_sha for par in parents):
+                continue  # identical to a parent → inherited, not introduced here
+            kept.append(p)
+        staged = kept
+
+    return [Path(p) for p in staged]
 
 
 def main(argv: list[str]) -> int:

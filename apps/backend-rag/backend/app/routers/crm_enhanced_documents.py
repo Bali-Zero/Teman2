@@ -15,6 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Qu
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.deps.crm_service_write import verify_crm_write_key
 from backend.app.routers.crm_enhanced import (
     DocumentCreate,
     DocumentUpdate,
@@ -29,6 +30,10 @@ from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_c
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = get_logger(__name__)
+
+
+def _access_not_preverified() -> bool:
+    return False
 
 
 def _parse_date_or_none(date_str: str | None) -> date | None:
@@ -551,14 +556,18 @@ async def upload_document_base64(
     pool: Any = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    access_already_verified: bool = Depends(_access_not_preverified),
 ) -> dict[str, Any]:
     """
     Upload a document via Base64 (for frontend integration).
     Handles Google Drive upload and document creation.
     """
     # RBAC check before processing upload
-    async with pool.acquire() as _conn:
-        await verify_client_access(client_id, current_user, _conn, allow_assigned=True, write=True)
+    if access_already_verified is not True:
+        async with pool.acquire() as _conn:
+            await verify_client_access(
+                client_id, current_user, _conn, allow_assigned=True, write=True
+            )
 
     try:
         # Decode Base64
@@ -850,6 +859,36 @@ async def upload_document_base64(
     except Exception as e:
         logger.error("Upload failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/internal/clients/{client_id}/documents/upload")
+async def upload_document_base64_internal(
+    client_id: int,
+    data: DocumentUploadBase64 = Body(...),
+    pool: Any = Depends(get_database_pool),
+    actor: str = Depends(verify_crm_write_key),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+) -> dict[str, Any]:
+    """Service-to-service intake upload path.
+
+    Authenticated by ``X-CRM-Write-Key`` and hard-gated by
+    ``WA_MIRROR_CRM_WRITE_ENABLED``. The actual upload implementation is the same
+    path used by the frontend/manual reviewer; only the RBAC pre-check is skipped
+    because Pro-side intake already resolved and gate-checked the target client.
+    """
+    return await upload_document_base64(
+        client_id=client_id,
+        data=data,
+        pool=pool,
+        current_user={
+            "email": actor,
+            "user_id": actor,
+            "role": "service",
+            "permissions": ["crm:write"],
+        },
+        background_tasks=background_tasks,
+        access_already_verified=True,
+    )
 
 
 @router.delete("/documents/{doc_id}")

@@ -478,6 +478,48 @@ describe("PortalApi", () => {
         },
       );
     });
+
+    it("should normalize snake_case messages from the production portal API", async () => {
+      mockRequest.mockResolvedValue({
+        data: {
+          messages: [
+            {
+              id: 1659,
+              content: "Kaiser Test portal QA",
+              from_team: false,
+              sent_by: "kaiser198719871987@gmail.com",
+              subject: null,
+              practice_id: 603,
+              practice_name: "Kaiser Test - B1 VOA",
+              created_at: "2026-06-25T10:37:28.266006+00:00",
+              is_read: false,
+            },
+          ],
+          total: 1,
+          unread_count: 0,
+        },
+      });
+
+      const result = await portalApi.getMessages();
+
+      expect(result).toEqual({
+        messages: [
+          {
+            id: "1659",
+            content: "Kaiser Test portal QA",
+            direction: "client_to_team",
+            sentBy: "kaiser198719871987@gmail.com",
+            subject: undefined,
+            practiceId: 603,
+            practiceName: "Kaiser Test - B1 VOA",
+            createdAt: "2026-06-25T10:37:28.266006+00:00",
+            readAt: undefined,
+          },
+        ],
+        total: 1,
+        unreadCount: 0,
+      });
+    });
   });
 
   describe("sendMessage", () => {
@@ -498,6 +540,37 @@ describe("PortalApi", () => {
         body: JSON.stringify(request),
       });
       expect(result).toEqual(mockMessage);
+    });
+
+    it("should normalize a snake_case sent message response", async () => {
+      const request: SendMessageRequest = {
+        content: "Test message",
+      };
+
+      mockRequest.mockResolvedValue({
+        data: {
+          id: 1660,
+          content: "Test message",
+          from_team: true,
+          sent_by: "zero@balizero.com",
+          created_at: "2026-06-25T10:40:00.000000+00:00",
+          read_at: null,
+        },
+      });
+
+      const result = await portalApi.sendMessage(request);
+
+      expect(result).toEqual({
+        id: "1660",
+        content: "Test message",
+        direction: "team_to_client",
+        sentBy: "zero@balizero.com",
+        subject: undefined,
+        practiceId: undefined,
+        practiceName: undefined,
+        createdAt: "2026-06-25T10:40:00.000000+00:00",
+        readAt: undefined,
+      });
     });
   });
 

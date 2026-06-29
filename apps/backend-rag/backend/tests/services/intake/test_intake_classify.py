@@ -97,6 +97,89 @@ async def test_sk_kemenkumham_classified():
 
 
 @pytest.mark.asyncio
+async def test_evisa_classified():
+    r = await cls.classify_document(
+        "REPUBLIC OF INDONESIA E-VISA VISA INDEX B211A "
+        "DIRECTORATE GENERAL OF IMMIGRATION"
+    )
+    assert r["type"] == "visa"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_generic_visa_word_alone_stays_unknown():
+    r = await cls.classify_document("visa consultation payment note")
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_family_card_classified():
+    r = await cls.classify_document(
+        "KARTU KELUARGA Nomor Kartu Keluarga No. KK Kepala Keluarga"
+    )
+    assert r["type"] == "family_card"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_birth_certificate_classified():
+    r = await cls.classify_document(
+        "KUTIPAN AKTA KELAHIRAN Dinas Kependudukan dan Pencatatan Sipil"
+    )
+    assert r["type"] == "birth_certificate"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_marriage_certificate_classified():
+    r = await cls.classify_document(
+        "BUKU NIKAH AKTA NIKAH Kantor Urusan Agama tanggal pernikahan"
+    )
+    assert r["type"] == "marriage_certificate"
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+async def test_generic_family_word_alone_stays_unknown():
+    r = await cls.classify_document("family whatsapp note")
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text, expected_type",
+    [
+        ("BUKTI PEMBAYARAN transfer berhasil Transaction ID 123", "payment_receipt"),
+        ("BOARDING PASS Passenger Departure Arrival Seat 12A", "travel_ticket"),
+        ("BANK STATEMENT Statement of Account saldo awal saldo akhir", "bank_statement"),
+        ("TRAVEL INSURANCE policy number sum insured", "medical_insurance"),
+    ],
+)
+async def test_support_documents_classified(text, expected_type):
+    r = await cls.classify_document(text)
+    assert r["type"] == expected_type
+    assert r["confidence"] >= 0.30
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "bank meeting note",
+        "ticket discussion in whatsapp",
+        "insurance question from client",
+        "payment note without proof",
+    ],
+)
+async def test_generic_support_words_stay_unknown(text):
+    r = await cls.classify_document(text)
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
 async def test_source_page_attribution():
     # Evidence lives on page 1 (index 1), not page 0.
     pages = [

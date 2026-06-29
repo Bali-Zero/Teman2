@@ -51,6 +51,7 @@ pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 reportlab>=4.2.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
 beautifulsoup4>=4.14.3  # Security and stability updates
 python-magic>=0.4.27  # MIME type detection from file content
+rapidfuzz>=3.14.0  # Fuzzy name matching for accounting bank-statement reconciliation (P1)
 
 # OCR (Gemini Vision based - same as passport box)
 # Uses google-genai already included above
@@ -68,6 +69,7 @@ urllib3>=2.0.0
 # Authentication
 PyJWT>=2.12.0  # Security fix: CVE-2026-32597 crit header validation
 python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
+cryptography>=48.0.1  # GHSA-537c-gmf6-5ccf fix (vulnerable static OpenSSL in wheels) — pins transitive python-jose dep above the advisory
 bcrypt>=5.0.0  # Security and performance improvements
 passlib[bcrypt]>=1.7.4
 
@@ -125,6 +127,12 @@ langfuse>=2.60.0,<4.0.0  # LLM observability, OTEL-based v2+
 openinference-instrumentation-anthropic>=0.1.14  # Anthropic SDK auto-trace
 openinference-instrumentation-google-genai>=0.1.16  # Auto-trace Gemini SDK
 openinference-instrumentation-openai>=0.1.45  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
+
+# Fuzzy name matching for accounting bank-statement reconciliation (P1).
+# MUST stay in sync with requirements.txt — the prod Docker image installs from
+# requirements-prod.lock.txt, NOT requirements.txt, so a dep added only there
+# crashes the app at boot (matcher.py: from rapidfuzz import fuzz).
+rapidfuzz>=3.14.0
 
 # Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
 # Skill, Metabolic, HGT). Editable install; path is resolved relative to the

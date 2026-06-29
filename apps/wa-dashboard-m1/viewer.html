@@ -372,7 +372,7 @@
   }
 
   /* View toggle (Conversazioni / Qualità Team) */
-  .view-tabs { display: flex; gap: 4px; }
+  .view-tabs { display: flex; gap: 4px; min-width: 0; }
   .view-tab {
     background: transparent; border: 1px solid var(--wa-border);
     color: var(--wa-text-2); padding: 6px 14px; border-radius: 8px;
@@ -410,6 +410,48 @@
   .m-delta.down { color: #08820a; }
   .metrics-legend { margin-top: 14px; font-size: 12px; color: var(--wa-text-3); line-height: 1.7; }
   .metrics-legend b { color: var(--wa-text-2); font-weight: 600; }
+
+  /* Intake view (WA Mirror → intake queue) */
+  .intake-view {
+    height: calc(100vh - 60px); overflow-y: auto;
+    background: var(--wa-bg); padding: 24px 32px;
+  }
+  .intake-header h2 { font-size: 18px; font-weight: 600; color: var(--wa-text); margin: 0 0 4px; }
+  .intake-sub { font-size: 13px; color: var(--wa-text-2); margin-bottom: 18px; }
+  .intake-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .intake-card {
+    background: var(--wa-panel); border: 1px solid var(--wa-divider);
+    border-radius: 8px; padding: 12px;
+  }
+  .intake-card .label { color: var(--wa-text-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .intake-card .value { color: var(--wa-text); font-size: 24px; line-height: 1.2; font-weight: 700; margin-top: 4px; }
+  .intake-card .hint { color: var(--wa-text-2); font-size: 12px; margin-top: 4px; }
+  .intake-section { margin-top: 18px; }
+  .intake-section h3 { color: var(--wa-text); font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+  .intake-table-wrap {
+    background: var(--wa-panel); border-radius: 8px; overflow-x: auto; overflow-y: hidden;
+    border: 1px solid var(--wa-divider); max-width: 100%;
+  }
+  .intake-table { border-collapse: collapse; width: 100%; min-width: 560px; }
+  .intake-table th, .intake-table td {
+    padding: 9px 11px; text-align: right; font-size: 13px;
+    border-bottom: 1px solid var(--wa-divider); white-space: nowrap;
+  }
+  .intake-table th {
+    background: var(--wa-header-bg); color: var(--wa-text-2); font-weight: 600;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .intake-table th:first-child, .intake-table td:first-child { text-align: left; }
+  .intake-table tbody tr:last-child td { border-bottom: none; }
+  .intake-pill {
+    display: inline-flex; align-items: center; min-height: 20px;
+    border-radius: 999px; padding: 2px 7px; font-size: 11px; font-weight: 600;
+    background: var(--wa-panel-2); color: var(--wa-text-2);
+  }
+  .intake-pill.ok { background: rgba(90,212,138,0.16); color: var(--bz-success); }
+  .intake-pill.warn { background: rgba(241,184,92,0.18); color: var(--wa-warning); }
+  .intake-pill.bad { background: rgba(241,92,109,0.16); color: var(--wa-error); }
+  .intake-note { margin-top: 12px; font-size: 12px; color: var(--wa-text-3); line-height: 1.6; }
   .status-banner {
     background: #fff7d6; border: 1px solid #f4d47b; color: #6f5200;
     padding: 10px 12px; border-radius: 8px; margin-bottom: 14px;
@@ -653,8 +695,14 @@
   }
   @media (max-width: 860px) {
     header { gap: 10px; padding: 10px 12px; height: auto; flex-wrap: wrap; }
-    .view-tabs { order: 3; width: 100%; justify-content: flex-start; }
-    .metrics-view, .captain-view { padding: 18px 14px; }
+    .view-tabs { order: 3; width: 100%; justify-content: flex-start; overflow-x: auto; }
+    .view-tab { flex: 0 0 auto; }
+    .metrics-view, .captain-view, .intake-view { padding: 18px 14px; }
+    .intake-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .intake-card { min-width: 0; }
+    .intake-card .value { font-size: 20px; }
+    .intake-card .hint { overflow-wrap: anywhere; }
+    .intake-table { min-width: 640px; }
     .captain-hero { grid-template-columns: 1fr; }
     .captain-flow { grid-template-columns: 1fr; }
     .case-captain-card { margin: 10px 12px 0; }
@@ -693,6 +741,8 @@
     <button class="view-tab" data-view="captain">Zantara risolve</button>
     <button class="view-tab" data-view="training">Training academy</button>
     <button class="view-tab" data-view="metrics">Team</button>
+    <button class="view-tab" data-view="intake">Intake</button>
+
   </div>
   <div class="meta">
     <span id="health-pill" class="badge">read-only</span>
@@ -736,6 +786,52 @@
   </div>
   <div class="metrics-legend" id="m-legend"></div>
 </section>
+<section id="view-intake" class="intake-view" style="display:none">
+  <div class="intake-header">
+    <h2>WA Mirror → intake</h2>
+    <div class="intake-sub" id="i-sub">Caricamento…</div>
+  </div>
+  <div class="intake-grid" id="i-cards"></div>
+  <div class="intake-section">
+    <h3>Parser direct docs</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-parser"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Catalog readiness direct</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-catalog"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Auto-catalog plan</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-autocatalog"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Gate Qwen batch</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-gate"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Benchmark Qwen known docs</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-known"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Qwen proposed destinations</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-qwen-placement"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Destinazione workspace prevista</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-workspace"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Tipi documento direct</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-doc-types"></table></div>
+  </div>
+  <div class="intake-section">
+    <h3>Genere gruppi</h3>
+    <div class="intake-table-wrap"><table class="intake-table" id="i-groups"></table></div>
+  </div>
+  <div class="intake-note">
+    Aggregati Pro-bound. Nessun telefono, subject gruppo o identificatore cliente viene esposto in questa vista.
+  </div>
+</section>
 <section id="view-training" class="metrics-view" style="display:none">
   <div class="metrics-header">
     <h2>Zantara training locale</h2>
@@ -756,9 +852,11 @@ let SELECTED_CONV = null;
 let THREAD_SEARCH = "";
 let THREAD_CACHE = null;
 let THREAD_CACHE_KEY = null;
+let INTAKE = null;
 let TRAINING = null;
 let TRAINING_FILTER = "all";
 let TRAINING_QUERY = "";
+
 const KITA_BASE = "https://kita.balizero.com";
 
 const colTeams = document.getElementById("col-teams");
@@ -1679,6 +1777,23 @@ function selectConv(conv) {
 }
 
 async function refresh() {
+  if (CURRENT_VIEW === "intake") {
+    INTAKE = null;
+    await renderIntake();
+    document.getElementById("last-refresh").textContent = "refresh: " + new Date().toLocaleTimeString("it-IT");
+    return;
+  }
+  if (CURRENT_VIEW === "metrics") {
+    await renderMetrics();
+    document.getElementById("last-refresh").textContent = "refresh: " + new Date().toLocaleTimeString("it-IT");
+    return;
+  }
+  if (CURRENT_VIEW === "training") {
+    await renderTraining(false);
+    document.getElementById("last-refresh").textContent = "refresh: " + new Date().toLocaleTimeString("it-IT");
+    return;
+  }
+
   try {
     const r = await fetch("/data.json");
     if (!r.ok) throw new Error(`data ${r.status}`);
@@ -1686,7 +1801,12 @@ async function refresh() {
     document.getElementById("last-refresh").textContent = "refresh: " + new Date(DATA.generated_at).toLocaleTimeString("it-IT");
     ensureVisibleCaseSelected();
     renderTeams(); renderConvs(); renderThread();
+    if (CURRENT_VIEW === "intake") {
+      INTAKE = null;
+      renderIntake();
+    }
     if (CURRENT_VIEW === "captain") renderCaptain();
+
   } catch (err) {
     colTeams.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
   }
@@ -1713,18 +1833,46 @@ async function checkHealth() {
 
 // === View toggle + Team Quality metrics ===
 let METRICS = null;
+let INTAKE_LOADING = false;
+let INTAKE_PROMISE = null;
 let CURRENT_VIEW = "convs";
+const VALID_VIEWS = new Set(["convs", "captain", "metrics", "intake", "training"]);
 
-function switchView(view) {
+function normalizeView(view) {
+  return VALID_VIEWS.has(view) ? view : "convs";
+}
+
+function viewFromHash() {
+  return normalizeView((window.location.hash || "").replace(/^#\/?/, ""));
+}
+
+function updateViewHash(view) {
+  const hash = view === "convs" ? "" : `#${view}`;
+  if ((window.location.hash || "") === hash) return;
+  const nextUrl = `${window.location.pathname}${window.location.search}${hash}`;
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", nextUrl);
+  } else {
+    window.location.hash = hash;
+  }
+}
+
+function switchView(view, options = {}) {
+  view = normalizeView(view);
   CURRENT_VIEW = view;
+  if (options.updateHash !== false) updateViewHash(view);
   document.getElementById("view-convs").style.display = view === "convs" ? "" : "none";
   document.getElementById("view-captain").style.display = view === "captain" ? "" : "none";
   document.getElementById("view-metrics").style.display = view === "metrics" ? "" : "none";
+  document.getElementById("view-intake").style.display = view === "intake" ? "" : "none";
   document.getElementById("view-training").style.display = view === "training" ? "" : "none";
+
   for (const b of document.querySelectorAll(".view-tab")) b.classList.toggle("active", b.dataset.view === view);
   if (view === "captain") renderCaptain();
   if (view === "metrics") renderMetrics();
+  if (view === "intake") renderIntake();
   if (view === "training") renderTraining();
+
 }
 
 function mFmt(v, suffix) { return v == null ? "—" : v + (suffix || ""); }
@@ -1792,6 +1940,245 @@ async function renderMetrics() {
       + `Aggregati Pro-bound, nessun dato cliente in chiaro.`;
   } catch (err) {
     tableEl.innerHTML = `<tbody><tr><td class="op">Errore: ${escapeHtml(err.message)}</td></tr></tbody>`;
+  }
+}
+
+function iFmt(v) {
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toLocaleString("it-IT") : "0";
+}
+
+function bucketLabel(bucket) {
+  const labels = {
+    workspace_review_ready: "Pronti review workspace",
+    needs_doc_type_parser: "Da classificare",
+    needs_ocr_vision_batch: "Serve OCR/vision",
+    needs_manual_review_short_ocr: "OCR corto/review",
+    needs_text_parser_qwen_candidate: "Qwen/text parser",
+    low_confidence_review: "Bassa confidenza",
+    needs_routing_proposal: "Senza proposta routing",
+    already_routed: "Gia routed",
+    failed_pipeline: "Pipeline failed",
+    immigration: "Immigration",
+    company: "Company",
+    tax: "Tax",
+    finance: "Finance",
+    identity: "Identity",
+    review: "Review",
+    large_or_broadcast_group: "Gruppo grande/broadcast",
+    small_client_group_likely: "Piccolo gruppo cliente",
+    multi_party_case_likely: "Case multiparte",
+    team_coordination_likely: "Coordinamento team",
+    review_client_group: "Review gruppo cliente",
+    review_case_group: "Review case multiparte",
+    quarantine_broadcast_group: "Broadcast in quarantena",
+    exclude_team_coordination: "Escludi coordinamento team",
+    manual_group_review: "Review gruppo manuale",
+    aggregate_safe: "Safe aggregato",
+    source_context_review: "Review source context",
+    consistent: "Conteggi coerenti",
+    scope_mismatch: "Mismatch scope",
+    candidate_batch_ready: "Pronto batch",
+    review_only: "Solo review",
+    insufficient_sample: "Sample insufficiente",
+    probe_required: "Probe richiesto",
+    no_candidates: "Nessun candidato",
+    workspace_benchmark_ready: "Benchmark OK",
+    workspace_benchmark_review: "Benchmark review",
+    benchmark_required: "Benchmark richiesto",
+    ready_for_staged_autocatalog: "Pronto auto-catalog",
+    needs_known_doc_benchmark: "Serve benchmark",
+    needs_qwen_text_probe: "Serve probe Qwen",
+    text_batch_review_only: "Batch solo review",
+    benchmark_review: "Benchmark review",
+    needs_more_sampling: "Serve altro sample",
+    no_text_candidates: "Nessun testo candidate",
+    qwen_text_autocatalog: "Qwen text auto-catalog",
+    vision_ocr_autocatalog: "Vision OCR auto-catalog",
+    short_ocr_resolution: "Risoluzione OCR corto",
+    known_doc_routing: "Routing doc noti",
+    workspace_operator_review: "Review workspace",
+  };
+  return labels[bucket] || bucket || "unknown";
+}
+
+function intakeStatusPill(ok, label) {
+  return `<span class="intake-pill ${ok ? "ok" : "bad"}">${escapeHtml(label)}</span>`;
+}
+
+function qwenGatePill(status) {
+  const cls = status === "candidate_batch_ready" || status === "no_candidates" || status === "workspace_benchmark_ready" || status === "consistent" || status === "ready_for_staged_autocatalog" || status === "no_text_candidates"
+    ? "ok"
+    : status === "review_only" || status === "insufficient_sample" || status === "probe_required" || status === "benchmark_required" || status === "needs_known_doc_benchmark" || status === "needs_qwen_text_probe" || status === "text_batch_review_only" || status === "needs_more_sampling"
+      ? "warn"
+      : "bad";
+  return `<span class="intake-pill ${cls}">${escapeHtml(bucketLabel(status))}</span>`;
+}
+
+function renderRows(rows, columns, emptyLabel) {
+  if (!rows || !rows.length) {
+    return `<tbody><tr><td>${escapeHtml(emptyLabel || "Nessun dato")}</td></tr></tbody>`;
+  }
+  const head = `<thead><tr>${columns.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr></thead>`;
+  const body = rows.map((row) => `<tr>${columns.map((c) => `<td>${c.render(row)}</td>`).join("")}</tr>`).join("");
+  return `${head}<tbody>${body}</tbody>`;
+}
+
+async function loadIntake() {
+  if (INTAKE_LOADING && INTAKE_PROMISE) return INTAKE_PROMISE;
+  INTAKE_LOADING = true;
+  INTAKE_PROMISE = fetch("/intake-summary.json")
+    .then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then((payload) => {
+      INTAKE = payload;
+      return INTAKE;
+    })
+    .finally(() => {
+      INTAKE_LOADING = false;
+      INTAKE_PROMISE = null;
+    });
+  return INTAKE_PROMISE;
+}
+
+async function renderIntake() {
+  const subEl = document.getElementById("i-sub");
+  const cardsEl = document.getElementById("i-cards");
+  const parserEl = document.getElementById("i-parser");
+  const catalogEl = document.getElementById("i-catalog");
+  const autocatalogEl = document.getElementById("i-autocatalog");
+  const qwenGateEl = document.getElementById("i-qwen-gate");
+  const qwenKnownEl = document.getElementById("i-qwen-known");
+  const qwenPlacementEl = document.getElementById("i-qwen-placement");
+  const workspaceEl = document.getElementById("i-workspace");
+  const docTypesEl = document.getElementById("i-doc-types");
+  const groupsEl = document.getElementById("i-groups");
+  cardsEl.innerHTML = `<div class="intake-card"><div class="label">stato</div><div class="value">…</div><div class="hint">Caricamento</div></div>`;
+  try {
+    const data = await loadIntake();
+    const q = data.queue || {};
+    const actions = data.direct_action_summary || {};
+    const directCatalog = data.direct_catalog_summary || {};
+    const qwenGate = data.qwen_batch_gate || {};
+    const qwenKnown = data.qwen_known_benchmark_gate || {};
+    const qwenPlacement = data.qwen_placement_preview || {};
+    const autocatalogPlan = data.autocatalog_plan || {};
+    const groupOps = data.group_operational_summary || {};
+    const groupRows = groupOps.group_kinds || data.group_kinds || [];
+    const groupTotalGroups = Number(groupOps.total_groups || groupRows.reduce((sum, row) => sum + Number(row.groups || 0), 0));
+    const groupTotalDocs = Number(groupOps.total_docs || q.group_docs || 0);
+    const safeGroups = groupOps.status !== "source_context_review";
+    subEl.textContent = `Aggiornato ${new Date(data.generated_at).toLocaleTimeString("it-IT")} · ${data.pii_policy}`;
+    cardsEl.innerHTML = `
+      <div class="intake-card"><div class="label">WA docs</div><div class="value">${iFmt(q.total)}</div><div class="hint">${iFmt(q.with_source_context)} con source_context</div></div>
+      <div class="intake-card"><div class="label">Direct</div><div class="value">${iFmt(q.direct_docs)}</div><div class="hint">${iFmt(q.direct_known_docs)} noti (${iFmt(q.direct_high_conf_docs)} high) · ${iFmt(q.direct_unknown_ocr_empty)} no OCR · ${iFmt(q.direct_unknown_ocr_text)} OCR text</div></div>
+      <div class="intake-card"><div class="label">Catalog ready</div><div class="value">${iFmt(directCatalog.catalog_review_ready_docs)}</div><div class="hint">${iFmt(directCatalog.already_routed_docs)} routed · ${iFmt(directCatalog.routing_proposal_needed_docs)} serve routing · ${qwenGatePill(directCatalog.status || "scope_mismatch")}</div></div>
+      <div class="intake-card"><div class="label">OCR/vision</div><div class="value">${iFmt(actions.needs_ocr_vision_batch)}</div><div class="hint">unknown senza OCR</div></div>
+      <div class="intake-card"><div class="label">Qwen/text</div><div class="value">${iFmt(actions.needs_text_parser_qwen_candidate)}</div><div class="hint">${iFmt(actions.immediate_batch_candidates)} batch candidati</div></div>
+      <div class="intake-card"><div class="label">Qwen gate</div><div class="value">${qwenGatePill(qwenGate.status || "probe_required")}</div><div class="hint">${iFmt(qwenGate.sampled_docs)} sample · ${(Number(qwenGate.candidate_rate || 0) * 100).toFixed(0)}% candidato</div></div>
+      <div class="intake-card"><div class="label">Qwen benchmark</div><div class="value">${qwenGatePill(qwenKnown.status || "benchmark_required")}</div><div class="hint">${iFmt(qwenKnown.sampled_docs)} sample · ${(Number(qwenKnown.workspace_accuracy || 0) * 100).toFixed(0)}% workspace</div></div>
+      <div class="intake-card"><div class="label">Qwen propone</div><div class="value">${iFmt(qwenPlacement.kita_workspace_candidates)}</div><div class="hint">${iFmt(qwenPlacement.review_after_qwen)} review · ${iFmt(qwenPlacement.still_unknown)} unknown</div></div>
+      <div class="intake-card"><div class="label">Auto-catalog</div><div class="value">${qwenGatePill(autocatalogPlan.status || "needs_more_sampling")}</div><div class="hint">${iFmt(autocatalogPlan.totals?.projected_qwen_text_to_kita_docs)} stimati Kita · ${escapeHtml(autocatalogPlan.write_mode || "proposal-only")}</div></div>
+      <div class="intake-card"><div class="label">OCR corto</div><div class="value">${iFmt(actions.needs_manual_review_short_ocr)}</div><div class="hint">review manuale</div></div>
+      <div class="intake-card"><div class="label">Workspace review</div><div class="value">${iFmt(actions.workspace_review_ready)}</div><div class="hint">${iFmt(actions.failed_pipeline)} failed pipeline</div></div>
+      <div class="intake-card"><div class="label">Gruppi</div><div class="value">${iFmt(groupTotalGroups)}</div><div class="hint">${iFmt(groupTotalDocs)} docs · ${safeGroups ? intakeStatusPill(true, "safe") : intakeStatusPill(false, `${iFmt(groupOps.unsafe_groups)} review`)}</div></div>
+      <div class="intake-card"><div class="label">Pipeline</div><div class="value">${iFmt(q.done_docs)}</div><div class="hint">${iFmt(q.dead_docs)} dead · ${iFmt(q.unknown_context_docs)} no context</div></div>
+    `;
+
+    parserEl.innerHTML = renderRows(data.direct_actions || data.direct_parser, [
+      { label: "Azione", render: (r) => `<span class="intake-pill ${r.bucket === "failed_pipeline" ? "bad" : r.bucket.includes("review") || r.bucket.includes("parser") || r.bucket.includes("ocr") ? "warn" : "ok"}">${escapeHtml(bucketLabel(r.bucket))}</span>` },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+    ], "Nessun direct doc");
+
+    catalogEl.innerHTML = renderRows([
+      { stage: "Gia routed", docs: directCatalog.already_routed_docs, next_action: "no_action" },
+      { stage: "Pronto review workspace", docs: directCatalog.workspace_review_ready_docs, next_action: "operator_review_workspace" },
+      { stage: "Serve proposta routing", docs: directCatalog.routing_proposal_needed_docs, next_action: "create_routing_proposal" },
+      { stage: "Qwen/text parser", docs: directCatalog.qwen_text_candidate_docs, next_action: "run_qwen_text_batch" },
+      { stage: "OCR/vision batch", docs: directCatalog.ocr_vision_candidate_docs, next_action: "run_ocr_vision_batch" },
+      { stage: "Review manuale", docs: directCatalog.manual_review_docs, next_action: "manual_review" },
+      { stage: "Pipeline failed", docs: directCatalog.failed_pipeline_docs, next_action: "debug_pipeline" },
+    ], [
+      { label: "Stato catalogo", render: (r) => escapeHtml(r.stage) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+      { label: "Next", render: (r) => escapeHtml(r.next_action) },
+    ], "Nessun catalog status");
+
+    autocatalogEl.innerHTML = renderRows([
+      {
+        stage: "status",
+        docs: Number(autocatalogPlan.totals?.qwen_text_candidate_docs || 0),
+        destination: autocatalogPlan.reason || "unknown",
+        status: autocatalogPlan.status || "needs_more_sampling",
+      },
+      ...(autocatalogPlan.stages || []),
+    ], [
+      { label: "Stage", render: (r) => r.stage === "status" ? qwenGatePill(r.status) : escapeHtml(bucketLabel(r.stage)) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+      { label: "Destinazione", render: (r) => escapeHtml(bucketLabel(r.destination || r.source_bucket || "review")) },
+      { label: "Expected Kita", render: (r) => iFmt(r.expected_kita_docs) },
+      { label: "Expected review", render: (r) => iFmt(r.expected_review_docs) },
+      { label: "Auto attach", render: (r) => r.auto_attach_allowed ? intakeStatusPill(true, "si") : `<span class="intake-pill">no</span>` },
+    ], "Nessun piano auto-catalog");
+
+    qwenGateEl.innerHTML = renderRows([qwenGate], [
+      { label: "Stato", render: (r) => qwenGatePill(r.status || "probe_required") },
+      { label: "Candidati", render: (r) => iFmt(r.candidate_docs) },
+      { label: "Sample", render: (r) => iFmt(r.sampled_docs) },
+      { label: "Classificati", render: (r) => iFmt(r.classified_attempts) },
+      { label: "Kita", render: (r) => iFmt(r.kita_workspace_candidates) },
+      { label: "Review", render: (r) => iFmt(r.review_after_qwen) },
+      { label: "Rate", render: (r) => `${(Number(r.candidate_rate || 0) * 100).toFixed(0)}% / ${(Number(r.min_candidate_rate || 0) * 100).toFixed(0)}%` },
+      { label: "Aggiornato", render: (r) => r.generated_at ? escapeHtml(new Date(r.generated_at).toLocaleString("it-IT")) : "non eseguito" },
+    ], "Nessun gate Qwen");
+
+    qwenKnownEl.innerHTML = renderRows([qwenKnown], [
+      { label: "Stato", render: (r) => qwenGatePill(r.status || "benchmark_required") },
+      { label: "Sample", render: (r) => iFmt(r.sampled_docs) },
+      { label: "Classificati", render: (r) => iFmt(r.classified_attempts) },
+      { label: "Errori", render: (r) => iFmt(r.failed_attempts) },
+      { label: "Workspace OK", render: (r) => iFmt(r.workspace_matches) },
+      { label: "Doc type OK", render: (r) => iFmt(r.exact_doc_type_matches) },
+      { label: "Unknown", render: (r) => iFmt(r.unknown_predictions) },
+      { label: "Accuracy", render: (r) => `${(Number(r.workspace_accuracy || 0) * 100).toFixed(0)}% / ${(Number(r.min_workspace_accuracy || 0) * 100).toFixed(0)}%` },
+      { label: "Aggiornato", render: (r) => r.generated_at ? escapeHtml(new Date(r.generated_at).toLocaleString("it-IT")) : "non eseguito" },
+    ], "Nessun benchmark Qwen");
+
+    qwenPlacementEl.innerHTML = renderRows(qwenPlacement.placement_preview || [], [
+      { label: "Da", render: (r) => escapeHtml(r.from_doc_type || "unknown") },
+      { label: "Proposto", render: (r) => escapeHtml(r.proposed_doc_type || "unknown") },
+      { label: "Workspace", render: (r) => escapeHtml(bucketLabel(r.workspace_bucket)) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+    ], "Nessuna proposta Qwen");
+
+    workspaceEl.innerHTML = renderRows(data.workspace_buckets, [
+      { label: "Workspace bucket", render: (r) => escapeHtml(bucketLabel(r.bucket)) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+    ], "Nessun bucket workspace");
+
+    docTypesEl.innerHTML = renderRows(data.direct_doc_types, [
+      { label: "Doc type", render: (r) => escapeHtml(r.doc_type) },
+      { label: "Workspace", render: (r) => escapeHtml(bucketLabel(r.workspace_bucket)) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+      { label: "High conf", render: (r) => iFmt(r.high_confidence) },
+      { label: "Extracted", render: (r) => iFmt(r.extracted_non_stub) },
+      { label: "Routed", render: (r) => iFmt(r.routed_non_stub) },
+    ], "Nessun tipo documento");
+
+    groupsEl.innerHTML = renderRows(groupRows, [
+      { label: "Genere inferito", render: (r) => escapeHtml(bucketLabel(r.inferred_group_kind)) },
+      { label: "Azione", render: (r) => escapeHtml(bucketLabel(r.intake_action || "manual_group_review")) },
+      { label: "Gruppi", render: (r) => iFmt(r.groups) },
+      { label: "Docs", render: (r) => iFmt(r.docs) },
+      { label: "Median", render: (r) => iFmt(r.median_docs_per_group) },
+      { label: "Max", render: (r) => iFmt(r.max_docs_per_group) },
+      { label: "Safety", render: (r) => intakeStatusPill(r.safety_status !== "source_context_review", r.safety_status === "source_context_review" ? `${iFmt(r.unsafe_groups)} review` : "safe") },
+    ], "Nessun gruppo");
+  } catch (err) {
+    subEl.textContent = "Errore intake";
+    cardsEl.innerHTML = `<div class="intake-card"><div class="label">errore</div><div class="value">!</div><div class="hint">${escapeHtml(err.message)}</div></div>`;
   }
 }
 
@@ -1970,6 +2357,10 @@ for (const b of document.querySelectorAll(".view-tab")) {
   b.addEventListener("click", () => switchView(b.dataset.view));
 }
 
+window.addEventListener("hashchange", () => {
+  switchView(viewFromHash(), { updateHash: false });
+});
+
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-view-jump]");
   if (!button) return;
@@ -1988,6 +2379,7 @@ if (corpusButton) {
   });
 }
 
+switchView(viewFromHash(), { updateHash: false });
 checkHealth();
 refresh();
 setInterval(refresh, 10000);
