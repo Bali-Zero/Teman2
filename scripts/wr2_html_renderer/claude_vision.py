@@ -177,6 +177,25 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
         timeout_s = int(os.environ.get("WR2_VISION_TIMEOUT_S", "180"))
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)
+    # MAX-plan OAuth: the `claude` CLI authenticates from the BARE
+    # CLAUDE_CODE_OAUTH_TOKEN env var (or an interactive config login). The
+    # fleet ships the token in numbered slots CLAUDE_CODE_OAUTH_TOKEN_1/_2/_3
+    # (~/.nuzantara-secrets.env, multi-account fallback) and ai-dispatch.sh maps
+    # one onto the bare var per call — but this client shelled out with the
+    # numbered slots only, so when the CLI's config login lapses the call fails
+    # `Not logged in / workspace not trusted` and (under WR2_VISION_REQUIRED=1)
+    # fails the whole carousel closed. Observed 2026-06-30 after a supervisor
+    # restart: vision dead, every draft render_failed. Cure (same logic as
+    # ai-dispatch.sh:426): if the bare token is unset, promote the first
+    # available numbered slot so the CLI authenticates via env, independent of
+    # any interactive config login. (scar #1 HOME-fork-adjacent: the slot→bare
+    # mapping lived only in a shell wrapper, not in the code that needs it.)
+    if not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        for _slot in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2", "CLAUDE_CODE_OAUTH_TOKEN_3"):
+            _val = env.get(_slot)
+            if _val:
+                env["CLAUDE_CODE_OAUTH_TOKEN"] = _val
+                break
     # Pin the vision model (default sonnet: vision-capable + solid editorial
     # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
     # window nor trips the 120s timeout). Configurable without a code change.
