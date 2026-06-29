@@ -123,6 +123,113 @@ CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
 # antidote: match the command's intent, not a substring.
 REMOTE_DISPATCH_RE = re.compile(r"(?:^|(?:&&|\|\||;|\|)\s*)\s*(?:ssh|scp|rsync)\b")
 
+# --- W80: arm-before-remove guard ----------------------------------------------
+# A worktree-REMOVING command (manual triage, `git worktree remove`, `rm -rf` on a
+# .worktrees/<x> dir) must not run while that worktree holds dirty/untracked work
+# that has NOT been frozen onto a quarantine ref. The official reaper quarantines
+# itself, but a HUMAN/agent triage at the shell bypasses every net — this is the
+# exact path that lost ~2400 lines in W80. The guard blocks ONLY the dirty-and-
+# unarmed case and tells you to run scripts/arm_keep_worktrees.py first.
+#
+# Intent-matched (superscar #3 antidote), NOT bare-substring:
+#   - `git worktree remove [--force] <path>`  — segment-anchored git verb
+#   - `rm -rf[...] <path>` where a resolved arg lands under <repo>/.worktrees/<x>
+# Anything we cannot resolve to a concrete dirty worktree → ALLOW (negative-gating).
+WT_REMOVE_GIT_RE = re.compile(
+    r"\bgit\s+(?:-C\s+\S+\s+)?worktree\s+remove\b((?:\s+(?:--?\S+|[^\s|;&)]+))+)"
+)
+RM_RF_RE = re.compile(r"\brm\s+(?:-\S+\s+)*-\S*[rf]\S*(?:\s+-\S+)*((?:\s+[^\s|;&)]+)+)")
+
+
+def _quarantine_ref_for(wt: pathlib.Path) -> str:
+    """Mirror arm_keep_worktrees._slug — the ref a freeze of <wt> would live under."""
+    slug = str(wt).strip("/").replace("/", "_")
+    return f"refs/agent-quarantine/{slug}"
+
+
+def _ref_exists(ref: str) -> bool:
+    try:
+        r = _sp.run(["git", "rev-parse", "--verify", "--quiet", ref],
+                    cwd=REPO_ROOT, capture_output=True, text=True, timeout=3)
+        return r.returncode == 0 and bool(r.stdout.strip())
+    except Exception:
+        return False
+
+
+def _worktree_is_dirty(wt: pathlib.Path) -> bool:
+    """True if <wt> has tracked-or-untracked changes. Conservative: on any error
+    we return False (→ ALLOW) so the guard never blocks on a probe failure."""
+    try:
+        r = _sp.run(["git", "-C", str(wt), "status", "--porcelain"],
+                    capture_output=True, text=True, timeout=5)
+        if r.returncode != 0:
+            return False
+        return any(ln.strip() for ln in r.stdout.splitlines())
+    except Exception:
+        return False
+
+
+def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
+    """Resolve a path token to a concrete `<repo>/.worktrees/<name>` dir, else None.
+
+    Conservative by design (superscar #3): a removal command names the worktree
+    EXPLICITLY, and that name always contains the `.worktrees/` segment (absolute
+    or repo-relative). We require it. This refuses to auto-incriminate the current
+    worktree from a bare/relative junk token: when cwd is itself inside
+    `.worktrees/<x>`, resolving a stray token like `2>/dev/null` or `&&` against it
+    would fall under <x> and falsely flag it. So we (a) drop tokens that carry
+    shell metacharacters (never a real path arg here) and (b) demand the literal
+    `.worktrees` segment in the token before resolving relative to cwd.
+    """
+    token = token.strip().strip("'\"")
+    if not token or token.startswith("-"):
+        return None
+    # Shell-structure residue that survived noise-strip is NOT a path.
+    if any(ch in token for ch in (">", "<", "&", "|", ";", "$", "*", "`")):
+        return None
+    # The remove target must explicitly name the worktrees dir (the W83 lesson:
+    # match the command's INTENT — a real `worktree remove`/`rm` arg points at
+    # `.worktrees/<x>`; a bare relative token does not and must not be resolved
+    # against a cwd that happens to sit inside a worktree).
+    if ".worktrees/" not in token and not token.endswith(".worktrees"):
+        return None
+    base = pathlib.Path(cwd) if cwd else pathlib.Path(REPO_ROOT)
+    p = pathlib.Path(token)
+    cand = (p if p.is_absolute() else (base / p))
+    try:
+        cand = cand.resolve()
+    except Exception:
+        return None
+    wt_root = pathlib.Path(REPO_ROOT, ".worktrees").resolve()
+    try:
+        rel = cand.relative_to(wt_root)
+    except ValueError:
+        return None
+    # must be a direct child .worktrees/<name> (not .worktrees itself, not deeper file)
+    if len(rel.parts) < 1 or not rel.parts[0]:
+        return None
+    return pathlib.Path(wt_root, rel.parts[0])
+
+
+def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | None:
+    """If the command removes a worktree that is dirty AND not yet quarantined,
+    return that worktree path (→ caller blocks). Else None (→ allow)."""
+    tokens: list[str] = []
+    for m in WT_REMOVE_GIT_RE.finditer(cmd_scan):
+        tokens += m.group(1).split()
+    for m in RM_RF_RE.finditer(cmd_scan):
+        tokens += m.group(1).split()
+    for tok in tokens:
+        wt = _resolve_under_worktrees(tok, cwd)
+        if wt is None or not wt.is_dir():
+            continue
+        if not _worktree_is_dirty(wt):
+            continue  # clean → safe to remove, nothing to lose
+        if _ref_exists(_quarantine_ref_for(wt)):
+            continue  # already frozen → safe
+        return wt  # dirty AND unarmed → block
+    return None
+
 # --- W79 B1: shell file-WRITE detection ----------------------------------------
 # Quick gate: does the command contain anything that could write a file?
 WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
@@ -496,6 +603,33 @@ def main():
             f"Emergency escape: AGENT_WORKTREE_ENFORCEMENT=false (env var set in shell)\n"
         )
         sys.exit(2)
+
+    # --- W80: block removing a DIRTY, UNARMED worktree (manual triage path) ---
+    # Runs BEFORE the git-only quick-exit because `rm -rf .worktrees/x` carries no
+    # "git" token. Noise-stripped so a path inside a quoted string / heredoc is not
+    # mistaken for a real removal arg (same #3 antidote as the git scan below).
+    rm_scan = _strip_noise(cmd)
+    if ("worktree" in rm_scan and "remove" in rm_scan) or "rm " in rm_scan:
+        victim = _unarmed_dirty_removal_target(rm_scan, cwd)
+        if victim is not None:
+            _increment_block_counter()
+            _probe_log(payload, "block_unarmed_worktree_removal")
+            sys.stderr.write(
+                f"WORKTREE REMOVAL BLOCKED (dirty + unarmed — scar W80)\n"
+                f"  worktree: {victim}\n"
+                f"  command: {cmd[:200]}\n\n"
+                f"Reason: this worktree has uncommitted/untracked work that is NOT yet\n"
+                f"frozen onto a quarantine ref. Removing it now would silently destroy\n"
+                f"that work (W80: ~2400 lines lost exactly this way).\n\n"
+                f"Resolution — ARM it first (captures tracked + untracked, reversible):\n"
+                f"  python scripts/arm_keep_worktrees.py --names {victim.name}\n"
+                f"  # then re-run your removal; recover later via:\n"
+                f"  #   python scripts/arm_keep_worktrees.py --list\n"
+                f"  #   git stash apply <sha>\n\n"
+                f"If the work is genuinely disposable, arm it anyway (cheap) or set\n"
+                f"  AGENT_WORKTREE_ENFORCEMENT=false   (env var in shell)\n"
+            )
+            sys.exit(2)
 
     # Quick exit: cmd doesn't look git-mutating
     if "git" not in cmd:

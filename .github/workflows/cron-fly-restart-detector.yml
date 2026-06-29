@@ -12,6 +12,10 @@ name: cron - fly restart loop detector (every 15 min)
 # until manual `fly machine start`). The detector now force-starts ONLY machines
 # in that crashed-stopped state, with its own cooldown, and alerts on the action.
 # Idle autostop machines (clean stop / exit_code 0) are left untouched.
+#
+# 2026-06-27 (infra/fly-oom-detector): also alerts on recent OOM/restart events
+# even when Fly successfully restarts the machine and all checks are green again.
+# Without this, an API OOM can be operationally invisible after recovery.
 
 on:
   schedule:
@@ -69,10 +73,15 @@ jobs:
             mv "${STATE}.tmp" "$STATE"
           }
 
+          was_alerted() {
+            local key="$1"
+            grep -q "^${key}:" "$STATE" 2>/dev/null
+          }
+
           for app in nuzantara-rag nuzantara-postgres; do
             RAW=$(flyctl status --json -a "$app" 2>&1 || true)
             SUMMARY=$(RAW="$RAW" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
-          import json, os, sys
+          import hashlib, json, os, sys
           try:
               d = json.loads(os.environ.get("RAW", ""))
           except Exception:
@@ -92,18 +101,41 @@ jobs:
           # clean idle autostop (no exit_event / exit_code 0). These are the
           # machines that will NOT self-recover from a later fixing deploy.
           crashed = []
+          oom = []
+
+          def process_group(machine):
+              config = machine.get("config") or {}
+              metadata = config.get("metadata") or {}
+              return (
+                  machine.get("process_group")
+                  or metadata.get("fly_process_group")
+                  or metadata.get("process_group")
+                  or "unknown"
+              )
+
           for m in machines:
-              if m.get("state") != "stopped":
-                  continue
+              machine_id = m.get("id", "?")
+              group = process_group(m)
               last_exit = None
               for e in (m.get("events") or []):  # events are newest-first
-                  ee = (e.get("request") or {}).get("exit_event") or {}
-                  if "exit_code" in ee and ee.get("exit_code") is not None:
-                      last_exit = ee.get("exit_code")
-                      break
-              if last_exit is not None and last_exit != 0:
-                  crashed.append(m.get("id", "?"))
-          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}")
+                  req = e.get("request") or {}
+                  ee = req.get("exit_event") or {}
+                  oom_killed = ee.get("oom_killed", req.get("oom_killed", e.get("oom_killed")))
+                  exit_code = ee.get("exit_code")
+                  if (
+                      oom_killed is True
+                      or str(oom_killed).lower() == "true"
+                      or str(exit_code) == "137"
+                  ):
+                      event_sig = hashlib.sha256(
+                          json.dumps(e, sort_keys=True, default=str).encode("utf-8")
+                      ).hexdigest()[:12]
+                      oom.append(f"{machine_id}:{group}:{event_sig}")
+                  if last_exit is None and "exit_code" in ee and ee.get("exit_code") is not None:
+                      last_exit = exit_code
+              if m.get("state") == "stopped" and last_exit is not None and str(last_exit) != "0":
+                  crashed.append(machine_id)
+          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}|oom={','.join(oom) or 'none'}")
           PY
           )
             echo "[$app] $SUMMARY"
@@ -119,6 +151,7 @@ jobs:
             BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
             UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
             CRASHED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^crashed= | cut -d= -f2)
+            OOM=$(echo "$SUMMARY" | tr '|' '\n' | grep ^oom= | cut -d= -f2)
             if [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
               if should_alert "${app}_state"; then
                 ALERTS="${ALERTS}🔴 <b>${app}</b>: $((TOTAL-STARTED))/${TOTAL} machines NOT started (${BAD})"$'\n'
@@ -130,6 +163,24 @@ jobs:
                 ALERTS="${ALERTS}❤️‍🩹 <b>${app}</b>: ${UNHEALTHY} unhealthy health checks"$'\n'
                 mark_alerted "${app}_health"
               fi
+            fi
+            # Surface OOM/restart events even if Fly already restarted the
+            # machine and the current health check is green. Deduplicate by
+            # event fingerprint so an old event does not alert every cooldown,
+            # while a fresh OOM on the same machine still gets surfaced.
+            if [ "${OOM:-none}" != "none" ] && [ -n "${OOM}" ]; then
+              for entry in $(echo "$OOM" | tr ',' ' '); do
+                IFS=: read -r mid group sig <<< "$entry"
+                if [ -z "${sig:-}" ]; then
+                  sig="${group:-unknown}"
+                  group="unknown"
+                fi
+                key="${app}_oom_${mid}_${sig}"
+                if ! was_alerted "$key"; then
+                  ALERTS="${ALERTS}OOM <b>${app}</b>: recent oom_killed/exit_code=137 on machine ${mid} (${group})"$'\n'
+                  mark_alerted "$key"
+                fi
+              done
             fi
             # Queue crashed-stopped machines for auto-recovery (own cooldown per machine).
             if [ "${CRASHED:-none}" != "none" ] && [ -n "${CRASHED}" ]; then

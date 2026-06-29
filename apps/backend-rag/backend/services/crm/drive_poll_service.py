@@ -98,6 +98,44 @@ class DriveCircuitBreaker:
 
 # Singleton circuit breaker (persiste tra i poll della stessa sessione)
 _drive_circuit_breaker = DriveCircuitBreaker()
+_DRIVE_POLL_ADVISORY_LOCK_ID = 614_238_904_711
+_DEFAULT_DRIVE_POLL_PAGE_SIZE = 10
+_DEFAULT_DRIVE_POLL_MAX_PAGES_PER_CYCLE = 1
+
+
+def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    """Read a bounded positive integer from env without making startup fragile."""
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("%s must be an integer; using default %s", name, default)
+        return default
+    if value < minimum or value > maximum:
+        bounded = max(minimum, min(value, maximum))
+        logger.warning("%s=%s outside [%s,%s]; using %s", name, value, minimum, maximum, bounded)
+        return bounded
+    return value
+
+
+def _drive_poll_page_size() -> int:
+    return _env_int(
+        "DRIVE_POLL_PAGE_SIZE",
+        _DEFAULT_DRIVE_POLL_PAGE_SIZE,
+        minimum=1,
+        maximum=1000,
+    )
+
+
+def _drive_poll_max_pages_per_cycle() -> int:
+    return _env_int(
+        "DRIVE_POLL_MAX_PAGES_PER_CYCLE",
+        _DEFAULT_DRIVE_POLL_MAX_PAGES_PER_CYCLE,
+        minimum=1,
+        maximum=50,
+    )
 
 
 def _send_telegram_alert(message: str) -> None:
@@ -204,7 +242,11 @@ async def _enqueue_guardian_company_folder(
         )
 
 
-async def poll_drive_changes() -> dict[str, Any]:
+async def poll_drive_changes(
+    *,
+    inline_ocr: bool = True,
+    acquire_advisory_lock: bool = True,
+) -> dict[str, Any]:
     """
     Poll Google Drive for new files in client folders.
 
@@ -227,7 +269,13 @@ async def poll_drive_changes() -> dict[str, Any]:
         _send_telegram_alert(alert_msg)
 
     try:
-        result = await _drive_circuit_breaker.call(_do_poll_drive_changes, on_open=_on_circuit_open)
+        async def _run_poll() -> dict[str, Any]:
+            return await _do_poll_drive_changes(
+                inline_ocr=inline_ocr,
+                acquire_advisory_lock=acquire_advisory_lock,
+            )
+
+        result = await _drive_circuit_breaker.call(_run_poll, on_open=_on_circuit_open)
         if result is None:
             return {"status": "circuit_open", "processed": 0}
         return result
@@ -239,20 +287,49 @@ async def poll_drive_changes() -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-async def _do_poll_drive_changes() -> dict[str, Any]:
+async def _do_poll_drive_changes(
+    *,
+    inline_ocr: bool = True,
+    acquire_advisory_lock: bool = True,
+) -> dict[str, Any]:
     """Logica effettiva del polling — chiamata tramite circuit breaker."""
     db_pool = None
+    lock_conn = None
+    lock_acquired = False
     try:
-        from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
         from backend.services.integrations.service_account_drive_service import (
             ServiceAccountDriveService,
         )
+
+        ocr_dispatcher = None
+        if inline_ocr:
+            from backend.app.routers.crm_enhanced import (
+                _dispatch_ocr_by_folder as ocr_dispatcher,
+            )
 
         db_pool = await asyncpg.create_pool(
             os.environ["DATABASE_URL"],
             min_size=1,
             max_size=2,
         )
+
+        if acquire_advisory_lock:
+            lock_conn = await db_pool.acquire()
+            lock_acquired = bool(
+                await lock_conn.fetchval(
+                    "SELECT pg_try_advisory_lock($1)",
+                    _DRIVE_POLL_ADVISORY_LOCK_ID,
+                ),
+            )
+            if not lock_acquired:
+                logger.warning("Drive poll skipped: another poll already holds the lock")
+                return {
+                    "status": "already_running",
+                    "processed": 0,
+                    "skipped": 0,
+                    "inline_ocr": inline_ocr,
+                    "ocr_dispatched": 0,
+                }
 
         drive_service = ServiceAccountDriveService()
 
@@ -272,12 +349,33 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     page_token,
                 )
                 logger.info("Drive poll: initialized page token %s", page_token)
-                return {"status": "initialized", "processed": 0}
+                return {
+                    "status": "initialized",
+                    "processed": 0,
+                    "inline_ocr": inline_ocr,
+                    "ocr_dispatched": 0,
+                }
 
-        # 2. Get changes since last poll
-        result = await drive_service.list_changes_since(page_token)
+        # 2. Get a bounded slice of changes since last poll. If Drive returns
+        # nextPageToken, persist that token after this slice is processed so the
+        # worker drains a large backlog across short cycles instead of timing out.
+        page_size = _drive_poll_page_size()
+        max_pages = _drive_poll_max_pages_per_cycle()
+        logger.info(
+            "Drive poll: fetching changes page_token=%s page_size=%s max_pages=%s",
+            page_token,
+            page_size,
+            max_pages,
+        )
+        result = await drive_service.list_changes_since(
+            page_token,
+            max_pages=max_pages,
+            page_size=page_size,
+        )
         changes = result["changes"]
         new_token = result["new_page_token"]
+        more_pages = bool(result.get("more_pages"))
+        pages_fetched = int(result.get("pages_fetched") or 0)
 
         if not changes:
             # Save new token even if no changes
@@ -287,7 +385,17 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     WHERE key = 'drive_poll_page_token'""",
                     new_token,
                 )
-            return {"status": "no_changes", "processed": 0}
+            return {
+                "status": "partial" if more_pages else "no_changes",
+                "processed": 0,
+                "changes": 0,
+                "skipped": 0,
+                "inline_ocr": inline_ocr,
+                "ocr_dispatched": 0,
+                "more_pages": more_pages,
+                "pages_fetched": pages_fetched,
+                "page_size": page_size,
+            }
 
         # 3. Build lookup maps: subfolder_id → (client_id, subfolder_name)
         # Includes BOTH top-level (00_Profile) AND nested (02_Company/AKTA) subfolders
@@ -335,6 +443,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
 
         # 4. Process new files
         processed = 0
+        ocr_dispatched = 0
         skipped = 0
         for change in changes:
             if change.get("removed"):
@@ -560,10 +669,19 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                 enqueued_by="drive_poll_service:client_document",
                 counters=guardian_queue,
             )
+            processed += 1
 
             # Dispatch OCR
+            if not inline_ocr:
+                logger.info(
+                    "Drive poll: inline OCR disabled for '%s'; document %s remains pending",
+                    file_name,
+                    doc_id,
+                )
+                continue
+
             try:
-                await _dispatch_ocr_by_folder(
+                await ocr_dispatcher(
                     db_pool=db_pool,
                     client_id=client_id,
                     file_id=file_id,
@@ -572,7 +690,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     doc_id=doc_id,
                     document_type=_infer_document_type(file_name, folder_name),
                 )
-                processed += 1
+                ocr_dispatched += 1
             except (HttpError, asyncpg.PostgresError, OSError) as e:
                 logger.warning("Drive poll: OCR dispatch failed for %s: %s", file_name, e)
             except Exception:
@@ -587,18 +705,29 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             )
 
         logger.info(
-            "Drive poll: processed %s, skipped %s, guardian_queue=%s from %s changes",
+            "Drive poll: status=%s processed=%s skipped=%s ocr_dispatched=%s inline_ocr=%s "
+            "guardian_queue=%s from %s changes pages_fetched=%s more_pages=%s",
+            "partial" if more_pages else "ok",
             processed,
             skipped,
+            ocr_dispatched,
+            inline_ocr,
             guardian_queue,
             len(changes),
+            pages_fetched,
+            more_pages,
         )
         return {
-            "status": "ok",
+            "status": "partial" if more_pages else "ok",
             "changes": len(changes),
             "processed": processed,
             "skipped": skipped,
+            "inline_ocr": inline_ocr,
+            "ocr_dispatched": ocr_dispatched,
             "guardian_queue": guardian_queue,
+            "more_pages": more_pages,
+            "pages_fetched": pages_fetched,
+            "page_size": page_size,
         }
 
     except (HttpError, asyncpg.PostgresError, OSError, KeyError) as e:
@@ -608,6 +737,19 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
         logger.exception("Drive poll failed with unexpected error")
         raise  # ri-lancia per permettere al circuit breaker di contare i failures
     finally:
+        if db_pool and lock_conn is not None:
+            try:
+                if lock_acquired:
+                    await lock_conn.execute(
+                        "SELECT pg_advisory_unlock($1)",
+                        _DRIVE_POLL_ADVISORY_LOCK_ID,
+                    )
+            except Exception:
+                logger.warning("Drive poll: failed to release advisory lock", exc_info=True)
+            try:
+                await db_pool.release(lock_conn)
+            except Exception:
+                logger.warning("Drive poll: failed to release lock connection", exc_info=True)
         if db_pool:
             await db_pool.close()
 

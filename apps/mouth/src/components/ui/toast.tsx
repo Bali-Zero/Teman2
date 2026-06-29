@@ -99,20 +99,35 @@ export function useToast() {
   }
 
   const { addToast, removeToast, clearToasts } = context;
+  const success = useCallback(
+    (title: string, description?: string) =>
+      addToast({ title, description, variant: "success" }),
+    [addToast],
+  );
+  const error = useCallback(
+    (title: string, description?: string, action?: Toast["action"]) =>
+      addToast({ title, description, variant: "error", action }),
+    [addToast],
+  );
+  const warning = useCallback(
+    (title: string, description?: string) =>
+      addToast({ title, description, variant: "warning" }),
+    [addToast],
+  );
+  const info = useCallback(
+    (title: string, description?: string) =>
+      addToast({ title, description, variant: "info" }),
+    [addToast],
+  );
 
   return {
     toast: addToast,
     dismiss: removeToast,
     clear: clearToasts,
-    // Convenience methods
-    success: (title: string, description?: string) =>
-      addToast({ title, description, variant: "success" }),
-    error: (title: string, description?: string, action?: Toast["action"]) =>
-      addToast({ title, description, variant: "error", action }),
-    warning: (title: string, description?: string) =>
-      addToast({ title, description, variant: "warning" }),
-    info: (title: string, description?: string) =>
-      addToast({ title, description, variant: "info" }),
+    success,
+    error,
+    warning,
+    info,
   };
 }
 

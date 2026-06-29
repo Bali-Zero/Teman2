@@ -336,6 +336,8 @@ class TestPollDriveChanges:
                 },
             ],
             "new_page_token": "next-token",
+            "more_pages": True,
+            "pages_fetched": 1,
         }
         drive_service.get_file_metadata.return_value = {"size": "0"}
 
@@ -365,10 +367,19 @@ class TestPollDriveChanges:
             ),
             patch.dict("os.environ", {"DATABASE_URL": "postgresql://test/db"}, clear=False),
         ):
-            result = await _do_poll_drive_changes()
+            result = await _do_poll_drive_changes(acquire_advisory_lock=False)
 
+        assert result["status"] == "partial"
         assert result["processed"] == 1
+        assert result["more_pages"] is True
+        assert result["pages_fetched"] == 1
+        assert result["ocr_dispatched"] == 1
         assert result["guardian_queue"]["inserted"] == 1
+        drive_service.list_changes_since.assert_awaited_once_with(
+            "start-token",
+            max_pages=1,
+            page_size=10,
+        )
         guardian_enqueue.assert_awaited_once()
         ocr_dispatch.assert_awaited_once_with(
             db_pool=fake_pool,
@@ -452,7 +463,7 @@ class TestPollDriveChanges:
             ),
             patch.dict("os.environ", {"DATABASE_URL": "postgresql://test/db"}, clear=False),
         ):
-            result = await _do_poll_drive_changes()
+            result = await _do_poll_drive_changes(acquire_advisory_lock=False)
 
         assert result["processed"] == 0
         assert result["skipped"] == 1
@@ -546,13 +557,148 @@ class TestPollDriveChanges:
             ),
             patch.dict("os.environ", {"DATABASE_URL": "postgresql://test/db"}, clear=False),
         ):
-            result = await _do_poll_drive_changes()
+            result = await _do_poll_drive_changes(acquire_advisory_lock=False)
 
         assert result["processed"] == 0
         assert result["skipped"] == 1
         assert result["guardian_queue"]["inserted"] == 1
         assert result["guardian_queue"]["already_pending"] == 1
         guardian_cascade.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_do_poll_can_skip_inline_ocr(self) -> None:
+        from backend.services.crm.drive_poll_service import _do_poll_drive_changes
+
+        class FakeAcquire:
+            def __init__(self, conn: Any) -> None:
+                self.conn = conn
+
+            async def __aenter__(self) -> Any:
+                return self.conn
+
+            async def __aexit__(self, *_args: Any) -> bool:
+                return False
+
+        class FakePool:
+            def __init__(self, conn: Any) -> None:
+                self.conn = conn
+
+            def acquire(self) -> FakeAcquire:
+                return FakeAcquire(self.conn)
+
+            async def close(self) -> None:
+                return None
+
+        conn = AsyncMock()
+        conn.fetchrow.return_value = {"value": "start-token"}
+        conn.fetch.side_effect = [
+            [
+                {
+                    "client_id": 42,
+                    "subfolder_name": "01_Immigration",
+                    "subfolder_id": "folder-immigration",
+                }
+            ],
+            [],
+            [],
+        ]
+        conn.fetchval.side_effect = [
+            None,  # existing document by file_id
+            99,  # inserted documents.id
+        ]
+
+        fake_pool = FakePool(conn)
+        drive_service = AsyncMock()
+        drive_service.list_changes_since.return_value = {
+            "changes": [
+                {
+                    "file": {
+                        "id": "drive-file-1",
+                        "name": "passport.pdf",
+                        "mimeType": "application/pdf",
+                        "parents": ["folder-immigration"],
+                    },
+                    "removed": False,
+                },
+            ],
+            "new_page_token": "next-token",
+        }
+        drive_service.get_file_metadata.return_value = {"size": "0"}
+        guardian_enqueue = AsyncMock(
+            return_value={
+                "client_id": 42,
+                "queue_id": 7001,
+                "action": "inserted",
+                "priority": 50,
+            }
+        )
+
+        with (
+            patch(
+                "backend.services.crm.drive_poll_service.asyncpg.create_pool",
+                new=AsyncMock(return_value=fake_pool),
+            ),
+            patch(
+                "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+                return_value=drive_service,
+            ),
+            patch("backend.app.routers.crm_enhanced._dispatch_ocr_by_folder") as ocr_dispatch,
+            patch(
+                "backend.services.crm.drive_poll_service.enqueue_client",
+                new=guardian_enqueue,
+            ),
+            patch.dict("os.environ", {"DATABASE_URL": "postgresql://test/db"}, clear=False),
+        ):
+            result = await _do_poll_drive_changes(
+                inline_ocr=False,
+                acquire_advisory_lock=False,
+            )
+
+        assert result["processed"] == 1
+        assert result["inline_ocr"] is False
+        assert result["ocr_dispatched"] == 0
+        guardian_enqueue.assert_awaited_once()
+        ocr_dispatch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_do_poll_returns_already_running_when_lock_is_held(self) -> None:
+        from backend.services.crm.drive_poll_service import _do_poll_drive_changes
+
+        class FakePool:
+            def __init__(self, conn: Any) -> None:
+                self.conn = conn
+                self.released = False
+                self.closed = False
+
+            async def acquire(self) -> Any:
+                return self.conn
+
+            async def release(self, conn: Any) -> None:
+                assert conn is self.conn
+                self.released = True
+
+            async def close(self) -> None:
+                self.closed = True
+
+        lock_conn = AsyncMock()
+        lock_conn.fetchval.return_value = False
+        fake_pool = FakePool(lock_conn)
+
+        with (
+            patch(
+                "backend.services.crm.drive_poll_service.asyncpg.create_pool",
+                new=AsyncMock(return_value=fake_pool),
+            ),
+            patch.dict("os.environ", {"DATABASE_URL": "postgresql://test/db"}, clear=False),
+        ):
+            result = await _do_poll_drive_changes(inline_ocr=False)
+
+        assert result["status"] == "already_running"
+        assert result["processed"] == 0
+        assert result["inline_ocr"] is False
+        lock_conn.execute.assert_not_awaited()
+        assert fake_pool.released is True
+        assert fake_pool.closed is True
 
 
 # ── Nested folder tests ──────────────────────────────────────────

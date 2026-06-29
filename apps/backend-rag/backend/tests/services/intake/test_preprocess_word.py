@@ -35,6 +35,10 @@ def test_word_mimes_constant_covers_docx_and_doc() -> None:
     assert _DOC_MIME in pre._WORD_MIMES
 
 
+def test_text_mimes_constant_covers_plain_text() -> None:
+    assert "text/plain" in pre._TEXT_MIMES
+
+
 @pytest.mark.asyncio
 async def test_docx_emits_textlayer_page(monkeypatch, tmp_path) -> None:
     # Arrange: a file present on disk + a stubbed docx text extractor.
@@ -97,3 +101,34 @@ async def test_empty_docx_text_degrades(monkeypatch, tmp_path) -> None:
 
     assert result.pages[0].text is None
     assert result.notes == "word_extract_failed"
+
+
+@pytest.mark.asyncio
+async def test_plain_text_emits_textlayer_page(tmp_path) -> None:
+    blob = tmp_path / "note.txt"
+    text = "BOARDING PASS\nPassenger: Example Person\nTicket number: 123456"
+    blob.write_text(text, encoding="utf-8")
+
+    result = await pre.preprocess_blob(str(blob), declared_mime="text/plain")
+
+    assert result.n_pages == 1
+    page = result.pages[0]
+    assert page.text == text
+    assert page.png_bytes == b""
+    assert result.mime == "text/plain"
+    assert result.notes == "text_textlayer"
+
+
+@pytest.mark.asyncio
+async def test_plain_text_empty_degrades_without_logging_blob_path(caplog, tmp_path) -> None:
+    blob = tmp_path / "empty.txt"
+    blob.write_text("   \n\t", encoding="utf-8")
+    caplog.set_level("WARNING")
+
+    result = await pre.preprocess_blob(str(blob), declared_mime="text/plain")
+
+    assert result.pages[0].text is None
+    assert result.pages[0].png_bytes == b""
+    assert result.notes == "text_extract_failed"
+    assert "text blob unreadable" in caplog.text
+    assert str(blob) not in caplog.text

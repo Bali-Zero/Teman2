@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   Users,
@@ -64,6 +64,7 @@ import {
   saveViewMode,
 } from "@/lib/utils/view-mode-storage";
 import { STRINGS } from "@/lib/strings";
+import UnnamedLeadsBanner from "./UnnamedLeadsBanner";
 
 // Status badge styling
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -259,6 +260,10 @@ function VirtualizedClientGrid({
  */
 function ClientsListContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // When arriving from the "contacts to name" banner (/clients?unnamed=1),
+  // show ONLY phone-keyed leads still on a placeholder name.
+  const unnamedOnly = searchParams.get("unnamed") === "1";
   const [listParent] = useAutoAnimate();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -408,6 +413,17 @@ function ClientsListContent() {
         return false;
       // Hide inactive/test clients by default unless user explicitly filters by inactive status
       if (!filters.status && client.status === "inactive") return false;
+      // "Contacts to name" view (?unnamed=1): only placeholder-named phone leads.
+      // Mirrors the backend `unnamed=true` predicate + wa-dashboard JUNK_NAME_PATTERNS.
+      if (unnamedOnly) {
+        const n = (client.full_name || "").trim();
+        const isPlaceholder =
+          n === "" ||
+          /^lead\s*\+?[0-9]+$/i.test(n) ||
+          /^wa:\s*\+?[0-9]+$/i.test(n) ||
+          /^\+?[0-9]{8,}$/.test(n);
+        if (!isPlaceholder) return false;
+      }
       // Silent filter: only show clients not contacted in N days
       if (silentFilter !== null) {
         const lastContact = client.last_interaction_date
@@ -512,6 +528,7 @@ function ClientsListContent() {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
+      <UnnamedLeadsBanner />
       <ListPageHeader
         title="Clients"
         subtitle={

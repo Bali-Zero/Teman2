@@ -15,19 +15,23 @@ All endpoints require client authentication (role='client').
 Created: 2025-12-30
 """
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
-from backend.services.portal import PortalService
+
+if TYPE_CHECKING:
+    from backend.services.portal import PortalService
+else:
+    PortalService = Any
 
 logger = get_logger(__name__)
 
@@ -42,9 +46,14 @@ router = APIRouter(prefix="/api/portal", tags=["portal"])
 class SendMessageRequest(BaseModel):
     """Request to send a message"""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     content: str
     subject: str | None = None
-    practice_id: int | None = None
+    practice_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("practice_id", "practiceId"),
+    )
 
 
 class UpdatePreferencesRequest(BaseModel):
@@ -249,7 +258,9 @@ async def get_current_client(
 
 def get_portal_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> PortalService:
     """Dependency injection for PortalService"""
-    return PortalService(db_pool)
+    from backend.services.portal import PortalService as _PortalService
+
+    return _PortalService(db_pool)
 
 
 # ================================================

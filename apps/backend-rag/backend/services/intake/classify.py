@@ -7,6 +7,8 @@ Two responsibilities, both 100% local (Symbiosis Law 2 / UU-PDP):
   2. ``classify_document`` -- decide the document TYPE from the OCR text, with a
                             hard anti-hallucination floor: undeterminable ->
                             {"type": "unknown", "confidence": 0.0}, never a guess.
+                            A gated local text-LLM fallback may classify OCR text
+                            that keyword rules cannot, still review-band only.
 
 STRICT-LOCAL / 0-byte-to-cloud
 ------------------------------
@@ -231,7 +233,10 @@ def _ensure_min_size(png: bytes) -> bytes:
             if (new_w, new_h) != (w, h) or len(data) != len(png):
                 logger.info(
                     "intake OCR normalized page %dx%d -> %dx%d PNG (size/format safe for qwen25vl)",
-                    w, h, new_w, new_h,
+                    w,
+                    h,
+                    new_w,
+                    new_h,
                 )
             return data
     except Exception as exc:  # never let normalization break OCR
@@ -334,9 +339,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                 "via": via,
             }
         )
-        logger.info(
-            "intake OCR page=%d via=%s model=%s chars=%d", idx, via, model_used, len(text)
-        )
+        logger.info("intake OCR page=%d via=%s model=%s chars=%d", idx, via, model_used, len(text))
 
     return results
 
@@ -353,10 +356,21 @@ DOC_TYPES: tuple[str, ...] = (
     "nib",
     "npwp",
     "kitas",
+    "itas",
+    "itap",
+    "itk",
     "sk_kemenkumham",
     "oss",
+    "visa",
     "skt",
     "ktp",
+    "family_card",
+    "birth_certificate",
+    "marriage_certificate",
+    "payment_receipt",
+    "travel_ticket",
+    "bank_statement",
+    "medical_insurance",
     "unknown",
 )
 
@@ -384,6 +398,36 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("kewarganegaraan", 0.15),
         ("tempat/tgl lahir", 0.3),  # KTP-specific field label
     ],
+    "family_card": [
+        ("kartu keluarga", 0.6),
+        ("family card", 0.6),
+        ("nomor kartu keluarga", 0.55),
+        ("no. kk", 0.45),
+        ("no kk", 0.45),
+        ("kepala keluarga", 0.35),
+        ("daftar anggota keluarga", 0.35),
+        ("susunan keluarga", 0.3),
+    ],
+    "birth_certificate": [
+        ("kutipan akta kelahiran", 0.7),
+        ("akta kelahiran", 0.6),
+        ("birth certificate", 0.6),
+        ("certificate of birth", 0.6),
+        ("dinas kependudukan dan pencatatan sipil", 0.25),
+        ("kelahiran", 0.25),
+        ("anak ke", 0.25),
+    ],
+    "marriage_certificate": [
+        ("kutipan akta perkawinan", 0.7),
+        ("akta perkawinan", 0.6),
+        ("akta nikah", 0.6),
+        ("buku nikah", 0.55),
+        ("marriage certificate", 0.6),
+        ("certificate of marriage", 0.6),
+        ("kantor urusan agama", 0.35),
+        ("pernikahan", 0.35),
+        ("perkawinan", 0.35),
+    ],
     "npwp": [
         ("nomor pokok wajib pajak", 0.6),
         ("npwp", 0.5),
@@ -400,6 +444,74 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("online single submission", 0.6),
         ("lembaga pengelola", 0.2),
         ("perizinan berusaha berbasis risiko", 0.4),
+    ],
+    "visa": [
+        ("e-visa", 0.6),
+        ("evisa", 0.6),
+        ("electronic visa", 0.6),
+        ("visa on arrival", 0.5),
+        ("voa", 0.4),
+        ("visa kunjungan", 0.45),
+        ("visit visa", 0.45),
+        ("visa tinggal", 0.45),
+        ("limited stay visa", 0.45),
+        ("visa index", 0.45),
+        ("index visa", 0.45),
+        ("b211", 0.4),
+        ("b-211", 0.4),
+        ("visa", 0.2),
+    ],
+    "payment_receipt": [
+        ("bukti pembayaran", 0.6),
+        ("payment receipt", 0.6),
+        ("bukti transfer", 0.55),
+        ("transfer berhasil", 0.5),
+        ("kwitansi", 0.5),
+        ("tanda terima", 0.5),
+        ("transaction id", 0.35),
+        ("transaction date", 0.3),
+        ("jumlah pembayaran", 0.35),
+        ("total bayar", 0.35),
+        ("invoice", 0.3),
+        ("receipt", 0.3),
+        ("pembayaran", 0.25),
+    ],
+    "travel_ticket": [
+        ("boarding pass", 0.6),
+        ("flight itinerary", 0.55),
+        ("e-ticket", 0.55),
+        ("eticket", 0.5),
+        ("ticket number", 0.45),
+        ("booking reference", 0.4),
+        ("booking code", 0.35),
+        ("passenger", 0.25),
+        ("departure", 0.2),
+        ("arrival", 0.2),
+        ("gate", 0.15),
+        ("seat", 0.15),
+    ],
+    "bank_statement": [
+        ("bank statement", 0.6),
+        ("rekening koran", 0.6),
+        ("statement of account", 0.6),
+        ("account statement", 0.5),
+        ("mutasi rekening", 0.45),
+        ("saldo awal", 0.25),
+        ("saldo akhir", 0.25),
+        ("debit", 0.15),
+        ("credit", 0.15),
+    ],
+    "medical_insurance": [
+        ("travel insurance", 0.6),
+        ("medical insurance", 0.6),
+        ("health insurance", 0.5),
+        ("insurance policy", 0.5),
+        ("policy number", 0.35),
+        ("nomor polis", 0.35),
+        ("insured person", 0.3),
+        ("sum insured", 0.3),
+        ("asuransi", 0.35),
+        ("insurance", 0.25),
     ],
     "akta_pendirian": [
         ("akta pendirian", 0.6),
@@ -527,6 +639,15 @@ def _stay_permit_subtype(text: str) -> str | None:
 # Confidence CAP for a vision-only classification: always in the review band,
 # NEVER enough to auto-commit (the gate needs >= human review on vision alone).
 VISION_CLASSIFY_CONF = 0.55
+VISION_CLASSIFY_MAX_PAGES = 3
+
+# Confidence CAP for local text-LLM classification. This is deliberately below
+# HIGH_CONFIDENCE_THRESHOLD (0.70 in the audit/dashboard) so LLM-only cataloging
+# creates/reprocesses review proposals, never silent attachment.
+TEXT_LLM_CLASSIFY_CONF = 0.60
+TEXT_LLM_CLASSIFY_MIN_CHARS = int(os.getenv("INTAKE_TEXT_LLM_MIN_CHARS", "100"))
+TEXT_LLM_CLASSIFY_TIMEOUT_SECONDS = float(os.getenv("INTAKE_TEXT_LLM_TIMEOUT_SECONDS", "45"))
+_TEXT_LLM_CLASSIFY_MODEL_DEFAULT = "qwen3.5:9b"
 
 # One constrained call. qwen2.5vl:7b is used directly (NOT the qwen3-vl
 # primary): the 2026-06-04 empirical finding above shows qwen3-vl buries its
@@ -536,6 +657,24 @@ VISION_CLASSIFY_CONF = 0.55
 _VISION_CLASSIFY_MODEL = _OCR_FALLBACK
 _VISION_CLASSIFY_NUM_PREDICT = 16
 
+_DOC_TYPE_ANSWER_RE = re.compile(r"[a-z_]+")
+
+
+def _resolve_text_llm_model() -> str:
+    """Resolve the local text classifier model. No cloud path."""
+    return os.getenv("INTAKE_TEXT_LLM_MODEL", _TEXT_LLM_CLASSIFY_MODEL_DEFAULT)
+
+
+def _text_llm_classify_enabled() -> bool:
+    """Feature flag for OCR-text LLM fallback; disabled unless explicitly enabled."""
+    return os.getenv("INTAKE_TEXT_LLM_CLASSIFY_ENABLED", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 _VISION_CLASSIFY_PROMPT = (
     "You are classifying an Indonesian administrative document image. "
     "Answer with EXACTLY ONE word from this list: "
@@ -544,11 +683,8 @@ _VISION_CLASSIFY_PROMPT = (
     "One word only — no punctuation, no explanation."
 )
 
-# Exact-member acceptance: strip surrounding punctuation/whitespace, lowercase.
-_VISION_ANSWER_RE = re.compile(r"[a-z_]+")
 
-
-def _parse_vision_answer(raw: str | None) -> str | None:
+def _parse_doc_type_answer(raw: str | None) -> str | None:
     """Accept ONLY an exact DOC_TYPES member (case-insensitive); else None.
 
     The contract is a single token; we tolerate surrounding whitespace or a
@@ -558,13 +694,73 @@ def _parse_vision_answer(raw: str | None) -> str | None:
     if not raw:
         return None
     cleaned = raw.strip().strip(".,:;!\"'`").lower()
-    if not _VISION_ANSWER_RE.fullmatch(cleaned):
+    if not _DOC_TYPE_ANSWER_RE.fullmatch(cleaned):
         return None
     return cleaned if cleaned in DOC_TYPES else None
 
 
-async def _vision_classify_first_page(png_bytes: bytes) -> str | None:
-    """ONE local vision call to type a document the keywords could not.
+def _parse_vision_answer(raw: str | None) -> str | None:
+    """Backward-compatible wrapper for vision tests."""
+    return _parse_doc_type_answer(raw)
+
+
+def _text_llm_classify_prompt(ocr_text: str) -> str:
+    """Build a constrained local-only prompt for OCR-text doc classification."""
+    return (
+        "Classify this Indonesian administrative document OCR text. "
+        "Answer with EXACTLY ONE token from this list: "
+        + ", ".join(DOC_TYPES)
+        + ". If uncertain, noisy, or not an administrative document, answer unknown. "
+        "Do not infer from names, phone numbers, or dates alone. "
+        "One token only -- no punctuation, no explanation.\n\nOCR:\n" + ocr_text[:6000]
+    )
+
+
+async def _ollama_text_classify(model: str, prompt: str) -> tuple[str, str | None]:
+    """Single local Ollama text classification call. Returns (response, thinking)."""
+    payload: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "think": False,
+        "options": {"temperature": 0.0, "num_predict": 24},
+    }
+    client = _get_client()
+    r = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
+    r.raise_for_status()
+    data = r.json()
+    return (data.get("response") or "").strip(), (data.get("thinking") or "").strip()
+
+
+async def _text_llm_classify(ocr_text: str | None) -> str | None:
+    """Local text-LLM doc-type fallback for OCR-ready unknowns.
+
+    It is opt-in, exact-token only, and never raises. Raw OCR text is only sent to
+    local Ollama; logs carry model/type/status counts, not document content.
+    """
+    if not _text_llm_classify_enabled():
+        return None
+    text = (ocr_text or "").strip()
+    if len(text) < TEXT_LLM_CLASSIFY_MIN_CHARS:
+        return None
+    model = _resolve_text_llm_model()
+    try:
+        response, thinking = await asyncio.wait_for(
+            _ollama_text_classify(model, _text_llm_classify_prompt(text)),
+            timeout=TEXT_LLM_CLASSIFY_TIMEOUT_SECONDS,
+        )
+    except Exception as exc:
+        logger.warning("text LLM classify fallback failed model=%s error=%r", model, exc)
+        return None
+    answer = _parse_doc_type_answer(response) or _parse_doc_type_answer(thinking)
+    if answer and answer != "unknown":
+        logger.info("text LLM classify fallback answered type=%s model=%s", answer, model)
+        return answer
+    return None
+
+
+async def _vision_classify_page(png_bytes: bytes) -> str | None:
+    """ONE local vision call to type a document page the keywords could not.
 
     Returns a DOC_TYPES member or None. NEVER raises: any error/timeout/
     non-conforming answer degrades to None (caller keeps "unknown").
@@ -590,11 +786,29 @@ async def _vision_classify_first_page(png_bytes: bytes) -> str | None:
     return answer
 
 
+async def _vision_classify_pages(pages: list[bytes]) -> tuple[str | None, int | None]:
+    """Try up to VISION_CLASSIFY_MAX_PAGES pages, returning (type, page_offset).
+
+    The fallback is intentionally sequential and capped: it runs only after the
+    keyword floor fails, and every vision-only type remains review-band. Page 1
+    is often a cover/blank scan in WhatsApp uploads; letting page 2/3 answer
+    rescues those without guessing from text.
+    """
+    for offset, png in enumerate(pages[:VISION_CLASSIFY_MAX_PAGES]):
+        if not png:
+            continue
+        answer = await _vision_classify_page(png)
+        if answer and answer != "unknown":
+            return answer, offset
+    return None, None
+
+
 async def classify_document(
     ocr_text: str | None,
     pages: list[dict[str, Any]] | None = None,
     *,
     first_page_png: bytes | None = None,
+    vision_page_pngs: list[bytes] | None = None,
 ) -> dict[str, Any]:
     """Classify a document from OCR text. Local-only, anti-hallucination.
 
@@ -602,10 +816,12 @@ async def classify_document(
         ocr_text: concatenated OCR text (all pages). If None, derived from pages.
         pages: per-page OCR dicts from ``ocr_pages`` (used to attribute the
                winning evidence to a specific source page).
-        first_page_png: optional raw PNG bytes of the FIRST page. When the
-               keyword score lands below the unknown floor, ONE constrained
-               local vision call (:func:`_vision_classify_first_page`) gets a
-               chance to type the document — confidence capped at
+        first_page_png: backward-compatible shortcut for a single first-page
+               fallback image.
+        vision_page_pngs: optional raw PNG bytes for the first candidate pages.
+               When the keyword score lands below the unknown floor, capped
+               local vision calls (:func:`_vision_classify_pages`) get a
+               chance to type the document -- confidence capped at
                ``VISION_CLASSIFY_CONF`` (review band, never auto-commit).
 
     Returns:
@@ -641,15 +857,35 @@ async def classify_document(
             }
 
     # Anti-hallucination floor: weak keyword evidence -> NOT a guess. One local
-    # vision attempt (catalog v2) may still type it — capped in the review band.
+    # text LLM pass and then one local vision pass may still type it -- both capped
+    # in the review band.
     if best_type is None or best_score < 0.30:
-        if first_page_png is not None:
-            vtype = await _vision_classify_first_page(first_page_png)
+        text_llm_type = await _text_llm_classify(ocr_text)
+        if text_llm_type:
+            return {
+                "type": text_llm_type,
+                "confidence": TEXT_LLM_CLASSIFY_CONF,
+                "source_page": _attribute_source_page(text_llm_type, pages),
+                "scores": scores,
+                "via": "local_text_llm_fallback",
+                "llm_model": _resolve_text_llm_model(),
+            }
+
+        candidate_pngs = vision_page_pngs or (
+            [first_page_png] if first_page_png is not None else []
+        )
+        if candidate_pngs:
+            vtype, page_offset = await _vision_classify_pages(candidate_pngs)
             if vtype and vtype != "unknown":
+                source_page = None
+                if page_offset is not None:
+                    source_page = (
+                        pages[page_offset].get("page") if page_offset < len(pages) else page_offset
+                    )
                 return {
                     "type": vtype,
                     "confidence": VISION_CLASSIFY_CONF,
-                    "source_page": pages[0].get("page") if pages else None,
+                    "source_page": source_page,
                     "scores": scores,
                     "via": "vision_fallback",
                 }
@@ -667,9 +903,7 @@ async def classify_document(
     }
 
 
-def _attribute_source_page(
-    dtype: str, pages: list[dict[str, Any]]
-) -> int | None:
+def _attribute_source_page(dtype: str, pages: list[dict[str, Any]]) -> int | None:
     """Return the page index whose text best matches the winning type's evidence."""
     evidence = _TYPE_EVIDENCE.get(dtype, [])
     best_page: int | None = None
@@ -709,9 +943,7 @@ def _attribute_source_page(
 StageHandler = Callable[[dict, str], Awaitable[dict]]
 
 
-async def _fetch_blob_meta(
-    pool: asyncpg.Pool, queue_id: int
-) -> tuple[str | None, str | None]:
+async def _fetch_blob_meta(pool: asyncpg.Pool, queue_id: int) -> tuple[str | None, str | None]:
     """Look up (blob_path, mime_type) for an intake_queue row.
 
     mime_type lives on document_instances (joined via instance_id), not on
@@ -776,7 +1008,17 @@ async def _run_classify_stage(pool: asyncpg.Pool, job: dict) -> dict:
     ocr = await ocr_pages(pre.pages)
     full_text = "\n".join(p["text"] for p in ocr)
     first_png = getattr(pre.pages[0], "png_bytes", None) if pre.pages else None
-    cls = await classify_document(full_text, ocr, first_page_png=first_png)
+    vision_pngs = [
+        getattr(page, "png_bytes", b"")
+        for page in pre.pages[:VISION_CLASSIFY_MAX_PAGES]
+        if getattr(page, "png_bytes", b"")
+    ]
+    cls = await classify_document(
+        full_text,
+        ocr,
+        first_page_png=first_png,
+        vision_page_pngs=vision_pngs,
+    )
 
     return {
         "doc_type": cls["type"],
@@ -789,4 +1031,5 @@ async def _run_classify_stage(pool: asyncpg.Pool, job: dict) -> dict:
         "preprocess_notes": pre.notes,
         "type_scores": cls["scores"],
         "classified_via": cls.get("via", "keywords"),
+        "classify_llm_model": cls.get("llm_model"),
     }
