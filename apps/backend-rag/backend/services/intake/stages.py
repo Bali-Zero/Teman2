@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -69,6 +70,8 @@ from backend.services.intake.worker import TransientStageError
 
 logger = logging.getLogger("zantara.intake.stages")
 
+_PROPOSAL_ONLY_SKIP_EXTRACT_ENV = "INTAKE_PROPOSAL_ONLY_SKIP_EXTRACT"
+
 StageHandler = Callable[[dict, str], Awaitable[dict]]
 
 # Stages whose real handler reads the accumulated stage_output (which the worker
@@ -85,11 +88,13 @@ _TRANSIENT_HTTPX_ERRORS: tuple[type[Exception], ...] = (
 )
 
 
+def _env_truthy(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 async def _fetch_stage_output(pool: asyncpg.Pool, queue_id: int) -> dict[str, Any]:
     """Load the live ``stage_output`` JSONB for a queue row (prior stages' output)."""
-    row = await pool.fetchrow(
-        "SELECT stage_output FROM intake_queue WHERE id = $1", queue_id
-    )
+    row = await pool.fetchrow("SELECT stage_output FROM intake_queue WHERE id = $1", queue_id)
     if row is None or row["stage_output"] is None:
         return {}
     so = row["stage_output"]
@@ -169,7 +174,8 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
                     logger.info(
                         "extract: doc_type=%r not auto-extractable (job=%s) -> "
                         "empty fields, route to review (no DLQ)",
-                        doc_type, job.get("id"),
+                        doc_type,
+                        job.get("id"),
                     )
                     return {
                         "doc_type": doc_type or "unknown",
@@ -178,6 +184,22 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
                         "any_low_confidence": True,
                         "skipped": "unschematised_doc_type",
                         "_metric": {"model": EXTRACTION_MODEL_LABEL, "confidence": 0.0},
+                    }
+                if _env_truthy(_PROPOSAL_ONLY_SKIP_EXTRACT_ENV):
+                    logger.info(
+                        "extract: %s set; skip field extraction for doc_type=%r "
+                        "(job=%s) and continue to proposal routing",
+                        _PROPOSAL_ONLY_SKIP_EXTRACT_ENV,
+                        doc_type,
+                        job.get("id"),
+                    )
+                    return {
+                        "doc_type": doc_type or "unknown",
+                        "fields": {},
+                        "extraction_model": "proposal-only-skip",
+                        "any_low_confidence": True,
+                        "skipped": "proposal_only_skip_extract",
+                        "_metric": {"model": "proposal-only-skip-extract", "confidence": 0.0},
                     }
                 payload = await extract_stage(enriched, stage)
                 payload.setdefault(
@@ -192,7 +214,10 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
             payload = await validate_stage(enriched, stage)
             payload.setdefault(
                 "_metric",
-                {"model": "deterministic-rules", "confidence": 1.0 if payload.get("valid") else 0.0},
+                {
+                    "model": "deterministic-rules",
+                    "confidence": 1.0 if payload.get("valid") else 0.0,
+                },
             )
             return payload
 

@@ -748,6 +748,39 @@ def test_document_upload_base64_model():
 
 
 @pytest.mark.asyncio
+async def test_upload_document_base64_can_use_preverified_client_access(
+    mock_db_pool,
+    mock_current_user,
+):
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    verify_client_access = AsyncMock()
+
+    with patch(
+        "backend.app.routers.crm_enhanced_documents.verify_client_access",
+        new=verify_client_access,
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="not-base64",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                access_already_verified=True,
+            )
+
+    assert exc_info.value.status_code == 400
+    verify_client_access.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_upload_document_base64_mirrors_company_upload_to_company_documents(
     mock_db_pool,
     mock_current_user,
@@ -812,3 +845,40 @@ async def test_upload_document_base64_mirrors_company_upload_to_company_document
     assert any(
         "INSERT INTO company_documents" in call.args[0] for call in conn.fetchval.await_args_list
     )
+
+
+@pytest.mark.asyncio
+async def test_internal_upload_reuses_base64_upload_with_preverified_access(mock_db_pool):
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers import crm_enhanced_documents
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64_internal,
+    )
+
+    upload = AsyncMock(return_value={"success": True, "document_id": 99})
+    data = DocumentUploadBase64(
+        file="ZmlsZQ==",
+        file_name="passport.pdf",
+        document_type="passport",
+        document_category="immigration",
+    )
+
+    with patch.object(crm_enhanced_documents, "upload_document_base64", new=upload):
+        result = await upload_document_base64_internal(
+            client_id=1,
+            data=data,
+            pool=mock_db_pool,
+            actor="wa-mirror-crm-writer@balizero.com",
+            background_tasks=BackgroundTasks(),
+        )
+
+    assert result == {"success": True, "document_id": 99}
+    upload.assert_awaited_once()
+    kwargs = upload.await_args.kwargs
+    assert kwargs["client_id"] == 1
+    assert kwargs["data"] is data
+    assert kwargs["pool"] is mock_db_pool
+    assert kwargs["access_already_verified"] is True
+    assert kwargs["current_user"]["email"] == "wa-mirror-crm-writer@balizero.com"

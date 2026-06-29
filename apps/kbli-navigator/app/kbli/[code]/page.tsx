@@ -13,7 +13,8 @@ import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
 import { BaliStatusBadge } from "@/components/kbli/BaliStatusBadge";
-import { getBaliL4 } from "@/lib/kbli-bali-l4";
+import { getBaliL4, isBlockedInBali } from "@/lib/kbli-bali-l4";
+import { cn } from "@/lib/utils";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import { KBLICodeJsonLd } from "@/components/kbli/KBLIStructuredData";
 import { LicensingSection } from "@/components/kbli/LicensingSection";
@@ -49,7 +50,9 @@ export async function generateMetadata({
     kbli.pma.status === "open"
       ? "100% Foreign Ownership"
       : kbli.pma.status === "restricted"
-        ? `Restricted (max ${kbli.pma.maxForeign}% foreign)`
+        ? kbli.pma.capSpecial
+          ? "Restricted (special distribution conditions)"
+          : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
         : "Closed to Foreign Investment";
 
   return {
@@ -9345,6 +9348,15 @@ export default async function KBLICodePage({
   const related = getRelatedCodes(kbli.code, 6);
   const sectionMeta = kbli.section ? getSectionMeta(kbli.section) : null;
   const baliL4 = getBaliL4(kbli.code); // L4: Bali-specific registrability (null if unknown)
+  // PMA verdict aligned with the native app:
+  //  - a special-distribution code (47221) is OPEN-with-conditions, never "closed"
+  //  - national closure = TERTUTUP or 0% cap (and NOT special) dominates the verdict
+  //  - the "reserved-for-MSME / national procedure" callout shows ONLY when Bali actually blocks it
+  const baliBlocked = isBlockedInBali(kbli.code);
+  const nationallyClosed =
+    !kbli.pma.capSpecial &&
+    (kbli.pma.status === "closed" || kbli.pma.maxForeign === 0);
+  const pmaBlocked = baliBlocked || nationallyClosed;
 
   const breadcrumbs = [
     { label: "KBLI Navigator", href: "/kbli" },
@@ -9471,11 +9483,52 @@ export default async function KBLICodePage({
               </p>
             )}
 
+            {/* PMA verdict banner — the binding answer for a PT PMA, aligned with the native app */}
+            <div
+              className={cn(
+                "mt-5 rounded-xl border px-4 py-3",
+                pmaBlocked
+                  ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
+                  : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]"
+              )}
+            >
+              <p
+                className={cn(
+                  "text-base font-semibold",
+                  pmaBlocked
+                    ? "text-[var(--kbli-pma-closed)]"
+                    : "text-[var(--kbli-pma-open)]"
+                )}
+              >
+                {nationallyClosed
+                  ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
+                  : baliBlocked
+                    ? "In Bali: a PT PMA cannot register this code"
+                    : "In Bali: open to a PT PMA"}
+              </p>
+            </div>
+
+            {/* Reserved-for-MSME / national-procedure callout — ONLY when Bali actually blocks it */}
+            {baliBlocked && !nationallyClosed && (
+              <div className="mt-3 rounded-xl border border-[var(--kbli-pma-restricted)]/30 bg-[var(--kbli-pma-restricted-bg)] px-4 py-3">
+                <p className="text-sm font-semibold text-[var(--kbli-pma-restricted)]">
+                  National procedure — does not apply to a PT PMA in Bali
+                </p>
+                <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
+                  In Bali this activity is reserved for MSMEs; a PT PMA (large
+                  enterprise) cannot register it. The national procedure below
+                  applies only to non-PMA operators.
+                </p>
+              </div>
+            )}
+
             {/* Badge strip */}
             <div className="mt-5 flex flex-wrap gap-2.5">
               <PMABadge
                 status={kbli.pma.status}
                 maxForeign={kbli.pma.maxForeign}
+                capSpecial={kbli.pma.capSpecial}
+                capVerified={kbli.pma.capVerified}
               />
               {kbli.licensing[0] && (
                 <RiskBadge category={kbli.licensing[0].riskCategory} />
@@ -9997,11 +10050,15 @@ export default async function KBLICodePage({
                           Foreign Ownership
                         </span>
                         <span className="text-sm font-semibold text-[var(--foreground)]">
-                          {kbli.pma.status === "open"
-                            ? `${kbli.pma.maxForeign}% Open`
-                            : kbli.pma.status === "restricted"
-                              ? `Max ${kbli.pma.maxForeign}%`
-                              : "Closed"}
+                          {kbli.pma.capSpecial
+                            ? "Restricted · special conditions"
+                            : kbli.pma.status === "open"
+                              ? `${kbli.pma.maxForeign}% Open`
+                              : kbli.pma.status === "restricted"
+                                ? kbli.pma.capVerified
+                                  ? `Max ${kbli.pma.maxForeign}%`
+                                  : `≈${kbli.pma.maxForeign}% (unverified)`
+                                : "Closed"}
                         </span>
                       </div>
                       <div

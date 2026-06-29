@@ -53,8 +53,22 @@ def test_extraction_model_env_override_wins(monkeypatch):
 def test_canonical_doc_type_aliases():
     assert extract.canonical_doc_type("nib") == "nib"
     assert extract.canonical_doc_type("NIB_OSS") == "nib"
+    assert extract.canonical_doc_type("oss") == "nib"
     assert extract.canonical_doc_type("akta") == "akta_pendirian"
+    assert extract.canonical_doc_type("sk_menkumham") == "sk_kemenkumham"
     assert extract.canonical_doc_type("paspor") == "passport"
+    assert extract.canonical_doc_type("e-visa") == "visa"
+    assert extract.canonical_doc_type("voa") == "visa"
+    assert extract.canonical_doc_type("kitap") == "itap"
+    assert extract.canonical_doc_type("itk_card") == "itk"
+    assert extract.canonical_doc_type("e_ktp") == "ktp"
+    assert extract.canonical_doc_type("kk") == "family_card"
+    assert extract.canonical_doc_type("akta_kelahiran") == "birth_certificate"
+    assert extract.canonical_doc_type("buku_nikah") == "marriage_certificate"
+    assert extract.canonical_doc_type("proof_of_payment") == "payment_receipt"
+    assert extract.canonical_doc_type("boarding_pass") == "travel_ticket"
+    assert extract.canonical_doc_type("rekening_koran") == "bank_statement"
+    assert extract.canonical_doc_type("travel_insurance") == "medical_insurance"
     assert extract.canonical_doc_type("unknown_thing") is None
     assert extract.canonical_doc_type(None) is None
 
@@ -181,6 +195,161 @@ async def test_akta_list_fields():
     )
     assert out["fields"]["directors"]["value"] == ["Budi Santoso", "Siti Aminah"]
     assert out["fields"]["commissioners"]["value"] == ["Andi Wijaya"]
+
+
+@pytest.mark.parametrize(
+    "doc_type, payload, expected_key, expected_value",
+    [
+        (
+            "visa",
+            {
+                "visa_no": {"value": "EV-123456", "source_page": 1},
+                "visa_index": {"value": "B211A", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "passport_no": {"value": "YC1234567", "source_page": 1},
+                "expiry": {"value": "2026-12-31", "source_page": 1},
+                "sponsor": {"value": "PT Bali Zero", "source_page": 1},
+            },
+            "visa_index",
+            "B211A",
+        ),
+        (
+            "itap",
+            {
+                "itap_no": {"value": "2C-123456", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "expiry": {"value": "2030-05-31", "source_page": 1},
+                "sponsor": {"value": "PT Bali Zero", "source_page": 1},
+            },
+            "itap_no",
+            "2C-123456",
+        ),
+        (
+            "itk",
+            {
+                "itk_no": {"value": "99/ITK/2026", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "expiry": {"value": "2026-08-01", "source_page": 1},
+                "sponsor": {"value": None, "source_page": None},
+            },
+            "itk_no",
+            "99/ITK/2026",
+        ),
+        (
+            "ktp",
+            {
+                "nik": {"value": "5101010101010001", "source_page": 1},
+                "name": {"value": "Made Sari", "source_page": 1},
+                "dob": {"value": "1990-01-01", "source_page": 1},
+                "address": {"value": "Denpasar", "source_page": 1},
+            },
+            "nik",
+            "5101010101010001",
+        ),
+        (
+            "family_card",
+            {
+                "family_card_no": {"value": "5101010101010001", "source_page": 1},
+                "name": {"value": "Made Family", "source_page": 1},
+                "members": {"value": ["Made Family", "Wayan Child"], "source_page": 1},
+                "address": {"value": "Denpasar", "source_page": 1},
+            },
+            "members",
+            ["Made Family", "Wayan Child"],
+        ),
+        (
+            "birth_certificate",
+            {
+                "certificate_no": {"value": "AK-123", "source_page": 1},
+                "name": {"value": "Wayan Child", "source_page": 1},
+                "dob": {"value": "2020-01-01", "source_page": 1},
+                "place_of_birth": {"value": "Denpasar", "source_page": 1},
+                "parents": {"value": ["Made Parent", "Wayan Parent"], "source_page": 1},
+            },
+            "name",
+            "Wayan Child",
+        ),
+        (
+            "marriage_certificate",
+            {
+                "certificate_no": {"value": "MN-123", "source_page": 1},
+                "name": {"value": "Made Spouse", "source_page": 1},
+                "spouse_names": {"value": ["Made Spouse", "Wayan Spouse"], "source_page": 1},
+                "marriage_date": {"value": "2024-01-01", "source_page": 1},
+                "place": {"value": "Denpasar", "source_page": 1},
+            },
+            "spouse_names",
+            ["Made Spouse", "Wayan Spouse"],
+        ),
+        (
+            "payment_receipt",
+            {
+                "receipt_no": {"value": "TRX-123", "source_page": 1},
+                "payer_name": {"value": "Mario Rossi", "source_page": 1},
+                "amount": {"value": "IDR 10,000,000", "source_page": 1},
+                "payment_date": {"value": "2026-06-01", "source_page": 1},
+                "reference": {"value": "Invoice INV-1", "source_page": 1},
+            },
+            "amount",
+            "IDR 10,000,000",
+        ),
+        (
+            "travel_ticket",
+            {
+                "ticket_no": {"value": "TKT-123", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "travel_date": {"value": "2026-07-01", "source_page": 1},
+                "route": {"value": "DPS-SIN", "source_page": 1},
+                "booking_reference": {"value": "ABC123", "source_page": 1},
+            },
+            "booking_reference",
+            "ABC123",
+        ),
+        (
+            "bank_statement",
+            {
+                "account_holder": {"value": "Mario Rossi", "source_page": 1},
+                "bank_name": {"value": "BCA", "source_page": 1},
+                "account_no": {"value": "****1234", "source_page": 1},
+                "statement_period": {"value": "2026-06", "source_page": 1},
+                "balance": {"value": "IDR 100,000,000", "source_page": 1},
+            },
+            "bank_name",
+            "BCA",
+        ),
+        (
+            "medical_insurance",
+            {
+                "policy_no": {"value": "POL-123", "source_page": 1},
+                "name": {"value": "Mario Rossi", "source_page": 1},
+                "insurer": {"value": "Example Insurance", "source_page": 1},
+                "coverage_period": {"value": "2026", "source_page": 1},
+                "expiry": {"value": "2026-12-31", "source_page": 1},
+            },
+            "policy_no",
+            "POL-123",
+        ),
+        (
+            "sk_kemenkumham",
+            {
+                "sk_number": {"value": "AHU-0000001.AH.01.01", "source_page": 1},
+                "company_name": {"value": "PT Bali Zero", "source_page": 1},
+                "date": {"value": "2024-01-01", "source_page": 1},
+            },
+            "company_name",
+            "PT Bali Zero",
+        ),
+    ],
+)
+async def test_new_doc_type_schemas_extract_with_evidence(
+    doc_type, payload, expected_key, expected_value
+):
+    out = await extract.extract_fields(
+        doc_type, ["legible intake document text"], generate_fn=_fake_gen(payload)
+    )
+    assert out["doc_type"] == doc_type
+    assert out["fields"][expected_key]["value"] == expected_value
+    assert out["fields"][expected_key]["confidence"] >= 0.6
 
 
 # --------------------------------------------------------------------------- #

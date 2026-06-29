@@ -4,7 +4,7 @@ The Ollama vision helper is monkeypatched — no GPU/model needed. Locked
 behaviours:
 
   * the fallback fires ONLY when the keyword score is below the 0.30 floor
-    AND a first-page image is available;
+    AND at least one candidate page image is available;
   * only an EXACT DOC_TYPES member (case-insensitive, single token) is
     accepted — a sentence or an off-list word degrades to unknown;
   * confidence is CAPPED at VISION_CLASSIFY_CONF (review band — a vision-only
@@ -42,6 +42,28 @@ def _fake_vision(answer: str, calls: list[dict[str, Any]]):
     return fake
 
 
+def _fake_vision_sequence(answers: list[str], calls: list[dict[str, Any]]):
+    async def fake(
+        model: str,
+        png_b64: str,
+        prompt: str = "",
+        num_predict: int = 0,
+    ) -> tuple[str, str | None]:
+        calls.append({"model": model, "prompt": prompt, "num_predict": num_predict})
+        answer = answers.pop(0) if answers else "unknown"
+        return answer, ""
+
+    return fake
+
+
+def _fake_text(answer: str, calls: list[dict[str, Any]]):
+    async def fake(model: str, prompt: str) -> tuple[str, str | None]:
+        calls.append({"model": model, "prompt": prompt})
+        return answer, ""
+
+    return fake
+
+
 # ---------------------------------------------------------------------------
 # _parse_vision_answer — exact-member contract
 # ---------------------------------------------------------------------------
@@ -51,12 +73,23 @@ def _fake_vision(answer: str, calls: list[dict[str, Any]]):
     ("raw", "expected"),
     [
         ("kitas", "kitas"),
+        ("itas", "itas"),
+        ("itap", "itap"),
+        ("itk", "itk"),
         ("KITAS", "kitas"),
         (" passport.\n", "passport"),
         ("akta_pendirian", "akta_pendirian"),
         ("unknown", "unknown"),
         ("this is a passport", None),  # sentence -> rejected
-        ("visa", None),  # off-list word -> rejected
+        ("visa", "visa"),
+        ("family_card", "family_card"),
+        ("birth_certificate", "birth_certificate"),
+        ("marriage_certificate", "marriage_certificate"),
+        ("payment_receipt", "payment_receipt"),
+        ("travel_ticket", "travel_ticket"),
+        ("bank_statement", "bank_statement"),
+        ("medical_insurance", "medical_insurance"),
+        ("receipt", None),  # off-list word -> rejected
         ("", None),
         (None, None),
     ],
@@ -85,6 +118,47 @@ async def test_vision_fires_below_floor_and_caps_confidence(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_vision_scans_candidate_pages_until_known_type(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        cls,
+        "_ollama_vision",
+        _fake_vision_sequence(["unknown", "travel_ticket", "passport"], calls),
+    )
+
+    r = await cls.classify_document(
+        _WEAK_TEXT,
+        pages=[
+            {"page": 0, "text": ""},
+            {"page": 1, "text": ""},
+            {"page": 2, "text": ""},
+        ],
+        vision_page_pngs=[b"page-1", b"page-2", b"page-3"],
+    )
+
+    assert r["type"] == "travel_ticket"
+    assert r["confidence"] == cls.VISION_CLASSIFY_CONF
+    assert r["source_page"] == 1
+    assert r["via"] == "vision_fallback"
+    assert len(calls) == 2  # stops as soon as a typed page answers
+
+
+@pytest.mark.asyncio
+async def test_vision_candidate_pages_are_capped(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(cls, "_ollama_vision", _fake_vision("unknown", calls))
+
+    r = await cls.classify_document(
+        _WEAK_TEXT,
+        vision_page_pngs=[b"page-1", b"page-2", b"page-3", b"page-4"],
+    )
+
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+    assert len(calls) == cls.VISION_CLASSIFY_MAX_PAGES
+
+
+@pytest.mark.asyncio
 async def test_vision_not_called_when_keywords_classify(monkeypatch):
     calls: list[dict[str, Any]] = []
     monkeypatch.setattr(cls, "_ollama_vision", _fake_vision("kitas", calls))
@@ -108,11 +182,73 @@ async def test_vision_not_called_without_image(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_text_llm_fires_for_ocr_ready_unknown_and_caps_confidence(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setenv("INTAKE_TEXT_LLM_CLASSIFY_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_TEXT_LLM_MODEL", "qwen3.5:9b")
+    monkeypatch.setattr(cls, "_ollama_text_classify", _fake_text("travel_ticket", calls))
+    text = (
+        "Passenger document forwarded for visa file. Flight carrier reference is "
+        "partially visible but the OCR missed the formal title. " * 2
+    )
+
+    r = await cls.classify_document(text)
+
+    assert r["type"] == "travel_ticket"
+    assert r["confidence"] == cls.TEXT_LLM_CLASSIFY_CONF
+    assert r["via"] == "local_text_llm_fallback"
+    assert r["llm_model"] == "qwen3.5:9b"
+    assert len(calls) == 1
+    assert "EXACTLY ONE token" in calls[0]["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_text_llm_rejects_sentence_answer(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setenv("INTAKE_TEXT_LLM_CLASSIFY_ENABLED", "1")
+    monkeypatch.setattr(
+        cls,
+        "_ollama_text_classify",
+        _fake_text("this looks like a passport", calls),
+    )
+    text = "Document text is mostly readable but lacks deterministic labels. " * 3
+
+    r = await cls.classify_document(text)
+
+    assert r["type"] == "unknown"
+    assert r["confidence"] == 0.0
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_text_llm_not_called_when_feature_flag_disabled(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.delenv("INTAKE_TEXT_LLM_CLASSIFY_ENABLED", raising=False)
+    monkeypatch.setattr(cls, "_ollama_text_classify", _fake_text("passport", calls))
+    text = "Readable but non-deterministic administrative OCR text. " * 3
+
+    r = await cls.classify_document(text)
+
+    assert r["type"] == "unknown"
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_text_llm_not_called_when_keywords_classify(monkeypatch):
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setenv("INTAKE_TEXT_LLM_CLASSIFY_ENABLED", "1")
+    monkeypatch.setattr(cls, "_ollama_text_classify", _fake_text("passport", calls))
+
+    r = await cls.classify_document(_STRONG_TEXT)
+
+    assert r["type"] == "npwp"
+    assert calls == []
+
+
+@pytest.mark.asyncio
 async def test_vision_off_list_answer_stays_unknown(monkeypatch):
     calls: list[dict[str, Any]] = []
-    monkeypatch.setattr(
-        cls, "_ollama_vision", _fake_vision("this looks like a passport", calls)
-    )
+    monkeypatch.setattr(cls, "_ollama_vision", _fake_vision("this looks like a passport", calls))
 
     r = await cls.classify_document(_WEAK_TEXT, first_page_png=b"\x89PNG-fake")
 

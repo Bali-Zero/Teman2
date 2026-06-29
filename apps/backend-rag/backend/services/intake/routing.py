@@ -98,17 +98,16 @@ CONF_STRONG_EXACT = 0.99
 # noise. 20 mirrors classify._normalize_ocr_text's own legibility floor (a page
 # transcript shorter than 20 chars is treated as empty there too).
 QUARANTINE_MIN_OCR_CHARS = 20
-# Kill-switch: with the flag OFF (default) the route stage NEVER emits
-# 'quarantine' — every proposal lands in review_pending exactly as before. Flip
-# to truthy to arm the parking. Read at call time so tests/ops can toggle it.
+# Kill-switch: quarantine is ON by default for empty-OCR unknown noise. Set
+# INTAKE_QUARANTINE_ENABLED=0/false/no/off (or empty) to disable parking and
+# send every proposal to review_pending exactly as before. Read at call time so
+# tests/ops can toggle it.
 def quarantine_enabled() -> bool:
-    """True only if INTAKE_QUARANTINE_ENABLED is explicitly truthy (default OFF)."""
-    return os.environ.get("INTAKE_QUARANTINE_ENABLED", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    """True unless INTAKE_QUARANTINE_ENABLED is explicitly falsy."""
+    raw = os.environ.get("INTAKE_QUARANTINE_ENABLED")
+    if raw is None:
+        return True
+    return raw.strip().lower() not in {"", "0", "false", "no", "off"}
 
 
 def _ocr_char_count(classify_out: dict[str, Any]) -> int:
@@ -222,9 +221,14 @@ CONF_FOLDER_MATCH = 0.85
 # (match against ``companies``). canonical_doc_type() upstream already maps
 # aliases (paspor->passport, akta->akta_pendirian, ...).
 _PERSON_DOC_TYPES = frozenset(
-    {"passport", "npwp", "kitas", "itk", "itas", "itap"}
+    {
+        "passport", "npwp", "kitas", "itk", "itas", "itap", "ktp", "visa",
+        "family_card", "birth_certificate", "marriage_certificate",
+    }
 )
-_COMPANY_DOC_TYPES = frozenset({"nib", "akta_pendirian", "profil_perseroan"})
+_COMPANY_DOC_TYPES = frozenset(
+    {"nib", "akta_pendirian", "profil_perseroan", "sk_kemenkumham"}
+)
 
 # NB: a bare "npwp" doc can be a PERSON npwp or a COMPANY npwp. We try the company
 # match first when the npwp resolves a company row, else fall back to person.
@@ -344,7 +348,13 @@ async def _match_person_strong(
                     "matched_value": norm,
                 })
 
-    kitas = _field_value(extracted, "kitas_no") or _field_value(extracted, "kitas_number")
+    kitas = (
+        _field_value(extracted, "kitas_no")
+        or _field_value(extracted, "kitas_number")
+        or _field_value(extracted, "itap_no")
+        or _field_value(extracted, "itk_no")
+        or _field_value(extracted, "stay_permit_no")
+    )
     if kitas:
         norm = _normalize_id(kitas)
         if norm:
@@ -1009,13 +1019,55 @@ async def backfill_received_by(
     return row["received_by"] if row else None
 
 
+async def _try_auto_attach_after_route(
+    *,
+    proposal_id: int | None,
+    proposal: dict[str, Any],
+    pool: asyncpg.Pool,
+    sender_phone: str | None,
+    source_context: dict[str, Any] | None,
+    effective_status: str,
+) -> dict[str, Any] | None:
+    """Consume opt-in auto-catalog gates after a reviewable proposal exists.
+
+    The import stays local to avoid a module-load cycle: ``auto_attach`` reuses
+    this module's phone matcher. With the default kill-switches OFF this returns
+    a no-op verdict and performs no CRM writes.
+    """
+    if proposal_id is None or effective_status != "review_pending":
+        return None
+
+    decision = proposal["entity_resolution"]["decision"]
+    from backend.services.intake.auto_attach import (
+        try_auto_attach,
+        try_direct_phone_auto_attach,
+    )
+
+    payload = {
+        "id": proposal_id,
+        "routing": proposal["routing"],
+        "entity_resolution": proposal["entity_resolution"],
+    }
+    if decision == DECISION_AUTO_ATTACH:
+        return await try_auto_attach(payload, pool, sender_phone=sender_phone)
+    if decision == DECISION_LINK_CANDIDATE:
+        return await try_direct_phone_auto_attach(
+            payload,
+            pool,
+            sender_phone=sender_phone,
+            source_context=source_context,
+        )
+    return None
+
+
 async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noqa: ARG001 — StageHandler contract
     """FASE-4 real ``route`` stage handler.
 
     Reads the extracted fields from the job's accumulated ``stage_output``,
     resolves the entity, builds the routing proposal, and INSERTs exactly ONE
     ``document_routing_proposal`` row (status ``review_pending``). Idempotent via
-    ``ON CONFLICT (routing_key) DO NOTHING``. ZERO CRM writes.
+    ``ON CONFLICT (routing_key) DO NOTHING``. CRM writes happen only when the
+    separate auto-attach kill-switches are both explicitly enabled.
 
     Owner backfill: when the queue row has no ``received_by`` (shared business
     line / Drive) and routing resolved a client, the client's assigned
@@ -1044,12 +1096,16 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         # reach _make_routing_key, else the old routing_key collides and
         # ON CONFLICT silently drops the fresh proposal.
         qrow = await conn.fetchrow(
-            "SELECT sender_phone, source_path, pipeline_version"
+            "SELECT sender_phone, source_path, pipeline_version, source_context"
             " FROM intake_queue WHERE id = $1",
             queue_id,
         )
         sender_phone = job.get("sender_phone") or (qrow["sender_phone"] if qrow else None)
         source_path = job.get("source_path") or (qrow["source_path"] if qrow else None)
+        source_context = (
+            job.get("source_context")
+            or (dict(qrow["source_context"]) if qrow and isinstance(qrow["source_context"], dict) else None)
+        )
         pipeline_version = (
             job.get("pipeline_version")
             or (qrow["pipeline_version"] if qrow else None)
@@ -1090,6 +1146,7 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             initial_status = "duplicate"
         else:
             initial_status = "review_pending"
+        effective_status = initial_status
 
         proposal_id = await conn.fetchval(
             """
@@ -1118,6 +1175,8 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             )
             proposal_id = existing["id"] if existing else None
             already = True
+            if existing is not None:
+                effective_status = existing["status"]
 
             # ANTI-DEADLOCK GUARD (done-deadlock fix). The bare ON CONFLICT DO
             # NOTHING above silently dropped the fresh proposal whenever the key
@@ -1149,6 +1208,7 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
                     json.dumps(proposal["routing"]),
                     json.dumps(proposal["commit_gate"]),
                 )
+                effective_status = "review_pending"
                 logger.warning(
                     "route(FASE4): revived superseded-orphan proposal_id=%s "
                     "queue=%s back to review_pending (anti-deadlock guard)",
@@ -1163,26 +1223,47 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             conn, queue_id, proposal["routing"]["client_id"]
         )
 
+    auto_attach_result = await _try_auto_attach_after_route(
+        proposal_id=proposal_id,
+        proposal=proposal,
+        pool=pool,
+        sender_phone=sender_phone,
+        source_context=source_context,
+        effective_status=effective_status,
+    )
+    auto_attached = bool(auto_attach_result and auto_attach_result.get("committed"))
+    return_status = (
+        auto_attach_result.get("status")
+        if auto_attached and auto_attach_result is not None
+        else effective_status
+    )
     decision = proposal["entity_resolution"]["decision"]
     logger.info(
         "route(FASE4): job=%s proposal_id=%s decision=%s requires_human=%s "
-        "client_id=%s status=%s noise=%s dedup=%s (0 CRM writes)",
+        "client_id=%s status=%s noise=%s dedup=%s auto_attach=%s",
         queue_id, proposal_id, decision,
         proposal["commit_gate"]["requires_human"],
         proposal["routing"]["client_id"],
-        initial_status, noise, is_dup,
+        return_status, noise, is_dup,
+        (
+            auto_attach_result.get("outcome")
+            or auto_attach_result.get("skipped")
+            if auto_attach_result
+            else "not_attempted"
+        ),
     )
     return {
-        "routed": False,
+        "routed": auto_attached,
         "proposal_id": proposal_id,
         "routing_key": proposal["routing_key"],
         "doc_type": doc_type,
         "decision": decision,
         "requires_human": proposal["commit_gate"]["requires_human"],
-        "status": initial_status,
+        "status": return_status,
         "noise": noise,
         "dedup_already_on_profile": is_dup,
         "idempotent_skip": already,
         "received_by_backfilled": backfilled_owner,
+        "auto_attach": auto_attach_result,
         "_metric": {"model": "entity-resolution-fase4", "confidence": 1.0},
     }

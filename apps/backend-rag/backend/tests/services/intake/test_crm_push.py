@@ -124,6 +124,27 @@ async def test_success_parses_doc_id_file_url_and_drive_file_id(mock_client, blo
     assert "family_member_id" not in body
 
 
+async def test_service_key_uses_internal_upload_endpoint(mock_client, blob):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"success": True, "document_id": 322, "file_url": DRIVE_URL},
+        )
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(blob, bearer_token=None, crm_write_key="service-key-abc")
+    )
+
+    assert result.ok is True
+    assert result.status == "pushed"
+    assert len(requests) == 1
+    req = requests[0]
+    assert req.url.path == f"/api/crm/internal/clients/{CLIENT_ID}/documents/upload"
+    assert req.headers["x-crm-write-key"] == "service-key-abc"
+    assert "authorization" not in req.headers
+
+
 async def test_403_denied_rbac_no_retry(mock_client, blob):
     requests = mock_client(lambda r: httpx.Response(403, json={"detail": "nope"}))
     result = await crm_push.push_committed_document(**_push_kwargs(blob))
@@ -235,3 +256,109 @@ def test_parse_drive_file_id():
     assert crm_push._parse_drive_file_id(DRIVE_URL) == DRIVE_FILE_ID
     assert crm_push._parse_drive_file_id(None) is None
     assert crm_push._parse_drive_file_id("https://example.com/no-drive") is None
+
+
+# --------------------------------------------------------------------------- #
+# Cross-DB identity self-heal: local client_id absent on Fly -> phone-upsert.    #
+# GUILT (404 + service-key + phone -> upsert -> retry on Fly id) and INNOCENCE   #
+# (200 first try, or 404 with no phone) — the upsert must fire ONLY when needed. #
+# --------------------------------------------------------------------------- #
+FLY_CLIENT_ID = 4321
+
+
+async def test_404_phone_upsert_then_retry_succeeds(mock_client, blob):
+    """GUILT: a local pk (87262) that 404s on Fly is phone-upserted, and the
+    upload is re-aimed at the RETURNED Fly id and retried — and succeeds."""
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.endswith("/upsert-by-phone"):
+            return httpx.Response(
+                200, json={"client_id": FLY_CLIENT_ID, "was_created": True, "matched_count": 0}
+            )
+        # upload endpoint: 404 for the local id, 200 for the Fly id
+        if f"/clients/{FLY_CLIENT_ID}/documents/upload" in path:
+            return httpx.Response(
+                200, json={"success": True, "document_id": 55, "file_url": DRIVE_URL}
+            )
+        return httpx.Response(404, json={"detail": "Client not found"})
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(
+            blob,
+            bearer_token=None,
+            crm_write_key="service-key-abc",
+            client_id=87262,
+            sender_phone="+62 812-3456-7890",
+            client_full_name="Jane Doe",
+        )
+    )
+
+    assert result.ok is True
+    assert result.status == "pushed"
+    assert result.fly_doc_id == 55
+    paths = [r.url.path for r in requests]
+    # initial upload (local id, 404) -> upsert-by-phone -> retry upload (fly id)
+    assert paths[0] == "/api/crm/internal/clients/87262/documents/upload"
+    assert paths[1] == "/api/crm/clients/upsert-by-phone"
+    assert paths[2] == f"/api/crm/internal/clients/{FLY_CLIENT_ID}/documents/upload"
+    # the upsert body carries ONLY derived contact fields (Law 2), digits-only phone
+    upsert_body = json.loads(requests[1].content)
+    assert upsert_body["phone_normalized"] == "6281234567890"
+    assert upsert_body["full_name"] == "Jane Doe"
+    assert upsert_body["create_if_missing"] is True
+    assert "file" not in upsert_body  # never the document blob
+
+
+async def test_200_first_try_never_upserts(mock_client, blob):
+    """INNOCENCE: a clean 200 must NOT trigger any phone-upsert call."""
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert not request.url.path.endswith("/upsert-by-phone"), "must not upsert on success"
+        return httpx.Response(
+            200, json={"success": True, "document_id": 7, "file_url": DRIVE_URL}
+        )
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(
+            blob,
+            bearer_token=None,
+            crm_write_key="service-key-abc",
+            sender_phone="+62 812-3456-7890",
+        )
+    )
+    assert result.ok is True
+    assert len(requests) == 1
+    assert requests[0].url.path.endswith("/documents/upload")
+
+
+async def test_404_without_phone_does_not_upsert(mock_client, blob):
+    """INNOCENCE: a 404 with NO sender_phone cannot self-heal — stays rejected,
+    and never calls upsert (no phone to key on)."""
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert not request.url.path.endswith("/upsert-by-phone")
+        return httpx.Response(404, json={"detail": "Client not found"})
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(blob, bearer_token=None, crm_write_key="service-key-abc")
+    )
+    assert result.ok is False
+    assert result.status == "rejected"
+    assert len(requests) == 1  # just the failed upload, no upsert
+
+
+async def test_404_with_bearer_token_does_not_upsert(mock_client, blob):
+    """INNOCENCE: reviewer-JWT path is human-driven against Fly directly — the
+    cross-DB bridge is service-key-only, so a JWT 404 must NOT upsert."""
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert not request.url.path.endswith("/upsert-by-phone")
+        return httpx.Response(404, json={"detail": "Client not found"})
+
+    requests = mock_client(handler)
+    result = await crm_push.push_committed_document(
+        **_push_kwargs(blob, sender_phone="+62 812-3456-7890")  # keeps bearer_token
+    )
+    assert result.ok is False
+    assert result.status == "rejected"
+    assert len(requests) == 1

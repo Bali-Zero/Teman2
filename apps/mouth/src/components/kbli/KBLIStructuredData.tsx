@@ -1,9 +1,17 @@
 import type { KBLICode } from "@/lib/kbli-types";
 
 export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
+  // National PMA openness != Bali registrability. When a code is nationally open
+  // but l4_bali.blocked, the SEO/JSON-LD must NOT tell Google "100% foreign
+  // ownership allowed" unqualified — it would surface in rich results / AI answers
+  // as a green light that is false for a Bali setup.
+  const baliBlocked = !!code.baliL4?.blocked;
+  const baliNat = baliBlocked
+    ? " nationally — but blocked for a PT PMA in Bali"
+    : "";
   const pmaLabel =
     code.pma.status === "open"
-      ? `100% foreign ownership allowed (TERBUKA)`
+      ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
       : code.pma.status === "restricted"
         ? `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`
         : "Closed to foreign investment (TERTUTUP)";
@@ -86,9 +94,15 @@ export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
 }
 
 export function KBLIFaqJsonLd({ code }: { code: KBLICode }) {
+  // National openness != Bali registrability — a Bali-blocked code must NOT answer
+  // Google's "can foreigners operate this" with an unqualified "Yes, 100%, no local
+  // partner". Qualify the open answer with the Bali block.
+  const baliBlocked = !!code.baliL4?.blocked;
   const pmaAnswer =
     code.pma.status === "open"
-      ? `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
+      ? baliBlocked
+        ? `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but a PT PMA currently cannot register it in Bali (reserved for UMKM / 2026 moratorium). ${code.baliL4?.reason ?? "See the Bali status above."} Outside Bali it is open to a PT PMA with no local partner required.`
+        : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
       : code.pma.status === "restricted"
         ? `Partially. KBLI ${code.code} is TERBATAS — foreign ownership capped at ${code.pma.maxForeign}%.${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""} An Indonesian partner holds the remaining shares.`
         : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;

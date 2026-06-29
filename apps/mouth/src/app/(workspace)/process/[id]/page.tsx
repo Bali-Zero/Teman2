@@ -1341,7 +1341,7 @@ export default function CaseDetailPage() {
                       autoFocus
                       type="number"
                       min="0"
-                      step="100000"
+                      step="1"
                       value={priceValue}
                       onChange={(e) => setPriceValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -1395,7 +1395,7 @@ export default function CaseDetailPage() {
                       autoFocus
                       type="number"
                       min="0"
-                      step="100000"
+                      step="1"
                       value={priceValue}
                       onChange={(e) => setPriceValue(e.target.value)}
                       onKeyDown={(e) => {

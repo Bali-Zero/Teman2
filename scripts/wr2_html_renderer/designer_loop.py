@@ -179,6 +179,43 @@ def _is_composition_only_lever(lever_names: set[str]) -> bool:
     return bool(lever_names) and lever_names <= _COMPOSITION_LEVERS
 
 
+# Superscar #3 cure (4th over-match): identify a typographic orphan POSITIVELY,
+# don't blacklist metaphors. A real orphan is a unit of running TEXT that wrapped
+# or landed badly on a line. "decorative orphan", "logo sits alone", "image
+# stranded", "divider stranded" reuse the same words for SPATIAL isolation of a
+# layout element — they carry no text-unit, so they are composition, not orphans.
+
+# A unit of running text that can wrap badly.
+_ORPHAN_TEXT_UNITS = (
+    "word", "line", "title", "headline", "heading", "sentence",
+    "tail", "caption", "body copy",
+)
+# How that text unit failed to land — the "bad-landing" predicate.
+_ORPHAN_BAD_LANDING = (
+    "orphan", "stub", "widow", "stranded", "sits alone",
+    "alone on line", "alone on the line", "dangling", "ragged",
+    "short tail", "short last line", "wraps", "wrapped", "wrap",
+    "rewrap", "re-wrap", "extra line", "line stub", "3-line", "4-line",
+    "two-line", "three-line", "on its own line", "on the line",
+)
+
+
+def _is_typographic_orphan(low: str) -> bool:
+    """Positive identification of a TEXT orphan (superscar #3 cure).
+
+    True iff an explicit one-word marker is present, OR a text-unit token
+    co-occurs with a bad-landing predicate. A bare bad-landing word with no
+    text-unit ("decorative orphan", "logo sits alone", "divider stranded") is a
+    composition metaphor, not a typographic orphan — keys on INTENT, not phrase.
+    """
+    if _contains_any_word(low, _ONE_WORD_ORPHAN_MARKERS):
+        return True
+    return (
+        _contains_any_word(low, _ORPHAN_TEXT_UNITS)
+        and _contains_any_word(low, _ORPHAN_BAD_LANDING)
+    )
+
+
 def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
     """Grade an orphan / stub / wrap-rhythm claim. Returns (is_orphan_claim, is_hard).
 
@@ -191,8 +228,8 @@ def _orphan_is_hard(low: str, *, rebalance_applied: bool) -> tuple[bool, bool]:
       - if NO re-wrap was attempted, an orphan claim is a real unfixed defect
         → HARD (fail-safe toward the strict gate).
     """
-    if not _contains_any_word(low, _ORPHAN_MARKERS):
-        return False, False  # not an orphan/stub/wrap claim at all
+    if not _is_typographic_orphan(low):
+        return False, False  # not a TEXT orphan (or a composition metaphor)
     # a genuine 1-word orphan is a real defect regardless of re-wrap state.
     if _contains_any_word(low, _ONE_WORD_ORPHAN_MARKERS):
         return True, True
@@ -277,8 +314,11 @@ def _classify_residual_issues(
 
     Returns (has_hard, all_composition):
       has_hard         — at least one issue is a legibility/brand HARD defect.
-      all_composition  — every issue is a composition/editorial critique (and
-                         there is at least one issue).
+      all_composition  — no atomic issue blocks acceptance: every atomic claim is
+                         a composition/editorial critique, OR there are NO atomic
+                         claims at all (empty list, or only synthetic 'vision: …'
+                         summary markers). An empty residual is the MOST
+                         acceptable case, not the least.
     A HARD marker always wins (an issue that is both is treated as hard).
 
     `rebalance_applied` (True when the slide already committed _rebalance_wrap)
@@ -286,9 +326,21 @@ def _classify_residual_issues(
     is editorial rhythm (SOFT), while a 1-word orphan stays HARD (see
     _orphan_is_hard). When False (no re-wrap attempted) every orphan claim is
     treated as HARD.
+
+    BUGFIX (2026-06-29): the old `all_composition = bool(issues)` seed turned an
+    EMPTY residual — the critic returning ZERO atomic defects (`critiques=[]`),
+    i.e. a clean slide — into all_composition=False, which the accept-gate read
+    as "not safe to accept" → render_failed. Observed sinking whole carousels
+    on slide 8 (drafts 8e582ce0 / d2d308bf / 9b923976, ~5 days no WR2 output).
+    A slide with no atomic complaint must converge, never fail. Cure: track
+    whether any atomic claim was UNCLASSIFIABLE; all_composition is True unless
+    such a blocker is seen. (scar #3 under-match: fail-safe inverted — absence
+    of a defect was treated as presence of an unclassifiable one.)
     """
     has_hard = False
-    all_composition = bool(issues)
+    # True until an atomic claim we can't classify as composition is seen. An
+    # empty list, or one with only synthetic summary markers, stays True (clean).
+    all_composition = True
     for raw in issues:
         low = (raw or "").lower()
         # Synthetic 'vision: …' summary markers are the critic's own meta-labels,
@@ -544,6 +596,17 @@ async def run_designer_loop(
     best_png: Path | None = None
     best_score = -1.0
     escalated = False
+    # The cheap-tier (geometry/legibility/ocr) issue set from the PREVIOUS
+    # iteration, used for no-op detection on the cheap path (BUGFIX 2026-06-29 /
+    # Bug B). The vision path already detects idempotent levers; the cheap path
+    # did not — so a cheap lever that does not move the verdict (e.g. shrink_font
+    # body proposed for `ink at bottom edge` when the bottom ink is the LOGO, not
+    # the body) re-applied identically every iteration, spun to max_iters, and
+    # emitted render_failed with last_reject_issues=None (critiques=[]). Observed
+    # sinking whole carousels on slide 8 (drafts 8e582ce0 / d2d308bf / 9b923976,
+    # ~5 days zero WR2 output) with legibility PASS + OCR 1.0 — i.e. the text was
+    # perfectly legible, only a geometry ink-at-edge flag the lever could not fix.
+    prev_cheap_issues: tuple[str, ...] | None = None
     # last vision-reject residual that was committed-and-continued (incremental
     # lever applied). Used ONLY at the max_iters exit: if after exhausting the
     # iteration budget the remembered residual is all-SOFT, accept the best
@@ -594,6 +657,11 @@ async def run_designer_loop(
         }
 
         if not passes_cheap:
+            # The cheap-tier verdict fingerprint for no-op detection (Bug B):
+            # if applying the cheap levers does NOT change the combined issue set
+            # vs the previous iteration, the lever is ineffective for this defect
+            # and re-applying it just burns iterations to a render_failed.
+            cur_cheap_issues = tuple(geo.issues) + tuple(leg.issues) + tuple(ocr.issues)
             # apply the cheap remedy levers and re-render (no model cost)
             applied = _apply_levers(levers_acc, cheap_levers)
             iter_record["cheap_levers_pulled"] = applied
@@ -603,8 +671,49 @@ async def run_designer_loop(
                 iter_record["escalated"] = "near-empty, not CSS-fixable"
                 history.append(iter_record)
                 break
-            history.append(iter_record)
-            continue  # re-render with new levers
+            # NO-OP DETECTION ON CHEAP PATH (Bug B): a cheap lever was applied but
+            # the issue set is IDENTICAL to the previous iteration → the lever did
+            # not move the cheap verdict (idempotent for this defect; classic
+            # case: shrink_font body cannot reduce `ink at bottom edge` when the
+            # bottom ink is the logo/footer, not the body). Re-applying it just
+            # burns iterations to a render_failed (observed sinking carousels on
+            # slide 8 for ~5 days: ink-at-edge 0.50 constant, shrink_body 1→2→3,
+            # legibility PASS + OCR 1.0, then render_failed last_reject_issues=None).
+            #
+            # DO NOT accept blindly here on legibility+OCR pass: those cheap
+            # critics do NOT prove the residual is safe — geometry is the ONLY
+            # cheap critic that sees frame overflow, and OCR only checks the
+            # HEADLINE, so genuinely clipped BODY text could slip through (codex
+            # refuter 2026-06-29, REFUTED the blind-accept variant). Instead,
+            # ESCALATE the verdict to the vision critic, which sees the WHOLE
+            # slide (body/footer/overflow) and already has the correct
+            # HARD/SOFT/composition-debt logic below. If vision is unavailable,
+            # do NOT publish — fall through to the strict converged=False reject.
+            cheap_lever_noop = (
+                bool(applied)
+                and prev_cheap_issues is not None
+                and cur_cheap_issues == prev_cheap_issues
+            )
+            if cheap_lever_noop and use_vision and vision_critic is not None:
+                iter_record["cheap_noop_escalated_to_vision"] = (
+                    "cheap lever no-op (issues unchanged) — deferring verdict to "
+                    "vision critic (whole-slide) instead of spinning to max_iters"
+                )
+                # fall through to the vision tier below for an informed verdict
+                # (the vision tier appends iter_record to history — do NOT append
+                # here, or the record would be duplicated).
+            elif cheap_lever_noop:
+                # No vision critic to adjudicate the no-op residual → can't prove
+                # the slide is safe. Escalate (keeps the strict gate on a residual
+                # we cannot verify), never blind-accept.
+                escalated = True
+                iter_record["escalated"] = "cheap lever no-op, no vision to adjudicate"
+                history.append(iter_record)
+                break
+            else:
+                prev_cheap_issues = cur_cheap_issues
+                history.append(iter_record)
+                continue  # re-render with new levers
 
         # --- Tier 3: vision (paid) — only when cheap tiers pass and enabled ---
         if use_vision and vision_critic is not None:

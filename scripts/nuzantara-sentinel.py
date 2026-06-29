@@ -58,6 +58,35 @@ logger = logging.getLogger(__name__)
 STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
 REGISTRY_FILE = os.path.expanduser("~/.agent/decisions/job_registry.json")
 HEARTBEAT_FILE = os.path.expanduser("~/.pro_heartbeat")
+# Organism heartbeat sidecar (the connectome reads ~/.organism/last_seen/<id>.json).
+# 2026-06-28: the sentinel ran green for 28 days while THIS sidecar stayed frozen
+# because no code wrote it unconditionally — green (exit 0) != working (heartbeat).
+ORGAN_LAST_SEEN_DIR = os.path.expanduser("~/.organism/last_seen")
+ORGAN_ID = "pro.sentinel"
+
+
+def _emit_organ_heartbeat(status: str = "ok", metadata: dict | None = None) -> None:
+    """Write the organism heartbeat sidecar UNCONDITIONALLY (must never raise).
+
+    Format matches the 108 healthy sidecars + organism_stale_detector reader:
+    {"ts": <float epoch>, "status": ..., "organ_id": ..., "metadata": {...}}.
+    Atomic via tmp+rename. A heartbeat that breaks its caller is worse than none.
+    """
+    try:
+        os.makedirs(ORGAN_LAST_SEEN_DIR, exist_ok=True)
+        path = os.path.join(ORGAN_LAST_SEEN_DIR, f"{ORGAN_ID}.json")
+        tmp = f"{path}.tmp.{os.getpid()}"
+        payload = {
+            "ts": time.time(),
+            "status": status,
+            "organ_id": ORGAN_ID,
+            "metadata": metadata or {},
+        }
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+        os.replace(tmp, path)
+    except Exception as exc:  # noqa: BLE001 — heartbeat must never break the run
+        logger.warning(f"organ heartbeat emit failed: {exc}")
 SENTINEL_LOG = os.path.expanduser("~/logs/sentinel.jsonl")
 OPENCLAW_RESTART_RECORD = os.path.expanduser("~/.agent/decisions/openclaw_last_restart.json")
 PRO_HOST = "Nuzantara"
@@ -1092,6 +1121,17 @@ def run_sentinel() -> None:
     logger.info(f"=== Sentinel done: {log_entry['jobs_checked']} checked, "
                 f"{log_entry['healthy']} healthy, {log_entry['escalated']} escalated, "
                 f"{log_entry['suppressed']} suppressed in {duration:.1f}s ===")
+
+    # UNCONDITIONAL organism heartbeat — proves the sentinel breathed this tick,
+    # regardless of branches above. This is the fix for the 28-day frozen sidecar.
+    _emit_organ_heartbeat(
+        status="ok",
+        metadata={
+            "jobs_checked": log_entry.get("jobs_checked"),
+            "escalated": log_entry.get("escalated"),
+            "duration_s": round(duration, 1),
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -114,11 +114,11 @@ def test_char_count_missing_key_is_zero():
 
 
 # --------------------------------------------------------------------------- #
-# kill-switch — default OFF
+# kill-switch — default ON, explicit falsy disables
 # --------------------------------------------------------------------------- #
-def test_quarantine_disabled_by_default(monkeypatch):
+def test_quarantine_enabled_by_default(monkeypatch):
     monkeypatch.delenv("INTAKE_QUARANTINE_ENABLED", raising=False)
-    assert quarantine_enabled() is False
+    assert quarantine_enabled() is True
 
 
 def test_quarantine_enabled_when_truthy(monkeypatch):
