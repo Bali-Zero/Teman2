@@ -51,9 +51,42 @@ def test_logo_composition_slide_not_hard():
     assert has_hard is False
 
 
+def test_empty_residual_is_acceptable():
+    """BUGFIX 2026-06-29: a clean slide (critic returns ZERO atomic defects)
+    must classify as all_composition=True so the accept-gate converges it,
+    NOT render_failed.
+
+    Repro: drafts 8e582ce0 / d2d308bf / 9b923976 all died on slide 8 with
+    `critiques=[]` — the empty residual was seeded all_composition=False by the
+    old `bool(issues)` and sank the whole carousel (~5 days, zero WR2 output).
+    An empty list, or a list of ONLY synthetic 'vision: …' summary markers, has
+    no atomic blocker → must be acceptable.
+    """
+    # truly empty residual — the most acceptable case of all
+    has_hard, all_comp = dl._classify_residual_issues([], rebalance_applied=False)
+    assert has_hard is False
+    assert all_comp is True, "empty residual must be all_composition (clean slide)"
+
+    # only a synthetic summary marker, no atomic defect → still acceptable
+    has_hard, all_comp = dl._classify_residual_issues(
+        ["vision: balanced/clean"], rebalance_applied=False
+    )
+    assert has_hard is False
+    assert all_comp is True, "summary-marker-only residual must be all_composition"
+
+    # sanity: a genuine unclassifiable atomic claim still blocks (no regression)
+    has_hard, all_comp = dl._classify_residual_issues(
+        ["the headline color clashes with the brand palette in a way that"],
+        rebalance_applied=False,
+    )
+    assert all_comp is False, "an unclassifiable atomic claim must still block"
+
+
 if __name__ == "__main__":
     test_orphan_entity_intent_grading()
     print("PASS test_orphan_entity_intent_grading (11 cases)")
     test_logo_composition_slide_not_hard()
     print("PASS test_logo_composition_slide_not_hard")
+    test_empty_residual_is_acceptable()
+    print("PASS test_empty_residual_is_acceptable")
     print("ALL PASS")
