@@ -165,44 +165,53 @@ export function ChatMessageListVirtualized({
         </div>
 
         {/* Quick Actions */}
-        <div className="flex flex-wrap justify-center gap-3 mb-6">
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
-            onClick={() => onFollowUpClick?.("What can you help me with?")}
-            aria-label="Ask what Zantara can do"
-          >
-            <span className="text-lg" aria-hidden="true">
-              💡
-            </span>
-            <span>What can you do?</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
-            onClick={() => onFollowUpClick?.("Summarize my tasks for today")}
-            aria-label="Get task summary"
-          >
-            <span className="text-lg" aria-hidden="true">
-              📋
-            </span>
-            <span>My Tasks</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
-            onClick={onOpenSearchDocs}
-            aria-label="Search documents"
-          >
-            <span className="text-lg" aria-hidden="true">
-              🔍
-            </span>
-            <span>Search docs</span>
-          </Button>
-        </div>
+        <ul
+          className="flex flex-wrap justify-center gap-3 mb-6"
+          aria-label="Quick actions"
+        >
+          <li>
+            <Button
+              variant="outline"
+              size="lg"
+              className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
+              onClick={() => onFollowUpClick?.("What can you help me with?")}
+              aria-label="Ask what Zantara can do"
+            >
+              <span className="text-lg" aria-hidden="true">
+                💡
+              </span>
+              <span>What can you do?</span>
+            </Button>
+          </li>
+          <li>
+            <Button
+              variant="outline"
+              size="lg"
+              className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
+              onClick={() => onFollowUpClick?.("Summarize my tasks for today")}
+              aria-label="Get task summary"
+            >
+              <span className="text-lg" aria-hidden="true">
+                📋
+              </span>
+              <span>My Tasks</span>
+            </Button>
+          </li>
+          <li>
+            <Button
+              variant="outline"
+              size="lg"
+              className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
+              onClick={onOpenSearchDocs}
+              aria-label="Search documents"
+            >
+              <span className="text-lg" aria-hidden="true">
+                🔍
+              </span>
+              <span>Search docs</span>
+            </Button>
+          </li>
+        </ul>
       </div>
     );
   }
