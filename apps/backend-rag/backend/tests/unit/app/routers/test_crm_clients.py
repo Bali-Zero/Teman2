@@ -404,6 +404,136 @@ class TestGetClientsStats:
         assert "new_last_30_days" in response.json()
         assert "by_practice_type" in response.json()
 
+    def test_get_clients_stats_non_admin_is_scoped_to_own_clients(self, mock_db_pool):
+        """Non-admin team member only sees stats scoped to their assigned clients."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers import crm_clients
+        from backend.core.cache import get_cache_service
+
+        # Deterministic cache miss — clear any prior stats entries.
+        get_cache_service()._memory_cache.clear()
+
+        app = FastAPI()
+        app.include_router(crm_clients.router)
+
+        pool, conn = mock_db_pool
+
+        def override_get_database_pool():
+            return pool
+
+        # Non-admin team member: email not in any admin allowlist, role not admin.
+        team_email = "team@balizero.com"
+
+        def override_get_current_user():
+            return {"email": team_email, "role": "agent"}
+
+        app.dependency_overrides[get_database_pool] = override_get_database_pool
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        mock_status_row = TestCreateClient._create_mock_row({"status": "active", "count": 2})
+        mock_team_row = TestCreateClient._create_mock_row(
+            {"assigned_to": team_email, "count": 2},
+        )
+        mock_practice_type_row = TestCreateClient._create_mock_row(
+            {"practice_type": "KITAS", "count": 1},
+        )
+        mock_count_row = TestCreateClient._create_mock_row({"count": 1})
+        mock_passport_health_row = TestCreateClient._create_mock_row(
+            {"expired": 0, "expiring_soon": 1, "silent_30d": 0},
+        )
+
+        conn.fetch = AsyncMock(
+            side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]],
+        )
+        conn.fetchrow = AsyncMock(side_effect=[mock_count_row, mock_passport_health_row])
+
+        response = TestClient(app).get("/api/crm/clients/stats/overview")
+
+        assert response.status_code == 200, response.text
+
+        # Every aggregate query must be scoped to the caller's assigned clients.
+        fetch_calls = conn.fetch.call_args_list
+        assert len(fetch_calls) == 3
+        fetch_sqls = [c.args[0] for c in fetch_calls]
+        # by_status + by_team_member scoped on clients.assigned_to.
+        assert all("assigned_to = $1" in sql for sql in fetch_sqls[:2]), fetch_sqls[:2]
+        # Practices-by-type is scoped on the practices table alias.
+        assert "p.assigned_to = $1" in fetch_sqls[2], fetch_sqls[2]
+        # The bound param is the caller's lowercased email.
+        assert all(c.args[1:] == (team_email,) for c in fetch_calls)
+
+        fetchrow_calls = conn.fetchrow.call_args_list
+        assert len(fetchrow_calls) == 2
+        fetchrow_sqls = [c.args[0] for c in fetchrow_calls]
+        # new_last_30_days: scoped, STATS_DAYS_RECENT shifts to $2.
+        assert "assigned_to = $1" in fetchrow_sqls[0], fetchrow_sqls[0]
+        assert "$2" in fetchrow_sqls[0], fetchrow_sqls[0]
+        assert fetchrow_calls[0].args[1:] == (team_email, 30)
+        # passport_health: scoped.
+        assert "assigned_to = $1" in fetchrow_sqls[1], fetchrow_sqls[1]
+        assert fetchrow_calls[1].args[1:] == (team_email,)
+
+    def test_get_clients_stats_admin_sees_unfiltered_totals(self, mock_db_pool):
+        """Admin user receives unfiltered global stats (no assigned_to scope)."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers import crm_clients
+        from backend.core.cache import get_cache_service
+
+        get_cache_service()._memory_cache.clear()
+
+        app = FastAPI()
+        app.include_router(crm_clients.router)
+
+        pool, conn = mock_db_pool
+
+        def override_get_database_pool():
+            return pool
+
+        # Admin via role (email need not be in any allowlist).
+        def override_get_current_user():
+            return {"email": "director@balizero.com", "role": "admin"}
+
+        app.dependency_overrides[get_database_pool] = override_get_database_pool
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        mock_status_row = TestCreateClient._create_mock_row({"status": "active", "count": 10})
+        mock_team_row = TestCreateClient._create_mock_row(
+            {"assigned_to": "someone@balizero.com", "count": 5},
+        )
+        mock_practice_type_row = TestCreateClient._create_mock_row(
+            {"practice_type": "KITAS", "count": 7},
+        )
+        mock_count_row = TestCreateClient._create_mock_row({"count": 3})
+        mock_passport_health_row = TestCreateClient._create_mock_row(
+            {"expired": 2, "expiring_soon": 5, "silent_30d": 1},
+        )
+
+        conn.fetch = AsyncMock(
+            side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]],
+        )
+        conn.fetchrow = AsyncMock(side_effect=[mock_count_row, mock_passport_health_row])
+
+        response = TestClient(app).get("/api/crm/clients/stats/overview")
+
+        assert response.status_code == 200, response.text
+
+        fetch_calls = conn.fetch.call_args_list
+        fetch_sqls = [c.args[0] for c in fetch_calls]
+        # No aggregate query is scoped for admins.
+        assert all("assigned_to = $" not in sql for sql in fetch_sqls), fetch_sqls
+        # Practices-by-type keeps its original WHERE-less form.
+        assert "WHERE p.assigned_to" not in fetch_sqls[2], fetch_sqls[2]
+        # No email param bound to any fetch.
+        assert all(c.args[1:] == () for c in fetch_calls)
+        # new_last_30_days keeps STATS_DAYS_RECENT as the sole $1 param.
+        assert conn.fetchrow.call_args_list[0].args[1:] == (30,)
+
 
 class TestExtractPassportEnhancedRBAC:
     """Tests for RBAC on POST /extract-passport-enhanced"""
