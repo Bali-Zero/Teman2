@@ -133,4 +133,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Stage 2 (2026-06-30): emit an organism heartbeat at end of every run so a
+    # green-but-dead pulse surfaces in ~/.organism/last_seen instead of being
+    # masked by an exit-0. Wraps main(), preserves its exit code, re-raises crashes.
+    from mata_garuda.workers.heartbeat import run_with_heartbeat
+
+    sys.exit(run_with_heartbeat("mata_garuda.sentinel_cell", main))
