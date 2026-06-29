@@ -126,6 +126,51 @@ def test_run_claude_json_genuine_failure_returns_none_not_raise(monkeypatch):
     assert claude_vision._run_claude_json("p", {"type": "object"}) is None
 
 
+def test_run_claude_json_promotes_numbered_oauth_slot_to_bare(monkeypatch):
+    """BUGFIX 2026-06-30: the fleet ships the MAX OAuth token in numbered slots
+    (CLAUDE_CODE_OAUTH_TOKEN_1/_2/_3); the `claude` CLI authenticates from the
+    BARE CLAUDE_CODE_OAUTH_TOKEN. If the bare var is unset, the vision call must
+    promote the first available numbered slot, else the CLI fails `Not logged in`
+    and (under WR2_VISION_REQUIRED=1) sinks the whole carousel. Verify the env
+    passed to subprocess.run carries the promoted bare token."""
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(*a, **k):
+        captured["env"] = k.get("env", {})
+        return _fake_proc(returncode=0, stdout='{"structured_output": {}}')
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "slot-two-token")
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "slot-two-token", (
+        "first available numbered slot must be promoted to the bare token"
+    )
+
+
+def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
+    """If the bare CLAUDE_CODE_OAUTH_TOKEN is already set, it must be respected —
+    the numbered-slot promotion only fills an UNSET bare var, never overrides."""
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(*a, **k):
+        captured["env"] = k.get("env", {})
+        return _fake_proc(returncode=0, stdout='{"structured_output": {}}')
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "bare-token")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot-one-token")
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "bare-token"
+
+
 def test_run_claude_json_timeout_raises_transient(monkeypatch):
     """A subprocess timeout is endpoint latency, not a defect — must raise the
     transient VisionTimeout (no burned attempt), NOT return None (which would
