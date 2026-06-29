@@ -26,60 +26,56 @@ export const meta = {
   ],
 };
 
-// args: optional { codes: string[] } to override the pilot set.
-const fs = "_out"; // marker; the agents read files via Read in their own context
-
+// Work-list is built deterministically by a single loader agent that returns the
+// FLAT list of {code, field} pairs — every R-EDIT-CAND finding in FINDINGS.jsonl.
+// No code-file gating: the full editorial set IS the work. (Reading + emitting the
+// flat list is mechanical; a schema'd agent does it without truncation risk because
+// it returns rows, not a nested map.)
 phase("Load");
-// Code set: full run reads editorial-codes-all.json; pilot reads pilot-codes.json.
-// Override with args.set ("full" | "pilot"); default "pilot".
-const CODE_FILE =
-  args && args.set === "full"
-    ? "scripts/kbli_triangle/_out/editorial-codes-all.json"
-    : "scripts/kbli_triangle/_out/pilot-codes.json";
-// The deterministic layer wrote these. We pass the code list + per-code editorial
-// candidates to the analyzers as prompt context (they Read the dataset themselves).
-const loader = await agent(
-  `You are the loader for the KBLI Triangle run. Do exactly this:
-1. Read ${CODE_FILE} (a JSON array of KBLI codes).
-2. Read scripts/kbli_triangle/_out/FINDINGS.jsonl and keep only rows where rule_id=="R-EDIT-CAND" AND the code is in that list.
-3. Return a JSON object: { codes: [...], candidates: { "<code>": [ {field, evidence}, ... ] } } containing ONLY codes that have at least one R-EDIT-CAND finding.
-Return ONLY that JSON object as your final message.`,
+const loaded = await agent(
+  `You are the loader for the KBLI Triangle FULL run. Do exactly this and nothing else:
+1. Read scripts/kbli_triangle/_out/FINDINGS.jsonl (JSON-lines; ~825 rows).
+2. Keep ONLY rows where rule_id == "R-EDIT-CAND".
+3. Return a JSON object { rows: [ {code, field}, ... ] } with ONE entry per kept row — there should be 756 of them. Do not deduplicate, do not summarize, do not cap. Use the exact "code" and "field" values from each row.
+Return ONLY that object.`,
   {
-    label: "load-pilot",
+    label: "load-full",
     phase: "Load",
     schema: {
       type: "object",
       properties: {
-        codes: { type: "array", items: { type: "string" } },
-        candidates: {
-          type: "object",
-          additionalProperties: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                field: { type: "string" },
-                evidence: { type: "string" },
-              },
-              required: ["field"],
+        rows: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              code: { type: "string" },
+              field: { type: "string" },
             },
+            required: ["code", "field"],
           },
         },
       },
-      required: ["codes", "candidates"],
+      required: ["rows"],
     },
   },
 );
 
-const work = [];
-const cand = (loader && loader.candidates) || {};
-for (const code of Object.keys(cand)) {
-  for (const c of cand[code])
-    work.push({ code, field: c.field, evidence: c.evidence || "" });
-}
+const work = ((loaded && loaded.rows) || []).map((r) => ({
+  code: r.code,
+  field: r.field,
+  evidence: "",
+}));
+const distinctCodes = new Set(work.map((w) => w.code)).size;
 log(
-  `Layer-2 pilot: ${work.length} editorial fields across ${Object.keys(cand).length} codes`,
+  `Layer-2 FULL: ${work.length} editorial fields across ${distinctCodes} codes`,
 );
+if (work.length < 100) {
+  log(
+    `WARNING: expected ~756 fields but got ${work.length} — loader may have truncated; aborting to avoid a partial ledger.`,
+  );
+  return { error: "loader_undercount", got: work.length, expected: 756 };
+}
 
 // Per-field pipeline: propose (grounded) → refute (fresh skeptic) → carry verdict.
 // generator≠grader is enforced by two separate agent() calls with disjoint prompts.
