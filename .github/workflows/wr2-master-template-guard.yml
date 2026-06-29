@@ -65,7 +65,7 @@ jobs:
       - name: Install validator deps
         run: |
           # The validator imports from backend.services — minimal install.
-          pip install --quiet pytest pydantic
+          pip install --quiet pytest pytest-asyncio pydantic
 
       - name: Run constant-shape unit tests
         run: |
