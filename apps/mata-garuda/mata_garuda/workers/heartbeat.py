@@ -24,7 +24,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 logger = logging.getLogger("mata_garuda.workers.heartbeat")
 
@@ -62,6 +62,41 @@ def emit_heartbeat(
     except Exception as exc:  # noqa: BLE001 — emitter must stay robust
         logger.warning("mata_garuda heartbeat emit failed for %s: %s", organ_id, exc)
         return False
+
+
+def run_with_heartbeat(
+    organ_id: str,
+    fn: "Callable[[], int | None]",
+    *,
+    metadata: Mapping[str, Any] | None = None,
+    out_dir: str | None = None,
+) -> int:
+    """Run a `main()`-style worker and ALWAYS emit a heartbeat at the end.
+
+    Stage 2 (2026-06-30): the repo-direct mata_garuda crons expose `main() -> int`
+    (an exit code), not a stats dict. This wrapper makes the green-but-dead case
+    visible uniformly: `ok` on exit 0 / None, `fail` on non-zero exit or on an
+    exception (then re-raised so launchd still records the failure). The sidecar
+    is written in a `finally`, so even a crashing worker leaves a `fail` trail —
+    the opposite of exit-code-only monitoring, which goes silent on hard crash.
+
+    Returns the worker's exit code (None → 0). Re-raises any exception from `fn`.
+    """
+    status = "ok"
+    meta: dict[str, Any] = dict(metadata) if metadata else {}
+    rc = 0
+    try:
+        result = fn()
+        rc = int(result) if result is not None else 0
+        meta["exit_code"] = rc
+        status = "ok" if rc == 0 else "fail"
+        return rc
+    except BaseException as exc:  # noqa: BLE001 — emit then re-raise, never swallow
+        status = "fail"
+        meta["error"] = f"{type(exc).__name__}: {exc}"
+        raise
+    finally:
+        emit_heartbeat(organ_id, status, metadata=meta, out_dir=out_dir)
 
 
 def status_from_stats(stats: Mapping[str, int]) -> str:

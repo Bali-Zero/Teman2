@@ -67,3 +67,53 @@ def test_status_ok_when_idle(tmp_path):
 
 def test_status_fail_when_all_errors(tmp_path):
     assert heartbeat.status_from_stats({"read": 5, "errors": 5}) == "fail"
+
+
+# --- Stage 2 (2026-06-30): run_with_heartbeat wrapper for main()->int workers ---
+# The 10 repo-direct mata_garuda crons have `main() -> int` (an exit code), not a
+# stats dict. run_with_heartbeat wraps such a callable: it ALWAYS emits a sidecar
+# at the end (even on crash), deriving status from the exit code / exception, and
+# preserves the original return code / re-raises — the cron's contract is unchanged.
+
+
+def test_run_with_heartbeat_ok_on_zero(tmp_path, monkeypatch):
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path))
+    rc = heartbeat.run_with_heartbeat("mata_garuda.sentinel_cell", lambda: 0)
+    assert rc == 0
+    payload = json.loads((tmp_path / "mata_garuda.sentinel_cell.json").read_text())
+    assert payload["status"] == "ok"
+
+
+def test_run_with_heartbeat_fail_on_nonzero(tmp_path, monkeypatch):
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path))
+    rc = heartbeat.run_with_heartbeat("mata_garuda.sentinel_cell", lambda: 1)
+    assert rc == 1
+    payload = json.loads((tmp_path / "mata_garuda.sentinel_cell.json").read_text())
+    assert payload["status"] == "fail"
+    assert payload["metadata"]["exit_code"] == 1
+
+
+def test_run_with_heartbeat_fail_and_reraise_on_exception(tmp_path, monkeypatch):
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path))
+
+    def boom():
+        raise RuntimeError("worker exploded")
+
+    try:
+        heartbeat.run_with_heartbeat("mata_garuda.kg_linker", boom)
+        raised = False
+    except RuntimeError:
+        raised = True
+    assert raised, "run_with_heartbeat must re-raise — it wraps, it does not swallow"
+    payload = json.loads((tmp_path / "mata_garuda.kg_linker.json").read_text())
+    assert payload["status"] == "fail"
+    assert "worker exploded" in payload["metadata"].get("error", "")
+
+
+def test_run_with_heartbeat_none_return_is_ok(tmp_path, monkeypatch):
+    # a worker whose main() returns None (no explicit exit code) = success
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path))
+    rc = heartbeat.run_with_heartbeat("mata_garuda.wr2_bridge", lambda: None)
+    assert rc == 0
+    payload = json.loads((tmp_path / "mata_garuda.wr2_bridge.json").read_text())
+    assert payload["status"] == "ok"
