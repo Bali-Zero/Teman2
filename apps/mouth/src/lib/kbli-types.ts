@@ -32,7 +32,9 @@ export type KBLIPmaRawStatus = "TERBUKA" | "TERTUTUP" | "TERBATAS";
 export interface KBLIScaleEntry {
   skala_usaha: KBLIBusinessScale[];
   kategori_risiko: KBLIRiskCategory;
-  perizinan: string;
+  // Real data: an array on ~99.5% of scales (often empty []), a bare string on ~20 legacy
+  // records. resolveLicenseType() in kbli-derive.ts handles both forms.
+  perizinan: string | string[];
   persyaratan: string[];
   jangka_waktu: string;
   kewajiban: string[];
@@ -56,11 +58,15 @@ export interface KBLIRawCode {
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
   pma_status: KBLIPmaRawStatus;
-  pma_max_asing: number;
+  pma_max_asing: number | "special"; // "special" = open-with-special-conditions (47221-class), no clean %
   pma_kondisi: string | null;
   pma_prioritas: boolean;
   pma_nota: string | null;
   pma_source: string | null;
+  // PMA cap provenance (synced from the native app dataset, 2026-06-27)
+  pma_cap_special?: boolean; // true => special-distribution condition, render "special conditions" not "Closed 0%"
+  pma_cap_verified?: boolean; // false => TERBATAS cap % not source-backed, render "≈N% unverified"
+  pma_route_to?: string; // sibling private code when a govt code is closed to PMA
   _source: string;
   // Optional fields (present on some records)
   aggregation_note?: string;
@@ -132,11 +138,15 @@ export type KBLIMatchType =
 /** PMA (foreign investment) details — processed */
 export interface KBLIPmaInfo {
   status: KBLIPmaStatus;
-  maxForeign: number;
+  maxForeign: number | "special";
   condition: string | null;
   isPriority: boolean;
   note: string | null;
   source: string | null;
+  // Synced from native app (2026-06-27): provenance flags that change the label.
+  capSpecial: boolean; // special-distribution (47221) → "special conditions", not "Closed 0%"
+  capVerified: boolean; // false → TERBATAS % not source-backed → "≈N% unverified"
+  routeTo: string | null; // sibling private code when a govt code is closed to PMA (86101→86103)
 }
 
 /** Processed licensing entry for a specific business scale */

@@ -18,6 +18,7 @@ import type {
 } from "./kbli-types";
 
 import { ENGLISH_TITLES } from "./kbli-english";
+import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
 
 // =============================================================================
@@ -383,13 +384,18 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     isPriority: raw.pma_prioritas,
     note: raw.pma_nota,
     source: raw.pma_source,
+    capSpecial: raw.pma_cap_special === true,
+    capVerified: raw.pma_cap_verified !== false, // default true unless explicitly flagged unverified
+    routeTo: raw.pma_route_to ?? null,
   };
 
   const licensing: KBLILicenseByScale[] = (raw.per_skala ?? []).map(
     (entry) => ({
       scales: entry.skala_usaha,
       riskCategory: entry.kategori_risiko,
-      licenseType: entry.perizinan,
+      // Derive the license from the risk tier when `perizinan` is empty (Pasal 124(4)) —
+      // a flat "NIB" understated the 937 high-risk codes. Parity with the Swift app.
+      licenseType: resolveLicenseType(entry.perizinan, entry.kategori_risiko),
       requirements: entry.persyaratan,
       timeframe: entry.jangka_waktu,
       obligations: entry.kewajiban,

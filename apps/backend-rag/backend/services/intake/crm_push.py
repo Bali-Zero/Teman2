@@ -4,10 +4,11 @@ When a reviewer APPROVES an intake proposal with the writer armed, the local
 (Pro Postgres) commit is the source of truth for the approve outcome. This
 module is the best-effort DELIVERY leg that runs AFTER that commit: it pushes
 the original blob to the existing Fly base64 upload endpoint
-(``POST /api/crm/clients/{client_id}/documents/upload`` —
-``crm_enhanced_documents.upload_document_base64``), which resolves/creates the
-client's Google Drive folder, uploads the file, INSERTs the canonical
-``documents`` row on the Fly Postgres (the CRM kita reads) and dispatches OCR.
+(``POST /api/crm/clients/{client_id}/documents/upload`` for reviewer JWTs, or
+``POST /api/crm/internal/clients/{client_id}/documents/upload`` for scoped WA
+Mirror service writes), which resolves/creates the client's Google Drive folder,
+uploads the file, INSERTs the canonical ``documents`` row on the Fly Postgres
+(the CRM kita reads) and dispatches OCR.
 
 PII note: the blob transits Pro→Fly→Google Drive. That is the CRM's sanctioned
 storage path — identical to a manual upload from the kita frontend — so this
@@ -113,9 +114,73 @@ def _parse_drive_file_id(file_url: str | None) -> str | None:
     return m.group(1) if m else None
 
 
+async def _ensure_client_on_fly(
+    *,
+    crm_write_key: str,
+    sender_phone: str,
+    full_name: str | None,
+    base_url: str,
+) -> int | None:
+    """Resolve/create the Fly client for a WA sender phone, returning its FLY id.
+
+    The local Pro ``nuzantara_dev`` DB and the Fly ``nuzantara_rag`` DB do NOT
+    share a client_id namespace: leads minted locally by the wa-mirror sweeper
+    (id ≥ ~80k) have no row on Fly, so addressing the upload endpoint with the
+    LOCAL pk yields ``404 Client not found``. This calls the idempotent,
+    phone-keyed Fly upsert (``POST /api/crm/clients/upsert-by-phone``, scoped
+    ``X-CRM-Write-Key``) which returns the client's id ON FLY — the only id valid
+    against the upload endpoint. Only derived contact fields (normalized phone +
+    name) cross the boundary; no raw WhatsApp content (Law 2 — the upsert model's
+    own contract enforces this).
+
+    Returns the Fly client_id, or ``None`` if the upsert could not resolve/create
+    one (no phone, denied, unreachable). Never raises — delivery stays best-effort.
+    """
+    digits = re.sub(r"\D", "", sender_phone or "")
+    if not (6 <= len(digits) <= 20):
+        return None
+    body: dict[str, Any] = {
+        "phone_normalized": digits,
+        "create_if_missing": True,
+        "lead_source": "whatsapp_auto",
+    }
+    if full_name and full_name.strip():
+        body["full_name"] = full_name.strip()
+    url = f"{base_url}/api/crm/clients/upsert-by-phone"
+    headers = {"X-CRM-Write-Key": crm_write_key}
+    client = _get_client()
+    try:
+        resp = await client.post(url, json=body, headers=headers)
+    except (httpx.TimeoutException, httpx.TransportError) as exc:
+        logger.warning("intake.crm_push.upsert_unreachable phone=*** err=%s", type(exc).__name__)
+        return None
+    if resp.status_code >= 400:
+        logger.warning(
+            "intake.crm_push.upsert_failed status=%s detail=%s",
+            resp.status_code,
+            resp.text[:160],
+        )
+        return None
+    try:
+        data = resp.json()
+    except ValueError:
+        return None
+    fly_id = data.get("client_id") if isinstance(data, dict) else None
+    if fly_id is None:
+        return None
+    logger.info(
+        "intake.crm_push.upsert_ok fly_client=%s created=%s matched=%s",
+        fly_id,
+        (data.get("was_created") if isinstance(data, dict) else None),
+        (data.get("matched_count") if isinstance(data, dict) else None),
+    )
+    return int(fly_id)
+
+
 async def push_committed_document(
     *,
     bearer_token: str | None,
+    crm_write_key: str | None = None,
     client_id: int,
     file_name: str,
     document_type: str,
@@ -127,6 +192,8 @@ async def push_committed_document(
     notes: str | None = None,
     family_member_id: int | None = None,
     base_url: str | None = None,
+    sender_phone: str | None = None,
+    client_full_name: str | None = None,
 ) -> CrmPushResult:
     """Deliver one committed intake blob to the Fly CRM upload endpoint.
 
@@ -136,15 +203,20 @@ async def push_committed_document(
     ``family_member_id`` / ``practice_id``. Fields the endpoint does not
     accept (e.g. extracted_fields) are deliberately NOT sent.
 
-    Auth: the reviewer's own ``Authorization: Bearer <jwt>`` — the Fly endpoint
-    enforces ``get_current_user`` + ``verify_client_access(write=True)``.
+    Auth: prefer the reviewer's own ``Authorization: Bearer <jwt>``. Headless
+    auto-attach can instead pass ``crm_write_key`` for the scoped internal upload
+    endpoint gated by ``WA_MIRROR_CRM_WRITE_ENABLED``.
 
     Retry: ONE retry on transient failures (connect/read errors, 5xx).
     401/403 → ``denied_rbac`` (no retry). Other 4xx → ``rejected``.
     NEVER raises for delivery failures — always returns a CrmPushResult.
     """
-    if not bearer_token:
-        return CrmPushResult(ok=False, status="no_token", detail="no bearer token on request")
+    if not bearer_token and not crm_write_key:
+        return CrmPushResult(
+            ok=False,
+            status="no_token",
+            detail="no bearer token or CRM service-write key available",
+        )
 
     path = Path(blob_path)
     try:
@@ -177,9 +249,22 @@ async def push_committed_document(
     }
     payload.update({key: value for key, value in optional_fields.items() if value is not None})
 
-    url = f"{(base_url or _push_base_url()).rstrip('/')}/api/crm/clients/{client_id}/documents/upload"
-    headers = {"Authorization": f"Bearer {bearer_token}"}
+    base = (base_url or _push_base_url()).rstrip("/")
+
+    def _build_request(cid: int) -> tuple[str, dict[str, str]]:
+        if bearer_token:
+            return (
+                f"{base}/api/crm/clients/{cid}/documents/upload",
+                {"Authorization": f"Bearer {bearer_token}"},
+            )
+        return (
+            f"{base}/api/crm/internal/clients/{cid}/documents/upload",
+            {"X-CRM-Write-Key": crm_write_key or ""},
+        )
+
+    url, headers = _build_request(client_id)
     client = _get_client()
+    upsert_tried = False
 
     try:
         last_detail: str | None = None
@@ -213,6 +298,34 @@ async def push_committed_document(
                     )
                     continue
                 return CrmPushResult(ok=False, status="server_error", detail=last_detail)
+            if resp.status_code == 404 and not upsert_tried and not bearer_token and crm_write_key and sender_phone:
+                # The LOCAL client_id has no row on Fly (wa-mirror lead minted only
+                # in nuzantara_dev). Phone-upsert it onto Fly, re-aim the upload at
+                # the RETURNED Fly id, and retry ONCE. This is the cross-DB identity
+                # bridge: never reuse the local pk against Fly.
+                upsert_tried = True
+                fly_cid = await _ensure_client_on_fly(
+                    crm_write_key=crm_write_key,
+                    sender_phone=sender_phone,
+                    full_name=client_full_name,
+                    base_url=base,
+                )
+                if fly_cid is not None and fly_cid != client_id:
+                    url, headers = _build_request(fly_cid)
+                    logger.info(
+                        "intake.crm_push.client_not_on_fly local=%s -> fly=%s — retrying upload",
+                        client_id,
+                        fly_cid,
+                    )
+                    if attempt == 0:
+                        continue
+                    # 404 on the SECOND attempt's slot — re-aimed but loop is done;
+                    # fall through to a clean rejected with the bridge note.
+                last_detail = (
+                    f"HTTP 404: {resp.text[:160]} "
+                    f"(phone-upsert {'mapped to fly=' + str(fly_cid) if fly_cid else 'failed'})"
+                )
+                return CrmPushResult(ok=False, status="rejected", detail=last_detail)
             if resp.status_code >= 400:
                 return CrmPushResult(
                     ok=False,

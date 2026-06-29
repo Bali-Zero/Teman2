@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMAND="${1:-status}"
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+
+case "$COMMAND" in
+  status)
+    exec python3 "$SCRIPT_DIR/nuz_status.py" status "$@"
+    ;;
+  fix)
+    exec python3 "$SCRIPT_DIR/nuz_status.py" fix "$@"
+    ;;
+  *)
+    echo "Usage: scripts/nuz status [--json] [--refresh] [--offline]" >&2
+    echo "       scripts/nuz fix --target pro-main|local-main [--json]" >&2
+    exit 64
+    ;;
+esac

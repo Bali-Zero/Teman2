@@ -6,6 +6,7 @@ import type {
   KBLISection,
   KBLIGoldContent,
 } from "./kbli-types";
+import { resolveLicenseType } from "./kbli-derive";
 
 // Section names mapping
 const SECTION_NAMES_EN: Record<string, string> = {
@@ -196,13 +197,25 @@ function transformCode(
   const section = (raw.sektor_id || "?").charAt(0);
   const goldEntry = gold[code];
 
-  // Merge intel: gold content takes precedence, fall back to source intel_2026
+  // Merge intel: gold content takes precedence for the editorial fields. EXCEPTION:
+  // `baliContext` on a Bali-BLOCKED code. The static gold baliContext is stale for
+  // ~56 blocked codes — it still describes setting up a "PT PMA"/"100% foreign"
+  // operation on a code the 2026 moratorium now blocks, directly contradicting the
+  // verdict. The L4 layer (#1814 risk-tier pass, #1815 placeholder fix) keeps the
+  // current truth in raw.intel_2026.baliContext / l4_bali.reason. So when the code
+  // is blocked AND the gold text reads as a foreign-ownership go-ahead, prefer the
+  // live L4 text; otherwise keep the richer gold editorial.
+  const goldBali = goldEntry?.baliContext || "";
+  const liveBali = raw.intel_2026?.baliContext || raw.l4_bali?.reason || "";
+  const goldBaliMisleads =
+    !!raw.l4_bali?.blocked &&
+    /\b(PT PMA|100% foreign|foreign-owned|open to foreign)\b/i.test(goldBali);
   const intel = goldEntry
     ? {
         whatItMeans: goldEntry.whatItMeans || "",
         whatYouNeed: goldEntry.whatYouNeed || "",
         whatChanged: goldEntry.whatChanged || "",
-        baliContext: goldEntry.baliContext || "",
+        baliContext: goldBaliMisleads && liveBali ? liveBali : goldBali,
         zantaraOpener: goldEntry.zantaraOpener || "",
         youllAlsoNeed: goldEntry.youllAlsoNeed || "",
         coverImage: raw.intel_2026?.coverImage || null,
@@ -233,11 +246,16 @@ function transformCode(
       isPriority: raw.pma_prioritas || false,
       note: raw.pma_nota,
       source: raw.pma_source,
+      capSpecial: raw.pma_cap_special === true,
+      capVerified: raw.pma_cap_verified !== false,
+      routeTo: raw.pma_route_to ?? null,
     },
     licensing: (raw.per_skala || []).map((s) => ({
       scales: s.skala_usaha,
       riskCategory: s.kategori_risiko,
-      licenseType: s.perizinan,
+      // Derive the license from the risk tier when `perizinan` is empty (Pasal 124(4)) —
+      // a flat "NIB" understated the 937 high-risk codes. Parity with the Swift app.
+      licenseType: resolveLicenseType(s.perizinan, s.kategori_risiko),
       requirements: s.persyaratan,
       timeframe: s.jangka_waktu,
       obligations: s.kewajiban,

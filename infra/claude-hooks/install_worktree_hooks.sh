@@ -51,7 +51,9 @@ done
 echo "== self-verify: running the innocence vaccine against installed hooks =="
 # The vaccine copies the REPO hooks into a synthetic tempdir, so it validates the
 # logic we just installed (repo == live after copy). A red vaccine = broken hook.
-if python3 "$SRC/test_hook_innocence.py"; then
+# test_arm_keep_hook.py covers the W80 arm-before-remove guard with REAL git
+# worktrees (the synthetic vaccine can't, being a non-git repo) — both must pass.
+if python3 "$SRC/test_hook_innocence.py" && python3 "$SRC/test_arm_keep_hook.py"; then
     echo "== VACCINE GREEN — hooks installed and proven to bite only the guilty. =="
     echo "   Reload with /hooks (or restart the session)."
     echo "   Kill switch: AGENT_WORKTREE_ENFORCEMENT=false"

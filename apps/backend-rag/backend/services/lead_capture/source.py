@@ -19,6 +19,9 @@ class LeadSource(str, Enum):
     # Content-funnel sources (2026-06): blog articles + KBLI Navigator pages.
     ARTICLE = "article"
     KBLI_NAVIGATOR = "kbli_navigator"
+    # Conversational handoff (2026-06): the Zantara chat widget, after the
+    # visitor sends 3+ messages (high-intent signal). No result page.
+    ZANTARA_WIDGET_HANDOFF = "zantara_widget_handoff"
     # Sticky "Next actions" handoff bar — shared CTAHandoff component across all funnel pages (2026-06).
     CTA_HANDOFF = "cta_handoff"
 
@@ -34,6 +37,7 @@ class LeadSource(str, Enum):
             LeadSource.ZONING_CHECK: "Zoning Check",
             LeadSource.ARTICLE: "the Insights blog",
             LeadSource.KBLI_NAVIGATOR: "the KBLI Navigator",
+            LeadSource.ZANTARA_WIDGET_HANDOFF: "the Zantara chat",
             LeadSource.CTA_HANDOFF: "Bali Zero",
         }[self]
 
@@ -51,6 +55,9 @@ class LeadSource(str, Enum):
             LeadSource.ARTICLE: "/",
             # KBLI Navigator: result_hash = the KBLI code → /kbli/<code>.
             LeadSource.KBLI_NAVIGATOR: "/kbli",
+            # Chat widget: no result page; the visitor carries the conversation
+            # context in the WA message body, not a hash-addressed page.
+            LeadSource.ZANTARA_WIDGET_HANDOFF: "/",
             # Sticky handoff bar lives on the page already in context; no hash-based result page.
             LeadSource.CTA_HANDOFF: "/",
         }[self]

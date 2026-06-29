@@ -61,6 +61,16 @@ Claude falls back to conservative mode and pings the user to re-certify.
 
 ## Level 2 — Autonomous to deploy and post-deploy verification
 
+> **No "I'll leave the merge to you at CI green".** Arming `--auto` IS the merge
+> decision and it is autonomous at L2. Writing "I'll leave the merge to you" on a
+> normal feature PR is being _more conservative than this contract_ — don't.
+> `--auto` is the professional move precisely because it cannot force a red merge:
+> GitHub holds the PR until required checks pass, so branch protection stays the
+> safety layer above Claude. Confirmed by Antonello 2026-06-25. (Exception: the
+> "Still requires confirmation" list below — guardrail/contract/critical-config
+> changes, migrations without a green dry-run, force push, destructive DB ops —
+> still merge by the operator.)
+
 **Additional autonomous actions on top of L1:**
 
 - `gh pr merge --auto --squash` immediately after opening a PR. GitHub holds

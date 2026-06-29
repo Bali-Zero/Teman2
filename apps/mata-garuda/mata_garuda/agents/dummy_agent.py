@@ -25,7 +25,7 @@ def get_dummy_agent(model: str = "claude") -> Agent:
     Dummy agent template usato dal meta-agent per generare nuovi agenti.
 
     Args:
-        model: CLI runtime — "claude" | "gemini" | "codex" | "deepseek"
+        model: CLI runtime — "claude" | "agy:*" | "codex" | "ollama:*"
 
     Returns:
         Agent instance pronto da eseguire.

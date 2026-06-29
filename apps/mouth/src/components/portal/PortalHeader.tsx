@@ -59,13 +59,11 @@ export function PortalHeader({
     if (routeTitles[pathname]) {
       return routeTitles[pathname];
     }
-    // Check for dynamic routes
-    for (const [route, title] of Object.entries(routeTitles)) {
-      if (pathname.startsWith(route) && route !== "/") {
-        return title;
-      }
-    }
-    return "Dashboard";
+    // Check dynamic routes by specificity so /portal does not shadow /portal/*
+    const match = Object.entries(routeTitles)
+      .filter(([route]) => route !== "/" && pathname.startsWith(route))
+      .sort(([a], [b]) => b.length - a.length)[0];
+    return match?.[1] ?? "Dashboard";
   };
 
   // Get greeting based on time
