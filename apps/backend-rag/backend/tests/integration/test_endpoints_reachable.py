@@ -109,7 +109,7 @@ def app_with_middleware() -> FastAPI:
     `with` block). That is intentional — we are testing the routing +
     middleware contract, not service initialization.
     """
-    app = FastAPI()
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     try:
         include_routers(app)
     except Exception as exc:  # noqa: BLE001
