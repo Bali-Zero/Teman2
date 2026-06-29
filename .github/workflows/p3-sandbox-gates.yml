@@ -29,7 +29,7 @@ jobs:
     name: P3 static validation (enforcing)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the sentinel git diff sees PR changes
 
@@ -59,7 +59,7 @@ jobs:
           python-version: "3.11"
       - name: install pyyaml
         if: steps.relevant.outputs.run == 'true'
-        run: pip install "pyyaml>=6" "httpx>=0.27" pytest
+        run: pip install "pyyaml>=6" "httpx>=0.27" pytest pytest-asyncio
       # ENFORCING gate — this step blocks the PR if it fails. continue-on-error: false.
       - name: P3 static gates
         if: steps.relevant.outputs.run == 'true'
@@ -100,7 +100,7 @@ jobs:
     name: P3 runtime gates G1/G1-DLP/G4 (monitor — runs on Pro)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # MONITOR step — GitHub ephemeral runners have no safe Docker daemon for
       # `compose up --build`. The real runtime gates run on Pro. continue-on-error:
       # true is intentional (NOT a disarm — see registry note hot_zone_redis_lease

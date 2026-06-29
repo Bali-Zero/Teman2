@@ -42,7 +42,7 @@ jobs:
   daemon-cron-classification:
     runs-on: macos-latest # PlistBuddy is macOS-only; committed plist are Apple plist
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Live-home blind-spot NOTICE (informational, never fails)
         run: |
