@@ -250,7 +250,7 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
                 except (ValueError, IndexError):
                     count = len(rows)
             return count or len(rows)
-    except asyncpg.PostgresError as e:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
         logger.error("❌ [Zoning] Batch insert failed (DB): %s", e)
         return 0
     except Exception as e:
@@ -279,7 +279,7 @@ async def _check_existing_zoning(
             if row:
                 return dict(row)
         return None
-    except asyncpg.PostgresError as e:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
         logger.error("❌ [Zoning] DB check failed: %s", e)
         return None
     except Exception as e:
@@ -555,7 +555,7 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
                         kg_sources,
                         prop_type,
                     )
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.warning("[Property/legacy] KG query failed (DB), using fallback: %s", e)
         except Exception as e:
             logger.warning(
