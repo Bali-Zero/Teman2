@@ -30,13 +30,19 @@ export const meta = {
 const fs = "_out"; // marker; the agents read files via Read in their own context
 
 phase("Load");
-// The deterministic layer wrote these. We pass the pilot list + per-code editorial
+// Code set: full run reads editorial-codes-all.json; pilot reads pilot-codes.json.
+// Override with args.set ("full" | "pilot"); default "pilot".
+const CODE_FILE =
+  args && args.set === "full"
+    ? "scripts/kbli_triangle/_out/editorial-codes-all.json"
+    : "scripts/kbli_triangle/_out/pilot-codes.json";
+// The deterministic layer wrote these. We pass the code list + per-code editorial
 // candidates to the analyzers as prompt context (they Read the dataset themselves).
 const loader = await agent(
-  `You are the loader for the KBLI Triangle pilot. Do exactly this:
-1. Read scripts/kbli_triangle/_out/pilot-codes.json (a JSON array of ~50 KBLI codes).
-2. Read scripts/kbli_triangle/_out/FINDINGS.jsonl and keep only rows where rule_id=="R-EDIT-CAND" AND the code is in the pilot list.
-3. Return a JSON object: { codes: [...], candidates: { "<code>": [ {field, evidence}, ... ] } } containing ONLY pilot codes that have at least one R-EDIT-CAND finding.
+  `You are the loader for the KBLI Triangle run. Do exactly this:
+1. Read ${CODE_FILE} (a JSON array of KBLI codes).
+2. Read scripts/kbli_triangle/_out/FINDINGS.jsonl and keep only rows where rule_id=="R-EDIT-CAND" AND the code is in that list.
+3. Return a JSON object: { codes: [...], candidates: { "<code>": [ {field, evidence}, ... ] } } containing ONLY codes that have at least one R-EDIT-CAND finding.
 Return ONLY that JSON object as your final message.`,
   {
     label: "load-pilot",
