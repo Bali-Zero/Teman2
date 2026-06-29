@@ -121,6 +121,53 @@ async def test_dmy_date_format_accepted():
 
 
 # --------------------------------------------------------------------------- #
+# DD/MM <-> MM/DD ambiguity flagging (US vs international date confusion)      #
+# --------------------------------------------------------------------------- #
+
+async def test_ambiguous_dmy_date_is_flagged_not_failed():
+    # 05/06/2030: both fields <=12 -> swappable. Soft signal, still valid.
+    out = await vr.validate_fields("passport", _fields(expiry="05/06/2030"))
+    assert out["valid"] is True
+    assert out["rule_failures"] == []
+    assert any("ambiguous" in a for a in out["ambiguous_dates"])
+    assert "expiry_dmy_ambiguity_flagged" in out["checks_run"]
+
+
+async def test_unambiguous_date_not_flagged_day_gt_12():
+    # 25/06/2030: day=25 (>12) -> can only be a day, self-disambiguating.
+    out = await vr.validate_fields("passport", _fields(expiry="25/06/2030"))
+    assert out["valid"] is True
+    assert out["ambiguous_dates"] == []
+
+
+async def test_iso_date_never_flagged_ambiguous():
+    # YYYY-MM-DD is unambiguous by construction (year first).
+    out = await vr.validate_fields("passport", _fields(expiry="2030-05-06"))
+    assert out["ambiguous_dates"] == []
+
+
+async def test_spelled_out_month_not_flagged():
+    out = await vr.validate_fields("kitas", _fields(expiry="05 June 2030"))
+    assert out["ambiguous_dates"] == []
+
+
+async def test_dob_ambiguity_flagged_independently():
+    out = await vr.validate_fields("ktp", _fields(dob="03/04/1990"))
+    assert any(a.startswith("dob ") for a in out["ambiguous_dates"])
+
+
+def test_is_ambiguous_dmy_unit():
+    assert vr._is_ambiguous_dmy("05/06/2026") is True
+    assert vr._is_ambiguous_dmy("12-12-2026") is True
+    assert vr._is_ambiguous_dmy("13/06/2026") is False  # day 13 > 12
+    assert vr._is_ambiguous_dmy("06/13/2026") is False  # month 13 > 12
+    assert vr._is_ambiguous_dmy("2026-05-06") is False  # ISO
+    assert vr._is_ambiguous_dmy("05 June 2026") is False  # spelled month
+    assert vr._is_ambiguous_dmy("") is False
+    assert vr._is_ambiguous_dmy(None) is False
+
+
+# --------------------------------------------------------------------------- #
 # Null fields are SKIPPED (golden rule already null-ed them)                   #
 # --------------------------------------------------------------------------- #
 
