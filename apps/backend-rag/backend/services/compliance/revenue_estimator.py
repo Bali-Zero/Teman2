@@ -233,7 +233,7 @@ async def classify_client_risk(
             )
             or 0
         )
-    except asyncpg.PostgresError:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError):
         overdue_days = 0
 
     if overdue_days >= 30:
