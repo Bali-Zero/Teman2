@@ -847,6 +847,30 @@ def run_autopilot() -> None:
             "_writer": "dlq_autopilot",  # D1.5: audit trail
         }))
 
+        # UNCONDITIONAL organism heartbeat sidecar (2026-06-28): this script READ
+        # ~/.organism/last_seen/ for recovery signals but never WROTE its own, so
+        # pro.dlq_autopilot.json froze for 28 days while the cron ran green. The
+        # bridge used to refresh it and stopped; now the organ breathes for itself.
+        try:
+            ORGANISM_DIR.mkdir(parents=True, exist_ok=True)
+            organ_path = ORGANISM_DIR / "pro.dlq_autopilot.json"
+            organ_tmp = organ_path.with_suffix(f".json.tmp.{os.getpid()}")
+            organ_tmp.write_text(json.dumps({
+                "ts": time.time(),
+                "status": "ok",
+                "organ_id": "pro.dlq_autopilot",
+                "metadata": {
+                    "queue_size": len(queue),
+                    "fixed": fixed,
+                    "escalated": escalated,
+                    "skipped": skipped,
+                    "duration_s": round(duration, 1),
+                },
+            }))
+            organ_tmp.replace(organ_path)
+        except Exception as exc:  # noqa: BLE001 — heartbeat must never break the run
+            logger.warning(f"organ heartbeat emit failed: {exc}")
+
     finally:
         release_lock(fd)
 

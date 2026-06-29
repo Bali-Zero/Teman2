@@ -229,7 +229,7 @@ Return ONLY the JSON object, no other text."""
 
             logger.info("✅ Ingestion tracking tables initialized")
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Failed to initialize DB tables: %s", e)
             raise
         except OSError as e:
@@ -610,7 +610,7 @@ Full Text:
                     result.error_message,
                     result.processing_time_ms,
                 )
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.warning("DB error saving ingestion result: %s", e)
         except OSError as e:
             logger.warning("Connection error saving ingestion result: %s", e)
@@ -667,7 +667,7 @@ Full Text:
                     for row in rows
                 ]
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.warning("DB error fetching recent results: %s", e)
             return []
         except (KeyError, ValueError, TypeError) as e:

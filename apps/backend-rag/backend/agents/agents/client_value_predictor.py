@@ -308,7 +308,7 @@ All clients scored and segmented automatically!""",
                 "total_messages_sent": 0,
                 "errors": [f"Operation timed out after {timeout}s"],
             }
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error in run_daily_nurturing: %s", e, exc_info=True)
             return {
                 "vip_nurtured": 0,

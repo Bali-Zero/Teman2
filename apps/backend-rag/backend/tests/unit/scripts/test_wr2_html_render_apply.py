@@ -126,6 +126,51 @@ def test_run_claude_json_genuine_failure_returns_none_not_raise(monkeypatch):
     assert claude_vision._run_claude_json("p", {"type": "object"}) is None
 
 
+def test_run_claude_json_promotes_numbered_oauth_slot_to_bare(monkeypatch):
+    """BUGFIX 2026-06-30: the fleet ships the MAX OAuth token in numbered slots
+    (CLAUDE_CODE_OAUTH_TOKEN_1/_2/_3); the `claude` CLI authenticates from the
+    BARE CLAUDE_CODE_OAUTH_TOKEN. If the bare var is unset, the vision call must
+    promote the first available numbered slot, else the CLI fails `Not logged in`
+    and (under WR2_VISION_REQUIRED=1) sinks the whole carousel. Verify the env
+    passed to subprocess.run carries the promoted bare token."""
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(*a, **k):
+        captured["env"] = k.get("env", {})
+        return _fake_proc(returncode=0, stdout='{"structured_output": {}}')
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "slot-two-token")
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "slot-two-token", (
+        "first available numbered slot must be promoted to the bare token"
+    )
+
+
+def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
+    """If the bare CLAUDE_CODE_OAUTH_TOKEN is already set, it must be respected —
+    the numbered-slot promotion only fills an UNSET bare var, never overrides."""
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(*a, **k):
+        captured["env"] = k.get("env", {})
+        return _fake_proc(returncode=0, stdout='{"structured_output": {}}')
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "bare-token")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot-one-token")
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "bare-token"
+
+
 def test_run_claude_json_timeout_raises_transient(monkeypatch):
     """A subprocess timeout is endpoint latency, not a defect — must raise the
     transient VisionTimeout (no burned attempt), NOT return None (which would
@@ -558,6 +603,115 @@ async def test_designer_loop_converges_default_no_vision(monkeypatch):
         max_iters=2,
     )
     assert res.converged is True
+
+
+def _tiny_png_writer():
+    """A render_fn that writes a 1x1 PNG (the tests only need a file to exist)."""
+    import base64
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
+
+    return render_fn
+
+
+class _GeoFailInkAtEdge:
+    """Geometry NEVER passes and ALWAYS proposes the same ineffective lever —
+    exactly the slide-8 signature (ink at bottom edge, body shrink no-op)."""
+    passed = False
+    issues = ["ink at bottom edge (ratio=0.50) — possible text overflow"]
+    levers = [{"lever": "shrink_font", "target": "body", "reason": "bottom overflow"}]
+    score = 0.0
+    tier = "geometry"
+
+
+class _CheapPass:
+    passed = True
+    levers: list = []
+    score = 1.0
+    issues: list = []
+    tier = "mock"
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_cheap_noop_escalates_to_vision_not_failed(monkeypatch):
+    """BUGFIX 2026-06-29 (Bug B): a cheap geometry lever that NEVER moves the
+    verdict (shrink_font body for `ink at bottom edge` when the bottom ink is the
+    LOGO, not the body) must NOT spin to max_iters → render_failed. It must defer
+    the verdict to the WHOLE-SLIDE vision critic (which can see body/footer
+    overflow), NOT blind-accept on legibility+headline-OCR (codex refuter
+    REFUTED that variant: OCR only checks the headline, body could be clipped).
+
+    Here the vision critic PASSES → the slide converges (vision saw the whole
+    slide and approved). Repro of the killer: drafts 8e582ce0 / d2d308bf /
+    9b923976 all died on slide 8 with ink-at-edge 0.50 constant, shrink_body
+    1→2→3, legibility PASS + OCR 1.0, then render_failed (critiques=[]). ~5 days
+    zero WR2 output — the cheap path never reached vision at all.
+    """
+    from wr2_html_renderer import designer_loop as dl
+
+    class _VisionPass:
+        passed = True
+        issues: list = []
+        levers: list = []
+        readable = True
+        tier = "vision"
+
+    vision_calls = {"n": 0}
+
+    def _vision(*a, **k):
+        vision_calls["n"] += 1
+        return _VisionPass()
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _GeoFailInkAtEdge())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _CheapPass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _CheapPass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X"},
+        render_fn=_tiny_png_writer(),
+        out_dir=out,
+        vision_critic=_vision,
+        brand_verifier=None,
+        use_vision=True,
+        max_iters=3,
+    )
+    assert res.converged is True, "cheap no-op must escalate to vision, which here passes"
+    assert vision_calls["n"] >= 1, "the vision critic MUST be consulted on a cheap no-op"
+    # history must not double-append the escalated iter record
+    escalated = [h for h in res.history if h.get("cheap_noop_escalated_to_vision")]
+    assert len(escalated) == 1
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_cheap_noop_no_vision_does_not_publish(monkeypatch):
+    """Counterpart: if the cheap lever is a no-op AND there is NO vision critic to
+    adjudicate the whole slide, the loop must NOT blind-accept — it escalates and
+    does NOT converge (a residual we cannot verify is never published)."""
+    from wr2_html_renderer import designer_loop as dl
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _GeoFailInkAtEdge())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _CheapPass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _CheapPass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X"},
+        render_fn=_tiny_png_writer(),
+        out_dir=out,
+        vision_critic=None,
+        use_vision=True,
+        max_iters=3,
+    )
+    assert res.converged is False, "cheap no-op + no vision to adjudicate must NOT publish"
 
 
 @pytest.mark.asyncio
@@ -1383,8 +1537,14 @@ def test_classify_residual_issues():
     # brand drift is hard
     has_hard, _ = _classify_residual_issues(["the palette uses an off-brand blue"])
     assert has_hard is True
-    # empty → not all_composition (nothing to accept)
-    assert _classify_residual_issues([]) == (False, False)
+    # empty → all_composition=True (BUGFIX 2026-06-29 / Bug A): a critic returning
+    # ZERO atomic defects is a CLEAN slide, the most acceptable case — not a
+    # reject-without-reason. The old `(False, False)` seed (bool(issues)) sank
+    # whole carousels whenever the residual list was empty. has_hard stays False.
+    assert _classify_residual_issues([]) == (False, True)
+    # a list of ONLY synthetic 'vision: …' summary markers (skipped, no atomic
+    # claim) is likewise clean → all_composition=True.
+    assert _classify_residual_issues(["vision: balanced/clean"]) == (False, True)
     # lever classifier
     assert _is_composition_only_lever({"rerender"}) is True
     assert _is_composition_only_lever({"rerender", "scrim_opacity"}) is False

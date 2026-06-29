@@ -7,6 +7,13 @@ interface PMABadgeProps {
   capSpecial?: boolean;
   /** false => TERBATAS cap % not source-backed: render "· ≈N% unverified" */
   capVerified?: boolean;
+  /**
+   * true => the code is nationally open but BLOCKED for a PT PMA in Bali
+   * (l4_bali.blocked — moratorium / reserved UMKM). National openness != Bali
+   * registrability: a bare green "Open · 100% Foreign" next to a "closed in Bali"
+   * verdict is the nazionale-vs-Bali contradiction. Qualify the suffix instead.
+   */
+  baliBlocked?: boolean;
   size?: "sm" | "md";
 }
 
@@ -41,6 +48,7 @@ export function PMABadge({
   maxForeign,
   capSpecial = false,
   capVerified = true,
+  baliBlocked = false,
   size = "md",
 }: PMABadgeProps) {
   const c = config[status] || config.open;
@@ -51,9 +59,12 @@ export function PMABadge({
   //  - restricted & unverified % → "· ≈N% unverified"
   //  - restricted & verified % → "· Max N%"
   //  - open 100% → "· 100% Foreign"
+  //  - open but Bali-blocked → "· 100% nat'l · blocked in Bali" (no false green promise)
   let suffix: string | null = null;
   if (capSpecial) {
     suffix = "· special conditions";
+  } else if (status === "open" && baliBlocked) {
+    suffix = "· 100% nat'l · blocked in Bali";
   } else if (status === "open" && numeric === 100) {
     suffix = "· 100% Foreign";
   } else if (status === "restricted" && numeric !== null && numeric < 100) {

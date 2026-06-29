@@ -50,3 +50,11 @@
 ## 2026-06-15 - [Proper Nesting in Semantic Lists and Standard Iconography]
 **Learning:** Refactoring generic containers to semantic lists must be done with care to avoid invalid HTML (e.g., nesting an `<li>` directly inside another `<li>`). Additionally, micro-UX improvements should adhere to established iconography patterns—such as using `ChevronRight` for collapsed and `ChevronDown` for expanded states—to maintain an intuitive visual language across the application.
 **Action:** Double-check HTML structure for valid nesting when using `ul`/`li`. Follow project-standard icon orientations for collapsible components to ensure a predictable user experience.
+
+## 2026-06-16 - [Safe Exit Animations for Streaming UI]
+**Learning:** Exit animations in streaming interfaces (e.g., transitions from a 'thinking' state to a 'response' state) can feel abrupt if elements simply disappear. Wrapping conditional status indicators in `AnimatePresence` ensures a smooth visual handoff. However, avoid implementing live timers with `aria-live="polite"` as it creates excessive screen reader noise; prioritize silent visual progress for frequent updates.
+**Action:** Always use `AnimatePresence` for smooth transitions between streaming states. Avoid frequent `aria-live` updates for rapidly changing values like timers.
+
+## 2026-06-21 - [A11y for Live States and Semantic Interaction Groups]
+**Learning:** Live UI states that lack visual labels (like a voice recording overlay) are "silent" to screen readers. Adding `role="status"` and `aria-live="polite"` ensures that assistive technology users are notified of state transitions (e.g., recording started) without being interrupted. Furthermore, adding `aria-label` to semantic lists of "Quick Actions" provides necessary context for group navigation, making the interface more discoverable.
+**Action:** Always apply ARIA live regions to dynamic status overlays. Use descriptive `aria-label` on semantic list containers that serve as primary interaction points.
