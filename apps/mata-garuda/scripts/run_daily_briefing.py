@@ -35,4 +35,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from mata_garuda.workers.heartbeat import run_with_heartbeat
+
+    sys.exit(run_with_heartbeat("mata_garuda.daily_briefing", main))
