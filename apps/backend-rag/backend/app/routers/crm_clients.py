@@ -1634,70 +1634,109 @@ async def get_client_summary(
 async def get_clients_stats(
     _request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get overall client statistics
 
     Returns counts by status, top assigned team members, etc.
 
+    Access Control:
+    - Admin: sees global stats across all clients
+    - Team member: sees only stats for clients assigned to them
+
     Performance: Cached for 5 minutes to reduce database load.
+
+    Cache safety: the @cached decorator hashes the call kwargs, which include
+    the authenticated user (a JSON-serializable dict) — so every user gets a
+    distinct cache entry and cannot be served another user's aggregate.
+    Mirrors get_practices_stats in crm_practices.py.
     """
     try:
+        # RBAC: admins see the whole book; non-admin team members are scoped to
+        # their own assigned clients. For scoped (non-admin) requests $1 is the
+        # user email in every query below (the only pre-existing param,
+        # STATS_DAYS_RECENT, shifts to $2 in the new_last_30_days query).
+        user_email = (
+            current_user.get("email", "").lower()
+            if isinstance(current_user, dict)
+            else ""
+        )
+        scoped = bool(user_email) and not is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
             # Total clients by status (exclude soft-deleted)
             by_status_rows = await conn.fetch(
-                """
+                f"""
                 SELECT status, COUNT(*) as count
                 FROM clients
-                WHERE deleted_at IS NULL
+                WHERE deleted_at IS NULL{" AND assigned_to = $1" if scoped else ""}
                 GROUP BY status
                 """,
+                *([user_email] if scoped else []),
             )
 
             # Clients by assigned team member (exclude soft-deleted)
             by_team_member_rows = await conn.fetch(
-                """
+                f"""
                 SELECT assigned_to, COUNT(*) as count
                 FROM clients
-                WHERE assigned_to IS NOT NULL AND deleted_at IS NULL
+                WHERE assigned_to IS NOT NULL AND deleted_at IS NULL{
+                    " AND assigned_to = $1" if scoped else ""
+                }
                 GROUP BY assigned_to
                 ORDER BY count DESC
                 """,
+                *([user_email] if scoped else []),
             )
 
             # New clients last N days
-            new_last_30_days_row = await conn.fetchrow(
-                """
-                SELECT COUNT(*) as count
-                FROM clients
-                WHERE created_at >= NOW() - INTERVAL '1 day' * $1
-                """,
-                STATS_DAYS_RECENT,
-            )
+            if scoped:
+                new_last_30_days_row = await conn.fetchrow(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM clients
+                    WHERE assigned_to = $1
+                        AND created_at >= NOW() - INTERVAL '1 day' * $2
+                    """,
+                    user_email,
+                    STATS_DAYS_RECENT,
+                )
+            else:
+                new_last_30_days_row = await conn.fetchrow(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM clients
+                    WHERE created_at >= NOW() - INTERVAL '1 day' * $1
+                    """,
+                    STATS_DAYS_RECENT,
+                )
 
             # Practices by type — single GROUP BY query (avoids N+1 per-type loop)
             by_practice_type_rows = await conn.fetch(
-                """
+                f"""
                 SELECT pt.name as practice_type, COUNT(p.id) as count
                 FROM practices p
                 JOIN practice_types pt ON p.practice_type_id = pt.id
+                {"WHERE p.assigned_to = $1" if scoped else ""}
                 GROUP BY pt.name
                 ORDER BY count DESC
                 """,
+                *([user_email] if scoped else []),
             )
 
             # Passport health counts
             passport_health_row = await conn.fetchrow(
-                """
+                f"""
                 SELECT
                     COUNT(*) FILTER (WHERE passport_expiry < CURRENT_DATE) as expired,
                     COUNT(*) FILTER (WHERE passport_expiry >= CURRENT_DATE AND passport_expiry <= CURRENT_DATE + INTERVAL '90 days') as expiring_soon,
                     COUNT(*) FILTER (WHERE last_interaction_date < NOW() - INTERVAL '30 days' OR last_interaction_date IS NULL) as silent_30d
                 FROM clients
                 WHERE deleted_at IS NULL AND status != 'inactive'
-                    AND passport_expiry IS NOT NULL
+                    AND passport_expiry IS NOT NULL{" AND assigned_to = $1" if scoped else ""}
                 """,
+                *([user_email] if scoped else []),
             )
 
             by_status = {row["status"]: row["count"] for row in by_status_rows}
