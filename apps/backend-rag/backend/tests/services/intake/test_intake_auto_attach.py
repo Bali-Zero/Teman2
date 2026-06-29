@@ -22,7 +22,24 @@ from backend.services.intake import auto_attach
 
 
 class _StubConn:
-    """Minimal stand-in; evaluate_concordance only passes it to the patched matcher."""
+    """Minimal stand-in for the direct-phone gate's own DB lookups.
+
+    ``evaluate_concordance`` (strict gate) never queries through it. The
+    direct-phone gate now runs two reads: an anti-funnel volume ``fetchrow`` and a
+    client-name ``fetchval``. Defaults are the benign case (low volume + a client
+    name); tests override per case.
+    """
+
+    def __init__(self, *, funnel=None, client_name="Maria Garcia"):
+        # benign default: 1 doc / 1 doctype (not a funnel)
+        self._funnel = funnel if funnel is not None else {"docs": 1, "distinct_types": 1}
+        self._client_name = client_name
+
+    async def fetchrow(self, _query, *_args):
+        return self._funnel
+
+    async def fetchval(self, _query, *_args):
+        return self._client_name
 
 
 def _patch_phone(monkeypatch, matches):
@@ -160,19 +177,76 @@ _DIRECT_SOURCE_CONTEXT = {
 
 @pytest.mark.asyncio
 async def test_guilt_direct_phone_link_candidate_is_concordant(monkeypatch):
-    _patch_phone(monkeypatch, [{"id": 42, "full_name": "X"}])
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
     v = await auto_attach.evaluate_direct_phone_concordance(
-        _StubConn(),
+        _StubConn(client_name="Maria Garcia"),
         decision="LINK_CANDIDATE",
         client_id=42,
         doc_type="passport",
         sender_phone="0812...",
         source_context=_DIRECT_SOURCE_CONTEXT,
         reason={"reason": "sender phone match (no strong identifier, no fuzzy name >= 0.40)"},
+        extracted_name="MARIA GARCIA LOPEZ",  # OCR subject name agrees with client
     )
     assert v["concordant"] is True
     assert v["phone_client_id"] == 42
     assert v["phone_match_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_name_mismatch_abstains(monkeypatch):
+    """The lived incident: phone resolves a client but the document's OCR subject
+    name is a DIFFERENT person (operator forwarded a client's doc) → abstain."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Ari Firda"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Ari Firda"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="birth_certificate",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="JUAN CARLOS FERNANDEZ",  # the Spanish client, not Ari
+    )
+    assert v["concordant"] is False
+    assert "name not concordant" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_no_extractable_name_abstains(monkeypatch):
+    """doc with no subject name (ktp/bank_statement) cannot be verified → abstain."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="bank_statement",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name=None,  # nothing to verify the subject
+    )
+    assert v["concordant"] is False
+    assert "no extractable subject name" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_funnel_abstains(monkeypatch):
+    """high-volume funnel phone (one number forwarding for many clients) → abstain
+    even though it resolves to one client_id and the name agrees."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(funnel={"docs": 51, "distinct_types": 8}, client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is False
+    assert "funnel/transit" in v["reason"]
 
 
 @pytest.mark.asyncio
