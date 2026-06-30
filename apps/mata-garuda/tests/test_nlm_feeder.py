@@ -231,10 +231,12 @@ class TestStreamConsumer:
 
     def test_dedup_skips_already_fed(self, tmp_path):
         kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
-        # Pre-seed a fed marker
+        # Pre-seed a fed marker on the ITEM-IDENTITY dedup key (title+url), which
+        # is what the feeder now computes (W89 #2 — no longer the bare URL).
+        seed_key = nlm_feeder._dedup_key("dup", "https://ex.com/dup")
         kb.store("nlm_feeder", "nlm_fed",
-                 nlm_feeder._nlm_fed_marker("https://ex.com/dup"),
-                 "https://ex.com/dup", 1.0)
+                 nlm_feeder._nlm_fed_marker(seed_key),
+                 seed_key, 1.0)
 
         items = [
             _fake_enriched_item("1-0", domain="tax_fiscal",
