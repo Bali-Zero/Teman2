@@ -32,34 +32,38 @@ export const meta = {
 // flat list is mechanical; a schema'd agent does it without truncation risk because
 // it returns rows, not a nested map.)
 phase("Load");
-const loaded = await agent(
-  `You are the loader for the KBLI Triangle FULL run. Do exactly this and nothing else:
+// Two sources: full run reads every R-EDIT-CAND from FINDINGS.jsonl (756);
+// redo run reads the pre-built redo-fields.json (cap-skipped ∪ session-limit-killed
+// fields from a prior partial run). Select with args.mode="redo".
+const REDO = args && args.mode === "redo";
+const loaderPrompt = REDO
+  ? `You are the loader for the KBLI Triangle REDO run. Read scripts/kbli_triangle/_out/redo-fields.json — a JSON array of {code, field} objects. Return { rows: [...] } with EVERY object from that file, verbatim, no dedup/cap/summary.`
+  : `You are the loader for the KBLI Triangle FULL run. Do exactly this and nothing else:
 1. Read scripts/kbli_triangle/_out/FINDINGS.jsonl (JSON-lines; ~825 rows).
 2. Keep ONLY rows where rule_id == "R-EDIT-CAND".
 3. Return a JSON object { rows: [ {code, field}, ... ] } with ONE entry per kept row — there should be 756 of them. Do not deduplicate, do not summarize, do not cap. Use the exact "code" and "field" values from each row.
-Return ONLY that object.`,
-  {
-    label: "load-full",
-    phase: "Load",
-    schema: {
-      type: "object",
-      properties: {
-        rows: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              code: { type: "string" },
-              field: { type: "string" },
-            },
-            required: ["code", "field"],
+Return ONLY that object.`;
+const loaded = await agent(loaderPrompt, {
+  label: REDO ? "load-redo" : "load-full",
+  phase: "Load",
+  schema: {
+    type: "object",
+    properties: {
+      rows: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            code: { type: "string" },
+            field: { type: "string" },
           },
+          required: ["code", "field"],
         },
       },
-      required: ["rows"],
     },
+    required: ["rows"],
   },
-);
+});
 
 const work = ((loaded && loaded.rows) || []).map((r) => ({
   code: r.code,
@@ -67,14 +71,15 @@ const work = ((loaded && loaded.rows) || []).map((r) => ({
   evidence: "",
 }));
 const distinctCodes = new Set(work.map((w) => w.code)).size;
+const minExpected = REDO ? 50 : 100;
 log(
-  `Layer-2 FULL: ${work.length} editorial fields across ${distinctCodes} codes`,
+  `Layer-2 ${REDO ? "REDO" : "FULL"}: ${work.length} editorial fields across ${distinctCodes} codes`,
 );
-if (work.length < 100) {
+if (work.length < minExpected) {
   log(
-    `WARNING: expected ~756 fields but got ${work.length} — loader may have truncated; aborting to avoid a partial ledger.`,
+    `WARNING: got only ${work.length} fields (< ${minExpected}) — loader may have truncated; aborting to avoid a partial ledger.`,
   );
-  return { error: "loader_undercount", got: work.length, expected: 756 };
+  return { error: "loader_undercount", got: work.length };
 }
 
 // Per-field pipeline: propose (grounded) → refute (fresh skeptic) → carry verdict.
