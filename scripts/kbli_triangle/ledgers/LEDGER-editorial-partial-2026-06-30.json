@@ -1,0 +1,142 @@
+[
+  {
+    "code": "10292",
+    "field": "intel_2026.baliContext",
+    "severity": "MED",
+    "suggested_value": "Food processing is a growing sector in Bali (coconut products like VCO and coconut sugar, Kintamani coffee, chocolate/cacao, seafood processing). HOWEVER, this specific activity is closed to a PT PMA in Bali: although KBLI 10292 is 100% foreign-open nationally (Perpres 10/2021, 49/2021), its OSS risk class is Medium-Low (\"Menengah Rendah\"), and the Bali provincial moratorium effective 2026-05-13 (Gubernur letter B.27.000/642/PM/DPMPTSP) blocks ALL Low and Medium-Low risk KBLI for PMA island-wide. A foreign investor must therefore domicile the PT PMA outside Bali (a virtual office is also banned as a PMA domicile in Bali). The Badung/Gianyar industrial-zone option applies only to activities not caught by this moratorium.",
+    "regulatory_basis": "l4_bali.blocked=true, status=BLOCCATO_CLASSE_RISCHIO, verdict=BLOCKED. Reason (verbatim from record): \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope -> blocked by Bali moratorium 13/5/26\". Confirmed by per_skala: kategori_risiko=\"Menengah Rendah\" (Medium-Low) at scale Besar; PMA is Besar by law. Moratorium (from l4_bali.moratorium): rule \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\", effective 2026-05-13, source \"Gubernur letter B.27.000/642/PM/DPMPTSP\". National PMA-open truth is genuine: pma_status=TERBUKA, pma_max_asing=100, pma_source \"Perpres 10/2021, 49/2021, 14/2024\".",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "10772",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Garam Konsumsi Beryodium (10772)? Nationally this is open to 100% foreign ownership (PMA status: Open). But there's a catch for Bali: a PT PMA cannot currently register this code here — the province-wide moratorium on new foreign-owned companies in Low and Medium-Low risk sectors (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks it island-wide. Let me walk you through the national setup and the Bali options.",
+    "regulatory_basis": "Structural verdict l4_bali.blocked = true / verdict \"BLOCKED\" / status \"BLOCCATO_CLASSE_RISCHIO\": a PT PMA cannot register KBLI 10772 in Bali. Basis (verbatim from record): l4_bali.reason = \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26\"; l4_bali.moratorium.source = \"Gubernur letter B.27.000/642/PM/DPMPTSP\", effective 2026-05-13, rule = \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\". The national-open fact is also grounded: pma_status = TERBUKA, pma_max_asing = 100, pma_source = \"Perpres 10/2021, 49/2021, 14/2024\". No regulation invented — only record-supported sources cited.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "20213",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Zat Pengatur Tumbuh (20213)? Nationally this carries PMA status: Open (100% foreign-owned, per Perpres 10/2021 & 49/2021). Important caveat first: in Bali this line is currently BLOCKED for a PMA — the province blocks all low / medium-low risk KBLI for foreign-owned companies (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026), and a PMA registers as Besar scale, which is exactly the risk class this falls under. So a foreign-owned setup is viable, but the facility must be located outside Bali. Let me walk you through what that means.",
+    "regulatory_basis": "l4_bali.blocked=true, verdict=BLOCKED, status=BLOCCATO_CLASSE_RISCHIO. Bali moratorium effective 2026-05-13, source: Gubernur letter B.27.000/642/PM/DPMPTSP (l4_bali.moratorium.source) — Bali province blocks ALL Low + Medium-Low risk KBLI for PMA island-wide; PMA is Besar by law and 20213 is Rendah/Menengah-Rendah on every scope. National-open basis: pma_status=TERBUKA, pma_max_asing=100, Perpres 10/2021, 49/2021 (pma_source).",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "21013",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Produk Farmasi untuk Hewan (21013)? Nationally this code is open to 100% foreign ownership (PMA status: Open). In Bali, though, you cannot currently set up a PMA for it — the island-wide moratorium on low / medium-low risk KBLI (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks foreign-owned registration of this code. Let me walk you through the options.",
+    "regulatory_basis": "Bali province moratorium on ALL Low + Medium-Low risk KBLI for PMA (island-wide), Gubernur letter B.27.000/642/PM/DPMPTSP, effective 2026-05-13 (per l4_bali.moratorium.source). National openness per Perpres 10/2021, 49/2021, 14/2024 (pma_status TERBUKA, pma_max_asing 100).",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "27113",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Pengubah Tegangan/Transformator dan Pengubah Arus/Rectifier (27113)? Nationally this field is open to 100% foreign ownership (PMA), but a Bali-based PMA is currently blocked: the provincial moratorium (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13/5/26) bars all Low / Medium-Low risk KBLI, and 27113 is Medium-Low risk. Let me walk you through the national route and the Bali-specific block.",
+    "regulatory_basis": "l4_bali.moratorium.source = \"Gubernur letter B.27.000/642/PM/DPMPTSP\", effective 2026-05-13; l4_bali.moratorium.rule = \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\"; l4_bali.reason = \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26\"; l4_bali.verdict = BLOCKED, l4_bali.blocked = true. National openness per pma_status = TERBUKA / pma_max_asing = 100 (Perpres 10/2021, 49/2021, 14/2024).",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "27401",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Bola Lampu Pijar, Lampu Sorot, dan Lampu Ultraviolet (27401)? Nationally this is open to 100% foreign ownership (PMA status: Open, per Perpres 10/2021 & 49/2021). One catch before you plan a foreign-owned setup: this code is a Medium-Low risk activity, and the Bali provincial moratorium (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks ALL Low and Medium-Low risk KBLI for PMA island-wide — so a PT PMA cannot register 27401 in Bali. It remains fully open for a PMA registered elsewhere in Indonesia; let me walk you through your options outside Bali.",
+    "regulatory_basis": "National PMA-open status is genuine: pma_status=\"TERBUKA\", pma_max_asing=100, pma_source=\"Perpres 10/2021, 49/2021, 14/2024\". But l4_bali.verdict=\"BLOCKED\" / blocked=true / status=\"BLOCCATO_CLASSE_RISCHIO\": every per_skala scope (incl. Besar, which a PMA is by law) is risk class \"Menengah Rendah\" (Medium-Low), and the Bali moratorium (rule: \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide, permanent\"; effective 2026-05-13; source: Gubernur letter B.27.000/642/PM/DPMPTSP) forbids PMA registration of this code in Bali. The opener states the national-open fact (not misleading by itself) but then invites \"a foreign-owned setup\" with no qualification, silently omitting the Bali PMA block — inviting the exact PT PMA action the structural verdict forbids.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "28220",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Mesin dan Perkakas Mesin Untuk Pengerjaan Logam dan Bahan Lainnya (28220)? Nationally this is open to 100% foreign ownership (PMA: TERBUKA, per Perpres 10/2021 & 49/2021). In Bali, though, a PT PMA cannot register it: at the PMA scale (Besar) the OSS risk class is Low / Medium-Low, which the island-wide Bali moratorium (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks for foreign ownership — and a virtual office is banned as PMA domicile here. So the structural verdict for Bali is BLOCKED. Let me walk you through your options: register outside Bali, or restructure the entity.",
+    "regulatory_basis": "l4_bali.blocked=true, verdict=BLOCKED, status=BLOCCATO_CLASSE_RISCHIO. l4_bali.reason: \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope -> blocked by Bali moratorium 13/5/26\". Moratorium source (l4_bali.moratorium.source): Gubernur letter B.27.000/642/PM/DPMPTSP, effective 2026-05-13, rule \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\", virtual office BANNED as PMA domicile in Bali. National layer (not in conflict): pma_status=TERBUKA, pma_max_asing=100, source Perpres 10/2021, 49/2021, 14/2024 — open nationally, which is true.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "28261",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Mesin Jahit, Mesin Cuci, dan Mesin Pengering untuk Keperluan Niaga (28261)? Nationally this carries PMA status: Open (up to 100% foreign ownership, per Perpres 10/2021 & 49/2021). One important catch for us in Bali: a PT PMA cannot currently register this activity here. Under the Bali Governor's moratorium (letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026), all Low and Medium-Low risk KBLI are blocked for PMA island-wide — and at the PT PMA (Besar) scale this code falls in that band. So it's a viable foreign-owned setup elsewhere in Indonesia, but not as a Bali-domiciled PMA. Let me walk you through the options.",
+    "regulatory_basis": "l4_bali.blocked=true; l4_bali.verdict=BLOCKED; l4_bali.moratorium.source = Gubernur letter B.27.000/642/PM/DPMPTSP (effective 2026-05-13), which blocks ALL Low + Medium-Low risk KBLI for PMA island-wide in Bali; PT PMA operates at scale Besar (Rendah/Menengah-Rendah risk on every scope), so it falls inside the moratorium. National openness rests on pma_status=TERBUKA / pma_max_asing=100 (pma_source: Perpres 10/2021, 49/2021, 14/2024).",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "28262",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Mesin Tekstil (28262)? Nationally this carries PMA status: Open — 100% foreign ownership is allowed under Perpres 10/2021 & 49/2021. But heads-up: it's a Medium-Low risk activity, and Bali's province-wide moratorium (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks all Low and Medium-Low risk KBLI for PMA — so a foreign-owned company cannot register 28262 in Bali. Let me walk you through the options, including setting up outside Bali.",
+    "regulatory_basis": "National PMA-open is genuine: pma_status=TERBUKA, pma_max_asing=100, source Perpres 10/2021, 49/2021, 14/2024. Structural block is genuine: l4_bali.status=BLOCCATO_CLASSE_RISCHIO, blocked=true, verdict=BLOCKED. Bali moratorium blocks ALL Low + Medium-Low risk KBLI for PMA island-wide, effective 2026-05-13, source: Gubernur letter B.27.000/642/PM/DPMPTSP. Code 28262 is Menengah Rendah (Medium-Low) risk on every scale, so it falls under the block. No regulation invented; all citations taken verbatim from l4_bali.moratorium and pma_source.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "28263",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Mesin Penyiapan dan Pembuatan Produk Kulit (28263)? Nationally this is open to 100% foreign ownership (PMA status: Open, per Perpres 10/2021, 49/2021 and 14/2024) — so a PT PMA can register it elsewhere in Indonesia. In Bali, however, this code is blocked for PMA: its OSS risk class at the Besar scale (which any PMA falls under) is Medium-Low, and the Bali province moratorium (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks every Low and Medium-Low risk KBLI for PMA island-wide, with virtual offices also banned as a PMA domicile. So a foreign-owned setup is viable — but it must be located outside Bali. Let me walk you through how to structure it.",
+    "regulatory_basis": "Structural block is l4_bali.blocked=true / verdict=BLOCKED with status BLOCCATO_CLASSE_RISCHIO. Reason (verbatim): \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26\" — confirmed by per_skala (scale Besar = \"Menengah Rendah\", and a PT PMA is Besar by law). Moratorium source: Gubernur letter B.27.000/642/PM/DPMPTSP, effective 2026-05-13, rule \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\"; virtual office BANNED as PMA domicile in Bali. National openness is genuine: pma_status=TERBUKA, pma_max_asing=100, pma_source=\"Perpres 10/2021, 49/2021, 14/2024\". No regulation invented — all citations taken from the record's own l4_bali.reason / l4_bali.moratorium.source and pma_source.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "28299",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Mesin Keperluan Khusus Lainnya YTDL (28299)? Nationally this carries PMA status: Open — 100% foreign ownership is allowed (Perpres 10/2021 & 49/2021). For Bali specifically, though, a PT PMA cannot register this code right now: it falls in the Low / Medium-Low OSS risk class, which the island-wide Bali PMA moratorium blocks (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026). Let me walk you through the national route and the Bali constraint.",
+    "regulatory_basis": "l4_bali.blocked=true / verdict=BLOCKED / status=BLOCCATO_CLASSE_RISCHIO. The Bali PMA block is the island-wide moratorium on ALL Low + Medium-Low OSS risk-class KBLI (l4_bali.moratorium.rule), source: Gubernur letter B.27.000/642/PM/DPMPTSP, effective 2026-05-13 (l4_bali.moratorium.effective). National openness is genuine: pma_status=TERBUKA, pma_max_asing=100, pma_source 'Perpres 10/2021, 49/2021, 14/2024'. 28299 sits at scale Besar in Rendah/Menengah-Rendah risk on every scope (per_skala) — and PMA is Besar by law (l4_bali.rule) — so a PT PMA cannot register it in Bali.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "30922",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Industri Perlengkapan Sepeda dan Kursi Roda Termasuk Becak (30922)? Nationally this is open to 100% foreign ownership (PMA status: Open, per Perpres 10/2021 & 49/2021) — but in Bali a PT PMA cannot register it: as a Low / Medium-Low risk activity it falls under the island-wide moratorium that blocks all such codes for foreign investors (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026). So foreign-owned manufacturing here is viable elsewhere in Indonesia, but not in Bali. Let me walk you through the options.",
+    "regulatory_basis": "National openness: pma_status=TERBUKA, pma_max_asing=100 (pma_source: Perpres 10/2021, 49/2021, 14/2024). Bali block: l4_bali.blocked=true, verdict=BLOCKED, status=BLOCCATO_CLASSE_RISCHIO; reason=\"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26\"; moratorium.source=\"Gubernur letter B.27.000/642/PM/DPMPTSP\", effective 2026-05-13, rule=\"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\" (PMA is Besar by law). A PT PMA cannot register 30922 in Bali.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "33149",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Reparasi dan Pemeliharaan Peralatan Listrik Lainnya (33149)? Nationally this carries PMA status: Open (100% foreign ownership). Important caveat first: in Bali this code is currently BLOCKED for a new PT PMA — it falls under the province-wide moratorium on Low / Medium-Low risk activities (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026), which also bans virtual-office domicile for PMA. So while a foreign-owned setup is fine elsewhere in Indonesia, you cannot register this PMA in Bali under the present rules. Let me walk you through your options.",
+    "regulatory_basis": "Bali province moratorium (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 2026-05-13) blocks ALL Low + Medium-Low risk KBLI for PMA island-wide, with virtual office BANNED as PMA domicile. Record l4_bali: status=BLOCCATO_CLASSE_RISCHIO, blocked=true, verdict=BLOCKED, reason=\"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26\". National openness derives from pma_status=TERBUKA / pma_max_asing=100, pma_source \"Perpres 10/2021, 49/2021, 14/2024\".",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  },
+  {
+    "code": "33201",
+    "field": "intel_2026.zantaraOpener",
+    "severity": "MED",
+    "suggested_value": "Looking into Instalasi/Pemasangan dan Perangkaian/Integrasi Mesin, Peralatan, dan Sistem Industri (33201)? Nationally this is open to 100% foreign ownership (PMA) under Perpres 10/2021 and 49/2021 — but for Bali it is currently blocked for new PMA companies: as a low/medium-low-risk activity it falls under the island-wide provincial moratorium (Gubernur letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026), so a foreign-owned setup cannot be registered in Bali for now. Let me walk you through where it can be set up and the options.",
+    "regulatory_basis": "Structural verdict l4_bali.blocked=true / verdict=BLOCKED / status=BLOCCATO_CLASSE_RISCHIO: as a low/medium-low-risk activity (OSS risk Rendah/Menengah-Rendah at scale Besar, and PMA is Besar by law) it falls under the Bali island-wide PMA moratorium — Gubernur letter B.27.000/642/PM/DPMPTSP, effective 2026-05-13 (moratorium.source / l4_bali.reason). National open status is genuine: pma_status=TERBUKA, pma_max_asing=100 under Perpres 10/2021 & 49/2021 (pma_source). The opener cites only the true national-open status and then invites a \"foreign-owned setup\" with zero qualification, never mentioning that l4_bali blocks PT PMA registration in Bali — an unqualified Bali-PMA go-ahead, which the brief defines as the misleading case. It is also out of sync with the record's own intel_2026.whatYouNeed, which correctly states the Bali block.",
+    "confidence": "HIGH",
+    "proposed_by": "llm-layer2",
+    "verified_by": "fresh-refuter"
+  }
+]
