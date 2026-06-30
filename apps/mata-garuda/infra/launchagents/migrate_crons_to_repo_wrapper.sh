@@ -36,4 +36,20 @@ for c in "${CRONS[@]}"; do
   echo "  migrated $c → repo wrapper (label $L)"
 done
 
+
+# --- gap.consumer uses a SEPARATE wrapper (matagaruda-gap-consumer.sh) + had a
+# --- dead-worktree MATA_GARUDA_REPO. Repoint to repo wrapper + fix the repo env. ---
+GAP_P="/com.matagaruda.gap.consumer.plist"
+GAP_WRAPPER="/apps/mata-garuda/scripts/matagaruda-gap-consumer.sh"
+if [ -f "" ] && [ -x "" ]; then
+  cp -p "" ".bak-repowrapper-$(date +%Y%m%d-%H%M%S)"
+  /usr/libexec/PlistBuddy -c "Set :ProgramArguments:0 " "" 2>/dev/null || true
+  # kill the dead-worktree repo pointer → main checkout
+  /usr/libexec/PlistBuddy -c "Set :EnvironmentVariables:MATA_GARUDA_REPO /apps/mata-garuda" "" 2>/dev/null || true
+  plutil -lint "$GAP_P" >/dev/null
+  launchctl bootout "gui/$(id -u)/com.matagaruda.gap.consumer" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$GAP_P" 2>/dev/null || echo "    (gap reload deferred)"
+  echo "  migrated gap.consumer → repo wrapper + MATA_GARUDA_REPO=main checkout"
+fi
+
 echo "done. HOME-fork wrapper $HOMEFORK is now unused (keep as fallback or rm after a clean cycle)."
