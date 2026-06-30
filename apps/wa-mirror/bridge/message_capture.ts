@@ -106,6 +106,7 @@ type BaileysMessageLike = {
     participant?: string | null;
     participantPn?: string | null;
     participantLid?: string | null;
+    participantAlt?: string | null;
   } | null;
   messageTimestamp?: number | string | { toNumber?: () => number } | null;
   message?: unknown;
@@ -361,9 +362,18 @@ export function extractMessageRecord(
     const senderPhoneFromPn = raw.key?.participantPn
       ? normalizePhone(jidToPhone(raw.key.participantPn))
       : "";
+    // FIX (2026-06-30): when a group sender arrives as @lid, the real phone is
+    // often only in key.participantAlt (`<number>@s.whatsapp.net`), not in
+    // participantPn/participant. Without this fallback senderPhone stays null
+    // and the dashboard shows `lid:<id>` instead of a name (251 such rows were
+    // backfilled from the raw event; this stops new ones from regressing).
+    const senderPhoneFromAlt = raw.key?.participantAlt
+      ? normalizePhone(jidToPhone(raw.key.participantAlt))
+      : "";
     const senderPhone =
       senderPhoneFromPn ||
       (participantParsed.kind === "phone" ? participantParsed.phone : "") ||
+      senderPhoneFromAlt ||
       null;
     const senderLid =
       (raw.key?.participantLid ? parseJid(raw.key.participantLid).lid : "") ||
