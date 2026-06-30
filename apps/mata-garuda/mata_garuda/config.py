@@ -6,6 +6,8 @@ All values here — no .env files (OSINT blindato, local only).
 """
 from __future__ import annotations
 
+import os
+
 # Redis Streams
 STREAM_RAW = "garuda:raw"
 STREAM_ENRICHED = "garuda:enriched"
@@ -13,6 +15,13 @@ STREAM_ALERTS = "garuda:alerts"
 STREAM_DIGEST = "garuda:digest"
 STREAM_OSINT = "garuda:osint"
 STREAM_FEEDBACK = "garuda:feedback"
+
+# Stream retention cap (2026-06-30, pipeline hardening).
+# Council finding: a Redis Stream is an event ledger, NOT a permanent DB.
+# Cap every XADD with MAXLEN ~ N (approximate trim = O(1)) so the in-memory
+# stream cannot grow unbounded and OOM the host. ~100k entries ~= weeks of
+# headroom for the slowest consumer while bounding RAM. Override via env.
+STREAM_MAXLEN = int(os.environ.get("GARUDA_STREAM_MAXLEN", "100000"))
 
 # Telegram — Zero only
 TG_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"

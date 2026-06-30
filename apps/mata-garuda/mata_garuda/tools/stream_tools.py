@@ -57,8 +57,10 @@ def stream_publish(
     ts = datetime.now().isoformat(timespec="seconds")
 
     # XADD stream * field value field value ...
+    # MAXLEN ~ N approximate trim (council fix — bounded RAM, O(1)).
+    from mata_garuda.config import STREAM_MAXLEN
     result = _redis_cmd(
-        "XADD", stream, "*",
+        "XADD", stream, "MAXLEN", "~", str(STREAM_MAXLEN), "*",
         "title", title,
         "url", url,
         "source", source,
