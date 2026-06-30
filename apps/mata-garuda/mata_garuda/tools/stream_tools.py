@@ -21,19 +21,20 @@ REDIS_CLI = "redis-cli"
 
 
 def _redis_cmd(*args: str, timeout: int = 10) -> str:
-    """Execute a redis-cli command and return output."""
-    cmd = [REDIS_CLI] + list(args)
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout
-        )
-        if result.returncode != 0:
-            return f"[ERROR] redis-cli: {result.stderr.strip()}"
-        return result.stdout.strip()
-    except FileNotFoundError:
-        return "[ERROR] redis-cli not found"
-    except subprocess.TimeoutExpired:
-        return f"[ERROR] redis-cli timeout after {timeout}s"
+    """Execute a redis-cli command and return output.
+
+    Delegates to base_worker.redis_cmd (the SSOT), which carries REDISCLI_AUTH
+    (cicatrix #4 — never -a on argv), the canonical-host resolution, and the
+    absolute redis-cli path. This module's harvester (run_sentinel_py →
+    stream_publish) was previously running BARE `redis-cli` here with NO auth, so
+    every XADD silently failed (NOAUTH) and garuda:raw froze for days while the
+    harvester reported success (cicatrix #1 partial-fix drift + #2 green-but-dead).
+    Fixed 2026-06-30 by routing through the already-cured base_worker path.
+    base_worker does NOT import stream_tools → no circular import; redis_cmd is a
+    generic passthrough so the MAXLEN/* this module supplies still applies.
+    """
+    from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
+    return _bw_redis_cmd(*args, timeout=timeout)
 
 
 @register_tool(name="stream_publish")
@@ -57,8 +58,10 @@ def stream_publish(
     ts = datetime.now().isoformat(timespec="seconds")
 
     # XADD stream * field value field value ...
+    # MAXLEN ~ N approximate trim (council fix — bounded RAM, O(1)).
+    from mata_garuda.config import STREAM_MAXLEN
     result = _redis_cmd(
-        "XADD", stream, "*",
+        "XADD", stream, "MAXLEN", "~", str(STREAM_MAXLEN), "*",
         "title", title,
         "url", url,
         "source", source,
