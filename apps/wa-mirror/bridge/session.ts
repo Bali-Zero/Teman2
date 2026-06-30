@@ -53,7 +53,11 @@ import {
   openSession,
   touch,
 } from "./heartbeat.js";
-import { query } from "./pg.js";
+import { query, getPool } from "./pg.js";
+import {
+  hydrateAllGroupSubjects,
+  attachGroupSubjectListeners,
+} from "./group_subject.js";
 import {
   PgMessageContextStore,
   extractMessageRecord,
@@ -321,10 +325,21 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
           bumpUpsertTs();
         }
       });
+      let groupSubjectsHydrated = false;
       onSock("connection.update", (u) => {
         if (u.connection === "open") {
           connectionOpen = true;
           lastUpsertAt = Date.now(); // reset timer on fresh open
+          // FIX (2026-06-30): hydrate group names once per session. Groups are
+          // dashboard-blind without this — group_subject_snapshot is only ever
+          // set from Baileys group metadata, never the message envelope.
+          // Fire-and-forget + fully defensive (never throws into the ev loop).
+          if (!groupSubjectsHydrated) {
+            groupSubjectsHydrated = true;
+            void hydrateAllGroupSubjects(sock, getPool(), logger);
+            const detach = attachGroupSubjectListeners(sock, getPool(), logger);
+            disposers.add(detach);
+          }
         } else if (u.connection === "close") {
           connectionOpen = false;
         }
