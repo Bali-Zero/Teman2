@@ -200,7 +200,7 @@
     flex-shrink: 0;
   }
   .conv-time.has-unread { color: var(--wa-unread); font-weight: 500; }
-  .conv-company { font-size: 13px; color: var(--wa-text-3); margin-top: 2px; }
+  .conv-company { font-size: 13px; color: var(--wa-text-3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .conv-preview-row {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 4px; gap: 8px;
@@ -275,7 +275,7 @@
   }
   .thread-header .avatar { width: 40px; height: 40px; }
   .thread-header .info { flex: 1; min-width: 0; }
-  .thread-header .name { font-weight: 500; font-size: 16px; color: var(--wa-text); }
+  .thread-header .name { font-weight: 500; font-size: 16px; color: var(--wa-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .thread-header .sub { font-size: 13px; color: var(--wa-text-3); margin-top: 2px; }
   .thread-header .sub a { color: var(--wa-link); text-decoration: none; }
   .thread-header .sub a:hover { text-decoration: underline; }
@@ -748,7 +748,7 @@
 
   </div>
   <div class="meta">
-    <span id="health-pill" class="badge">read-only</span>
+    <span id="health-pill" class="badge">sola lettura</span>
     <span id="db-host">DB: …</span>
     <span id="last-refresh">aggiornato: …</span>
   </div>
@@ -898,11 +898,72 @@ function compactMetricLabel(label) {
     .replace("Crm Mutations", "CRM writes");
 }
 
+// 2026-06-30: human Italian preview for media messages (was raw EN enum "📎 image").
+const MEDIA_PREVIEW = {
+  image:    "📷 Foto",
+  video:    "🎬 Video",
+  audio:    "🎤 Messaggio vocale",
+  document: "📄 Documento",
+  sticker:  "🔖 Sticker",
+  location: "📍 Posizione",
+};
+// 2026-06-30: short Italian chip labels for the in-bubble media tag (was raw enum "image").
+const MEDIA_CHIP = {
+  image: "Foto", video: "Video", audio: "Vocale",
+  document: "Documento", sticker: "Sticker", location: "Posizione",
+};
+const mediaChip = (t) => MEDIA_CHIP[t] || t;
+// 2026-06-30: human Italian labels for conversation tags + attention (were raw enums).
+const TAG_LABEL = {
+  crm:             "Cliente",
+  "crm-archived":  "👻 Ex cliente",
+  prospect:        "Prospect",
+  internal:        "Interno",
+  group:           "Gruppo",
+  direct:          "Diretto",
+  lid:             "Diretto",
+  unknown:         "Sconosciuto",
+};
+const ATTENTION_LABEL = { HIGH: "Urgente", MEDIUM: "Da gestire", LOW: "Nota" };
+
+// 2026-06-30: format a raw phone string into a readable +62 813-3865-6330 form.
+// Indonesian numbers are 12-14 digits; un-grouped runs are hard to verify by eye.
+function fmtPhone(raw) {
+  if (!raw) return "";
+  const digits = String(raw).replace(/[^\d]/g, "");
+  if (digits.length < 7) return String(raw);
+  // group as +<cc> <3>-<4>-<rest> (loose, just for readability)
+  const cc = digits.startsWith("62") ? "62" : digits.startsWith("1") ? "1" : digits.slice(0, 2);
+  const rest = digits.slice(cc.length);
+  const groups = [];
+  for (let i = 0; i < rest.length; i += 4) groups.push(rest.slice(i, i + 4));
+  return "+" + cc + " " + groups.join("-");
+}
+
+// 2026-06-30: turn a raw display value into a human-readable name. If it's a
+// machine token (lid:xxxx, a bare phone, or a @g.us/@s.whatsapp.net JID) it is
+// NOT a name — render a friendly placeholder instead of leaking the token.
+function humanName(value) {
+  const v = String(value || "").trim();
+  if (!v) return "Contatto sconosciuto";
+  if (v.startsWith("lid:") || v.includes("@lid")) return "Contatto sconosciuto";
+  if (v.endsWith("@g.us")) return "Gruppo senza nome";
+  if (v.includes("@s.whatsapp.net")) return fmtPhone(v.split("@")[0]) + " · non in rubrica";
+  // bare phone (only digits / +, spaces, dashes) → format + tag as not-in-contacts
+  if (/^[+\d][\d\s\-]{5,}$/.test(v)) return fmtPhone(v) + " · non in rubrica";
+  return v;
+}
+
 function fmtPreview(c) {
-  if (c.last_body && c.last_body.trim()) return c.last_body;
+  // 2026-06-30: prefix "Tu: " when the last message was sent by the team (WhatsApp convention),
+  // so the operator can tell at a glance who spoke last.
+  const mine = c.last_direction === "outbound" ? "Tu: " : "";
+  if (c.last_body && c.last_body.trim()) return mine + c.last_body;
   // 2026-05-26 fix: skip 'text' last_media (DB stores it for pure text msgs, not a media kind)
-  if (c.last_media && c.last_media !== "text") return "📎 " + c.last_media;
-  return "(vuoto)";
+  if (c.last_media && c.last_media !== "text") {
+    return mine + (MEDIA_PREVIEW[c.last_media] || ("📎 " + c.last_media));
+  }
+  return "Nessun messaggio";
 }
 
 function initials(name) {
@@ -1382,7 +1443,7 @@ function renderCaptainPanel(threadPayload) {
     training_examples: "—", replay_scenarios: "—", shadow_drafts: "—",
     owner_queue: "—", whatsapp_sends: "0", crm_mutations: "0",
   };
-  const caseName = conv ? conv.display_name : "Nessun caso selezionato";
+  const caseName = conv ? humanName(conv.display_name) : "Nessun caso selezionato";
   const caseMeta = conv
     ? `${caseKindLabel(conv)} · ${member?.name || "team"} · ${conv.n || 0} messaggi · ${caseUrgencyLabel(conv)}`
     : "Apri Conversazioni live, scegli team e thread: qui appare la diagnosi del caso.";
@@ -1508,7 +1569,7 @@ function renderTeams() {
             ${pd.unread_total ? `<span class="pill unread" title="${pd.unread_total} msg da rispondere in ${pd.unread_convs} conv">${pd.unread_total}</span>` : ""}
             ${(pd.attention.high || pd.attention.medium) ? `<span class="pill attention" title="HIGH+MED priority" style="background:var(--wa-error);color:white;margin-left:4px">⚠ ${pd.attention.high + pd.attention.medium}</span>` : ""}
           </div>
-          <div class="team-phone">${escapeHtml(m.phone)}</div>
+          <div class="team-phone">${escapeHtml(fmtPhone(m.phone))}</div>
           <div class="team-pills">
             <span class="pill" title="msg totali nel DB (last 30d, all chat types)">${pd.total} msg</span>
             ${pd.msgs_media ? `<span class="pill" title="media (img+doc+video+audio+sticker)">📎 ${pd.msgs_media}</span>` : ""}
@@ -1552,13 +1613,15 @@ function renderConvs() {
     for (const c of convs) {
       const isSel = SELECTED_CONV === c.counterpart ? " selected" : "";
       const tag = c.tag || (c.kind === "group" ? "group" : "direct");
-      const tagLabel = tag === "crm" ? "CRM" : tag === "crm-archived" ? "👻 CRM-archived" : tag;
+      // 2026-06-30: human Italian tag labels (was raw EN enum "prospect"/"internal"/"unknown"...).
+      const tagLabel = TAG_LABEL[tag] || tag;
       const avatarClass = tag === "group" ? "group" : tag === "crm" ? "crm" : tag === "prospect" ? "prospect" : tag === "internal" ? "internal" : "";
       const company = c.company_name && c.crm_match ? `<div class="conv-company">${escapeHtml(c.company_name)}</div>` : "";
       const attClass = c.attention_priority ? " has-attention" : "";
       const attTimeClass = c.attention_priority ? " has-unread" : "";
+      // 2026-06-30: human Italian attention label (was raw "HIGH"/"MEDIUM").
       const attBadge = c.attention_priority
-        ? `<span class="conv-tag" style="background:var(--wa-${c.attention_priority==='HIGH'?'error':'warning'});color:${c.attention_priority==='HIGH'?'white':'var(--wa-panel)'}">${c.attention_priority}</span>`
+        ? `<span class="conv-tag" style="background:var(--wa-${c.attention_priority==='HIGH'?'error':'warning'});color:${c.attention_priority==='HIGH'?'white':'var(--wa-panel)'}">${ATTENTION_LABEL[c.attention_priority] || c.attention_priority}</span>`
         : "";
       // 2026-05-26 naming + color coding: kind badge + colored left-border
       const kindClass = c.contact_kind ? ` kind-${c.contact_kind}` : "";
@@ -1574,7 +1637,7 @@ function renderConvs() {
           <div class="conv-avatar ${avatarClass}">${tag === "group" ? "👥" : (c.client_id ? avatarInner(c.display_name, `/client-avatar/${c.client_id}`) : initials(c.display_name))}</div>
           <div class="conv-body">
             <div class="conv-row">
-              ${kindBadge}<span class="conv-name${attClass}">${escapeHtml(c.display_name)}</span>
+              ${kindBadge}<span class="conv-name${attClass}">${escapeHtml(humanName(c.display_name))}</span>
               <span class="conv-time${attTimeClass}">${fmtTime(c.last_at)}</span>
             </div>
             ${company}
@@ -1606,7 +1669,7 @@ function renderMedia(m) {
   if (!m.media_type || !MEDIA_TYPES.has(m.media_type)) return "";
   const path = m.media_stored_path;
   if (!path) {
-    return `<div class="media-thumb media-missing" title="Bridge download fallito. Media presente su WhatsApp ma non scaricato in locale."><span class="media-tag">${escapeHtml(m.media_type)}</span> <span style="color:#f15c6d">❌</span> <em>media non scaricato (bridge fail)</em></div>`;
+    return `<div class="media-thumb media-missing" title="Bridge download fallito. Media presente su WhatsApp ma non scaricato in locale."><span class="media-tag">${escapeHtml(mediaChip(m.media_type))}</span> <span style="color:#f15c6d">❌</span> <em>media non scaricato (bridge fail)</em></div>`;
   }
   const url = `/media?path=${encodeURIComponent(path)}`;
   switch (m.media_type) {
@@ -1616,7 +1679,7 @@ function renderMedia(m) {
     case "sticker": return `<div class="media-thumb"><img src="${url}" alt="sticker" style="max-width:100px"/></div>`;
     case "document":
       return `<div class="media-thumb"><a href="${url}" target="_blank">📄 ${escapeHtml(m.media_mime || "document")} ↗</a></div>`;
-    default: return `<div class="media-thumb"><span class="media-tag">${m.media_type}</span></div>`;
+    default: return `<div class="media-thumb"><span class="media-tag">${escapeHtml(mediaChip(m.media_type))}</span></div>`;
   }
 }
 
@@ -1680,7 +1743,7 @@ async function renderThread() {
     ? ` · <a href="${KITA_BASE}/clients/${conv.client_id}" target="_blank">apri in kita.balizero.com ↗</a>`
     : "";
 
-  const convDisplay = conv ? conv.display_name : SELECTED_CONV;
+  const convDisplay = humanName(conv ? conv.display_name : SELECTED_CONV);
   const headerAvatarClass = conv?.kind === "group" ? "group" : conv?.tag === "crm" ? "crm" : conv?.tag === "prospect" ? "prospect" : "";
   const captainHtml = conv ? renderCaseCaptainCard(conv, pd, payload) : "";
 
@@ -1722,7 +1785,7 @@ async function renderThread() {
     const dir = m.direction === "outbound" ? "outbound" : "inbound";
     const attClass = m.attention_priority && !m.attention_resolved_at
       ? ` attention-${m.attention_priority.toLowerCase()}` : "";
-    const senderName = m.sender_display || m.sender_phone || "";
+    const senderName = humanName(m.sender_display || m.sender_phone || "");
     const senderRole = m.sender_client_id ? "CRM" : (m.sender_crm_name ? "CRM" : "");
     const senderLine = senderName && conv && conv.kind === "group"
       ? `<div class="sender">${highlightMatch(senderName, q)}${m.sender_company ? " · "+escapeHtml(m.sender_company) : ""}${senderRole ? `<span class="role">${senderRole}</span>` : ""}</div>`
@@ -1735,7 +1798,7 @@ async function renderThread() {
     html += `
       <div class="msg ${dir}${attClass}">
         ${senderLine}
-        ${m.media_type && MEDIA_TYPES.has(m.media_type) ? `<span class="media-tag">${escapeHtml(m.media_type)}</span>` : ""}
+        ${m.media_type && MEDIA_TYPES.has(m.media_type) ? `<span class="media-tag">${escapeHtml(mediaChip(m.media_type))}</span>` : ""}
         ${m.body ? `<div class="body">${highlightMatch(m.body, q)}</div>` : ""}
         ${renderMedia(m)}
         ${attReason}
@@ -1821,13 +1884,13 @@ async function checkHealth() {
     if (!r.ok) throw new Error(`health ${r.status}`);
     const h = await r.json();
     const pill = document.getElementById("health-pill");
-    document.getElementById("db-host").textContent = "DB: " + (h.db_url_host || "unknown");
+    document.getElementById("db-host").textContent = "DB: " + (h.db_url_host || "sconosciuto");
     if (h.db_ok) {
-      pill.textContent = "read-only";
+      pill.textContent = "sola lettura";
       pill.style.background = "rgba(90,212,138,0.18)";
       pill.style.color = "var(--bz-success)";
     } else {
-      pill.textContent = "degraded";
+      pill.textContent = "degradato";
       pill.style.background = "rgba(240,170,0,0.18)";
       pill.style.color = "var(--wa-warning)";
     }
@@ -1960,7 +2023,7 @@ function bucketLabel(bucket) {
     needs_text_parser_qwen_candidate: "Qwen/text parser",
     low_confidence_review: "Bassa confidenza",
     needs_routing_proposal: "Senza proposta routing",
-    already_routed: "Gia routed",
+    already_routed: "Già instradato",
     failed_pipeline: "Pipeline failed",
     immigration: "Immigration",
     company: "Company",
@@ -2096,7 +2159,7 @@ async function renderIntake() {
     ], "Nessun direct doc");
 
     catalogEl.innerHTML = renderRows([
-      { stage: "Gia routed", docs: directCatalog.already_routed_docs, next_action: "no_action" },
+      { stage: "Già instradato", docs: directCatalog.already_routed_docs, next_action: "no_action" },
       { stage: "Pronto review workspace", docs: directCatalog.workspace_review_ready_docs, next_action: "operator_review_workspace" },
       { stage: "Serve proposta routing", docs: directCatalog.routing_proposal_needed_docs, next_action: "create_routing_proposal" },
       { stage: "Qwen/text parser", docs: directCatalog.qwen_text_candidate_docs, next_action: "run_qwen_text_batch" },
