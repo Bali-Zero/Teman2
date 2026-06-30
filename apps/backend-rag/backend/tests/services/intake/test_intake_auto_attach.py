@@ -194,6 +194,93 @@ async def test_guilt_direct_phone_link_candidate_is_concordant(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_internal_filter_direct_phone_internal_number_abstains(monkeypatch):
+    monkeypatch.setenv("BZ_INTERNAL_PHONE_NUMBERS", "+628213454720")
+
+    async def _fail_if_called(_conn, _phone):
+        raise AssertionError("internal phone should not reach CRM phone lookup")
+
+    monkeypatch.setattr(auto_attach, "_match_sender_phone", _fail_if_called)
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="+628213454720",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is False
+    assert v["phone_client_id"] is None
+    assert v["phone_match_count"] == 0
+    assert "internal-number" in v["reason"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sender_phone", ["08213454720", "628213454720"])
+async def test_internal_filter_direct_phone_internal_number_alt_formats_abstain(
+    monkeypatch, sender_phone
+):
+    monkeypatch.setenv("BZ_INTERNAL_PHONE_NUMBERS", "+62 821-345-4720")
+
+    async def _fail_if_called(_conn, _phone):
+        raise AssertionError("internal phone should not reach CRM phone lookup")
+
+    monkeypatch.setattr(auto_attach, "_match_sender_phone", _fail_if_called)
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone=sender_phone,
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is False
+    assert "internal-number" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_internal_filter_direct_phone_non_internal_number_unchanged(monkeypatch):
+    monkeypatch.setenv("BZ_INTERNAL_PHONE_NUMBERS", "+628213454720")
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="+628299900001",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is True
+    assert v["phone_client_id"] == 42
+    assert v["phone_match_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_internal_filter_direct_phone_empty_blocklist_unchanged(monkeypatch):
+    monkeypatch.delenv("BZ_INTERNAL_PHONE_NUMBERS", raising=False)
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="+628213454720",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is True
+    assert v["phone_client_id"] == 42
+    assert v["phone_match_count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_innocence_direct_phone_name_mismatch_abstains(monkeypatch):
     """The lived incident: phone resolves a client but the document's OCR subject
     name is a DIFFERENT person (operator forwarded a client's doc) → abstain."""
