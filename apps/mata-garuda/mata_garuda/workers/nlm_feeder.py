@@ -41,6 +41,7 @@ from mata_garuda.config import (
     STREAM_ALERTS,
     STREAM_ENRICHED,
 )
+from mata_garuda.notebook_registry import get_notebook
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.base_worker import (
     stream_ack,
@@ -126,6 +127,37 @@ def _nlm_at_cap(notebook_id: str) -> bool:
     return count >= NLM_NOTEBOOK_SOURCE_CAP
 
 
+def _resolve_writable_nb(notebook_id: str) -> str:
+    """B2 (2026-06-30): automatic cap-rollover.
+
+    Given a domain notebook, return a notebook that still has room to write:
+      - not at cap → the notebook itself (fast path, the common case).
+      - at cap → the first registry `peer_uuids` overflow NB that has room
+        (this is what B1 wired by hand for ai_research; B2 makes it automatic
+        for every domain whose registry entry declares an overflow peer).
+      - at cap with no peer (or no free peer) → the original NB. The caller's
+        cap-check then skips the add, exactly as before — fail-safe, never
+        crashes, never silently drops the route.
+    """
+    if not notebook_id or not _nlm_at_cap(notebook_id):
+        return notebook_id
+    entry = get_notebook(notebook_id)
+    if entry is None:
+        return notebook_id
+    for peer in entry.peer_uuids:
+        if not _nlm_at_cap(peer):
+            logger.info(
+                "[nlm_feeder] cap-rollover: %s full → writing to overflow peer %s",
+                notebook_id, peer,
+            )
+            return peer
+    logger.warning(
+        "[nlm_feeder] %s at cap and no overflow peer has room — add will skip",
+        notebook_id,
+    )
+    return notebook_id
+
+
 def _nlm_add_url(notebook_id: str, url: str) -> bool:
     """Add a URL source to NLM notebook. Returns True on success.
 
@@ -135,9 +167,10 @@ def _nlm_add_url(notebook_id: str, url: str) -> bool:
     """
     if not notebook_id:
         return False
+    notebook_id = _resolve_writable_nb(notebook_id)
     if _nlm_at_cap(notebook_id):
         logger.warning(
-            "[nlm_feeder] skip add (NB at cap): nb=%s url=%s",
+            "[nlm_feeder] skip add (NB at cap, no overflow room): nb=%s url=%s",
             notebook_id, url,
         )
         return False
@@ -215,9 +248,10 @@ def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
     """
     if not notebook_id:
         return False
+    notebook_id = _resolve_writable_nb(notebook_id)
     if _nlm_at_cap(notebook_id):
         logger.warning(
-            "[nlm_feeder] skip add_text (NB at cap): nb=%s title=%s",
+            "[nlm_feeder] skip add_text (NB at cap, no overflow room): nb=%s title=%s",
             notebook_id, title[:60],
         )
         return False

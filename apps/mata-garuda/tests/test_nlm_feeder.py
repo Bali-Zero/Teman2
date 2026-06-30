@@ -317,3 +317,50 @@ class TestNlmCliPath:
             assert argv[0] == nlm_feeder.NLM_CLI
             # NLM_CLI is resolved at import; in CI it may be bare 'nlm' but must be the constant
             assert argv[0] != "nlm" or nlm_feeder.NLM_CLI == "nlm"
+
+
+class TestCapRollover:
+    """B2 (2026-06-30): when a domain NB hits the source cap, the feeder must roll
+    over to its registry peer_uuids overflow NB automatically — no manual registry
+    edit (B1 did that by hand). _resolve_writable_nb is the resolver every add goes
+    through. Fail-safe: if no peer has room, return the original NB (the add then
+    skips, as before — never crash, never lose-route silently)."""
+
+    FULL = "dc5d01cd-e99f-4c8f-aae4-75060b43d0de"
+    OVERFLOW = "069f009c-ce74-42e5-b75c-e584aa18feb1"
+
+    def test_not_at_cap_returns_self(self):
+        with patch.object(nlm_feeder, "_nlm_at_cap", return_value=False):
+            assert nlm_feeder._resolve_writable_nb(self.FULL) == self.FULL
+
+    def test_at_cap_rolls_over_to_peer_with_room(self):
+        # FULL is at cap; its registry peer OVERFLOW has room
+        def at_cap(nb):
+            return nb == self.FULL
+        with patch.object(nlm_feeder, "_nlm_at_cap", side_effect=at_cap):
+            assert nlm_feeder._resolve_writable_nb(self.FULL) == self.OVERFLOW
+
+    def test_at_cap_no_peer_room_returns_original(self):
+        # everything is full → fail-safe to the original (add will skip)
+        with patch.object(nlm_feeder, "_nlm_at_cap", return_value=True):
+            assert nlm_feeder._resolve_writable_nb(self.FULL) == self.FULL
+
+    def test_unknown_nb_returns_self(self):
+        # a NB not in the registry has no peers → returns itself
+        unknown = "00000000-0000-0000-0000-000000000000"
+        with patch.object(nlm_feeder, "_nlm_at_cap", return_value=True):
+            assert nlm_feeder._resolve_writable_nb(unknown) == unknown
+
+    def test_add_url_writes_to_rolled_over_nb(self):
+        """_nlm_add_url must target the resolved peer, not skip, when rolled over."""
+        from unittest.mock import MagicMock
+        def at_cap(nb):
+            return nb == self.FULL
+        with patch.object(nlm_feeder, "_nlm_at_cap", side_effect=at_cap), \
+             patch.object(nlm_feeder.subprocess, "run") as m_run:
+            m_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            ok = nlm_feeder._nlm_add_url(self.FULL, "https://example.test/x")
+        assert ok is True
+        # the add targeted the OVERFLOW, not the full FULL
+        argv = m_run.call_args.args[0]
+        assert self.OVERFLOW in argv and self.FULL not in argv
