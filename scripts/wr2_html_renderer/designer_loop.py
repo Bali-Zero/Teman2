@@ -104,6 +104,37 @@ _COMPOSITION_CLAIM_MARKERS = (
     "bottom gap", "top gap", "large gap", "substantial gap",
     "large void", "void before", "void above", "void below",
     "negative space", "large empty", "empty band", "empty strip",
+    # "dead AIR" + float/anchor family (W82 under-match, 2nd occurrence
+    # 2026-06-30): the critic also names the SAME vertical-balance debt as
+    # "dead air", a block that "floats"/"is unanchored"/"sits marooned"/
+    # "sandwiched", a logo "stranded"/"isolated"/"floats at the bottom". These
+    # are composition/placement notes (NOT legibility/clip/brand), so they are
+    # editorial debt, not HARD. Innocence-tested: none overlaps a real
+    # legibility/clip/brand marker (has_hard still wins via _claim_is_hard when
+    # an actual defect co-occurs). NB: spatial "stranded/floats/isolated" on a
+    # text UNIT is already handled by _orphan_is_hard (positive typographic-orphan
+    # ID) — these terms here only carry the balance/dead-space meaning.
+    "dead air", "dead-air",
+    "floats", "floating", "unanchored", "anchorless",
+    "marooned", "stranded", "isolated at", "sandwiched",
+    "sits mid", "floats mid", "mid-dark", "mid-section",
+    "sunken into", "sinks into", "sunk into", "drifted",
+    "unfinished", "looks unfinished", "feels unfinished", "reads as unfinished",
+    "nowhere to go", "nothing to rest", "eye has nowhere",
+    # typographic-hierarchy / weight-contrast family (W82 under-match
+    # 2026-06-30): "body is full-bold throughout", "no weight contrast",
+    # "hierarchy gap too narrow", "size cliff", "feels lopsided" — emphasis/
+    # hierarchy refinements about the RELATION between heading and body (the text
+    # is legible; the critic wants a regular-vs-bold contrast), NOT legibility/
+    # clip/brand defects. These describe weight/contrast/relative-size, never
+    # absolute readability — that axis stays with the deterministic OCR +
+    # legibility tiers (codex refuter 2026-06-30: do NOT let soft size/comfort
+    # wording like "strains comfort"/"footnote"/"could be larger" mask a real
+    # readability failure — those are intentionally EXCLUDED here).
+    "full-bold", "full bold", "all-bold", "all bold", "bold throughout",
+    "weight contrast", "no weight", "weight differentiation", "uniform weight",
+    "hierarchy gap", "hierarchy", "size cliff", "size delta", "size gap",
+    "size jump", "lopsided", "featherweight", "heavy top", "lacks emphasis",
 )
 
 # HARD-defect markers, matched on WORD BOUNDARY (not bare substring) — the
@@ -154,6 +185,22 @@ _AFFIRMS_CORRECT_MARKERS = (
     "is correct", "are correct", "is the correct", "correct brand",
     "correct treatment", "is fine", "looks fine", "is good", "works well",
     "is solid", "reads well", "is legible",
+    # the critic EXPLICITLY affirming readability (W82 under-match 2026-06-30):
+    # "at full open size it reads", "technically legible", "it reads, but…",
+    # "readable but…". The element is CONCEDED legible by the critic, so the
+    # trailing critique is about something else (layout/hierarchy), not a HARD
+    # legibility defect.
+    #
+    # DELIBERATELY NOT ADDED (codex refuter REFUTED these 2026-06-30): soft
+    # comfort/size judgements — "strains comfort", "could be larger", "a few
+    # more points", "footnote". Those are NOT explicit readability affirmations;
+    # the critic can use them to describe a slide that is effectively unreadable
+    # on a phone. We must NOT trust soft wording for the readability axis — that
+    # axis is decided by the DETERMINISTIC cheap tiers (legibility critic +
+    # OCR score), which run before this classifier and gate on measured contrast
+    # / actual headline read-back, not on prose. So a genuinely too-small body
+    # is caught by OCR/legibility regardless of how gently the critic phrases it.
+    "it reads", "technically legible", "readable but", "legible but", "reads but",
 )
 
 # An issue that talks about an orphan / stub / wrap-rhythm / a line "sitting
