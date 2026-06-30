@@ -66,7 +66,9 @@ RELEVANCE_WEIGHTS = {
     "investment_licensing": 4,
     "labor_manpower": 4,
     "provincial_bali": 4,
-    "political_risk": 4,   # new regs/perpres/permen/menteri — core signal for the agency
+    "political_risk": 5,   # new regs/perpres/permen/menteri — core signal; weight 5 so a
+                           # pure-regulation hit (default_score 3) clears SCORE_SIGNAL (4):
+                           # weighted = min(5, 3 + (5-3)*0.5) = 4.0. At 4 it'd be 3.5 (WATCH only).
     "financial_banking": 3,
     "property": 3,
     "environmental": 2,
