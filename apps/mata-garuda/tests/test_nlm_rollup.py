@@ -100,3 +100,33 @@ class TestRollup:
         # 200 items → ONE NLM source (the whole point of #5)
         assert stats["posted"] == 1 and m_add.call_count == 1
         assert stats["items"] == 200
+
+
+    def test_runs_on_legacy_db_without_domain_column(self, tmp_path):
+        """Regression: a DB created before the `domain` column must NOT crash the
+        rollup (the live cron died 'no such column: domain' — it opened a raw
+        sqlite3.connect, skipping StreamArchive's guarded ALTER). Opening via
+        StreamArchive must migrate it first."""
+        import sqlite3
+        db = tmp_path / "legacy.db"
+        # build a pre-domain archive table by hand (no domain column)
+        c = sqlite3.connect(str(db))
+        c.executescript("""
+            CREATE TABLE archive (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content_hash TEXT UNIQUE, stream_id TEXT, title TEXT, url TEXT,
+                source TEXT, source_type TEXT, content TEXT, score TEXT,
+                agent TEXT, harvested_ts TEXT,
+                archived_at TEXT DEFAULT (datetime('now'))
+            );
+        """)
+        c.execute("INSERT INTO archive (content_hash,title,url,score,archived_at) "
+                  "VALUES ('h1','t','u','5',datetime('now'))")
+        c.commit(); c.close()
+        # must run without 'no such column: domain'
+        with patch.object(nlm_rollup, "_post_digest", return_value=True), \
+             patch.object(nlm_rollup, "route_domain_to_notebook",
+                          side_effect=lambda d: (d, f"nb-{d}")):
+            stats = nlm_rollup.run_rollup(db_path=db, days_back=3650)
+        assert stats["errors"] == 0
+        assert stats["posted"] == 1   # the row rolled up under the default domain

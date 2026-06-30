@@ -31,7 +31,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
-from mata_garuda.workers.archiver import DEFAULT_ARCHIVE_PATH
+from mata_garuda.workers.archiver import DEFAULT_ARCHIVE_PATH, StreamArchive
 import subprocess
 from mata_garuda.workers.nlm_feeder import (
     NLM_CLI,
@@ -134,7 +134,11 @@ def run_rollup(db_path: Optional[Path] = None, days_back: int = 14) -> dict:
     """
     stats = {"groups": 0, "posted": 0, "skipped_already": 0, "items": 0, "errors": 0}
     path = db_path or DEFAULT_ARCHIVE_PATH
-    conn = sqlite3.connect(str(path))
+    # Open via StreamArchive so its guarded ALTER (adds `domain` to pre-existing
+    # DBs) has definitely run before we SELECT domain — a raw sqlite3.connect
+    # skips that migration and dies 'no such column: domain'.
+    _archive = StreamArchive(db_path=path)
+    conn = _archive._conn
     conn.row_factory = sqlite3.Row
     _ensure_ledger(conn)
 
@@ -190,7 +194,7 @@ def run_rollup(db_path: Optional[Path] = None, days_back: int = 14) -> dict:
             logger.error("[rollup] error posting %s/%s: %s", day, domain, e)
             stats["errors"] += 1
 
-    conn.close()
+    _archive.close()
     return stats
 
 
