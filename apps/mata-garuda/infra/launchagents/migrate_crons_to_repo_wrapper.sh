@@ -37,19 +37,48 @@ for c in "${CRONS[@]}"; do
 done
 
 
-# --- gap.consumer uses a SEPARATE wrapper (matagaruda-gap-consumer.sh) + had a
-# --- dead-worktree MATA_GARUDA_REPO. Repoint to repo wrapper + fix the repo env. ---
-GAP_P="/com.matagaruda.gap.consumer.plist"
-GAP_WRAPPER="/apps/mata-garuda/scripts/matagaruda-gap-consumer.sh"
-if [ -f "" ] && [ -x "" ]; then
-  cp -p "" ".bak-repowrapper-$(date +%Y%m%d-%H%M%S)"
-  /usr/libexec/PlistBuddy -c "Set :ProgramArguments:0 " "" 2>/dev/null || true
-  # kill the dead-worktree repo pointer → main checkout
-  /usr/libexec/PlistBuddy -c "Set :EnvironmentVariables:MATA_GARUDA_REPO /apps/mata-garuda" "" 2>/dev/null || true
-  plutil -lint "$GAP_P" >/dev/null
-  launchctl bootout "gui/$(id -u)/com.matagaruda.gap.consumer" 2>/dev/null || true
-  launchctl bootstrap "gui/$(id -u)" "$GAP_P" 2>/dev/null || echo "    (gap reload deferred)"
-  echo "  migrated gap.consumer → repo wrapper + MATA_GARUDA_REPO=main checkout"
-fi
+# ─────────────────────────────────────────────────────────────────────────────
+# Part 2 (2026-06-30): the 7 remaining mata_garuda crons that used per-cron
+# HOME-fork SHELL wrappers in ~/scripts/. Those cannot be promoted as repo shell
+# scripts (launchd /bin/zsh can't open ~/Desktop under TCC → exit 127, verified
+# A/B). Instead route each through the repo cron-tcc-safe.sh, which execs venv
+# PYTHON (TCC-bypassing) and now carries the per-cron logic via flags
+# (--module / --flock / --window / --source-env). One TCC-safe wrapper, in git.
+#
+# Format: "label-suffix|ProgramArguments after the wrapper path"
+WRAPPED7=(
+  "bridge.adaptive|--module mata_garuda.bridge.nerve --source-env .cell-bridge-state/wa-media.env"
+  "classifier.adaptive|--flock classifier-worker $REPO/apps/mata-garuda/scripts/run_classifier_worker.py"
+  "consumer-lag.check|$REPO/apps/mata-garuda/scripts/check_consumer_lag.py"
+  "gap.consumer|--module mata_garuda.workers.gap_consumer --window 6-22"
+  "ner.adaptive|--flock ner-worker $REPO/apps/mata-garuda/scripts/run_ner_worker.py"
+  "nlm-feeder-stream.hourly|$REPO/apps/mata-garuda/scripts/run_nlm_feeder_stream.py"
+  "pel-cleaner.weekly|--flock pel-cleaner $REPO/apps/mata-garuda/scripts/pel_cleaner.py"
+)
 
-echo "done. HOME-fork wrapper $HOMEFORK is now unused (keep as fallback or rm after a clean cycle)."
+for entry in "${WRAPPED7[@]}"; do
+  suffix="${entry%%|*}"
+  argstr="${entry#*|}"
+  P="$LA/com.matagaruda.$suffix.plist"
+  [ -f "$P" ] || { echo "  skip $suffix (no plist)"; continue; }
+  L=$(/usr/libexec/PlistBuddy -c "Print :Label" "$P" 2>/dev/null)
+  cur=$(/usr/libexec/PlistBuddy -c "Print :ProgramArguments:0" "$P" 2>/dev/null || true)
+  if [ "$cur" = "$REPO_WRAPPER" ]; then echo "  ok   $suffix (already repo wrapper)"; continue; fi
+  cp -p "$P" "$P.bak-repowrapper-$(date +%Y%m%d-%H%M%S)"
+  # rebuild ProgramArguments: [wrapper, <argstr tokens...>]
+  /usr/libexec/PlistBuddy -c "Delete :ProgramArguments" "$P" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :ProgramArguments array" "$P"
+  /usr/libexec/PlistBuddy -c "Add :ProgramArguments: string $REPO_WRAPPER" "$P"
+  for tok in $argstr; do
+    /usr/libexec/PlistBuddy -c "Add :ProgramArguments: string $tok" "$P"
+  done
+  # gap.consumer carried a dead-.worktrees MATA_GARUDA_REPO override — drop it so
+  # the wrapper's self-locating REPO_ROOT wins (cicatrix #1 dead-worktree).
+  /usr/libexec/PlistBuddy -c "Delete :EnvironmentVariables:MATA_GARUDA_REPO" "$P" 2>/dev/null || true
+  plutil -lint "$P" >/dev/null
+  launchctl bootout "gui/$(id -u)/$L" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$P" 2>/dev/null || echo "    (reload deferred — picks up next run)"
+  echo "  migrated $suffix → repo wrapper ($argstr)"
+done
+
+echo "done. HOME-fork wrappers in $HOME/scripts/ are now unused (keep as fallback or rm after a clean cycle)."
