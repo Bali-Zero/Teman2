@@ -16,31 +16,53 @@ redis_cmd` — not re-implement a bare helper. That keeps the auth fix from rott
 """
 from __future__ import annotations
 
+import ast
 import pathlib
-import re
 
 PKG = pathlib.Path(__file__).resolve().parent.parent / "mata_garuda"
 
-# The ONLY files allowed to hand a literal "redis-cli" to subprocess: base_worker
-# (the authed SSOT) and the split-brain guardian (probes BOTH hosts explicitly
-# with its own self-contained _redis_env — it cannot use the single-host SSOT).
+# base_worker is the authed SSOT (its redis_cmd is the single allowed definition).
+# Other files MAY call subprocess.run with "redis-cli" ONLY if that same call
+# carries env= (nerve.py + check_redis_split_brain.py probe explicitly with their
+# own _redis_env and cannot use the single-host SSOT). A call WITHOUT env= is the
+# W89 offender (NOAUTH-swallow under requirepass). AST, not regex — paren-balanced.
 _ALLOWED = {"workers/base_worker.py"}
 
-# subprocess.run( ... "redis-cli" ... )  — bare invocation on the same statement
-_BARE = re.compile(r"subprocess\.run\([^)]*['\"]redis-cli['\"]", re.DOTALL)
+
+def _call_has_redis_cli_literal(node: ast.Call) -> bool:
+    """True if any arg (incl. inside a list literal) is the string 'redis-cli'."""
+    def _strings(n):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+            yield n.value
+        for child in ast.iter_child_nodes(n):
+            yield from _strings(child)
+    return any(s == "redis-cli" for arg in node.args for s in _strings(arg))
 
 
-def test_no_module_runs_bare_redis_cli():
+def _is_subprocess_run(node: ast.Call) -> bool:
+    f = node.func
+    return isinstance(f, ast.Attribute) and f.attr == "run" and (
+        (isinstance(f.value, ast.Name) and f.value.id == "subprocess")
+    )
+
+
+def test_no_unauthed_bare_redis_cli():
     offenders = []
     for py in PKG.rglob("*.py"):
         rel = py.relative_to(PKG).as_posix()
         if rel in _ALLOWED:
             continue
-        text = py.read_text(encoding="utf-8")
-        if _BARE.search(text):
-            offenders.append(rel)
+        tree = ast.parse(py.read_text(encoding="utf-8"), filename=str(py))
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and _is_subprocess_run(node)):
+                continue
+            if not _call_has_redis_cli_literal(node):
+                continue
+            kwargs = {kw.arg for kw in node.keywords if kw.arg}
+            if "env" not in kwargs:
+                offenders.append(f"{rel}:{node.lineno}")
     assert not offenders, (
-        "bare `subprocess.run([... 'redis-cli' ...])` found — these bypass "
+        "subprocess.run([... 'redis-cli' ...]) WITHOUT env= found — these bypass "
         "REDISCLI_AUTH and silently NOAUTH under requirepass (W89). Route through "
-        f"base_worker.redis_cmd instead: {offenders}"
+        f"base_worker.redis_cmd (preferred) or pass env=_redis_env(): {offenders}"
     )
