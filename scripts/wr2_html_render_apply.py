@@ -44,7 +44,7 @@ import threading
 import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 # --- sys.path so backend.* and the renderer package import regardless of launchd cwd
 _REPO = Path(__file__).resolve().parents[1]
@@ -238,9 +238,26 @@ def _dump_designer_history(draft_id: str, slide_index: int, history: list[dict[s
 
 
 # ── render one carousel (per-slide designer loop, GO#3) ─────────────────────────
-async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Path, vision_required: bool) -> Path:
-    """Render the carousel via the HTML engine. Returns the dir containing the slide PNGs.
-    Raises RuntimeError if any slide fails its hero/converge gate.
+class WeakSlide(NamedTuple):
+    """A slide that did NOT converge its designer loop but DID produce a usable
+    best-effort PNG. Its PNG is still placed in the carousel (N-1 semantics,
+    operator decision 2026-06-30) so a single editorial-weak slide does not sink
+    the whole carousel; the weakness is surfaced to ops/human-review instead."""
+
+    index: int
+    reason: str
+    excerpt: str
+
+
+async def _render_carousel(
+    draft_id: str, slides: list[dict[str, Any]], work: Path, vision_required: bool
+) -> tuple[Path, list[WeakSlide]]:
+    """Render the carousel via the HTML engine. Returns (slides_dir, weak_slides).
+
+    weak_slides lists slides that did not converge but produced a best-effort PNG
+    that was STILL placed in the carousel (N-1 semantics — see WeakSlide). A slide
+    that produces NO usable PNG (a real hole: hero download / browser crash) is a
+    HARD failure and still raises RuntimeError — that is not editorial debt.
 
     Two modes:
     - default (vision NOT required): compose_carousel bulk straight-render with the
@@ -280,6 +297,13 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
 
     total = len(slides)
     final_pngs: list[Path] = []
+    weak_slides: list[WeakSlide] = []
+    # N-1 semantics (operator 2026-06-30): a slide that does NOT converge but
+    # still produced a usable best-effort PNG is editorial DEBT, not a carousel
+    # killer — it is placed anyway and flagged. WR2_MAX_WEAK_SLIDES caps how many
+    # weak slides a carousel may carry before the whole render is rejected
+    # (default 1: a carousel with ≥2 weak slides is genuinely poor → render_failed).
+    max_weak = int(os.environ.get("WR2_MAX_WEAK_SLIDES", "1"))
     async with httpx.AsyncClient() as client:
         for i, slide in enumerate(slides, start=1):
             is_hero = bool(slide.get("is_hero_image")) or i == 1
@@ -290,6 +314,7 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
                     hero_filename = f"slide-{i:02d}-hero.jpg"
                     ok = await _download_hero(client, url, slides_dir / hero_filename)
                     if not ok:
+                        # a missing hero is a real hole, not editorial debt → HARD fail
                         raise RuntimeError(f"slide {i} hero download failed (vision-required path)")
 
             render_fn = make_slide_render_fn(
@@ -307,13 +332,28 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
                 use_vision=True,
                 max_iters=3,
             )
-            if not (res.converged and res.final_png and Path(res.final_png).is_file()):
+            # A usable PNG (converged OR best-effort) is the dividing line. The
+            # designer loop populates final_png even when converged=False
+            # (final_png=best_png), so a non-converged slide that rendered at all
+            # still has a placeable PNG. ONLY a slide with no PNG on disk is a
+            # real hole.
+            has_png = bool(res.final_png) and Path(res.final_png).is_file()
+            if not has_png:
                 excerpt = _dump_designer_history(draft_id, i, res.history)
                 raise RuntimeError(
-                    f"slide {i} did not converge (reason={res.reason!r} "
-                    f"critiques=[{excerpt}] final_png={res.final_png}) — GO#3 c5 reject"
+                    f"slide {i} produced no PNG (reason={res.reason!r} "
+                    f"critiques=[{excerpt}] final_png={res.final_png}) — hard render hole"
                 )
-            # place the converged PNG at the canonical slot
+            if not res.converged:
+                # weak but usable: place it AND flag it (N-1). Do not raise.
+                excerpt = _dump_designer_history(draft_id, i, res.history)
+                weak_slides.append(WeakSlide(index=i, reason=res.reason, excerpt=excerpt))
+                logger.warning(
+                    "draft %s slide %d did NOT converge but produced a usable PNG — "
+                    "placing as composition debt (N-1): reason=%s",
+                    draft_id, i, res.reason,
+                )
+            # place the (converged or best-effort) PNG at the canonical slot
             dest = slides_dir / f"{i:02d}.png"
             if Path(res.final_png).resolve() != dest.resolve():
                 dest.parent.mkdir(parents=True, exist_ok=True)
@@ -322,7 +362,13 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
 
     if len(final_pngs) != total:
         raise RuntimeError(f"per-slide render produced {len(final_pngs)}/{total} slides")
-    return slides_dir
+    if len(weak_slides) > max_weak:
+        idxs = ", ".join(str(w.index) for w in weak_slides)
+        raise RuntimeError(
+            f"carousel has {len(weak_slides)} weak slides (>{max_weak} allowed): "
+            f"slides {idxs} did not converge — render_failed (genuinely poor draft)"
+        )
+    return slides_dir, weak_slides
 
 
 # ── heartbeat loop ──────────────────────────────────────────────────────────────
@@ -415,7 +461,9 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             hero_dir.mkdir(parents=True, exist_ok=True)
             with _HeroServer(hero_dir) as server:
                 norm_slides = _normalize_heroes(slides, hero_dir, server)
-                slides_dir = await _render_carousel(str(draft_id), norm_slides, work, vision_required)
+                slides_dir, weak_slides = await _render_carousel(
+                    str(draft_id), norm_slides, work, vision_required
+                )
             png_paths = sorted(slides_dir.glob("*.png"))
             if not png_paths:
                 raise RuntimeError("no PNGs after render")
@@ -452,6 +500,18 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 recipients=recipients, message_body=msg, customer_window_hours=24,
             )
             await _log_ledger_best_effort(main_conn, draft_id)
+            if weak_slides:
+                # N-1: the carousel rendered + was delivered, but ≤max_weak slides
+                # carry editorial debt. Flag them for human review (the draft is in
+                # 'rendered' which the WR2 Control app already surfaces for approval).
+                detail = "; ".join(
+                    f"slide {w.index}: {w.reason} — {w.excerpt[:160]}" for w in weak_slides
+                )
+                await _ops_alert(
+                    f"WR2 HTML draft={draft_id} rendered drive={web} with "
+                    f"{len(weak_slides)} WEAK slide(s) (N-1 — placed as composition debt, "
+                    f"review before publish): {detail}"
+                )
             closed = [r for r, info in report.items() if not info.get("window_open")]
             if closed:
                 await _ops_alert(

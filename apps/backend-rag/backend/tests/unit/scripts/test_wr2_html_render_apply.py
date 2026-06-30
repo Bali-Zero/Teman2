@@ -542,12 +542,13 @@ async def test_apply_one_reconnects_before_terminal_write(monkeypatch):
         def __exit__(self, *a): return False
     monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
 
-    # render "succeeds": produce a PNG path the worker will glob
+    # render "succeeds": produce a PNG path the worker will glob.
+    # _render_carousel now returns (slides_dir, weak_slides) — N-1 semantics.
     async def _fake_render(draft_id, slides, work, vision_required):
         d = work / "carousel" / "slides"
         d.mkdir(parents=True, exist_ok=True)
         (d / "01.png").write_bytes(b"PNG")
-        return d
+        return d, []
     monkeypatch.setattr(html, "_render_carousel", _fake_render)
     monkeypatch.setattr(html, "_drive_upload_carousel", AsyncMock(return_value="https://drive/x"))
     monkeypatch.setattr(
@@ -2884,11 +2885,15 @@ async def test_designer_loop_hard_residual_logs_the_critiques(monkeypatch, caplo
 
 
 @pytest.mark.asyncio
-async def test_render_carousel_reject_cites_critiques_and_dumps_history(monkeypatch, tmp_path):
-    """On a non-converged slide, _render_carousel must (a) include the last vision
-    critiques in the raised RuntimeError (they reach the apply-log + DB
-    rejection_reason) and (b) persist the full designer history as JSON under
-    WR2_HTML_DEBUG_DIR for post-mortem (the render tmp dir is deleted on exit)."""
+async def test_render_carousel_dead_slide_cites_critiques_and_dumps_history(monkeypatch, tmp_path):
+    """A slide that produces NO usable PNG (final_png=None — a real render hole,
+    not editorial debt) must still HARD-fail: _render_carousel (a) includes the
+    last vision critiques in the raised RuntimeError (they reach the apply-log +
+    DB rejection_reason) and (b) persists the full designer history as JSON under
+    WR2_HTML_DEBUG_DIR for post-mortem (the render tmp dir is deleted on exit).
+
+    Distinct from the N-1 weak-slide path (test below): there a non-converged
+    slide WITH a best-effort PNG is placed + flagged, NOT raised."""
     import json as _json
 
     import scripts.wr2_html_render_apply as html
@@ -2919,12 +2924,95 @@ async def test_render_carousel_reject_cites_critiques_and_dumps_history(monkeypa
             "draft-test", [{"headline": "T"}], tmp_path / "work", vision_required=True
         )
     assert "title clipped at right edge" in str(ei.value)
+    assert "no PNG" in str(ei.value), "a dead slide (no PNG) must be named a render hole"
 
     dumps = list(debug_dir.glob("*.json"))
     assert dumps, "designer history JSON was not persisted"
     payload = _json.loads(dumps[0].read_text())
     assert payload["draft_id"] == "draft-test"
     assert payload["history"] == hist
+
+
+@pytest.mark.asyncio
+async def test_render_carousel_n1_weak_slide_is_placed_not_raised(monkeypatch, tmp_path):
+    """N-1 semantics (operator 2026-06-30): ONE non-converged slide that still
+    produced a usable best-effort PNG must NOT sink the carousel — its PNG is
+    placed at the canonical slot, it is recorded in weak_slides, and the carousel
+    renders. This is the core of the 'N-1 slide OK' decision: a single editorial
+    -weak slide is composition debt routed to human review, not render_failed."""
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer import composer as comp
+    from wr2_html_renderer import designer_loop as dl
+
+    # slide 1 converges clean; slide 2 does NOT converge but renders a PNG.
+    call = {"n": 0}
+
+    async def fake_loop(**kwargs):
+        call["n"] += 1
+        idx = call["n"]
+        out_dir = kwargs["out_dir"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        png = out_dir / "best.png"
+        png.write_bytes(b"PNG")
+        if idx == 2:
+            return dl.DesignerResult(
+                final_png=png, iterations=3, converged=False,
+                history=[{"iter": 1, "vision": {"passed": False, "issues": ["body too small"]}}],
+                reason="max_iters reached or not CSS-fixable",
+            )
+        return dl.DesignerResult(final_png=png, iterations=1, converged=True, history=[])
+
+    monkeypatch.setattr(dl, "run_designer_loop", fake_loop)
+    monkeypatch.setattr(comp, "_stage_assets", lambda *a, **k: None)
+    monkeypatch.setattr(comp, "make_slide_render_fn", lambda **k: None)
+    monkeypatch.setenv("WR2_HTML_DEBUG_DIR", str(tmp_path / "debug"))
+    monkeypatch.setenv("WR2_MAX_WEAK_SLIDES", "1")
+
+    slides_dir, weak = await html._render_carousel(
+        "draft-n1", [{"headline": "A"}, {"headline": "B"}], tmp_path / "work", vision_required=True
+    )
+    # both PNGs placed at canonical slots — the carousel is whole
+    assert (slides_dir / "01.png").is_file()
+    assert (slides_dir / "02.png").is_file()
+    # the weak slide is flagged for review, not dropped
+    assert len(weak) == 1
+    assert weak[0].index == 2
+    assert "body too small" in weak[0].excerpt
+
+
+@pytest.mark.asyncio
+async def test_render_carousel_too_many_weak_slides_render_failed(monkeypatch, tmp_path):
+    """Guard on the N-1 gate: a carousel with MORE weak slides than
+    WR2_MAX_WEAK_SLIDES allows is a genuinely poor draft → HARD-fail (render_failed),
+    NOT rubber-stamped. This is the cap that stops N-1 from becoming 'accept
+    anything'. With max=1, two non-converged slides must raise."""
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer import composer as comp
+    from wr2_html_renderer import designer_loop as dl
+
+    async def fake_loop(**kwargs):
+        out_dir = kwargs["out_dir"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        png = out_dir / "best.png"
+        png.write_bytes(b"PNG")
+        # EVERY slide is weak-but-rendered
+        return dl.DesignerResult(
+            final_png=png, iterations=3, converged=False,
+            history=[{"iter": 1, "vision": {"passed": False, "issues": ["dead air"]}}],
+            reason="max_iters",
+        )
+
+    monkeypatch.setattr(dl, "run_designer_loop", fake_loop)
+    monkeypatch.setattr(comp, "_stage_assets", lambda *a, **k: None)
+    monkeypatch.setattr(comp, "make_slide_render_fn", lambda **k: None)
+    monkeypatch.setenv("WR2_HTML_DEBUG_DIR", str(tmp_path / "debug"))
+    monkeypatch.setenv("WR2_MAX_WEAK_SLIDES", "1")
+
+    with pytest.raises(RuntimeError) as ei:
+        await html._render_carousel(
+            "draft-poor", [{"headline": "A"}, {"headline": "B"}], tmp_path / "work", vision_required=True
+        )
+    assert "weak slides" in str(ei.value)
 
 
 # ── facts-block body structurer (designer-loop convergence, 2026-06-12) ──────

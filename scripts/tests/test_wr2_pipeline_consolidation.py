@@ -200,7 +200,8 @@ class TestHtmlApplyLedger:
                 return False
 
         monkeypatch.setattr(html, "_HeroServer", _Srv)
-        monkeypatch.setattr(html, "_render_carousel", AsyncMock(return_value=slides_dir))
+        # _render_carousel now returns (slides_dir, weak_slides) — N-1 semantics
+        monkeypatch.setattr(html, "_render_carousel", AsyncMock(return_value=(slides_dir, [])))
         monkeypatch.setattr(html, "_drive_upload_carousel", AsyncMock(return_value="https://drive/x"))
         monkeypatch.setattr(html, "_ops_alert", AsyncMock())
         monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)
