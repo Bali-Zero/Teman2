@@ -70,6 +70,9 @@ RELEVANCE_WEIGHTS = {
 
 # Scoring thresholds
 SCORE_SIGNAL = 4    # >= 4: alert to Zero
+# Feed only items scoring >= this into NLM (council: a hard-capped sink
+# must see only high-signal items). Fail-open: un-scored items still feed.
+FEED_MIN_SCORE = int(os.environ.get("GARUDA_FEED_MIN_SCORE", "4"))
 SCORE_WATCH = 2     # >= 2: store in KB, no alert
 SCORE_NOISE = 1     # < 2: discard
 

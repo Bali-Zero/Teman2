@@ -34,6 +34,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from mata_garuda.config import (
+    FEED_MIN_SCORE,
     NLM_DOMAIN_ROUTING,
     NLM_FEEDER_BATCH_SIZE,
     NLM_FEEDER_SLEEP_BETWEEN_S,
@@ -503,6 +504,20 @@ def _run_nlm_feeder_from(
             stats["skipped"] += 1
             stream_ack(stream, consumer_group, msg_id)
             continue
+
+        # Relevance gate (council fix #3): a hard-capped sink (NLM ~500) must
+        # only see high-signal items. Skip+ACK items that ARE scored and score
+        # below FEED_MIN_SCORE. Fail-OPEN: un-scored items still feed (never
+        # silently drop intel just because it lacks a score).
+        raw_score = data.get("score") or data.get("relevance")
+        if raw_score not in (None, ""):
+            try:
+                if int(float(raw_score)) < FEED_MIN_SCORE:
+                    stats["skipped"] += 1
+                    stream_ack(stream, consumer_group, msg_id)
+                    continue
+            except (TypeError, ValueError):
+                pass  # unparseable score → fail-open, feed it
 
         # Dedup: if we've already fed this URL, skip. Look up by (type, source)
         # directly — FTS5 doesn't tokenize URLs reliably.
