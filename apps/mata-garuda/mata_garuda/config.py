@@ -87,10 +87,6 @@ AI_RSS_FEEDS = [
 ]
 
 
-# ── Council (Consiglio v1) ────────────────────────────────────────────
-STREAM_COUNCIL_TOPICS = "council:topics"
-STREAM_COUNCIL_DECISIONS = "council:decisions"
-
 # ── Phase 1 — Bridge & Nexus integration ──────────────────────────────
 from pathlib import Path
 
