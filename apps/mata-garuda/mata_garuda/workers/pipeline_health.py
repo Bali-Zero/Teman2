@@ -33,9 +33,9 @@ import sys
 import time
 from pathlib import Path
 
+from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
+
 # ── config (env-overridable, no hardcoded secrets) ────────────────────────
-REDIS_HOST = os.environ.get("GARUDA_REDIS_HOST", "localhost")
-REDIS_PORT = os.environ.get("GARUDA_REDIS_PORT", "6379")
 STREAM_MAXLEN = int(os.environ.get("GARUDA_STREAM_MAXLEN", "100000"))
 STREAMS = ["garuda:raw", "garuda:enriched", "garuda:alerts"]
 ENRICHED = "garuda:enriched"
@@ -55,34 +55,19 @@ LAG_YELLOW = int(os.environ.get("GARUDA_LAG_YELLOW", "3000"))
 FRESH_MAX_H = float(os.environ.get("GARUDA_FRESH_MAX_H", "26"))
 
 
-def _redis_cli() -> str:
-    for c in (shutil.which("redis-cli"), "/opt/homebrew/bin/redis-cli",
-              "/usr/local/bin/redis-cli", "/usr/bin/redis-cli"):
-        if c and os.path.exists(c):
-            return c
-    return "redis-cli"
-
-
-REDIS_CLI = _redis_cli()
-
-
-def _redis_env() -> dict:
-    env = dict(os.environ)
-    pw = (os.environ.get("GARUDA_REDIS_PASSWORD") or "").strip()
-    if pw:
-        env["REDISCLI_AUTH"] = pw
-    return env
-
-
 def _r(*args: str) -> str:
-    try:
-        p = subprocess.run(
-            [REDIS_CLI, "-h", REDIS_HOST, "-p", REDIS_PORT, *args],
-            capture_output=True, text=True, timeout=15, env=_redis_env(),
-        )
-        return (p.stdout or "").strip()
-    except Exception as e:
-        return f"[ERR {e}]"
+    """Run a redis-cli command via the canonical base_worker topology.
+
+    RR-H3 (Stage 1 single-writer, 2026-06-29): host/port/auth/cli-path
+    resolution lives in ONE place — base_worker._resolve_redis_host()
+    (GARUDA_REDIS_HOST → GARUDA_CANONICAL_REDIS_HOST → local sentinel) +
+    REDISCLI_AUTH (cicatrix #4, never -a) + abs-path redis-cli. This monitor
+    used to carry its own localhost default + duplicate cli/env logic, the
+    last organ outside the canonical cure. On any failure redis_cmd returns
+    "[ERROR] ..."; assess()'s reachability probe keys on the "[ER" prefix so
+    both that and a legacy "[ERR ...]" read as a failed probe (RR-H4).
+    """
+    return _bw_redis_cmd(*args, timeout=15)
 
 
 def _now_ms() -> int:
@@ -198,7 +183,9 @@ def assess() -> dict:
     # monitor would otherwise stay GREEN through a TOTAL OUTAGE — the exact
     # failure this monitor exists to catch. A failed PING is hard RED, full stop.
     ping = _r("PING")
-    if ping.startswith("[ERR") or "PONG" not in ping.upper():
+    # "[ER..." covers both base_worker's "[ERROR] ..." and the legacy "[ERR ...]"
+    # error sentinels; a live Redis answers exactly "PONG".
+    if ping.startswith("[ER") or "PONG" not in ping.upper():
         return {
             "verdict": "RED",
             "ts": 0,

@@ -169,6 +169,29 @@ class TestPipelineHealthAssess:
             r = pipeline_health.assess()
         assert r["verdict"] == "GREEN"
 
+    # ── RR-H3: single Redis-topology source of truth (base_worker) ──────────
+    def test_r_delegates_to_base_worker(self):
+        """The monitor no longer carries its own localhost default / cli / env —
+        every redis-cli call routes through base_worker.redis_cmd, so host/auth
+        resolution is the canonical Stage 1 one (cicatrix #10)."""
+        # patch where it's looked up: pipeline_health binds the import at module
+        # load (`redis_cmd as _bw_redis_cmd`), so patch that bound name.
+        with patch.object(pipeline_health, "_bw_redis_cmd", return_value="PONG") as m:
+            out = pipeline_health._r("PING")
+        assert out == "PONG"
+        assert m.call_args.args == ("PING",)
+
+    def test_red_when_base_worker_error_format(self):
+        """base_worker.redis_cmd returns '[ERROR] ...' (not the legacy '[ERR ...]')
+        on failure. RR-H4's reachability probe must treat that as a failed probe
+        too, otherwise the migration would silently re-open the green-on-outage hole."""
+        with patch.object(pipeline_health, "_r",
+                          side_effect=lambda *a: "[ERROR] redis-cli: Connection refused"), \
+             patch.object(pipeline_health, "_nlm_source_total", return_value=None), \
+             patch.object(pipeline_health, "_load_state", return_value={}):
+            r = pipeline_health.assess()
+        assert r["verdict"] == "RED"
+
     # ── RR-H1: lag scan must cover nexus:gaps, not only enriched ─────────────
     def test_red_when_nexus_gaps_lag_growing(self):
         """GUILT: a stuck+growing consumer on nexus:gaps (gap_consumer) must
