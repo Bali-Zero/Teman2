@@ -1576,8 +1576,8 @@ function renderTeams() {
             ${pd.msgs_lid_only ? `<span class="pill lid" title="msg con counterpart_lid only (no phone resolved)">lid ${pd.msgs_lid_only}</span>` : ""}
             ${pd.crm_count ? `<span class="pill crm">CRM ${pd.crm_count}</span>` : ""}
             ${pd.archived_count ? `<span class="pill" title="clienti CRM soft-deleted ma ancora attivi su WA (cicatrix marzo-2026 purge)" style="background:#ff9500;color:white">👻 ${pd.archived_count}</span>` : ""}
-            ${pd.attention.high   ? `<span class="pill attention">${pd.attention.high} HIGH</span>` : ""}
-            ${pd.attention.medium ? `<span class="pill attention-med">${pd.attention.medium} MED</span>` : ""}
+            ${pd.attention.high   ? `<span class="pill attention" title="conversazioni urgenti">${pd.attention.high} urgenti</span>` : ""}
+            ${pd.attention.medium ? `<span class="pill attention-med" title="conversazioni da gestire">${pd.attention.medium} da gestire</span>` : ""}
           </div>
         </div>
       </div>`;
@@ -1604,7 +1604,7 @@ function renderConvs() {
   }
   const convs = sortedConvsForTeam(pd);
   const headerExtra = pd.attention.high || pd.attention.medium
-    ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} HIGH</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} MED</span>` : ""}`
+    ? ` <span style="color:var(--wa-error);font-weight:500">· ${pd.attention.high} urgenti</span>${pd.attention.medium ? ` <span style="color:var(--wa-warning)">· ${pd.attention.medium} da gestire</span>` : ""}`
     : "";
   let html = `<div class="col-header">2 · ${convs.length} conversazioni${headerExtra}</div>`;
   if (!convs.length) {
