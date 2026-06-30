@@ -76,8 +76,13 @@ image_prompt: string  # if image not yet generated
 }
 .body {
   font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-body-md);
-  line-height: var(--line-height-normal);
+  /* 34px (was --font-size-body-md 28px): the text panel is only 810px (bottom
+     half), so a larger body genuinely fills it and the body→logo gap shrinks to
+     normal padding instead of a dead-air void. Eyeballed on the real 29-33-word
+     hero bodies, 2026-06-30 (longest body, 5 lines, no overflow). No footer rule
+     here — the panel is short enough that a bigger body alone closes the void. */
+  font-size: 34px;
+  line-height: 1.45;
   letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-white);
   text-transform: uppercase;
