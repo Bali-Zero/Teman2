@@ -364,3 +364,24 @@ class TestCapRollover:
         # the add targeted the OVERFLOW, not the full FULL
         argv = m_run.call_args.args[0]
         assert self.OVERFLOW in argv and self.FULL not in argv
+
+
+class TestNlmAddTextTitlePreserved:
+    """Regression: _nlm_add_text must pass --text --title (NOT --file with a temp
+    file whose name becomes the source title — that produced 8 mis-titled
+    nlm_feed_*.txt sources in prod, fixed 2026-06-30)."""
+
+    def test_uses_text_and_title_flags_not_file(self):
+        from unittest.mock import patch, MagicMock
+        ok = MagicMock(returncode=0, stdout="Source ID: x", stderr="")
+        with patch.object(nlm_feeder, "_resolve_writable_nb", side_effect=lambda n: n), \
+             patch.object(nlm_feeder, "_nlm_at_cap", return_value=False), \
+             patch("subprocess.run", return_value=ok) as m_run:
+            res = nlm_feeder._nlm_add_text("nb-1", "My Digest Title", "the body text")
+        assert res is True
+        argv = m_run.call_args.args[0]
+        assert "--text" in argv and "--title" in argv
+        assert "--file" not in argv                     # no temp-file path
+        # the real title is passed, not a temp filename
+        assert argv[argv.index("--title") + 1] == "My Digest Title"
+        assert argv[argv.index("--text") + 1] == "the body text"

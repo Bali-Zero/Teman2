@@ -31,7 +31,6 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from uuid import uuid4
 
 from mata_garuda.config import (
     FEED_MIN_SCORE,
@@ -237,15 +236,21 @@ def _try_headless_auth_refresh() -> bool:
 
 
 def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
-    """Add text content to NLM notebook via temp file.
+    """Add text content to NLM notebook, TITLE PRESERVED.
 
-    On auth-error stderr from `nlm` CLI, attempts ONE headless refresh
-    + retry. Subsequent auth failures within the same run are NOT retried
-    (Layer-1 recovery only — if Chrome profile is stale too, only an
-    interactive `nlm login --clear` will fix it).
+    Uses `nlm source add --text <text> --title <title>` (A/B-verified to keep the
+    title). The previous implementation wrote a /tmp/nlm_feed_<hash>.txt and used
+    `--file`, which made the temp FILENAME the NLM source title — so every text
+    push landed as 'nlm_feed_<hash>.txt', un-findable (8 such mis-titled sources
+    accumulated in prod; fixed + cleaned 2026-06-30). No temp file now.
 
-    W15: pre-check NB cap; if at cap, skip immediately. On non-auth
-    rejection, surface stderr in WARNING log.
+    On auth-error stderr from `nlm` CLI, attempts ONE headless refresh + retry.
+    Subsequent auth failures within the same run are NOT retried (Layer-1 recovery
+    only — if the Chrome profile is stale too, only an interactive
+    `nlm login --clear` will fix it).
+
+    W15: pre-check NB cap; if at cap, skip immediately. On non-auth rejection,
+    surface stderr in WARNING log.
     """
     if not notebook_id:
         return False
@@ -256,44 +261,36 @@ def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
             notebook_id, title[:60],
         )
         return False
-    tmp = Path(f"/tmp/nlm_feed_{uuid4().hex[:8]}.txt")
-    try:
-        tmp.write_text(f"# {title}\n\n{text}")
+    for attempt in (1, 2):
+        result = subprocess.run(
+            [NLM_CLI, "source", "add", "--profile", "default", notebook_id,
+             "--text", text, "--title", title],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode == 0:
+            return True
 
-        for attempt in (1, 2):
-            result = subprocess.run(
-                [NLM_CLI, "source", "add", "--profile", "default", notebook_id, "--file", str(tmp)],
-                capture_output=True, text=True, timeout=60,
+        stderr = (result.stderr or "") + (result.stdout or "")
+        auth_err = (
+            "Authentication expired" in stderr
+            or "Authentication Error" in stderr
+            or "auth" in stderr.lower() and "expir" in stderr.lower()
+        )
+        if attempt == 1 and auth_err:
+            logger.info(
+                "[nlm_feeder] auth expired on add_text — attempting headless refresh"
             )
-            if result.returncode == 0:
-                return True
-
-            stderr = (result.stderr or "") + (result.stdout or "")
-            auth_err = (
-                "Authentication expired" in stderr
-                or "Authentication Error" in stderr
-                or "auth" in stderr.lower() and "expir" in stderr.lower()
-            )
-            if attempt == 1 and auth_err:
-                logger.info(
-                    "[nlm_feeder] auth expired on add_text — attempting headless refresh"
-                )
-                if not _try_headless_auth_refresh():
-                    return False
-                # loop back for retry with refreshed auth.json
-                continue
-            snippet = stderr.replace("\n", " ").strip()[:200]
-            logger.warning(
-                "[nlm_feeder] add_text rejected: nb=%s title=%s rc=%d reason=%s",
-                notebook_id, title[:60], result.returncode, snippet or "(empty)",
-            )
-            return False
+            if not _try_headless_auth_refresh():
+                return False
+            # loop back for retry with refreshed auth.json
+            continue
+        snippet = stderr.replace("\n", " ").strip()[:200]
+        logger.warning(
+            "[nlm_feeder] add_text rejected: nb=%s title=%s rc=%d reason=%s",
+            notebook_id, title[:60], result.returncode, snippet or "(empty)",
+        )
         return False
-    except Exception as e:
-        logger.warning(f"[nlm_feeder] Failed to add text '{title}': {e}")
-        return False
-    finally:
-        tmp.unlink(missing_ok=True)
+    return False
 
 
 def _route_to_notebook(source_type: str) -> str:
