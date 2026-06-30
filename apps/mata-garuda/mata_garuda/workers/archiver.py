@@ -70,6 +70,7 @@ class StreamArchive:
                 source_type TEXT,
                 content TEXT,
                 score TEXT,
+                domain TEXT,
                 agent TEXT,
                 harvested_ts TEXT,
                 archived_at TEXT DEFAULT (datetime('now'))
@@ -77,6 +78,13 @@ class StreamArchive:
             CREATE INDEX IF NOT EXISTS idx_archive_source ON archive(source);
             CREATE INDEX IF NOT EXISTS idx_archive_archived ON archive(archived_at);
         """)
+        # Guarded migration: add `domain` to DBs created before this column existed.
+        cols = [r[1] for r in self._conn.execute("PRAGMA table_info(archive)").fetchall()]
+        if "domain" not in cols:
+            self._conn.execute("ALTER TABLE archive ADD COLUMN domain TEXT")
+        # domain column now exists on every path → safe to index unconditionally.
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_archive_domain ON archive(domain)")
         self._conn.commit()
 
     def archive(self, stream_id: str, data: dict) -> bool:
@@ -90,8 +98,8 @@ class StreamArchive:
         cursor = self._conn.execute(
             "INSERT OR IGNORE INTO archive "
             "(content_hash, stream_id, title, url, source, source_type, "
-            " content, score, agent, harvested_ts) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            " content, score, domain, agent, harvested_ts) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (
                 chash,
                 stream_id,
@@ -100,7 +108,8 @@ class StreamArchive:
                 data.get("source", ""),
                 data.get("source_type", data.get("source", "")),
                 (data.get("content", "") or "")[:8000],
-                str(data.get("score", data.get("relevance", ""))),
+                str(data.get("relevance_score", data.get("score", data.get("relevance", "")))),
+                data.get("domain", ""),
                 data.get("agent", "unknown"),
                 data.get("timestamp", data.get("normalized_at", "")),
             ),
