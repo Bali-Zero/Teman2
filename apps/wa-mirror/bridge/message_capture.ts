@@ -1,6 +1,7 @@
 import { query } from "./pg.js";
 import { jidToPhone, parseJid } from "./filters.js";
 import { normalizePhone } from "./phone.js";
+import { getGroupSubject } from "./group_subject.js";
 
 export type Direction = "inbound" | "outbound";
 export type ChatType = "direct" | "group";
@@ -393,7 +394,12 @@ export function extractMessageRecord(
       rawBaileysEvent: raw,
       chatType: "group",
       groupJid,
-      groupSubject: null,
+      // FIX (2026-06-30): group name comes from Baileys group metadata, never
+      // from the message envelope. The group_subject cache is hydrated on
+      // connection open (session.ts) + kept fresh by groups.update listeners.
+      // Falls back to null (prior behaviour) when the subject isn't cached yet;
+      // the INSERT's COALESCE(EXCLUDED, existing) preserves any earlier value.
+      groupSubject: getGroupSubject(groupJid),
       senderPhone,
       senderLid,
       senderJid: participantRaw,
