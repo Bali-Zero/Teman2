@@ -128,3 +128,25 @@ class TestSplitBrainGuardian:
         with patch.object(m, "rcli", return_value=xinfo):
             rep = m.detect_split_brain()
         assert not rep["alerts"]
+
+    def test_redis_cli_resolves_absolute_path(self):
+        """Under cron/non-login PATH, the guardian must not crash on bare name."""
+        m = _load_splitbrain()
+        # _resolve_redis_cli returns a real path when which() finds it, else a
+        # known abs path, else bare 'redis-cli' — never raises.
+        assert isinstance(m.REDIS_CLI, str) and m.REDIS_CLI
+
+    def test_missing_redis_cli_raises_not_crashes_green(self):
+        """FileNotFoundError (redis-cli absent in stripped PATH) → loud alert, not crash-to-green."""
+        m = _load_splitbrain()
+
+        def _boom(*a, **k):
+            raise FileNotFoundError(2, "No such file or directory", "redis-cli")
+
+        with patch.object(m.subprocess, "run", _boom):
+            with pytest.raises(m.RedisAuthError):
+                m.rcli("127.0.0.1", "PING")
+        # and at the orchestration level it becomes a probe alert (exit 1)
+        with patch.object(m.subprocess, "run", _boom):
+            rep = m.detect_split_brain()
+        assert rep["alerts"] and rep["alerts"][0].get("error") == "probe_auth_failed"

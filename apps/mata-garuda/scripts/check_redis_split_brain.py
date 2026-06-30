@@ -23,6 +23,7 @@ Designed for ad-hoc operator use or future launchd cron (W17 candidate).
 from __future__ import annotations
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -32,6 +33,26 @@ PRO_HOST = "127.0.0.1"
 MINI_HOST = "100.93.236.6"
 STREAMS = ("garuda:raw", "garuda:enriched", "garuda:alerts")
 DRIFT_THRESHOLD_MS = 3600 * 1000  # 1h
+
+
+def _resolve_redis_cli() -> str:
+    """Absolute path to redis-cli (cron/non-login shells strip PATH).
+
+    Same 'watchdog unarmed' bug base_worker fixed: under launchd or a bare ssh
+    shell, PATH lacks /opt/homebrew/bin, so bare 'redis-cli' raises
+    FileNotFoundError — and a guardian that crashes on launch is just another
+    flavour of green-blind (cicatrix #2).
+    """
+    found = shutil.which("redis-cli")
+    if found:
+        return found
+    for cand in ("/opt/homebrew/bin/redis-cli", "/usr/local/bin/redis-cli"):
+        if os.path.exists(cand):
+            return cand
+    return "redis-cli"  # last resort: bare name (don't crash at import)
+
+
+REDIS_CLI = _resolve_redis_cli()
 
 
 def _redis_env() -> dict[str, str] | None:
@@ -53,10 +74,16 @@ def _redis_env() -> dict[str, str] | None:
 
 
 def rcli(host: str, *args: str) -> str:
-    r = subprocess.run(
-        ["redis-cli", "-h", host, *args],
-        capture_output=True, text=True, timeout=10, env=_redis_env(),
-    )
+    try:
+        r = subprocess.run(
+            [REDIS_CLI, "-h", host, *args],
+            capture_output=True, text=True, timeout=10, env=_redis_env(),
+        )
+    except FileNotFoundError as e:
+        # A missing redis-cli is a broken probe, not 'no drift' — surface loudly.
+        raise RedisAuthError(f"{host}: redis-cli not found ({e})") from e
+    except subprocess.TimeoutExpired as e:
+        raise RedisAuthError(f"{host}: redis-cli timeout ({e})") from e
     return r.stdout
 
 
