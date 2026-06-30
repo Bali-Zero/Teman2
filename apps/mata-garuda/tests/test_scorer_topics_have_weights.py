@@ -57,4 +57,5 @@ class TestScoreCoercion:
                 score = 2.0
             weight = config.RELEVANCE_WEIGHTS.get("political_risk", 1)
             weighted = min(5, score + (weight - 3) * 0.5)  # must not raise
-            assert isinstance(weighted, float)
+            # numeric (int or float — min() returns the int on a tie like min(5, 5.0))
+            assert isinstance(weighted, (int, float)) and weighted == weighted  # not NaN
