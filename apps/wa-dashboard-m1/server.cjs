@@ -430,14 +430,25 @@ async function fetchOverview() {
       LEFT JOIN last_push lp USING (conv_key)
       LEFT JOIN clients cli_id
         ON cli_id.id = g.client_id AND cli_id.deleted_at IS NULL
-      LEFT JOIN clients cli_phone
-        ON cli_phone.deleted_at IS NULL
-       AND COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
-       AND (
-         cli_phone.phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
-         OR cli_phone.phone = COALESCE(g.effective_phone, g.direct_phone)
-         OR cli_phone.whatsapp = COALESCE(g.effective_phone, g.direct_phone)
-       )
+      -- FIX (2026-06-30, cicatrix #9 fan-out): same phone has N duplicate rows
+      -- in clients (621 phones affected, worst case 8). A plain LEFT JOIN
+      -- multiplied the single conv into N rows -> "Aigerim x3" in the list.
+      -- LATERAL ... LIMIT 1 collapses to ONE deterministic client per phone
+      -- (most recently active, then highest id) so each conv_key stays 1 row.
+      LEFT JOIN LATERAL (
+        SELECT id, full_name, company_name, status, assigned_to, tax_consultant,
+               strategic_recap, strategic_recap_source, avatar_url
+        FROM clients
+        WHERE deleted_at IS NULL
+          AND COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
+          AND (
+            phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+            OR phone = COALESCE(g.effective_phone, g.direct_phone)
+            OR whatsapp = COALESCE(g.effective_phone, g.direct_phone)
+          )
+        ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) cli_phone ON cli_id.id IS NULL
       -- Fallback: soft-deleted clients still talking on WA (cicatrix marzo-2026 7733-purge ghosts)
       LEFT JOIN LATERAL (
         SELECT id, full_name, company_name, status, assigned_to, tax_consultant,
@@ -453,9 +464,15 @@ async function fetchOverview() {
         ORDER BY deleted_at DESC
         LIMIT 1
       ) cli_archived ON cli_id.id IS NULL AND cli_phone.id IS NULL
-      LEFT JOIN whatsapp_contacts wc
-        ON COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
-       AND wc.phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+      -- whatsapp_contacts can also have duplicate rows per phone -> LATERAL LIMIT 1
+      LEFT JOIN LATERAL (
+        SELECT name, business_name
+        FROM whatsapp_contacts
+        WHERE COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
+          AND phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+      ) wc ON TRUE
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
@@ -512,17 +529,29 @@ async function fetchOverview() {
              wc.name AS sender_wa_contact_name
       FROM grouped g
       LEFT JOIN last_msg lm USING (group_jid)
-      LEFT JOIN clients cli
-        ON cli.deleted_at IS NULL
-       AND lm.sender_phone IS NOT NULL
-       AND (
-         cli.phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
-         OR cli.phone = lm.sender_phone
-         OR cli.whatsapp = lm.sender_phone
-       )
-      LEFT JOIN whatsapp_contacts wc
-        ON lm.sender_phone IS NOT NULL
-       AND wc.phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
+      -- FIX (2026-06-30, cicatrix #9 fan-out): LATERAL LIMIT 1 so a sender with
+      -- duplicate clients rows does not multiply the group row.
+      LEFT JOIN LATERAL (
+        SELECT full_name, company_name, strategic_recap, avatar_url
+        FROM clients
+        WHERE deleted_at IS NULL
+          AND lm.sender_phone IS NOT NULL
+          AND (
+            phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
+            OR phone = lm.sender_phone
+            OR whatsapp = lm.sender_phone
+          )
+        ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) cli ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT name
+        FROM whatsapp_contacts
+        WHERE lm.sender_phone IS NOT NULL
+          AND phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+      ) wc ON TRUE
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
@@ -1090,28 +1119,53 @@ async function fetchThread(memberPhone, convKey) {
       ON lpr_c.counterpart_lid = m.counterpart_lid
     LEFT JOIN wa_lid_phone_resolution lpr_s
       ON lpr_s.counterpart_lid = m.sender_lid
-    LEFT JOIN clients cli_s
-      ON cli_s.deleted_at IS NULL
-     AND COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
-     AND (
-       cli_s.phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
-       OR cli_s.phone = COALESCE(m.sender_phone, lpr_s.resolved_phone)
-       OR cli_s.whatsapp = COALESCE(m.sender_phone, lpr_s.resolved_phone)
-     )
-    LEFT JOIN clients cli_c
-      ON cli_c.deleted_at IS NULL
-     AND COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
-     AND (
-       cli_c.phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
-       OR cli_c.phone = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
-       OR cli_c.whatsapp = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
-     )
-    LEFT JOIN whatsapp_contacts wc_s
-      ON COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
-     AND wc_s.phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
-    LEFT JOIN whatsapp_contacts wc_c
-      ON COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
-     AND wc_c.phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
+    -- FIX (2026-06-30, cicatrix #9 fan-out): duplicate clients rows per phone
+    -- made cli_s (sender) AND cli_c (counterpart) each match N rows; their
+    -- Cartesian product duplicated every thread message N*N times (3*3=9 for
+    -- "Aigerim", up to 8*8=64 worst case). LATERAL ... LIMIT 1 collapses each
+    -- side to ONE deterministic client so each message stays exactly 1 row.
+    LEFT JOIN LATERAL (
+      SELECT id, full_name, company_name
+      FROM clients
+      WHERE deleted_at IS NULL
+        AND COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
+        AND (
+          phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
+          OR phone = COALESCE(m.sender_phone, lpr_s.resolved_phone)
+          OR whatsapp = COALESCE(m.sender_phone, lpr_s.resolved_phone)
+        )
+      ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+      LIMIT 1
+    ) cli_s ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT id, full_name, company_name
+      FROM clients
+      WHERE deleted_at IS NULL
+        AND COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
+        AND (
+          phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
+          OR phone = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
+          OR whatsapp = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
+        )
+      ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+      LIMIT 1
+    ) cli_c ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT name, business_name
+      FROM whatsapp_contacts
+      WHERE COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
+        AND phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 1
+    ) wc_s ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT name, business_name
+      FROM whatsapp_contacts
+      WHERE COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
+        AND phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 1
+    ) wc_c ON TRUE
     WHERE m.team_member_phone = ANY($1::text[])
       ${where}
       AND m.message_date >= NOW() - INTERVAL '30 days'
