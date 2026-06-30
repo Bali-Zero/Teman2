@@ -11,7 +11,10 @@ that class of drift fail CI:
 """
 from __future__ import annotations
 
+import os
 import pathlib
+import stat
+import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent          # apps/mata-garuda
 WRAPPER = ROOT / "scripts" / "matagaruda-cron-tcc-safe.sh"
@@ -70,3 +73,93 @@ def test_gap_wrapper_in_repo_and_path_aware():
         "gap wrapper hardcodes a user path — derive REPO from script location"
     # must NOT default REPO to a .worktrees path (the dead-worktree exit-1 bug)
     assert ".worktrees" not in code_s, "gap wrapper defaults REPO to a .worktrees path (dead-worktree risk)"
+
+
+# ── Functional tests for the additive flags (convergence of the 7 HOME-fork
+# shell wrappers onto this one TCC-safe wrapper). A fake VENV_PY captures what
+# the wrapper would exec, so we assert behavior without the real venv. ────────
+class _Harness:
+    """Run the wrapper with a fake venv python that records its argv + cwd."""
+
+    def __init__(self, tmp_path):
+        self.tmp = tmp_path
+        # fake repo layout: <repo>/apps/mata-garuda/{scripts,.venv/bin}
+        self.app = tmp_path / "apps" / "mata-garuda"
+        (self.app / "scripts").mkdir(parents=True)
+        (self.app / ".venv" / "bin").mkdir(parents=True)
+        # copy the real wrapper into the fake scripts dir (so ${0:A:h:h} resolves)
+        self.wrapper = self.app / "scripts" / "matagaruda-cron-tcc-safe.sh"
+        self.wrapper.write_text(WRAPPER.read_text())
+        self.wrapper.chmod(0o755)
+        # fake python: records "$@" and cwd to a marker file, then exit 0
+        self.marker = tmp_path / "exec.log"
+        py = self.app / ".venv" / "bin" / "python"
+        py.write_text(
+            "#!/bin/zsh\n"
+            f'echo "ARGS=$@" >> "{self.marker}"\n'
+            f'echo "CWD=$(pwd)" >> "{self.marker}"\n'
+            "exit 0\n"
+        )
+        py.chmod(0o755)
+
+    def run(self, *args, env=None):
+        e = dict(os.environ)
+        e["HOME"] = str(self.tmp)          # avoid sourcing the real ~/.nuzantara-secrets.env
+        if env:
+            e.update(env)
+        return subprocess.run(
+            ["/bin/zsh", str(self.wrapper), *args],
+            capture_output=True, text=True, env=e, timeout=20,
+        )
+
+    def log(self):
+        return self.marker.read_text() if self.marker.exists() else ""
+
+
+def test_flag_backcompat_plain_entry(tmp_path):
+    """No flags: <entry.py> still execs `python -u <entry.py>` (the 10 existing
+    crons must be unaffected)."""
+    h = _Harness(tmp_path)
+    entry = h.app / "scripts" / "run_thing.py"
+    entry.write_text("print('x')\n")
+    r = h.run(str(entry))
+    assert r.returncode == 0, r.stderr
+    assert "run_thing.py" in h.log()
+    assert "-u" in h.log()
+
+
+def test_flag_module(tmp_path):
+    """--module runs `python -u -m <module>`, never opening a second file."""
+    h = _Harness(tmp_path)
+    r = h.run("--module", "mata_garuda.bridge.nerve", "mata_garuda.bridge.nerve")
+    assert r.returncode == 0, r.stderr
+    assert "-m mata_garuda.bridge.nerve" in h.log()
+
+
+def test_flag_window_skips_outside(tmp_path):
+    """--window 0-0 is an always-closed window → exit 0, python NEVER invoked."""
+    h = _Harness(tmp_path)
+    entry = h.app / "scripts" / "run_thing.py"
+    entry.write_text("x\n")
+    r = h.run("--window", "0-0", str(entry))
+    assert r.returncode == 0
+    assert "skipping" in r.stdout
+    assert h.log() == ""          # python was not executed
+
+
+def test_flag_window_runs_inside(tmp_path):
+    """--window 0-24 is always-open → python IS invoked."""
+    h = _Harness(tmp_path)
+    entry = h.app / "scripts" / "run_thing.py"
+    entry.write_text("x\n")
+    r = h.run("--window", "0-24", str(entry))
+    assert r.returncode == 0, r.stderr
+    assert "run_thing.py" in h.log()
+
+
+def test_flag_unknown_option_errors(tmp_path):
+    """An unknown flag must fail loudly (exit 2), never silently mis-run."""
+    h = _Harness(tmp_path)
+    r = h.run("--bogus", "x")
+    assert r.returncode == 2
+    assert "unknown option" in r.stderr
