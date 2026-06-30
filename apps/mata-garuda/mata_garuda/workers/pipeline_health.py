@@ -7,8 +7,10 @@ alert when the pipeline is degraded.
 
 What it checks (each a falsifiable signal, not a PID):
   1. STREAM RAM       — sum of XLEN across streams vs STREAM_MAXLEN headroom.
-  2. CONSUMER LAG     — per-group lag on garuda:enriched; flags any group whose
-                        lag is GROWING run-over-run (the real "stuck" signal).
+  2. CONSUMER LAG     — per-group lag on garuda:enriched + nexus:gaps; flags any
+                        group whose lag is GROWING run-over-run (the real "stuck"
+                        signal). Stream 0 below probes Redis reachability first so
+                        a total outage is RED, never a silent GREEN (cicatrix #2).
   3. FRESHNESS        — age of the newest entry per stream (is harvest alive?).
   4. NLM THROUGHPUT   — did the feeder actually add sources in the last window?
                         (compares NLM source_count snapshots run-over-run).
@@ -37,6 +39,10 @@ REDIS_PORT = os.environ.get("GARUDA_REDIS_PORT", "6379")
 STREAM_MAXLEN = int(os.environ.get("GARUDA_STREAM_MAXLEN", "100000"))
 STREAMS = ["garuda:raw", "garuda:enriched", "garuda:alerts"]
 ENRICHED = "garuda:enriched"
+# Streams whose consumer-group lag is monitored. enriched fans out to the
+# classifier/ner/scorer/nlm_feeder workers; nexus:gaps drives gap_consumer.
+# (RR-H1: pre-fix only enriched was scanned, so a stuck gap_consumer was invisible.)
+LAG_STREAMS = [ENRICHED, "nexus:gaps"]
 STATE_FILE = Path(os.environ.get(
     "GARUDA_HEALTH_STATE",
     str(Path.home() / ".organism" / "pipeline_health.state.json"),
@@ -183,13 +189,33 @@ def _tg_alert(text: str) -> bool:
 
 def assess() -> dict:
     """Pure assessment → returns the report dict. No side effects (testable)."""
+    findings: list[str] = []
+    verdict = "GREEN"
+
+    # 0. REDIS REACHABILITY (RR-H4 / cicatrix #2 — green-but-dead).
+    # _r() returns "[ERR ...]" on any subprocess/connection failure. If Redis is
+    # unreachable, every numeric signal below silently reads as 0/None and the
+    # monitor would otherwise stay GREEN through a TOTAL OUTAGE — the exact
+    # failure this monitor exists to catch. A failed PING is hard RED, full stop.
+    ping = _r("PING")
+    if ping.startswith("[ERR") or "PONG" not in ping.upper():
+        return {
+            "verdict": "RED",
+            "ts": 0,
+            "xlens": {},
+            "total_entries": 0,
+            "maxlen": STREAM_MAXLEN,
+            "lags": {},
+            "ages_h": {},
+            "nlm_total": None,
+            "nlm_delta": None,
+            "findings": [f"redis probe FAILED (PING -> {ping!r}) — pipeline blind, total outage"],
+        }
+
     now_ms = _now_ms()
     prev = _load_state()
     prev_lags = prev.get("lags", {})
     prev_nlm = prev.get("nlm_total")
-
-    findings: list[str] = []
-    verdict = "GREEN"
 
     # 1. RAM / stream sizes
     xlens = {s: _xlen(s) for s in STREAMS}
@@ -199,8 +225,11 @@ def assess() -> dict:
         verdict = "RED"
         findings.append(f"stream over MAXLEN {STREAM_MAXLEN}: {over_cap}")
 
-    # 2. consumer lag (growing = real stuck)
-    lags = _group_lags(ENRICHED)
+    # 2. consumer lag (growing = real stuck) across ALL monitored streams
+    # (RR-H1: enriched + nexus:gaps, not enriched-only).
+    lags: dict[str, int] = {}
+    for s in LAG_STREAMS:
+        lags.update(_group_lags(s))
     for g, lag in lags.items():
         prev_lag = prev_lags.get(g)
         growing = prev_lag is not None and lag > prev_lag
