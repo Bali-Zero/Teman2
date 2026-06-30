@@ -24,6 +24,7 @@ Layer 3 Nexus.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -376,6 +377,31 @@ def _nlm_fed_marker(url_or_hash: str) -> str:
     return f"nlm_fed {url_or_hash}"
 
 
+def _dedup_key(title: str, url: str) -> str:
+    """Item-identity dedup key — NOT the bare URL (W89 #2).
+
+    Many distinct intel items share ONE landing-page URL: every LHKPN official's
+    declaration carries url='https://elhkpn.kpk.go.id/', and one peraturan
+    harmon URL covers many distinct regulations. Keying dedup on the bare URL
+    collapsed them — after the first was fed, persons #2..N matched 'already fed'
+    and were silently skip+ACKed, so distinct officials never reached NLM.
+
+    Fix: when a title exists, key on a stable hash of (title|url) so distinct
+    titles on a shared URL dedup independently. URL-only items (no title) keep
+    keying on the bare URL (true duplicates still collapse). Title-only items
+    (no URL) key on the title. Empty/empty → a constant so it's at least idempotent.
+    """
+    t = (title or "").strip()
+    u = (url or "").strip()
+    if t and u:
+        return "h:" + hashlib.sha1(f"{t}\x1f{u}".encode("utf-8")).hexdigest()[:24]
+    if u:
+        return u
+    if t:
+        return f"title:{t}"
+    return "empty"
+
+
 def _already_fed(kb: KnowledgeBase, dedup_key: str) -> bool:
     """Check if we've previously fed this dedup_key.
 
@@ -516,9 +542,11 @@ def _run_nlm_feeder_from(
             except (TypeError, ValueError):
                 pass  # unparseable score → fail-open, feed it
 
-        # Dedup: if we've already fed this URL, skip. Look up by (type, source)
-        # directly — FTS5 doesn't tokenize URLs reliably.
-        dedup_key = url or f"title:{title}"
+        # Dedup on ITEM identity (title+url), not the bare URL — distinct items
+        # sharing one landing-page URL (LHKPN officials, peraturan harmon docs)
+        # must dedup independently (W89 #2). Look up by (type, source) directly —
+        # FTS5 doesn't tokenize URLs/hashes reliably.
+        dedup_key = _dedup_key(title, url)
         already = _already_fed(kb, dedup_key)
         if already:
             stats["skipped"] += 1
@@ -526,9 +554,10 @@ def _run_nlm_feeder_from(
             continue
 
         # Feed as text (title + content) so NLM gets context even if URL
-        # is paywalled. Matches briefing spec.
+        # is paywalled. Matches briefing spec. Title falls back to url (NOT the
+        # dedup_key — that's a hash now and would make an unreadable NLM title).
         text_body = content[:4000] if content else title
-        effective_title = (title or dedup_key)[:200]
+        effective_title = (title or url or dedup_key)[:200]
         success = _nlm_add_text(notebook_id, effective_title, text_body)
 
         if success:
