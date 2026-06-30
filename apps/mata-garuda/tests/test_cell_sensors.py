@@ -101,11 +101,13 @@ class TestGapStreamSensor:
         assert isinstance(sensor, Sensor)
         assert sensor.name == "gap_stream"
 
+    # GapStreamSensor now routes XLEN through base_worker.redis_cmd (authed SSOT,
+    # W89) instead of bare subprocess — patch redis_cmd (returns the stdout string
+    # or an '[ERROR] ...' sentinel), not subprocess.
     @pytest.mark.asyncio
     async def test_reads_stream_length(self):
         from mata_garuda.cell.sensors import GapStreamSensor
-        with patch("mata_garuda.cell.sensors.subprocess") as mock_sub:
-            mock_sub.run.return_value = MagicMock(returncode=0, stdout="5\n")
+        with patch("mata_garuda.workers.base_worker.redis_cmd", return_value="5"):
             sensor = GapStreamSensor()
             reading = await sensor.read()
         assert reading.status == "yellow"  # 5 < 10 = yellow
@@ -114,8 +116,7 @@ class TestGapStreamSensor:
     @pytest.mark.asyncio
     async def test_zero_gaps_is_green(self):
         from mata_garuda.cell.sensors import GapStreamSensor
-        with patch("mata_garuda.cell.sensors.subprocess") as mock_sub:
-            mock_sub.run.return_value = MagicMock(returncode=0, stdout="0\n")
+        with patch("mata_garuda.workers.base_worker.redis_cmd", return_value="0"):
             sensor = GapStreamSensor()
             reading = await sensor.read()
         assert reading.status == "green"
@@ -123,8 +124,7 @@ class TestGapStreamSensor:
     @pytest.mark.asyncio
     async def test_many_gaps_is_red(self):
         from mata_garuda.cell.sensors import GapStreamSensor
-        with patch("mata_garuda.cell.sensors.subprocess") as mock_sub:
-            mock_sub.run.return_value = MagicMock(returncode=0, stdout="25\n")
+        with patch("mata_garuda.workers.base_worker.redis_cmd", return_value="25"):
             sensor = GapStreamSensor()
             reading = await sensor.read()
         assert reading.status == "red"
@@ -132,8 +132,9 @@ class TestGapStreamSensor:
     @pytest.mark.asyncio
     async def test_redis_unavailable_is_yellow(self):
         from mata_garuda.cell.sensors import GapStreamSensor
-        with patch("mata_garuda.cell.sensors.subprocess") as mock_sub:
-            mock_sub.run.return_value = MagicMock(returncode=1, stdout="")
+        # base_worker.redis_cmd returns '[ERROR] ...' on failure (incl. NOAUTH)
+        with patch("mata_garuda.workers.base_worker.redis_cmd",
+                   return_value="[ERROR] redis-cli: NOAUTH Authentication required."):
             sensor = GapStreamSensor()
             reading = await sensor.read()
         assert reading.status == "yellow"
