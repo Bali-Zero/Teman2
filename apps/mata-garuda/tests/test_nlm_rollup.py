@@ -19,7 +19,7 @@ def _seed(db: Path, items):
 
 class TestRollup:
     def _run(self, db, add_return=True):
-        with patch.object(nlm_rollup, "_post_digest", return_value=add_return) as m_add, \
+        with patch.object(nlm_rollup, "_post_digest", return_value=("sid-x" if add_return else None)) as m_add, \
              patch.object(nlm_rollup, "route_domain_to_notebook",
                           side_effect=lambda d: (d, f"nb-{d}") if d else ("", "")) as m_route:
             stats = nlm_rollup.run_rollup(db_path=db, days_back=3650)
@@ -130,3 +130,36 @@ class TestRollup:
             stats = nlm_rollup.run_rollup(db_path=db, days_back=3650)
         assert stats["errors"] == 0
         assert stats["posted"] == 1   # the row rolled up under the default domain
+
+
+    def test_skip_when_count_unchanged_but_replace_when_grown(self, tmp_path):
+        """Idempotency by COUNT: same count → skip; grew → delete old + re-post
+        (prevents the duplicate 'Intel rollup' sources seen live 2026-06-30)."""
+        from unittest.mock import patch
+        db = tmp_path / "a.db"
+        _seed(db, [{"title": "a", "url": "u1", "domain": "ai_research", "score": "5",
+                    "timestamp": "2026-06-30"}])
+        with patch.object(nlm_rollup, "_post_digest", return_value="sid-1"), \
+             patch.object(nlm_rollup, "route_domain_to_notebook",
+                          return_value=("ai_research", "nb-x")):
+            s1 = nlm_rollup.run_rollup(db_path=db, days_back=3650)
+        assert s1["posted"] == 1
+        # run again, SAME data → unchanged → skip, no delete, no post
+        with patch.object(nlm_rollup, "_post_digest", return_value="sid-2") as m_post, \
+             patch.object(nlm_rollup, "_delete_source") as m_del, \
+             patch.object(nlm_rollup, "route_domain_to_notebook",
+                          return_value=("ai_research", "nb-x")):
+            s2 = nlm_rollup.run_rollup(db_path=db, days_back=3650)
+        assert s2["skipped_already"] == 1 and s2["posted"] == 0
+        m_post.assert_not_called(); m_del.assert_not_called()
+        # now the day GROWS → must delete sid-1 and post fresh
+        _seed(db, [{"title": "b", "url": "u2", "domain": "ai_research", "score": "5",
+                    "timestamp": "2026-06-30"}])
+        with patch.object(nlm_rollup, "_post_digest", return_value="sid-3") as m_post, \
+             patch.object(nlm_rollup, "_delete_source") as m_del, \
+             patch.object(nlm_rollup, "route_domain_to_notebook",
+                          return_value=("ai_research", "nb-x")):
+            s3 = nlm_rollup.run_rollup(db_path=db, days_back=3650)
+        assert s3["posted"] == 1
+        m_del.assert_called_once()                  # old digest deleted
+        assert m_del.call_args.args[1] == "sid-1"   # the prior source id

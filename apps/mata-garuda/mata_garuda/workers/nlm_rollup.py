@@ -56,11 +56,16 @@ def _ensure_ledger(conn: sqlite3.Connection) -> None:
             day TEXT NOT NULL,
             domain TEXT NOT NULL,
             notebook_id TEXT,
+            source_id TEXT,
             item_count INTEGER,
             posted_at TEXT DEFAULT (datetime('now')),
             PRIMARY KEY (day, domain)
         )
     """)
+    # guarded migration for pre-existing ledgers
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(rollup_ledger)").fetchall()]
+    if "source_id" not in cols:
+        conn.execute("ALTER TABLE rollup_ledger ADD COLUMN source_id TEXT")
     conn.commit()
 
 
@@ -96,7 +101,7 @@ def _compose_digest(day: str, domain: str, rows: list) -> tuple[str, str]:
     return title, "\n".join(lines)
 
 
-def _post_digest(notebook_id: str, title: str, body: str) -> bool:
+def _post_digest(notebook_id: str, title: str, body: str) -> Optional[str]:
     """Post one digest to NLM with its title PRESERVED.
 
     Uses `nlm source add --text <body> --title <title>` (A/B-verified to keep the
@@ -105,11 +110,11 @@ def _post_digest(notebook_id: str, title: str, body: str) -> bool:
     'Intel rollup <day>' title). Honors cap-rollover via _resolve_writable_nb.
     """
     if not notebook_id:
-        return False
+        return None
     notebook_id = _resolve_writable_nb(notebook_id)
     if _nlm_at_cap(notebook_id):
         logger.warning("[rollup] NB at cap (no overflow room): nb=%s", notebook_id)
-        return False
+        return None
     try:
         result = subprocess.run(
             [NLM_CLI, "source", "add", "--profile", "default", notebook_id,
@@ -117,14 +122,37 @@ def _post_digest(notebook_id: str, title: str, body: str) -> bool:
             capture_output=True, text=True, timeout=120,
         )
         if result.returncode == 0:
-            return True
+            # parse "Source ID: <uuid>" so we can replace it on a later re-post
+            out = (result.stdout or "") + (result.stderr or "")
+            sid = ""
+            for line in out.splitlines():
+                if "Source ID:" in line:
+                    sid = line.split("Source ID:", 1)[1].strip()
+                    break
+            return sid or "posted"   # truthy even if id not parseable
         snippet = ((result.stderr or "") + (result.stdout or "")).replace("\n", " ")[:200]
         logger.warning("[rollup] add rejected nb=%s rc=%d reason=%s",
                        notebook_id, result.returncode, snippet or "(empty)")
-        return False
+        return None
     except Exception as e:  # noqa: BLE001
         logger.warning("[rollup] add failed: %s", e)
-        return False
+        return None
+
+
+def _delete_source(notebook_id: str, source_id: str) -> None:
+    """Best-effort delete a prior digest source before re-posting (replace, not
+    append) — prevents duplicate 'Intel rollup' sources when a day's archive grew
+    after its first digest (caught live 2026-06-30: 3 dupes 499/919/1370)."""
+    if not (notebook_id and source_id and source_id != "posted"):
+        return
+    try:
+        subprocess.run(
+            [NLM_CLI, "source", "delete", notebook_id, source_id,
+             "--confirm", "--profile", "default"],
+            capture_output=True, text=True, timeout=60,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("[rollup] could not delete prior source %s: %s", source_id, e)
 
 
 def run_rollup(db_path: Optional[Path] = None, days_back: int = 14) -> dict:
@@ -158,15 +186,23 @@ def run_rollup(db_path: Optional[Path] = None, days_back: int = 14) -> dict:
         if _score_ok(r["score"]):
             groups[(r["day"], r["dom"])].append(r)
 
-    # Already-posted set (idempotency).
-    posted = {(g["day"], g["domain"])
-              for g in conn.execute("SELECT day, domain FROM rollup_ledger").fetchall()}
+    # Prior ledger: (day,domain) -> (item_count, source_id) for skip/replace logic.
+    prior = {(g["day"], g["domain"]): (g["item_count"], g["source_id"])
+             for g in conn.execute(
+                 "SELECT day, domain, item_count, source_id FROM rollup_ledger").fetchall()}
 
     for (day, domain), items in sorted(groups.items()):
         stats["groups"] += 1
-        if (day, domain) in posted:
-            stats["skipped_already"] += 1
-            continue
+        old = prior.get((day, domain))
+        old_sid = None
+        if old is not None:
+            old_count, old_sid = old
+            if old_count == len(items):
+                stats["skipped_already"] += 1   # unchanged → nothing to do
+                continue
+            # day grew since the last digest → REPLACE (delete old, post fresh)
+            logger.info("[rollup] %s/%s grew %s→%d — replacing digest",
+                        day, domain, old_count, len(items))
         nb_key, notebook_id = route_domain_to_notebook(domain)
         if not notebook_id:
             # unroutable domain → fall back to the OSINT intel home
@@ -176,12 +212,16 @@ def run_rollup(db_path: Optional[Path] = None, days_back: int = 14) -> dict:
             continue
         title, body = _compose_digest(day, domain, items)
         try:
-            ok = _post_digest(notebook_id, title, body)
-            if ok:
+            new_sid = _post_digest(notebook_id, title, body)
+            if new_sid:
+                # replace: remove the stale prior digest so NLM keeps ONE per day
+                if old_sid:
+                    _delete_source(notebook_id, old_sid)
                 conn.execute(
                     "INSERT OR REPLACE INTO rollup_ledger "
-                    "(day, domain, notebook_id, item_count) VALUES (?,?,?,?)",
-                    (day, domain, notebook_id, len(items)),
+                    "(day, domain, notebook_id, source_id, item_count) "
+                    "VALUES (?,?,?,?,?)",
+                    (day, domain, notebook_id, new_sid, len(items)),
                 )
                 conn.commit()
                 stats["posted"] += 1
