@@ -86,8 +86,11 @@ const TEAM = (() => {
     // optional file — silent fallback
   }
   const byPhone = new Map();
-  for (const m of extra) byPhone.set(m.e164, m);
-  for (const m of mirror) byPhone.set(m.e164, m); // mirror overrides extra
+  for (const m of extra) byPhone.set(m.e164, { ...m, mirror: false });
+  // mirror overrides extra; flag mirror devices so buildTeamList() can show
+  // ONLY them in the left "Team" column (the extended roster is for
+  // classification badges, not for listing every operator as a contact row).
+  for (const m of mirror) byPhone.set(m.e164, { ...m, mirror: true });
   return Array.from(byPhone.values());
 })();
 
@@ -278,7 +281,16 @@ async function teamSessionFor(member) {
 
 // === MAIN overview query ===
 function buildTeamList() {
-  return TEAM.map((m) => {
+  // Left "Team" column lists ONLY the mirror-device operators (the ~9 accounts
+  // that actually mirror conversations). The extended roster (the other ~56
+  // operators, incl. Bayu Santera) exists purely for classification badges
+  // when they appear as a counterpart/group sender — listing them here would
+  // fill the column with empty "0 msg" contact rows. Fallback: if no entry is
+  // flagged mirror (e.g. roster file present but accounts.json missing), keep
+  // the old behaviour and show all, so the column is never empty.
+  const mirrorTeam = TEAM.filter((m) => m.mirror);
+  const source = mirrorTeam.length ? mirrorTeam : TEAM;
+  return source.map((m) => {
     const kindInfo = contactKindColor(m, false);
     return {
       name: m.name,
