@@ -193,7 +193,11 @@ def stream_publish(stream: str, data: dict) -> str:
     for k, v in data.items():
         fields.extend([k, str(v) if not isinstance(v, str) else v])
 
-    result = redis_cmd("XADD", stream, "*", *fields)
+    # MAXLEN ~ N: approximate-trim the stream on every publish (council fix —
+    # bounded RAM, O(1)). Multiple consumer groups stay safe: ~ trims only whole
+    # macro-nodes and never below entries a group still needs within the cap.
+    from mata_garuda.config import STREAM_MAXLEN
+    result = redis_cmd("XADD", stream, "MAXLEN", "~", str(STREAM_MAXLEN), "*", *fields)
     return result
 
 
