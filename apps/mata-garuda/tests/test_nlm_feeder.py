@@ -276,3 +276,44 @@ class TestStreamConsumer:
         for call in m_sleep.call_args_list:
             assert call.args[0] == 5
         kb.close()
+
+
+class TestNlmCliPath:
+    """Stage 3 (2026-06-30): the `nlm` CLI must resolve to an ABSOLUTE path so the
+    feeder running under cron/non-login launchd (stripped PATH) stops failing mutely
+    with `No such file or directory: 'nlm'`. Verified live on Pro: feeder read the
+    enriched backlog but every push errored because bare 'nlm' was not on PATH.
+    Same class + same cure as Stage 1's _resolve_redis_cli for redis-cli."""
+
+    def test_nlm_resolves_absolute_when_found(self, monkeypatch):
+        monkeypatch.setattr(nlm_feeder.shutil, "which", lambda _: "/Users/x/.local/bin/nlm")
+        assert nlm_feeder._resolve_nlm_cli() == "/Users/x/.local/bin/nlm"
+
+    def test_nlm_falls_back_to_known_path(self, monkeypatch):
+        import os
+        monkeypatch.setattr(nlm_feeder.shutil, "which", lambda _: None)
+        real_exists = os.path.exists
+        monkeypatch.setattr(
+            nlm_feeder.os.path,
+            "exists",
+            lambda p: True if "/.local/bin/nlm" in p else real_exists(p),
+        )
+        assert nlm_feeder._resolve_nlm_cli().endswith("/.local/bin/nlm")
+
+    def test_nlm_last_resort_is_bare_name(self, monkeypatch):
+        monkeypatch.setattr(nlm_feeder.shutil, "which", lambda _: None)
+        monkeypatch.setattr(nlm_feeder.os.path, "exists", lambda _: False)
+        assert nlm_feeder._resolve_nlm_cli() == "nlm"
+
+    def test_invocations_use_resolved_binary_not_bare_nlm(self):
+        """Every subprocess invocation must start with the resolved NLM_CLI, never 'nlm'."""
+        with patch.object(nlm_feeder.subprocess, "run") as m_run:
+            from unittest.mock import MagicMock
+            m_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
+            nlm_feeder._nlm_notebook_source_count("nb-x")
+            nlm_feeder._nlm_add_url("nb-x", "https://example.test/a")
+        for call in m_run.call_args_list:
+            argv = call.args[0]
+            assert argv[0] == nlm_feeder.NLM_CLI
+            # NLM_CLI is resolved at import; in CI it may be bare 'nlm' but must be the constant
+            assert argv[0] != "nlm" or nlm_feeder.NLM_CLI == "nlm"

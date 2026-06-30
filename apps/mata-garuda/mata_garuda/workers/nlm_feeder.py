@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -60,6 +62,35 @@ _NB_COUNT_CACHE: dict[str, tuple[int, float]] = {}
 _NB_COUNT_TTL_S = 3600
 
 
+_NLM_CLI_FALLBACKS = (
+    os.path.expanduser("~/.local/bin/nlm"),
+    "/opt/homebrew/bin/nlm",
+    "/usr/local/bin/nlm",
+)
+
+
+def _resolve_nlm_cli() -> str:
+    """Resolve the `nlm` CLI to an ABSOLUTE path.
+
+    Stage 3 (2026-06-30): under cron/non-login launchd the PATH is stripped, so a
+    bare `nlm` invocation dies with `No such file or directory: 'nlm'` and the
+    feeder silently feeds nothing (verified live on Pro: enriched backlog read,
+    every push errored). Same fix shape as Stage 1's _resolve_redis_cli for
+    redis-cli. Falls back to the bare name as a last resort so a dev shell with
+    nlm on PATH still works.
+    """
+    found = shutil.which("nlm")
+    if found:
+        return found
+    for cand in _NLM_CLI_FALLBACKS:
+        if os.path.exists(cand):
+            return cand
+    return "nlm"
+
+
+NLM_CLI = _resolve_nlm_cli()
+
+
 def _nlm_notebook_source_count(notebook_id: str) -> int | None:
     """Return current source_count for a notebook (cached 1h), or None on error.
 
@@ -71,7 +102,7 @@ def _nlm_notebook_source_count(notebook_id: str) -> int | None:
         return cached[0]
     try:
         result = subprocess.run(
-            ["nlm", "notebook", "list"],
+            [NLM_CLI, "notebook", "list"],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
@@ -112,7 +143,7 @@ def _nlm_add_url(notebook_id: str, url: str) -> bool:
         return False
     try:
         result = subprocess.run(
-            ["nlm", "source", "add", "--profile", "default", notebook_id, "--url", url],
+            [NLM_CLI, "source", "add", "--profile", "default", notebook_id, "--url", url],
             capture_output=True, text=True, timeout=60,
         )
         if result.returncode == 0:
@@ -196,7 +227,7 @@ def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
 
         for attempt in (1, 2):
             result = subprocess.run(
-                ["nlm", "source", "add", "--profile", "default", notebook_id, "--file", str(tmp)],
+                [NLM_CLI, "source", "add", "--profile", "default", notebook_id, "--file", str(tmp)],
                 capture_output=True, text=True, timeout=60,
             )
             if result.returncode == 0:
