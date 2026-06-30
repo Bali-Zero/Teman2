@@ -397,7 +397,8 @@ async function fetchOverview() {
         GROUP BY k.conv_key
       ),
       last_msg AS (
-        SELECT DISTINCT ON (conv_key) conv_key, body AS last_body, media_type AS last_media
+        SELECT DISTINCT ON (conv_key) conv_key, body AS last_body, media_type AS last_media,
+               direction AS last_direction
         FROM keyed
         ORDER BY conv_key, message_date DESC NULLS LAST
       ),
@@ -410,7 +411,7 @@ async function fetchOverview() {
       )
       SELECT g.conv_key, g.direct_phone, g.lid, g.lid_pushname, g.client_id, g.n, g.last_at,
              g.attention_priority, g.unread_count,
-             lm.last_body, lm.last_media, lp.pushname,
+             lm.last_body, lm.last_media, lm.last_direction, lp.pushname,
              COALESCE(cli_id.full_name, cli_phone.full_name, cli_archived.full_name) AS client_name,
              COALESCE(cli_id.company_name, cli_phone.company_name, cli_archived.company_name) AS company_name,
              COALESCE(cli_id.status, cli_phone.status, cli_archived.status) AS client_status,
@@ -513,6 +514,7 @@ async function fetchOverview() {
       last_msg AS (
         SELECT DISTINCT ON (group_jid)
                group_jid, body AS last_body, media_type AS last_media, sender_phone,
+               direction AS last_direction,
                raw_baileys_event->>'pushName' AS sender_pushname
         FROM whatsapp_message_context
         WHERE team_member_phone = ANY($1::text[])
@@ -521,7 +523,7 @@ async function fetchOverview() {
         ORDER BY group_jid, message_date DESC NULLS LAST
       )
       SELECT g.group_jid, g.group_label, g.n, g.last_at, g.attention_priority, g.unread_count,
-             lm.last_body, lm.last_media, lm.sender_phone, lm.sender_pushname,
+             lm.last_body, lm.last_media, lm.last_direction, lm.sender_phone, lm.sender_pushname,
              cli.full_name AS sender_crm_name,
              cli.company_name AS sender_company,
              cli.strategic_recap AS sender_strategic_recap,
@@ -648,6 +650,7 @@ async function fetchOverview() {
           last_at: r.last_at,
           last_body: r.last_body,
           last_media: r.last_media,
+          last_direction: r.last_direction,
           is_internal: isInternal,
           is_legacy_lid: !!isLid,
           tag,
@@ -701,6 +704,7 @@ async function fetchOverview() {
           last_at: r.last_at,
           last_body: r.last_body,
           last_media: r.last_media,
+          last_direction: r.last_direction,
           is_internal: false,
           tag: "group",
           // 2026-05-26 naming + color coding
