@@ -133,7 +133,7 @@ class ObservedShellBus:
                     payload_json,
                     trace_id,
                 )
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             self._fallback_to_jsonl(record, reason=f"db error: {e!r}")
         except Exception as e:
             # Defensive net: ANY exception falls back. Observability MUST
