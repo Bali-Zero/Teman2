@@ -73,8 +73,14 @@ body: string  # 25-110 words UPPERCASE, 2-5 sentences (more room — no photo)
 }
 .body {
   font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-body-lg);
-  line-height: var(--line-height-normal);
+  /* 40px (was --font-size-body-lg 32px): on a text-only slide a larger body
+     fills more of the tall canvas and is more legible for 2-5 sentences of
+     prose. With the .baseline-rule below, the residual lower space reads as
+     deliberate editorial margin, not a dead-air void (eyeballed on the real
+     29-34-word bodies, 2026-06-30 — pure flex center/space-evenly could NOT
+     cure a short block in a tall canvas; #1861 reverted). */
+  font-size: 40px;
+  line-height: 1.5;
   letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-white);
   /* Sentence case (NOT all-caps): an all-caps bold body shared the exact
@@ -84,6 +90,19 @@ body: string  # 25-110 words UPPERCASE, 2-5 sentences (more room — no photo)
      for 2-5 sentences of prose. */
   text-transform: none;
 }
+.baseline-rule {
+  /* Footer hairline that BOOKENDS the top yellow .top-rule, framing the lower
+     negative space as intentional editorial margin (NYT/FT footer rule) instead
+     of a dead-air void. Absolutely positioned just above the logo; never
+     collides with the centered text block (verified on the densest real body,
+     6 lines @ 40px). 2026-06-30. */
+  position: absolute;
+  left: var(--spacing-edge-margin);
+  right: var(--spacing-edge-margin);
+  bottom: 200px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.14);
+}
 </style></head>
 <body>
   <div class="text-panel" data-zone-type="text">
@@ -92,6 +111,7 @@ body: string  # 25-110 words UPPERCASE, 2-5 sentences (more room — no photo)
     <div class="heading">{{heading}}</div>
     <div class="body">{{body}}</div>
   </div>
+  <div class="baseline-rule"></div>
   <div class="logo" data-zone-type="logo">3 ALI ZERO</div>
 </body></html>
 ```
