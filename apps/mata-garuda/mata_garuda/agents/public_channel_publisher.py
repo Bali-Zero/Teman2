@@ -46,21 +46,21 @@ WITA = timezone(timedelta(hours=8))
 
 
 def _redis_cmd(*args: str, timeout: int = 10) -> str:
-    """Run redis-cli and return stdout (empty on error)."""
-    try:
-        result = subprocess.run(
-            ["redis-cli", *args],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        if result.returncode != 0:
-            logger.warning("redis-cli failed: %s", result.stderr.strip())
-            return ""
-        return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        logger.warning("redis-cli error: %s", e)
+    """Run redis-cli via base_worker (the authed SSOT), '' on error.
+
+    Previously ran BARE redis-cli with no REDISCLI_AUTH/-h: under the Stage 1
+    requirepass cutover (2026-06-29) every call got NOAUTH at exit 0, swallowed
+    into '' → this publisher (armed via LaunchAgent) silently published nothing
+    (W89, cicatrix #2 green-but-dead). Delegating to base_worker.redis_cmd gets
+    REDISCLI_AUTH (cicatrix #4), canonical-host resolution and the abs-path; its
+    '[ERROR]' sentinel is mapped back to '' to preserve this caller's contract.
+    """
+    from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
+    out = _bw_redis_cmd(*args, timeout=timeout)
+    if out.startswith("[ERROR]"):
+        logger.warning("redis-cli failed: %s", out)
         return ""
+    return out
 
 
 def _parse_xrange_output(raw: str) -> list[dict[str, str]]:

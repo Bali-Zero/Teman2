@@ -41,16 +41,14 @@ MIN_SCORE = 3
 
 
 def _redis_cmd(*args: str, timeout: int = 10) -> str:
-    try:
-        result = subprocess.run(
-            ["redis-cli", *args],
-            capture_output=True, text=True, timeout=timeout,
-        )
-        if result.returncode != 0:
-            return ""
-        return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    # Delegate to base_worker.redis_cmd (authed SSOT: REDISCLI_AUTH + canonical
+    # host + abs-path). Was bare redis-cli → NOAUTH-swallowed-to-'' under the
+    # requirepass cutover (W89, cicatrix #2). '[ERROR]' → '' to keep the contract.
+    from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
+    out = _bw_redis_cmd(*args, timeout=timeout)
+    if out.startswith("[ERROR]"):
         return ""
+    return out
 
 
 def _parse(raw: str) -> list[dict[str, str]]:
