@@ -54,13 +54,19 @@ NLM_DOMAIN_ROUTING = {
 NLM_FEEDER_BATCH_SIZE = 10       # max items per run
 NLM_FEEDER_SLEEP_BETWEEN_S = 5   # seconds between MCP/CLI calls
 
-# Relevance scoring weights for business context
+# Relevance scoring weights for business context.
+# INVARIANT: every topic emitted by scorer._KEYWORD_FAST_PATH MUST be a key here,
+# else RELEVANCE_WEIGHTS.get(topic, 1) silently weights it DOWN to 1 and a
+# high-signal item never alerts (W89: 'political_risk' was missing → every new
+# Indonesian regulation got weighted_score = score - 1, below SCORE_SIGNAL).
+# test_scorer_topics_have_weights.py pins this contract.
 RELEVANCE_WEIGHTS = {
     "immigration_visa": 5,
     "tax_fiscal": 5,
     "investment_licensing": 4,
     "labor_manpower": 4,
     "provincial_bali": 4,
+    "political_risk": 4,   # new regs/perpres/permen/menteri — core signal for the agency
     "financial_banking": 3,
     "property": 3,
     "environmental": 2,
