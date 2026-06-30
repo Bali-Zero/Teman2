@@ -100,6 +100,32 @@ for (const m of TEAM) {
   if (m.e164) TEAM_BY_PHONE.set(m.e164, m);
 }
 
+// 2026-06-30: set of Bali Zero operator names (first tokens), used to strip the
+// operator-tag suffix some CRM full_names carry, e.g. "Aigerim Tugayeva (surya)".
+// The CRM value stays untouched in the DB — this is DISPLAY-ONLY. We strip ONLY when
+// the parenthetical is a known operator name, so real info like "(PT jam jam)",
+// "(Makar Burba)", "(satpam)" is preserved (verified against live data 2026-06-30).
+const OPERATOR_NAMES = new Set();
+for (const m of TEAM) {
+  for (const src of [m.name, m.full_name]) {
+    if (!src) continue;
+    for (const tok of String(src).toLowerCase().split(/\s+/)) {
+      if (tok.length >= 3) OPERATOR_NAMES.add(tok);
+    }
+  }
+}
+// strip a single trailing "(operator)" tag from a CRM display name, display-only.
+function stripOperatorSuffix(name) {
+  if (!name) return name;
+  const m = String(name).match(/^(.*?)\s*\(([^()]{1,30})\)\s*$/);
+  if (!m) return name;
+  const base = m[1].trim();
+  const inside = m[2].trim().toLowerCase();
+  // only strip if the WHOLE parenthetical is a single known operator name
+  if (base && /^[a-z]+$/.test(inside) && OPERATOR_NAMES.has(inside)) return base;
+  return name;
+}
+
 function readQwenGateSnapshot() {
   try {
     return JSON.parse(fs.readFileSync(QWEN_GATE_SNAPSHOT, "utf8"));
@@ -575,6 +601,9 @@ async function fetchOverview() {
       for (const r of directRows.rows) {
         // Display name with priority: CRM > TEAM > WA business > WA contact > raw-message pushName > lid_phone_map pushname > phone
         const crmName = cleanName(r.client_name);
+        // 2026-06-30: display-only — strip "(surya)"-style operator tags from the CRM
+        // name; crmName itself stays intact for the tag/crm_match logic below.
+        const crmNameDisplay = stripOperatorSuffix(crmName);
         const businessName = cleanName(r.wa_business_name);
         const waName = cleanName(r.wa_contact_name);
         const push = cleanName(r.pushname);
@@ -589,9 +618,9 @@ async function fetchOverview() {
           ? teamMatch.full_name || teamMatch.name
           : null;
 
-        let display = crmName || teamName;
+        let display = crmNameDisplay || teamName;
         if (display && crmName && r.company_name)
-          display = `${crmName} · ${r.company_name}`;
+          display = `${crmNameDisplay} · ${r.company_name}`;
         if (!display)
           display =
             businessName ||
@@ -664,7 +693,7 @@ async function fetchOverview() {
       }
       for (const r of groupRows.rows) {
         const senderName =
-          cleanName(r.sender_crm_name) ||
+          stripOperatorSuffix(cleanName(r.sender_crm_name)) ||
           cleanName(r.sender_wa_contact_name) ||
           cleanName(r.sender_pushname);
         const groupLabel =
@@ -1188,7 +1217,7 @@ async function fetchThread(memberPhone, convKey) {
     return {
       ...r,
       sender_display:
-        cleanName(r.sender_crm_name) ||
+        stripOperatorSuffix(cleanName(r.sender_crm_name)) ||
         cleanName(r.sender_wa_business_name) ||
         cleanName(r.sender_wa_contact_name) ||
         cleanName(r.pushname) ||
