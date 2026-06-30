@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -91,7 +92,15 @@ def create_sentinel_cell() -> PulseLoop:
     hgt_consumer = None
     try:
         import redis.asyncio as aioredis
-        redis_client = aioredis.Redis(host="localhost", port=6379, decode_responses=True)
+        # Stage 1 (split-brain cure) put requirepass on the canonical Redis;
+        # this HGT client must carry the password or it dies "Authentication
+        # required" every pulse. Host/password from env, mirroring base_worker.
+        redis_client = aioredis.Redis(
+            host=os.environ.get("GARUDA_REDIS_HOST", "localhost"),
+            port=6379,
+            password=(os.environ.get("GARUDA_REDIS_PASSWORD") or None),
+            decode_responses=True,
+        )
         hgt_consumer = HGTConsumer(
             redis_client, genome, cell_name="ai-intel-sentinel",
             interested_domains={"news", "architecture", "rag", "generic"},
