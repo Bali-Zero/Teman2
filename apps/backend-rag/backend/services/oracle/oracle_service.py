@@ -243,7 +243,7 @@ class OracleService:
                 database_url = config.database_url if hasattr(config, "database_url") else None
                 if database_url:
                     self._golden_answer_service = GoldenAnswerService(database_url)
-            except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
                 logger.warning("GoldenAnswerService init failed: %s", e, exc_info=True)
         return self._golden_answer_service
 
@@ -255,7 +255,7 @@ class OracleService:
                 database_url = config.database_url if hasattr(config, "database_url") else None
                 if database_url:
                     self._memory_service = MemoryServicePostgres(database_url)
-            except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
                 logger.warning("MemoryServicePostgres init failed: %s", e, exc_info=True)
         return self._memory_service
 
@@ -279,7 +279,7 @@ class OracleService:
             try:
                 database_url = config.database_url if hasattr(config, "database_url") else None
                 self._memory_orchestrator = MemoryOrchestrator(database_url=database_url)
-            except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
                 logger.warning("MemoryOrchestrator init failed: %s", e, exc_info=True)
                 # Create a basic orchestrator that will operate in degraded mode
                 self._memory_orchestrator = MemoryOrchestrator()
@@ -291,7 +291,7 @@ class OracleService:
             if not self.memory_orchestrator.is_initialized:
                 await self.memory_orchestrator.initialize()
             return True
-        except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
             logger.warning("Failed to initialize memory orchestrator: %s", e, exc_info=True)
             return False
 
@@ -333,7 +333,7 @@ class OracleService:
                     f"facts for {user_email} ({result.processing_time_ms:.1f}ms)",
                 )
 
-        except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
             logger.warning("Failed to save memory facts via orchestrator: %s", e, exc_info=True)
 
     async def process_query(
