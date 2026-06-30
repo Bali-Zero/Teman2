@@ -117,7 +117,9 @@ for (const m of TEAM) {
 // strip a single trailing "(operator)" tag from a CRM display name, display-only.
 function stripOperatorSuffix(name) {
   if (!name) return name;
-  const m = String(name).match(/^(.*?)\s*\(([^()]{1,30})\)\s*$/);
+  // closing ")" is OPTIONAL: some CRM names are malformed, e.g. "Satya Dewi (surya"
+  // (paren opened, never closed) — still a stray operator tag, strip it too.
+  const m = String(name).match(/^(.*?)\s*\(([^()]{1,30})\)?\s*$/);
   if (!m) return name;
   const base = m[1].trim();
   const inside = m[2].trim().toLowerCase();
