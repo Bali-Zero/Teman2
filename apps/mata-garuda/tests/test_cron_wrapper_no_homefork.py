@@ -51,7 +51,22 @@ def test_no_committed_file_references_homefork_wrapper():
         s = p.read_text()
         # the home-fork path; allow it only inside an explanatory comment line
         for i, line in enumerate(s.splitlines(), 1):
-            if "/scripts/matagaruda-cron-tcc-safe" in line and not line.lstrip().startswith("#"):
+            if "/scripts/matagaruda-" in line and ".sh" in line and not line.lstrip().startswith("#"):
                 if "$HOME/scripts" in line or "~/scripts" in line or "/Users/" in line:
                     offenders.append(f"{p.name}:{i}: {line.strip()}")
     assert not offenders, "committed files reference the HOME-fork wrapper:\n" + "\n".join(offenders)
+
+
+GAP_WRAPPER = ROOT / "scripts" / "matagaruda-gap-consumer.sh"
+
+
+def test_gap_wrapper_in_repo_and_path_aware():
+    assert GAP_WRAPPER.is_file(), f"gap-consumer wrapper missing from repo: {GAP_WRAPPER}"
+    s = GAP_WRAPPER.read_text()
+    # check EXECUTABLE lines only (comments may explain the old hardcode/bug)
+    code = [l for l in s.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+    code_s = "\n".join(code)
+    assert "/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda" not in code_s, \
+        "gap wrapper hardcodes a user path — derive REPO from script location"
+    # must NOT default REPO to a .worktrees path (the dead-worktree exit-1 bug)
+    assert ".worktrees" not in code_s, "gap wrapper defaults REPO to a .worktrees path (dead-worktree risk)"
