@@ -36,6 +36,16 @@ def load_rows() -> dict:
     return {str(r.get("kode_kbli_2025")): r for r in rows}
 
 
+def _scales(rec: dict) -> list:
+    """Deterministic list of business scales this code is open to, from per_skala."""
+    out = []
+    for v in rec.get("per_skala") or []:
+        for sc in v.get("skala_usaha") or []:
+            if sc not in out:
+                out.append(sc)
+    return out
+
+
 def slim(rec: dict, field: str) -> dict:
     f = field.split(".")[-1]
     return {
@@ -43,6 +53,7 @@ def slim(rec: dict, field: str) -> dict:
         "judul": rec.get("judul"),
         "pma_status": rec.get("pma_status"),
         "pma_max_asing": rec.get("pma_max_asing"),
+        "scales_open_to": _scales(rec),  # national truth: every scale this code allows
         "l4_bali": rec.get("l4_bali"),
         "field_name": f,
         "field_text": (rec.get("intel_2026") or {}).get(f, ""),
@@ -62,14 +73,25 @@ def _extract_json(text: str) -> dict | None:
 
 def codex_propose(s: dict) -> dict | None:
     prompt = (
-        "You are a KBLI editorial-truth analyzer. Here is a slim KBLI record as JSON:\n"
+        "You are a KBLI editorial-truth analyzer. The KBLI Navigator is a NATIONAL tool covering ALL business scales "
+        "(Mikro / Kecil / Menengah / Besar), with PMA (foreign-ownership) as an EXTRA layer, not the only lens. "
+        "Here is a slim KBLI record as JSON:\n"
         + json.dumps(s, ensure_ascii=False)
         + "\n\nThe deterministic layer flagged field '"
         + s["field_name"]
-        + "' as possibly misleading: it may promise a foreign-owned PT PMA setup on a code whose structural verdict (l4_bali.blocked) forbids a PT PMA in Bali. "
-        "Decide: is the text genuinely MISLEADING? Rules: 'open nationally' is TRUE and not misleading by itself; only an UNQUALIFIED Bali-PMA go-ahead is. If the text already names the Bali block, it is NOT misleading. "
+        + "' as possibly misleading. Judge it on BOTH axes:\n"
+        "AXIS 1 — NATIONAL / ALL-SCALES (the base truth): does the text state a scale or requirement that contradicts "
+        "`scales_open_to`? E.g. it calls the code 'only for large enterprises' when Mikro/Kecil are open, or claims 'all "
+        "scales' when it is single-scale, or cites a permit/threshold absent for that scale. National-open for the listed "
+        "scales is TRUE and never misleading by itself.\n"
+        "AXIS 2 — PMA (the extra eye): does it promise a foreign-owned / PT PMA setup that the structure forbids — "
+        "pma_max_asing<100 (capped) or l4_bali.blocked (blocked in Bali) — WITHOUT qualifying that limit? An unqualified "
+        "foreign go-ahead on a capped/blocked code is misleading; if the text already names the cap or the Bali block, it is NOT.\n"
+        "Decide overall: is the text genuinely MISLEADING on either axis? "
         "Reply with ONLY one JSON object on the last line: "
-        '{"is_misleading": true|false, "reason": "...", "suggested_value": "corrected text citing only regulations in the record (l4_bali.reason, moratorium.source, pma_source) — never invented", "confidence": "HIGH|MEDIUM|LOW"}'
+        '{"is_misleading": true|false, "axis": "national|pma|both|none", "reason": "...", '
+        '"suggested_value": "corrected text citing only facts in the record (scales_open_to, pma_max_asing, l4_bali.reason, '
+        'moratorium.source, pma_source) — never invented", "confidence": "HIGH|MEDIUM|LOW"}'
     )
     try:
         p = subprocess.run(
@@ -90,7 +112,10 @@ def gemini_refute(s: dict, proposal: dict) -> dict | None:
         + " is MISLEADING and proposes a replacement. Here is the slim record:\n"
         + json.dumps(s, ensure_ascii=False)
         + "\n\nProposal: " + json.dumps(proposal, ensure_ascii=False)
-        + "\n\nTry to REFUTE. Check: is the code REALLY blocked for a PT PMA in Bali (l4_bali.blocked, pma_status, no Besar scale)? Does the cited regulation actually support the claim? Is the original text already fine (already qualifies the Bali block)? "
+        + "\n\nThe Navigator is NATIONAL and covers ALL scales (scales_open_to); PMA is an extra eye. Try to REFUTE the claim on whichever axis it was made:\n"
+        "- NATIONAL/SCALE: does the original text actually contradict `scales_open_to`, or did the analyzer over-read a true national/all-scale statement? National-open for the listed scales is TRUE.\n"
+        "- PMA: is the code REALLY foreign-capped (pma_max_asing<100) or Bali-blocked (l4_bali.blocked)? Did the analyzer over-read? Does the original already qualify the cap/block? \n"
+        "Does the cited fact actually support the claim, or is the proposal's basis vague/fabricated? "
         "Default to refuted=true if you are NOT confident the original is genuinely misleading. "
         'Reply with ONLY one JSON object on the last line: {"refuted": true|false, "reason": "..."}'
     )
