@@ -19,6 +19,9 @@
 --
 -- squawk-ignore: prefer-robust-stmts  (matview rebuild, no concurrent writers)
 
+ALTER TABLE whatsapp_message_context
+    ADD COLUMN IF NOT EXISTS sender_lid VARCHAR(64);
+
 DROP MATERIALIZED VIEW IF EXISTS wa_lid_phone_resolution;
 
 CREATE MATERIALIZED VIEW wa_lid_phone_resolution AS
