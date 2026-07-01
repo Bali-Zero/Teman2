@@ -19,6 +19,16 @@
 --
 -- Note: this is a full materialized-view rebuild (DROP + CREATE) with no
 -- concurrent writers; the Squawk CI job already excludes prefer-robust-stmts.
+--
+-- Schema-drift guard: whatsapp_message_context.sender_lid exists on the live
+-- nuzantara_dev DB (added ad-hoc, never versioned) but NO earlier migration
+-- file creates it — so a DB rebuilt purely from migration files (CI test DB)
+-- lacks it and the matview below fails with "column sender_lid does not
+-- exist". Provision it idempotently here (no-op on live, creates on fresh)
+-- so 241 applies against both. Mirrors counterpart_lid VARCHAR(64) from m185.
+
+ALTER TABLE whatsapp_message_context
+  ADD COLUMN IF NOT EXISTS sender_lid VARCHAR(64);
 
 DROP MATERIALIZED VIEW IF EXISTS wa_lid_phone_resolution;
 
