@@ -72,3 +72,28 @@ CREATE UNIQUE INDEX wa_lid_phone_resolution_lid_idx
   ON wa_lid_phone_resolution (counterpart_lid);
 CREATE INDEX wa_lid_phone_resolution_phone_idx
   ON wa_lid_phone_resolution (phone_normalized);
+
+-- === ROLLBACK ===
+-- Restores the v1 definition (counterpart_lid only, no group-sender branch).
+-- DROP MATERIALIZED VIEW IF EXISTS wa_lid_phone_resolution;
+-- CREATE MATERIALIZED VIEW wa_lid_phone_resolution AS
+-- WITH team_phones AS (
+--   SELECT DISTINCT regexp_replace(team_member_phone::text, '\D', '', 'g') AS phone_digits
+--   FROM whatsapp_message_context WHERE team_member_phone IS NOT NULL
+-- ), extracted AS (
+--   SELECT counterpart_lid,
+--          (regexp_matches(raw_baileys_event::text, '([0-9]{8,16})@s\.whatsapp\.net', 'g'))[1] AS phone_digits
+--   FROM whatsapp_message_context
+--   WHERE counterpart_lid IS NOT NULL AND raw_baileys_event <> '{}'::jsonb
+-- ), ranked AS (
+--   SELECT e.counterpart_lid, e.phone_digits, count(*) AS freq,
+--          row_number() OVER (PARTITION BY e.counterpart_lid ORDER BY count(*) DESC) AS rk
+--   FROM extracted e
+--   WHERE NOT EXISTS (SELECT 1 FROM team_phones t WHERE t.phone_digits = e.phone_digits)
+--   GROUP BY e.counterpart_lid, e.phone_digits
+-- )
+-- SELECT counterpart_lid, '+' || phone_digits AS resolved_phone, phone_digits AS phone_normalized,
+--        freq AS occurrences, now() AS computed_at
+-- FROM ranked WHERE rk = 1;
+-- CREATE UNIQUE INDEX wa_lid_phone_resolution_lid_idx ON wa_lid_phone_resolution (counterpart_lid);
+-- CREATE INDEX wa_lid_phone_resolution_phone_idx ON wa_lid_phone_resolution (phone_normalized);
