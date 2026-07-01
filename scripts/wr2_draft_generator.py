@@ -96,6 +96,45 @@ def _normalise_liveness_tier(raw: Any) -> str:
     tier = str(raw or "").strip().lower()
     return tier if tier in LIVENESS_TIER_VALID else ""
 
+
+# ── A2: length-per-story-type (D1×D2) ─────────────────────────────────────────
+# Deep-research (Socialinsider ~3M carousels) put the engagement TROUGH at 7 slides
+# — the exact default the model drifted to — and the peak near 10. So instead of a
+# flat "6-8", steer the count by liveness: breaking news is punchier (fewer, faster
+# slides), evergreen reference material rewards depth (more). This is a PROMPT steer,
+# not a Python clamp: distinct_claims isn't a structured field (it's prose in
+# the_facts/in_practice), so the model — which is reading that prose — is better
+# placed to pick the count than a brittle regex would be.
+#
+# Targets live INSIDE the existing hard guard (_normalise_slides rejects <6 or >11),
+# so A2 never produces a count the guard would reject. The plan's clamp(5,10) floor of
+# 5 is deliberately raised to 6 here: dropping the guard to 5 is a separate, riskier
+# change, out of scope for A2. Ranges: breaking→6-7, developing→7-8, evergreen→9-10.
+#
+# SCOMMESSA-ESTERNA (honest): our own corpus is all-7 → zero internal length signal.
+# This bets on Socialinsider's audience generalising to ours. We instrument slide_count
+# + tier (council_meta) so it's measurable after 4-6 weeks, not optimised blind.
+_LENGTH_GUIDANCE = {
+    "breaking": (
+        "LENGTH — this is breaking news: keep it TIGHT, 6-7 slides. Lead with what "
+        "changed, cut anything that isn't the news or the immediate action."
+    ),
+    "developing": (
+        "LENGTH — this is a developing story: 7-8 slides. Enough to frame the moving "
+        "parts without padding."
+    ),
+    "evergreen": (
+        "LENGTH — this is evergreen reference material: go deeper, 9-10 slides. Use the "
+        "room to explain thoroughly; depth is the point for durable content."
+    ),
+}
+
+
+def _length_guidance(liveness_tier: str) -> str:
+    """The per-tier slide-count steer, or '' for unknown/manual (model keeps 6-8)."""
+    return _LENGTH_GUIDANCE.get(liveness_tier, "")
+
+
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
@@ -516,11 +555,20 @@ def _build_draft_prompt(
         # Legacy path: truncated summary. Always available as fallback.
         body = summary[:3500]
 
-    # A1: inject the liveness framing (empty string when tier is unknown/manual).
-    liveness_line = _LIVENESS_FRAMING.get(liveness_tier, "")
-    liveness_block = f"\n\n{liveness_line}" if liveness_line else ""
+    # A1 framing + A2 length steer (both empty for unknown/manual tier → legacy 6-8).
+    steer_lines = [
+        _LIVENESS_FRAMING.get(liveness_tier, ""),
+        _length_guidance(liveness_tier),
+    ]
+    steer_block = "".join(f"\n\n{line}" for line in steer_lines if line)
 
-    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}{liveness_block}
+    # A2: the closing count must not contradict the length steer ("evergreen → 9-10"
+    # while the footer still barks "6-8"). Derive the closing range from the tier.
+    closing_range = {
+        "breaking": "6-7", "developing": "7-8", "evergreen": "9-10",
+    }.get(liveness_tier, "6-8")
+
+    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}{steer_block}
 
 ---
 
@@ -535,7 +583,7 @@ Content:
 
 ---
 
-Produce the full 6-8 slide JSON NOW. English content. No text outside the JSON object.
+Produce the full {closing_range} slide JSON NOW. English content. No text outside the JSON object.
 """
 
 
@@ -1155,9 +1203,10 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         )
 
     logger.info(
-        "Slides composed: register=%s count=%d cover_prompt=%r",
+        "Slides composed: register=%s count=%d liveness_tier=%s cover_prompt=%r",
         register,
         len(slides),
+        liveness_tier or "(none)",
         slides[0]["image_prompt"][:80],
     )
 
@@ -1177,6 +1226,11 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         "cover_url": cover_url,
         "cover_error": cover_err,
         "composed_at": datetime.now(timezone.utc).isoformat(),
+        # A2 instrumentation: the length bet is on EXTERNAL data (Socialinsider), our
+        # corpus has zero internal length signal. Persist tier + count so after 4-6
+        # weeks we can query whether breaking→6-7 / evergreen→9-10 actually paid off.
+        "liveness_tier": liveness_tier or None,
+        "slide_count": len(slides),
     }
     await _persist_ready(conn, draft_id, register, slides, council_meta)
     logger.info("Draft %s → status=drafts", draft_id)
