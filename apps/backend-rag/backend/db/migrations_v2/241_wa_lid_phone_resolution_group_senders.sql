@@ -19,6 +19,9 @@
 --
 DROP MATERIALIZED VIEW IF EXISTS wa_lid_phone_resolution;
 
+ALTER TABLE whatsapp_message_context
+  ADD COLUMN IF NOT EXISTS sender_lid VARCHAR(64);
+
 CREATE MATERIALIZED VIEW wa_lid_phone_resolution AS
 WITH team_phones AS (
   SELECT DISTINCT regexp_replace(team_member_phone::text, '\D', '', 'g') AS phone_digits
