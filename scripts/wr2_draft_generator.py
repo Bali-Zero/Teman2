@@ -62,6 +62,40 @@ VALID_TONES = {
     "tecnico",
 }
 
+# ── A1 keystone: liveness_tier propagation (cicatrix #9 schema-drift) ──────────
+# The topic selector already computes a liveness_tier and persists it inside
+# brief_json (wr2_topic_selector.py: "liveness_tier": top_item.get(...)), but the
+# drafter used to read enrichment + live_reasons and DROP this field on the floor.
+# A1 wires it end-to-end: read it here, hand Claude a one-line editorial framing so
+# the narrative matches the story's timeliness. A1 is framing ONLY — it deliberately
+# does NOT constrain slide count (that's A2) or tone (that's A3); those hang off the
+# SAME injection point in later PRs. Mirrors selector's LIVENESS_TIER_VALID (SSOT).
+LIVENESS_TIER_VALID = {"breaking", "developing", "evergreen"}
+
+# One-line editorial framing per tier. Neutral on length/tone — pure "how timely is
+# this" context. "manual" (operator-inserted topics) and anything unknown → no line.
+_LIVENESS_FRAMING = {
+    "breaking": (
+        "EDITORIAL CONTEXT — liveness: BREAKING. This is fast-moving, just-happened news; "
+        "write with urgency and a clear 'what changed / what to do now' spine."
+    ),
+    "developing": (
+        "EDITORIAL CONTEXT — liveness: DEVELOPING. This story is still unfolding; frame it as "
+        "an evolving situation readers should track, not a settled conclusion."
+    ),
+    "evergreen": (
+        "EDITORIAL CONTEXT — liveness: EVERGREEN. This is durable, reference-grade material; "
+        "write it to stay useful for months, explanatory rather than time-pegged."
+    ),
+}
+
+
+def _normalise_liveness_tier(raw: Any) -> str:
+    """Lower-case + validate against the selector's SSOT set. Unknown / missing /
+    'manual' collapse to '' (→ no framing line injected). Never raises."""
+    tier = str(raw or "").strip().lower()
+    return tier if tier in LIVENESS_TIER_VALID else ""
+
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
@@ -457,6 +491,7 @@ def _build_draft_prompt(
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
+    liveness_tier: str = "",
 ) -> str:
     """Build the slide-composition prompt.
 
@@ -481,7 +516,11 @@ def _build_draft_prompt(
         # Legacy path: truncated summary. Always available as fallback.
         body = summary[:3500]
 
-    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}
+    # A1: inject the liveness framing (empty string when tier is unknown/manual).
+    liveness_line = _LIVENESS_FRAMING.get(liveness_tier, "")
+    liveness_block = f"\n\n{liveness_line}" if liveness_line else ""
+
+    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}{liveness_block}
 
 ---
 
@@ -522,11 +561,12 @@ async def claude_compose_slides(
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
+    liveness_tier: str = "",
 ) -> dict[str, Any]:
     prompt = _build_draft_prompt(
         topic, summary, source_url,
         enrichment=enrichment, live_reasons=live_reasons,
-        avoid_steer=avoid_steer,
+        avoid_steer=avoid_steer, liveness_tier=liveness_tier,
     )
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
@@ -1022,11 +1062,14 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     live_reasons = brief.get("live_news_reasons") or []
     if not isinstance(live_reasons, list):
         live_reasons = []
+    # A1 keystone: the selector already put this in brief_json — read it (was dropped).
+    liveness_tier = _normalise_liveness_tier(brief.get("liveness_tier"))
 
     logger.info(
-        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s",
+        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s liveness_tier=%s",
         draft_id, topic[:80],
         bool(enrichment), brief.get("live_news_score"),
+        liveness_tier or "(none)",
     )
 
     # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
@@ -1050,7 +1093,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             parsed = await claude_compose_slides(
                 topic=topic, summary=summary, source_url=source_url,
                 enrichment=enrichment, live_reasons=live_reasons,
-                avoid_steer=avoid_steer,
+                avoid_steer=avoid_steer, liveness_tier=liveness_tier,
             )
         except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
             logger.error("Claude OAuth failed: %s", e)
