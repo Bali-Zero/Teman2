@@ -7,6 +7,7 @@ tests/unit/services/canva_renderer_v2/test_pg.py.
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import urllib.request
 from pathlib import Path
@@ -3247,3 +3248,220 @@ def test_materialize_body_slide_facts_stack_and_centering():
         assert "justify-content:center" in html
         assert "var(--color-accent-yellow)" in html
         assert "[SOURCE" not in html
+
+
+# ── C0: idempotent Drive upload (upsert + orphan-sweep + manifest) ─────────────
+#
+# The bug this closes: the old loop did files().create per PNG per attempt, so a
+# retried/re-rendered draft accreted duplicate files (30 files = 3 attempts x 10).
+# These tests drive the REAL _drive_upload_carousel against an in-memory fake Drive
+# (no network), asserting the folder contents converge to exactly the current set.
+
+
+class _FakeMedia:
+    """Stand-in for MediaIoBaseUpload — just carries the bytes so the fake can store them."""
+
+    def __init__(self, stream, mimetype=None, resumable=False):  # noqa: ANN001
+        self._bytes = stream.read()
+
+
+class _FakeFilesRequest:
+    def __init__(self, fn):  # noqa: ANN001
+        self._fn = fn
+
+    def execute(self):  # noqa: ANN001
+        return self._fn()
+
+
+class _FakeFilesResource:
+    """Minimal Drive files() surface: list (paged), create, update, delete, get."""
+
+    def __init__(self, store):  # noqa: ANN001
+        self._store = store  # {file_id: {"id","name","parents":[...],"bytes":b}}
+        self._seq = 0
+
+    def _next_id(self):
+        self._seq += 1
+        return f"file-{self._seq:04d}"
+
+    def list(self, q=None, fields=None, pageSize=None, pageToken=None, **kw):  # noqa: ANN001,N803
+        def run():
+            files = list(self._store.values())
+            if q and "in parents" in q:
+                parent = q.split("'")[1]
+                files = [f for f in files if parent in f.get("parents", [])]
+            elif q and "mimeType = 'application/vnd.google-apps.folder'" in q:
+                files = []  # no pre-existing folder in these tests → force create path
+            return {"files": [{"id": f["id"], "name": f["name"]} for f in files]}
+
+        return _FakeFilesRequest(run)
+
+    def create(self, body=None, media_body=None, fields=None, **kw):  # noqa: ANN001
+        def run():
+            fid = self._next_id()
+            self._store[fid] = {
+                "id": fid,
+                "name": body["name"],
+                "parents": body.get("parents", []),
+                "bytes": getattr(media_body, "_bytes", b""),
+            }
+            return {"id": fid, "name": body["name"], "webViewLink": f"https://drive/{fid}", "size": "1"}
+
+        return _FakeFilesRequest(run)
+
+    def update(self, fileId=None, media_body=None, fields=None, **kw):  # noqa: ANN001,N803
+        def run():
+            self._store[fileId]["bytes"] = getattr(media_body, "_bytes", b"")
+            return {"id": fileId}
+
+        return _FakeFilesRequest(run)
+
+    def delete(self, fileId=None, **kw):  # noqa: ANN001,N803
+        def run():
+            self._store.pop(fileId, None)
+            return {}
+
+        return _FakeFilesRequest(run)
+
+    def get(self, fileId=None, fields=None, **kw):  # noqa: ANN001,N803
+        def run():
+            f = self._store[fileId]
+            return {"id": f["id"], "name": f["name"], "webViewLink": f"https://drive/{f['id']}"}
+
+        return _FakeFilesRequest(run)
+
+
+class _FakeService:
+    def __init__(self, store):  # noqa: ANN001
+        self._files = _FakeFilesResource(store)
+
+    def files(self):
+        return self._files
+
+
+class _FakeDriveSvc:
+    """Emulates ServiceAccountDriveService for _drive_upload_carousel: a bare `service`
+    plus the create_folder / upload_file_to_folder / get_file_metadata coroutines it calls."""
+
+    def __init__(self, store):  # noqa: ANN001
+        self._store = store
+        self.service = _FakeService(store)
+
+    async def create_folder(self, name):  # noqa: ANN001
+        fid = self.service._files._next_id()
+        self._store[fid] = {"id": fid, "name": name, "parents": ["root"], "bytes": b""}
+        return {"id": fid, "webViewLink": f"https://drive/{fid}"}
+
+    async def upload_file_to_folder(self, folder_id, file_content, file_name, mime_type=None):  # noqa: ANN001
+        fid = self.service._files._next_id()
+        self._store[fid] = {
+            "id": fid, "name": file_name, "parents": [folder_id], "bytes": file_content,
+        }
+        return {"id": fid, "name": file_name, "webViewLink": f"https://drive/{fid}", "size": "1"}
+
+    async def get_file_metadata(self, file_id):  # noqa: ANN001
+        f = self._store[file_id]
+        return {"id": f["id"], "name": f["name"], "webViewLink": f"https://drive/{f['id']}"}
+
+
+def _children_of(store, folder_id, suffix=None):
+    names = [f["name"] for f in store.values() if folder_id in f.get("parents", [])]
+    if suffix:
+        names = [n for n in names if n.endswith(suffix)]
+    return sorted(names)
+
+
+def _folder_id_of(store, draft_id):
+    for f in store.values():
+        if f["name"] == f"WR2-{draft_id}":
+            return f["id"]
+    raise AssertionError("folder not created")
+
+
+def _make_pngs(count):
+    d = Path(tempfile.mkdtemp(prefix="wr2-c0-"))
+    return [
+        (p := d / f"{i:02d}.png", p.write_bytes(f"png-{i}".encode()))[0]
+        for i in range(1, count + 1)
+    ]
+
+
+def test_drive_upload_is_idempotent_no_duplicate_on_rerender(monkeypatch):
+    """Re-rendering the same draft must NOT increase the Drive file count (the 30-dup bug)."""
+    from scripts import wr2_html_render_apply as html
+
+    store: dict = {}
+    monkeypatch.setattr(
+        html, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store), raising=False
+    )
+    # patch the symbol the module imports lazily inside the function
+    import backend.services.integrations.service_account_drive_service as sad
+
+    monkeypatch.setattr(sad, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store))
+    monkeypatch.setattr(html, "MediaIoBaseUpload", _FakeMedia, raising=False)
+    import googleapiclient.http as gh
+
+    monkeypatch.setattr(gh, "MediaIoBaseUpload", _FakeMedia)
+
+    pngs = _make_pngs(8)
+    asyncio.run(html._drive_upload_carousel("draftA", pngs, shadow=False))
+    fid = _folder_id_of(store, "draftA")
+    first = _children_of(store, fid, ".png")
+    ids_first = {f["name"]: f["id"] for f in store.values() if fid in f.get("parents", []) and f["name"].endswith(".png")}
+    assert first == [f"{i:02d}.png" for i in range(1, 9)]
+    assert "manifest.json" in _children_of(store, fid)
+
+    # re-render the SAME draft, SAME pngs
+    asyncio.run(html._drive_upload_carousel("draftA", pngs, shadow=False))
+    second = _children_of(store, fid, ".png")
+    ids_second = {f["name"]: f["id"] for f in store.values() if fid in f.get("parents", []) and f["name"].endswith(".png")}
+
+    assert second == first, "re-render changed the PNG set"
+    assert len(second) == 8, "re-render created duplicates"
+    assert ids_first == ids_second, "file-ids were not stable across re-render (upsert failed)"
+
+
+def test_drive_upload_sweeps_orphans_from_longer_previous_render(monkeypatch):
+    """A previous render made 10 slides; the new one makes 6 → the 4 extra PNGs are swept."""
+    import googleapiclient.http as gh
+
+    import backend.services.integrations.service_account_drive_service as sad
+    from scripts import wr2_html_render_apply as html
+
+    store: dict = {}
+    monkeypatch.setattr(sad, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store))
+    monkeypatch.setattr(gh, "MediaIoBaseUpload", _FakeMedia)
+
+    asyncio.run(html._drive_upload_carousel("draftB", _make_pngs(10), shadow=False))
+    fid = _folder_id_of(store, "draftB")
+    assert len(_children_of(store, fid, ".png")) == 10
+
+    # shorter re-render
+    asyncio.run(html._drive_upload_carousel("draftB", _make_pngs(6), shadow=False))
+    remaining = _children_of(store, fid, ".png")
+    assert remaining == [f"{i:02d}.png" for i in range(1, 7)], remaining
+    assert "07.png" not in remaining and "10.png" not in remaining
+    assert "manifest.json" in _children_of(store, fid)
+
+
+def test_drive_manifest_lists_current_slides_in_order(monkeypatch):
+    import json
+
+    import googleapiclient.http as gh
+
+    import backend.services.integrations.service_account_drive_service as sad
+    from scripts import wr2_html_render_apply as html
+
+    store: dict = {}
+    monkeypatch.setattr(sad, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store))
+    monkeypatch.setattr(gh, "MediaIoBaseUpload", _FakeMedia)
+
+    asyncio.run(html._drive_upload_carousel("draftC", _make_pngs(5), shadow=False))
+    fid = _folder_id_of(store, "draftC")
+    manifest = next(
+        f for f in store.values() if fid in f.get("parents", []) and f["name"] == "manifest.json"
+    )
+    data = json.loads(manifest["bytes"].decode())
+    assert data["draft_id"] == "draftC"
+    assert [s["name"] for s in data["slides"]] == [f"{i:02d}.png" for i in range(1, 6)]
+    assert all(s["file_id"] for s in data["slides"])
