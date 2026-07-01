@@ -10,6 +10,36 @@
 # Idempotent. Run on Pro (where these 10 LaunchAgents live).
 set -euo pipefail
 
+# -----------------------------------------------------------------------------
+# DEPRECATED 2026-07-01 -- DO NOT RUN without understanding this.
+#
+# This script repoints crons onto the REPO wrapper .sh UNDER ~/Desktop. But a
+# .sh under ~/Desktop CANNOT be opened by launchd /bin/zsh under macOS TCC ->
+# exit 127 (W84, A/B-proven on Pro 2026-07-01). Running this would KILL every
+# cron it "migrates". The wrapper only survived on ~/scripts (a HOME-fork,
+# cicatrix #1) precisely because ~/scripts is outside the TCC-protected
+# ~/Desktop tree.
+#
+# CANONICAL PATTERN NOW: launchd calls the venv python DIRECTLY
+#   <repo>/apps/mata-garuda/.venv/bin/python -u <entry>
+# (adhoc-signed -> TCC-bypass even under ~/Desktop, AND repo-tracked). Secrets
+# are injected by mata_garuda/_bootstrap_env.py at import (PR #1897), not by a
+# shell wrapper. The 10 class-B crons were cut over to this on 2026-07-01.
+#
+# The 7 class-C crons (flock/window/source-env) still use the ~/scripts wrapper
+# because that logic has not been ported into the python entry yet -- converting
+# them naively would drop the flock single-instance gate (W7 cron-stacking).
+#
+# Kept for archaeology + the flag-parse reference. To run it anyway (you almost
+# certainly should NOT), set MIGRATE_TO_DESKTOP_WRAPPER=1.
+if [ "${MIGRATE_TO_DESKTOP_WRAPPER:-0}" != "1" ]; then
+  echo "[REFUSED] migrate_crons_to_repo_wrapper.sh is DEPRECATED (W84 TCC -- see header)." >&2
+  echo "          Canonical pattern is venv-python-direct + _bootstrap_env.py (PR #1897)." >&2
+  echo "          Set MIGRATE_TO_DESKTOP_WRAPPER=1 to override (you almost certainly should not)." >&2
+  exit 3
+fi
+# -----------------------------------------------------------------------------
+
 REPO="$HOME/Desktop/nuzantara"
 REPO_WRAPPER="$REPO/apps/mata-garuda/scripts/matagaruda-cron-tcc-safe.sh"
 HOMEFORK="$HOME/scripts/matagaruda-cron-tcc-safe.sh"
