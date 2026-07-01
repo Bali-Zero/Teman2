@@ -17,8 +17,6 @@
 -- Verified on live nuzantara_dev before shipping: 569 -> 659 rows (+90 resolved),
 -- 0 changed-phone regressions, 0 lost resolutions.
 --
--- squawk-ignore: prefer-robust-stmts  (matview rebuild, no concurrent writers)
-
 DROP MATERIALIZED VIEW IF EXISTS wa_lid_phone_resolution;
 
 CREATE MATERIALIZED VIEW wa_lid_phone_resolution AS
