@@ -52,6 +52,9 @@ _ALLOWED_SECRET_KEYS = frozenset({
     "TELEGRAM_OWNER_CHAT_ID",
     "TELEGRAM_APPROVAL_CHAT_ID",
     "TELEGRAM_PUBLIC_CHANNEL_ID",
+    # bridge (mata_garuda.bridge.nerve) — from ~/.cell-bridge-state/wa-media.env
+    "WHATSAPP_ACCESS_TOKEN",
+    "BRIDGE_API_KEY",
 })
 
 
@@ -86,11 +89,16 @@ def bootstrap_env(secrets_path: Path | None = None) -> None:
     if os.environ.get(_DONE_FLAG):
         return
 
-    path = secrets_path or Path.home() / ".nuzantara-secrets.env"
-    file_env = _parse_env_file(path)
-    for key, val in file_env.items():
-        if key in _ALLOWED_SECRET_KEYS and key not in os.environ and val:
-            os.environ[key] = val
+    sources = [secrets_path or Path.home() / ".nuzantara-secrets.env"]
+    # bridge (mata_garuda.bridge.nerve) keeps its 2 secrets in a separate
+    # 0600 file; load it too so the bridge cron needs no plist cleartext.
+    if secrets_path is None:
+        sources.append(Path.home() / ".cell-bridge-state" / "wa-media.env")
+    for src_path in sources:
+        file_env = _parse_env_file(src_path)
+        for key, val in file_env.items():
+            if key in _ALLOWED_SECRET_KEYS and key not in os.environ and val:
+                os.environ[key] = val
 
     for key, val in _DEFAULTS.items():
         os.environ.setdefault(key, val)
