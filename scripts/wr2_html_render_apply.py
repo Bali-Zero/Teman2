@@ -152,12 +152,75 @@ def _normalize_heroes(slides: list[dict[str, Any]], hero_dir: Path, server: "_He
     return out
 
 
-# ── Drive upload (idempotent-by-name under the single-owner lease) ──────────────
+# ── Drive upload (idempotent — upsert + orphan-sweep + manifest, under the lease) ───
+async def _drive_list_folder_children(svc: Any, folder_id: str) -> list[dict[str, Any]]:
+    """Every non-trashed direct child of the folder as {id, name}. Pages fully so a
+    folder that accreted many duplicate PNGs (the 30-file bug) is drained completely."""
+    import asyncio as _a
+
+    children: list[dict[str, Any]] = []
+    page_token: str | None = None
+    while True:
+        req = svc.service.files().list(
+            q=f"'{folder_id}' in parents and trashed = false",
+            fields="nextPageToken, files(id, name)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            pageSize=1000,
+            pageToken=page_token,
+        )
+        res = await _a.to_thread(req.execute)
+        children.extend(res.get("files", []))
+        page_token = res.get("nextPageToken")
+        if not page_token:
+            break
+    return children
+
+
+async def _drive_upsert_file(
+    svc: Any, folder_id: str, name: str, content: bytes, mime_type: str,
+    existing_id: str | None,
+) -> str:
+    """Update the media of an existing file (stable file-id) or create it. Returns the
+    file-id. Update-in-place is what makes re-render idempotent instead of accreting a
+    new copy every attempt (cicatrix #9: idempotent by ENTITY, not by count)."""
+    import asyncio as _a
+    from io import BytesIO
+
+    from googleapiclient.http import MediaIoBaseUpload  # type: ignore[import-untyped]
+
+    media = MediaIoBaseUpload(BytesIO(content), mimetype=mime_type, resumable=True)
+    if existing_id:
+        req = svc.service.files().update(
+            fileId=existing_id, media_body=media, fields="id", supportsAllDrives=True,
+        )
+        res = await _a.to_thread(req.execute)
+        return res["id"]
+    res = await svc.upload_file_to_folder(
+        folder_id=folder_id, file_content=content, file_name=name, mime_type=mime_type,
+    )
+    return res["id"]
+
+
 async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: bool) -> str:
-    """Create (or reuse) folder WR2-{draft_id} [shadow: under a WR2-SHADOW root], upload the
-    PNGs as image/png, return the folder webViewLink. Idempotent-by-name: searches first and
-    reuses an existing folder of the same name. Concurrent-create is prevented by the lease
-    (single owner per draft), so search-before-create is the residual dedup (#9)."""
+    """Create (or reuse) folder WR2-{draft_id} [shadow: under a WR2-SHADOW root], then make
+    its contents EXACTLY the current PNG set + a manifest.json, idempotently. Returns the
+    folder webViewLink.
+
+    C0 — three moves that make ``rendered`` mean one canonical set (cicatrix #9 / #2):
+      1. UPSERT each current PNG by name (update media in place if the name already lives in
+         the folder → stable file-id, no new copy per retry). Never a create-then-dup loop.
+      2. ORPHAN-SWEEP: delete children whose name is no longer in the current set (stale PNGs
+         from a longer previous render, or the 30 duplicates from the create-loop bug). Runs
+         AFTER the upserts, so the folder is never momentarily empty.
+      3. MANIFEST: write manifest.json (ordered {name, file_id}) — an audit/prove-of-life
+         artifact the C1 watchdog can assert on ("rendered without manifest" = anomaly). It is
+         NOT a reader contract: the publishers read PNGs from the local render dir, not Drive.
+    Concurrent-create of the folder is prevented by the single-owner lease; search-before-create
+    is the residual dedup."""
+    import asyncio as _a
+    import json as _json
+
     from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
     svc = ServiceAccountDriveService()
@@ -165,13 +228,12 @@ async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: b
 
     # search-before-create (idempotency under retry/stale-lease re-render)
     folder_id: str | None = None
+    web = ""
     try:
         q = (
             f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
             f"and trashed = false"
         )
-        import asyncio as _a
-
         req = svc.service.files().list(
             q=q, fields="files(id, webViewLink)", supportsAllDrives=True,
             includeItemsFromAllDrives=True, pageSize=1,
@@ -190,14 +252,47 @@ async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: b
         folder_id = folder["id"]
         web = folder.get("webViewLink", "")
 
+    # Snapshot current children ONCE — drives both upsert (name→id) and sweep.
+    existing = await _drive_list_folder_children(svc, folder_id)
+    by_name: dict[str, str] = {}
+    for child in existing:  # last-writer-wins collapses pre-existing dup names to one id
+        by_name[child["name"]] = child["id"]
+
+    # 1. UPSERT the current PNGs (ordered), collecting the canonical file-ids.
+    manifest_slides: list[dict[str, str]] = []
+    canonical_names: set[str] = set()
     for png in png_paths:
-        content = Path(png).read_bytes()
-        await svc.upload_file_to_folder(
-            folder_id=folder_id,
-            file_content=content,
-            file_name=Path(png).name,
-            mime_type="image/png",  # #10: explicit, the service hardcodes image/jpeg otherwise
+        name = Path(png).name
+        canonical_names.add(name)
+        file_id = await _drive_upsert_file(
+            svc, folder_id, name, Path(png).read_bytes(), "image/png",
+            by_name.get(name),
         )
+        manifest_slides.append({"name": name, "file_id": file_id})
+
+    # 2. MANIFEST (upsert too — the render is the source of truth for its own contents).
+    manifest_name = "manifest.json"
+    canonical_names.add(manifest_name)
+    manifest_body = _json.dumps(
+        {"draft_id": draft_id, "shadow": shadow, "slides": manifest_slides},
+        ensure_ascii=False, indent=2,
+    ).encode("utf-8")
+    await _drive_upsert_file(
+        svc, folder_id, manifest_name, manifest_body, "application/json",
+        by_name.get(manifest_name),
+    )
+
+    # 3. ORPHAN-SWEEP — anything in the folder not in the canonical set is a stale leftover.
+    for child in existing:
+        if child["name"] in canonical_names:
+            continue
+        try:
+            req = svc.service.files().delete(fileId=child["id"], supportsAllDrives=True)
+            await _a.to_thread(req.execute)
+            logger.info("swept stale Drive child %s (%s)", child["name"], child["id"])
+        except Exception as exc:  # a failed sweep must not fail the render
+            logger.warning("orphan-sweep failed for %s: %s", child["name"], exc)
+
     if not web:
         meta = await svc.get_file_metadata(folder_id)
         web = meta.get("webViewLink", f"https://drive.google.com/drive/folders/{folder_id}")
