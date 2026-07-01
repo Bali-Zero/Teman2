@@ -1,0 +1,351 @@
+{
+  "generated_at": "2026-07-01",
+  "purpose": "Positions excluded because no verified lampiran row basis was available.",
+  "excluded_permitted_positions": {
+    "A": {
+      "sector_tka": "Pertanian, Kehutanan, dan Perikanan",
+      "kbli_code_count": 122,
+      "code_samples": [
+        "01111",
+        "01112",
+        "01113",
+        "01114",
+        "01115",
+        "01116",
+        "01117",
+        "01118",
+        "01121",
+        "01122"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "B": {
+      "sector_tka": "Pertambangan dan Penggalian",
+      "kbli_code_count": 44,
+      "code_samples": [
+        "05101",
+        "05102",
+        "05200",
+        "06100",
+        "06201",
+        "06202",
+        "07101",
+        "07102",
+        "07210",
+        "07221"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "C": {
+      "sector_tka": "Industri Pengolahan",
+      "kbli_code_count": 464,
+      "code_samples": [
+        "10111",
+        "10112",
+        "10113",
+        "10119",
+        "10120",
+        "10211",
+        "10212",
+        "10213",
+        "10214",
+        "10215"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "D": {
+      "sector_tka": "Pengadaan Listrik, Gas, Uap/Air Panas dan Udara Dingin",
+      "kbli_code_count": 16,
+      "code_samples": [
+        "35111",
+        "35112",
+        "35120",
+        "35131",
+        "35132",
+        "35133",
+        "35140",
+        "35151",
+        "35152",
+        "35159"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "E": {
+      "sector_tka": "Pengelolaan Air, Limbah, dan Daur Ulang",
+      "kbli_code_count": 19,
+      "code_samples": [
+        "36001",
+        "36002",
+        "36003",
+        "37001",
+        "37002",
+        "38110",
+        "38121",
+        "38122",
+        "38211",
+        "38212"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "F": {
+      "sector_tka": "Konstruksi",
+      "kbli_code_count": 62,
+      "code_samples": [
+        "41011",
+        "41012",
+        "41013",
+        "41014",
+        "41015",
+        "41016",
+        "41017",
+        "41018",
+        "41019",
+        "41020"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "G": {
+      "sector_tka": "Perdagangan Besar dan Eceran; Reparasi Mobil dan Sepeda Motor",
+      "kbli_code_count": 199,
+      "code_samples": [
+        "46100",
+        "46201",
+        "46202",
+        "46203",
+        "46204",
+        "46205",
+        "46206",
+        "46207",
+        "46208",
+        "46209"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "H": {
+      "sector_tka": "Pengangkutan dan Pergudangan",
+      "kbli_code_count": 103,
+      "code_samples": [
+        "49111",
+        "49119",
+        "49120",
+        "49211",
+        "49212",
+        "49213",
+        "49214",
+        "49219",
+        "49221",
+        "49222"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "I": {
+      "sector_tka": "Penyediaan Akomodasi dan Penyediaan Makan Minum",
+      "kbli_code_count": 26,
+      "code_samples": [
+        "55101",
+        "55102",
+        "55103",
+        "55104",
+        "55105",
+        "55106",
+        "55201",
+        "55202",
+        "55203",
+        "55204"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "J": {
+      "sector_tka": "Informasi dan Komunikasi",
+      "kbli_code_count": 56,
+      "code_samples": [
+        "58110",
+        "58120",
+        "58130",
+        "58190",
+        "58211",
+        "58219",
+        "58290",
+        "59111",
+        "59112",
+        "59121"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "K": {
+      "sector_tka": "Aktivitas Keuangan dan Asuransi",
+      "kbli_code_count": 102,
+      "code_samples": [
+        "64110",
+        "64121",
+        "64122",
+        "64123",
+        "64124",
+        "64191",
+        "64192",
+        "64193",
+        "64194",
+        "64199"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "L": {
+      "sector_tka": "Real Estat",
+      "kbli_code_count": 14,
+      "code_samples": [
+        "68111",
+        "68112",
+        "68121",
+        "68122",
+        "68123",
+        "68124",
+        "68125",
+        "68126",
+        "68127",
+        "68129"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "M": {
+      "sector_tka": "Aktivitas Profesional, Ilmiah dan Teknis",
+      "kbli_code_count": 55,
+      "code_samples": [
+        "69101",
+        "69102",
+        "69103",
+        "69104",
+        "69201",
+        "69202",
+        "70100",
+        "70201",
+        "70202",
+        "70203"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "N": {
+      "sector_tka": "Aktivitas Penyewaan, Ketenagakerjaan, Agen Perjalanan dan Penunjang Usaha",
+      "kbli_code_count": 55,
+      "code_samples": [
+        "77100",
+        "77210",
+        "77291",
+        "77292",
+        "77293",
+        "77294",
+        "77299",
+        "77311",
+        "77312",
+        "77313"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "O": {
+      "sector_tka": "Administrasi Pemerintahan, Pertahanan dan Jaminan Sosial Wajib",
+      "kbli_code_count": 33,
+      "code_samples": [
+        "84111",
+        "84112",
+        "84113",
+        "84114",
+        "84115",
+        "84119",
+        "84121",
+        "84122",
+        "84123",
+        "84124"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "P": {
+      "sector_tka": "Pendidikan",
+      "kbli_code_count": 64,
+      "code_samples": [
+        "85101",
+        "85102",
+        "85103",
+        "85104",
+        "85201",
+        "85202",
+        "85203",
+        "85204",
+        "85311",
+        "85312"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "Q": {
+      "sector_tka": "Aktivitas Kesehatan Manusia dan Aktivitas Sosial",
+      "kbli_code_count": 35,
+      "code_samples": [
+        "86101",
+        "86102",
+        "86103",
+        "86104",
+        "86105",
+        "86109",
+        "86201",
+        "86202",
+        "86203",
+        "86910"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "R": {
+      "sector_tka": "Kesenian, Hiburan dan Rekreasi",
+      "kbli_code_count": 60,
+      "code_samples": [
+        "90111",
+        "90112",
+        "90113",
+        "90120",
+        "90130",
+        "90200",
+        "90310",
+        "90391",
+        "90399",
+        "91111"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "S": {
+      "sector_tka": "Aktivitas Jasa Lainnya",
+      "kbli_code_count": 26,
+      "code_samples": [
+        "94110",
+        "94121",
+        "94122",
+        "94200",
+        "94910",
+        "94920",
+        "94990",
+        "95101",
+        "95102",
+        "95210"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "T": {
+      "sector_tka": "Aktivitas Rumah Tangga sebagai Pemberi Kerja",
+      "kbli_code_count": 3,
+      "code_samples": [
+        "97000",
+        "98100",
+        "98200"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    },
+    "U": {
+      "sector_tka": "Aktivitas Badan Internasional dan Badan Ekstra Internasional Lainnya",
+      "kbli_code_count": 1,
+      "code_samples": [
+        "99000"
+      ],
+      "reason": "Kepmenaker 228/2019 instrument located, but official lampiran rows were not extracted in this pass; no permitted jabatan may be inferred from generated guides, KBLI section fallback, or ISCO/KBJI proxies."
+    }
+  },
+  "excluded_forbidden_positions": {
+    "count": 0,
+    "reason": "Rows 1-18 from Kepmenaker 349/2019 were verified and included."
+  }
+}

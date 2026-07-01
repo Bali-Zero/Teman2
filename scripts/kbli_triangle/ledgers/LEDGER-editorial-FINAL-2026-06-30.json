@@ -1,0 +1,114 @@
+[
+  {
+    "code": "10292",
+    "field": "intel_2026.baliContext",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "10772",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "20213",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "21013",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "27113",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "27401",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "28220",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "28261",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "28262",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "28263",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "28299",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "30922",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "33149",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "33201",
+    "field": "intel_2026.zantaraOpener",
+    "source": "run1-claude",
+    "severity": "MED"
+  },
+  {
+    "code": "47242",
+    "field": "intel_2026.baliContext",
+    "source": "cascade-codex-gemini",
+    "severity": "MED",
+    "judul": "Perdagangan Eceran Roti, Kue Kering, serta Kue Basah dan Sejenisnya"
+  },
+  {
+    "code": "47591",
+    "field": "intel_2026.baliContext",
+    "source": "cascade-codex-gemini",
+    "severity": "MED",
+    "judul": "Perdagangan Eceran Furnitur"
+  },
+  {
+    "code": "64210",
+    "field": "intel_2026.baliContext",
+    "source": "cascade-codex-gemini",
+    "severity": "MED",
+    "judul": "Aktivitas Perusahaan Induk"
+  },
+  {
+    "code": "70203",
+    "field": "intel_2026.baliContext",
+    "source": "cascade-codex-gemini",
+    "severity": "MED",
+    "judul": "Aktivitas Konsultansi Manajemen dan Bisnis Perdagangan"
+  }
+]
