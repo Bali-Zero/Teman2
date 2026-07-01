@@ -17,7 +17,7 @@
 -- Verified on live nuzantara_dev before shipping: 569 -> 659 rows (+90 resolved),
 -- 0 changed-phone regressions, 0 lost resolutions.
 --
--- squawk-ignore: prefer-robust-stmts  (matview rebuild, no concurrent writers)
+-- Squawk: prefer-robust-stmts is excluded at workflow level; matview rebuild has no concurrent writers.
 
 ALTER TABLE whatsapp_message_context
     ADD COLUMN IF NOT EXISTS sender_lid VARCHAR(64);
