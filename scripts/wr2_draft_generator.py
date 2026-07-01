@@ -135,6 +135,41 @@ def _length_guidance(liveness_tier: str) -> str:
     return _LENGTH_GUIDANCE.get(liveness_tier, "")
 
 
+# ── A3: tone-per-story-type (D2 × the most mature organ) ───────────────────────
+# The model already picks ONE of the 7 Council tones from the prompt's TONE
+# REGISTERS block. A3 nudges that pick by liveness_tier so timeliness and voice
+# agree: breaking news reads best as procedural/analytic ("what changed, what to
+# do"), an unfolding story as analytic/militant, durable reference as pedagogic/
+# ritual (explain thoroughly, lasting significance).
+#
+# PREFERENCE, not a hard constraint — deliberately (cicatrix #3 over-match): the
+# downstream validator (_normalise_slides) only rejects a tone that isn't in
+# VALID_TONES, NOT one that's "wrong for the tier". If A3 hard-forced a tone we'd
+# get spurious mismatches when the content genuinely wants another register. So the
+# line says "PREFER x/y; pick another only if the content clearly demands it" and
+# Legge 5 (human publishes) is the final backstop against over-constraint.
+#
+# Preferred tones are a SUBSET of VALID_TONES (asserted by a test) — a preference
+# the validator can never reject.
+_TONE_PREFERENCE = {
+    "breaking": ("tecnico", "analitico"),
+    "developing": ("analitico", "militante"),
+    "evergreen": ("pedagogico", "rituale"),
+}
+
+
+def _tone_guidance(liveness_tier: str) -> str:
+    """Per-tier register preference line, or '' for unknown/manual (model free)."""
+    prefs = _TONE_PREFERENCE.get(liveness_tier)
+    if not prefs:
+        return ""
+    joined = " or ".join(prefs)
+    return (
+        f"TONE — for this {liveness_tier} story, PREFER the {joined} register; pick "
+        "another of the 7 only if the content clearly demands it."
+    )
+
+
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
@@ -555,10 +590,11 @@ def _build_draft_prompt(
         # Legacy path: truncated summary. Always available as fallback.
         body = summary[:3500]
 
-    # A1 framing + A2 length steer (both empty for unknown/manual tier → legacy 6-8).
+    # A1 framing + A2 length + A3 tone steer (all empty for unknown/manual tier).
     steer_lines = [
         _LIVENESS_FRAMING.get(liveness_tier, ""),
         _length_guidance(liveness_tier),
+        _tone_guidance(liveness_tier),
     ]
     steer_block = "".join(f"\n\n{line}" for line in steer_lines if line)
 
