@@ -4,7 +4,7 @@ domain: kbli
 client_case: none (internal data-quality audit)
 sources:
   - data/source_documents/KBLI_2025_FINAL_CLEAN.json (dataset SSOT, pma_cap_verified provenance flags)
-  - NB-3 "Company Setup — Indonesia 2025" (933509f9), queries 9d8db1f675f1 / fa8dcce04979 / 8da4a7c91097
+  - NB-3 "Company Setup — Indonesia 2025" (3 grouped bipolar-verify queries, 2026-07-02)
   - Perpres 10/2021 official lampiran resolution of 2026-06-27 (memory discovery_kbli_pma_status_not_from_oss_2026_06_27, commits d8f5835/1e683cd/2e8695b)
   - scripts/kbli_triangle/ledgers/ (2026-06-30 editorial pass + LEDGER-run2-2026-07-03.json)
 ---

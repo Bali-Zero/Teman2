@@ -39,8 +39,9 @@
     "post_patch_finder": "A2 P1: 3->0; A1 P1: 14->6 (all 6 = declared ABSTAIN set)"
   },
   "nb_queries": [
-    {"id": "9d8db1f675f1", "topic": "47221/47222 alcohol-adjacent retail, 50122/50123 cabotage, 73100 advertising"},
-    {"id": "fa8dcce04979", "topic": "03110 fisheries cap, 41011 construction cap, 65111 insurance cap"},
-    {"id": "8da4a7c91097", "topic": "85102 education PT-PMA vs Yayasan, SPK merger"}
-  ]
+    {"topic": "47221/47222 alcohol-adjacent retail, 50122/50123 cabotage, 73100 advertising"},
+    {"topic": "03110 fisheries cap, 41011 construction cap, 65111 insurance cap"},
+    {"topic": "85102 education PT-PMA vs Yayasan, SPK merger"}
+  ],
+  "nb_queries_note": "ephemeral NotebookLM async query ids omitted (hex strings trip the detect-secrets gate); full transcripts in session 046a0aa0 scratchpad"
 }
