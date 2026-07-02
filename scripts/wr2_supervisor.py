@@ -748,9 +748,39 @@ async def _amain() -> None:
     logger.info("wr2_supervisor stopped cleanly")
 
 
+def _write_runtime_stamp_best_effort() -> None:
+    """C2 provenance stamp at daemon startup (deploy-fork content-gate).
+
+    A long-running daemon keeps executing the code it imported at boot; after
+    a deploy-pull the on-disk HEAD moves but the process does not. The stamp
+    records the BOOT provenance so the watchdog can compare it against the
+    checkout's current HEAD and alert RUNTIME_STALE (restart needed). Fail-open:
+    a broken git/lib must never stop the supervisor.
+    """
+    try:
+        import importlib.util
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[1]
+        spec = importlib.util.spec_from_file_location(
+            "wr2_runtime_stamp", str(repo / "scripts" / "lib" / "wr2_runtime_stamp.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        stamp = mod.compute_runtime_stamp(repo, [Path(__file__)])
+        mod.write_runtime_stamp("wr2.supervisor", stamp)
+        logger.info(
+            "runtime stamp written (head=%s dirty=%s stale=%s)",
+            (stamp.get("head_sha") or "?")[:12], stamp.get("dirty"), stamp.get("stale_modules"),
+        )
+    except Exception:  # noqa: BLE001 — provenance must never break the daemon
+        logger.exception("runtime stamp failed (non-fatal)")
+
+
 def main() -> int:
     _configure_logging()
     logger.info("wr2_supervisor starting (pid=%d)", os.getpid())
+    _write_runtime_stamp_best_effort()
     try:
         asyncio.run(_amain())
     except KeyboardInterrupt:
