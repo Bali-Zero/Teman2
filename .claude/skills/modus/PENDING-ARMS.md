@@ -11,6 +11,10 @@
 - opened 2026-07-02 | escalations receptor (`scripts/hooks/escalations_alert_sessionstart.sh`, PR #1852) | hooks entry ships with the modus PR in repo `.claude/settings.json`; liveness provable only at next session boot per machine | me | a nuzantara session boot shows the "🚨 ESCALATIONS BOARD" block (or a manual run emits valid hook JSON with current board state)
 - opened 2026-07-02 | main-checkout pull on Pro (`~/Desktop/nuzantara`) — pull aborts on sibling's untracked `apps/wa-mirror/bridge/group_subject.ts` | PENDING-ALIGN:Pro — sibling wa-mirror/mata-garuda work in flight; self-resolves once the sibling lands or moves the file | operator (or next clean session) | `git -C ~/Desktop/nuzantara rev-parse HEAD` on Pro contains 3509f3e2ab content (blob check)
 
+- opened 2026-07-02 | PR #1915 vitest ^4.1.9 critical fix (GHSA-5xrq-8626-4rwp) | merge not yet proven — auto-merge armed, Backend Tests CI pending at session close | me | PR state=MERGED + vitest ^4.1.9 blobs on main; then delete superseded branch `agent/nuzantara/infra/dependabot-vitest-bump`
+- opened 2026-07-02 | PR #1925 pip 35-advisory close (aiohttp 3.14.1 et al.) | merge not yet proven — auto-merge armed | me | PR state=MERGED + `pip-audit` on main's requirements-prod.lock.txt = 0 vulnerable
+- opened 2026-07-02 | Pro main staged `vitest ^1.6.1` bump (insufficient, <3.2.6) | discard staged hunk on Pro before/at next pull — will conflict with #1915 | operator (or next clean Pro session) | `git -C ~/Desktop/nuzantara diff --cached apps/admin-dashboard-local/package.json` empty AND package.json shows ^4.1.9
+
 ## closed (proof recorded)
 
 - closed 2026-07-02 | opus-mythos deprecation banner M5+Pro+Mini | operator ran the idempotent one-liner on all 3 | PROVEN: `grep -c SUPERSEDED` = 2 on M5, Pro, Mini (description prefix + body banner); live skill registry on M5 reloaded with the superseded description
