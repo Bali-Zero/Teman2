@@ -1,7 +1,7 @@
 # INDEX — L'Atlante dei Libri Sacri
 
 > **Loaded first** in ogni sessione. Se il tuo bisogno non è qui, aggiorna questo file.
-> **Ultima revisione manuale:** 2026-04-15
+> **Ultima revisione manuale:** 2026-07-02
 
 ---
 
@@ -12,7 +12,7 @@
 | Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                       | Filosofia, "prima di toccare"                        |
 | Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                       | Checklist operativa per ogni tipo di elemento        |
 | Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                              | Mappa statica top-level                              |
-| Metriche live (count routers/servizi/vector)? | [CLAUDE.md](CLAUDE.md) §Tech Stack                                 | Auto-sincronizzate via `docs_sync.py`                |
+| Metriche live (count routers/servizi/vector)? | [README.md](README.md) §Tech Stack + [docs/AI_ONBOARDING.md](docs/AI_ONBOARDING.md) | Auto-sincronizzate via `docs_sync.py` (marker rimossi da CLAUDE.md, F44) |
 | Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                  | File locali all'app                                  |
 | Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                | Git + memoria persistente                            |
 | Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)     | Dispatch, fallback, timeout                          |
@@ -37,7 +37,6 @@
 ### Intelligence
 
 - **`apps/evaluator/`** — Core Guardian V3/V5 (auto-calibration), NLM deep research (10 pipelines NB-1..10).
-- **`apps/federation/`** — A2A protocol multi-agent. Pro↔Mini sync via Tailscale (Air decommissioned 2026-05-05).
 - **`packages/core/`** — BZ design tokens, BZLogo, libraries condivise.
 
 ### MCP
