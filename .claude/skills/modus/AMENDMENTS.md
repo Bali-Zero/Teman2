@@ -9,6 +9,8 @@
 > Format: `YYYY-MM-DD | what misfired | evidence | proposed change`
 
 2026-07-02 | genesis run: refuter seat brittle | DeepSeek probed live → 402 Insufficient Balance (2nd time, same as 2026-06-30); GLM fallback invocation denied by permission layer → council ran 2-external-seats (Codex red-team + Gemini costruttivo) | codified in SKILL.md: refuter seat = probe-then-cascade DeepSeek→GLM→Codex; a 2-seat heterogeneous council is acceptable-degraded and MUST be declared in the report
+2026-07-02 | VERIFY probe leaked a real outbound side-effect | heartbeat-organs TAC: fly-detector sandbox probe isolated HOME+PATH but inherited shell env → TELEGRAM_BOT_TOKEN present → 1 real false alert sent to admin chat mid-flight (corrected on-channel within 2 min) | probes that can trigger outbound effects (telegram/email/webhook) run under `env -i` or with alert credentials explicitly blanked; add to VERIFY stage notes
+2026-07-02 | Agent-tool fan-out dead in headless flight session | all 6 parallel Agent dispatches failed with "Could not determine current tmux pane/window"; diagnosis executed inline (worked, but serialized) | modus Arsenal note: in headless/cron sessions probe the Agent tool with 1 cheap dispatch before planning fan-out; fallback = inline batching (anti-sperpero: 1 agent + more budget)
 
 2026-07-02 | bench run 1: Workflow args arrived as a JSON-encoded STRING → `args.today` undefined → whole run silently stamped "UNKNOWN-DATE" | task wr1h8s4qb result `date:"UNKNOWN-DATE"` while the invocation passed `{today:"2026-07-02"}` | modus-bench.js now parses string args defensively and FAILS LOUD on missing/malformed `today` (fixed in this PR; proven by resume run replaying 27/28 agents from cache)
 
