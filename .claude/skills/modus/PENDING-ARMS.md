@@ -13,6 +13,10 @@
 - opened 2026-07-02 | GLM 5.2 refuter tier (`claude-glm`) | permission/allowlist arming — genesis council invocation denied by permission layer; no `glm` entry in repo `.claude/settings.json` nor `~/.claude/settings.json` (verified 2026-07-02 bench run 1); function + `~/.claude-glm` dir exist but the seat is un-armed | operator | a live `claude-glm` 1-token probe returns a completion in-session
 - opened 2026-07-02 | 9 dead/unhealthy heartbeat organs (doctrine §8, 2026-06-30) | heartbeat writer/bridge investigation on Pro — restart is NOT the cure | operator | organism_alert boot receptor shows 0 stale-critical organs — _(riga rientrata: era misfiled sotto "## closed" dal commit cc40a125a; spostata qui al bench run 1, 2026-07-02)_
 
+- opened 2026-07-02 | PR #1915 vitest ^4.1.9 critical fix (GHSA-5xrq-8626-4rwp) | merge not yet proven — auto-merge armed, Backend Tests CI pending at session close | me | PR state=MERGED + vitest ^4.1.9 blobs on main; then delete superseded branch `agent/nuzantara/infra/dependabot-vitest-bump`
+- opened 2026-07-02 | PR #1925 pip 35-advisory close (aiohttp 3.14.1 et al.) | merge not yet proven — auto-merge armed | me | PR state=MERGED + `pip-audit` on main's requirements-prod.lock.txt = 0 vulnerable
+- opened 2026-07-02 | Pro main staged `vitest ^1.6.1` bump (insufficient, <3.2.6) | discard staged hunk on Pro before/at next pull — will conflict with #1915 | operator (or next clean Pro session) | `git -C ~/Desktop/nuzantara diff --cached apps/admin-dashboard-local/package.json` empty AND package.json shows ^4.1.9
+
 ## closed (proof recorded)
 
 - closed 2026-07-02 | opus-mythos deprecation banner M5+Pro+Mini | operator ran the idempotent one-liner on all 3 | PROVEN: `grep -c SUPERSEDED` = 2 on M5, Pro, Mini (description prefix + body banner); live skill registry on M5 reloaded with the superseded description
