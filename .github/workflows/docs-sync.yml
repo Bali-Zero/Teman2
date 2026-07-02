@@ -7,11 +7,19 @@ on:
       - "apps/backend-rag/backend/services/**"
       - "apps/backend-rag/backend/tests/**"
       - "apps/backend-rag/backend/channels/**"
+      - "apps/*/README.md"
       - "package.json"
       - "scripts/docs_sync.py"
-      - "CLAUDE.md"
+      - "scripts/tests/test_docs_sync_atlas.py"
+      - "scripts/automation_catalog.json"
       - "README.md"
+      - "INDEX.md"
       - "docs/AI_ONBOARDING.md"
+      - "docs/AUTOMATIONS_REFERENCE.md"
+      - "docs/runbooks/**"
+      - "infra/workflows/**"
+      - "infra/launchagents/**"
+      - ".claude/skills/**"
       - ".github/workflows/docs-sync.yml"
   push:
     branches: [main]
@@ -20,11 +28,19 @@ on:
       - "apps/backend-rag/backend/services/**"
       - "apps/backend-rag/backend/tests/**"
       - "apps/backend-rag/backend/channels/**"
+      - "apps/*/README.md"
       - "package.json"
       - "scripts/docs_sync.py"
-      - "CLAUDE.md"
+      - "scripts/tests/test_docs_sync_atlas.py"
+      - "scripts/automation_catalog.json"
       - "README.md"
+      - "INDEX.md"
       - "docs/AI_ONBOARDING.md"
+      - "docs/AUTOMATIONS_REFERENCE.md"
+      - "docs/runbooks/**"
+      - "infra/workflows/**"
+      - "infra/launchagents/**"
+      - ".claude/skills/**"
       - ".github/workflows/docs-sync.yml"
 
 concurrency:
@@ -50,3 +66,12 @@ jobs:
             exit 0
           fi
           python scripts/docs_sync.py --check
+
+      - name: Run docs_sync unit tests
+        run: |
+          if [ ! -f scripts/tests/test_docs_sync_atlas.py ]; then
+            echo "no docs_sync tests present — skipping."
+            exit 0
+          fi
+          python -m pip install --quiet pytest
+          python -m pytest scripts/tests/test_docs_sync_atlas.py -q

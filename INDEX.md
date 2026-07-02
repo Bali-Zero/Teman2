@@ -29,7 +29,7 @@
 
 ### Production workloads
 
-- **`apps/backend-rag/`** — RAG backend (FastAPI, deploy Fly.io; count routers/services in CLAUDE.md §Tech Stack auto-sync). Prompt SSOT: `backend/prompts/zantara_core.py`. Include WR2 pipeline (`backend/services/{war_room,council,visual,canva_renderer,review,publisher}/`).
+- **`apps/backend-rag/`** — RAG backend (FastAPI, deploy Fly.io; count routers/services in README.md §Tech Stack auto-sync). Prompt SSOT: `backend/prompts/zantara_core.py`. Include WR2 pipeline (`backend/services/{war_room,council,visual,canva_renderer,review,publisher}/`).
 - **`apps/mouth/`** — Next.js frontend (Vercel). kita/my/prime.balizero.com.
 - **`apps/bali-intel-scraper/`** — Intel pipeline daily 03:00 WITA (solo Pro, NOT Fly). Articoli MDX → GitHub → Vercel.
 - **`apps/zantara-media/`** — Curator Agent GARUDA (Sprint 5.1 LIVE). Drive indexer + Qdrant `garuda_assets` + Postgres `garuda_index`.
@@ -90,6 +90,75 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 - **every 3h** Core Guardian
 - **every 5min** log-anomaly-detector, drive-poll (Pro), sentinel
 - **Dettagli completi:** `docs/AUTOMATIONS_REFERENCE.md` + `scripts/automation_catalog.json`
+
+## Organi enumerabili (auto-generato — non editare a mano)
+
+> Sezioni sincronizzate da `scripts/docs_sync.py`; il gate CI `docs-sync.yml` fallisce se stale.
+> Rigenera con `python scripts/docs_sync.py`.
+
+### Apps (tutte, enumerate da disco)
+
+<!-- DOCSYNC:LIVING_ORGANS_START -->
+**Apps:** 30 · **Packages:** 6
+
+| App | Ruolo |
+| --- | ----- |
+| `admin-dashboard` | A standalone Next.js application to inspect and control Nuzantara data. |
+| `admin-dashboard-local` | Pro-only LLM cost dashboard. **Not deployed anywhere.** |
+| `autonomous-lab` |  |
+| `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
+| `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
+| `cell` |  |
+| `cell-observatory-collector` | Pro-local Python service that listens to `cell_pulse_observed` PG channel, |
+| `crm-cell` | Sprint 3 W2 — light cell wrapping the existing CRM modules |
+| `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
+| `graph-engine` | Graph processing engine for Knowledge Graph operations. |
+| `kb` |  |
+| `kbli-navigator` |  |
+| `mata-garuda` | > Intelligence Super Hub — OSINT blindato, CLI-only, Lamarckian meta-agent |
+| `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
+| `nlm-bridge` |  |
+| `nuz-status-mac` | Native macOS control surface for Nuzantara operational health. |
+| `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
+| `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
+| `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
+| `openclaw-hgt-coordinator` |  |
+| `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
+| `osint-nexus-ui` |  |
+| `research` |  |
+| `team-agent` |  |
+| `wa-dashboard` | Local-only Next.js 16 app for the Bali Zero team WhatsApp inbox. |
+| `wa-dashboard-m1` | Replica del pattern M1 single-page (`~/bin/wa-viewer/`) puntata al DB di produzione |
+| `wa-meta-inbox` | Desktop-local UI for the **BALI ZERO WhatsApp Business (Meta API)** number |
+| `wa-mirror` | **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17) |
+| `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
+| `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
+<!-- DOCSYNC:LIVING_ORGANS_END -->
+
+### Workflow riusabili (`infra/workflows/`)
+
+<!-- DOCSYNC:WORKFLOWS_INDEX_START -->
+| File | Name | Description |
+| ---- | ---- | ----------- |
+| `infra/workflows/modus-bench.js` | modus-bench | Self-refinement sweep for the modus master loop: internal scars/memory × external frontier watch → adversarially verified, operator-gated amendment proposals |
+| `infra/workflows/verify-template.js` | verify-template | Reusable generator≠grader workflow: gather N angles → adversarially verify each → synthesize survivors |
+<!-- DOCSYNC:WORKFLOWS_INDEX_END -->
+
+### Skill repo (`.claude/skills/`)
+
+<!-- DOCSYNC:SKILLS_INDEX_START -->
+| Skill | Description (truncated) |
+| ----- | ----------------------- |
+| `.claude/skills/modus/` | USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content — coding or not. The master operating loop of the organism: TRIAGE ... |
+<!-- DOCSYNC:SKILLS_INDEX_END -->
+
+### LaunchAgents — copertura documentale
+
+<!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
+`117 plist tracked in infra/launchagents/ · 64 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (55% coverage)`
+<!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
+
+Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).
 
 ## Machine & env
 
