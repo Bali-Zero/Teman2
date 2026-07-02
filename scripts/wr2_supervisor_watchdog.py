@@ -73,6 +73,21 @@ trasporto, non verità"; all READ-ONLY, run right after _evaluate_once):
       OR the file is missing/malformed. Missing is an ALERT, not a skip:
       the never-armed cron is exactly the W81 disease this probe hunts.
 
+  P1 RUNTIME_STALE (C2, deploy-fork content-gate — cicatrix #1/D5)
+      Reads the ~/.organism/last_seen/<organ>.runtime.json provenance
+      stamps written by wr2_html_render_apply (per run) and wr2_supervisor
+      (at daemon startup). Two disease classes:
+        - checkout diseases (dirty / stale_modules): the code on disk is
+          not the code HEAD says — alert regardless of process state;
+        - process disease (head-moved): the stamped pid is STILL ALIVE but
+          the checkout's HEAD moved since its boot — a daemon executing
+          pre-pull code forever; the cure is a restart, and only an alert
+          makes that visible. Dead pid + moved head is the NORMAL one-shot
+          worker case (next run re-stamps) — not flagged.
+      Degrade-open when stamps are missing (C2 organs not armed yet).
+      Reader is inline JSON (no import from scripts/lib) so this probe and
+      the stamp writers can merge/arm in any order.
+
 Dependencies:
   - `wr2_supervisor_heartbeat` table (migration 161)
   - `war_room_drafts` (status, updated_at, drive_url)
@@ -96,6 +111,7 @@ import logging
 import os
 import re
 import signal
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -599,6 +615,71 @@ async def _probe_manifest_gaps(conn: asyncpg.Connection) -> dict[str, Any] | Non
     return {"missing": missing, "unparseable": unparseable, "checked": len(rows)}
 
 
+RUNTIME_STALE_ORGANS = ("wr2.html_apply", "wr2.supervisor")
+
+
+def _read_runtime_stamp(organ_id: str) -> dict[str, Any] | None:
+    """~/.organism/last_seen/<organ>.runtime.json; None = missing/unreadable
+    (degrade-open — the C2 stamp writers may not be armed yet)."""
+    try:
+        path = Path.home() / ".organism" / "last_seen" / f"{organ_id}.runtime.json"
+        data = json.loads(path.read_text())
+        return data if isinstance(data, dict) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _git_head(checkout: str) -> str | None:
+    """Current on-disk HEAD of a checkout; None on any failure (fail-open)."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", checkout, "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=15,
+        )
+        return out.stdout.strip() if out.returncode == 0 else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _pid_alive(pid: Any) -> bool:
+    """True if pid is a live process on THIS host (stamps are local files)."""
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def _probe_runtime_stale() -> list[dict[str, Any]]:
+    """C2: organs whose runtime provenance diverges from the checkout on disk.
+
+    checkout diseases (dirty / stale-modules) flag regardless of process
+    state; head-moved flags ONLY when the stamped pid is still alive — a dead
+    one-shot worker whose checkout advanced afterwards is the normal case.
+    """
+    findings: list[dict[str, Any]] = []
+    for organ in RUNTIME_STALE_ORGANS:
+        stamp = _read_runtime_stamp(organ)
+        if not stamp:
+            continue
+        problems: list[str] = []
+        if stamp.get("dirty"):
+            problems.append("dirty-checkout")
+        if stamp.get("stale_modules"):
+            problems.append("stale-modules:" + ",".join(stamp["stale_modules"]))
+        checkout = stamp.get("checkout")
+        head = stamp.get("head_sha")
+        if checkout and head and _pid_alive(stamp.get("pid")):
+            disk = _git_head(checkout)
+            if disk and disk != head:
+                problems.append(
+                    f"head-moved:{head[:12]}->{disk[:12]} (live pid {stamp.get('pid')} on old code)"
+                )
+        if problems:
+            findings.append({"organ": organ, "problems": problems, "ts": stamp.get("ts")})
+    return findings
+
+
 def _probe_reflexion_age() -> tuple[str, float | None]:
     """State of the WR2 reflexion Delta-Gate ledger.
 
@@ -654,6 +735,28 @@ async def _evaluate_outcome_probes(conn: asyncpg.Connection) -> None:
             logger.info("stale_lease detected but cooldown active (count=%d)", len(stale))
     else:
         logger.debug("leases ok")
+
+    # P1 — RUNTIME_STALE (C2): provenance stamps vs the checkout on disk
+    runtime = _probe_runtime_stale()
+    if runtime:
+        if _alert_due("runtime_stale", now_epoch):
+            lines = "\n".join(
+                f"- `{r['organ']}`: {'; '.join(r['problems'])} (stamped {r.get('ts')})"
+                for r in runtime
+            )
+            _send_telegram(
+                "⚠️ *WR2 runtime provenance*\n"
+                f"{lines}\n"
+                "An organ is executing code that diverges from its checkout — "
+                "restart the daemon (`launchctl kickstart -k gui/$(id -u)/"
+                "com.balizero.wr2.supervisor`) or investigate the dirty checkout."
+            )
+            _state_set("last_alert_runtime_stale", now_epoch)
+            logger.warning("ALERT P1 runtime_stale organs=%d", len(runtime))
+        else:
+            logger.info("runtime_stale found but cooldown active (organs=%d)", len(runtime))
+    else:
+        logger.debug("runtime provenance ok")
 
     # P2 — STATE_AGE (+ unknown-state drift)
     renderer_enabled = await _probe_renderer_enabled(conn)

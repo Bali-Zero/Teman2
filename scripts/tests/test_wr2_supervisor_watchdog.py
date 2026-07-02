@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -324,10 +325,12 @@ def _make_outcome_conn(stale_rows=(), age_rows=(), rendered_rows=(), renderer_en
 
 
 def _run_outcome(wd, conn):
-    """Run _evaluate_outcome_probes with reflexion pinned healthy (its own
-    tests exercise the real file) and Telegram captured."""
+    """Run _evaluate_outcome_probes with reflexion pinned healthy and the
+    runtime-stale probe pinned empty (both have dedicated tests that exercise
+    the real files) and Telegram captured."""
     sent: list[str] = []
     with patch.object(wd, "_probe_reflexion_age", lambda: ("ok", 1.0)), \
+         patch.object(wd, "_probe_runtime_stale", lambda: []), \
          patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_outcome_probes(conn))
     return sent
@@ -504,6 +507,77 @@ def test_weekly_silent_alert_via_evaluate(wd, tmp_path, monkeypatch):
     monkeypatch.setenv("WR2_SKILL_DIR", str(tmp_path / "nowhere"))
     conn = _make_outcome_conn()
     sent: list[str] = []
-    with patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
+    with patch.object(wd, "_probe_runtime_stale", lambda: []), \
+         patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
         asyncio.run(wd._evaluate_outcome_probes(conn))
     assert any("weekly reflexion SILENT" in m and "MISSING" in m for m in sent)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# C2 RUNTIME_STALE probe — provenance stamps vs checkout on disk
+# ─────────────────────────────────────────────────────────────────────────
+
+def _write_stamp(home: Path, organ: str, **fields):
+    d = home / ".organism" / "last_seen"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{organ}.runtime.json").write_text(json.dumps(fields))
+
+
+def test_runtime_stale_missing_stamps_degrade_open(wd, tmp_path, monkeypatch):
+    monkeypatch.setattr(wd.Path, "home", classmethod(lambda cls: tmp_path))
+    assert wd._probe_runtime_stale() == []
+
+
+def test_runtime_stale_dirty_checkout_flags_even_with_dead_pid(wd, tmp_path, monkeypatch):
+    """dirty/stale-modules are CHECKOUT diseases — the process being gone
+    does not cure the mutated code on disk."""
+    monkeypatch.setattr(wd.Path, "home", classmethod(lambda cls: tmp_path))
+    _write_stamp(tmp_path, "wr2.html_apply",
+                 head_sha="a" * 40, dirty=True, stale_modules=[],
+                 checkout=str(tmp_path), pid=99999999, ts="t")
+    findings = wd._probe_runtime_stale()
+    assert len(findings) == 1
+    assert "dirty-checkout" in findings[0]["problems"][0]
+
+
+def test_runtime_stale_head_moved_with_live_pid_flags(wd, tmp_path, monkeypatch):
+    monkeypatch.setattr(wd.Path, "home", classmethod(lambda cls: tmp_path))
+    _write_stamp(tmp_path, "wr2.supervisor",
+                 head_sha="a" * 40, dirty=False, stale_modules=[],
+                 checkout="/fake/checkout", pid=os.getpid(), ts="t")
+    with patch.object(wd, "_git_head", lambda c: "b" * 40):
+        findings = wd._probe_runtime_stale()
+    assert len(findings) == 1
+    assert any(p.startswith("head-moved:") for p in findings[0]["problems"])
+
+
+def test_runtime_stale_head_moved_dead_pid_is_normal(wd, tmp_path, monkeypatch):
+    """A one-shot worker's stamp outliving its process while the checkout
+    advances is the NORMAL case — no alert (innocence, cicatrix #3)."""
+    monkeypatch.setattr(wd.Path, "home", classmethod(lambda cls: tmp_path))
+    _write_stamp(tmp_path, "wr2.html_apply",
+                 head_sha="a" * 40, dirty=False, stale_modules=[],
+                 checkout="/fake/checkout", pid=99999999, ts="t")
+    with patch.object(wd, "_git_head", lambda c: "b" * 40):
+        assert wd._probe_runtime_stale() == []
+
+
+def test_runtime_stale_clean_stamp_innocent(wd, tmp_path, monkeypatch):
+    monkeypatch.setattr(wd.Path, "home", classmethod(lambda cls: tmp_path))
+    _write_stamp(tmp_path, "wr2.supervisor",
+                 head_sha="a" * 40, dirty=False, stale_modules=[],
+                 checkout="/fake/checkout", pid=os.getpid(), ts="t")
+    with patch.object(wd, "_git_head", lambda c: "a" * 40):
+        assert wd._probe_runtime_stale() == []
+
+
+def test_runtime_stale_alert_via_evaluate(wd):
+    conn = _make_outcome_conn()
+    sent: list[str] = []
+    finding = [{"organ": "wr2.supervisor", "problems": ["head-moved:a->b (live pid 1 on old code)"], "ts": "t"}]
+    with patch.object(wd, "_probe_reflexion_age", lambda: ("ok", 1.0)), \
+         patch.object(wd, "_probe_runtime_stale", lambda: finding), \
+         patch.object(wd, "_send_telegram", lambda text: sent.append(text)):
+        asyncio.run(wd._evaluate_outcome_probes(conn))
+    assert any("runtime provenance" in m and "wr2.supervisor" in m for m in sent)
+    assert wd._state_get("last_alert_runtime_stale") is not None
