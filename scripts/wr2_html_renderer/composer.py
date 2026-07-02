@@ -75,6 +75,24 @@ UNDEFINED_FAMILIES = {
 }
 
 
+# B1 (micro, deterministic composition swap — 2026-07-02):
+# statement-bomb is a 3-15-word punch layout. A CTA/statement/closing-typed MID
+# slide whose body exceeds this budget crams the same way the "35-word take" did
+# (E2E 2026-06-13, see map_slide_to_family). B1 catches that pre-render — a
+# deterministic swap to editorial-text (which reads a long prose body cleanly) —
+# so the scarred designer_loop taxonomy (W82) never has to salvage a crammed
+# statement-bomb with font-shrink whack-a-mole. Budget is generous (the layout
+# tolerates a short 2-line statement) so the swap only fires on real overflow.
+_STATEMENT_BOMB_MAX_WORDS = 18
+
+
+def _slide_body_word_count(slide: dict[str, Any]) -> int:
+    """Words in the text a statement-bomb would actually render (statement/headline/body,
+    same precedence as the {{statement}} fill at composition time)."""
+    text = (slide.get("statement") or slide.get("headline") or slide.get("body") or "")
+    return len(str(text).split())
+
+
 @dataclass
 class SlidePlan:
     index: int  # 1-based
@@ -121,6 +139,20 @@ def map_slide_to_family(slide: dict[str, Any], index: int, total: int) -> str:
         return "cover-photo"
     st = (slide.get("slide_type") or "").lower()
     if index == total or st in {"cta", "closing", "statement"}:
+        # B1 deterministic composition swap: a MID CTA/statement slide whose body
+        # overflows the statement-bomb budget goes to editorial-text instead of
+        # cramming. The TRUE last slide (index == total) is ALWAYS statement-bomb
+        # — Art 9.5 hard rule (statement-bomb closer). Over-length there is the
+        # drafter's job (A4 closer-guard regen), NOT a layout swap: swapping the
+        # closer would break the constitution's mandatory closing statement-bomb.
+        if index != total and _slide_body_word_count(slide) > _STATEMENT_BOMB_MAX_WORDS:
+            logger.info(
+                "B1 composition swap: slide %d/%d (type=%s, %d words) "
+                "statement-bomb -> editorial-text (over %d-word budget)",
+                index, total, st or "?", _slide_body_word_count(slide),
+                _STATEMENT_BOMB_MAX_WORDS,
+            )
+            return "editorial-text"
         return "statement-bomb"
     if slide.get("is_hero_image"):
         return "photo-headline-yellow-sub"
