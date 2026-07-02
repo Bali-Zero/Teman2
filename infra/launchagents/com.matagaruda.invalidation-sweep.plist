@@ -27,7 +27,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/mata_garuda_invalidation_sweep_wrapper.sh</string>
+        <string>/Users/nuzantara/scripts/mata_garuda/mata_garuda_invalidation_sweep_wrapper.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
