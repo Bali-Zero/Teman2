@@ -280,4 +280,5 @@ Queste non sono famiglie ricorrenti; restano scar singole consultabili nel file 
 > **Manutenzione:** quando nasce una scar nuova, aggiungila al suo cluster qui (1 riga in MEMBRI +
 > aggiorna l'antidoto se la scar lo rafforza); il corpo completo va in `cicatrix-scars.md` come oggi.
 > Se una scar non rientra in nessuna delle 10 → è una candidata-orfana, OPPURE il segnale che serve una
-> **11ª superscar** (rivedi il clustering). Genesi e metodo: `research/operations/` + skill `opus-mythos`.
+> **11ª superscar** (rivedi il clustering). Genesi e metodo: `research/operations/` + skill `opus-mythos`
+> (superseded 2026-07-02 → il metodo TAC vive in `modus` Gear 3, `.claude/skills/modus/SKILL.md`).
