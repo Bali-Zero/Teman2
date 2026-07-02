@@ -798,3 +798,6 @@ research/crm/*-drafts-local/
 
 # arm_keep_worktrees.py: human-readable quarantine receipts (recovery aid, never tracked)
 .agent-receipts/
+
+# docs_sync --check self-cache (written by the tool even in check mode — must never dirty a probed checkout)
+.docs_sync_cache.json
