@@ -234,7 +234,7 @@ def _process_action(action: dict, env: EventEnvelope) -> None:
             cmd = [
                 "/Users/nuzantara/scripts/claude-cascade.sh",
                 "Run the canva-apply skill: read canva_pending.json, apply via MCP Canva tools, mark applied.",
-                "--model", "claude-sonnet-4-6",
+                "--model", "claude-sonnet-5",
             ]
             try:
                 # Fire-and-forget: don't block dispatcher loop
@@ -262,7 +262,7 @@ def _process_action(action: dict, env: EventEnvelope) -> None:
         cmd = [
             "/Users/nuzantara/scripts/claude-cascade.sh",
             "Run the canva-apply skill: read canva_pending.json, apply via MCP Canva tools, mark applied.",
-            "--model", "claude-sonnet-4-6",
+            "--model", "claude-sonnet-5",
         ]
         try:
             subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

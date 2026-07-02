@@ -219,7 +219,7 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
     # Pin the vision model (default sonnet: vision-capable + solid editorial
     # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
     # window nor trips the 120s timeout). Configurable without a code change.
-    model = os.environ.get("WR2_VISION_MODEL", "claude-sonnet-4-6")
+    model = os.environ.get("WR2_VISION_MODEL", "claude-sonnet-5")
     cmd = [
         _CLAUDE_BIN, "--print",
         "--model", model,

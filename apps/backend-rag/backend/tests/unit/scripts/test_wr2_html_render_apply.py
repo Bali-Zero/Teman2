@@ -223,7 +223,7 @@ def test_run_claude_json_timeout_budget_from_env(monkeypatch):
 
 
 def test_run_claude_json_pins_vision_model(monkeypatch):
-    """Default pins claude-sonnet-4-6; WR2_VISION_MODEL overrides. (No --model
+    """Default pins claude-sonnet-5; WR2_VISION_MODEL overrides. (No --model
     before = CLI default, heavier → 120s timeouts + quota burn.)"""
     import json as _json
 
@@ -239,7 +239,7 @@ def test_run_claude_json_pins_vision_model(monkeypatch):
     monkeypatch.delenv("WR2_VISION_MODEL", raising=False)
     claude_vision._run_claude_json("p", {"type": "object"})
     assert "--model" in captured["cmd"]
-    assert "claude-sonnet-4-6" in captured["cmd"]
+    assert "claude-sonnet-5" in captured["cmd"]
 
     monkeypatch.setenv("WR2_VISION_MODEL", "claude-opus-4-8")
     claude_vision._run_claude_json("p", {"type": "object"})
