@@ -1,0 +1,239 @@
+{
+  "generated_at": "2026-07-01",
+  "kbli_source": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+  "kbli_record_count": 1559,
+  "sector_mapping_warning": "KBLI source `sektor_id` is not equivalent to KBLI section A-U. The `sectors` array below is a KBLI-section fallback for QA only; future positive-position joins must use the actual sector taxonomy from the extracted Kepmenaker 228/2019 lampiran.",
+  "source_sektor_id_taxonomy": {
+    "resolved_count": 1342,
+    "unresolved_count": 217,
+    "rows_with_candidate_sektors": 42,
+    "counts": {
+      "I.A": 40,
+      "I.B": 113,
+      "I.C": 15,
+      "I.D": 74,
+      "I.E": 10,
+      "I.F.a": 81,
+      "I.F.b": 50,
+      "I.F.c": 42,
+      "I.F.d": 49,
+      "I.F.e": 53,
+      "I.F.f": 63,
+      "I.F.g": 61,
+      "I.F.h": 79,
+      "I.G": 202,
+      "I.H": 64,
+      "I.I": 84,
+      "I.J-P": 147,
+      "I.Q-V": 115,
+      "UNRESOLVED": 217
+    }
+  },
+  "positive_list_instrument": {
+    "instrument": "Kepmenaker 228/2019",
+    "title": "Jabatan Tertentu yang dapat di Duduki oleh Tenaga Kerja Asing",
+    "official_detail_url": "https://jdih.kemnaker.go.id/peraturan/detail/1609/keputusan-menteri-ketenagakerjaan-nomor-228-tahun-2019",
+    "official_document_label": "Kepmen_228_2019_OK.pdf",
+    "status": "Berlaku on JDIH Kemnaker as read on 2026-07-01",
+    "extraction_status": "NOT_EXTRACTED_IN_THIS_PASS"
+  },
+  "closed_list_instrument": {
+    "instrument": "Kepmenaker 349/2019",
+    "title": "Jabatan Tertentu yang Dilarang Diduduki oleh Tenaga Kerja Asing",
+    "official_detail_url": "https://jdih.kemnaker.go.id/peraturan/detail/1636/keputusan-menteri-ketenagakerjaan-nomor-349-tahun-2019",
+    "official_pdf_url": "https://jdih.kemnaker.go.id/asset/data_puu/Kepmen_349_2019.pdf",
+    "status": "Berlaku on JDIH Kemnaker as read on 2026-07-01",
+    "extracted_rows": 18
+  },
+  "sectors": [
+    {
+      "section": "A",
+      "kbli_section_name": "Pertanian, Kehutanan, dan Perikanan",
+      "kbli_code_count": 122,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "B",
+      "kbli_section_name": "Pertambangan dan Penggalian",
+      "kbli_code_count": 44,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "C",
+      "kbli_section_name": "Industri Pengolahan",
+      "kbli_code_count": 464,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "D",
+      "kbli_section_name": "Pengadaan Listrik, Gas, Uap/Air Panas dan Udara Dingin",
+      "kbli_code_count": 16,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "E",
+      "kbli_section_name": "Pengelolaan Air, Limbah, dan Daur Ulang",
+      "kbli_code_count": 19,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "F",
+      "kbli_section_name": "Konstruksi",
+      "kbli_code_count": 62,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "G",
+      "kbli_section_name": "Perdagangan Besar dan Eceran; Reparasi Mobil dan Sepeda Motor",
+      "kbli_code_count": 199,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "H",
+      "kbli_section_name": "Pengangkutan dan Pergudangan",
+      "kbli_code_count": 103,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "I",
+      "kbli_section_name": "Penyediaan Akomodasi dan Penyediaan Makan Minum",
+      "kbli_code_count": 26,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "J",
+      "kbli_section_name": "Informasi dan Komunikasi",
+      "kbli_code_count": 56,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "K",
+      "kbli_section_name": "Aktivitas Keuangan dan Asuransi",
+      "kbli_code_count": 102,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "L",
+      "kbli_section_name": "Real Estat",
+      "kbli_code_count": 14,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "M",
+      "kbli_section_name": "Aktivitas Profesional, Ilmiah dan Teknis",
+      "kbli_code_count": 55,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "N",
+      "kbli_section_name": "Aktivitas Penyewaan, Ketenagakerjaan, Agen Perjalanan dan Penunjang Usaha",
+      "kbli_code_count": 55,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "O",
+      "kbli_section_name": "Administrasi Pemerintahan, Pertahanan dan Jaminan Sosial Wajib",
+      "kbli_code_count": 33,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "P",
+      "kbli_section_name": "Pendidikan",
+      "kbli_code_count": 64,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "Q",
+      "kbli_section_name": "Aktivitas Kesehatan Manusia dan Aktivitas Sosial",
+      "kbli_code_count": 35,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "R",
+      "kbli_section_name": "Kesenian, Hiburan dan Rekreasi",
+      "kbli_code_count": 60,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "S",
+      "kbli_section_name": "Aktivitas Jasa Lainnya",
+      "kbli_code_count": 26,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "T",
+      "kbli_section_name": "Aktivitas Rumah Tangga sebagai Pemberi Kerja",
+      "kbli_code_count": 3,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    },
+    {
+      "section": "U",
+      "kbli_section_name": "Aktivitas Badan Internasional dan Badan Ekstra Internasional Lainnya",
+      "kbli_code_count": 1,
+      "mapping_authority": "FALLBACK_ONLY_NOT_TKA_AUTHORITY",
+      "positive_list_status": "INSTRUMENT_LOCATED_LAMPIRAN_NOT_EXTRACTED",
+      "kepmenaker_basis": "Kepmenaker 228/2019 tentang Jabatan Tertentu yang dapat Diduduki oleh Tenaga Kerja Asing; JDIH Kemnaker detail page status Berlaku and lists document Kepmen_228_2019_OK.pdf; lampiran rows not downloaded or extracted in this pass",
+      "notes": "Positive-list umbrella instrument located; no sector row extracted."
+    }
+  ]
+}
