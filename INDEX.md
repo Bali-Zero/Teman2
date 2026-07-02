@@ -7,17 +7,17 @@
 
 ## Cosa cerchi?
 
-| Bisogno                                       | Dove guardare                                                      | Come                                                 |
-| --------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------- |
-| Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                       | Filosofia, "prima di toccare"                        |
-| Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                       | Checklist operativa per ogni tipo di elemento        |
-| Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                              | Mappa statica top-level                              |
+| Bisogno                                       | Dove guardare                                                                       | Come                                                                     |
+| --------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                                        | Filosofia, "prima di toccare"                                            |
+| Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                                        | Checklist operativa per ogni tipo di elemento                            |
+| Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                                               | Mappa statica top-level                                                  |
 | Metriche live (count routers/servizi/vector)? | [README.md](README.md) §Tech Stack + [docs/AI_ONBOARDING.md](docs/AI_ONBOARDING.md) | Auto-sincronizzate via `docs_sync.py` (marker rimossi da CLAUDE.md, F44) |
-| Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                  | File locali all'app                                  |
-| Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                | Git + memoria persistente                            |
-| Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)     | Dispatch, fallback, timeout                          |
-| Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md) | Trauma + antibody per file chiave                    |
-| Stato della documentazione (live/stale)?      | [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)                   | Auto-generato, refresh settimanale via docs-guardian |
+| Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                                   | File locali all'app                                                      |
+| Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                                 | Git + memoria persistente                                                |
+| Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)                      | Dispatch, fallback, timeout                                              |
+| Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md)                  | Trauma + antibody per file chiave                                        |
+| Stato della documentazione (live/stale)?      | [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)                                    | Auto-generato, refresh settimanale via docs-guardian                     |
 
 ## Organi principali (top of mind)
 
@@ -155,7 +155,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`117 plist tracked in infra/launchagents/ · 64 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (55% coverage)`
+`118 plist tracked in infra/launchagents/ · 65 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (55% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).
