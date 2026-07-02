@@ -159,8 +159,9 @@ questo turno; un refuter/verifier che "boccia" senza che tu abbia ri-grepato.
 grep del padre non si delega mai.
 
 **MEMBRI:** ℹ️ META 2026-06-05 (13-agent WR2 autopsy, 3 file:line fantasma) · W74 (phantom
-`vendor/evoskill/cli/scorer.py`) · W65 (refuter falso-refuta una security finding) · W78 (cicatrice-sbagliata-propagata).
-**→ dettaglio:** cicatrix-scars.md (META-autopsy/W65/W74/W78) · `scar query "phantom citation"` · `lessons_hallucinating_tool_output_is_diabolical`
+`vendor/evoskill/cli/scorer.py`) · W65 (refuter falso-refuta una security finding) · W78 (cicatrice-sbagliata-propagata) ·
+**W90 (ground-truth verifier stantio, 2026-07-02: NB-3 "conferma" con citazioni pulite i numeri PMA PRE-risoluzione-lampiran — il catalogo dentro NB è uno snapshot del nostro dataset vecchio; 3 verdetti sbagliati in un run, near-miss di patch invertite. Antidoto: freshness-check data-fonte-NB vs data-risoluzione-strato prima di agire su un verdetto numerico; ogni re-grounding emette lista di invalidazione delle superfici derivate. W65 diceva "anche il refuter allucina"; W90: "anche il ground-truth invecchia")**.
+**→ dettaglio:** cicatrix-scars.md (META-autopsy/W65/W74/W78/**W90**) · `scar query "phantom citation"` · `lessons_hallucinating_tool_output_is_diabolical`
 
 ---
 

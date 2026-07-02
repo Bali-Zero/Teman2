@@ -1,0 +1,46 @@
+{
+  "ledger_version": "run2-registry-audit-2026-07-03",
+  "worktree": ".worktrees/kbli-registry-audit-run2",
+  "method": "Triangle: deterministic finder (Lane A cross-field 1559x6, Lane B unaudited fields 1559x3) -> NB-3 bipolar verify -> Fable final gate vs on-disk provenance (pma_cap_verified/OFFICIAL lampiran notes)",
+  "authority_rule": "dataset pma_* with pma_cap_verified=true (OFFICIAL Perpres 10/2021 lampiran, resolved 2026-06-27) OUTRANKS both curated prose and NB-3 verdicts — the NB-3 KBLI+PMA catalogue sources predate that resolution and returned 3 stale verdicts this run (03110 '30%', 50122/50123 'TERBUKA 100', 47222 'TERBATAS 49')",
+  "run1_p1_status_on_disk": {
+    "fixed_before_run2": ["86101", "86102", "86993", "68112", "84111", "84112", "59112"],
+    "fixed_this_run": ["90120", "69102", "85102"],
+    "note": "85102 resolved by REMOVING the unsupported 49-51% bilateral-cap claim (NB: catalogue TERBUKA 100, cap NOT-IN-SOURCES); Yayasan softened to practice-note anchored to PP 28/2025 Art. 167"
+  },
+  "fixes_applied": [
+    {"code": "90120", "fields": ["zantaraOpener", "baliContext"], "class": "A2 blocked-code framed as easiest-to-activate", "basis": "l4_bali BLOCCATO_CLASSE_RISCHIO, moratorium 13/5/26"},
+    {"code": "69102", "fields": ["zantaraOpener"], "class": "A2 opener omitted reserved-profession block", "basis": "l4_bali TERTUTUP, UU 18/2003 Advokat (from l4 reason)"},
+    {"code": "55209", "fields": ["baliContext"], "class": "A2 blocked-code framed as easiest entry point", "basis": "l4_bali CHIUSO_PMA_NO_BESAR (no Usaha Besar row -> UMKM reserved)"},
+    {"code": "77210", "fields": ["zantaraOpener", "baliContext"], "class": "A2 blocked-code framed as straightforward", "basis": "l4_bali BLOCCATO_CLASSE_RISCHIO, moratorium 13/5/26"},
+    {"code": "50122", "fields": ["whatYouNeed"], "class": "A1 prose said 100% vs official TERBATAS 49", "basis": "pma_cap_verified=true, sea cabotage 49% cap, Perpres 10/2021 lampiran"},
+    {"code": "50123", "fields": ["whatYouNeed"], "class": "A1 prose said 100% vs official TERBATAS 49", "basis": "pma_cap_verified=true, sea cabotage 49% cap, Perpres 10/2021 lampiran"},
+    {"code": "47221", "fields": ["whatYouNeed", "zantaraOpener"], "class": "A1 prose said max-49% vs official special-conditions", "basis": "pma_cap_special=true, Lampiran III 'Jaringan distribusi dan tempatnya khusus'"},
+    {"code": "47222", "fields": ["whatYouNeed", "zantaraOpener"], "class": "A1 prose said TERBATAS-49 vs official UMKM-reserved (TERTUTUP for PMA)", "basis": "pma_cap_verified=true, lampiran V-list UMKM reservation"},
+    {"code": "03110", "fields": ["whatYouNeed"], "class": "A1 prose said 30%-cap vs official open (absent from cap lampiran)", "basis": "pma_cap_verified=true; kemitraan nelayan lokal kept as registered condition"},
+    {"code": "85102", "fields": ["whatYouNeed"], "class": "A1 unsupported 49-51% bilateral cap removed", "basis": "NB-3: KBLI 2025 catalogue TERBUKA 100 CONFIRMED; SPK 85142 merged into 85102 CONFIRMED; Yayasan requirement NOT-IN-SOURCES -> softened to practice note (PP 28/2025 Art. 167)"}
+  ],
+  "abstained": [
+    {"code": "73100", "fields": ["whatYouNeed", "zantaraOpener", "baliContext"], "reason": "UNRESOLVED authority conflict: official Perpres 10/2021 lampiran read (2026-06-27) = absent -> TERBUKA 100 (current data) VS generated matrix + NB COM-025 claiming TERBATAS 49% per BPS 7/2025 + Perpres 14/2024. Needs primary-source check of Perpres 14/2024. Do not touch prose or data until resolved."},
+    {"code": "41011", "fields": ["whatYouNeed"], "reason": "NB CONTRADICTORY (advisory 67% JV cap vs catalogue TERBUKA 100); l4_bali layer itself encodes 67%+IUJK. Needs judul-match against lampiran for construction services. Note: IUJK was abolished post-OSS (SBU/PB-UMKU) — prose modernization pending same check."},
+    {"code": "65111", "fields": ["baliContext"], "reason": "80% cap + POJK 23/2023 citation NOT-IN-SOURCES at NB-3. Sectoral insurance instruments absent from notebook. Unverifiable -> left as-is, flagged."},
+    {"code": "69101", "fields": ["whatYouNeed"], "reason": "BENIGN: text explicitly acknowledges the divergence ('While the KBLI data shows this as TERBUKA...') — the acknowledged-divergence pattern is the correct curation form."},
+    {"code": "85571", "fields": ["whatChanged"], "reason": "B1 false positive: 'KBLI 78421 (2017)' is a 2017-vintage code; KBLI 2017 78421 = Pelatihan Kerja Teknik Swasta, judul identical to 85571 -> migration claim plausible; 12-entry mapping file is too partial to arbitrate."}
+  ],
+  "finder_innocence_lessons": {
+    "lane_A3_killed": "269/269 false positives — the #1911 class-wide moratorium prose legitimately explains the block band on non-blocked codes; BLOCKCLAIM substring over-matched (superscar #3 avoided in-flight by 8/8 adversarial sample before acting)",
+    "lane_B3_P3_demoted": "1517 empty-field hits are BY-DESIGN sparsity (baliContext curated on ~421/1559; whoThisIsFor 1180/1559; whatChanged 1538/1559) — inventory, not bugs"
+  },
+  "verification": {
+    "pma_fingerprint_sha256_prefix": "5d1d445e12d4df7d",
+    "pma_fingerprint_unchanged": true,
+    "rows": 1559,
+    "consumers_synced": ["data/source_documents", "apps/mouth/data", "apps/backend-rag/backend/data (gitignored)", "apps/backend-rag/source_documents (gitignored)"],
+    "post_patch_finder": "A2 P1: 3->0; A1 P1: 14->6 (all 6 = declared ABSTAIN set)"
+  },
+  "nb_queries": [
+    {"id": "9d8db1f675f1", "topic": "47221/47222 alcohol-adjacent retail, 50122/50123 cabotage, 73100 advertising"},
+    {"id": "fa8dcce04979", "topic": "03110 fisheries cap, 41011 construction cap, 65111 insurance cap"},
+    {"id": "8da4a7c91097", "topic": "85102 education PT-PMA vs Yayasan, SPK merger"}
+  ]
+}
