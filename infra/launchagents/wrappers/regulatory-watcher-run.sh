@@ -1,6 +1,6 @@
 #!/bin/zsh
 # regulatory-watcher cron wrapper — multi-LLM cascade
-# Order: Claude OAuth (Sonnet 4.6) → Gemini 3.1 Pro free → Codex GPT-5.5 → Ollama qwen3.5:9b local
+# Order: Claude OAuth (Sonnet 5) → Gemini 3.1 Pro free → Codex GPT-5.5 → Ollama qwen3.5:9b local
 # Cost: 0$ (4 tier all subscription/free/local)
 
 # NO `-e`: each tier may exit non-zero and the cascade MUST survive to capture
@@ -38,11 +38,11 @@ USED_LLM=""
 
 # Tier 1: Claude OAuth Sonnet
 echo "[$(date)] tier 1 — claude sonnet" >> "$LOG"
-"$HOME/.local/bin/claude" --print --model claude-sonnet-4-6 "$PROMPT_CLAUDE" >"$TMPOUT" 2>&1
+"$HOME/.local/bin/claude" --print --model claude-sonnet-5 "$PROMPT_CLAUDE" >"$TMPOUT" 2>&1
 EXIT=$?
 if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT"; then
     SUCCESS=1
-    USED_LLM="claude-sonnet-4-6"
+    USED_LLM="claude-sonnet-5"
 fi
 cat "$TMPOUT" >> "$LOG"
 
