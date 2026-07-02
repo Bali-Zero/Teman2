@@ -14,6 +14,8 @@
 
 2026-07-02 | bench run 1: a refuter APPROVED a half-false proposal — claimed it verified "peak-valley pricing doubles rates mid-July" at api-docs.deepseek.com, but neither the updates nor the pricing page contains any time-of-day pricing (re-fetched live by the final gate) | survivor #11 of wf_b0ad36b1-80d; final-gate re-fetch 2026-07-02 of api-docs.deepseek.com/updates + /quick_start/pricing | no bench change needed — this is the designed catch: the operator-side final gate re-verifies every survivor (W65: even the refuter hallucinates); the alias-retirement half of #11 survived, the pricing half was trimmed
 
+2026-07-02 | bench run 1, ALIGN-FLEET stage collides with the L1 worktree-isolation hook: stage 7 prescribes `git pull --ff-only` on MAIN checkouts, but an agent session cannot execute it even with the documented `AGENT_WORKTREE_ENFORCEMENT=false` escape (`pull` hard-blocked, `status` passes) | 2 blocked attempts on Mini main this session — alive-AI=0, tree clean, PR #1919 already on origin/main; debt routed to PENDING-ALIGN:Mini | proposed change (Zero decides): either the hook allows ff-only pull in main when alive-AI=0 ∧ tree clean, or SKILL.md ALIGN-FLEET declares agent-session main-pulls impossible-by-design and routes them to PENDING-ALIGN as the DEFAULT, reserving actual pulls to interactive/operator sessions
+
 ## bench 2026-07-02
 
 > First live run (wf_b0ad36b1-80d, 28 agents, 23 raw → 12 survived refutation → 11.5 survived the
