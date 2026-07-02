@@ -3,7 +3,7 @@
 > Born from the full-system TAC 2026-07-02 (meta-pattern **"unreconciled boundaries"**:
 > `research/operations/2026-07-02-full-system-tac-first-pass.md` §2). One registry, one runner,
 > one report, one receptor — the reconciler of reconcilers. Spec:
-> `specs/proprioception-boundary-recon-v1.md` (panel-reviewed: Codex red-team 13 findings
+> `docs/specs/proprioception-boundary-recon-v1.md` (panel-reviewed: Codex red-team 13 findings
 > incorporated, Gemini costruttivo 4/4 adopted).
 
 ## What it does
