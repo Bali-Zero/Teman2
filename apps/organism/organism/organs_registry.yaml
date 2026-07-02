@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 6e2e50f189622a4e21a1adf3703752243f2a7e860d32762da38bd23325fce16a
+checksum: b036f58565ac01a47326e48228124a7d1eda0fbe4d0aa058029af23f1b8720f3
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -975,7 +975,7 @@ organs:
   runtime: pro_launchd
   type: daemon
   expected_hb_seconds: 180
-  owner_module: scripts/federation-alert-dispatcher.sh
+  owner_module: apps/backend-rag/backend/scripts/federation_alert_daemon.py
   dependencies: []
   recovery_action: launchctl_kickstart
   recovery_params:
