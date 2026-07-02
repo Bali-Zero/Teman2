@@ -117,7 +117,7 @@ class AlertsEngine:
         for fc in forecasts:
             try:
                 alert = await self._handle_one(fc, client_lang_resolver)
-            except asyncpg.PostgresError as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
                 logger.error(
                     "DB error generating alert for client %s: %s (skipping this forecast)",
                     fc.client_id,

@@ -24,7 +24,8 @@ import json
 import logging
 import os
 import time
-from typing import Any, Mapping
+from datetime import datetime
+from typing import Any, Callable, Mapping
 
 logger = logging.getLogger("mata_garuda.workers.heartbeat")
 
@@ -62,6 +63,100 @@ def emit_heartbeat(
     except Exception as exc:  # noqa: BLE001 — emitter must stay robust
         logger.warning("mata_garuda heartbeat emit failed for %s: %s", organ_id, exc)
         return False
+
+
+
+# ── cron-gate helpers (env-driven; absent env → no-op, full back-compat) ──────
+# These absorb the two behaviors the 7 class-C ~/scripts shell wrappers carried
+# (W7 flock single-instance + gap_consumer 06-22 operating window), so those
+# crons can drop the wrapper and run the venv python directly (W84 TCC-safe +
+# repo-tracked, cicatrix #1). fcntl is stdlib — respects mata_garuda's
+# pydantic-only stack rule.
+_FLOCK_TAKEN_EXIT = 75  # matches the shell wrapper's --conflict-exit-code 75
+
+
+def _window_closed(spec: str) -> bool:
+    """spec is 'A-B' (local hours, [A, B)). Return True if NOW is outside it.
+    A malformed spec never gates (returns False) — fail-open, like no window."""
+    try:
+        a_str, _, b_str = spec.partition("-")
+        a, b = int(a_str), int(b_str)
+    except (ValueError, AttributeError):
+        return False
+    hour = datetime.now().hour
+    return hour < a or hour >= b
+
+
+def _acquire_flock(name: str):
+    """Take a non-blocking exclusive lock on /tmp/matagaruda-<name>.lock.
+    Returns the open file handle (keep it alive to hold the lock) or None if the
+    lock is already held by another run. fcntl is POSIX — macOS/Linux only."""
+    import fcntl  # local import: only crons that set MG_FLOCK pay for it
+    path = f"/tmp/matagaruda-{name}.lock"
+    fh = open(path, "w")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return fh
+    except OSError:
+        fh.close()
+        return None
+
+
+def run_with_heartbeat(
+    organ_id: str,
+    fn: "Callable[[], int | None]",
+    *,
+    metadata: Mapping[str, Any] | None = None,
+    out_dir: str | None = None,
+) -> int:
+    """Run a `main()`-style worker and ALWAYS emit a heartbeat at the end.
+
+    Stage 2 (2026-06-30): the repo-direct mata_garuda crons expose `main() -> int`
+    (an exit code), not a stats dict. This wrapper makes the green-but-dead case
+    visible uniformly: `ok` on exit 0 / None, `fail` on non-zero exit or on an
+    exception (then re-raised so launchd still records the failure). The sidecar
+    is written in a `finally`, so even a crashing worker leaves a `fail` trail —
+    the opposite of exit-code-only monitoring, which goes silent on hard crash.
+
+    Returns the worker's exit code (None → 0). Re-raises any exception from `fn`.
+    """
+    # ── operating-window gate (MG_WINDOW=A-B local hours) ────────────────────
+    _window = os.environ.get("MG_WINDOW", "").strip()
+    if _window and _window_closed(_window):
+        emit_heartbeat(organ_id, "ok",
+                       metadata={"skipped": "outside_window", "window": _window},
+                       out_dir=out_dir)
+        logger.info("%s outside operating window %s — skipping", organ_id, _window)
+        return 0
+
+    # ── single-instance gate (MG_FLOCK=<name>) — W7 anti cron-stacking ───────
+    _flock_name = os.environ.get("MG_FLOCK", "").strip()
+    _flock_fh = None
+    if _flock_name:
+        _flock_fh = _acquire_flock(_flock_name)
+        if _flock_fh is None:
+            emit_heartbeat(organ_id, "ok",
+                           metadata={"skipped": "flock_held", "flock": _flock_name},
+                           out_dir=out_dir)
+            logger.info("%s another instance holds flock %s — skipping",
+                        organ_id, _flock_name)
+            return _FLOCK_TAKEN_EXIT
+
+    status = "ok"
+    meta: dict[str, Any] = dict(metadata) if metadata else {}
+    rc = 0
+    try:
+        result = fn()
+        rc = int(result) if result is not None else 0
+        meta["exit_code"] = rc
+        status = "ok" if rc == 0 else "fail"
+        return rc
+    except BaseException as exc:  # noqa: BLE001 — emit then re-raise, never swallow
+        status = "fail"
+        meta["error"] = f"{type(exc).__name__}: {exc}"
+        raise
+    finally:
+        emit_heartbeat(organ_id, status, metadata=meta, out_dir=out_dir)
 
 
 def status_from_stats(stats: Mapping[str, int]) -> str:

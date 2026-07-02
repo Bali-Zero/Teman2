@@ -7,6 +7,7 @@ tests/unit/services/canva_renderer_v2/test_pg.py.
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import urllib.request
 from pathlib import Path
@@ -124,6 +125,51 @@ def test_run_claude_json_genuine_failure_returns_none_not_raise(monkeypatch):
     monkeypatch.setattr(claude_vision.subprocess, "run",
                         lambda *a, **k: _fake_proc(returncode=1, stderr="boom: chromium crashed"))
     assert claude_vision._run_claude_json("p", {"type": "object"}) is None
+
+
+def test_run_claude_json_promotes_numbered_oauth_slot_to_bare(monkeypatch):
+    """BUGFIX 2026-06-30: the fleet ships the MAX OAuth token in numbered slots
+    (CLAUDE_CODE_OAUTH_TOKEN_1/_2/_3); the `claude` CLI authenticates from the
+    BARE CLAUDE_CODE_OAUTH_TOKEN. If the bare var is unset, the vision call must
+    promote the first available numbered slot, else the CLI fails `Not logged in`
+    and (under WR2_VISION_REQUIRED=1) sinks the whole carousel. Verify the env
+    passed to subprocess.run carries the promoted bare token."""
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(*a, **k):
+        captured["env"] = k.get("env", {})
+        return _fake_proc(returncode=0, stdout='{"structured_output": {}}')
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "slot-two-token")
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "slot-two-token", (
+        "first available numbered slot must be promoted to the bare token"
+    )
+
+
+def test_run_claude_json_keeps_existing_bare_oauth_token(monkeypatch):
+    """If the bare CLAUDE_CODE_OAUTH_TOKEN is already set, it must be respected —
+    the numbered-slot promotion only fills an UNSET bare var, never overrides."""
+    from wr2_html_renderer import claude_vision
+
+    captured = {}
+
+    def _capture(*a, **k):
+        captured["env"] = k.get("env", {})
+        return _fake_proc(returncode=0, stdout='{"structured_output": {}}')
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "bare-token")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot-one-token")
+    monkeypatch.setattr(claude_vision.subprocess, "run", _capture)
+
+    claude_vision._run_claude_json("p", {"type": "object"})
+    assert captured["env"].get("CLAUDE_CODE_OAUTH_TOKEN") == "bare-token"
 
 
 def test_run_claude_json_timeout_raises_transient(monkeypatch):
@@ -497,12 +543,13 @@ async def test_apply_one_reconnects_before_terminal_write(monkeypatch):
         def __exit__(self, *a): return False
     monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
 
-    # render "succeeds": produce a PNG path the worker will glob
+    # render "succeeds": produce a PNG path the worker will glob.
+    # _render_carousel now returns (slides_dir, weak_slides) — N-1 semantics.
     async def _fake_render(draft_id, slides, work, vision_required):
         d = work / "carousel" / "slides"
         d.mkdir(parents=True, exist_ok=True)
         (d / "01.png").write_bytes(b"PNG")
-        return d
+        return d, []
     monkeypatch.setattr(html, "_render_carousel", _fake_render)
     monkeypatch.setattr(html, "_drive_upload_carousel", AsyncMock(return_value="https://drive/x"))
     monkeypatch.setattr(
@@ -2839,11 +2886,15 @@ async def test_designer_loop_hard_residual_logs_the_critiques(monkeypatch, caplo
 
 
 @pytest.mark.asyncio
-async def test_render_carousel_reject_cites_critiques_and_dumps_history(monkeypatch, tmp_path):
-    """On a non-converged slide, _render_carousel must (a) include the last vision
-    critiques in the raised RuntimeError (they reach the apply-log + DB
-    rejection_reason) and (b) persist the full designer history as JSON under
-    WR2_HTML_DEBUG_DIR for post-mortem (the render tmp dir is deleted on exit)."""
+async def test_render_carousel_dead_slide_cites_critiques_and_dumps_history(monkeypatch, tmp_path):
+    """A slide that produces NO usable PNG (final_png=None — a real render hole,
+    not editorial debt) must still HARD-fail: _render_carousel (a) includes the
+    last vision critiques in the raised RuntimeError (they reach the apply-log +
+    DB rejection_reason) and (b) persists the full designer history as JSON under
+    WR2_HTML_DEBUG_DIR for post-mortem (the render tmp dir is deleted on exit).
+
+    Distinct from the N-1 weak-slide path (test below): there a non-converged
+    slide WITH a best-effort PNG is placed + flagged, NOT raised."""
     import json as _json
 
     import scripts.wr2_html_render_apply as html
@@ -2874,12 +2925,95 @@ async def test_render_carousel_reject_cites_critiques_and_dumps_history(monkeypa
             "draft-test", [{"headline": "T"}], tmp_path / "work", vision_required=True
         )
     assert "title clipped at right edge" in str(ei.value)
+    assert "no PNG" in str(ei.value), "a dead slide (no PNG) must be named a render hole"
 
     dumps = list(debug_dir.glob("*.json"))
     assert dumps, "designer history JSON was not persisted"
     payload = _json.loads(dumps[0].read_text())
     assert payload["draft_id"] == "draft-test"
     assert payload["history"] == hist
+
+
+@pytest.mark.asyncio
+async def test_render_carousel_n1_weak_slide_is_placed_not_raised(monkeypatch, tmp_path):
+    """N-1 semantics (operator 2026-06-30): ONE non-converged slide that still
+    produced a usable best-effort PNG must NOT sink the carousel — its PNG is
+    placed at the canonical slot, it is recorded in weak_slides, and the carousel
+    renders. This is the core of the 'N-1 slide OK' decision: a single editorial
+    -weak slide is composition debt routed to human review, not render_failed."""
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer import composer as comp
+    from wr2_html_renderer import designer_loop as dl
+
+    # slide 1 converges clean; slide 2 does NOT converge but renders a PNG.
+    call = {"n": 0}
+
+    async def fake_loop(**kwargs):
+        call["n"] += 1
+        idx = call["n"]
+        out_dir = kwargs["out_dir"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        png = out_dir / "best.png"
+        png.write_bytes(b"PNG")
+        if idx == 2:
+            return dl.DesignerResult(
+                final_png=png, iterations=3, converged=False,
+                history=[{"iter": 1, "vision": {"passed": False, "issues": ["body too small"]}}],
+                reason="max_iters reached or not CSS-fixable",
+            )
+        return dl.DesignerResult(final_png=png, iterations=1, converged=True, history=[])
+
+    monkeypatch.setattr(dl, "run_designer_loop", fake_loop)
+    monkeypatch.setattr(comp, "_stage_assets", lambda *a, **k: None)
+    monkeypatch.setattr(comp, "make_slide_render_fn", lambda **k: None)
+    monkeypatch.setenv("WR2_HTML_DEBUG_DIR", str(tmp_path / "debug"))
+    monkeypatch.setenv("WR2_MAX_WEAK_SLIDES", "1")
+
+    slides_dir, weak = await html._render_carousel(
+        "draft-n1", [{"headline": "A"}, {"headline": "B"}], tmp_path / "work", vision_required=True
+    )
+    # both PNGs placed at canonical slots — the carousel is whole
+    assert (slides_dir / "01.png").is_file()
+    assert (slides_dir / "02.png").is_file()
+    # the weak slide is flagged for review, not dropped
+    assert len(weak) == 1
+    assert weak[0].index == 2
+    assert "body too small" in weak[0].excerpt
+
+
+@pytest.mark.asyncio
+async def test_render_carousel_too_many_weak_slides_render_failed(monkeypatch, tmp_path):
+    """Guard on the N-1 gate: a carousel with MORE weak slides than
+    WR2_MAX_WEAK_SLIDES allows is a genuinely poor draft → HARD-fail (render_failed),
+    NOT rubber-stamped. This is the cap that stops N-1 from becoming 'accept
+    anything'. With max=1, two non-converged slides must raise."""
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer import composer as comp
+    from wr2_html_renderer import designer_loop as dl
+
+    async def fake_loop(**kwargs):
+        out_dir = kwargs["out_dir"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        png = out_dir / "best.png"
+        png.write_bytes(b"PNG")
+        # EVERY slide is weak-but-rendered
+        return dl.DesignerResult(
+            final_png=png, iterations=3, converged=False,
+            history=[{"iter": 1, "vision": {"passed": False, "issues": ["dead air"]}}],
+            reason="max_iters",
+        )
+
+    monkeypatch.setattr(dl, "run_designer_loop", fake_loop)
+    monkeypatch.setattr(comp, "_stage_assets", lambda *a, **k: None)
+    monkeypatch.setattr(comp, "make_slide_render_fn", lambda **k: None)
+    monkeypatch.setenv("WR2_HTML_DEBUG_DIR", str(tmp_path / "debug"))
+    monkeypatch.setenv("WR2_MAX_WEAK_SLIDES", "1")
+
+    with pytest.raises(RuntimeError) as ei:
+        await html._render_carousel(
+            "draft-poor", [{"headline": "A"}, {"headline": "B"}], tmp_path / "work", vision_required=True
+        )
+    assert "weak slides" in str(ei.value)
 
 
 # ── facts-block body structurer (designer-loop convergence, 2026-06-12) ──────
@@ -3114,3 +3248,220 @@ def test_materialize_body_slide_facts_stack_and_centering():
         assert "justify-content:center" in html
         assert "var(--color-accent-yellow)" in html
         assert "[SOURCE" not in html
+
+
+# ── C0: idempotent Drive upload (upsert + orphan-sweep + manifest) ─────────────
+#
+# The bug this closes: the old loop did files().create per PNG per attempt, so a
+# retried/re-rendered draft accreted duplicate files (30 files = 3 attempts x 10).
+# These tests drive the REAL _drive_upload_carousel against an in-memory fake Drive
+# (no network), asserting the folder contents converge to exactly the current set.
+
+
+class _FakeMedia:
+    """Stand-in for MediaIoBaseUpload — just carries the bytes so the fake can store them."""
+
+    def __init__(self, stream, mimetype=None, resumable=False):  # noqa: ANN001
+        self._bytes = stream.read()
+
+
+class _FakeFilesRequest:
+    def __init__(self, fn):  # noqa: ANN001
+        self._fn = fn
+
+    def execute(self):  # noqa: ANN001
+        return self._fn()
+
+
+class _FakeFilesResource:
+    """Minimal Drive files() surface: list (paged), create, update, delete, get."""
+
+    def __init__(self, store):  # noqa: ANN001
+        self._store = store  # {file_id: {"id","name","parents":[...],"bytes":b}}
+        self._seq = 0
+
+    def _next_id(self):
+        self._seq += 1
+        return f"file-{self._seq:04d}"
+
+    def list(self, q=None, fields=None, pageSize=None, pageToken=None, **kw):  # noqa: ANN001,N803
+        def run():
+            files = list(self._store.values())
+            if q and "in parents" in q:
+                parent = q.split("'")[1]
+                files = [f for f in files if parent in f.get("parents", [])]
+            elif q and "mimeType = 'application/vnd.google-apps.folder'" in q:
+                files = []  # no pre-existing folder in these tests → force create path
+            return {"files": [{"id": f["id"], "name": f["name"]} for f in files]}
+
+        return _FakeFilesRequest(run)
+
+    def create(self, body=None, media_body=None, fields=None, **kw):  # noqa: ANN001
+        def run():
+            fid = self._next_id()
+            self._store[fid] = {
+                "id": fid,
+                "name": body["name"],
+                "parents": body.get("parents", []),
+                "bytes": getattr(media_body, "_bytes", b""),
+            }
+            return {"id": fid, "name": body["name"], "webViewLink": f"https://drive/{fid}", "size": "1"}
+
+        return _FakeFilesRequest(run)
+
+    def update(self, fileId=None, media_body=None, fields=None, **kw):  # noqa: ANN001,N803
+        def run():
+            self._store[fileId]["bytes"] = getattr(media_body, "_bytes", b"")
+            return {"id": fileId}
+
+        return _FakeFilesRequest(run)
+
+    def delete(self, fileId=None, **kw):  # noqa: ANN001,N803
+        def run():
+            self._store.pop(fileId, None)
+            return {}
+
+        return _FakeFilesRequest(run)
+
+    def get(self, fileId=None, fields=None, **kw):  # noqa: ANN001,N803
+        def run():
+            f = self._store[fileId]
+            return {"id": f["id"], "name": f["name"], "webViewLink": f"https://drive/{f['id']}"}
+
+        return _FakeFilesRequest(run)
+
+
+class _FakeService:
+    def __init__(self, store):  # noqa: ANN001
+        self._files = _FakeFilesResource(store)
+
+    def files(self):
+        return self._files
+
+
+class _FakeDriveSvc:
+    """Emulates ServiceAccountDriveService for _drive_upload_carousel: a bare `service`
+    plus the create_folder / upload_file_to_folder / get_file_metadata coroutines it calls."""
+
+    def __init__(self, store):  # noqa: ANN001
+        self._store = store
+        self.service = _FakeService(store)
+
+    async def create_folder(self, name):  # noqa: ANN001
+        fid = self.service._files._next_id()
+        self._store[fid] = {"id": fid, "name": name, "parents": ["root"], "bytes": b""}
+        return {"id": fid, "webViewLink": f"https://drive/{fid}"}
+
+    async def upload_file_to_folder(self, folder_id, file_content, file_name, mime_type=None):  # noqa: ANN001
+        fid = self.service._files._next_id()
+        self._store[fid] = {
+            "id": fid, "name": file_name, "parents": [folder_id], "bytes": file_content,
+        }
+        return {"id": fid, "name": file_name, "webViewLink": f"https://drive/{fid}", "size": "1"}
+
+    async def get_file_metadata(self, file_id):  # noqa: ANN001
+        f = self._store[file_id]
+        return {"id": f["id"], "name": f["name"], "webViewLink": f"https://drive/{f['id']}"}
+
+
+def _children_of(store, folder_id, suffix=None):
+    names = [f["name"] for f in store.values() if folder_id in f.get("parents", [])]
+    if suffix:
+        names = [n for n in names if n.endswith(suffix)]
+    return sorted(names)
+
+
+def _folder_id_of(store, draft_id):
+    for f in store.values():
+        if f["name"] == f"WR2-{draft_id}":
+            return f["id"]
+    raise AssertionError("folder not created")
+
+
+def _make_pngs(count):
+    d = Path(tempfile.mkdtemp(prefix="wr2-c0-"))
+    return [
+        (p := d / f"{i:02d}.png", p.write_bytes(f"png-{i}".encode()))[0]
+        for i in range(1, count + 1)
+    ]
+
+
+def test_drive_upload_is_idempotent_no_duplicate_on_rerender(monkeypatch):
+    """Re-rendering the same draft must NOT increase the Drive file count (the 30-dup bug)."""
+    from scripts import wr2_html_render_apply as html
+
+    store: dict = {}
+    monkeypatch.setattr(
+        html, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store), raising=False
+    )
+    # patch the symbol the module imports lazily inside the function
+    import backend.services.integrations.service_account_drive_service as sad
+
+    monkeypatch.setattr(sad, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store))
+    monkeypatch.setattr(html, "MediaIoBaseUpload", _FakeMedia, raising=False)
+    import googleapiclient.http as gh
+
+    monkeypatch.setattr(gh, "MediaIoBaseUpload", _FakeMedia)
+
+    pngs = _make_pngs(8)
+    asyncio.run(html._drive_upload_carousel("draftA", pngs, shadow=False))
+    fid = _folder_id_of(store, "draftA")
+    first = _children_of(store, fid, ".png")
+    ids_first = {f["name"]: f["id"] for f in store.values() if fid in f.get("parents", []) and f["name"].endswith(".png")}
+    assert first == [f"{i:02d}.png" for i in range(1, 9)]
+    assert "manifest.json" in _children_of(store, fid)
+
+    # re-render the SAME draft, SAME pngs
+    asyncio.run(html._drive_upload_carousel("draftA", pngs, shadow=False))
+    second = _children_of(store, fid, ".png")
+    ids_second = {f["name"]: f["id"] for f in store.values() if fid in f.get("parents", []) and f["name"].endswith(".png")}
+
+    assert second == first, "re-render changed the PNG set"
+    assert len(second) == 8, "re-render created duplicates"
+    assert ids_first == ids_second, "file-ids were not stable across re-render (upsert failed)"
+
+
+def test_drive_upload_sweeps_orphans_from_longer_previous_render(monkeypatch):
+    """A previous render made 10 slides; the new one makes 6 → the 4 extra PNGs are swept."""
+    import googleapiclient.http as gh
+
+    import backend.services.integrations.service_account_drive_service as sad
+    from scripts import wr2_html_render_apply as html
+
+    store: dict = {}
+    monkeypatch.setattr(sad, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store))
+    monkeypatch.setattr(gh, "MediaIoBaseUpload", _FakeMedia)
+
+    asyncio.run(html._drive_upload_carousel("draftB", _make_pngs(10), shadow=False))
+    fid = _folder_id_of(store, "draftB")
+    assert len(_children_of(store, fid, ".png")) == 10
+
+    # shorter re-render
+    asyncio.run(html._drive_upload_carousel("draftB", _make_pngs(6), shadow=False))
+    remaining = _children_of(store, fid, ".png")
+    assert remaining == [f"{i:02d}.png" for i in range(1, 7)], remaining
+    assert "07.png" not in remaining and "10.png" not in remaining
+    assert "manifest.json" in _children_of(store, fid)
+
+
+def test_drive_manifest_lists_current_slides_in_order(monkeypatch):
+    import json
+
+    import googleapiclient.http as gh
+
+    import backend.services.integrations.service_account_drive_service as sad
+    from scripts import wr2_html_render_apply as html
+
+    store: dict = {}
+    monkeypatch.setattr(sad, "ServiceAccountDriveService", lambda: _FakeDriveSvc(store))
+    monkeypatch.setattr(gh, "MediaIoBaseUpload", _FakeMedia)
+
+    asyncio.run(html._drive_upload_carousel("draftC", _make_pngs(5), shadow=False))
+    fid = _folder_id_of(store, "draftC")
+    manifest = next(
+        f for f in store.values() if fid in f.get("parents", []) and f["name"] == "manifest.json"
+    )
+    data = json.loads(manifest["bytes"].decode())
+    assert data["draft_id"] == "draftC"
+    assert [s["name"] for s in data["slides"]] == [f"{i:02d}.png" for i in range(1, 6)]
+    assert all(s["file_id"] for s in data["slides"])

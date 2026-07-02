@@ -217,7 +217,7 @@ async def fetch_memory_facts(
                 user_id,
             )
 
-    except (asyncpg.PostgresError, ValueError, RuntimeError, KeyError) as e:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError, KeyError) as e:
         logger.error(
             "❌ [ContextManager] Failed to fetch memory context for %s: %s",
             user_id,

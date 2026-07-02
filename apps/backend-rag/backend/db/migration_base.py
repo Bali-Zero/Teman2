@@ -512,7 +512,7 @@ class BaseMigration:
                 # MigrationManager.rollback_migration if ever invoked).
                 try:
                     await conn.execute(sql_forward)
-                except asyncpg.PostgresError as e:
+                except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
                     raise MigrationError(f"SQL execution failed: {e}") from e
 
                 # Verify migration

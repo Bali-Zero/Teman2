@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>GARUDA_CANONICAL_REDIS_HOST</key>
+		<string>127.0.0.1</string>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+		<key>PYTHONPATH</key>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	</dict>
+	<key>Label</key>
+	<string>com.matagaruda.bridge.adaptive</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>-u</string>
+		<string>-m</string>
+		<string>mata_garuda.bridge.nerve</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-bridge-err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-bridge.log</string>
+	<key>StartInterval</key>
+	<integer>60</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+</dict>
+</plist>

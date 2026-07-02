@@ -6,6 +6,8 @@ All values here — no .env files (OSINT blindato, local only).
 """
 from __future__ import annotations
 
+import os
+
 # Redis Streams
 STREAM_RAW = "garuda:raw"
 STREAM_ENRICHED = "garuda:enriched"
@@ -13,6 +15,13 @@ STREAM_ALERTS = "garuda:alerts"
 STREAM_DIGEST = "garuda:digest"
 STREAM_OSINT = "garuda:osint"
 STREAM_FEEDBACK = "garuda:feedback"
+
+# Stream retention cap (2026-06-30, pipeline hardening).
+# Council finding: a Redis Stream is an event ledger, NOT a permanent DB.
+# Cap every XADD with MAXLEN ~ N (approximate trim = O(1)) so the in-memory
+# stream cannot grow unbounded and OOM the host. ~100k entries ~= weeks of
+# headroom for the slowest consumer while bounding RAM. Override via env.
+STREAM_MAXLEN = int(os.environ.get("GARUDA_STREAM_MAXLEN", "100000"))
 
 # Telegram — Zero only
 TG_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
@@ -45,13 +54,21 @@ NLM_DOMAIN_ROUTING = {
 NLM_FEEDER_BATCH_SIZE = 10       # max items per run
 NLM_FEEDER_SLEEP_BETWEEN_S = 5   # seconds between MCP/CLI calls
 
-# Relevance scoring weights for business context
+# Relevance scoring weights for business context.
+# INVARIANT: every topic emitted by scorer._KEYWORD_FAST_PATH MUST be a key here,
+# else RELEVANCE_WEIGHTS.get(topic, 1) silently weights it DOWN to 1 and a
+# high-signal item never alerts (W89: 'political_risk' was missing → every new
+# Indonesian regulation got weighted_score = score - 1, below SCORE_SIGNAL).
+# test_scorer_topics_have_weights.py pins this contract.
 RELEVANCE_WEIGHTS = {
     "immigration_visa": 5,
     "tax_fiscal": 5,
     "investment_licensing": 4,
     "labor_manpower": 4,
     "provincial_bali": 4,
+    "political_risk": 5,   # new regs/perpres/permen/menteri — core signal; weight 5 so a
+                           # pure-regulation hit (default_score 3) clears SCORE_SIGNAL (4):
+                           # weighted = min(5, 3 + (5-3)*0.5) = 4.0. At 4 it'd be 3.5 (WATCH only).
     "financial_banking": 3,
     "property": 3,
     "environmental": 2,
@@ -61,6 +78,9 @@ RELEVANCE_WEIGHTS = {
 
 # Scoring thresholds
 SCORE_SIGNAL = 4    # >= 4: alert to Zero
+# Feed only items scoring >= this into NLM (council: a hard-capped sink
+# must see only high-signal items). Fail-open: un-scored items still feed.
+FEED_MIN_SCORE = int(os.environ.get("GARUDA_FEED_MIN_SCORE", "4"))
 SCORE_WATCH = 2     # >= 2: store in KB, no alert
 SCORE_NOISE = 1     # < 2: discard
 
@@ -86,10 +106,6 @@ AI_RSS_FEEDS = [
     "https://thegradient.pub/rss/",                       # The Gradient
 ]
 
-
-# ── Council (Consiglio v1) ────────────────────────────────────────────
-STREAM_COUNCIL_TOPICS = "council:topics"
-STREAM_COUNCIL_DECISIONS = "council:decisions"
 
 # ── Phase 1 — Bridge & Nexus integration ──────────────────────────────
 from pathlib import Path

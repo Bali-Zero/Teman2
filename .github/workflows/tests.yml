@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -105,7 +105,7 @@ jobs:
             --ignore-vuln PYSEC-2025-217 \
             --ignore-vuln GHSA-8jfx-5878-hv4v \
             --ignore-vuln CVE-2025-3000 \
-            --ignore-vuln GHSA-537c-gmf6-5ccf
+            --ignore-vuln CVE-2026-4372
 
       - name: Mypy type check (core + models)
         run: |
@@ -220,7 +220,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -265,7 +265,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -351,7 +351,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6

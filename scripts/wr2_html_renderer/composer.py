@@ -31,6 +31,7 @@ import asyncio
 import json
 import logging
 import re
+import shutil
 from dataclasses import dataclass
 from html import escape as _html_escape
 from pathlib import Path
@@ -1276,22 +1277,40 @@ def make_slide_render_fn(
     from .renderer import render_html_files
 
     async def _render_fn(slide_with_levers: dict[str, Any], png_path: Path) -> None:
-        # Re-materialize THIS slide's HTML with the loop's accumulated levers.
-        # materialize writes into slides_dir; the renderer expects assets +
-        # the HTML under output_dir/"slides", so we render with
-        # output_dir = slides_dir.parent and let it use slides_dir.
-        render_root = slides_dir.parent
+        # SLIDE-PRIVATE RENDER NAMESPACE (cover-drop fix 2026-06-30, superscar #5/#9):
+        # render_html_files names its output by the 1-based position in the spec
+        # list, which is ALWAYS 1 here (single-element list) → it writes "01.png".
+        # If that landed in the shared slides_dir, EVERY slide would transiently
+        # write slides_dir/01.png — clobbering slide 1's already-placed cover
+        # before the upload glob runs (observed: Drive got 02..08, no cover).
+        # Cure: render each slide into its OWN private scratch dir, then move the
+        # PNG to its canonical slot. The transient "01.png" can never collide with
+        # another slide's canonical home because it lives under .render-NN/slides/.
+        render_root = slides_dir / f".render-{index:02d}"
+        scratch_slides = render_root / "slides"
+        scratch_slides.mkdir(parents=True, exist_ok=True)
+        # Stage assets (fonts/logo/_base.css) into the scratch slides dir so the
+        # co-located HTML resolves them under one file:// origin, and copy the
+        # downloaded hero (if any) alongside — materialize/render expect both.
+        _stage_assets(scratch_slides)
+        if hero_filename:
+            hero_src = slides_dir / hero_filename
+            if hero_src.is_file():
+                shutil.copy2(hero_src, scratch_slides / hero_filename)
+        # Re-materialize THIS slide's HTML with the loop's accumulated levers into
+        # the private scratch dir.
         await materialize_slide_html(
-            slide_with_levers, slides_dir, index=index, total=total, hero_filename=hero_filename
+            slide_with_levers, scratch_slides, index=index, total=total, hero_filename=hero_filename
         )
-        html_path = slides_dir / f"{index:02d}.html"
-        # render_html_files writes PNG to (render_root/"slides")/f"{enum_idx:02d}.png"
-        # where enum_idx is the 1-based position in the list → always "01" here.
+        html_path = scratch_slides / f"{index:02d}.html"
         # Thread the layout family (same derivation materialize_slide_html used)
         # so the hero-visibility gate samples the right band for this layout.
         family = map_slide_to_family(slide_with_levers, index, total)
         if family in UNDEFINED_FAMILIES:
             family = "photo-headline-yellow-sub"
+        # render_html_files writes PNG to (render_root/"slides")/f"{enum_idx:02d}.png"
+        # with enum_idx always 1 (single-element list) → render_root/slides/01.png,
+        # which is now PRIVATE to this slide.
         res = await render_html_files(
             [(html_path, expect_hero_for_index(slide_with_levers, index), family)],
             render_root,
@@ -1302,12 +1321,16 @@ def make_slide_render_fn(
         if res.png_paths:
             produced = Path(res.png_paths[0])
         else:
-            cand = render_root / "slides" / "01.png"
+            cand = scratch_slides / "01.png"
             if cand.is_file():
                 produced = cand
         if produced and produced.is_file() and produced.resolve() != png_path.resolve():
             png_path.parent.mkdir(parents=True, exist_ok=True)
             produced.replace(png_path)
+        # Best-effort cleanup of the scratch dir so it never pollutes the upload
+        # glob (which scans slides_dir/*.png — .render-NN/ is a subdir so its PNGs
+        # are NOT globbed, but we remove it to keep the workspace clean).
+        shutil.rmtree(render_root, ignore_errors=True)
 
     return _render_fn
 

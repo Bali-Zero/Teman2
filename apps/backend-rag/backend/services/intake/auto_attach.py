@@ -50,7 +50,7 @@ import asyncpg
 
 from backend.services.intake import crm_delivery as intake_crm_delivery
 from backend.services.intake import writer as intake_writer
-from backend.services.intake.routing import _match_sender_phone
+from backend.services.intake.routing import _match_sender_phone, normalize_sender_phone
 
 logger = logging.getLogger("zantara.intake.auto_attach")
 
@@ -62,6 +62,66 @@ DIRECT_PHONE_AUTO_ATTACH_ACTOR = "system:auto-direct-phone"
 # Terminal status for an auto-committed proposal (migration 234). Distinct from
 # the human ``routed`` so reports / undo can target machine commits.
 AUTO_ROUTED_STATUS = "auto_routed"
+
+INTERNAL_PHONE_NUMBERS_ENV = "BZ_INTERNAL_PHONE_NUMBERS"
+_INTERNAL_PREFIX_SUFFIX = "*"
+
+
+def _normalize_internal_phone_token(value: object, *, allow_prefix: bool = False) -> str | None:
+    normalized = normalize_sender_phone(value)
+    if normalized or not allow_prefix:
+        return normalized
+    digits = re.sub(r"\D", "", str(value or ""))
+    if not digits:
+        return None
+    if digits.startswith("0"):
+        digits = "62" + digits[1:]
+    elif digits.startswith("8"):
+        digits = "62" + digits
+    return digits
+
+
+def _load_internal_phone_config(raw: str | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    numbers: list[str] = []
+    prefixes: list[str] = []
+    for item in (raw or "").split(","):
+        token = item.strip()
+        if not token:
+            continue
+        is_prefix = token.endswith(_INTERNAL_PREFIX_SUFFIX)
+        if is_prefix:
+            token = token[: -len(_INTERNAL_PREFIX_SUFFIX)]
+        normalized = _normalize_internal_phone_token(token, allow_prefix=is_prefix)
+        if not normalized:
+            continue
+        if is_prefix:
+            prefixes.append(normalized)
+        else:
+            numbers.append(normalized)
+    return (tuple(numbers), tuple(prefixes))
+
+
+INTERNAL_PHONE_NUMBERS, INTERNAL_PHONE_PREFIXES = _load_internal_phone_config(
+    os.environ.get(INTERNAL_PHONE_NUMBERS_ENV)
+)
+
+
+def _internal_phone_config() -> tuple[frozenset[str], frozenset[str]]:
+    env_numbers, env_prefixes = _load_internal_phone_config(
+        os.environ.get(INTERNAL_PHONE_NUMBERS_ENV)
+    )
+    return (
+        frozenset((*INTERNAL_PHONE_NUMBERS, *env_numbers)),
+        frozenset((*INTERNAL_PHONE_PREFIXES, *env_prefixes)),
+    )
+
+
+def _is_internal_sender_phone(sender_phone: str | None) -> bool:
+    normalized = normalize_sender_phone(sender_phone)
+    if not normalized:
+        return False
+    numbers, prefixes = _internal_phone_config()
+    return normalized in numbers or any(normalized.startswith(prefix) for prefix in prefixes)
 
 
 def auto_attach_enabled() -> bool:
@@ -298,6 +358,13 @@ async def evaluate_direct_phone_concordance(
         return {
             "concordant": False,
             "reason": "sender phone matched a forwarder, not the document subject",
+            "phone_client_id": None,
+            "phone_match_count": 0,
+        }
+    if _is_internal_sender_phone(sender_phone):
+        return {
+            "concordant": False,
+            "reason": "sender phone is internal-number/operator relay (never client concordance)",
             "phone_client_id": None,
             "phone_match_count": 0,
         }

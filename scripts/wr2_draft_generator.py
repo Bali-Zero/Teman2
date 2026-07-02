@@ -62,6 +62,114 @@ VALID_TONES = {
     "tecnico",
 }
 
+# ── A1 keystone: liveness_tier propagation (cicatrix #9 schema-drift) ──────────
+# The topic selector already computes a liveness_tier and persists it inside
+# brief_json (wr2_topic_selector.py: "liveness_tier": top_item.get(...)), but the
+# drafter used to read enrichment + live_reasons and DROP this field on the floor.
+# A1 wires it end-to-end: read it here, hand Claude a one-line editorial framing so
+# the narrative matches the story's timeliness. A1 is framing ONLY — it deliberately
+# does NOT constrain slide count (that's A2) or tone (that's A3); those hang off the
+# SAME injection point in later PRs. Mirrors selector's LIVENESS_TIER_VALID (SSOT).
+LIVENESS_TIER_VALID = {"breaking", "developing", "evergreen"}
+
+# One-line editorial framing per tier. Neutral on length/tone — pure "how timely is
+# this" context. "manual" (operator-inserted topics) and anything unknown → no line.
+_LIVENESS_FRAMING = {
+    "breaking": (
+        "EDITORIAL CONTEXT — liveness: BREAKING. This is fast-moving, just-happened news; "
+        "write with urgency and a clear 'what changed / what to do now' spine."
+    ),
+    "developing": (
+        "EDITORIAL CONTEXT — liveness: DEVELOPING. This story is still unfolding; frame it as "
+        "an evolving situation readers should track, not a settled conclusion."
+    ),
+    "evergreen": (
+        "EDITORIAL CONTEXT — liveness: EVERGREEN. This is durable, reference-grade material; "
+        "write it to stay useful for months, explanatory rather than time-pegged."
+    ),
+}
+
+
+def _normalise_liveness_tier(raw: Any) -> str:
+    """Lower-case + validate against the selector's SSOT set. Unknown / missing /
+    'manual' collapse to '' (→ no framing line injected). Never raises."""
+    tier = str(raw or "").strip().lower()
+    return tier if tier in LIVENESS_TIER_VALID else ""
+
+
+# ── A2: length-per-story-type (D1×D2) ─────────────────────────────────────────
+# Deep-research (Socialinsider ~3M carousels) put the engagement TROUGH at 7 slides
+# — the exact default the model drifted to — and the peak near 10. So instead of a
+# flat "6-8", steer the count by liveness: breaking news is punchier (fewer, faster
+# slides), evergreen reference material rewards depth (more). This is a PROMPT steer,
+# not a Python clamp: distinct_claims isn't a structured field (it's prose in
+# the_facts/in_practice), so the model — which is reading that prose — is better
+# placed to pick the count than a brittle regex would be.
+#
+# Targets live INSIDE the existing hard guard (_normalise_slides rejects <6 or >11),
+# so A2 never produces a count the guard would reject. The plan's clamp(5,10) floor of
+# 5 is deliberately raised to 6 here: dropping the guard to 5 is a separate, riskier
+# change, out of scope for A2. Ranges: breaking→6-7, developing→7-8, evergreen→9-10.
+#
+# SCOMMESSA-ESTERNA (honest): our own corpus is all-7 → zero internal length signal.
+# This bets on Socialinsider's audience generalising to ours. We instrument slide_count
+# + tier (council_meta) so it's measurable after 4-6 weeks, not optimised blind.
+_LENGTH_GUIDANCE = {
+    "breaking": (
+        "LENGTH — this is breaking news: keep it TIGHT, 6-7 slides. Lead with what "
+        "changed, cut anything that isn't the news or the immediate action."
+    ),
+    "developing": (
+        "LENGTH — this is a developing story: 7-8 slides. Enough to frame the moving "
+        "parts without padding."
+    ),
+    "evergreen": (
+        "LENGTH — this is evergreen reference material: go deeper, 9-10 slides. Use the "
+        "room to explain thoroughly; depth is the point for durable content."
+    ),
+}
+
+
+def _length_guidance(liveness_tier: str) -> str:
+    """The per-tier slide-count steer, or '' for unknown/manual (model keeps 6-8)."""
+    return _LENGTH_GUIDANCE.get(liveness_tier, "")
+
+
+# ── A3: tone-per-story-type (D2 × the most mature organ) ───────────────────────
+# The model already picks ONE of the 7 Council tones from the prompt's TONE
+# REGISTERS block. A3 nudges that pick by liveness_tier so timeliness and voice
+# agree: breaking news reads best as procedural/analytic ("what changed, what to
+# do"), an unfolding story as analytic/militant, durable reference as pedagogic/
+# ritual (explain thoroughly, lasting significance).
+#
+# PREFERENCE, not a hard constraint — deliberately (cicatrix #3 over-match): the
+# downstream validator (_normalise_slides) only rejects a tone that isn't in
+# VALID_TONES, NOT one that's "wrong for the tier". If A3 hard-forced a tone we'd
+# get spurious mismatches when the content genuinely wants another register. So the
+# line says "PREFER x/y; pick another only if the content clearly demands it" and
+# Legge 5 (human publishes) is the final backstop against over-constraint.
+#
+# Preferred tones are a SUBSET of VALID_TONES (asserted by a test) — a preference
+# the validator can never reject.
+_TONE_PREFERENCE = {
+    "breaking": ("tecnico", "analitico"),
+    "developing": ("analitico", "militante"),
+    "evergreen": ("pedagogico", "rituale"),
+}
+
+
+def _tone_guidance(liveness_tier: str) -> str:
+    """Per-tier register preference line, or '' for unknown/manual (model free)."""
+    prefs = _TONE_PREFERENCE.get(liveness_tier)
+    if not prefs:
+        return ""
+    joined = " or ".join(prefs)
+    return (
+        f"TONE — for this {liveness_tier} story, PREFER the {joined} register; pick "
+        "another of the 7 only if the content clearly demands it."
+    )
+
+
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
@@ -457,6 +565,7 @@ def _build_draft_prompt(
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
+    liveness_tier: str = "",
 ) -> str:
     """Build the slide-composition prompt.
 
@@ -481,7 +590,21 @@ def _build_draft_prompt(
         # Legacy path: truncated summary. Always available as fallback.
         body = summary[:3500]
 
-    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}
+    # A1 framing + A2 length + A3 tone steer (all empty for unknown/manual tier).
+    steer_lines = [
+        _LIVENESS_FRAMING.get(liveness_tier, ""),
+        _length_guidance(liveness_tier),
+        _tone_guidance(liveness_tier),
+    ]
+    steer_block = "".join(f"\n\n{line}" for line in steer_lines if line)
+
+    # A2: the closing count must not contradict the length steer ("evergreen → 9-10"
+    # while the footer still barks "6-8"). Derive the closing range from the tier.
+    closing_range = {
+        "breaking": "6-7", "developing": "7-8", "evergreen": "9-10",
+    }.get(liveness_tier, "6-8")
+
+    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}{steer_block}
 
 ---
 
@@ -496,7 +619,7 @@ Content:
 
 ---
 
-Produce the full 6-8 slide JSON NOW. English content. No text outside the JSON object.
+Produce the full {closing_range} slide JSON NOW. English content. No text outside the JSON object.
 """
 
 
@@ -522,11 +645,12 @@ async def claude_compose_slides(
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
     avoid_steer: str = "",
+    liveness_tier: str = "",
 ) -> dict[str, Any]:
     prompt = _build_draft_prompt(
         topic, summary, source_url,
         enrichment=enrichment, live_reasons=live_reasons,
-        avoid_steer=avoid_steer,
+        avoid_steer=avoid_steer, liveness_tier=liveness_tier,
     )
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
@@ -1022,11 +1146,14 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     live_reasons = brief.get("live_news_reasons") or []
     if not isinstance(live_reasons, list):
         live_reasons = []
+    # A1 keystone: the selector already put this in brief_json — read it (was dropped).
+    liveness_tier = _normalise_liveness_tier(brief.get("liveness_tier"))
 
     logger.info(
-        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s",
+        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s liveness_tier=%s",
         draft_id, topic[:80],
         bool(enrichment), brief.get("live_news_score"),
+        liveness_tier or "(none)",
     )
 
     # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
@@ -1050,7 +1177,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             parsed = await claude_compose_slides(
                 topic=topic, summary=summary, source_url=source_url,
                 enrichment=enrichment, live_reasons=live_reasons,
-                avoid_steer=avoid_steer,
+                avoid_steer=avoid_steer, liveness_tier=liveness_tier,
             )
         except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
             logger.error("Claude OAuth failed: %s", e)
@@ -1112,9 +1239,10 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         )
 
     logger.info(
-        "Slides composed: register=%s count=%d cover_prompt=%r",
+        "Slides composed: register=%s count=%d liveness_tier=%s cover_prompt=%r",
         register,
         len(slides),
+        liveness_tier or "(none)",
         slides[0]["image_prompt"][:80],
     )
 
@@ -1134,6 +1262,11 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         "cover_url": cover_url,
         "cover_error": cover_err,
         "composed_at": datetime.now(timezone.utc).isoformat(),
+        # A2 instrumentation: the length bet is on EXTERNAL data (Socialinsider), our
+        # corpus has zero internal length signal. Persist tier + count so after 4-6
+        # weeks we can query whether breaking→6-7 / evergreen→9-10 actually paid off.
+        "liveness_tier": liveness_tier or None,
+        "slide_count": len(slides),
     }
     await _persist_ready(conn, draft_id, register, slides, council_meta)
     logger.info("Draft %s → status=drafts", draft_id)
