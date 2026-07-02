@@ -43,8 +43,17 @@ export const meta = {
   ],
 };
 
-const today = (args && args.today) || "UNKNOWN-DATE";
-const days = (args && args.days) || 30;
+// Run 1 (2026-07-02, wf_b0ad36b1-80d) proved the harness can deliver `args` as a JSON-encoded
+// STRING: `args.today` was silently undefined and the whole run stamped "UNKNOWN-DATE".
+// Parse defensively, then FAIL LOUD — a bench that mislabels its own evidence is worse than
+// one that refuses to run.
+const A = typeof args === "string" ? JSON.parse(args) : args || {};
+const today = A.today;
+if (!/^\d{4}-\d{2}-\d{2}$/.test(today || ""))
+  throw new Error(
+    `modus-bench: args.today missing or not YYYY-MM-DD (got ${JSON.stringify(A.today)}) — Date.now is unavailable in workflow scripts, the caller must pass it`,
+  );
+const days = A.days || 30;
 
 const PROPOSALS = {
   type: "object",
