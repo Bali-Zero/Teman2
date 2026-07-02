@@ -30,7 +30,10 @@ Conditions closed here (WR2 wiring v4):
 Kill switch: system_settings.wr2_html_renderer_enabled (missing/!=true => no-op).
 Env: DATABASE_URL (required), WR2_HTML_SHADOW (1=dry-run), WR2_VISION_REQUIRED (1=enforce
 vision fail-closed), WR2_HTML_MAX_ATTEMPTS (circuit breaker, default 3),
-WR2_NOTIFY_RECIPIENTS (comma phones; default the two below), WR2_HTML_HEARTBEAT_SECS (60).
+WR2_NOTIFY_RECIPIENTS (comma phones; default the two below), WR2_HTML_HEARTBEAT_SECS (60),
+WR2_RUNTIME_SHA_GATE (C2 deploy-fork content-gate: off|warn|strict, default warn —
+warn logs provenance problems and proceeds; strict refuses impure boots and aborts
+pre-Drive when HEAD moves mid-run, releasing the lease without burning an attempt).
 """
 
 from __future__ import annotations
@@ -55,6 +58,33 @@ import asyncpg  # noqa: E402
 
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
 from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
+
+# ── C2 runtime provenance (deploy-fork content-gate) — fail-open on any error ──
+# scripts/lib is not a package: importlib load, same pattern as wr2_reflexion_synthesis.
+try:
+    import importlib.util as _ilu  # noqa: E402
+
+    _rs_spec = _ilu.spec_from_file_location(
+        "wr2_runtime_stamp", str(_REPO / "scripts" / "lib" / "wr2_runtime_stamp.py")
+    )
+    runtime_stamp = _ilu.module_from_spec(_rs_spec)
+    _rs_spec.loader.exec_module(runtime_stamp)
+except Exception:  # noqa: BLE001 — provenance must never break the worker
+    runtime_stamp = None
+
+# Load-bearing modules whose LIVE content is compared blob-per-file vs HEAD (W88).
+_WATCHED_MODULES = (
+    Path(__file__),
+    _REPO / "apps" / "backend-rag" / "backend" / "services" / "canva_renderer_v2" / "_pg.py",
+    _REPO / "scripts" / "wr2_html_renderer" / "designer_loop.py",
+)
+# Populated once per run() by the boot stamp; read by the pre-Drive gate.
+_BOOT_STAMP: dict = {}
+
+
+class RuntimeStale(Exception):
+    """Strict runtime-sha gate tripped: NOT a draft defect — released without
+    burning an attempt (same no-burn contract as VisionTransient)."""
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 # Silence httpx/httpcore INFO logs that would otherwise leak the Telegram bot token in the request URL
@@ -567,6 +597,19 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             if stop.is_set():
                 raise RuntimeError("lease_lost_before_drive")
 
+            # C2 gate — BEFORE Drive, not just before persist (a blocked persist
+            # after an upload still leaves orphan Drive artifacts). Default mode
+            # is 'warn': log-only, zero pipeline effects; 'strict' is armed
+            # separately (PENDING-ARMS ledger).
+            gate_mode = os.environ.get("WR2_RUNTIME_SHA_GATE", "warn").strip().lower()
+            if runtime_stamp is not None and _BOOT_STAMP and gate_mode != "off":
+                disk_head = runtime_stamp.current_head(_REPO)
+                verdict, reason = runtime_stamp.gate_verdict(gate_mode, _BOOT_STAMP, disk_head)
+                if verdict == "warn":
+                    logger.warning("runtime-sha gate: %s (mode=warn, proceeding)", reason)
+                elif verdict == "block":
+                    raise RuntimeStale(reason)
+
             # the render just took ~15 min — main_conn may have been closed idle
             # by the pg-proxy; reconnect before the terminal write so a converged
             # carousel actually reaches status='rendered' (2026-06-12 SCAR).
@@ -615,6 +658,27 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     f"Re-open by having them text +62 821-3465-159, then re-enqueue."
                 )
             return f"rendered report={report}"
+        except RuntimeStale as exc:
+            # Deploy landed mid-run / impure provenance in strict mode: the
+            # draft is healthy — release WITHOUT burning an attempt and let the
+            # next (fresh-code) invocation render it.
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+            await main_conn.execute(
+                """
+                UPDATE war_room_drafts
+                   SET status='drafts_imaged_checked', lease_owner=NULL,
+                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
+                 WHERE id=$1 AND lease_owner=$2 AND status='rendering'
+                """,
+                draft_id, owner,
+            )
+            await _ops_alert(
+                f"WR2 HTML draft={draft_id} aborted by runtime-sha gate (strict): {exc} "
+                f"— draft requeued, no attempt burned. Restart/kickstart the worker "
+                f"so the next run imports the deployed code."
+            )
+            logger.warning("draft %s runtime-stale abort (no attempt burned): %s", draft_id, exc)
+            return f"runtime_stale:{exc}"
         except VisionTransient as exc:
             # transient vision-infra failure (HTTP 429 quota window OR endpoint
             # timeout) — NOT a draft defect. Release the lease WITHOUT touching
@@ -742,7 +806,36 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
         logger.error("DATABASE_URL not set")
         return 2
 
-    owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    # C2 boot stamp: provenance of the code THIS run imports. One-shot worker →
+    # import-time == run-time; the stamp is per-run truth. Fail-open.
+    gate_mode = os.environ.get("WR2_RUNTIME_SHA_GATE", "warn").strip().lower()
+    if runtime_stamp is not None:
+        _BOOT_STAMP.clear()
+        _BOOT_STAMP.update(runtime_stamp.compute_runtime_stamp(_REPO, _WATCHED_MODULES))
+        runtime_stamp.write_runtime_stamp("wr2.html_apply", _BOOT_STAMP)
+        impure = bool(
+            _BOOT_STAMP.get("dirty")
+            or _BOOT_STAMP.get("stale_modules")
+            or _BOOT_STAMP.get("head_sha") is None
+        )
+        if impure and gate_mode == "strict":
+            detail = (
+                f"dirty={_BOOT_STAMP.get('dirty')} stale={_BOOT_STAMP.get('stale_modules')} "
+                f"head={_BOOT_STAMP.get('head_sha')}"
+            )
+            logger.error("runtime provenance impure, strict gate → refusing to render: %s", detail)
+            await _ops_alert(f"WR2 HTML worker refused to render (strict runtime-sha gate): {detail}")
+            return 3
+        if impure:
+            logger.warning(
+                "runtime provenance impure (gate=%s): dirty=%s stale=%s",
+                gate_mode, _BOOT_STAMP.get("dirty"), _BOOT_STAMP.get("stale_modules"),
+            )
+
+    # The runtime SHA rides in the lease owner (visible in DB per rendering row).
+    # Built ONCE and passed everywhere — the CAS requires exact-string equality.
+    head12 = (_BOOT_STAMP.get("head_sha") or "nohead")[:12]
+    owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}@{head12}"
     # R4.2 drain-loop (P-1): keep fetching batches until the queue is empty so a
     # supervisor kickstart swallowed while we are busy still gets its draft
     # processed this run (restores wr2_supervisor.py:20-22 drain assumption).
