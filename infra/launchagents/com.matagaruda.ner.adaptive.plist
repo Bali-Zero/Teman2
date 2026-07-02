@@ -4,31 +4,33 @@
 <dict>
 	<key>EnvironmentVariables</key>
 	<dict>
+		<key>GARUDA_CANONICAL_REDIS_HOST</key>
+		<string>127.0.0.1</string>
 		<key>HOME</key>
 		<string>/Users/nuzantara</string>
+		<key>MG_FLOCK</key>
+		<string>ner-worker</string>
 		<key>PATH</key>
-		<string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
 		<key>PYTHONPATH</key>
 		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
 	</dict>
-	<key>KeepAlive</key>
-	<false/>
 	<key>Label</key>
-	<string>com.matagaruda.kg-linker</string>
+	<string>com.matagaruda.ner.adaptive</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
 		<string>-u</string>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/scripts/run_kg_linker.py</string>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/scripts/run_ner_worker.py</string>
 	</array>
 	<key>RunAtLoad</key>
 	<false/>
 	<key>StandardErrorPath</key>
-	<string>/Users/nuzantara/logs/matagaruda-kg-linker.error.log</string>
+	<string>/Users/nuzantara/logs/matagaruda-ner-worker-err.log</string>
 	<key>StandardOutPath</key>
-	<string>/Users/nuzantara/logs/matagaruda-kg-linker.log</string>
+	<string>/Users/nuzantara/logs/matagaruda-ner-worker.log</string>
 	<key>StartInterval</key>
-	<integer>3600</integer>
+	<integer>300</integer>
 	<key>WorkingDirectory</key>
 	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
 </dict>
