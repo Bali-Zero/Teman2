@@ -129,6 +129,26 @@ unreadable at full open size, or if the dominant HEADLINE itself is illegible.
 2. HIERARCHY: does the title dominate, with sub-headline and body clearly subordinate? Do key numbers stand out?
 3. BALANCED: does it breathe, or is text crammed/floating awkwardly? Is the photo (if any) used well — does it dominate the cover? A 3-line title with a slightly shorter last line is acceptable if it reads cleanly; only flag wrap as a problem when it produces a true one-word orphan or a jarring shape. IMPORTANT — generous margin is NOT dead-air when it is FRAMED: a text-only editorial slide (no hero photo) that places a short yellow rule above the heading AND a thin full-width hairline rule just above the footer logo is using deliberate NYT/FT editorial restraint. The empty band between the body and that bottom hairline is intentional margin, not a layout bug — judge such a slide balanced=true as long as the content block reads cleanly and is bracketed top (yellow rule) and bottom (hairline above logo). Only set balanced=false for UNFRAMED voids (text floating in empty space with nothing bracketing the lower edge), genuinely crammed text, or a block pushed hard to one edge. Do NOT propose 'rerender' merely because a framed editorial slide has breathing room below the text.
 
+CALIBRATION RUBRIC (make the three judgments concrete, not "by feel" — count markers, do not vibe-check):
+
+hierarchy_ok = false only if 2+ of these fire (a single one is a nudge, not a fail):
+  - the headline does NOT clearly dominate — sub-headline or body competes for the eye at the same weight
+  - a key number/date that should anchor the slide is buried in body text at body weight instead of standing out
+  - three or more text elements share one visual weight so the eye has no entry point
+  - the eyebrow/kicker is larger or heavier than the sub-headline below it (inverted ladder)
+If only 1 fires, hierarchy_ok = true (it reads with a clear-enough top-down order).
+
+balanced = false only if 2+ of these fire (the framed-margin exception above always wins first):
+  - text is genuinely crammed — lines touch or nearly touch, no gutter between blocks
+  - a block is shoved hard against one edge with a large UNFRAMED void opposite (nothing bracketing that void)
+  - the photo (on a hero slide) is decorative filler that adds no meaning, or is cropped so the subject is lost
+  - competing focal points fight for attention with no clear primary
+A framed editorial slide with breathing room below the text is balanced=true (see the IMPORTANT note above).
+
+readable is a HARD signal, not a rubric: set readable=false whenever ANY headline/body word is genuinely hard to read at full open size (low contrast, too small, occluded) — one real illegibility is enough. Do NOT soften readable with the 2+ rule; it is the one dimension where a single defect fails.
+
+Anchor these to the brand's reference: NYT/FT/Bloomberg editorial restraint (one dominant headline, quiet secondary text, generous FRAMED margin), NOT dense marketing where everything shouts. When unsure between a nudge and a fail, prefer passing — a slightly-imperfect but legible, on-brand slide is publish-quality; reserve false verdicts for defects a reader would actually notice.
+
 Brand rules you must respect (do NOT propose violating these): anthracite/white/yellow/red palette only, Montserrat font, logo present, no emoji, regulatory citations verbatim.
 
 If it is publish-quality, set passes=true. Otherwise list concrete issues and propose levers from this exact set:
