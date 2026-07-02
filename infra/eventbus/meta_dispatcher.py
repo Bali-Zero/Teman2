@@ -133,10 +133,13 @@ def _send_telegram(text: str) -> bool:
 
 
 def _check_redis_health() -> bool:
-    """PING Mini Redis. Returns True if reachable. Caches state to detect 3-fail streaks."""
+    """PING configured Redis. Returns True if reachable."""
     import redis
     try:
-        r = redis.Redis(host="100.93.236.6", port=6379, socket_timeout=3, socket_connect_timeout=3)
+        host = os.environ.get("BZ_REDIS_HOST", "100.93.236.6")
+        port = int(os.environ.get("BZ_REDIS_PORT", "6379"))
+        password = os.environ.get("REDIS_PASSWORD") or None
+        r = redis.Redis(host=host, port=port, password=password, socket_timeout=3, socket_connect_timeout=3)
         r.ping()
         return True
     except Exception:
@@ -166,9 +169,11 @@ def _maybe_check_redis_health() -> None:
         log.warning("Redis health PING failed (%d consecutive)",
                     _redis_health_state["consecutive_fails"])
         if _redis_health_state["consecutive_fails"] >= 3 and not _redis_health_state["alerted"]:
+            host = os.environ.get("BZ_REDIS_HOST", "100.93.236.6")
+            port = os.environ.get("BZ_REDIS_PORT", "6379")
             _send_telegram(
-                "EVENTBUS DOWN — Redis Mini (100.93.236.6:6379) unreachable for 3+ checks. "
-                "Check Tailscale + Mini status. Bus stalled."
+                f"EVENTBUS DOWN — Redis ({host}:{port}) unreachable for 3+ checks. "
+                "Check Redis host + network status. Bus stalled."
             )
             _redis_health_state["alerted"] = True
 
