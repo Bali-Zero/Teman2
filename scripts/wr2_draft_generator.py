@@ -170,6 +170,44 @@ def _tone_guidance(liveness_tier: str) -> str:
     )
 
 
+# ── A4: closer single-line guard (D4 — the slide-8 class) ─────────────────────
+# Constitution 6.6 / 9.5: the closing slide is a statement-bomb — a SINGLE-LINE
+# bold centered statement, not a paragraph. A long closer body wraps into a
+# text-brick and the layout breaks (the recurring slide-8 defect). A4 guards the
+# CLASS: a preventive prompt line + a post-hoc WARN + a targeted regen ask.
+#
+# We count WORDS, not characters (cicatrix #3 over-match: a char cap would trip on
+# one long word or a URL). The drafter has no rendered LINE count — lines are born
+# from CSS wrapping at render time — so word-count of the closer body is the
+# correct proxy the drafter actually has. 12 is generous: single-line bold centered
+# at statement-bomb sizing (~110px) fits ~10-12 words before it must wrap; the
+# constitution's ≤8-word statement-bomb ideal sits comfortably under it.
+#
+# WARN + regen, NOT a hard reject (operator choice 2026-07-01): a slightly long
+# closer asks the model to compress in the existing regen loop; it never sends an
+# otherwise-good draft to render_failed. Legge 5 (human publishes) is the backstop.
+CLOSER_MAX_WORDS = 12
+
+_CLOSER_STEER = (
+    "CLOSER — the LAST slide is the closing statement-bomb: it MUST be a single-line "
+    f"bold statement, at most {CLOSER_MAX_WORDS} words. No paragraph, no multi-sentence "
+    "sign-off — one punch."
+)
+
+
+def _closer_word_count(slides: list[dict[str, Any]]) -> int:
+    """Word count of the last slide's body (0 if no slides). The closer is always
+    the last slide (constitution 9.5: closing slide = statement-bomb)."""
+    if not slides:
+        return 0
+    return len((slides[-1].get("body") or "").split())
+
+
+def _closer_too_long(slides: list[dict[str, Any]]) -> bool:
+    """True when the closer body exceeds CLOSER_MAX_WORDS → wraps into a brick."""
+    return _closer_word_count(slides) > CLOSER_MAX_WORDS
+
+
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
@@ -591,10 +629,13 @@ def _build_draft_prompt(
         body = summary[:3500]
 
     # A1 framing + A2 length + A3 tone steer (all empty for unknown/manual tier).
+    # A4 closer steer is tier-INDEPENDENT — the closing statement must be single-line
+    # regardless of timeliness — so it's always on.
     steer_lines = [
         _LIVENESS_FRAMING.get(liveness_tier, ""),
         _length_guidance(liveness_tier),
         _tone_guidance(liveness_tier),
+        _CLOSER_STEER,
     ]
     steer_block = "".join(f"\n\n{line}" for line in steer_lines if line)
 
@@ -1195,6 +1236,30 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             logger.error("Normalisation failed: %s", e)
             await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
             return False
+
+        # A4 closer guard (tier-independent, flag-independent): if the closing
+        # statement-bomb body is too long it wraps into a text-brick. WARN + a
+        # targeted regen asking the model to compress it — never a hard reject.
+        # Checked BEFORE anti-sameness so it works even with WR2_ANTIMONOTONE off.
+        if _closer_too_long(slides):
+            if attempt < max_regen:
+                logger.warning(
+                    "Draft %s closer too long (%d words > %d) — regenerating for a "
+                    "single-line closer (attempt %d/%d).",
+                    draft_id, _closer_word_count(slides), CLOSER_MAX_WORDS,
+                    attempt + 1, max_regen,
+                )
+                avoid_steer = avoid_steer + (
+                    "\n\nYour PREVIOUS attempt's LAST slide (the closer) was too long "
+                    f"({_closer_word_count(slides)} words). Rewrite ONLY the closer as a "
+                    f"single-line bold statement of at most {CLOSER_MAX_WORDS} words."
+                )
+                continue  # regenerate
+            logger.warning(
+                "Draft %s closer still too long (%d words) after %d retries — "
+                "proceeding anyway (WARN); Legge 5 backstop at the review gate.",
+                draft_id, _closer_word_count(slides), max_regen,
+            )
 
         # Derived signature of THIS draft for the anti-sameness check.
         slides_envelope = {"slides": slides}
