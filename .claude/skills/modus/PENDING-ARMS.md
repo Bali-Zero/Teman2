@@ -25,6 +25,10 @@
 - opened 2026-07-02 | C3 --apply dei 21 junk delete-eligible (report live Pro 2026-07-02: 219 vivi, 94 junk, 21 eligible/73 protetti) | REPORT-ONLY finché l'operatore non rivede il report; poi `--apply --min-age-days 30` | operator | re-run report mostra junk delete-eligible = 0
 - opened 2026-07-02 | C1 probe SQL provato su prod (Keychain ACL nega in headless, exit 36) | prova live rinviata al primo sweep del watchdog riavviato | me (post-flight) | prima riga `state ages ok` / `ALERT` nel log watchdog post-restart
 
+- opened 2026-07-03 | sonnet-5 cron migration (PR #1917) — repo pins bumped but LIVE HOME wrappers (`~/scripts/regulatory-watcher-run.sh`, `nb-curator-daily.sh`, `wr2-ig-metrics-analyst-run.sh`, `competitor-monitor-run.sh`, `yield-optimizer-run.sh`, `eventbus/meta_dispatcher.py`) still pin 4-6 | operator runs the one-liners in `research/operations/2026-07-03-sonnet5-cron-migration.md` §Solo-operatore (~/scripts is agent-read-only) | operator | next regulatory-watcher log line shows `used: claude-sonnet-5` (+ respective logs for the other 5)
+- opened 2026-07-03 | `~/scripts/eventbus/meta_dispatcher.py` is AHEAD of `infra/eventbus/meta_dispatcher.py` (BZ_REDIS_HOST/PORT env param never promoted back — #1 HOME-fork reverse debt) | reverse-promotion PR from HOME content | me (next session) | `cmp -s` repo-vs-HOME passes after PR (net of the model pin)
+- opened 2026-07-03 | WR3 reflexion weekly cron executes 816-byte S7.3 STUB (`~/.claude/skills/bali-zero-brand/wr3/_reflexion-synthesis.py`, exit 0) — full `scripts/wr3_reflexion_synthesis.py` never runs (pre-existing Esiste≠Armato found during sonnet-5 inventory) | operator decision: point plist at the real script or accept firebreak until WR3 S7.5 | operator | `~/.claude/skills/bali-zero-brand/wr3/*/lessons.md` gains entries after a Sunday run
+
 ## closed (proof recorded)
 
 - closed 2026-07-02 | opus-mythos deprecation banner M5+Pro+Mini | operator ran the idempotent one-liner on all 3 | PROVEN: `grep -c SUPERSEDED` = 2 on M5, Pro, Mini (description prefix + body banner); live skill registry on M5 reloaded with the superseded description
