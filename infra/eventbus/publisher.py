@@ -32,6 +32,9 @@ from .schema import EVENT_TYPES, MAXLEN, validate_payload, generate_event_id
 
 REDIS_HOST = os.environ.get("BZ_REDIS_HOST", "100.93.236.6")
 REDIS_PORT = int(os.environ.get("BZ_REDIS_PORT", "6379"))
+# requirepass live on the target Redis since 2026-06-29; plists source
+# ~/.nuzantara-secrets.env with `set -a`, so the password arrives via env.
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD") or None
 STREAM_PREFIX = "bz:"
 
 log = logging.getLogger("eventbus.publisher")
@@ -53,6 +56,7 @@ _RETRY = Retry(
 _pool = redis.ConnectionPool(
     host=REDIS_HOST,
     port=REDIS_PORT,
+    password=REDIS_PASSWORD,
     decode_responses=True,
     socket_timeout=65,
     socket_connect_timeout=5,
