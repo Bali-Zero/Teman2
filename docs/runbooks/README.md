@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 33 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 34 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -28,6 +28,7 @@
 | [`openclaw-whatsapp-eval-loop.md`](openclaw-whatsapp-eval-loop.md) | OpenClaw WhatsApp Eval Loop |
 | [`openclaw-zantara-scientific-team.md`](openclaw-zantara-scientific-team.md) | OpenClaw/Zantara WhatsApp Scientific Team |
 | [`prod-crm-smoke.md`](prod-crm-smoke.md) | Production CRM Smoke Runbook |
+| [`proprioception-boundary-recon.md`](proprioception-boundary-recon.md) | Proprioception — the boundary-reconciliation organ |
 | [`redis-lease-registry.md`](redis-lease-registry.md) | Redis Lease Registry (SOTA wave 2026-05-24) |
 | [`repomap-and-branch-cleanup.md`](repomap-and-branch-cleanup.md) | Repomap auto-injection + Branch graveyard cleanup |
 | [`review-gate.md`](review-gate.md) | Runbook — Review-gate (Pro-side tri-LLM review-only) |

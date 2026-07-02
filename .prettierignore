@@ -95,3 +95,8 @@ agent-library/learn/proposals/
 # would make --check fail forever (generator output != prettier output).
 packages/design-system/brand-api/
 docs/design/components-catalog.md
+
+# DOCSYNC-generated atlas files — scripts/docs_sync.py owns their formatting
+# (gate: check-docs-sync; prettier fighting the generator = format deadlock, 2026-07-02)
+INDEX.md
+docs/runbooks/README.md
