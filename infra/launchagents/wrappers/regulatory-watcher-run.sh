@@ -25,6 +25,34 @@ mkdir -p "$HOME/Desktop/nuzantara/research/regulatory" "$HOME/logs"
 LOG="$HOME/logs/regulatory-watcher.log"
 DATE=$(TZ=Asia/Makassar date +%Y-%m-%d)
 
+# Organism heartbeat (heartbeat-organs TAC 2026-07-02): reverse-promoted from the
+# M5 HOME copy 2026-07-03 — the instrumentation lived only in ~/scripts and never
+# reached the repo canon (#1 HOME-fork reverse debt, caught by proprioception).
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh}"
+ORGANISM_HB_STATUS="starting"
+ORGANISM_HB_NOTE="regulatory watcher start"
+
+organism_hb_set() {
+    ORGANISM_HB_STATUS="$1"
+    ORGANISM_HB_NOTE="${2:-}"
+}
+
+organism_hb_finalize() {
+    local rc="${1:-0}"
+    if [ "$rc" -eq 0 ]; then
+        if [ "$ORGANISM_HB_STATUS" = "starting" ]; then
+            organism_hb_set ok "completed"
+        fi
+    elif [ "$ORGANISM_HB_STATUS" = "starting" ] || [ "$ORGANISM_HB_STATUS" = "ok" ]; then
+        organism_hb_set error "rc=${rc}"
+    fi
+    if [ -f "$HEARTBEAT_LIB" ]; then
+        bash "$HEARTBEAT_LIB" "pro.regulatory_watcher_daily" "$ORGANISM_HB_STATUS" "$ORGANISM_HB_NOTE" || true
+    fi
+}
+
+trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
+
 echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
 
 PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/Desktop/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0."
@@ -87,6 +115,7 @@ fi
 
 if [ $SUCCESS -eq 1 ]; then
     echo "[$(date)] regulatory-watcher run complete — used: $USED_LLM" >> "$LOG"
+    organism_hb_set ok "used ${USED_LLM}"
 
     # W1.4: emit eventbus events for any new regulatory deltas in today's JSON
     DELTA_JSON="$HOME/Desktop/nuzantara/research/regulatory/$(TZ=Asia/Makassar date +%Y-%m-%d)-delta.json"
@@ -192,6 +221,7 @@ except Exception as e:
     fi
 else
     echo "[$(date)] regulatory-watcher ALL TIERS FAILED — manual investigation needed" >> "$LOG"
+    organism_hb_set error "all tiers failed"
 fi
 
 rm -f "$TMPOUT"
