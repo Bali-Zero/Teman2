@@ -70,7 +70,8 @@ fi
 
 # Step B: Redis stream lag check (last event in 30min)
 REDIS_HOST="${GARUDA_REDIS_HOST:-127.0.0.1}"
-LAST_ID=$(redis-cli -h "$REDIS_HOST" XREVRANGE organism:events + - COUNT 1 2>/dev/null | head -1 || echo "")
+# requirepass live since 2026-06-29 — redis-cli reads REDISCLI_AUTH, not REDIS_PASSWORD
+LAST_ID=$(REDISCLI_AUTH="${REDIS_PASSWORD:-}" redis-cli -h "$REDIS_HOST" XREVRANGE organism:events + - COUNT 1 2>/dev/null | head -1 || echo "")
 
 if [ -z "$LAST_ID" ]; then
   echo "$(date) WARN: no events in organism:events stream (PID=$PID alive, stream empty)" >> "$LOG"
@@ -79,6 +80,15 @@ if [ -z "$LAST_ID" ]; then
 fi
 
 STREAM_MS=${LAST_ID%%-*}
+# NOAUTH/error text lands on stdout and would poison the arithmetic below
+# (set -u killed the run exactly this way on 2026-07-03) — non-numeric = read error
+case "$STREAM_MS" in
+  ''|*[!0-9]*)
+    echo "$(date) WARN: unreadable stream reply '$LAST_ID' (redis auth/error?)" >> "$LOG"
+    emit_self_heartbeat "degraded" "stream reply unreadable: ${LAST_ID:0:40}"
+    exit 0
+    ;;
+esac
 NOW_MS=$(( $(date +%s) * 1000 ))
 LAG_MS=$(( NOW_MS - STREAM_MS ))
 LAG_MIN=$(( LAG_MS / 60000 ))
