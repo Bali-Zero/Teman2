@@ -1681,6 +1681,7 @@ def main() -> None:
             r = _redis_async.from_url(
                 os.getenv("ORGANISM_REDIS_URL", "redis://127.0.0.1:6379/0"),
                 decode_responses=False,
+                password=os.getenv("REDIS_PASSWORD") or None,
             )
             try:
                 status = await _hb_check(redis=r)
