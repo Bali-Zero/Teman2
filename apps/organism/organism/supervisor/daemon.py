@@ -212,8 +212,15 @@ async def main() -> None:  # pragma: no cover — launchd entrypoint
 
     from organism.actuators import build_actuator_registry
 
+    # #1944 pattern: Pro redis has requirepass since 2026-06-29 — honor
+    # REDIS_PASSWORD from the secrets env when the URL carries no password
+    # (this daemon was crash-looping on AuthenticationError, 98 restarts,
+    # heartbeat mute — found by proprioception organs_heartbeat 2026-07-03).
+    _redis_pw = os.getenv("REDIS_PASSWORD")
     r = _redis.from_url(
         os.getenv("ORGANISM_REDIS_URL", "redis://127.0.0.1:6379/0"),
+        # conditional: an explicit password=None would clobber an in-URL password
+        **({"password": _redis_pw} if _redis_pw else {}),
     )
     rules_path = Path(os.getenv(
         "ORGANISM_RULES_PATH",
