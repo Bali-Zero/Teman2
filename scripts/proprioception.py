@@ -249,6 +249,13 @@ def probe_guardian_freshness(root: Path, args: dict, timeout: int) -> tuple[str,
     ev, findings, seen = [], 0, 0
     now = time.time()
     for item in args.get("items", []):
+        # Per-item machine scoping (v1.1): a Pro-only guardian probed on M5 is a
+        # false DIVERGED — jurisdiction, not divergence (found by the organ's own
+        # first fleet runs: pro.runtime_reconcile flagged stale on M5 while alive
+        # and fresh on Pro, where it belongs).
+        mach = item.get("machines", ["all"])
+        if "all" not in mach and machine_label() not in mach:
+            continue
         max_age_h = float(item.get("max_age_h", 48))
         label = item.get("label", item["glob"])
         base = Path(os.path.expanduser(item["glob"]))
@@ -370,7 +377,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P2",
         "args": {"items": [
             {"glob": "~/.nuzantara-proprioception/last.json", "max_age_h": 48, "label": "proprioception (self)"},
-            {"glob": "~/.organism/last_seen/pro.runtime_reconcile.json", "max_age_h": 26, "label": "runtime-reconcile (W81 watchdog)"},
+            {"glob": "~/.organism/last_seen/pro.runtime_reconcile.json", "max_age_h": 26, "label": "runtime-reconcile (W81 watchdog)", "machines": ["pro"]},
             {"glob": "~/logs/verify-connectome*.log", "max_age_h": 192, "label": "verify-connectome (weekly)"},
         ]},
         "fix_hint": "a stale guardian: run it by hand, read ITS log, then fix its scheduler",
