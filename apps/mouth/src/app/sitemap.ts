@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { getAllArticles, getNoIndexSlugs } from "@/lib/blog/articles";
 import { getAllCodes, getSections } from "@/lib/kbli-data.server";
 import { logger } from "@/lib/logger";
+import fs from "fs";
+import path from "path";
 
 /**
  * Dynamic Sitemap Generator
@@ -197,9 +199,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 5. KBLI Codes (1,559 pages)
   try {
     const codes = getAllCodes();
+    const kbliDataPath = path.join(
+      process.cwd(),
+      "data",
+      "KBLI_2025_FINAL_CLEAN.json",
+    );
+    let kbliLastModified: Date;
+    try {
+      kbliLastModified = fs.statSync(kbliDataPath).mtime;
+    } catch {
+      kbliLastModified = new Date("2026-06-19");
+    }
     const kbliPages = codes.map((c) => ({
       url: `${baseUrl}/kbli/${c.code}`,
-      lastModified: new Date(),
+      lastModified: kbliLastModified,
       changeFrequency: "monthly" as const,
       priority: 0.8,
     }));
