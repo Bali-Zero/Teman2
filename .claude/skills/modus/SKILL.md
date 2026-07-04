@@ -49,6 +49,10 @@ touches?) — AMENDMENTS.md is maintained at CAPTURE, read by the bench.
   the answer ∧ error costs >15× tokens ∧ genuinely parallel breadth. Else: solo + more reasoning
   budget + 1 red-team spalla (evidence: 1 agent with 10× budget beats homogeneous debate at ⅓ cost).
 - Fan-out only when items ≥3 and independent. Fan-out for READS, funnel-in for WRITES.
+  Subagents can spawn their own subagents (v2.1.172, chains capped at 5 levels): at Gear 3 one
+  coordinator subagent per anatomical organ may fan out its own readers, keeping the orchestrator
+  context clean — but the declared budget shape counts DESCENDANTS, not just direct children
+  (`/agents` shows the tree).
 - Prefer one agent + more budget over N agents (coding barely parallelizes — Anthropic/Cognition).
 - Cache-aware waiting (session polling only — the cadence for an external system matches THAT
   system's rate of change): ≤270s (inside the prompt-cache window) or commit to 1200s+; never ~300s.
