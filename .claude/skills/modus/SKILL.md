@@ -92,7 +92,9 @@ touches?) — AMENDMENTS.md is maintained at CAPTURE, read by the bench.
   (done / verified-live / next) **and re-run a light GROUND** — re-verify the hot files on disk
   before resuming the interrupted stage. The disk may have moved while you slept.
 - **Preemption** (a Gear-1 hotfix interrupts a Gear-3 task): park the current worktree as-is
-  (it is isolated by construction), run the hotfix in its own lane, return via the recap block.
+  (it is isolated by construction), run the hotfix in its own lane, return via the recap block. `/cd` (v2.1.169) can relocate THIS session into the hotfix worktree
+  and back without rebuilding the prompt cache (the new dir's CLAUDE.md is appended, not
+  substituted) — preemption no longer forces a fresh session or a cache rebuild.
 - **Quota exhaustion:** implementation seats may cascade (Arsenal). **The final gate may NOT** —
   if Fable's window dies mid-task, the task SUSPENDS (PENDING-ARMS line + wakeup after reset),
   it does not hand the last grep to a weaker judge.
