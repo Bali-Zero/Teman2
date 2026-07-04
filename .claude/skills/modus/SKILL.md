@@ -80,7 +80,10 @@ touches?) — AMENDMENTS.md is maintained at CAPTURE, read by the bench.
 - **A "durable receptor" is one of three CONCRETE mechanisms, never an abstract intention:**
   (1) a PENDING-ARMS.md line — reconciled at every TRIAGE; (2) a SessionStart hook injecting live
   state at boot (escalations / organism receptors); (3) a harness background task — completion
-  re-invokes the loop. When you defer a proof, NAME which receptor carries it. A receptor whose HEALTHY output is silence must expose a self-probe that distinguishes healthy-silent from dead (a `--selftest` mode or synthetic-item injection), and a proof-of-armed may NEVER be 'silence observed' — a fail-open snapshot receptor is W84 green-but-dead by construction otherwise.
+  re-invokes the loop — CAVEAT (v2.1.193): the harness auto-reaps IDLE background shells under
+  memory pressure, so receptor (3) is no longer guaranteed-durable on RAM-tight nodes (Mini 24GB);
+  for a load-bearing monitor set `CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1` (Monitor-kind
+  tasks are exempt), or carry the proof on receptor (1) PENDING-ARMS instead. When you defer a proof, NAME which receptor carries it. A receptor whose HEALTHY output is silence must expose a self-probe that distinguishes healthy-silent from dead (a `--selftest` mode or synthetic-item injection), and a proof-of-armed may NEVER be 'silence observed' — a fail-open snapshot receptor is W84 green-but-dead by construction otherwise.
 - **On wake** (sleep, compaction, quota reset, session resume): emit a dense recap block
   (done / verified-live / next) **and re-run a light GROUND** — re-verify the hot files on disk
   before resuming the interrupted stage. The disk may have moved while you slept.
