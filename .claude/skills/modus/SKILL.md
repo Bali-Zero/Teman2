@@ -130,8 +130,8 @@ consensus-seeking ("do you all agree?" generates conformity hallucinations). Ver
 
 **Quota cascade (cron + subprocess):** Sonnet 5 → agy → Codex → Ollama, with a LIVE health-ping
 per tier before trusting it (grep for `out of extra usage|quota|429`, fall through on match).
-Reference: `~/scripts/regulatory-watcher-run.sh`. Cron tier-1 stays `claude-sonnet-4-6` until the
-staged migration to Sonnet 5 is tested per-agent (tracked in PENDING-ARMS when started).
+Reference: `~/scripts/regulatory-watcher-run.sh`. Cron tier-1: repo pins migrated to `claude-sonnet-5` 2026-07-03 (#1917, probed per-agent; the
+nb-agents slug micro-prompt stays 4-6); HOME wrappers armed 2026-07-03.
 
 ---
 
