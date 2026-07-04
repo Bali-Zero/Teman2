@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
 import sys
 import time
 from dataclasses import dataclass, field
@@ -35,6 +36,9 @@ from typing import Any
 # Organs whose absence is itself an alarm (the breath channel must exist).
 # Kept deliberately small: only the organism's own core guardians, because a
 # MISSING sidecar for a leaf organ is noise, but for a guardian it is the W2 bug.
+# All five are Pro-resident (hostname "Nuzantara") — expecting them on M5/Mini
+# produced phantom dead_channel findings (proprioception run 2026-07-03), so the
+# expectation is gated by machine residency, not applied fleet-wide.
 CORE_ORGANS_EXPECTED: tuple[str, ...] = (
     "pro.sentinel",
     "pro.dlq_autopilot",
@@ -42,6 +46,19 @@ CORE_ORGANS_EXPECTED: tuple[str, ...] = (
     "pro.federation_alert_dispatcher",
     "cell.observatory",
 )
+
+CORE_ORGANS_RESIDENT_HOST = "nuzantara"  # Pro's hostname, lowercased, first label
+
+
+def _core_organs_expected_here() -> tuple[str, ...]:
+    """Return the core-organ expectation for THIS machine.
+
+    The core guardians live on Pro only; on M5 (Air-M5) and Mini (Mini-Pro2)
+    their sidecars legitimately do not exist, so expecting them there turns the
+    detector into a noise source. Residency is decided by hostname first-label.
+    """
+    host = socket.gethostname().split(".")[0].lower()
+    return CORE_ORGANS_EXPECTED if host == CORE_ORGANS_RESIDENT_HOST else ()
 
 DEFAULT_SIDECAR_DIR = os.path.expanduser("~/.organism/last_seen")
 DEFAULT_ALERTS_FILE = os.path.expanduser("~/.organism/alerts/open.jsonl")
@@ -57,7 +74,6 @@ UNHEALTHY_STATUSES: frozenset[str] = frozenset({"failed", "fail", "degraded", "e
 #   - codex.spark_*        : intentionally disabled by the W81 firebreak (runaway loop)
 #   - wr2.telegram_gate    : decommissioned 2026-06-11 (.removed-*), genome not pruned
 #   - wr2.carousel_dispatcher: decommissioned 2026-06-11 (.removed-*), genome not pruned
-#   - wr3.reflexion_weekly : launchctl-disabled on purpose (the dead twin of wr2's)
 #   - pro.agent_library_evolver_* : intentionally disabled (deploy-drift quarantine)
 #   - pro.audit_launchd_daily : exit 1 BY DESIGN = "N unhealthy jobs found" (a true report)
 #   - infra.ollama_pro : launchd job exits 1 because the real `ollama serve` already
@@ -76,7 +92,10 @@ KNOWN_BENIGN_FAILED: frozenset[str] = frozenset({
     "codex.spark_alarm",
     "wr2.telegram_gate",
     "wr2.carousel_dispatcher",
-    "wr3.reflexion_weekly",
+    # "wr3.reflexion_weekly" was suppressed here as "launchctl-disabled on purpose"
+    # — REMOVED 2026-07-03: the organ was re-armed (real synthesis script wired into
+    # the plist, label enabled+bootstrapped on Pro). Per the audit rule above, a
+    # re-enabled organ that genuinely fails must NOT stay suppressed.
     "pro.agent_library_evolver_daily",
     "pro.agent_library_evolver_weekly",
     "pro.audit_launchd_daily",
@@ -137,12 +156,13 @@ def scan_sidecars(
     and the CLI decides whether to emit). now is injectable for determinism.
 
     expect_core lists organs whose ABSENT sidecar is itself an alarm. It defaults
-    to CORE_ORGANS_EXPECTED only when scanning the real organism dir; tests pass
-    () so an isolated tmp dir does not spuriously flag the production core organs.
+    to the machine-resident core set (Pro only) when scanning the real organism
+    dir; tests pass () so an isolated tmp dir does not spuriously flag the
+    production core organs, and M5/Mini scans do not flag Pro-resident organs.
     """
     if expect_core is None:
         expect_core = (
-            CORE_ORGANS_EXPECTED
+            _core_organs_expected_here()
             if os.path.abspath(sidecar_dir) == os.path.abspath(DEFAULT_SIDECAR_DIR)
             else ()
         )
