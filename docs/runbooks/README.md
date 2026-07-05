@@ -5,13 +5,14 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 34 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 36 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
 | [`2026-05-20-wr2-zombie-fix.md`](2026-05-20-wr2-zombie-fix.md) | WR2 Supervisor Zombie Fix — 2026-05-20 |
 | [`2026-06-03-residual-ops-hub.md`](2026-06-03-residual-ops-hub.md) | Residual Ops Hub — 2026-06-03 (post 3-ondate armata) |
 | [`agent-worktree-broker.md`](agent-worktree-broker.md) | Runbook — Agent Worktree Broker |
+| [`autonomous-agents-decision-sheet.md`](autonomous-agents-decision-sheet.md) | Tier-1 "Autonomous" Agents — arm-or-retire decision sheet (TAC-2 A13) |
 | [`autonomous-lab-runtime-placement.md`](autonomous-lab-runtime-placement.md) | Autonomous Lab Runtime Placement |
 | [`codex-nuzantara-profiles.md`](codex-nuzantara-profiles.md) | Runbook - Codex Nuzantara Profiles |
 | [`competitor-scrape-manual.md`](competitor-scrape-manual.md) | Runbook: Scraping Kompetitor Instagram Manual |
@@ -29,6 +30,7 @@
 | [`openclaw-zantara-scientific-team.md`](openclaw-zantara-scientific-team.md) | OpenClaw/Zantara WhatsApp Scientific Team |
 | [`prod-crm-smoke.md`](prod-crm-smoke.md) | Production CRM Smoke Runbook |
 | [`proprioception-boundary-recon.md`](proprioception-boundary-recon.md) | Proprioception — the boundary-reconciliation organ |
+| [`qdrant-estate-reconciliation.md`](qdrant-estate-reconciliation.md) | Qdrant estate reconciliation — defined vs live (TAC-2 A6) |
 | [`redis-lease-registry.md`](redis-lease-registry.md) | Redis Lease Registry (SOTA wave 2026-05-24) |
 | [`repomap-and-branch-cleanup.md`](repomap-and-branch-cleanup.md) | Repomap auto-injection + Branch graveyard cleanup |
 | [`review-gate.md`](review-gate.md) | Runbook — Review-gate (Pro-side tri-LLM review-only) |

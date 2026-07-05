@@ -1,6 +1,15 @@
 import type { KBLICode } from "@/lib/kbli-types";
 
-export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
+export function KBLICodeJsonLd({
+  code,
+  dateModified,
+}: {
+  code: KBLICode;
+  // Real dataset modification date (file mtime, same source as the sitemap
+  // lastmod). Rendering-time `new Date()` claimed "modified today" on every
+  // build — a fabricated freshness signal Google learns to distrust.
+  dateModified?: Date;
+}) {
   // National PMA openness != Bali registrability. When a code is nationally open
   // but l4_bali.blocked, the SEO/JSON-LD must NOT tell Google "100% foreign
   // ownership allowed" unqualified — it would surface in rich results / AI answers
@@ -27,7 +36,9 @@ export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
     description: `${code.description.slice(0, 160)}. ${pmaLabel}. Risk: ${riskLevel}.`,
     inLanguage: "en",
     datePublished: "2025-06-18",
-    dateModified: new Date().toISOString().split("T")[0],
+    ...(dateModified
+      ? { dateModified: dateModified.toISOString().split("T")[0] }
+      : {}),
     author: {
       "@type": "Organization",
       name: "Bali Zero",
