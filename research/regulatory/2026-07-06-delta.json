@@ -1,0 +1,81 @@
+{
+  "run_at": "2026-07-06T05:18:32+08:00",
+  "today": "2026-07-06",
+  "yesterday_seen_count": 18,
+  "new_today_count": 2,
+  "partial": true,
+  "note": "2026-07-04 and 2026-07-05 delta files missing on disk (prior backgrounded-run incident, 2026-07-05 - output never persisted). Dedup baseline loaded from last available file, 2026-07-03-delta.json (18 seen_citations), not literal yesterday. Gap window covers 3 days (07-04 to 07-06), not the usual 24-48h.",
+  "nb_query_errors": [
+    "NB-INTEL-Regulation (a17f134e-b9ab-42d9-bfc2-5bbc45165c76): Authentication expired - nlm login required",
+    "NB-INTEL-Press (9d262101-abeb-4e15-af9c-c38e028c62fe): Authentication expired - nlm login required",
+    "NB-INTEL-Immigration (1ed02e54-542f-426a-94f8-53c5ffde4b7d): Authentication expired - nlm login required",
+    "NB-INTEL-Tax (7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f): Authentication expired - nlm login required"
+  ],
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403 Forbidden - Cloudflare)",
+    "https://muc.co.id/article (403 Forbidden)",
+    "https://ikpi.or.id/news/ (404 Not Found)",
+    "https://ortax.org/news (200 OK but JS-rendered SPA shell - no parseable article list via static fetch)",
+    "https://peraturan.bpk.go.id/Search?... (200 OK but JS-rendered SPA shell - no parseable results)",
+    "https://jdih.kemenkeu.go.id/peraturan (connection failed - timeout, curl exit 000)",
+    "https://jdih.kemnaker.go.id/peraturan (200 OK but listing requires JS pagination - facets only, no rows)"
+  ],
+  "nb_results": {
+    "NB-INTEL-Regulation": "FAILED (auth expired)",
+    "NB-INTEL-Tax": "FAILED (auth expired)",
+    "NB-INTEL-Immigration": "FAILED (auth expired)",
+    "NB-INTEL-Press": "FAILED (auth expired)"
+  },
+  "deltas": [
+    {
+      "citation": "Permendagri 6/2026",
+      "title_id": "Peraturan Menteri Dalam Negeri Nomor 6 Tahun 2026 tentang Klasifikasi Jenis Pekerjaan pada Dokumen Kependudukan",
+      "title_en": "Ministry of Home Affairs Regulation No. 6 of 2026 - standardized job-classification nomenclature on population documents (KTP/KK), 6 categories / 108 job types",
+      "service_line": ["tax", "company"],
+      "severity": "medium",
+      "event_type": "new_regulation",
+      "impact_note": "Coretax cross-validates NPWP registration/update against Dukcapil population data in real time; if the occupation entered on a client's KTP/KK does not match one of the 6 standardized classifications (108 job types) under Permendagri 6/2026, NPWP registration or update fails and the client must first correct the occupation field at Dukcapil before Coretax will proceed. Relevant to every new-NPWP or NPWP-update case Bali Zero handles for expat/local staff and PT PMA directors.",
+      "summary": "DDTC 2026-07-05 (Ditjen Dukcapil Kemendagri statement): new Permendagri 6/2026 fixes 6 job-classification categories (umum/belum bekerja; ASN/pejabat publik; karyawan swasta/badan usaha; pertanian/peternakan/perikanan; jasa/keahlian/perdagangan; profesi khusus/medis/keagamaan) covering 108 named occupations for KTP/KK. Purpose stated explicitly: ensure NPWP registration and other public-service integrations (BPJS, banking, social aid) validate cleanly against Dukcapil data. Many taxpayers have reportedly failed NPWP registration to date because their KTP occupation field used non-standard wording.",
+      "confidence": "medium",
+      "source": "DDTC News https://news.ddtc.co.id/berita/nasional/1820592/demi-integrasi-pajak-pekerjaan-di-ktp-harus-ikuti-permendagri-baru",
+      "verbatim_excerpt": "Pencantuman jenis pekerjaan pada dokumen kependudukan kini harus sesuai dengan klasifikasi resmi pada Peraturan Menteri Dalam Negeri (Permendagri) 6/2026. [...] \"Jika terjadi perbedaan, validasi akan gagal dan wajib pajak diminta memperbarui data di Dukcapil,\" jelas Ditjen Dukcapil.",
+      "first_seen_at": "2026-07-06T05:18:32+08:00"
+    },
+    {
+      "citation": "PMK 37/2025",
+      "title_id": "Peraturan Menteri Keuangan Nomor 37 Tahun 2025 tentang Penunjukan Pemungut, Tata Cara Pemungutan, Penyetoran, dan Pelaporan Pajak Penghasilan Pasal 22 atas Penjualan Barang Dagangan Melalui Sistem Elektronik",
+      "title_en": "Minister of Finance Regulation No. 37 of 2025 - PPh Article 22 on e-commerce marketplace sales: ADMINISTRATIVE CLARIFICATION - one shared surat pernyataan omzet valid across all designated marketplaces per merchant",
+      "service_line": ["tax"],
+      "severity": "low",
+      "event_type": "administrative_clarification",
+      "impact_note": "Merchant clients selling on multiple designated marketplaces (Tokopedia, Shopee, Lazada, Blibli) need only submit ONE surat pernyataan omzet (with a single Rp10.000 meterai) to cover all platforms, rather than a separate statement per platform - idEA confirmed with DJP. No action forced on clients; purely reduces admin burden ahead of the Aug 1 2026 PPh 22 collection start already tracked under this citation.",
+      "summary": "DDTC 2026-07-05 (idEA / Asosiasi E-commerce Indonesia statement): a merchant with an annual omzet <= Rp500 juta selling across several DJP-designated marketplaces can submit a single surat pernyataan omzet, shared across all platforms, instead of one per marketplace. DJP confirmed this informally; each marketplace remains not obligated to validate the truthfulness of the statement - liability stays with the merchant per PMK 37/2025.",
+      "confidence": "medium",
+      "source": "DDTC News https://news.ddtc.co.id/berita/nasional/1820597/asosiasi-e-commerce-merchant-hanya-perlu-setor-1-surat-pernyataan",
+      "verbatim_excerpt": "\"PMK 37/2025 mengharuskan [tata cara] penyerahan surat ke masing-masing platform, tapi dari diskusi kami dengan DJP, boleh satu surat dibagi ke platform-platform marketplace lain,\" ujar Ketua Umum idEA Budi Primawan, dikutip pada Minggu (5/7/2026).",
+      "first_seen_at": "2026-07-02T07:00:00+08:00",
+      "updated_at": "2026-07-06T05:18:32+08:00"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025",
+    "Permendagri 6/2026"
+  ]
+}
