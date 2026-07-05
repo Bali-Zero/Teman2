@@ -1,4 +1,5 @@
 import type { KBLICode } from "@/lib/kbli-types";
+import { buildKbliFaq } from "@/lib/kbli-faq";
 
 export function KBLICodeJsonLd({
   code,
@@ -105,50 +106,13 @@ export function KBLICodeJsonLd({
 }
 
 export function KBLIFaqJsonLd({ code }: { code: KBLICode }) {
-  // National openness != Bali registrability — a Bali-blocked code must NOT answer
-  // Google's "can foreigners operate this" with an unqualified "Yes, 100%, no local
-  // partner". Qualify the open answer with the Bali block.
-  const baliBlocked = !!code.baliL4?.blocked;
-  const pmaAnswer =
-    code.pma.status === "open"
-      ? baliBlocked
-        ? `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but a PT PMA currently cannot register it in Bali (reserved for UMKM / 2026 moratorium). ${code.baliL4?.reason ?? "See the Bali status above."} Outside Bali it is open to a PT PMA with no local partner required.`
-        : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
-      : code.pma.status === "restricted"
-        ? `Partially. KBLI ${code.code} is TERBATAS — foreign ownership capped at ${code.pma.maxForeign}%.${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""} An Indonesian partner holds the remaining shares.`
-        : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
-
-  const licenseAnswer =
-    code.licensing.length > 0
-      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}`
-      : `KBLI ${code.code} requires a NIB (Nomor Induk Berusaha) via OSS (Online Single Submission). Contact a licensed consultant for specific requirements.`;
-
-  const questions: { question: string; answer: string }[] = [
-    {
-      question: `Can foreigners operate a ${code.titleEn.toLowerCase()} business in Indonesia?`,
-      answer: pmaAnswer,
-    },
-    {
-      question: `What license is required for KBLI ${code.code}?`,
-      answer: licenseAnswer,
-    },
-    {
-      question: `What is KBLI ${code.code}?`,
-      answer: `KBLI ${code.code} is the Indonesian business classification code for "${code.titleId}" (${code.titleEn}). It falls under Section ${code.section ?? "N/A"} of KBLI 2025, the Indonesian Standard Industrial Classification updated by BPS (Regulation 7/2025), effective June 18, 2026.`,
-    },
-  ];
-
-  if (code.transition.previousCodes.length > 0) {
-    questions.push({
-      question: `How did KBLI ${code.code} change from KBLI 2020 to 2025?`,
-      answer: `KBLI ${code.code} was mapped from previous code${code.transition.previousCodes.length > 1 ? "s" : ""} ${code.transition.previousCodes.join(", ")} (KBLI 2020).${code.transition.mappingNote ? ` ${code.transition.mappingNote}` : ""} All businesses must migrate to KBLI 2025 by June 18, 2026 per BPS Regulation 7/2025.`,
-    });
-  }
-
+  // Questions and answers come from buildKbliFaq — the SAME source that
+  // renders the visible Common Questions section, so the FAQPage markup
+  // always has matching on-page content (Google requires it).
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: questions.map((q) => ({
+    mainEntity: buildKbliFaq(code).map((q) => ({
       "@type": "Question",
       name: q.question,
       acceptedAnswer: {
