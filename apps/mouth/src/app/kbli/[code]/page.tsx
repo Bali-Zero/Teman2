@@ -8,7 +8,7 @@ import {
   getSectionMeta,
   getHeroStyle,
 } from "@/lib/kbli-data";
-import { getGoldContent } from "@/lib/kbli-data.server";
+import { getGoldContent, getKbliDataMtime } from "@/lib/kbli-data.server";
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
@@ -37,13 +37,16 @@ const ZantaraChat = lazy(() =>
   })),
 );
 
-// ISR: Generate pages on-demand, cache for 1 week
-export const dynamicParams = true;
-export const revalidate = 604800;
+// Full SSG: every code is pre-rendered at build time. With ISR-on-demand the
+// Vercel cache reset on each deploy (several/day) served Googlebot cold SSR
+// renders — the TTFB spikes behind the /kbli/* crawl-priority gap (GSC
+// clean-window investigation 2026-07-03). dynamicParams=false also turns
+// invalid codes (e.g. /kbli/10314) into true 404s instead of soft-404 renders.
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
   const codes = getAllCodes();
-  return codes.slice(0, 50).map((c) => ({ code: c.code }));
+  return codes.map((c) => ({ code: c.code }));
 }
 
 export async function generateMetadata({
@@ -117,7 +120,7 @@ export default async function KBLICodePage({
   return (
     <>
       <KBLIPageTracker code={kbli.code} tier={kbli.tier} />
-      <KBLICodeJsonLd code={kbli} />
+      <KBLICodeJsonLd code={kbli} dateModified={getKbliDataMtime()} />
       <KBLIFaqJsonLd code={kbli} />
       <KBLIBreadcrumbJsonLd
         items={[

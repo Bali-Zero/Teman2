@@ -137,6 +137,25 @@ export function hasGoldContent(code: string): boolean {
   return code in loadGoldData();
 }
 
+let _dataMtime: Date | null = null;
+
+/**
+ * Last real content-change event for the KBLI dataset (file mtime).
+ * Single source for every surface that claims a modification date for
+ * /kbli/* pages (sitemap lastmod, JSON-LD dateModified) — the two must
+ * never diverge or Google stops trusting either.
+ */
+export function getKbliDataMtime(): Date {
+  if (!_dataMtime) {
+    try {
+      _dataMtime = fs.statSync(DATA_PATH).mtime;
+    } catch {
+      _dataMtime = new Date("2026-06-19");
+    }
+  }
+  return _dataMtime;
+}
+
 /** Get all codes that have gold content */
 export function getGoldCodes(): string[] {
   return Object.keys(loadGoldData());
