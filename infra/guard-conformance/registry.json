@@ -173,6 +173,12 @@
               "tests": [
                 "infra/claude-hooks/test_w79_shell_write.py"
               ]
+            },
+            "_effective_git_target": {
+              "tests": [
+                "infra/claude-hooks/test_tilde_target_resolver.py"
+              ],
+              "note": "tilde/env blind-spot fixed 2026-07-06 (expanduser+expandvars at the single choke point; found by the W85 live guilt-probe \u2014 the resolver sits UPSTREAM of BLOCKED_SUBCMD_RE)"
             }
           },
           "also_covered_by": [
