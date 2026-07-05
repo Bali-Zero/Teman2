@@ -8,7 +8,10 @@ import {
   getSectionMeta,
   getHeroStyle,
 } from "@/lib/kbli-data";
-import { getGoldContent, getKbliDataMtime } from "@/lib/kbli-data.server";
+import {
+  getGoldContent,
+  getKbliDatasetLastModified,
+} from "@/lib/kbli-data.server";
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
@@ -120,7 +123,7 @@ export default async function KBLICodePage({
   return (
     <>
       <KBLIPageTracker code={kbli.code} tier={kbli.tier} />
-      <KBLICodeJsonLd code={kbli} dateModified={getKbliDataMtime()} />
+      <KBLICodeJsonLd code={kbli} dateModified={getKbliDatasetLastModified()} />
       <KBLIFaqJsonLd code={kbli} />
       <KBLIBreadcrumbJsonLd
         items={[
