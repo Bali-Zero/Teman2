@@ -267,7 +267,7 @@ def reconcile(
     # canon is byte-identical is NOT a fork — it is the W84-safe placement
     # (launchd payloads deliberately live OUTSIDE ~/Desktop because launchd can
     # lose its TCC grant there). The disease is DRIFT, not location.
-    canon_dirs = (repo_infra / "wrappers", repo_dir / "scripts", repo_dir / "infra" / "scripts")
+    canon_dirs = (repo_infra / "wrappers", repo_dir / "scripts", repo_dir / "scripts" / "lib", repo_dir / "infra" / "scripts")
 
     def _repo_canon_for(target: Path) -> Optional[Path]:
         for d in canon_dirs:
