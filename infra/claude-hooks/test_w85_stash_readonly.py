@@ -1,29 +1,27 @@
 #!/usr/bin/env python3
-"""W85 pin — BLOCKED_SUBCMD_RE `stash` over-match, documented-broken contract.
+"""W85 — BLOCKED_SUBCMD_RE stash guilt+innocence (over-match FIXED 2026-07-06).
 
-W85 (cicatrix-scars.md, superscar #3): `BLOCKED_SUBCMD_RE` carries a bare
-`stash`, so read-only `git stash list` / `git stash show` are blocked exactly
-like the mutating `stash push` / `stash pop`. Third consecutive over-match of
-the SAME guard in two days (after W83, W84) — the scar itself says the family
-"non si chiude con un fix puntuale". The fix (enumerate mutating stash verbs,
-or allow-list `stash (list|show)`) is tracked as a PENDING-ARMS line; it is
-NOT applied here because patching the repo copy alone would fork it from the
-live ~/.claude/hooks copy (superscar #1, W83 GOTCHA-d: patch BOTH or neither),
-and the live copy governs the very session that would edit it.
+W85 (cicatrix-scars.md, superscar #3): `BLOCKED_SUBCMD_RE` carried a bare
+`stash`, so read-only `git stash list` / `git stash show` were blocked exactly
+like the mutating `stash push` / `stash pop` — the third consecutive over-match
+of the SAME guard in two days (after W83, W84).
 
-W82-TRIPWIRE SEMANTICS (same as infra/scar-gates/test_W82_*): this test is
-GREEN while the documented contract HOLDS — bug present and captured:
-  GUILT  (guard still catches real danger): `git stash push` IS blocked.
-  PINNED OVER-MATCH (the W85 hole, asserted PRESENT): `git stash list` and
-         `git stash show` are ALSO blocked today.
-The moment someone fixes the regex, the pinned assertions FAIL loudly →
-update this pin to a plain innocence test + flip the registry note + close
-the PENDING-ARMS line. A silent fix would otherwise leave the conformance
-registry lying about the guard's contract.
+HISTORY OF THIS FILE: it was born as a W82-style TRIPWIRE that PINNED the
+documented-broken contract (green while the bug was present and captured,
+failing loudly when the fix landed). The fix landed 2026-07-06 with operator
+GO, folded into the repo copy AND the live ~/.claude/hooks copy in the same
+operation (superscar #1, W83 GOTCHA-d: patch BOTH or neither). Per the pin's
+own instructions it is now a plain guilt+innocence test:
+
+  GUILT     (guard catches real danger): bare `git stash` (= stash push),
+            `stash push/pop/apply/drop/clear/create/store/branch` ARE blocked.
+  INNOCENCE (adjacent-legit passes): `git stash list` / `git stash show`
+            (incl. flags/args) are NOT blocked; `stashes` as a word is not
+            a token match.
 
     python3 infra/claude-hooks/test_w85_stash_readonly.py
-Exit 0 = contract holds (guilt caught, over-match still present & documented).
-Exit 1 = contract changed (either the guard went blind, or the W85 fix landed).
+Exit 0 = guard matches on intent (mutating) and spares read-only queries.
+Exit 1 = regression on either side (went blind on guilt, or re-over-matches).
 
 Reference: cicatrix-superscar.md #3 · registry: infra/guard-conformance/registry.json
 """
@@ -48,31 +46,44 @@ def main() -> int:
     regex = _load_regex()
     failures: list[str] = []
 
-    # GUILT — the guard must still catch genuinely mutating stash commands.
-    for cmd in ("git stash", "git stash push", "git stash pop"):
+    # GUILT — every mutating stash form must still be blocked.
+    for cmd in (
+        "git stash",
+        "git stash push",
+        "git stash push -m wip",
+        "git stash pop",
+        "git stash apply",
+        "git stash drop",
+        "git stash clear",
+        "git stash create",
+        "git stash store abc123",
+        "git stash branch fix/x",
+        "git -C /tmp/repo stash pop",
+    ):
         if not regex.search(cmd):
             failures.append(f"GUILT MISS: `{cmd}` no longer blocked — guard went blind")
 
-    # PINNED W85 OVER-MATCH — read-only stash queries are blocked TODAY.
-    # These assertions document the bug; their failure means the fix landed.
-    for cmd in ("git stash list", "git stash show"):
-        if not regex.search(cmd):
-            failures.append(
-                f"W85 CONTRACT CHANGED: `{cmd}` is no longer blocked — the over-match "
-                f"fix landed. Update this pin to a plain innocence test, flip the "
-                f"registry.json note, close the W85 PENDING-ARMS line."
-            )
+    # INNOCENCE — read-only stash queries (the W85 hole, now fixed) must pass.
+    for cmd in (
+        "git stash list",
+        "git stash list --stat",
+        "git stash show",
+        "git stash show -p stash@{0}",
+    ):
+        if regex.search(cmd):
+            failures.append(f"INNOCENT BITTEN: `{cmd}` blocked — W85 over-match regressed")
+
+    # INNOCENCE — token adjacency: 'stashes' is not the stash subcommand.
+    if regex.search("echo git stashes are neat"):
+        failures.append("INNOCENT BITTEN: substring `stashes` matched — word-boundary broken")
 
     if failures:
-        print("W85 PIN FAILED — the documented contract changed:")
+        print("W85 FAILED:")
         for f in failures:
             print(f"  - {f}")
         return 1
 
-    print(
-        "OK (W85 pin) — guard catches mutating stash; read-only stash over-match "
-        "still present and DOCUMENTED (fix tracked in PENDING-ARMS, not silent)."
-    )
+    print("OK (W85) — mutating stash blocked, read-only stash list/show pass.")
     return 0
 
 
