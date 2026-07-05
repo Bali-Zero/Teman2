@@ -32,6 +32,7 @@ import Link from "next/link";
 import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
 import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
+import { KBLICommonQuestions } from "@/components/kbli/KBLICommonQuestions";
 import { FunnelFrame } from "@balizero/core";
 
 const ZantaraChat = lazy(() =>
@@ -855,99 +856,6 @@ export default async function KBLICodePage({
                 </div>
               )}
 
-              {/* Q&A Section — visible text for AI extractability */}
-              <section className="mt-8">
-                <div className="flex items-center gap-4 py-2 mb-6">
-                  <div
-                    className="h-px flex-1"
-                    style={{ background: "var(--kbli-border)" }}
-                  />
-                  <span className="text-xs font-medium uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
-                    Common Questions
-                  </span>
-                  <div
-                    className="h-px flex-1"
-                    style={{ background: "var(--kbli-border)" }}
-                  />
-                </div>
-                <div className="space-y-4">
-                  <details
-                    className="rounded-xl border border-[var(--border)] overflow-hidden"
-                    open
-                  >
-                    <summary
-                      className="cursor-pointer px-5 py-3.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--kbli-accent)]"
-                      style={{ background: "var(--kbli-bg-elevated)" }}
-                    >
-                      Can foreigners operate a {kbli.titleEn.toLowerCase()}{" "}
-                      business in Indonesia?
-                    </summary>
-                    <div
-                      className="px-5 py-4 text-sm leading-relaxed text-[var(--foreground-secondary)]"
-                      style={{ background: "var(--kbli-bg-surface)" }}
-                    >
-                      {kbli.pma.status === "open"
-                        ? `Yes. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBUKA — open to 100% foreign ownership through a PT PMA company. You do not need a local Indonesian partner.`
-                        : kbli.pma.status === "restricted"
-                          ? kbli.pma.capSpecial
-                            ? `Conditionally. KBLI ${kbli.code} (${kbli.titleId}) is TERBATAS with special distribution conditions (open to foreign ownership but subject to a special distribution-network/location requirement — verify the exact terms in OSS).${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
-                            : `Partially. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBATAS — foreign ownership is ${kbli.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${kbli.pma.maxForeign}%. You will need an Indonesian partner for the remaining shares.${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
-                          : `No. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERTUTUP — closed to foreign investment. This business activity is reserved for Indonesian nationals.`}
-                    </div>
-                  </details>
-                  <details className="rounded-xl border border-[var(--border)] overflow-hidden">
-                    <summary
-                      className="cursor-pointer px-5 py-3.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--kbli-accent)]"
-                      style={{ background: "var(--kbli-bg-elevated)" }}
-                    >
-                      What license do I need for KBLI {kbli.code}?
-                    </summary>
-                    <div
-                      className="px-5 py-4 text-sm leading-relaxed text-[var(--foreground-secondary)]"
-                      style={{ background: "var(--kbli-bg-surface)" }}
-                    >
-                      {kbli.licensing.length > 0
-                        ? `KBLI ${kbli.code} has a ${kbli.licensing[0].riskCategory} risk classification. You need: ${kbli.licensing[0].licenseType || "NIB (Nomor Induk Berusaha)"}. ${kbli.licensing[0].timeframe ? `Processing time: ${kbli.licensing[0].timeframe}.` : "Processing is typically handled through the OSS (Online Single Submission) system."}`
-                        : `KBLI ${kbli.code} requires a NIB (Nomor Induk Berusaha) obtained through the OSS (Online Single Submission) system. Contact a licensed consultant for specific requirements.`}
-                    </div>
-                  </details>
-                  {kbli.transition.previousCodes.length > 0 && (
-                    <details className="rounded-xl border border-[var(--border)] overflow-hidden">
-                      <summary
-                        className="cursor-pointer px-5 py-3.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--kbli-accent)]"
-                        style={{ background: "var(--kbli-bg-elevated)" }}
-                      >
-                        How did KBLI {kbli.code} change from 2020 to 2025?
-                      </summary>
-                      <div
-                        className="px-5 py-4 text-sm leading-relaxed text-[var(--foreground-secondary)]"
-                        style={{ background: "var(--kbli-bg-surface)" }}
-                      >
-                        KBLI {kbli.code} was mapped from previous code
-                        {kbli.transition.previousCodes.length > 1
-                          ? "s"
-                          : ""}: {kbli.transition.previousCodes.join(", ")}{" "}
-                        (KBLI 2020).
-                        {kbli.transition.mappingNote
-                          ? ` ${kbli.transition.mappingNote}`
-                          : ""}
-                        {kbli.transition.mappingStatus === "MATCH_LANGSUNG"
-                          ? " This is a direct match — the code number and scope remained the same."
-                          : kbli.transition.mappingStatus ===
-                              "CODICE_RINUMERATO"
-                            ? " The code was renumbered but the business activity scope is essentially unchanged."
-                            : kbli.transition.mappingStatus ===
-                                "MATCH_CON_AGGREGAZIONE"
-                              ? " Multiple 2020 codes were merged into this single 2025 code."
-                              : ""}{" "}
-                        All businesses must migrate to KBLI 2025 by June 18,
-                        2026 (BPS Regulation 7/2025).
-                      </div>
-                    </details>
-                  )}
-                </div>
-              </section>
-
               {/* Article card for non-Gold pages */}
               {article && (
                 <a
@@ -996,6 +904,10 @@ export default async function KBLICodePage({
               )}
             </div>
           )}
+
+          {/* COMMON QUESTIONS — visible counterpart of the FAQPage JSON-LD,
+              rendered on gold AND non-gold layouts (markup honesty) */}
+          <KBLICommonQuestions code={kbli} />
 
           {/* RELATED CODES */}
           {related.length > 0 && (
