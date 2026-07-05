@@ -48,6 +48,34 @@ pre-migration archaeology.
 | kbli_tka_hybrid | 246 | |
 | garuda_assets | **0** | live but empty — create-and-abandon? |
 
+## The second registry (why "20 defined" meant two different things)
+
+There are **two parallel, never-reconciled registries** — this duplication, not the raw
+20-vs-live gap, is the structural disease:
+
+1. `backend/core/collection_registry.py` — `CANONICAL_COLLECTION_ALIASES` has ~20 keys
+   (the most plausible source of TAC-1's "20"), but they are **aliases** folding onto ~10
+   canonical logical/physical names (`CANONICAL_LOGICAL_COLLECTIONS` +
+   `LOGICAL_TO_PHYSICAL_COLLECTIONS`; two entries are constant-named, so naive string-key
+   counts under-count). Two aliases are dead code — `legal_intelligence` and
+   `intel_authoritative_sources` have zero references outside their own definition
+   (note: an `intel_authoritative_sources` COLLECTION nonetheless exists live with 525
+   points — fed by a producer that bypasses this registry).
+2. `services/ingestion/collection_manager.py` — `collection_definitions` (20 entries,
+   §above) with **6 names the registry has never seen**: `collective_memories`,
+   `bali_zero_team`, `zantara_books`, `cultural_insights`, `property_listings`,
+   `property_knowledge`. Of these, `property_listings`/`property_knowledge` carry an
+   identical copy-paste-looking `doc_count: 29` and no SurfaceRouter wiring, and
+   `cultural_insights` declares `doc_count: 0` in its own definition.
+
+Orphan tooling on top: `kb_politics_hier_v1` (one-off ingest script), `kbli_tka`
+generation/verify scripts (while the LIVE collection is named `kbli_tka_hybrid`, 246
+points), `bali_zero_skills_local` (explicitly superseded per registry comment).
+
+The regeneration PR (§Decision proposal) should therefore also PICK ONE canonical source
+(registry.py is the better skeleton) and fold or retire the manager's 6 orphans — not
+just sync counts.
+
 ## Collateral findings
 
 - **DOCSYNC Qdrant numbers are a frozen cache.** The green block says "12 collections ·

@@ -60,18 +60,27 @@ sources: live probes this session; TAC-1 = research/operations/2026-07-02-full-s
    (`cwd=/Users/balizero/...`) and its nuzantara-mcp key gets HTTP 401 from prod — the
    whole MCP layer on Mini is Esiste≠Armato. (Keychain via ssh on Pro is also locked —
    interactive-session grants don't extend to ssh principals.)
-5. **Tier-1 "autonomous" agents: the migration that never happened (A13).** The scheduler
-   disabled all three in the 2026-03-16 auto_stop era claiming "migrated to OpenClaw cron";
-   OpenClaw cron is itself retired on Pro (`jobs.json.migrated`, zero trainer refs). Extra:
-   execution stats live in an in-memory dict — `/status` resets to zero at every deploy, so
-   the endpoint can never testify history. Decision sheet shipped (arm-or-retire per agent).
+5. **Tier-1 "autonomous" agents: the migration that never happened (A13).** Root cause
+   pinned (subagent lead, every line re-verified first-hand): the ENTIRE
+   AutonomousScheduler never starts — its call-site is commented out in
+   `service_initializer.py` since commit 8dec12830 (2026-02-11, "omnichannel
+   stabilization"); even if re-enabled, the trainer is hardcoded `enabled=False` and the
+   other two were never `register_task`-ed at all. The claimed "migrated to OpenClaw
+   cron" never materialized (OpenClaw cron itself retired on Pro). Extra: execution stats
+   live in an in-memory dict — `/status` resets at every deploy — and the
+   `chain_daily_ops_autopilot` docstring promises "restart stale agents" while the code
+   only reads `/status` (theater). Decision sheet shipped (arm-or-retire per agent).
 6. **Qdrant estate: worse than TAC-1 said (A6).** Live census (14 collections · 113,818
    docs) vs the manager's 20 definitions: only **6** overlap; **14** definitions are dead
    names; **8** live collections — including the two biggest (81k, 15k points) — have no
-   definition. The DOCSYNC "12 · 104,154" is a frozen cache (QDRANT_URL/KEY unset on Mini
-   AND Pro — it can never refresh). Documented-as-known this PR; regeneration needs a
-   maintainer run with Qdrant env. Flags: `garuda_assets` live-but-empty; `visa_oracle` 90
-   live points vs 1,612 annotated.
+   definition. Deeper (subagent lead, re-verified): there are TWO parallel registries —
+   `core/collection_registry.py` (~20 alias keys folding to ~10 canonical names; the
+   likely source of TAC-1's "20") and the manager's own dict with 6 names the registry
+   never saw — never reconciled with each other, let alone with the live estate. The
+   DOCSYNC "12 · 104,154" is a frozen cache (QDRANT_URL/KEY unset on Mini AND Pro — it
+   can never refresh). Documented-as-known this PR; regeneration needs a maintainer run
+   with Qdrant env. Flags: `garuda_assets` live-but-empty; `visa_oracle` 90 live points
+   vs 1,612 annotated.
 7. **Watcher source degradation (report-only).** The backfilled 07-03 delta itself records:
    NB-INTEL-Regulation query auth-failed, and 5/5 web sources 403/404 (hukumonline, ortax,
    muc, ikpi, peraturan.bpk). The watcher's evidence base is thinning while its pipeline

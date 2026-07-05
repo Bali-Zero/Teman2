@@ -18,22 +18,37 @@ They have **never run since being scaffolded** (TAC-1 2026-07-02 found the same;
 live today). MCP mirrors exist (`run_conversation_trainer`, `run_client_predictor`) — equally
 never invoked.
 
-## Why they never ran (the istruttoria)
+## Why they never ran (the istruttoria — root causes pinned to lines, all re-verified)
 
-1. **No scheduler arms them.** `services/misc/autonomous_scheduler.py` explicitly lists all
-   three among "Disabled Tasks (migrated to OpenClaw cron)" — an AUDIT 2026-03-16 decision
-   taken when the Fly app had `auto_stop=true`. Two facts have since rotted:
-   - the app is **always-on** today (CLAUDE.md §11: `nuzantara-rag` shared-2x, always-on),
-     so the auto_stop rationale no longer holds;
-   - the "migration to OpenClaw cron" **never materialized**: on Pro,
-     `~/.openclaw/cron/jobs.json` is itself retired (`jobs.json.migrated` — the OpenClaw cron
-     subsystem was decommissioned) and a recursive grep for
-     `conversation.trainer|value.predictor|graph.builder` in `~/.openclaw/` returns nothing.
-     The docstring's migration list is archaeology, not configuration.
-2. **Execution stats are in-memory.** The `/status` endpoint aggregates from the module-level
-   `agent_executions` dict (`app/routers/autonomous_agents.py:584` ff.) — even a successful
-   manual run would show `total_runs=0` after the next deploy/restart. The endpoint can never
-   testify to history; it is a lie-in-waiting of the superscar-#2 family.
+1. **The ENTIRE AutonomousScheduler never starts.** Its call-site is commented out:
+   `app/setup/service_initializer.py` — `# 10. Background services (DISABLED for
+   omnichannel stabilization)` / `# await _init_background_services(...)` (since commit
+   `8dec12830`, 2026-02-11). Twin confirmation in `app/setup/app_factory.py` ("shutdown
+   removed — re-add when re-enabled"). Only the Health Monitor was re-extracted (step
+   10b); the scheduler — plus Compliance Monitor and the WS Redis listener on the same
+   switch — has been dead ~5 months.
+2. **Even if re-enabled, these three would still be at zero:**
+   - `conversation_trainer`: registered but hardcoded `enabled=False`
+     (`autonomous_scheduler.py` register_task block, "git subprocess on Fly.io ephemeral
+     container");
+   - `client_value_predictor`: **never registered** (12 register_task calls in the file,
+     none with this name);
+   - `knowledge_graph_builder`: **never registered** (only the different
+     `kg_incremental_builder` exists, behind `ENABLE_KG_INCREMENTAL=false`).
+   The scheduler docstring's "migrated to OpenClaw cron" claim **never materialized**: on
+   Pro, `~/.openclaw/cron/jobs.json` is itself retired (`jobs.json.migrated`) and a
+   recursive grep for trainer/predictor/builder in `~/.openclaw/` returns nothing.
+3. **Execution stats are in-memory.** `app/routers/autonomous_agents.py:29`
+   `agent_executions: dict = {}` — no table exists (no `agent_execution*` migration).
+   Even a successful manual run shows `total_runs=0` after the next deploy/restart; the
+   endpoint can never testify history (superscar-#2 lie-in-waiting).
+4. **Collateral cron-theater found on the way** (family #2): the MCP chain
+   `chain_daily_ops_autopilot` docstring promises "Check autonomous agent health →
+   restart stale agents" (`workflows/chains.py:161`) but the code only READS `/status`
+   and logs `stale_agents` (`chains.py:203-217`) — no `/run` is ever called. Meanwhile
+   `run_client_predictor` / the client-health chain DO call
+   `/client-value-predictor/run` (`tools/workflows.py:146`) — but only when invoked, and
+   any run it ever made was erased from stats by (3).
 
 ## Options (operator picks per agent)
 
