@@ -93,6 +93,30 @@ itself could not see (blind/partial) — a guardian that cannot see never report
   actually shipped was done first-hand with targeted greps in ~15 minutes. Fan-out has a
   latency floor — for bounded, precision-critical censuses, the orchestrator's own eyes win.
 
+## Addendum — late census deliveries (arrived at session close; claims re-verified first-hand)
+
+The two census agents DID eventually deliver, hours late, and two findings were load-bearing:
+
+1. **Claude-hooks live-drift on Mini** (#1 family, cmp-verified by me): `host_boundary.py`,
+   `dispatch_nudge.py`, `orchestrate_gate.py`, `stadio_zero_nudge.py` all diverge repo↔
+   `~/.claude/hooks/`, and `_phase.py` is MISSING live (`install_phase_aware.sh` never ran here).
+   This drift was invisible to every automated gate — and it mechanically explains why
+   `orchestrate_gate` kept biting this session: the live copy lacks the phase-aware relax the
+   repo already has. Ledger line filed (fold-in + declare the 5 pairs in declared-pairs.json).
+2. **The scar-gate registry is TWO registries, and only one is CI-consumed** (adjudicated
+   first-hand): `verify_the_verifiers.py` reads `verify_the_verifiers_gates.yaml`; MANIFEST.json
+   feeds only the manual `run_scar_gates.py`. Consequences: (a) my own #1973 checker's
+   delegated-armed proof read MANIFEST — a W81 theater specimen inside the anti-theater tool,
+   fixed same-day (3rd hardening commit: proof now reads the YAML); (b) the homefork scar-gate
+   test is executed by NO workflow — ledger line filed for its arming. The guard census also
+   confirmed all 10 bridge guards carry guilt+innocence redundantly (named tests + a ×3-language
+   matrix with structural completeness meta-gates) — stronger than my registry assumed — and
+   flagged two untested bare-substring matchers (`_tool_mandates`, `_villa_answer_language`
+   fallback) as future conformance candidates.
+
+Lane 3's remote report-only sweep of Pro (57 findings; 2 REAL live `.env` at 0644 worth
+rotation review, ~34 jiti-cache false positives → PRUNE follow-up) is folded into the ledger.
+
 ## §Meta-pattern (the malattia-delle-malattie, mandatory)
 
 **Every guardian is born watching something else and dies of the diseases it watches.** All four
@@ -105,6 +129,8 @@ families it polices —
 - the secrets audit produced a W84 dead-green (blind scan reading as clean: #2 inside a #4 tool);
 - its test suite HOME-forked reality by chmod-ing live files (#1/#4 inside the tests);
 - the vaccine's own W83/W84 suites were W81-theater (armed-looking, never executed);
+- my conformance checker's delegated-armed proof read the registry no workflow executes
+  (W81 theater inside the anti-theater tool — caught by the census, fixed same-day);
 - the guardrails hook over-matched the investigation of over-matching.
 
 The corollary is structural, not moral: **guardians need guardians, but the second level must be
