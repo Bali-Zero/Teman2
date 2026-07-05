@@ -27,6 +27,7 @@
 - opened 2026-07-05 | A13 decision sheet (docs/runbooks/autonomous-agents-decision-sheet.md — 3 agent mai eseguiti, scheduler mai armato, stats in-memory) | decisione operatore ARM/RETIRE per agente | operator | decisione registrata + PR follow-up merged
 - opened 2026-07-05 | PENDING-ALIGN:M5 — blob-proof fly-tunnel supervisor (repo-side fix verificato oggi) + re-sync wrapper regulatory su M5 (macchina non toccata: 2 sessioni sorelle live) | `cmp` repo-vs-HOME alla prossima sessione M5 | me/sorella M5 | cmp clean sui 2 file
 - opened 2026-07-05 | PENDING-ALIGN:Pro — main checkout pull post-merge TAC-2 (47 file dirty = lavoro operatore live, intoccato per fence) | `git pull --ff-only` quando la lane operatore parcheggia | operator | `git rev-parse HEAD` su Pro == origin/main
+- opened 2026-07-05 | CLASS-AUDIT W89 (pattern-fix=class-audit): la vulnerabilità sonnet-5-backgrounding curata nel regulatory wrapper vive in ALTRI 7 wrapper `claude --print` LIVE su Pro (competitor-monitor, cron-agent, run-nb-curator-mode-c, wr2-canva-oauth-watchdog, wr2-contract-test, wr2-ig-metrics-analyst, yield-optimizer — enumerati oggi via ssh read-only; la maggior parte è HOME-only senza canon, famiglia #1) | per ciascuno: BG-ceiling env + direttiva inline + success=artefatto dove esiste un contratto-file; reverse-promotion a canon dove manca | me (prossima sessione Pro-resident) | grep BG_WAIT_CEILING nei 7 wrapper == 7; run-log successivo di ciascuno senza "Background tasks still running" |
 
 ## closed (proof recorded)
 
