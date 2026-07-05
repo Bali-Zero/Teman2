@@ -1,0 +1,86 @@
+name: cron - codex autofix reaper (weekly report; manual reap)
+
+# Garbage-collects the Codex auto-fix backlog (superscar #2: the nightly autofix generator
+# opens a PR + branch per failing CI run and never reaps them — they accrete for weeks).
+#
+# SCHEDULED runs are REPORT-ONLY: they print what is reapable and exit non-fatally. They NEVER
+# close a PR or delete a branch on their own — reaping is an explicit, human-triggered action
+# (workflow_dispatch with reap=true), because closing/deleting is outward-facing.
+#
+# The reaper is conservative by construction (scripts/codex_autofix_reaper.py): it only touches
+# codex/auto-fix-ci-* branches, only closes a PR whose target workflow is green on main AND which
+# has no OTHER failing checks, and only deletes an orphan branch that is already on main by content
+# (blob-per-file, W88) or is a genuinely abandoned no-PR branch past --stale-days.
+
+on:
+  schedule:
+    - cron: "0 22 * * 1" # 22:00 UTC Mon = 06:00 WITA Tue — after the weekly branch-cleanup window
+  workflow_dispatch:
+    inputs:
+      reap:
+        description: "Actually close eligible PRs + delete orphan branches (default: report only)"
+        type: boolean
+        default: false
+      stale_days:
+        description: "Age threshold in days for stale/abandoned artifacts"
+        type: string
+        default: "14"
+
+concurrency:
+  group: codex-autofix-reaper
+  cancel-in-progress: false
+
+permissions:
+  contents: write # delete orphan branches
+  pull-requests: write # close obsolete auto-fix PRs
+  checks: read
+  actions: read # read workflow run conclusions on main
+
+jobs:
+  reap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history for blob-per-file merge check)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Report reapable backlog
+        id: report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          STALE_DAYS: ${{ github.event.inputs.stale_days || '14' }}
+        run: |
+          set -uo pipefail
+          # Validate stale_days is a bare integer before it reaches the CLI (defence-in-depth
+          # against workflow_dispatch input injection, even though only write-access users trigger it).
+          case "$STALE_DAYS" in
+            ''|*[!0-9]*) echo "invalid stale_days: $STALE_DAYS" >&2; exit 2 ;;
+          esac
+          python3 scripts/codex_autofix_reaper.py \
+            --repo "$REPO" \
+            --stale-days "$STALE_DAYS" \
+            | tee "$GITHUB_STEP_SUMMARY"
+
+      - name: Reap (manual dispatch only, reap=true)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.reap == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          STALE_DAYS: ${{ github.event.inputs.stale_days || '14' }}
+        run: |
+          set -uo pipefail
+          case "$STALE_DAYS" in
+            ''|*[!0-9]*) echo "invalid stale_days: $STALE_DAYS" >&2; exit 2 ;;
+          esac
+          python3 scripts/codex_autofix_reaper.py \
+            --repo "$REPO" \
+            --stale-days "$STALE_DAYS" \
+            --reap --yes
