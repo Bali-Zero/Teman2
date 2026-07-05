@@ -45,6 +45,17 @@ class CollectionManager:
         self._collection_last_updated: dict[str, float] = {}
 
         # Collection definitions (lazy initialization)
+        #
+        # ⚠️ RECONCILIATION NOTE (TAC-2 A6, 2026-07-05): this dict describes the
+        # PRE-hybrid-migration generation of the Qdrant estate. Live probe of
+        # /health/collections (14 collections, 113,818 docs) shows only 6 of the
+        # 20 entries below exist live; 14 are dead names (collective_memories is
+        # a Postgres table today; kbli_2025_final/tax_genius/legal_unified* have
+        # live *_hybrid/_oss/_2026 successors) and the two BIGGEST live
+        # collections (legal_unified_hybrid_hybrid 81k, legal_unified_2026 15k)
+        # have no entry here at all. Full table + regeneration plan:
+        # docs/runbooks/qdrant-estate-reconciliation.md — do not trust doc_count
+        # annotations below as live truth.
         self.collection_definitions = {
             # Memory collections
             "collective_memories": {
