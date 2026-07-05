@@ -115,22 +115,27 @@ Agentic RAG (`/api/agentic-rag/query`) requires JWT.
 apps/backend-rag/
 ├── backend/
 │   ├── app/                # ⚠️ FastAPI app (routers, services, setup)
-│   │   ├── routers/        # 88 router files
+│   │   ├── routers/        # router modules (count: see DOCSYNC line at top)
 │   │   ├── services/       # App-level services (CRM, auth)
 │   │   ├── setup/          # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main_cloud.py   # Fly.io entrypoint
-│   ├── services/           # Core business logic (244 total)
+│   ├── services/           # Core business logic (count: see DOCSYNC line)
 │   │   ├── rag/agentic/    # Orchestrator, ReAct, LLM Gateway
 │   │   └── knowledge_graph/ # KG extraction + query
-│   ├── channels/           # 7: whatsapp, telegram, instagram, twitter, web, gchat, slack
+│   ├── channels/           # 4 live: whatsapp, telegram, instagram, web (twitter/gchat/slack quarantined .disabled-2026-04-30)
 │   ├── prompts/            # ⭐ zantara_core.py = Single Source of Truth
 │   ├── llm/                # Gemini, Ollama, OpenRouter clients
 │   ├── middleware/          # Auth, rate-limit, tracing
 │   └── migrations/         # Alembic (up to 060)
-├── tests/                  # 385 test files
+├── tests/                  # test files (count: see DOCSYNC line)
 └── .venv/                  # Python virtualenv (ALWAYS .venv)
 ```
+
+> Counts live ONLY in the machine-verified DOCSYNC line at the top of this file
+> (`python scripts/docs_sync.py`). This block stopped carrying its own numbers on
+> 2026-07-05: the hardcoded ones had drifted 2-2.6× wrong (88→158 router files,
+> 244→635 services, 385→1104 tests, 7→4 live channels) because nothing gated them.
 
 **Key detail:** Routers are in `backend/app/routers/`, NOT `backend/routers/`. Services span both `backend/services/` (core) and `backend/app/services/` (app-level). Router registration is in `backend/app/setup/router_registration.py`, NOT `main_cloud.py`.
 
