@@ -100,7 +100,7 @@ limitrofo) **E** di colpevolezza. Match su **entità/intento**, mai bare-substri
 (`_contains_any_word`) o intento compositivo [over]; **fact-key strutturato** (codice KBLI / sigla visto /
 numero-norma, language-invariant) con anchor tolleranti a contesto-tabella [under]. Escape negative-gating
 (default passthrough). Nessuna superficie esclusa "per dopo" senza un secondo guardiano che la copra.
-**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, PR #1973 operator-gate):** `infra/guard-conformance/`
+**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1973 merged 07-06):** `infra/guard-conformance/`
 (registry.json + check_guard_conformance.py + CI `guard-conformance.yml`): guardia censita senza test di
 colpevolezza E innocenza = FAIL; anti-phantom W65 sui riferimenti; armed-check W81 (il workflow esegue
 direttamente W83/W84, prima non eseguiti da nessun workflow); W85 pinned da `infra/claude-hooks/test_w85_stash_readonly.py`.
