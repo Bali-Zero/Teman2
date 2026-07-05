@@ -83,6 +83,12 @@ jobs:
           set -euo pipefail
           python3 infra/claude-hooks/test_w85_stash_readonly.py
 
+      - name: Tilde/env target-resolver suite (blind-spot fixed 2026-07-06)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_tilde_target_resolver.py
+
       # These two regression suites existed since W83/W84 but NO workflow
       # executed them (found by the red-team pass on this very PR: they only
       # satisfied substring arming via path-filter text — W81 theater).
