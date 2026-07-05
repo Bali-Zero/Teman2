@@ -34,6 +34,18 @@ WHAT IT CHECKS, against infra/guard-conformance/registry.json:
      the census+phantom checks bound the damage; do not "fix" this by
      parsing YAML into a second execution model.
 
+DIVISION OF LABOR (deliberate, red-team-reviewed): this checker proves
+LINKAGE (census parity, both proofs registered, refs real, tests reachable);
+EXECUTION of the proofs belongs to CI (tests.yml runs the bridge suite dir;
+hook-innocence-gate.yml + guard-conformance.yml execute the hook suites —
+incl. W83/W84, which no workflow executed before this suite existed). Known
+accepted limits: existence checks are regex-based (a symbol surviving only
+in a comment passes C1 — census+CI-execution bound the damage); the bridge
+census contract is the `_guard_` def prefix (a guard written outside that
+convention is invisible — the convention IS the org contract, registry._doc
+says so); vaccine coverage asserts the hook appears in the vaccine's CASES,
+whose corpus carries both innocence AND guilt cases per hook by design.
+
 Exit 0 = conformant. Exit 1 = violations (each printed with its rule id).
 Runs anywhere (CI, any machine): pure stdlib, read-only, no network.
 
@@ -264,13 +276,41 @@ def check_simple_surfaces(registry: dict[str, Any], wf_text: str) -> list[str]:
 
     for name, entry in registry["surfaces"].get("under_match_sentinels", {}).items():
         gate = entry.get("delegated_to", "")
-        if not (REPO_ROOT / gate).exists():
+        gate_path = REPO_ROOT / gate
+        if not gate_path.exists():
             violations.append(f"C3[under-match] `{name}` delegated gate missing: {gate}")
+            continue
+        # C4 for delegated scar-gates: execution is TRANSITIVE — the meta-
+        # verifier (scripts/verify_the_verifiers.py, run by its own workflow)
+        # executes every MANIFEST gate with prose_only:false. Armed therefore
+        # means: MANIFEST lists this gate un-prose, and the meta-verifier
+        # workflow exists.
+        manifest_path = REPO_ROOT / "infra" / "scar-gates" / "MANIFEST.json"
+        armed = False
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                armed = any(
+                    g.get("target") == gate_path.name and not g.get("prose_only", True)
+                    for g in manifest.get("gates", [])
+                )
+            except (OSError, json.JSONDecodeError):
+                armed = False
+        if not armed or not (WORKFLOWS_DIR / "verify-the-verifiers.yml").exists():
+            violations.append(
+                f"C4[under-match] `{name}` gate {gate} is not armed via scar-gates "
+                f"MANIFEST (prose_only must be false) + verify-the-verifiers workflow (W81)"
+            )
 
     for key in registry["surfaces"].get("exempt_matchers", {}):
-        src = key.split("::", 1)[0]
-        if not (REPO_ROOT / src).exists():
+        src, _, symbol = key.partition("::")
+        src_path = REPO_ROOT / src
+        if not src_path.exists():
             violations.append(f"C1[exempt] exempted matcher source vanished (stale): {src}")
+        elif symbol and not symbol_exists(src_path, symbol):
+            violations.append(
+                f"C1[exempt] exempted symbol `{symbol}` no longer exists in {src} (stale registry)"
+            )
 
     return violations
 

@@ -26,6 +26,11 @@ on:
       - "scripts/hooks/**"
       - "scripts/openclaw_whatsapp_bridge.py"
       - "apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py"
+      - "scripts/guardrails_static_core.py"
+      - "scripts/test_guardrails_overmatch.py"
+      - "scripts/test_guardrails_core_overmatch.py"
+      - "infra/scar-gates/**"
+      - "scripts/wr2_html_renderer/designer_loop.py"
       - ".github/workflows/guard-conformance.yml"
 
 concurrency:
@@ -53,7 +58,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|\.github/workflows/guard-conformance\.yml)'; then
+            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|\.github/workflows/guard-conformance\.yml)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -77,6 +82,17 @@ jobs:
         run: |
           set -euo pipefail
           python3 infra/claude-hooks/test_w85_stash_readonly.py
+
+      # These two regression suites existed since W83/W84 but NO workflow
+      # executed them (found by the red-team pass on this very PR: they only
+      # satisfied substring arming via path-filter text — W81 theater).
+      # This workflow becomes their direct executor.
+      - name: W83/W84 hook regression suites (previously unexecuted anywhere)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_w83_remote_dispatch.py
+          python3 infra/claude-hooks/test_w84_strip_noise_cross_line.py
 
       - name: Sentinel success (no guard surfaces changed)
         if: steps.relevant.outputs.run != 'true'
