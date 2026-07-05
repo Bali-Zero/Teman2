@@ -153,6 +153,47 @@ def test_interpreter_payload_under_home_flagged(world):
     assert [h["target"] for h in r["home_fork_target"]] == [str(payload)]
 
 
+def test_canon_paired_home_target_not_a_fork(world):
+    """A $HOME payload byte-identical to its repo canon (basename match in
+    wrappers/ or scripts/) is the W84-safe placement, not a fork — it must
+    land in canon_paired, NOT home_fork_target."""
+    canon = world["repo"] / "infra" / "launchagents" / "wrappers" / "wrapper.sh"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("#!/bin/sh\necho same\n")
+    live = world["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho same\n")
+    write_plist(
+        world["agents"] / "com.balizero.paired.plist",
+        "com.balizero.paired",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert [c["label"] for c in r["canon_paired"]] == ["com.balizero.paired"]
+    assert r["canon_paired"][0]["canon"] == "infra/launchagents/wrappers/wrapper.sh"
+
+
+def test_canon_diverged_home_target_still_a_fork(world):
+    """Same basename but DIFFERENT bytes = the real disease (drift). Must stay
+    in home_fork_target, with the canon named in the detail."""
+    canon = world["repo"] / "scripts" / "wrapper.sh"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("#!/bin/sh\necho repo-version\n")
+    live = world["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho drifted-version\n")
+    write_plist(
+        world["agents"] / "com.balizero.drifted.plist",
+        "com.balizero.drifted",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["canon_paired"] == []
+    assert [h["label"] for h in r["home_fork_target"]] == ["com.balizero.drifted"]
+    assert "DIVERGED from canon" in r["home_fork_target"][0]["detail"]
+
+
 def test_symlink_into_repo_not_a_fork(world):
     """A $HOME payload that is a symlink into the repo is the CURE for #1,
     not an instance of it."""
