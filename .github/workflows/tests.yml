@@ -56,7 +56,7 @@ jobs:
           python-version: "3.11"
 
       - name: Cache dependencies (uv)
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/uv
           key: ${{ runner.os }}-uv-${{ hashFiles('apps/backend-rag/requirements.lock.txt') }}
@@ -273,7 +273,7 @@ jobs:
           node-version: "22"
 
       - name: Cache dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             **/node_modules
