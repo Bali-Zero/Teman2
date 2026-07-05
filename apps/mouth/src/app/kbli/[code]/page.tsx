@@ -9,7 +9,7 @@ import {
   getHeroStyle,
 } from "@/lib/kbli-data";
 import { getGoldContent } from "@/lib/kbli-data.server";
-import { formatTimeframe } from "@/lib/kbli-derive";
+import { formatTimeframe, riskLabelEn } from "@/lib/kbli-derive";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
@@ -55,6 +55,14 @@ export async function generateMetadata({
   const kbli = getCode(codeParam);
   if (!kbli) return { title: "KBLI Code Not Found" };
 
+  // Batch 3 (v3): data-differentiated title/meta. The long-tail queries this
+  // cluster can win are `KBLI [code] foreign ownership` / `KBLI [code] risk
+  // level` — v2's fixed "Indonesia Business Guide 2025" suffix answered
+  // neither and left 1,559 near-identical titles. Formulas + per-page quality
+  // checklist: research/seo/2026-07-05-batch3-title-meta-queue.md
+  const baliBlocked = !!kbli.baliL4?.blocked;
+  const risk = riskLabelEn(kbli.licensing[0]?.riskCategory);
+
   const pmaLabel =
     kbli.pma.status === "open"
       ? "100% Foreign Ownership"
@@ -64,8 +72,35 @@ export async function generateMetadata({
           : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
         : "Closed to Foreign Investment";
 
-  const title = `KBLI ${kbli.code}: ${kbli.titleEn} — Indonesia Business Guide 2025`;
-  const description = `${kbli.titleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
+  const titleSuffix =
+    kbli.pma.status === "open"
+      ? baliBlocked
+        ? "Blocked for PT PMA in Bali (2026)"
+        : risk
+          ? `100% Foreign Ownership, ${risk} Risk`
+          : "100% Foreign Ownership"
+      : kbli.pma.status === "restricted"
+        ? kbli.pma.capSpecial
+          ? "Foreign Ownership With Conditions"
+          : kbli.pma.capVerified
+            ? `Max ${kbli.pma.maxForeign}% Foreign Ownership`
+            : "Foreign Ownership Restricted"
+        : "Closed to Foreign Investment";
+
+  const title = `KBLI ${kbli.code}: ${kbli.titleEn} — ${titleSuffix}`;
+  const description = [
+    `${kbli.titleEn} (KBLI ${kbli.code}): ${pmaLabel}${
+      baliBlocked && kbli.pma.status === "open"
+        ? " nationally — blocked for a PT PMA in Bali (2026)"
+        : ""
+    }.`,
+    risk
+      ? `${risk} risk, license: ${kbli.licensing[0]?.licenseType || "NIB"}.`
+      : null,
+    "KBLI 2025 rules + Bali notes by Bali Zero.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return {
     title,

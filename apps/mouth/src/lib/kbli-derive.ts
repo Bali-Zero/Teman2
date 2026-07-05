@@ -78,3 +78,20 @@ export function formatTimeframe(raw: string | null | undefined): string | null {
   // descriptive value pass through verbatim — they are already human-readable.
   return s;
 }
+
+/**
+ * English label for a raw kategori_risiko value ("Tinggi", "Menengah Rendah",
+ * ...). Same semantics as RiskBadge's parseRisk — check the compound
+ * "menengah" forms BEFORE the bare ones. Returns null for unknown values:
+ * a surface omitting the risk is honest, a surface inventing one is not.
+ */
+export function riskLabelEn(category?: string | null): string | null {
+  if (!category) return null;
+  const lower = category.toLowerCase();
+  const menengah = lower.includes("menengah");
+  if (menengah && lower.includes("tinggi")) return "Medium-High";
+  if (menengah && lower.includes("rendah")) return "Medium-Low";
+  if (lower.includes("tinggi")) return "High";
+  if (lower.includes("rendah")) return "Low";
+  return null;
+}

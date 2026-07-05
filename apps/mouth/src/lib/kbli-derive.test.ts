@@ -3,6 +3,7 @@ import {
   licenseForRisk,
   resolveLicenseType,
   formatTimeframe,
+  riskLabelEn,
 } from "./kbli-derive";
 
 describe("licenseForRisk (PP28 Pasal 124(4) — license derives from risk)", () => {
@@ -76,5 +77,21 @@ describe("formatTimeframe (clean display of jangka_waktu)", () => {
     expect(formatTimeframe("")).toBeNull();
     expect(formatTimeframe("-")).toBeNull();
     expect(formatTimeframe(null)).toBeNull();
+  });
+});
+
+describe("riskLabelEn", () => {
+  it("maps the four kategori_risiko values, compound forms first", () => {
+    expect(riskLabelEn("Tinggi")).toBe("High");
+    expect(riskLabelEn("Rendah")).toBe("Low");
+    expect(riskLabelEn("Menengah Tinggi")).toBe("Medium-High");
+    expect(riskLabelEn("Menengah Rendah")).toBe("Medium-Low");
+  });
+
+  it("returns null for unknown/empty values — never invents a risk", () => {
+    expect(riskLabelEn(undefined)).toBeNull();
+    expect(riskLabelEn(null)).toBeNull();
+    expect(riskLabelEn("")).toBeNull();
+    expect(riskLabelEn("Sedang")).toBeNull();
   });
 });
