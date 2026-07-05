@@ -99,10 +99,13 @@ def _derive_repo_root() -> str:
 REPO_ROOT = _derive_repo_root()
 
 # Blocked git subcommands.
+# W85 fix (2026-07-06): `stash` carries a negative lookahead so read-only
+# `stash list` / `stash show` pass; bare `git stash` (= stash push) and every
+# mutating stash verb still match — the guard matches intent, not bare token.
 BLOCKED_SUBCMD_RE = re.compile(
     r"\bgit\s+(?:-c\s+\S+\s+)*"  # optional -c key=val flags
     r"(?:-C\s+\S+\s+)?"  # optional -C path
-    r"(checkout|switch|stash|reset|merge|rebase|pull)\b"
+    r"(checkout|switch|stash(?!\s+(?:list|show)\b)|reset|merge|rebase|pull)\b"
     r"|\bgit\s+commit\s+(?:[^\s]+\s+)*(?:-[A-Za-z]*a|--all\b)"  # commit -a / -am / -a -m / --all
     r"|\bgit\s+add\s+(?:-A|-a|--all|\.)"  # add -A / add -a / add --all / add .
 )
