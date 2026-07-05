@@ -471,9 +471,10 @@ apps/backend-rag/.venv/
 # KBLI temporary files and utilities
 apps/backend-rag/backend/app/routers/*.before-claude
 harvested_zones/
-main.py
-!apps/cell/cell/main.py
-!vendor/evoskill/src/cli/main.py
+# TAC-2 (2026-07-05): was a bare `main.py` — it silently hid apps/remediator/main.py
+# (the ENTIRE app) and apps/graph-engine's entrypoint from git (TAC-1 P2-7). Anchored
+# to repo root; the two `!` exceptions it forced are now unnecessary and removed.
+/main.py
 master_building_codes_complete.json
 
 # EvoSkill runtime outputs (Phase 1 evolver loop generates these)
