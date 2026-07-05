@@ -44,6 +44,7 @@ describe("ChatInputBar", () => {
     onStopRecording: vi.fn(),
     attachedImages: [],
     onRemoveImage: vi.fn(),
+    onStop: vi.fn(),
   };
 
   it("renders correctly", () => {
@@ -98,5 +99,33 @@ describe("ChatInputBar", () => {
     const attachBtn = screen.getByLabelText(/Attach file/i);
     fireEvent.click(attachBtn);
     expect(setShowAttachMenu).toHaveBeenCalledWith(true);
+  });
+
+  it("shows stop button when loading", () => {
+    const onStop = vi.fn();
+    render(<ChatInputBar {...defaultProps} isLoading={true} onStop={onStop} />);
+
+    const stopBtn = screen.getByLabelText(/Stop generation/i);
+    expect(stopBtn).toBeInTheDocument();
+    fireEvent.click(stopBtn);
+    expect(onStop).toHaveBeenCalled();
+  });
+
+  it("disables send button when input is empty and not loading", () => {
+    render(<ChatInputBar {...defaultProps} input="" isLoading={false} />);
+    const sendBtn = screen.getByLabelText(/Send message/i);
+    expect(sendBtn).toBeDisabled();
+  });
+
+  it("enables send button when input is not empty", () => {
+    render(<ChatInputBar {...defaultProps} input="hello" isLoading={false} />);
+    const sendBtn = screen.getByLabelText(/Send message/i);
+    expect(sendBtn).not.toBeDisabled();
+  });
+
+  it("enables stop button even when input is empty", () => {
+    render(<ChatInputBar {...defaultProps} input="" isLoading={true} />);
+    const stopBtn = screen.getByLabelText(/Stop generation/i);
+    expect(stopBtn).not.toBeDisabled();
   });
 });

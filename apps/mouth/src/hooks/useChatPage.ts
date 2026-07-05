@@ -88,6 +88,7 @@ export interface UseChatPageReturn {
   handleDeleteConversation: (id: number, e: React.MouseEvent) => void;
   handleAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleImageGenSubmit: () => void;
+  handleStop: () => void;
   toggleClock: () => Promise<void>;
   showToast: (message: string, type: 'success' | 'error') => void;
   setShowUserMenu: (show: boolean) => void;
@@ -584,6 +585,7 @@ export function useChatPage(): UseChatPageReturn {
     handleDeleteConversation,
     handleAvatarChange,
     handleImageGenSubmit,
+    handleStop: chatSend.onStop,
     toggleClock,
     showToast,
     setShowUserMenu,

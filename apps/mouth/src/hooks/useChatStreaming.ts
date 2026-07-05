@@ -57,6 +57,7 @@ export function useChatStreaming(
 
   const abortStream = useCallback(() => {
     isAbortedRef.current = true;
+    setIsStreaming(false);
     const currentController = abortControllerRef.current;
     if (currentController) {
       currentController.abort();

@@ -62,3 +62,8 @@
 
 **Learning:** Live UI states that lack visual labels (like a voice recording overlay) are "silent" to screen readers. Adding `role="status"` and `aria-live="polite"` ensures that assistive technology users are notified of state transitions (e.g., recording started) without being interrupted. Furthermore, adding `aria-label` to semantic lists of "Quick Actions" provides necessary context for group navigation, making the interface more discoverable.
 **Action:** Always apply ARIA live regions to dynamic status overlays. Use descriptive `aria-label` on semantic list containers that serve as primary interaction points.
+
+## 2026-06-22 - [Interactive Stop Patterns and Hover Context in Sidebar]
+
+**Learning:** Providing a "Stop Generation" action during streaming states is a critical user-control pattern that prevents frustration with long or irrelevant responses. This requires bridging the frontend action through several hook layers down to an `AbortController`. Additionally, for navigation elements with constrained width (like sidebars), providing a native `title` attribute is a low-effort, high-impact micro-UX win for making truncated content accessible on hover.
+**Action:** Always implement a stop/interrupt pattern for long-running AI streaming processes. Use native `title` attributes for any text elements that utilize CSS truncation (`truncate`) to ensure full context is available on hover.

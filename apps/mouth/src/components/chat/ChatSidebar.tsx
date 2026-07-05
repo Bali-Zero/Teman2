@@ -146,7 +146,10 @@ export function ChatSidebar({
                       }
                     >
                       <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span className="text-sm text-gray-400 truncate flex-1">
+                      <span
+                        className="text-sm text-gray-400 truncate flex-1"
+                        title={conv.title || "Untitled"}
+                      >
                         {conv.title || "Untitled"}
                       </span>
                     </button>

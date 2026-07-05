@@ -43,6 +43,7 @@ export default function ChatPage() {
     handleConversationClick,
     handleDeleteConversation,
     handleImageGenSubmit,
+    handleStop,
     handleAvatarChange,
     toggleClock,
     showToast,
@@ -126,6 +127,7 @@ export default function ChatPage() {
           recordingTime={0}
           onStartRecording={() => {}}
           onStopRecording={() => {}}
+          onStop={handleStop}
           attachedImages={chatInput.attachedImages}
           onRemoveImage={chatInput.removeAttachedImage}
         />

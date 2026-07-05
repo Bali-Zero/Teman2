@@ -12,6 +12,7 @@ import {
   Camera,
   Mic,
   X,
+  Square,
 } from "lucide-react";
 import { ChatRecordingOverlay } from "./ChatRecordingOverlay";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +40,7 @@ export interface ChatInputBarProps {
   onToggleRecording?: () => void; // Click-to-toggle handler
   attachedImages?: AttachedImage[];
   onRemoveImage?: (id: string) => void;
+  onStop?: () => void;
 }
 
 export function ChatInputBar({
@@ -61,6 +63,7 @@ export function ChatInputBar({
   onToggleRecording,
   attachedImages = [],
   onRemoveImage,
+  onStop,
 }: ChatInputBarProps) {
   // Close menu on click-outside or Escape
   useEffect(() => {
@@ -285,20 +288,30 @@ export function ChatInputBar({
             />
 
             <Button
-              onClick={showImagePrompt ? onImageGenerate : onSend}
-              disabled={!input.trim() || isLoading}
+              onClick={
+                isLoading
+                  ? onStop
+                  : showImagePrompt
+                    ? onImageGenerate
+                    : onSend
+              }
+              disabled={!isLoading && !input.trim() && !showImagePrompt}
               size="icon"
-              className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0 focus-ring"
+              className={`rounded-full flex-shrink-0 w-10 h-10 border-0 focus-ring transition-all duration-200 ${
+                isLoading
+                  ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20"
+                  : "glow-button"
+              }`}
               aria-label={
                 isLoading
-                  ? "Sending..."
+                  ? "Stop generation"
                   : showImagePrompt
                     ? "Generate image"
                     : "Send message"
               }
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Square className="w-5 h-5 fill-current" />
               ) : (
                 <Send className="w-5 h-5" />
               )}

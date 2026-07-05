@@ -62,6 +62,7 @@ export interface UseChatSendReturn {
   streamingSteps: Array<AgentStep>;
   currentStatus: string;
   setCurrentStatus: (status: string) => void;
+  onStop: () => void;
 }
 
 export function useChatSend({
@@ -76,7 +77,7 @@ export function useChatSend({
   onStep,
 }: UseChatSendOptions): UseChatSendReturn {
   const { t } = useTranslation();
-  const { isStreaming, setIsStreaming, sendStreamingMessage } =
+  const { isStreaming, setIsStreaming, sendStreamingMessage, abortStream } =
     useChatStreaming({
       sessionId,
       isMountedRef,
@@ -194,5 +195,6 @@ export function useChatSend({
     streamingSteps,
     currentStatus,
     setCurrentStatus,
+    onStop: abortStream,
   };
 }
