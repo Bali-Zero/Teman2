@@ -32,6 +32,11 @@ export NLM_PROFILE=default
 
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
 
+# sshd (W84 trampoline) and bare launchd contexts carry a minimal PATH — codex
+# is a node shebang script and dies with "env: node: No such file or directory"
+# without homebrew on PATH (proved live 2026-07-06 05:09).
+export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
+
 mkdir -p "$HOME/Desktop/nuzantara/research/regulatory" "$HOME/logs"
 
 LOG="$HOME/logs/regulatory-watcher.log"
@@ -191,6 +196,17 @@ ensure_delta() {
     extract_delta_from_output "$_out" && [ -f "$DELTA_JSON" ] && return 0
     return 1
 }
+
+# W84 trampoline follow-up (2026-07-06): in the sshd context the login Keychain
+# is LOCKED, so the claude CLI cannot read its OAuth credentials and dies with
+# "Not logged in" — proved live at the 05:08 trampolined run. Fall back to the
+# MAX-3 env token from ~/.nuzantara-secrets.env (verified working in sshd:
+# TOKEN1-OK). Gated on REGWATCH_TRAMPOLINED so gui-context runs keep the
+# healthy Keychain path even if the env token later expires.
+if [ -n "${REGWATCH_TRAMPOLINED:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
+    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
+    echo "[$(date)] trampolined context: exporting CLAUDE_CODE_OAUTH_TOKEN from MAX-3 slot 1 (Keychain locked under sshd)" >> "$LOG"
+fi
 
 # Tier 1: Claude OAuth Sonnet
 echo "[$(date)] tier 1 — claude sonnet" >> "$LOG"
