@@ -44,7 +44,9 @@ DELTA_BASENAME="${DATE}-delta.json"
 # "Operation not permitted" while a bash-rooted job read ~/Desktop fine), the
 # delta can never land. Abort loudly with exit 78 (config error) BEFORE burning
 # LLM tiers; launchd's non-zero exit is picked up by launchd_liveness_detector.
-if [ ! -r "$HOME/Desktop/nuzantara/CLAUDE.md" ]; then
+# NB: must be a REAL read (head -c 1), not `[ -r ]` — TCC denies at open(2),
+# while access(2) can still say yes (the probe itself must not be a proxy).
+if ! head -c 1 "$HOME/Desktop/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
     echo "[$(date)] FATAL: TCC denies ~/Desktop/nuzantara in this launchd context (W84) — re-grant Full Disk Access to the job's interpreter. Aborting before any LLM tier." >> "$LOG"
     exit 78
 fi
