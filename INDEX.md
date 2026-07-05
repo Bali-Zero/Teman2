@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 30 · **Packages:** 6
+**Apps:** 31 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -125,6 +125,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `openclaw-hgt-coordinator` |  |
 | `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
 | `osint-nexus-ui` |  |
+| `remediator` |  |
 | `research` |  |
 | `team-agent` |  |
 | `wa-dashboard` | Local-only Next.js 16 app for the Bali Zero team WhatsApp inbox. |
