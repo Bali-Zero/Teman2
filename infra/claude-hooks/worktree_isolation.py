@@ -530,13 +530,22 @@ def _effective_git_target(cmd: str, default_cwd: str) -> str:
     """Determine the effective working dir for git command.
 
     Priority: `git -C <path>` > `cd <path> && git` > default cwd.
+
+    Tilde/env blind-spot fix (2026-07-06, found by the W85 live guilt-probe):
+    the extracted token is expanded the way the shell will (`~`, `$HOME`,
+    `${HOME}`) BEFORE downstream resolution — an unexpanded `~/Desktop/...`
+    used to defeat the realpath comparison (Path('~/x').resolve() is
+    cwd-relative), letting a mutating git op against main pass when written
+    with a tilde while the absolute form was correctly blocked. Expansion
+    mirrors shell semantics, so it can only move the verdict TOWARD the
+    truth of what the command will actually touch.
     """
     m = GIT_C_RE.search(cmd)
     if m:
-        return m.group(1)
+        return os.path.expandvars(os.path.expanduser(m.group(1)))
     m = CD_GIT_RE.search(cmd)
     if m:
-        return m.group(1)
+        return os.path.expandvars(os.path.expanduser(m.group(1)))
     return default_cwd
 
 
