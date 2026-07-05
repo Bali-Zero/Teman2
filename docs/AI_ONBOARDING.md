@@ -143,7 +143,7 @@ apps/backend-rag/
 
 ## QDRANT COLLECTIONS
 
-10 live on Fly.io (93,283 docs). Config: `backend/services/ingestion/collection_manager.py`.
+Live count: see the DOCSYNC line at top — and note it refreshes only when `QDRANT_URL`/`QDRANT_API_KEY` are exported (else cached). Config: `backend/services/ingestion/collection_manager.py` — **its 20 definitions describe the pre-hybrid estate: only 6 exist live** (probe 2026-07-05: 14 live collections, 113,818 docs). Full defined-vs-live table: `docs/runbooks/qdrant-estate-reconciliation.md`. The per-collection doc counts in the table below are historical annotations, not live truth.
 
 **Search Pipeline (ENABLED 2026-03-24):** Hybrid search (BM25 sparse + Dense vector + RRF fusion) → CrossEncoder reranking (ms-marco-MiniLM-L-6-v2, top-20→top-5). Flags: `ENABLE_HYBRID_SEARCH=true`, `ENABLE_RERANKER=true`, `ENABLE_BM25=true`, `ENABLE_QUERY_EXPANSION=true`.
 
