@@ -155,7 +155,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`118 plist tracked in infra/launchagents/ · 65 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (55% coverage)`
+`117 plist tracked in infra/launchagents/ · 64 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (55% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

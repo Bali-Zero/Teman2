@@ -571,12 +571,23 @@ def _parse_domain_threshold_overrides(spec: str) -> dict[str, float]:
             continue
         key, _, val = raw.partition(":")
         try:
-            out[key.strip().lower()] = float(val)
+            value = float(val)
         except ValueError:
             logger.warning(
                 "DOMAIN_ABSTAIN_THRESHOLDS: skipping malformed entry %r",
                 raw,
             )
+            continue
+        # Evidence scores live in [0.0, 1.0]; an override outside that range
+        # (including nan/inf, which fail this comparison) would silently
+        # disable or force the abstain gate for a whole domain — skip it.
+        if not (0.0 <= value <= 1.0):
+            logger.warning(
+                "DOMAIN_ABSTAIN_THRESHOLDS: skipping out-of-range entry %r",
+                raw,
+            )
+            continue
+        out[key.strip().lower()] = value
     return out
 
 
