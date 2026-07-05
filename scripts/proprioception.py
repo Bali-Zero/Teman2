@@ -400,7 +400,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "machines": ["all"], "tags": ["launchd"], "timeout_sec": 90,
         "severity": "P2", "parse": "category_counts",
         "bad_categories": ["zombie_loaded", "broken_target", "home_fork_target", "repo_divergent"],
-        "ok_categories": ["junk", "present_not_loaded", "repo_symlinked"],
+        "ok_categories": ["junk", "present_not_loaded", "repo_symlinked", "canon_paired"],
         "fix_hint": "scripts/launchagent_reconcile.py (markdown mode) for the full categorized report",
     },
     {

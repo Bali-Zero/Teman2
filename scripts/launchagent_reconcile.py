@@ -52,6 +52,7 @@ Stdlib-only, runs on macOS system python3 (3.9+).
 from __future__ import annotations
 
 import argparse
+import filecmp
 import json
 import os
 import plistlib
@@ -262,6 +263,19 @@ def reconcile(
     repo_root = repo_dir.resolve()
     deploy_root = (home / "Desktop" / "nuzantara-deploy").resolve()
 
+    # Canon dirs for wrapper scripts (basename match). A HOME target whose repo
+    # canon is byte-identical is NOT a fork — it is the W84-safe placement
+    # (launchd payloads deliberately live OUTSIDE ~/Desktop because launchd can
+    # lose its TCC grant there). The disease is DRIFT, not location.
+    canon_dirs = (repo_infra / "wrappers", repo_dir / "scripts", repo_dir / "infra" / "scripts")
+
+    def _repo_canon_for(target: Path) -> Optional[Path]:
+        for d in canon_dirs:
+            cand = d / target.name
+            if cand.is_file():
+                return cand
+        return None
+
     live: dict = {}      # label -> {file, plist}
     junk: list = []
     archive_dirs: list = []
@@ -304,6 +318,7 @@ def reconcile(
 
     broken_target = []
     home_fork_target = []
+    canon_paired = []
     repo_divergent = []
     repo_symlinked = []
 
@@ -328,7 +343,17 @@ def reconcile(
                 continue
             if _is_under(rp, agents_dir.resolve()):
                 continue
-            home_fork_target.append({"label": label, "file": f.name, "target": t})
+            canon = _repo_canon_for(rp)
+            if canon is not None and filecmp.cmp(str(canon), str(rp), shallow=False):
+                canon_paired.append({"label": label, "file": f.name, "target": t,
+                                     "canon": str(canon.relative_to(repo_root))})
+            else:
+                detail = (
+                    f"DIVERGED from canon {canon.relative_to(repo_root)}" if canon is not None
+                    else "no repo canon (basename not in wrappers/ or scripts/)"
+                )
+                home_fork_target.append({"label": label, "file": f.name, "target": t,
+                                         "detail": detail})
             break
 
         twin = repo_infra / f.name
@@ -358,6 +383,7 @@ def reconcile(
         "present_not_loaded": present_not_loaded,
         "broken_target": broken_target,
         "home_fork_target": home_fork_target,
+        "canon_paired": canon_paired,
         "repo_divergent": repo_divergent,
         "repo_symlinked": repo_symlinked,
     }
@@ -433,7 +459,12 @@ def render_markdown(report: dict, verdicts) -> str:
     )
     section(
         "HOME-fork target (superscar #1)", report["home_fork_target"],
-        lambda h: f"- `{h['label']}` → `{h['target']}` (under $HOME, outside repo/deploy, not a repo symlink)",
+        lambda h: f"- `{h['label']}` → `{h['target']}` ({h.get('detail', 'under $HOME, outside repo/deploy, not a repo symlink')})",
+    )
+    section(
+        "Canon-paired HOME target (byte-identical to repo canon — W84-safe placement, not a fork)",
+        report.get("canon_paired", []),
+        lambda h: f"- `{h['label']}` → `{h['target']}` == `{h['canon']}`",
     )
     section(
         "Repo-divergent (env-specific keys excluded)", report["repo_divergent"],
@@ -539,6 +570,7 @@ def main(argv=None) -> int:
             f"{len(report['present_not_loaded'])} not-loaded, "
             f"{len(report['broken_target'])} broken-target, "
             f"{len(report['home_fork_target'])} home-fork, "
+            f"{len(report.get('canon_paired', []))} canon-paired, "
             f"{len(report['repo_divergent'])} repo-divergent. "
             f"Report: {out}"
             + (f" — APPLIED: deleted {len(deleted)}" if args.apply else "")
