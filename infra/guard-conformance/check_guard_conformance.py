@@ -281,25 +281,30 @@ def check_simple_surfaces(registry: dict[str, Any], wf_text: str) -> list[str]:
             violations.append(f"C3[under-match] `{name}` delegated gate missing: {gate}")
             continue
         # C4 for delegated scar-gates: execution is TRANSITIVE — the meta-
-        # verifier (scripts/verify_the_verifiers.py, run by its own workflow)
-        # executes every MANIFEST gate with prose_only:false. Armed therefore
-        # means: MANIFEST lists this gate un-prose, and the meta-verifier
-        # workflow exists.
-        manifest_path = REPO_ROOT / "infra" / "scar-gates" / "MANIFEST.json"
+        # verifier (scripts/verify_the_verifiers.py, run by verify-the-verifiers.yml)
+        # checks every gate registered in scripts/verify_the_verifiers_gates.yaml.
+        # That YAML is the CI-CONSUMED registry; infra/scar-gates/MANIFEST.json is a
+        # census consumed only by the manual run_scar_gates.py tool (adjudicated
+        # 2026-07-05 — the first version of this check read MANIFEST and was itself
+        # a W81 theater specimen: proof against a registry no workflow executes).
+        # Text-scan (yaml module is not stdlib): the gate path must appear on a
+        # `target:` line of the YAML, and the meta-verifier workflow must exist.
+        yaml_registry = REPO_ROOT / "scripts" / "verify_the_verifiers_gates.yaml"
         armed = False
-        if manifest_path.exists():
+        if yaml_registry.exists():
             try:
-                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                registry_text = yaml_registry.read_text(encoding="utf-8")
                 armed = any(
-                    g.get("target") == gate_path.name and not g.get("prose_only", True)
-                    for g in manifest.get("gates", [])
+                    line.strip().startswith("target:") and gate in line
+                    for line in registry_text.splitlines()
                 )
-            except (OSError, json.JSONDecodeError):
+            except OSError:
                 armed = False
         if not armed or not (WORKFLOWS_DIR / "verify-the-verifiers.yml").exists():
             violations.append(
-                f"C4[under-match] `{name}` gate {gate} is not armed via scar-gates "
-                f"MANIFEST (prose_only must be false) + verify-the-verifiers workflow (W81)"
+                f"C4[under-match] `{name}` gate {gate} is not registered on a target: "
+                f"line of scripts/verify_the_verifiers_gates.yaml (the CI-consumed "
+                f"registry) + verify-the-verifiers workflow (W81)"
             )
 
     for key in registry["surfaces"].get("exempt_matchers", {}):
