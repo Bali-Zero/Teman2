@@ -1,0 +1,83 @@
+name: Guard conformance (superscar #3 enforcement)
+
+# IMMUNE FORGE 2026-07-05. The #3 antidote made structural: every textual
+# guard (WhatsApp bridge _guard_*, worktree-isolation regexes/classifiers,
+# command hooks, under-match sentinels) must be censused in
+# infra/guard-conformance/registry.json with BOTH a guilt test and an
+# innocence test — a guard without both proofs FAILS this gate. The checker
+# also refuses phantom test references (W65) and tests no workflow runs (W81).
+#
+# SENTINEL PATTERN (W69, same as hook-innocence-gate.yml): NO top-level
+# pull_request paths filter — the workflow always triggers on PR so it can
+# become a REQUIRED check without the pending-forever trap. The relevant-paths
+# decision lives in the "Did guard surfaces change?" step; on a path-miss PR
+# the job ends success (sentinel).
+#
+# ARMING NOTE (operator): making this a required status check on main is a
+# branch-protection change — operator-only, tracked in modus PENDING-ARMS.
+
+on:
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  push:
+    branches: [main]
+    paths:
+      - "infra/guard-conformance/**"
+      - "infra/claude-hooks/**"
+      - "scripts/hooks/**"
+      - "scripts/openclaw_whatsapp_bridge.py"
+      - "apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py"
+      - ".github/workflows/guard-conformance.yml"
+
+concurrency:
+  group: guard-conformance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    name: Every guard proves guilt AND innocence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the path-diff sees the PR base
+
+      - name: Did guard surfaces change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full conformance"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|\.github/workflows/guard-conformance\.yml)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no guard surface changed — sentinel success"
+          fi
+
+      - name: Set up Python
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Conformance census (registry vs code, proofs, phantoms, armed)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/guard-conformance/check_guard_conformance.py
+
+      - name: W85 pin — documented-broken stash over-match still captured
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_w85_stash_readonly.py
+
+      - name: Sentinel success (no guard surfaces changed)
+        if: steps.relevant.outputs.run != 'true'
+        run: echo "No guard surface changed in this PR — conformance not required. Sentinel pass."
