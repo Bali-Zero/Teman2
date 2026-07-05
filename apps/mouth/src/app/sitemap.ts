@@ -106,18 +106,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
   }
 
-  // 5. KBLI Codes (1,559 pages) — lastmod is the dataset file's mtime: the
-  // last real content-change event we can attest for these pages.
+  // 5. KBLI Codes (1,559 pages) — lastmod comes from the committed dataset
+  // version sidecar (data/kbli-dataset-version.json), NOT the file mtime:
+  // git/Vercel checkouts stamp clone time on every file, so mtime would
+  // claim all 1,559 pages "modified today" on every deploy — exactly the
+  // fabricated freshness signal this sitemap must not send.
   try {
     const codes = getAllCodes();
-    const kbliDataPath = path.join(
-      process.cwd(),
-      "data",
-      "KBLI_2025_FINAL_CLEAN.json",
-    );
     let kbliLastModified: Date;
     try {
-      kbliLastModified = fs.statSync(kbliDataPath).mtime;
+      const version = JSON.parse(
+        fs.readFileSync(
+          path.join(process.cwd(), "data", "kbli-dataset-version.json"),
+          "utf-8",
+        ),
+      ) as { lastModified: string };
+      kbliLastModified = new Date(version.lastModified);
     } catch {
       kbliLastModified = new Date("2026-06-19");
     }
