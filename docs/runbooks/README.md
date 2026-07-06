@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 39 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 40 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -23,6 +23,7 @@
 | [`home-bridge-sync.md`](home-bridge-sync.md) | HOME-bridge sync antibody |
 | [`intake-review-pro-reader.md`](intake-review-pro-reader.md) | Runbook — Intake-Review Pro Reader (Fix #1) |
 | [`intel-lake-perfect-prod.md`](intel-lake-perfect-prod.md) | Runbook — Intel Lake pipeline (operatore non-dev) |
+| [`jules-dispatch.md`](jules-dispatch.md) | Jules dispatch — the active arm for Google's async cloud implementer |
 | [`l5-2-phase2b-auto-trigger.md`](l5-2-phase2b-auto-trigger.md) | L5.2 Phase 2b auto-trigger runbook |
 | [`lead-intent-matcher.md`](lead-intent-matcher.md) | Lead intent matcher — runbook |
 | [`m5-local-postgres.md`](m5-local-postgres.md) | Runbook — M5 local PostgreSQL |

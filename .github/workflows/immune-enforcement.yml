@@ -18,13 +18,16 @@ on:
       - "scripts/lint_plist_keepalive.py"
       - "scripts/arsenal_probe.py"
       - "scripts/check_adversarial_review.py"
+      - "scripts/jules_dispatch.py"
       - "scripts/tests/test_lint_home_fork.py"
       - "scripts/tests/test_secrets_permissions_audit.py"
       - "scripts/tests/test_pending_arms_report.py"
       - "scripts/tests/test_lint_plist_keepalive.py"
       - "scripts/tests/test_arsenal_probe.py"
       - "scripts/tests/test_adversarial_review_gate.py"
+      - "scripts/tests/test_jules_dispatch.py"
       - "infra/home-fork/declared-pairs.json"
+      - ".claude/skills/modus/PENDING-ARMS.md"
       - ".github/workflows/immune-enforcement.yml"
 
 concurrency:
@@ -52,7 +55,8 @@ jobs:
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
-            scripts/tests/test_adversarial_review_gate.py ; do
+            scripts/tests/test_adversarial_review_gate.py \
+            scripts/tests/test_jules_dispatch.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -79,4 +83,14 @@ jobs:
         run: |
           if [ -f scripts/pending_arms_report.py ]; then
             python scripts/pending_arms_report.py >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # "Io sono te — non c'è nessun operatore" (Zero, 2026-07-06): owner=operator in
+      # the ledger is valid ONLY with a declared true-operator category operator[<cat>].
+      # Narrow gate on purpose: fails ONLY on PHANTOM-OPERATOR lines, never on
+      # pre-existing overdue tech-debt (innocent PRs stay green).
+      - name: No phantom-operator lines in the ledger (strict-phantom gate)
+        run: |
+          if [ -f scripts/pending_arms_report.py ]; then
+            python scripts/pending_arms_report.py --strict-phantom > /dev/null
           fi
