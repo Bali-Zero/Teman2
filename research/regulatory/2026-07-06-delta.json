@@ -1,30 +1,34 @@
 {
-  "run_at": "2026-07-06T09:23:42+08:00",
+  "run_at": "2026-07-06T10:23:00+08:00",
   "today": "2026-07-06",
   "yesterday_seen_count": 18,
-  "new_today_count": 2,
+  "new_today_count": 1,
   "partial": true,
-  "note": "Second pass today (first pass 05:18+08:00 found NB auth expired; this pass re-verifies with auth recovered). 2026-07-04 and 2026-07-05 delta files still missing on disk (prior backgrounded-run incident, 2026-07-05 - output never persisted). Dedup baseline: last available file 2026-07-03-delta.json (18 seen_citations) union this file's own earlier pass. Gap window covers 3 days (07-04 to 07-06), not the usual 24-48h. This re-verification pass found ZERO additional new citations beyond the 2 already captured at 05:18 - Telegram NOT re-sent (already alerted this morning, avoid duplicate ping).",
+  "note": "Fourth and final pass today, run inline in a foreground Claude Code session per explicit instruction (no background tasks, per 2026-07-05 backgrounded-run-terminated-at-exit incident). pass1 05:18+08:00 (PR #1989): NB auth expired, web found 2 deltas (Permendagri 6/2026, PMK 37/2025 update), Telegram sent. pass2 09:23:42+08:00 (PR #1997, prior version of this file): NB auth recovered, re-verified, zero additional citations, Telegram correctly NOT re-sent. pass3 10:03:06+08:00: all 4 NB-INTEL clean, fresh DDTC check surfaced 1 additional genuinely-new citation (KMK 29/MK/EF.2/2026), written only to an untracked '.pre-induction' scratch file, never committed. pass4 10:17-10:23+08:00 (this pass, this session, this commit): independently re-ran all 4 NB-INTEL queries fresh (all clean, 'nessuna novita'), independently re-fetched DDTC/hukumonline/ortax/muc/imigrasi.go.id, independently cross-validated KMK 29/MK/EF.2/2026 via Ortax datacenter (datacenter.ortax.org/ortax/aturan/show/27149) + CNBC Indonesia + fiskal.kemenkeu.go.id (confidence raised to high, 3 independent sources), reviewed and excluded 1 DDTC infografis ('Pembayaran Pajak yang Bisa Dilakukan Pemindahbukuan secara Jabatan') as procedural explainer of an existing KUP mechanism, not a new regulation. Sent Telegram alert for the single not-yet-alerted delta (KMK 29/MK/EF.2/2026) at 10:23+08:00; did NOT re-alert Permendagri 6/2026 or PMK 37/2025 (already alerted pass1, per dedup discipline). 2026-07-04 and 2026-07-05 delta files remain missing on disk (2026-07-05 backgrounded-run incident); dedup baseline for this whole day is last available prior file 2026-07-03-delta.json (18 seen_citations), gap window covers 07-04 to 07-06.",
   "nb_query_errors": [],
   "unreachable_sources": [
-    "https://www.hukumonline.com/berita/ (403 Forbidden - Cloudflare)",
-    "https://muc.co.id/article (403 Forbidden)",
-    "https://ikpi.or.id/news/ (404 Not Found)",
-    "https://ortax.org/news (200 OK but 'Artikel tidak ditemukan' - no parseable article list)",
-    "https://peraturan.bpk.go.id/Search?... (403 Forbidden)",
-    "https://jdih.kemenkeu.go.id/peraturan (200 OK, nav/header shell only - no regulation listing rendered)"
+    "https://www.hukumonline.com/berita/ (403 Forbidden - Cloudflare, re-checked 10:18+08:00 pass4 - still down)",
+    "https://muc.co.id/article (403 Forbidden, re-checked 10:22+08:00 pass4 - still down)",
+    "https://ikpi.or.id/news/ (404 Not Found, carried over from pass3, not re-checked pass4 - no material change expected)",
+    "https://ortax.org/news (200 OK but 'Artikel tidak ditemukan' - no parseable article list, re-checked 10:18+08:00 pass4)",
+    "https://peraturan.bpk.go.id/Search?... (403 Forbidden - carried over from pass2/3, not re-checked pass4)",
+    "https://jdih.kemenkeu.go.id/peraturan (200 OK, nav/header shell only - carried over from pass2/3)"
   ],
   "nb_results": {
-    "NB-INTEL-Regulation": "OK - nessuna novita (auth recovered since 05:18 pass)",
-    "NB-INTEL-Press": "OK - nessuna novita (auth recovered since 05:18 pass)",
-    "NB-INTEL-Immigration": "OK - nessuna novita (auth recovered since 05:18 pass)",
-    "NB-INTEL-Tax": "OK - nessuna novita (auth recovered since 05:18 pass)"
+    "NB-INTEL-Regulation": "OK - nessuna novita (re-verified pass4 10:17+08:00)",
+    "NB-INTEL-Press": "OK - nessuna novita (re-verified pass4 10:17+08:00)",
+    "NB-INTEL-Immigration": "OK - nessuna novita (re-verified pass4 10:17+08:00)",
+    "NB-INTEL-Tax": "OK - nessuna novita (re-verified pass4 10:17+08:00)"
   },
   "web_backup_checked_clean": [
-    "https://peraturan.go.id (latest entry 25 Jun 2026, nothing 07-05/06)",
-    "https://www.imigrasi.go.id (latest dated entry 01 Jul 2026, operational press only, no new reg)",
-    "https://www.pajak.go.id/peraturan (latest entry 24 Jun 2026)",
-    "https://jdih.kemnaker.go.id/peraturan (no 07-05/06 entries, latest visible UU 2/2026 30 Apr)"
+    "https://peraturan.go.id (carried over from pass2/3: latest entry 25 Jun 2026)",
+    "https://www.imigrasi.go.id (re-checked pass4 10:18+08:00: latest press releases dated 01 Jul 2026, no new immigration regulation)",
+    "https://www.pajak.go.id/peraturan (carried over from pass2/3: latest entry 24 Jun 2026)",
+    "https://jdih.kemnaker.go.id/peraturan (carried over from pass2/3: no 07-05/06 entries, latest UU 2/2026 30 Apr)"
+  ],
+  "reviewed_out_of_scope": [
+    "KMK 31/MK/BC/2026 (DDTC 2026-07-05: Kemenkeu designates 16 restricted-export coal varieties) - customs/export duty on mining sector, does not match any Bali Zero service line; excluded per Step 4 filter, not added to seen_citations.",
+    "DDTC infografis 'Pembayaran Pajak yang Bisa Dilakukan Pemindahbukuan secara Jabatan' (published ~22h before pass4 check) - explains an existing ex-officio tax-payment book-transfer mechanism under KUP, no new PMK/regulation number attached; not a delta, excluded per Step 2/4."
   ],
   "deltas": [
     {
@@ -39,7 +43,8 @@
       "confidence": "medium",
       "source": "DDTC News https://news.ddtc.co.id/berita/nasional/1820592/demi-integrasi-pajak-pekerjaan-di-ktp-harus-ikuti-permendagri-baru",
       "verbatim_excerpt": "Pencantuman jenis pekerjaan pada dokumen kependudukan kini harus sesuai dengan klasifikasi resmi pada Peraturan Menteri Dalam Negeri (Permendagri) 6/2026. [...] \"Jika terjadi perbedaan, validasi akan gagal dan wajib pajak diminta memperbarui data di Dukcapil,\" jelas Ditjen Dukcapil.",
-      "first_seen_at": "2026-07-06T05:18:32+08:00"
+      "first_seen_at": "2026-07-06T05:18:32+08:00",
+      "telegram_alerted_at": "2026-07-06T05:18:32+08:00"
     },
     {
       "citation": "PMK 37/2025",
@@ -54,7 +59,23 @@
       "source": "DDTC News https://news.ddtc.co.id/berita/nasional/1820597/asosiasi-e-commerce-merchant-hanya-perlu-setor-1-surat-pernyataan",
       "verbatim_excerpt": "\"PMK 37/2025 mengharuskan [tata cara] penyerahan surat ke masing-masing platform, tapi dari diskusi kami dengan DJP, boleh satu surat dibagi ke platform-platform marketplace lain,\" ujar Ketua Umum idEA Budi Primawan, dikutip pada Minggu (5/7/2026).",
       "first_seen_at": "2026-07-02T07:00:00+08:00",
-      "updated_at": "2026-07-06T05:18:32+08:00"
+      "updated_at": "2026-07-06T05:18:32+08:00",
+      "telegram_alerted_at": "2026-07-06T05:18:32+08:00"
+    },
+    {
+      "citation": "KMK 29/MK/EF.2/2026",
+      "title_id": "Keputusan Menteri Keuangan Nomor 29/MK/EF.2/2026 tentang Tarif Bunga sebagai Dasar Penghitungan Sanksi Administrasi Berupa Bunga dan Pemberian Imbalan Bunga Periode Juli 2026",
+      "title_en": "Minister of Finance Decree No. 29/MK/EF.2/2026 - Interest rate basis for tax administrative interest sanctions and interest compensation, July 2026 period",
+      "service_line": ["tax"],
+      "severity": "low",
+      "event_type": "new_regulation",
+      "impact_note": "Sets the monthly reference interest rate used to compute late-payment/underpayment tax penalties and interest compensation for the July 2026 tax period under UU HPP/KUP; rates increased vs June 2026 (KMK 25/2026) - e.g. Art. 19(1) late-payment sanction 0.58%/month (was 0.56%), Art. 8 SPT-correction sanction 1.42% (was 1.39%).",
+      "summary": "Kemenkeu published the routine monthly KMK setting the reference interest rate for tax administrative sanctions and interest compensation applicable in July 2026, signed by Direktur DJSEF on behalf of the Finance Minister.",
+      "confidence": "high",
+      "source": "Ortax datacenter https://datacenter.ortax.org/ortax/aturan/show/27149 | CNBC Indonesia https://www.cnbcindonesia.com/news/20260702063636-4-747344/kemenkeu-tetapkan-tarif-bunga-sanksi-pajak-naik-pada-juli-2026 | fiskal.kemenkeu.go.id",
+      "verbatim_excerpt": "Kemenkeu Tetapkan Tarif Bunga Sanksi Administrasi Pajak Juli 2026 - KMK 29/MK/EF.2/2026.",
+      "first_seen_at": "2026-07-06T10:03:06+08:00",
+      "telegram_alerted_at": "2026-07-06T10:23:00+08:00"
     }
   ],
   "seen_citations": [
@@ -76,6 +97,7 @@
     "Permenaker Nomor 9 Tahun 2026",
     "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
     "PMK 37/2025",
-    "Permendagri 6/2026"
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026"
   ]
 }
