@@ -140,11 +140,26 @@ fi
 
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
 export HEALER_RUN=1
+# Headless hardening (first-tick autopsy 2026-07-06, two OVERLAPPING silent
+# hangs — 0 bytes out, 0 CPU): (a) --dangerously-skip-permissions has a
+# ONE-TIME interactive acceptance; in -p/no-TTY it hangs invisibly — the
+# machine needs `bypassPermissionsModeAccepted: true` in ~/.claude.json
+# (armed on Mini 2026-07-06); (b) untrusted cwd triggers the folder-trust
+# dialog, same invisible hang (tests from $HOME hung; from the repo they
+# PONG) — the cd "$REPO" above is load-bearing, keep it before this spawn.
+# Belt-and-suspenders: MAX env token when available (Keychain reads can
+# block under launchd/sshd, W84 family), closed stdin, and a zeroed MCP set
+# (the healer's perimeter is git/bash/file work; every configured MCP server
+# is a synchronous-init hang risk in -p mode).
+if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
+    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
+fi
 "$CLAUDE_BIN" -p "$(cat "$MANDATE")
 
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
     --model "$MODEL" --dangerously-skip-permissions \
-    > "$SESSION_LOG" 2>&1 &
+    --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    </dev/null > "$SESSION_LOG" 2>&1 &
 CPID=$!
 
 # wall-clock watchdog (macOS has no timeout(1))
