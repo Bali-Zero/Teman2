@@ -975,6 +975,10 @@ def _remove_worktree(worktree: Path, branch: str, *, delete_branch: bool) -> Non
 def cmd_release(task_id: str, *, force: bool = False) -> int:
     """Tear down a worktree by task-id. Branch deleted only if merged into base.
 
+    Merged-ness is the cheap ancestor count first, then — because that proxy
+    lies on squash-merged branches (W88) — the same blob-per-file content
+    fallback the cleanup reaper uses (`_branch_in_origin_main`, #2038).
+
     With --force, the branch is deleted unconditionally (operator escape).
     """
     if _kill_switch_active():
@@ -1005,6 +1009,13 @@ def cmd_release(task_id: str, *, force: bool = False) -> int:
         )
 
     merged = _branch_is_merged(meta.branch, base=base)
+    if not merged and wt.is_dir() and base == "main":
+        # W88: the ancestor proxy says "unmerged" for every squash-merged
+        # branch. Fall back to the blob-per-file content check the cleanup
+        # reaper uses. Gated on wt.is_dir() — with the checkout gone the
+        # content check degenerates to True and would delete an unproven
+        # branch (keep the fail-safe direction).
+        merged = _branch_in_origin_main(wt)
     if not merged and not force:
         raise SystemExit(
             f"ERROR: branch {meta.branch} not merged into {base}. "
