@@ -37,7 +37,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-HEALTHY_STATUSES = {"ok", "success", "healthy", "starting"}
+HEALTHY_STATUSES = {"ok", "success", "healthy", "starting", "running"}
 EXEMPT_STATUSES = {"disabled"}
 DEAD_MULTIPLIER = 3
 
