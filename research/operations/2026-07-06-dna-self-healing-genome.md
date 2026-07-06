@@ -225,6 +225,64 @@ it lands after this file freezes — declared here either way (no silent seats).
 - 3 PENDING-ARMS lines (required-check flip · healer-pro install · receptor-4
   Mini HOME arming).
 
+## §Panel-2 — the autonomy directive, red-teamed (Codex + Grok + GLM, 2026-07-06)
+
+Zero's follow-up directive: *"il sistema genoma deve essere autonomo e autocorrettivo
+per la perfezione."* Proposed mechanism (v1): on idle healer ticks, the LLM retrofits
+genes into one grandfathered organ, auto-merged on static CI green, baseline 140→0.
+
+Three seats ran round 2 (Grok Build 0.2.87 at its arsenal debut; Codex delivered this
+time, 179k tokens; GLM 5.2). **Unanimous verdict: v1 is NOT sane.** The killing
+arguments, convergent across seats:
+
+1. **Reward-hacking of the gate itself** (GLM S2): every gene check is structural
+   presence; under shrink-pressure an LLM emits gene-shaped theater — a sidecar that
+   writes `{}` once, an empty kill-switch, `set -u; set +u`. Superscar #3 applied to
+   our own genome: baseline hits 0 while real health regresses.
+2. **Canon-vs-live clobber** (all three): retrofitting repo canon while the HOME copy
+   diverges either fakes convergence or clobbers a live hotfix at the next pair refresh.
+3. **Static green ≠ runtime alive** (Codex 2, Grok verdict, GLM S1): auto-merge on
+   gene-presence is W86 generalized — the mutation lands before any runtime proof;
+   a broken wrapper breaks at the NEXT cron fire, days later for weekly organs.
+4. **IDLE is not a receptor** (GLM S1): triggering generative edits on the ABSENCE of
+   signal inverts the healer's own safety model.
+5. **Monotonic ratchet missing** (Codex 3, Grok 8, GLM S6): nothing stops the baseline
+   growing back via a careless regen.
+6. **The healer could edit the genome machinery itself** (Codex 8): gate, generator,
+   receptor live in `scripts/`+`infra/` — inside its perimeter. Constitution hole.
+
+## §CONVERGENCE v2 — deterministic transform, verified live, one at a time
+
+The panel's rails, composed into the shipped design:
+
+- **Picker, not permission** (`scripts/genome_convergence.py --pick`): deterministic
+  eligibility — payload in-perimeter (genome machinery, hooks, workflows, mandates,
+  backend-rag, mouth EXCLUDED), schedule ≤ 1 day (fast natural proof; weekly/monthly
+  = operator), declared pair blob-identical to canon NOW on its node, JSON dialect
+  only (legacy `.ts` organs skipped until the one-cut migration), bash wrapper with
+  anchorable structure. No candidate → honest empty, zero LLM.
+- **Deterministic graft, not LLM authorship** (`scripts/genome_retrofit.py`): the gene
+  blocks come from the SAME templates organ_birth imprints — the LLM session reviews
+  and verifies, it never writes gene code. Kills reward-hacking at the root.
+- **Dry-fire before PR**: run the edited wrapper with `<ORGAN>_ENABLED=false` — this
+  executes the real interpreter through set -u, node-guard, kill-switch and heartbeat
+  paths WITHOUT touching the payload, and must produce a `disabled` sidecar. Plus
+  `bash -n`, plist keepalive lint on the pair, gate missing-set strictly shrinking.
+- **Monotonic ratchet in CI**: the gate workflow compares `genes.json` grandfathered
+  vs origin/main — new grandfathered keys or grown missing-sets FAIL (the ratchet is
+  executable, not discipline).
+- **Baseline shrink travels IN the cure commit** (W86): regen in the same PR.
+- **Lease and freeze**: max ONE open convergence PR; convergence runs only when every
+  real receptor is quiet; one-tick cooldown after any failure.
+- **Natural proof closes the loop**: after merge + pair refresh, the organ's next
+  scheduled fire writes a REAL sidecar — receptor 4 now watches it; if it goes dead
+  post-retrofit, the healer alerts and a revert lands. The retrofit is proven by the
+  organism living with it, not by the PR being green.
+- **Human-gated lines (GLM (d), verbatim adopted)**: baseline reset · genes.json
+  contract edits · dialect migration (single coordinated cut) · single-writer/topology
+  changes · TCC/arming promotions (W84/W81 are operator-machine acts) · organ_birth
+  templates · G6/G8 retrofits (spawn+KeepAlive are semantics, not additions).
+
 ## §7 — Risks & rollback
 
 - Gate too eager → sentinel pattern + grandfather baseline keeps existing PRs
