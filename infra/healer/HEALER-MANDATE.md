@@ -10,7 +10,10 @@ Skill `modus` governa (di norma Gear 1-2; mai Gear 3 senza operatore).
 1. **LEGGI i receptor** (ri-esegui tu, non fidarti del contesto: W65):
    `python3 scripts/pending_arms_report.py` · `python3 scripts/proprioception.py --json --no-fetch`
    · board escalations (`bash scripts/hooks/escalations_alert_sessionstart.sh`) ·
-   `~/.organism/last_seen/*.json` staleness.
+   `~/.organism/last_seen/*.json` staleness ·
+   `python3 scripts/arsenal_probe.py --read-last --json` (seat AI vivi? — MAI ri-lanciare
+   probe live in sessione: il wrapper le fa; AUTH/BALANCE/MODEL dead = quasi sempre
+   operator-gated → Telegram con la cura precisa, es. "codex login su Pro").
 2. **TRIAGE** ogni finding in 3 ceste:
    - **CURABILE** (dentro perimetro, sotto): cura ADESSO.
    - **OPERATOR-GATED**: 1 riga Telegram a Zero (chiara, con la prossima azione sua) — MAI provarci.
