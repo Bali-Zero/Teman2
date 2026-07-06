@@ -73,6 +73,10 @@ def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
         "kamu",
         "bisa",
         "mau",
+        "terima",
+        "kasih",
+        "bantuan",
+        "bantuannya",
     ]
 
     # Ukrainian markers (Cyrillic)
