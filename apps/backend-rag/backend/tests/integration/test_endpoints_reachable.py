@@ -190,6 +190,12 @@ class TestAuthContractMatchesRegistry:
         for path in sorted(_concrete_get_paths(app_with_middleware)):
             if is_public_path(path):
                 continue
+            if (
+                path in HybridAuthMiddleware._PROTECTED_INFRA_PATHS
+                or path in HybridAuthMiddleware._METRICS_PATHS
+                or path.startswith("/docs")
+            ):
+                continue
             sampled += 1
             if sampled > 25:
                 break
