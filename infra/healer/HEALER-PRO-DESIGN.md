@@ -46,10 +46,12 @@ verbatim, PLUS the whole repo-write verb class.
 
 ## Anatomy (all pieces already exist as genes)
 
-- Wrapper `infra/healer/healer-pro-run.sh`: **generated via `scripts/organ_birth.py
-  --id pro.healer --node pro --kind llm-cron --schedule 21600`** — the healer of the
-  genome era must itself be born through the birth canal (dogfooding: G1-G10 imprinted,
-  conformance gate green, no grandfathering).
+- Wrapper `infra/launchagents/wrappers/pro-healer.sh` (generator convention): **generated
+  via `scripts/organ_birth.py --id pro.healer --node pro --kind llm-cron --schedule 21600`**
+  — the healer of the genome era must itself be born through the birth canal (dogfooding:
+  G1-G10 imprinted, conformance gate green, no grandfathering). BORN 2026-07-06 on Zero's
+  GO, same day as the design: the birth exposed and cured a gate blind spot (untracked
+  newborn plists were invisible to `git ls-files` — false local green pre-`git add`).
 - Mandate `infra/healer/HEALER-PRO-MANDATE.md`: Mini mandate with the §PERIMETRO
   inverted per the table above; model `claude-sonnet-5`; rule 7 (never cascade a cure
   to a weak model) verbatim.

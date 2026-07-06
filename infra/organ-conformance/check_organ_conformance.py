@@ -66,13 +66,24 @@ def _load_keepalive_module(repo_root: Path):
 
 
 def _git_tracked_plists(repo_root: Path, roots: list[str]) -> list[Path]:
+    # --others --exclude-standard: NEWBORN (untracked, not-ignored) plists must be
+    # scanned too — an author running the gate before `git add` would otherwise get
+    # a false green on the very organ being born (found live 2026-07-06, pro.healer).
     out = subprocess.run(
-        ["git", "-C", str(repo_root), "ls-files", "--"]
+        ["git", "-C", str(repo_root), "ls-files", "--cached", "--others",
+         "--exclude-standard", "--"]
         + [f"{r}/**/*.plist" for r in roots]
         + [f"{r}/*.plist" for r in roots],
         capture_output=True, text=True, check=False,
     )
-    return [repo_root / line for line in out.stdout.splitlines() if line.strip()]
+    seen: set[str] = set()
+    paths: list[Path] = []
+    for line in out.stdout.splitlines():
+        line = line.strip()
+        if line and line not in seen:
+            seen.add(line)
+            paths.append(repo_root / line)
+    return paths
 
 
 def _first_path_token(argv: list[str]) -> Optional[str]:
