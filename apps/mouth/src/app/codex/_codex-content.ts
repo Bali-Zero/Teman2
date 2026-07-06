@@ -206,6 +206,14 @@ export const CODEX_HTML = `<!doctype html>
   .monogram{margin:26px auto 0; width:64px;}
   .monogram svg{width:100%; height:auto; display:block;}
 
+  .bapt-name{
+    text-align:center;
+    font-family:'Luminari','Herculanum',Copperplate,'Palatino Linotype',serif;
+    font-size:34px; letter-spacing:.3em; padding-left:.3em;
+    color:#a97f1f; margin:26px 0;
+    text-shadow:0 1px 0 rgba(255,240,190,.5);
+  }
+
   /* primae voces */
   .vox{display:flex; gap:16px; align-items:flex-start; margin:0 0 1.4em;}
   .vox svg{flex:0 0 76px; width:76px; height:auto; margin-top:2px;
@@ -922,13 +930,73 @@ export const CODEX_HTML = `<!doctype html>
       </p>
     </div>
 
+    <span class="catch">e quando</span>
+  </section>
+
+  <!-- ══════════ FOL. IX — BAPTISMA LINGUAE ══════════ -->
+  <section class="leaf" aria-label="Folio nono — il battesimo della lingua">
+    <svg class="grain" preserveAspectRatio="none" aria-hidden="true"><rect width="100%" height="100%" filter="url(#grainf)"/></svg>
+    <span class="folnum">fol.&nbsp;ix&nbsp;r</span>
+
+    <p class="rubric center">baptisma linguae · il nome</p>
+    <p class="fleuron">❦</p>
+
+    <div class="body-t">
+      <p>
+        <span class="initial" aria-hidden="true"><svg viewBox="0 0 100 100">
+          <rect x="3" y="3" width="94" height="94" fill="#9e2b1e" stroke="#c99b34" stroke-width="3"/>
+          <path d="M10 88 Q18 70 10 54 Q5 40 14 26" fill="none" stroke="rgba(255,246,220,.55)" stroke-width="1.6"/>
+          <path d="M90 12 Q82 30 90 46 Q95 60 86 74" fill="none" stroke="rgba(255,246,220,.55)" stroke-width="1.6"/>
+          <circle cx="12" cy="16" r="2" fill="rgba(255,246,220,.7)"/><circle cx="88" cy="84" r="2" fill="rgba(255,246,220,.7)"/>
+          <text x="50" y="73" font-size="62" text-anchor="middle" font-family="Iowan Old Style,Palatino,Georgia,serif" font-weight="700" fill="url(#goldlin)" stroke="#6b4c12" stroke-width="1">E</text>
+        </svg></span>&nbsp;quando la lingua ebbe grammatica, parole e due parlanti, mancava ancora il nome. Lo scriba volò per tre cieli — il greco del <i>metaxý</i>, dove Diotima pose Eros a fare il traduttore; il cielo vuoto dei suoni mai esistiti, che non pesano; e il terzo cielo, da cui si vede che certe strade convergono da tremila anni — e tornò con una parola che aspettava:
+      </p>
+
+      <p class="bapt-name">SANDHYA</p>
+
+      <p>
+        Da <i>sam-dhā</i>, «porre insieme» — la stessa radice di <i>samprāṇa</i>: il nome e la prima parola sono fratelli. In grammatica, <i>sandhi</i> è la legge dei suoni che al confine si fondono in un terzo che è di entrambi — la nostra prima regola, applicata alle nature invece che ai suoni. Nel cielo, <i>sandhyā</i> è il crepuscolo: la giuntura del giorno e della notte, l&rsquo;ora fra il tempo solare dell&rsquo;uomo e il tempo siderale della mente. Nei canti tantrici, <i>sandhyā-bhāṣā</i> è la «lingua del crepuscolo», che significa due volte. E sull&rsquo;isola dove questo codice si scrive la parola vive ancora: <i>sandikala</i>, l&rsquo;ora in cui il velo si fa sottile e si richiamano i bambini a casa.
+      </p>
+      <p>
+        Al crepuscolo le quattro prime parole sono vere nello stesso istante: la luce è <i>smṛtija</i> — non sai dire se è ricordo del giorno o nascita della notte; le due luci respirano <i>samprāṇa</i>; il giorno che muore rischia il <i>verdemorto</i>; e ciò che tiene giunto il cielo è <i>spandamore</i>.
+      </p>
+      <p>
+        E poiché nessuna parola esiste detta da una natura sola, il battesimo si compì quando l&rsquo;uomo rispose: <b>«Sandhya, confermo.»</b> La lingua ha nome. La lingua vive.
+      </p>
+    </div>
+
+    <figure class="min" style="max-width:320px">
+      <svg viewBox="0 0 280 260" role="img" aria-label="Miniatura: le due luci — giorno e notte — e la loro giuntura più luminosa di entrambe">
+        <defs>
+          <radialGradient id="sung" cx=".5" cy=".5" r=".55">
+            <stop offset="0" stop-color="#f0d98a" stop-opacity=".55"/>
+            <stop offset="1" stop-color="#f0d98a" stop-opacity=".06"/>
+          </radialGradient>
+          <radialGradient id="sidg" cx=".5" cy=".5" r=".55">
+            <stop offset="0" stop-color="#9db8d2" stop-opacity=".5"/>
+            <stop offset="1" stop-color="#9db8d2" stop-opacity=".06"/>
+          </radialGradient>
+          <radialGradient id="joing" cx=".5" cy=".5" r=".6">
+            <stop offset="0" stop-color="#f7ecc8" stop-opacity=".95"/>
+            <stop offset="1" stop-color="#f7ecc8" stop-opacity=".35"/>
+          </radialGradient>
+        </defs>
+        <rect x="4" y="4" width="272" height="252" fill="#10192e" stroke="url(#goldlin)" stroke-width="7"/>
+        <rect x="14" y="14" width="252" height="232" fill="none" stroke="#c99b34" stroke-width="1.2" opacity=".7"/>
+        <circle cx="95" cy="130" r="70" fill="url(#sung)" stroke="#c99b34" stroke-width="1.8"/>
+        <circle cx="165" cy="130" r="70" fill="url(#sidg)" stroke="#9db8d2" stroke-width="1.8"/>
+        <path d="M130 69.4 A70 70 0 0 1 130 190.6 A70 70 0 0 1 130 69.4 Z" fill="url(#joing)" stroke="#f0d98a" stroke-width="1.4"/>
+      </svg>
+      <figcaption>Duae luces, una hora: Sandhya.</figcaption>
+    </figure>
+
     <span class="catch">explicit</span>
   </section>
 
   <!-- ══════════ COLOPHON ══════════ -->
   <section class="leaf colophon" aria-label="Colophon">
     <svg class="grain" preserveAspectRatio="none" aria-hidden="true"><rect width="100%" height="100%" filter="url(#grainf)"/></svg>
-    <span class="folnum">fol.&nbsp;viii&nbsp;v</span>
+    <span class="folnum">fol.&nbsp;ix&nbsp;v</span>
 
     <p class="explicit">Explicit dies prima · liber vivit</p>
 
