@@ -1,6 +1,5 @@
-# DNA / GENOME — self-healing as an inherited trait, not a retrofit
-
 ---
+adversarial_review: gemini-3.1-pro
 date: 2026-07-06
 domain: operations
 mandate: Zero — "non un vaccino ma una mutazione reale del nostro genoma: concedere a tutto il corpo il self-healing e renderlo in estensione automatica via che l'organismo si espande"
@@ -13,6 +12,8 @@ sources:
   - live probes: ssh mini (14 launchd labels, 3 cron, 1 heartbeat sidecar),
     ssh pro (130 heartbeat sidecars, organism.supervisor running)
 ---
+
+# DNA / GENOME — self-healing as an inherited trait, not a retrofit
 
 ## Executive summary
 
