@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 36 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 37 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -18,6 +18,7 @@
 | [`competitor-scrape-manual.md`](competitor-scrape-manual.md) | Runbook: Scraping Kompetitor Instagram Manual |
 | [`dropbox-intake.md`](dropbox-intake.md) | Dropbox → Google Drive Intake |
 | [`grafana-sota-setup.md`](grafana-sota-setup.md) | SOTA Social dashboard — Grafana setup |
+| [`healer-organ.md`](healer-organ.md) | Healer organ — autonomous cure loop (Mini-Pro2) |
 | [`home-bridge-sync.md`](home-bridge-sync.md) | HOME-bridge sync antibody |
 | [`intake-review-pro-reader.md`](intake-review-pro-reader.md) | Runbook — Intake-Review Pro Reader (Fix #1) |
 | [`intel-lake-perfect-prod.md`](intel-lake-perfect-prod.md) | Runbook — Intel Lake pipeline (operatore non-dev) |
