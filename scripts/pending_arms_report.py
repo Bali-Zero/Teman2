@@ -15,18 +15,31 @@ under --strict.
 
 Ledger format (documented in the ledger's own header):
 
-    - opened YYYY-MM-DD | artifact | missing arming step | owner (me|operator) | proof-of-armed
+    - opened YYYY-MM-DD | artifact | missing arming step | owner (me|operator[<category>]) | proof-of-armed
 
 Entries live as markdown list items BEFORE a line starting with `## closed`; closed
 entries (after that heading, starting with `- closed `) are proof-of-armed history and
 are never read by this script.
 
+PHANTOM-OPERATOR rule (Zero, 2026-07-06: "io sono te — non c'è nessun operatore"):
+sessions ARE the operator for all repo/infra work. An owner may say `operator` ONLY
+for the true-operator categories — actions a session structurally cannot take — and
+must DECLARE the category inline as `operator[<category>]` (see
+TRUE_OPERATOR_CATEGORIES). An `operator` owner with no declared category, or an
+unrecognized one, is classified PHANTOM-OPERATOR: work parked behind a human lane
+that does not exist. It is the loudest bucket in the report, and both --strict and
+--strict-phantom fail on it REGARDLESS OF AGE — a phantom is wrong the moment it is
+written, not after 48h.
+
 Usage:
-    python3 scripts/pending_arms_report.py [--ledger PATH] [--now YYYY-MM-DD] [--json] [--strict]
+    python3 scripts/pending_arms_report.py [--ledger PATH] [--now YYYY-MM-DD] [--json]
+                                           [--strict] [--strict-phantom]
 
 Exit codes:
     0   always, by default (pure signaler — a report is not a failure)
-    1   only with --strict, and only if >=1 overdue TECH-DEBT entry exists
+    1   with --strict, if >=1 overdue TECH-DEBT entry OR >=1 PHANTOM-OPERATOR entry
+        exists; with --strict-phantom, if >=1 PHANTOM-OPERATOR entry exists (the
+        narrow CI ledger gate — pre-existing overdue debt never blocks innocent PRs)
     2   ledger file not found, or a CLI argument error (argparse's own exit code)
 """
 
@@ -54,6 +67,27 @@ CLASS_MALFORMED = "MALFORMED"
 CLASS_FIREBREAK = "FIREBREAK"
 CLASS_OPERATOR_GATED = "OPERATOR-GATED"
 CLASS_TECH_DEBT = "TECH-DEBT"
+CLASS_PHANTOM_OPERATOR = "PHANTOM-OPERATOR"
+
+# The ONLY categories for which owner=operator is legitimate — actions a session
+# structurally cannot take (feedback_no_operator_lane_io_sono_te_2026_07_06). Anything
+# else labeled `operator` is a phantom: repo/infra work a session can and must do.
+TRUE_OPERATOR_CATEGORIES = frozenset(
+    {
+        "physical",  # physical device actions (IG app toggle, hardware, on-site)
+        "gui",  # GUI-only surfaces: interactive logins, GitHub settings, external-UI paste
+        "tcc",  # macOS TCC grants (System Settings, per-principal)
+        "consent",  # consents only the human can give
+        "secret",  # credentials/keychain material only the human holds
+        "control-plane",  # ~/.claude/hooks one-liners (host_boundary stays hard by design)
+        "business",  # Legge 5 / strategy decisions (incl. arming historically-broken crons)
+    }
+)
+
+# Tag form: `operator[<category>]` — declared in the owner field. Word-anchored so the
+# tag itself is structural, while phantom DETECTION below stays substring-based on the
+# owner ("operatore" in Italian prose must not slip through as TECH-DEBT — W82 under-match).
+OPERATOR_TAG_RE = re.compile(r"\boperator\s*\[\s*([a-z0-9-]+)\s*\]", re.IGNORECASE)
 
 
 @dataclass
@@ -74,9 +108,12 @@ class Entry:
 
     @property
     def bucket(self) -> str:
-        """Report/JSON grouping key: MALFORMED > FIREBREAK > {cls}-OVERDUE > FRESH."""
+        """Report/JSON grouping key: MALFORMED > PHANTOM-OPERATOR > FIREBREAK > {cls}-OVERDUE > FRESH."""
         if self.cls == CLASS_MALFORMED:
             return CLASS_MALFORMED
+        if self.cls == CLASS_PHANTOM_OPERATOR:
+            # never FRESH: a phantom is wrong the moment it is written, not after 48h.
+            return CLASS_PHANTOM_OPERATOR
         if self.cls == CLASS_FIREBREAK:
             return CLASS_FIREBREAK
         if self.overdue:
@@ -193,7 +230,13 @@ def parse_entry(raw: str, now: date) -> Entry:
     elif "firebreak" in raw.lower():
         cls = CLASS_FIREBREAK
     elif "operator" in owner.lower():
-        cls = CLASS_OPERATOR_GATED
+        # Owner claims an operator lane. Legitimate ONLY if every declared tag names a
+        # true-operator category; untagged (or unknown-category) = PHANTOM-OPERATOR.
+        tags = [m.group(1).lower() for m in OPERATOR_TAG_RE.finditer(owner)]
+        if tags and all(t in TRUE_OPERATOR_CATEGORIES for t in tags):
+            cls = CLASS_OPERATOR_GATED
+        else:
+            cls = CLASS_PHANTOM_OPERATOR
     else:
         cls = CLASS_TECH_DEBT
 
@@ -221,6 +264,7 @@ def compute_counts(entries: List[Entry]) -> Dict[str, int]:
     buckets = [e.bucket for e in entries]
     return {
         "total": len(entries),
+        "phantom_operator": buckets.count(CLASS_PHANTOM_OPERATOR),
         "tech_debt_overdue": buckets.count(f"{CLASS_TECH_DEBT}-OVERDUE"),
         "operator_gated_overdue": buckets.count(f"{CLASS_OPERATOR_GATED}-OVERDUE"),
         "firebreak": buckets.count(CLASS_FIREBREAK),
@@ -240,7 +284,8 @@ def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
         f"{OVERDUE_AGE_DAYS}, the closest day-precision proxy for >48h)"
     )
     lines.append(
-        "- counts: total={total} tech_debt_overdue={tech_debt_overdue} "
+        "- counts: total={total} phantom_operator={phantom_operator} "
+        "tech_debt_overdue={tech_debt_overdue} "
         "operator_gated_overdue={operator_gated_overdue} firebreak={firebreak} "
         "fresh={fresh} malformed={malformed}".format(**counts)
     )
@@ -272,6 +317,12 @@ def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
     for e in entries:
         by_bucket.setdefault(e.bucket, []).append(e)
 
+    section(
+        "PHANTOM-OPERATOR (owner claims an operator lane with no true-operator "
+        "category — there is no operator: re-own to a session or tag operator[<cat>])",
+        by_bucket.get(CLASS_PHANTOM_OPERATOR, []),
+        fmt_entry,
+    )
     section(
         "TECH-DEBT overdue (>48h)",
         by_bucket.get(f"{CLASS_TECH_DEBT}-OVERDUE", []),
@@ -354,7 +405,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Exit 1 iff >=1 overdue TECH-DEBT entry exists (otherwise always exit 0).",
+        help=(
+            "Exit 1 iff >=1 overdue TECH-DEBT entry OR >=1 PHANTOM-OPERATOR entry "
+            "exists (otherwise always exit 0)."
+        ),
+    )
+    parser.add_argument(
+        "--strict-phantom",
+        action="store_true",
+        help=(
+            "Exit 1 iff >=1 PHANTOM-OPERATOR entry exists — the narrow CI ledger "
+            "gate: blocks writing new phantom-operator lines without turning "
+            "pre-existing overdue tech-debt into a red check for innocent PRs."
+        ),
     )
     return parser
 
@@ -388,9 +451,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     else:
         print(render_report(ledger_path, now, entries), end="")
 
-    if args.strict and any(
-        e.cls == CLASS_TECH_DEBT and e.overdue for e in entries
+    has_phantom = any(e.cls == CLASS_PHANTOM_OPERATOR for e in entries)
+    if args.strict and (
+        has_phantom
+        or any(e.cls == CLASS_TECH_DEBT and e.overdue for e in entries)
     ):
+        return 1
+    if args.strict_phantom and has_phantom:
         return 1
     return 0
 
