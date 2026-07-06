@@ -70,6 +70,14 @@ def main() -> int:
         "git stash && git pull --ff-only",                     # compound: stash push
         'echo "--ff-only" && git pull',                        # flag only in a quoted literal
         "git checkout x",                                      # no pull
+        # 2026-07-06 live guilt-probe: a shell COMMENT mentioning --ff-only opened
+        # the first version of this exception for a BARE pull (4th over-match of
+        # this same guard, after W83/W84/W85). The flag must be a pull ARGUMENT.
+        "# GUILT: pull nudo (senza --ff-only) test\ngit pull origin main",
+        "git pull origin main  # next time use --ff-only",
+        "echo done && git pull # --ff-only",
+        "git pull; echo --ff-only",                            # flag in a LATER segment
+        "git pull --ff-onlyx",                                 # (?!\\S): not the real flag
     ]
     for cmd in guilty:
         if only_pull(strip(cmd)):
@@ -82,6 +90,9 @@ def main() -> int:
         "git pull origin main --ff-only",
         "git -C /Users/x/Desktop/nuzantara pull --ff-only origin main",
         "cd /Users/x/Desktop/nuzantara && git pull --ff-only",
+        # comment elsewhere must not disqualify a REAL ff-only pull
+        "git pull --ff-only origin main  # fleet self-align",
+        "# align main\ngit pull --ff-only origin main",
     ]
     for cmd in innocent:
         if not only_pull(strip(cmd)):
