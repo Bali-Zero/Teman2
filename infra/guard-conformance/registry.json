@@ -251,7 +251,8 @@
         "scripts/hooks/escalations_alert_sessionstart.sh": "SessionStart injector, never blocks",
         "scripts/hooks/organism_alert_sessionstart.sh": "SessionStart injector, never blocks",
         "scripts/hooks/proprioception_sessionstart.sh": "SessionStart injector, never blocks",
-        "scripts/hooks/w59_branch_hijack_guard.sh": "git-hook guard tested via broker-hygiene suite (scripts/tests/test_agent_start.py)"
+        "scripts/hooks/w59_branch_hijack_guard.sh": "git-hook guard tested via broker-hygiene suite (scripts/tests/test_agent_start.py)",
+        "scripts/hooks/organism_digest_sessionstart.sh": "SessionStart injector, never blocks"
       }
     },
     "guardrails_static": {

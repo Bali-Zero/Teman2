@@ -34,7 +34,15 @@ SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"
 MANDATE="$HOME/scripts/HEALER-MANDATE.md"
 MAX_WALL_S="${HEALER_MAX_WALL_S:-3300}"   # 55 min hard cap for the LLM session
-CLAUDE_BIN="${HEALER_CLAUDE_BIN:-/opt/homebrew/bin/claude}"
+# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
+# Pro: ~/.local/bin only). Env override wins; otherwise probe, then PATH.
+CLAUDE_BIN="${HEALER_CLAUDE_BIN:-}"
+if [ -z "$CLAUDE_BIN" ]; then
+    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
+        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
+    done
+fi
+[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
 MODEL="${HEALER_MODEL:-claude-sonnet-5}"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
@@ -248,6 +256,11 @@ export HEALER_RUN=1
 # is a synchronous-init hang risk in -p mode).
 if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
+fi
+if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
+    log "FATAL: no claude binary (env HEALER_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
+    heartbeat "error" "no claude binary"
+    exit 1
 fi
 "$CLAUDE_BIN" -p "$(cat "$MANDATE")
 
