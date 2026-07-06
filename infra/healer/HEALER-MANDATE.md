@@ -16,7 +16,10 @@ Skill `modus` governa (di norma Gear 1-2; mai Gear 3 senza operatore).
    `label`, poi verifica il sidecar si rinfreschi); `never_armed` = debito di ARMING
    (ledger, non resurrezione); `disabled` = INTENZIONALE, mai toccare; receptor exit 2
    = il receptor stesso è rotto → curane il codice (`scripts/healer_receptor_registry.py`
-   è nel TUO perimetro; il wrapper che lo chiama NO).
+   è nel TUO perimetro; il wrapper che lo chiama NO) ·
+   `python3 scripts/arsenal_probe.py --read-last --json` (receptor 5, seat AI vivi? —
+   MAI ri-lanciare probe live in sessione: il wrapper le fa; AUTH/BALANCE/MODEL dead =
+   quasi sempre operator-gated → Telegram con la cura precisa, es. "codex login su Pro").
 2. **TRIAGE** ogni finding in 3 ceste:
    - **CURABILE** (dentro perimetro, sotto): cura ADESSO.
    - **OPERATOR-GATED**: 1 riga Telegram a Zero (chiara, con la prossima azione sua) — MAI provarci.
