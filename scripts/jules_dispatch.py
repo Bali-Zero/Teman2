@@ -198,7 +198,7 @@ def _selftest() -> int:
     expect("session_path idempotent", session_path("sessions/abc") == "sessions/abc")
 
     # credential path: env override wins without touching Keychain
-    os.environ["JULES_API_KEY"] = "test-key-env"
+    os.environ["JULES_API_KEY"] = "test-key-env"  # pragma: allowlist secret
     try:
         expect("env JULES_API_KEY override", get_api_key() == "test-key-env")
     finally:
