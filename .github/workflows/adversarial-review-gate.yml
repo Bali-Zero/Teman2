@@ -8,11 +8,15 @@ name: adversarial-review-gate
 #
 # env-var indirection (BASE_REF in `env:`, never inline into `run:`) per workflow-injection
 # hygiene — the PR base-ref name never gets shell-expanded directly into a command string.
+#
+# NO `paths:` filter, deliberately: this check is REQUIRED on main branch protection.
+# A path-filtered required check never reports on PRs outside its paths, which leaves
+# them stuck at "Expected — waiting for status" forever. The gate script already
+# handles the out-of-scope case (exit 0, "no research files in scope" — proven by
+# --selftest), so running on every PR costs ~30s and blocks nothing innocent.
 
 on:
   pull_request:
-    paths:
-      - "research/**"
 
 jobs:
   gate:
