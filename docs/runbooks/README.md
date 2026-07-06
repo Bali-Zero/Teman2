@@ -5,13 +5,14 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 37 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 38 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
 | [`2026-05-20-wr2-zombie-fix.md`](2026-05-20-wr2-zombie-fix.md) | WR2 Supervisor Zombie Fix — 2026-05-20 |
 | [`2026-06-03-residual-ops-hub.md`](2026-06-03-residual-ops-hub.md) | Residual Ops Hub — 2026-06-03 (post 3-ondate armata) |
 | [`agent-worktree-broker.md`](agent-worktree-broker.md) | Runbook — Agent Worktree Broker |
+| [`arsenal-probe.md`](arsenal-probe.md) | Arsenal Probe — seat liveness runbook |
 | [`autonomous-agents-decision-sheet.md`](autonomous-agents-decision-sheet.md) | Tier-1 "Autonomous" Agents — arm-or-retire decision sheet (TAC-2 A13) |
 | [`autonomous-lab-runtime-placement.md`](autonomous-lab-runtime-placement.md) | Autonomous Lab Runtime Placement |
 | [`codex-nuzantara-profiles.md`](codex-nuzantara-profiles.md) | Runbook - Codex Nuzantara Profiles |
