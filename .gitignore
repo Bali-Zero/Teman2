@@ -703,8 +703,6 @@ scripts/canva/output/
 apps/evaluator/handoff/
 .windsurf/
 apps/mouth/public/kbli-navigator/images/base64_data.txt
-apps/mouth/public/llms-full.txt
-apps/mouth/public/ai/llms-full.txt
 apps/evaluator/indexing_state.json
 tmp_notebooklm/
 

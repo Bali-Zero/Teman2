@@ -15,10 +15,7 @@ const KBLI_DATA_PATH = path.join(
   process.cwd(),
   "data/KBLI_2025_FINAL_CLEAN.json",
 );
-const OUTPUT_EN = path.join(
-  process.cwd(),
-  "public/ai/llms-full.txt",
-);
+const OUTPUT_EN = path.join(process.cwd(), "public/llms-full.txt");
 const OUTPUT_ID = path.join(process.cwd(), "public/llms-id.txt");
 const OUTPUT_KBLI = path.join(process.cwd(), "public/llms-kbli.txt");
 const LLMS_TXT_PATH = path.join(process.cwd(), "public/llms.txt");
