@@ -17,11 +17,13 @@ on:
       - "scripts/pending_arms_report.py"
       - "scripts/lint_plist_keepalive.py"
       - "scripts/arsenal_probe.py"
+      - "scripts/check_adversarial_review.py"
       - "scripts/tests/test_lint_home_fork.py"
       - "scripts/tests/test_secrets_permissions_audit.py"
       - "scripts/tests/test_pending_arms_report.py"
       - "scripts/tests/test_lint_plist_keepalive.py"
       - "scripts/tests/test_arsenal_probe.py"
+      - "scripts/tests/test_adversarial_review_gate.py"
       - "infra/home-fork/declared-pairs.json"
       - ".claude/skills/modus/PENDING-ARMS.md"
       - ".github/workflows/immune-enforcement.yml"
@@ -50,7 +52,8 @@ jobs:
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \
-            scripts/tests/test_arsenal_probe.py ; do
+            scripts/tests/test_arsenal_probe.py \
+            scripts/tests/test_adversarial_review_gate.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1

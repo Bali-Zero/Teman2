@@ -425,8 +425,9 @@ gates:
   # Reference: docs/specs/rules-as-harness-and-simulation-chamber-v1.md section 2/R1.
   # Script: scripts/check_adversarial_review.py. Tests: scripts/tests/test_adversarial_review_gate.py
   # (armed via .github/workflows/immune-enforcement.yml the same way pending_arms_report /
-  # lint_home_fork / secrets_permissions_audit / lint_plist_keepalive are — add this test path
-  # to that workflow's `paths:` + unit-test loop when this lane merges).
+  # lint_home_fork / secrets_permissions_audit / lint_plist_keepalive are — wired into that
+  # workflow's `paths:` + unit-test loop 2026-07-06, and the gate workflow runs on EVERY PR
+  # (no paths filter) because it is a required check on main branch protection).
   # ---------------------------------------------------------------------------
   - id: adversarial_review_gate
     kind: ci_workflow
