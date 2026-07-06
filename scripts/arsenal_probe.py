@@ -714,9 +714,10 @@ def _selftest_scrub() -> list[str]:
     scrubbed = scrub(text)
     if planted in scrubbed:
         failures.append("scrub() failed to remove a planted fake sk- token")
-    bearer_text = "Authorization: Bearer abcdefghijklmnop1234567890 was rejected"  # pragma: allowlist secret  # fake Bearer for the same guilt-check
+    bearer_token = "abcdefghijklmnop1234567890"  # pragma: allowlist secret  # fake value — exists to prove scrub() removes it
+    bearer_text = f"Authorization: Bearer {bearer_token} was rejected"
     scrubbed2 = scrub(bearer_text)
-    if "abcdefghijklmnop1234567890" in scrubbed2:
+    if bearer_token in scrubbed2:
         failures.append("scrub() failed to remove a Bearer token value")
     exact = "not-shaped-like-a-token-but-secret"
     scrubbed3 = scrub(f"value was {exact} exactly", extra_secrets=[exact])
