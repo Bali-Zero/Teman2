@@ -1,0 +1,39 @@
+name: adversarial-review-gate
+
+# R1 "generator != grader" T-GATE (docs/specs/rules-as-harness-and-simulation-chamber-v1.md
+# section 2/R1): research/audit deliverables must carry an adversarial review by a seat
+# != author. Deterministic gate, stdlib-only script — see scripts/check_adversarial_review.py
+# for the full contract and scar refs (superscar #3 guilt+innocence, W81 armed-not-theater,
+# W86 same-PR discipline).
+#
+# env-var indirection (BASE_REF in `env:`, never inline into `run:`) per workflow-injection
+# hygiene — the PR base-ref name never gets shell-expanded directly into a command string.
+
+on:
+  pull_request:
+    paths:
+      - "research/**"
+
+jobs:
+  gate:
+    name: R1 gate — adversarial review present
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the PR base ref is resolvable for the diff
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Fetch base ref
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch origin "$BASE_REF" --depth=1 || true
+
+      - name: R1 gate — adversarial review present
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python scripts/check_adversarial_review.py --diff "origin/${BASE_REF}"
