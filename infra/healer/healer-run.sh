@@ -78,16 +78,27 @@ trap 'rm -f "$PIDFILE"' EXIT
 # ---- secrets (Telegram; claude on Mini auths via its own login) ------------
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
 
-# ---- W84 trampoline: TCC probe on the repo under ~/Desktop ------------------
-if ! /bin/ls "$REPO/CLAUDE.md" >/dev/null 2>&1; then
-    if [ -z "${HEALER_TRAMPOLINED:-}" ] && [ -f "$HOME/.ssh/id_local_trampoline" ]; then
-        log "W84: TCC denies ~/Desktop in this context — re-exec via ssh-localhost trampoline"
+# ---- W84 trampoline: non-ssh contexts ALWAYS re-exec via ssh-localhost ------
+# TCC grants are PER-BINARY: under launchd, bash/ls/python3 can read ~/Desktop
+# (the pre-check ran fine) while the node binary behind `claude` blocks forever
+# on an invisible consent prompt at exec time — tick-2 autopsy 2026-07-06:
+# child pinned at 0:00.00 CPU under launchd, the SAME wrapper under sshd
+# accrues CPU immediately (sshd holds FDA, children inherit). A probe with ls
+# therefore proves NOTHING about the claude child: when not already under ssh,
+# trampoline unconditionally.
+if [ -z "${HEALER_TRAMPOLINED:-}" ] && [ -z "${SSH_CONNECTION:-}" ]; then
+    if [ -f "$HOME/.ssh/id_local_trampoline" ]; then
+        log "W84: non-ssh context — re-exec via ssh-localhost trampoline (TCC is per-binary)"
         rm -f "$PIDFILE"
         exec ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
             -i "$HOME/.ssh/id_local_trampoline" localhost "HEALER_TRAMPOLINED=1 bash '$0'"
     fi
-    log "FATAL: TCC denies $REPO and no trampoline key — aborting"
-    heartbeat "error" "TCC denied, no trampoline"
+    log "WARN: no trampoline key — staying in non-ssh context; claude child may TCC-hang (watchdog will reap)"
+fi
+# Residual TCC check for THIS shell (fail-visible, exit 78 like the cured crons)
+if ! /bin/ls "$REPO/CLAUDE.md" >/dev/null 2>&1; then
+    log "FATAL: TCC denies $REPO in this context — aborting"
+    heartbeat "error" "TCC denied"
     exit 78
 fi
 
