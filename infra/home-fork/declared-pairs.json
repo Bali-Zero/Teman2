@@ -39,6 +39,14 @@
       ]
     },
     {
+      "live": "~/scripts/wr2-ig-metrics-analyst-run.sh",
+      "repo": "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
+      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. Live HOME copy on Pro still needs manual sync (healer is read-only on Pro).",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
       "live": "~/scripts/mlx-server-run.sh",
       "repo": "infra/launchagents/wrappers/mlx-server-run.sh",
       "machines": [
