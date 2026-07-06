@@ -201,11 +201,13 @@ ensure_delta() {
 # is LOCKED, so the claude CLI cannot read its OAuth credentials and dies with
 # "Not logged in" — proved live at the 05:08 trampolined run. Fall back to the
 # MAX-3 env token from ~/.nuzantara-secrets.env (verified working in sshd:
-# TOKEN1-OK). Gated on REGWATCH_TRAMPOLINED so gui-context runs keep the
-# healthy Keychain path even if the env token later expires.
-if [ -n "${REGWATCH_TRAMPOLINED:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
+# TOKEN1-OK). The Keychain is locked in EVERY sshd session, not only the
+# trampolined one — a manual `ssh pro '…run.sh'` run died "Not logged in" at
+# 09:20 (2026-07-06) with the token available but the gate closed. Gate on
+# SSH_CONNECTION too; gui/launchd contexts keep the healthy Keychain path.
+if { [ -n "${REGWATCH_TRAMPOLINED:-}" ] || [ -n "${SSH_CONNECTION:-}" ]; } && [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
-    echo "[$(date)] trampolined context: exporting CLAUDE_CODE_OAUTH_TOKEN from MAX-3 slot 1 (Keychain locked under sshd)" >> "$LOG"
+    echo "[$(date)] sshd context: exporting CLAUDE_CODE_OAUTH_TOKEN from MAX-3 slot 1 (Keychain locked under sshd)" >> "$LOG"
 fi
 
 # Tier 1: Claude OAuth Sonnet
@@ -237,7 +239,10 @@ fi
 if [ $SUCCESS -eq 0 ]; then
     echo "[$(date)] tier 2 failed/exhausted — falling back to codex" >> "$LOG"
     > "$TMPOUT"
-    /opt/homebrew/bin/codex exec --full-auto "$PROMPT_GENERIC" >"$TMPOUT" 2>&1
+    # `</dev/null` is load-bearing: codex blocks reading an open stdin (proved
+    # live 2026-07-06 09:20 "Reading additional input from stdin..."); cron/ssh
+    # contexts run from $HOME which is not a trusted repo → --skip-git-repo-check.
+    /opt/homebrew/bin/codex exec --sandbox workspace-write --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
     EXIT=$?
     if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_delta "$TMPOUT"; then
         SUCCESS=1
