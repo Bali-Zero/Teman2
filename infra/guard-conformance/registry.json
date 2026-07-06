@@ -1,5 +1,5 @@
 {
-  "_doc": "Guard Conformance Registry (superscar #3 \u2014 over/under-match). Maps EVERY live textual guard to its GUILT proof (the guard fires on the historical bad case) and INNOCENCE proof (the guard does NOT fire on the adjacent legitimate case). Enforced by infra/guard-conformance/check_guard_conformance.py: a censused guard missing from here, a phantom test reference, or a test no CI workflow runs = FAIL. The mandate rule this executes: 'nessuna guardia mergiata senza un test di innocenza E di colpevolezza' (cicatrix-superscar.md #3). To add a guard: write both tests first, then register it here.",
+  "_doc": "Guard Conformance Registry (superscar #3 — over/under-match). Maps EVERY live textual guard to its GUILT proof (the guard fires on the historical bad case) and INNOCENCE proof (the guard does NOT fire on the adjacent legitimate case). Enforced by infra/guard-conformance/check_guard_conformance.py: a censused guard missing from here, a phantom test reference, or a test no CI workflow runs = FAIL. The mandate rule this executes: 'nessuna guardia mergiata senza un test di innocenza E di colpevolezza' (cicatrix-superscar.md #3). To add a guard: write both tests first, then register it here.",
   "version": 1,
   "surfaces": {
     "bridge_reply_guards": {
@@ -148,7 +148,8 @@
             "W79",
             "W83",
             "W84",
-            "W85"
+            "W85",
+            "W91"
           ],
           "symbols": {
             "BLOCKED_SUBCMD_RE": {
@@ -156,7 +157,7 @@
                 "infra/claude-hooks/test_block_regex.py",
                 "infra/claude-hooks/test_w85_stash_readonly.py"
               ],
-              "note": "W85 stash over-match FIXED 2026-07-06 (negative lookahead: read-only `stash list|show` pass, bare/mutating stash still blocked) \u2014 test_w85_stash_readonly.py converted from tripwire-pin to plain guilt+innocence per the pin's own instructions"
+              "note": "W85 stash over-match FIXED 2026-07-06 (negative lookahead: read-only `stash list|show` pass, bare/mutating stash still blocked) — test_w85_stash_readonly.py converted from tripwire-pin to plain guilt+innocence per the pin's own instructions"
             },
             "_is_remote_dispatch": {
               "tests": [
@@ -178,7 +179,13 @@
               "tests": [
                 "infra/claude-hooks/test_tilde_target_resolver.py"
               ],
-              "note": "tilde/env blind-spot fixed 2026-07-06 (expanduser+expandvars at the single choke point; found by the W85 live guilt-probe \u2014 the resolver sits UPSTREAM of BLOCKED_SUBCMD_RE)"
+              "note": "tilde/env blind-spot fixed 2026-07-06 (expanduser+expandvars at the single choke point; found by the W85 live guilt-probe — the resolver sits UPSTREAM of BLOCKED_SUBCMD_RE)"
+            },
+            "_only_ffonly_pull": {
+              "tests": [
+                "infra/claude-hooks/test_ffonly_pull_exception.py"
+              ],
+              "note": "ff-only pull exception (2026-07-06, Zero directive). W91 fixed same day: the first version did a bare substring check and a shell COMMENT mentioning --ff-only opened the exception for a bare pull (4th over-match of this guard) — now FFONLY_PULL_SEGMENT_RE anchors the flag to the pull segment. 15 guilt + 7 innocence + 4 probe cases."
             }
           },
           "also_covered_by": [
@@ -238,7 +245,7 @@
         }
       },
       "exempt": {
-        "infra/claude-hooks/dispatch_nudge.py": "advisory transcript reminder (CLAUDE.md \u00a77 T1.1) \u2014 emits a nudge, never blocks a command; no block/allow contract to test",
+        "infra/claude-hooks/dispatch_nudge.py": "advisory transcript reminder (CLAUDE.md §7 T1.1) — emits a nudge, never blocks a command; no block/allow contract to test",
         "scripts/hooks/check_import_chain.sh": "shell preflight, not a command-matching guard on model output",
         "scripts/hooks/check_protected_files.sh": "static path blocklist, exercised by hot-zone-pr-gate CI",
         "scripts/hooks/escalations_alert_sessionstart.sh": "SessionStart injector, never blocks",
