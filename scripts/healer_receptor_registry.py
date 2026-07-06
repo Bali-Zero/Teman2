@@ -42,7 +42,15 @@ EXEMPT_STATUSES = {"disabled"}
 DEAD_MULTIPLIER = 3
 
 
-def parse_ts(value: str) -> datetime | None:
+def parse_ts(value) -> datetime | None:
+    """Both live ts dialects: ISO-8601 string (G2 gene) AND numeric epoch
+    (Pro fleet heartbeat lib writes float seconds — first healer-pro tick
+    classified 14 healthy organs false-"dead" when this only read ISO)."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            return datetime.fromtimestamp(float(value), tz=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            return None
     try:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except (ValueError, TypeError):
