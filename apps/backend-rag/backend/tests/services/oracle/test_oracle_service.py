@@ -166,9 +166,13 @@ def test_database_backed_lazy_services_use_configured_database_url(
     monkeypatch.setattr(oracle_module, "MemoryServicePostgres", FakeMemoryServicePostgres)
     monkeypatch.setattr(oracle_module, "MemoryOrchestrator", FakeMemoryOrchestrator)
 
-    assert service.golden_answer_service is service.golden_answer_service
-    assert service.memory_service is service.memory_service
-    assert service.memory_orchestrator is service.memory_orchestrator
+    golden_answer_service = service.golden_answer_service
+    memory_service = service.memory_service
+    memory_orchestrator = service.memory_orchestrator
+
+    assert service.golden_answer_service is golden_answer_service
+    assert service.memory_service is memory_service
+    assert service.memory_orchestrator is memory_orchestrator
     assert created == {
         "golden": "postgresql://test",
         "memory": "postgresql://test",

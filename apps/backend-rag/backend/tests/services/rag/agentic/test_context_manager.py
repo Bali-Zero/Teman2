@@ -157,7 +157,7 @@ async def test_fetch_memory_facts_maps_memory_context_fields() -> None:
 async def test_get_user_context_returns_empty_context_without_database(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(module, "get_memory_cache", lambda: FakeMemoryCache())
+    monkeypatch.setattr(module, "get_memory_cache", FakeMemoryCache)
 
     result = await get_user_context(None, "anonymous")
 

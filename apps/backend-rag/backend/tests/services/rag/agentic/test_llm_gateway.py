@@ -111,7 +111,7 @@ async def test_health_check_uses_injected_clients(monkeypatch) -> None:
     gateway.model_name_flash = "flash-model"
     gateway.model_name_fallback = "fallback-model"
     gateway._genai_client = FakeGenAIClient()
-    monkeypatch.setattr(gateway, "_get_openrouter_client", lambda: object())
+    monkeypatch.setattr(gateway, "_get_openrouter_client", object)
 
     status = await gateway.health_check()
 

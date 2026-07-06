@@ -209,7 +209,10 @@ async def test_smart_oracle_uploads_downloaded_pdf_and_removes_temp_file(
 async def test_smart_oracle_returns_missing_document_message(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(smart_module, "download_pdf_from_drive", lambda filename: None)
+    def missing_pdf(_: str) -> None:
+        return None
+
+    monkeypatch.setattr(smart_module, "download_pdf_from_drive", missing_pdf)
 
     result = await smart_module.smart_oracle("What does it require?", "missing.pdf")
 
@@ -217,11 +220,14 @@ async def test_smart_oracle_returns_missing_document_message(
 
 
 def test_test_drive_connection_returns_boolean_status(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(smart_module, "get_drive_service", lambda: FakeDriveService())
+    monkeypatch.setattr(smart_module, "get_drive_service", FakeDriveService)
 
     assert smart_module.test_drive_connection() is True
 
-    monkeypatch.setattr(smart_module, "get_drive_service", lambda: None)
+    def missing_drive_service() -> None:
+        return None
+
+    monkeypatch.setattr(smart_module, "get_drive_service", missing_drive_service)
 
     assert smart_module.test_drive_connection() is False
 

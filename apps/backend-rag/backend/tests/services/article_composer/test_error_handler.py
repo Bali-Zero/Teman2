@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 import httpx
+import pytest
 
 from backend.llm.deepseek_client import DeepSeekAuthError, DeepSeekError
 from backend.services.article_composer.error_handler import (
@@ -58,15 +59,15 @@ def test_handle_anthropic_error_maps_timeout_connect_and_rate_limit() -> None:
 
 
 def test_handle_json_error_includes_location_and_preview() -> None:
-    try:
+    with pytest.raises(json.JSONDecodeError) as exc_info:
         json.loads("{bad json")
-    except json.JSONDecodeError as error:
-        api_error = handle_json_error(
-            error,
-            response_text="x" * 600,
-            article_title="Title",
-            request_id="req-2",
-        )
+
+    api_error = handle_json_error(
+        exc_info.value,
+        response_text="x" * 600,
+        article_title="Title",
+        request_id="req-2",
+    )
 
     assert api_error.code == ErrorCode.JSON_PARSE_ERROR
     assert api_error.request_id == "req-2"
