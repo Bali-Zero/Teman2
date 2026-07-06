@@ -709,12 +709,12 @@ def _selftest_classifier() -> list[str]:
 
 def _selftest_scrub() -> list[str]:
     failures = []
-    planted = "sk-abc123def456ghi789jkl0"
+    planted = "sk-abc123def456ghi789jkl0"  # pragma: allowlist secret  # planted FAKE token — exists to prove scrub() removes it
     text = f"request failed with token {planted} rejected"
     scrubbed = scrub(text)
     if planted in scrubbed:
         failures.append("scrub() failed to remove a planted fake sk- token")
-    bearer_text = "Authorization: Bearer abcdefghijklmnop1234567890 was rejected"
+    bearer_text = "Authorization: Bearer abcdefghijklmnop1234567890 was rejected"  # pragma: allowlist secret  # fake Bearer for the same guilt-check
     scrubbed2 = scrub(bearer_text)
     if "abcdefghijklmnop1234567890" in scrubbed2:
         failures.append("scrub() failed to remove a Bearer token value")
