@@ -558,21 +558,35 @@ def _effective_git_target(cmd: str, default_cwd: str) -> str:
 # narrow (anti-#3, both signs):
 #   - EVERY blocked-verb match in the command must be `pull` (a compound like
 #     `git pull --ff-only && git checkout x` still blocks on the checkout);
-#   - `--ff-only` must appear in the noise-stripped command (a flag hiding inside
-#     a quoted literal does not count) and `--rebase` must not;
+#   - `--ff-only` must be an ARGUMENT of the pull command itself — anchored to the
+#     `git ... pull` segment, stopping at command separators (| ; & newline) and
+#     at `#` (2026-07-06 guilt-probe live: the first version did a bare
+#     `"--ff-only" in cmd_scan` substring check, and a SHELL COMMENT mentioning
+#     --ff-only opened the exception for a bare `git pull` — the FOURTH
+#     over-match of this same guard, after W83/W84/W85. _strip_noise removes
+#     quotes/heredocs but NOT comments; anchoring to the pull segment matches
+#     the command's intent, not a substring anywhere). `--rebase` anywhere still
+#     disqualifies (over-blocking is the safe direction);
 #   - the main checkout must be clean of TRACKED modifications (untracked files
 #     like scratch/ don't gate an ff pull). Probe failure → exception does NOT
 #     open (fail-closed toward the historical block, unlike the hook's usual
 #     negative-gating: loosening a guard on uncertainty would invert its point).
 
+# --ff-only as a real argument of the pull segment: after `git [...] pull`, only
+# non-separator, non-comment characters may precede it on the same segment.
+FFONLY_PULL_SEGMENT_RE = re.compile(
+    r"\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?pull\b[^|;&#\n]*--ff-only(?!\S)"
+)
+
+
 def _only_ffonly_pull(cmd_scan: str) -> bool:
     """True iff the command's only blocked git verb(s) are `pull`, with --ff-only
-    and without --rebase — evaluated on the noise-stripped command."""
+    as an argument of the pull segment and no --rebase — on the noise-stripped command."""
     verbs = [m.group(1) for m in BLOCKED_SUBCMD_RE.finditer(cmd_scan)]
     # group(1) is None for the commit -a / add -A alternation branches → not a pull.
     if not verbs or any(v != "pull" for v in verbs):
         return False
-    if "--ff-only" not in cmd_scan or "--rebase" in cmd_scan:
+    if not FFONLY_PULL_SEGMENT_RE.search(cmd_scan) or "--rebase" in cmd_scan:
         return False
     return True
 

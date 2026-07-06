@@ -148,7 +148,8 @@
             "W79",
             "W83",
             "W84",
-            "W85"
+            "W85",
+            "W91"
           ],
           "symbols": {
             "BLOCKED_SUBCMD_RE": {
@@ -184,7 +185,7 @@
               "tests": [
                 "infra/claude-hooks/test_ffonly_pull_exception.py"
               ],
-              "note": "ff-only pull exception (2026-07-06, Zero directive: sessions self-align fleet main checkouts): pull --ff-only on a tracked-clean main is allowed — the one mutating git op that cannot sibling-race. Fail-closed on probe failure. 10 guilt + 5 innocence + 4 probe cases."
+              "note": "ff-only pull exception (2026-07-06, Zero directive). W91 fixed same day: the first version did a bare substring check and a shell COMMENT mentioning --ff-only opened the exception for a bare pull (4th over-match of this guard) — now FFONLY_PULL_SEGMENT_RE anchors the flag to the pull segment. 15 guilt + 7 innocence + 4 probe cases."
             }
           },
           "also_covered_by": [
