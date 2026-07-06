@@ -24,8 +24,8 @@ heartbeat() { # $1 status, $2 note
 }
 
 # G4_node_guard — wrong node exits VISIBLY (heartbeat), never silently (#10)
-if [ "$(hostname -s)" != "Nuzantara" ]; then
-    log "node guard: $(hostname -s) != Nuzantara — not my node, exiting"
+if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "nuzantara" ]; then
+    log "node guard: $(hostname -s) != nuzantara — not my node, exiting"
     heartbeat "disabled" "wrong-node $(hostname -s)"
     exit 0
 fi
