@@ -22,6 +22,7 @@ sources:
   - https://developer.apple.com/forums/thread/685967
   - https://blog.surajdev.tech/antigravity-login-issue-on-macbook-how-i-finally-fixed-it-after-hours-of-trying
 client_case: null
+adversarial_review: glm
 ---
 
 # Google Antigravity CLI (agy) headless auth on macOS — is there a working path under sshd/cron/launchd?
@@ -117,3 +118,19 @@ This is explicitly a workaround for an unresolved upstream limitation, not a per
 8. No beta headless-auth flag exists anywhere in the codebase/changelog/issues as of this date.
 9. **Verdict: impossible today via any CLI-only fix.** Least-bad pattern is GUI-session persistence hardening on the Mini: auto-login at boot (which performs the same keychain-unlock `loginwindow` normally does) + `caffeinate`/kept-alive session + cron running *inside* that session's process tree (LaunchAgent with `SessionCreate=true`), not via sshd — plus the retry-loop mitigation from point 5 as defense-in-depth.
 10. This breaks on reboot (unless auto-login), logout, or macOS/agy updates (agy ships ~2 releases/week — pin the version once stable); re-audit if #78 or #85 gets a maintainer fix.
+
+## Adversarial review
+
+**Reviewer**: GLM 5.2 (z.ai seat, generator≠grader — author was Claude Fable 5). Run 2026-07-06, prompt: attack the 5 core claims, verdict per claim, list surviving objections.
+
+**Verdicts**: claims 3 (sshd cannot inherit the unlocked login keychain), 4 (API-key auth refused upstream, #78) and 5 (pseudo-TTY wrapper targets an unrelated stdout bug) **SURVIVE** the attack. Claims 1–2 were **challenged on version-reach and framing**, not on the operational conclusion:
+
+- **Meta-weakness (accepted)**: the "no working path as of v1.0.16" verdict rests on a version no source — including this report — actually exercised; the installed CLI was **v1.0.2**. Combined with a §2/table inconsistency on issue #85's status, the "impossible today" framing is firmer than the evidence licenses.
+- **Framing overclaim (accepted)**: §5's "NOT just 'unsupported,' actively refused" escalates beyond the cited maintainer quote ("not supported currently… reviewing the feedback"), which is consideration, not refusal. The operational conclusion (API-key auth is a dead end today) stands regardless.
+- Claim 5's stdout-drop bug is single-sourced (antigravitylab.net) — the claim as stated survives because it only concerns what the wrapper *addresses*.
+
+**Empirical addendum (operator experiment, 2026-07-06)**: Zero ran `security unlock-keychain` in the SAME sshd session and immediately invoked `agy -p "PONG"` — still `authentication failed or timed out`. This confirms the keychain-unlock alone does not cure the failure **on v1.0.2**, consistent with the 1s-timeout hypothesis but not a test of newer releases.
+
+**Surviving action item**: upgrade agy to the latest release on the Mini and re-run the sshd probe BEFORE treating headless auth as permanently impossible; re-audit on any maintainer movement on #78/#85. Until then the operative classification stays CONTEXT_AUTH (GUI-bound), as encoded in `scripts/arsenal_probe.py`.
+
+**Capture caveat**: the refuter's detailed reasoning for claims 1–2 was truncated in the session capture (only the meta-weakness paragraph and the final verdict line were retained); the version-reach and #85-status objections above are quoted from the retained portion. Claims 1–2 should be treated as *unproven at latest version*, not refuted at v1.0.2.
