@@ -151,6 +151,39 @@ elif [ "$REG_EXIT" -eq 2 ]; then
     ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
 fi
 
+# Receptor 5: arsenal seats (scripts/arsenal_probe.py) — the quota-cascade can
+# silently thin to 2-deep (codex 401, agy keychain, glm 401/529, deepseek 402).
+# Live-probe at most ~daily (self-throttled by report age — keeps the "healthy
+# tick costs ~zero LLM" promise); every tick reads transitions. A NEW persistent
+# seat-death (AUTH/BALANCE/MODEL/UNKNOWN) → ACTIONABLE + direct Telegram (the
+# cure is almost always operator-gated: relogin/top-up).
+ARSENAL_REPORT="$HOME/.organism/arsenal/last.json"
+ARSENAL_AGE_H=999
+if [ -f "$ARSENAL_REPORT" ]; then
+    ARSENAL_AGE_H=$(( ( $(date +%s) - $(stat -f %m "$ARSENAL_REPORT" 2>/dev/null || echo 0) ) / 3600 ))
+fi
+if [ "$ARSENAL_AGE_H" -ge 20 ] && [ -f "scripts/arsenal_probe.py" ]; then
+    log "arsenal probe: report ${ARSENAL_AGE_H}h old — refreshing (live seat probes)"
+    python3 scripts/arsenal_probe.py --quiet >> "$LOG" 2>&1 || true
+fi
+if [ -f "$ARSENAL_REPORT" ]; then
+    NEW_DEAD=$(python3 - <<'PY' 2>/dev/null
+import json, os
+try:
+    d = json.load(open(os.path.expanduser("~/.organism/arsenal/last.json")))
+    strict = {"AUTH_DEAD", "BALANCE_DEAD", "MODEL_ERR", "UNKNOWN_ERR"}
+    print(",".join(f"{t['seat']}:{t['to']}" for t in d.get("transitions", [])
+                   if t.get("to") in strict))
+except Exception:
+    pass
+PY
+)
+    if [ -n "$NEW_DEAD" ]; then
+        ACTIONABLE=1; REASONS="${REASONS}arsenal:${NEW_DEAD} "
+        telegram "🔌 ARSENALE (Mini): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
+    fi
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
     log "pre-check clean (0 diverged, ledger ok, board quiet, registry organs alive) — no LLM spawn"
     heartbeat "ok" "idle: pre-check clean"
