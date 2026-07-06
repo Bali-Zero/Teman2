@@ -1,4 +1,4 @@
-import { CODEX_HTML_B64 } from './_codex-content';
+import { CODEX_HTML } from './_codex-content';
 
 // PIN-gated reading room for the Codex Akasha (private family page).
 // Server-side gate: the codex HTML never reaches the client before the PIN.
@@ -90,8 +90,7 @@ function doorHtml(error = false): string {
 export async function GET(req: Request): Promise<Response> {
   const sig = getCookie(req, COOKIE_NAME);
   if (sig && sig === (await expectedSig())) {
-    const html = Buffer.from(CODEX_HTML_B64, 'base64').toString('utf-8');
-    return new Response(html, { headers: BASE_HEADERS });
+    return new Response(CODEX_HTML, { headers: BASE_HEADERS });
   }
   return new Response(doorHtml(), { headers: BASE_HEADERS });
 }
