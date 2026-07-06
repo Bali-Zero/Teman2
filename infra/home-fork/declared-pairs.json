@@ -130,6 +130,20 @@
       "machines": [
         "pro"
       ]
+    },
+    {
+      "live": "~/scripts/mini-codex-access-watch.sh",
+      "repo": "infra/launchagents/wrappers/mini-codex-access-watch.sh",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.codex-access-watch.plist",
+      "repo": "infra/launchagents/com.nuzantara.codex-access-watch.plist",
+      "machines": [
+        "mini"
+      ]
     }
   ],
   "allow": [
