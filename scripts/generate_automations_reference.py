@@ -354,25 +354,6 @@ PRO_LOG_MAP = {
     "automations_reference": "/tmp/cron-automations-reference.log",
 }
 
-MINI_LOG_MAP = {
-    "ollama_cron_window": "~/Projects/nuzantara/logs/ollama_cron.log",
-    "auto_test": "~/Projects/nuzantara/logs/auto_test.log",
-    "auto_sentinel": "~/Projects/nuzantara/logs/sentinel_nightly.log",
-    "auto_kb_ingest": "~/Projects/nuzantara/logs/kb_ingest.log",
-    "auto_judgement_day": "~/Projects/nuzantara/logs/judgement_day.log",
-    "rag_canary": "~/Projects/nuzantara/logs/rag_canary.log",
-    "system_doctor": "~/Projects/nuzantara/logs/system_doctor.log",
-    "drive_token_watchdog": "~/Projects/nuzantara/logs/drive_watchdog.log",
-    "ragas_eval": "~/Projects/nuzantara/logs/ragas_eval.log",
-    "t4_monitor": "~/.openclaw/logs/t4_monitor.log",
-    "crm_automation_engine": "~/Projects/nuzantara/apps/backend-rag/logs/crm_automation.log",
-    "fly_pg_backup": "~/logs/fly-pg-backup.log",
-    "notifiers_all": "~/logs/cron_notifiers.log",
-    "notifiers_welcome": "~/logs/cron_welcome.log",
-    "db_nlm_sync": "~/.openclaw/logs/db_nlm_sync_cron.log",
-    "sync_memory_to_nlm": "/tmp/cron-mos-sync.log",
-}
-
 _STATUS_KW_FAIL = ("error", "fail", "not permitted", "abort", "broken")
 _STATUS_KW_OK = ("ok", "success", "complete", "done", "healthy", "passed")
 _STATUS_KW_WARN = ("warn", "skip")
@@ -419,7 +400,7 @@ def _check_log_health_mini(jobs: list[Job]) -> None:
         return
     checks = []
     for job in mini_jobs:
-        log = job.log_file or MINI_LOG_MAP.get(job.name, "")
+        log = job.log_file
         if not log:
             continue
         checks.append(
