@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 2693b53b89a1df260bf1a26f8ec15bdb221da8552119b7b061b5b5f4bec79f4f
+checksum: b663d795fbbb554911265ac9192c99252d678c0c94a7f46550ec7e687156e41b
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1743,5 +1743,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.healer.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.codex_access_watch
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 300
+  owner_module: infra/launchagents/wrappers/mini-codex-access-watch.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.codex-access-watch
+  severity_on_silence: warning
+  notes: Watch balizero.com/codex access logs (Vercel) and WhatsApp-alert Zero when
+    someone enters from outside the US (Leopoldo from Italy) (born via organ_birth.py,
+    genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.codex_access_watch.json
     timestamp_field: ts
     status_field: status
