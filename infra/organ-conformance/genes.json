@@ -1,0 +1,746 @@
+{
+  "_doc": [
+    "genes.json — the ORGAN GENOME: single source of truth for the genes every",
+    "launchd/cron organ must inherit at birth (research/operations/2026-07-06-dna-self-healing-genome.md).",
+    "Consumed by: check_organ_conformance.py (CI gate), scripts/organ_birth.py (generator).",
+    "",
+    "genes: definitions only — detection logic lives in the checker, templates in the",
+    "generator; this file names the contract so gate and generator can never diverge",
+    "on WHICH genes exist (a divergence is a failing test, test_organ_conformance.py).",
+    "",
+    "grandfathered: plist path -> list of genes known-missing at gate birth (2026-07-06).",
+    "Report-only: a PR touching a grandfathered plist FAILS only on REGRESSION",
+    "(missing genes beyond the recorded set). A plist NOT listed here is NEW and",
+    "must carry every applicable gene. Regenerate after curing an organ:",
+    "  python3 infra/organ-conformance/check_organ_conformance.py --update-baseline",
+    "(shrinking the baseline is the cure metric; growing it requires a PR reviewer's eyes)."
+  ],
+  "version": 1,
+  "genes": {
+    "G1_registry": {
+      "name": "registry entry",
+      "check": "plist Label appears in apps/organism/organism/organs_registry.yaml",
+      "why": "an organ absent from the registry is dark tissue: no sentinel verdict, no healer receptor, no recovery_action"
+    },
+    "G2_heartbeat": {
+      "name": "heartbeat sidecar",
+      "check": "wrapper calls organism_heartbeat or writes ~/.organism/last_seen/<id>.json on success AND failure paths",
+      "why": "Esiste≠Armato (#2): liveness must be proven by the organ itself, every run"
+    },
+    "G3_declared_pair": {
+      "name": "declared HOME pair",
+      "check": "plist payload under $HOME requires a live<->repo pair in infra/home-fork/declared-pairs.json",
+      "why": "HOME-fork drift (#1): an undeclared live copy diverges silently from canon"
+    },
+    "G4_node_guard": {
+      "name": "node guard",
+      "check": "generator-emitted wrappers exit 0 with heartbeat status=disabled note=wrong-node when hostname != assigned node (advisory in gate: not statically detectable on legacy wrappers)",
+      "why": "active-active split-brain (#10): a singleton run on two machines corrupts shared state; the guard must stay VISIBLE (heartbeat), never a silent exit"
+    },
+    "G5_kill_switch": {
+      "name": "kill switch",
+      "check": "wrapper honors <SCOPE>_ENABLED=false AND writes a final heartbeat status=disabled before exiting",
+      "why": "operator must be able to stop any organ without uninstalling it; the disabled heartbeat keeps the healer from resurrecting an intentionally-stopped organ (panel finding 2026-07-06)"
+    },
+    "G6_spawn_hardened": {
+      "name": "hardened headless claude spawn",
+      "check": "wrapper invoking `claude -p` must carry --strict-mcp-config, </dev/null stdin, and a TCC strategy (ssh trampoline or SSH_CONNECTION assertion)",
+      "why": "the 4 headless gotchas (bypass-acceptance, folder-trust, per-binary TCC/W84, MCP-init hang) each present as a silent 0-CPU hang"
+    },
+    "G7_ledger": {
+      "name": "PENDING-ARMS line at birth",
+      "check": "procedural (generator emits the line; pending_arms_report.py --strict enforces >48h): not statically checkable on a plist",
+      "why": "built is not armed (W81): the arming debt must be visible from minute zero"
+    },
+    "G8_keepalive_sane": {
+      "name": "KeepAlive matches payload nature",
+      "check": "delegated to scripts/lint_plist_keepalive.py (FAIL-class findings only)",
+      "why": "daemon-vs-cron misconfig (#7): KeepAlive=true on a one-shot payload is a restart storm"
+    },
+    "G9_fail_visible": {
+      "name": "fail-visible wrapper",
+      "check": "bash wrappers declare `set -u` (or -eu); logging function present",
+      "why": "swallowed errors are how green lies (#2); unset-var typos must crash, not expand empty"
+    },
+    "G10_single_instance": {
+      "name": "single instance / idempotent restart",
+      "check": "wrapper uses a pidfile (+ liveness probe + trap cleanup) or flock; mandatory for llm-cron, advisory otherwise",
+      "why": "a healer/cron restarted over a live predecessor corrupts state (panel finding 2026-07-06: restart without idempotency is a cure that wounds)"
+    }
+  },
+  "scan_roots": [
+    "infra",
+    "apps",
+    "scripts"
+  ],
+  "grandfathered": {
+    "apps/backend-rag/deploy/launchd/com.nuzantara.cost-advisor-daily-cap.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "apps/backend-rag/deploy/launchd/com.nuzantara.cost-advisor-weekly.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "apps/backend-rag/deploy/launchd/com.nuzantara.local-livekit-server.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/backend-rag/deploy/launchd/com.nuzantara.local-livekit-worker.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/backend-rag/deploy/launchd/com.nuzantara.wa-mirror-intake-sweeper.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/cell/com.cell.organism.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/cell/com.nuzantara.heartbeat-bridge.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/cell/launchagent/com.nuzantara.skills-bridge-consumer.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/nlm-bridge/com.balizero.nlm-bridge.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/organism/organism/launchd/com.nuzantara.launchd-env-loader.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/organism/organism/launchd/com.nuzantara.organism.control-panel.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "apps/organism/organism/launchd/com.nuzantara.organism.scheduled-tick.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "apps/organism/organism/launchd/com.nuzantara.organism.supervisor.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "apps/organism/organism/launchd/com.nuzantara.supervisor-liveness-watchdog.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "apps/wa-mirror/scripts/com.balizero.wa-mirror.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.codex-spalla-calibrate.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.domain-mesh.foundations.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.drive-intake-drain.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.dropbox-intake.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.indexing-sweep.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.intel-lake.e2e-probe.6h.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.intel-radar-daily-digest.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.l5-2-phase2b-trigger.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.nuzantara.disk-watchdog.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.nuzantara.log-size-watchdog.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.regulatory-watcher.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.setup-team.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.sota.m13-checkpoint.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.sota.m13-collect.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.sota.m13-monthly.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.sota.m13-weekly.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wa-mirror-auto-promote-selfheal.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G3_declared_pair"
+    ],
+    "infra/launchagents/com.balizero.wr2.canva-apply.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.canva-gc.weekly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.canva-lease-watchdog.10min.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.wr2.canva-oauth-watchdog.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.canva-renderer.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.wr2.connector.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.daily-metrics.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.deploy-puller.plist": [
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.dossier-compiler.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.draft-generator.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.e2e-probe.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.fact-checker.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.fact-extractor.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.hardening.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.html-apply.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.wr2.ig-metrics-scrape.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.image-generator.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.learner-nightly.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.measurer.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.newsletter.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.oracle.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.pg-proxy.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.plist-watchdog.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.wr2.sla-worker.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.strategos.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.supervisor-watchdog.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.supervisor.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.topic-selector.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr2.trend-hunter.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.balizero.wr3.reflexion.weekly.plist": [
+      "G10_single_instance",
+      "G1_registry",
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch",
+      "G6_spawn_hardened"
+    ],
+    "infra/launchagents/com.matagaruda.archiver.hourly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.bridge.adaptive.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.classifier.adaptive.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.consumer-lag.check.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.daily-briefing.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.gap.consumer.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.intel-bridge.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.matagaruda.invalidation-sweep.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.kg-linker.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.kg-query-api.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.kita-feed.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.ner.adaptive.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.nlm-expander.weekly.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.nlm-feeder-stream.hourly.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.nlm-rollup.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.pel-cleaner.weekly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.pipeline-health.hourly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.plist-watchdog.hourly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.public-channel.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.redis-split-brain.check.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.reg-alert.30min.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.sentinel.hourly.plist": [
+      "G1_registry",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.unmapped-audit.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.watcher.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.weekly-digest.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.wr-topic.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.matagaruda.wr2-bridge.hourly.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.branch-cleanup.weekly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.cell-observatory-prune.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.cell-observatory-selfcheck.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.cell-observatory.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.chronic-failure-digest.weekly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.cost-breaker-deadman.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.cost-breaker.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.cost-ledger-export.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.cpu-monitor.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.curiosity-loop.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.disk-monitor.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.federation-alert-dispatcher.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.fly-restart-loop-detector.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.heartbeat-watchdog.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.intake-blob-retention.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.intake-gate-count-pusher.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.intake-review-reader-liveness.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.intake-review-reader.plist": [
+      "G1_registry",
+      "G2_heartbeat"
+    ],
+    "infra/launchagents/com.nuzantara.intake-worker.plist": [
+      "G1_registry",
+      "G2_heartbeat"
+    ],
+    "infra/launchagents/com.nuzantara.lead-intent-matcher.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.log-prune.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.login-healthcheck.plist": [
+      "G2_heartbeat",
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.mcp-integrity.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.merge-train.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.nlm-drive-backup.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.openclaw-logrotate.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.outbox-prune.daily.plist": [
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.outbox-prune.weekly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.overlap-detector.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.pg-organism-bridge-watchdog.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.pg-organism-bridge.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "infra/launchagents/com.nuzantara.plist-snapshot.daily.plist": [
+      "G1_registry",
+      "G2_heartbeat"
+    ],
+    "infra/launchagents/com.nuzantara.repomap.15min.plist": [
+      "G1_registry",
+      "G2_heartbeat"
+    ],
+    "infra/launchagents/com.nuzantara.review-gate.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.runtime-reconcile.plist": [
+      "G1_registry",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.sentinel-aggregate.plist": [
+      "G3_declared_pair",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.sentinel-meta-watchdog.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.verify-the-verifiers.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.wa-media-pull.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.wa-mirror-intake-sweeper.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.wr2-damar-publish-consumer.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchagents/com.nuzantara.zombie-hunter.plist": [
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchd/com.balizero.agent-library-evolver.weekly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchd/com.nuzantara.escalations-digest.weekly.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "infra/launchd/com.nuzantara.escalations-prune.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "scripts/intel-lake-nb-pusher-a2/com.balizero.intel-lake-nb-pusher.15min.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "scripts/intel-lake-router-a2/com.balizero.intel-lake-router.5min.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ],
+    "scripts/launchd/com.balizero.wa-team-metrics-rollup.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G9_fail_visible"
+    ],
+    "scripts/launchd/com.cell.metabolic-rollup.pro.plist": [
+      "G5_kill_switch"
+    ],
+    "scripts/launchd/com.nuzantara.fly-pg-tunnel.plist": [
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch"
+    ]
+  }
+}

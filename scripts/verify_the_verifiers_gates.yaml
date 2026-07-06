@@ -419,3 +419,25 @@ gates:
       status RAISES, the failure path records LLM_FAILED + exits 1, and the tautology alarm
       fires after 3 empty weeks. Green = the last green-but-empty loop now records its own
       no-delta. Closes the self-loop: all reflexion organs delegate to the one core.
+
+  # ---------------------------------------------------------------------------
+  # R1 (2026-07-06) — generator != grader T-GATE on research/audit deliverables.
+  # Reference: docs/specs/rules-as-harness-and-simulation-chamber-v1.md section 2/R1.
+  # Script: scripts/check_adversarial_review.py. Tests: scripts/tests/test_adversarial_review_gate.py
+  # (armed via .github/workflows/immune-enforcement.yml the same way pending_arms_report /
+  # lint_home_fork / secrets_permissions_audit / lint_plist_keepalive are — wired into that
+  # workflow's `paths:` + unit-test loop 2026-07-06, and the gate workflow runs on EVERY PR
+  # (no paths filter) because it is a required check on main branch protection).
+  # ---------------------------------------------------------------------------
+  - id: adversarial_review_gate
+    kind: ci_workflow
+    target: .github/workflows/adversarial-review-gate.yml
+    step_anchor: "R1 gate — adversarial review present"
+    expected_continue_on_error: false
+    note: >
+      Deterministic safety gate (R1): every new/changed research/**/*.md in a PR must
+      declare `adversarial_review: <seat != author>` in frontmatter + a matching
+      '## Adversarial review' section, or an explicit `exempt-<reason>` value.
+      Pure-stdlib checker, no network, no LLM. continue-on-error must stay false —
+      this is the enforcing gate, not a monitor-by-design step (contrast
+      hot_zone_redis_lease/p3_sandbox_runtime above, which intentionally stay true).

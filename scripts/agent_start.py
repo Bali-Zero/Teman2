@@ -623,7 +623,13 @@ def _branch_in_origin_main(worktree: Path) -> bool:
 
     Implementation: ``git -C <wt> merge-base --is-ancestor HEAD origin/main``
     (exit 0 ⇒ HEAD is an ancestor of origin/main ⇒ every commit is already in
-    main upstream; exit 1 ⇒ HEAD has commits NOT in origin/main).
+    main upstream; exit 1 ⇒ HEAD has commits NOT in origin/main — but the
+    ancestor test is a PROXY that lies on squash-merged/reworked branches
+    (W88), so exit 1 falls through to a blob-per-file CONTENT check: the
+    branch is merged iff every file it authored since its merge-base has the
+    same blob on origin/main. Never the three-dot diff — post-squash the
+    merge-base regresses and three-dot counts main's own progress as
+    branch-only changes, the W88 second-degree trap).
 
     Why ``origin/main`` and not local ``main`` or ``@{upstream}`` (the refuter
     killed both earlier designs):
@@ -654,8 +660,43 @@ def _branch_in_origin_main(worktree: Path) -> bool:
     if proc.returncode == 0:
         return True
     if proc.returncode == 1:
-        # HEAD has commits not in origin/main → unmerged work present.
-        return False
+        # Ancestor check failed (unmerged commits present) — BUT squash merges
+        # and reworks break the ancestor proxy (W88). We must verify by CONTENT
+        # before refusing to reap. A branch is safe to reap if every file it
+        # authored (changed since its merge-base) has the SAME blob on origin/main.
+        mb_proc = _run_git(
+            ["merge-base", "origin/main", "HEAD"], cwd=worktree, check=False
+        )
+        if mb_proc.returncode != 0:
+            return False
+        mb = mb_proc.stdout.strip()
+
+        diff_proc = _run_git(
+            ["diff", "--name-only", mb, "HEAD"], cwd=worktree, check=False
+        )
+        if diff_proc.returncode != 0:
+            return False
+
+        for f in diff_proc.stdout.splitlines():
+            f = f.strip()
+            if not f:
+                continue
+            bh_proc = _run_git(
+                ["rev-parse", f"HEAD:{f}"], cwd=worktree, check=False
+            )
+            bh = bh_proc.stdout.strip() if bh_proc.returncode == 0 else "__ABSENT__"
+
+            mh_proc = _run_git(
+                ["rev-parse", f"origin/main:{f}"], cwd=worktree, check=False
+            )
+            mh = mh_proc.stdout.strip() if mh_proc.returncode == 0 else "__ABSENT__"
+
+            if bh != mh:
+                return False
+
+        # If all changed files match origin/main by blob, the content is merged.
+        return True
+
     # rc >= 128 (bad ref, not a git dir, unknown HEAD): fail-safe to protect.
     logger.warning(
         "merge-base probe inconclusive for %s (rc=%s) — treating as unmerged "
