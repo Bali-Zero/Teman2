@@ -87,6 +87,59 @@ function doorHtml(error = false): string {
 </html>`;
 }
 
+
+// ---- door alert -------------------------------------------------------------
+// The door itself reports who knocked: Vercel stamps the client's geo on every
+// request (x-vercel-ip-country/-city), so no log polling and no third-party
+// token is needed. Countries in CODEX_ALERT_SKIP_COUNTRIES (default US — the
+// owner's current location and the fleet's probes) stay silent; everyone else
+// (the intended reader connects from Italy) triggers a WhatsApp to the owner.
+// The alert is auxiliary: any failure is logged and NEVER blocks the reader.
+const ALERT_TIMEOUT_MS = 3000;
+
+function skipCountries(): Set<string> {
+  return new Set(
+    (process.env.CODEX_ALERT_SKIP_COUNTRIES ?? 'US')
+      .split(',')
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean),
+  );
+}
+
+async function notifyDoor(req: Request, entered: boolean): Promise<void> {
+  try {
+    const token = process.env.CODEX_WA_TOKEN;
+    const phoneId = process.env.CODEX_WA_PHONE_ID;
+    if (!token || !phoneId) return; // alert not configured — door still works
+    const country = (req.headers.get('x-vercel-ip-country') ?? '??').toUpperCase();
+    if (skipCountries().has(country)) return;
+    const city = decodeURIComponent(req.headers.get('x-vercel-ip-city') ?? '');
+    const when = new Intl.DateTimeFormat('it-IT', {
+      timeZone: 'Europe/Rome',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date());
+    const where = city ? `${country} (${city})` : country;
+    const text = entered
+      ? `📜 CODEX — qualcuno è ENTRATO col segno giusto · ${where} · ${when} IT`
+      : `📜 CODEX — segno sbagliato alla porta · ${where} · ${when} IT`;
+    const res = await fetch(`https://graph.facebook.com/v22.0/${phoneId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: process.env.CODEX_ALERT_TO ?? '6282210302328',
+        type: 'text',
+        text: { body: text },
+      }),
+      signal: AbortSignal.timeout(ALERT_TIMEOUT_MS),
+    });
+    if (!res.ok) console.error('codex door alert failed:', res.status, await res.text());
+  } catch (err) {
+    console.error('codex door alert error:', err);
+  }
+}
+
 export async function GET(req: Request): Promise<Response> {
   const sig = getCookie(req, COOKIE_NAME);
   if (sig && sig === (await expectedSig())) {
@@ -100,6 +153,7 @@ export async function POST(req: Request): Promise<Response> {
   const pin = form?.get('pin');
   if (typeof pin === 'string' && pin.trim() === PIN) {
     const sig = await expectedSig();
+    await notifyDoor(req, true);
     return new Response(null, {
       status: 303,
       headers: {
@@ -110,5 +164,6 @@ export async function POST(req: Request): Promise<Response> {
       },
     });
   }
+  await notifyDoor(req, false);
   return new Response(doorHtml(true), { status: 401, headers: BASE_HEADERS });
 }
