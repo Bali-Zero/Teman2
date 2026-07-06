@@ -605,6 +605,69 @@ def test_branch_in_origin_main_real_resolver(fake_repo):
     assert mod._branch_in_origin_main(missing) is True
 
 
+def test_branch_in_origin_main_squash_merged_is_reapable(fake_repo):
+    """W88: A branch that was squash-merged into origin/main is NOT an ancestor,
+    but its blob content matches origin/main. It must be recognized as merged
+    and reap-eligible."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "squash", ttl_minutes=5)
+
+    # Create work on branch
+    (wt / "squash.txt").write_text("squash content\n")
+    _commit_in_worktree(wt, mod, "squash.txt", "wip")
+
+    # Assert not merged yet
+    assert mod._branch_in_origin_main(wt) is False
+
+    # Simulate squash merge: add the same exact file/content to main
+    # directly, bypassing the regular merge commit, then push to origin.
+    (repo / "squash.txt").write_text("squash content\n")
+    subprocess.run(["git", "add", "squash.txt"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "squash merge"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+
+    # Fetch in worktree to update its known origin/main
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    # W88: it is not an ancestor, but content matches, so it IS merged.
+    assert mod._branch_in_origin_main(wt) is True
+
+
+def test_branch_in_origin_main_unmerged_content_refuses_reap(fake_repo):
+    """W88: A branch where blob content differs from origin/main must NOT be
+    reapable, even if some files match."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "unmerged", ttl_minutes=5)
+
+    (wt / "file1.txt").write_text("content 1\n")
+    _commit_in_worktree(wt, mod, "file1.txt", "commit 1")
+
+    (wt / "file2.txt").write_text("content 2 branch\n")
+    _commit_in_worktree(wt, mod, "file2.txt", "commit 2")
+
+    # Simulate partial or conflicting changes on main
+    # Ensure it happens in the main repo tree, not an uninitialized main_repo subdir
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    (repo / "file1.txt").write_text("content 1\n")  # matches
+    (repo / "file2.txt").write_text("content 2 main\n")  # differs
+    subprocess.run(["git", "add", "file1.txt", "file2.txt"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "diff content"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    # Differing content must block reap
+    assert mod._branch_in_origin_main(wt) is False
+
+
 # ---------------------------------------------------------------------------
 # list — orphan detection (W62 ANTIBODY #2)
 # ---------------------------------------------------------------------------
