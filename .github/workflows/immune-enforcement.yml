@@ -18,12 +18,14 @@ on:
       - "scripts/lint_plist_keepalive.py"
       - "scripts/arsenal_probe.py"
       - "scripts/check_adversarial_review.py"
+      - "scripts/jules_dispatch.py"
       - "scripts/tests/test_lint_home_fork.py"
       - "scripts/tests/test_secrets_permissions_audit.py"
       - "scripts/tests/test_pending_arms_report.py"
       - "scripts/tests/test_lint_plist_keepalive.py"
       - "scripts/tests/test_arsenal_probe.py"
       - "scripts/tests/test_adversarial_review_gate.py"
+      - "scripts/tests/test_jules_dispatch.py"
       - "infra/home-fork/declared-pairs.json"
       - ".github/workflows/immune-enforcement.yml"
 
@@ -52,7 +54,8 @@ jobs:
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
-            scripts/tests/test_adversarial_review_gate.py ; do
+            scripts/tests/test_adversarial_review_gate.py \
+            scripts/tests/test_jules_dispatch.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
