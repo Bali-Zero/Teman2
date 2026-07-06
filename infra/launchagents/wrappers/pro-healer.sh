@@ -70,7 +70,16 @@ telegram() { # $1 text — best-effort, never blocks the run
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
 REPO="$HOME/Desktop/nuzantara"
 MAX_WALL_S="${PRO_HEALER_MAX_WALL_S:-3300}"
-CLAUDE_BIN="${PRO_HEALER_CLAUDE_BIN:-/opt/homebrew/bin/claude}"
+# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
+# Pro: ~/.local/bin only — first live tick died exit=127 on the homebrew default).
+# Env override wins; otherwise probe known locations, then PATH.
+CLAUDE_BIN="${PRO_HEALER_CLAUDE_BIN:-}"
+if [ -z "$CLAUDE_BIN" ]; then
+    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
+        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
+    done
+fi
+[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
 MODEL="${PRO_HEALER_MODEL:-claude-sonnet-5}"
 
 if [ -z "${PRO_HEALER_TRAMPOLINED:-}" ] && [ -z "${SSH_CONNECTION:-}" ]; then
@@ -147,6 +156,11 @@ MANDATE="$HOME/scripts/HEALER-PRO-MANDATE.md"
 if [ ! -f "$MANDATE" ]; then
     log "FATAL: mandate file missing"
     heartbeat "error" "mandate missing"
+    exit 1
+fi
+if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
+    log "FATAL: no claude binary (env PRO_HEALER_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
+    heartbeat "error" "no claude binary"
     exit 1
 fi
 
