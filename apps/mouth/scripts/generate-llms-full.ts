@@ -17,7 +17,7 @@ const KBLI_DATA_PATH = path.join(
 );
 const OUTPUT_EN = path.join(
   process.cwd(),
-  "public/static/ai/llms-full.txt",
+  "public/ai/llms-full.txt",
 );
 const OUTPUT_ID = path.join(process.cwd(), "public/llms-id.txt");
 const OUTPUT_KBLI = path.join(process.cwd(), "public/llms-kbli.txt");

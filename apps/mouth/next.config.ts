@@ -126,7 +126,7 @@ const nextConfig: NextConfig = {
       beforeFiles: [
         {
           source: "/llms-full.txt",
-          destination: "/static/ai/llms-full.txt",
+          destination: "/ai/llms-full.txt",
         },
       ],
     };
