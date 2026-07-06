@@ -1,31 +1,31 @@
 {
-  "run_at": "2026-07-06T05:18:32+08:00",
+  "run_at": "2026-07-06T09:23:42+08:00",
   "today": "2026-07-06",
   "yesterday_seen_count": 18,
   "new_today_count": 2,
   "partial": true,
-  "note": "2026-07-04 and 2026-07-05 delta files missing on disk (prior backgrounded-run incident, 2026-07-05 - output never persisted). Dedup baseline loaded from last available file, 2026-07-03-delta.json (18 seen_citations), not literal yesterday. Gap window covers 3 days (07-04 to 07-06), not the usual 24-48h.",
-  "nb_query_errors": [
-    "NB-INTEL-Regulation (a17f134e-b9ab-42d9-bfc2-5bbc45165c76): Authentication expired - nlm login required",
-    "NB-INTEL-Press (9d262101-abeb-4e15-af9c-c38e028c62fe): Authentication expired - nlm login required",
-    "NB-INTEL-Immigration (1ed02e54-542f-426a-94f8-53c5ffde4b7d): Authentication expired - nlm login required",
-    "NB-INTEL-Tax (7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f): Authentication expired - nlm login required"
-  ],
+  "note": "Second pass today (first pass 05:18+08:00 found NB auth expired; this pass re-verifies with auth recovered). 2026-07-04 and 2026-07-05 delta files still missing on disk (prior backgrounded-run incident, 2026-07-05 - output never persisted). Dedup baseline: last available file 2026-07-03-delta.json (18 seen_citations) union this file's own earlier pass. Gap window covers 3 days (07-04 to 07-06), not the usual 24-48h. This re-verification pass found ZERO additional new citations beyond the 2 already captured at 05:18 - Telegram NOT re-sent (already alerted this morning, avoid duplicate ping).",
+  "nb_query_errors": [],
   "unreachable_sources": [
     "https://www.hukumonline.com/berita/ (403 Forbidden - Cloudflare)",
     "https://muc.co.id/article (403 Forbidden)",
     "https://ikpi.or.id/news/ (404 Not Found)",
-    "https://ortax.org/news (200 OK but JS-rendered SPA shell - no parseable article list via static fetch)",
-    "https://peraturan.bpk.go.id/Search?... (200 OK but JS-rendered SPA shell - no parseable results)",
-    "https://jdih.kemenkeu.go.id/peraturan (connection failed - timeout, curl exit 000)",
-    "https://jdih.kemnaker.go.id/peraturan (200 OK but listing requires JS pagination - facets only, no rows)"
+    "https://ortax.org/news (200 OK but 'Artikel tidak ditemukan' - no parseable article list)",
+    "https://peraturan.bpk.go.id/Search?... (403 Forbidden)",
+    "https://jdih.kemenkeu.go.id/peraturan (200 OK, nav/header shell only - no regulation listing rendered)"
   ],
   "nb_results": {
-    "NB-INTEL-Regulation": "FAILED (auth expired)",
-    "NB-INTEL-Tax": "FAILED (auth expired)",
-    "NB-INTEL-Immigration": "FAILED (auth expired)",
-    "NB-INTEL-Press": "FAILED (auth expired)"
+    "NB-INTEL-Regulation": "OK - nessuna novita (auth recovered since 05:18 pass)",
+    "NB-INTEL-Press": "OK - nessuna novita (auth recovered since 05:18 pass)",
+    "NB-INTEL-Immigration": "OK - nessuna novita (auth recovered since 05:18 pass)",
+    "NB-INTEL-Tax": "OK - nessuna novita (auth recovered since 05:18 pass)"
   },
+  "web_backup_checked_clean": [
+    "https://peraturan.go.id (latest entry 25 Jun 2026, nothing 07-05/06)",
+    "https://www.imigrasi.go.id (latest dated entry 01 Jul 2026, operational press only, no new reg)",
+    "https://www.pajak.go.id/peraturan (latest entry 24 Jun 2026)",
+    "https://jdih.kemnaker.go.id/peraturan (no 07-05/06 entries, latest visible UU 2/2026 30 Apr)"
+  ],
   "deltas": [
     {
       "citation": "Permendagri 6/2026",
@@ -35,7 +35,7 @@
       "severity": "medium",
       "event_type": "new_regulation",
       "impact_note": "Coretax cross-validates NPWP registration/update against Dukcapil population data in real time; if the occupation entered on a client's KTP/KK does not match one of the 6 standardized classifications (108 job types) under Permendagri 6/2026, NPWP registration or update fails and the client must first correct the occupation field at Dukcapil before Coretax will proceed. Relevant to every new-NPWP or NPWP-update case Bali Zero handles for expat/local staff and PT PMA directors.",
-      "summary": "DDTC 2026-07-05 (Ditjen Dukcapil Kemendagri statement): new Permendagri 6/2026 fixes 6 job-classification categories (umum/belum bekerja; ASN/pejabat publik; karyawan swasta/badan usaha; pertanian/peternakan/perikanan; jasa/keahlian/perdagangan; profesi khusus/medis/keagamaan) covering 108 named occupations for KTP/KK. Purpose stated explicitly: ensure NPWP registration and other public-service integrations (BPJS, banking, social aid) validate cleanly against Dukcapil data. Many taxpayers have reportedly failed NPWP registration to date because their KTP occupation field used non-standard wording.",
+      "summary": "DDTC 2026-07-05 (Ditjen Dukcapil Kemendagri statement): new Permendagri 6/2026 fixes 6 job-classification categories (umum/belum bekerja; ASN/pejabat publik; karyawan swasta/badan usaha; pertanian/peternakan/perikanan; jasa/keahlian/perdagangan; profesi khusus/medis/keagamaan) covering 108 named occupations for KTP/KK. Purpose stated explicitly: ensure NPWP registration and other public-service integrations (BPJS, banking, social aid) validate cleanly against Dukcapil data. Many taxpayers have reportedly failed NPWP registration to date because their KTP occupation field used non-standard wording. Re-confirmed by a second DDTC follow-up article ('Ditjen Dukcapil: Jenis Pekerjaan Tak Valid Bisa Hambat Daftar NPWP', 2026-07-05) - same underlying regulation, no new citation.",
       "confidence": "medium",
       "source": "DDTC News https://news.ddtc.co.id/berita/nasional/1820592/demi-integrasi-pajak-pekerjaan-di-ktp-harus-ikuti-permendagri-baru",
       "verbatim_excerpt": "Pencantuman jenis pekerjaan pada dokumen kependudukan kini harus sesuai dengan klasifikasi resmi pada Peraturan Menteri Dalam Negeri (Permendagri) 6/2026. [...] \"Jika terjadi perbedaan, validasi akan gagal dan wajib pajak diminta memperbarui data di Dukcapil,\" jelas Ditjen Dukcapil.",
