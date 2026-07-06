@@ -121,6 +121,17 @@ const nextConfig: NextConfig = {
     ],
   },
   // ⚡ Performance: Add cache headers for static assets
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/llms-full.txt",
+          destination: "/static/ai/llms-full.txt",
+        },
+      ],
+    };
+  },
+
   async headers() {
     return [
       {
