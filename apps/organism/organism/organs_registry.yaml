@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: b036f58565ac01a47326e48228124a7d1eda0fbe4d0aa058029af23f1b8720f3
+checksum: d7868aa37f4377cd70e415c460c16f3d3c7d8b1cd3ad2ef28d5dcd69ef993c97
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1700,5 +1700,28 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.outbox_prune_daily.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.healer
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 14400
+  owner_module: infra/healer/healer-run.sh
+  dependencies: []
+  recovery_action: human_only
+  recovery_params:
+    host: mini
+    label: com.nuzantara.healer.4h
+  severity_on_silence: error
+  notes: 'The HEALER organ (born 2026-07-06, Zero GO): autonomous 4h cure loop on
+    Mini. Receptors: PENDING-ARMS ledger, proprioception, escalations board, and registry-driven
+    dead-organ scan (scripts/healer_receptor_registry.py). Writes a heartbeat EVERY
+    tick. recovery_action is human_only BY CONSTITUTION: the healer never touches
+    itself and nothing may auto-restart the restarter — healer silence is an operator
+    page, not a recovery target.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.healer.json
     timestamp_field: ts
     status_field: status

@@ -132,8 +132,27 @@ if [ -n "$ESC_OUT" ]; then
     ACTIONABLE=1; REASONS="${REASONS}escalations-board "
 fi
 
+# Receptor 4: registry-driven dead-organ scan (DNA/GENOME 2026-07-06 — zero
+# hardcoded organ lists: coverage auto-extends when a new organ merges with
+# its genes. never-armed / disabled / stale organs do NOT trigger; a BROKEN
+# receptor (exit 2) DOES — silent coverage loss is #2 Esiste≠Armato).
+REG_OUT=$(python3 scripts/healer_receptor_registry.py --node mini --json 2>/dev/null)
+REG_EXIT=$?
+if [ "$REG_EXIT" -eq 1 ]; then
+    REG_DEAD=$(printf '%s' "$REG_OUT" | python3 -c "
+import json,sys
+try:
+    print(len(json.load(sys.stdin).get('dead',[])))
+except Exception:
+    print(1)
+" 2>/dev/null)
+    ACTIONABLE=1; REASONS="${REASONS}registry:${REG_DEAD:-?}-dead-organs "
+elif [ "$REG_EXIT" -eq 2 ]; then
+    ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
-    log "pre-check clean (0 diverged, ledger ok, board quiet) — no LLM spawn"
+    log "pre-check clean (0 diverged, ledger ok, board quiet, registry organs alive) — no LLM spawn"
     heartbeat "ok" "idle: pre-check clean"
     exit 0
 fi
