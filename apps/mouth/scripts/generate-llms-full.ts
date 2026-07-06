@@ -15,7 +15,10 @@ const KBLI_DATA_PATH = path.join(
   process.cwd(),
   "data/KBLI_2025_FINAL_CLEAN.json",
 );
-const OUTPUT_EN = path.join(process.cwd(), "public/llms-full.txt");
+const OUTPUT_EN = path.join(
+  process.cwd(),
+  "public/static/ai/llms-full.txt",
+);
 const OUTPUT_ID = path.join(process.cwd(), "public/llms-id.txt");
 const OUTPUT_KBLI = path.join(process.cwd(), "public/llms-kbli.txt");
 const LLMS_TXT_PATH = path.join(process.cwd(), "public/llms.txt");
@@ -88,6 +91,7 @@ async function generate() {
   enArticles.forEach((a) => {
     enContent += `\n---\nTITLE: ${a.title}\nCATEGORY: ${a.category}\nURL: ${a.url}\nPUBLISHED: ${a.publishedAt}\n\n### ZANTARA AI SUMMARY\n${a.excerpt}\n\nCONTENT:\n${a.content}\n`;
   });
+  fs.mkdirSync(path.dirname(OUTPUT_EN), { recursive: true });
   fs.writeFileSync(OUTPUT_EN, enContent);
 
   if (FULL_ONLY) {
