@@ -134,7 +134,16 @@ trap 'rm -f "$PIDFILE"' EXIT
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
 REPO="$HOME/Desktop/nuzantara"
 MAX_WALL_S="${{{var}_MAX_WALL_S:-3300}}"
-CLAUDE_BIN="${{{var}_CLAUDE_BIN:-/opt/homebrew/bin/claude}}"
+# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
+# Pro: ~/.local/bin only — healer-pro first tick died exit=127 on a hardcoded
+# homebrew default). Env override wins; otherwise probe, then PATH.
+CLAUDE_BIN="${{{var}_CLAUDE_BIN:-}}"
+if [ -z "$CLAUDE_BIN" ]; then
+    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
+        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
+    done
+fi
+[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
 MODEL="${{{var}_MODEL:-claude-sonnet-5}}"
 
 if [ -z "${{{var}_TRAMPOLINED:-}}" ] && [ -z "${{SSH_CONNECTION:-}}" ]; then
@@ -157,6 +166,11 @@ if [ -z "${{CLAUDE_CODE_OAUTH_TOKEN:-}}" ] && [ -n "${{CLAUDE_CODE_OAUTH_TOKEN_1
 fi
 
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
+if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
+    log "FATAL: no claude binary (env {var}_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
+    heartbeat "error" "no claude binary"
+    exit 1
+fi
 "$CLAUDE_BIN" -p "TODO: your standing mandate here" \\
     --model "$MODEL" --dangerously-skip-permissions \\
     --strict-mcp-config --mcp-config '{{"mcpServers":{{}}}}' \\
