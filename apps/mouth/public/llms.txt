@@ -42,7 +42,7 @@
 
 - **Bali Criminalizes Rice Field Conversions (Perda 4/2026)**: A new provincial regulation targets the conversion of sustainable agricultural land (LP2B) into commercial properties (villas). Criminal penalties now apply, and a moratorium on conversion permits is in effect in Tabanan and Gianyar. Nominee structures in "Green Zones" are under intense audit.
 - **New Corporate Reporting Mandate (Permenkumham 49/2025)**: Effective late 2025, all PT PMA companies must submit a notarized Annual Report to the Ministry of Law. Stricter Ultimate Beneficial Owner (UBO) verification is now required for all corporate amendments. Non-compliance results in system blocks.
-- **KBLI 2025 Migration Deadline**: Companies have until June 18, 2026, to update their licensing data to the new classification system. Bali Zero provides full migration audits.
+- **KBLI 2025 Migration Deadline**: The June 2026 KBLI transition window has closed; companies still relying on KBLI 2020 mappings should treat the update as overdue and verify OSS/NIB status before new filings. Bali Zero provides full remediation audits.
 
 ## Core Services & Pricing (2026)
 
@@ -113,8 +113,8 @@
 
 Indonesia adopted KBLI 2025 (BPS Regulation 7/2025), replacing KBLI 2020.
 
-- **Migration deadline**: June 18, 2026
-- **OSS**: Not yet integrated with KBLI 2025 (as of March 2026)
+- **Transition status**: June 2026 window closed; unresolved KBLI 2020 mappings are overdue
+- **OSS**: Verify live KBLI 2025 handling before filing; do not rely on old March 2026 portal behavior
 - **100% foreign ownership (TERBUKA)**: consulting (70201–70209), IT consulting (62201, 62204, 62209), real estate (14 codes)
 - Full navigator: https://balizero.com/kbli (1,563 codes with AI analysis)
 - AI explorer: https://balizero.com/kbli-explorer

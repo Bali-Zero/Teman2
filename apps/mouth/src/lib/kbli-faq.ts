@@ -5,6 +5,12 @@ export interface KbliFaqEntry {
   answer: string;
 }
 
+const KBLI_2025_POST_DEADLINE_NOTE =
+  "The June 2026 KBLI 2025 transition window has closed; operators should verify the code's current OSS/NIB treatment before relying on it for licensing, reporting, or amendments.";
+
+const KBLI_2025_MIGRATION_OVERDUE_NOTE =
+  "The June 2026 KBLI 2025 transition window has closed. If an NIB still relies on legacy KBLI 2020 mappings, treat the migration as overdue and verify/remediate the OSS record before new license applications, amendments, LKPM, import approvals, or investor/worker sponsorship.";
+
 /**
  * Single source of truth for the per-code FAQ.
  *
@@ -51,7 +57,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
     },
     {
       question: `What is KBLI ${code.code}?`,
-      answer: `KBLI ${code.code} is the Indonesian business classification code for "${code.titleId}" (${code.titleEn}). It falls under Section ${code.section ?? "N/A"} of KBLI 2025, the Indonesian Standard Industrial Classification updated by BPS (Regulation 7/2025), effective June 18, 2026.`,
+      answer: `KBLI ${code.code} is the Indonesian business classification code for "${code.titleId}" (${code.titleEn}). It falls under Section ${code.section ?? "N/A"} of KBLI 2025, the Indonesian Standard Industrial Classification updated by BPS (Regulation 7/2025). ${KBLI_2025_POST_DEADLINE_NOTE}`,
     },
   ];
 
@@ -66,7 +72,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
             : "";
     entries.push({
       question: `How did KBLI ${code.code} change from KBLI 2020 to 2025?`,
-      answer: `KBLI ${code.code} was mapped from previous code${code.transition.previousCodes.length > 1 ? "s" : ""} ${code.transition.previousCodes.join(", ")} (KBLI 2020).${code.transition.mappingNote ? ` ${code.transition.mappingNote}` : ""}${mappingStatusNote} All businesses must migrate to KBLI 2025 by June 18, 2026 per BPS Regulation 7/2025.`,
+      answer: `KBLI ${code.code} was mapped from previous code${code.transition.previousCodes.length > 1 ? "s" : ""} ${code.transition.previousCodes.join(", ")} (KBLI 2020).${code.transition.mappingNote ? ` ${code.transition.mappingNote}` : ""}${mappingStatusNote} ${KBLI_2025_MIGRATION_OVERDUE_NOTE}`,
     });
   }
 
