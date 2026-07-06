@@ -4,57 +4,101 @@
     {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
       "repo": "scripts/fly_pg_tunnel_supervisor.sh",
-      "machines": ["all"]
+      "machines": [
+        "all"
+      ]
     },
     {
       "live": "~/.nuzantara-cron/agent_worktree_cleanup_cron.sh",
       "repo": "scripts/agent_worktree_cleanup_cron.sh",
-      "machines": ["all"]
+      "machines": [
+        "all"
+      ]
     },
     {
       "live": "~/.nuzantara-cron/verify_connectome_run.sh",
       "repo": "scripts/verify_connectome_run.sh",
-      "machines": ["all"]
+      "machines": [
+        "all"
+      ]
     },
     {
       "live": "~/scripts/regulatory-watcher-run.sh",
       "repo": "infra/launchagents/wrappers/regulatory-watcher-run.sh",
-      "machines": ["all"]
+      "machines": [
+        "all"
+      ]
     },
     {
       "live": "~/scripts/wr2-deploy-pull.sh",
       "repo": "scripts/wr2-deploy-pull.sh",
-      "machines": ["pro"]
+      "machines": [
+        "pro"
+      ]
     },
     {
       "live": "~/scripts/mlx-server-run.sh",
       "repo": "infra/launchagents/wrappers/mlx-server-run.sh",
-      "machines": ["pro", "mini"]
+      "machines": [
+        "pro",
+        "mini"
+      ]
     },
     {
       "live": "~/scripts/mini-infra/kg-query-api-wrapper.sh",
       "repo": "infra/mini-scripts/kg-query-api-wrapper.sh",
-      "machines": ["mini"]
+      "machines": [
+        "mini"
+      ]
     },
     {
       "live": "~/scripts/heartbeat-watchdog.sh",
       "repo": "scripts/mini-migration/heartbeat-watchdog.sh",
-      "machines": ["mini"]
+      "machines": [
+        "mini"
+      ]
     },
     {
       "live": "~/scripts/log-prune.sh",
       "repo": "scripts/mini-migration/log-prune.sh",
-      "machines": ["mini"]
+      "machines": [
+        "mini"
+      ]
     },
     {
       "live": "~/scripts/overlap-detector.sh",
       "repo": "scripts/mini-migration/overlap-detector.sh",
-      "machines": ["mini"]
+      "machines": [
+        "mini"
+      ]
     },
     {
       "live": "~/scripts/mini-git-pull.sh",
       "repo": "scripts/mini/mini-git-pull.sh",
-      "machines": ["mini"]
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/healer-run.sh",
+      "repo": "infra/healer/healer-run.sh",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/HEALER-MANDATE.md",
+      "repo": "infra/healer/HEALER-MANDATE.md",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.healer.4h.plist",
+      "repo": "infra/launchagents/com.nuzantara.healer.4h.plist",
+      "machines": [
+        "mini"
+      ]
     }
   ],
   "allow": [
