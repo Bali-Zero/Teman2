@@ -185,9 +185,38 @@ PY
 fi
 
 if [ "$ACTIONABLE" -eq 0 ]; then
-    log "pre-check clean (0 diverged, ledger ok, board quiet, registry organs alive) — no LLM spawn"
-    heartbeat "ok" "idle: pre-check clean"
-    exit 0
+    # ---- CONVERGENCE mission (DNA/GENOME §CONVERGENCE v2, panel-hardened) ----
+    # Receptors all quiet: instead of sleeping, bring ONE grandfathered organ
+    # into the genome. Deterministic pre-gates keep idle ticks zero-LLM when
+    # there is nothing eligible: picker exit 3 = no candidate; an open
+    # genome-retrofit PR = lease held (Codex 9); cooldown file = last attempt
+    # failed <8h ago. Kill switch: HEALER_CONVERGENCE_ENABLED=false.
+    COOLDOWN="$HOME/.organism/healer-convergence.cooldown"
+    if [ "${HEALER_CONVERGENCE_ENABLED:-true}" = "false" ]; then
+        log "idle; convergence disabled by kill switch"
+        heartbeat "ok" "idle: pre-check clean (convergence off)"
+        exit 0
+    fi
+    if [ -f "$COOLDOWN" ] && [ $(( $(date +%s) - $(stat -f %m "$COOLDOWN" 2>/dev/null || echo 0) )) -lt 28800 ]; then
+        log "idle; convergence in cooldown"
+        heartbeat "ok" "idle: convergence cooldown"
+        exit 0
+    fi
+    if ! python3 scripts/genome_convergence.py --pick >/dev/null 2>&1; then
+        log "idle; no eligible convergence candidate (picker exit != 0)"
+        heartbeat "ok" "idle: pre-check clean, no convergence candidate"
+        exit 0
+    fi
+    OPEN_RETRO=$(gh pr list --state open --search "genome-retrofit in:title" --json number --jq 'length' 2>/dev/null || echo 1)
+    if [ "${OPEN_RETRO:-1}" != "0" ]; then
+        log "idle; convergence lease held (open retrofit PR or gh unavailable)"
+        heartbeat "ok" "idle: convergence lease held"
+        exit 0
+    fi
+    log "idle + eligible candidate — spawning CONVERGENCE session"
+    heartbeat "running" "convergence mission"
+    REASONS="genome-convergence "
+    MANDATE_OVERRIDE="$REPO/infra/healer/CONVERGENCE-MANDATE.md"
 fi
 
 log "ACTIONABLE: ${REASONS}— spawning healer session (model $MODEL, cap ${MAX_WALL_S}s)"
@@ -195,6 +224,9 @@ heartbeat "running" "spawned: ${REASONS}"
 
 # ---- spawn the headless healer session --------------------------------------
 [ -f "$MANDATE" ] || MANDATE="$REPO/infra/healer/HEALER-MANDATE.md"
+# convergence mission reads its own mandate from repo canon (Mini pulls main
+# every 5min; no HOME pair needed for a file only read post-trampoline)
+[ -n "${MANDATE_OVERRIDE:-}" ] && MANDATE="$MANDATE_OVERRIDE"
 if [ ! -f "$MANDATE" ]; then
     log "FATAL: mandate file missing"
     heartbeat "error" "mandate missing"

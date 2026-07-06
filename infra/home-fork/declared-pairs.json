@@ -109,6 +109,27 @@
       "machines": [
         "mini"
       ]
+    },
+    {
+      "live": "~/scripts/pro-healer.sh",
+      "repo": "infra/launchagents/wrappers/pro-healer.sh",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.healer-pro.6h.plist",
+      "repo": "infra/launchagents/com.nuzantara.healer-pro.6h.plist",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/scripts/HEALER-PRO-MANDATE.md",
+      "repo": "infra/healer/HEALER-PRO-MANDATE.md",
+      "machines": [
+        "pro"
+      ]
     }
   ],
   "allow": [

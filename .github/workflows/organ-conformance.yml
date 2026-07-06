@@ -87,11 +87,18 @@ jobs:
           set -euo pipefail
           python3 infra/organ-conformance/check_organ_conformance.py
 
-      - name: Gate proves guilt AND innocence (own test suite)
+      - name: Baseline is a one-way ratchet (panel round-2)
         if: steps.relevant.outputs.hit == 'true'
         run: |
           set -euo pipefail
-          python3 -m pytest infra/organ-conformance/test_organ_conformance.py -q
+          git fetch origin main --quiet
+          python3 infra/organ-conformance/check_baseline_ratchet.py --base origin/main
+
+      - name: Gate proves guilt AND innocence (own test suites)
+        if: steps.relevant.outputs.hit == 'true'
+        run: |
+          set -euo pipefail
+          python3 -m pytest infra/organ-conformance/ -q
 
       - name: Registry still validates (checksum + invariants)
         if: steps.relevant.outputs.hit == 'true'
