@@ -177,6 +177,18 @@ The healer's coverage grows monotonically with the organism, with no healer edit
    jobs to the JSON dialect touches live Mini wrappers — grandfathered for now;
    receptor 4 covers only the JSON dialect (declared, fail-visible in its output).
 
+## Adversarial review
+
+Two full red-team rounds, generator ≠ grader (R1). **Round 1** (Gemini 3.1 Pro;
+Codex stalled, declared): 10 findings raised, 10 folded into the build, none
+survive unaddressed. **Round 2 on the autonomy directive** (Codex + Grok +
+GLM 5.2): unanimous rejection of free-form LLM retrofits — surviving objections
+became the v2 rails (deterministic grafts, dry-fire, CI ratchet, lease,
+human-gated lines) plus two ACCEPTED residuals, declared: legacy `.ts` dialect
+organs stay outside convergence until the one-cut migration; single repo-writer
+(Mini) remains a SPOF by constitutional choice. Details in the two sections
+below.
+
 ## §Panel — red-team outcomes (Gemini 3.1 Pro + Codex GPT-5.5, 2026-07-06)
 
 Spec-review rule honored (DeepSeek seat dead HTTP 402 since 07-02; NB not
