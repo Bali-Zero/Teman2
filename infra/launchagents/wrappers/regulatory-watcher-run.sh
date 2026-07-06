@@ -112,6 +112,11 @@ organism_hb_finalize() {
 trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
 
 echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
+# Forensic breadcrumb (2026-07-06): an unexplained parallel instance appeared at
+# 09:19:58 (orphaned before inspection — ppid already 1, no ssh session, no cron,
+# no launchd label matched). Log enough launch-context that the NEXT unexplained
+# instance names its own parent while it is still alive in the log line.
+echo "[$(date)] launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
 
 PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/Desktop/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
 
