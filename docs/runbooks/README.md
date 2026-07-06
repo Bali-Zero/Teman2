@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 38 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 39 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -30,6 +30,7 @@
 | [`my-balizero-first-client-onboarding.md`](my-balizero-first-client-onboarding.md) | My Bali Zero First-Client Onboarding Runbook |
 | [`openclaw-whatsapp-eval-loop.md`](openclaw-whatsapp-eval-loop.md) | OpenClaw WhatsApp Eval Loop |
 | [`openclaw-zantara-scientific-team.md`](openclaw-zantara-scientific-team.md) | OpenClaw/Zantara WhatsApp Scientific Team |
+| [`organism-digest.md`](organism-digest.md) | Organism digest — the session-boot "what changed" receptor |
 | [`prod-crm-smoke.md`](prod-crm-smoke.md) | Production CRM Smoke Runbook |
 | [`proprioception-boundary-recon.md`](proprioception-boundary-recon.md) | Proprioception — the boundary-reconciliation organ |
 | [`qdrant-estate-reconciliation.md`](qdrant-estate-reconciliation.md) | Qdrant estate reconciliation — defined vs live (TAC-2 A6) |
