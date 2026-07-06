@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d7868aa37f4377cd70e415c460c16f3d3c7d8b1cd3ad2ef28d5dcd69ef993c97
+checksum: 2693b53b89a1df260bf1a26f8ec15bdb221da8552119b7b061b5b5f4bec79f4f
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1723,5 +1723,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.healer.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.healer
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/pro-healer.sh
+  dependencies: []
+  recovery_action: human_only
+  recovery_params:
+    host: pro
+    label: com.nuzantara.healer-pro.6h
+  severity_on_silence: error
+  notes: 'Node-scoped healer for Pro: cures Pro LOCAL runtime (kickstart dead organs,
+    HOME-pair refresh from canon), NEVER writes the repo (single-writer stays mini.healer)
+    (born via organ_birth.py, genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.healer.json
     timestamp_field: ts
     status_field: status

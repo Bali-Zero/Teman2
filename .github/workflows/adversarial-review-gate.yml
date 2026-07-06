@@ -35,7 +35,11 @@ jobs:
       - name: Fetch base ref
         env:
           BASE_REF: ${{ github.base_ref }}
-        run: git fetch origin "$BASE_REF" --depth=1 || true
+        # NO --depth=1 here: a shallow fetch re-points origin/<base> to a tip with
+        # severed history, so if base advanced between checkout and this step the
+        # merge-base with HEAD is unreachable -> "fatal: no merge base" (seen live
+        # on PR #2033, high-traffic day). Full fetch is cheap after fetch-depth: 0.
+        run: git fetch origin "$BASE_REF" || true
 
       - name: R1 gate — adversarial review present
         env:
