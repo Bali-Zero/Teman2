@@ -135,6 +135,7 @@ async function notifyDoor(req: Request, entered: boolean): Promise<void> {
       signal: AbortSignal.timeout(ALERT_TIMEOUT_MS),
     });
     if (!res.ok) console.error('codex door alert failed:', res.status, await res.text());
+    else console.log(`codex door alert sent: ${entered ? 'entered' : 'wrong-pin'} from ${where}`);
   } catch (err) {
     console.error('codex door alert error:', err);
   }
