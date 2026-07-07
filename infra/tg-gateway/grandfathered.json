@@ -80,7 +80,6 @@
     "apps/organism/organism/actuators/notify_telegram.py",
     "apps/organism/scripts/deploy_w0.sh",
     "apps/remediator/main.py",
-    "apps/wa-mirror/bridge/telegram.ts",
     "apps/zantara-media/zantara_media/alerts.py",
     "docs/infra/launchagents/nuz-sync/nuz-sync-watchdog.sh",
     "docs/infra/launchagents/nuz-sync/nuz-sync.sh",

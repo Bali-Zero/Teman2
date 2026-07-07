@@ -1,5 +1,5 @@
 {
-  "_doc": "Declared HOME-executed script copies and their git-tracked twins (superscar #1 HOME-fork drift). Consumed by scripts/lint_home_fork.py --check (sha256 live vs repo) and --discover (a HOME-executed payload NOT listed here and NOT allow-matched is an UNDECLARED finding). Overlapping SSOT note: scripts/proprioception.py DEFAULT_REGISTRY 'home_fork_scripts' declares its own pairs \u2014 lint_home_fork.py merges them at runtime (best-effort import) so the two lists cannot silently drift; add NEW pairs HERE. Paths use ~ (expanded per-machine: balizero on M5, nuzantara on Pro/Mini). 'machines': m5|pro|mini|all.",
+  "_doc": "Declared HOME-executed script copies and their git-tracked twins (superscar #1 HOME-fork drift). Consumed by scripts/lint_home_fork.py --check (sha256 live vs repo) and --discover (a HOME-executed payload NOT listed here and NOT allow-matched is an UNDECLARED finding). Overlapping SSOT note: scripts/proprioception.py DEFAULT_REGISTRY 'home_fork_scripts' declares its own pairs — lint_home_fork.py merges them at runtime (best-effort import) so the two lists cannot silently drift; add NEW pairs HERE. Paths use ~ (expanded per-machine: balizero on M5, nuzantara on Pro/Mini). 'machines': m5|pro|mini|all.",
   "pairs": [
     {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
@@ -25,7 +25,7 @@
     {
       "live": "~/scripts/regulatory-watcher-run.sh",
       "repo": "infra/launchagents/wrappers/regulatory-watcher-run.sh",
-      "_note": "Pro=active cron (heartbeat pro.regulatory_watcher_daily); M5=dormant aligned copy (workstation, no cron). NOT Mini \u2014 a Mini cron would be active-active split-brain (superscar #10) on the same delta the #2009 lock guards. Was 'all', which made lint --check chase a nonexistent Mini pair (false drift). Verified by content 2026-07-06.",
+      "_note": "Pro=active cron (heartbeat pro.regulatory_watcher_daily); M5=dormant aligned copy (workstation, no cron). NOT Mini — a Mini cron would be active-active split-brain (superscar #10) on the same delta the #2009 lock guards. Was 'all', which made lint --check chase a nonexistent Mini pair (false drift). Verified by content 2026-07-06.",
       "machines": [
         "pro",
         "m5"
@@ -41,7 +41,7 @@
     {
       "live": "~/scripts/codex/nightly-autofix-ci.sh",
       "repo": "scripts/codex/codex-nightly-autofix-ci.sh",
-      "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix \u2014 was an UNDECLARED live payload (family #1); basenames differ by history.",
+      "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix — was an UNDECLARED live payload (family #1); basenames differ by history.",
       "machines": [
         "pro"
       ]
@@ -49,7 +49,7 @@
     {
       "live": "~/scripts/wr2-ig-metrics-analyst-run.sh",
       "repo": "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
-      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only \u2014 same invocation, same model. Live HOME copy on Pro still needs manual sync (healer is read-only on Pro).",
+      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. Live HOME copy on Pro still needs manual sync (healer is read-only on Pro).",
       "machines": [
         "pro"
       ]
@@ -264,6 +264,20 @@
       "repo": "infra/launchagents/com.balizero.wr2.daily-reconciler.plist",
       "machines": [
         "pro"
+      ]
+    },
+    {
+      "live": "~/scripts/mini-fleet-watch.sh",
+      "repo": "infra/launchagents/wrappers/mini-fleet-watch.sh",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.fleet-watch.plist",
+      "repo": "infra/launchagents/com.nuzantara.fleet-watch.plist",
+      "machines": [
+        "mini"
       ]
     }
   ],
