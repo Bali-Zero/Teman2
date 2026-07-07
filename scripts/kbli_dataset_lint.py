@@ -103,10 +103,13 @@ def main() -> int:
 
     dataset_path = root / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
     english_path = root / "apps/mouth/src/lib/kbli-english.ts"
+    english_gen_path = root / "apps/mouth/src/lib/kbli-english-generated.ts"
 
     data = json.loads(dataset_path.read_text(encoding="utf-8"))["data"]
     codes = {r["kode_kbli_2025"] for r in data}
     en_titles = parse_english_titles(english_path) if english_path.exists() else set()
+    if english_gen_path.exists():
+        en_titles |= parse_english_titles(english_gen_path)
 
     findings: list[dict] = []
 
