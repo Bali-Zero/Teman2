@@ -114,6 +114,7 @@ export const portalNavigation: NavSection[] = [
     title: "Account",
     items: [
       { title: "Profile", href: "/portal/profile", icon: "UserCircle" },
+      { title: "Family", href: "/portal/family", icon: "Users" },
       { title: "Settings", href: "/portal/settings", icon: "Settings" },
     ],
   },
