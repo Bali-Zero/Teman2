@@ -29,7 +29,7 @@ jobs:
           POSTGRES_PASSWORD: test
           POSTGRES_DB: nuzantara_test
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U test -d nuzantara_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -332,7 +332,7 @@ jobs:
           POSTGRES_PASSWORD: test
           POSTGRES_DB: nuzantara_test
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U test -d nuzantara_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
