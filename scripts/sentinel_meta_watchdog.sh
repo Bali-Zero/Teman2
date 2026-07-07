@@ -100,19 +100,16 @@ cooldown_set() {
     touch "$COOLDOWN_FILE"
 }
 
+# cohort-3: routes through the notification gateway. The sentinel's own
+# watchdog going off = guardian-of-guardians red → tier p0. Plain text.
 tg_alert() {
     local text="$1"
-    if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
-        log "telegram: missing creds (token or chat_id), skipping alert"
-        return 1
-    fi
-    curl -sS -m 10 -X POST \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_CHAT_ID}" \
-        -d "text=${text}" \
-        -d "parse_mode=HTML" \
-        -o /dev/null \
-        || log "telegram: post failed"
+    local gateway
+    gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$gateway" --tier p0 --source sentinel-meta \
+        --dedup-key "sentinel-meta:$(hostname -s)" -- "$text" \
+        >/dev/null 2>&1 || log "telegram: gateway send failed"
 }
 
 restart_sentinel() {
@@ -147,7 +144,7 @@ main() {
             log "cooldown active, not alerting/restarting"
             exit 0
         fi
-        tg_alert "🚨 <b>Sentinel meta-watchdog</b> on Pro: <code>${SENTINEL_STATUS_FILE/$HOME/~}</code> MISSING. Restarting <code>${SENTINEL_LABEL}</code>. Cooldown 1h."
+        tg_alert "🚨 Sentinel meta-watchdog on Pro: ${SENTINEL_STATUS_FILE/$HOME/~} MISSING. Restarting ${SENTINEL_LABEL}. Cooldown 1h."
         restart_sentinel
         cooldown_set
         exit 0
@@ -175,7 +172,7 @@ main() {
     fi
 
     write_state "stale" "$age" "alert+restart" "pid=${pid:-none}"
-    tg_alert "🚨 <b>Sentinel meta-watchdog</b> on Pro: <code>${SENTINEL_STATUS_FILE/$HOME/~}</code> stale ${age}s (>${STALE_THRESHOLD_SEC}s). PID=${pid:-none}. Restarting <code>${SENTINEL_LABEL}</code>. Cooldown 1h."
+    tg_alert "🚨 Sentinel meta-watchdog on Pro: ${SENTINEL_STATUS_FILE/$HOME/~} stale ${age}s (>${STALE_THRESHOLD_SEC}s). PID=${pid:-none}. Restarting ${SENTINEL_LABEL}. Cooldown 1h."
     restart_sentinel
     cooldown_set
 }

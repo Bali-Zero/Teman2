@@ -71,13 +71,12 @@ while IFS= read -r f; do
     size_mb=$(awk "BEGIN {printf \"%.1f\", $size / 1024 / 1024}")
     rel_path="${f#$HOME/}"
 
-    # Send Telegram alert
+    # Notification gateway (cohort-3): log housekeeping = informative → digest tier
     msg="📊 Log size alert: ~/${rel_path} = ${size_mb} MB (>1MB threshold). $(tail -1 "$f" 2>/dev/null | head -c 200)"
-    curl -sS --max-time 5 \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
-        -d text="$msg" \
-        >/dev/null 2>&1 || true
+    gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$gateway" --tier digest --source log-size-watchdog \
+        --dedup-key "log-size:${rel_path}" -- "$msg" >/dev/null 2>&1 || true
 
     # Record alert timestamp
     echo "$NOW_TS" > "$state_file"

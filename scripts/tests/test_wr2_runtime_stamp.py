@@ -167,6 +167,11 @@ def _run_pull(home, extra_env=None, path_prefix=None):
     env = dict(os.environ)
     env["HOME"] = str(home)
     env.pop("TELEGRAM_BOT_TOKEN", None)
+    # Hermetic tg_notify.py: never let a self-heal/dirty alert touch a live
+    # spool or secrets file even though HOME is already faked above.
+    env["TG_DRY_RUN"] = "1"
+    env["TG_SPOOL_DIR"] = str(home / ".organism" / "tg_spool")
+    env["TG_SECRETS_FILE"] = "/dev/null"
     if path_prefix:
         env["WR2_DEPLOY_PULL_TEST_PATH_PREFIX"] = str(path_prefix)
     if extra_env:
@@ -227,9 +232,15 @@ def test_deploy_pull_advanced_kickstarts_when_armed(tmp_path):
     assert "com.balizero.wr2.supervisor-watchdog" in recorded
 
 
-def test_deploy_pull_dirty_clone_is_honest_error(tmp_path):
+def test_deploy_pull_dirty_clone_self_heals(tmp_path):
+    """A tracked-file unstaged mutation (` M`) is exactly the W81/#2 incident
+    shape (2026-07-05->07: a sibling's tracked-deleted plist froze the puller
+    for 2+ days) -- it now self-heals instead of freezing. See
+    test_wr2_deploy_pull_selfheal.py for the full guilt+innocence matrix
+    (untracked / self-heal / staged-refuses / opt-out)."""
     home, _src, _origin, deploy = _setup_deploy_world(tmp_path)
     (deploy / "f.txt").write_text("local mutation\n")
     res = _run_pull(home)
-    assert res.returncode == 1
-    assert _outcome(home)["status"] == "error:dirty"
+    assert res.returncode == 0, res.stderr
+    assert _outcome(home)["status"] == "ok:self-healed"
+    assert (deploy / "f.txt").read_text() == "v1\n"
