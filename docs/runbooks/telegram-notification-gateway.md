@@ -62,6 +62,22 @@ Migrated in cohort-2 (2026-07-07):
   (dedup per phone+reason), daily summary → digest tier (merges into the ONE
   gateway digest). HTML stripped: the gateway sends plain text.
 
+Migrated in cohort-3 (2026-07-07):
+- `scripts/disk_watchdog.sh` — disk full → p0 (dedup per host)
+- `scripts/log_size_watchdog.sh` — log housekeeping → digest (dedup per file)
+- `scripts/supervisor_liveness_watchdog.sh` — organism down → p0
+- `scripts/sentinel_meta_watchdog.sh` — guardian-of-guardians red → p0
+- `scripts/fly-restart-loop-detector.sh` — W60 prod flapping → p0
+- `scripts/fly-qdrant-backup.sh` — failure → p0 · success green ping → digest
+
+Each migrated script keeps its own cooldown/state machinery; the gateway adds
+the token chain and its 6h dedup on top. **HOME-pair caveat (family #1)**: on
+Pro several of these execute from `~/scripts/` copies — after merging a cohort,
+sync the live pairs (`cp` + `cmp -s`) and declare them in
+`infra/home-fork/declared-pairs.json`. The gateway path fallback
+(`$(dirname $0)/tg_notify.py` → `~/Desktop/nuzantara/scripts/tg_notify.py`)
+keeps HOME copies working without a local tg_notify.
+
 ## Spool anatomy (`~/.organism/tg_spool/`)
 
 - `pending.jsonl` — digest-tier events + p0 overflow/unsent, waiting for the flusher
