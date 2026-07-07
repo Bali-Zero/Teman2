@@ -39,6 +39,7 @@ export default function ChatPage() {
     teamStatus,
     showUserMenu,
     handleSend,
+    handleStop,
     handleNewChat,
     handleConversationClick,
     handleDeleteConversation,
@@ -116,6 +117,7 @@ export default function ChatPage() {
           showImagePrompt={chatInput.imageGenPrompt !== ""}
           setShowImagePrompt={(val) => chatInput.setImageGenPrompt(val ? " " : "")}
           onSend={handleSend}
+          onStop={handleStop}
           onImageGenerate={() => setImageModalOpen(true)}
           showAttachMenu={showAttachMenu}
           setShowAttachMenu={setShowAttachMenu}

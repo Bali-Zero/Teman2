@@ -62,3 +62,8 @@
 
 **Learning:** Live UI states that lack visual labels (like a voice recording overlay) are "silent" to screen readers. Adding `role="status"` and `aria-live="polite"` ensures that assistive technology users are notified of state transitions (e.g., recording started) without being interrupted. Furthermore, adding `aria-label` to semantic lists of "Quick Actions" provides necessary context for group navigation, making the interface more discoverable.
 **Action:** Always apply ARIA live regions to dynamic status overlays. Use descriptive `aria-label` on semantic list containers that serve as primary interaction points.
+
+## 2026-06-22 - [Stop Generation Pattern and Native Tooltips]
+
+**Learning:** In streaming chat interfaces, users value agency and the ability to interrupt long or irrelevant responses. Implementing a "Stop Generation" pattern—where the 'Send' button transforms into a 'Stop' button (Square icon) with high-contrast red styling—provides clear visual feedback and enhances user control. Additionally, for navigation elements with truncated text (like chat history), leveraging the native `title` attribute is a lightweight, accessible way to ensure full content is discoverable on hover without complex tooltip libraries.
+**Action:** Implement "Stop" buttons during all long-running AI streaming operations. Use standard red themed styling (`bg-red-500`) and the `Square` icon for interruptive actions. Always apply the `title` attribute to elements using `truncate` to ensure text discoverability.

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { UI } from "@/constants";
 import {
   Send,
+  Square,
   ImageIcon,
   Plus,
   Loader2,
@@ -26,6 +27,7 @@ export interface ChatInputBarProps {
   showImagePrompt: boolean;
   setShowImagePrompt: (value: boolean) => void;
   onSend: () => void;
+  onStop?: () => void;
   onImageGenerate: () => void;
   showAttachMenu: boolean;
   setShowAttachMenu: (value: boolean) => void;
@@ -57,6 +59,7 @@ export function ChatInputBar({
   isRecording,
   recordingTime,
   onStartRecording,
+  onStop,
   onStopRecording,
   onToggleRecording,
   attachedImages = [],
@@ -279,26 +282,40 @@ export function ChatInputBar({
               aria-label={
                 showImagePrompt ? "Describe your image" : "Type your message"
               }
-              disabled={isLoading}
+              disabled={isLoading && !showImagePrompt}
               rows={1}
               className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 min-h-[40px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium outline-none ring-0"
             />
 
             <Button
-              onClick={showImagePrompt ? onImageGenerate : onSend}
-              disabled={!input.trim() || isLoading}
+              onClick={
+                isLoading
+                  ? onStop
+                  : showImagePrompt
+                    ? onImageGenerate
+                    : onSend
+              }
+              disabled={
+                isLoading
+                  ? !onStop
+                  : !input.trim() && !showImagePrompt
+              }
               size="icon"
-              className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0 focus-ring"
+              className={`rounded-full flex-shrink-0 w-10 h-10 border-0 focus-ring transition-all duration-200 ${
+                isLoading
+                  ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20"
+                  : "glow-button"
+              }`}
               aria-label={
                 isLoading
-                  ? "Sending..."
+                  ? "Stop generation"
                   : showImagePrompt
                     ? "Generate image"
                     : "Send message"
               }
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Square className="w-4 h-4 fill-current" />
               ) : (
                 <Send className="w-5 h-5" />
               )}

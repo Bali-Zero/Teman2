@@ -83,6 +83,7 @@ export interface UseChatPageReturn {
 
   // Handlers
   handleSend: () => Promise<void>;
+  handleStop: () => void;
   handleNewChat: () => void;
   handleConversationClick: (id: number) => Promise<void>;
   handleDeleteConversation: (id: number, e: React.MouseEvent) => void;
@@ -579,6 +580,7 @@ export function useChatPage(): UseChatPageReturn {
     conversations,
     teamStatus,
     handleSend,
+    handleStop: chatSend.onStop,
     handleNewChat,
     handleConversationClick,
     handleDeleteConversation,
