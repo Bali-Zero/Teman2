@@ -58,6 +58,11 @@
         <string>/Users/nuzantara</string>
         <key>PATH</key>
         <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <!-- armed live on Pro 2026-07-03 (bak-kickstart-arm); canon aligned 2026-07-07
+             (Codex red-team #17: without it a successful pull leaves the long-running
+             supervisor executing pre-pull code forever — the RUNTIME_STALE disease) -->
+        <key>WR2_DEPLOY_PULL_KICKSTART</key>
+        <string>1</string>
     </dict>
 
     <!-- Avoid tight respawn loops if git/network fails. -->
