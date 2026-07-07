@@ -90,6 +90,15 @@ VENV_DIR="$REPO_ROOT/apps/backend-rag/.venv"
 VENV_PY="$VENV_DIR/bin/python"
 REQ_FILE="$REPO_ROOT/apps/backend-rag/requirements-prod.txt"
 
+# W81b (2026-06-23): the old preflight only checked that the venv PYTHON exists
+# (`-x`). But a venv-SKELETON — python present, site-packages evaporated by a
+# deploy-worktree re-add — passed that check and crashed at `import asyncpg`
+# (ModuleNotFoundError, supervisor down ~3 days, 20→23 Jun). Probe the real import.
+VENV_BROKEN=0
+if [[ -x "$VENV_PY" ]]; then
+    "$VENV_PY" -c "import asyncpg" >/dev/null 2>&1 || VENV_BROKEN=1
+fi
+
 # Venv-preflight (Wave 1 fix 2026-05-19, 4-LLM panel synthesis 3/3 quorum):
 # A missing venv on the deploy worktree caused the WR2 supervisor to
 # crashloop silently for 84h (2026-05-16 03:32 → 2026-05-19 09:44),
@@ -108,7 +117,7 @@ REQ_FILE="$REPO_ROOT/apps/backend-rag/requirements-prod.txt"
 #     preserves audit trail + KeepAlive restart cycle).
 #
 # Reference: research/operations/2026-05-19-wr2-intel-lake-fixes-panel.md
-if [[ ! -x "$VENV_PY" ]]; then
+if [[ ! -x "$VENV_PY" || "$VENV_BROKEN" == "1" ]]; then
     NOW=$(date '+%Y-%m-%d %H:%M:%S WITA')
     echo "[wr2-script-wrapper] WARN ${NOW}: venv Python missing at $VENV_PY — attempting auto-heal" >&2
 

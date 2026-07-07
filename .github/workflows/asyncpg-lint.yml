@@ -32,6 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run asyncpg except-completeness lint (blocking)
         run: python3 scripts/lint_asyncpg_except_completeness.py

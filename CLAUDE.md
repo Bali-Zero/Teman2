@@ -30,6 +30,10 @@ Quick start: `python scripts/agent_start.py --lane <X> --task-id <Y>` → cd out
 
 **DO NOT ask the user to write code.** Act first, ask if blocked. Use `Edit`/`Write`/`Bash` without asking permission.
 
+**No phantom operator lane** (Zero, 2026-07-06: *"io sono te — non c'è nessun operatore"*). Sessions ARE the operator for all repo/infra work, on every machine. Never park work behind a waiting-for-human fence: investigate dirty/anomalous state (whose is it? runtime-state? live sibling? residue?) and handle it — "alive" is verified (processes, mtime, file nature), never presumed. The ONLY true operator-only categories are: physical device actions, GUI-only surfaces (interactive logins, GitHub settings, external-UI paste), TCC grants, consents/credentials only the human holds, `~/.claude/hooks/` control-plane one-liners (host_boundary stays hard by design), and business decisions (Legge 5). In the PENDING-ARMS ledger these MUST be declared as `operator[<category>]`; any bare `operator` owner is flagged PHANTOM-OPERATOR by `scripts/pending_arms_report.py` (CI-enforced: `immune-enforcement.yml` strict-phantom gate + `test_real_ledger_has_zero_phantom_operator`). Sibling discipline (#5) still holds toward LIVE sessions' work. Reference: memory `feedback_no_operator_lane_io_sono_te_2026_07_06`.
+
+**Master loop (2026-07-02)**: skill **`modus`** (`.claude/skills/modus/`) governs every non-trivial mandate end-to-end — TRIAGE gears (1 liscio / 2 standard / 3 profondo) → GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM → PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE. It absorbs `stadio-zero` (entry gate) and `sota-architecture-loop` (design) as stages; **`opus-mythos` is superseded** (its deep/wide TAC patterns = modus Gear 3). W81 ledger: `.claude/skills/modus/PENDING-ARMS.md` · loop scar-file: `AMENDMENTS.md` · self-refinement: `infra/workflows/modus-bench.js` (operator-gated, on demand).
+
 Read `AUTONOMOUS_OPS.md` (L2 active 2026-04-21) before: `git push`, PR ops, deploy, `fly ssh`, shared-state changes. Check "active since" date — if stale >30 days, conservative fallback. **User's veto is NOT the safety layer** — guardrails in that file are.
 
 **Federation Orchestrator triggers** (`python scripts/federation_orchestrator.py "task"`):
@@ -46,7 +50,7 @@ Read `AUTONOMOUS_OPS.md` (L2 active 2026-04-21) before: `git push`, PR ops, depl
 **Preflight SDD**: 3+ file/L1 · dependencies.py + migration + KBLI/visa + pre-deploy/L2 · auth/billing/RAG/L3.
 `./scripts/ai-dispatch.sh preflight-{l1,l2,l3} "desc"`. Escape `SKIP_PREFLIGHT=1`.
 
-**Escalations**: check `shared/escalations.json` + `~/.agent/decisions/claude_tasks/` at session start. HIGH first.
+**Escalations**: check `shared/escalations_pro.jsonl` + `~/.agent/decisions/claude_tasks/` at session start. HIGH first.
 
 ## 3. Memory (MOS — Memory Operating System)
 
@@ -74,9 +78,13 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 ## 5. Agent/LLM Routing & Bans
 
+**Claude 5 routing (2026-07-02)**: interactive sessions = **Fable 5** (architect/orchestrator/final on-disk gate, max effort — the final gate never cascades to a weaker model; window dead → task SUSPENDS); implementer subagents/workflows = **Sonnet 5** (`claude-sonnet-5`, `model:"sonnet"`); grunt = Haiku 4.5. Cron tier-1: repo-side pins migrated to `claude-sonnet-5` on 2026-07-03 after per-agent probes (see `research/operations/2026-07-03-sonnet5-cron-migration.md`); LIVE HOME wrappers (`~/scripts/`) still on `claude-sonnet-4-6` until the operator applies the diffs in that doc (tracked in modus PENDING-ARMS). Exception: the nb-agents slug micro-prompt stays 4-6 (probe wobble). Full arsenal routing: `.claude/skills/modus/SKILL.md` §Arsenal.
+
 **Anthropic SDK BANNED.** Never `from anthropic import Anthropic` or `ANTHROPIC_API_KEY`. Sole path: shell out to `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (MAX-plan quota). Refuse any new tool/MCP/cron requiring `ANTHROPIC_API_KEY`. Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
 
 **Other paid per-token APIs (OpenRouter, OpenAI direct, Together, Fireworks, etc.) — require Zero's explicit authorization** (rule changed 2026-06-04, see `~/.claude/CLAUDE.md §Cost constraint`). Free-first by default (local Ollama → OAuth → free tier). Never install a paid key autonomously "to test" — surface to Antonello with cost + rationale, wait for explicit yes. **PII boundary absolute even when authorized**: LLM processing may use authorized operational context, but outputs, memories, logs, reports, skills, prompts saved for reuse, and shared artifacts must never transcribe client PII/OSINT in cleartext; use `client_id`, hashes, placeholders, or redaction (SYMBIOSIS Law 2 / UU PDP overrides cost). Pre-authorized non-PII: DeepSeek V4 Pro ($0.01/q), ChatGPT Pro Codex (unlimited).
+
+**Antigravity IDE — autonomous arm, Claude Code verifies** (modello fissato 2026-06-23). Antigravity = braccio agentico autonomo per lavoro "largo ma verificabile" (gira su AI Ultra quota, no MAX). Claude Code = cervello che decide + ancora ai fatti + VERIFICA. Workflow 6-step: (1) Claude Code scopa il bug + ancora ai file:line reali + scrive il prompt → (2) Zero crea worktree FRESCO da origin/main + lancia Antigravity → (3) Antigravity fix+test+run (Sonnet 4.6 coding / Opus 4.6 DB) → (4) **Claude Code VERIFICA INDIPENDENTE — rilegge diff, RI-ESEGUE i test, controlla scope+reward-hacking (NON-NEGOZIABILE)** → (5) Claude Code commit+push+PR → (6) Zero merge a CI verde. Antigravity SEMPRE in `.worktrees/ops-*`, MAI sul main (sibling-race #5). MAI auto-merge dall'IDE. NON gli diamo: architettura, processing PII su dati reali, deploy autonomo, scelta di QUALI bug contano. Dettaglio: memory `decision_how_we_use_antigravity_ide_2026_06_23`.
 
 **MCP servers**: see `.mcp.json` for inventory. Default browser MCP: `mcp__claude-in-chrome__*` (NEVER `mcp__playwright__*` unless ordered). Text-first: `get_page_text`/`find`/`javascript_tool` before screenshot.
 
@@ -90,7 +98,7 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Mai citare output di un tool senza averlo eseguito in QUESTO turn.** Full discipline in `~/.claude/CLAUDE.md §Anti-hallucination` (5 rules). Load-bearing on every tool call. When in doubt "ho letto X o lo sto inventando?" → tool call adesso.
 
-**4-LLM panel mandatory pre-approval** per spec architetturale, quote cliente, pre-deploy critical path: Gemini agy + Codex GPT-5.5 + DeepSeek V4 Pro + opzionale NB-1. Cost ~$0.01/section, ~2min wall. Reference: `feedback_always_review_spec_with_4_llm.md`.
+**4-LLM panel mandatory pre-approval** per spec architetturale, quote cliente, pre-deploy critical path: Gemini agy + Codex GPT-5.5 + DeepSeek V4 Pro + opzionale NB-1. Cost ~$0.01/section, ~2min wall. Reference: `feedback_always_review_spec_with_4_llm.md`. **Reusable workflow (generator≠grader as default)**: `infra/workflows/verify-template.js` — a gather→adversarial-refute→synthesize Workflow script promoted to a citable artifact (self-loop Ring A4). For any research/audit/critical-finding, run it via `Workflow({scriptPath:"infra/workflows/verify-template.js", args:<question>})` so the refuter-on-fresh-context pattern is the path of least resistance, not a thing to remember. (The `sota-architecture-loop` skill STEP-3/6 is its doctrine; this file is the runnable default.) **Terminology note (2026-06-28):** the A1-A4 rings are a *self-HEALING / reliability* loop (catch regressions, restart dead organs, verify findings) — **NOT** the recursive self-improvement (RSI) Amodei describes ("models building better models"; Anthropic "we are not there yet"). A4 is a safety primitive a safe RSI would need first, not RSI itself. Don't call it "self-improvement".
 
 ## 7. Hooks enforce what prompts cannot
 
@@ -133,7 +141,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 
 - **Embedding model FROZEN**: `text-embedding-3-small` (1536 dims). Changing invalidates 93,283 vectors. NEVER change without re-indexing plan.
 - **KBLI flat payload**: fields `kode_kbli`, `judul`, `content`, `sektor_id`, `pma_status`, `skala_usaha`, `kategori_risiko`. Never nested.
-- **Evidence scoring thresholds**: NOT a single flat 0.15 — the codebase has **two live abstain paths** (verified 2026-06-11, domanda #31). Global default `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL (`constants.py:96 ABSTAIN_THRESHOLD=0.15`, used by `reasoning.py` at ~11 sites). BUT the orchestrator path (`orchestrator_response.py:90`) uses **per-domain** `get_abstain_threshold(query)` from `reasoning_utils.py` — `tax:0.10`, `kbli:0.20`, `default:0.15` (overridable via env `DOMAIN_ABSTAIN_THRESHOLDS`). `reasoning.py` has ZERO refs to the domain fn → same query can abstain differently per path. SSOT consolidation = open (domanda #31).
+- **Evidence scoring thresholds**: NOT one number — **5 NAMED gates, one SSOT** (`backend/services/rag/agentic/_abstain_policy.py`; domanda #31 CLOSED 2026-07-05). GENERATION gate flat `0.15` (reasoning.py, strict `<`) · LABEL gate per-domain `tax:0.10 / visa:0.12 / kbli:0.20 / pricing,default:0.15` (orchestrator_response.py; env `DOMAIN_ABSTAIN_THRESHOLDS`, values clamped to [0,1]) · CONFIDENCE zone edges `0.15/0.60` (streaming) · CONTEXT_QUALITY_MIN `0.15`. The generation≠label VALUE divergence is **intentional and panel-ruled** (2026-06-14: per-domain in generation = tax advice at 0.11 evidence = safety regression) — do NOT "tidy" it into one value; tripwire tests in `test_abstain_threshold_convergence.py` + golden matrix in `test_abstain_policy_hardening.py` enforce this.
 - **Vision model**: `qwen2.5vl:7b` ONLY for OCR/vision (qwen3.5 Q4_K_M strips vision weights). API: `"images": [base64]`.
 - **Ollama `think:false`** REQUIRED for Qwen 3.5 client (`backend/llm/ollama_client.py`).
 - **Cache invalidation**: `await invalidate_cache("zantara:namespace:*")` after EVERY mutation. Namespaces: `crm_clients_stats`, `crm_practices`.
@@ -182,8 +190,8 @@ Twitter (CRC broken), Google Chat (scaffold), Slack (scaffold) quarantined `.dis
 
 ## 14. Escalations & Continuity
 
-- **Session start**: check `shared/escalations.json` + `~/.agent/decisions/claude_tasks/` HIGH first. Delete file after fix + verify with `test_cmd`.
-- **PII/OSINT output boundary**: il vincolo non e' "nessun LLM vede contesto operativo"; il vincolo e' che nessun output, memoria, skill, report, log, alert o artefatto condiviso trascriva PII/OSINT in chiaro. Il mirror OSINT/WhatsApp resta Pro-bound: niente copie, repliche o dataset raw fuori dal Pro. Reference SYMBIOSIS.md Law 2.
+- **Session start**: check `shared/escalations_pro.jsonl` + `~/.agent/decisions/claude_tasks/` HIGH first. Delete file after fix + verify with `test_cmd`.
+- **PII/OSINT output boundary**: il vincolo non e' "nessun LLM vede contesto operativo"; il vincolo e' che nessun output, memoria, skill, report, log, alert o artefatto condiviso trascriva PII/OSINT in chiaro (non-negoziabile — UU PDP Art. 67-68). **Cloud/transito alleggerito 2026-06-20**: UU PDP non impone data-localization per agenzie private; il transito PII su cloud estero e' lecito sotto Art. 56 con safeguard (Workspace DPA) + consenso esplicito. Il *processing* PII resta locale-sovrano sul Pro (cloud_vision_gate fail-closed); il mirror raw resta Pro-bound per scelta operativa (onere-della-prova), non per divieto assoluto. Reference SYMBIOSIS.md Law 2.
 - **Local sovereignty** (Law 6): organismo vive su macchine Zero. Disconnessione internet NON è guasto — è stato naturale.
 
 ## 15. Research Capture Convention

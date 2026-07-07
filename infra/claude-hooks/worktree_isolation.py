@@ -99,10 +99,13 @@ def _derive_repo_root() -> str:
 REPO_ROOT = _derive_repo_root()
 
 # Blocked git subcommands.
+# W85 fix (2026-07-06): `stash` carries a negative lookahead so read-only
+# `stash list` / `stash show` pass; bare `git stash` (= stash push) and every
+# mutating stash verb still match — the guard matches intent, not bare token.
 BLOCKED_SUBCMD_RE = re.compile(
     r"\bgit\s+(?:-c\s+\S+\s+)*"  # optional -c key=val flags
     r"(?:-C\s+\S+\s+)?"  # optional -C path
-    r"(checkout|switch|stash|reset|merge|rebase|pull)\b"
+    r"(checkout|switch|stash(?!\s+(?:list|show)\b)|reset|merge|rebase|pull)\b"
     r"|\bgit\s+commit\s+(?:[^\s]+\s+)*(?:-[A-Za-z]*a|--all\b)"  # commit -a / -am / -a -m / --all
     r"|\bgit\s+add\s+(?:-A|-a|--all|\.)"  # add -A / add -a / add --all / add .
 )
@@ -122,6 +125,113 @@ CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
 # segment boundary (not a bare word anywhere) is itself the superscar-#3
 # antidote: match the command's intent, not a substring.
 REMOTE_DISPATCH_RE = re.compile(r"(?:^|(?:&&|\|\||;|\|)\s*)\s*(?:ssh|scp|rsync)\b")
+
+# --- W80: arm-before-remove guard ----------------------------------------------
+# A worktree-REMOVING command (manual triage, `git worktree remove`, `rm -rf` on a
+# .worktrees/<x> dir) must not run while that worktree holds dirty/untracked work
+# that has NOT been frozen onto a quarantine ref. The official reaper quarantines
+# itself, but a HUMAN/agent triage at the shell bypasses every net — this is the
+# exact path that lost ~2400 lines in W80. The guard blocks ONLY the dirty-and-
+# unarmed case and tells you to run scripts/arm_keep_worktrees.py first.
+#
+# Intent-matched (superscar #3 antidote), NOT bare-substring:
+#   - `git worktree remove [--force] <path>`  — segment-anchored git verb
+#   - `rm -rf[...] <path>` where a resolved arg lands under <repo>/.worktrees/<x>
+# Anything we cannot resolve to a concrete dirty worktree → ALLOW (negative-gating).
+WT_REMOVE_GIT_RE = re.compile(
+    r"\bgit\s+(?:-C\s+\S+\s+)?worktree\s+remove\b((?:\s+(?:--?\S+|[^\s|;&)]+))+)"
+)
+RM_RF_RE = re.compile(r"\brm\s+(?:-\S+\s+)*-\S*[rf]\S*(?:\s+-\S+)*((?:\s+[^\s|;&)]+)+)")
+
+
+def _quarantine_ref_for(wt: pathlib.Path) -> str:
+    """Mirror arm_keep_worktrees._slug — the ref a freeze of <wt> would live under."""
+    slug = str(wt).strip("/").replace("/", "_")
+    return f"refs/agent-quarantine/{slug}"
+
+
+def _ref_exists(ref: str) -> bool:
+    try:
+        r = _sp.run(["git", "rev-parse", "--verify", "--quiet", ref],
+                    cwd=REPO_ROOT, capture_output=True, text=True, timeout=3)
+        return r.returncode == 0 and bool(r.stdout.strip())
+    except Exception:
+        return False
+
+
+def _worktree_is_dirty(wt: pathlib.Path) -> bool:
+    """True if <wt> has tracked-or-untracked changes. Conservative: on any error
+    we return False (→ ALLOW) so the guard never blocks on a probe failure."""
+    try:
+        r = _sp.run(["git", "-C", str(wt), "status", "--porcelain"],
+                    capture_output=True, text=True, timeout=5)
+        if r.returncode != 0:
+            return False
+        return any(ln.strip() for ln in r.stdout.splitlines())
+    except Exception:
+        return False
+
+
+def _resolve_under_worktrees(token: str, cwd: str) -> pathlib.Path | None:
+    """Resolve a path token to a concrete `<repo>/.worktrees/<name>` dir, else None.
+
+    Conservative by design (superscar #3): a removal command names the worktree
+    EXPLICITLY, and that name always contains the `.worktrees/` segment (absolute
+    or repo-relative). We require it. This refuses to auto-incriminate the current
+    worktree from a bare/relative junk token: when cwd is itself inside
+    `.worktrees/<x>`, resolving a stray token like `2>/dev/null` or `&&` against it
+    would fall under <x> and falsely flag it. So we (a) drop tokens that carry
+    shell metacharacters (never a real path arg here) and (b) demand the literal
+    `.worktrees` segment in the token before resolving relative to cwd.
+    """
+    token = token.strip().strip("'\"")
+    if not token or token.startswith("-"):
+        return None
+    # Shell-structure residue that survived noise-strip is NOT a path.
+    if any(ch in token for ch in (">", "<", "&", "|", ";", "$", "*", "`")):
+        return None
+    # The remove target must explicitly name the worktrees dir (the W83 lesson:
+    # match the command's INTENT — a real `worktree remove`/`rm` arg points at
+    # `.worktrees/<x>`; a bare relative token does not and must not be resolved
+    # against a cwd that happens to sit inside a worktree).
+    if ".worktrees/" not in token and not token.endswith(".worktrees"):
+        return None
+    base = pathlib.Path(cwd) if cwd else pathlib.Path(REPO_ROOT)
+    p = pathlib.Path(token)
+    cand = (p if p.is_absolute() else (base / p))
+    try:
+        cand = cand.resolve()
+    except Exception:
+        return None
+    wt_root = pathlib.Path(REPO_ROOT, ".worktrees").resolve()
+    try:
+        rel = cand.relative_to(wt_root)
+    except ValueError:
+        return None
+    # must be a direct child .worktrees/<name> (not .worktrees itself, not deeper file)
+    if len(rel.parts) < 1 or not rel.parts[0]:
+        return None
+    return pathlib.Path(wt_root, rel.parts[0])
+
+
+def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | None:
+    """If the command removes a worktree that is dirty AND not yet quarantined,
+    return that worktree path (→ caller blocks). Else None (→ allow)."""
+    tokens: list[str] = []
+    for m in WT_REMOVE_GIT_RE.finditer(cmd_scan):
+        tokens += m.group(1).split()
+    for m in RM_RF_RE.finditer(cmd_scan):
+        tokens += m.group(1).split()
+    for tok in tokens:
+        wt = _resolve_under_worktrees(tok, cwd)
+        if wt is None or not wt.is_dir():
+            continue
+        if not _worktree_is_dirty(wt):
+            continue  # clean → safe to remove, nothing to lose
+        if _ref_exists(_quarantine_ref_for(wt)):
+            continue  # already frozen → safe
+        return wt  # dirty AND unarmed → block
+    return None
 
 # --- W79 B1: shell file-WRITE detection ----------------------------------------
 # Quick gate: does the command contain anything that could write a file?
@@ -241,8 +351,48 @@ def _extract_write_targets(cmd: str) -> list[str]:
         # token is noise that survived quote-stripping, not a path.
         if "\\" in t or "|" in t:
             continue
+        # superscar #3 STRUCTURAL CURE (replaces the W83/84/85 patch-per-noise-shape
+        # treadmill): instead of blacklisting every new way code-residue can leak past
+        # the noise-stripper (`>=0.9` from `python -c`, `awk`/`perl`/`jq` bodies, ...),
+        # WHITELIST the outcome. A real write target is a PLAUSIBLE PATH; code residue
+        # is not. We only block HIGH-CONFIDENCE writes (extract is conservative), so a
+        # token that doesn't look like a path is dropped → command ALLOWED.
+        if not _is_plausible_path(t):
+            continue
         cleaned.append(t)
     return cleaned
+
+
+# superscar #3 structural cure — match the ENTITY (is this a writable path?), not the
+# substring. A token survives only if it looks like a filesystem path; otherwise it is
+# code/operator residue that leaked past _strip_noise and must never count as a write.
+_PATH_LIKE_RE = re.compile(r"^[~$]?[\w./@+-]+$")
+_FILE_EXT_RE = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,7}$")  # .py .json .md .sh .yaml ...
+
+
+def _is_plausible_path(t: str) -> bool:
+    """True if `t` plausibly names a file path (vs code/operator residue).
+
+    Conservative whitelist: a write target legitimately has a directory separator,
+    a file extension, OR is a bare dotfile/known name. Residue like `=0.9:`,
+    `warm_models_extra`, `b[0]+=1`, `2>&1` has none of these.
+    Must NOT reject genuine writes (apps/f.py, CLAUDE.md, /tmp/x) — see test suite.
+    """
+    if not t or len(t) > 256:
+        return False
+    # operator/code residue: anything outside a conservative path char-set is not a path
+    if not _PATH_LIKE_RE.match(t):
+        return False
+    # leftover comparison/assignment residue (`=0.9`, `>=2`) — '=' never in a real path token here
+    if "=" in t:
+        return False
+    has_sep = "/" in t
+    has_ext = bool(_FILE_EXT_RE.search(t))
+    is_dotfile = t.startswith(".") and len(t) > 1
+    # a known bare filename (no dir, no ext) is still a plausible target only if it is
+    # ALL-CAPS-ish doc name (CLAUDE.md handled by ext) — bare lowercase words like
+    # `warm_models_extra` are residue, NOT files. Require sep OR ext OR dotfile.
+    return has_sep or has_ext or is_dotfile
 
 
 def _resolve_target(path_str: str, cwd: str) -> pathlib.Path | None:
@@ -380,14 +530,78 @@ def _effective_git_target(cmd: str, default_cwd: str) -> str:
     """Determine the effective working dir for git command.
 
     Priority: `git -C <path>` > `cd <path> && git` > default cwd.
+
+    Tilde/env blind-spot fix (2026-07-06, found by the W85 live guilt-probe):
+    the extracted token is expanded the way the shell will (`~`, `$HOME`,
+    `${HOME}`) BEFORE downstream resolution — an unexpanded `~/Desktop/...`
+    used to defeat the realpath comparison (Path('~/x').resolve() is
+    cwd-relative), letting a mutating git op against main pass when written
+    with a tilde while the absolute form was correctly blocked. Expansion
+    mirrors shell semantics, so it can only move the verdict TOWARD the
+    truth of what the command will actually touch.
     """
     m = GIT_C_RE.search(cmd)
     if m:
-        return m.group(1)
+        return os.path.expandvars(os.path.expanduser(m.group(1)))
     m = CD_GIT_RE.search(cmd)
     if m:
-        return m.group(1)
+        return os.path.expandvars(os.path.expanduser(m.group(1)))
     return default_cwd
+
+
+# --- ff-only pull exception (2026-07-06, Zero directive: sessions self-align) -----
+# `git pull --ff-only` on a tracked-clean main checkout is the ONE mutating git op
+# that cannot cause a sibling-race: it only moves HEAD forward along origin (no
+# history rewrite, no working-tree merge; git itself aborts the ff if a tracked
+# file would collide). Blocking it forced every fleet main-checkout alignment to
+# wait for the operator (PENDING-ALIGN ledger lines). The exception is deliberately
+# narrow (anti-#3, both signs):
+#   - EVERY blocked-verb match in the command must be `pull` (a compound like
+#     `git pull --ff-only && git checkout x` still blocks on the checkout);
+#   - `--ff-only` must be an ARGUMENT of the pull command itself — anchored to the
+#     `git ... pull` segment, stopping at command separators (| ; & newline) and
+#     at `#` (2026-07-06 guilt-probe live: the first version did a bare
+#     `"--ff-only" in cmd_scan` substring check, and a SHELL COMMENT mentioning
+#     --ff-only opened the exception for a bare `git pull` — the FOURTH
+#     over-match of this same guard, after W83/W84/W85. _strip_noise removes
+#     quotes/heredocs but NOT comments; anchoring to the pull segment matches
+#     the command's intent, not a substring anywhere). `--rebase` anywhere still
+#     disqualifies (over-blocking is the safe direction);
+#   - the main checkout must be clean of TRACKED modifications (untracked files
+#     like scratch/ don't gate an ff pull). Probe failure → exception does NOT
+#     open (fail-closed toward the historical block, unlike the hook's usual
+#     negative-gating: loosening a guard on uncertainty would invert its point).
+
+# --ff-only as a real argument of the pull segment: after `git [...] pull`, only
+# non-separator, non-comment characters may precede it on the same segment.
+FFONLY_PULL_SEGMENT_RE = re.compile(
+    r"\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?pull\b[^|;&#\n]*--ff-only(?!\S)"
+)
+
+
+def _only_ffonly_pull(cmd_scan: str) -> bool:
+    """True iff the command's only blocked git verb(s) are `pull`, with --ff-only
+    as an argument of the pull segment and no --rebase — on the noise-stripped command."""
+    verbs = [m.group(1) for m in BLOCKED_SUBCMD_RE.finditer(cmd_scan)]
+    # group(1) is None for the commit -a / add -A alternation branches → not a pull.
+    if not verbs or any(v != "pull" for v in verbs):
+        return False
+    if not FFONLY_PULL_SEGMENT_RE.search(cmd_scan) or "--rebase" in cmd_scan:
+        return False
+    return True
+
+
+def _main_tree_tracked_clean() -> bool:
+    """Tracked-files-clean probe of the MAIN checkout (untracked ignored).
+    Any probe failure returns False → the ff-only exception stays shut."""
+    try:
+        r = subprocess.run(
+            ["git", "-C", REPO_ROOT, "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except Exception:
+        return False
+    return r.returncode == 0 and r.stdout.strip() == ""
 
 
 def _n_alive_cached() -> int:
@@ -457,6 +671,33 @@ def main():
         )
         sys.exit(2)
 
+    # --- W80: block removing a DIRTY, UNARMED worktree (manual triage path) ---
+    # Runs BEFORE the git-only quick-exit because `rm -rf .worktrees/x` carries no
+    # "git" token. Noise-stripped so a path inside a quoted string / heredoc is not
+    # mistaken for a real removal arg (same #3 antidote as the git scan below).
+    rm_scan = _strip_noise(cmd)
+    if ("worktree" in rm_scan and "remove" in rm_scan) or "rm " in rm_scan:
+        victim = _unarmed_dirty_removal_target(rm_scan, cwd)
+        if victim is not None:
+            _increment_block_counter()
+            _probe_log(payload, "block_unarmed_worktree_removal")
+            sys.stderr.write(
+                f"WORKTREE REMOVAL BLOCKED (dirty + unarmed — scar W80)\n"
+                f"  worktree: {victim}\n"
+                f"  command: {cmd[:200]}\n\n"
+                f"Reason: this worktree has uncommitted/untracked work that is NOT yet\n"
+                f"frozen onto a quarantine ref. Removing it now would silently destroy\n"
+                f"that work (W80: ~2400 lines lost exactly this way).\n\n"
+                f"Resolution — ARM it first (captures tracked + untracked, reversible):\n"
+                f"  python scripts/arm_keep_worktrees.py --names {victim.name}\n"
+                f"  # then re-run your removal; recover later via:\n"
+                f"  #   python scripts/arm_keep_worktrees.py --list\n"
+                f"  #   git stash apply <sha>\n\n"
+                f"If the work is genuinely disposable, arm it anyway (cheap) or set\n"
+                f"  AGENT_WORKTREE_ENFORCEMENT=false   (env var in shell)\n"
+            )
+            sys.exit(2)
+
     # Quick exit: cmd doesn't look git-mutating
     if "git" not in cmd:
         sys.exit(0)
@@ -489,6 +730,12 @@ def main():
     repo_real = pathlib.Path(REPO_ROOT).resolve()
     if target_real != repo_real:
         _probe_log(payload, "allow_external")
+        sys.exit(0)
+
+    # ff-only pull on a tracked-clean main is sibling-race-free → allow (see the
+    # exception block above for the full rationale and its fail-closed posture).
+    if _only_ffonly_pull(cmd_scan) and _main_tree_tracked_clean():
+        _probe_log(payload, "allow_ffonly_pull_clean_main")
         sys.exit(0)
 
     # Block.

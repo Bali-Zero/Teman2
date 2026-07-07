@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>GARUDA_REDIS_HOST</key>
+		<string>localhost</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/Users/nuzantara/.local/bin:/usr/bin:/bin</string>
+		<key>PYTHONPATH</key>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+		<key>TELEGRAM_OWNER_CHAT_ID</key>
+		<string>1125336968</string>
+	</dict>
+	<key>Label</key>
+	<string>com.matagaruda.pipeline-health.hourly</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>-u</string>
+		<string>-m</string>
+		<string>mata_garuda.workers.pipeline_health</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-pipeline-health.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-pipeline-health.log</string>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+</dict>
+</plist>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -50,6 +50,7 @@ export function ChatSidebar({
   isLoading,
 }: ChatSidebarProps) {
   const router = useRouter();
+  const recentChatsId = useId();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -114,9 +115,12 @@ export function ChatSidebar({
 
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto px-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+            <h2
+              id={recentChatsId}
+              className="text-xs text-gray-500 uppercase tracking-wider mb-3"
+            >
               Recent Chats
-            </p>
+            </h2>
             {isLoading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
@@ -126,7 +130,7 @@ export function ChatSidebar({
                 No conversations yet
               </p>
             ) : (
-              <ul className="space-y-1">
+              <ul aria-labelledby={recentChatsId} className="space-y-1">
                 {conversations.slice(0, 10).map((conv) => (
                   <li key={conv.id} className="group relative">
                     <button
@@ -161,38 +165,51 @@ export function ChatSidebar({
           </div>
 
           {/* Sidebar Footer */}
-          <div className="border-t border-white/5 p-4 space-y-1">
-            <button
-              type="button"
-              onClick={onSearchDocsOpen}
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors focus-ring"
-            >
-              <Search className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-400">Search Docs</span>
-            </button>
-            <button
-              type="button"
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors focus-ring"
-            >
-              <Settings className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-400">Settings</span>
-            </button>
-            <button
-              type="button"
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors focus-ring"
-            >
-              <HelpCircle className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-400">Help</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-blue-400 focus-ring"
-            >
-              <Home className="w-4 h-4" />
-              <span className="text-sm">Dashboard</span>
-            </button>
-          </div>
+          <nav
+            aria-label="Secondary navigation"
+            className="border-t border-white/5 p-4"
+          >
+            <ul className="space-y-1">
+              <li>
+                <button
+                  type="button"
+                  onClick={onSearchDocsOpen}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors focus-ring"
+                >
+                  <Search className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-400">Search Docs</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors focus-ring"
+                >
+                  <Settings className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-400">Settings</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors focus-ring"
+                >
+                  <HelpCircle className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-400">Help</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-blue-400 focus-ring"
+                >
+                  <Home className="w-4 h-4" />
+                  <span className="text-sm">Dashboard</span>
+                </button>
+              </li>
+            </ul>
+          </nav>
         </div>
       </aside>
     </>

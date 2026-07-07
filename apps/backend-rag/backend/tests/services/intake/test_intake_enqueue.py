@@ -9,6 +9,7 @@ blob_hash in teardown.
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
 
@@ -152,18 +153,32 @@ async def test_enqueue_persists_hint_and_pipeline(pool, cleanup_hashes, tmp_path
         source_ref="whatsapp:hint",
         blob_path=blob,
         client_id_hint=4242,
+        source_context={
+            "transport": "wa-mirror",
+            "chat_type": "direct",
+            "crm_identity_policy": "phone_keyed_direct_chat",
+        },
     )
     expected_key = compute_intake_key("whatsapp", "whatsapp:hint", bh, PIPELINE_VERSION)
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT client_id_hint, pipeline_version, intake_key, status FROM intake_queue WHERE id = $1",
+            "SELECT client_id_hint, pipeline_version, intake_key, status, source_context "
+            "FROM intake_queue WHERE id = $1",
             res.queue_id,
         )
     assert row["client_id_hint"] == 4242
     assert row["pipeline_version"] == PIPELINE_VERSION
     assert row["intake_key"] == expected_key
     assert row["status"] == "pending"
+    source_context = row["source_context"]
+    if isinstance(source_context, str):
+        source_context = json.loads(source_context)
+    assert source_context == {
+        "transport": "wa-mirror",
+        "chat_type": "direct",
+        "crm_identity_policy": "phone_keyed_direct_chat",
+    }
 
 
 async def test_enqueue_rejects_bad_source(pool, tmp_path):

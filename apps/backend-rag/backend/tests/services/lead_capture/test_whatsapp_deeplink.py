@@ -21,10 +21,10 @@ class TestDeeplinkBuilder:
             context_lines=[("Visa", "E33G"), ("Expiry", "1 Dec 2026")],
             result_hash="abcdef",
             lead_intent_id="li_xyz",
-            wa_number="6282264599868",
+            wa_number="6282210302328",
             public_host="https://balizero.com",
         )
-        assert url.startswith("https://wa.me/6282264599868?text=")
+        assert url.startswith("https://wa.me/6282210302328?text=")
 
     def test_body_contains_app_name(self):
         url = build_whatsapp_url(
@@ -86,9 +86,9 @@ class TestDeeplinkBuilder:
             context_lines=[],
             result_hash=None,
             lead_intent_id="li_xyz",
-            wa_number="+62 822 6459 9868",
+            wa_number="+62 822 1030 2328",
         )
-        assert url.startswith("https://wa.me/6282264599868?")
+        assert url.startswith("https://wa.me/6282210302328?")
 
 
 class TestContentFunnelSources:
@@ -118,6 +118,22 @@ class TestContentFunnelSources:
         assert "the Insights blog" in body
         assert "Reference:" not in body
         assert "• Article: Indonesia UMKM tax reforms" in body
+
+
+class TestPricingModalSource:
+    """PRICING_MODAL — ServicePricing.tsx modal CTA (2026-06-29)."""
+
+    def test_pricing_modal_has_no_reference_line(self):
+        url = build_whatsapp_url(
+            source=LeadSource.PRICING_MODAL,
+            context_lines=[("Package", "Single Entry Visa")],
+            result_hash=None,
+            lead_intent_id="li_price1",
+        )
+        body = _body_from(url)
+        assert "the pricing page" in body
+        assert "Reference:" not in body
+        assert "• Package: Single Entry Visa" in body
 
 
 class TestSourceEnum:

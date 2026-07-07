@@ -9,6 +9,8 @@ Matching rules:
 - `match == "exact"`: request path must equal prefix
 - `match == "prefix"`: `request.path.startswith(prefix)` — use for path
   families like `/api/bridge/` or `/api/portal/invite/validate/`
+- `match == "template"`: FastAPI-style path params match one path segment,
+  e.g. `/api/items/{item_id}/upload` matches `/api/items/123/upload` only.
 
 Adding/removing entries:
 1. Edit this file only — HybridAuthMiddleware reads the registry directly.
@@ -49,6 +51,15 @@ class PublicEndpoint:
     def matches(self, path: str) -> bool:
         if self.match == "exact":
             return path == self.prefix
+        if self.match == "template":
+            prefix_parts = self.prefix.strip("/").split("/")
+            path_parts = path.strip("/").split("/")
+            if len(prefix_parts) != len(path_parts):
+                return False
+            return all(
+                bool(actual) if expected.startswith("{") and expected.endswith("}") else actual == expected
+                for expected, actual in zip(prefix_parts, path_parts, strict=True)
+            )
         return path.startswith(self.prefix)
 
 
@@ -155,6 +166,12 @@ _INFRA = (
         "wa-mirror CRM lead upsert — X-CRM-Write-Key + WA_MIRROR_CRM_WRITE_ENABLED auth in-router",
         match="exact",
     ),
+    PublicEndpoint(
+        "/api/crm/internal/clients/{client_id}/documents/upload",
+        Category.INFRA,
+        "wa-mirror intake document upload — X-CRM-Write-Key + WA_MIRROR_CRM_WRITE_ENABLED auth in-router",
+        match="template",
+    ),
 )
 
 _AUTH = (
@@ -172,6 +189,20 @@ _AUTH = (
         "/api/auth/csrf-token",
         Category.AUTH,
         "CSRF token generation — must be public for CSRF protection flow",
+    ),
+    PublicEndpoint(
+        "/api/auth/request-magic-link",
+        Category.AUTH,
+        "Passwordless magic-link request (FASE 6) — must be public; an "
+        "unauthenticated client asks for a sign-in link. Enumeration-safe.",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/auth/verify-magic/",
+        Category.AUTH,
+        "Passwordless magic-link verify (FASE 6) — must be public; consumes the "
+        "single-use token and establishes the session. Prefix match: the token "
+        "is a path param.",
     ),
     # 2026-05-28: removed "/api/workflow/" prefix entry. All workflow_queue routes
     # (/enqueue, /status/{job_id}, /chains) require Depends(get_current_user), so the

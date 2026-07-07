@@ -37,6 +37,8 @@ import redis.asyncio as aioredis
 
 logger = logging.getLogger("skills_bridge")
 
+SECRETS_ENV_FILE = Path.home() / ".nuzantara-secrets.env"
+
 STATE_DIR = Path.home() / ".cell-bridge-state"
 LAST_ID_FILE = STATE_DIR / "skills_last_id.txt"
 LOCK_FILE = STATE_DIR / "skills_bridge.lock"
@@ -44,6 +46,44 @@ FAIL_COUNT_FILE = STATE_DIR / "skills_bridge_503_count.txt"
 
 INCREMENTAL_SAVE_EVERY = 50  # CORR-G2
 STREAM_MAXLEN = 5000
+
+
+def _load_secrets_env() -> None:
+    """Best-effort load of ~/.nuzantara-secrets.env (setdefault, never override).
+
+    The LaunchAgent invokes this script directly (no `bash -lc` wrapper that
+    sources the secrets file), so env like REDIS_PASSWORD must be picked up
+    here. Same pattern as scripts/pg-to-organism-bridge.py.
+    """
+    if not SECRETS_ENV_FILE.is_file():
+        return
+    try:
+        for line in SECRETS_ENV_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k, v.strip().strip('"').strip("'"))
+    except Exception as e:
+        logger.warning("[skills_bridge] could not source secrets env: %s", e)
+
+
+def _resolve_redis_url(url: str) -> str:
+    """Inject REDIS_PASSWORD into a password-less redis URL.
+
+    Local Pro Redis has requirepass since 2026-06-29; the fleet convention
+    for the credential is the REDIS_PASSWORD env var (cf. scripts/
+    agent_lease.py). A URL that already carries auth is returned untouched.
+    """
+    password = os.environ.get("REDIS_PASSWORD", "")
+    if not password:
+        return url
+    parsed = urllib.parse.urlparse(url)
+    if parsed.password:
+        return url
+    host_port = parsed.netloc.rsplit("@", 1)[-1]
+    netloc = f":{urllib.parse.quote(password, safe='')}@{host_port}"
+    return urllib.parse.urlunparse(parsed._replace(netloc=netloc))
 
 
 def _acquire_lock_or_exit() -> int:
@@ -231,9 +271,10 @@ async def main() -> int:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
+    _load_secrets_env()
     fly_bridge_url = os.getenv("FLY_BRIDGE_URL", "https://nuzantara-rag.fly.dev")
     api_key = os.getenv("BRIDGE_SKILLS_API_KEY", "")
-    pro_redis_url = os.getenv("PRO_REDIS_URL", "redis://127.0.0.1:6379")
+    pro_redis_url = _resolve_redis_url(os.getenv("PRO_REDIS_URL", "redis://127.0.0.1:6379"))
 
     lock_fd = _acquire_lock_or_exit()
     try:

@@ -172,10 +172,19 @@ while IFS= read -r run_json; do
 
     ELIGIBLE_RUN_JSON="$run_json"
     break
+# RECURSION BRAKE (2026-07-06): never select a failure on one of our OWN
+# codex/auto-fix-ci-* branches — each failed fix PR became the next cycle's
+# target (#2063→#2064→#2065, hourly daisy-chain capped only by DAILY_CAP).
+# Also skip dependabot/* branches: dependabot force-pushes/recreates them, so
+# a fix PR based on one has a mutable base and gets orphaned (today's chain
+# root was a 98-package bump). Revert the dependabot line if we ever WANT
+# codex attempting dependabot repairs — the recursion line must stay.
 done < <(printf '%s\n' "$FAILED_RUNS" | jq -c --arg now "$NOW_EPOCH" --arg cooldown "$COOLDOWN_PER_RUN" --arg statefile "$STATE_FILE" '
     .[] | select(
         .headBranch != "main" and
         .headBranch != "master" and
+        (.headBranch | startswith("codex/auto-fix-ci-") | not) and
+        (.headBranch | startswith("dependabot/") | not) and
         .name != "Codex auto-fix on CI failure"
     ) | {
         run_id: (.databaseId | tostring),

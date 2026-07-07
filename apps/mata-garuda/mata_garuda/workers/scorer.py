@@ -183,7 +183,13 @@ def run_scorer(kb: KnowledgeBase, max_items: int = 20) -> dict:
         source = data.get("source", "")
 
         scoring = score_with_ollama(title, content, source)
-        score = scoring.get("score", 2)
+        # Coerce the LLM 'score' to a number — a string score (e.g. "4") would
+        # crash the weighted arithmetic below and, with no per-item try/except,
+        # kill the whole batch and leave PEL orphans (W89 #7).
+        try:
+            score = float(scoring.get("score", 2))
+        except (TypeError, ValueError):
+            score = 2.0
         topic = scoring.get("topic", "other")
         reason = scoring.get("reason", "")
 

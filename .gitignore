@@ -38,6 +38,17 @@ uv.lock
 # so it never counts as a local change.
 .venv-wr2-html/
 **/.venv-wr2-html/
+# Catch-all for venv SIBLINGS/BACKUPS that org self-heal creates (.venv.broken-<ts>,
+# .venv.bak, .venv-<name>) — same scar class as html-venv above. 2026-06-27 a
+# backend self-heal left apps/backend-rag/.venv.broken-210424/ in the -deploy CLONE,
+# which made `git status` dirty and the puller REFUSED to fast-forward → #1779 (and
+# every later merge) could not reach the live organs. The bare `.venv`/`.venv/`
+# patterns miss the `.venv.<suffix>` / `.venv-<suffix>` names. Cover the whole family
+# so a generated venv variant can never again wedge the runtime checkout (anti-W81).
+.venv.*
+**/.venv.*
+.venv-*
+**/.venv-*
 # apps/backend-rag/data/ holds large logs + raw assets we don't ship, BUT
 # apps/backend-rag/data/evaluation/ holds small static golden-query fixtures
 # that tests import at collection time — CI needs them in the repo.
@@ -241,6 +252,16 @@ docs/generated/
 !apps/mouth/public/**/*.png
 !apps/mouth/public/**/*.gif
 !apps/mouth/public/**/*.webp
+!apps/admin-dashboard/public/**/*.jpg
+!apps/admin-dashboard/public/**/*.jpeg
+!apps/admin-dashboard/public/**/*.png
+!apps/admin-dashboard/public/**/*.gif
+!apps/admin-dashboard/public/**/*.webp
+!apps/autonomous-lab/public/**/*.jpg
+!apps/autonomous-lab/public/**/*.jpeg
+!apps/autonomous-lab/public/**/*.png
+!apps/autonomous-lab/public/**/*.gif
+!apps/autonomous-lab/public/**/*.webp
 
 # Allow pricing assets (heros + icons generated via codex $imagegen)
 !docs/pricing/assets/**/*.png
@@ -450,9 +471,10 @@ apps/backend-rag/.venv/
 # KBLI temporary files and utilities
 apps/backend-rag/backend/app/routers/*.before-claude
 harvested_zones/
-main.py
-!apps/cell/cell/main.py
-!vendor/evoskill/src/cli/main.py
+# TAC-2 (2026-07-05): was a bare `main.py` — it silently hid apps/remediator/main.py
+# (the ENTIRE app) and apps/graph-engine's entrypoint from git (TAC-1 P2-7). Anchored
+# to repo root; the two `!` exceptions it forced are now unnecessary and removed.
+/main.py
 master_building_codes_complete.json
 
 # EvoSkill runtime outputs (Phase 1 evolver loop generates these)
@@ -488,6 +510,7 @@ openclaw
 !.claude/scripts/
 !.claude/hooks/
 !.claude/rules/
+!.claude/skills/
 !.claude/settings.json
 .serena/
 OPENCLAW_MASTER_GUIDE_2026.md
@@ -680,7 +703,6 @@ scripts/canva/output/
 apps/evaluator/handoff/
 .windsurf/
 apps/mouth/public/kbli-navigator/images/base64_data.txt
-apps/mouth/public/llms-full.txt
 apps/evaluator/indexing_state.json
 tmp_notebooklm/
 
@@ -772,3 +794,10 @@ research/nb-health/nb-inventory-live.json
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/
 research/crm/*-drafts-local/
+.agent-task.json
+
+# arm_keep_worktrees.py: human-readable quarantine receipts (recovery aid, never tracked)
+.agent-receipts/
+
+# docs_sync --check self-cache (written by the tool even in check mode — must never dirty a probed checkout)
+.docs_sync_cache.json

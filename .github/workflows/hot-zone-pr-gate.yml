@@ -68,7 +68,7 @@ jobs:
       # ---------------------------------------------------------------------
       - name: Checkout base ref
         if: steps.kill_switch.outputs.disabled != 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # For merge_group: github.event.merge_group.base_sha (latest base)
           # For pull_request: github.event.pull_request.base.sha
@@ -225,18 +225,47 @@ jobs:
       # push:main. We re-execute here to ensure Phase 2a observability covers
       # the same surface even when that workflow's `paths:` filter were to
       # bypass (cicatrix W40 root pattern). Cheap duplicate.
+      #
+      # cicatrix W40 fleet-deadlock (2026-06-21): the working tree here is the
+      # BASE ref (Step 1 checks out base.sha, not the PR head). Linting the base
+      # is blind to the PR's own diff — so a collision ALREADY on main fails this
+      # check on EVERY open PR (including the very PR that renames the colliding
+      # file to fix it → catch-22, required-check, needed a kill-switch dance to
+      # break). Fix: reconstruct the MERGE tree (base + PR diff) before linting,
+      # so the lint sees the files as they WILL exist post-merge. Falls back to
+      # base-only lint if the head SHA is unavailable (same degradation as Step 2).
       # ---------------------------------------------------------------------
       - name: Replay lint_migration_numbers.py
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           contains(steps.diff.outputs.changed_files, 'apps/backend-rag/backend/db/migrations_v2/')
         continue-on-error: false
+        env:
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
         run: |
           set -u
           if [[ ! -f scripts/lint_migration_numbers.py ]]; then
             echo "::warning::scripts/lint_migration_numbers.py not in repo at base SHA — skipped"
             exit 0
           fi
+
+          # Materialize the merge tree: overlay the PR head's migrations dir on
+          # top of the base working tree so the lint evaluates post-merge state,
+          # not the base alone (W40 fleet-deadlock fix). git fetch of HEAD_SHA
+          # was already attempted in Step 2; re-fetch defensively (cheap, cached).
+          MIG_DIR="apps/backend-rag/backend/db/migrations_v2"
+          git fetch --no-tags --depth=200 origin "$HEAD_SHA" 2>&1 | tail -3 || true
+          if git cat-file -e "$HEAD_SHA" 2>/dev/null; then
+            echo "Overlaying PR head ($HEAD_SHA) migrations dir onto base for merge-tree lint"
+            # Replace the base migrations dir with the PR head's version so renames,
+            # additions and deletions in the PR are all reflected before linting.
+            rm -rf "$MIG_DIR"
+            git checkout "$HEAD_SHA" -- "$MIG_DIR" 2>/dev/null || {
+              echo "::warning::could not checkout $MIG_DIR from $HEAD_SHA — linting base only"; }
+          else
+            echo "::warning::HEAD SHA $HEAD_SHA not in fetched history — linting base only (degraded)"
+          fi
+
           python3 scripts/lint_migration_numbers.py
           echo "lint_migration_numbers exit: $?"
 

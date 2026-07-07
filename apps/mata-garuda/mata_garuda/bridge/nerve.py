@@ -24,6 +24,7 @@ from typing import Any, Callable
 
 from mata_garuda.bridge.cursor import BridgeCursor
 from mata_garuda.bridge.envelope import Envelope
+from mata_garuda.workers.base_worker import _redis_env
 from mata_garuda.config import (
     BRIDGE_API_KEY_ENV,
     BRIDGE_BACKEND_URL,
@@ -224,7 +225,12 @@ def _default_redis_xadd(stream: str, fields: dict[str, str]) -> str:
     args = ["redis-cli", "XADD", stream, "*"]
     for k, v in fields.items():
         args.extend([k, v])
-    result = subprocess.run(args, capture_output=True, text=True, timeout=10)
+    # Stage 1 cutover: canonical Pro Redis requires a password; pass it via
+    # REDISCLI_AUTH env (cicatrix #4, never -a on argv). Without env= the call
+    # gets NOAUTH which redis-cli returns at exit 0 → silently swallowed.
+    result = subprocess.run(
+        args, capture_output=True, text=True, timeout=10, env=_redis_env()
+    )
     if result.returncode != 0:
         raise RuntimeError(f"redis-cli XADD failed: {result.stderr.strip()}")
     return result.stdout.strip()
@@ -456,7 +462,7 @@ def _default_redis_xreadgroup(
     # Ensure group exists (idempotent — fails silently if already exists)
     subprocess.run(
         ["redis-cli", "XGROUP", "CREATE", stream, group, "0", "MKSTREAM"],
-        capture_output=True, text=True, timeout=5,
+        capture_output=True, text=True, timeout=5, env=_redis_env(),
     )
 
     args = [
@@ -467,8 +473,11 @@ def _default_redis_xreadgroup(
         args.extend(["BLOCK", str(block_ms)])
     args.extend(["STREAMS", stream, ">"])
 
-    result = subprocess.run(args, capture_output=True, text=True, timeout=15)
-    if result.returncode != 0 or not result.stdout.strip():
+    result = subprocess.run(args, capture_output=True, text=True, timeout=15, env=_redis_env())
+    # redis-cli returns auth/error text at exit 0; treat NOAUTH/ERR as empty
+    # so a missing password never parses into a silent "no messages" (W89).
+    out = result.stdout.strip()
+    if result.returncode != 0 or not out or out.startswith(("NOAUTH", "ERR ", "WRONGPASS")):
         return []
 
     # Parse redis-cli flat output
@@ -503,7 +512,7 @@ def _default_redis_xack(stream: str, group: str, msg_id: str) -> None:
     """ACK a message in a consumer group."""
     subprocess.run(
         ["redis-cli", "XACK", stream, group, msg_id],
-        capture_output=True, text=True, timeout=5,
+        capture_output=True, text=True, timeout=5, env=_redis_env(),
     )
 
 

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>GARUDA_CANONICAL_REDIS_HOST</key>
+		<string>127.0.0.1</string>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>MATA_GARUDA_AGY_MODEL</key>
+		<string>gemini-3.5-flash</string>
+		<key>MATA_GARUDA_CLAUDE_FALLBACK_MODEL</key>
+		<string>agy:gemini-3.5-flash</string>
+		<key>MATA_GARUDA_GAP_AGENT_MODEL</key>
+		<string>ollama:qwen2.5vl:7b</string>
+		<key>MATA_GARUDA_OLLAMA_MODEL</key>
+		<string>qwen2.5vl:7b</string>
+		<key>MATA_GARUDA_REFLECTION_MODEL</key>
+		<string>ollama:qwen2.5vl:7b</string>
+		<key>MATA_GARUDA_REGULATION_AGENT_MODEL</key>
+		<string>agy:gemini-3.5-flash</string>
+		<key>MATA_GARUDA_VENV_PY</key>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<key>MG_WINDOW</key>
+		<string>6-22</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+		<key>PYTHONPATH</key>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	</dict>
+	<key>Label</key>
+	<string>com.matagaruda.gap.consumer</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>-u</string>
+		<string>-m</string>
+		<string>mata_garuda.workers.gap_consumer</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-gap-consumer-err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-gap-consumer.log</string>
+	<key>StartInterval</key>
+	<integer>600</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+</dict>
+</plist>

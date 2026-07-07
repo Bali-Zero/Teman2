@@ -304,3 +304,153 @@ gates:
       only by its own state file + a human reading its last alert — the recursion
       terminates at a person, not at another machine. Kill-switch
       COST_BREAKER_DEADMAN_OFF=1.
+
+  # ---------------------------------------------------------------------------
+  # A1 / Loop-B (2026-06-23) — scar_test gates. The other kinds verify a guardian
+  # is INSTALLED; these RUN the regression test that fails if the scar re-bites,
+  # answering "is the disease still dead?". prose_only:true = scar documented but
+  # no executable gate yet = WARN (visible Loop-B debt, never silently green).
+  # Reference: research/operations/2026-06-23-self-loop-implementation-plan.md (Anello 1).
+  # ---------------------------------------------------------------------------
+  - id: scar_W86_worktree_overmatch
+    kind: scar_test
+    w_number: W86
+    target: infra/claude-hooks/test_w84_strip_noise_cross_line.py
+    note: >
+      Superscar #3 (guard over-match). W83/84/85/86 family: the worktree_isolation
+      hook over-matched a bare `>` in code-residue (python -c / awk / perl bodies)
+      as a redirect → phantom write-target → read-only command falsely blocked.
+      W86 cure = path-plausibility whitelist (_is_plausible_path). This test asserts
+      innocence (no false block on code-residue) AND guilt (genuine writes to main
+      still blocked). Green = the over-match family stays dead.
+
+  - id: scar_homefork_live_vs_tracked
+    kind: scar_test
+    w_number: "#1-HOMEFORK"
+    target: infra/scar-gates/test_W_homefork_live_vs_tracked.py
+    note: >
+      Superscar #1 (HOME-fork drift) core detector. infra/scar-gates/MANIFEST.json
+      already declared this gate `prose_only:false` — but MANIFEST.json is only
+      consumed by the MANUAL runner `scripts/run_scar_gates.py`, never by the CI-wired
+      `.github/workflows/verify-the-verifiers.yml` (which reads THIS file). The gate
+      was theater: it looked armed on paper while no workflow ever ran it (found during
+      a 2026-07-07 healer tick ledger review). This entry closes the gap — the existing
+      CI job now executes it on every PR that touches verify_the_verifiers.py/gates.yaml.
+
+  - id: scar_premise_gate_L1
+    kind: scar_test
+    w_number: premise-gate-L1
+    target: infra/claude-hooks/test_premise_gate.py
+    note: >
+      DNA L1 detector (anti-hallucination rule #2 made mechanical). The premise_gate
+      hook warns on an Edit of a product file not read in-turn. This test asserts it
+      WARNS on the genuine missing-premise case AND stays silent on every legitimate
+      neighbor (read-in-turn, exempt surfaces, plan-mode, repeat-suppression).
+      Green = the "build on a false premise" disease stays caught.
+
+  - id: scar_W82_content_freshness_undermatch
+    kind: scar_test
+    w_number: W82
+    target: infra/scar-gates/test_W82_content_freshness_undermatch.py
+    note: >
+      Superscar #3 UNDER-match twin (content-freshness-sentinel: substring + blind to
+      translations → stale fact stays green). PROMOTED from prose_only to an executable
+      gate 2026-06-23 — the self-loop feeding itself: the prose WARN became a test.
+      The gate PINS the documented current (broken) contract: the under-match still
+      behaves as the scar describes (reworded/table/translated stale facts slip past the
+      substring matcher; the exact literal IS caught; migration-context excused). ARMED =
+      contract holds = bug present & captured. When the fact-based ANTIBODY is finally
+      armed (operator firebreak, Antonello 2026-06-16), the under-match stops happening,
+      this test FAILS → DISARMED → loud "W82 contract changed: promote scar to RESOLVED".
+      We did NOT arm the fact-based sentinel here (firebreak respected) — we made the
+      debt a tripwire that fires the moment the cure lands.
+
+  # ---------------------------------------------------------------------------
+  # A2 / A3 (2026-06-23) — the last two rings of the self-loop, registered so CI
+  # re-runs their innocence+guilt suites every PR. Reference:
+  # research/operations/2026-06-23-self-loop-implementation-plan.md (Anelli 2,3).
+  # ---------------------------------------------------------------------------
+  - id: scar_A2_heartbeat_starved
+    kind: scar_test
+    w_number: A2-heartbeat-semantico
+    target: scripts/test_sentinel_starved.py
+    note: >
+      Superscar #2 (Esiste != Armato) at the OUTPUT level. The sentinel classically
+      asks "did the organ RUN?" (ts fresh, status ok, launchctl PID). A2 adds the
+      missing axis "did the organ's OUTPUT ADVANCE?": an organ green-on-schedule whose
+      registry-declared progress_field is byte-identical across STARVED_TICKS=3 ticks is
+      'starved'. This test asserts innocence (advancing output / no progress_field /
+      first-run / a real dead organ are NEVER mislabelled starved) AND guilt (frozen
+      output for N ticks flips to starved, one advance clears it). Green = green-but-no-
+      delta stays detectable. Opt-in + fail-open (no schema regression, superscar #9).
+
+  - id: scar_A3_reflexion_delta_gate
+    kind: scar_test
+    w_number: A3-reflexion-che-impara
+    target: scripts/lib/test_reflexion.py
+    note: >
+      Reflexion core (Shinn et al 2023) unified from two divergent half-copies
+      (superscar #1 HOME-fork cure: lift the shared core, don't make a third copy).
+      The Delta Gate records every run — a NO_SIGNAL tick is visible on disk, not a
+      silent sys.exit(0) (Omeostasi Tautologica defeated; A2 applied to the loop
+      itself). This test asserts the delta-gate persists honestly + rejects invalid
+      status, the tautology alarm fires after HOT_WINDOW all-NO_SIGNAL runs, lesson
+      noise is bounded to Ω, the MOS promote-gate BLOCKS un-promoted (phantom) lessons
+      (superscar #6), the FTS5 hyphen-sanitize holds, and consolidation dedups. Green =
+      a loop that records its own no-delta instead of mistaking green for learning.
+
+  - id: scar_A3_wr3_cabling
+    kind: scar_test
+    w_number: A3-wr3-cabling
+    target: scripts/test_wr3_reflexion_cabling.py
+    note: >
+      Superscar #1 (HOME-fork) cure, ACTUATED: wr3_reflexion_synthesis.record_run no
+      longer keeps a private Delta-Gate copy — it delegates to the unified core
+      (scripts/lib/reflexion.record_run). This test asserts the swap is reader-safe (the
+      WR3 _reflexion-state.json still records honestly; episodes_found carried as the
+      core's signals_found — verified NO reader consumes episodes_found), the WR3 status
+      vocabulary maps to the core enum, an UNMAPPED status RAISES (no silent typo logged
+      as a valid run), and the Omeostasi-Tautologica alarm WR3 previously lacked is now
+      reachable. Green = the duplication stays collapsed; if someone re-forks a private
+      record_run, the reader-safe mapping breaks and this goes RED.
+
+  - id: scar_A_wr2_reflexion
+    kind: scar_test
+    w_number: A-wr2-reflexion
+    target: scripts/test_wr2_reflexion_cabling.py
+    note: >
+      Superscar #1 (HOME-fork) + #2 (Esiste != Armato), ACTUATED on the LAST organism
+      organ that lacked a Delta Gate. The WR2 weekly reflexion ran ONLY as a HOME-only
+      file (~/.claude/skills/bali-zero-brand/_reflexion-synthesis.py, 0 repo source) and
+      its empty-week path was a SILENT print(...); return 0 — the canonical W74 green-cron-
+      theater (12 empty weeks indistinguishable from 12 healthy ones). This repo port
+      (scripts/wr2_reflexion_synthesis.py) cables every main() exit to the unified core
+      (scripts/lib/reflexion.record_run): no-data -> NO_INPUT (canonical NO_SIGNAL, exit 0),
+      synthesis-failed -> LLM_FAILED (exit 1, alert-worthy), synthesized -> SYNTHESIZED/
+      THIN_SIGNAL. The test asserts THE W74 REGRESSION (empty week leaves an audit record,
+      never a silent return 0), the status map only targets real enum values, an unmapped
+      status RAISES, the failure path records LLM_FAILED + exits 1, and the tautology alarm
+      fires after 3 empty weeks. Green = the last green-but-empty loop now records its own
+      no-delta. Closes the self-loop: all reflexion organs delegate to the one core.
+
+  # ---------------------------------------------------------------------------
+  # R1 (2026-07-06) — generator != grader T-GATE on research/audit deliverables.
+  # Reference: docs/specs/rules-as-harness-and-simulation-chamber-v1.md section 2/R1.
+  # Script: scripts/check_adversarial_review.py. Tests: scripts/tests/test_adversarial_review_gate.py
+  # (armed via .github/workflows/immune-enforcement.yml the same way pending_arms_report /
+  # lint_home_fork / secrets_permissions_audit / lint_plist_keepalive are — wired into that
+  # workflow's `paths:` + unit-test loop 2026-07-06, and the gate workflow runs on EVERY PR
+  # (no paths filter) because it is a required check on main branch protection).
+  # ---------------------------------------------------------------------------
+  - id: adversarial_review_gate
+    kind: ci_workflow
+    target: .github/workflows/adversarial-review-gate.yml
+    step_anchor: "R1 gate — adversarial review present"
+    expected_continue_on_error: false
+    note: >
+      Deterministic safety gate (R1): every new/changed research/**/*.md in a PR must
+      declare `adversarial_review: <seat != author>` in frontmatter + a matching
+      '## Adversarial review' section, or an explicit `exempt-<reason>` value.
+      Pure-stdlib checker, no network, no LLM. continue-on-error must stay false —
+      this is the enforcing gate, not a monitor-by-design step (contrast
+      hot_zone_redis_lease/p3_sandbox_runtime above, which intentionally stay true).

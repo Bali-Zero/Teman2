@@ -1,0 +1,258 @@
+name: manual - fly api diagnostics
+
+# Read-only Fly diagnostics for production incidents where the Pro is not
+# reachable. The workflow intentionally prints only summarized status and
+# redacted, pattern-filtered log lines; do not dump raw logs to Actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Fly app to inspect
+        required: true
+        default: nuzantara-rag
+        type: choice
+        options:
+          - nuzantara-rag
+          - nuzantara-postgres
+      process_group:
+        description: Preferred process group when machine_id is empty
+        required: false
+        default: api
+      machine_id:
+        description: Optional Fly machine ID; empty selects a started machine in process_group
+        required: false
+        default: ""
+      log_lines:
+        description: Tail size from Fly log buffer before diagnostic filtering
+        required: false
+        default: "500"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fly-api-diagnostics-${{ github.event.inputs.app }}
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      APP: ${{ github.event.inputs.app }}
+      PROCESS_GROUP: ${{ github.event.inputs.process_group }}
+      MACHINE_INPUT: ${{ github.event.inputs.machine_id }}
+      LOG_LINES: ${{ github.event.inputs.log_lines }}
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Snapshot Fly status and select machine
+        id: status
+        run: |
+          set -uo pipefail
+          STATUS_JSON="$RUNNER_TEMP/fly-status.json"
+          STATUS_ERR="$RUNNER_TEMP/fly-status.err"
+          if ! flyctl status --json -a "$APP" > "$STATUS_JSON" 2> "$STATUS_ERR"; then
+            echo "::error::flyctl status failed for ${APP}"
+            sed -E 's/(token|secret|password|key|authorization|bearer)[^[:space:]]*/[REDACTED]/Ig' "$STATUS_ERR" || true
+            exit 1
+          fi
+
+          SUMMARY="$RUNNER_TEMP/fly-status-summary.txt"
+          python3 - "$STATUS_JSON" "$PROCESS_GROUP" "$MACHINE_INPUT" <<'PY' | tee "$SUMMARY"
+          import json
+          import sys
+
+          path, wanted_group, wanted_machine = sys.argv[1:4]
+          with open(path, "r", encoding="utf-8") as fh:
+              doc = json.load(fh)
+
+          machines = doc.get("Machines", []) or []
+
+          def process_group(machine):
+              config = machine.get("config") or {}
+              metadata = config.get("metadata") or {}
+              return (
+                  machine.get("process_group")
+                  or metadata.get("fly_process_group")
+                  or metadata.get("process_group")
+                  or "unknown"
+              )
+
+          def check_summary(machine):
+              checks = machine.get("checks") or []
+              if not checks:
+                  return "none"
+              parts = []
+              for check in checks:
+                  name = check.get("name") or check.get("type") or "check"
+                  status = check.get("status") or "unknown"
+                  parts.append(f"{name}:{status}")
+              return ",".join(parts)
+
+          def guest_summary(machine):
+              config = machine.get("config") or {}
+              guest = config.get("guest") or {}
+              cpus = guest.get("cpus") or guest.get("cpu_kind") or "?"
+              memory = guest.get("memory_mb") or guest.get("memory") or "?"
+              return f"cpus={cpus} memory_mb={memory}"
+
+          def image_tag(machine):
+              image_ref = machine.get("image_ref") or {}
+              return image_ref.get("tag") or image_ref.get("registry") or "unknown"
+
+          candidates = []
+          print(f"app={doc.get('Name') or doc.get('App') or 'unknown'}")
+          print(f"machine_count={len(machines)}")
+          for machine in machines:
+              mid = machine.get("id", "?")
+              group = process_group(machine)
+              state = machine.get("state", "?")
+              region = machine.get("region", "?")
+              if group == wanted_group:
+                  candidates.append(machine)
+              print(
+                  "machine "
+                  f"id={mid} group={group} state={state} region={region} "
+                  f"{guest_summary(machine)} image_tag={image_tag(machine)} "
+                  f"checks={check_summary(machine)}"
+              )
+
+              for event in (machine.get("events") or [])[:10]:
+                  request = event.get("request") or {}
+                  exit_event = request.get("exit_event") or {}
+                  oom_killed = exit_event.get(
+                      "oom_killed", request.get("oom_killed", event.get("oom_killed"))
+                  )
+                  exit_code = exit_event.get("exit_code")
+                  if oom_killed or exit_code not in (None, 0, "0"):
+                      print(
+                          "event "
+                          f"machine={mid} group={group} "
+                          f"type={event.get('type') or event.get('event') or 'unknown'} "
+                          f"created_at={event.get('created_at') or event.get('timestamp') or '?'} "
+                          f"exit_code={exit_code} oom_killed={oom_killed}"
+                      )
+
+          selected = ""
+          if wanted_machine and any(m.get("id") == wanted_machine for m in machines):
+              selected = wanted_machine
+          else:
+              started = [m for m in candidates if m.get("state") == "started"]
+              selected_machine = (started or candidates or machines or [{}])[0]
+              selected = selected_machine.get("id", "")
+
+          print(f"selected_machine={selected}")
+          print(f"selected_group={wanted_group or 'unknown'}")
+          PY
+
+          MACHINE_ID=$(grep '^selected_machine=' "$SUMMARY" | head -1 | cut -d= -f2-)
+          {
+            echo "machine_id=${MACHINE_ID}"
+            echo "summary<<EOF"
+            cat "$SUMMARY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Machine status text
+        if: steps.status.outputs.machine_id != ''
+        run: |
+          set -uo pipefail
+          echo "machine_status_for=${{ steps.status.outputs.machine_id }}"
+          flyctl machine status "${{ steps.status.outputs.machine_id }}" -a "$APP" 2>&1 \
+            | sed -E 's/(token|secret|password|key|authorization|bearer)[^[:space:]]*/[REDACTED]/Ig' \
+            | head -120 || true
+
+      - name: Runtime flag snapshot
+        if: steps.status.outputs.machine_id != ''
+        run: |
+          set -uo pipefail
+          MACHINE="${{ steps.status.outputs.machine_id }}"
+          RAW=$(timeout 35s flyctl ssh console \
+            --app "$APP" \
+            --machine "$MACHINE" \
+            --process-group "$PROCESS_GROUP" \
+            --quiet \
+            --command 'python -c "import json, os; keys=[\"ENVIRONMENT\",\"APP_ENV\",\"FLY_PROCESS_GROUP\",\"DISABLE_BACKGROUND_WORKERS\",\"ENABLE_WA_OUTBOX_WORKER\",\"NOTIFICATION_SCHEDULER_ENABLED\",\"AUTONOMOUS_SCHEDULER_ENABLED\",\"RAG_PROCESS_MODE\",\"WEB_CONCURRENCY\",\"WORKERS\"]; print(\"RUNTIME_FLAGS:\"+json.dumps({k:os.getenv(k,\"\") for k in keys}, sort_keys=True))"' \
+            2>&1 || true)
+          FLAGS=$(printf '%s\n' "$RAW" | grep -o 'RUNTIME_FLAGS:{.*}' | head -1 | sed 's/^RUNTIME_FLAGS://')
+          if [ -z "$FLAGS" ]; then
+            echo "::warning::unable to read safe runtime flags from ${APP}/${MACHINE}"
+            printf '%s\n' "$RAW" \
+              | sed -E 's/(token|secret|password|key|authorization|bearer)[^[:space:]]*/[REDACTED]/Ig' \
+              | head -80
+            exit 0
+          fi
+          echo "$FLAGS" | python3 -m json.tool
+
+      - name: Redacted diagnostic log slice
+        run: |
+          set -uo pipefail
+          case "${LOG_LINES:-500}" in
+            ''|*[!0-9]*) LOG_LINES=500 ;;
+          esac
+          if [ "$LOG_LINES" -gt 1200 ]; then LOG_LINES=1200; fi
+          if [ "$LOG_LINES" -lt 50 ]; then LOG_LINES=50; fi
+
+          MACHINE="${{ steps.status.outputs.machine_id }}"
+          LOG_RAW="$RUNNER_TEMP/fly-logs.raw"
+          if [ -n "$MACHINE" ]; then
+            timeout 45s flyctl logs -a "$APP" --machine "$MACHINE" --no-tail > "$LOG_RAW" 2>&1 || true
+          else
+            timeout 45s flyctl logs -a "$APP" --no-tail > "$LOG_RAW" 2>&1 || true
+          fi
+          tail -n "$LOG_LINES" "$LOG_RAW" > "$RUNNER_TEMP/fly-logs-tail.txt" || true
+
+          python3 - "$RUNNER_TEMP/fly-logs-tail.txt" <<'PY'
+          import re
+          import sys
+          from collections import Counter
+
+          path = sys.argv[1]
+          lines = open(path, "r", encoding="utf-8", errors="replace").read().splitlines()
+
+          patterns = {
+              "oom_or_memory": re.compile(r"oom|out of memory|memory|exit[_ -]?code.?137|killed", re.I),
+              "traceback": re.compile(r"traceback|exception|error|critical", re.I),
+              "startup": re.compile(r"startup|lifespan|boot|uvicorn|worker|process", re.I),
+              "scheduler": re.compile(r"scheduler|apscheduler|notification|outbox|dlq|olympus|attendance|timesheet", re.I),
+              "database": re.compile(r"asyncpg|postgres|database|db pool|connection pool|redis", re.I),
+              "http_5xx": re.compile(r"\b5\d\d\b|status.?5\d\d|internal server error|timeout", re.I),
+          }
+
+          secret_re = re.compile(
+              r"(?i)(token|secret|password|passwd|api[_-]?key|authorization|bearer)(=|:|\\s+)\\S+"
+          )
+          email_re = re.compile(r"(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}")
+          phone_re = re.compile(r"(?<![A-Za-z0-9])\\+?\\d[\\d\\s().-]{7,}\\d(?![A-Za-z0-9])")
+          jwt_re = re.compile(r"eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+")
+
+          def redact(text: str) -> str:
+              text = secret_re.sub(lambda m: f"{m.group(1)}{m.group(2)}[REDACTED]", text)
+              text = jwt_re.sub("[JWT_REDACTED]", text)
+              text = email_re.sub("[EMAIL]", text)
+              text = phone_re.sub("[NUMBER_REDACTED]", text)
+              return text[:1200]
+
+          counts = Counter()
+          matched = []
+          for line in lines:
+              hit = False
+              for name, pattern in patterns.items():
+                  if pattern.search(line):
+                      counts[name] += 1
+                      hit = True
+              if hit:
+                  matched.append(redact(line))
+
+          print(f"log_tail_lines={len(lines)}")
+          for name in sorted(patterns):
+              print(f"pattern_count {name}={counts[name]}")
+          print("--- redacted_matched_lines_tail ---")
+          for line in matched[-160:]:
+              print(line)
+          if not matched:
+              print("NO_MATCHED_DIAGNOSTIC_LINES")
+          PY

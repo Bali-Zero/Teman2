@@ -30,7 +30,7 @@ import {
  *
  * Fact lines verified against the codebase 2026-06-11:
  *  - E33G / C1: live visa funnel + SocialProof reference both codes
- *  - 1,563 KBLI codes: kbli/page.tsx + sitemap.ts
+ *  - 1,559 KBLI codes: kbli/page.tsx + sitemap.ts
  *  - PPh · PPN · LKPM: TAX_DEADLINES kinds in
  *    app/api/tax-calendar/deadlines.ts (the tax.balizero.com calendar)
  *  - leasehold 25–30 yr: property KB ground truth (W68 scar verification)
@@ -83,7 +83,7 @@ const DOORS: Door[] = [
     body: "PT PMA setup, KBLI codes, licensing. From idea to a legal Indonesian company — without the nominee traps.",
     fact: (
       <>
-        <b style={{ color: NAVY }}>1,563 KBLI codes</b> mapped
+        <b style={{ color: NAVY }}>1,559 KBLI codes</b> mapped
       </>
     ),
     tool: {

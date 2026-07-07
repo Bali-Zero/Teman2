@@ -76,7 +76,7 @@ class KnowledgeGraphSchema:
                         f"Run migrations 028 and 029 to create them.",
                     )
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error verifying schema: %s", e, exc_info=True)
             raise
         except Exception as e:

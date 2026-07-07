@@ -46,7 +46,7 @@ async def unsubscribe(
     repo = EmailSubscriptionRepository(db_pool)
     try:
         count = await repo.unsubscribe_by_token(token)
-    except asyncpg.PostgresError:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError):
         logger.exception("funnel_email.unsub: DB error token=%s", token[:8])
         count = 0
     app = "visa" if count > 0 else ""  # best-effort hint

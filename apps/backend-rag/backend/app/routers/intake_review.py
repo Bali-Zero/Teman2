@@ -46,7 +46,7 @@ from fastapi.responses import FileResponse
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
-from backend.services.intake import crm_push as intake_crm_push
+from backend.services.intake import crm_delivery as intake_crm_delivery
 from backend.services.intake import writer as intake_writer
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,25 @@ router = APIRouter(prefix="/api/intake/review", tags=["intake-review"])
 
 # How long a single reviewer holds a proposal before it becomes reclaimable.
 CLAIM_TTL_MINUTES = 15
+
+# Which intake sources surface in the human review queue. Per Zero (2026-06-19):
+# the review queue is WhatsApp-only "for now" — Drive/Dropbox documents are still
+# catalogued into intake_queue + document_routing_proposal (the DB record is kept
+# and the worker keeps running), they just must NOT flood the team/admin review
+# list. The Dropbox→Drive mirror is the team's whole historical archive (years of
+# scans + iPhone camera rolls), so draining it into review buried the ~107 real
+# WhatsApp docs under ~19.6k archive proposals. This is the single gate that keeps
+# the queue honest; widen it only by setting INTAKE_REVIEW_SOURCES.
+#
+# Override (CSV, e.g. "whatsapp,drive") to re-admit other sources without a code
+# change. An empty/whitespace value falls back to the default allowlist.
+_DEFAULT_REVIEW_SOURCES = ("whatsapp",)
+
+
+def _review_source_allowlist() -> tuple[str, ...]:
+    raw = os.getenv("INTAKE_REVIEW_SOURCES", "")
+    parsed = tuple(s.strip().lower() for s in raw.split(",") if s.strip())
+    return parsed or _DEFAULT_REVIEW_SOURCES
 
 # MIME types a browser can render inline WITHOUT a script-execution surface.
 # Deliberately excludes image/svg+xml (can embed <script>) and text/html.
@@ -268,8 +287,19 @@ async def _load_candidate_clients(
 async def list_review_queue(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
-    status: str = Query("review_pending", pattern="^(review_pending|review_claimed)$"),
-    source: str | None = Query(None, description="Filter by intake source (whatsapp|drive|zoho)"),
+    status: str = Query(
+        "review_pending",
+        pattern="^(review_pending|review_claimed|quarantine|duplicate)$",
+        description="review_pending|review_claimed (main feed); quarantine (LEVA-1 noise tab); duplicate (LEVA-3 already-on-profile tab)",
+    ),
+    source: str | None = Query(
+        None,
+        description=(
+            "Filter by intake source. Must be within the review allowlist "
+            "(WhatsApp-only by default; see INTAKE_REVIEW_SOURCES). An out-of-"
+            "allowlist source returns an empty page, never Drive/Dropbox docs."
+        ),
+    ),
     decision: str | None = Query(
         None, description="Filter by entity_resolution.decision (AUTO_ATTACH|LINK_CANDIDATE|AMBIGUOUS|NO_MATCH)"
     ),
@@ -285,6 +315,18 @@ async def list_review_queue(
     """
     admin = is_crm_admin(user)
     user_email = (user.get("email") or "").lower().strip()
+
+    # Source gate (WhatsApp-only by default): an explicit ?source= still wins for
+    # ad-hoc inspection, but MUST be inside the allowlist — a caller cannot ask
+    # for ?source=drive unless INTAKE_REVIEW_SOURCES admits it. With no ?source=,
+    # the queue is scoped to the whole allowlist. Both go through the same
+    # `q.source = ANY($2)` clause so Drive/Dropbox proposals never surface here.
+    allowlist = _review_source_allowlist()
+    if source is not None and source.lower() not in allowlist:
+        # Asking for a source the queue doesn't admit → an empty, honest page
+        # (not an error: the proposal exists in the DB, it's just not reviewable).
+        return {"total": 0, "limit": limit, "offset": offset, "items": []}
+    source_filter = [source.lower()] if source is not None else list(allowlist)
 
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -308,12 +350,12 @@ async def list_review_queue(
             FROM document_routing_proposal p
             JOIN intake_queue q ON q.id = p.queue_id
             WHERE p.status = $1
-              AND ($2::text IS NULL OR q.source = $2)
+              AND q.source = ANY($2::text[])
               AND ($3::boolean OR q.received_by = $4)
             ORDER BY p.created_at ASC, p.id ASC
             """,
             status,
-            source,
+            source_filter,
             admin,
             user_email,
         )
@@ -803,6 +845,71 @@ async def release_review(
     return {"proposal_id": updated["id"], "status": "review_pending"}
 
 
+@router.post("/{proposal_id}/recover")
+async def recover_from_quarantine(
+    proposal_id: int = Path(..., ge=1),
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Pull a parked proposal back into review — LEVA-1 ``quarantine`` (noise) OR
+    LEVA-3 ``duplicate`` (already-on-profile) → ``review_pending``.
+
+    Both pre-filters are conservative but not infallible: a real document with a
+    degraded OCR pass can be mis-binned as noise, and a genuine SECOND copy of a
+    doc-type (a renewed passport, a superseding akta) may legitimately need
+    filing even though the client already has one. This is the recovery hatch so
+    nothing is ever lost, only deferred. RBAC mirrors the queue feed: admins
+    recover anything; a non-admin recovers ONLY proposals from their own chats
+    (``intake_queue.received_by == caller``); NULL-received_by (shared line +
+    Drive) is admin-only. NO CRM writes.
+    """
+    admin = is_crm_admin(user)
+    user_email = (user.get("email") or "").lower().strip()
+
+    async with pool.acquire() as conn:
+        # The own-chat RBAC gate lives on intake_queue.received_by — guard it in
+        # the UPDATE's correlated subquery so a non-admin can never recover
+        # someone else's (or an admin-only NULL) parked row. Both parked statuses
+        # (quarantine + duplicate) are recoverable.
+        updated = await conn.fetchrow(
+            """
+            UPDATE document_routing_proposal p
+               SET status = 'review_pending'
+              FROM intake_queue q
+             WHERE p.id = $1
+               AND p.queue_id = q.id
+               AND p.status IN ('quarantine', 'duplicate')
+               AND ($2::boolean OR q.received_by = $3)
+            RETURNING p.id
+            """,
+            proposal_id,
+            admin,
+            user_email,
+        )
+
+    if updated is None:
+        async with pool.acquire() as conn:
+            existing = await conn.fetchrow(
+                "SELECT status FROM document_routing_proposal WHERE id = $1",
+                proposal_id,
+            )
+        if existing is None:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Recover failed: proposal is not parked (quarantine/duplicate) or "
+                f"is outside your scope (status={existing['status']})"
+            ),
+        )
+
+    logger.info(
+        "intake.review.recovered proposal=%s reviewer=%s admin=%s (parked→review_pending)",
+        proposal_id, user_email, admin,
+    )
+    return {"proposal_id": updated["id"], "status": "review_pending"}
+
+
 # --------------------------------------------------------------------------- #
 # Shared claim/lease guard (P0#5) — used by approve AND reject
 # --------------------------------------------------------------------------- #
@@ -857,130 +964,16 @@ async def _deliver_committed_to_crm(
     plan: intake_writer.CommitPlan,
     result: intake_writer.CommitResult,
 ) -> dict[str, Any]:
-    """Best-effort delivery of a COMMITTED document to the Fly CRM.
-
-    Runs AFTER the local commit transaction succeeded (the local Pro Postgres
-    commit stays the source of truth for the approve outcome). Reuses the Fly
-    base64 upload endpoint, authenticated with the reviewer's own bearer JWT
-    (forwarded by the Fly proxy on the incoming request). On success the LOCAL
-    ``documents`` row is enriched with the Drive file_id/file_url; either way
-    the push status is appended to the ``intake_commit_audit.plan`` jsonb of
-    this commit's audit row. NEVER raises — a failed delivery leaves the
-    approve outcome 'committed' and surfaces {status, detail} to the caller.
-    """
-    import json as _json
-
-    if not intake_crm_push.push_enabled():
-        return {"status": "disabled"}
-
-    # Reviewer's bearer JWT — reused for the Pro→Fly call (same RBAC actor).
+    """Best-effort delivery of a COMMITTED document to the Fly CRM."""
     auth_header = request.headers.get("authorization") or ""
     bearer = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else None
-
-    blob_path: str | None = None
-    mime_type: str | None = None
-    already: asyncpg.Record | None = None
-    async with pool.acquire() as conn:
-        if queue_id is not None:
-            qrow = await conn.fetchrow(
-                """
-                SELECT q.blob_path, di.mime_type
-                FROM intake_queue q
-                LEFT JOIN document_instances di ON di.id = q.instance_id
-                WHERE q.id = $1
-                """,
-                queue_id,
-            )
-            if qrow is not None:
-                blob_path = qrow["blob_path"]
-                mime_type = qrow["mime_type"]
-        # Idempotent re-approve guard: if the local row already carries a Drive
-        # file (previous successful push, or Drive-sourced intake), do NOT
-        # upload again — that would duplicate the file in the client's folder.
-        if result.doc_id is not None:
-            already = await conn.fetchrow(
-                "SELECT file_id, file_url FROM documents WHERE id = $1", result.doc_id
-            )
-
-    payload = plan.payload
-    if already is not None and (already["file_id"] or already["file_url"]):
-        push = intake_crm_push.CrmPushResult(
-            ok=False,
-            status="already_delivered",
-            file_id=already["file_id"],
-            file_url=already["file_url"],
-            detail="local documents row already has a Drive file — skipping re-upload",
-        )
-    elif not blob_path:
-        push = intake_crm_push.CrmPushResult(
-            ok=False, status="missing_blob", detail="no blob_path on intake_queue row"
-        )
-    else:
-        push = await intake_crm_push.push_committed_document(
-            bearer_token=bearer,
-            client_id=int(plan.client_id),  # type: ignore[arg-type]  # committed ⇒ non-None
-            practice_id=plan.practice_id,
-            document_type=payload.get("document_type") or "unknown",
-            document_category=payload.get("document_category"),
-            file_name=payload.get("file_name") or os.path.basename(blob_path),
-            blob_path=blob_path,
-            mime_type=mime_type,
-            expiry_date=payload.get("expiry_date"),
-            notes=payload.get("notes"),
-        )
-
-    crm_info: dict[str, Any] = {
-        "status": push.status,
-        "fly_doc_id": push.fly_doc_id,
-        "file_url": push.file_url,
-    }
-    if push.detail:
-        crm_info["detail"] = push.detail
-
-    # Post-delivery bookkeeping (best-effort, outside the commit TX by design).
-    try:
-        async with pool.acquire() as conn:
-            if push.ok and result.doc_id is not None:
-                await conn.execute(
-                    """
-                    UPDATE documents
-                       SET file_id = COALESCE($2, file_id),
-                           file_url = COALESCE($3, file_url),
-                           google_drive_file_url = COALESCE($3, google_drive_file_url),
-                           storage_type = 'google_drive',
-                           updated_at = NOW()
-                     WHERE id = $1
-                    """,
-                    result.doc_id,
-                    push.file_id,
-                    push.file_url,
-                )
-            if result.audit_id is not None:
-                await conn.execute(
-                    """
-                    UPDATE intake_commit_audit
-                       SET plan = COALESCE(plan, '{}'::jsonb) || $2::jsonb
-                     WHERE id = $1
-                    """,
-                    result.audit_id,
-                    _json.dumps({"crm_push": crm_info}),
-                )
-    except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
-        logger.error(
-            "intake.review.crm_push.bookkeeping_failed proposal=%s err=%s",
-            plan.proposal_id,
-            exc,
-        )
-
-    if not push.ok and push.status not in ("disabled", "already_delivered"):
-        logger.warning(
-            "intake.review.crm_push.failed proposal=%s doc=%s status=%s detail=%s",
-            plan.proposal_id,
-            result.doc_id,
-            push.status,
-            push.detail,
-        )
-    return crm_info
+    return await intake_crm_delivery.deliver_committed_to_crm(
+        pool=pool,
+        queue_id=queue_id,
+        plan=plan,
+        result=result,
+        bearer_token=bearer,
+    )
 
 
 # --------------------------------------------------------------------------- #

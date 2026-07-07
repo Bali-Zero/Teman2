@@ -120,7 +120,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // ⚡ Performance: Add cache headers for static assets
   async headers() {
     return [
       {
@@ -184,6 +183,25 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy-Report-Only",
             value:
               "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://nuzantara-rag.fly.dev wss://nuzantara-rag.fly.dev https://127.0.0.1:8090 https://*.sentry.io https://www.google-analytics.com; frame-src 'none'; object-src 'none'; base-uri 'self'",
+          },
+        ],
+      },
+      {
+        // Voice concierge needs microphone capture for browser speech input.
+        source: "/lab/voice-concierge",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=(), payment=()",
+          },
+        ],
+      },
+      {
+        source: "/intelligence/voice-concierge",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=(), payment=()",
           },
         ],
       },

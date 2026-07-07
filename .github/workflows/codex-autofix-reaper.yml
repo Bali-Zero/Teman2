@@ -1,0 +1,107 @@
+name: cron - codex autofix reaper (autonomous reap every 48h)
+
+# Garbage-collects the Codex auto-fix backlog (superscar #2: the nightly autofix generator
+# opens a PR + branch per failing CI run and never reaps them — they accrete for weeks).
+#
+# AUTONOMOUS: the scheduled run (every 48h) EXECUTES the reap directly (--reap --yes) — it
+# closes eligible PRs and deletes orphan branches on its own, no human in the loop. Every
+# action is reported to Telegram (audit trail), so a wrong reap is visible and reversible
+# (closed PRs reopen; deleted branches survive ~90d in GitHub's reflog + the closed PR).
+#
+# Safe-by-construction (scripts/codex_autofix_reaper.py), which is why autonomy is acceptable:
+#   - only ever touches codex/auto-fix-ci-* branches (anchored regex, never a human branch);
+#   - closes a PR ONLY if its target workflow is green on main AND it has NO other failing
+#     checks (the #1820 innocence guard — real unfinished work is never closed);
+#   - deletes an orphan branch ONLY if it has no open PR AND is already on main by content
+#     (blob-per-file, W88) or is a genuinely abandoned no-PR branch past --stale-days.
+# Kill switch: disable this workflow in the Actions tab, or delete the schedule block.
+
+on:
+  schedule:
+    - cron: "0 22 */2 * *" # every 48h at 22:00 UTC (06:00 WITA)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report only, do not reap (default: false — dispatch also reaps)"
+        type: boolean
+        default: false
+      stale_days:
+        description: "Age threshold in days for stale/abandoned artifacts"
+        type: string
+        default: "14"
+
+concurrency:
+  group: codex-autofix-reaper
+  cancel-in-progress: false
+
+permissions:
+  contents: write # delete orphan branches
+  pull-requests: write # close obsolete auto-fix PRs
+  checks: read
+  actions: read # read workflow run conclusions on main
+
+jobs:
+  reap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history for blob-per-file merge check)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Reap (autonomous on schedule; --dry_run to preview via dispatch)
+        id: reap
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          STALE_DAYS: ${{ github.event.inputs.stale_days || '14' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          set -uo pipefail
+          # Validate stale_days is a bare integer (defence-in-depth against dispatch input
+          # injection, even though only write-access users can trigger it).
+          case "$STALE_DAYS" in
+            ''|*[!0-9]*) echo "invalid stale_days: $STALE_DAYS" >&2; exit 2 ;;
+          esac
+          REAP_FLAGS="--reap --yes"
+          if [ "$DRY_RUN" = "true" ]; then REAP_FLAGS=""; fi
+          # Capture output for both the step summary and the Telegram body.
+          python3 scripts/codex_autofix_reaper.py \
+            --repo "$REPO" \
+            --stale-days "$STALE_DAYS" \
+            $REAP_FLAGS 2>&1 | tee reaper-output.txt | tee "$GITHUB_STEP_SUMMARY"
+          # Persist a compact summary line + whether anything was reaped, for the notify step.
+          {
+            echo "reaped<<EOF"
+            grep -E "^(closed #|deleted branch)" reaper-output.txt || echo "(nothing reaped this cycle)"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Notify Telegram (only when something was actually reaped)
+        if: ${{ !cancelled() }}
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          REAPED: ${{ steps.reap.outputs.reaped }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing — skip"; exit 0; }
+          # Stay silent on quiet cycles: no message when nothing was reaped.
+          case "$REAPED" in
+            *"(nothing reaped this cycle)"*|"") echo "quiet cycle — no Telegram"; exit 0 ;;
+          esac
+          TEXT="🧹 <b>Codex auto-fix reaper</b> — autonomous cycle
+          ${REAPED}
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true

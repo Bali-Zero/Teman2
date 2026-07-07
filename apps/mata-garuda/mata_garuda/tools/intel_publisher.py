@@ -127,15 +127,24 @@ def build_envelope(
 
 
 def publish_to_redis(envelope: Envelope, stream: str = STREAM_BRIDGE_OUTBOUND) -> str:
-    """XADD the envelope to the Redis stream. Returns the stream entry ID."""
+    """XADD the envelope to the Redis stream (via the authed SSOT). Returns the entry ID.
+
+    Was bare redis-cli with no auth → under the requirepass cutover a Zero-invoked
+    publish aborted hard with NOAUTH (W89, cicatrix #2). Now delegates to
+    base_worker.redis_cmd (REDISCLI_AUTH + canonical host + abs-path) and adds the
+    MAXLEN ~ trim the other publishers carry (#11 — bounded stream growth).
+    """
+    from mata_garuda.config import STREAM_MAXLEN
+    from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
+
     fields = envelope.to_redis_dict()
-    args = ["redis-cli", "XADD", stream, "*"]
+    args = ["XADD", stream, "MAXLEN", "~", str(STREAM_MAXLEN), "*"]
     for k, v in fields.items():
         args.extend([k, v])
-    result = subprocess.run(args, capture_output=True, text=True, timeout=10)
-    if result.returncode != 0:
-        raise RuntimeError(f"redis-cli XADD failed: {result.stderr.strip()}")
-    return result.stdout.strip()
+    out = _bw_redis_cmd(*args, timeout=10)
+    if out.startswith("[ERROR]"):
+        raise RuntimeError(f"redis-cli XADD failed: {out}")
+    return out
 
 
 def main(argv: Optional[list[str]] = None) -> int:

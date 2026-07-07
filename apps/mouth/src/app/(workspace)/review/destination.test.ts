@@ -16,6 +16,18 @@ const categories = [
     has_expiry: true,
   },
   {
+    code: "itas",
+    name: "ITAS (Izin Tinggal Terbatas)",
+    category_group: "immigration",
+    has_expiry: true,
+  },
+  {
+    code: "e_visa",
+    name: "E-Visa",
+    category_group: "immigration",
+    has_expiry: true,
+  },
+  {
     code: "npwp",
     name: "NPWP",
     category_group: "tax",
@@ -31,6 +43,24 @@ const categories = [
     code: "akta_pendirian",
     name: "Akta Pendirian",
     category_group: "pma",
+    has_expiry: false,
+  },
+  {
+    code: "sk_kemenkumham",
+    name: "SK Kemenkumham",
+    category_group: "pma",
+    has_expiry: false,
+  },
+  {
+    code: "bank_statement",
+    name: "Bank Statement",
+    category_group: "personal",
+    has_expiry: false,
+  },
+  {
+    code: "receipt",
+    name: "Receipt/Payment Proof",
+    category_group: "other",
     has_expiry: false,
   },
 ];
@@ -49,10 +79,47 @@ describe("intake review destination helpers", () => {
       group: "pma",
       categoryCode: "nib",
     });
+    expect(inferDestinationFromDocType("visa", categories)).toEqual({
+      group: "immigration",
+      categoryCode: "e_visa",
+    });
+    expect(inferDestinationFromDocType("payment_receipt", categories)).toEqual({
+      group: "other",
+      categoryCode: "receipt",
+    });
+    expect(inferDestinationFromDocType("bank_statement", categories)).toEqual({
+      group: "personal",
+      categoryCode: "bank_statement",
+    });
+    expect(inferDestinationFromDocType("sk_kemenkumham", categories)).toEqual({
+      group: "pma",
+      categoryCode: "sk_kemenkumham",
+    });
+  });
+
+  it("remaps deprecated kitas doc-type onto the canonical itas category", () => {
+    expect(inferDestinationFromDocType("kitas", categories)).toEqual({
+      group: "immigration",
+      categoryCode: "itas",
+    });
   });
 
   it("falls back to the group only when the mapped category code is absent", () => {
-    expect(inferDestinationFromDocType("kitas", categories)).toEqual({
+    expect(
+      inferDestinationFromDocType("kitas", [
+        {
+          code: "passport",
+          name: "Passport",
+          category_group: "immigration",
+          has_expiry: true,
+        },
+      ]),
+    ).toEqual({
+      group: "immigration",
+      categoryCode: "",
+    });
+
+    expect(inferDestinationFromDocType("travel_ticket", categories)).toEqual({
       group: "immigration",
       categoryCode: "",
     });
@@ -62,6 +129,7 @@ describe("intake review destination helpers", () => {
     expect(categoriesForGroup(categories, "pma").map((c) => c.code)).toEqual([
       "nib",
       "akta_pendirian",
+      "sk_kemenkumham",
     ]);
   });
 

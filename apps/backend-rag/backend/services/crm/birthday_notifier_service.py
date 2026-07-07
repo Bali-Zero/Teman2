@@ -295,7 +295,7 @@ class BirthdayNotifierService:
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                 <p style="font-size: 12px; color: #666;">
                     <strong>Zantara — Bali Zero Team</strong><br>
-                    📧 asya@balizero.com | 📱 WhatsApp: +62 822 6459 9868<br>
+                    📧 asya@balizero.com | 📱 WhatsApp: +62 821 3465 159<br>
                     <a href="https://www.balizero.com" style="color: #3498db;">www.balizero.com</a>
                 </p>
             </div>

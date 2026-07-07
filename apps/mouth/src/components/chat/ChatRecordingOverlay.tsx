@@ -18,7 +18,11 @@ export function ChatRecordingOverlay({
   }
 
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 top-[-40px] bg-black/80 text-white px-3 py-1 rounded-full text-xs font-mono flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+    <div
+      className="absolute left-1/2 -translate-x-1/2 top-[-40px] bg-black/80 text-white px-3 py-1 rounded-full text-xs font-mono flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2"
+      role="status"
+      aria-live="polite"
+    >
       <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
       {formatTime(recordingTime)}
       <span className="ml-2 opacity-50 text-[10px]">Release to send</span>

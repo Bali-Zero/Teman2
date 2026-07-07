@@ -5,6 +5,8 @@ Endpoints for managing client data (anagrafica clienti)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import json
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -15,6 +17,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_crm_user_filter
+from backend.app.deps.crm_service_write import verify_crm_write_key
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (
@@ -29,6 +32,25 @@ from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
 
 logger = get_logger(__name__)
+
+
+def _normalize_phone_digits(raw: str | None) -> str | None:
+    """Reduce a phone to a comparable digit tail for dedup.
+
+    Strips every non-digit, then drops the Indonesian country/trunk prefix
+    (`62` or a leading `0`) so `+62 821-3454-721`, `0821 3454721` and
+    `8213454721` all collapse to the same key. Returns None for empty/too-short
+    input (a 1-2 digit fragment is never a usable dedup key).
+    """
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("62"):
+        digits = digits[2:]
+    elif digits.startswith("0"):
+        digits = digits[1:]
+    return digits if len(digits) >= 6 else None
+
 
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 
@@ -180,6 +202,12 @@ class ClientCreate(BaseModel):
     lead_source: str | None = None  # 'website', 'referral', 'event', 'social_media', etc
     service_interest: list[str] = []  # Services client is interested in
     custom_fields: dict = {}
+    # When a client with the same normalized phone already exists, create_client
+    # returns 409 with the existing match instead of silently spawning a duplicate
+    # (the Trevor-class bug: a team member adds a WhatsApp contact already owned by
+    # someone else). Set True to override for a legitimate shared-phone person
+    # (51 live shared-phone groups exist — spouses / reused numbers).
+    allow_duplicate_phone: bool = False
 
     @field_validator("status")
     @classmethod
@@ -421,6 +449,24 @@ class ClientResponse(BaseModel):
             return []
         return v
 
+    @field_validator("custom_fields", mode="before")
+    @classmethod
+    def ensure_custom_fields_dict(cls, v: Any) -> Any:
+        """Coerce custom_fields to a dict regardless of the stored jsonb shape.
+
+        custom_fields is jsonb and the schema expects an object, but a handful of
+        legacy rows hold a non-object value (e.g. a json array — id 10816 had
+        ``custom_fields`` stored as ``[]``). Without this coercion Pydantic raises
+        ``Input should be a valid dictionary`` on that row, and since the list
+        endpoint validates the whole page in one comprehension a single bad row
+        500s the entire request (reproduced: sahira@ page 2, limit>=75). Any
+        non-dict — array, scalar, null — degrades to ``{}`` so one dirty row can
+        never poison a list page.
+        """
+        if isinstance(v, dict):
+            return v
+        return {}
+
     @field_validator("passport_expiry", "date_of_birth", mode="before")
     @classmethod
     def convert_date_to_string(cls, v: Any) -> Any:
@@ -472,6 +518,71 @@ async def create_client(
         # Auto-assign to creator if not explicitly assigned
         if not client_data.get("assigned_to"):
             client_data["assigned_to"] = creator_email
+
+        # Phone dedup gate (not a DB column — strip before insert).
+        allow_dup_phone = bool(client_data.pop("allow_duplicate_phone", False))
+
+        # Phone-keyed dedup: a team member adding a WhatsApp contact that another
+        # owner already has (same number) used to spawn a silent duplicate
+        # (the Trevor-class bug). Block with 409 + the existing match so the UI
+        # can offer "open existing" instead. `allow_duplicate_phone=True` overrides
+        # for legitimate shared-phone people (spouses / reused numbers — 51 live
+        # groups). The auto-promote path already dedups via upsert_client_by_phone;
+        # this closes the manual-create hole.
+        phone_norm = _normalize_phone_digits(client.phone or client.whatsapp)
+        if phone_norm and not allow_dup_phone:
+            # Match on digits-only on BOTH sides: the table stores phone in two
+            # inconsistent shapes (E.164 `+62…` in `phone`, bare digits in
+            # `phone_normalized`), and that drift is part of why duplicates slip
+            # through. Compare normalized-to-digits to catch either shape.
+            async with db_pool.acquire() as conn:
+                # Mirror `_normalize_phone_digits` IN SQL: strip non-digits, then
+                # drop a leading `62` or `0` so both sides collapse to the same
+                # tail. Keeping these two normalizers identical is load-bearing —
+                # if they drift, the gate silently never matches (false safety).
+                dup = await conn.fetchrow(
+                    """
+                    WITH norm AS (
+                        SELECT id, full_name, assigned_to, updated_at,
+                               REGEXP_REPLACE(COALESCE(phone_normalized, phone, ''),
+                                              '\\D', '', 'g') AS digits
+                        FROM clients
+                        WHERE deleted_at IS NULL
+                    )
+                    SELECT id, full_name, assigned_to
+                    FROM norm
+                    WHERE CASE
+                            WHEN digits LIKE '62%' THEN SUBSTRING(digits FROM 3)
+                            WHEN digits LIKE '0%'  THEN SUBSTRING(digits FROM 2)
+                            ELSE digits
+                          END = $1
+                    ORDER BY updated_at DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    phone_norm,
+                )
+            if dup:
+                # Do NOT log the raw phone (UU PDP / Law 2: no PII in clear text —
+                # CodeQL clear-text-logging gate). The existing client id is a
+                # non-PII internal reference and is enough to trace the dedup hit.
+                logger.info(
+                    "create_client phone dedup hit: existing client id=%s",
+                    dup["id"],
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "duplicate_phone",
+                        "message": (
+                            "A client with this phone already exists. Open the "
+                            "existing record, or resend with allow_duplicate_phone "
+                            "to add a separate person on a shared number."
+                        ),
+                        "existing_client_id": dup["id"],
+                        "existing_full_name": dup["full_name"],
+                        "existing_assigned_to": dup["assigned_to"],
+                    },
+                )
 
         # Costruisce i dati opzionali per l'azienda se presenti nel payload
         # NIB-only dedup: match existing company by NIB (unique identifier)
@@ -564,6 +675,10 @@ async def create_client(
     except ResourceConflictError as e:
         logger.warning("Integrity error creating client: %s", e)
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        # Intentional HTTP errors (409 duplicate-phone gate, 401 missing email)
+        # must pass through — the generic handler below would mask them as 500.
+        raise
     except Exception as e:
         raise handle_database_error(e) from e
 
@@ -578,6 +693,15 @@ async def list_clients(
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
     nationality: str | None = Query(None, description="Filter by nationality"),
+    unnamed: bool = Query(
+        False,
+        description=(
+            "When true, return ONLY phone-keyed leads whose full_name is still a "
+            "placeholder (`Lead +<digits>`, `wa:<digits>`, bare digits, or empty) — "
+            "the WA-mirror auto-created leads an operator must still name. "
+            "Combine with assigned_to (or rely on RBAC) to scope to one operator."
+        ),
+    ),
     passport_expiring_days: int | None = Query(
         None,
         ge=0,
@@ -679,7 +803,11 @@ async def list_clients(
             params: list[Any] = []
             param_index = 1
 
-            # RBAC: enforce assigned_to filter for non-admin users
+            # RBAC: enforce assigned_to filter for non-admin users. A non-admin
+            # sees ONLY their own assigned clients (admins get rbac_filter=None =
+            # full view). Decision 2026-06-19: NOT "own + unassigned" — 93% of the
+            # book is unassigned, so an OR-NULL clause would leak ~10.7k clients to
+            # every team member. Unassigned clients stay admin-only until triaged.
             if rbac_filter is not None:
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(rbac_filter)
@@ -689,6 +817,22 @@ async def list_clients(
                 query_parts.append(f" AND c.status = ${param_index}")
                 params.append(status)
                 param_index += 1
+
+            # Unnamed phone-keyed leads: full_name is still a placeholder the
+            # WA-mirror sweeper assigned (`Lead +628…`, `wa:+…`, bare digits) or
+            # empty. Mirrors JUNK_NAME_PATTERNS in apps/wa-dashboard-m1/server.cjs
+            # so both surfaces agree on "this contact still needs a human name".
+            # No bound params (constant predicate) → param_index unchanged.
+            if unnamed:
+                query_parts.append(
+                    " AND ("
+                    "c.full_name IS NULL"
+                    " OR btrim(c.full_name) = ''"
+                    " OR c.full_name ~* '^lead\\s*\\+?[0-9]+$'"
+                    " OR c.full_name ~* '^wa:\\s*\\+?[0-9]+$'"
+                    " OR c.full_name ~ '^\\+?[0-9]{8,}$'"
+                    ")",
+                )
 
             # Optional filter by assigned_to (admin users can filter by any team member)
             if assigned_to:
@@ -951,26 +1095,6 @@ def _name_is_better(new: str | None, current: str | None) -> bool:
     return _name_is_junk(current)
 
 
-async def verify_crm_write_key(request: Request) -> str:
-    """Auth for POST /upsert-by-phone — a DEDICATED scoped service key
-    (`settings.wa_mirror_crm_write_key`, header `X-CRM-Write-Key`), DISTINCT from the
-    broad `wa_mirror_internal_key`. Least-privilege: this key authorizes ONLY phone-keyed
-    lead upsert, nothing else. Hard-gated by `settings.wa_mirror_crm_write_enabled`
-    (default False) — a kill-switch that 503s the endpoint when the feature is off.
-
-    Returns the service-actor label used for created_by/updated_by audit.
-    """
-    from backend.app.core.config import settings as _settings
-
-    if not getattr(_settings, "wa_mirror_crm_write_enabled", False):
-        raise HTTPException(status_code=503, detail="crm service-write disabled")
-    provided = (request.headers.get("X-CRM-Write-Key") or "").strip()
-    configured = (getattr(_settings, "wa_mirror_crm_write_key", None) or "").strip()
-    if not configured or not provided or provided != configured:
-        raise HTTPException(status_code=401, detail="invalid or missing X-CRM-Write-Key")
-    return "wa-mirror-crm-writer@balizero.com"
-
-
 class ClientUpsertByPhone(BaseModel):
     """Sanitized payload for service-side lead promotion. Raw WhatsApp content NEVER
     crosses this boundary — only derived fields (name, note recap, strategic summary)."""
@@ -1122,9 +1246,9 @@ async def upsert_client_by_phone(
                       $1, '+' || $2, '+' || $2, $2,
                       'lead', 'individual', $3, $4,
                       $5, $5, $6,
-                      $7,
-                      CASE WHEN $7 IS NULL THEN NULL ELSE 'ollama_local' END,
-                      CASE WHEN $7 IS NULL THEN NULL ELSE NOW() END
+                      $7::text,
+                      CASE WHEN $7::text IS NULL THEN NULL ELSE 'ollama_local' END,
+                      CASE WHEN $7::text IS NULL THEN NULL ELSE NOW() END
                     )
                     RETURNING id
                     """,
@@ -1510,70 +1634,109 @@ async def get_client_summary(
 async def get_clients_stats(
     _request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get overall client statistics
 
     Returns counts by status, top assigned team members, etc.
 
+    Access Control:
+    - Admin: sees global stats across all clients
+    - Team member: sees only stats for clients assigned to them
+
     Performance: Cached for 5 minutes to reduce database load.
+
+    Cache safety: the @cached decorator hashes the call kwargs, which include
+    the authenticated user (a JSON-serializable dict) — so every user gets a
+    distinct cache entry and cannot be served another user's aggregate.
+    Mirrors get_practices_stats in crm_practices.py.
     """
     try:
+        # RBAC: admins see the whole book; non-admin team members are scoped to
+        # their own assigned clients. For scoped (non-admin) requests $1 is the
+        # user email in every query below (the only pre-existing param,
+        # STATS_DAYS_RECENT, shifts to $2 in the new_last_30_days query).
+        user_email = (
+            current_user.get("email", "").lower()
+            if isinstance(current_user, dict)
+            else ""
+        )
+        scoped = bool(user_email) and not is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
             # Total clients by status (exclude soft-deleted)
             by_status_rows = await conn.fetch(
-                """
+                f"""
                 SELECT status, COUNT(*) as count
                 FROM clients
-                WHERE deleted_at IS NULL
+                WHERE deleted_at IS NULL{" AND assigned_to = $1" if scoped else ""}
                 GROUP BY status
                 """,
+                *([user_email] if scoped else []),
             )
 
             # Clients by assigned team member (exclude soft-deleted)
             by_team_member_rows = await conn.fetch(
-                """
+                f"""
                 SELECT assigned_to, COUNT(*) as count
                 FROM clients
-                WHERE assigned_to IS NOT NULL AND deleted_at IS NULL
+                WHERE assigned_to IS NOT NULL AND deleted_at IS NULL{
+                    " AND assigned_to = $1" if scoped else ""
+                }
                 GROUP BY assigned_to
                 ORDER BY count DESC
                 """,
+                *([user_email] if scoped else []),
             )
 
             # New clients last N days
-            new_last_30_days_row = await conn.fetchrow(
-                """
-                SELECT COUNT(*) as count
-                FROM clients
-                WHERE created_at >= NOW() - INTERVAL '1 day' * $1
-                """,
-                STATS_DAYS_RECENT,
-            )
+            if scoped:
+                new_last_30_days_row = await conn.fetchrow(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM clients
+                    WHERE assigned_to = $1
+                        AND created_at >= NOW() - INTERVAL '1 day' * $2
+                    """,
+                    user_email,
+                    STATS_DAYS_RECENT,
+                )
+            else:
+                new_last_30_days_row = await conn.fetchrow(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM clients
+                    WHERE created_at >= NOW() - INTERVAL '1 day' * $1
+                    """,
+                    STATS_DAYS_RECENT,
+                )
 
             # Practices by type — single GROUP BY query (avoids N+1 per-type loop)
             by_practice_type_rows = await conn.fetch(
-                """
+                f"""
                 SELECT pt.name as practice_type, COUNT(p.id) as count
                 FROM practices p
                 JOIN practice_types pt ON p.practice_type_id = pt.id
+                {"WHERE p.assigned_to = $1" if scoped else ""}
                 GROUP BY pt.name
                 ORDER BY count DESC
                 """,
+                *([user_email] if scoped else []),
             )
 
             # Passport health counts
             passport_health_row = await conn.fetchrow(
-                """
+                f"""
                 SELECT
                     COUNT(*) FILTER (WHERE passport_expiry < CURRENT_DATE) as expired,
                     COUNT(*) FILTER (WHERE passport_expiry >= CURRENT_DATE AND passport_expiry <= CURRENT_DATE + INTERVAL '90 days') as expiring_soon,
                     COUNT(*) FILTER (WHERE last_interaction_date < NOW() - INTERVAL '30 days' OR last_interaction_date IS NULL) as silent_30d
                 FROM clients
                 WHERE deleted_at IS NULL AND status != 'inactive'
-                    AND passport_expiry IS NOT NULL
+                    AND passport_expiry IS NOT NULL{" AND assigned_to = $1" if scoped else ""}
                 """,
+                *([user_email] if scoped else []),
             )
 
             by_status = {row["status"]: row["count"] for row in by_status_rows}
@@ -1720,6 +1883,69 @@ class AiSummaryResponse(BaseModel):
     status: str  # 'available' | 'not_generated' | 'pending'
 
 
+class WaCaseIntelligenceCard(BaseModel):
+    """One Zantara Captain card linked to a client's WhatsApp conversation."""
+
+    id: int
+    conversation_key: str
+    member_phone: str | None = None
+    counterpart_key: str | None = None
+    display_name: str | None = None
+    chat_kind: str
+    case_status: str
+    case_type: str | None = None
+    source_model: str
+    reasoning_effort: str | None = None
+    analysis_hash: str
+    analysis_id: str | None = None
+    message_count: int
+    unread_count: int
+    last_message_at: datetime | None = None
+    priority_score: int
+    flags: list[dict[str, Any]]
+    recap: str | None = None
+    next_action: str | None = None
+    ideal_reply: str | None = None
+    evidence: str | None = None
+    crm_packet: str | None = None
+    raw_sections: dict[str, Any]
+    analysis_output_path: str | None = None
+    generated_at: datetime | None = None
+    imported_at: datetime
+    updated_at: datetime
+
+
+class WaCaseIntelligenceResponse(BaseModel):
+    client_id: int
+    status: str  # 'available' | 'not_generated'
+    case_count: int
+    cases: list[WaCaseIntelligenceCard]
+
+
+def _coerce_json_list(value: Any) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _coerce_json_dict(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+    return value if isinstance(value, dict) else {}
+
+
 @router.get(
     "/{client_id}/ai-summary",
     operation_id="get_crm_client_ai_summary",
@@ -1851,6 +2077,68 @@ async def get_client_ai_summary(
         # CodeQL log-injection: cast to int defangs any non-numeric path.
         logger.exception(
             "ai_summary fetch failed for client %d",
+            int(client_id),
+        )
+        raise handle_database_error(e) from e
+
+
+@router.get(
+    "/{client_id}/wa-case-intelligence",
+    operation_id="get_crm_client_wa_case_intelligence",
+    response_model=WaCaseIntelligenceResponse,
+)
+async def get_client_wa_case_intelligence(
+    client_id: int,
+    limit: int = Query(12, ge=1, le=50),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> WaCaseIntelligenceResponse:
+    """Fetch Zantara Captain case cards derived from WhatsApp analysis.
+
+    This endpoint is read-only. It intentionally returns case-level intelligence
+    separately from clients.strategic_recap so the CRM can show per-conversation
+    reasoning, evidence, ideal reply, and next action without flattening multiple
+    cases into a single paragraph.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+            rows = await conn.fetch(
+                """
+                SELECT id, conversation_key, member_phone, counterpart_key, display_name,
+                       chat_kind, case_status, case_type, source_model, reasoning_effort,
+                       analysis_hash, analysis_id, message_count, unread_count,
+                       last_message_at, priority_score, flags, recap, next_action,
+                       ideal_reply, evidence, crm_packet, raw_sections,
+                       analysis_output_path, generated_at, imported_at, updated_at
+                FROM crm_wa_case_intelligence
+                WHERE client_id = $1
+                ORDER BY priority_score DESC, last_message_at DESC NULLS LAST, updated_at DESC
+                LIMIT $2
+                """,
+                client_id,
+                limit,
+            )
+
+            cases: list[WaCaseIntelligenceCard] = []
+            for row in rows:
+                payload = dict(row)
+                payload["flags"] = _coerce_json_list(payload.get("flags"))
+                payload["raw_sections"] = _coerce_json_dict(payload.get("raw_sections"))
+                cases.append(WaCaseIntelligenceCard(**payload))
+
+            return WaCaseIntelligenceResponse(
+                client_id=client_id,
+                status="available" if cases else "not_generated",
+                case_count=len(cases),
+                cases=cases,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(
+            "wa_case_intelligence fetch failed for client %d",
             int(client_id),
         )
         raise handle_database_error(e) from e

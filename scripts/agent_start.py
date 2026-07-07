@@ -382,17 +382,40 @@ def cmd_create(
 
     WORKTREES_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Base the worktree on the FRESH upstream tip, not the (possibly stale)
+    # local branch. The main checkout routinely lags origin/main by dozens of
+    # commits on this high-traffic repo (it is read-only for agents, so nothing
+    # fast-forwards it). Branching from local `main` then yields a worktree N
+    # commits behind → every PR opened from it conflicts with intervening work
+    # on the same files (sibling-race / merge-train class, superscar #5).
+    # Fetch origin/<base> and branch from there. If the fetch fails (offline —
+    # Law 6 sovereignty: disconnection is a NORMAL state, not a fault), fall
+    # back to the local ref with a loud warning rather than blocking work.
+    start_point = base_branch
+    try:
+        _run_git(["fetch", "origin", base_branch])
+        start_point = f"origin/{base_branch}"
+    except subprocess.CalledProcessError as exc:
+        logger.warning(
+            "could not fetch origin/%s (offline?) — basing worktree on LOCAL "
+            "%s, which may lag upstream: %s",
+            base_branch,
+            base_branch,
+            (exc.stderr or "").strip(),
+        )
+
     logger.info(
-        "creating worktree lane=%s task_id=%s branch=%s base=%s ttl_min=%d",
+        "creating worktree lane=%s task_id=%s branch=%s base=%s start=%s ttl_min=%d",
         lane,
         task_id,
         branch,
         base_branch,
+        start_point,
         ttl_minutes,
     )
 
     try:
-        _run_git(["worktree", "add", "-b", branch, str(worktree), base_branch])
+        _run_git(["worktree", "add", "-b", branch, str(worktree), start_point])
     except subprocess.CalledProcessError as exc:
         stderr = (exc.stderr or "").strip()
         raise SystemExit(f"ERROR: git worktree add failed: {stderr}") from exc
@@ -600,7 +623,13 @@ def _branch_in_origin_main(worktree: Path) -> bool:
 
     Implementation: ``git -C <wt> merge-base --is-ancestor HEAD origin/main``
     (exit 0 ⇒ HEAD is an ancestor of origin/main ⇒ every commit is already in
-    main upstream; exit 1 ⇒ HEAD has commits NOT in origin/main).
+    main upstream; exit 1 ⇒ HEAD has commits NOT in origin/main — but the
+    ancestor test is a PROXY that lies on squash-merged/reworked branches
+    (W88), so exit 1 falls through to a blob-per-file CONTENT check: the
+    branch is merged iff every file it authored since its merge-base has the
+    same blob on origin/main. Never the three-dot diff — post-squash the
+    merge-base regresses and three-dot counts main's own progress as
+    branch-only changes, the W88 second-degree trap).
 
     Why ``origin/main`` and not local ``main`` or ``@{upstream}`` (the refuter
     killed both earlier designs):
@@ -631,8 +660,43 @@ def _branch_in_origin_main(worktree: Path) -> bool:
     if proc.returncode == 0:
         return True
     if proc.returncode == 1:
-        # HEAD has commits not in origin/main → unmerged work present.
-        return False
+        # Ancestor check failed (unmerged commits present) — BUT squash merges
+        # and reworks break the ancestor proxy (W88). We must verify by CONTENT
+        # before refusing to reap. A branch is safe to reap if every file it
+        # authored (changed since its merge-base) has the SAME blob on origin/main.
+        mb_proc = _run_git(
+            ["merge-base", "origin/main", "HEAD"], cwd=worktree, check=False
+        )
+        if mb_proc.returncode != 0:
+            return False
+        mb = mb_proc.stdout.strip()
+
+        diff_proc = _run_git(
+            ["diff", "--name-only", mb, "HEAD"], cwd=worktree, check=False
+        )
+        if diff_proc.returncode != 0:
+            return False
+
+        for f in diff_proc.stdout.splitlines():
+            f = f.strip()
+            if not f:
+                continue
+            bh_proc = _run_git(
+                ["rev-parse", f"HEAD:{f}"], cwd=worktree, check=False
+            )
+            bh = bh_proc.stdout.strip() if bh_proc.returncode == 0 else "__ABSENT__"
+
+            mh_proc = _run_git(
+                ["rev-parse", f"origin/main:{f}"], cwd=worktree, check=False
+            )
+            mh = mh_proc.stdout.strip() if mh_proc.returncode == 0 else "__ABSENT__"
+
+            if bh != mh:
+                return False
+
+        # If all changed files match origin/main by blob, the content is merged.
+        return True
+
     # rc >= 128 (bad ref, not a git dir, unknown HEAD): fail-safe to protect.
     logger.warning(
         "merge-base probe inconclusive for %s (rc=%s) — treating as unmerged "
@@ -911,6 +975,10 @@ def _remove_worktree(worktree: Path, branch: str, *, delete_branch: bool) -> Non
 def cmd_release(task_id: str, *, force: bool = False) -> int:
     """Tear down a worktree by task-id. Branch deleted only if merged into base.
 
+    Merged-ness is the cheap ancestor count first, then — because that proxy
+    lies on squash-merged branches (W88) — the same blob-per-file content
+    fallback the cleanup reaper uses (`_branch_in_origin_main`, #2038).
+
     With --force, the branch is deleted unconditionally (operator escape).
     """
     if _kill_switch_active():
@@ -941,6 +1009,13 @@ def cmd_release(task_id: str, *, force: bool = False) -> int:
         )
 
     merged = _branch_is_merged(meta.branch, base=base)
+    if not merged and wt.is_dir() and base == "main":
+        # W88: the ancestor proxy says "unmerged" for every squash-merged
+        # branch. Fall back to the blob-per-file content check the cleanup
+        # reaper uses. Gated on wt.is_dir() — with the checkout gone the
+        # content check degenerates to True and would delete an unproven
+        # branch (keep the fail-safe direction).
+        merged = _branch_in_origin_main(wt)
     if not merged and not force:
         raise SystemExit(
             f"ERROR: branch {meta.branch} not merged into {base}. "

@@ -231,10 +231,12 @@ class TestStreamConsumer:
 
     def test_dedup_skips_already_fed(self, tmp_path):
         kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
-        # Pre-seed a fed marker
+        # Pre-seed a fed marker on the ITEM-IDENTITY dedup key (title+url), which
+        # is what the feeder now computes (W89 #2 — no longer the bare URL).
+        seed_key = nlm_feeder._dedup_key("dup", "https://ex.com/dup")
         kb.store("nlm_feeder", "nlm_fed",
-                 nlm_feeder._nlm_fed_marker("https://ex.com/dup"),
-                 "https://ex.com/dup", 1.0)
+                 nlm_feeder._nlm_fed_marker(seed_key),
+                 seed_key, 1.0)
 
         items = [
             _fake_enriched_item("1-0", domain="tax_fiscal",
@@ -276,3 +278,112 @@ class TestStreamConsumer:
         for call in m_sleep.call_args_list:
             assert call.args[0] == 5
         kb.close()
+
+
+class TestNlmCliPath:
+    """Stage 3 (2026-06-30): the `nlm` CLI must resolve to an ABSOLUTE path so the
+    feeder running under cron/non-login launchd (stripped PATH) stops failing mutely
+    with `No such file or directory: 'nlm'`. Verified live on Pro: feeder read the
+    enriched backlog but every push errored because bare 'nlm' was not on PATH.
+    Same class + same cure as Stage 1's _resolve_redis_cli for redis-cli."""
+
+    def test_nlm_resolves_absolute_when_found(self, monkeypatch):
+        monkeypatch.setattr(nlm_feeder.shutil, "which", lambda _: "/Users/x/.local/bin/nlm")
+        assert nlm_feeder._resolve_nlm_cli() == "/Users/x/.local/bin/nlm"
+
+    def test_nlm_falls_back_to_known_path(self, monkeypatch):
+        import os
+        monkeypatch.setattr(nlm_feeder.shutil, "which", lambda _: None)
+        real_exists = os.path.exists
+        monkeypatch.setattr(
+            nlm_feeder.os.path,
+            "exists",
+            lambda p: True if "/.local/bin/nlm" in p else real_exists(p),
+        )
+        assert nlm_feeder._resolve_nlm_cli().endswith("/.local/bin/nlm")
+
+    def test_nlm_last_resort_is_bare_name(self, monkeypatch):
+        monkeypatch.setattr(nlm_feeder.shutil, "which", lambda _: None)
+        monkeypatch.setattr(nlm_feeder.os.path, "exists", lambda _: False)
+        assert nlm_feeder._resolve_nlm_cli() == "nlm"
+
+    def test_invocations_use_resolved_binary_not_bare_nlm(self):
+        """Every subprocess invocation must start with the resolved NLM_CLI, never 'nlm'."""
+        with patch.object(nlm_feeder.subprocess, "run") as m_run:
+            from unittest.mock import MagicMock
+            m_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
+            nlm_feeder._nlm_notebook_source_count("nb-x")
+            nlm_feeder._nlm_add_url("nb-x", "https://example.test/a")
+        for call in m_run.call_args_list:
+            argv = call.args[0]
+            assert argv[0] == nlm_feeder.NLM_CLI
+            # NLM_CLI is resolved at import; in CI it may be bare 'nlm' but must be the constant
+            assert argv[0] != "nlm" or nlm_feeder.NLM_CLI == "nlm"
+
+
+class TestCapRollover:
+    """B2 (2026-06-30): when a domain NB hits the source cap, the feeder must roll
+    over to its registry peer_uuids overflow NB automatically — no manual registry
+    edit (B1 did that by hand). _resolve_writable_nb is the resolver every add goes
+    through. Fail-safe: if no peer has room, return the original NB (the add then
+    skips, as before — never crash, never lose-route silently)."""
+
+    FULL = "dc5d01cd-e99f-4c8f-aae4-75060b43d0de"
+    OVERFLOW = "069f009c-ce74-42e5-b75c-e584aa18feb1"
+
+    def test_not_at_cap_returns_self(self):
+        with patch.object(nlm_feeder, "_nlm_at_cap", return_value=False):
+            assert nlm_feeder._resolve_writable_nb(self.FULL) == self.FULL
+
+    def test_at_cap_rolls_over_to_peer_with_room(self):
+        # FULL is at cap; its registry peer OVERFLOW has room
+        def at_cap(nb):
+            return nb == self.FULL
+        with patch.object(nlm_feeder, "_nlm_at_cap", side_effect=at_cap):
+            assert nlm_feeder._resolve_writable_nb(self.FULL) == self.OVERFLOW
+
+    def test_at_cap_no_peer_room_returns_original(self):
+        # everything is full → fail-safe to the original (add will skip)
+        with patch.object(nlm_feeder, "_nlm_at_cap", return_value=True):
+            assert nlm_feeder._resolve_writable_nb(self.FULL) == self.FULL
+
+    def test_unknown_nb_returns_self(self):
+        # a NB not in the registry has no peers → returns itself
+        unknown = "00000000-0000-0000-0000-000000000000"
+        with patch.object(nlm_feeder, "_nlm_at_cap", return_value=True):
+            assert nlm_feeder._resolve_writable_nb(unknown) == unknown
+
+    def test_add_url_writes_to_rolled_over_nb(self):
+        """_nlm_add_url must target the resolved peer, not skip, when rolled over."""
+        from unittest.mock import MagicMock
+        def at_cap(nb):
+            return nb == self.FULL
+        with patch.object(nlm_feeder, "_nlm_at_cap", side_effect=at_cap), \
+             patch.object(nlm_feeder.subprocess, "run") as m_run:
+            m_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            ok = nlm_feeder._nlm_add_url(self.FULL, "https://example.test/x")
+        assert ok is True
+        # the add targeted the OVERFLOW, not the full FULL
+        argv = m_run.call_args.args[0]
+        assert self.OVERFLOW in argv and self.FULL not in argv
+
+
+class TestNlmAddTextTitlePreserved:
+    """Regression: _nlm_add_text must pass --text --title (NOT --file with a temp
+    file whose name becomes the source title — that produced 8 mis-titled
+    nlm_feed_*.txt sources in prod, fixed 2026-06-30)."""
+
+    def test_uses_text_and_title_flags_not_file(self):
+        from unittest.mock import patch, MagicMock
+        ok = MagicMock(returncode=0, stdout="Source ID: x", stderr="")
+        with patch.object(nlm_feeder, "_resolve_writable_nb", side_effect=lambda n: n), \
+             patch.object(nlm_feeder, "_nlm_at_cap", return_value=False), \
+             patch("subprocess.run", return_value=ok) as m_run:
+            res = nlm_feeder._nlm_add_text("nb-1", "My Digest Title", "the body text")
+        assert res is True
+        argv = m_run.call_args.args[0]
+        assert "--text" in argv and "--title" in argv
+        assert "--file" not in argv                     # no temp-file path
+        # the real title is passed, not a temp filename
+        assert argv[argv.index("--title") + 1] == "My Digest Title"
+        assert argv[argv.index("--text") + 1] == "the body text"

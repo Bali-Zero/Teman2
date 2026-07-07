@@ -18,6 +18,7 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
+from backend.services.intake import routing as intake_routing
 from backend.services.intake.routing import backfill_received_by, route_stage
 
 _DB_URL = os.environ.get(
@@ -36,6 +37,12 @@ async def pool():
         yield p
     finally:
         await p.close()
+
+
+@pytest.fixture(autouse=True)
+def _auto_attach_killswitches_off(monkeypatch):
+    monkeypatch.delenv("INTAKE_AUTO_ATTACH_ENABLED", raising=False)
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
 
 
 @pytest_asyncio.fixture
@@ -122,6 +129,7 @@ async def test_auto_attach_passport_exact(pool, seeded):
     r = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
     assert r["decision"] == "AUTO_ATTACH"
     assert r["requires_human"] is False
+    assert r["auto_attach"]["skipped"] == "killswitch_off"
     row = await _proposal(pool, q)
     er = _j(row["entity_resolution"])
     assert er["subject_kind"] == "person"
@@ -129,6 +137,69 @@ async def test_auto_attach_passport_exact(pool, seeded):
     assert er["candidates"][0]["id"] == seeded["c_auto"]
     assert _j(row["routing"])["client_id"] == seeded["c_auto"]
     assert row["status"] == "review_pending"
+
+
+@pytest.mark.asyncio
+async def test_route_stage_consumes_auto_attach_result(monkeypatch, pool, seeded):
+    """route_stage must arm the dormant AUTO_ATTACH flag after proposal insert.
+
+    The helper is patched so this test covers the route-stage contract without
+    executing the real writer path.
+    """
+    calls = []
+
+    async def _fake_auto_attach(
+        *,
+        proposal_id,
+        proposal,
+        pool,
+        sender_phone,
+        source_context,
+        effective_status,
+    ):
+        calls.append(
+            {
+                "proposal_id": proposal_id,
+                "decision": proposal["entity_resolution"]["decision"],
+                "sender_phone": sender_phone,
+                "source_context": source_context,
+                "effective_status": effective_status,
+            }
+        )
+        async with pool.acquire() as c:
+            await c.execute(
+                "UPDATE document_routing_proposal SET status='auto_routed' WHERE id=$1",
+                proposal_id,
+            )
+        return {"committed": True, "status": "auto_routed", "outcome": "committed"}
+
+    monkeypatch.setattr(
+        intake_routing, "_try_auto_attach_after_route", _fake_auto_attach
+    )
+
+    q = await _seed_queue(
+        pool,
+        "passport",
+        {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"},
+    )
+    r = await route_stage(
+        {"id": q, "pipeline_version": "v1", "sender_phone": "+6281200000000"},
+        "route",
+        pool,
+    )
+
+    assert calls == [
+        {
+            "proposal_id": r["proposal_id"],
+            "decision": "AUTO_ATTACH",
+            "sender_phone": "+6281200000000",
+            "source_context": None,
+            "effective_status": "review_pending",
+        }
+    ]
+    assert r["routed"] is True
+    assert r["status"] == "auto_routed"
+    assert (await _proposal(pool, q))["status"] == "auto_routed"
 
 
 @pytest.mark.asyncio
@@ -244,3 +315,60 @@ async def test_route_stage_zero_crm_writes(pool, seeded):
     await route_stage({"id": q2, "pipeline_version": "v1"}, "route", pool)
     after = await counts()
     assert before == after, f"CRM tables mutated: before={before} after={after}"
+
+
+def test_pipeline_version_is_single_source_of_truth():
+    """Blindatura difetto-1: routing/writer/enqueue must agree on ONE version.
+
+    Historical drift: enqueue used "intake-v1" while routing/writer used "v1".
+    Because routing_key = sha256(queue_id|doc_index|pipeline_version), the two
+    halves of the pipeline derived different keys for the same document and a
+    re-process could orphan proposals. The constants must be the SAME object,
+    not two literals that merely happen to match today.
+    """
+    # NB: `from backend.services.intake import enqueue` resolves to the enqueue
+    # FUNCTION (re-exported by __init__), not the submodule — so import the
+    # constant explicitly and the submodules via their full dotted path.
+    from backend.services.intake.enqueue import PIPELINE_VERSION
+    from backend.services.intake.routing import PIPELINE_VERSION_DEFAULT
+    from backend.services.intake.writer import PIPELINE_VERSION as WRITER_PV
+
+    assert PIPELINE_VERSION_DEFAULT == PIPELINE_VERSION
+    assert WRITER_PV == PIPELINE_VERSION
+
+
+@pytest.mark.asyncio
+async def test_anti_deadlock_revives_superseded_orphan(pool, seeded):
+    """Blindatura difetto-2: a re-route over a superseded-orphan must revive it.
+
+    Reproduces the adit done-deadlock: a proposal is superseded (by a reprocess)
+    but the same routing_key gets re-derived, so the bare ON CONFLICT DO NOTHING
+    would drop the fresh proposal and leave the queue with ZERO live proposal —
+    invisible in /review forever. The guard must flip the survivor back to
+    'review_pending' instead.
+    """
+    q = await _seed_queue(pool, "passport", {"name": f"{TAG} Nonexistent Person XYZ"})
+    r1 = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
+    pid = r1["proposal_id"]
+
+    # Simulate the reprocess marking the proposal superseded (m226) WITHOUT
+    # bumping the queue's pipeline_version — so the re-route derives the SAME key.
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE document_routing_proposal SET status='superseded' WHERE id=$1", pid
+        )
+        assert (await _proposal(pool, q))["status"] == "superseded"
+
+    # Re-route: same routing_key → ON CONFLICT → guard must revive the orphan.
+    r2 = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
+    assert r2["proposal_id"] == pid  # same row, not a duplicate
+    row = await _proposal(pool, q)
+    assert row["status"] == "review_pending", (
+        "superseded-orphan was NOT revived — done-deadlock would recur"
+    )
+    # exactly one proposal for this queue (no duplicate created)
+    async with pool.acquire() as c:
+        n = await c.fetchval(
+            "SELECT count(*) FROM document_routing_proposal WHERE queue_id=$1", q
+        )
+    assert n == 1

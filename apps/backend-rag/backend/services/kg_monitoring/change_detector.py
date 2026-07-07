@@ -222,7 +222,7 @@ class ChangeDetector:
 
             logger.info("✅ Change tracking tables initialized")
 
-        except (asyncpg.PostgresError, OSError):
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError):
             logger.exception("Failed to initialize DB tables")
             raise
 
@@ -426,7 +426,7 @@ class ChangeDetector:
                     )
                     self._state_cache[state.document_id] = state
 
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning("Failed to load source states from DB: %s", e)
         except (KeyError, TypeError):
             logger.exception("Corrupt row data while loading source states")
@@ -471,7 +471,7 @@ class ChangeDetector:
                 # Log change event if applicable
                 await self._log_change_event(state)
 
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning("Failed to save state for %s: %s", state.document_id, e)
         except Exception:
             logger.exception("Unexpected error saving state for %s", state.document_id)
@@ -498,7 +498,7 @@ class ChangeDetector:
                     state.title,
                     state.url,
                 )
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning("Failed to log change event for %s: %s", state.document_id, e)
 
     async def _send_change_alerts(self, changes: list[ChangeEvent]) -> None:
@@ -603,7 +603,7 @@ class ChangeDetector:
                     for row in rows
                 ]
 
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning("Failed to query recent changes: %s", e)
             return []
         except (KeyError, ValueError):

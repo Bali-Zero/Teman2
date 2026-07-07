@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Check, X, Info, Phone } from "lucide-react";
 import type { ServicePackage } from "@/data/services_data";
+import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 
 // ServiceData without icon (React component cannot be serialized)
 type ServiceDataWithoutIcon = Omit<
@@ -232,14 +233,22 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               </div>
 
               {/* WhatsApp CTA */}
-              <Link
-                href={`https://wa.me/6282264599868?text=${encodeURIComponent(`Hi, I'm interested in ${selectedPackage.name}. Can you help me?`)}`}
-                target="_blank"
+              <WhatsAppLeadButton
+                source="pricing_modal"
+                context={{
+                  service_slug: slug,
+                  package_name: selectedPackage.name,
+                }}
+                whatsappContext={[
+                  { label: "Service", value: slug },
+                  { label: "Package", value: selectedPackage.name },
+                ]}
+                utm={{ page: `/services/${slug}` }}
                 className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#20BD5A] transition-colors mb-3"
               >
                 <Phone className="w-5 h-5" />
                 Chat on WhatsApp
-              </Link>
+              </WhatsAppLeadButton>
 
               <Link
                 href="/chat"

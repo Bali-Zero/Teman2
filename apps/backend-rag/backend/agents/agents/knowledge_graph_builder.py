@@ -284,7 +284,7 @@ class KnowledgeGraphBuilder:
                     f"✅ Processed conversation {conversation_id}: {len(entities)} entities, {relationships_count} relationships",
                 )
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error(
                 "Database error processing conversation %s: %s",
                 conversation_id,
@@ -329,7 +329,7 @@ class KnowledgeGraphBuilder:
 
             logger.info(f"✅ Knowledge graph built from {len(conversation_ids)} conversations")
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error building graph: %s", e, exc_info=True)
             raise
         except Exception as e:

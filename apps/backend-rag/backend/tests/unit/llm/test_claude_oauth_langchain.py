@@ -310,6 +310,94 @@ async def test_structured_output_accepts_prompt_value_input():
     assert result.intent == "tax"
 
 
+# ---------------------------------------------------------------------------
+# Native --json-schema path + sequential fallback (SPEC v2 F2)
+# ---------------------------------------------------------------------------
+
+
+def _patch_complete(side_effect):
+    """Patch complete_async with a custom async side_effect that records calls."""
+    from unittest.mock import patch
+
+    from backend.llm import claude_oauth_langchain as mod
+
+    return patch.object(mod, "complete_async", side_effect)
+
+
+@pytest.mark.asyncio
+async def test_native_structured_output_validated_not_prose():
+    """When the CLI returns structured_output, validate THAT — never the prose
+    `text` (review D2). One call, no text fallback."""
+    from backend.llm.claude_oauth_langchain import build_claude_oauth_chat_model
+
+    calls: list[dict] = []
+
+    async def side_effect(prompt, *, model=None, timeout_s=120, endpoint=None, request_id=None, json_schema=None):
+        calls.append({"json_schema": json_schema})
+        return type(
+            "R",
+            (),
+            {"text": "garbage prose not valid json", "structured": {"intent": "visa", "confidence": 0.9}},
+        )()
+
+    with _patch_complete(side_effect):
+        model = build_claude_oauth_chat_model()
+        structured = model.with_structured_output(_Sample)
+        result = await structured.ainvoke("KITAS?")
+
+    assert isinstance(result, _Sample)
+    assert result.intent == "visa"
+    assert result.confidence == pytest.approx(0.9)
+    # native path: exactly ONE call, with the schema passed through.
+    assert len(calls) == 1
+    assert calls[0]["json_schema"] is not None
+    assert "properties" in calls[0]["json_schema"]
+
+
+@pytest.mark.asyncio
+async def test_sequential_text_fallback_when_no_structured():
+    """structured=None (CLI lacks flag / model declined) → re-call in text mode
+    and parse prose. TWO calls; the prose is never fed from the native attempt
+    (review D3)."""
+    from backend.llm.claude_oauth_langchain import build_claude_oauth_chat_model
+
+    calls: list[bool] = []
+
+    async def side_effect(prompt, *, model=None, timeout_s=120, endpoint=None, request_id=None, json_schema=None):
+        calls.append(json_schema is not None)
+        if json_schema is not None:
+            # native attempt yields no structured
+            return type("R", (), {"text": "(no structured)", "structured": None})()
+        # text fallback: prose carries parseable JSON
+        return type("R", (), {"text": json.dumps({"intent": "company", "confidence": 0.7}), "structured": None})()
+
+    with _patch_complete(side_effect):
+        model = build_claude_oauth_chat_model()
+        structured = model.with_structured_output(_Sample)
+        result = await structured.ainvoke("setup PT PMA")
+
+    assert result.intent == "company"
+    assert calls == [True, False]  # native first, then text fallback
+
+
+@pytest.mark.asyncio
+async def test_native_include_raw_envelope():
+    """include_raw=True still returns the LangChain envelope on the native path."""
+    from backend.llm.claude_oauth_langchain import build_claude_oauth_chat_model
+
+    async def side_effect(prompt, *, model=None, timeout_s=120, endpoint=None, request_id=None, json_schema=None):
+        return type("R", (), {"text": "prose", "structured": {"intent": "tax", "confidence": 0.5}})()
+
+    with _patch_complete(side_effect):
+        model = build_claude_oauth_chat_model()
+        structured = model.with_structured_output(_Sample, include_raw=True)
+        result = await structured.ainvoke("NPWP?")
+
+    assert isinstance(result, dict)
+    assert result["parsing_error"] is None
+    assert result["parsed"].intent == "tax"
+
+
 @pytest.mark.asyncio
 async def test_system_message_is_prepended_or_merged():
     """Gemini review: SystemMessage must be first, not appended at the end."""

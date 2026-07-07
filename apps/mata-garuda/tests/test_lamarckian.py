@@ -129,6 +129,36 @@ class TestParseCaseStatus:
         assert status is None
         assert details is None
 
+    def test_missing_terminal_status_records_failure(self, monkeypatch):
+        import mata_garuda.runtime.lamarckian as lamarckian
+        from mata_garuda.types import Agent, Response
+
+        agent = Agent(name=TEST_AGENT, model="ollama:qwen3.5:9b")
+
+        def fake_run_agent_loop(**kwargs):
+            return Response(
+                messages=[{
+                    "role": "assistant",
+                    "content": "Finished without a status tool.",
+                }],
+                agent=agent,
+            )
+
+        monkeypatch.setattr(lamarckian, "run_agent_loop", fake_run_agent_loop)
+
+        response = lamarckian.run_with_lamarckian_feedback(
+            agent,
+            "test query",
+            max_retry=1,
+        )
+
+        runs = get_recent_runs(TEST_AGENT, window=1)
+        assert runs[-1]["success"] is False
+        assert any(
+            "failed without a terminal case status" in msg.get("content", "")
+            for msg in response.messages
+        )
+
 
 # ─── Feedback Logging Tests ───────────────────────────────────────────
 

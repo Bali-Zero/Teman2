@@ -266,15 +266,55 @@ class TestCLIRuntime:
         assert "hello" in cmd
         assert "You are helpful" in cmd
 
-    def test_build_command_gemini(self):
+    def test_build_command_agy(self):
         from mata_garuda.runtime.cli_runtime import CLIRuntime
 
-        rt = CLIRuntime(model="gemini")
+        rt = CLIRuntime(model="agy:gemini-3.5-flash")
         cmd = rt._build_command("hello", system_prompt="You are helpful")
-        assert cmd[0] == "gemini"
-        assert "--prompt" in cmd
-        # Gemini prepends system prompt to user prompt
+        assert cmd[0] == "agy"
+        assert "-p" in cmd
+        assert "--model" in cmd
+        assert "gemini-3.5-flash" in cmd
+        assert "--print-timeout" in cmd
+        assert "5m" in cmd
+        # agy prepends system prompt to user prompt.
         assert any("<system>" in arg for arg in cmd)
+
+    def test_legacy_gemini_cli_removed(self):
+        from mata_garuda.runtime.cli_runtime import CLI_CONFIGS
+
+        assert "gemini" not in CLI_CONFIGS
+        assert "agy" in CLI_CONFIGS
+
+    def test_build_command_ollama_alias(self):
+        from mata_garuda.runtime.cli_runtime import CLIRuntime
+
+        rt = CLIRuntime(model="ollama:qwen3.5:9b")
+        cmd = rt._build_command("hello", system_prompt="You are helpful")
+        assert cmd[:3] == ["ollama", "run", "qwen3.5:9b"]
+        assert any("<system>" in arg for arg in cmd)
+
+    def test_invoke_ollama_uses_local_helper(self, monkeypatch):
+        from mata_garuda.runtime import cli_runtime
+
+        calls = []
+
+        def fake_generate(model, prompt, **kwargs):
+            calls.append((model, prompt, kwargs))
+            return "local output"
+
+        monkeypatch.setattr(
+            "mata_garuda.tools.ollama_tools.generate",
+            fake_generate,
+        )
+
+        rt = cli_runtime.CLIRuntime(model="ollama:qwen3.5:9b")
+        result = rt.invoke("hello", system_prompt="You are helpful")
+
+        assert result.success is True
+        assert result.model == "ollama:qwen3.5:9b"
+        assert result.token_used == "local_ollama"
+        assert calls[0][0] == "qwen3.5:9b"
 
     def test_unknown_model_raises(self):
         from mata_garuda.runtime.cli_runtime import CLIRuntime

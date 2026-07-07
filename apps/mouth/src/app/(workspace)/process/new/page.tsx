@@ -807,7 +807,7 @@ export default function NewPracticePage() {
                 <input
                   type="number"
                   min="0"
-                  step="100000"
+                  step="1"
                   value={formData.quoted_price}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -872,7 +872,7 @@ export default function NewPracticePage() {
                 <input
                   type="number"
                   min="0"
-                  step="100000"
+                  step="1"
                   value={formData.discount_amount}
                   onChange={(e) =>
                     setFormData((prev) => ({

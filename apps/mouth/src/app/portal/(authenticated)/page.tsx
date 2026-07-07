@@ -154,7 +154,7 @@ export default function PortalHomePage() {
           status={defaultDashboard.company.status}
           label={defaultDashboard.company.primaryCompanyName || 'No Company'}
           subLabel={`${defaultDashboard.company.totalCompanies} compan${defaultDashboard.company.totalCompanies !== 1 ? 'ies' : 'y'}`}
-          onClick={() => router.push('/portal/vault')}
+          onClick={() => router.push('/portal/companies')}
         />
         <StatusCard
           title="Tax"

@@ -56,6 +56,7 @@ _KIND_SCOPE = {
     "claude_hook": "local",
     "ci_workflow": "repo",
     "lint_script": "repo",
+    "scar_test": "repo",  # A1/Loop-B: scar regression tests live in repo → verifiable in CI too
 }
 
 
@@ -240,10 +241,53 @@ def check_lint_script(gate: dict) -> GateResult:
                       f"wired into {consumer_path.name}")
 
 
+def check_scar_test(gate: dict) -> GateResult:
+    """A1 / Loop-B kind: a scar is ARMED iff its executable regression test PASSES.
+
+    The other kinds answer "is the guardian installed?". This one answers the
+    deeper question the Anthropic Loop-B asks: "is the disease still DEAD?" — by
+    RUNNING the test that fails if the scar re-bites. A scar with only prose (no
+    test yet) is WARN (visible debt), never silently green. A test that errors or
+    fails is DISARMED — the scar has re-opened.
+
+    yaml fields:
+      target: path to the executable test (pytest file or plain script, exit 0 = pass)
+      w_number: the W<N> / scar id this test guards (for the report)
+      prose_only: true  -> WARN "scar documented but no executable gate yet"
+    """
+    gid = gate["id"]
+    w = gate.get("w_number", gid)
+
+    if gate.get("prose_only"):
+        return GateResult(gid, "scar_test", WARN,
+                          f"{w}: scar documented (prose) but NO executable gate yet — Loop-B debt")
+
+    target = _expand(gate["target"])
+    if not target.exists():
+        return GateResult(gid, "scar_test", DISARMED,
+                          f"{w}: declared scar-test missing: {target}")
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(target)],
+            capture_output=True, text=True, timeout=120,
+            cwd=str(target.resolve().parent),
+        )
+    except subprocess.TimeoutExpired:
+        return GateResult(gid, "scar_test", DISARMED, f"{w}: scar-test timed out (>120s)")
+    except OSError as exc:
+        return GateResult(gid, "scar_test", DISARMED, f"{w}: scar-test could not run: {exc}")
+    if proc.returncode != 0:
+        tail = (proc.stdout or proc.stderr or "").strip().splitlines()[-1:] or [""]
+        return GateResult(gid, "scar_test", DISARMED,
+                          f"{w}: SCAR RE-BIT — test FAILED (exit {proc.returncode}): {tail[0][:80]}")
+    return GateResult(gid, "scar_test", ARMED, f"{w}: scar-test passes — disease still dead")
+
+
 _CHECKERS = {
     "claude_hook": check_claude_hook,
     "ci_workflow": check_ci_workflow,
     "lint_script": check_lint_script,
+    "scar_test": check_scar_test,
 }
 
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.nuzantara.mini.tg-digest-flush</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/mini-tg-digest-flush.sh</string>
+    </array>
+    <key>StartInterval</key><integer>43200</integer>
+    <key>RunAtLoad</key><false/>
+    <key>StandardOutPath</key><string>/tmp/com.nuzantara.mini.tg-digest-flush.out</string>
+    <key>StandardErrorPath</key><string>/tmp/com.nuzantara.mini.tg-digest-flush.err</string>
+</dict>
+</plist>

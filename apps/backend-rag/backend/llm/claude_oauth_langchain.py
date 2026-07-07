@@ -147,6 +147,23 @@ def _flatten_messages(messages: list[Any]) -> str:
     return "\n\n".join(lines)
 
 
+def _message_from_response(resp: Any) -> Any:
+    """Build an ``AIMessage`` from a ``ClaudeOAuthResponse``.
+
+    When the response carries a native ``structured`` dict (the CLI parsed a
+    ``--json-schema`` envelope), stash it under ``additional_kwargs["structured"]``
+    so the structured-output Runnable can validate it directly instead of
+    re-scanning the prose ``content`` (review D2: ``content`` is the human-prose
+    ``result``, NOT the answer). On the plain text path ``structured`` is None
+    and ``additional_kwargs`` stays empty — byte-compatible with the old behavior.
+    """
+    from langchain_core.messages import AIMessage
+
+    structured = getattr(resp, "structured", None)
+    additional_kwargs = {"structured": structured} if structured is not None else {}
+    return AIMessage(content=resp.text, additional_kwargs=additional_kwargs)
+
+
 def build_claude_oauth_chat_model(
     model: str = "claude-sonnet-4-6",
     timeout_s: int = 120,
@@ -162,7 +179,7 @@ def build_claude_oauth_chat_model(
         _AsyncCbMgr,
         _CbMgr,
         BaseChatModel,
-        AIMessage,
+        _AIMessage,
         _BaseMessage,
         (ChatGeneration, ChatResult),
     ) = _import_langchain_core()
@@ -182,7 +199,7 @@ def build_claude_oauth_chat_model(
             messages: list[Any],
             stop: list[str] | None = None,
             run_manager: Any | None = None,
-            **_: Any,
+            **kwargs: Any,
         ) -> Any:
             # LangGraph in our codebase always uses the async path, but
             # keep a sync fallback that just forwards to asyncio.run.
@@ -200,9 +217,14 @@ def build_claude_oauth_chat_model(
                 )
             prompt = _flatten_messages(messages)
             resp = asyncio.run(
-                complete_async(prompt, model=self.model_name, timeout_s=self.request_timeout_s),
+                complete_async(
+                    prompt,
+                    model=self.model_name,
+                    timeout_s=self.request_timeout_s,
+                    json_schema=kwargs.get("json_schema"),
+                ),
             )
-            gen = ChatGeneration(message=AIMessage(content=resp.text))
+            gen = ChatGeneration(message=_message_from_response(resp))
             return ChatResult(generations=[gen])
 
         async def _agenerate(
@@ -210,7 +232,7 @@ def build_claude_oauth_chat_model(
             messages: list[Any],
             stop: list[str] | None = None,
             run_manager: Any | None = None,
-            **_: Any,
+            **kwargs: Any,
         ) -> Any:
             del stop, run_manager
             prompt = _flatten_messages(messages)
@@ -219,10 +241,11 @@ def build_claude_oauth_chat_model(
                     prompt,
                     model=self.model_name,
                     timeout_s=self.request_timeout_s,
+                    json_schema=kwargs.get("json_schema"),
                 )
             except (ClaudeOAuthError, ClaudeOAuthNotAvailable):
                 raise
-            gen = ChatGeneration(message=AIMessage(content=resp.text))
+            gen = ChatGeneration(message=_message_from_response(resp))
             return ChatResult(generations=[gen])
 
         def with_structured_output(  # type: ignore[override]
@@ -263,15 +286,30 @@ def build_claude_oauth_chat_model(
     return ClaudeOAuthChatModel()
 
 
+def _schema_to_json_schema(schema: Any) -> dict[str, Any] | None:
+    """Return the JSON-Schema dict for ``schema``, or None if not derivable.
+
+    Used for the NATIVE ``--json-schema`` path: a Pydantic model yields a real
+    JSON Schema; a bare dict is assumed already-a-schema; anything else (a raw
+    string description) has no schema and returns None so the caller falls back
+    to the prompt-engineered text path.
+    """
+    if isinstance(schema, dict):
+        return schema
+    try:
+        return schema.model_json_schema()  # Pydantic v2
+    except AttributeError:
+        try:
+            return schema.schema()  # Pydantic v1
+        except AttributeError:
+            return None
+
+
 def _build_schema_hint(schema: Any) -> str:
     """Render a JSON-schema hint suitable for prompt injection."""
-    try:
-        json_schema = schema.model_json_schema()  # Pydantic v2
-    except AttributeError:  # pragma: no cover — guarded by caller types
-        try:
-            json_schema = schema.schema()  # Pydantic v1
-        except AttributeError:
-            json_schema = {"description": str(schema)}
+    json_schema = _schema_to_json_schema(schema)
+    if json_schema is None:
+        json_schema = {"description": str(schema)}
     return json.dumps(json_schema, ensure_ascii=False, sort_keys=True)
 
 
@@ -398,8 +436,26 @@ def _build_runnable_class() -> type:
             self._include_raw = include_raw
             self._method = method
             self._schema_hint = _build_schema_hint(schema)
+            # Native JSON Schema for the CLI ``--json-schema`` path. None when
+            # the schema can't be rendered (raw string description) → the call
+            # uses the prompt-engineered text path only.
+            self._native_schema = _schema_to_json_schema(schema)
 
-        def _wrap_result(self, raw: Any) -> Any:
+        def _validate_native(self, structured: dict) -> Any:
+            """Validate a native ``structured_output`` dict against the schema.
+
+            ``structured`` is the real answer object from the CLI envelope, so
+            we feed it straight to Pydantic — NO heuristic brace-scanner (that
+            scanner exists only to dig an object out of prose, review D2).
+            """
+            if isinstance(self._schema, dict):
+                # Caller passed a bare JSON Schema (not a Pydantic model): the
+                # CLI already validated against it, so return the dict as-is.
+                return structured
+            return _model_validate(self._schema, structured)
+
+        def _wrap_text_result(self, raw: Any) -> Any:
+            """Validate the PROSE content via the heuristic scanner (text path)."""
             content = getattr(raw, "content", str(raw))
             if self._include_raw:
                 try:
@@ -409,15 +465,46 @@ def _build_runnable_class() -> type:
                     return {"raw": raw, "parsed": None, "parsing_error": exc}
             return _validate_against_schema(content, self._schema)
 
+        def _wrap_native_result(self, raw: Any, structured: dict) -> Any:
+            if self._include_raw:
+                try:
+                    parsed = self._validate_native(structured)
+                    return {"raw": raw, "parsed": parsed, "parsing_error": None}
+                except Exception as exc:
+                    return {"raw": raw, "parsed": None, "parsing_error": exc}
+            return self._validate_native(structured)
+
         def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            # Native path: ask the CLI for --json-schema output when derivable.
+            if self._native_schema is not None:
+                messages = _normalize_to_messages(input)
+                native = self._model.invoke(
+                    messages, config=config, json_schema=self._native_schema, **kwargs
+                )
+                structured = getattr(native, "additional_kwargs", {}).get("structured")
+                if isinstance(structured, dict):
+                    return self._wrap_native_result(native, structured)
+                # SEQUENTIAL fallback (review D3): the structured envelope was
+                # absent (CLI lacks the flag / model declined) → re-call in plain
+                # text mode with the schema prompt-injected. We NEVER feed the
+                # envelope's prose ``result`` to the validator.
             messages = _augment_messages_with_schema(input, self._schema_hint)
             result = self._model.invoke(messages, config=config, **kwargs)
-            return self._wrap_result(result)
+            return self._wrap_text_result(result)
 
         async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if self._native_schema is not None:
+                messages = _normalize_to_messages(input)
+                native = await self._model.ainvoke(
+                    messages, config=config, json_schema=self._native_schema, **kwargs
+                )
+                structured = getattr(native, "additional_kwargs", {}).get("structured")
+                if isinstance(structured, dict):
+                    return self._wrap_native_result(native, structured)
+                # SEQUENTIAL fallback (review D3) — see invoke() above.
             messages = _augment_messages_with_schema(input, self._schema_hint)
             result = await self._model.ainvoke(messages, config=config, **kwargs)
-            return self._wrap_result(result)
+            return self._wrap_text_result(result)
 
     return _ClaudeStructuredRunnable
 

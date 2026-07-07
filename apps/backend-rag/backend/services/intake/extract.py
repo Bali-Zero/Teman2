@@ -119,6 +119,14 @@ DOC_TYPE_FIELDS: dict[str, list[_FieldSpec]] = {
         ("notary", False, "notary (Notaris) name"),
         ("date", False, "deed date (prefer YYYY-MM-DD)"),
     ],
+    "profil_perseroan": [
+        ("company_name", False, "full legal company name (PT ...)"),
+        ("directors", True, "list of director (Direktur) full names"),
+        ("commissioners", True, "list of commissioner (Komisaris) full names"),
+        ("kbli_codes", True, "list of 5-digit KBLI / bidang-usaha codes"),
+        ("capital", False, "share-capital / modal structure amount"),
+        ("address", False, "registered company address"),
+    ],
     "passport": [
         ("passport_no", False, "passport number"),
         ("name", False, "full name of the holder"),
@@ -132,19 +140,142 @@ DOC_TYPE_FIELDS: dict[str, list[_FieldSpec]] = {
         ("expiry", False, "expiry / valid-until date (prefer YYYY-MM-DD)"),
         ("sponsor", False, "sponsor (penjamin) name"),
     ],
+    "visa": [
+        ("visa_no", False, "visa / e-visa number"),
+        ("visa_index", False, "visa index / visa type code"),
+        ("name", False, "full name of the holder"),
+        ("passport_no", False, "linked passport number"),
+        ("expiry", False, "expiry / valid-until date (prefer YYYY-MM-DD)"),
+        ("sponsor", False, "sponsor (penjamin) name"),
+    ],
+    "payment_receipt": [
+        ("receipt_no", False, "receipt / invoice / transaction reference number"),
+        ("payer_name", False, "payer / sender name when visible"),
+        ("amount", False, "payment amount with currency"),
+        ("payment_date", False, "payment date (prefer YYYY-MM-DD)"),
+        ("reference", False, "bank, invoice, or payment reference"),
+    ],
+    "travel_ticket": [
+        ("ticket_no", False, "ticket number when visible"),
+        ("name", False, "passenger full name"),
+        ("travel_date", False, "departure / travel date (prefer YYYY-MM-DD)"),
+        ("route", False, "origin-destination route"),
+        ("booking_reference", False, "booking reference / PNR"),
+    ],
+    "bank_statement": [
+        ("account_holder", False, "bank account holder name"),
+        ("bank_name", False, "bank name"),
+        ("account_no", False, "bank account number, masked if partially visible"),
+        ("statement_period", False, "statement period / month"),
+        ("balance", False, "closing balance or visible balance amount"),
+    ],
+    "medical_insurance": [
+        ("policy_no", False, "insurance policy number"),
+        ("name", False, "insured person's full name"),
+        ("insurer", False, "insurance company / insurer name"),
+        ("coverage_period", False, "coverage period"),
+        ("expiry", False, "policy expiry date (prefer YYYY-MM-DD)"),
+    ],
+    "itap": [
+        ("itap_no", False, "ITAP / permanent stay permit number"),
+        ("name", False, "full name of the holder"),
+        ("expiry", False, "expiry / valid-until date (prefer YYYY-MM-DD)"),
+        ("sponsor", False, "sponsor (penjamin) name"),
+    ],
+    "itk": [
+        ("itk_no", False, "ITK / visit stay permit number"),
+        ("name", False, "full name of the holder"),
+        ("expiry", False, "expiry / valid-until date (prefer YYYY-MM-DD)"),
+        ("sponsor", False, "sponsor (penjamin) name"),
+    ],
+    "ktp": [
+        ("nik", False, "16-digit NIK / Indonesian identity number"),
+        ("name", False, "full name of the holder"),
+        ("dob", False, "date of birth (prefer YYYY-MM-DD)"),
+        ("address", False, "registered address"),
+    ],
+    "family_card": [
+        ("family_card_no", False, "Kartu Keluarga / KK family-card number"),
+        ("name", False, "head of family / primary holder full name"),
+        ("members", True, "list of family-member full names"),
+        ("address", False, "family registered address"),
+    ],
+    "birth_certificate": [
+        ("certificate_no", False, "birth-certificate / akta kelahiran number"),
+        ("name", False, "child / certificate holder full name"),
+        ("dob", False, "date of birth (prefer YYYY-MM-DD)"),
+        ("place_of_birth", False, "place of birth"),
+        ("parents", True, "list of parent full names"),
+    ],
+    "marriage_certificate": [
+        ("certificate_no", False, "marriage-certificate / akta nikah number"),
+        ("name", False, "primary spouse / certificate holder full name"),
+        ("spouse_names", True, "list of spouse full names"),
+        ("marriage_date", False, "marriage date (prefer YYYY-MM-DD)"),
+        ("place", False, "marriage place / issuing office"),
+    ],
+    "sk_kemenkumham": [
+        ("sk_number", False, "SK Kemenkumham decision number"),
+        ("company_name", False, "full legal company name (PT ...)"),
+        ("date", False, "decision / issue date (prefer YYYY-MM-DD)"),
+    ],
 }
 
 # Aliases: classifier may emit longer/variant doc_type labels.
 _DOC_TYPE_ALIASES: dict[str, str] = {
     "nib_oss": "nib",
+    "oss": "nib",
+    "oss_nib": "nib",
     "npwp_company": "npwp",
     "npwp_personal": "npwp",
     "akta": "akta_pendirian",
     "akta_pendirian_pt": "akta_pendirian",
+    "sk": "sk_kemenkumham",
+    "sk_menkumham": "sk_kemenkumham",
+    "kemenkumham": "sk_kemenkumham",
     "passport_page": "passport",
     "paspor": "passport",
     "kitas_card": "kitas",
     "itas": "kitas",
+    "evisa": "visa",
+    "e_visa": "visa",
+    "e-visa": "visa",
+    "voa": "visa",
+    "visa_on_arrival": "visa",
+    "visit_visa": "visa",
+    "receipt": "payment_receipt",
+    "payment_proof": "payment_receipt",
+    "proof_of_payment": "payment_receipt",
+    "bukti_pembayaran": "payment_receipt",
+    "bukti_transfer": "payment_receipt",
+    "boarding_pass": "travel_ticket",
+    "flight_ticket": "travel_ticket",
+    "e_ticket": "travel_ticket",
+    "e-ticket": "travel_ticket",
+    "flight_itinerary": "travel_ticket",
+    "rekening_koran": "bank_statement",
+    "account_statement": "bank_statement",
+    "medical_insurance_policy": "medical_insurance",
+    "travel_insurance": "medical_insurance",
+    "insurance_policy": "medical_insurance",
+    "asuransi": "medical_insurance",
+    "kitap": "itap",
+    "itap_card": "itap",
+    "itk_card": "itk",
+    "id_card": "ktp",
+    "e_ktp": "ktp",
+    "kk": "family_card",
+    "kartu_keluarga": "family_card",
+    "family_card_kk": "family_card",
+    "birth_cert": "birth_certificate",
+    "akta_kelahiran": "birth_certificate",
+    "marriage_cert": "marriage_certificate",
+    "akta_nikah": "marriage_certificate",
+    "akta_perkawinan": "marriage_certificate",
+    "buku_nikah": "marriage_certificate",
+    "company_profile": "profil_perseroan",
+    "profil_pt": "profil_perseroan",
+    "profile_perseroan": "profil_perseroan",
 }
 
 
@@ -181,6 +312,15 @@ def _build_prompt(doc_type: str, pages: list[str]) -> str:
         "clearly legible in the text. NEVER guess, infer, or invent a value. "
         "An invented director on an akta or a wrong number on a KITAS causes "
         "legal harm to a real client. When unsure, the answer is null.\n\n"
+        "DATE RULE (critical — these are Indonesian/international documents, "
+        "NOT US documents): every printed date is DAY/MONTH/YEAR (DD/MM/YYYY), "
+        "never MM/DD/YYYY. So '05/06/2026' is 5 June 2026, NOT 6 May. Always "
+        "emit dates as YYYY-MM-DD. If a passport/KTP/visa Machine-Readable Zone "
+        "(MRZ — the two '<<<'-filled lines, dates as YYMMDD) is present, READ "
+        "DATES FROM THE MRZ — it is unambiguous; prefer it over the printed "
+        "human-readable line. If the day vs month is genuinely ambiguous and no "
+        "MRZ disambiguates it, return the date verbatim as printed (do not "
+        "reorder) rather than guessing.\n\n"
         "Return ONLY a single JSON object. For EACH field below, the value is "
         "an object {\"value\": <extracted value or null>, \"source_page\": "
         "<1-based page number where you read it, or null>}.\n"

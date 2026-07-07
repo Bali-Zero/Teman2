@@ -2,7 +2,7 @@
 
 import { RefObject } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./MessageBubble";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -62,7 +62,10 @@ export function ChatMessageList({
         </div>
 
         {/* Quick Actions in Welcome */}
-        <ul className="flex flex-wrap justify-center gap-3 mb-6">
+        <ul
+          className="flex flex-wrap justify-center gap-3 mb-6"
+          aria-label="Quick actions"
+        >
           <li>
             <Button
               variant="outline"
@@ -133,14 +136,16 @@ export function ChatMessageList({
       })}
 
       {/* Thinking Indicator */}
-      {isLoading && (
-        <ThinkingIndicator
-          isVisible={isLoading}
-          currentStatus={messages[messages.length - 1]?.currentStatus}
-          steps={messages[messages.length - 1]?.steps}
-          elapsedTime={thinkingElapsedTime}
-        />
-      )}
+      <AnimatePresence>
+        {isLoading && (
+          <ThinkingIndicator
+            isVisible={isLoading}
+            currentStatus={messages[messages.length - 1]?.currentStatus}
+            steps={messages[messages.length - 1]?.steps}
+            elapsedTime={thinkingElapsedTime}
+          />
+        )}
+      </AnimatePresence>
 
       <div ref={messagesEndRef} />
     </div>

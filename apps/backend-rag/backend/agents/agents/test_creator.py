@@ -514,7 +514,7 @@ Return ONLY the complete Python test code. No explanations, no markdown formatti
             skeleton.append(f"""
     async def test_{func}(self, sample_data, mock_external_deps):
         \"\"\"Test {func} function\"\"\"
-        assert True  # Placeholder — implement assertions for {func}
+        raise NotImplementedError("Add behavior assertions for {func}")
 """)
 
         # Generate tests for new classes
@@ -522,7 +522,7 @@ Return ONLY the complete Python test code. No explanations, no markdown formatti
             skeleton.append(f"""
     def test_{cls.lower()}_init(self):
         \"\"\"Test {cls} class initialization\"\"\"
-        assert True  # Placeholder — implement assertions for {cls}
+        raise NotImplementedError("Add initialization assertions for {cls}")
 """)
 
         return "\n".join(skeleton) if skeleton else "# No new functions/classes to test"
