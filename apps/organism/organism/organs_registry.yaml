@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d314aefb9d00e85fc2a3af72d4ea739b4eb4341baa9961afa687dee9ef11b6f2
+checksum: c5b05f7d4295a2da20c0a9c8071612cdda33d38c343184821a36bc9a467eaa31
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1783,5 +1783,22 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.tg_digest_flush.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wr2_daily_carousel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 64800
+  owner_module: scripts/wr2_daily_reconciler.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.daily-reconciler
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wr2_daily_carousel.json
     timestamp_field: ts
     status_field: status
