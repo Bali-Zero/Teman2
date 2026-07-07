@@ -71,13 +71,22 @@ export async function generateMetadata({
           : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
         : "Closed to Foreign Investment";
 
-  const title = `KBLI ${kbli.code}: ${kbli.titleEn} — Indonesia Business Guide 2025`;
-  const description = `${kbli.titleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
+  // Metadata surface uses titleEnMeta (frozen to the curated-legacy EN map —
+  // SEO firebreak PR #1967); the page body below uses the full-coverage titleEn.
+  const metaTitleEn = kbli.titleEnMeta ?? kbli.titleEn;
+  const title = `KBLI ${kbli.code}: ${metaTitleEn} — Indonesia Business Guide 2025`;
+  const description = `${metaTitleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
+
+  // Never repeat the Indonesian title twice when no distinct English title exists.
+  const keywordTitles =
+    metaTitleEn === kbli.titleId
+      ? kbli.titleId
+      : `${kbli.titleId}, ${metaTitleEn}`;
 
   return {
     title,
     description,
-    keywords: `KBLI ${kbli.code}, ${kbli.titleId}, ${kbli.titleEn}, KBLI 2025, Indonesian business classification, PT PMA Bali, company registration Indonesia`,
+    keywords: `KBLI ${kbli.code}, ${keywordTitles}, KBLI 2025, Indonesian business classification, PT PMA Bali, company registration Indonesia`,
     openGraph: {
       title,
       description,
@@ -835,15 +844,24 @@ export default async function KBLICodePage({
                     2020 → 2025
                   </span>
                   <div className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                    <span>Previous codes: </span>
+                    <span>Previous codes (KBLI 2020): </span>
                     {kbli.transition.previousCodes.map((c, i) => (
                       <span key={c}>
-                        <Link
-                          href={`/kbli/${c}`}
-                          className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]"
-                        >
-                          {c}
-                        </Link>
+                        {/* A 2020 code only gets a link when it still exists as a
+                            2025 code — dynamicParams=false turns every other
+                            /kbli/<oldcode> into a hard 404. */}
+                        {getCode(c) ? (
+                          <Link
+                            href={`/kbli/${c}`}
+                            className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]"
+                          >
+                            {c}
+                          </Link>
+                        ) : (
+                          <span className="font-mono font-bold text-[var(--foreground-secondary)]">
+                            {c}
+                          </span>
+                        )}
                         {i < kbli.transition.previousCodes.length - 1 && ", "}
                       </span>
                     ))}

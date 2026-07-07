@@ -18,6 +18,7 @@ import type {
 } from "./kbli-types";
 
 import { ENGLISH_TITLES } from "./kbli-english";
+import { ENGLISH_TITLES_GENERATED } from "./kbli-english-generated";
 import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
 
@@ -360,10 +361,16 @@ function extractKeywords(title: string, description: string): string[] {
 
 function assignTier(code: string): KBLITier {
   if (GOLD_CODES.has(code)) return "gold";
-  // Silver tier: codes with English titles available
-  if (ENGLISH_TITLES[code]) return "silver";
+  // Silver tier: codes with English titles available (curated or generated)
+  if (ENGLISH_TITLES[code] || ENGLISH_TITLES_GENERATED[code]) return "silver";
   return "bronze";
 }
+
+// SEO firebreak (PR #1967): metadata (<title>/description/keywords) stays pinned
+// to the curated-legacy English map until the GSC crawl window recovers. Flip
+// NEXT_PUBLIC_KBLI_META_EN=1 (operator decision) to let metadata consume the
+// full-coverage titles. Page BODY always uses the full map.
+const META_USES_FULL_EN = process.env.NEXT_PUBLIC_KBLI_META_EN === "1";
 
 // =============================================================================
 // Transform a single raw record
@@ -375,7 +382,13 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
   const sectionMeta = section ? SECTION_META[section] : null;
 
   const titleId = toTitleCase(raw.judul);
-  const titleEn = ENGLISH_TITLES[code] ?? titleId; // Fallback to Indonesian title
+  // Body display: curated wins, then generated, then Indonesian fallback.
+  const titleEnReal = ENGLISH_TITLES[code] ?? ENGLISH_TITLES_GENERATED[code] ?? null;
+  const titleEn = titleEnReal ?? titleId;
+  // Metadata surface (frozen to curated-legacy until NEXT_PUBLIC_KBLI_META_EN=1).
+  const titleEnMeta = META_USES_FULL_EN
+    ? titleEn
+    : (ENGLISH_TITLES[code] ?? titleId);
 
   const pma = {
     status: mapPmaStatus(raw.pma_status),
@@ -416,6 +429,8 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     code,
     titleId,
     titleEn,
+    titleEnIsReal: titleEnReal !== null,
+    titleEnMeta,
     description: raw.uraian,
     section,
     sectionName: sectionMeta?.nameEn ?? null,

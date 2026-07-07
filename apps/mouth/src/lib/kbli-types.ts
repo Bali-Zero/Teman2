@@ -175,6 +175,10 @@ export interface KBLICode {
   code: string;
   titleId: string;
   titleEn: string;
+  /** true when titleEn is a real English title (curated or generated), not the Indonesian fallback */
+  titleEnIsReal?: boolean;
+  /** English title for <title>/meta — frozen to the curated-legacy map (SEO firebreak PR #1967) */
+  titleEnMeta?: string;
   description: string;
   section: string | null;
   sectionName: string | null;
