@@ -297,57 +297,84 @@ async def run(*, dry_run: bool) -> int:
         return 1
 
     try:
-        rows = await _fetch_today(conn, day_start_utc)
-        decision = decide(
-            rows, now_wita,
-            escalate_hour=escalate_hour, stuck_hours=stuck_hours,
-            max_attempts=max_attempts,
-        )
-        logger.info(
-            "day=%s drafts_today=%d -> %s (%s)%s",
-            now_wita.date(), len(rows), decision.action, decision.reason,
-            " [ESCALATE]" if decision.escalate else "",
-        )
-        await _apply(decision, conn, dry_run=dry_run)
-
-        if decision.action == "ok":
-            ok_row = next(r for r in rows if r["status"] in TERMINAL_OK)
-            vis = _verify_visibility_or_backfill(ok_row, dry_run=dry_run)
-            if dry_run:
-                logger.info("DRY-RUN: visibility=%s", vis)
-                return 0
-            if vis == "backfill_failed":
-                _heartbeat("degraded", f"{decision.reason}; visibility={vis}")
-                _tg_notify(
-                    "p0", f"wr2-visibility-gap-{now_wita.date()}",
-                    f"⚠️ WR2: carosello RENDERIZZATO oggi ma NON visibile in coda/app "
-                    f"e il backfill è fallito (draft {decision.draft_id}). "
-                    f"Il PNG vive su Drive; serve sguardo umano.",
-                )
-            else:
-                _heartbeat("ok", f"{decision.reason}; visibility={vis}")
-            return 0
-
-        if dry_run:
-            return 0
-
-        if decision.escalate:
-            _heartbeat("failed", f"{decision.action}: {decision.reason}")
-            delivered = _tg_notify(
-                "p0", f"wr2-no-carousel-{now_wita.date()}",
-                f"🛑 WR2: NESSUN carosello oggi ({now_wita.date()}).\n"
-                f"Stato: {decision.action} — {decision.reason}\n"
-                f"Azione correttiva già tentata dal reconciler; serve sguardo umano "
-                f"se domattina è ancora rosso.",
+        try:
+            return await _tick(
+                conn, now_wita, day_start_utc, dry_run=dry_run,
+                escalate_hour=escalate_hour, stuck_hours=stuck_hours,
+                max_attempts=max_attempts,
             )
-            if not delivered:
-                # gateway refused/absent — the heartbeat is the durable receptor
-                _heartbeat("failed", f"{decision.action}: {decision.reason} (P0 NOT delivered)")
-        else:
-            _heartbeat("pending", f"{decision.action}: {decision.reason}")
-        return 0
+        except Exception as exc:  # noqa: BLE001 — never-raises contract (red-team MED)
+            logger.error("reconciler tick crashed: %s", exc, exc_info=exc)
+            _heartbeat("error", f"tick crashed: {type(exc).__name__}: {exc}")
+            _tg_notify(
+                "p0", "wr2-reconciler-crash",
+                f"🛑 WR2 reconciler CRASHED mid-tick: {type(exc).__name__}: {exc} — "
+                f"nessuna garanzia sul carosello di oggi.",
+            )
+            return 1
     finally:
         await conn.close()
+
+
+async def _tick(
+    conn: Any,
+    now_wita: datetime,
+    day_start_utc: datetime,
+    *,
+    dry_run: bool,
+    escalate_hour: int,
+    stuck_hours: float,
+    max_attempts: int,
+) -> int:
+    rows = await _fetch_today(conn, day_start_utc)
+    decision = decide(
+        rows, now_wita,
+        escalate_hour=escalate_hour, stuck_hours=stuck_hours,
+        max_attempts=max_attempts,
+    )
+    logger.info(
+        "day=%s drafts_today=%d -> %s (%s)%s",
+        now_wita.date(), len(rows), decision.action, decision.reason,
+        " [ESCALATE]" if decision.escalate else "",
+    )
+    await _apply(decision, conn, dry_run=dry_run)
+
+    if decision.action == "ok":
+        ok_row = next(r for r in rows if r["status"] in TERMINAL_OK)
+        vis = _verify_visibility_or_backfill(ok_row, dry_run=dry_run)
+        if dry_run:
+            logger.info("DRY-RUN: visibility=%s", vis)
+            return 0
+        if vis == "backfill_failed":
+            _heartbeat("degraded", f"{decision.reason}; visibility={vis}")
+            _tg_notify(
+                "p0", f"wr2-visibility-gap-{now_wita.date()}",
+                f"⚠️ WR2: carosello RENDERIZZATO oggi ma NON visibile in coda/app "
+                f"e il backfill è fallito (draft {decision.draft_id}). "
+                f"Il PNG vive su Drive; serve sguardo umano.",
+            )
+        else:
+            _heartbeat("ok", f"{decision.reason}; visibility={vis}")
+        return 0
+
+    if dry_run:
+        return 0
+
+    if decision.escalate:
+        _heartbeat("failed", f"{decision.action}: {decision.reason}")
+        delivered = _tg_notify(
+            "p0", f"wr2-no-carousel-{now_wita.date()}",
+            f"🛑 WR2: NESSUN carosello oggi ({now_wita.date()}).\n"
+            f"Stato: {decision.action} — {decision.reason}\n"
+            f"Azione correttiva già tentata dal reconciler; serve sguardo umano "
+            f"se domattina è ancora rosso.",
+        )
+        if not delivered:
+            # gateway refused/absent — the heartbeat is the durable receptor
+            _heartbeat("failed", f"{decision.action}: {decision.reason} (P0 NOT delivered)")
+    else:
+        _heartbeat("pending", f"{decision.action}: {decision.reason}")
+    return 0
 
 
 def main() -> int:

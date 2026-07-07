@@ -192,6 +192,10 @@ def _persist_local_artifacts(
     car_dir = root / "carousel" / f"{day}-{slug}-{str(draft_id)[:8]}"
     slides_dir = car_dir / "slides"
     slides_dir.mkdir(parents=True, exist_ok=True)
+    # re-render of the same draft/day: clear stale PNGs so a shorter carousel
+    # does not keep ghost slides in the app preview (red-team LOW)
+    for stale in slides_dir.glob("*.png"):
+        stale.unlink()
     for p in png_paths:
         shutil.copy2(p, slides_dir / p.name)
     meta = {
