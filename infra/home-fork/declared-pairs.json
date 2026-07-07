@@ -258,6 +258,13 @@
       "machines": [
         "pro"
       ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.wr2.daily-reconciler.plist",
+      "repo": "infra/launchagents/com.balizero.wr2.daily-reconciler.plist",
+      "machines": [
+        "pro"
+      ]
     }
   ],
   "allow": [
