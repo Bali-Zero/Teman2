@@ -81,6 +81,7 @@ export interface KBLIRawCode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
+    whoThisIsFor?: string;
     coverImage?: string | null;
     // Legacy field names (older enrichment batches)
     legacy_bridge?: string;
@@ -203,6 +204,7 @@ export interface KBLICode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
+    whoThisIsFor?: string;
     coverImage?: string | null;
   };
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
