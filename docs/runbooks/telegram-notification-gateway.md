@@ -27,9 +27,12 @@ dedup — and a CI lint guarantees the direct-sender family only shrinks.
   `infra/tg-gateway/grandfathered.json` fails CI (`.github/workflows/tg-gateway.yml`).
   Registered in `infra/guard-conformance/registry.json` (`_guard_new_direct_sender`,
   guilt+innocence pinned in `scripts/tests/test_tg_gateway.py`).
-- `infra/launchagents/com.nuzantara.tg-digest-flush.plist` — cron 08:00+20:00, no
-  KeepAlive (superscar #7), armed on **Pro + Mini** (both hold the token; M5 doesn't,
-  by design).
+- `infra/launchagents/com.nuzantara.tg-digest-flush.plist` + wrapper
+  `infra/launchagents/wrappers/pro-tg-digest-flush.sh` — organ `pro.tg_digest_flush`
+  born via `organ_birth.py` (10 genes: registry, heartbeat sidecar, node guard,
+  kill switch `PRO_TG_DIGEST_FLUSH_ENABLED=false`, single-instance, …).
+  `StartInterval` 43200s (2×/day), no KeepAlive (superscar #7). Armed on **Pro**;
+  Mini gets its own organ birth at arming (M5 holds no token, by design).
 
 ## Adoption (migrating a sender)
 

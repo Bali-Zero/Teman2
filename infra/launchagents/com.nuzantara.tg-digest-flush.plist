@@ -2,37 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>Label</key>
-	<string>com.nuzantara.tg-digest-flush</string>
-	<!-- Cron, not daemon: StartCalendarInterval, NO KeepAlive (superscar #7).
-	     Sends the grouped Telegram digest for everything tg_notify.py spooled.
-	     Token resolved by the script from ~/.nuzantara-secrets.env — no env here.
-	     Armed on Pro + Mini (M5 has no telegram token by design). -->
-	<key>ProgramArguments</key>
-	<array>
-		<string>/usr/bin/python3</string>
-		<string>/Users/nuzantara/Desktop/nuzantara/scripts/tg_digest_flush.py</string>
-	</array>
-	<key>StartCalendarInterval</key>
-	<array>
-		<dict>
-			<key>Hour</key>
-			<integer>8</integer>
-			<key>Minute</key>
-			<integer>0</integer>
-		</dict>
-		<dict>
-			<key>Hour</key>
-			<integer>20</integer>
-			<key>Minute</key>
-			<integer>0</integer>
-		</dict>
-	</array>
-	<key>RunAtLoad</key>
-	<false/>
-	<key>StandardOutPath</key>
-	<string>/Users/nuzantara/logs/tg-digest-flush.log</string>
-	<key>StandardErrorPath</key>
-	<string>/Users/nuzantara/logs/tg-digest-flush.err.log</string>
+    <key>Label</key><string>com.nuzantara.tg-digest-flush</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/pro-tg-digest-flush.sh</string>
+    </array>
+    <key>StartInterval</key><integer>43200</integer>
+    <key>RunAtLoad</key><false/>
+    <key>StandardOutPath</key><string>/tmp/com.nuzantara.tg-digest-flush.out</string>
+    <key>StandardErrorPath</key><string>/tmp/com.nuzantara.tg-digest-flush.err</string>
 </dict>
 </plist>
