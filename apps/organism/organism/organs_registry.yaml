@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 615d37565774ebb7245e5baf1a8e9e19c84d3c6b5cff8da348e0371e052cd7e7
+checksum: c5b05f7d4295a2da20c0a9c8071612cdda33d38c343184821a36bc9a467eaa31
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1763,6 +1763,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.tg_digest_flush.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.tg_digest_flush
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 43200
+  owner_module: infra/launchagents/wrappers/mini-tg-digest-flush.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mini.tg-digest-flush
+  severity_on_silence: warning
+  notes: 'Telegram digest flusher (Mini) — ONE grouped message per slot for everything
+    tg_notify spooled on this node (notification economy, PR #2067) (born via organ_birth.py,
+    genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.tg_digest_flush.json
     timestamp_field: ts
     status_field: status
 - id: pro.wr2_daily_carousel

@@ -218,6 +218,20 @@
       ]
     },
     {
+      "live": "~/scripts/mini-tg-digest-flush.sh",
+      "repo": "infra/launchagents/wrappers/mini-tg-digest-flush.sh",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.mini.tg-digest-flush.plist",
+      "repo": "infra/launchagents/com.nuzantara.mini.tg-digest-flush.plist",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
       "live": "~/Library/LaunchAgents/com.balizero.wr2.daily-reconciler.plist",
       "repo": "infra/launchagents/com.balizero.wr2.daily-reconciler.plist",
       "machines": [
