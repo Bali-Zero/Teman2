@@ -157,7 +157,6 @@ export const routeTitles: Record<string, string> = {
   "/dream": "Dream Room",
   // Portal routes
   "/portal": "Dashboard",
-  "/portal/dashboard": "Dashboard",
   "/portal/process": "Process",
   "/portal/vault": "Vault",
   "/portal/messages": "Messages",
