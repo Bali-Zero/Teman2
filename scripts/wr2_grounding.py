@@ -26,12 +26,17 @@ validation). The cron-safe source is the Fly backend RAG the topic-selector ALRE
 talks to (`NUZANTARA_BACKEND_URL` + `X-API-Key`). We query it over HTTP, read the
 answer text, and extract the law citations the same way the fact-checker matches them.
 
-KNOWN GAP (verified live 2026-06-24, 3 domains): the only cron-safe RAG endpoint
-(/api/v1/visa-oracle/chat) returns prose + title-only sources, NOT extractable
-PP/PMK/UU N/YYYY citations. So this module currently degrades to enrichment={} on
-real queries and the hook is INERT until a real citation source is wired (NB-brief
-materialization, KB reg-number payload, or a raw-chunk endpoint). It ships flag-off
-so it activates the day a source exists, with no further code change.
+KNOWN GAP — UPDATED 2026-07-07 (was: verified live 2026-06-24, 3 domains): the
+chat-stream RAG endpoint (/api/v2/bali-zero/chat-stream) still returns prose +
+title-only sources, NOT extractable PP/PMK/UU N/YYYY citations on its own. As of
+2026-07-07 the search tool backing `/api/oracle/query` now fills a `snippet`
+field (first 500 chars of the retrieved chunk) on every source/citation entry
+(`backend/services/rag/agentic/tools.py`), so `_query_oracle()` below queries
+that endpoint directly and scans `answer` + every `citations[].snippet` +
+`sources[].snippet` for law citations. `ground_enrichment` tries the chat-stream
+path FIRST (cheaper, already warm) and falls back to `_query_oracle` only if
+that path yields zero citations — so the day the chat-stream path itself starts
+returning citations, the fallback simply never triggers, no code change needed.
 
 CONTRACTS
 ---------
@@ -54,6 +59,7 @@ logger = logging.getLogger("wr2.grounding")
 
 ENABLED = os.environ.get("WR2_RESEARCH_STEP_ENABLED", "false").lower() == "true"
 RAG_TIMEOUT_S = float(os.environ.get("WR2_GROUNDING_TIMEOUT_S", "8"))
+ORACLE_TIMEOUT_S = float(os.environ.get("WR2_GROUNDING_ORACLE_TIMEOUT_S", "90"))
 BACKEND_URL = os.environ.get("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
 API_KEY = os.environ.get("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
 
@@ -158,6 +164,58 @@ async def _query_rag(topic: str) -> str:
     return "\n".join(chunks)
 
 
+async def _query_oracle(topic: str) -> str:
+    """Ask /api/oracle/query about `topic`; return a scan corpus for law citations.
+
+    Unlike `_query_rag` (chat-stream prose), the oracle endpoint's search tool
+    fills a `snippet` field (raw chunk text) on every source/citation entry
+    (backend/services/rag/agentic/tools.py). The scan corpus is `answer` plus
+    every `citations[].snippet` and `sources[].snippet` — "" on any failure.
+    """
+    import json
+
+    import httpx
+
+    query = (
+        f"What Indonesian regulations, laws, or articles govern: {topic}? "
+        "Cite the specific regulation numbers (e.g. PP, PMK, UU, Perpres, Pasal)."
+    )
+    url = f"{BACKEND_URL.rstrip('/')}/api/oracle/query"
+    try:
+        async with httpx.AsyncClient(timeout=ORACLE_TIMEOUT_S) as client:
+            resp = await client.post(
+                url,
+                json={"query": query},
+                headers={"X-API-Key": API_KEY},
+            )
+            if resp.status_code != 200:
+                logger.warning("Oracle grounding: backend returned %s", resp.status_code)
+                return ""
+            data = resp.json()
+    except Exception as exc:  # noqa: BLE001 — graceful-degrade on ANY error
+        logger.warning("Oracle grounding query failed (degrading): %s", exc)
+        return ""
+
+    if not isinstance(data, dict):
+        return ""
+
+    parts: list[str] = []
+    answer = data.get("answer")
+    if isinstance(answer, str):
+        parts.append(answer)
+
+    for key in ("citations", "sources"):
+        entries = data.get(key)
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if isinstance(entry, dict):
+                snippet = entry.get("snippet")
+                if isinstance(snippet, str) and snippet:
+                    parts.append(snippet)
+    return "\n".join(parts)
+
+
 async def ground_enrichment(brief_json: dict[str, Any], topic: str) -> dict[str, Any]:
     """Populate brief_json['enrichment'] with regulatory rails for `topic`.
 
@@ -173,10 +231,21 @@ async def ground_enrichment(brief_json: dict[str, Any], topic: str) -> dict[str,
         return brief_json
 
     answer = await _query_rag(topic)
-    if not answer:
-        return brief_json
+    citations = _find_law_citations(answer) if answer else []
+    grounding_source = "fly-rag-http"
 
-    citations = _find_law_citations(answer)
+    if not citations:
+        # Chat-stream path yielded nothing extractable — fall back to the
+        # oracle endpoint, whose sources/citations carry a `snippet` field.
+        try:
+            oracle_corpus = await _query_oracle(topic)
+        except Exception as exc:  # noqa: BLE001 — graceful-degrade on ANY error
+            logger.warning("Oracle grounding fallback failed (degrading): %s", exc)
+            oracle_corpus = ""
+        if oracle_corpus:
+            citations = _find_law_citations(oracle_corpus)
+            grounding_source = "fly-oracle-http"
+
     if not citations:
         logger.info("RAG grounding: no law citations for topic=%r — degrading", topic[:60])
         return brief_json
@@ -184,12 +253,12 @@ async def ground_enrichment(brief_json: dict[str, Any], topic: str) -> dict[str,
     nb_brief = {"regulatory_citations_verbatim": citations}
     base_facts = existing_facts or str(brief_json.get("article_summary") or "")[:600]
     enrichment["the_facts"] = _inject_rails_into_facts(base_facts, nb_brief)
-    enrichment.setdefault("grounding_source", "fly-rag-http")
+    enrichment.setdefault("grounding_source", grounding_source)
 
     out = dict(brief_json)
     out["enrichment"] = enrichment
     logger.info(
-        "RAG grounding: injected %d citation(s) for topic=%r: %s",
-        len(citations), topic[:60], ", ".join(citations[:8]),
+        "RAG grounding: injected %d citation(s) for topic=%r via %s: %s",
+        len(citations), topic[:60], grounding_source, ", ".join(citations[:8]),
     )
     return out
