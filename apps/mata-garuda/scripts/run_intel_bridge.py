@@ -43,9 +43,22 @@ def main() -> int:
     # case_not_resolved is informational, not an error, per GENOME.md.
 
 
-if __name__ == "__main__":
+def _cli_entrypoint(main_fn) -> int:
+    """Run `main_fn()`, emitting a fail heartbeat only on a genuine exception.
+
+    `except BaseException` around `sys.exit(main_fn())` used to catch our OWN
+    successful SystemExit(0) and overwrite the correct "ok" heartbeat main_fn()
+    just wrote with status=fail (metadata {"error": "SystemExit: 0"}), every
+    run (same bug as run_normalizer.py, class-audit 2026-07-07). Catching
+    `Exception` (not `BaseException`) lets SystemExit/KeyboardInterrupt through
+    untouched.
+    """
     try:
-        sys.exit(main())
-    except BaseException as exc:  # noqa: BLE001 — heartbeat then re-raise
+        return main_fn()
+    except Exception as exc:  # noqa: BLE001 — heartbeat then re-raise
         emit_heartbeat(ORGAN_ID, "fail", metadata={"error": f"{type(exc).__name__}: {exc}"})
         raise
+
+
+if __name__ == "__main__":
+    sys.exit(_cli_entrypoint(main))
