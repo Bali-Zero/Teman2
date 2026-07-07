@@ -92,6 +92,7 @@ def test_collect_status_marks_drive_401_without_key_as_warning() -> None:
         patch("nuz_status.peer_git_status", return_value={"reachable": True, "branch": "main"}),
         patch("nuz_status.gh_latest_run", return_value={"available": False}),
         patch("nuz_status.http_json", side_effect=fake_http_json),
+        patch("nuz_status.drive_api_key", return_value=""),
         patch.dict("os.environ", {"NUZANTARA_API_KEY": ""}, clear=False),
     ):
         payload = nuz_status.collect_status(args)
@@ -99,6 +100,113 @@ def test_collect_status_marks_drive_401_without_key_as_warning() -> None:
     drive_check = next(check for check in payload["checks"] if check["id"] == "drive_worker")
     assert drive_check["status"] == "warn"
     assert "NUZANTARA_API_KEY" in drive_check["summary"]
+
+
+def test_collect_status_reads_drive_key_from_backend_env(tmp_path: Path) -> None:
+    args = Namespace(
+        refresh=False,
+        offline=False,
+        peer="pro",
+        fly_health_url="https://example.invalid/health",
+        drive_status_url="https://example.invalid/drive",
+    )
+    env_path = tmp_path / "apps" / "backend-rag" / ".env"
+    env_path.parent.mkdir(parents=True)
+    env_path.write_text("NUZANTARA_API_KEY=local-test-key\n", encoding="utf-8")
+    observed_headers: dict[str, str] = {}
+
+    def fake_http_json(url: str, **kwargs: object) -> dict[str, object]:
+        if url.endswith("/health"):
+            return {"ok": True, "status_code": 200, "body": {"status": "healthy"}}
+        headers = kwargs.get("headers")
+        if isinstance(headers, dict):
+            observed_headers.update(headers)
+        return {"ok": True, "status_code": 200, "body": {"status": "ok"}}
+
+    with (
+        patch("nuz_status.repo_root", return_value=tmp_path),
+        patch(
+            "nuz_status.git_status",
+            return_value={
+                "branch": "main",
+                "head": "abc123",
+                "head_full": "abc123full",
+                "origin_main": "abc123",
+                "origin_main_full": "abc123full",
+                "ahead": 0,
+                "behind": 0,
+                "dirty": False,
+                "dirty_count": 0,
+                "dirty_preview": [],
+            },
+        ),
+        patch("nuz_status.peer_git_status", return_value={"reachable": True, "branch": "main"}),
+        patch("nuz_status.gh_latest_run", return_value={"available": False}),
+        patch("nuz_status.http_json", side_effect=fake_http_json),
+        patch.dict("os.environ", {"NUZANTARA_API_KEY": ""}, clear=False),
+    ):
+        payload = nuz_status.collect_status(args)
+
+    drive_check = next(check for check in payload["checks"] if check["id"] == "drive_worker")
+    assert drive_check["status"] == "ok"
+    assert observed_headers["X-API-Key"] == "local-test-key"
+
+
+def test_collect_status_warns_when_drive_worker_has_more_pages() -> None:
+    args = Namespace(
+        refresh=False,
+        offline=False,
+        peer="pro",
+        fly_health_url="https://example.invalid/health",
+        drive_status_url="https://example.invalid/drive",
+    )
+
+    def fake_http_json(url: str, **_kwargs: object) -> dict[str, object]:
+        if url.endswith("/health"):
+            return {"ok": True, "status_code": 200, "body": {"status": "healthy"}}
+        return {
+            "ok": True,
+            "status_code": 200,
+            "body": {
+                "status": "ok",
+                "result": {
+                    "status": "ok",
+                    "last_result": {
+                        "status": "partial",
+                        "more_pages": True,
+                    },
+                },
+            },
+        }
+
+    with (
+        patch("nuz_status.repo_root", return_value=Path.cwd()),
+        patch(
+            "nuz_status.git_status",
+            return_value={
+                "branch": "main",
+                "head": "abc123",
+                "head_full": "abc123full",
+                "origin_main": "abc123",
+                "origin_main_full": "abc123full",
+                "ahead": 0,
+                "behind": 0,
+                "dirty": False,
+                "dirty_count": 0,
+                "dirty_preview": [],
+            },
+        ),
+        patch("nuz_status.peer_git_status", return_value={"reachable": True, "branch": "main"}),
+        patch("nuz_status.gh_latest_run", return_value={"available": False}),
+        patch("nuz_status.http_json", side_effect=fake_http_json),
+        patch("nuz_status.drive_api_key", return_value="test-key"),
+    ):
+        payload = nuz_status.collect_status(args)
+
+    drive_check = next(check for check in payload["checks"] if check["id"] == "drive_worker")
+    assert drive_check["status"] == "warn"
+    assert "last_result=partial" in drive_check["summary"]
+    assert "more_pages=True" in drive_check["summary"]
 
 
 def test_collect_status_defaults_pro_peer_to_mini() -> None:
