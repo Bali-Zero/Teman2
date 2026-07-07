@@ -136,6 +136,14 @@ if __name__ == "__main__":
     # Stage 2 (2026-06-30): emit an organism heartbeat at end of every run so a
     # green-but-dead pulse surfaces in ~/.organism/last_seen instead of being
     # masked by an exit-0. Wraps main(), preserves its exit code, re-raises crashes.
+    #
+    # 2026-07-07 (healer receptor 4, PENDING-ARMS): organ_id fixed to match the
+    # id `mata_garuda.sentinel_daily.mini` declared in organs_registry.yaml (this
+    # script is the Mini `com.matagaruda.sentinel.daily` cron target — same code
+    # also runs hourly on Pro under a separate label, but only the Mini registry
+    # entry exists today). Previous id `mata_garuda.sentinel_cell` never matched
+    # any registry entry, so healer_receptor_registry.py always saw a missing
+    # sidecar and classified this organ `never_armed` despite it running fine.
     from mata_garuda.workers.heartbeat import run_with_heartbeat
 
-    sys.exit(run_with_heartbeat("mata_garuda.sentinel_cell", main))
+    sys.exit(run_with_heartbeat("mata_garuda.sentinel_daily.mini", main))
