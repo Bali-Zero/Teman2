@@ -1,0 +1,132 @@
+name: catE-sovereignty-lint
+
+# Category-E guardian (cost / sovranità / Law-5 publish gate) — born from the
+# 2026-06-11 guardian-of-guardians audit, domande-per-fable5 §E (#40 #43 #44).
+#
+# Three "exists-but-not-armed" (W64) gaps had a lint/antibody but NO CI consumer:
+#   #40  paid-Anthropic ban is re-defended by hand in ~9 scripts (unset/pop
+#        ANTHROPIC_API_KEY) but NOTHING fails the build if a new script
+#        instantiates the PAID path  Anthropic(api_key=...)  /  sets
+#        ANTHROPIC_API_KEY=<value>.  CLAUDE.md §7: "se una regola è violabile,
+#        scrivi un hook" — this is that hook, at CI level.
+#   #43  the Law-5 autonomous-publish lint (scripts/lint/wr3_lint_autonomous_publish.py,
+#        bans ig.publish / tiktok.publish / yt.upload from any wr3_*.py) EXISTED
+#        but was wired into ZERO workflows (symbiosis-lint.yml only doc-checks).
+#        So "mai auto-publish IG" was protected by "nobody wired the API yet",
+#        not by code. This runs it BLOCKING.
+#   #44  apps/*/.env world-readable (0644) is a recurring P0 class (5+ in 5
+#        weeks, fixed by hand each time). A perm check closes the loop the
+#        cicatrici re-open manually.
+#
+# Pure-stdlib / grep, full-repo scan in seconds → no paths filter, no sentinel.
+# Triggers BOTH pull_request AND push-to-main (W41/W42: pull_request-only gives
+# false safety under L2 autonomous direct-push).
+#
+# NON-REQUIRED by design (not added to branch protection here): a NEW signal
+# observes for a review cycle before it can block; flip to required only after
+# it proves stable + zero false-positive (W69 BUCO #1 lesson: arming a check as
+# required without a skip→success sentinel can pend-forever / block innocents).
+
+# Path-scoped (2026-06-12 CI fan-out reduction): every check here inspects
+# Python source (paid-Anthropic ban, Law-5 wr3 publish lint) or .env perms, so
+# a docs/content-only PR (.mdx/.md/.json) has nothing for it to scan — scoping
+# to those paths loses zero coverage. NON-REQUIRED, so a non-matching PR just
+# skips it (no pending-forever; W69 BUCO #1 only bites REQUIRED path-filtered
+# checks lacking a skip→success sentinel).
+on:
+  pull_request:
+    paths:
+      - "**.py"
+      - "**/.env*"
+      - ".github/workflows/catE-sovereignty-lint.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "**.py"
+      - "**/.env*"
+      - ".github/workflows/catE-sovereignty-lint.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catE-sovereignty-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  catE-sovereignty-lint:
+    name: catE-sovereignty-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      # ── #40 — ban the PAID Anthropic endpoint (MAX-plan duplication) ────────
+      # OK paths (MUST NOT trip): Anthropic(auth_token=...) / ANTHROPIC_AUTH_TOKEN
+      #   (OAuth Bearer, the sanctioned SDK path), and unset/pop ANTHROPIC_API_KEY
+      #   (defense-in-depth strips). We ban ONLY the paid instantiation/assignment.
+      #
+      # BASELINE-AWARE (W71 antibody pattern): the 2026-06-11 audit found 3
+      # PRE-EXISTING paid constructor sites (see catE-paid-anthropic-baseline.txt).
+      # A blocking "zero hits" check would be perpetually red on main, so we fail
+      # only when the live count EXCEEDS the baseline — i.e. a NEW paid path is
+      # introduced. The 3 known sites are surfaced (::warning::) for deliberate
+      # operator remediation, not silently tolerated.
+      - name: Ban NEW paid Anthropic constructor (vs committed baseline)
+        run: |
+          set -uo pipefail
+          BASELINE_FILE=.github/workflows/catE-paid-anthropic-baseline.txt
+          # uncommented, non-blank lines in the baseline = expected count
+          BASELINE=$(grep -cvE '^\s*(#|$)' "$BASELINE_FILE" || echo 0)
+          # AsyncAnthropic/Anthropic( api_key=...  (paid constructor); exclude vendored/test code
+          HITS=$(grep -rnE 'Anthropic\(\s*api_key' --include='*.py' . \
+            | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_' || true)
+          COUNT=$(printf '%s' "$HITS" | grep -c . || true)
+          echo "baseline=$BASELINE  live_count=$COUNT"
+          echo "$HITS"
+          if [ "$COUNT" -gt "$BASELINE" ]; then
+            echo "::error::NEW paid Anthropic constructor introduced ($COUNT > baseline $BASELINE). Use claude CLI (CLAUDE_CODE_OAUTH_TOKEN) or Anthropic(auth_token=...). If a known site moved, update catE-paid-anthropic-baseline.txt."
+            exit 1
+          fi
+          [ "$COUNT" -gt 0 ] && echo "::warning::$COUNT known paid-Anthropic constructor site(s) remain — remediate to OAuth, see catE-paid-anthropic-baseline.txt."
+          echo "OK: no NEW paid Anthropic constructor vs baseline."
+
+      # ── #40b — ban ASSIGNING a value into ANTHROPIC_API_KEY (export/setenv) ──
+      # Allowed: unset / del / .pop / =""/=None (these STRIP, defense-in-depth).
+      # Banned: a literal export/setenv that SETS the key to a real value.
+      - name: Ban ANTHROPIC_API_KEY=<value> assignment
+        run: |
+          set -uo pipefail
+          HITS=$(grep -rnE 'export[[:space:]]+ANTHROPIC_API_KEY=[^"'"'"'[:space:]]|setenv\([[:space:]]*["'"'"']ANTHROPIC_API_KEY' \
+            --include='*.py' --include='*.sh' . \
+            | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_|examples/|vendor/' || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::ANTHROPIC_API_KEY assigned a value (paid path, CLAUDE.md §5):"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "OK: no ANTHROPIC_API_KEY value assignment outside vendor/examples."
+
+      # ── #43 — Law-5 (Zero ultima istanza): no autonomous IG/TT/YT publish ───
+      - name: Law-5 autonomous-publish lint (blocking)
+        run: |
+          set -uo pipefail
+          if [ -f scripts/lint/wr3_lint_autonomous_publish.py ]; then
+            python3 scripts/lint/wr3_lint_autonomous_publish.py
+          else
+            echo "::warning::scripts/lint/wr3_lint_autonomous_publish.py absent — skipped."
+          fi
+
+      # ── #44 — apps/*/.env must NOT be group/world-readable (0644 P0 class) ──
+      # Recurring antibody: chmod 600 by hand after each incident. This gates it.
+      - name: Ban world-readable apps/*/.env (perm > 0600)
+        run: |
+          set -uo pipefail
+          BAD=$(find apps -maxdepth 2 -name '.env' -perm /044 2>/dev/null || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::apps/*/.env with group/world-read bits (recurring P0 — chmod 600):"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "OK: no group/world-readable apps/*/.env."

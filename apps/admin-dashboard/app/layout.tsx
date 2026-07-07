@@ -21,9 +21,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <I18nProvider>
-          <div className="flex min-h-screen">
+          <div className="flex min-h-screen flex-col lg:flex-row">
             <Sidebar />
-            <main className="flex-1 ml-64 bg-background">
+            <main className="min-w-0 flex-1 bg-background lg:ml-64">
               <ErrorBoundary>{children}</ErrorBoundary>
             </main>
           </div>

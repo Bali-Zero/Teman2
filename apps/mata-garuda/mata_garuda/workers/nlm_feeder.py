@@ -24,14 +24,17 @@ Layer 3 Nexus.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
-from uuid import uuid4
 
 from mata_garuda.config import (
+    FEED_MIN_SCORE,
     NLM_DOMAIN_ROUTING,
     NLM_FEEDER_BATCH_SIZE,
     NLM_FEEDER_SLEEP_BETWEEN_S,
@@ -39,6 +42,7 @@ from mata_garuda.config import (
     STREAM_ALERTS,
     STREAM_ENRICHED,
 )
+from mata_garuda.notebook_registry import get_notebook
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.base_worker import (
     stream_ack,
@@ -60,6 +64,35 @@ _NB_COUNT_CACHE: dict[str, tuple[int, float]] = {}
 _NB_COUNT_TTL_S = 3600
 
 
+_NLM_CLI_FALLBACKS = (
+    os.path.expanduser("~/.local/bin/nlm"),
+    "/opt/homebrew/bin/nlm",
+    "/usr/local/bin/nlm",
+)
+
+
+def _resolve_nlm_cli() -> str:
+    """Resolve the `nlm` CLI to an ABSOLUTE path.
+
+    Stage 3 (2026-06-30): under cron/non-login launchd the PATH is stripped, so a
+    bare `nlm` invocation dies with `No such file or directory: 'nlm'` and the
+    feeder silently feeds nothing (verified live on Pro: enriched backlog read,
+    every push errored). Same fix shape as Stage 1's _resolve_redis_cli for
+    redis-cli. Falls back to the bare name as a last resort so a dev shell with
+    nlm on PATH still works.
+    """
+    found = shutil.which("nlm")
+    if found:
+        return found
+    for cand in _NLM_CLI_FALLBACKS:
+        if os.path.exists(cand):
+            return cand
+    return "nlm"
+
+
+NLM_CLI = _resolve_nlm_cli()
+
+
 def _nlm_notebook_source_count(notebook_id: str) -> int | None:
     """Return current source_count for a notebook (cached 1h), or None on error.
 
@@ -71,7 +104,7 @@ def _nlm_notebook_source_count(notebook_id: str) -> int | None:
         return cached[0]
     try:
         result = subprocess.run(
-            ["nlm", "notebook", "list"],
+            [NLM_CLI, "notebook", "list"],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
@@ -95,6 +128,37 @@ def _nlm_at_cap(notebook_id: str) -> bool:
     return count >= NLM_NOTEBOOK_SOURCE_CAP
 
 
+def _resolve_writable_nb(notebook_id: str) -> str:
+    """B2 (2026-06-30): automatic cap-rollover.
+
+    Given a domain notebook, return a notebook that still has room to write:
+      - not at cap → the notebook itself (fast path, the common case).
+      - at cap → the first registry `peer_uuids` overflow NB that has room
+        (this is what B1 wired by hand for ai_research; B2 makes it automatic
+        for every domain whose registry entry declares an overflow peer).
+      - at cap with no peer (or no free peer) → the original NB. The caller's
+        cap-check then skips the add, exactly as before — fail-safe, never
+        crashes, never silently drops the route.
+    """
+    if not notebook_id or not _nlm_at_cap(notebook_id):
+        return notebook_id
+    entry = get_notebook(notebook_id)
+    if entry is None:
+        return notebook_id
+    for peer in entry.peer_uuids:
+        if not _nlm_at_cap(peer):
+            logger.info(
+                "[nlm_feeder] cap-rollover: %s full → writing to overflow peer %s",
+                notebook_id, peer,
+            )
+            return peer
+    logger.warning(
+        "[nlm_feeder] %s at cap and no overflow peer has room — add will skip",
+        notebook_id,
+    )
+    return notebook_id
+
+
 def _nlm_add_url(notebook_id: str, url: str) -> bool:
     """Add a URL source to NLM notebook. Returns True on success.
 
@@ -104,15 +168,16 @@ def _nlm_add_url(notebook_id: str, url: str) -> bool:
     """
     if not notebook_id:
         return False
+    notebook_id = _resolve_writable_nb(notebook_id)
     if _nlm_at_cap(notebook_id):
         logger.warning(
-            "[nlm_feeder] skip add (NB at cap): nb=%s url=%s",
+            "[nlm_feeder] skip add (NB at cap, no overflow room): nb=%s url=%s",
             notebook_id, url,
         )
         return False
     try:
         result = subprocess.run(
-            ["nlm", "source", "add", "--profile", "zero", notebook_id, "--url", url],
+            [NLM_CLI, "source", "add", "--profile", "default", notebook_id, "--url", url],
             capture_output=True, text=True, timeout=60,
         )
         if result.returncode == 0:
@@ -172,62 +237,61 @@ def _try_headless_auth_refresh() -> bool:
 
 
 def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
-    """Add text content to NLM notebook via temp file.
+    """Add text content to NLM notebook, TITLE PRESERVED.
 
-    On auth-error stderr from `nlm` CLI, attempts ONE headless refresh
-    + retry. Subsequent auth failures within the same run are NOT retried
-    (Layer-1 recovery only — if Chrome profile is stale too, only an
-    interactive `nlm login --clear` will fix it).
+    Uses `nlm source add --text <text> --title <title>` (A/B-verified to keep the
+    title). The previous implementation wrote a /tmp/nlm_feed_<hash>.txt and used
+    `--file`, which made the temp FILENAME the NLM source title — so every text
+    push landed as 'nlm_feed_<hash>.txt', un-findable (8 such mis-titled sources
+    accumulated in prod; fixed + cleaned 2026-06-30). No temp file now.
 
-    W15: pre-check NB cap; if at cap, skip immediately. On non-auth
-    rejection, surface stderr in WARNING log.
+    On auth-error stderr from `nlm` CLI, attempts ONE headless refresh + retry.
+    Subsequent auth failures within the same run are NOT retried (Layer-1 recovery
+    only — if the Chrome profile is stale too, only an interactive
+    `nlm login --clear` will fix it).
+
+    W15: pre-check NB cap; if at cap, skip immediately. On non-auth rejection,
+    surface stderr in WARNING log.
     """
     if not notebook_id:
         return False
+    notebook_id = _resolve_writable_nb(notebook_id)
     if _nlm_at_cap(notebook_id):
         logger.warning(
-            "[nlm_feeder] skip add_text (NB at cap): nb=%s title=%s",
+            "[nlm_feeder] skip add_text (NB at cap, no overflow room): nb=%s title=%s",
             notebook_id, title[:60],
         )
         return False
-    tmp = Path(f"/tmp/nlm_feed_{uuid4().hex[:8]}.txt")
-    try:
-        tmp.write_text(f"# {title}\n\n{text}")
+    for attempt in (1, 2):
+        result = subprocess.run(
+            [NLM_CLI, "source", "add", "--profile", "default", notebook_id,
+             "--text", text, "--title", title],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode == 0:
+            return True
 
-        for attempt in (1, 2):
-            result = subprocess.run(
-                ["nlm", "source", "add", "--profile", "zero", notebook_id, "--file", str(tmp)],
-                capture_output=True, text=True, timeout=60,
+        stderr = (result.stderr or "") + (result.stdout or "")
+        auth_err = (
+            "Authentication expired" in stderr
+            or "Authentication Error" in stderr
+            or "auth" in stderr.lower() and "expir" in stderr.lower()
+        )
+        if attempt == 1 and auth_err:
+            logger.info(
+                "[nlm_feeder] auth expired on add_text — attempting headless refresh"
             )
-            if result.returncode == 0:
-                return True
-
-            stderr = (result.stderr or "") + (result.stdout or "")
-            auth_err = (
-                "Authentication expired" in stderr
-                or "Authentication Error" in stderr
-                or "auth" in stderr.lower() and "expir" in stderr.lower()
-            )
-            if attempt == 1 and auth_err:
-                logger.info(
-                    "[nlm_feeder] auth expired on add_text — attempting headless refresh"
-                )
-                if not _try_headless_auth_refresh():
-                    return False
-                # loop back for retry with refreshed auth.json
-                continue
-            snippet = stderr.replace("\n", " ").strip()[:200]
-            logger.warning(
-                "[nlm_feeder] add_text rejected: nb=%s title=%s rc=%d reason=%s",
-                notebook_id, title[:60], result.returncode, snippet or "(empty)",
-            )
-            return False
+            if not _try_headless_auth_refresh():
+                return False
+            # loop back for retry with refreshed auth.json
+            continue
+        snippet = stderr.replace("\n", " ").strip()[:200]
+        logger.warning(
+            "[nlm_feeder] add_text rejected: nb=%s title=%s rc=%d reason=%s",
+            notebook_id, title[:60], result.returncode, snippet or "(empty)",
+        )
         return False
-    except Exception as e:
-        logger.warning(f"[nlm_feeder] Failed to add text '{title}': {e}")
-        return False
-    finally:
-        tmp.unlink(missing_ok=True)
+    return False
 
 
 def _route_to_notebook(source_type: str) -> str:
@@ -311,6 +375,31 @@ def infer_domain_from_item(data: dict) -> str:
 
 def _nlm_fed_marker(url_or_hash: str) -> str:
     return f"nlm_fed {url_or_hash}"
+
+
+def _dedup_key(title: str, url: str) -> str:
+    """Item-identity dedup key — NOT the bare URL (W89 #2).
+
+    Many distinct intel items share ONE landing-page URL: every LHKPN official's
+    declaration carries url='https://elhkpn.kpk.go.id/', and one peraturan
+    harmon URL covers many distinct regulations. Keying dedup on the bare URL
+    collapsed them — after the first was fed, persons #2..N matched 'already fed'
+    and were silently skip+ACKed, so distinct officials never reached NLM.
+
+    Fix: when a title exists, key on a stable hash of (title|url) so distinct
+    titles on a shared URL dedup independently. URL-only items (no title) keep
+    keying on the bare URL (true duplicates still collapse). Title-only items
+    (no URL) key on the title. Empty/empty → a constant so it's at least idempotent.
+    """
+    t = (title or "").strip()
+    u = (url or "").strip()
+    if t and u:
+        return "h:" + hashlib.sha1(f"{t}\x1f{u}".encode("utf-8")).hexdigest()[:24]
+    if u:
+        return u
+    if t:
+        return f"title:{t}"
+    return "empty"
 
 
 def _already_fed(kb: KnowledgeBase, dedup_key: str) -> bool:
@@ -439,9 +528,25 @@ def _run_nlm_feeder_from(
             stream_ack(stream, consumer_group, msg_id)
             continue
 
-        # Dedup: if we've already fed this URL, skip. Look up by (type, source)
-        # directly — FTS5 doesn't tokenize URLs reliably.
-        dedup_key = url or f"title:{title}"
+        # Relevance gate (council fix #3): a hard-capped sink (NLM ~500) must
+        # only see high-signal items. Skip+ACK items that ARE scored and score
+        # below FEED_MIN_SCORE. Fail-OPEN: un-scored items still feed (never
+        # silently drop intel just because it lacks a score).
+        raw_score = data.get("score") or data.get("relevance")
+        if raw_score not in (None, ""):
+            try:
+                if int(float(raw_score)) < FEED_MIN_SCORE:
+                    stats["skipped"] += 1
+                    stream_ack(stream, consumer_group, msg_id)
+                    continue
+            except (TypeError, ValueError):
+                pass  # unparseable score → fail-open, feed it
+
+        # Dedup on ITEM identity (title+url), not the bare URL — distinct items
+        # sharing one landing-page URL (LHKPN officials, peraturan harmon docs)
+        # must dedup independently (W89 #2). Look up by (type, source) directly —
+        # FTS5 doesn't tokenize URLs/hashes reliably.
+        dedup_key = _dedup_key(title, url)
         already = _already_fed(kb, dedup_key)
         if already:
             stats["skipped"] += 1
@@ -449,9 +554,10 @@ def _run_nlm_feeder_from(
             continue
 
         # Feed as text (title + content) so NLM gets context even if URL
-        # is paywalled. Matches briefing spec.
+        # is paywalled. Matches briefing spec. Title falls back to url (NOT the
+        # dedup_key — that's a hash now and would make an unreadable NLM title).
         text_body = content[:4000] if content else title
-        effective_title = (title or dedup_key)[:200]
+        effective_title = (title or url or dedup_key)[:200]
         success = _nlm_add_text(notebook_id, effective_title, text_body)
 
         if success:

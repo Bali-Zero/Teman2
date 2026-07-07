@@ -46,7 +46,7 @@ class BaseRepository:
         async with self.db_pool.acquire() as conn:
             try:
                 return await conn.fetchrow(query, *args)
-            except asyncpg.PostgresError as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
                 self.logger.error("fetchrow failed: %s | query=%s", exc, query[:120], exc_info=True)
                 raise
 
@@ -59,7 +59,7 @@ class BaseRepository:
         async with self.db_pool.acquire() as conn:
             try:
                 return await conn.fetch(query, *args)
-            except asyncpg.PostgresError as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
                 self.logger.error("fetch failed: %s | query=%s", exc, query[:120], exc_info=True)
                 raise
 
@@ -72,6 +72,6 @@ class BaseRepository:
         async with self.db_pool.acquire() as conn:
             try:
                 return await conn.execute(query, *args)
-            except asyncpg.PostgresError as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
                 self.logger.error("execute failed: %s | query=%s", exc, query[:120], exc_info=True)
                 raise

@@ -120,6 +120,84 @@ def upload_pdf(
     raise TigrisError(f"Tigris exhausted retries for {key}: {last_exc}") from last_exc
 
 
+def upload_png(
+    s3: Any,
+    png: bytes | Path,
+    *,
+    draft_id: str,
+    slide_index: int,
+    prefix: str = "wr2-ig",
+) -> tuple[str, str]:
+    """Upload a carousel slide PNG to Tigris S3, return (public_url, s3_key).
+
+    Mirrors :func:`upload_pdf` but for ``image/png`` carousel slides. The
+    Meta Graph carousel API requires a publicly-fetchable image URL — Drive
+    HTML preview pages are rejected, so we serve the raw PNG bytes from
+    Tigris (``public-read`` ACL) at a deterministic per-slide key.
+
+    Args:
+        s3: boto3 S3 client from :func:`get_s3_client`.
+        png: PNG bytes, or a :class:`pathlib.Path` to a ``.png`` file.
+        draft_id: draft / carousel identifier (groups all slides of one post).
+        slide_index: 0-based slide ordinal — zero-padded to 2 digits in key.
+        prefix: S3 key prefix (default ``wr2-ig``).
+
+    Returns:
+        ``(public_url, s3_key)`` — the public URL is fed to IGPublisher.
+
+    Raises:
+        TigrisError: on non-transient S3 error or exhausted retries.
+    """
+    body = png.read_bytes() if isinstance(png, Path) else png
+    key = f"{prefix}/{draft_id}/{slide_index:02d}.png"
+
+    last_exc: Exception | None = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            s3.put_object(
+                Bucket=BUCKET,
+                Key=key,
+                Body=body,
+                ContentType="image/png",
+                ACL="public-read",
+            )
+            logger.info("Tigris PNG upload OK: %s (attempt %d)", key, attempt)
+            # Verify ContentType=image/png via HEAD before returning URL.
+            try:
+                head = s3.head_object(Bucket=BUCKET, Key=key)
+                head_ct = head.get("ContentType", "")
+                if head_ct != "image/png":
+                    raise TigrisError(
+                        f"Tigris HEAD ContentType mismatch for {key}: "
+                        f"expected image/png, got {head_ct!r}",
+                    )
+                logger.info(
+                    "Tigris PNG HEAD ok: ContentType=%s len=%s",
+                    head_ct,
+                    head.get("ContentLength", "?"),
+                )
+            except TigrisError:
+                raise
+            except Exception as e:  # HEAD verify best-effort on transport errors
+                logger.warning("Tigris PNG HEAD verify failed (non-fatal): %s", e)
+            return f"https://{PUBLIC_HOST}/{key}", key
+        except (ClientError, BotoCoreError) as e:
+            last_exc = e
+            if not _is_transient(e):
+                raise TigrisError(f"Tigris non-transient error: {e}") from e
+            if attempt < MAX_RETRIES:
+                delay = BACKOFF_BASE_S * (2 ** (attempt - 1))
+                logger.warning(
+                    "Tigris PNG transient error attempt %d/%d: %s — sleep %.1fs",
+                    attempt,
+                    MAX_RETRIES,
+                    e,
+                    delay,
+                )
+                time.sleep(delay)
+    raise TigrisError(f"Tigris exhausted retries for {key}: {last_exc}") from last_exc
+
+
 def delete_pdf(s3: Any, *, draft_id: str, prefix: str = "wr2-pdf") -> None:
     """Best-effort delete of LEGACY single-key path. Never raises.
 

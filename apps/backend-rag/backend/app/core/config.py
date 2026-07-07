@@ -22,7 +22,10 @@ class Settings(BaseSettings):
     COMPANY_LOCATION: str = "Jalan Semer, Kerobokan, Bali"
     COMPANY_SERVICE_DOMAIN: str = "Visas, Business Setup, Tax, Legal matters in Indonesia"
     SUPPORT_EMAIL: str = "info@balizero.com"
-    SUPPORT_WHATSAPP: str = "+62 822 6459 9868"
+    # Zantara/Bali Zero WhatsApp Business number, Meta-verified (verified_name
+    # BALI ZERO, GREEN). The old personal number (+62 822 64xx, Antonello's)
+    # no longer exists — replaced fleet-wide 2026-06-18.
+    SUPPORT_WHATSAPP: str = "+62 821 3465 159"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 
@@ -194,6 +197,94 @@ class Settings(BaseSettings):
     )
     memory_alert_threshold_percent: float = 80.0  # Alert if memory usage exceeds 80% of available
     cpu_alert_threshold_percent: float = 90.0  # Alert if CPU exceeds 90% sustained
+
+    # ========================================
+    # VOICE CONCIERGE LOCAL AUDIO CONFIGURATION
+    # ========================================
+    voice_concierge_local_audio_enabled: bool = Field(
+        default=False,
+        description="Enable local-only voice concierge audio stack. Set via VOICE_CONCIERGE_LOCAL_AUDIO_ENABLED.",
+    )
+    voice_concierge_local_audio: bool = Field(
+        default=False,
+        description="Alias flag for local-only voice concierge audio. Set via VOICE_CONCIERGE_LOCAL_AUDIO.",
+    )
+    voice_concierge_whisper_binary: str | None = Field(
+        default=None,
+        description="Path to local whisper.cpp binary. Set via VOICE_CONCIERGE_WHISPER_BINARY.",
+    )
+    voice_concierge_whisper_model: str | None = Field(
+        default=None,
+        description="Path to local whisper.cpp model. Set via VOICE_CONCIERGE_WHISPER_MODEL.",
+    )
+    voice_concierge_whisper_timeout_seconds: float = Field(
+        default=30.0,
+        description="Local whisper.cpp transcription timeout in seconds.",
+    )
+    voice_concierge_audio_max_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        description="Maximum local voice concierge upload size in bytes.",
+    )
+    voice_concierge_tts_max_chars: int = Field(
+        default=1200,
+        description="Maximum local voice concierge TTS input length in characters.",
+    )
+    voice_concierge_tts_audio_max_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        description="Maximum local voice concierge TTS output size in bytes.",
+    )
+    voice_concierge_tts_profile: str = Field(
+        default="high_quality_offline",
+        description="Active voice concierge TTS profile: high_quality_offline or browser_realtime.",
+    )
+    voice_concierge_realtime_tts_provider: str = Field(
+        default="browser-web-speech-local",
+        description="Realtime voice concierge TTS provider. Browser profile requires a client-side localService voice.",
+    )
+    voice_concierge_chatterbox_module: str = Field(
+        default="chatterbox",
+        description="Python module marker for Chatterbox runtime availability.",
+    )
+    voice_concierge_chatterbox_model_path: str | None = Field(
+        default=None,
+        description="Optional local Chatterbox checkpoint directory. If unset, a local HuggingFace cache snapshot is discovered without downloading.",
+    )
+    voice_concierge_chatterbox_t3_model: str = Field(
+        default="v3",
+        description="Local Chatterbox multilingual T3 model selector.",
+    )
+    voice_concierge_chatterbox_language: str = Field(
+        default="en",
+        description="Default local Chatterbox language id for voice concierge TTS.",
+    )
+    voice_concierge_chatterbox_timeout_seconds: float = Field(
+        default=60.0,
+        description="Local Chatterbox synthesis timeout in seconds.",
+    )
+    voice_concierge_silero_module: str = Field(
+        default="silero_vad",
+        description="Python module marker for Silero VAD runtime availability.",
+    )
+    voice_concierge_silero_sampling_rate: int = Field(
+        default=16000,
+        description="Silero VAD audio sampling rate. Supported values: 8000 or 16000.",
+    )
+    voice_concierge_silero_threshold: float = Field(
+        default=0.5,
+        description="Silero VAD speech probability threshold.",
+    )
+    voice_concierge_silero_timeout_seconds: float = Field(
+        default=15.0,
+        description="Local Silero VAD timeout in seconds.",
+    )
+    voice_concierge_livekit_worker_health_url: str | None = Field(
+        default=None,
+        description="HTTP health URL for the local LiveKit voice worker. Required for deep production readiness.",
+    )
+    voice_concierge_livekit_worker_timeout_seconds: float = Field(
+        default=3.0,
+        description="Timeout in seconds for LiveKit worker health checks.",
+    )
 
     # ========================================
     # RERANKER CONFIGURATION
@@ -515,6 +606,13 @@ class Settings(BaseSettings):
     enable_collective_memory: bool = False  # Set via ENABLE_COLLECTIVE_MEMORY env var
     enable_advanced_analytics: bool = False  # Set via ENABLE_ADVANCED_ANALYTICS env var
     enable_tool_execution: bool = False  # Set via ENABLE_TOOL_EXECUTION env var
+    # PII sovereignty (SYMBIOSIS Law 2 / UU PDP Art. 56): OCR of client documents
+    # (passport/KTP/NPWP/akta/visa) must NOT fall back to cloud Vision (Gemini) —
+    # that would send the document image to Google (cross-border). Default FALSE =
+    # local-only OCR; when Ollama is down the OCR degrades locally + alerts instead
+    # of sending PII to the cloud. Set OCR_ALLOW_CLOUD_VISION=true ONLY for
+    # non-PII document flows where cloud OCR is acceptable. Set via env var.
+    ocr_allow_cloud_vision: bool = False  # Set via OCR_ALLOW_CLOUD_VISION env var
 
     # ========================================
     # NOTIFICATION SERVICES
@@ -609,7 +707,18 @@ class Settings(BaseSettings):
             "Comma-separated whitelist of phone numbers allowed to interact with WhatsApp bot (no + prefix). "
             "If set, messages from numbers NOT in this list are silently ignored (no response sent). "
             "Set via WHATSAPP_ALLOWED_NUMBERS env var. "
-            "Example: '6282264599868' — leave empty to allow everyone."
+            "Example: '6282210302328' — leave empty to allow everyone."
+        ),
+    )
+    whatsapp_team_allowlist: str = Field(
+        default="",
+        description=(
+            "Comma-separated list of Bali Zero team/staff phone numbers allowed as "
+            "outbound /api/whatsapp/send recipients WITHOUT a CRM client record. "
+            "Entries are normalized to digits-only before comparison, so "
+            "'+62 878-6187-0777', '6287861870777' and '+6287861870777' all match. "
+            "Set via WHATSAPP_TEAM_ALLOWLIST env var. Leave empty to require CRM "
+            "validation for every recipient (default)."
         ),
     )
     whatsapp_openclaw_bridge_url: str | None = Field(
@@ -626,8 +735,7 @@ class Settings(BaseSettings):
     whatsapp_openclaw_model: str = Field(
         default="openai/gpt-5.5",
         description=(
-            "OpenClaw model override for WhatsApp replies. "
-            "Set via WHATSAPP_OPENCLAW_MODEL env var."
+            "OpenClaw model override for WhatsApp replies. Set via WHATSAPP_OPENCLAW_MODEL env var."
         ),
     )
     whatsapp_openclaw_thinking: str = Field(
@@ -783,6 +891,34 @@ class Settings(BaseSettings):
         None,
         description="Admin API key for plugin reload and admin endpoints (set via ADMIN_API_KEY env var)",
     )
+    autonomous_lab_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable the internal autonomous lab draft API. Default False; set via "
+            "AUTONOMOUS_LAB_ENABLED env var."
+        ),
+    )
+    autonomous_lab_receipt_dir: str = Field(
+        default="/tmp/autonomous_lab_receipts",
+        description=(
+            "Directory for optional autonomous lab receipt persistence. Set via "
+            "AUTONOMOUS_LAB_RECEIPT_DIR env var."
+        ),
+    )
+    autonomous_lab_persistence_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow the internal autonomous lab API to persist receipts. Default False; set via "
+            "AUTONOMOUS_LAB_PERSISTENCE_ENABLED env var."
+        ),
+    )
+    autonomous_lab_execute_verification_enabled: bool = Field(
+        default=False,
+        description=(
+            "Allow autonomous lab verification execution for allowlisted commands only. "
+            "Default False; set via AUTONOMOUS_LAB_EXECUTE_VERIFICATION_ENABLED env var."
+        ),
+    )
 
     admin_emails: str | None = Field(
         default=None,
@@ -887,6 +1023,16 @@ class Settings(BaseSettings):
     # `get_current_user_or_internal` (crm_clients.py). Rotate via
     # `fly secrets set WA_MIRROR_INTERNAL_KEY=...`. Unset → endpoint requires JWT only.
     wa_mirror_internal_key: str | None = None
+
+    # Scoped service key for WA Mirror CRM service writes:
+    # - POST /api/crm/clients/upsert-by-phone
+    # - POST /api/crm/internal/clients/{id}/documents/upload
+    # DISTINCT from wa_mirror_internal_key by design; it is not full CRUD. Header:
+    # X-CRM-Write-Key. Endpoints are hard-gated by wa_mirror_crm_write_enabled
+    # (default False → 503), a kill-switch. Rotate via
+    # `fly secrets set WA_MIRROR_CRM_WRITE_KEY=...`.
+    wa_mirror_crm_write_key: str | None = None
+    wa_mirror_crm_write_enabled: bool = False
 
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 

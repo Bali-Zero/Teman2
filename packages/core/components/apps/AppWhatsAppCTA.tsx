@@ -84,7 +84,7 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
       window.location.href = json.whatsapp_url;
     } catch {
       setError("We could not open WhatsApp automatically. Opening the basic link.");
-      window.location.href = "https://wa.me/6282264599868";
+      window.location.href = "https://wa.me/6282210302328";
     } finally {
       setPending(false);
     }

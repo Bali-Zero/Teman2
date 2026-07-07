@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-NB2_ID = "271c7159-0c32-49a1-bda8-803c8e0993a6"
+NB2_ID = "cff93ab0-813a-42f2-a8de-36987e724271"
 MAX_T4_SLOTS = 11
 CB_T4_FAILURE_THRESHOLD = 3
 CB_T4_RECOVERY_MINUTES = 30

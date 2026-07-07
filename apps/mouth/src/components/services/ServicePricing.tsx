@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Check, X, Info, Phone } from "lucide-react";
 import type { ServicePackage } from "@/data/services_data";
+import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 
 // ServiceData without icon (React component cannot be serialized)
 type ServiceDataWithoutIcon = Omit<
@@ -89,7 +90,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                 >
                   {pkg.popular && (
                     <span
-                      className={`inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
+                      className={`rp-dark-island inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
                         slug === "visa" && visaColors
                           ? visaColors.badge
                           : "bg-accent-blue-editorial"
@@ -135,9 +136,9 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                   <button
                     className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
                       slug === "visa" && visaColors
-                        ? `${visaColors.badge} text-white hover:opacity-90`
+                        ? `rp-dark-island ${visaColors.badge} text-white hover:opacity-90`
                         : pkg.popular
-                          ? "bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
+                          ? "rp-dark-island bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
                           : "border border-white/20 text-white hover:bg-white/10"
                     }`}
                   >
@@ -162,7 +163,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
           onClick={() => setSelectedPackage(null)}
         >
           <div
-            className="relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="rp-dark-island relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -232,14 +233,22 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               </div>
 
               {/* WhatsApp CTA */}
-              <Link
-                href={`https://wa.me/6282264599868?text=${encodeURIComponent(`Hi, I'm interested in ${selectedPackage.name}. Can you help me?`)}`}
-                target="_blank"
+              <WhatsAppLeadButton
+                source="pricing_modal"
+                context={{
+                  service_slug: slug,
+                  package_name: selectedPackage.name,
+                }}
+                whatsappContext={[
+                  { label: "Service", value: slug },
+                  { label: "Package", value: selectedPackage.name },
+                ]}
+                utm={{ page: `/services/${slug}` }}
                 className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#20BD5A] transition-colors mb-3"
               >
                 <Phone className="w-5 h-5" />
                 Chat on WhatsApp
-              </Link>
+              </WhatsAppLeadButton>
 
               <Link
                 href="/chat"

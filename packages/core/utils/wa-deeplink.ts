@@ -1,4 +1,4 @@
-export const WA_CANONICAL = "6282264599868";
+export const WA_CANONICAL = "6282210302328";
 
 export interface WaDeeplinkArgs {
   text?: string;

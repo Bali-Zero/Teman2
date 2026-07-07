@@ -474,9 +474,15 @@ export interface DriveFolder {
   name: string;
 }
 
+export interface DriveFile {
+  id: string;
+  name: string;
+}
+
 export interface DriveFilesResponse {
   root_id?: string;
   root_name?: string;
+  files: DriveFile[];
   folders: DriveFolder[];
   total_files: number;
   total_size_bytes?: number;
@@ -561,10 +567,21 @@ export interface DashboardSummaryDeadline {
   kind: string | null;
 }
 
+export interface DashboardRecap {
+  /** facts-locked summary text, optionally prose-polished by local LLM */
+  text: string;
+  /** whether the LLM style pass was applied (vs raw deterministic) */
+  polished: boolean;
+  /** permanent legal disclaimer (always shown alongside the recap) */
+  disclaimer: string;
+}
+
 export interface DashboardSummary {
   open_actions: DashboardSummaryAction[];
   upcoming_deadlines: DashboardSummaryDeadline[];
   unread_messages: number;
+  /** FASE 3 AI recap — null if recap generation failed (additive, non-blocking) */
+  recap?: DashboardRecap | null;
 }
 
 export interface PortalMatter {

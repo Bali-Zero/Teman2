@@ -39,12 +39,24 @@ class CollectionManager:
         # Read semaphores: allow concurrent searches
         self._collection_locks: dict[str, asyncio.Lock] = {}
         self._collection_read_semaphores: dict[str, asyncio.Semaphore] = {}
+        self._max_concurrent_searches = 20
         self._lock_timeout = 30.0  # seconds (longer for ingestion operations)
 
         # Freshness tracking: last successful ingest timestamp per collection
         self._collection_last_updated: dict[str, float] = {}
 
         # Collection definitions (lazy initialization)
+        #
+        # ⚠️ RECONCILIATION NOTE (TAC-2 A6, 2026-07-05): this dict describes the
+        # PRE-hybrid-migration generation of the Qdrant estate. Live probe of
+        # /health/collections (14 collections, 113,818 docs) shows only 6 of the
+        # 20 entries below exist live; 14 are dead names (collective_memories is
+        # a Postgres table today; kbli_2025_final/tax_genius/legal_unified* have
+        # live *_hybrid/_oss/_2026 successors) and the two BIGGEST live
+        # collections (legal_unified_hybrid_hybrid 81k, legal_unified_2026 15k)
+        # have no entry here at all. Full table + regeneration plan:
+        # docs/runbooks/qdrant-estate-reconciliation.md — do not trust doc_count
+        # annotations below as live truth.
         self.collection_definitions = {
             # Memory collections
             "collective_memories": {
@@ -146,6 +158,14 @@ class CollectionManager:
 
         logger.info("✅ CollectionManager initialized (lazy loading enabled)")
 
+    def _ensure_collection_lock_state(self, collection_name: str) -> None:
+        """Create concurrency primitives for a collection on first use."""
+        self._collection_locks.setdefault(collection_name, asyncio.Lock())
+        self._collection_read_semaphores.setdefault(
+            collection_name,
+            asyncio.Semaphore(self._max_concurrent_searches),
+        )
+
     def get_collection(self, name: str) -> QdrantClient | None:
         """
         Get collection client (lazy initialization).
@@ -158,6 +178,7 @@ class CollectionManager:
         """
         # Check cache first
         if name in self._collections_cache:
+            self._ensure_collection_lock_state(name)
             return self._collections_cache[name]
 
         # Check if collection is defined
@@ -173,6 +194,7 @@ class CollectionManager:
         try:
             client = QdrantClient(qdrant_url=self.qdrant_url, collection_name=actual_name)
             self._collections_cache[name] = client
+            self._ensure_collection_lock_state(name)
             logger.debug("✅ Lazy-loaded collection: %s -> %s", name, actual_name)
             return client
         except Exception as e:

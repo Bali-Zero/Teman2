@@ -14,6 +14,7 @@ Reference: docs/mata-garuda/40d-AUTOAGENT-PATTERNS.md Pattern 3
 from __future__ import annotations
 
 import logging
+import os
 import re
 from typing import Optional
 
@@ -40,6 +41,10 @@ from mata_garuda.types import Agent, Response
 logger = logging.getLogger("mata_garuda.runtime")
 
 MAX_RETRY = 3
+DEFAULT_REFLECTION_MODEL = os.environ.get(
+    "MATA_GARUDA_REFLECTION_MODEL",
+    "ollama:qwen3.5:9b",
+)
 
 # Hints get progressively more specific
 RETRY_HINTS = [
@@ -101,7 +106,7 @@ def _run_post_reflection(
             genome_snippet=genome_snippet,
         )
 
-        runtime = CLIRuntime(model="claude")
+        runtime = CLIRuntime(model=DEFAULT_REFLECTION_MODEL)
         result = runtime.invoke(prompt=prompt, system_prompt="Output only JSON.")
 
         if result.success:
@@ -243,18 +248,34 @@ def run_with_lamarckian_feedback(
 
             continue
 
-        # No terminal state detected — treat as implicit resolution
-        record_run(agent.name, success=True, mutation_version=mutation_version)
-        logger.info(
-            f"[lamarckian] {agent.name} finished without explicit case status "
-            f"on attempt {attempt + 1} — treating as resolved"
+        feedback_path = log_feedback(
+            agent_name=agent.name,
+            attempt=attempt + 1,
+            failure_reason="missing_terminal_case_status",
+            take_away=(
+                "Agent ended without calling case_resolved or case_not_resolved."
+            ),
         )
-        _run_post_reflection(agent, query, True, all_messages, kb)
-        return Response(
-            messages=all_messages,
-            agent=agent,
-            context_variables=context_variables,
+        record_run(agent.name, success=False, mutation_version=mutation_version)
+        logger.warning(
+            f"[lamarckian] {agent.name} ended without explicit case status "
+            f"on attempt {attempt + 1}"
         )
+
+        if attempt >= max_retry - 1:
+            _run_post_reflection(agent, query, False, all_messages, kb)
+            escalation_msg = {
+                "role": "system",
+                "content": (
+                    f"[ESCALATION] Agent {agent.name} failed without a terminal "
+                    f"case status after {max_retry} attempts. Feedback logged at "
+                    f"{feedback_path}."
+                ),
+            }
+            all_messages.append(escalation_msg)
+            break
+
+        continue
 
     # Check fitness after the run
     check_and_auto_revert(agent.name)

@@ -1,0 +1,29 @@
+{
+  "_comment": "TEMPLATE — the real roster lives HOME-only at ~/.wa-mirror.accounts.json (PII: e164 + email, never committed per SYMBIOSIS Law 2 / UU PDP). This example documents the schema, including the W77 lifecycle fields read by _lib.sh get_expected_status / get_assigned_node.",
+  "accounts": [
+    {
+      "name": "example",
+      "e164": "+62XXXXXXXXXXX",
+      "label": "Example",
+      "role": "staff",
+      "email": "example@balizero.com",
+      "company": "Bali Zero",
+      "department": "ops",
+      "kind": "employee",
+      "expected_status": "ACTIVE",
+      "assigned_node": "Nuzantara"
+    },
+    {
+      "name": "on_standby_example",
+      "e164": "+62XXXXXXXXXXX",
+      "label": "Standby Example",
+      "role": "staff",
+      "email": "",
+      "company": "Bali Zero",
+      "department": "ops",
+      "kind": "employee",
+      "expected_status": "STANDBY",
+      "assigned_node": ""
+    }
+  ]
+}

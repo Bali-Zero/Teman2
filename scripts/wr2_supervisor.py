@@ -86,15 +86,15 @@ logger = logging.getLogger("wr2.supervisor")
 # 2026-05-07 confirmed zero `rendered` outcomes since 25 Apr. Sprint A
 # patched the symptom by routing drafts_imaged → canva-apply directly.
 # Sprint B B-bis builds the missing scripts and restores the full chain.
+# P-1 (2026-06-11): render chokepoint is the HTML lane (PR #1236 cutover) — the
+# checked→render hop targets html-apply, never the flag-OFF canva-apply. Dead
+# `briefed_facted` rows removed (no producer in the live state machine).
 TRANSITIONS: dict[tuple[str | None, str], str | None] = {
     ("*", "briefed"):                                  "com.balizero.wr2.draft-generator",
-    ("briefed", "briefed_facted"):                     "com.balizero.wr2.draft-generator",
     ("briefed", "drafts"):                             "com.balizero.wr2.image-generator",
-    ("briefed_facted", "drafts"):                      "com.balizero.wr2.image-generator",
-    # Sprint B B-bis (RESTORED): drafts_imaged → fact-extractor → fact-checker → canva-apply.
     ("drafts", "drafts_imaged"):                       "com.balizero.wr2.fact-extractor",
     ("drafts_imaged", "drafts_imaged_facted"):         "com.balizero.wr2.fact-checker",
-    ("drafts_imaged_facted", "drafts_imaged_checked"): "com.balizero.wr2.canva-apply",
+    ("drafts_imaged_facted", "drafts_imaged_checked"): "com.balizero.wr2.html-apply",
     ("*", "rendered"):                                 None,  # Telegram only
     ("*", "fact_check_failed"):                        None,  # Telegram only — manual review terminal
     ("*", "rejected"):                                 None,  # log only
@@ -108,11 +108,10 @@ ALERT_STATUSES = {"rendered", "fact_check_failed"}
 # from a partial run (e.g. fact-checker crash mid-batch).
 NONTERMINAL_TO_NEXT_STAGE: dict[str, str] = {
     "briefed":               "com.balizero.wr2.draft-generator",
-    "briefed_facted":        "com.balizero.wr2.draft-generator",
     "drafts":                "com.balizero.wr2.image-generator",
     "drafts_imaged":         "com.balizero.wr2.fact-extractor",
     "drafts_imaged_facted":  "com.balizero.wr2.fact-checker",
-    "drafts_imaged_checked": "com.balizero.wr2.canva-apply",
+    "drafts_imaged_checked": "com.balizero.wr2.html-apply",
 }
 
 RECONCILE_INTERVAL_SEC = int(os.environ.get("WR2_RECONCILE_INTERVAL_SEC", "300"))
@@ -749,9 +748,39 @@ async def _amain() -> None:
     logger.info("wr2_supervisor stopped cleanly")
 
 
+def _write_runtime_stamp_best_effort() -> None:
+    """C2 provenance stamp at daemon startup (deploy-fork content-gate).
+
+    A long-running daemon keeps executing the code it imported at boot; after
+    a deploy-pull the on-disk HEAD moves but the process does not. The stamp
+    records the BOOT provenance so the watchdog can compare it against the
+    checkout's current HEAD and alert RUNTIME_STALE (restart needed). Fail-open:
+    a broken git/lib must never stop the supervisor.
+    """
+    try:
+        import importlib.util
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[1]
+        spec = importlib.util.spec_from_file_location(
+            "wr2_runtime_stamp", str(repo / "scripts" / "lib" / "wr2_runtime_stamp.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        stamp = mod.compute_runtime_stamp(repo, [Path(__file__)])
+        mod.write_runtime_stamp("wr2.supervisor", stamp)
+        logger.info(
+            "runtime stamp written (head=%s dirty=%s stale=%s)",
+            (stamp.get("head_sha") or "?")[:12], stamp.get("dirty"), stamp.get("stale_modules"),
+        )
+    except Exception:  # noqa: BLE001 — provenance must never break the daemon
+        logger.exception("runtime stamp failed (non-fatal)")
+
+
 def main() -> int:
     _configure_logging()
     logger.info("wr2_supervisor starting (pid=%d)", os.getpid())
+    _write_runtime_stamp_best_effort()
     try:
         asyncio.run(_amain())
     except KeyboardInterrupt:

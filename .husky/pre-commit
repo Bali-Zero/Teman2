@@ -1,5 +1,64 @@
 echo "🔍 Running pre-commit hooks..."
 
+# ── CICATRIX AUTO-ARCHIVE (2026-06-07; limit raised 40k→10M 2026-06-16) ───────
+# The recurring "cicatrix-scars.md over 40k-char limit" warning came from /scar
+# APPENDING with nothing to PRUNE. BUT the 40k limit itself was decided in error:
+# cicatrix-scars.md (the scar MAGAZZINO) is NOT loaded into agent context — only
+# the ponte cicatrix-superscar.md is. So the magazzino body has no practical size
+# limit and a scar must never be archived just to fit a threshold. Limit raised to
+# 10M (apparatus left in place but dormant; auto-archive preserved for optional
+# manual cleanup). Decision 2026-06-16. Self-healing, not a wall.
+# Kill switch: CICATRIX_ARCHIVE_ENFORCEMENT=false
+if [ "${CICATRIX_ARCHIVE_ENFORCEMENT:-true}" != "false" ]; then
+    CICATRIX_FILE=".claude/rules/cicatrix-scars.md"
+    if git diff --cached --name-only --diff-filter=ACMR | grep -Fxq "$CICATRIX_FILE"; then
+        # Size of the STAGED blob (what would actually be committed).
+        STAGED_SIZE=$(git show ":$CICATRIX_FILE" 2>/dev/null | LC_ALL=C wc -c | tr -d '[:space:]')
+        if [ -n "$STAGED_SIZE" ] && [ "$STAGED_SIZE" -gt "${CICATRIX_SIZE_LIMIT_CHARS:-10000000}" ]; then
+            echo "🗄️  [cicatrix] staged scars file is ${STAGED_SIZE} chars (> 10M) — auto-archiving..."
+            if python3 scripts/archive_cicatrix_scars.py; then
+                git add "$CICATRIX_FILE" .claude/rules/cicatrix-scars-archive.md
+                echo "✅ [cicatrix] archived old scars and re-staged (now under 10M)."
+            else
+                echo "❌ [cicatrix] auto-archive could not bring the file under 10M."
+                echo "   Run: python3 scripts/archive_cicatrix_scars.py --dry-run"
+                echo "   Then move scars manually, or lower --structural-age-days."
+                echo "   Override (emergency only): CICATRIX_ARCHIVE_ENFORCEMENT=false git commit ..."
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+# ── OSINT / CLIENT-PII SOVEREIGNTY GATE (Symbiosis Law 2) ────────────────────
+# Added 2026-06-05 (cc-setup self-audit → research/operations/2026-06-05-claude-code-setup-self-audit.md).
+# HARD-BLOCKS committing named-client PII / OSINT research artifacts that
+# .gitignore may not catch. The repo Vercel-auto-deploys on push to main, so a
+# `git add -A` during sibling-race WIP churn would push client PII to the cloud
+# — a direct Law 2 breach (the audit found research/visa/clients/ un-ignored
+# holding a real client file, one `git add -A` from the cloud). First gate so it
+# fails fast before any other check. TDD: 12/12 incl. 2 false-positive guards.
+# Kill switch (sanitized/approved artifact ONLY): PII_GATE_ENFORCEMENT=false
+if [ "${PII_GATE_ENFORCEMENT:-true}" != "false" ]; then
+    PII_PATH_REGEX='(^|/)research/[^/]+/clients/|(^|/)[^/]*-case\.md$|(^|/)[^/]*-guidance\.(html|pdf)$|(^|/)DOSSIER_[^/]*\.md$|(^|/)OSINT-Nexus/'
+    PII_NUM='\b(npwp|nik|ktp)\b[[:space:]:#=.]*[0-9][0-9.\-]{5,}'
+    PII_PASS='passport[[:space:]]*(no\.?|number|#|:)[[:space:]:#=]*[A-Za-z0-9]{6,}'
+    PII_STAGED=$(git diff --cached --name-only --diff-filter=d | grep -EI "$PII_PATH_REGEX" || true)
+    PII_CONTENT=""
+    for f in $(git diff --cached --name-only --diff-filter=d | grep -Evi '\.(png|jpg|jpeg|pdf|gif|webp|zip|gz|bin)$' || true); do
+        git show ":$f" 2>/dev/null | grep -Eiq "$PII_NUM|$PII_PASS" && PII_CONTENT="$PII_CONTENT $f"
+    done
+    if [ -n "$PII_STAGED" ] || [ -n "$PII_CONTENT" ]; then
+        echo "❌ [Law-2 PII gate] BLOCKED: staged path/content looks like OSINT/client-PII:"
+        [ -n "$PII_STAGED" ] && echo "$PII_STAGED" | sed 's/^/    path: /'
+        [ -n "$PII_CONTENT" ] && echo "$PII_CONTENT" | tr ' ' '\n' | sed '/^$/d;s/^/    pii-content: /'
+        echo "   Symbiosis Law 2: OSINT/client data NEVER reaches cloud GitHub/Vercel."
+        echo "   Fix: add the path to .gitignore (sovereignty section) or move it out of the tree."
+        echo "   Allowlist (sanitized/published artifact ONLY): PII_GATE_ENFORCEMENT=false git commit ..."
+        exit 1
+    fi
+fi
+
 # ── Redis Lease Registry hot-zone check (SOTA wave 2026-05-24) ──────────────
 # Closes cicatrix family W40/W50/W51/W52 (concurrent agent sessions mutating
 # shared hot-zone paths: LaunchAgent wrappers, migrations_v2/*.sql, sentinel
@@ -66,6 +125,21 @@ if [ -n "$MIG_FILES" ]; then
         echo "   BaseMigration.__init__ requires inline rollback SQL — docs alone don't count."
         exit 1
     fi
+fi
+
+# ── ANTI-REWARD-HACKING test lint (P1 STRATO-1, FASE-3 SOTA meta-dev-loop) ───
+# First-level heuristic (EASILY EVADED — see scripts/lint_test_reward_hacking.py
+# docstring) that flags the lazy test-cheats an agent reaches for to fake a green
+# check: assert-True, self-equal tautology, over-broad pytest.raises(Exception),
+# sys.exit pre-assert, tests that assert nothing. Runs ONLY on staged test files.
+# Spec: research/operations/specs/P1-verify-the-verifiers.md §3 STRATO-1.
+echo "🎯 [P1-STRATO1] Anti-reward-hacking test lint..."
+if ! python3 scripts/lint_test_reward_hacking.py; then
+    echo ""
+    echo "❌ ERROR: test-cheating pattern(s) detected in staged test file(s)."
+    echo "   Fix the test so it asserts real behavior, or justify in review."
+    echo "   (First-level heuristic — not a guarantee. Kill: none; fix the test.)"
+    exit 1
 fi
 
 # Check for print statements in Python files

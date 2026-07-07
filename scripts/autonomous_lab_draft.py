@@ -18,8 +18,10 @@ if str(BACKEND_ROOT) not in sys.path:
 from backend.services.autonomous_lab import (  # noqa: E402
     AutonomousLabPlanner,
     MaterialSourceType,
+    ReceiptStore,
     ResearchMaterial,
 )
+from backend.services.autonomous_lab.receipt_safety import receipt_safe_evidence  # noqa: E402
 
 DEFAULT_RECEIPT_DIR = REPO_ROOT / "research" / "operations" / "autonomous-lab" / "receipts"
 
@@ -132,9 +134,16 @@ def summarize_result(receipt_path: Path, run: Any) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint."""
     args = parse_args(argv)
-    payload = load_input(args.input)
-    planner, run = build_run(payload)
-    receipt_path = planner.write_receipt(run, args.receipt_dir)
+    try:
+        payload = load_input(args.input)
+        _, run = build_run(payload)
+    except (OSError, TypeError, ValueError) as exc:
+        json.dump(summarize_input_validation_error(exc), sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return 1
+
+    record = ReceiptStore(args.receipt_dir).write_run(run)
+    receipt_path = record.receipt_path
     summary = summarize_result(receipt_path, run)
     json.dump(summary, sys.stdout, indent=2, sort_keys=True)
     sys.stdout.write("\n")
@@ -149,6 +158,16 @@ def _parse_datetime(value: Any) -> datetime:
     if not isinstance(value, str):
         raise ValueError("datetime fields must be ISO-8601 strings")
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def summarize_input_validation_error(exc: BaseException) -> dict[str, Any]:
+    """Return a receipt-safe JSON error for malformed draft input."""
+    return {
+        "ok": False,
+        "blocked": True,
+        "failed_blockers": ["input_validation"],
+        "error_reference": receipt_safe_evidence(str(exc), force_fingerprint=True),
+    }
 
 
 if __name__ == "__main__":

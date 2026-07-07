@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nuzantara.wa-mirror-intake-sweeper</string>
+
+  <!-- Anello 1-bis (Law 2) — wa-mirror phone-keyed lead + media intake.       -->
+  <!-- Distinct from com.nuzantara.wa-media-pull (the OFFICIAL Meta line). This -->
+  <!-- one consumes the LOCAL whatsapp_message_context table that wa-mirror    -->
+  <!-- (Baileys) populates. It never writes back to that table. It resolves or -->
+  <!-- creates CRM leads by normalized phone, then enqueue()s inbound media    -->
+  <!-- blobs into the SAME LOCAL nuzantara_dev intake_queue. Cron shim (NOT    -->
+  <!-- daemon, KeepAlive=false), single-instance via flock. Runs ONLY on Pro.  -->
+  <!-- PRO-HALF: the watermark seeds to the current max id on first run, so     -->
+  <!-- this processes ONLY NEW arrivals. The historical backlog is the Mini's  -->
+  <!-- job (separate step). No secrets — local DB + local disk only.           -->
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python</string>
+    <string>-u</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/scripts/wa_mirror_intake_sweeper.py</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>INTAKE_DATABASE_URL</key>
+    <string>postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev</string>
+    <key>WA_MIRROR_SWEEP_BATCH</key>
+    <string>25</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <!-- Every 5 minutes (cron shim, single-instance via flock in the script).   -->
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/wa-mirror-intake-sweeper.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/wa-mirror-intake-sweeper.log</string>
+</dict>
+</plist>

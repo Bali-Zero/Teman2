@@ -1,12 +1,12 @@
-name: cron - drive poll (every 5 min)
+name: cron - drive poll monitor
 
-# Migrated from Pro crontab `*/5 * * * * drive-poll.sh` (2026-04-26).
-# Triggers Drive change polling on backend; nudges Fly out of sleep.
-# Failure path: Telegram alert to owner (cooldown 30min).
+# The Drive poll itself is owned by the Fly `drive` process group.
+# This workflow is a lightweight monitor only; it must never run the poll in
+# the HTTP request path.
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: POST /api/admin/drive/poll
+      - name: GET /api/admin/drive/poll/status
         id: poll
         env:
           API_KEY: ${{ secrets.NUZANTARA_API_KEY }}
@@ -26,10 +26,10 @@ jobs:
           set -uo pipefail
           BODY_FILE="$RUNNER_TEMP/body.json"
           HTTP_CODE=$(curl -sS -o "$BODY_FILE" -w "%{http_code}" --max-time 120 \
-            -X POST \
+            -X GET \
             -H "X-API-Key: $API_KEY" \
             -H "Content-Type: application/json" \
-            https://nuzantara-rag.fly.dev/api/admin/drive/poll || echo "000")
+            https://nuzantara-rag.fly.dev/api/admin/drive/poll/status || echo "000")
           BODY=$(cat "$BODY_FILE" 2>/dev/null || echo "")
           echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
           echo "body<<EOF" >> "$GITHUB_OUTPUT"
@@ -37,10 +37,15 @@ jobs:
           echo "" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
           if [ "$HTTP_CODE" = "200" ]; then
-            PROCESSED=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('processed',0))" 2>/dev/null || echo "?")
-            echo "✅ Drive poll OK: $PROCESSED new files processed"
+            STATUS=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "unknown")
+            WORKER=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('result',{}).get('status','unknown'))" 2>/dev/null || echo "unknown")
+            if [ "$STATUS" = "stale" ] || [ "$STATUS" = "error" ]; then
+              echo "::warning::Drive poll worker unhealthy: $BODY"
+              exit 1
+            fi
+            echo "✅ Drive poll worker monitor OK: endpoint=$STATUS worker=$WORKER"
           else
-            echo "::warning::Drive poll failed (HTTP $HTTP_CODE): $BODY"
+            echo "::warning::Drive poll monitor failed (HTTP $HTTP_CODE): $BODY"
             exit 1
           fi
 
@@ -53,7 +58,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
-          TEXT="🚨 <b>drive-poll</b> failed
+          TEXT="🚨 <b>drive-poll monitor</b> failed
           HTTP: ${HTTP_CODE:-?}
           Run: ${RUN_URL}"
           curl -sS -m 10 -X POST \

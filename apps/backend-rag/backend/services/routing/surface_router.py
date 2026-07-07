@@ -19,7 +19,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from backend.services.routing.query_router_integration import QueryRouterIntegration
@@ -295,6 +295,23 @@ _HAIKU_SYSTEM = (
     '{"domain": "<domain>", "confidence": <0.0-1.0>}'
 )
 
+# Native JSON Schema for the Haiku classifier, passed to the CLI via
+# ``complete_async(json_schema=...)`` so ``--output-format json`` returns a
+# guaranteed-conforming ``structured_output`` instead of free-form text that can
+# fail ``json.loads``. The text path stays as the fallback (zero regression).
+_HAIKU_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "domain": {
+            "type": "string",
+            "enum": ["visa", "tax", "company", "property", "pricing", "news", "skills", "kg"],
+        },
+        "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    },
+    "required": ["domain", "confidence"],
+    "additionalProperties": False,
+}
+
 
 # ---------------------------------------------------------------------------
 # SurfaceRouter
@@ -401,17 +418,23 @@ class SurfaceRouter:
     async def _classify_with_haiku(self, query: str) -> SurfaceDecision | None:
         """Classify with Claude Haiku. Returns None on any failure."""
         try:
-            from backend.llm.claude_oauth_client import ClaudeOAuthClient
+            from backend.llm.claude_oauth_client import complete_async
 
-            client = ClaudeOAuthClient(
-                model="claude-haiku-4-5-20251001", timeout_s=int(HAIKU_TIMEOUT_S)
-            )
             prompt = f"{_HAIKU_SYSTEM}\n\nUser query: {query}"
-            text = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(None, lambda: client.complete(prompt)),
+            response = await asyncio.wait_for(
+                complete_async(
+                    prompt,
+                    model="claude-haiku-4-5-20251001",
+                    timeout_s=int(HAIKU_TIMEOUT_S),
+                    endpoint="surface_router.haiku",
+                    json_schema=_HAIKU_SCHEMA,
+                ),
                 timeout=HAIKU_TIMEOUT_S,
             )
-            data = json.loads(text.strip())
+            # Prefer the native structured_output (guaranteed-conforming);
+            # fall back to parsing response.text when the CLI lacks the flag
+            # or returned no structured envelope (zero-regression path).
+            data = response.structured or json.loads(response.text.strip())
             domain: str = data.get("domain", "visa")
             haiku_confidence: float = float(data.get("confidence", 0.5))
 

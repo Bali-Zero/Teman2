@@ -165,10 +165,10 @@ async def get_draft(
         — override to the requested id (admin impersonation, also honored as
         the new ``/draft/0/...`` convention everywhere).
     """
-    from backend.app.routers.portal import SUPERUSER_EMAILS
+    from backend.app.routers.portal import _superuser_emails
 
     email = (current_user.get("email") or "").lower()
-    is_superuser = email in SUPERUSER_EMAILS
+    is_superuser = email in _superuser_emails()
 
     if client_id == 0:
         if is_superuser:

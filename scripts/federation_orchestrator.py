@@ -17,6 +17,7 @@ Architecture:
 
 import asyncio
 import json
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -24,7 +25,11 @@ from pathlib import Path
 from contextlib import contextmanager
 from typing import Any, TypedDict
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # minimal CI env (e.g. p6 workflow installs only pytest)
+    def load_dotenv(*_args: Any, **_kwargs: Any) -> bool:
+        return False
 
 # Load env for TELEGRAM_BOT_TOKEN
 _master_env = Path.home() / "Desktop" / "NUZANTARA_ENV_KEYS.env"
@@ -42,6 +47,8 @@ from federation_capability_table import (
     match_domains,
     suggest_agents,
 )
+from federation_parallelize import parallelizable_hypothesis
+from privacy_preflight import Route, privacy_preflight
 
 # Make backend/core/observability.py importable from scripts/ (POC-scope).
 _BACKEND_RAG = Path(__file__).resolve().parent.parent / "apps" / "backend-rag"
@@ -118,6 +125,8 @@ AUDIT_FILE = OUTPUT_DIR / "audit.jsonl"
 CLASSIFIER_MODEL = "qwen3.5:9b"  # Local via Ollama — $0, fast classification
 OLLAMA_URL = "http://localhost:11434"
 
+logger = logging.getLogger("federation_orchestrator")
+
 # LangSmith observability (disabled until API key configured)
 # Set LANGCHAIN_API_KEY in .env to enable tracing
 if not os.environ.get("LANGCHAIN_API_KEY"):
@@ -147,7 +156,34 @@ class FederationState(TypedDict, total=False):
 # Helpers
 # ═══════════════════════════════════════════════════════
 async def run_dispatch(cmd: str, prompt: str) -> str:
-    """Execute ai-dispatch.sh and return output."""
+    """Execute ai-dispatch.sh and return output.
+
+    P2 confine-PII gate (CRITICO-2 §3 STRATA B+C): every `cmd` here
+    (search/explore/sandbox/claude-redteam) is a CLOUD agent, so this is the
+    single chokepoint that previously passed RAW prompts to the cloud (the
+    Law-2 finding, spec §1). Before dispatching, `privacy_preflight` runs the
+    deterministic regex backstop + the fail-closed redactor on the prompt. A
+    LOCAL verdict means structured/CRM PII was detected → we REFUSE the cloud
+    dispatch (air-gap: the cloud key is never reached) and return a
+    blocked-notice so the graph degrades gracefully (Law 4) instead of leaking.
+    Posture is degraded-ok by default (regex is the hard gate; the CRM-name
+    redactor best-effort when PG is in scope). Set PRIVACY_PREFLIGHT_STRICT=true
+    to fail-closed when the redactor cannot be built.
+    """
+    _decision = privacy_preflight(prompt)  # task_type=None → content-only gate
+    if _decision.route is not Route.CLOUD:
+        logger.warning(
+            "[confine-PII] BLOCKED cloud dispatch cmd=%s layer=%s reason=%s",
+            cmd,
+            _decision.layer,
+            _decision.blocked_reason,
+        )
+        return (
+            f"[PII-BLOCKED layer={_decision.layer} reason={_decision.blocked_reason}] "
+            f"cloud dispatch '{cmd}' refused — prompt contains client PII (Law 2). "
+            f"This task must run on a local model."
+        )
+
     # Langfuse POC: one span per dispatched agent (gemini-search, codex, etc).
     # PII-safe: hash + length only (prompts may embed KB content).
     import hashlib as _h
@@ -284,6 +320,12 @@ async def _classify_node_inner(
         if keyword_suggestions.get(key) and not classification.get(key):
             classification[key] = True
 
+    # P6: emit the conservative, default-serial parallelization HYPOTHESIS.
+    # Deterministic, no LLM — it is a revocable starting estimate (spec §3.1/§3.2),
+    # not a verdict. route_after_checkpoint consumes it to choose serial vs fan-out.
+    decision = parallelizable_hypothesis(classification, task)
+    classification.update(decision.as_classification_fields())
+
     return {"classification": classification}
 
 
@@ -304,6 +346,8 @@ async def human_checkpoint_node(state: FederationState) -> dict:
     if not agent_map:
         agent_map.append("Claude Code (direct)")
 
+    parallel = bool(c.get("parallelizable_hypothesis", False))
+    mode = "PARALLEL (fan-out, revocable)" if parallel else "SERIAL (default)"
     summary = (
         f"\n{'='*40}\n"
         f"  FEDERATION ROUTING\n"
@@ -314,6 +358,8 @@ async def human_checkpoint_node(state: FederationState) -> dict:
         f"  Agents:  {' → '.join(agent_map)}\n"
         f"  Search:  {c.get('needs_search')} | Explore: {c.get('needs_explore')}\n"
         f"  Sandbox: {c.get('needs_sandbox')} | Redteam: {c.get('needs_redteam')}\n"
+        f"  Mode:    {mode}\n"
+        f"  Reason:  {c.get('parallelizable_reason', 'n/a')}\n"
         f"{'='*40}"
     )
 
@@ -421,17 +467,30 @@ async def output_node(state: FederationState) -> dict:
     outfile.write_text(context)
 
     c = state.get("classification", {})
+    # Report what ACTUALLY ran (result present), not just what was requested —
+    # under the P6 serial default a needed specialist may be deferred this pass.
     dispatched = []
-    if c.get("needs_search"):
+    if state.get("search_result"):
         dispatched.append("search")
-    if c.get("needs_explore"):
+    if state.get("explore_result"):
         dispatched.append("explore")
-    if c.get("needs_sandbox"):
+    if state.get("sandbox_result"):
         dispatched.append("sandbox")
-    if c.get("needs_redteam") or c.get("risk") == "high":
+    if state.get("redteam_result"):
         dispatched.append("redteam")
 
+    # Surface specialists that were needed but deferred by the serial default,
+    # so the reduced breadth is explicit, never silent.
+    requested = {
+        "search": bool(c.get("needs_search")),
+        "explore": bool(c.get("needs_explore")),
+        "sandbox": bool(c.get("needs_sandbox")),
+    }
+    deferred = [name for name, want in requested.items() if want and name not in dispatched]
+
     summary_line = f"Dispatched: {', '.join(dispatched) or 'none (simple task)'}"
+    if deferred:
+        summary_line += f" | Deferred (serial default): {', '.join(deferred)}"
 
     print(f"\n  Context saved: {outfile}")
     print(f"  {summary_line}")
@@ -459,18 +518,47 @@ async def output_node(state: FederationState) -> dict:
 # Routing logic
 # ═══════════════════════════════════════════════════════
 def route_after_checkpoint(state: FederationState) -> list[str]:
-    """Decide which dispatch nodes to run in parallel."""
+    """Decide which dispatch nodes to run, and whether to fan them out.
+
+    P6 gate: the DEFAULT is SERIAL (single-orchestrator). The fan-out is the
+    gated exception, enabled ONLY when the conservative ``parallelizable_hypothesis``
+    emitted by ``classify_node`` is True (breadth / role-distinct specialists,
+    disjoint, under cap, net-positive — spec §0/§4).
+
+    * hypothesis True  → return the full matched-specialist list (LangGraph runs
+      them concurrently — the SAFE kind of parallelism: role-distinct, each its
+      own artifact).
+    * hypothesis False (default) → return at most ONE node, so the graph executes
+      a single specialist serially. The remaining needed specialists are not
+      dropped silently — they are still dispatched, just one-at-a-time across the
+      serial path (each node edges to ``assemble``; with a single-element route
+      only that one runs this pass). For the common "no specialist needed" case
+      it routes straight to ``assemble``.
+
+    The hypothesis is a REVOCABLE starting estimate (spec §3.2): a runtime monitor
+    (lease-registry contention) may re-serialize branches it had let run parallel.
+    This function only encodes the *initial* serial-default posture.
+    """
     c = state.get("classification", {})
-    routes = []
+    wanted: list[str] = []
     if c.get("needs_search"):
-        routes.append("search")
+        wanted.append("search")
     if c.get("needs_explore"):
-        routes.append("explore")
+        wanted.append("explore")
     if c.get("needs_sandbox"):
-        routes.append("sandbox")
-    if not routes:
-        routes.append("assemble")
-    return routes
+        wanted.append("sandbox")
+
+    if not wanted:
+        return ["assemble"]
+
+    parallel = bool(c.get("parallelizable_hypothesis", False))
+    if parallel:
+        # Fan-out: role-distinct specialists run concurrently (pre-P6 behaviour).
+        return wanted
+
+    # Default-serial: run a single specialist this pass. Deterministic priority
+    # (search → explore → sandbox) keeps the route reproducible for the gate tests.
+    return wanted[:1]
 
 
 def route_after_assemble(state: FederationState) -> str:

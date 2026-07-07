@@ -1,0 +1,107 @@
+{
+  "run_at": "2026-06-28T07:00:51+08:00",
+  "today": "2026-06-28",
+  "yesterday_seen_count": 0,
+  "new_today_count": 3,
+  "partial": false,
+  "nb_query_results": {
+    "NB-INTEL-Regulation": "nessuna novita",
+    "NB-INTEL-Press": "PMK 37/2025 (marketplace PPh enforcement — now active)",
+    "NB-INTEL-Immigration": "nessuna novita",
+    "NB-INTEL-Tax": "PMK 43/2026 (PPN DTP tiket pesawat)"
+  },
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "hukumonline.com (Cloudflare block, 5KB response)",
+    "muc.co.id/article (Cloudflare block, 5KB response)",
+    "jdih.kemenkeu.go.id/peraturan (0 bytes, timeout/block)",
+    "jdih.kemnaker.go.id/peraturan (0 results for filter, JS-rendered)"
+  ],
+  "deltas": [
+    {
+      "citation": "UU 4/2026",
+      "title_id": "Undang-Undang Nomor 4 Tahun 2026 tentang Perubahan atas Undang-Undang Nomor 4 Tahun 2023 tentang Pengembangan dan Penguatan Sektor Keuangan (P2SK)",
+      "title_en": "Law No. 4/2026 amending P2SK — Danantara Special Bonds (Patriot Bond / Merah Putih Bond): immunity from criminal and tax prosecution",
+      "service_line": [
+        "tax",
+        "company"
+      ],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "Pasal 50A UU 4/2026 grants buyers of Danantara special bonds immunity from criminal prosecution including tax prosecution, and bars purchase data from tax evidence use — relevant for high-net-worth expat clients considering Indonesian financial asset repatriation before end-2026 deadline.",
+      "summary": "UU 4/2026 amends P2SK (UU 4/2023) by inserting Pasal 50A authorizing Danantara to issue patriot bond and merah putih bond. Buyers receive state guarantee protecting purchase from general criminal, special criminal (including tax criminal), and civil prosecution. Data from bond purchases cannot be used as basis for tax imposition or legal evidence. Menkeu Purbaya giving 6-month window (to end-2026) for funds repatriation. Distinct from tax amnesty: only bond purchase amount protected, rest of investor activities remain exposed.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1820311/wni-berduit-diminta-beli-patriot-bond-purbaya-kasih-waktu-6-bulan",
+      "verbatim_excerpt": "Negara menjamin dan melindungi pembelian instrumen surat utang khusus ... dari penuntutan secara pidana umum, pidana khusus termasuk di dalamnya pidana perpajakan, dan dari gugatan secara perdata. [Pasal 50A ayat (5) UU 4/2026]",
+      "first_seen_at": "2026-06-28T07:00:51+08:00",
+      "article_published": "2026-06-24"
+    },
+    {
+      "citation": "PMK 43/2026",
+      "title_id": "Peraturan Menteri Keuangan Nomor 43 Tahun 2026 tentang Pajak Pertambahan Nilai atas Penyerahan Jasa Angkutan Udara Niaga Berjadwal Dalam Negeri Kelas Ekonomi yang Ditanggung Pemerintah Tahun Anggaran 2026",
+      "title_en": "Ministry of Finance Regulation No. 43/2026 — PPN 100% Government-Borne on Domestic Economy Airline Tickets (School Holiday Period 22 Jun–5 Jul 2026)",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "low",
+      "confidence": "high",
+      "impact_note": "PPN DTP 100% on domestic economy air tickets: ticket purchase window 22 Jun–5 Jul 2026, flight window 24 Jun–5 Jul 2026. Covers base fare and fuel surcharge only. Airlines (PKP) must submit PPN DTP transaction detail report to DJP by 30 Sep 2026. Temporary incentive — no structural tax change.",
+      "summary": "PMK 43/2026 grants 100% PPN DTP on domestic economy class airline tickets to support purchasing power during school holidays. Applicable for tickets purchased 22 Jun 2026–5 Jul 2026 for flights 24 Jun 2026–5 Jul 2026. PPN DTP covers base fare and fuel surcharge; extra baggage and seat selection excluded. Airlines as PKP must issue tax invoices, file SPT Masa PPN, and submit PPN DTP transaction list to DJP by 30 Sep 2026. Already mid-execution as of today.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1820292/pmk-baru-terbit-ppn-tiket-pesawat-kembali-ditanggung-pemerintah",
+      "source2": "NB-INTEL-Tax (DDTC, Jumat 26 Jun 2026)",
+      "verbatim_excerpt": "PPN yang terutang atas penyerahan jasa angkutan udara niaga berjadwal dalam negeri kelas ekonomi sebagaimana dimaksud pada ayat (1) ditanggung pemerintah sebesar 100% untuk tahun anggaran 2026. [Pasal 2 ayat (3) PMK 43/2026]",
+      "first_seen_at": "2026-06-28T07:00:51+08:00",
+      "article_published": "2026-06-22"
+    },
+    {
+      "citation": "PMK 37/2025",
+      "title_id": "Peraturan Menteri Keuangan Nomor 37 Tahun 2025 tentang Penunjukan Pihak Lain sebagai Pemungut Pajak Penghasilan serta Tata Cara Pemungutan, Penyetoran, dan Pelaporan Pajak Penghasilan atas Penghasilan Pedagang Dalam Negeri melalui PMSE",
+      "title_en": "Ministry of Finance Regulation No. 37/2025 — Marketplace Platforms (PPMSE) as PPh Withholding Agents: Cross-Platform Omzet Aggregation Now Confirmed by DJP",
+      "service_line": [
+        "tax",
+        "company"
+      ],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "DJP confirmed 25 Jun 2026: seller omzet from ALL marketplace platforms aggregated for Rp500M PPh threshold — multi-platform sellers must account for combined revenue. PT PMA clients with e-commerce KBLI selling via Indonesian marketplaces must verify NPWP registration and prepare for PPh withholding. Platform readiness 25-50% as of Jun 2026.",
+      "summary": "PMK 37/2025 (published 2025) designates marketplace platforms (PPMSE) as PPh withholding agents for domestic sellers. DJP confirmed on 25 Jun 2026 (Kompas) that omzet across all platforms is aggregated for PPh threshold: sellers on multiple marketplaces (Tokopedia, Shopee, Lazada, etc.) have combined revenue counted toward the Rp500M exemption threshold. Above threshold: platforms must withhold PPh at source. Note: distinct from PMK No. 37/2026 already in seen_citations — that is a different 2026 regulation. Platform implementation readiness currently 25-50%.",
+      "source": "NB-INTEL-Press | https://money.kompas.com/read/2026/06/25/ (Kompas.com, 25 Jun 2026)",
+      "verbatim_excerpt": "PMK Nomor 37 Tahun 2025 mengatur tentang Penunjukan Pihak Lain sebagai Pemungut Pajak Penghasilan serta Tata Cara Pemungutan, Penyetoran, dan Pelaporan Pajak Penghasilan atas Penghasilan yang Diterima atau Diperoleh Pedagang Dalam Negeri melalui Perdagangan Melalui Sistem Elektronik (PMSE).",
+      "first_seen_at": "2026-06-28T07:00:51+08:00",
+      "article_published": "2026-06-25"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistema amministrativo perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV non penerima fasilitas PPh Final UMKM 0,5%)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025)",
+    "22/MK/EF.2/2026 (routine kurs)",
+    "PP 20/2026; Pasal 31E ayat (1) UU PPh (PT dan CV tarif PPh 11%, June 13 2026)",
+    "KBLI 2025 (implementasi AHU Online dan OSS, effettivo 15 Juni 2026)",
+    "PER-19/PJ/2025",
+    "PMK 6/2026",
+    "PP 21/2026",
+    "PP 24/2026",
+    "PP 20/2026 (suket transitional — Suket PPh Final lama tetap berlaku)",
+    "PER-7/PJ/2025",
+    "PER-11/PJ/2025",
+    "Permendag 19/2026",
+    "UU 4/2026",
+    "PMK 43/2026",
+    "PMK 37/2025"
+  ]
+}

@@ -114,7 +114,7 @@ async def capture_lead(
             whatsapp_url=wa_url,
             intent_id=intent_id,
         )
-    except asyncpg.PostgresError:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError):
         logger.exception("lead_capture: DB insert failed source=%s", payload.source)
         raise HTTPException(status_code=500, detail="Could not persist lead")
 

@@ -26,17 +26,15 @@ REDIS_CLI = "redis-cli"
 
 
 def _redis_cmd(*args: str, timeout: int = 10) -> str:
-    """Execute a redis-cli command and return output."""
-    cmd = [REDIS_CLI] + list(args)
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        if result.returncode != 0:
-            return f"[ERROR] redis-cli: {result.stderr.strip()}"
-        return result.stdout.strip()
-    except FileNotFoundError:
-        return "[ERROR] redis-cli not found"
-    except subprocess.TimeoutExpired:
-        return f"[ERROR] redis-cli timeout after {timeout}s"
+    """Execute a redis-cli command via base_worker (the authed SSOT).
+
+    Was bare redis-cli (no REDISCLI_AUTH/-h) → NOAUTH under the requirepass
+    cutover (W89, cicatrix #2). base_worker.redis_cmd carries auth + canonical
+    host + abs-path and returns the identical '[ERROR] ...' sentinel on failure,
+    so this is a drop-in for the existing callers.
+    """
+    from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
+    return _bw_redis_cmd(*args, timeout=timeout)
 
 
 @dataclass

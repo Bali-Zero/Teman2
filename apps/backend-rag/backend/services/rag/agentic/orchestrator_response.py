@@ -72,22 +72,26 @@ class OrchestratorResponseBuilder:
             CoreResult completo
         """
         from backend.app.core.constants import EvidenceScoreConstants
-        from backend.services.rag.agentic.reasoning_utils import (
-            get_abstain_threshold,
+        from backend.services.rag.agentic._abstain_policy import (
+            build_abstain_policy,
         )
 
         timings.get("total", 0.0)
         verification_score = getattr(state, "verification_score", 0.0)
         evidence_score = getattr(state, "evidence_score", None) or 0.0
 
-        # Determine if this is an ABSTAIN response.
+        # Determine if this is an ABSTAIN response — the LABEL gate.
         # v3 quick-win #2: per-domain threshold (tax/visa lower, KBLI higher)
         # so over-rejection on Indonesian tax/visa queries goes away while
         # KBLI false-positives (business-vocabulary collisions) get filtered
         # out more aggressively. Falls back to the legacy global 0.15 when
         # the domain classifier returns "default".
+        # The per-domain value now flows through the AbstainPolicy SSOT
+        # (`label_threshold`) instead of a bare get_abstain_threshold call —
+        # same value, single named source (2026-06-14 Mythos M1 audit).
         query_str = getattr(state, "query", "") or ""
-        abstain_threshold = get_abstain_threshold(query_str)
+        policy = build_abstain_policy(query_str)
+        abstain_threshold = policy.label_threshold
         abstain = evidence_score < abstain_threshold
 
         abstain_reason = None

@@ -1,0 +1,170 @@
+# Connectome — Postgres LISTEN/NOTIFY channels + EventBus outbox event-types
+# Census: 2026-06-13 (8-agent fan-out, every claim re-verified on disk that session)
+# Producer/consumer refs are file:line at census time — re-grep before building on them.
+domain: pg-channels
+census_date: "2026-06-13"
+edges:
+  - id: practice-status-changed
+    kind: pg_channel
+    producer: "migrations_v2/146 trigger notify_practice_change"
+    consumer: "services/events/handlers/_core.py:168 + crm/practice_status_listener.py:156"
+    machine: fly
+    status: ALIVE
+  - id: client-changed
+    kind: pg_channel
+    producer: "migrations_v2/146 trigger notify_client_change"
+    consumer: "services/events/handlers/_core.py:89"
+    machine: fly
+    status: ALIVE
+    notes: "554 unconsumed outbox rows (largest orphan residue — see queues.yaml events-outbox-fly)"
+  - id: compliance-alert
+    kind: pg_channel
+    producer: "migrations_v2/146 trigger notify_compliance_alert"
+    consumer: "_core.py:256 + compliance_handlers.py"
+    machine: fly
+    status: ALIVE
+  - id: lkpm-ingest-completed
+    kind: pg_channel
+    producer: "imperative outbox.publish (scripts)"
+    consumer: "crm_hgt_handlers.py on_lkpm_ingest_completed"
+    machine: fly
+    status: ALIVE
+  - id: war-room-event
+    kind: pg_channel
+    producer: "migrations_v2/146 triggers on war_room_drafts/posts"
+    consumer: "webhook_processor.py:90 + pg-to-organism-bridge.py:64"
+    machine: fly
+    status: ALIVE
+  - id: wa-message-inserted
+    kind: pg_channel
+    producer: "migrations_v2/193 trigger on whatsapp_message_context"
+    consumer: "routers/wa_dashboard_stream.py:145 (SSE)"
+    machine: fly
+    status: ALIVE
+  - id: intel-event
+    kind: pg_channel
+    producer: "migrations_v2/146 triggers trend_signals/research_dossiers"
+    consumer: "dossier_fanout/subscriber.py + bridge"
+    machine: fly
+    status: ALIVE
+  - id: cognitive-event
+    kind: pg_channel
+    producer: "migrations_v2/146 triggers (theses/anomaly/briefs/ultra_moves)"
+    consumer: "EventBus dispatch + pg-to-organism-bridge.py:66"
+    machine: fly
+    status: ALIVE
+  - id: partner-commission-changed
+    kind: pg_channel
+    producer: "crm/partners/events.py _publish_changed"
+    consumer: "crm/partners/events.py register_partner_handlers"
+    machine: fly
+    status: ALIVE
+  - id: federation-alert
+    kind: pg_channel
+    producer: "12+ alert producers (cell, compliance-ops, WR2 supervisor, monitors)"
+    consumer: "federation_alerts/daemon.py:55 (direct LISTEN, NOT via EventBus)"
+    machine: pro
+    status: ALIVE
+    notes: "duplicate-listener pattern: PG_CHANNEL_MAP entry exists but EventBus does not consume — daemon owns it"
+  - id: cell-pulse-observed
+    kind: pg_channel
+    producer: "cell-core/observatory.py emit_pulse_observed"
+    consumer: "cell-observatory-collector/collector.py:128"
+    machine: pro
+    status: ALIVE
+    notes: "393 unconsumed outbox rows accumulate (bridge consumes via LISTEN, outbox replay never acks)"
+  - id: cell-pulse-sustained-red
+    kind: pg_channel
+    producer: "cell-core/observatory.py emit_sustained_red (W57)"
+    consumer: "pg-to-organism-bridge.py:73 only — NO EventBus subscriber"
+    machine: pro
+    status: ORPHAN_CONSUMER
+    notes: "52 unconsumed rows; event_bus.py:108-114 comment documents the missing subscriber"
+  - id: measurer-event
+    kind: pg_channel
+    producer: "migrations_v2/152 trigger post_metrics_history/m13_retrain_log"
+    consumer: "M14 learner"
+    machine: fly
+    status: ALIVE
+  - id: crm-welcome-completed
+    kind: pg_channel
+    producer: "migrations_v2/153 trigger crm_welcome_runs"
+    consumer: "analytics/retention consumers"
+    machine: fly
+    status: ALIVE
+  - id: whatsapp-message-received
+    kind: pg_channel
+    producer: "wa-mirror explicit publish"
+    consumer: "_core.py:326 on_whatsapp_message_received"
+    machine: fly
+    status: ALIVE
+  - id: mata-garuda-asset-provenance
+    kind: pg_channel
+    producer: "migrations_v2/155 trigger asset_provenance"
+    consumer: "war_room/asset_invalidated_subscriber.py"
+    machine: fly
+    status: ALIVE
+  - id: intel-lake-event
+    kind: pg_channel
+    producer: "migrations_v2/168 trigger intel_items INSERT"
+    consumer: "intel/intel_lake_router.py"
+    machine: fly
+    status: ALIVE
+    notes: "24 unconsumed outbox rows"
+  - id: wr2-status-change
+    kind: pg_channel
+    producer: "migrations_v2/164 trigger war_room_drafts status UPDATE"
+    consumer: "scripts/wr2_supervisor.py (bespoke listener + own outbox replay)"
+    machine: pro
+    status: ALIVE
+    notes: "NOT in PG_CHANNEL_MAP by design"
+  - id: wr3-episode-lifecycle
+    kind: pg_channel
+    producer: "scripts/wr3_supervisor.py publish_wr3_event (migration 183) — 6 channels: brief_requested/pre_render_ready/gate_passed/assembly_ready/critic_verdict/staged"
+    consumer: "scripts/wr3_supervisor.py _listen_loop"
+    machine: pro
+    status: ALIVE
+    notes: "self-loop orchestration; supervisor process alive but 0 episodes in 14d (armed-but-inactive, W74)"
+  - id: pg-to-organism-bridge
+    kind: pg_channel
+    producer: "18 channels above"
+    consumer: "scripts/pg-to-organism-bridge.py CHANNELS (l.59-78) -> organism Redis stream + JSONL mirror"
+    machine: pro
+    status: ALIVE
+    probe:
+      {
+        type: launchd_label,
+        label: com.nuzantara.pg-organism-bridge,
+        via: "ssh:pro-lan",
+      }
+  - id: whatsapp-media-pending
+    kind: outbox_event
+    producer: "routers/bridge.py (Fly webhook, metadata-only Law 2)"
+    consumer: "scripts/wa_media_pull_worker.py (Pro cron, ACK-after-local-enqueue)"
+    machine: fly
+    status: ALIVE
+    notes: "outbox-only pattern, deliberately NOT in PG_CHANNEL_MAP; ~0 backlog at census"
+  - id: crm-bridge-outbox-events
+    kind: outbox_event
+    producer: "_core.py:125-143 insert_outbox_event (crm.client_created etc.)"
+    consumer: "Pro-side bridge consumer (cross-environment by design)"
+    machine: fly
+    status: ALIVE
+  - id: wr2-carousel-events-outbox
+    kind: outbox_event
+    producer: "war_room/wr2_outbox_consumer.py (migration 199 bespoke table)"
+    consumer: "wr2_damar_publish_consumer.py / wr2_fact_checker.py"
+    machine: pro
+    status: ALIVE
+    notes: "damar publish consumer DEAD since Damar standby 2026-06-12 (see queues.yaml)"
+  - id: autonomous-lab-events-outbox
+    kind: outbox_event
+    producer: "migrations_v2/124 autonomous_lab_events_outbox"
+    consumer: "Autonomous Lab runtime (ack-after-success)"
+    machine: fly
+    status: ALIVE
+anomalies:
+  - "DIVERGENCE with sibling TAC report (research/operations/2026-06-13-organism-connectome-fable5.md): it counts 27 channels in PG_CHANNEL_MAP and flags 5 producer-without-EventBus-consumer (war_room_event, cognitive_event, federation_alert, measurer_event, crm_welcome_completed); this census found bespoke/direct listeners for some of those. Two verifiers disagree → resolve with verify_connectome probes, do not trust either blindly"
+  - "cell_pulse_sustained_red: ORPHAN_CONSUMER — EventBus subscriber never written (52 rows, growing)"
+  - "topic_ready channel: census found ZERO grep hits in current tree — pipeline-A dispatcher removed since the 2026-06-11 audit (F17 superseded by deletion)"
+  - "federation_alert: PG_CHANNEL_MAP entry unused by EventBus (daemon does direct LISTEN) — either remove from map or add fan-in"

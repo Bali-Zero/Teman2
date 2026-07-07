@@ -22,17 +22,32 @@ init_sentry()
 logger = logging.getLogger("zantara.backend")
 
 
-async def _wa_bot_generate_not_implemented(_thread: object) -> str:
-    """v1 bot generator: not wired yet (human-send-only scope).
+def _wa_outbox_scheduler_enabled() -> bool:
+    return os.getenv("WA_OUTBOX_SCHEDULER_ENABLED", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
 
-    The WA Meta inbox v1 ships SEND for operator-typed replies only. Bot
-    auto-reply (RAG generation) is a follow-up PR. A ``needs_generation`` row
-    should not exist in v1 (the webhook only enqueues bot replies when the bot
-    path is active), but if one does, this raises and the outbox worker marks
-    it failed/retry — it is NEVER left orphaned (worker has a guard around
-    bot_generate_fn). See docs/superpowers/specs/2026-06-04-wa-outbox-scheduler.md.
+
+def _make_wa_bot_generate(app: FastAPI):
+    """Build the bot_generate_fn for the wa_outbox scheduler.
+
+    v1.1 (Option B): wires the RAG orchestrator so the Meta-inbox bot actually
+    auto-replies. Gated behind the WA_INBOX_BOT_AUTOREPLY flag inside
+    generate_bot_reply — when off, it raises and the worker marks the row
+    failed/retry (never a wrong send), preserving v1 behaviour by default.
+
+    The pool is bound here via closure because process_outbox_once passes only
+    the thread row to bot_generate_fn.
     """
-    raise NotImplementedError("wa-inbox bot auto-reply not enabled in v1")
+    from backend.services.integrations.wa_inbox_bot import generate_bot_reply
+
+    async def _bot_generate(thread: object) -> str:
+        return await generate_bot_reply(app.state.db_pool, thread)
+
+    return _bot_generate
 
 
 async def _run_wa_outbox_scheduler(app: FastAPI) -> None:
@@ -48,11 +63,12 @@ async def _run_wa_outbox_scheduler(app: FastAPI) -> None:
 
     interval = float(os.getenv("WA_OUTBOX_POLL_SECONDS", "3"))
     pool = app.state.db_pool
+    bot_generate_fn = _make_wa_bot_generate(app)
     logger.info("✅ WA outbox scheduler started (poll=%ss)", interval)
     while True:
         try:
             status = await process_outbox_once(
-                pool, whatsapp_service, _wa_bot_generate_not_implemented
+                pool, whatsapp_service, bot_generate_fn
             )
             # Drain fast while sending, but always yield the loop (sleep(0)
             # would not starve asyncio, but a tiny throttle is safer under a
@@ -106,7 +122,12 @@ async def lifespan_light(app: FastAPI):
             # lifespan) because app.state.db_pool is only set above, inside this
             # background init task; an outer-lifespan task could start with
             # db_pool=None (panel race-fix 2026-06-04). Guard on a real pool.
-            if getattr(app.state, "db_pool", None) is not None:
+            if not _wa_outbox_scheduler_enabled():
+                app.state._wa_outbox_scheduler_task = None
+                logger.warning(
+                    "⚠️ WA outbox scheduler disabled by WA_OUTBOX_SCHEDULER_ENABLED",
+                )
+            elif getattr(app.state, "db_pool", None) is not None:
                 app.state._wa_outbox_scheduler_task = asyncio.create_task(
                     _run_wa_outbox_scheduler(app)
                 )
@@ -138,6 +159,9 @@ async def lifespan_light(app: FastAPI):
     from backend.app.rag_proxy import close_proxy_client
 
     await close_proxy_client()
+    from backend.services.integrations.wa_inbox_bot import close_rag_client
+
+    await close_rag_client()
 
 
 def create_api_app() -> FastAPI:

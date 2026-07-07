@@ -1175,9 +1175,9 @@ body::after {
       <div class="footer-col">
         <h4>Contact</h4>
         <a href="mailto:info@balizero.com">info@balizero.com</a>
-        <a href="tel:+6282264599868">+62 822 6459 9868</a>
+        <a href="tel:+6282210302328">+62 822 1030 2328</a>
         <a href="/contact">Bali, Indonesia</a>
-        <a href="https://wa.me/6282264599868" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://wa.me/6282210302328" target="_blank" rel="noopener">WhatsApp</a>
         <a href="https://t.me/Balizerobot" target="_blank" rel="noopener">Telegram</a>
       </div>
     </div>

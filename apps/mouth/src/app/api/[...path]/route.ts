@@ -89,7 +89,7 @@ async function proxy(req: NextRequest): Promise<Response> {
     }
   }
 
-  // Always forward CSRF token
+  // Always forward CSRF token as cookie
   if (csrfCookie) {
     const existingCookie = headers.get("cookie") || "";
     const csrfValue = `nz_csrf_token=${csrfCookie.value}`;
@@ -97,6 +97,17 @@ async function proxy(req: NextRequest): Promise<Response> {
       "cookie",
       existingCookie ? `${existingCookie}; ${csrfValue}` : csrfValue,
     );
+  }
+
+  // BUG-A FIX: For mutating methods, also promote the CSRF cookie value into
+  // the X-CSRF-Token request header.  The backend validate_csrf() uses the
+  // double-submit cookie pattern and requires BOTH the cookie AND the header to
+  // be present and matching.  The browser cannot set this header itself (the
+  // Next proxy is the only place where the httpOnly-adjacent cookie is visible),
+  // so we inject it here for every state-changing request uniformly.
+  const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+  if (csrfCookie && MUTATING_METHODS.has(req.method)) {
+    headers.set("X-CSRF-Token", csrfCookie.value);
   }
 
   let body: BodyInit | undefined = undefined;
@@ -311,7 +322,10 @@ async function proxy(req: NextRequest): Promise<Response> {
                 /\s+/g,
                 "",
               );
-          const maxAge = 86400; // 24h
+          // Follow the backend token lifetime (expiresIn = JWT_ACCESS_TOKEN_EXPIRE_HOURS*3600)
+          // so the cookie never outlives or under-lives the JWT. Mirrors
+          // app/api/auth/login/route.ts. Fallback 86400 only if expiresIn is absent.
+          const maxAge = bodyJson?.data?.expiresIn || 86400;
           // CRITICAL: Strip upstream Set-Cookie headers — they carry SameSite=none
           // which Chrome 130+ rejects without Partitioned. We re-set cookies manually
           // using raw header strings to bypass Vercel Edge Runtime restrictions.

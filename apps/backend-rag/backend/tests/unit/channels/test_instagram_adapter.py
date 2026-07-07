@@ -12,6 +12,7 @@ Tests:
 import os
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
@@ -20,7 +21,7 @@ os.environ.setdefault("OPENAI_API_KEY", "test_key")
 os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
 from backend.channels.base import ChannelResponse
-from backend.channels.instagram.adapter import InstagramChannelAdapter
+from backend.channels.instagram.adapter import GRAPH_API_VERSION, InstagramChannelAdapter
 from backend.channels.instagram.config import InstagramChannelConfig
 from backend.channels.instagram.formatter import InstagramMessageFormatter
 
@@ -186,8 +187,8 @@ class TestInstagramAdapter:
         self,
         adapter: InstagramChannelAdapter,
     ) -> None:
-        # entry is not a list -> IndexError
-        with pytest.raises(Exception):
+        # "entry" is a string not a list of dicts → entry[0] is a char → .get() fails
+        with pytest.raises((AttributeError, IndexError, TypeError)):
             await adapter.receive_message({"entry": "bad"})
 
     async def test_send_response(
@@ -207,6 +208,36 @@ class TestInstagramAdapter:
         first_call = adapter.client.post.call_args_list[0]
         assert "messages" in first_call.args[0]
         assert first_call.kwargs["json"]["recipient"]["id"] == "9876543210"
+
+    async def test_send_status_update_sends_typing_on(
+        self,
+        adapter: InstagramChannelAdapter,
+    ) -> None:
+        """typing_on ack must actually hit the Graph API (was a no-op `pass`
+        → 50s of dead silence during the RAG round-trip)."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        adapter.client = AsyncMock()
+        adapter.client.post = AsyncMock(return_value=mock_resp)
+
+        await adapter.send_status_update("9876543210", "processing")
+
+        adapter.client.post.assert_awaited_once()
+        call = adapter.client.post.call_args
+        assert "messages" in call.args[0]
+        assert call.kwargs["json"]["sender_action"] == "typing_on"
+        assert call.kwargs["json"]["recipient"]["id"] == "9876543210"
+
+    async def test_send_status_update_never_raises(
+        self,
+        adapter: InstagramChannelAdapter,
+    ) -> None:
+        """A failed typing bubble must not block / fail the real reply."""
+        adapter.client = AsyncMock()
+        adapter.client.post = AsyncMock(side_effect=Exception("Graph down"))
+
+        # Must swallow the error (best-effort), unlike send_response which re-raises.
+        await adapter.send_status_update("123", "processing")
 
     async def test_send_response_truncates_long_message(
         self,
@@ -234,12 +265,91 @@ class TestInstagramAdapter:
         with pytest.raises(Exception, match="API down"):
             await adapter.send_response("123", simple_response)
 
-    async def test_send_status_update_noop(
+    async def test_send_response_raises_on_meta_4xx(
         self,
         adapter: InstagramChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
-        # Instagram doesn't support typing indicators, should be no-op
-        await adapter.send_status_update("123", "typing")
+        """F07: Meta 4xx must raise — must NOT log success and silently discard the reply.
+
+        Before the fix, await self.client.post(...) returned without a status
+        check so a 400 was logged as success.  After the fix, raise_for_status()
+        propagates the HTTPStatusError before the success log is reached.
+        """
+        error_response = MagicMock()
+        error_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "400 Bad Request",
+            request=MagicMock(),
+            response=MagicMock(status_code=400),
+        )
+        adapter.client = AsyncMock()
+        adapter.client.post = AsyncMock(return_value=error_response)
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await adapter.send_response("123", simple_response)
+
+        # mark_seen must NOT have been called — exception propagated before it
+        assert adapter.client.post.call_count == 1
+
+    async def test_send_response_meta_400_raises_via_real_transport(
+        self,
+        adapter: InstagramChannelAdapter,
+        simple_response: ChannelResponse,
+    ) -> None:
+        """F07 (MockTransport): a real httpx 400 from Meta must raise, not log success.
+
+        Unlike test_send_response_raises_on_meta_4xx (which mocks the response
+        object), this drives the REAL httpx client/response path via
+        MockTransport — so it fails if the adapter ever stops calling
+        raise_for_status() on the actual response.
+        """
+        requests_seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests_seen.append(request)
+            return httpx.Response(
+                400,
+                json={"error": {"message": "Invalid OAuth access token", "code": 190}},
+            )
+
+        adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            with pytest.raises(httpx.HTTPStatusError):
+                await adapter.send_response("9876543210", simple_response)
+        finally:
+            await adapter.close()
+
+        # Exactly one request: the send failed, mark_seen must NOT have fired
+        assert len(requests_seen) == 1
+        assert GRAPH_API_VERSION in str(requests_seen[0].url)
+
+    async def test_send_response_meta_200_success_via_real_transport(
+        self,
+        adapter: InstagramChannelAdapter,
+        simple_response: ChannelResponse,
+    ) -> None:
+        """F07 (MockTransport): a real 200 completes the full path — send + mark_seen.
+
+        Both calls must hit the SAME Graph API version (module constant), the
+        previous drift was send=v22.0 vs mark-seen=v18.0.
+        """
+        requests_seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests_seen.append(request)
+            return httpx.Response(200, json={"message_id": "m_ok"})
+
+        adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            await adapter.send_response("9876543210", simple_response)
+        finally:
+            await adapter.close()
+
+        # Send + mark_seen both happened, both on the unified API version
+        assert len(requests_seen) == 2
+        assert f"/{GRAPH_API_VERSION}/" in str(requests_seen[0].url)
+        assert f"/{GRAPH_API_VERSION}/" in str(requests_seen[1].url)
+        assert b"mark_seen" in requests_seen[1].content
 
     async def test_stream_response_accumulates(
         self,

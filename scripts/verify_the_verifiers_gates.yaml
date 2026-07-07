@@ -1,0 +1,443 @@
+# verify_the_verifiers_gates.yaml — declarative registry of safety gates
+#
+# The FACTS (which gate, where, how to tell if armed) live HERE, separate from
+# the LOGIC (scripts/verify_the_verifiers.py). This is the meta-verifier of
+# P1 §4 (verify-the-verifiers): it renders OBSERVABLE when a gate is DISARMED.
+#
+# DISCIPLINE (anti-hallucination, cicatrix phantom-citation 2026-06-05):
+#   Every `target` / `registered_in` / `consumer` path below was verified to
+#   exist on disk on 2026-06-07. The P1 spec AND the session handoff both cited
+#   imprecise paths (guardrails-static.py lives in ~/.claude/hooks/ not scripts/;
+#   backend_stability_gate.py in apps/backend-rag/scripts/ not scripts/). Gates
+#   are registered by VERIFIED path, never by spec-name. When adding a gate,
+#   `find`/`ls` the path in THIS turn before adding it.
+#
+# kind:
+#   claude_hook  — a hook registered in ~/.claude/settings.json. Armed = (target
+#                  file exists) AND (its command in settings.json does NOT contain
+#                  the disarm_substring).
+#   ci_workflow  — a GitHub Actions workflow. Armed = each listed step has
+#                  continue-on-error == expected (a deterministic safety check
+#                  must be `false`; a monitor-by-design step stays `true`).
+#   lint_script  — a standalone lint. Armed = (script exists) AND (it has a
+#                  consumer: a CI workflow or .husky hook that runs it).
+#                  consumer: null  → WARN "gate without consumer" (not FAIL).
+#
+# canary (optional, --canary local run only): proves the disarm LEVER works —
+#   sets the env and asserts the gate self-disarms. NOT run in CI (would set
+#   dangerous env). It validates "the gate is disarmable-but-currently-armed".
+
+version: 1
+
+gates:
+  - id: stop_verify
+    kind: claude_hook
+    target: ~/.claude/hooks/stop_verify.py
+    registered_in: ~/.claude/settings.json
+    event: Stop
+    disarm_substring: "STOP_VERIFY_ALLOW_DIRTY=1"
+    canary:
+      env: { STOP_VERIFY_ALLOW_DIRTY: "1" }
+      expect: disarmed
+    note: >
+      Self-demonstrated GAP-1: this hook was disarmed (ALLOW_DIRTY=1 hardcoded
+      in the settings.json command) and nobody knew. Re-armed 2026-06-07.
+
+  - id: worktree_isolation
+    kind: claude_hook
+    target: ~/.claude/hooks/worktree_isolation.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "AGENT_WORKTREE_ENFORCEMENT=false"
+    canary:
+      env: { AGENT_WORKTREE_ENFORCEMENT: "false" }
+      expect: disarmed
+
+  - id: worktree_file_write_check
+    kind: claude_hook
+    target: ~/.claude/hooks/worktree_file_write_check.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "AGENT_WORKTREE_ENFORCEMENT=false"
+    canary:
+      env: { AGENT_WORKTREE_ENFORCEMENT: "false" }
+      expect: disarmed
+
+  - id: orchestrate_gate
+    kind: claude_hook
+    target: ~/.claude/hooks/orchestrate_gate.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "ORCHESTRATE_GATE_OFF=1"
+    canary:
+      env: { ORCHESTRATE_GATE_OFF: "1" }
+      expect: disarmed
+
+  - id: guardrails_client
+    kind: claude_hook
+    target: ~/.claude/hooks/guardrails-client.sh
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    # No env disarm lever (daemon-or-static-fallback). Armed = registered + file exists.
+    disarm_substring: null
+
+  - id: stadio_zero_nudge
+    kind: claude_hook
+    target: ~/.claude/hooks/stadio_zero_nudge.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    disarm_substring: "STADIO_ZERO_NUDGE_OFF=1"
+    canary:
+      env: { STADIO_ZERO_NUDGE_OFF: "1" }
+      expect: disarmed
+    note: >
+      STADIO-0 STUDY entry-gate nudge (FASE-0 anti-forgetting half). Non-blocking
+      by design (sys.exit(0) always) — a blocking gate on a judgment act invites
+      empty STUDYs to unblock. Registering it here closes the loop: the meta-verifier
+      (the FASE-0 decay-sensor) now observes whether STADIO-0 itself stays armed.
+
+  - id: seam_verify
+    kind: claude_hook
+    target: ~/.claude/hooks/seam_verify.py
+    registered_in: ~/.claude/settings.json
+    event: Stop
+    # No env disarm lever: the hook is purely advisory (sys.exit(0) always, never
+    # blocks). Armed = registered under Stop + file exists. Same shape as
+    # guardrails_client. Re-added 2026-06-09 now that P4 ships the real hook
+    # (scripts/hooks/seam_verify.py, installed to ~/.claude/hooks via
+    # install_fase0_governance.sh). Closes the W71-deferred gap: the meta-verifier
+    # (FASE-0 decay-sensor) now observes whether the seam-verify reminder stays armed.
+    disarm_substring: null
+    note: >
+      SEAM-VERIFY post-session reminder (P4 §3.5). Maps the git diff to the
+      declared seams (router/middleware/manifest/import-chain) and advises which
+      seam-test to run. Deterministic (not agent-inferred); testmon path deferred
+      until pytest-testmon is installed. Non-blocking by design — it cannot know
+      the agent didn't already run the test, and a false block on every dirty
+      session would be worse than the gap it closes.
+
+  - id: hot_zone_codeowners_self_mod
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "CODEOWNERS self-mod check"
+    expected_continue_on_error: false
+    note: >
+      Deterministic security gate (anti CI-self-silencing). Flipped true->false
+      by PR #1166 (interruttore 2). Until #1166 merges, main still shows `true`.
+
+  - id: hot_zone_migration_replay
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "lint_migration_numbers"
+    expected_continue_on_error: false
+    note: >
+      Deterministic migration-uniqueness replay (cicatrix W40). Flipped
+      true->false by PR #1166.
+
+  - id: hot_zone_redis_lease
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "lease check"
+    expected_continue_on_error: true
+    note: >
+      Monitor-by-design: no Redis on GitHub ephemeral runners → would false-fail
+      every PR. Intentionally stays true (NOT a disarm).
+
+  - id: hot_zone_launchagent_notice
+    kind: ci_workflow
+    target: .github/workflows/hot-zone-pr-gate.yml
+    step_anchor: "LaunchAgent"
+    expected_continue_on_error: true
+    note: >
+      Operator notice, not a pass/fail test. Intentionally stays true.
+
+  - id: p3_sandbox_static
+    kind: ci_workflow
+    target: .github/workflows/p3-sandbox-gates.yml
+    step_anchor: "P3 static gates"
+    expected_continue_on_error: false
+    note: >
+      FASE-1 (P3 Tier-1) egress chokepoint — ENFORCING static gate. Validates both
+      compose files parse, the base docker-compose.test.yml is UNTOUCHED (gate G2 by
+      construction — never break the integration suite), the egress proxy compiles +
+      allowlist logic (apex/subdomain match, lookalike denied), and the runtime-gate
+      tests collect. Runs on every GitHub runner, no Docker. If this flips to
+      continue-on-error=true it means the P3 static guarantees stopped blocking PRs.
+
+  - id: p3_sandbox_runtime
+    kind: ci_workflow
+    target: .github/workflows/p3-sandbox-gates.yml
+    step_anchor: "P3 runtime gates"
+    expected_continue_on_error: true
+    note: >
+      Monitor-by-design (same pattern as hot_zone_redis_lease): the real G1/G1-DLP/G4
+      need `docker compose up --build`, which GitHub ephemeral runners cannot run
+      safely → they execute on Pro (workhorse). Intentionally stays true (NOT a
+      disarm). The honest residue: DLP inspects cleartext bodies only; HTTPS CONNECT
+      tunnels are opaque (DLP-over-encrypted-HTTPS = Tier-1.5, deferred). Operator
+      decision 2026-06-07 (option B, DLP onesto-limitato).
+
+  - id: lint_migration_numbers
+    kind: lint_script
+    target: scripts/lint_migration_numbers.py
+    # Real consumer verified 2026-06-07: .husky/pre-commit:83 runs the script
+    # directly. NB: .github/workflows/lint-migration-numbers.yml does NOT run it
+    # (it has its own inline bash dup-detector) — so the husky hook is the wiring
+    # that actually executes THIS script. hot-zone-pr-gate.yml:240 also replays it.
+    consumer: .husky/pre-commit
+
+  - id: lint_symbiosis_promises
+    kind: lint_script
+    target: scripts/lint_symbiosis_promises.py
+    consumer: .github/workflows/symbiosis-lint.yml
+
+  - id: lint_asyncpg_except_completeness
+    kind: lint_script
+    target: scripts/lint_asyncpg_except_completeness.py
+    consumer: .github/workflows/asyncpg-lint.yml
+    note: >
+      Consumer ARMED 2026-06-11 (guardian-of-guardians audit — closes the W64
+      WARN / W35 deferral): asyncpg-lint.yml runs the lint blocking on every
+      PR + push to main. No paths filter, no sentinel needed (pure-stdlib,
+      seconds) → safe required-status-check.
+
+  - id: lint_test_reward_hacking
+    kind: lint_script
+    target: scripts/lint_test_reward_hacking.py
+    consumer: .husky/pre-commit
+    note: >
+      P1 STRATO-1 anti-reward-hacking (FASE-3). Pure-stdlib AST linter (no semgrep
+      dep) that flags lazy test-cheats (assert-True, self-equal, broad
+      pytest.raises(Exception), sys.exit pre-assert, asserts-nothing) on staged test
+      files. Wired into .husky/pre-commit (so NOT a consumer-less W64 lint). First-
+      level heuristic, easily evaded — value is raising the cost of the lazy cheat,
+      NOT proving tests honest (the reliable layer is STRATO-5 human gate).
+
+  # ----- FASE-4 gates (3-worker parallel fan-out, registry-serialized here) -----
+  # The 3 worker PRs (#1175 guardrails_static, #1176 federation_parallelize,
+  # #1177 mutation_incremental) ship the CODE; this central commit REGISTERS the
+  # gates with the meta-verifier (registry-serialization pattern: N disjoint
+  # workers, ONE registry edit + ONE baseline, avoids the W59/W62 sibling-race).
+  # Every target/consumer path below was verified on disk 2026-06-07.
+
+  - id: guardrails_static
+    kind: claude_hook
+    target: ~/.claude/hooks/guardrails-static.py
+    registered_in: ~/.claude/settings.json
+    event: PreToolUse
+    # The hook is Tier-2 of ~/.claude/hooks/guardrails-client.sh, which IS the
+    # PreToolUse `*` entry in settings.json. NOTE id != guardrails_client (the .sh
+    # wrapper gate above) — distinct artifact, no collision. The Tier-1 daemon
+    # (~/.claude/daemons/guardrails.py) is ABSENT on M5, so the static evaluator is
+    # the SOLE active deterministic PreToolUse block.
+    invoked_via: ~/.claude/hooks/guardrails-client.sh
+    disarm_substring: "GUARDRAILS_STATIC_OFF=1"
+    canary:
+      env: { GUARDRAILS_STATIC_OFF: "1" }
+      expect: disarmed
+    note: >
+      P1 STRATO-0 (FASE-4 worker-p1s0). Deterministic, bias-immune, ~0-cost block of
+      known-dangerous tool_use BEFORE execution (rm -rf, git reset --hard, force-push
+      main, fly/gcloud/aws destroy, curl|bash, destructive MCP verbs, SQL DDL, writes
+      to off-limits paths). Fails CLOSED on parse error. Matching logic is repo-
+      vendored (scripts/guardrails_static_core.py, CI-tested 65 cases via
+      scripts/test_guardrails_static.py — PR #1175) so it cannot silently rot; the
+      ~/.claude hook imports it with a byte-identical vendored fallback.
+
+  - id: federation_parallelize_gate
+    kind: lint_script
+    target: scripts/test_federation_parallelize_gate.py
+    consumer: .github/workflows/p6-federation-parallelize.yml
+    note: >
+      P6 (FASE-4 worker-p6, PR #1176). Guards the default-SERIAL posture of
+      scripts/federation_orchestrator.py: the parallelize HYPOTHESIS
+      (scripts/federation_parallelize.py) must default serial and only fan out for
+      breadth/role-distinct disjoint work. ARMED via a real CI consumer added in THIS
+      serialization commit (the worker honestly shipped consumer:null per W64; the
+      orchestrator armed it — a gate that gates nothing is half a gate). Honest limit:
+      a static lint verifies the static-estimator half only; it cannot prove the
+      runtime monitor re-serializes on lease contention (runtime-revocable hypothesis).
+
+  - id: mutation_incremental
+    kind: lint_script
+    target: scripts/mutation_incremental.py
+    consumer: .github/workflows/p1s2-mutation-incremental.yml
+    note: >
+      P1 STRATO-2 (FASE-4 worker-p1s2, PR #1177). Incremental AST-diff mutation:
+      mutates ONLY changed executable statement lines (git diff ∩ AST), never the full
+      codebase. HIDDEN CANARY MUTANTS (frozen, hash-pinned, operator-owned seed) are
+      the anti-cheat — a surviving canary FAILs the gate regardless of reported score.
+      Real CI consumer shipped with the slice. Honest limit: mutmut is OPTIONAL/CI-
+      provided — absent (M5) the mutmut leg SKIPs (exit 2, never a false pass) while
+      the pure-Python canary self-test still runs and can still FAIL. Companion test
+      scripts/test_mutation_incremental.py (20 cases).
+
+  # ----- P9 GOVERN cost-breaker gates (FASE-0.5 transversal, registry-serialized) -----
+  - id: cost_breaker
+    kind: lint_script
+    target: scripts/cost_breaker.py
+    # Consumer verified 2026-06-08: .github/workflows/p9-cost-breaker.yml runs
+    # `python -m pytest scripts/test_cost_breaker.py` which imports cost_breaker.
+    # The workflow names scripts/cost_breaker.py in its paths: filter too, so the
+    # consumer check resolves the basename. ARMED, not consumer-less (W64).
+    consumer: .github/workflows/p9-cost-breaker.yml
+    note: >
+      P9 GOVERN cost-breaker (FASE-0.5/transversal). Reads the local cost ledger
+      (llm_cost_events m117 / JSONL fallback) and triggers the existing cascade —
+      never spends, never sends PII. HONEST LIMIT: the per-provider budget is a
+      PROXY USD threshold (a configurable estimate), NOT the opaque flat-rate
+      MAX/subscription quota, which is not machine-readable. The breaker degrades
+      on a money-proxy; the ultimate backstop is still the human the STOP push asks.
+
+  - id: cost_breaker_deadman
+    kind: lint_script
+    target: scripts/cost_breaker_deadman.sh
+    # Honest classification: this is a cron/launchd watchdog, NOT a PreToolUse
+    # claude_hook — so lint_script + a CI consumer (the same p9 workflow runs
+    # `bash -n` + the FORCE_ALERT self-test on it) is the truthful kind.
+    consumer: .github/workflows/p9-cost-breaker.yml
+    note: >
+      P9 G5 dead-man's switch — the SECOND observer that realises the UNBUILT
+      mutual-watch documented in sentinel_meta_watchdog.sh's header. Alerts if the
+      verify_the_verifiers or sentinel_meta_watchdog alive-signal goes stale
+      (governance gone mute). HONEST LIMIT: the dead-man's switch is itself watched
+      only by its own state file + a human reading its last alert — the recursion
+      terminates at a person, not at another machine. Kill-switch
+      COST_BREAKER_DEADMAN_OFF=1.
+
+  # ---------------------------------------------------------------------------
+  # A1 / Loop-B (2026-06-23) — scar_test gates. The other kinds verify a guardian
+  # is INSTALLED; these RUN the regression test that fails if the scar re-bites,
+  # answering "is the disease still dead?". prose_only:true = scar documented but
+  # no executable gate yet = WARN (visible Loop-B debt, never silently green).
+  # Reference: research/operations/2026-06-23-self-loop-implementation-plan.md (Anello 1).
+  # ---------------------------------------------------------------------------
+  - id: scar_W86_worktree_overmatch
+    kind: scar_test
+    w_number: W86
+    target: infra/claude-hooks/test_w84_strip_noise_cross_line.py
+    note: >
+      Superscar #3 (guard over-match). W83/84/85/86 family: the worktree_isolation
+      hook over-matched a bare `>` in code-residue (python -c / awk / perl bodies)
+      as a redirect → phantom write-target → read-only command falsely blocked.
+      W86 cure = path-plausibility whitelist (_is_plausible_path). This test asserts
+      innocence (no false block on code-residue) AND guilt (genuine writes to main
+      still blocked). Green = the over-match family stays dead.
+
+  - id: scar_premise_gate_L1
+    kind: scar_test
+    w_number: premise-gate-L1
+    target: infra/claude-hooks/test_premise_gate.py
+    note: >
+      DNA L1 detector (anti-hallucination rule #2 made mechanical). The premise_gate
+      hook warns on an Edit of a product file not read in-turn. This test asserts it
+      WARNS on the genuine missing-premise case AND stays silent on every legitimate
+      neighbor (read-in-turn, exempt surfaces, plan-mode, repeat-suppression).
+      Green = the "build on a false premise" disease stays caught.
+
+  - id: scar_W82_content_freshness_undermatch
+    kind: scar_test
+    w_number: W82
+    target: infra/scar-gates/test_W82_content_freshness_undermatch.py
+    note: >
+      Superscar #3 UNDER-match twin (content-freshness-sentinel: substring + blind to
+      translations → stale fact stays green). PROMOTED from prose_only to an executable
+      gate 2026-06-23 — the self-loop feeding itself: the prose WARN became a test.
+      The gate PINS the documented current (broken) contract: the under-match still
+      behaves as the scar describes (reworded/table/translated stale facts slip past the
+      substring matcher; the exact literal IS caught; migration-context excused). ARMED =
+      contract holds = bug present & captured. When the fact-based ANTIBODY is finally
+      armed (operator firebreak, Antonello 2026-06-16), the under-match stops happening,
+      this test FAILS → DISARMED → loud "W82 contract changed: promote scar to RESOLVED".
+      We did NOT arm the fact-based sentinel here (firebreak respected) — we made the
+      debt a tripwire that fires the moment the cure lands.
+
+  # ---------------------------------------------------------------------------
+  # A2 / A3 (2026-06-23) — the last two rings of the self-loop, registered so CI
+  # re-runs their innocence+guilt suites every PR. Reference:
+  # research/operations/2026-06-23-self-loop-implementation-plan.md (Anelli 2,3).
+  # ---------------------------------------------------------------------------
+  - id: scar_A2_heartbeat_starved
+    kind: scar_test
+    w_number: A2-heartbeat-semantico
+    target: scripts/test_sentinel_starved.py
+    note: >
+      Superscar #2 (Esiste != Armato) at the OUTPUT level. The sentinel classically
+      asks "did the organ RUN?" (ts fresh, status ok, launchctl PID). A2 adds the
+      missing axis "did the organ's OUTPUT ADVANCE?": an organ green-on-schedule whose
+      registry-declared progress_field is byte-identical across STARVED_TICKS=3 ticks is
+      'starved'. This test asserts innocence (advancing output / no progress_field /
+      first-run / a real dead organ are NEVER mislabelled starved) AND guilt (frozen
+      output for N ticks flips to starved, one advance clears it). Green = green-but-no-
+      delta stays detectable. Opt-in + fail-open (no schema regression, superscar #9).
+
+  - id: scar_A3_reflexion_delta_gate
+    kind: scar_test
+    w_number: A3-reflexion-che-impara
+    target: scripts/lib/test_reflexion.py
+    note: >
+      Reflexion core (Shinn et al 2023) unified from two divergent half-copies
+      (superscar #1 HOME-fork cure: lift the shared core, don't make a third copy).
+      The Delta Gate records every run — a NO_SIGNAL tick is visible on disk, not a
+      silent sys.exit(0) (Omeostasi Tautologica defeated; A2 applied to the loop
+      itself). This test asserts the delta-gate persists honestly + rejects invalid
+      status, the tautology alarm fires after HOT_WINDOW all-NO_SIGNAL runs, lesson
+      noise is bounded to Ω, the MOS promote-gate BLOCKS un-promoted (phantom) lessons
+      (superscar #6), the FTS5 hyphen-sanitize holds, and consolidation dedups. Green =
+      a loop that records its own no-delta instead of mistaking green for learning.
+
+  - id: scar_A3_wr3_cabling
+    kind: scar_test
+    w_number: A3-wr3-cabling
+    target: scripts/test_wr3_reflexion_cabling.py
+    note: >
+      Superscar #1 (HOME-fork) cure, ACTUATED: wr3_reflexion_synthesis.record_run no
+      longer keeps a private Delta-Gate copy — it delegates to the unified core
+      (scripts/lib/reflexion.record_run). This test asserts the swap is reader-safe (the
+      WR3 _reflexion-state.json still records honestly; episodes_found carried as the
+      core's signals_found — verified NO reader consumes episodes_found), the WR3 status
+      vocabulary maps to the core enum, an UNMAPPED status RAISES (no silent typo logged
+      as a valid run), and the Omeostasi-Tautologica alarm WR3 previously lacked is now
+      reachable. Green = the duplication stays collapsed; if someone re-forks a private
+      record_run, the reader-safe mapping breaks and this goes RED.
+
+  - id: scar_A_wr2_reflexion
+    kind: scar_test
+    w_number: A-wr2-reflexion
+    target: scripts/test_wr2_reflexion_cabling.py
+    note: >
+      Superscar #1 (HOME-fork) + #2 (Esiste != Armato), ACTUATED on the LAST organism
+      organ that lacked a Delta Gate. The WR2 weekly reflexion ran ONLY as a HOME-only
+      file (~/.claude/skills/bali-zero-brand/_reflexion-synthesis.py, 0 repo source) and
+      its empty-week path was a SILENT print(...); return 0 — the canonical W74 green-cron-
+      theater (12 empty weeks indistinguishable from 12 healthy ones). This repo port
+      (scripts/wr2_reflexion_synthesis.py) cables every main() exit to the unified core
+      (scripts/lib/reflexion.record_run): no-data -> NO_INPUT (canonical NO_SIGNAL, exit 0),
+      synthesis-failed -> LLM_FAILED (exit 1, alert-worthy), synthesized -> SYNTHESIZED/
+      THIN_SIGNAL. The test asserts THE W74 REGRESSION (empty week leaves an audit record,
+      never a silent return 0), the status map only targets real enum values, an unmapped
+      status RAISES, the failure path records LLM_FAILED + exits 1, and the tautology alarm
+      fires after 3 empty weeks. Green = the last green-but-empty loop now records its own
+      no-delta. Closes the self-loop: all reflexion organs delegate to the one core.
+
+  # ---------------------------------------------------------------------------
+  # R1 (2026-07-06) — generator != grader T-GATE on research/audit deliverables.
+  # Reference: docs/specs/rules-as-harness-and-simulation-chamber-v1.md section 2/R1.
+  # Script: scripts/check_adversarial_review.py. Tests: scripts/tests/test_adversarial_review_gate.py
+  # (armed via .github/workflows/immune-enforcement.yml the same way pending_arms_report /
+  # lint_home_fork / secrets_permissions_audit / lint_plist_keepalive are — wired into that
+  # workflow's `paths:` + unit-test loop 2026-07-06, and the gate workflow runs on EVERY PR
+  # (no paths filter) because it is a required check on main branch protection).
+  # ---------------------------------------------------------------------------
+  - id: adversarial_review_gate
+    kind: ci_workflow
+    target: .github/workflows/adversarial-review-gate.yml
+    step_anchor: "R1 gate — adversarial review present"
+    expected_continue_on_error: false
+    note: >
+      Deterministic safety gate (R1): every new/changed research/**/*.md in a PR must
+      declare `adversarial_review: <seat != author>` in frontmatter + a matching
+      '## Adversarial review' section, or an explicit `exempt-<reason>` value.
+      Pure-stdlib checker, no network, no LLM. continue-on-error must stay false —
+      this is the enforcing gate, not a monitor-by-design step (contrast
+      hot_zone_redis_lease/p3_sandbox_runtime above, which intentionally stay true).

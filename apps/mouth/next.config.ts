@@ -120,7 +120,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // ⚡ Performance: Add cache headers for static assets
   async headers() {
     return [
       {
@@ -187,6 +186,25 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Voice concierge needs microphone capture for browser speech input.
+        source: "/lab/voice-concierge",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=(), payment=()",
+          },
+        ],
+      },
+      {
+        source: "/intelligence/voice-concierge",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=(), payment=()",
+          },
+        ],
+      },
       // Preconnect to external domains for Core Web Vitals (LCP/FCP improvement)
       {
         source: "/:path*",
@@ -230,6 +248,12 @@ const nextConfig: NextConfig = {
       { source: "/tax-legal", destination: "/taxes", permanent: true },
       {
         source: "/tax-legal/:slug*",
+        destination: "/taxes/:slug*",
+        permanent: true,
+      },
+      { source: "/tax", destination: "/taxes", permanent: true },
+      {
+        source: "/tax/:slug*",
         destination: "/taxes/:slug*",
         permanent: true,
       },

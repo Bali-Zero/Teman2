@@ -183,7 +183,7 @@ class MemoryHandler:
             )
             if metrics_collector:
                 metrics_collector.record_memory_lock_timeout(user_id=user_id)
-        except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
             logger.warning("Failed to save memory: %s", e, exc_info=True)
 
     def create_save_task(

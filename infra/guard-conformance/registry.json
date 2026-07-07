@@ -1,0 +1,278 @@
+{
+  "_doc": "Guard Conformance Registry (superscar #3 — over/under-match). Maps EVERY live textual guard to its GUILT proof (the guard fires on the historical bad case) and INNOCENCE proof (the guard does NOT fire on the adjacent legitimate case). Enforced by infra/guard-conformance/check_guard_conformance.py: a censused guard missing from here, a phantom test reference, or a test no CI workflow runs = FAIL. The mandate rule this executes: 'nessuna guardia mergiata senza un test di innocenza E di colpevolezza' (cicatrix-superscar.md #3). To add a guard: write both tests first, then register it here.",
+  "version": 1,
+  "surfaces": {
+    "bridge_reply_guards": {
+      "source": "scripts/openclaw_whatsapp_bridge.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "_guard_"
+      },
+      "test_file": "apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py",
+      "guards": {
+        "_guard_document_status_reply": {
+          "scar": [
+            "F37"
+          ],
+          "guilt": [
+            "test_document_status_guard_f37_affirmative_approved_clobbers"
+          ],
+          "innocence": [
+            "test_document_status_guard_f37_conditional_approved_passes"
+          ]
+        },
+        "_guard_legacy_b211_reply": {
+          "scar": [
+            "W72"
+          ],
+          "guilt": [
+            "test_b211_guard_still_clobbers_unsafe_current_claim"
+          ],
+          "innocence": [
+            "test_b211_guard_allows_correct_definitional_answer"
+          ]
+        },
+        "_guard_hak_milik_reply": {
+          "scar": [
+            "W73-family"
+          ],
+          "guilt": [
+            "test_hak_milik_guard_clobbers_short_wrong_claim"
+          ],
+          "innocence": [
+            "test_hak_milik_guard_passes_correct_short_answer",
+            "test_hak_milik_guard_passes_correct_indonesian_answer"
+          ]
+        },
+        "_guard_lkpm_reply": {
+          "scar": [
+            "W73#2"
+          ],
+          "guilt": [
+            "test_lkpm_guard_still_clobbers_stale_deadline",
+            "test_lkpm_guard_clobbers_wrong_window_while_valid"
+          ],
+          "innocence": [
+            "test_lkpm_guard_allows_definitional_answer",
+            "test_lkpm_guard_does_not_clobber_newer_window_after_expiry"
+          ]
+        },
+        "_guard_property_zoning_reply": {
+          "scar": [
+            "W68",
+            "W68b"
+          ],
+          "guilt": [
+            "test_property_zoning_guard_still_fires_on_airbnb_operation"
+          ],
+          "innocence": [
+            "test_property_zoning_guard_allows_villa_leasehold_duration",
+            "test_property_zoning_guard_allows_villa_lease_duration_reworded",
+            "test_property_zoning_guard_please_does_not_match_lease",
+            "test_property_zoning_guard_village_does_not_match_villa"
+          ]
+        },
+        "_guard_tax_compliance_reply": {
+          "scar": [
+            "W73#3"
+          ],
+          "guilt": [
+            "test_tax_guard_still_appends_on_penalty_intent"
+          ],
+          "innocence": [
+            "test_tax_guard_does_not_append_on_stable_rate_fact"
+          ]
+        },
+        "_guard_villa_kbli_reply": {
+          "scar": [
+            "W68",
+            "W73#1"
+          ],
+          "guilt": [
+            "test_bridge_guard_corrects_bad_villa_55193_reply"
+          ],
+          "innocence": [
+            "test_bridge_guard_keeps_grounded_villa_mapping_reply",
+            "test_villa_terms_no_longer_carry_substring_traps"
+          ]
+        },
+        "_guard_kbli_label_reply": {
+          "scar": [
+            "F38"
+          ],
+          "guilt": [
+            "test_kbli_label_guard_f38_kbli_context_still_fires"
+          ],
+          "innocence": [
+            "test_kbli_label_guard_f38_postcode_does_not_fire"
+          ]
+        },
+        "_guard_cafe_pma_reply": {
+          "scar": [
+            "W73#4"
+          ],
+          "guilt": [
+            "test_cafe_guard_still_fires_on_real_cafe_question"
+          ],
+          "innocence": [
+            "test_cafe_guard_does_not_clobber_definitional_pt_pma_answer"
+          ]
+        },
+        "_guard_nominee_reply": {
+          "scar": [
+            "W73#5"
+          ],
+          "guilt": [
+            "test_nominee_guard_fires_on_natural_phrasing",
+            "test_nominee_guard_clobbers_short_risky_only_answer",
+            "test_nominee_guard_still_fires_on_real_nominee_with_atas_nama"
+          ],
+          "innocence": [
+            "test_nominee_guard_allows_correct_definitional_answer",
+            "test_nominee_guard_keeps_short_answer_that_states_illegality",
+            "test_nominee_guard_does_not_fire_on_invoice_atas_nama",
+            "test_nominee_guard_does_not_fire_on_booking_atas_nama"
+          ]
+        }
+      }
+    },
+    "command_hooks": {
+      "hooks_dirs": [
+        "infra/claude-hooks",
+        "scripts/hooks"
+      ],
+      "vaccine": "infra/claude-hooks/test_hook_innocence.py",
+      "entries": {
+        "infra/claude-hooks/worktree_isolation.py": {
+          "scar": [
+            "W79",
+            "W83",
+            "W84",
+            "W85",
+            "W91"
+          ],
+          "symbols": {
+            "BLOCKED_SUBCMD_RE": {
+              "tests": [
+                "infra/claude-hooks/test_block_regex.py",
+                "infra/claude-hooks/test_w85_stash_readonly.py"
+              ],
+              "note": "W85 stash over-match FIXED 2026-07-06 (negative lookahead: read-only `stash list|show` pass, bare/mutating stash still blocked) — test_w85_stash_readonly.py converted from tripwire-pin to plain guilt+innocence per the pin's own instructions"
+            },
+            "_is_remote_dispatch": {
+              "tests": [
+                "infra/claude-hooks/test_w83_remote_dispatch.py"
+              ]
+            },
+            "_strip_noise": {
+              "tests": [
+                "infra/claude-hooks/test_w84_strip_noise_cross_line.py",
+                "infra/claude-hooks/test_w83_remote_dispatch.py"
+              ]
+            },
+            "_write_hits_main": {
+              "tests": [
+                "infra/claude-hooks/test_w79_shell_write.py"
+              ]
+            },
+            "_effective_git_target": {
+              "tests": [
+                "infra/claude-hooks/test_tilde_target_resolver.py"
+              ],
+              "note": "tilde/env blind-spot fixed 2026-07-06 (expanduser+expandvars at the single choke point; found by the W85 live guilt-probe — the resolver sits UPSTREAM of BLOCKED_SUBCMD_RE)"
+            },
+            "_only_ffonly_pull": {
+              "tests": [
+                "infra/claude-hooks/test_ffonly_pull_exception.py"
+              ],
+              "note": "ff-only pull exception (2026-07-06, Zero directive). W91 fixed same day: the first version did a bare substring check and a shell COMMENT mentioning --ff-only opened the exception for a bare pull (4th over-match of this guard) — now FFONLY_PULL_SEGMENT_RE anchors the flag to the pull segment. 15 guilt + 7 innocence + 4 probe cases."
+            }
+          },
+          "also_covered_by": [
+            "vaccine"
+          ]
+        },
+        "infra/claude-hooks/worktree_file_write_check.py": {
+          "scar": [
+            "W80"
+          ],
+          "symbols": {},
+          "tests": [
+            "infra/claude-hooks/test_arm_keep_hook.py"
+          ],
+          "also_covered_by": [
+            "vaccine"
+          ]
+        },
+        "infra/claude-hooks/host_boundary.py": {
+          "symbols": {},
+          "tests": [
+            "infra/claude-hooks/test_host_boundary.py"
+          ]
+        },
+        "infra/claude-hooks/_phase.py": {
+          "symbols": {},
+          "tests": [
+            "infra/claude-hooks/test_phase.py"
+          ]
+        },
+        "infra/claude-hooks/premise_gate.py": {
+          "symbols": {},
+          "tests": [
+            "infra/claude-hooks/test_premise_gate.py"
+          ]
+        },
+        "infra/claude-hooks/orchestrate_gate.py": {
+          "symbols": {},
+          "tests": [],
+          "also_covered_by": [
+            "vaccine"
+          ]
+        },
+        "infra/claude-hooks/stadio_zero_nudge.py": {
+          "symbols": {},
+          "tests": [],
+          "also_covered_by": [
+            "vaccine"
+          ]
+        },
+        "scripts/hooks/seam_verify.py": {
+          "symbols": {},
+          "tests": [],
+          "also_covered_by": [
+            "vaccine"
+          ]
+        }
+      },
+      "exempt": {
+        "infra/claude-hooks/dispatch_nudge.py": "advisory transcript reminder (CLAUDE.md §7 T1.1) — emits a nudge, never blocks a command; no block/allow contract to test",
+        "scripts/hooks/check_import_chain.sh": "shell preflight, not a command-matching guard on model output",
+        "scripts/hooks/check_protected_files.sh": "static path blocklist, exercised by hot-zone-pr-gate CI",
+        "scripts/hooks/escalations_alert_sessionstart.sh": "SessionStart injector, never blocks",
+        "scripts/hooks/organism_alert_sessionstart.sh": "SessionStart injector, never blocks",
+        "scripts/hooks/proprioception_sessionstart.sh": "SessionStart injector, never blocks",
+        "scripts/hooks/w59_branch_hijack_guard.sh": "git-hook guard tested via broker-hygiene suite (scripts/tests/test_agent_start.py)",
+        "scripts/hooks/organism_digest_sessionstart.sh": "SessionStart injector, never blocks"
+      }
+    },
+    "guardrails_static": {
+      "source": "scripts/guardrails_static_core.py",
+      "tests": [
+        "scripts/test_guardrails_core_overmatch.py",
+        "scripts/test_guardrails_overmatch.py"
+      ]
+    },
+    "under_match_sentinels": {
+      "content-freshness-sentinel": {
+        "scar": [
+          "W82"
+        ],
+        "delegated_to": "infra/scar-gates/test_W82_content_freshness_undermatch.py",
+        "note": "guilt+innocence live in the scar gate; the fact-based cure is a declared operator firebreak (2026-06-16)"
+      }
+    },
+    "exempt_matchers": {
+      "scripts/wr2_html_renderer/designer_loop.py::_contains_any_word": "verdict-grading helper on WR2 critic claims (orphan detection), not a reply/command guard boundary; inherits the W73 word-boundary discipline by construction and is exercised by the render-apply lever tests"
+    }
+  }
+}

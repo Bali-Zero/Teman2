@@ -32,6 +32,23 @@ uv.lock
 # Also catch .venv symlinks (without trailing slash, the dir-pattern misses them)
 .venv
 **/.venv
+# WR2 HTML renderer venv — its name doesn't match the .venv* patterns above, so
+# without this line `git status` shows it as `?? .venv-wr2-html/` and the deploy
+# puller flags the worktree DIRTY (scar W81/html-venv, 2026-06-17). Gitignore it
+# so it never counts as a local change.
+.venv-wr2-html/
+**/.venv-wr2-html/
+# Catch-all for venv SIBLINGS/BACKUPS that org self-heal creates (.venv.broken-<ts>,
+# .venv.bak, .venv-<name>) — same scar class as html-venv above. 2026-06-27 a
+# backend self-heal left apps/backend-rag/.venv.broken-210424/ in the -deploy CLONE,
+# which made `git status` dirty and the puller REFUSED to fast-forward → #1779 (and
+# every later merge) could not reach the live organs. The bare `.venv`/`.venv/`
+# patterns miss the `.venv.<suffix>` / `.venv-<suffix>` names. Cover the whole family
+# so a generated venv variant can never again wedge the runtime checkout (anti-W81).
+.venv.*
+**/.venv.*
+.venv-*
+**/.venv-*
 # apps/backend-rag/data/ holds large logs + raw assets we don't ship, BUT
 # apps/backend-rag/data/evaluation/ holds small static golden-query fixtures
 # that tests import at collection time — CI needs them in the repo.
@@ -133,6 +150,9 @@ google_credentials.json
 
 # AI/dev tooling (local state)
 .cursor/
+# Codex CLI local config: MCP server map + hooks carrying absolute /Users
+# paths and Keychain/secret references — machine-local, never versioned.
+.codex/
 .libs/
 **/.claude/settings.local.json
 **/.claude/locks/
@@ -232,6 +252,16 @@ docs/generated/
 !apps/mouth/public/**/*.png
 !apps/mouth/public/**/*.gif
 !apps/mouth/public/**/*.webp
+!apps/admin-dashboard/public/**/*.jpg
+!apps/admin-dashboard/public/**/*.jpeg
+!apps/admin-dashboard/public/**/*.png
+!apps/admin-dashboard/public/**/*.gif
+!apps/admin-dashboard/public/**/*.webp
+!apps/autonomous-lab/public/**/*.jpg
+!apps/autonomous-lab/public/**/*.jpeg
+!apps/autonomous-lab/public/**/*.png
+!apps/autonomous-lab/public/**/*.gif
+!apps/autonomous-lab/public/**/*.webp
 
 # Allow pricing assets (heros + icons generated via codex $imagegen)
 !docs/pricing/assets/**/*.png
@@ -296,6 +326,24 @@ env.production
 # Existing *.local patterns did NOT cover .local.tsv / .local.jsonl; this closes the leak.
 *.local.*
 research/personal/wa-corpus/
+# Client-PII research artifacts (named-client cases must NEVER reach cloud GitHub/Vercel).
+# Added 2026-06-05 after cc-setup self-audit found research/visa/clients/ un-ignored
+# holding a real client file (marc-buckner) one `git add -A` away from the cloud.
+research/*/clients/
+research/**/*-case.md
+research/**/*-guidance.html
+research/**/*-guidance.pdf
+
+# plist-snapshot DR mirror — lives ONLY on the chore/plist-snapshot-dr branch
+# (force-added there by plist_snapshot_dr.sh); ignored on every working branch.
+infra/launchagents/_snapshot-live/
+
+# WhatsApp/Baileys session credentials + sync-key dumps (OSINT secrets, Symbiosis Law 2).
+# A git stash captured 3041 such files (session-quarantine); this blocks any re-leak.
+apps/wa-mirror/historical/
+**/session-quarantine-*/
+**/baileys_auth*/
+**/creds.json
 
 # ========================================
 # SECURITY FIXES (2026-01-11)
@@ -423,9 +471,10 @@ apps/backend-rag/.venv/
 # KBLI temporary files and utilities
 apps/backend-rag/backend/app/routers/*.before-claude
 harvested_zones/
-main.py
-!apps/cell/cell/main.py
-!vendor/evoskill/src/cli/main.py
+# TAC-2 (2026-07-05): was a bare `main.py` — it silently hid apps/remediator/main.py
+# (the ENTIRE app) and apps/graph-engine's entrypoint from git (TAC-1 P2-7). Anchored
+# to repo root; the two `!` exceptions it forced are now unnecessary and removed.
+/main.py
 master_building_codes_complete.json
 
 # EvoSkill runtime outputs (Phase 1 evolver loop generates these)
@@ -461,6 +510,7 @@ openclaw
 !.claude/scripts/
 !.claude/hooks/
 !.claude/rules/
+!.claude/skills/
 !.claude/settings.json
 .serena/
 OPENCLAW_MASTER_GUIDE_2026.md
@@ -548,6 +598,11 @@ research/marketing/zantara-visual-dataset/
 research/marketing/flow-assets/
 research/crm-exports/
 research/hr/
+# Employee/client PII at rest (KTP, passport, NPWP, akta scans). Belt-and-suspenders:
+# today only the global *.JPG/*.jpg patterns catch the KTP images in data/hr/ — this
+# whole-dir rule guards against a future non-image PII file (PDF, .md, .csv) slipping in.
+# HR identity docs MUST stay local (Symbiosis Law 2 / UU PDP). Never commit.
+data/hr/
 # research/agent-craft: ignore working subdirs, but TRACK proposed-agents/ + S17 frozen index
 research/agent-craft/_assets/
 research/agent-craft/census-raw/
@@ -648,7 +703,6 @@ scripts/canva/output/
 apps/evaluator/handoff/
 .windsurf/
 apps/mouth/public/kbli-navigator/images/base64_data.txt
-apps/mouth/public/llms-full.txt
 apps/evaluator/indexing_state.json
 tmp_notebooklm/
 
@@ -716,3 +770,34 @@ apps/mouth/scripts/output/
 # deploy worktree ff-only pull when untracked. Root-anchored so it does NOT
 # match vendor/evoskill/src/cache/ (tracked).
 /cache/
+apps/evaluator/.rag-eval-prod.env
+
+# pytest-testmon local coverage→test dependency map (per-machine, never shared).
+# Added 2026-06-09 (scripts/fast-gate.sh, 4-LLM panel ship #1).
+.testmondata
+.testmondata-*
+
+# WR2 manual carousel assets (pre-authored injection batches — delivered to Pro via deploy-puller)
+!docs/wr2/manual-assets/**/*.png
+!docs/wr2/manual-assets/**/*.jpg
+
+# Client PII CSVs — never commit (Law 2 / UU PDP). Added 2026-06-15 after 4-LLM
+# panel found ~746 client records tracked on origin/main (PR #133/#258).
+docs/crm/**/*.csv
+research/compliance/*clients*.csv
+research/compliance/*passport*.csv
+apps/backend-rag/scripts/output/*campaign*.csv
+**/dq_clients*.csv
+**/dq_orphan_clients*.csv
+research/nb-health/nb-inventory-live.json
+
+# S7 yield: local PII drafts staging (NEVER commit — UU PDP)
+s7-yield-drafts-local/
+research/crm/*-drafts-local/
+.agent-task.json
+
+# arm_keep_worktrees.py: human-readable quarantine receipts (recovery aid, never tracked)
+.agent-receipts/
+
+# docs_sync --check self-cache (written by the tool even in check mode — must never dirty a probed checkout)
+.docs_sync_cache.json

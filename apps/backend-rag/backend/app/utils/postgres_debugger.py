@@ -384,7 +384,7 @@ class PostgreSQLDebugger:
                 "columns": columns,
                 "query": normalized_query,
             }
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Query execution failed: %s", e, exc_info=True)
             raise
         except Exception as e:

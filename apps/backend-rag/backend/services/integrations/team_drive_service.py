@@ -55,6 +55,20 @@ class TeamDriveService:
         """Check if Drive service is configured (auth manager available)."""
         return self.auth is not None
 
+    @property
+    def service_account_available(self) -> bool:
+        """Return True if a service-account credential is ready for upload.
+
+        Delegates to DriveAuthManager.  The documents mixin uses this as a
+        fallback check when OAuth is unavailable (see _upload_to_drive).
+        If the auth manager itself is absent, we conservatively return False.
+        """
+        if self.auth is None:
+            return False
+        # DriveAuthManager exposes service_account_available if configured
+        return bool(getattr(self.auth, "service_account_available", False))
+
+
     async def close(self) -> None:
         """
         Garantisce la chiusura corretta del connection pool HTTPX.
@@ -148,18 +162,32 @@ class TeamDriveService:
             permanent=permanent,
         )
 
-    async def move_file(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
+    async def move_file(
+        self,
+        user_email: str,
+        file_id: str,
+        new_parent_id: str,
+        old_parent_id: str | None = None,
+    ) -> dict[str, Any]:
         return await self.operations.move_file(
             user_email=user_email,
             file_id=file_id,
-            request=request,
+            new_parent_id=new_parent_id,
+            old_parent_id=old_parent_id,
         )
 
-    async def copy_file(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
+    async def copy_file(
+        self,
+        user_email: str,
+        file_id: str,
+        new_name: str | None = None,
+        parent_folder_id: str | None = None,
+    ) -> dict[str, Any]:
         return await self.operations.copy_file(
             user_email=user_email,
             file_id=file_id,
-            request=request,
+            new_name=new_name,
+            parent_folder_id=parent_folder_id,
         )
 
     # =========================================================================

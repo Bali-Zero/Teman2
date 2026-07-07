@@ -144,6 +144,15 @@ async def lifespan(app: FastAPI):
         app.state.startup_complete = True
         logger.info("✅ ZANTARA startup complete - all services ready")
 
+        # FASE 5C: announce intake-writer flag state loudly (WARNING when real
+        # commits are active, INFO when dry-run). Never let the flag be silent.
+        try:
+            from backend.services.intake.writer import log_writer_status
+
+            log_writer_status()
+        except Exception as e:  # never let a log line break startup
+            logger.warning("⚠️ intake writer status log skipped: %s", e)
+
         # Warm-up CrossEncoder model in background thread (prevents 10-30s first-request spike)
         try:
             from backend.services.rag.reranker import CrossEncoderReranker
@@ -356,6 +365,14 @@ async def lifespan(app: FastAPI):
         await close_checkpointer()
     except Exception as e:
         logger.debug("Checkpointer close skipped: %s", e)
+
+    # Close the intake→CRM push HTTP client (Golden Rule 10 — persistent client)
+    try:
+        from backend.services.intake.crm_push import close_client as close_crm_push_client
+
+        await close_crm_push_client()
+    except Exception as e:
+        logger.debug("CRM push client close skipped: %s", e)
 
     # NOTE: WebSocket Redis Listener, Compliance Monitor, and Autonomous Scheduler
     # shutdown removed — _init_background_services() is disabled (omnichannel stabilization).
@@ -592,7 +609,6 @@ async def lifespan(app: FastAPI):
     # AsyncClient introduced by the httpx mass rewrite. Each importer is
     # individually try/except'd so a missing module never blocks shutdown.
     _p0_5_close_hooks = (
-        ("backend.services.publisher.ig_publisher", "close_ig_publisher_client"),
         ("backend.services.publisher.linkedin_publisher", "close_linkedin_publisher_client"),
         ("backend.services.publisher.x_publisher", "close_x_publisher_client"),
         ("backend.services.newsletter.publisher", "close_newsletter_publisher_client"),

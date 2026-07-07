@@ -214,7 +214,13 @@ class OrchestratorStreamingCore:
         }
         query_lower = query.lower()
         if any(kw in query_lower for kw in _crm_keywords):
-            crm_tool = self.core.tool_map.get("crm_query")
+            # OrchestratorCore has no `tool_map`; the {name: tool} dict lives on
+            # its reasoning_engine (ReasoningEngine.tool_map). Accessing
+            # self.core.tool_map raised AttributeError on every CRM-keyword query
+            # (e.g. any Bahasa query with "berapa", or "how many"/"breakdown"),
+            # crashing the whole streaming path → the channel bot replied with a
+            # generic error. Non-streaming path was unaffected (never read tool_map).
+            crm_tool = self.core.reasoning_engine.tool_map.get("crm_query")
             if crm_tool:
                 try:
                     # Determine best query_type
@@ -350,13 +356,21 @@ class OrchestratorStreamingCore:
             evidence_score = getattr(state, "evidence_score", None)
             trusted = getattr(state, "trusted_tools_used", True)
 
-            # Determine confidence zone
+            # Determine confidence zone via the shared AbstainPolicy SSOT
+            # (replaces the previously-hardcoded 0.15 / 0.60 literals — same
+            # values, now sourced from EvidenceScoreConstants.CONFIDENCE_LOW /
+            # CONFIDENCE_HIGH so this site cannot drift from the other gates).
+            # See _abstain_policy.py + 2026-06-14 Mythos M1 audit.
             confidence_zone: str = "confident"
             if evidence_score is not None:
-                if evidence_score < 0.15:
-                    confidence_zone = "abstain"
-                elif evidence_score <= 0.60 and not trusted:
-                    confidence_zone = "cautious"
+                from backend.services.rag.agentic._abstain_policy import (
+                    build_abstain_policy,
+                )
+
+                policy = build_abstain_policy(getattr(state, "query", "") or "")
+                confidence_zone = policy.confidence_zone(
+                    evidence_score, trusted=trusted
+                )
 
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, MessageCircle, MapPin, Clock, ArrowRight } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
   title: "Contact · Bali Zero",
@@ -13,7 +14,7 @@ const CHANNELS = [
   {
     icon: MessageCircle,
     title: "WhatsApp",
-    value: "+62 822 6459 9868",
+    value: "+62 822 1030 2328",
     href: buildWhatsAppLink("home"),
     note: "Fastest response — usually under 15 minutes.",
     accent: "#22c55e",
@@ -25,7 +26,9 @@ const CHANNELS = [
     value: "zantara@balizero.com",
     href: "mailto:zantara@balizero.com",
     note: "For documents, scans, and longer threads.",
-    accent: "#ffffff",
+    // Rumah Putih: the light card's "Open" CTA reads `accent` — navy keeps it
+    // legible on the white card (white #ffffff here was invisible-on-white).
+    accent: "#1e3863",
     fill: "light" as const,
   },
   {
@@ -41,9 +44,12 @@ const CHANNELS = [
 
 export default function ContactPage() {
   return (
+    // MYTHOS Stage-B Batch 2: Rumah Putih light, scoped per-page (NEVER on
+    // the shared (blog)/layout.tsx). NavShell + Footer stay navy anchors.
     <div
-      className="min-h-screen"
+      className={`min-h-screen ${RUMAH_CLASS}`}
       style={{
+        ...RUMAH_VARS,
         background: "var(--surface-base)",
         color: "var(--text-primary)",
       }}
@@ -57,7 +63,9 @@ export default function ContactPage() {
         <div className="max-w-[1400px] mx-auto">
           <div
             className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
-            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+            style={{
+              color: "var(--rp-accent, var(--accent-funnel-text, #5c8aff))",
+            }}
           >
             Contact · Kerobokan, Bali · WITA (UTC+8)
           </div>
@@ -190,7 +198,9 @@ export default function ContactPage() {
             >
               <div
                 className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] mb-4"
-                style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+                style={{
+                  color: "var(--rp-accent, var(--accent-funnel-text, #5c8aff))",
+                }}
               >
                 <Clock size={13} strokeWidth={2.2} /> Office hours · WITA
               </div>
@@ -231,7 +241,9 @@ export default function ContactPage() {
             >
               <div
                 className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] mb-4"
-                style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+                style={{
+                  color: "var(--rp-accent, var(--accent-funnel-text, #5c8aff))",
+                }}
               >
                 Before you write
               </div>

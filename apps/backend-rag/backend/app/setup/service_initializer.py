@@ -603,7 +603,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
 
             return db_pool
 
-        except (asyncpg.PostgresError, ValueError, ConnectionError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, ConnectionError) as e:
             error_type = type(e).__name__
             is_transient = _is_transient_error(e)
 
@@ -1015,32 +1015,6 @@ async def _init_background_services(
         service_registry.register("websocket", ServiceStatus.DEGRADED, error=str(e), critical=False)
         logger.error("❌ Failed to start WebSocket Redis Listener: %s", e)
 
-    # WR2 IG Publisher Credentials Validation (Phase 3, spec §8.1)
-    # Non-blocking — service is lazy via env vars. Validation logs only;
-    # registers DEGRADED on mismatch/invalid_token. Real publish path goes
-    # through wr2_carousel_orchestrator.py after Telegram approval.
-    try:
-        from backend.services.publisher.ig_publisher import validate_ig_credentials_at_startup
-
-        ig_status = await validate_ig_credentials_at_startup(raise_on_failure=False)
-        if ig_status.get("status") == "ok":
-            service_registry.register("ig_publisher", ServiceStatus.HEALTHY, critical=False)
-            logger.info(
-                "✅ IG Publisher credentials validated (account_id=%s username=%s)",
-                ig_status.get("account_id"), ig_status.get("username"),
-            )
-        else:
-            service_registry.register(
-                "ig_publisher", ServiceStatus.DEGRADED,
-                error=f"ig_status={ig_status.get('status')}", critical=False,
-            )
-            logger.warning("⚠️ IG Publisher credentials degraded: %s", ig_status.get("status"))
-    except Exception as e:
-        service_registry.register(
-            "ig_publisher", ServiceStatus.DEGRADED, error=str(e), critical=False,
-        )
-        logger.warning("⚠️ IG Publisher validation skipped: %s", e)
-
     # Proactive Compliance Monitor (Business Value)
     try:
         logger.info("⚖️ Initializing Proactive Compliance Monitor...")
@@ -1228,15 +1202,17 @@ async def initialize_channel_router(
         # and CLAUDE.md §10 for reactivation criteria.
 
         # Initialize channel optimizations (rate limiter, Redis dedup, DLQ, metrics)
-        from backend.channels.optimizations import delivery_manager, initialize_optimizations
+        from backend.channels.optimizations import initialize_optimizations
 
         initialize_optimizations(db_pool=db_pool)
 
-        # Start DLQ retry loop if delivery_manager has DB access
-        if delivery_manager and db_pool:
-            delivery_manager._db_pool = db_pool
-            await delivery_manager.start_retry_loop(channel_router.adapters)
-            logger.info("✅ DLQ retry loop started")
+        # NOTE: the DLQ retry loop is intentionally NOT started here. This is the
+        # `rag` process group, which is NOT always-on (no [[services]] block in
+        # fly.toml) — hosting the loop here meant nobody drained the DLQ while
+        # `rag` was autostopped (43 IG rows stuck for a week, 2026-06-21). The
+        # loop now runs on the always-on `api` group in initialize_services_light.
+        # Running it on BOTH groups would double-process (the claim is LIMIT 10
+        # without FOR UPDATE SKIP LOCKED) → single-host only.
 
         # Register service in health monitoring
         service_registry.register("channel_router", ServiceStatus.HEALTHY, critical=False)
@@ -1645,6 +1621,71 @@ async def initialize_services_light(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("⚠️ Olympus Guardian failed (non-critical): %s", e)
             app.state.olympus = None
+
+        # 4b. Channel DLQ retry loop (send-only) — hosted HERE on the always-on
+        # `api` group, NOT in initialize_services (group `rag`, not always-on).
+        # The retry loop sat on `rag`, so when `rag` autostopped nothing drained
+        # the DLQ: 43 Instagram failed_messages stuck pending attempt_count=0 for
+        # a week (2026-06-21). The producer (channels/optimizations send_failure)
+        # runs on `api` via the webhook → co-locate producer + consumer here, same
+        # principle as the wa_outbox scheduler. We build LIGHT send-only adapters
+        # (no orchestrator/ConversationEngine — send_response only needs config +
+        # httpx) so the loop has someone to deliver through.
+        try:
+            # Import the MODULE, not the `delivery_manager` name: the singleton
+            # starts as None and initialize_optimizations() reassigns the module
+            # global. `from ... import delivery_manager` would bind the stale None
+            # forever (the cause of "delivery_manager=False" on first deploy,
+            # 2026-06-21). Read optimizations.delivery_manager AFTER init instead.
+            from backend.channels import optimizations as channel_opt
+
+            send_adapters: dict[str, Any] = {}
+
+            whatsapp_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+            whatsapp_phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+            if whatsapp_token and whatsapp_phone_id:
+                from backend.channels.whatsapp.adapter import WhatsAppChannelAdapter
+
+                send_adapters["whatsapp"] = WhatsAppChannelAdapter(
+                    {
+                        "access_token": whatsapp_token,
+                        "phone_number_id": whatsapp_phone_id,
+                        "max_message_length": 1600,
+                    }
+                )
+
+            instagram_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+            instagram_account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+            if instagram_token and instagram_account_id:
+                from backend.channels.instagram.adapter import InstagramChannelAdapter
+
+                send_adapters["instagram"] = InstagramChannelAdapter(
+                    {
+                        "access_token": instagram_token,
+                        "instagram_account_id": instagram_account_id,
+                    }
+                )
+
+            channel_opt.initialize_optimizations(db_pool=db_pool)
+            delivery_manager = channel_opt.delivery_manager  # read AFTER init
+            if delivery_manager and db_pool and send_adapters:
+                delivery_manager._db_pool = db_pool
+                await delivery_manager.start_retry_loop(send_adapters)
+                app.state.dlq_send_adapters = send_adapters
+                logger.info(
+                    "✅ DLQ retry loop started (light, send-only: %s)",
+                    ",".join(sorted(send_adapters)),
+                )
+            else:
+                logger.warning(
+                    "⚠️ DLQ retry loop NOT started (light) — "
+                    "delivery_manager=%s db_pool=%s adapters=%s",
+                    bool(delivery_manager),
+                    bool(db_pool),
+                    list(send_adapters),
+                )
+        except Exception as e:
+            logger.warning("⚠️ DLQ retry loop failed (light, non-critical): %s", e)
 
     # 5. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None

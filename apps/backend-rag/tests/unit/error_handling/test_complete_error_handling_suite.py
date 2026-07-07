@@ -900,10 +900,7 @@ class TestErrorHandlingEdgeCases:
 
         for case in empty_cases:
             # Should handle empty strings gracefully
-            if not case or not case.strip():
-                assert True  # Handled
-            else:
-                assert False  # Should not reach here
+            assert case.strip() == ""
 
     async def test_error_handling_with_unicode(self):
         """Test error handling with unicode characters."""

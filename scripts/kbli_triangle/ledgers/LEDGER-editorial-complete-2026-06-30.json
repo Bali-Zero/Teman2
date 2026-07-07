@@ -1,0 +1,178 @@
+{
+  "ledger_version": "COMPLETE-2026-06-30",
+  "criterion": "Navigator is NATIONAL across ALL scales; pma_status TERBUKA = nationally open = TRUE, never a bug. PMA is an extra eye. A bug is ONLY a baliContext/editorial field that frames a PT PMA setup as doable IN BALI on a code whose l4_bali.blocked=true, without qualifying the Bali block — OR prose that contradicts per_skala (national/scale axis).",
+  "coverage": {
+    "total_kbli": 1559,
+    "prose_texts_total": 9096,
+    "llm_judged": 375,
+    "llm_judged_basis": "deterministic 2-axis pre-filter (PMA-contradiction OR scale-contradiction) — only texts with a STRUCTURAL contradiction signal were sent to the LLM",
+    "structurally_coherent_not_llm_verified": 8721
+  },
+  "structural_bugs_applied": 66,
+  "total_editorial_bugs": 10,
+  "editorial_bugs_baliContext": 10,
+  "bugs": [
+    {
+      "code": "10292",
+      "judul": "Pengolahan dan Pengawetan Biota Air Lainnya dengan Pengasapan atau Pemanggangan",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "reason": "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26"
+      },
+      "offending_excerpt": "PT PMA food processing businesses typically locate in Badung or Gianyar industrial zones.",
+      "detected_by": "cascade",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    },
+    {
+      "code": "10301",
+      "judul": "Pengasinan Buah-buahan dan Sayuran",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "reason": "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26"
+      },
+      "offending_excerpt": "Food processing in Bali is a growing sector, particularly for: coconut products (VCO, coconut sugar), coffee processing (Kintamani), chocolate/cacao, and seafood processing. PT PMA",
+      "detected_by": "cascade-2axis",
+      "axis": "pma",
+      "fix_principle": "keep national-open truth, add the Bali block citing l4_bali.reason — never invent a regulation"
+    },
+    {
+      "code": "10308",
+      "judul": "Pembuatan Tahu Kedelai",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "reason": "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26"
+      },
+      "offending_excerpt": "Food processing in Bali is a growing sector, particularly for: coconut products (VCO, coconut sugar), coffee processing (Kintamani), chocolate/cacao, and seafood processing. PT PMA",
+      "detected_by": "cascade-2axis",
+      "axis": "pma",
+      "fix_principle": "keep national-open truth, add the Bali block citing l4_bali.reason — never invent a regulation"
+    },
+    {
+      "code": "47242",
+      "judul": "Perdagangan Eceran Roti, Kue Kering, serta Kue Basah dan Sejenisnya",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "reason": "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26"
+      },
+      "offending_excerpt": "Premium bakery chains targeting the expat and tourist market are the typical PMA use case here — think artisan sourdough, French patisserie, or specialty cake s",
+      "detected_by": "run1",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    },
+    {
+      "code": "47591",
+      "judul": "Perdagangan Eceran Furnitur",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "reason": "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26"
+      },
+      "offending_excerpt": "Seminyak and Kerobokan furniture showrooms are popular with expats furnishing villas. The factory outlet model — where you manufacture under 31001 and sell reta",
+      "detected_by": "run1",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    },
+    {
+      "code": "64210",
+      "judul": "Aktivitas Perusahaan Induk",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "reason": "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26"
+      },
+      "offending_excerpt": "The PT PMA holding structure (64210 parent → operational subsidiaries) is the preferred structure for foreign investors with multiple business lines in Bali — i",
+      "detected_by": "run1",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    },
+    {
+      "code": "68112",
+      "judul": "Aktivitas Penyewaan Bangunan dan Lahan Hunian Milik Sendiri atau Sewa",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "CHIUSO_MORATORIA_BALI",
+        "reason": "Nationally TERBUKA but the Besar scale is 'Menengah Rendah' -> blocked by the Bali PMA moratorium (Gov. letter B.27.000/642, 13 May 2026: all Rendah/Menengah Rendah blocked for a Bali address). [NB-3 "
+      },
+      "offending_excerpt": "If you're a foreign investor building a residential rental portfolio, this code under your PT PMA is the legal path.",
+      "detected_by": "cascade",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    },
+    {
+      "code": "70100",
+      "judul": "Aktivitas Kantor Pusat",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "CHIUSO_PMA_NO_BESAR",
+        "reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]"
+      },
+      "offending_excerpt": "you set up a holding company under 70100 to sit on top of all three ... typically sits in Denpasar",
+      "detected_by": "cascade",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    },
+    {
+      "code": "70203",
+      "judul": "Aktivitas Konsultansi Manajemen dan Bisnis Perdagangan",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "reason": "OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13/5/26"
+      },
+      "offending_excerpt": "This is the single most popular KBLI code for foreign consultants in Bali. Low risk, automatic NIB, 100% PMA — it's the path of least resistance for legitimate ",
+      "detected_by": "run1",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    },
+    {
+      "code": "96210",
+      "judul": "Aktivitas Penataan dan Pangkas Rambut",
+      "field": "intel_2026.baliContext",
+      "severity": "MED",
+      "bug": "editorial — frames a PT PMA setup as doable IN BALI on a Bali-blocked code without naming the block",
+      "national_truth": "pma_status=TERBUKA (nationally OPEN — correct, NOT a bug)",
+      "bali_block": {
+        "blocked": true,
+        "status": "CHIUSO_PMA_NO_BESAR",
+        "reason": "OSS has no Usaha Besar scale row -> reserved for UMKM; a PT PMA (Usaha Besar by law) cannot register. [structural]"
+      },
+      "offending_excerpt": "Most foreign-owned salons in Bali operate with Indonesian stylists and a foreign owner-director.",
+      "detected_by": "cascade",
+      "fix_principle": "keep the national-open truth, add the Bali block citing l4_bali.reason / moratorium — never invent a regulation"
+    }
+  ]
+}

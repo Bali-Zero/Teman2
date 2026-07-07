@@ -53,7 +53,11 @@ import {
   openSession,
   touch,
 } from "./heartbeat.js";
-import { query } from "./pg.js";
+import { query, getPool } from "./pg.js";
+import {
+  hydrateAllGroupSubjects,
+  attachGroupSubjectListeners,
+} from "./group_subject.js";
 import {
   PgMessageContextStore,
   extractMessageRecord,
@@ -281,6 +285,26 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
       // connection.update last reported "open". Triggers reconnect loop.
       const DEAF_SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — issue #2491 recommended default
       const DEAF_SESSION_CHECK_MS = 60 * 1000; // poll every 60s
+      // W77 (2026-06-14): the deaf-session watchdog had no OFF condition for
+      // benign silence. At night WITA (Bali Zero hours are daytime) inbound
+      // WhatsApp traffic is ~0, so 5min of silence is EXPECTED, not a deaf
+      // socket — yet the watchdog forced ~50 empty reconnects/night (all
+      // 02:24-03:24 WITA, attempt counter climbing). Issue #2491 is a
+      // *daytime* flow-control bug; suppress the forced reconnect during the
+      // quiet window so the antibody rests when the organism rests. Override
+      // via WA_MIRROR_DEAF_QUIET_HOURS="" to disable, or "1-7" to retune.
+      const DEAF_QUIET_WINDOW = process.env.WA_MIRROR_DEAF_QUIET_HOURS ?? "1-7";
+      const isDeafQuietHourWITA = (): boolean => {
+        if (!DEAF_QUIET_WINDOW) return false;
+        const m = DEAF_QUIET_WINDOW.match(/^(\d{1,2})-(\d{1,2})$/);
+        if (!m) return false;
+        const [from, to] = [Number(m[1]), Number(m[2])];
+        // WITA = UTC+8, no DST.
+        const hourWITA = (new Date().getUTCHours() + 8) % 24;
+        return from <= to
+          ? hourWITA >= from && hourWITA < to
+          : hourWITA >= from || hourWITA < to;
+      };
       let lastUpsertAt = Date.now();
       let connectionOpen = false;
       const bumpUpsertTs = () => {
@@ -301,10 +325,21 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
           bumpUpsertTs();
         }
       });
+      let groupSubjectsHydrated = false;
       onSock("connection.update", (u) => {
         if (u.connection === "open") {
           connectionOpen = true;
           lastUpsertAt = Date.now(); // reset timer on fresh open
+          // FIX (2026-06-30): hydrate group names once per session. Groups are
+          // dashboard-blind without this — group_subject_snapshot is only ever
+          // set from Baileys group metadata, never the message envelope.
+          // Fire-and-forget + fully defensive (never throws into the ev loop).
+          if (!groupSubjectsHydrated) {
+            groupSubjectsHydrated = true;
+            void hydrateAllGroupSubjects(sock, getPool(), logger);
+            const detach = attachGroupSubjectListeners(sock, getPool(), logger);
+            disposers.add(detach);
+          }
         } else if (u.connection === "close") {
           connectionOpen = false;
         }
@@ -313,6 +348,18 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         if (!connectionOpen) return;
         const silentMs = Date.now() - lastUpsertAt;
         if (silentMs >= DEAF_SESSION_TIMEOUT_MS) {
+          if (isDeafQuietHourWITA()) {
+            // Benign nighttime silence — log at debug, do NOT force reconnect.
+            logger.debug(
+              {
+                sessionId: ctx.sessionId,
+                silentMs,
+                quietWindow: DEAF_QUIET_WINDOW,
+              },
+              "wa-mirror deaf-session timer hit during quiet hours WITA — suppressing forced reconnect (W77)",
+            );
+            return;
+          }
           logger.warn(
             { sessionId: ctx.sessionId, silentMs },
             "wa-mirror deaf-session detected — forcing reconnect (issue #2491)",
@@ -536,7 +583,12 @@ async function handleConnectionUpdate(
 
     if (terminal) {
       // Device removed from the phone's Linked Devices — needs a fresh QR.
-      deps.settleReject(new Error(`wa-mirror: session logged out: ${reason}`));
+      // Reject with a TYPED error so the orchestrator (runAccountForever) can
+      // tell a terminal logout apart from a transient crash and STOP retrying:
+      // a logged-out session never recovers by reconnecting — only a QR does.
+      deps.settleReject(
+        new SessionLoggedOutError(`wa-mirror: session logged out: ${reason}`),
+      );
       return;
     }
 
@@ -733,4 +785,22 @@ export function mapCloseReason(code: number): string {
  */
 export function isTerminalCloseCode(code: number): boolean {
   return code === DisconnectReason.loggedOut;
+}
+
+/**
+ * Thrown (via settleReject) when a session closes with a terminal `loggedOut`
+ * (HTTP 401): the linked device was removed/invalidated on the WhatsApp side.
+ * Reconnecting cannot fix this — only a fresh QR re-link can. The orchestrator
+ * matches on `instanceof` to stop the per-account retry loop instead of
+ * hammering WhatsApp every 60s with dead credentials (which also spams Telegram
+ * and raises the anti-automation flag risk).
+ */
+export class SessionLoggedOutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SessionLoggedOutError";
+    // Restore the prototype chain so `instanceof SessionLoggedOutError` holds
+    // even when TS downlevels `extends Error` — the orchestrator relies on it.
+    Object.setPrototypeOf(this, SessionLoggedOutError.prototype);
+  }
 }

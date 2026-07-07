@@ -6,17 +6,11 @@ import {
   Server,
   FileWarning,
 } from "lucide-react";
+import { formatIDRCompact } from "@balizero/core/utils";
 
 interface Props {
   metrics: ZeroMetrics;
   alerts: RoleAlert[];
-}
-
-function formatRevenue(rp: number): string {
-  if (rp >= 1_000_000_000) return `Rp ${(rp / 1_000_000_000).toFixed(2)}B`;
-  if (rp >= 1_000_000) return `Rp ${(rp / 1_000_000).toFixed(1)}M`;
-  if (rp >= 1_000) return `Rp ${(rp / 1_000).toFixed(0)}K`;
-  return `Rp ${rp.toFixed(0)}`;
 }
 
 export function ZeroRoleWidget({ metrics }: Props) {
@@ -31,7 +25,7 @@ export function ZeroRoleWidget({ metrics }: Props) {
         </span>
         <div className="mt-1.5 flex items-end gap-2">
           <span className="text-[28px] font-black text-white leading-none tracking-tight">
-            {formatRevenue(metrics.revenue_mtd)}
+            {formatIDRCompact(metrics.revenue_mtd)}
           </span>
         </div>
         <div className="flex items-center gap-1 mt-1">

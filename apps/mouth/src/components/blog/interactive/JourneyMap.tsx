@@ -45,10 +45,14 @@ export interface JourneyMapProps {
   title: string;
   /** Subtitle */
   subtitle?: string;
+  /** Legacy MDX alias for subtitle */
+  description?: string;
   /** Steps */
-  steps: JourneyStep[];
+  steps?: JourneyStep[];
   /** Total estimated duration */
   totalDuration?: string;
+  /** Legacy MDX alias for totalDuration */
+  estimatedTotal?: string;
   /** Total estimated cost */
   totalCost?: string | number;
   /** Show fast track option */
@@ -68,8 +72,10 @@ export interface JourneyMapProps {
 export function JourneyMap({
   title,
   subtitle,
+  description,
   steps,
   totalDuration,
+  estimatedTotal,
   totalCost,
   showFastTrack = false,
   fastTrackSteps,
@@ -79,8 +85,15 @@ export function JourneyMap({
   const [selectedStep, setSelectedStep] = useState<string | null>(null);
   const [isFastTrack, setIsFastTrack] = useState(false);
 
-  const activeSteps = isFastTrack && fastTrackSteps ? fastTrackSteps : steps;
+  const baseSteps = Array.isArray(steps) ? steps : [];
+  const alternativeSteps = Array.isArray(fastTrackSteps)
+    ? fastTrackSteps
+    : undefined;
+  const activeSteps =
+    isFastTrack && alternativeSteps ? alternativeSteps : baseSteps;
   const selectedStepData = activeSteps.find((s) => s.id === selectedStep);
+  const effectiveSubtitle = subtitle || description;
+  const effectiveTotalDuration = totalDuration || estimatedTotal;
 
   // Calculate totals
   const calculatedDuration = activeSteps.reduce((acc, step) => {
@@ -92,6 +105,19 @@ export function JourneyMap({
     if (typeof step.cost === "number") return acc + step.cost;
     return acc;
   }, 0);
+
+  if (activeSteps.length === 0) {
+    return (
+      <div
+        className={cn(
+          "bg-black/40 rounded-2xl border border-white/10 p-6",
+          className,
+        )}
+      >
+        <p className="text-white/60">Journey map unavailable</p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -107,13 +133,13 @@ export function JourneyMap({
             <h3 className="font-serif text-xl font-semibold text-white">
               {title}
             </h3>
-            {subtitle && (
-              <p className="text-white/60 text-sm mt-1">{subtitle}</p>
+            {effectiveSubtitle && (
+              <p className="text-white/60 text-sm mt-1">{effectiveSubtitle}</p>
             )}
           </div>
 
           {/* Fast track toggle */}
-          {showFastTrack && fastTrackSteps && (
+          {showFastTrack && alternativeSteps && (
             <button
               onClick={() => setIsFastTrack(!isFastTrack)}
               className={cn(
@@ -137,7 +163,7 @@ export function JourneyMap({
           <div className="flex items-center gap-2 text-white/60">
             <Clock className="w-4 h-4" />
             <span className="text-sm">
-              {totalDuration || `~${calculatedDuration} days`}
+              {effectiveTotalDuration || `~${calculatedDuration} days`}
             </span>
           </div>
           <div className="flex items-center gap-2 text-white/60">

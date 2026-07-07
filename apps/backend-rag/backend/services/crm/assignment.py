@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 import asyncpg as _asyncpg
 from langgraph.graph import END, StateGraph
 
+from backend.core.cache import invalidate_crm_stats
 from backend.services.common.cache import cache_invalidating
 from backend.services.crm.validators import normalize_phone_e164
 
@@ -526,6 +527,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                 lead["email"],
                 state["client_id"],
             )
+            await invalidate_crm_stats()  # F32: assigned_to changed → per-assignee stats stale
             logger.info(
                 f"✅ Assigned client #{state['client_id']} to {lead['email']} "
                 f"(dept={lead['department']}, workload={lead['active_practices']})",
@@ -559,6 +561,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                     lead["email"],
                     state["client_id"],
                 )
+                await invalidate_crm_stats()  # F32: assigned_to changed → per-assignee stats stale
                 logger.info(
                     f"✅ Assigned (fallback) client #{state['client_id']} to {lead['email']} "
                     f"(dept={lead['department']})",

@@ -74,6 +74,20 @@ describe("kbli-data", () => {
     expect(getRelatedCodes("00000")).toEqual([]);
   });
 
+  it("distributes related links to neighbors instead of the section head", () => {
+    const sectionCodes = getCodesBySection("C");
+    expect(sectionCodes.length).toBeGreaterThan(20);
+
+    const last = sectionCodes[sectionCodes.length - 1];
+    const relatedCodes = getRelatedCodes(last.code, 6).map((r) => r.code);
+
+    // Neighbor-window: the immediate predecessor is always linked...
+    expect(relatedCodes).toContain(sectionCodes[sectionCodes.length - 2].code);
+    // ...and the old head-of-list fill (which concentrated every inbound
+    // link on the first section codes) no longer happens.
+    expect(relatedCodes).not.toContain(sectionCodes[0].code);
+  });
+
   it("normalizes section metadata and hero styles with safe fallbacks", () => {
     expect(getSectionMeta("i")).toMatchObject({
       nameEn: "Accommodation & Food Service",

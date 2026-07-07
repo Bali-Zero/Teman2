@@ -41,14 +41,33 @@ jobs:
           machines = d.get("Machines", []) or []
           total = len(machines)
           started = sum(1 for m in machines if m.get("state") == "started")
-          stopped = sum(1 for m in machines if m.get("state") == "stopped")
-          bad_states = [m.get("state", "?") for m in machines if m.get("state") not in ("started", "stopped")]
+          expected_stopped = sum(
+              1
+              for m in machines
+              if m.get("state") == "stopped"
+              and (m.get("config") or {}).get("standbys")
+          )
+          unexpected_stopped = sum(
+              1
+              for m in machines
+              if m.get("state") == "stopped"
+              and not (m.get("config") or {}).get("standbys")
+          )
+          bad_states = [
+              m.get("state", "?")
+              for m in machines
+              if m.get("state") not in ("started", "stopped")
+          ]
           unhealthy = 0
           for m in machines:
               for c in (m.get("checks") or []):
                   if c.get("status") not in ("passing", None):
                       unhealthy += 1
-          print(f"total={total}|started={started}|stopped={stopped}|bad={','.join(bad_states) or 'none'}|unhealthy={unhealthy}")
+          print(
+              f"total={total}|started={started}|expected_stopped={expected_stopped}|"
+              f"unexpected_stopped={unexpected_stopped}|bad={','.join(bad_states) or 'none'}|"
+              f"unhealthy={unhealthy}"
+          )
           PY
           )
             echo "[$app] $SUMMARY"
@@ -59,8 +78,16 @@ jobs:
             fi
             STARTED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^started= | cut -d= -f2)
             TOTAL=$(echo "$SUMMARY" | tr '|' '\n' | grep ^total= | cut -d= -f2)
+            UNEXPECTED_STOPPED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unexpected_stopped= | cut -d= -f2)
+            BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
             UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
-            if [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
+            if [ "${TOTAL:-0}" -lt 1 ] || [ "${STARTED:-0}" -lt 1 ]; then
+              OVERALL_OK=0
+            fi
+            if [ "${UNEXPECTED_STOPPED:-0}" -gt 0 ]; then
+              OVERALL_OK=0
+            fi
+            if [ "${BAD:-none}" != "none" ]; then
               OVERALL_OK=0
             fi
             if [ "${UNHEALTHY:-0}" -gt 0 ]; then

@@ -577,6 +577,17 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)vendor/[^/]+/notebooks/.*\.ipynb$"),
         "vendor third-party notebooks: base64 PNG cell outputs from matplotlib, not secrets",
     ),
+    # .husky/ git hooks: the pre-push CI-parity test gate echoes the dummy
+    # DATABASE_URL=postgresql://test:test@localhost:5432/<db> inside its
+    # "how to bootstrap the local test DB" help text. `test:test@` is the
+    # same throwaway CI-parity credential used in .github/workflows/tests.yml
+    # and the db conftest default — a local-test dummy, never production.
+    # Same class as the root docker-compose.yml + graph-engine localhost
+    # dev-default DSN rules above.
+    (
+        re.compile(r"(^|/)\.husky/.*"),
+        ".husky git hooks: pre-push CI-parity test:test@localhost dummy DSN, not a production credential",
+    ),
 ]
 
 # Hard blocks — if the path matches any of these, NEVER auto-approve even if

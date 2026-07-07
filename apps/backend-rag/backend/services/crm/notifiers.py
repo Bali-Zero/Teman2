@@ -259,7 +259,7 @@ class BirthdayNotifierService:
                 e,
             )
             return False
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning(
                 "DB/connection error sending birthday email to %s: %s",
                 client.get("email"),
@@ -293,7 +293,7 @@ class BirthdayNotifierService:
                 await asyncio.sleep(2)
             logger.info("Birthday notifications complete: %s", stats)
             return stats
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning(
                 "DB/connection error during birthday notification run: %s",
                 e,
@@ -358,7 +358,7 @@ class StalePracticeNotifier:
         }
         try:
             stale = await self._get_stale_practices()
-        except (asyncpg.PostgresError, OSError) as exc:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
             logger.warning("DB/connection error querying stale practices: %s", exc)
             result["errors"].append(f"DB query failed: {exc}")
             return result

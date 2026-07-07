@@ -26,7 +26,7 @@ class Agent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str = "Agent"
-    model: str = "claude"  # CLI runtime: "claude" | "gemini" | "codex" | "deepseek"
+    model: str = "claude"  # CLI runtime: "claude" | "agy:*" | "codex" | "ollama:*"
     instructions: Union[str, Callable[[dict], str]] = "You are a helpful agent."
     functions: List[AgentFunction] = Field(default_factory=list)
     tool_choice: Optional[str] = None  # "required" forces tool use

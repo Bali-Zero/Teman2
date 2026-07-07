@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatIDR } from "@balizero/core/utils";
 import {
   getMyCommissions,
   type PartnerCommission,
@@ -30,11 +31,7 @@ const ALL_CHIP_STATUSES: CommissionStatus[] = [
 
 function fmt(n: number | undefined | null): string {
   if (n == null) return "—";
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(n);
+  return formatIDR(n);
 }
 
 function fmtDate(s: string | undefined | null): string {
@@ -50,13 +47,15 @@ export default function PartnerCommissionsPage() {
   const [commissions, setCommissions] = useState<PartnerCommission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<CommissionStatus | "all">("all");
+  const [activeFilter, setActiveFilter] = useState<CommissionStatus | "all">(
+    "all",
+  );
 
   useEffect(() => {
     getMyCommissions()
       .then((data) => setCommissions(Array.isArray(data) ? data : []))
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e))
+        setError(e instanceof Error ? e.message : String(e)),
       )
       .finally(() => setLoading(false));
   }, []);
@@ -104,7 +103,9 @@ export default function PartnerCommissionsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-gray-400 text-sm">No commissions match this filter.</p>
+        <p className="text-gray-400 text-sm">
+          No commissions match this filter.
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border border-white/10 rounded-lg">
@@ -123,7 +124,9 @@ export default function PartnerCommissionsPage() {
               {filtered.map((c) => (
                 <tr key={c.id} className="text-gray-200 hover:bg-white/5">
                   <td className="px-4 py-2">{fmtDate(c.created_at)}</td>
-                  <td className="px-4 py-2">{c.practice_type_name ?? c.client_name ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    {c.practice_type_name ?? c.client_name ?? "—"}
+                  </td>
                   <td className="px-4 py-2">{fmt(c.gross_amount)}</td>
                   <td className="px-4 py-2">{fmt(c.withholding_amount)}</td>
                   <td className="px-4 py-2">{fmt(c.net_amount)}</td>

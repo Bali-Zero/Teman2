@@ -250,7 +250,7 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
                 except (ValueError, IndexError):
                     count = len(rows)
             return count or len(rows)
-    except asyncpg.PostgresError as e:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
         logger.error("❌ [Zoning] Batch insert failed (DB): %s", e)
         return 0
     except Exception as e:
@@ -279,7 +279,7 @@ async def _check_existing_zoning(
             if row:
                 return dict(row)
         return None
-    except asyncpg.PostgresError as e:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
         logger.error("❌ [Zoning] DB check failed: %s", e)
         return None
     except Exception as e:
@@ -382,15 +382,25 @@ async def synthesize_property_workflow(state: PropertyState, config: dict) -> di
             f"Based on this, the requirements are: {'; '.join(reqs)}."
         )
 
-    # Dynamic confidence based on data quality instead of hardcoded values
+    # Dynamic confidence based on data quality instead of hardcoded values.
+    # NOTE (2026-06-14): this call previously passed chains=/entities=/query=,
+    # which are NOT the function signature — it raised TypeError on every run
+    # and silently fell back to the hardcoded 0.85/0.4 it was meant to replace.
+    # Fixed to mirror the working call in synthesize_property_workflow_legacy
+    # (workflow_source/steps_count/has_db_validation/unique_sources), and to
+    # read the `.overall` attribute of the ConfidenceBreakdown dataclass
+    # (it is NOT a dict — `.get()` never existed on it).
     from backend.services.rag.confidence import calculate_subgraph_confidence
 
+    has_zoning = "error" not in zoning
+    kg_sources = state.get("kg_sources_used", 0)
     breakdown = calculate_subgraph_confidence(
-        chains=state.get("kg_chains", []),
-        entities=state.get("resolved_entities", []),
-        query=state.get("query", ""),
+        workflow_source="property_subgraph",
+        steps_count=len(reqs),
+        has_db_validation=has_zoning,
+        unique_sources=max(1, kg_sources),
     )
-    confidence = breakdown.get("final_score", 0.85 if "error" not in zoning else 0.4)
+    confidence = breakdown.overall
 
     return {"final_analysis": analysis, "confidence_score": confidence}
 
@@ -545,7 +555,7 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
                         kg_sources,
                         prop_type,
                     )
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.warning("[Property/legacy] KG query failed (DB), using fallback: %s", e)
         except Exception as e:
             logger.warning(

@@ -133,7 +133,7 @@ class ObservedShellBus:
                     payload_json,
                     trace_id,
                 )
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             self._fallback_to_jsonl(record, reason=f"db error: {e!r}")
         except Exception as e:
             # Defensive net: ANY exception falls back. Observability MUST
@@ -165,7 +165,7 @@ class ObservedShellBus:
         except (OSError, TypeError, ValueError) as e:
             # Last resort: logger.error with a SAFE repr (no raw record dump —
             # could contain secrets). Do NOT crash the caller.
-            # Golden Rule #8: use logger, not print().
+            # Golden Rule #8: use logger, never bare stdout prints.
             logger.error(
                 "observed-shell: fallback FAILED (%s); automation=%r status=%r",
                 e,

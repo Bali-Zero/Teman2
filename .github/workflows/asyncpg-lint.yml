@@ -1,0 +1,37 @@
+name: asyncpg-lint
+
+# W34/W64 cicatrix consumer — closes the W35 deferral ("lint exists but has NO
+# consumer — it gates nothing"). Runs scripts/lint_asyncpg_except_completeness.py
+# BLOCKING on every PR + push to main, so a W64-class sibling-fix regression
+# (commit 120078999: except tuple missing asyncpg.InterfaceError in a daemon
+# reconnect loop → silent death) gates at PR time, not at audit time days later.
+#
+# Pure-stdlib, full-repo scan in seconds → NO paths filter and NO sentinel
+# needed; safe as a required-status-check (the W69 pending-forever trap does
+# not apply because the job runs on every PR).
+#
+# Triggers BOTH pull_request AND push-to-main (W41/W42 cicatrix lesson:
+# pull_request-only gives false safety under L2 autonomous direct-push).
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: asyncpg-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  asyncpg-lint:
+    name: asyncpg-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run asyncpg except-completeness lint (blocking)
+        run: python3 scripts/lint_asyncpg_except_completeness.py

@@ -1,0 +1,53 @@
+{
+  "run_at": "2026-06-12T07:00:00+08:00",
+  "today": "2026-06-12",
+  "yesterday_seen_count": 17,
+  "new_today_count": 1,
+  "partial": false,
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "hukumonline.com (403 Cloudflare)",
+    "ortax.org (SPA/JS-rendered, not parseable via curl)",
+    "muc.co.id (403 Forbidden)",
+    "ikpi.or.id (404 Not Found)",
+    "peraturan.bpk.go.id (200 but PMK jenis filter returned mixed PP/UU results)"
+  ],
+  "deltas": [
+    {
+      "citation": "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025 from NPPN to PPh Final UMKM 0.5%)",
+      "title_id": "DJP Klarifikasi: WP OP yang Telanjur Pakai NPPN untuk SPT 2025 Masih Bisa Beralih ke PPh Final UMKM 0,5% via Pembetulan SPT",
+      "title_en": "DJP Confirms: Individual Taxpayers Who Filed 2025 SPT Under NPPN Can Return to PPh Final UMKM 0.5% By Amending SPT",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "Bali Zero WP OP clients who mistakenly filed FY2025 SPT Tahunan using NPPN instead of PPh Final 0.5% UMKM can still amend — provided they have NOT yet submitted a formal pemberitahuan to DJP choosing general tax provisions. If overpaid tax resulted, clients can file permohonan pengembalian pajak. Window open for tax years 2025 and 2026.",
+      "summary": "DJP fungsional penyuluh Rohmat Arifin clarified on June 11, 2026 (webinar P3KPI) that WP OP who switched to NPPN for 2025 SPT can revert to PPh Final UMKM 0.5% by amending (pembetulan) their SPT Tahunan PPh 2025. Condition: WP has NOT yet filed a formal notification choosing general tax provisions. Under PP 20/2026 ketentuan peralihan, PPh Final UMKM 0.5% remains available for WP OP for tax years 2025 and 2026 as long as omzet < Rp4.8 billion and no formal election of general regime was made.",
+      "source": "https://news.ddtc.co.id/berita/nasional/1820026/wp-op-yang-telanjur-pakai-norma-bisa-kembali-ke-rezim-pph-final-umkm",
+      "verbatim_excerpt": "Selama kita belum melakukan pemberitahuan penggunaan tarif umum meski kita sudah telanjur menggunakan NPPN pada 2025, kita masih berhak menggunakan PPh final UMKM untuk tahun 2025 dan 2026. Ini untuk wajib pajak orang pribadi. Jadi silakan melakukan pembetulan SPT. Kalau ada pajak yang seharusnya tidak terutang, silakan dilakukan permohonan pengembalian pajak.",
+      "first_seen_at": "2026-06-12T07:00:00+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PER-6/PJ/2026",
+    "UU 2/2026",
+    "KEP-71/PJ/2026",
+    "019/MK/EF.2/2026",
+    "PP 20/2026 (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 56 ayat (3) huruf a (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026, Pasal 57 ayat (2) huruf e (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "PP 20/2026; PP 55/2022; PP 23/2018",
+    "PP 20/2026, Pasal 56 ayat (4), Pasal 57 ayat (2) (Peraturan Pemerintah Nomor 20 Tahun 2026)",
+    "Coretax DJP (sistema amministrativo perpajakan Direktorat Jenderal Pajak)",
+    "PMK No. 37/2026",
+    "PMK No. 36/2026",
+    "21/MK/EF.2/2026",
+    "PP 20/2026, Pasal II ayat (1) huruf c (Peraturan Pemerintah Nomor 20 Tahun 2026 — ketentuan peralihan)",
+    "PP 20/2026 (enforcement — DJP detection 93.260 WP terindikasi firm-splitting, data Juni 2026)",
+    "Permenkum 49/2025, Pasal 27 ayat (1) (PT Perorangan laporan keuangan via SABH)",
+    "PP 20/2026 (DJP klarifikasi — PT dan CV tidak termasuk penerima fasilitas PPh Final UMKM 0,5%)",
+    "PP 20/2026, ketentuan peralihan (DJP June 11, 2026 — WP OP pembetulan SPT 2025 from NPPN to PPh Final UMKM 0.5%)",
+    "22/MK/EF.2/2026 (nilai kurs — routine, low relevance for Bali Zero service lines)"
+  ]
+}

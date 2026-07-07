@@ -14,8 +14,11 @@
 
 ## Active level
 
-**Level 2 — active since 2026-04-21**
+**Level 2 — active since 2026-06-11**
 (Level 1 was active earlier same day; promoted to L2 once all activation gates closed.)
+(re-certified 2026-06-11 by Antonello after the Fable-5 system audit F04;
+the SessionStart staleness hook was fixed the same day to read this declared
+date — not the file mtime, which any edit silently reset, masking the lapse.)
 
 If today's date is >30 days after "active since" without a refresh commit,
 Claude falls back to conservative mode and pings the user to re-certify.
@@ -57,6 +60,16 @@ Claude falls back to conservative mode and pings the user to re-certify.
 ---
 
 ## Level 2 — Autonomous to deploy and post-deploy verification
+
+> **No "I'll leave the merge to you at CI green".** Arming `--auto` IS the merge
+> decision and it is autonomous at L2. Writing "I'll leave the merge to you" on a
+> normal feature PR is being _more conservative than this contract_ — don't.
+> `--auto` is the professional move precisely because it cannot force a red merge:
+> GitHub holds the PR until required checks pass, so branch protection stays the
+> safety layer above Claude. Confirmed by Antonello 2026-06-25. (Exception: the
+> "Still requires confirmation" list below — guardrail/contract/critical-config
+> changes, migrations without a green dry-run, force push, destructive DB ops —
+> still merge by the operator.)
 
 **Additional autonomous actions on top of L1:**
 

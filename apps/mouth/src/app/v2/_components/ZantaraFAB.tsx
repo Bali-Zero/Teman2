@@ -6,7 +6,7 @@ export function ZantaraFAB() {
   return (
     <button
       aria-label="Ask Zantara, your AI assistant"
-      className="fab-zantara fixed z-[50] flex items-center gap-3 rounded-full transition-all hover:-translate-y-1 hover:scale-[1.03] group"
+      className="fab-zantara fixed z-[50] flex items-center gap-3 rounded-full transition-all hover:-translate-y-1 hover:scale-[1.03] group p-[10px] sm:pr-[20px]"
       style={{
         background: "linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%)",
         boxShadow:
@@ -14,7 +14,6 @@ export function ZantaraFAB() {
         border: "1px solid rgba(255,255,255,0.18)",
         bottom: 24,
         right: 24,
-        padding: "10px 20px 10px 10px",
       }}
     >
       {/* Lotus disc */}

@@ -171,5 +171,60 @@ def _main() -> int:
     return 1 if failures else 0
 
 
+# --- retry-with-feedback (added 2026-06-04) -------------------------------- #
+# Verifies the generate->verify->repair loop deterministically by monkeypatching
+# propose_antibody: attempt 1 returns a no-op antibody (fails the gate), attempt
+# 2 returns the correct oracle (passes). The loop must spend 2 attempts and promote.
+
+def test_retry_repairs_weak_antibody():
+    import scar_replay as sr
+
+    calls = {"n": 0}
+    EMPTY = "# weak: does nothing\n:\n"
+
+    def fake_propose(key, summary, contract, **kwargs):
+        calls["n"] += 1
+        # attempt 1 → weak (will fail variants); attempt 2 → oracle (passes)
+        body = EMPTY if calls["n"] == 1 else ORACLE_ANTIBODY
+        return sr.ProposalResult(ok=True, antibody=body, cost_usd=0.001)
+
+    orig = sr.propose_antibody
+    sr.propose_antibody = fake_propose
+    try:
+        rep = sr.run_probe(
+            shared_worktree_probe, key="fake-key", offline=False,
+            max_attempts=3,
+        )
+    finally:
+        sr.propose_antibody = orig
+
+    assert calls["n"] == 2, f"expected 2 PROPOSE calls (weak then repair), got {calls['n']}"
+    assert rep.attempts_used == 2, f"attempts_used should be 2, got {rep.attempts_used}"
+    assert rep.promoted is True, f"should promote after repair, notes={rep.notes}"
+    assert any("repaired on attempt 2" in n for n in rep.notes), f"missing repair note: {rep.notes}"
+
+
+def test_retry_gives_up_after_max_attempts():
+    import scar_replay as sr
+
+    EMPTY = "# always weak\n:\n"
+
+    def always_weak(key, summary, contract, **kwargs):
+        return sr.ProposalResult(ok=True, antibody=EMPTY, cost_usd=0.001)
+
+    orig = sr.propose_antibody
+    sr.propose_antibody = always_weak
+    try:
+        rep = sr.run_probe(
+            shared_worktree_probe, key="fake-key", offline=False,
+            max_attempts=2,
+        )
+    finally:
+        sr.propose_antibody = orig
+
+    assert rep.attempts_used == 2, f"should use all 2 attempts, got {rep.attempts_used}"
+    assert rep.promoted is False, "a perpetually-weak antibody must NOT promote"
+
+
 if __name__ == "__main__":
     raise SystemExit(_main())

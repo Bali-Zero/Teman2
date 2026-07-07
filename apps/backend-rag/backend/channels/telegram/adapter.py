@@ -356,16 +356,34 @@ class TelegramChannelAdapter(BaseChannel):
         except Exception as e:
             logger.error("Error streaming to Telegram: %s", e, exc_info=True)
 
-            # Send error message
+            # Send error message. F39: the error-edit itself can fail (API down,
+            # message deleted, rate limit) — previously unguarded, which meant a
+            # total silent failure if the initial send broke. Guard it, and fall
+            # back to the DLQ-safe path so the user still gets the error (or it is
+            # queued for retry) instead of silence.
+            error_text = self.formatter.format_error(
+                "Si è verificato un errore durante l'elaborazione. Riprova.",
+            )
+            error_edited = False
             if message_id:
-                error_text = self.formatter.format_error(
-                    "Si è verificato un errore durante l'elaborazione. Riprova.",
-                )
-                await self.bot_service.edit_message_text(
-                    chat_id=channel_id,
-                    message_id=message_id,
-                    text=error_text,
-                    parse_mode=self.telegram_config.parse_mode,
+                try:
+                    await self.bot_service.edit_message_text(
+                        chat_id=channel_id,
+                        message_id=message_id,
+                        text=error_text,
+                        parse_mode=self.telegram_config.parse_mode,
+                    )
+                    error_edited = True
+                except Exception as edit_err:
+                    logger.error(
+                        "Telegram error-edit failed for %s/%s, falling back to DLQ-safe send: %s",
+                        channel_id,
+                        message_id,
+                        edit_err,
+                    )
+            if not error_edited:
+                await self.send_response_safe(
+                    channel_id, ChannelResponse(text=error_text, metadata={})
                 )
 
     # BaseChannel abstract properties

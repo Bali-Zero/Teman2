@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
   title: "Services · Bali Zero",
@@ -27,8 +28,6 @@ interface Service {
   icon: typeof IdCard;
   bullets: string[];
   cta: { label: string; href: string };
-  priceLabel: string;
-  priceFrom: string;
 }
 
 const SERVICES: Service[] = [
@@ -47,8 +46,6 @@ const SERVICES: Service[] = [
       "Overstay & obsolete-status recovery",
     ],
     cta: { label: "Open Visa Check", href: "/visa" },
-    priceLabel: "From",
-    priceFrom: "$350 / visa",
   },
   {
     slug: "business",
@@ -59,14 +56,12 @@ const SERVICES: Service[] = [
     accent: "#d4a017",
     icon: Building2,
     bullets: [
-      "1,563 KBLI 2025 codes · 4-level risk mapping",
+      "1,559 KBLI 2025 codes · 4-level risk mapping",
       "PT PMA minimum capital & classified sectors",
       "OSS, SKK, operational licenses",
       "Shareholder structures, nominee-free",
     ],
     cta: { label: "Open KBLI Navigator", href: "/kbli" },
-    priceLabel: "From",
-    priceFrom: "$1,850 / company",
   },
   {
     slug: "tax",
@@ -83,8 +78,6 @@ const SERVICES: Service[] = [
       "Cross-border tax residency analysis",
     ],
     cta: { label: "See Tax Calendar", href: "/tax-calendar" },
-    priceLabel: "From",
-    priceFrom: "$220 / month",
   },
   {
     slug: "property",
@@ -101,8 +94,6 @@ const SERVICES: Service[] = [
       "7-day due diligence turnaround",
     ],
     cta: { label: "Check a plot", href: "/property/eligibility" },
-    priceLabel: "From",
-    priceFrom: "$850 / report",
   },
 ];
 
@@ -115,9 +106,13 @@ const TRUST_STRIP = [
 
 export default function ServicesPage() {
   return (
+    // MYTHOS Stage-B Batch 2: Rumah Putih light, scoped per-page (NEVER on
+    // the shared (blog)/layout.tsx). NavShell + Footer stay navy anchors
+    // because they read --nav-bg / --footer-bg, not --surface-base.
     <div
-      className="min-h-screen"
+      className={`min-h-screen ${RUMAH_CLASS}`}
       style={{
+        ...RUMAH_VARS,
         background: "var(--surface-base)",
         color: "var(--text-primary)",
       }}
@@ -131,7 +126,9 @@ export default function ServicesPage() {
         <div className="max-w-[1400px] mx-auto">
           <div
             className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
-            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+            style={{
+              color: "var(--rp-accent, var(--accent-funnel-text, #5c8aff))",
+            }}
           >
             Services · AI drafts · Licensed team signs
           </div>
@@ -216,17 +213,18 @@ export default function ServicesPage() {
                 key={s.slug}
                 className="relative rounded-2xl p-6 overflow-hidden"
                 style={{
-                  background: `color-mix(in srgb, ${s.accent} 22%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${s.accent} 60%, transparent)`,
-                  boxShadow: `0 16px 48px color-mix(in srgb, ${s.accent} 32%, transparent), inset 0 1px 0 rgba(255,255,255,0.08)`,
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                  // Rumah Putih: white raised card + accent hairline + a faint
+                  // accent top-wash (replaces the editorial-dark glass block).
+                  background: "var(--rp-card-bg, #ffffff)",
+                  border: `1px solid color-mix(in srgb, ${s.accent} 34%, var(--rp-card-border, #e3e1da))`,
+                  boxShadow:
+                    "var(--rp-card-shadow, 0 1px 2px rgba(22,33,58,0.05))",
                 }}
               >
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background: `radial-gradient(ellipse 70% 50% at 20% 10%, color-mix(in srgb, ${s.accent} 42%, transparent) 0%, transparent 65%)`,
+                    background: `radial-gradient(ellipse 70% 50% at 20% 10%, color-mix(in srgb, ${s.accent} 9%, transparent) 0%, transparent 60%)`,
                   }}
                   aria-hidden="true"
                 />
@@ -290,21 +288,7 @@ export default function ServicesPage() {
                     ))}
                   </ul>
 
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div>
-                      <div
-                        className="text-[10px] font-semibold uppercase tracking-[0.2em]"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        {s.priceLabel}
-                      </div>
-                      <div
-                        className="text-[18px] font-bold"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {s.priceFrom}
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-end gap-4 flex-wrap">
                     <Link
                       href={s.cta.href}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-semibold"
@@ -335,7 +319,9 @@ export default function ServicesPage() {
           <div className="mb-10">
             <div
               className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-3"
-              style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+              style={{
+                color: "var(--rp-accent, var(--accent-funnel-text, #5c8aff))",
+              }}
             >
               How we work
             </div>

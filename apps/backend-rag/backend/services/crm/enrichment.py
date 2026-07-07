@@ -343,7 +343,7 @@ Return ONLY the JSON object, no additional text."""
                 )
                 logger.info("Successfully enriched client %s", client_id)
                 return True
-        except (asyncpg.PostgresError, json.JSONDecodeError, TypeError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, json.JSONDecodeError, TypeError) as e:
             logger.error(
                 "Failed to update client %s (DB/serialization): %s", client_id, e, exc_info=True
             )

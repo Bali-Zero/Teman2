@@ -4,6 +4,8 @@ import Image from "next/image";
 import { Phone, ArrowRight } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
+import { rosterBySlug, initialsOf } from "@/data/team-roster";
 
 export const metadata: Metadata = {
   title: "Team · Bali Zero",
@@ -11,9 +13,12 @@ export const metadata: Metadata = {
     "The Bali Zero team — licensed founders, consultants, tax specialists, notaries and marketing. Real people handling real cases in Bali since 2006.",
 };
 
-// ─── Canonical roster (2026-04-18) ──────────────────────────────────────────
-// Keep in sync with apps/mouth/src/app/v2/_components/SocialProof.tsx
-// and the backend HR roster migration (migration_080_hr_team_cleanup.py).
+// ─── Editorial layout for this page ─────────────────────────────────────────
+// NAME / ROLE / PHOTO are pulled from the roster SSOT (apps/mouth/src/data/team-roster.ts)
+// by `slug`. This page keeps only its EDITORIAL choices: which section a person appears
+// in and the per-person gradient. To change a photo/role → edit the roster, not here.
+// `nameOverride`/`roleOverride` exist for page-specific labels (e.g. Zero "SOTA Marketing")
+// and for people not in the public roster.
 
 interface TeamMember {
   name: string;
@@ -23,144 +28,144 @@ interface TeamMember {
   photo?: string;
 }
 
+interface EditorialEntry {
+  slug?: string; // → roster SSOT for name/role/photo
+  gradient: string;
+  nameOverride?: string; // page-specific display name (or for non-roster people)
+  roleOverride?: string; // page-specific role label
+  photoOverride?: string;
+}
+
+// Merge an editorial entry with the roster SSOT. Roster wins for name/role/photo unless
+// an explicit *Override is given. Members not in the roster MUST supply name+role here.
+function resolve(e: EditorialEntry): TeamMember {
+  const r = e.slug ? rosterBySlug(e.slug) : undefined;
+  const name = e.nameOverride ?? r?.name ?? "";
+  return {
+    name,
+    initials: initialsOf(name),
+    role: e.roleOverride ?? r?.role ?? "",
+    gradient: e.gradient,
+    photo: e.photoOverride ?? r?.photo,
+  };
+}
+
+// Each section keeps its EDITORIAL composition + gradients; name/role/photo come from
+// the roster SSOT via resolve(). Role overrides preserve this page's curated labels.
 const LEADERSHIP: TeamMember[] = [
   {
-    name: "Pak Heru",
-    initials: "PH",
-    role: "Komisaris · Founder (30 years)",
+    slug: "heru",
+    roleOverride: "Komisaris · Founder (30 years)",
     gradient: "linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%)",
-    photo: "/static/team/zainal-ceo.jpg",
   },
   {
-    name: "Zainal Abidin",
-    initials: "ZA",
-    role: "Chief Executive Officer · Founder",
+    slug: "zainal",
     gradient: "linear-gradient(135deg, #ff2d4c 0%, #c8102e 100%)",
-    photo: "/static/team/heru-komisaris.jpg",
   },
   {
-    name: "Ruslana",
-    initials: "RS",
-    role: "Special Advisory",
+    slug: "ruslana",
+    roleOverride: "Special Advisory",
     gradient: "linear-gradient(135deg, #e85c41 0%, #d14832 100%)",
-    photo: "/static/team/ruslana.jpg",
   },
   {
-    name: "Veronika",
-    initials: "VE",
-    role: "Manager",
+    slug: "veronika",
+    roleOverride: "Manager",
     gradient: "linear-gradient(135deg, #2251ff 0%, #1a41cc 100%)",
   },
-];
+].map(resolve);
 
 const SETUP_TEAM: TeamMember[] = [
   {
-    name: "Adit",
-    initials: "AD",
-    role: "Supervisor · Lead Setup",
+    slug: "adit",
     gradient: "linear-gradient(135deg, #06b6d4 0%, #2563eb 100%)",
-    photo: "/static/team/adit.png",
   },
   {
-    name: "Ari",
-    initials: "AR",
-    role: "Supervisor",
+    slug: "ari",
+    roleOverride: "Supervisor",
     gradient: "linear-gradient(135deg, #f43f5e 0%, #db2777 100%)",
-    photo: "/static/team/ari.png",
   },
   {
-    name: "Krisna",
-    initials: "KR",
-    role: "Specialist Consultant",
+    slug: "krisna",
+    roleOverride: "Specialist Consultant",
     gradient: "linear-gradient(135deg, #f97316 0%, #d97706 100%)",
-    photo: "/static/team/krisna.png",
   },
   {
-    name: "Dea",
-    initials: "DE",
-    role: "Executive Consultant",
+    slug: "dea",
     gradient: "linear-gradient(135deg, #6366f1 0%, #2563eb 100%)",
-    photo: "/static/team/dea.png",
   },
   {
-    name: "Vino",
-    initials: "VI",
-    role: "Junior Consultant",
+    slug: "candra",
+    gradient: "linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)",
+  },
+  {
+    slug: "vino",
     gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
   },
   {
-    name: "Sahira",
-    initials: "SH",
-    role: "Executive Consultant",
+    slug: "sahira",
+    roleOverride: "Executive Consultant",
     gradient: "linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)",
-    photo: "/static/team/sahira.png",
   },
-];
+].map(resolve);
 
 const TAX_TEAM: TeamMember[] = [
   {
-    name: "Angel",
-    initials: "AG",
-    role: "Tax Supervisor",
+    slug: "angel",
+    roleOverride: "Tax Supervisor",
     gradient: "linear-gradient(135deg, #f43f5e 0%, #dc2626 100%)",
   },
   {
-    name: "Kadek",
-    initials: "KD",
-    role: "Tax Consultant",
+    slug: "kadek",
+    roleOverride: "Tax Consultant",
     gradient: "linear-gradient(135deg, #10b981 0%, #16a34a 100%)",
   },
   {
-    name: "Dewa Ayu",
-    initials: "DA",
-    role: "Tax Consultant",
+    slug: "dewaayu",
+    roleOverride: "Tax Consultant",
     gradient: "linear-gradient(135deg, #8b5cf6 0%, #4f46e5 100%)",
   },
   {
-    name: "Faisha",
-    initials: "FA",
-    role: "Tax Care",
+    slug: "faisha",
     gradient: "linear-gradient(135deg, #f59e0b 0%, #ca8a04 100%)",
   },
-];
+].map(resolve);
 
 const ACCOUNTING_TEAM: TeamMember[] = [
   {
-    name: "Asya Nadia",
-    initials: "AN",
-    role: "Accountant",
+    slug: "asya",
+    roleOverride: "Accountant",
     gradient: "linear-gradient(135deg, #10b981 0%, #0d9488 100%)",
-    photo: "/static/team/asya.jpg",
   },
   {
-    name: "Rina",
-    initials: "RI",
-    role: "Reception",
+    slug: "rina",
     gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)",
   },
-];
+].map(resolve);
 
+// Marketing is an editorial grouping unique to this page (Zero is not in the public roster;
+// Surya/Subhi live under setup/support in the SSOT but are presented here as marketing).
 const MARKETING_TEAM: TeamMember[] = [
   {
-    name: "Zero",
-    initials: "ZE",
-    role: "SOTA Marketing",
+    nameOverride: "Zero",
+    roleOverride: "SOTA Marketing",
+    photoOverride: "/static/team/zero.jpg",
     gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-    photo: "/static/team/zero.jpg",
   },
   {
-    name: "Surya",
-    initials: "SU",
-    role: "Marketing Specialist",
+    slug: "surya",
+    roleOverride: "Marketing Specialist",
     gradient: "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
   },
   {
-    name: "Damar",
-    initials: "DM",
-    role: "Marketing Junior",
+    slug: "damar",
+    roleOverride: "Marketing Junior",
     gradient: "linear-gradient(135deg, #14b8a6 0%, #10b981 100%)",
   },
-];
+  {
+    slug: "subhi",
+    gradient: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+  },
+].map(resolve);
 
 // ─── UI helpers ────────────────────────────────────────────────────────────
 
@@ -298,9 +303,12 @@ function Section({
 
 export default function TeamPage() {
   return (
+    // MYTHOS Stage-B Batch 1: Rumah Putih light, scoped per-page (NEVER on
+    // the shared (blog)/layout.tsx). NavShell + Footer stay navy anchors.
     <div
-      className="min-h-screen"
+      className={`min-h-screen ${RUMAH_CLASS}`}
       style={{
+        ...RUMAH_VARS,
         background: "var(--surface-base)",
         color: "var(--text-primary)",
       }}
@@ -370,21 +378,22 @@ export default function TeamPage() {
               </div>
             </div>
 
-            {/* Aggregate trust — same as homepage */}
+            {/* Aggregate trust — Rumah Putih: white card + hairline border,
+                navy hairline dividers (was dark-glass on the editorial home). */}
             <div
               className="inline-flex items-center gap-4 px-4 py-2.5 rounded-full flex-wrap"
               style={{
-                background: "rgba(0,0,0,0.28)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.14)",
+                background: "var(--rp-card-bg, rgba(0,0,0,0.28))",
+                boxShadow: "var(--rp-card-shadow, none)",
+                border:
+                  "1px solid var(--rp-card-border, rgba(255,255,255,0.14))",
               }}
             >
               <span
                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                <span style={{ color: "#fbbf24" }}>★★★★★</span>
+                <span style={{ color: "#d4a017" }}>★★★★★</span>
                 <span>4.9</span>
                 <span style={{ color: "var(--text-tertiary)" }}>
                   · 627 Google reviews
@@ -392,7 +401,9 @@ export default function TeamPage() {
               </span>
               <span
                 className="h-3.5 w-px"
-                style={{ background: "rgba(255,255,255,0.18)" }}
+                style={{
+                  background: "var(--border-default, rgba(255,255,255,0.18))",
+                }}
               />
               <span
                 className="text-[12px] font-semibold"
@@ -402,7 +413,9 @@ export default function TeamPage() {
               </span>
               <span
                 className="h-3.5 w-px"
-                style={{ background: "rgba(255,255,255,0.18)" }}
+                style={{
+                  background: "var(--border-default, rgba(255,255,255,0.18))",
+                }}
               />
               <span
                 className="text-[12px] font-semibold"

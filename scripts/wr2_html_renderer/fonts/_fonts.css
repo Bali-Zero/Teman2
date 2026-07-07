@@ -1,0 +1,52 @@
+/*
+ * Vendored @font-face declarations — Bali Zero WR2 HTML renderer.
+ *
+ * WHY LOCAL (gap #4, GROUND phase 2026-06-07): every prior render path,
+ * including the brand's own _render_smoke_test.py, pulled Montserrat via a
+ * Google-Fonts `@import` over the network at render time. That made the output
+ * font hostage to network reachability/latency — the #1 cause of flaky
+ * HTML→PNG (font race), today masked by a fixed sleep. These files are
+ * vendored woff2 (Montserrat + IBM Plex Mono, both OFL-licensed) fetched once
+ * from the fontsource CDN, so rendering is deterministic and offline-safe
+ * (Law 6 — local sovereignty: no network dependency at render time).
+ *
+ * font-display: block — never show a fallback face; wait for the real font.
+ * Combined with the renderer's `await document.fonts.ready` gate, this
+ * guarantees Montserrat is painted, not a system substitute.
+ *
+ * Paths are relative: the renderer copies this file + the *.woff2 into each
+ * carousel's slides/ dir (alongside the per-slide HTML), so `url('montserrat-700.woff2')`
+ * resolves under the same file:// origin Playwright loads.
+ */
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("montserrat-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 800;
+  font-display: block;
+  src: url("montserrat-800.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("ibmplexmono-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("ibmplexmono-700.woff2") format("woff2");
+}

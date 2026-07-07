@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { RiskBadge } from "./RiskBadge";
 import type {
+  KBLIBusinessScale,
   KBLICode,
   KBLIGoldContent,
   KBLILicenseByScale,
   KBLIPmaInfo,
 } from "@/lib/kbli-types";
+import { formatTimeframe } from "@/lib/kbli-derive";
 import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
@@ -175,9 +177,11 @@ const SECTION_STYLES: Record<
 function KeyFacts({
   licensing,
   pma,
+  baliBlocked = false,
 }: {
   licensing: KBLILicenseByScale[];
   pma: KBLIPmaInfo;
+  baliBlocked?: boolean;
 }) {
   const primary = licensing[0];
   if (!primary) return null;
@@ -193,25 +197,35 @@ function KeyFacts({
     },
     {
       label: "Processing",
-      value: primary.timeframe || "Not specified",
+      value: formatTimeframe(primary.timeframe) ?? "Through OSS",
+      // green accent for instant issuance (raw "Otomatis" → formatted "Instant")
       accent: primary.timeframe?.toLowerCase().includes("otomatis")
         ? "var(--kbli-pma-open)"
         : undefined,
     },
     {
       label: "Foreign Ownership",
+      // National PMA openness != Bali registrability. When the code is open
+      // nationally but blocked for a PT PMA in Bali (l4_bali.blocked), don't
+      // headline a green "100% Open" — qualify it, and drop the green accent.
       value:
         pma.status === "open"
-          ? "100% Open"
+          ? baliBlocked
+            ? "100% nat'l · blocked in Bali"
+            : "100% Open"
           : pma.status === "restricted"
             ? `Max ${pma.maxForeign}%`
             : "Closed (0%)",
       accent:
-        pma.status === "open"
+        pma.status === "open" && !baliBlocked
           ? "var(--kbli-pma-open)"
           : pma.status === "restricted"
             ? "var(--kbli-pma-restricted)"
-            : "var(--kbli-pma-closed)",
+            : pma.status === "open"
+              ? "var(--kbli-pma-closed)"
+              : pma.status === "closed"
+                ? "var(--kbli-pma-closed)"
+                : undefined,
     },
     {
       label: "Authority",
@@ -557,7 +571,65 @@ const STEP_COLORS = [
   },
 ];
 
-function StepList({ body }: { body: string }) {
+/**
+ * Company-incorporation step is SCALE-aware, not PMA-centric. The KBLI Navigator
+ * speaks to everyone (Zero, 2026-06-29):
+ *   Mikro / Kecil / Menengah → WNI → PT PMDN / CV / Perorangan (local)
+ *   Besar                    → WNI or WNA → PT PMDN (local) or PT PMA (foreign)
+ * The old gold text hardcoded "PT PMA incorporation" as step 1 for EVERY code —
+ * which excludes the WNI small-business reader, and on a Bali-blocked code flatly
+ * contradicts the "reserved for UMKM / closed to a PT PMA" verdict above it.
+ * `scales` is the currently-selected TierTab's scale array.
+ */
+function companyFormForScale(scales: KBLIBusinessScale[]): {
+  label: string;
+  desc: string;
+} {
+  const isBesar = scales.includes("Besar");
+  if (isBesar) {
+    return {
+      label: "Company incorporation",
+      desc: "PT PMDN (local) or PT PMA (foreign) — notary deed, AHU registration",
+    };
+  }
+  return {
+    label: "Company incorporation",
+    desc: "PT PMDN / CV / Perorangan (local, WNI) — notary deed, AHU registration",
+  };
+}
+
+/** A step whose label/desc names a company-incorporation form (PT PMA / PT PMDN / CV). */
+function isIncorporationStep(label: string, desc: string): boolean {
+  const t = `${label} ${desc}`.toLowerCase();
+  return (
+    t.includes("incorporation") ||
+    t.includes("pt pma") ||
+    t.includes("pt pmdn") ||
+    t.includes("pendirian")
+  );
+}
+
+/**
+ * Rewrite the "PMA: Fully open — 100% foreign ownership allowed" trailing line when
+ * the code is Bali-blocked. The 100% openness is a NATIONAL fact, but printed bare
+ * under a Bali-blocked verdict it reads as "you can own 100% here". Qualify it.
+ */
+function rewritePmaLineForBali(line: string, baliBlocked: boolean): string {
+  if (!baliBlocked) return line;
+  if (!/\*\*PMA:\*\*/i.test(line) && !/^PMA:/i.test(line)) return line;
+  if (!/fully open|100%|foreign ownership/i.test(line)) return line;
+  return "**PMA:** 100% open nationally — but BLOCKED for a PT PMA in Bali (reserved UMKM / moratorium). See Bali status above.";
+}
+
+function StepList({
+  body,
+  activeScales = [],
+  baliBlocked = false,
+}: {
+  body: string;
+  activeScales?: KBLIBusinessScale[];
+  baliBlocked?: boolean;
+}) {
   const lines = body.split("\n");
   const steps: { num: number; label: string; desc: string }[] = [];
   let otherContent: string[] = [];
@@ -567,16 +639,24 @@ function StepList({ body }: { body: string }) {
     const stepMatch = line.match(/^(\d+)\.\s+\*\*([^*]+)\*\*\s*(.*)/);
     if (stepMatch) {
       const num = parseInt(stepMatch[1]);
-      const label = stepMatch[2].trim();
+      let label = stepMatch[2].trim();
       // Everything after **label** — split on em-dash to get parenthetical + desc
       const afterLabel = stepMatch[3].trim();
       const dashIdx = afterLabel.search(/[—–]/);
-      const desc =
+      let desc =
         dashIdx >= 0 ? afterLabel.slice(dashIdx + 1).trim() : afterLabel;
       const paren = dashIdx >= 0 ? afterLabel.slice(0, dashIdx).trim() : "";
-      steps.push({ num, label: paren ? `${label} ${paren}` : label, desc });
+      label = paren ? `${label} ${paren}` : label;
+      // SCALE-aware company form: replace the hardcoded "PT PMA incorporation"
+      // step with the form that actually fits the selected business scale.
+      if (isIncorporationStep(label, desc)) {
+        const form = companyFormForScale(activeScales);
+        label = form.label;
+        desc = form.desc;
+      }
+      steps.push({ num, label, desc });
     } else if (line.trim()) {
-      otherContent.push(line);
+      otherContent.push(rewritePmaLineForBali(line, baliBlocked));
     }
   }
 
@@ -639,10 +719,14 @@ function ContentSection({
   title,
   body,
   type,
+  activeScales = [],
+  baliBlocked = false,
 }: {
   title: string;
   body: string;
   type: SectionType;
+  activeScales?: KBLIBusinessScale[];
+  baliBlocked?: boolean;
 }) {
   if (!body.trim()) return null;
 
@@ -703,7 +787,11 @@ function ContentSection({
       {type === "authority" ? (
         <AuthorityFlow body={body} />
       ) : isStepByStep ? (
-        <StepList body={body} />
+        <StepList
+          body={body}
+          activeScales={activeScales}
+          baliBlocked={baliBlocked}
+        />
       ) : (
         <div className="kbli-prose">
           <ReactMarkdown>{body}</ReactMarkdown>
@@ -723,10 +811,51 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   const parsed = gold ? parseWhatYouNeed(gold.whatYouNeed) : null;
   const currentTier = kbli.licensing[activeTier] ?? kbli.licensing[0];
 
+  // When Bali blocks this code for PMA, the licensing steps below are still the
+  // correct NATIONAL procedure (open in Jakarta/Lombok/etc.) — but they must NOT
+  // be read as a how-to for a foreign-owned company IN BALI. Frame, don't hide:
+  // the steps are national truth; the Bali restriction is the local override.
+  const baliBlocked = !!kbli.baliL4?.blocked;
+
   return (
     <div className="space-y-8">
+      {/* ── NATIONAL-vs-BALI FRAME (only when Bali blocks PMA for this code) ── */}
+      {baliBlocked && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 113, 108, 0.06)",
+            borderColor: "rgba(232, 113, 108, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">🏝️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-closed)" }}
+            >
+              National procedure — does not apply to a PT PMA in Bali
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            The licensing path below is the <strong>national</strong> procedure,
+            valid for a foreign-owned company outside Bali (e.g. Jakarta). In{" "}
+            <strong>Bali</strong>, this activity is currently{" "}
+            {kbli.baliL4?.status === "CHIUSO_PMA_NO_BESAR"
+              ? "reserved for micro/small/medium enterprises and closed to a PT PMA"
+              : "blocked for a PT PMA under the 13 May 2026 moratorium"}
+            {kbli.baliL4?.reason ? ` — ${kbli.baliL4.reason}` : ""}. See the
+            Bali status badge above before planning a Bali setup.
+          </p>
+        </div>
+      )}
+
       {/* ── KEY FACTS AT A GLANCE ── */}
-      <KeyFacts licensing={kbli.licensing} pma={kbli.pma} />
+      <KeyFacts
+        licensing={kbli.licensing}
+        pma={kbli.pma}
+        baliBlocked={baliBlocked}
+      />
 
       {/* ── PP28 RAW DATA (collapsible) ── */}
       {currentTier && (
@@ -823,6 +952,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               title={sec.title}
               body={sec.body}
               type={detectSectionType(sec.title)}
+              activeScales={currentTier?.scales ?? []}
+              baliBlocked={baliBlocked}
             />
           ))}
         </div>

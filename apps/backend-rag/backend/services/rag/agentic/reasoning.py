@@ -182,9 +182,16 @@ class ReasoningEngine:
             tool_map: Dictionary mapping tool names to tool instances
             response_pipeline: Optional pipeline for response verification/cleaning
         """
+        # CONTEXT-QUALITY gate via the AbstainPolicy SSOT module — same value
+        # as the flat generation threshold, read through its NAMED alias so
+        # this fifth gate cannot drift anonymously. See _abstain_policy.py.
+        from backend.services.rag.agentic._abstain_policy import (
+            CONTEXT_QUALITY_MIN,
+        )
+
         self.tool_map = tool_map
         self.response_pipeline = response_pipeline
-        self._min_context_quality_score = EvidenceScoreConstants.ABSTAIN_THRESHOLD
+        self._min_context_quality_score = CONTEXT_QUALITY_MIN
         self._min_context_items = 1
 
     def _validate_context_quality(
@@ -535,6 +542,18 @@ class ReasoningEngine:
             set_span_attribute("trusted_tools_used", trusted_tools_used)
             state.evidence_score = evidence_score
 
+            # GENERATION gate threshold via the AbstainPolicy SSOT. This is
+            # the FLAT value (policy.generation_threshold == ABSTAIN_THRESHOLD),
+            # deliberately NOT the per-domain label threshold: generating
+            # regulated advice on weak evidence (esp. tax) is the high-harm
+            # path, so this gate stays conservative. See _abstain_policy.py +
+            # the 2026-06-14 Mythos M1 panel ruling (do NOT make this per-domain).
+            from backend.services.rag.agentic._abstain_policy import (
+                build_abstain_policy,
+            )
+
+            generation_threshold = build_abstain_policy(query).generation_threshold
+
             await emit_low_confidence_event(
                 getattr(self, "_db_pool", None),
                 query,
@@ -558,7 +577,7 @@ class ReasoningEngine:
         if should_apply_low_evidence_policy(
             final_answer=state.final_answer,
             evidence_score=evidence_score,
-            abstain_threshold=EvidenceScoreConstants.ABSTAIN_THRESHOLD,
+            abstain_threshold=generation_threshold,
             skip_rag=state.skip_rag,
             trusted_tools_used=trusted_tools_used,
         ):
@@ -627,9 +646,9 @@ class ReasoningEngine:
                         exc_info=True,
                     )
                     state.final_answer = self._get_localized_stub("abstain", language)
-        elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
+        elif state.skip_rag and evidence_score < generation_threshold:
             logger.info("🏷️ [General Task] Skipping evidence check (skip_rag=True)")
-        elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
+        elif trusted_tools_used and evidence_score < generation_threshold:
             logger.info("🧮 [Trusted Tool] Skipping evidence check (trusted_tools_used=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
@@ -639,7 +658,7 @@ class ReasoningEngine:
             # Skip for general tasks (translation, summarization, etc.)
             # Also skip if trusted tools were used successfully
             if (
-                evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
+                evidence_score < generation_threshold
                 and not state.skip_rag
                 and not trusted_tools_used
             ):
@@ -723,7 +742,7 @@ class ReasoningEngine:
                 context = "\n\n".join(state.context_gathered)
                 warning_note = ""
                 if (
-                    evidence_score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD
+                    evidence_score >= generation_threshold
                     and evidence_score < 0.5
                 ):
                     warning_note = (
@@ -1143,6 +1162,15 @@ Do not invent information. If the context is insufficient, admit it.
         )
         state.evidence_score = evidence_score
 
+        # GENERATION gate threshold via the AbstainPolicy SSOT — the FLAT value
+        # (== ABSTAIN_THRESHOLD), mirroring the sync pipeline. NOT per-domain:
+        # see _abstain_policy.py + the 2026-06-14 Mythos M1 panel ruling.
+        from backend.services.rag.agentic._abstain_policy import (
+            build_abstain_policy,
+        )
+
+        generation_threshold = build_abstain_policy(query).generation_threshold
+
         await emit_low_confidence_event(
             getattr(self, "_db_pool", None),
             query,
@@ -1187,7 +1215,7 @@ Do not invent information. If the context is insufficient, admit it.
         if should_apply_low_evidence_policy(
             final_answer=state.final_answer,
             evidence_score=evidence_score,
-            abstain_threshold=EvidenceScoreConstants.ABSTAIN_THRESHOLD,
+            abstain_threshold=generation_threshold,
             skip_rag=state.skip_rag,
             trusted_tools_used=trusted_tools_used,
         ):
@@ -1243,9 +1271,9 @@ Do not invent information. If the context is insufficient, admit it.
                         exc_info=True,
                     )
                     state.final_answer = self._get_localized_stub("abstain", language)
-        elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
+        elif state.skip_rag and evidence_score < generation_threshold:
             logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
-        elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
+        elif trusted_tools_used and evidence_score < generation_threshold:
             logger.info(
                 "🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)",
             )
@@ -1256,7 +1284,7 @@ Do not invent information. If the context is insufficient, admit it.
             # Skip for general tasks (translation, summarization, etc.)
             # Also skip if trusted tools were used successfully
             if (
-                evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
+                evidence_score < generation_threshold
                 and not state.skip_rag
                 and not trusted_tools_used
             ):
@@ -1332,7 +1360,7 @@ Do not invent information. If the context is insufficient, admit it.
                 context = "\n\n".join(state.context_gathered)
                 warning_note = ""
                 if (
-                    evidence_score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD
+                    evidence_score >= generation_threshold
                     and evidence_score < 0.5
                 ):
                     warning_note = (

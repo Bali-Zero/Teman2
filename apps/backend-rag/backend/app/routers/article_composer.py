@@ -588,6 +588,7 @@ def generate_slug(headline: str) -> str:
 def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: str | None) -> str:
     """Generate MDX file content from enriched article"""
     import json as json_module
+    import re
 
     # Map category to URL-friendly format
     category_map = {
@@ -613,8 +614,11 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     expat_steps_json = json_module.dumps(article.next_steps.expat)
     investor_steps_json = json_module.dumps(article.next_steps.investor)
 
-    # Cover image path
+    # Cover image path (21:9 hero) + card variant (16:10 homepage thumbnail).
+    # The post-publish poller renders both: {slug}.jpg + {slug}_card.jpg.
     cover_img = cover_image_path or f"/static/news/{slug}.jpg"
+    _card_match = re.match(r"^(/static/news/.+)\.(jpg|jpeg|png)$", cover_img, re.IGNORECASE)
+    card_img = f"{_card_match.group(1)}_card.{_card_match.group(2)}" if _card_match else cover_img
 
     # Build conditional sections - skip empty Bali Zero Take and Next Steps
     bali_zero_take_section = ""
@@ -693,6 +697,7 @@ title: "{safe_headline}"
 slug: "{slug}"
 excerpt: "{safe_excerpt}"
 coverImage: "{cover_img}"
+cardImage: "{card_img}"
 coverImageAlt: "{safe_headline}"
 category: "{category_slug}"
 tags: [{tags_str}]
@@ -808,27 +813,31 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
 
         files_to_commit.append({"path": mdx_git_path, "content": mdx_content})
 
-        # 3. Commit files to GitHub
+        # 3. Commit files to GitHub via pull request + auto-merge.
+        # The target branch (main) is protected (required status checks), so a
+        # direct ref push returns HTTP 422. Publishing via PR lets the commit
+        # land on a temporary branch and auto-merge once CI passes.
         commit_message = f"feat(article): Add article '{request.article.headline[:50]}...'\n\nCategory: {category_folder}\nPosition: {request.position}\n\n🤖 Published via Article Composer"
 
-        if len(files_to_commit) == 1:
-            # Single file commit
-            result = await github_publisher.upload_file(
-                path=mdx_git_path,
-                content=mdx_content,
-                message=commit_message,
-            )
-        else:
-            # Atomic multi-file commit
-            result = await github_publisher.create_commit_with_files(
-                files=files_to_commit,
-                message=commit_message,
-            )
+        result = await github_publisher.create_commit_with_files(
+            files=files_to_commit,
+            message=commit_message,
+            pull_request=True,
+        )
 
         # Build article URL
         article_url = f"https://balizero.com/{category_folder}/{slug}"
 
-        logger.info("✅ Article published: %s", article_url)
+        pr_number = result.get("pull_request_number")
+        if pr_number:
+            logger.info(
+                "✅ Article PR opened: #%s (auto_merge=%s) → will be live at %s after merge",
+                pr_number,
+                result.get("auto_merge_enabled"),
+                article_url,
+            )
+        else:
+            logger.info("✅ Article published: %s", article_url)
         logger.info(f"   Commit: {result.get('commit_sha', 'N/A')[:7]}")
 
         # Trigger IndexNow for faster search engine indexing
@@ -885,9 +894,17 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
             has_cover_image=str(has_cover_image),
         ).inc()
 
+        if result.get("pull_request_number"):
+            publish_message = (
+                f"Article pull request #{result['pull_request_number']} opened. "
+                "It auto-merges once CI checks pass, then Vercel deploys (~a few minutes)."
+            )
+        else:
+            publish_message = "Article published successfully. Vercel will auto-deploy in ~1 minute."
+
         return PublishResponse(
             success=True,
-            message="Article published successfully. Vercel will auto-deploy in ~1 minute.",
+            message=publish_message,
             article_url=article_url,
             mdx_path=mdx_git_path,
             image_path=cover_image_path,

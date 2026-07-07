@@ -187,7 +187,11 @@ async def main() -> None:
 
     # Safety gate — real Redis kill switch
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    redis_client = aioredis.from_url(redis_url, decode_responses=True)
+    redis_client = aioredis.from_url(
+        redis_url,
+        decode_responses=True,
+        password=os.environ.get("REDIS_PASSWORD") or None,
+    )
     safety_gate = SafetyGate(redis=redis_client)
     logger.info(f"Safety gate connected to Redis: {redis_url.split('@')[-1]}")
 

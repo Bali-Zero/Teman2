@@ -42,10 +42,12 @@ elif [ "$(whoami)" = "antonellosiano" ]; then
 fi
 
 # Bypass alias --yolo that exists in .zshrc on Air
-GEMINI_BIN="command gemini"
+# (GEMINI_BIN removed 2026-06-23: legacy Gemini CLI sunset 2026-06-18 — run_gemini now uses agy)
 CODEX_BIN="command codex"
+AGY_BIN="${AGY_BIN:-agy}"
 
-# Gemini model cascade: 3.1 Pro (1M ctx) → 2.5 Pro (fallback) → 2.5 Flash (fast fallback)
+# Gemini model labels (retained for reference; run_gemini now routes through `agy -p`
+# after the 2026-06-18 Gemini-CLI sunset — these no longer select a live backend).
 GEMINI_MODEL_PRIMARY="gemini-3.1-pro-preview"
 GEMINI_MODEL_FALLBACK="gemini-2.5-pro"
 GEMINI_MODEL_FAST="gemini-2.5-flash"
@@ -251,13 +253,23 @@ HEADER
 # CLI availability check
 # ═══════════════════════════════════════════════════════
 require_gemini() {
-    if ! command -v gemini &>/dev/null; then
-        err "Gemini CLI not installed. Install: npm i -g @google/gemini-cli"
+    # NOTE 2026-06-23: the legacy Gemini CLI was SUNSET on 2026-06-18 — it no longer
+    # serves Google AI Pro/Ultra/free subscription requests (only paid API keys do).
+    # The GA replacement on our AI Ultra OAuth is the Antigravity CLI (`agy`). So this
+    # check now requires `agy`, NOT the dead `gemini` binary (which may still sit on
+    # disk and would otherwise pass `command -v gemini` while every call fails at
+    # runtime — superscar #2 "green-but-dead"). run_gemini() routes through `agy -p`.
+    if ! command -v "$AGY_BIN" &>/dev/null; then
+        err "Antigravity CLI (agy) not installed or not on PATH. Expected: $AGY_BIN"
+        err "agy replaced the Gemini CLI on 2026-06-18 for AI Ultra subscriptions."
         exit 1
     fi
-    # Check if authenticated (gemini stores creds after first OAuth)
-    if [ ! -d "$HOME/.gemini" ] && [ ! -d "$HOME/.config/gemini" ]; then
-        warn "Gemini may need first-time auth. Run 'gemini' interactively first."
+}
+
+require_agy() {
+    if ! command -v "$AGY_BIN" &>/dev/null; then
+        err "Antigravity CLI not installed or not on PATH. Expected: $AGY_BIN"
+        exit 1
     fi
 }
 
@@ -293,36 +305,38 @@ require_aider() {
 # Core runners
 # ═══════════════════════════════════════════════════════
 run_gemini() {
+    # ADAPTER (2026-06-23): the legacy Gemini CLI was sunset on 2026-06-18 (no longer
+    # serves AI Ultra subscription requests). This function keeps its name + signature
+    # — run_gemini "<mode>" "<prompt>" [timeout] — so all 13 existing call-sites and the
+    # NLM fallbacks keep working unchanged, but it now routes through `agy -p` (the
+    # Antigravity CLI on our AI Ultra OAuth), exactly the print-mode path that
+    # nb-curator-daily.sh and wr3_reflexion_synthesis.py already use in prod.
     local mode="$1"
     local prompt="$2"
     local timeout="${3:-120}"
     require_gemini
     check_safety "$prompt"
 
-    # Model cascade: Primary → Fallback → Fast
-    local models=("$GEMINI_MODEL_PRIMARY" "$GEMINI_MODEL_FALLBACK" "$GEMINI_MODEL_FAST")
-    local model_names=("3.1 Pro (1M ctx)" "2.5 Pro (fallback)" "2.5 Flash (fast)")
+    # Mode → behavioral framing prefix (agy -p is a single-shot prompt, no -m/--sandbox).
+    local framing
+    case "$mode" in
+        review|scan)        framing="Act as a code reviewer. " ;;
+        redteam)            framing="Act as an adversarial red-team reviewer; try to falsify the proposed solution. " ;;
+        explore|investigate) framing="Act as a codebase investigator: trace dependencies, map architecture, cite file:line. " ;;
+        search)             framing="Act as a web researcher; provide a summary with sources and citations. " ;;
+        docs)               framing="Generate documentation as markdown; do NOT modify any files. " ;;
+        explain)            framing="Explain clearly and concisely. " ;;
+        vision)             framing="Read and analyze the referenced file. " ;;
+        *)                  framing="" ;;
+    esac
 
-    local start_time exit_code output attempt=0
+    local start_time exit_code output
     start_time=$(date +%s)
 
-    for i in 0 1 2; do
-        local model="${models[$i]}"
-        local name="${model_names[$i]}"
-        attempt=$((attempt + 1))
-
-        log "Gemini $name → $mode [sandbox + plan, model=$model]"
-        output=$(run_with_timeout "$timeout" $GEMINI_BIN -m "$model" --sandbox --approval-mode plan -p "$prompt" -o text 2>&1) && exit_code=0 || exit_code=$?
-
-        # Check if it's a rate limit / capacity error → try next model
-        if [ "$exit_code" -ne 0 ] && echo "$output" | grep -qiE "429|RESOURCE_EXHAUSTED|capacity|ModelNotFound|not found"; then
-            if [ "$i" -lt 2 ]; then
-                warn "Model $model unavailable (429/404), falling back to ${models[$((i+1))]}..."
-                continue
-            fi
-        fi
-        break  # Success or non-retryable error
-    done
+    # agy reads the prompt from STDIN (the prod pattern in nb-curator-daily.sh and
+    # wr3_reflexion_synthesis.py); flags after -p are agy flags, NOT the prompt.
+    log "Antigravity (agy) → $mode [print mode, timeout=${timeout}s]"
+    output=$(printf '%s' "${framing}${prompt}" | run_with_timeout "$timeout" "$AGY_BIN" -p --print-timeout "${timeout}s" 2>&1) && exit_code=0 || exit_code=$?
 
     local duration=$(( $(date +%s) - start_time ))
     save_output "gemini-$mode" "$output" "$duration"
@@ -330,13 +344,47 @@ run_gemini() {
     if [ "$exit_code" -eq 0 ]; then
         echo "$output"
     elif [ "$exit_code" -eq 124 ]; then
-        err "TIMEOUT: Gemini did not respond in ${timeout}s (tried $attempt models)"
+        err "TIMEOUT: agy did not respond in ${timeout}s (mode=$mode)"
         return 1
     else
-        err "Gemini failed (exit $exit_code) after ${duration}s (tried $attempt models)"
+        err "agy failed (exit $exit_code) after ${duration}s (mode=$mode)"
         echo "$output"
         return 1
     fi
+}
+
+run_agy_swarm() {
+    local model_key="$1"
+    local mode="$2"
+    local prompt="$3"
+    local timeout="${4:-90}"
+    local dry_run_flag="${5:-}"
+    require_agy
+    check_safety "$prompt"
+
+    local start_time exit_code output prompt_hash
+    local args
+    start_time=$(date +%s)
+    args=(
+        python3 "$PROJECT_ROOT/scripts/agy_swarm_commander.py"
+        --agy-bin "$AGY_BIN"
+        --model "$model_key"
+        --mode "$mode"
+        --timeout "$timeout"
+        --prompt "$prompt"
+    )
+    if [ "$dry_run_flag" = "dry-run" ] || [ "$dry_run_flag" = "--dry-run" ]; then
+        args+=(--dry-run)
+    fi
+
+    log "Agy Swarm Commander → $mode [model=$model_key, timeout=${timeout}s]"
+    output=$(run_with_timeout "$((timeout + 15))" "${args[@]}" 2>&1) && exit_code=0 || exit_code=$?
+    local duration=$(( $(date +%s) - start_time ))
+    save_output "agy-$mode" "$output" "$duration"
+    prompt_hash=$(echo "$prompt" | shasum -a 256 | cut -d' ' -f1)
+    audit_log "agy-$mode" "$prompt_hash" "$duration" "$exit_code"
+    echo "$output"
+    return "$exit_code"
 }
 
 run_codex() {
@@ -454,7 +502,7 @@ case "$CMD" in
             log "NLM Oracolo → NB-1 query [timeout=120s]"
             output=$("$NLM_BIN" notebook query "$NB1_ID" "$PROMPT" --json --timeout 120 2>&1) && ec=0 || ec=$?
         else
-            warn "nlm CLI not found at $NLM_BIN. Falling back to gemini-explore..."
+            warn "nlm CLI not found at $NLM_BIN. Falling back to agy explore..."
             output=$(run_gemini "explore" "Consulta il codebase Nuzantara per rispondere: $PROMPT. Cita file e path specifici." 180) && ec=0 || ec=$?
         fi
         duration=$(( $(date +%s) - start ))
@@ -511,7 +559,7 @@ case "$CMD" in
             log "NLM Oracolo → $NB_TAG ($nb_id)"
             output=$("$NLM_BIN" notebook query "$nb_id" "$QUESTION" --json --timeout 120 2>&1) && ec=0 || ec=$?
         else
-            warn "nlm CLI not found. Falling back to gemini-explore..."
+            warn "nlm CLI not found. Falling back to agy explore..."
             output=$(run_gemini "explore" "$QUESTION" 180) && ec=0 || ec=$?
         fi
         duration=$(( $(date +%s) - start ))
@@ -541,7 +589,7 @@ case "$CMD" in
                 info "Import when done: $NLM_BIN research import"
             fi
         else
-            warn "nlm CLI not found. Falling back to gemini-search..."
+            warn "nlm CLI not found. Falling back to agy search..."
             output=$(run_gemini "search" "Deep research: $PROMPT" 120) && ec=0 || ec=$?
         fi
         duration=$(( $(date +%s) - start ))
@@ -732,9 +780,24 @@ print(f'Query: {query}')
         LEVEL="${RAW_CMD#-}"
         [ -z "$LEVEL" ] && LEVEL="l2"  # default to L2
         LEVEL_UPPER=$(echo "$LEVEL" | tr '[:lower:]' '[:upper:]')
+        # Preflight SDD backend (apps/federation/workflows.py) was created by
+        # commit 500fca845 and DELETED by 5c06a2fd5 ("massive repo cleanup —
+        # untrack 739 files"). The thin wrapper survived but its target is gone,
+        # so this command crashed with a cryptic `Errno 2`. Fail honestly instead.
+        PREFLIGHT_BACKEND="apps/federation/workflows.py"
+        if [ ! -f "$PREFLIGHT_BACKEND" ]; then
+            err "Preflight SDD is NOT INSTALLED — backend missing: ${PREFLIGHT_BACKEND}"
+            err "  It was created by commit 500fca845 and DELETED by 5c06a2fd5"
+            err "  (\"massive repo cleanup — untrack 739 files\"); the wrapper survived, the backend did not."
+            err "  No live system depends on this command (verified 2026-06-07: no hook/cron/LaunchAgent/code invokes it)."
+            err "  Until it is rebuilt, run the preflight MANUALLY: the 4-LLM panel in CLAUDE.md §6"
+            err "  (Gemini agy + Codex + DeepSeek + optional NB-1). Restoring the automated gate is a FASE-3 task."
+            audit_log "preflight-${LEVEL}" "$(echo "$TASK" | shasum -a 256 | cut -d' ' -f1)" "0" "127"
+            exit 127
+        fi
         info "Preflight SDD — level ${LEVEL_UPPER} starting for: ${TASK:0:80}"
         start=$(date +%s)
-        PYTHONPATH=. python3 apps/federation/workflows.py run "preflight-${LEVEL}" "$TASK"
+        PYTHONPATH=. python3 "$PREFLIGHT_BACKEND" run "preflight-${LEVEL}" "$TASK"
         ec=$?
         duration=$(( $(date +%s) - start ))
         audit_log "preflight-${LEVEL}" "$(echo "$TASK" | shasum -a 256 | cut -d' ' -f1)" "$duration" "$ec"
@@ -758,6 +821,30 @@ $PROMPT" 180) && ec=0 || ec=$?
         prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
         audit_log "redteam" "$prompt_hash" "$duration" "$ec"
         json_output "redteam" "$duration" "$output" "$ec"
+        ;;
+
+    # ╔══════════════════════════════════════════════════╗
+    # ║  AGY — Antigravity Gemini adjunct reviewers     ║
+    # ╚══════════════════════════════════════════════════╝
+
+    agy-flash)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh agy-flash \"prompt\" [dry-run]"; exit 1; }
+        run_agy_swarm "flash-high" "fast-review" "$PROMPT" 75 "$EXTRA"
+        ;;
+
+    agy-pro)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh agy-pro \"prompt\" [dry-run]"; exit 1; }
+        run_agy_swarm "pro-high" "deep-review" "$PROMPT" 180 "$EXTRA"
+        ;;
+
+    agy-redteam)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh agy-redteam \"solution\" [dry-run]"; exit 1; }
+        run_agy_swarm "pro-high" "redteam" "$PROMPT" 180 "$EXTRA"
+        ;;
+
+    swarm-commander)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh swarm-commander \"task\" [dry-run]"; exit 1; }
+        run_agy_swarm "flash-high" "swarm" "$PROMPT" 120 "$EXTRA"
         ;;
 
     # ╔══════════════════════════════════════════════════╗
@@ -870,8 +957,8 @@ Working directory: apps/backend-rag/" 300
         check_safety "$PROMPT"
         log "COMBO: Gemini analyzes → Codex fixes (sandbox)"
 
-        info "Step 1/2: Gemini analyzing..."
-        ANALYSIS=$($GEMINI_BIN -m "$GEMINI_MODEL" --sandbox --approval-mode plan -p "Analyze and list ALL issues with specific file:line references for: $PROMPT. Output as a numbered list of issues with exact file paths and line numbers." -o text 2>&1) || true
+        info "Step 1/2: agy (Antigravity) analyzing..."
+        ANALYSIS=$(run_gemini "explore" "Analyze and list ALL issues with specific file:line references for: $PROMPT. Output as a numbered list of issues with exact file paths and line numbers." 300 2>&1) || true
 
         echo ""
         info "Gemini found:"
@@ -1069,6 +1156,7 @@ for m, count in machines.most_common():
         echo ""
         echo -n "  Claude Code (Re):           " && (command claude --version 2>/dev/null || echo "NOT INSTALLED")
         echo -n "  Gemini CLI (Consigliere):    " && (command gemini --version 2>/dev/null || echo "NOT INSTALLED")
+        echo -n "  Agy CLI (Swarm adjunct):     " && ("$AGY_BIN" --help >/dev/null 2>&1 && echo "INSTALLED" || echo "NOT INSTALLED")
         echo -n "  Codex CLI (Soldato):         " && (command codex --version 2>/dev/null || echo "NOT INSTALLED")
         echo -n "  Aider (Mercenario):          " && (aider --version 2>/dev/null || echo "NOT INSTALLED")
         echo -n "  Ollama (Locale):             " && (ollama --version 2>/dev/null || echo "NOT INSTALLED")
@@ -1136,6 +1224,13 @@ AGENTS — Autonomous runtimes (dispatchable, accept open-ended tasks):
 │ DEEPSEEK R1 (671b, chain-of-thought, ¢):                          │
 │   reasoning          "problem"      Deep reasoning + Nuz context   │
 │                                                                     │
+│ AGY / SWARM COMMANDER (Antigravity Gemini, bounded):               │
+│   agy-flash          "prompt"       Gemini 3.5 Flash High review   │
+│   agy-pro            "prompt"       Gemini 3.1 Pro High deep pass   │
+│   agy-redteam        "solution"     Pro High adversarial review     │
+│   swarm-commander    "task"         Decompose lanes/tools/limits    │
+│   Add third arg dry-run to validate without executing agy.          │
+│                                                                     │
 │ AIDER (OpenRouter/DeepSeek, $):                                    │
 │   aider-fix          "prompt"       Fix with DeepSeek V3 (fast)    │
 │   aider-refactor     "prompt"       Refactor with Claude Sonnet    │
@@ -1194,10 +1289,12 @@ DELEGATION CHECKPOINT (ask before every task):
   7. Complex architecture problem? → reasoning (DeepSeek R1 671b)
   8. Risky change to the repo?     → sandbox (Codex isolated)
   9. Critical deploy coming?       → redteam + claude-redteam
+ 10. Need bounded cloud swarm?      → swarm-commander + agy-pro
   All "No"? → Do it yourself. Don't delegate for sport.
 
 MODELS:
   Gemini cascade: 3.1 Pro (1M) → 2.5 Pro → 2.5 Flash (auto-fallback 429)
+  Agy: Gemini 3.5 Flash High (fast) / Gemini 3.1 Pro High (deep) via Swarm Commander
   Codex: GPT-5.4 (sandbox kernel-level)
   DeepSeek: R1 671b ($0.55/M in, $2.19/M out)
   Aider: DeepSeek V3 (fast) / Claude Sonnet (refactor) via OpenRouter
@@ -1206,6 +1303,7 @@ MODELS:
 SECURITY:
   ✓ 3-tier prompt filter: destructive blocked, protected read-only, secrets blocked
   ✓ Gemini: --sandbox --approval-mode plan (read-only absolute)
+  ✓ Agy: --sandbox + --print-timeout + external timeout + prompt-hash audit
   ✓ Codex: --sandbox (read-only or workspace-write)
   ✓ Timeout: 120s Gemini, 180-300s Codex, 180s DeepSeek
   ✓ Protected files: fly.toml, dependencies.py, .env — readable not writable

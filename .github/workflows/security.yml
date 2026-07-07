@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -71,7 +71,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -124,7 +124,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Build Docker image
         run: |
@@ -155,7 +155,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -175,10 +175,18 @@ jobs:
   bandit:
     name: Bandit Python Security
     runs-on: ubuntu-latest
+    # Blocking gate (A1 fix 2026-06-13): this job is in the merge-blocking
+    # required-checks set, but it previously ran `bandit ... || true` and could
+    # never fail — a toothless required check. It now replicates the decision
+    # logic from semgrep.yml's "Bandit SAST (Python)" job: fail ONLY on
+    # HIGH/CRITICAL severity findings (HIGH/MEDIUM confidence); MEDIUM/LOW
+    # stay advisory in the summary. Local baseline 2026-06-13 against the same
+    # target/config: 186 findings, all MEDIUM severity, ZERO HIGH/CRITICAL —
+    # so enabling the gate does not brick main. No allowlist needed.
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -195,10 +203,38 @@ jobs:
             -f json \
             -o bandit-report.json \
             -ll \
-            || true
+            --exit-zero
+        # --exit-zero: findings never fail THIS step (the decision step below
+        # makes the call); a genuine bandit crash (bad args/config) still fails.
+
+      - name: Check for HIGH/CRITICAL findings (blocks merge)
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          from collections import Counter
+          with open("bandit-report.json") as f:
+              data = json.load(f)
+          results = data.get("results", [])
+          def is_blocker(r):
+              return (r.get("issue_severity") in ("HIGH", "CRITICAL")
+                      and r.get("issue_confidence") in ("HIGH", "MEDIUM"))
+          blockers = [r for r in results if is_blocker(r)]
+          advisory = Counter(
+              r.get("issue_severity") for r in results if not is_blocker(r)
+          )
+          adv_str = ", ".join(f"{k}: {v}" for k, v in sorted(advisory.items())) or "none"
+          if blockers:
+              print(f"❌ {len(blockers)} HIGH/CRITICAL Bandit findings (blocking):")
+              for b in blockers:
+                  print(f"  [{b['issue_severity']}/{b['issue_confidence']}] {b['test_id']} — {b['filename']}:{b['line_number']}: {b['issue_text']}")
+              print(f"Advisory (non-blocking) findings — {adv_str}")
+              sys.exit(1)
+          print(f"✅ No HIGH/CRITICAL findings. Advisory (non-blocking) — {adv_str} (total: {len(results)})")
+          EOF
 
       - name: Upload Bandit results
         uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: bandit-report
           path: bandit-report.json
@@ -213,7 +249,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -269,7 +305,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install detect-secrets
         run: pip install detect-secrets

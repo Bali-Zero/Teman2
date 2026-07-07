@@ -1,0 +1,81 @@
+name: catA-channel-count-pin
+
+# Cat-A question #2 drift gate (research/operations/2026-06-11-domande-per-fable5.md).
+#
+# SYMBIOSIS.md (Legge 3) pins the EventBus channel count as a verified number.
+# On 2026-05-12 that number was 13; by 2026-06-11 the code had grown to 17
+# (event_bus.py PG_CHANNEL_MAP) while the law text still read "13 channels" —
+# a silent doc-vs-code drift, exactly the W64 / "esiste-ma-non-armato" class.
+#
+# This lint makes the divergence FAIL-LOUD instead of fail-silent: it parses the
+# pinned number out of SYMBIOSIS.md and asserts it equals len(PG_CHANNEL_MAP)
+# read straight from the source file (regex over the dict literal — no backend
+# import, no venv, pure stdlib, seconds). It does NOT mutate PG_CHANNEL_MAP nor
+# the law; it only reports when the two disagree.
+#
+# NON-required by design (no paths filter, but kept off the required-status set
+# until a maintainer opts in) — observability first, enforcement later.
+#
+# Triggers BOTH pull_request AND push-to-main (W41/W42 lesson: pull_request-only
+# gives false safety under L2 autonomous direct-push).
+
+on:
+  pull_request:
+    paths:
+      - "SYMBIOSIS.md"
+      - "apps/backend-rag/backend/services/events/event_bus.py"
+      - ".github/workflows/catA-channel-count-pin.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "SYMBIOSIS.md"
+      - "apps/backend-rag/backend/services/events/event_bus.py"
+      - ".github/workflows/catA-channel-count-pin.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catA-channel-count-pin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  channel-count-pin:
+    name: channel-count-pin
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assert SYMBIOSIS.md pinned channel count == len(PG_CHANNEL_MAP)
+        shell: python
+        run: |
+          import re, sys, pathlib
+
+          eb = pathlib.Path("apps/backend-rag/backend/services/events/event_bus.py").read_text()
+          m = re.search(r"PG_CHANNEL_MAP:\s*dict\[str,\s*str\]\s*=\s*\{(.*?)\n\}", eb, re.S)
+          if not m:
+              print("ERROR: PG_CHANNEL_MAP literal not found in event_bus.py")
+              sys.exit(2)
+          # Count only top-level "key": "value", lines (comment lines are skipped).
+          code_count = len(re.findall(r'^\s*"[a-z_]+":\s*"', m.group(1), re.M))
+
+          sym = pathlib.Path("SYMBIOSIS.md").read_text()
+          # Pinned number: the "**N channels**" assertion in the Legge 3 empirical-count line.
+          pin = re.search(r"\*\*(\d+)\s+channels\*\*\s+in\s+`PG_CHANNEL_MAP`", sym)
+          if not pin:
+              print("ERROR: pinned '**N channels** in `PG_CHANNEL_MAP`' assertion not found in SYMBIOSIS.md")
+              sys.exit(2)
+          doc_count = int(pin.group(1))
+
+          print(f"event_bus.py PG_CHANNEL_MAP keys : {code_count}")
+          print(f"SYMBIOSIS.md pinned channel count: {doc_count}")
+          if code_count != doc_count:
+              print(
+                  f"::error::Channel-count drift — code has {code_count} channels "
+                  f"but SYMBIOSIS.md (Legge 3) pins {doc_count}. Update the law text "
+                  f"(and itemise any new channel in the Legge 3 table), or revert the "
+                  f"PG_CHANNEL_MAP change. See Cat-A question #2."
+              )
+              sys.exit(1)
+          print("OK: channel count is in sync.")

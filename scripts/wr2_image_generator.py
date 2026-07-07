@@ -144,24 +144,128 @@ VLM_TIMEOUT_SEC = int(os.environ.get("WR2_IMAGE_VLM_TIMEOUT", "60"))
 # Gemini. Keep aligned with the 8 visual constraints encoded in the draft
 # generator SYSTEM_INSTRUCTIONS. Repeating them here acts as defense-in-depth:
 # even if Claude drifts, Gemini still sees the rules.
-BRAND_SUFFIX = (
-    "Editorial photography, shot on 35mm film, subtle film grain, "
-    "chiaroscuro lighting, low-key exposure, desaturated muted palette of "
-    "deep charcoals and warm ochre accents. Minimalist composition with "
+#
+# 2026-06-04 (WR2 autopsy P-2b): the old BRAND_SUFFIX was a single frozen
+# string whose middle clause hard-clamped EVERY image to "deep charcoals and
+# warm ochre" — the single biggest photographic-monotony lever (autopsy
+# finding #3, confirmed). It is now composed from three parts:
+#   BRAND_OPENER  (always)  — the photographic framing
+#   <tonal>       (per-slide, default = the historical look)
+#   BRAND_TECH_REST (always) — composition + no-faces + aspect ratio
+# Composing OPENER + TONAL_PALETTES["default"] + REST reproduces the original
+# BRAND_SUFFIX **verbatim** (asserted in tests + at import below), so a slide
+# that sets no `tonal_palette` is byte-for-byte unchanged. A slide that asks
+# for e.g. "cool-teal" swaps only the middle clause.
+#
+# 2026-06-05 (panel fix): the first split inverted token order (tonal first,
+# then a restarted "Editorial photography" sentence), which was NOT
+# byte-identical and would have re-prompted every existing image. Rebuilt to
+# preserve the exact original sentence flow.
+BRAND_OPENER = "Editorial photography, shot on 35mm film, subtle film grain, "
+BRAND_TECH_REST = (
+    " Minimalist composition with "
     "vast negative space. No human faces visible — silhouettes or objects only. "
     "Photorealistic. CRITICAL ASPECT RATIO: 4:5 portrait, 1080x1350 pixels, "
     "full-bleed, no border, no whitespace on any side."
 )
 
+# Per-slide tonal/lighting palettes. The key is matched (case-insensitive,
+# exact-then-substring) against the slide's `tonal_palette` field. `default`
+# reproduces the historical look exactly. Add registers here — do NOT
+# re-introduce a single hard clamp.
+# INVARIANT: no non-default key may be a substring of another non-default key
+# (the substring fallback in _resolve_tonal returns first-match in dict order).
+TONAL_PALETTES: dict[str, str] = {
+    "default": (
+        "chiaroscuro lighting, low-key exposure, desaturated muted palette of "
+        "deep charcoals and warm ochre accents."
+    ),
+    "warm-ochre": (
+        "chiaroscuro lighting, low-key exposure, desaturated muted palette of "
+        "deep charcoals and warm ochre accents."
+    ),
+    "cool-teal": (
+        "cool overcast daylight, muted palette of slate blues and teal-grey, "
+        "soft even shadows, restrained desaturation."
+    ),
+    "monochrome": (
+        "high-key black-and-white, fine-grain monochrome, soft directional "
+        "light, deep blacks and clean whites, no color cast."
+    ),
+    "high-contrast": (
+        "hard directional light, strong contrast, crisp edge shadows, "
+        "near-monochrome with a single restrained accent color."
+    ),
+    "bleached-daylight": (
+        "bright bleached daylight, airy high-exposure palette of bone whites "
+        "and pale sand, gentle haze, minimal shadow."
+    ),
+    "vivid": (
+        "bright natural daylight, vivid saturated colours, rich warm tones, "
+        "punchy contrast and lively energy, full of life and motion — NOT "
+        "desaturated, NOT muted, NOT low-key."
+    ),
+}
+DEFAULT_TONAL_KEY = "default"
+
+
+def _resolve_tonal(tonal_palette: str | None) -> str:
+    """Map a slide's `tonal_palette` hint to a brand tonal directive.
+
+    Falls back to the historical default when the hint is missing or
+    unrecognized, so behaviour is unchanged for slides that don't set it.
+    """
+    if tonal_palette:
+        key = tonal_palette.strip().lower()
+        if key in TONAL_PALETTES:
+            return TONAL_PALETTES[key]
+        # tolerate substring / partial hints (e.g. "cool teal tones"). Keys are
+        # mutually non-substring (see INVARIANT above), so first-match is stable.
+        norm_key = key.replace("-", " ")
+        for name, directive in TONAL_PALETTES.items():
+            if name != "default" and name.replace("-", " ") in norm_key:
+                return directive
+    return TONAL_PALETTES[DEFAULT_TONAL_KEY]
+
+
+# Compose the universal technical block around a tonal directive. With the
+# default tonal this equals the historical BRAND_SUFFIX string verbatim.
+def _brand_block(tonal_palette: str | None = None) -> str:
+    return f"{BRAND_OPENER}{_resolve_tonal(tonal_palette)}{BRAND_TECH_REST}"
+
+
+# Back-compat: BRAND_TECHNICAL = the non-tonal scaffold (used by tests/asserts).
+BRAND_TECHNICAL = f"{BRAND_OPENER.strip()}{BRAND_TECH_REST}"
+# Back-compat alias: anything importing BRAND_SUFFIX gets the full historical
+# string (default look). New code calls _compose_final_prompt(prompt, tonal=...).
+BRAND_SUFFIX = _brand_block(None)
+
 ANTI_CLICHE_SUFFIX = (
     "Strictly NO palm trees, NO laptops on beaches, NO digital nomad cliches, "
     "NO infinity pools, NO neon lights. NO Balinese temples, religious offerings, "
     "or traditional dancers. NO AI-art fingerprints: no hyperrealistic faces, "
-    "no glowing edges, no fantasy elements."
+    "no glowing edges, no fantasy elements. "
+    # 2026-06-13 (Antonello): the document/deed/contract-on-a-desk-with-a-pen
+    # still life is the single most off-brand cliché WR2 keeps rendering — it
+    # was reaching the image model because the draft-generator's NEGATIVE_PROMPT
+    # only steers the LLM that writes the prompt, never the image backend. Ban
+    # it here too, in the one anti-cliché string every backend actually sees.
+    "Strictly NO documents, deeds, contracts, or forms lying on a desk or "
+    "table, NO fountain pen or signing pen, NO pen resting on paper, NO hand "
+    "signing, NO official seal close-up, NO stack of papers or paperwork "
+    "close-up, NO notary-desk still life."
 )
 
 GEMINI_PROMPT_PREFIX = "Please generate a photograph for an editorial magazine carousel. Describe the image based on this concept:\n\n"
-GEMINI_PROMPT_SUFFIX = f"\n\n{BRAND_SUFFIX}\n\n{ANTI_CLICHE_SUFFIX}"
+
+
+def _brand_suffix_for(tonal_palette: str | None = None) -> str:
+    """Compose the trailing brand block: brand block + anti-cliche."""
+    return f"\n\n{_brand_block(tonal_palette)}\n\n{ANTI_CLICHE_SUFFIX}"
+
+
+# Historical constant kept for any external importer; equals the default look.
+GEMINI_PROMPT_SUFFIX = _brand_suffix_for(None)
 
 # ─────────────────────────────────────────────────────────────────────────
 # Playwright selectors — verified 2026-04-24 on /gemini profile
@@ -303,8 +407,8 @@ def _upload_to_tigris(image_bytes: bytes, key: str, content_type: str = "image/p
 # ─────────────────────────────────────────────────────────────────────────
 
 
-def _compose_final_prompt(image_prompt: str) -> str:
-    return f"{GEMINI_PROMPT_PREFIX}{image_prompt.strip()}{GEMINI_PROMPT_SUFFIX}"
+def _compose_final_prompt(image_prompt: str, tonal_palette: str | None = None) -> str:
+    return f"{GEMINI_PROMPT_PREFIX}{image_prompt.strip()}{_brand_suffix_for(tonal_palette)}"
 
 
 async def _gen_one_image(
@@ -312,11 +416,12 @@ async def _gen_one_image(
     slide_number: int,
     image_prompt: str,
     timeout_s: int = TIMEOUT_PER_SLIDE,
+    tonal_palette: str | None = None,
 ) -> tuple[bytes | None, str | None]:
     """Wraps a bare image_prompt with brand+anti-cliche modifiers and sends.
     Prefer this path for variant 1 (primary). Use _gen_one_image_raw to send
     a literal prompt (variants 2/3)."""
-    final = _compose_final_prompt(image_prompt)
+    final = _compose_final_prompt(image_prompt, tonal_palette)
     return await _gen_one_image_raw(context, slide_number, final, timeout_s=timeout_s)
 
 
@@ -483,7 +588,7 @@ async def _gen_one_image_raw(
 MAX_RETRIES_PER_SLIDE = int(os.environ.get("WR2_IMAGE_MAX_RETRIES", "3"))
 
 
-def _build_prompt_variants(image_prompt: str) -> list[str]:
+def _build_prompt_variants(image_prompt: str, tonal_palette: str | None = None) -> list[str]:
     """Ordered list of prompts to try when the primary prompt fails.
 
     Gemini sometimes silently refuses a prompt (no image, no error). Common
@@ -493,11 +598,12 @@ def _build_prompt_variants(image_prompt: str) -> list[str]:
     generating *some* editorial-style image.
     """
     core = image_prompt.strip()
-    full = _compose_final_prompt(core)  # noqa: F821 — defined below in module
+    brand = _brand_block(tonal_palette)
+    full = _compose_final_prompt(core, tonal_palette)
     # Variant 2: drop ANTI_CLICHE_SUFFIX (the huge negative list).
-    v2 = f"{GEMINI_PROMPT_PREFIX}{core}\n\n{BRAND_SUFFIX}"
+    v2 = f"{GEMINI_PROMPT_PREFIX}{core}\n\n{brand}"
     # Variant 3: minimal — core concept + brand only, no PROMPT_PREFIX decor.
-    v3 = f"{core}. {BRAND_SUFFIX}"
+    v3 = f"{core}. {brand}"
     return [full, v2, v3]
 
 
@@ -677,6 +783,7 @@ async def _acquire_bytes_via_codex(
     slide_number: int,
     image_prompt: str,
     draft_id: str,
+    tonal_palette: str | None = None,
 ) -> tuple[bytes | None, str | None]:
     """Generate one hero image via Codex CLI `$imagegen` (gpt-image-2).
 
@@ -686,7 +793,7 @@ async def _acquire_bytes_via_codex(
     Mirrors wr2_draft_generator._generate_cover_via_codex but takes the
     final composed prompt (BRAND + ANTI_CLICHE) as input.
     """
-    final_prompt = _compose_final_prompt(image_prompt)
+    final_prompt = _compose_final_prompt(image_prompt, tonal_palette)
     # Force 4:5 portrait — gpt-image-2 honours aspect hints in prompt body
     final_prompt += "\n\nOutput 1080x1350 (4:5 portrait), full bleed, no border."
 
@@ -757,6 +864,7 @@ async def _acquire_bytes_via_flowkit(
     slide_number: int,
     image_prompt: str,
     draft_id: str,
+    tonal_palette: str | None = None,
 ) -> tuple[bytes | None, str | None]:
     """Generate one hero image via FlowKit (Nano Banana Pro / GEM_PIX_2).
 
@@ -782,7 +890,7 @@ async def _acquire_bytes_via_flowkit(
         FlowKitProjectError,
     )
 
-    final_prompt = _compose_final_prompt(image_prompt)
+    final_prompt = _compose_final_prompt(image_prompt, tonal_palette)
     project_name = f"wr2-{draft_id[:8]}"
     tmp_path = Path("/tmp") / f"wr2-flowkit-{draft_id}-slide-{slide_number:02d}.png"
     try:
@@ -835,6 +943,7 @@ async def _gen_image_with_semaphore(
     backend: str = "auto",
     flowkit_available: bool = False,
     codex_available: bool = False,
+    tonal_palette: str | None = None,
 ) -> tuple[int, str | None, str | None]:
     """Generate + upload one hero image. Returns (slide_number, url, error).
 
@@ -867,7 +976,7 @@ async def _gen_image_with_semaphore(
             )
             t0 = time.time()
             cx_bytes, cx_err = await _acquire_bytes_via_codex(
-                slide_number, image_prompt, draft_id,
+                slide_number, image_prompt, draft_id, tonal_palette,
             )
             dt = time.time() - t0
             if cx_bytes:
@@ -912,7 +1021,7 @@ async def _gen_image_with_semaphore(
             )
             t0 = time.time()
             fk_bytes, fk_err = await _acquire_bytes_via_flowkit(
-                slide_number, image_prompt, draft_id,
+                slide_number, image_prompt, draft_id, tonal_palette,
             )
             dt = time.time() - t0
             if fk_bytes:
@@ -968,7 +1077,7 @@ async def _gen_image_with_semaphore(
         last_score: float | None = None
         last_why: str | None = None
         last_prompt_used: str = image_prompt
-        prompt_variants = _build_prompt_variants(image_prompt)
+        prompt_variants = _build_prompt_variants(image_prompt, tonal_palette)
         overall_attempt = 0
         for variant_idx, prompt_to_use in enumerate(prompt_variants):
             variant_label = "primary" if variant_idx == 0 else f"variant{variant_idx + 1}"
@@ -990,7 +1099,7 @@ async def _gen_image_with_semaphore(
                     # what we pass via _compose_final_prompt, so undo here by
                     # stripping the prefix/suffix that _compose adds.
                     if variant_idx == 0:
-                        img_bytes, err = await _gen_one_image(context, slide_number, image_prompt)
+                        img_bytes, err = await _gen_one_image(context, slide_number, image_prompt, tonal_palette=tonal_palette)
                     else:
                         # Send the literal variant via a bypass path
                         img_bytes, err = await _gen_one_image_raw(context, slide_number, prompt_to_use)
@@ -1214,6 +1323,7 @@ async def _process_one(
                 str(draft_id),
                 backend="codex",
                 codex_available=True,
+                tonal_palette=s.get("tonal_palette"),
             )
             results.append(r)
             if idx < len(hero_slides) - 1:
@@ -1230,6 +1340,7 @@ async def _process_one(
                 str(draft_id),
                 backend="flowkit",
                 flowkit_available=True,
+                tonal_palette=s.get("tonal_palette"),
             )
             results.append(r)
             if idx < len(hero_slides) - 1:
@@ -1261,6 +1372,7 @@ async def _process_one(
                         backend=IMAGE_BACKEND,
                         flowkit_available=flowkit_available,
                         codex_available=codex_available,
+                        tonal_palette=s.get("tonal_palette"),
                     )
                     results.append(r)
                 finally:

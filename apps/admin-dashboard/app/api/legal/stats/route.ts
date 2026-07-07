@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { QdrantClient } from "@qdrant/js-client-rest";
 import { logger } from "@/lib/logger";
+import { createQdrantClient } from "@/lib/qdrant";
 
 export const dynamic = "force-dynamic";
 
 const COLLECTION = "legal_unified_hybrid";
 
-const client = new QdrantClient({
-  url: process.env.QDRANT_URL,
-  apiKey: process.env.QDRANT_API_KEY,
-});
+const client = createQdrantClient();
 
 export async function GET() {
   try {

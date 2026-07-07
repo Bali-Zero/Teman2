@@ -9,6 +9,8 @@ Matching rules:
 - `match == "exact"`: request path must equal prefix
 - `match == "prefix"`: `request.path.startswith(prefix)` — use for path
   families like `/api/bridge/` or `/api/portal/invite/validate/`
+- `match == "template"`: FastAPI-style path params match one path segment,
+  e.g. `/api/items/{item_id}/upload` matches `/api/items/123/upload` only.
 
 Adding/removing entries:
 1. Edit this file only — HybridAuthMiddleware reads the registry directly.
@@ -49,6 +51,15 @@ class PublicEndpoint:
     def matches(self, path: str) -> bool:
         if self.match == "exact":
             return path == self.prefix
+        if self.match == "template":
+            prefix_parts = self.prefix.strip("/").split("/")
+            path_parts = path.strip("/").split("/")
+            if len(prefix_parts) != len(path_parts):
+                return False
+            return all(
+                bool(actual) if expected.startswith("{") and expected.endswith("}") else actual == expected
+                for expected, actual in zip(prefix_parts, path_parts, strict=True)
+            )
         return path.startswith(self.prefix)
 
 
@@ -102,6 +113,12 @@ _INFRA = (
         "Channel health (web) — Cell heartbeat bridge poll target",
         match="exact",
     ),
+    PublicEndpoint(
+        "/api/metrics/frontend",
+        Category.INFRA,
+        "Best-effort frontend browser metrics ingestion - no PII, no auth header",
+        match="exact",
+    ),
     # M1.2 WA Dashboard (2026-05-23): SSE stream health probe. The /stream
     # endpoint itself remains auth-protected (cookie JWT); only /stream/health
     # is public for smoke-test + dashboard reachability ping.
@@ -136,6 +153,25 @@ _INFRA = (
         "Intel Lake batched observation ingest — X-Producer-Token auth in-router",
         match="exact",
     ),
+    # wa-mirror CRM write-back (2026-06-06): service-side lead promotion +
+    # strategic_recap from the Pro-local wa-corpus to the Fly CRM. Public to bypass
+    # HybridAuthMiddleware — but enforces its OWN X-CRM-Write-Key header auth +
+    # WA_MIRROR_CRM_WRITE_ENABLED flag in-router (verify_crm_write_key). Uses a
+    # DISTINCT scoped key from wa_mirror_internal_key (least-privilege — this key
+    # authorizes ONLY phone-keyed lead upsert). See
+    # backend/app/routers/crm_clients.py::upsert_client_by_phone.
+    PublicEndpoint(
+        "/api/crm/clients/upsert-by-phone",
+        Category.INFRA,
+        "wa-mirror CRM lead upsert — X-CRM-Write-Key + WA_MIRROR_CRM_WRITE_ENABLED auth in-router",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/crm/internal/clients/{client_id}/documents/upload",
+        Category.INFRA,
+        "wa-mirror intake document upload — X-CRM-Write-Key + WA_MIRROR_CRM_WRITE_ENABLED auth in-router",
+        match="template",
+    ),
 )
 
 _AUTH = (
@@ -153,6 +189,20 @@ _AUTH = (
         "/api/auth/csrf-token",
         Category.AUTH,
         "CSRF token generation — must be public for CSRF protection flow",
+    ),
+    PublicEndpoint(
+        "/api/auth/request-magic-link",
+        Category.AUTH,
+        "Passwordless magic-link request (FASE 6) — must be public; an "
+        "unauthenticated client asks for a sign-in link. Enumeration-safe.",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/auth/verify-magic/",
+        Category.AUTH,
+        "Passwordless magic-link verify (FASE 6) — must be public; consumes the "
+        "single-use token and establishes the session. Prefix match: the token "
+        "is a path param.",
     ),
     # 2026-05-28: removed "/api/workflow/" prefix entry. All workflow_queue routes
     # (/enqueue, /status/{job_id}, /chains) require Depends(get_current_user), so the
@@ -328,6 +378,14 @@ _PREVIEW = (
 )
 
 _FUNNEL = (
+    PublicEndpoint(
+        "/api/lead/capture",
+        Category.FUNNEL,
+        "Anonymous WhatsApp handoff CTA (articles, KBLI Navigator, 4-apps). "
+        "Writes lead_intents (source/context/utm/fingerprint only — no PII); "
+        "payload capped at 8KB by the router. POST-only, exact path.",
+        match="exact",
+    ),
     PublicEndpoint(
         "/api/funnel/session/touch",
         Category.FUNNEL,

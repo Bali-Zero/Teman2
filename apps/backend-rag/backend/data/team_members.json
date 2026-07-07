@@ -59,7 +59,7 @@
     "traits": ["dreamer", "strategic"],
     "notes": "Board member. Ukrainian. A woman who loves to dream.",
     "location": "Ukraine",
-    "avatar": "/images/team/ruslana.jpg",
+    "avatar": "/static/team/ruslana.jpg",
     "emotional_preferences": {
       "tone": "inspiring_visionary",
       "formality": "medium",
