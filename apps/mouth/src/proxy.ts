@@ -60,6 +60,13 @@ const ZANTARA_DOMAIN = "zantara.balizero.com";
 const VISA_DOMAIN = "visa.balizero.com";
 const TAX_DOMAIN = "tax.balizero.com";
 const ASSESSMENT_DOMAIN = "subhi.balizero.com";
+// SSO subdomains: standalone apps on *.balizero.com that share auth via cookie.
+// mouth does not serve these hostnames directly (each is its own Vercel deploy
+// that redirects unauthenticated visitors to kita.balizero.com/login?redirect=...),
+// but they must stay classified as isAppDomain (not isPublicDomain) so a request
+// that somehow reaches this middleware for one of them doesn't get treated as
+// public marketing content.
+const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
 
 // Scraper detection — classify requests as human, welcome bot, or suspicious
 const WELCOME_BOTS =
@@ -189,7 +196,8 @@ export function proxy(request: NextRequest) {
   }
 
   // Determine if we're on the public domain
-  const subdomain = hostname.split(".")[0]; // e.g. "kita", "balizero", "prime"
+  const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
+  const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
   const isVisaDomain =
     hostname.includes("visa.balizero") || hostname === VISA_DOMAIN;
   const isTaxDomain =
@@ -200,10 +208,12 @@ export function proxy(request: NextRequest) {
     !hostname.includes("my") &&
     !hostname.includes("visa") &&
     !hostname.includes("tax") &&
+    !isSSOSubdomain &&
     subdomain !== "prime";
   const isAppDomain =
     hostname.includes(APP_DOMAIN) ||
     (hostname.includes("kita") && !hostname.includes("my")) ||
+    isSSOSubdomain ||
     subdomain === "prime";
   const isPortalDomain =
     hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");

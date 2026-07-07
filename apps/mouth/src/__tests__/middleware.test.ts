@@ -449,6 +449,42 @@ describe("Middleware - Multi-domain Routing", () => {
   });
 
   // =======================================================================
+  // SSO subdomain classification: mail/calendar/drive/knowledge.balizero.com
+  // are standalone apps (their own Vercel deploys) that mouth never actually
+  // serves — but if a request for one of them ever does reach this
+  // middleware, it must be classified as app-domain (noindex, no public-nav
+  // treatment), never as public marketing content.
+  // =======================================================================
+  describe("SSO subdomain classification (isAppDomain, not isPublicDomain)", () => {
+    const ssoHosts = [
+      "mail.balizero.com",
+      "calendar.balizero.com",
+      "drive.balizero.com",
+      "knowledge.balizero.com",
+    ];
+
+    for (const host of ssoHosts) {
+      it(`sets X-Robots-Tag noindex on ${host} (app-domain treatment, not public)`, () => {
+        // Use a non-root path: "/" hits the root->login redirect, which
+        // returns before X-Robots-Tag is set on that particular response.
+        const request = createRequest(`https://${host}/inbox`);
+        const response = proxy(request);
+
+        expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+      });
+    }
+
+    it("[innocence] a lookalike public path (balizero.com/mail) stays public, uncontaminated", () => {
+      const request = createRequest("https://balizero.com/mail");
+      const response = proxy(request);
+
+      expect(response.headers.get("X-Robots-Tag")).not.toBe(
+        "noindex, nofollow",
+      );
+    });
+  });
+
+  // =======================================================================
   // Ghost internal routes (/email, /calendar, /knowledge, /documents) →
   // real standalone-app subdomains. These paths have no route on kita and
   // used to fall through to the (blog)/[category] catch-all.
