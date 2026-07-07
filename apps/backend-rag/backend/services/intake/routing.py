@@ -290,6 +290,12 @@ def _digits_only(value: Any) -> str | None:
     return d or None
 
 
+def _looks_like_company_name(value: str) -> bool:
+    """True for common Indonesian company/entity prefixes."""
+    normalized = re.sub(r"\s+", " ", value.strip().upper())
+    return normalized.startswith(("PT ", "CV ", "UD ", "YAYASAN ", "PT."))
+
+
 def normalize_sender_phone(value: Any) -> str | None:
     """Normalise a sender phone for ``clients.phone_normalized`` matching.
 
@@ -436,6 +442,29 @@ async def _match_company_strong(
                 candidates.append({
                     "table": "companies", "id": r["id"], "name": r["company_name"],
                     "method": "akta_pendirian_no", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
+    sk_number = (
+        _field_value(extracted, "sk_number")
+        or _field_value(extracted, "sk_menhumkam_no")
+        or _field_value(extracted, "sk_menkumham_no")
+    )
+    if sk_number:
+        norm = _normalize_id(sk_number)
+        if norm:
+            rows = await conn.fetch(
+                """
+                SELECT id, company_name
+                FROM companies
+                WHERE UPPER(REGEXP_REPLACE(sk_menhumkam_no, '[\\s.\\-/]', '', 'g')) = $1
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "companies", "id": r["id"], "name": r["company_name"],
+                    "method": "sk_menhumkam_no", "score": CONF_STRONG_EXACT,
                     "matched_value": norm,
                 })
 
@@ -748,7 +777,7 @@ async def resolve_entity(
 
         # COMPANY-side identifiers (nib/npwp company/akta) — try first when the
         # doc-type is company-ish OR when a company strong-id is present.
-        if dt in _COMPANY_DOC_TYPES or dt == "npwp":
+        if dt in _COMPANY_DOC_TYPES or dt in {"npwp", "skt"}:
             strong += await _match_company_strong(conn, extracted_fields)
             if strong:
                 subject_kind = "company"
@@ -790,10 +819,35 @@ async def resolve_entity(
         subject_name: str | None = None
         if not strong:
             company_name = _field_value(extracted_fields, "company_name")
+            account_holder = _field_value(extracted_fields, "account_holder")
+            if (
+                not company_name
+                and dt == "bank_statement"
+                and account_holder
+                and _looks_like_company_name(str(account_holder))
+            ):
+                company_name = account_holder
             person_name = (
                 _field_value(extracted_fields, "name")
                 or _field_value(extracted_fields, "full_name")
             )
+            if dt == "skt" and person_name and _looks_like_company_name(str(person_name)):
+                company_name = company_name or person_name
+                person_name = None
+            if not person_name and dt == "payment_receipt":
+                payer_name = _field_value(extracted_fields, "payer_name")
+                if payer_name:
+                    if _looks_like_company_name(str(payer_name)):
+                        company_name = company_name or payer_name
+                    else:
+                        person_name = payer_name
+            if (
+                not person_name
+                and dt == "bank_statement"
+                and account_holder
+                and not _looks_like_company_name(str(account_holder))
+            ):
+                person_name = account_holder
             subject_name = (
                 str(company_name) if company_name
                 else (str(person_name) if person_name else None)
