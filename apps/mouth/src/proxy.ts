@@ -60,8 +60,6 @@ const ZANTARA_DOMAIN = "zantara.balizero.com";
 const VISA_DOMAIN = "visa.balizero.com";
 const TAX_DOMAIN = "tax.balizero.com";
 const ASSESSMENT_DOMAIN = "subhi.balizero.com";
-// SSO subdomains: all *.balizero.com apps that share auth via cookie
-const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
 
 // Scraper detection — classify requests as human, welcome bot, or suspicious
 const WELCOME_BOTS =
@@ -191,8 +189,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Determine if we're on the public domain
-  const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
-  const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
+  const subdomain = hostname.split(".")[0]; // e.g. "kita", "balizero", "prime"
   const isVisaDomain =
     hostname.includes("visa.balizero") || hostname === VISA_DOMAIN;
   const isTaxDomain =
@@ -203,12 +200,10 @@ export function proxy(request: NextRequest) {
     !hostname.includes("my") &&
     !hostname.includes("visa") &&
     !hostname.includes("tax") &&
-    !isSSOSubdomain &&
     subdomain !== "prime";
   const isAppDomain =
     hostname.includes(APP_DOMAIN) ||
     (hostname.includes("kita") && !hostname.includes("my")) ||
-    isSSOSubdomain ||
     subdomain === "prime";
   const isPortalDomain =
     hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");
@@ -388,27 +383,6 @@ export function proxy(request: NextRequest) {
 
   // === APP DOMAIN (kita.balizero.com) ===
   if (isAppDomain) {
-    // === SSO SUBDOMAINS (mail/calendar/drive/knowledge.balizero.com) ===
-    // These subdomains don't have their own routes — redirect to kita.balizero.com
-    // with the appropriate deep-link path. Auth is handled by kita's workspace layout
-    // which reads the httpOnly cookie shared across .balizero.com.
-    if (isSSOSubdomain) {
-      // Map subdomain → internal route on kita
-      const subdomainRouteMap: Record<string, string> = {
-        mail: "/email",
-        calendar: "/calendar",
-        drive: "/documents",
-        knowledge: "/knowledge",
-      };
-      const targetRoute = subdomainRouteMap[subdomain] || "/inbox";
-      // Preserve any path after the root (e.g. calendar.balizero.com/event/123 → /calendar/event/123)
-      const deepPath =
-        pathname === "/" ? targetRoute : `${targetRoute}${pathname}`;
-      const kitaUrl = new URL(deepPath, `https://${APP_DOMAIN}`);
-      kitaUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(kitaUrl, 302);
-    }
-
     // prime.balizero.com → rewrite to /prime (keeps subdomain, no redirect)
     if (subdomain === "prime") {
       const rewritePath = pathname === "/" ? "/prime" : `/prime${pathname}`;
