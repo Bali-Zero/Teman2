@@ -165,6 +165,7 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
           `wa-mirror LOGGED OUT: ${account.name} — device unlinked on WhatsApp side. ` +
             `Needs QR re-link (start-one.sh <name> --qr). Retries stopped at attempt ${attempt}.`,
           logger,
+          { tier: "p0", dedupKey: `wa-bridge:loggedout:${account.name}` },
         );
         return;
       }
@@ -180,6 +181,7 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
       await sendTelegramAlert(
         `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}`,
         logger,
+        { tier: "digest", dedupKey: `wa-bridge:reconnect:${account.name}` },
       );
       await sleep(delayMs);
     }

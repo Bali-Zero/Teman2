@@ -504,7 +504,10 @@ async function handleConnectionUpdate(
       );
     }
     logger.info({ sessionId: ctx.sessionId }, "wa-mirror session connected");
-    await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger);
+    await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger, {
+      tier: "digest",
+      dedupKey: `wa-bridge:connected:${ctx.account.name}`,
+    });
 
     // CICATRIX 2026-05-25: refresh pre-keys on every connect.
     // Pre-fix: bridge initial pairing seeded ~30 prekeys, all consumed over time.
@@ -579,6 +582,9 @@ async function handleConnectionUpdate(
     await sendTelegramAlert(
       `wa-mirror disconnected: ${ctx.account.name}; reason=${reason}; reconnect_attempt=${deps.attempt}`,
       logger,
+      // W67: reconnect storms flood this path — dedup collapses a flap wave
+      // into one digest entry per account per 6h window.
+      { tier: "digest", dedupKey: `wa-bridge:disconnected:${ctx.account.name}` },
     );
 
     if (terminal) {
@@ -737,6 +743,7 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           await sendTelegramAlert(
             `wa-mirror DB write errors >5: ${ctx.account.name}; consecutive=${consecutiveDbErrors}`,
             logger,
+            { tier: "p0", dedupKey: `wa-bridge:dberr:${ctx.account.name}` },
           );
         }
       }
