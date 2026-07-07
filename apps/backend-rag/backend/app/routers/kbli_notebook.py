@@ -12,11 +12,11 @@ import json
 import logging
 import time
 from inspect import isawaitable
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
 from backend.app.dependencies import (
@@ -24,6 +24,14 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
+
+logger = logging.getLogger(__name__)
+
+KBLI_QUERY_MAX_LENGTH = 1024
+KBLI_SESSION_ID_MAX_LENGTH = 128
+KBLI_PUBLIC_LIMIT_MAX = 25
+KBLISearchQuery = Annotated[str, Query(min_length=1, max_length=KBLI_QUERY_MAX_LENGTH)]
+KBLIPublicLimit = Annotated[int, Query(ge=1, le=KBLI_PUBLIC_LIMIT_MAX)]
 
 # Persistent KBLI HTTP client (Golden Rule 10: never create AsyncClient per-request)
 _kbli_http_client: httpx.AsyncClient | None = None
@@ -40,7 +48,13 @@ def _get_kbli_client() -> httpx.AsyncClient:
     return _kbli_http_client
 
 
-logger = logging.getLogger(__name__)
+async def close_kbli_http_client() -> None:
+    """Close persistent KBLI Qdrant HTTP client during app shutdown."""
+    global _kbli_http_client
+    if _kbli_http_client is None:
+        return
+    await _kbli_http_client.aclose()
+    _kbli_http_client = None
 
 router = APIRouter(prefix="/kbli-notebook", tags=["KBLI Notebook"])
 
@@ -81,8 +95,8 @@ class KBLISearchResult(BaseModel):
 
 
 class KBLINotebookChatRequest(BaseModel):
-    query: str
-    session_id: str | None = None
+    query: str = Field(..., min_length=1, max_length=KBLI_QUERY_MAX_LENGTH)
+    session_id: str | None = Field(default=None, max_length=KBLI_SESSION_ID_MAX_LENGTH)
 
 
 class KBLINotebookChatResponse(BaseModel):
@@ -237,8 +251,8 @@ def get_kbli_ttl(code: str) -> int:
 
 @router.get("/search", response_model=list[KBLISearchResult])
 async def search_kbli(
-    query: str,
-    limit: int = 10,
+    query: KBLISearchQuery,
+    limit: KBLIPublicLimit = 10,
     search_service=Depends(get_search_service),
 ) -> Any:
     """Search for KBLI codes using semantic search (Qdrant)."""
