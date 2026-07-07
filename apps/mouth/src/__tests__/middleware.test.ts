@@ -6,11 +6,12 @@ import { proxy } from "../proxy";
  * Helper to create NextRequest with proper host header
  * NextRequest in test environment doesn't automatically set host header from URL
  */
-function createRequest(url: string): NextRequest {
+function createRequest(url: string, extraHeaders?: Record<string, string>): NextRequest {
   const urlObj = new URL(url);
   return new NextRequest(url, {
     headers: {
       host: urlObj.host,
+      ...extraHeaders,
     },
   });
 }
@@ -444,6 +445,36 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).not.toBe(307);
       expect(response.headers.get("x-pathname")).toBe("/chat/conversation/123");
+    });
+  });
+
+  // =======================================================================
+  // RSC/prefetch detection (CORS console-error fix): the `_rsc` query param
+  // and `RSC`/`Next-Router-Prefetch` headers are stripped by Next.js before
+  // middleware runs in production, so `Accept: text/x-component` is the only
+  // signal that survives — this pair proves the fix is neither too broad nor
+  // too narrow.
+  // =======================================================================
+  describe("RSC/prefetch detection via Accept header", () => {
+    it("[guilt] returns 204 (not 301) for a real RSC fetch on a cross-origin redirect", () => {
+      const request = createRequest("https://kita.balizero.com/contact", {
+        accept: "text/x-component",
+      });
+      const response = proxy(request);
+
+      expect(response.status).toBe(204);
+    });
+
+    it("[innocence] still returns 301 for a real browser navigation (Accept: text/html)", () => {
+      const request = createRequest("https://kita.balizero.com/contact", {
+        accept: "text/html,application/xhtml+xml",
+      });
+      const response = proxy(request);
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("location")).toBe(
+        "https://balizero.com/contact",
+      );
     });
   });
 

@@ -67,13 +67,20 @@ const SCRAPER_SIGNATURES =
  * Detect RSC/prefetch requests that should NOT be cross-origin redirected.
  * Next.js Link prefetches trigger RSC fetches; redirecting these cross-origin
  * causes CORS errors that flood the console and slow down the page.
+ *
+ * The `_rsc` query param and `RSC`/`Next-Router-Prefetch` headers are stripped
+ * by Next.js before requests reach middleware in production builds, so none of
+ * them ever match live. The one signal that survives is the `Accept` header:
+ * Next.js's RSC fetch client always sends `Accept: text/x-component`, while a
+ * real browser navigation sends `Accept: text/html`. Match on that.
  */
 function isRSCOrPrefetch(request: NextRequest): boolean {
   return (
     request.nextUrl.searchParams.has("_rsc") ||
     request.headers.get("RSC") === "1" ||
     request.headers.get("Next-Router-Prefetch") === "1" ||
-    request.headers.get("Purpose") === "prefetch"
+    request.headers.get("Purpose") === "prefetch" ||
+    (request.headers.get("accept") || "").includes("text/x-component")
   );
 }
 
