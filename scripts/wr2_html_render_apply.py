@@ -98,7 +98,34 @@ TELEGRAM_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 
 # ── ops alert (NOT the carousel link — operational signal only, C6/L3) ──────────
-async def _ops_alert(text: str) -> None:
+def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+    """Route a notification through the tg_notify gateway (tier router + digest +
+    anti-noise, PR #2067). Spool-based and fast; returns True when the gateway
+    accepted the message. NEVER raises — visibility must not break the render."""
+    try:
+        import subprocess
+
+        script = _REPO / "scripts" / "tg_notify.py"
+        if not script.is_file():
+            return False
+        cmd = [
+            sys.executable, str(script),
+            "--tier", tier, "--source", "wr2-html-apply",
+            "--dedup-key", dedup_key, text,
+        ]
+        res = subprocess.run(cmd, capture_output=True, timeout=30)
+        return res.returncode == 0
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tg_notify failed (%s): %s", dedup_key, exc)
+        return False
+
+
+async def _ops_alert(text: str, *, tier: str = "p0", dedup_key: str = "wr2-html-ops") -> None:
+    """Operational alert. Primary path = tg_notify gateway (R8 cure: raw sendMessage
+    to the owner chat is one of 206 unread senders — the gateway tiers/dedups/digests).
+    Legacy direct Telegram kept ONLY as fallback when the gateway is absent."""
+    if _tg_notify(tier, dedup_key, text):
+        return
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.warning("OPS-ALERT (no telegram token): %s", text)
@@ -113,6 +140,199 @@ async def _ops_alert(text: str) -> None:
             )
     except Exception as exc:  # never let alerting crash the worker
         logger.warning("ops alert failed: %s", text, exc_info=exc)
+
+
+# ── visibility chain (R1-R3 cure, 2026-07-07) ───────────────────────────────────
+# "rendered" must mean "on Zero's screen": durable local PNGs + review-queue entry
+# + tg_notify P0. Every rendered draft used to live ONLY in a tempdir + Drive, with
+# a WhatsApp notify that failed 24h_window_closed since 06-17 — production was
+# invisible to the human (spec docs/specs/wr2-definitiva-v1.md §0).
+
+def _slugify(topic: str, max_len: int = 60) -> str:
+    """Filesystem/queue-safe slug from a topic string."""
+    import re as _re
+
+    slug = _re.sub(r"[^a-z0-9]+", "-", topic.lower()).strip("-")
+    return slug[:max_len].rstrip("-") or "carousel"
+
+
+def _default_output_root() -> Path:
+    """The output tree the queue-server, warroom-sync and WR2 Control app read.
+    Lives in the MAIN checkout on Pro (runtime-state convention), NOT the deploy
+    clone this worker runs from — override with WR2_OUTPUT_ROOT."""
+    return Path(
+        os.environ.get(
+            "WR2_OUTPUT_ROOT",
+            str(Path.home() / "Desktop" / "nuzantara" / "apps" / "war-room" / "output"),
+        )
+    )
+
+
+def _persist_local_artifacts(
+    *,
+    draft_id: str,
+    topic: str,
+    png_paths: list[Path],
+    drive_url: str,
+    weak_count: int,
+    fact_check_status: str | None,
+    out_root: Path | None = None,
+    rendered_at: str | None = None,
+) -> Path:
+    """Copy the rendered PNGs to a durable carousel dir + write meta.json.
+    Returns the carousel dir. Raises on IO failure (caller decides severity)."""
+    import json as _json
+    import shutil
+    from datetime import datetime, timezone
+
+    root = out_root if out_root is not None else _default_output_root()
+    ts = rendered_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    day = ts[:10]
+    slug = _slugify(topic)
+    car_dir = root / "carousel" / f"{day}-{slug}-{str(draft_id)[:8]}"
+    slides_dir = car_dir / "slides"
+    slides_dir.mkdir(parents=True, exist_ok=True)
+    for p in png_paths:
+        shutil.copy2(p, slides_dir / p.name)
+    meta = {
+        "draft_id": str(draft_id),
+        "topic": topic,
+        "slug": slug,
+        "drive_url": drive_url,
+        "slide_count": len(png_paths),
+        "weak_slides": weak_count,
+        "fact_check_status": fact_check_status,
+        "rendered_at": ts,
+        "producer": "wr2-html-apply",
+    }
+    (car_dir / "meta.json").write_text(_json.dumps(meta, indent=2), encoding="utf-8")
+    return car_dir
+
+
+def _make_queue_entry(
+    *,
+    draft_id: str,
+    topic: str,
+    carousel_dir: Path,
+    drive_url: str,
+    slide_count: int,
+    weak_count: int,
+    fact_check_status: str | None,
+    drafted_at: str,
+) -> dict:
+    """Review-queue entry per skills/bali-zero-brand/_review-queue-schema.md."""
+    slug = _slugify(topic)
+    verdict = "pass" if weak_count == 0 else "soft_fail"
+    return {
+        "id": f"carousel_{drafted_at}_{slug}",
+        "draft_id": str(draft_id),
+        "topic_slug": slug,
+        "topic": topic,
+        "drafted_at": drafted_at,
+        "carousel_path": str(carousel_dir),
+        # the queue-server preview endpoint reads slides_dir verbatim
+        # (_damar-queue-server.py:476) — omit it and the app shows no slides
+        "slides_dir": str(carousel_dir / "slides"),
+        "drive_url": drive_url,
+        "media_type": "carousel",
+        "slide_count": slide_count,
+        "critic_overall_verdict": verdict,
+        "critic_summary": (
+            f"{weak_count} weak slide(s) placed as composition debt (N-1)"
+            if weak_count else "all slides converged"
+        ),
+        "fact_check_status": fact_check_status,
+        "state": "drafted",
+        "state_history": [
+            {"state": "drafted", "at": drafted_at, "by": "wr2-html-apply"}
+        ],
+        "instagram_post_url": None,
+        "instagram_published_at": None,
+        "engagement_metrics": None,
+    }
+
+
+def _append_review_queue(entry: dict, *, queue_path: Path | None = None) -> bool:
+    """Append `entry` to human-review-queue.json atomically (fcntl lock, tmp+rename).
+    Dedup by id AND by draft_id (a re-render must not double-queue). Returns True
+    when the entry landed (False on dedup-skip). Raises on IO/corrupt-JSON so the
+    caller can alert — a corrupt queue must be VISIBLE, never silently rebuilt."""
+    import fcntl
+    import json as _json
+
+    qp = queue_path if queue_path is not None else (_default_output_root() / "queue" / "human-review-queue.json")
+    qp.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = qp.with_suffix(".lock")
+    with open(lock_path, "w", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        try:
+            if qp.exists():
+                queue = _json.loads(qp.read_text(encoding="utf-8"))
+                if not isinstance(queue, list):
+                    raise ValueError(f"review queue is not a JSON array: {qp}")
+            else:
+                queue = []
+            for item in queue:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("id") == entry["id"] or (
+                    entry.get("draft_id") and item.get("draft_id") == entry.get("draft_id")
+                ):
+                    return False
+            queue.append(entry)
+            tmp = qp.with_suffix(f".tmp.{os.getpid()}")
+            tmp.write_text(_json.dumps(queue, indent=2, ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, qp)
+            return True
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
+
+
+async def _publish_visibility(
+    *,
+    draft_id: str,
+    topic: str,
+    png_paths: list[Path],
+    drive_url: str,
+    weak_count: int,
+    fact_check_status: str | None,
+) -> None:
+    """Best-effort visibility: durable PNGs -> queue entry -> tg P0. A failure here
+    NEVER fails the render (the DB row + Drive upload are already terminal) but is
+    ALWAYS alerted — invisible production is the disease this cures."""
+    from datetime import datetime, timezone
+
+    drafted_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        car_dir = _persist_local_artifacts(
+            draft_id=draft_id, topic=topic, png_paths=png_paths,
+            drive_url=drive_url, weak_count=weak_count,
+            fact_check_status=fact_check_status, rendered_at=drafted_at,
+        )
+        entry = _make_queue_entry(
+            draft_id=draft_id, topic=topic, carousel_dir=car_dir,
+            drive_url=drive_url, slide_count=len(png_paths),
+            weak_count=weak_count, fact_check_status=fact_check_status,
+            drafted_at=drafted_at,
+        )
+        appended = _append_review_queue(entry)
+        logger.info(
+            "visibility: artifacts=%s queue_appended=%s", car_dir, appended
+        )
+        _tg_notify(
+            "p0",
+            f"wr2-carousel-{draft_id}",
+            f"🎠 Carousel pronto: {topic}\nDrive: {drive_url}\n"
+            f"Slides: {len(png_paths)} (weak={weak_count}, fact-check={fact_check_status or 'n/a'})\n"
+            f"Review: {car_dir}",
+        )
+    except Exception as exc:  # noqa: BLE001 — alert, never break the render
+        logger.warning("visibility chain failed for draft %s: %s", draft_id, exc, exc_info=exc)
+        await _ops_alert(
+            f"WR2 visibility chain FAILED for draft {draft_id} ({topic}): {exc} — "
+            f"carousel IS rendered on Drive ({drive_url}) but not queued/visible.",
+            tier="p0", dedup_key=f"wr2-visibility-fail-{draft_id}",
+        )
 
 
 # ── hero normalizer (#13): serve local hero files over localhost, rewrite image_url ──
@@ -638,6 +858,17 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 recipients=recipients, message_body=msg, customer_window_hours=24,
             )
             await _log_ledger_best_effort(main_conn, draft_id)
+            # R1-R3 visibility chain: durable PNGs + review-queue entry + tg P0.
+            # WA above stays best-effort (24h-window may be closed for months);
+            # THIS is the delivery leg the human actually sees.
+            fc_status = await main_conn.fetchval(
+                "SELECT fact_check_status FROM war_room_drafts WHERE id=$1", draft_id
+            )
+            await _publish_visibility(
+                draft_id=str(draft_id), topic=str(dict(row).get("topic") or ""),
+                png_paths=png_paths, drive_url=web,
+                weak_count=len(weak_slides), fact_check_status=fc_status,
+            )
             if weak_slides:
                 # N-1: the carousel rendered + was delivered, but ≤max_weak slides
                 # carry editorial debt. Flag them for human review (the draft is in
@@ -728,7 +959,12 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     """,
                     draft_id, owner,
                 )
-                await _ops_alert(f"WR2 HTML draft={draft_id} -> render_failed after {attempts} attempts: {exc}")
+                # digest tier: the daily reconciler owns the P0 "no carousel today"
+                # escalation — per-attempt failures are informative, not actionable-now.
+                await _ops_alert(
+                    f"WR2 HTML draft={draft_id} -> render_failed after {attempts} attempts: {exc}",
+                    tier="digest", dedup_key=f"wr2-render-failed-{draft_id}",
+                )
                 return f"render_failed:{exc}"
             # record attempt + release for retry (ownership-gated so a stolen lease doesn't count)
             await main_conn.execute(
