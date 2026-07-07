@@ -144,7 +144,7 @@ async def submit_feedback(
 
     except HTTPException:
         raise
-    except asyncpg.PostgresError as e:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
         logger.error("Database error saving feedback: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database error: {e!s}") from e
     except Exception as e:

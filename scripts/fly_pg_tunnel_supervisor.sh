@@ -51,10 +51,25 @@ if [ "$FLY_PG_TUNNEL_ENABLED" != "true" ]; then
   exit 0
 fi
 
+# ── Auth: export FLY_ACCESS_TOKEN from config.yml ────────────────────────────
+# WHY (scar 2026-06-25): in the LaunchAgent env `fly auth whoami` does NOT pick up the
+# token from ~/.fly/config.yml (no FLY_ACCESS_TOKEN exported, config-dir resolution differs
+# from an interactive shell) → preflight fails → exit 0 → KeepAlive storm-restarts forever
+# (1401 runs observed) even though the config token is perfectly valid. Empirically verified:
+# `FLY_ACCESS_TOKEN=<config-token> fly auth whoami` → zero@balizero.com. So we hoist the token
+# from the config into the env, which every `fly` subcommand (whoami/proxy/wg reset) honours.
+FLY_CONFIG_FILE="${FLY_CONFIG_FILE:-$HOME/.fly/config.yml}"
+if [ -z "${FLY_ACCESS_TOKEN:-}" ] && [ -r "$FLY_CONFIG_FILE" ]; then
+  # config.yml line:  access_token: "<token>"   (quoted or bare)
+  _tok=$(sed -n 's/^[[:space:]]*access_token:[[:space:]]*//p' "$FLY_CONFIG_FILE" | head -1 \
+          | sed 's/^["'"'"']//; s/["'"'"']$//')
+  if [ -n "$_tok" ]; then export FLY_ACCESS_TOKEN="$_tok"; log "exported FLY_ACCESS_TOKEN from $FLY_CONFIG_FILE (${#_tok} chars)"; fi
+fi
+
 # ── Preflight (fail fast, but exit 0 so LaunchAgent doesn't storm-restart) ───
 if [ ! -x "$FLY_BIN" ]; then log "FATAL: fly binary not executable at $FLY_BIN"; sleep 30; exit 0; fi
 if ! "$FLY_BIN" auth whoami >/dev/null 2>&1; then
-  log "FATAL: '$FLY_BIN auth whoami' failed — not authenticated. Run 'fly auth login' on M5. Sleeping 60s."
+  log "FATAL: '$FLY_BIN auth whoami' failed even with FLY_ACCESS_TOKEN — token missing/expired. Run 'fly auth login' on M5. Sleeping 60s."
   sleep 60; exit 0
 fi
 

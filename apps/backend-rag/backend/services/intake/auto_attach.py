@@ -43,13 +43,14 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
 
 import asyncpg
 
 from backend.services.intake import crm_delivery as intake_crm_delivery
 from backend.services.intake import writer as intake_writer
-from backend.services.intake.routing import _match_sender_phone
+from backend.services.intake.routing import _match_sender_phone, normalize_sender_phone
 
 logger = logging.getLogger("zantara.intake.auto_attach")
 
@@ -61,6 +62,66 @@ DIRECT_PHONE_AUTO_ATTACH_ACTOR = "system:auto-direct-phone"
 # Terminal status for an auto-committed proposal (migration 234). Distinct from
 # the human ``routed`` so reports / undo can target machine commits.
 AUTO_ROUTED_STATUS = "auto_routed"
+
+INTERNAL_PHONE_NUMBERS_ENV = "BZ_INTERNAL_PHONE_NUMBERS"
+_INTERNAL_PREFIX_SUFFIX = "*"
+
+
+def _normalize_internal_phone_token(value: object, *, allow_prefix: bool = False) -> str | None:
+    normalized = normalize_sender_phone(value)
+    if normalized or not allow_prefix:
+        return normalized
+    digits = re.sub(r"\D", "", str(value or ""))
+    if not digits:
+        return None
+    if digits.startswith("0"):
+        digits = "62" + digits[1:]
+    elif digits.startswith("8"):
+        digits = "62" + digits
+    return digits
+
+
+def _load_internal_phone_config(raw: str | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    numbers: list[str] = []
+    prefixes: list[str] = []
+    for item in (raw or "").split(","):
+        token = item.strip()
+        if not token:
+            continue
+        is_prefix = token.endswith(_INTERNAL_PREFIX_SUFFIX)
+        if is_prefix:
+            token = token[: -len(_INTERNAL_PREFIX_SUFFIX)]
+        normalized = _normalize_internal_phone_token(token, allow_prefix=is_prefix)
+        if not normalized:
+            continue
+        if is_prefix:
+            prefixes.append(normalized)
+        else:
+            numbers.append(normalized)
+    return (tuple(numbers), tuple(prefixes))
+
+
+INTERNAL_PHONE_NUMBERS, INTERNAL_PHONE_PREFIXES = _load_internal_phone_config(
+    os.environ.get(INTERNAL_PHONE_NUMBERS_ENV)
+)
+
+
+def _internal_phone_config() -> tuple[frozenset[str], frozenset[str]]:
+    env_numbers, env_prefixes = _load_internal_phone_config(
+        os.environ.get(INTERNAL_PHONE_NUMBERS_ENV)
+    )
+    return (
+        frozenset((*INTERNAL_PHONE_NUMBERS, *env_numbers)),
+        frozenset((*INTERNAL_PHONE_PREFIXES, *env_prefixes)),
+    )
+
+
+def _is_internal_sender_phone(sender_phone: str | None) -> bool:
+    normalized = normalize_sender_phone(sender_phone)
+    if not normalized:
+        return False
+    numbers, prefixes = _internal_phone_config()
+    return normalized in numbers or any(normalized.startswith(prefix) for prefix in prefixes)
 
 
 def auto_attach_enabled() -> bool:
@@ -169,6 +230,65 @@ def _has_subject_mismatch(reason: Any) -> bool:
     return isinstance(reason, dict) and bool(reason.get("sender_subject_mismatch"))
 
 
+# Volumetric anti-funnel thresholds: a single sender phone that has produced many
+# documents spanning many distinct doc types is a TRANSIT/AGENCY funnel (one phone
+# forwarding for many people), NOT a single client. Lived example: a phone with 51
+# documents across 8 doc types resolving to one client_id. Auto-attaching those
+# mis-attributes N people's PII to 1 client. Defaults overridable via env.
+_FUNNEL_MIN_DOCS = int(os.getenv("INTAKE_FUNNEL_MIN_DOCS", "8") or "8")
+_FUNNEL_MIN_DISTINCT_TYPES = int(os.getenv("INTAKE_FUNNEL_MIN_DISTINCT_TYPES", "5") or "5")
+
+# Names below this token-overlap ratio are treated as NOT the same person.
+_NAME_MATCH_MIN_RATIO = float(os.getenv("INTAKE_NAME_MATCH_MIN_RATIO", "0.5") or "0.5")
+
+_NAME_NOISE = re.compile(r"[^a-z0-9\s]+")
+
+
+def _name_tokens(value: object) -> frozenset[str]:
+    """Lowercased word-token set of a person name (diacritics/punct stripped).
+
+    Returns tokens of length >= 2 so single-letter initials don't create false
+    overlaps. Used for order-insensitive name comparison (Indonesian names and
+    passport MRZ frequently reorder given/family parts).
+    """
+    if not value:
+        return frozenset()
+    text = _NAME_NOISE.sub(" ", str(value).strip().lower())
+    return frozenset(t for t in text.split() if len(t) >= 2)
+
+
+def _extracted_subject_name(stage_output: Any) -> str | None:
+    """Pull the OCR-extracted subject name from a queue row's ``stage_output``.
+
+    Path: ``stage_output.extract.fields.name`` (present for passport / kitas /
+    birth_certificate; absent for ktp / bank_statement / payment_receipt). Returns
+    None when missing — the gate then abstains because the subject is unverifiable.
+    """
+    so = intake_writer._as_dict(stage_output)
+    if not so:
+        return None
+    fields = intake_writer._as_dict((intake_writer._as_dict(so.get("extract")) or {}).get("fields"))
+    name = fields.get("name") if fields else None
+    return str(name).strip() if name and str(name).strip() else None
+
+
+def _name_concordant(extracted_name: object, client_name: object) -> tuple[bool, float]:
+    """True when the document's subject name plausibly matches the client name.
+
+    Order-insensitive token overlap (Jaccard-ish, normalized by the SMALLER set so
+    a short CRM name still matches a longer full passport name). Returns
+    (is_match, ratio). Empty either side → (False, 0.0): we cannot verify the
+    subject, so we must NOT auto-attach.
+    """
+    a = _name_tokens(extracted_name)
+    b = _name_tokens(client_name)
+    if not a or not b:
+        return (False, 0.0)
+    overlap = len(a & b)
+    ratio = overlap / min(len(a), len(b))
+    return (ratio >= _NAME_MATCH_MIN_RATIO, ratio)
+
+
 async def evaluate_direct_phone_concordance(
     conn: asyncpg.Connection,
     *,
@@ -178,6 +298,7 @@ async def evaluate_direct_phone_concordance(
     sender_phone: str | None,
     source_context: dict[str, Any] | None,
     reason: Any,
+    extracted_name: str | None = None,
 ) -> dict[str, Any]:
     """Gate direct-chat phone-only proposals before autonomous cataloging.
 
@@ -240,6 +361,13 @@ async def evaluate_direct_phone_concordance(
             "phone_client_id": None,
             "phone_match_count": 0,
         }
+    if _is_internal_sender_phone(sender_phone):
+        return {
+            "concordant": False,
+            "reason": "sender phone is internal-number/operator relay (never client concordance)",
+            "phone_client_id": None,
+            "phone_match_count": 0,
+        }
 
     phone_matches = await _match_sender_phone(conn, sender_phone)
     n = len(phone_matches)
@@ -270,9 +398,68 @@ async def evaluate_direct_phone_concordance(
             "phone_match_count": 1,
         }
 
+    # Anti-funnel volumetric guard. A sender phone that has produced many docs of
+    # many distinct types is a transit/agency funnel forwarding for many people,
+    # not a single client — even though it "resolves to one client_id". Keep these
+    # in human review so N people's PII is not collapsed onto 1 client.
+    funnel = await conn.fetchrow(
+        """
+        SELECT count(*) AS docs,
+               count(DISTINCT p.routing->>'doc_type') AS distinct_types
+        FROM document_routing_proposal p
+        JOIN intake_queue q ON q.id = p.queue_id
+        WHERE q.sender_phone IS NOT NULL
+          AND regexp_replace(q.sender_phone, '[^0-9]', '', 'g')
+              = regexp_replace($1, '[^0-9]', '', 'g')
+          AND p.entity_resolution->>'decision' = 'LINK_CANDIDATE'
+        """,
+        sender_phone or "",
+    )
+    if funnel is not None and (
+        funnel["docs"] >= _FUNNEL_MIN_DOCS
+        and funnel["distinct_types"] >= _FUNNEL_MIN_DISTINCT_TYPES
+    ):
+        return {
+            "concordant": False,
+            "reason": (
+                f"sender phone is a funnel/transit: {funnel['docs']} docs across "
+                f"{funnel['distinct_types']} doc types (not a single client)"
+            ),
+            "phone_client_id": phone_client_id,
+            "phone_match_count": 1,
+        }
+
+    # Name-concordance — "the phone proposes, the document content disposes".
+    # The phone tells you the LATTER; the name extracted from the document tells
+    # you the SUBJECT. Auto-attach only when both agree. If the document carries
+    # no extractable name (ktp/bank_statement/payment_receipt) we cannot verify
+    # the subject → abstain to review. This is the structural cure for the
+    # operator-/funnel-forwarding mis-attribution class.
+    client_name = await conn.fetchval(
+        "SELECT full_name FROM clients WHERE id = $1 AND deleted_at IS NULL",
+        phone_client_id,
+    )
+    name_ok, ratio = _name_concordant(extracted_name, client_name)
+    if not name_ok:
+        if not _name_tokens(extracted_name):
+            why = "document carries no extractable subject name"
+        elif not _name_tokens(client_name):
+            why = "resolved client has no name to verify against"
+        else:
+            why = f"document subject name does not match client (overlap {ratio:.2f})"
+        return {
+            "concordant": False,
+            "reason": f"name not concordant: {why}",
+            "phone_client_id": phone_client_id,
+            "phone_match_count": 1,
+        }
+
     return {
         "concordant": True,
-        "reason": "direct WA sender phone resolves to the same single routed client",
+        "reason": (
+            "direct WA sender phone resolves to the same single routed client "
+            f"and document subject name matches (overlap {ratio:.2f})"
+        ),
         "phone_client_id": phone_client_id,
         "phone_match_count": 1,
     }
@@ -426,7 +613,7 @@ async def try_direct_phone_auto_attach(
                 """
                 SELECT p.id, p.queue_id, p.doc_index, p.pipeline_version, p.status,
                        p.entity_resolution, p.routing, p.commit_gate,
-                       q.sender_phone, q.source_context
+                       q.sender_phone, q.source_context, q.stage_output
                 FROM document_routing_proposal p
                 JOIN intake_queue q ON q.id = p.queue_id
                 WHERE p.id = $1
@@ -457,6 +644,7 @@ async def try_direct_phone_auto_attach(
                 sender_phone=sender_phone or locked["sender_phone"],
                 source_context=locked_context,
                 reason=entity_resolution.get("reason"),
+                extracted_name=_extracted_subject_name(locked["stage_output"]),
             )
             if not verdict["concordant"]:
                 logger.info(

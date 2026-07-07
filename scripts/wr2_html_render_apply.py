@@ -30,7 +30,10 @@ Conditions closed here (WR2 wiring v4):
 Kill switch: system_settings.wr2_html_renderer_enabled (missing/!=true => no-op).
 Env: DATABASE_URL (required), WR2_HTML_SHADOW (1=dry-run), WR2_VISION_REQUIRED (1=enforce
 vision fail-closed), WR2_HTML_MAX_ATTEMPTS (circuit breaker, default 3),
-WR2_NOTIFY_RECIPIENTS (comma phones; default the two below), WR2_HTML_HEARTBEAT_SECS (60).
+WR2_NOTIFY_RECIPIENTS (comma phones; default the two below), WR2_HTML_HEARTBEAT_SECS (60),
+WR2_RUNTIME_SHA_GATE (C2 deploy-fork content-gate: off|warn|strict, default warn —
+warn logs provenance problems and proceeds; strict refuses impure boots and aborts
+pre-Drive when HEAD moves mid-run, releasing the lease without burning an attempt).
 """
 
 from __future__ import annotations
@@ -44,7 +47,7 @@ import threading
 import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 # --- sys.path so backend.* and the renderer package import regardless of launchd cwd
 _REPO = Path(__file__).resolve().parents[1]
@@ -55,6 +58,33 @@ import asyncpg  # noqa: E402
 
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
 from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
+
+# ── C2 runtime provenance (deploy-fork content-gate) — fail-open on any error ──
+# scripts/lib is not a package: importlib load, same pattern as wr2_reflexion_synthesis.
+try:
+    import importlib.util as _ilu  # noqa: E402
+
+    _rs_spec = _ilu.spec_from_file_location(
+        "wr2_runtime_stamp", str(_REPO / "scripts" / "lib" / "wr2_runtime_stamp.py")
+    )
+    runtime_stamp = _ilu.module_from_spec(_rs_spec)
+    _rs_spec.loader.exec_module(runtime_stamp)
+except Exception:  # noqa: BLE001 — provenance must never break the worker
+    runtime_stamp = None
+
+# Load-bearing modules whose LIVE content is compared blob-per-file vs HEAD (W88).
+_WATCHED_MODULES = (
+    Path(__file__),
+    _REPO / "apps" / "backend-rag" / "backend" / "services" / "canva_renderer_v2" / "_pg.py",
+    _REPO / "scripts" / "wr2_html_renderer" / "designer_loop.py",
+)
+# Populated once per run() by the boot stamp; read by the pre-Drive gate.
+_BOOT_STAMP: dict = {}
+
+
+class RuntimeStale(Exception):
+    """Strict runtime-sha gate tripped: NOT a draft defect — released without
+    burning an attempt (same no-burn contract as VisionTransient)."""
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 # Silence httpx/httpcore INFO logs that would otherwise leak the Telegram bot token in the request URL
@@ -152,12 +182,75 @@ def _normalize_heroes(slides: list[dict[str, Any]], hero_dir: Path, server: "_He
     return out
 
 
-# ── Drive upload (idempotent-by-name under the single-owner lease) ──────────────
+# ── Drive upload (idempotent — upsert + orphan-sweep + manifest, under the lease) ───
+async def _drive_list_folder_children(svc: Any, folder_id: str) -> list[dict[str, Any]]:
+    """Every non-trashed direct child of the folder as {id, name}. Pages fully so a
+    folder that accreted many duplicate PNGs (the 30-file bug) is drained completely."""
+    import asyncio as _a
+
+    children: list[dict[str, Any]] = []
+    page_token: str | None = None
+    while True:
+        req = svc.service.files().list(
+            q=f"'{folder_id}' in parents and trashed = false",
+            fields="nextPageToken, files(id, name)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            pageSize=1000,
+            pageToken=page_token,
+        )
+        res = await _a.to_thread(req.execute)
+        children.extend(res.get("files", []))
+        page_token = res.get("nextPageToken")
+        if not page_token:
+            break
+    return children
+
+
+async def _drive_upsert_file(
+    svc: Any, folder_id: str, name: str, content: bytes, mime_type: str,
+    existing_id: str | None,
+) -> str:
+    """Update the media of an existing file (stable file-id) or create it. Returns the
+    file-id. Update-in-place is what makes re-render idempotent instead of accreting a
+    new copy every attempt (cicatrix #9: idempotent by ENTITY, not by count)."""
+    import asyncio as _a
+    from io import BytesIO
+
+    from googleapiclient.http import MediaIoBaseUpload  # type: ignore[import-untyped]
+
+    media = MediaIoBaseUpload(BytesIO(content), mimetype=mime_type, resumable=True)
+    if existing_id:
+        req = svc.service.files().update(
+            fileId=existing_id, media_body=media, fields="id", supportsAllDrives=True,
+        )
+        res = await _a.to_thread(req.execute)
+        return res["id"]
+    res = await svc.upload_file_to_folder(
+        folder_id=folder_id, file_content=content, file_name=name, mime_type=mime_type,
+    )
+    return res["id"]
+
+
 async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: bool) -> str:
-    """Create (or reuse) folder WR2-{draft_id} [shadow: under a WR2-SHADOW root], upload the
-    PNGs as image/png, return the folder webViewLink. Idempotent-by-name: searches first and
-    reuses an existing folder of the same name. Concurrent-create is prevented by the lease
-    (single owner per draft), so search-before-create is the residual dedup (#9)."""
+    """Create (or reuse) folder WR2-{draft_id} [shadow: under a WR2-SHADOW root], then make
+    its contents EXACTLY the current PNG set + a manifest.json, idempotently. Returns the
+    folder webViewLink.
+
+    C0 — three moves that make ``rendered`` mean one canonical set (cicatrix #9 / #2):
+      1. UPSERT each current PNG by name (update media in place if the name already lives in
+         the folder → stable file-id, no new copy per retry). Never a create-then-dup loop.
+      2. ORPHAN-SWEEP: delete children whose name is no longer in the current set (stale PNGs
+         from a longer previous render, or the 30 duplicates from the create-loop bug). Runs
+         AFTER the upserts, so the folder is never momentarily empty.
+      3. MANIFEST: write manifest.json (ordered {name, file_id}) — an audit/prove-of-life
+         artifact the C1 watchdog can assert on ("rendered without manifest" = anomaly). It is
+         NOT a reader contract: the publishers read PNGs from the local render dir, not Drive.
+    Concurrent-create of the folder is prevented by the single-owner lease; search-before-create
+    is the residual dedup."""
+    import asyncio as _a
+    import json as _json
+
     from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
     svc = ServiceAccountDriveService()
@@ -165,13 +258,12 @@ async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: b
 
     # search-before-create (idempotency under retry/stale-lease re-render)
     folder_id: str | None = None
+    web = ""
     try:
         q = (
             f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
             f"and trashed = false"
         )
-        import asyncio as _a
-
         req = svc.service.files().list(
             q=q, fields="files(id, webViewLink)", supportsAllDrives=True,
             includeItemsFromAllDrives=True, pageSize=1,
@@ -190,14 +282,47 @@ async def _drive_upload_carousel(draft_id: str, png_paths: list[Path], shadow: b
         folder_id = folder["id"]
         web = folder.get("webViewLink", "")
 
+    # Snapshot current children ONCE — drives both upsert (name→id) and sweep.
+    existing = await _drive_list_folder_children(svc, folder_id)
+    by_name: dict[str, str] = {}
+    for child in existing:  # last-writer-wins collapses pre-existing dup names to one id
+        by_name[child["name"]] = child["id"]
+
+    # 1. UPSERT the current PNGs (ordered), collecting the canonical file-ids.
+    manifest_slides: list[dict[str, str]] = []
+    canonical_names: set[str] = set()
     for png in png_paths:
-        content = Path(png).read_bytes()
-        await svc.upload_file_to_folder(
-            folder_id=folder_id,
-            file_content=content,
-            file_name=Path(png).name,
-            mime_type="image/png",  # #10: explicit, the service hardcodes image/jpeg otherwise
+        name = Path(png).name
+        canonical_names.add(name)
+        file_id = await _drive_upsert_file(
+            svc, folder_id, name, Path(png).read_bytes(), "image/png",
+            by_name.get(name),
         )
+        manifest_slides.append({"name": name, "file_id": file_id})
+
+    # 2. MANIFEST (upsert too — the render is the source of truth for its own contents).
+    manifest_name = "manifest.json"
+    canonical_names.add(manifest_name)
+    manifest_body = _json.dumps(
+        {"draft_id": draft_id, "shadow": shadow, "slides": manifest_slides},
+        ensure_ascii=False, indent=2,
+    ).encode("utf-8")
+    await _drive_upsert_file(
+        svc, folder_id, manifest_name, manifest_body, "application/json",
+        by_name.get(manifest_name),
+    )
+
+    # 3. ORPHAN-SWEEP — anything in the folder not in the canonical set is a stale leftover.
+    for child in existing:
+        if child["name"] in canonical_names:
+            continue
+        try:
+            req = svc.service.files().delete(fileId=child["id"], supportsAllDrives=True)
+            await _a.to_thread(req.execute)
+            logger.info("swept stale Drive child %s (%s)", child["name"], child["id"])
+        except Exception as exc:  # a failed sweep must not fail the render
+            logger.warning("orphan-sweep failed for %s: %s", child["name"], exc)
+
     if not web:
         meta = await svc.get_file_metadata(folder_id)
         web = meta.get("webViewLink", f"https://drive.google.com/drive/folders/{folder_id}")
@@ -238,9 +363,26 @@ def _dump_designer_history(draft_id: str, slide_index: int, history: list[dict[s
 
 
 # ── render one carousel (per-slide designer loop, GO#3) ─────────────────────────
-async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Path, vision_required: bool) -> Path:
-    """Render the carousel via the HTML engine. Returns the dir containing the slide PNGs.
-    Raises RuntimeError if any slide fails its hero/converge gate.
+class WeakSlide(NamedTuple):
+    """A slide that did NOT converge its designer loop but DID produce a usable
+    best-effort PNG. Its PNG is still placed in the carousel (N-1 semantics,
+    operator decision 2026-06-30) so a single editorial-weak slide does not sink
+    the whole carousel; the weakness is surfaced to ops/human-review instead."""
+
+    index: int
+    reason: str
+    excerpt: str
+
+
+async def _render_carousel(
+    draft_id: str, slides: list[dict[str, Any]], work: Path, vision_required: bool
+) -> tuple[Path, list[WeakSlide]]:
+    """Render the carousel via the HTML engine. Returns (slides_dir, weak_slides).
+
+    weak_slides lists slides that did not converge but produced a best-effort PNG
+    that was STILL placed in the carousel (N-1 semantics — see WeakSlide). A slide
+    that produces NO usable PNG (a real hole: hero download / browser crash) is a
+    HARD failure and still raises RuntimeError — that is not editorial debt.
 
     Two modes:
     - default (vision NOT required): compose_carousel bulk straight-render with the
@@ -280,6 +422,13 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
 
     total = len(slides)
     final_pngs: list[Path] = []
+    weak_slides: list[WeakSlide] = []
+    # N-1 semantics (operator 2026-06-30): a slide that does NOT converge but
+    # still produced a usable best-effort PNG is editorial DEBT, not a carousel
+    # killer — it is placed anyway and flagged. WR2_MAX_WEAK_SLIDES caps how many
+    # weak slides a carousel may carry before the whole render is rejected
+    # (default 1: a carousel with ≥2 weak slides is genuinely poor → render_failed).
+    max_weak = int(os.environ.get("WR2_MAX_WEAK_SLIDES", "1"))
     async with httpx.AsyncClient() as client:
         for i, slide in enumerate(slides, start=1):
             is_hero = bool(slide.get("is_hero_image")) or i == 1
@@ -290,6 +439,7 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
                     hero_filename = f"slide-{i:02d}-hero.jpg"
                     ok = await _download_hero(client, url, slides_dir / hero_filename)
                     if not ok:
+                        # a missing hero is a real hole, not editorial debt → HARD fail
                         raise RuntimeError(f"slide {i} hero download failed (vision-required path)")
 
             render_fn = make_slide_render_fn(
@@ -307,13 +457,28 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
                 use_vision=True,
                 max_iters=3,
             )
-            if not (res.converged and res.final_png and Path(res.final_png).is_file()):
+            # A usable PNG (converged OR best-effort) is the dividing line. The
+            # designer loop populates final_png even when converged=False
+            # (final_png=best_png), so a non-converged slide that rendered at all
+            # still has a placeable PNG. ONLY a slide with no PNG on disk is a
+            # real hole.
+            has_png = bool(res.final_png) and Path(res.final_png).is_file()
+            if not has_png:
                 excerpt = _dump_designer_history(draft_id, i, res.history)
                 raise RuntimeError(
-                    f"slide {i} did not converge (reason={res.reason!r} "
-                    f"critiques=[{excerpt}] final_png={res.final_png}) — GO#3 c5 reject"
+                    f"slide {i} produced no PNG (reason={res.reason!r} "
+                    f"critiques=[{excerpt}] final_png={res.final_png}) — hard render hole"
                 )
-            # place the converged PNG at the canonical slot
+            if not res.converged:
+                # weak but usable: place it AND flag it (N-1). Do not raise.
+                excerpt = _dump_designer_history(draft_id, i, res.history)
+                weak_slides.append(WeakSlide(index=i, reason=res.reason, excerpt=excerpt))
+                logger.warning(
+                    "draft %s slide %d did NOT converge but produced a usable PNG — "
+                    "placing as composition debt (N-1): reason=%s",
+                    draft_id, i, res.reason,
+                )
+            # place the (converged or best-effort) PNG at the canonical slot
             dest = slides_dir / f"{i:02d}.png"
             if Path(res.final_png).resolve() != dest.resolve():
                 dest.parent.mkdir(parents=True, exist_ok=True)
@@ -322,7 +487,13 @@ async def _render_carousel(draft_id: str, slides: list[dict[str, Any]], work: Pa
 
     if len(final_pngs) != total:
         raise RuntimeError(f"per-slide render produced {len(final_pngs)}/{total} slides")
-    return slides_dir
+    if len(weak_slides) > max_weak:
+        idxs = ", ".join(str(w.index) for w in weak_slides)
+        raise RuntimeError(
+            f"carousel has {len(weak_slides)} weak slides (>{max_weak} allowed): "
+            f"slides {idxs} did not converge — render_failed (genuinely poor draft)"
+        )
+    return slides_dir, weak_slides
 
 
 # ── heartbeat loop ──────────────────────────────────────────────────────────────
@@ -415,7 +586,9 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             hero_dir.mkdir(parents=True, exist_ok=True)
             with _HeroServer(hero_dir) as server:
                 norm_slides = _normalize_heroes(slides, hero_dir, server)
-                slides_dir = await _render_carousel(str(draft_id), norm_slides, work, vision_required)
+                slides_dir, weak_slides = await _render_carousel(
+                    str(draft_id), norm_slides, work, vision_required
+                )
             png_paths = sorted(slides_dir.glob("*.png"))
             if not png_paths:
                 raise RuntimeError("no PNGs after render")
@@ -423,6 +596,19 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             # abort if heartbeat already lost (do NOT touch Drive)
             if stop.is_set():
                 raise RuntimeError("lease_lost_before_drive")
+
+            # C2 gate — BEFORE Drive, not just before persist (a blocked persist
+            # after an upload still leaves orphan Drive artifacts). Default mode
+            # is 'warn': log-only, zero pipeline effects; 'strict' is armed
+            # separately (PENDING-ARMS ledger).
+            gate_mode = os.environ.get("WR2_RUNTIME_SHA_GATE", "warn").strip().lower()
+            if runtime_stamp is not None and _BOOT_STAMP and gate_mode != "off":
+                disk_head = runtime_stamp.current_head(_REPO)
+                verdict, reason = runtime_stamp.gate_verdict(gate_mode, _BOOT_STAMP, disk_head)
+                if verdict == "warn":
+                    logger.warning("runtime-sha gate: %s (mode=warn, proceeding)", reason)
+                elif verdict == "block":
+                    raise RuntimeStale(reason)
 
             # the render just took ~15 min — main_conn may have been closed idle
             # by the pg-proxy; reconnect before the terminal write so a converged
@@ -452,6 +638,18 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 recipients=recipients, message_body=msg, customer_window_hours=24,
             )
             await _log_ledger_best_effort(main_conn, draft_id)
+            if weak_slides:
+                # N-1: the carousel rendered + was delivered, but ≤max_weak slides
+                # carry editorial debt. Flag them for human review (the draft is in
+                # 'rendered' which the WR2 Control app already surfaces for approval).
+                detail = "; ".join(
+                    f"slide {w.index}: {w.reason} — {w.excerpt[:160]}" for w in weak_slides
+                )
+                await _ops_alert(
+                    f"WR2 HTML draft={draft_id} rendered drive={web} with "
+                    f"{len(weak_slides)} WEAK slide(s) (N-1 — placed as composition debt, "
+                    f"review before publish): {detail}"
+                )
             closed = [r for r, info in report.items() if not info.get("window_open")]
             if closed:
                 await _ops_alert(
@@ -460,6 +658,27 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     f"Re-open by having them text +62 821-3465-159, then re-enqueue."
                 )
             return f"rendered report={report}"
+        except RuntimeStale as exc:
+            # Deploy landed mid-run / impure provenance in strict mode: the
+            # draft is healthy — release WITHOUT burning an attempt and let the
+            # next (fresh-code) invocation render it.
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+            await main_conn.execute(
+                """
+                UPDATE war_room_drafts
+                   SET status='drafts_imaged_checked', lease_owner=NULL,
+                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
+                 WHERE id=$1 AND lease_owner=$2 AND status='rendering'
+                """,
+                draft_id, owner,
+            )
+            await _ops_alert(
+                f"WR2 HTML draft={draft_id} aborted by runtime-sha gate (strict): {exc} "
+                f"— draft requeued, no attempt burned. Restart/kickstart the worker "
+                f"so the next run imports the deployed code."
+            )
+            logger.warning("draft %s runtime-stale abort (no attempt burned): %s", draft_id, exc)
+            return f"runtime_stale:{exc}"
         except VisionTransient as exc:
             # transient vision-infra failure (HTTP 429 quota window OR endpoint
             # timeout) — NOT a draft defect. Release the lease WITHOUT touching
@@ -587,7 +806,36 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
         logger.error("DATABASE_URL not set")
         return 2
 
-    owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    # C2 boot stamp: provenance of the code THIS run imports. One-shot worker →
+    # import-time == run-time; the stamp is per-run truth. Fail-open.
+    gate_mode = os.environ.get("WR2_RUNTIME_SHA_GATE", "warn").strip().lower()
+    if runtime_stamp is not None:
+        _BOOT_STAMP.clear()
+        _BOOT_STAMP.update(runtime_stamp.compute_runtime_stamp(_REPO, _WATCHED_MODULES))
+        runtime_stamp.write_runtime_stamp("wr2.html_apply", _BOOT_STAMP)
+        impure = bool(
+            _BOOT_STAMP.get("dirty")
+            or _BOOT_STAMP.get("stale_modules")
+            or _BOOT_STAMP.get("head_sha") is None
+        )
+        if impure and gate_mode == "strict":
+            detail = (
+                f"dirty={_BOOT_STAMP.get('dirty')} stale={_BOOT_STAMP.get('stale_modules')} "
+                f"head={_BOOT_STAMP.get('head_sha')}"
+            )
+            logger.error("runtime provenance impure, strict gate → refusing to render: %s", detail)
+            await _ops_alert(f"WR2 HTML worker refused to render (strict runtime-sha gate): {detail}")
+            return 3
+        if impure:
+            logger.warning(
+                "runtime provenance impure (gate=%s): dirty=%s stale=%s",
+                gate_mode, _BOOT_STAMP.get("dirty"), _BOOT_STAMP.get("stale_modules"),
+            )
+
+    # The runtime SHA rides in the lease owner (visible in DB per rendering row).
+    # Built ONCE and passed everywhere — the CAS requires exact-string equality.
+    head12 = (_BOOT_STAMP.get("head_sha") or "nohead")[:12]
+    owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}@{head12}"
     # R4.2 drain-loop (P-1): keep fetching batches until the queue is empty so a
     # supervisor kickstart swallowed while we are busy still gets its draft
     # processed this run (restores wr2_supervisor.py:20-22 drain assumption).

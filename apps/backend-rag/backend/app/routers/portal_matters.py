@@ -397,7 +397,7 @@ async def get_matter_detail(
                     """,
                     client_id,
                 )
-            except asyncpg.PostgresError as e:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
                 logger.warning("approved intelligence fetch failed: %s", e)
                 rows = []
 

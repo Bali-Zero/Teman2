@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # ── #32 — the /health advertised embedding dim must match the FROZEN model ──
       # text-embedding-3-small = 1536 dims (Data Invariant #9, never change without

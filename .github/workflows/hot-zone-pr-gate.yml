@@ -68,7 +68,7 @@ jobs:
       # ---------------------------------------------------------------------
       - name: Checkout base ref
         if: steps.kill_switch.outputs.disabled != 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # For merge_group: github.event.merge_group.base_sha (latest base)
           # For pull_request: github.event.pull_request.base.sha

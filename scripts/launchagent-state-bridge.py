@@ -227,11 +227,12 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         organ_id="intel_lake.shadow_validate_6h",
         daemon=False,
     ),
-    BridgedLaunchAgent(
-        label="com.balizero.l5-2-phase2b-trigger",
-        organ_id="pro.l5_2_phase2b_trigger",
-        daemon=False,
-    ),
+    # pro.l5_2_phase2b_trigger REMOVED 2026-07-02: one-shot LaunchAgent that
+    # fired 2026-06-02 and self-unloads by design (docs/runbooks/
+    # l5-2-phase2b-auto-trigger.md); connectome marks it retired 2026-06-20
+    # (docs/connectome/edges/launchd-pro.yaml). Bridging it produced a
+    # permanent false "label not loaded" → failed receipt.
+    # TAC: research/operations/2026-07-03-heartbeat-organs-tac.md
     BridgedLaunchAgent(
         label="com.balizero.mos-plus.qdrant-indexer",
         organ_id="pro.mos_plus_qdrant_indexer",
@@ -285,11 +286,6 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
     BridgedLaunchAgent(
         label="com.balizero.wr2.canva-lease-watchdog",
         organ_id="wr2.canva_lease_watchdog_launchd",
-        daemon=False,
-    ),
-    BridgedLaunchAgent(
-        label="com.balizero.wr2.canva-token-watchdog",
-        organ_id="wr2.canva_token_watchdog_launchd",
         daemon=False,
     ),
     BridgedLaunchAgent(
@@ -452,11 +448,10 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         organ_id="pro.wa_mirror_launcher",
         daemon=True,
     ),
-    BridgedLaunchAgent(
-        label="com.balizero.wa-viewer",
-        organ_id="pro.wa_viewer",
-        daemon=True,
-    ),
+    # pro.wa_viewer REMOVED 2026-07-02: retired 2026-05-19 (live plist renamed
+    # com.balizero.wa-viewer.plist.retired + label disabled in launchd).
+    # Bridging it produced a permanent false "label not loaded" → failed receipt.
+    # TAC: research/operations/2026-07-03-heartbeat-organs-tac.md
     BridgedLaunchAgent(
         label="com.balizero.wr2.carousel-dispatcher",
         organ_id="wr2.carousel_dispatcher",

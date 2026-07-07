@@ -32,7 +32,9 @@ export type KBLIPmaRawStatus = "TERBUKA" | "TERTUTUP" | "TERBATAS";
 export interface KBLIScaleEntry {
   skala_usaha: KBLIBusinessScale[];
   kategori_risiko: KBLIRiskCategory;
-  perizinan: string;
+  // Real data: an array on ~99.5% of scales (often empty []), a bare string on ~20 legacy
+  // records. resolveLicenseType() in kbli-derive.ts handles both forms.
+  perizinan: string | string[];
   persyaratan: string[];
   jangka_waktu: string;
   kewajiban: string[];
@@ -56,7 +58,7 @@ export interface KBLIRawCode {
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
   pma_status: KBLIPmaRawStatus;
-  pma_max_asing: number | 'special'; // "special" = open-with-special-conditions (47221-class), no clean %
+  pma_max_asing: number | "special"; // "special" = open-with-special-conditions (47221-class), no clean %
   pma_kondisi: string | null;
   pma_prioritas: boolean;
   pma_nota: string | null;

@@ -746,7 +746,7 @@ Di Bali Zero, kami merekomendasikan konsolidasi kode perdagangan yang saling mel
 | **Keunggulan Utama** | Skalabilitas Tinggi  | Pendapatan Berulang    | Komoditas Strategis    |
 | **Konteks Bali**     | Platform Digital     | Coworking/Vila         | _Farm-to-Table_        |
 
-Tenggat waktu migrasi **KBLI 2025** adalah **18 Juni 2026**. Jika bisnis perdagangan Anda masih beroperasi dengan logika tahun 2020, Anda akan kehilangan visibilitas dalam infrastruktur digital baru Indonesia.
+Jendela transisi Juni 2026 telah ditutup; pemetaan KBLI 2020 yang belum diselesaikan kini harus diperlakukan sebagai remediasi terlambat. Jika bisnis perdagangan Anda masih beroperasi dengan logika tahun 2020, Anda akan kehilangan visibilitas dalam infrastruktur digital baru Indonesia.
 
 ---
 
@@ -801,7 +801,7 @@ Ketika BPS merilis Peraturan No. 7 Tahun 2025 pada 18 Desember 2025, reaksi spon
 
 Namun, jika dilihat dari perspektif strategis, KBLI 2025 jauh lebih ambisius. Ini adalah upaya Indonesia untuk **meningkatkan seluruh sistem operasi ekonominya** – menyelaraskan klasifikasi industri nasional dengan standar internasional ISIC Revision 5, sekaligus memformalisasi berbagai kegiatan ekonomi yang selama bertahun-tahun beroperasi dalam zona abu-abu regulasi.
 
-Sistem baru ini diperluas menjadi **22 kategori** (A hingga V), **87 kelompok utama**, dan **1.560 kode lima digit**. Tenggat waktu kepatuhan wajib ditetapkan pada **18 Juni 2026**.
+Sistem baru ini diperluas menjadi **22 kategori** (A hingga V), **87 kelompok utama**, dan **1.560 kode lima digit**. Jendela transisi Juni 2026 telah ditutup; pemetaan KBLI 2020 yang belum diselesaikan kini harus diperlakukan sebagai remediasi terlambat.
 
 ## Strategi di Balik Kode
 
@@ -928,7 +928,7 @@ Pesan bagi investor sangat jelas: Indonesia menginginkan bisnis yang **menciptak
 1. **Audit kode KBLI Anda saat ini** terhadap klasifikasi 2025. Identifikasi pemisahan, penggabungan, dan perubahan tingkat risiko.
 2. **Selaraskan profil keuangan Anda** dengan tolak ukur kode baru. Siapkan dokumentasi pendukung untuk setiap penyimpangan signifikan.
 3. **Tinjau implikasi kepemilikan asing** jika kode Anda berpindah kategori (terutama pemisahan J vs K).
-4. **Perbarui Laporan Kegiatan Penanaman Modal (LKPM)** untuk mencerminkan kode yang benar segera setelah OSS siap.
+4. **Perbarui Laporan Kegiatan Penanaman Modal (LKPM)** untuk mencerminkan kode yang benar berdasarkan perlakuan OSS/NIB saat ini.
 5. **Gunakan [Navigator KBLI](/kbli-navigator/)** untuk menjelajahi sistem klasifikasi terbaru dan mengidentifikasi kode yang paling tepat bagi bisnis Anda.
 
 Tenggat waktu ini nyata, dan integrasi sistem sedang berjalan. Bisnis yang memandang transisi ini sebagai peluang strategis — bukan sekadar beban administratif — adalah mereka yang akan unggul dalam babak baru ekonomi Indonesia.
@@ -2673,12 +2673,12 @@ URL: https://balizero.com/business/art-of-strategic-patience
 PUBLISHED: 2026-02-12
 
 ### RINGKASAN AI ZANTARA
-The OSS system isn't ready. The deadline is June 2026. And every move you make is now visible to the tax authority. Here's the strategic playbook for the transition period.
+The statutory window has closed. Every move is visible to the tax authority, so verify live OSS treatment before updating or filing.
 
 KONTEN:
 ## Paradoks Transisi
 
-Migrasi KBLI 2025 di Indonesia menghadirkan sebuah paradoks yang menguji ketahanan setiap pelaku bisnis di negeri ini: undang-undang mewajibkan Anda untuk melakukan pembaruan, namun sistem menyatakan belum siap memprosesnya. Sementara itu, tenggat waktu terus berjalan hingga 18 Juni 2026.
+Migrasi KBLI 2025 di Indonesia menghadirkan sebuah paradoks yang menguji ketahanan setiap pelaku bisnis di negeri ini: undang-undang mewajibkan Anda untuk melakukan pembaruan, namun sistem menyatakan belum siap memprosesnya. Sementara itu, jendela transisi Juni 2026 telah ditutup; pemetaan KBLI 2020 yang belum diselesaikan kini harus diperlakukan sebagai remediasi terlambat.
 
 Ini bukanlah situasi di mana Anda bisa sekadar terburu-buru demi kepatuhan. Pembaruan yang prematur berisiko mengunci NIB Anda, memblokir izin kepabeanan, dan menciptakan ketidaksinkronan data yang akan berdampak hingga ke sistem Coretax. Namun, menunggu terlalu lama berarti Anda harus berebut di tengah kepadatan sistem menjelang tenggat waktu bersama ribuan bisnis lainnya.
 
@@ -2701,7 +2701,7 @@ Strategi pemenang adalah **kesabaran strategis** — bertindak tegas pada momen 
 
 ### Tenggat Waktu
 
-**18 Juni 2026** — setelah tanggal ini, kode lama akan menjadi "kode hantu" yang tidak lagi diakui oleh sistem untuk pengajuan izin baru, persetujuan impor, maupun pelaporan LKPM.
+**jendela transisi Juni 2026 yang sudah ditutup** — setelah tanggal ini, kode lama akan menjadi "kode hantu" yang tidak lagi diakui oleh sistem untuk pengajuan izin baru, persetujuan impor, maupun pelaporan LKPM.
 
 ## Fase 1: Audit (Lakukan Sekarang)
 
@@ -2826,7 +2826,7 @@ Banyak bisnis di Bali menggabungkan restoran, tempat acara, dan ritel dalam satu
 | **Feb–Mar 2026**  | Siapkan akta notaris, susun _defense file_ keuangan     | Tinggi      |
 | **Mar–Mei 2026**  | Pantau pengumuman BKPM, eksekusi saat sistem stabil     | **Kritis**  |
 | **Mei–Jun 2026**  | Verifikasi pembaruan, sinkronisasi Coretax, update LKPM | **Kritis**  |
-| **Pasca 18 Juni** | Kode lama menjadi "kode hantu" — masa tenggang berakhir | **Tenggat** |
+| **Pasca Juni 2026 pasca-transisi** | Kode lama menjadi "kode hantu" — masa tenggang berakhir | **Tenggat** |
 
 ## Pola Pikir Strategis
 
@@ -2990,7 +2990,7 @@ Pembaruan tahun 2025 (Peraturan BPS No. 7 Tahun 2025) merupakan perubahan paling
 - **22 Kategori** (A hingga V), bertambah dari sebelumnya 21 kategori.
 - **87 Golongan Pokok** dan **1.560 kode aktivitas 5-digit**.
 - Kode baru untuk ekonomi digital, energi hijau, dan aset kripto.
-- **Batas waktu kepatuhan wajib: 18 Juni 2026.**
+- **Batas waktu kepatuhan wajib: jendela transisi Juni 2026 yang sudah ditutup.**
 
 Jika bisnis Anda masih menggunakan kode KBLI 2020, Anda wajib melakukan migrasi sebelum tenggat waktu tersebut untuk menghindari gangguan operasional atau pembekuan izin.
 
@@ -2999,7 +2999,7 @@ Jika bisnis Anda masih menggunakan kode KBLI 2020, Anda wajib melakukan migrasi 
 1. **Struktur Hierarkis:** Kode 5-digit mengarahkan dari sektor industri luas menuju aktivitas bisnis yang sangat spesifik.
 2. **Output Menentukan Sektor:** Klasifikasi didasarkan pada hasil ekonomi utama (Ikan di sawah = Perikanan; Pohon di ladang = Tanaman Tahunan).
 3. **Risiko Menentukan Kewajiban:** Jenis izin (NIB saja vs NIB + Izin) ditentukan oleh tingkat risiko dan skala operasional usaha.
-4. **Tenggat Waktu Krusial:** Seluruh pelaku usaha harus menyesuaikan kode mereka ke KBLI 2025 selambatnya pada 18 Juni 2026.
+4. **Tenggat Waktu Krusial:** Seluruh pelaku usaha harus menyesuaikan kode mereka ke KBLI 2025 setelah jendela transisi Juni 2026 ditutup.
 
 Memahami dasar-dasar ini adalah langkah pertama untuk menavigasi lanskap bisnis di Indonesia dengan percaya diri. Untuk mengeksplorasi seluruh 1.562 kode secara mendalam, gunakan [Navigator KBLI](/kbli-navigator/) — alat interaktif kami untuk mencari, memfilter, dan memahami setiap kode klasifikasi secara instan.
 
@@ -3255,14 +3255,14 @@ URL: https://balizero.com/business/kbli-2025-bali-transformation
 PUBLISHED: 2026-02-12
 
 ### RINGKASAN AI ZANTARA
-Bali's economy runs on tourism, hospitality, and digital services. KBLI 2025 reshuffles the classification deck. Here's what Bali businesses need to do before June 2026.
+Bali's economy runs on tourism, hospitality, and digital services. KBLI 2025 reshuffles the classification deck. Here's what Bali businesses need to do after the June 2026 transition window.
 
 KONTEN:
 ## Mengapa Pelaku Usaha di Bali Tidak Boleh Mengabaikan KBLI 2025
 
 Ekonomi Bali memiliki karakteristik unik yang membedakannya dari wilayah lain di Indonesia. Jika Pulau Jawa didominasi oleh sektor manufaktur dan keuangan, napas ekonomi Bali bertumpu pada sektor perhotelan, pariwisata, makanan & minuman (F&B), jasa kreatif, serta ekonomi digital yang terus berkembang pesat. Klasifikasi ulang KBLI 2025—sesuai amanat Peraturan BPS No. 7 Tahun 2025—bukan sekadar perubahan administratif di atas kertas. Kebijakan ini mendefinisikan ulang tingkat risiko, aturan kepemilikan asing (Daftar Positif Investasi), serta tolok ukur perpajakan bagi industri-industri utama yang menggerakkan pulau ini.
 
-Batas waktu kepatuhan wajib adalah **18 Juni 2026**. Setiap bisnis yang beroperasi di Bali—mulai dari restoran tepi pantai hingga agen pemasaran digital—wajib melakukan audit klasifikasi usaha mereka sebelum tanggal tersebut.
+Batas waktu kepatuhan wajib adalah **jendela transisi Juni 2026 yang sudah ditutup**. Setiap bisnis yang beroperasi di Bali—mulai dari restoran tepi pantai hingga agen pemasaran digital—wajib melakukan audit klasifikasi usaha mereka sebelum tanggal tersebut.
 
 ## Perubahan Signifikan dalam KBLI 2025
 
@@ -3360,7 +3360,7 @@ Saat ini sistem OSS sedang dalam masa transisi integrasi KBLI 2025. Hindari mela
 
 ## Deadline Juni 2026: Konsekuensi Hukum
 
-Ini bukan sekadar imbauan. Setelah 18 Juni 2026:
+Ini bukan sekadar imbauan. Setelah jendela transisi Juni 2026 yang sudah ditutup:
 
 - Kode KBLI 2020 akan dianggap sebagai **"kode usang"**—tidak dapat digunakan untuk pengajuan izin baru, persetujuan impor, atau laporan LKPM.
 - Ketidaksesuaian antara aktivitas lapangan dengan kode terdaftar akan memicu audit otomatis.
@@ -3444,7 +3444,7 @@ KONTEN:
 
 Penerbitan **Peraturan BPS No. 7 Tahun 2025** yang memperkenalkan sistem klasifikasi KBLI 2025 merupakan peristiwa yang jauh lebih signifikan daripada sekadar pembaruan statistik. Bagi investor strategis dan CFO, "Migrasi Besar" kode bisnis ini memicu pergeseran tektonik dalam status regulasi, membuka akses ke insentif pajak, _bankability_, serta hak kepemilikan asing yang sebelumnya tidak terjangkau oleh model bisnis tertentu.
 
-Sistem ini diperluas menjadi **22 kategori** (A hingga V), **87 kelompok utama**, dan **1.560 kelas lima digit**, selaras dengan standar internasional ISIC Revisi 5. Batas waktu kepatuhan wajib adalah **18 Juni 2026**.
+Sistem ini diperluas menjadi **22 kategori** (A hingga V), **87 kelompok utama**, dan **1.560 kelas lima digit**, selaras dengan standar internasional ISIC Revisi 5. Batas waktu kepatuhan wajib adalah **jendela transisi Juni 2026 yang sudah ditutup**.
 
 Analisis ini membedah tiga area peluang kritis di mana reklasifikasi ini menciptakan apa yang dapat disebut sebagai "Gold Rush" strategis.
 
@@ -3557,7 +3557,7 @@ Manfaat paling praktis: pendiri perusahaan kripto kini dapat **membuka rekening 
 
 ## Implementasi: Daftar Periksa Audit
 
-Sebelum tenggat waktu 18 Juni 2026, setiap bisnis di Indonesia wajib melakukan audit KBLI:
+Setelah jendela transisi Juni 2026 ditutup, setiap bisnis di Indonesia wajib melakukan audit KBLI:
 
 ### 1. Kontinuitas Kode
 

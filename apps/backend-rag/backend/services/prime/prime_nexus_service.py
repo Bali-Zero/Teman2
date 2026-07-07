@@ -191,7 +191,7 @@ class PrimeNexusService:
 
             if row and row["dist_m"] is not None:
                 dist = round(float(row["dist_m"]), 1)
-        except (asyncpg.PostgresError, OSError) as exc:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
             logger.debug("[PrimeNexus] Sea distance query skipped: %s", exc)
         except Exception:
             logger.exception("[PrimeNexus] Unexpected error in sea distance query")
@@ -511,7 +511,7 @@ class PrimeNexusService:
                     )
                 finally:
                     await conn.close()
-            except (asyncpg.PostgresError, OSError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 logger.warning("[PrimeNexus] PostGIS fallback failed: %s", exc)
                 return None
             except Exception:
@@ -528,7 +528,7 @@ class PrimeNexusService:
                         lng,
                         lat,
                     )
-            except (asyncpg.PostgresError, OSError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 logger.warning("[PrimeNexus] PostGIS pool query failed: %s", exc)
                 return None
             except Exception:
@@ -559,7 +559,7 @@ class PrimeNexusService:
                     await conn.close()
                 if row and row["avg_price_per_are"]:
                     return float(row["avg_price_per_are"])
-            except (asyncpg.PostgresError, OSError, ValueError, TypeError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, ValueError, TypeError) as exc:
                 logger.debug("[PrimeNexus] Price lookup skipped: %s", exc)
             except Exception:
                 logger.exception("[PrimeNexus] Price lookup unexpected error")
@@ -575,7 +575,7 @@ class PrimeNexusService:
                     )
                     if row and row["avg_price_per_are"]:
                         return float(row["avg_price_per_are"])
-            except (asyncpg.PostgresError, OSError, ValueError, TypeError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, ValueError, TypeError) as exc:
                 logger.debug("[PrimeNexus] Price pool lookup skipped: %s", exc)
             except Exception:
                 logger.exception("[PrimeNexus] Price pool lookup unexpected error")
@@ -1090,7 +1090,7 @@ class PrimeNexusService:
                     )
                 finally:
                     await conn.close()
-            except (asyncpg.PostgresError, OSError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 logger.warning("[PrimeNexus] Intelligence fallback failed: %s", exc)
                 return {"type": "FeatureCollection", "features": [], "stats": stats}
             except Exception:
@@ -1111,7 +1111,7 @@ class PrimeNexusService:
                     features,
                     stats,
                 )
-        except (asyncpg.PostgresError, OSError) as exc:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
             logger.warning("[PrimeNexus] Intelligence query failed: %s", exc)
         except Exception:
             logger.exception("[PrimeNexus] Intelligence query unexpected error")
@@ -1273,7 +1273,7 @@ class PrimeNexusService:
                         cnt = row["cnt"]
                         by_kbli[sector] = cnt
                         total += cnt
-            except (asyncpg.PostgresError, OSError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 logger.warning("[PrimeNexus] Density query failed: %s", exc)
             except Exception:
                 logger.exception("[PrimeNexus] Density query unexpected error")
@@ -1434,7 +1434,7 @@ class PrimeNexusService:
                                     "detail": f"{recent_act} recent, {prior_act} prior",
                                 }
                             )
-            except (asyncpg.PostgresError, OSError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 logger.warning("[PrimeNexus] Predict query failed: %s", exc)
             except Exception:
                 logger.exception("[PrimeNexus] Predict query unexpected error")
@@ -1536,7 +1536,7 @@ class PrimeNexusService:
                                 "activity_score": practices + companies,
                             }
                         )
-            except (asyncpg.PostgresError, OSError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 logger.warning("[PrimeNexus] Temporal query failed: %s", exc)
             except Exception:
                 logger.exception("[PrimeNexus] Temporal query unexpected error")
@@ -1617,7 +1617,7 @@ class PrimeNexusService:
                                 "source": "database",
                             }
                         )
-            except (asyncpg.PostgresError, OSError) as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 logger.warning("[PrimeNexus] Regulations SQL query failed: %s", exc)
             except Exception:
                 logger.exception("[PrimeNexus] Regulations SQL unexpected error")
@@ -1711,7 +1711,7 @@ class PrimeNexusService:
                     "expires_at": row["expires_at"].isoformat(),
                     "status": "draft",
                 }
-        except (asyncpg.PostgresError, OSError) as exc:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
             logger.warning("[PrimeNexus] Create proposal DB error: %s", exc)
             return {"error": str(exc), "token": None}
         except Exception as exc:
@@ -1772,7 +1772,7 @@ class PrimeNexusService:
                     "created_at": row["created_at"].isoformat() if row["created_at"] else None,
                     "expires_at": row["expires_at"].isoformat() if row["expires_at"] else None,
                 }
-        except (asyncpg.PostgresError, OSError) as exc:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
             logger.warning("[PrimeNexus] Get proposal DB error: %s", exc)
             return None
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
@@ -1882,7 +1882,7 @@ class PrimeNexusService:
                         }
                     )
 
-        except (asyncpg.PostgresError, OSError) as exc:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
             logger.warning("[PrimeNexus] Portfolio query failed: %s", exc)
         except Exception:
             logger.exception("[PrimeNexus] Portfolio query unexpected error")
