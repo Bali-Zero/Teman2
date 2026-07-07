@@ -21,7 +21,46 @@
 	<array>
 		<string>/bin/bash</string>
 		<string>-c</string>
-		<string>set -euo pipefail; SECRETS="$HOME/.nuzantara-secrets.env"; BACKEND_SECRETS="$HOME/.nuzantara-backend-secrets.env"; if [ -f "$SECRETS" ]; then set -a; . "$SECRETS"; set +a; fi; if [ -f "$BACKEND_SECRETS" ]; then set -a; . "$BACKEND_SECRETS"; set +a; fi; if [ -z "${DATABASE_URL_LOCAL:-}" ]; then echo "[wr2-daily-reconciler] ERROR: DATABASE_URL_LOCAL not set in $SECRETS" 1&gt;&amp;2; exit 74; fi; export DATABASE_URL="$DATABASE_URL_LOCAL"; if ! nc -z 127.0.0.1 15432 2&gt;/dev/null; then echo "[wr2-daily-reconciler] ERROR: 127.0.0.1:15432 unreachable (pg-proxy?)" 1&gt;&amp;2; exit 74; fi; REPO="${WR2_REPO_ROOT:-$HOME/Desktop/nuzantara-deploy}"; PY="${WR2_HTML_VENV_PY:-$REPO/.venv-wr2-html/bin/python}"; cd "$REPO"; if [ ! -x "$PY" ]; then echo "[wr2-daily-reconciler] WARN: venv missing at $PY — auto-heal via setup_wr2_html_venv.sh (scar W81/html-venv)" 1&gt;&amp;2; if ! bash "$REPO/scripts/setup_wr2_html_venv.sh" 1&gt;&amp;2; then echo "[wr2-daily-reconciler] ERROR: venv auto-heal failed" 1&gt;&amp;2; exit 75; fi; fi; exec "$PY" "$REPO/scripts/wr2_daily_reconciler.py"</string>
+		<string>
+set -euo pipefail
+ORGAN="pro.wr2_daily_carousel"
+HB_DIR="$HOME/.organism/last_seen"
+hb() {
+  mkdir -p "$HB_DIR"
+  printf '{"ts":"%s","status":"%s","note":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" &gt; "$HB_DIR/$ORGAN.json"
+}
+if [ "${WR2_DAILY_RECONCILER_ENABLED:-1}" = "0" ] || [ "${WR2_DAILY_RECONCILER_ENABLED:-1}" = "false" ]; then
+  hb disabled "kill switch WR2_DAILY_RECONCILER_ENABLED"
+  exit 0
+fi
+SECRETS="$HOME/.nuzantara-secrets.env"
+BACKEND_SECRETS="$HOME/.nuzantara-backend-secrets.env"
+if [ -f "$SECRETS" ]; then set -a; . "$SECRETS"; set +a; fi
+if [ -f "$BACKEND_SECRETS" ]; then set -a; . "$BACKEND_SECRETS"; set +a; fi
+if [ -z "${DATABASE_URL_LOCAL:-}" ]; then
+  echo "[wr2-daily-reconciler] ERROR: DATABASE_URL_LOCAL not set in $SECRETS" 1&gt;&amp;2
+  hb error "DATABASE_URL_LOCAL not set"
+  exit 74
+fi
+export DATABASE_URL="$DATABASE_URL_LOCAL"
+if ! nc -z 127.0.0.1 15432 2&gt;/dev/null; then
+  echo "[wr2-daily-reconciler] ERROR: 127.0.0.1:15432 unreachable (pg-proxy?)" 1&gt;&amp;2
+  hb error "pg-proxy 15432 unreachable"
+  exit 74
+fi
+REPO="${WR2_REPO_ROOT:-$HOME/Desktop/nuzantara-deploy}"
+PY="${WR2_HTML_VENV_PY:-$REPO/.venv-wr2-html/bin/python}"
+cd "$REPO"
+if [ ! -x "$PY" ]; then
+  echo "[wr2-daily-reconciler] WARN: venv missing at $PY — auto-heal via setup_wr2_html_venv.sh (scar W81/html-venv)" 1&gt;&amp;2
+  if ! bash "$REPO/scripts/setup_wr2_html_venv.sh" 1&gt;&amp;2; then
+    echo "[wr2-daily-reconciler] ERROR: venv auto-heal failed" 1&gt;&amp;2
+    hb error "venv auto-heal failed"
+    exit 75
+  fi
+fi
+exec "$PY" "$REPO/scripts/wr2_daily_reconciler.py"
+</string>
 	</array>
 	<key>StandardErrorPath</key>
 	<string>/Users/nuzantara/logs/wr2-daily-reconciler.log</string>
