@@ -15,9 +15,6 @@ const INTERNAL_ROUTES = [
   "/dashboard",
   "/clients",
   "/process",
-  "/documents",
-  "/email",
-  "/knowledge",
   "/settings",
   "/team-management", // workspace team management (not /team which is public)
   "/whatsapp",
@@ -26,9 +23,18 @@ const INTERNAL_ROUTES = [
   "/portal",
   "/analytics",
   "/intelligence",
-  "/calendar",
   "/notifications",
 ];
+
+// /email, /calendar, /knowledge, /documents are NOT routes on kita — they map
+// 1:1 to standalone apps on their own subdomains (mail/calendar/knowledge/
+// drive.balizero.com). See APP_SUBDOMAIN_ROUTE_MAP in the APP DOMAIN block.
+const APP_SUBDOMAIN_ROUTE_MAP: Record<string, string> = {
+  "/email": "mail.balizero.com",
+  "/calendar": "calendar.balizero.com",
+  "/knowledge": "knowledge.balizero.com",
+  "/documents": "drive.balizero.com",
+};
 
 // Public routes for balizero.com
 const PUBLIC_CATEGORIES = [
@@ -442,6 +448,23 @@ export function proxy(request: NextRequest) {
       );
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
+    }
+
+    // Redirect ghost internal routes (/email, /calendar, /knowledge, /documents)
+    // to their real standalone-app subdomains. These paths have no route on kita
+    // and previously fell through to the (blog)/[category] catch-all, rendering
+    // "Category not found" with public nav instead of the actual app.
+    for (const [routePrefix, targetHost] of Object.entries(
+      APP_SUBDOMAIN_ROUTE_MAP,
+    )) {
+      if (pathname === routePrefix || pathname.startsWith(`${routePrefix}/`)) {
+        const deepPath = pathname.slice(routePrefix.length) || "/";
+        const targetUrl = new URL(deepPath, `https://${targetHost}`);
+        targetUrl.search = request.nextUrl.search;
+        const redirectResponse = NextResponse.redirect(targetUrl, 302);
+        redirectResponse.headers.set("x-pathname", pathname);
+        return redirectResponse;
+      }
     }
 
     // On app domain, redirect public content to main domain

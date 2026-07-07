@@ -449,6 +449,50 @@ describe("Middleware - Multi-domain Routing", () => {
   });
 
   // =======================================================================
+  // Ghost internal routes (/email, /calendar, /knowledge, /documents) →
+  // real standalone-app subdomains. These paths have no route on kita and
+  // used to fall through to the (blog)/[category] catch-all.
+  // =======================================================================
+  describe("Ghost internal routes redirect to standalone app subdomains", () => {
+    const cases: Array<[string, string]> = [
+      ["/email", "https://mail.balizero.com/"],
+      ["/calendar", "https://calendar.balizero.com/"],
+      ["/knowledge", "https://knowledge.balizero.com/"],
+      ["/documents", "https://drive.balizero.com/"],
+    ];
+
+    for (const [from, to] of cases) {
+      it(`redirects 302 kita.balizero.com${from} → ${to}`, () => {
+        const request = createRequest(`https://kita.balizero.com${from}`);
+        const response = proxy(request);
+
+        expect(response.status).toBe(302);
+        expect(response.headers.get("location")).toBe(to);
+      });
+    }
+
+    it("preserves deep path and query when redirecting /calendar/event/123", () => {
+      const request = createRequest(
+        "https://kita.balizero.com/calendar/event/123?tab=details",
+      );
+      const response = proxy(request);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(
+        "https://calendar.balizero.com/event/123?tab=details",
+      );
+    });
+
+    it("does not redirect unrelated app-domain routes (e.g. /dashboard)", () => {
+      const request = createRequest("https://kita.balizero.com/dashboard");
+      const response = proxy(request);
+
+      expect(response.status).not.toBe(302);
+      expect(response.headers.get("x-pathname")).toBe("/dashboard");
+    });
+  });
+
+  // =======================================================================
   // RSC/prefetch detection (CORS console-error fix): the `_rsc` query param
   // and `RSC`/`Next-Router-Prefetch` headers are stripped by Next.js before
   // middleware runs in production, so `Accept: text/x-component` is the only
